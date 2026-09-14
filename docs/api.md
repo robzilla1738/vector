@@ -60,7 +60,10 @@ replay.
 
 ### Runs
 
-`runs.start { goal, pageId?, setId?, modelId? }` → `runId` ·
+`runs.start { goal, pageId?, pageIds?, setId?, modelId?, chatId?,
+maxSteps?, maxModelCalls?, deadlineMs? }` → `runId` — `chatId` groups
+runs into durable chat threads (the agent rail scopes history and
+follow-up context per thread) ·
 `runs.get { runId }` · `runs.list { limit? }` ·
 `runs.pause` / `runs.resume` / `runs.cancel { runId }` ·
 `runs.answer { runId, answer }` — reply to an agent question ·
@@ -90,7 +93,8 @@ session and never logged or returned.
 
 `workspace.get` → `{ pages, sessions, runs, settings, … }` (renderer sync
 snapshot) · `settings.get` / `settings.set` · `models.list` / `models.probe` ·
-`history.list` / `history.clear` · `bookmarks.list|add|remove` ·
+`history.list` / `history.clear` · `bookmarks.list|add|remove` — add/remove
+emit `bookmarks.changed` with the updated list so live clients stay in sync ·
 `bench.run { url, repeats }`.
 
 ## Typed programs
