@@ -1,0 +1,17 @@
+{
+  "name": "@vector/tests",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@vector/browser-driver": "workspace:*",
+    "@vector/contracts": "workspace:*",
+    "@vector/runtime": "workspace:*",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}

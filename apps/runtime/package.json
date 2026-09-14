@@ -1,0 +1,33 @@
+{
+  "name": "@vector/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "vector-runtime": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --force",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@ai-sdk/gateway": "4.0.75",
+    "@vector/browser-driver": "workspace:*",
+    "@vector/contracts": "workspace:*",
+    "ai": "7.0.93",
+    "ws": "8.21.3",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.3.0",
+    "@types/ws": "8.18.1",
+    "typescript": "5.9.3"
+  }
+}

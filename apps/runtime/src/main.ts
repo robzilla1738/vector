@@ -1,0 +1,319 @@
+/**
+ * Vector runtime entry point.
+ *
+ * Spawned by the Electron main process via child_process.fork with
+ * ELECTRON_RUN_AS_NODE=1, or run standalone (`node dist/main.js`) for
+ * tests/external-only use. Speaks JSON-RPC over fork IPC to the shell and
+ * serves the versioned loopback API for external agents.
+ */
+import { randomUUID } from "node:crypto";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { VectorError, type Step } from "@vector/contracts";
+import { RpcChannel, type Transport } from "@vector/contracts";
+import { AttachedChromeDriver, StandaloneDriver, VectorElectronDriver, type BrowserDriver } from "@vector/browser-driver";
+import { loadConfig } from "./config.js";
+import { openDb } from "./store/db.js";
+import { Repo } from "./store/repo.js";
+import { EventBus } from "./events.js";
+import { ChannelNativeBridge, NullNativeBridge, type NativeBridge } from "./native.js";
+import { PageService } from "./services/pages.js";
+import { SetService } from "./services/sets.js";
+import { RunService } from "./services/runs.js";
+import { ArtifactStore } from "./services/artifacts.js";
+import { CookieService } from "./services/cookies.js";
+import { SettingsService } from "./services/settings.js";
+import { ResponseStore } from "./services/responses.js";
+import { OperationService } from "./services/operations.js";
+import { StateService } from "./services/state.js";
+import { Tracer } from "./services/tracing.js";
+import { makeInvoker } from "./api/handlers.js";
+import { ApiServer } from "./api/server.js";
+import { runBench } from "./services/bench.js";
+
+export interface RuntimeHandle {
+  port: number;
+  token: string;
+  invoke: (method: string, params: unknown) => Promise<unknown>;
+  close: () => Promise<void>;
+}
+
+export async function startRuntime(env = process.env): Promise<RuntimeHandle> {
+  const config = loadConfig(env);
+  const repo = new Repo(openDb(config.dbPath));
+  const events = new EventBus(repo);
+  const settings = new SettingsService(repo, config.settingsPath, env);
+  const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
+
+  // ---- channel to the desktop shell (fork IPC) ----
+  let channel: RpcChannel | null = null;
+  if (env.VECTOR_IPC === "1" && typeof process.send === "function") {
+    const transport: Transport = {
+      send: (m) => {
+        try {
+          process.send?.(m);
+        } catch {
+          /* parent gone */
+        }
+      },
+      onMessage: (cb) => process.on("message", cb),
+    };
+    channel = new RpcChannel(transport, "runtime->shell");
+  }
+  const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
+
+  // Register api.invoke immediately — the renderer can call before services
+  // finish booting; calls wait on the invoker promise instead of failing.
+  type InvokeFn = (m: string, p: unknown) => Promise<unknown>;
+  let resolveInvoker: (fn: InvokeFn) => void;
+  const invokerReady = new Promise<InvokeFn>((r) => (resolveInvoker = r));
+  channel?.onMethod("api.invoke", (p) => {
+    const { method, params } = p as { method: string; params: unknown };
+    return invokerReady.then((fn) => fn(method, params));
+  });
+
+  // ---- drivers ----
+  const drivers: { vector: BrowserDriver | null; chrome: BrowserDriver | null } = {
+    vector: null,
+    chrome: null,
+  };
+  if (config.electronCdp) {
+    const d = new VectorElectronDriver(config.electronCdp);
+    try {
+      await d.connect();
+      drivers.vector = d;
+      repo.upsertSession({ sessionId: "vector", backend: "vector", label: "Vector", status: "connected" });
+    } catch (e) {
+      repo.upsertSession({
+        sessionId: "vector",
+        backend: "vector",
+        label: "Vector",
+        status: "degraded",
+        detail: `CDP connect failed: ${e instanceof Error ? e.message : e}`,
+      });
+    }
+  } else if (env.VECTOR_STANDALONE !== "0") {
+    // No Electron shell — drive a headless system Chrome so the full API still works.
+    const d = new StandaloneDriver();
+    try {
+      await d.connect();
+      drivers.vector = d;
+      repo.upsertSession({ sessionId: "vector", backend: "vector", label: "Vector (headless)", status: "connected" });
+    } catch (e) {
+      repo.upsertSession({
+        sessionId: "vector",
+        backend: "vector",
+        label: "Vector (headless)",
+        status: "degraded",
+        detail: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  const tracer = new Tracer(repo.db, { traceDir: join(config.dataDir, "traces") });
+  const responses = new ResponseStore({ repo, events, artifacts });
+  // pages↔operations are mutually dependent — late-bind via a lazy ref
+  let operations!: OperationService;
+  const pages = new PageService({
+    repo,
+    events,
+    native,
+    drivers: () => drivers,
+    artifacts,
+    responses,
+    tracer,
+    // unified step ledger — every execution records steps with pageId so
+    // operations.compile can rebuild the trace (§10.3)
+    recordStep: (s) => repo.saveStep(s),
+    callOperation: async (name, args, pageId) => {
+      const slash = name.indexOf("/");
+      const siteKey = slash > 0 ? name.slice(0, slash) : new URL(pages.get(pageId).url).host;
+      const opName = slash > 0 ? name.slice(slash + 1) : name;
+      const r = await operations.invoke({ siteKey, name: opName, inputs: args, pageId });
+      if (r.status === "failed") throw new VectorError("step_failed", r.error ?? `operation ${opName} failed`);
+      return r.result;
+    },
+  });
+  const sets = new SetService(repo, events, pages);
+
+  const refLookup = (pageId: string, ref: string) =>
+    drivers.vector?.refEntry?.(pageId, ref) ?? drivers.chrome?.refEntry?.(pageId, ref);
+  const translateSteps = (pageId: string, steps: Step[]): Step[] =>
+    steps
+      .filter((s) => s.op !== "navigate")
+      .map((s) => {
+        if ("target" in s && typeof s.target === "string" && /^r\d+$/.test(s.target)) {
+          const el = refLookup(pageId, s.target);
+          const sel = el?.selector;
+          if (sel?.role) {
+            return { ...s, target: `role=${sel.role.role}${sel.role.name ? `[name=${sel.role.name}]` : ""}` };
+          }
+          if (sel?.css) return { ...s, target: `css:${sel.css}` };
+        }
+        return s;
+      });
+
+  operations = new OperationService({ repo, events, pages, translateSteps });
+  const state = new StateService({ repo, pages, operations });
+
+  const runs = new RunService({
+    repo,
+    events,
+    pages,
+    sets,
+    settings,
+    artifacts,
+    translateSteps,
+    nativeAvailable: () => native.available(),
+    tracer,
+  });
+
+  // ---- chrome attach ----
+  const chromeAttach = async (port: number) => {
+    if (drivers.chrome?.isConnected()) {
+      return repo.listSessions().find((s) => s.backend === "chrome");
+    }
+    const d = new AttachedChromeDriver(`http://127.0.0.1:${port}`);
+    await d.connect();
+    drivers.chrome = d;
+    repo.upsertSession({
+      sessionId: "chrome",
+      backend: "chrome",
+      label: `Chrome :${port}`,
+      status: "connected",
+      detail: "attached via CDP — borrowed tabs keep their session",
+    });
+    events.emit("session.changed", { backend: "chrome", status: "connected" });
+    return repo.listSessions().find((s) => s.backend === "chrome");
+  };
+  const chromeDetach = async () => {
+    await drivers.chrome?.disconnect();
+    drivers.chrome = null;
+    repo.upsertSession({ sessionId: "chrome", backend: "chrome", label: "Chrome", status: "disconnected" });
+    events.emit("session.changed", { backend: "chrome", status: "disconnected" });
+    return { ok: true };
+  };
+  const chromeTabs = async () => drivers.chrome?.listTargets() ?? [];
+  const cookies = new CookieService({ drivers: () => drivers, native });
+
+  const invoke = makeInvoker({
+    pages,
+    sets,
+    runs,
+    artifacts,
+    settings,
+    events,
+    repo,
+    responses,
+    operations,
+    state,
+    tracer,
+    drivers: () => drivers,
+    chromeAttach,
+    chromeDetach,
+    chromeTabs,
+    importCookies: (o) => cookies.importCookies(o),
+    benchRun: async (task, repeats) =>
+      runBench({
+        pages,
+        url: task ?? env.VECTOR_BENCH_URL ?? "http://127.0.0.1:4810/records",
+        repeats: repeats ?? 10,
+        dir: config.benchmarksDir,
+      }),
+  });
+
+  // ---- loopback API ----
+  const token = config.apiToken || randomUUID();
+  const api = new ApiServer({ token, invoke, events });
+  const port = await api.listen(config.apiPort);
+  writeFileSync(join(config.dataDir, "runtime.json"), JSON.stringify({ port, token, pid: process.pid }));
+
+  // ---- channel surface for the shell ----
+  resolveInvoker!(invoke);
+  // forward the event stream so the shell renderer can subscribe over IPC
+  events.subscribe((e) => channel?.notify("event", e));
+  channel?.onNotify((type, payload) => {
+    const pl = (payload ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (v === undefined || v === null ? undefined : String(v));
+    const truthy = (v: unknown) => v === true || v === "true";
+    switch (type) {
+      case "view.navigated": return pages.onNativeNavigated(str(pl.pageId)!, str(pl.url)!);
+      case "view.titleChanged": return pages.onNativeTitle(str(pl.pageId)!, str(pl.title) ?? "");
+      case "view.faviconChanged": return pages.onNativeFavicon(str(pl.pageId)!, str(pl.favicon) ?? "");
+      case "view.navState": return pages.onNativeNavState(str(pl.pageId)!, truthy(pl.canGoBack), truthy(pl.canGoForward));
+      case "view.loading": return pages.onNativeLoading(str(pl.pageId)!, truthy(pl.loading));
+      case "view.crashed": return pages.onNativeCrashed(str(pl.pageId)!);
+      case "view.takeover": return pages.onNativeTakeover(str(pl.pageId)!);
+      case "view.downloadStarted":
+        return pages.onNativeDownloadStarted(str(pl.pageId), {
+          id: str(pl.id) ?? `dl_${Date.now()}`,
+          filename: str(pl.filename) ?? "download",
+          path: str(pl.path) ?? "",
+          size: Number(pl.size ?? 0),
+          totalBytes: pl.totalBytes ? Number(pl.totalBytes) : undefined,
+          startedAt: Number(pl.startedAt ?? Date.now()),
+        });
+      case "view.downloadFinished":
+        return pages.onNativeDownload(str(pl.pageId), {
+          id: str(pl.id) ?? `dl_${Date.now()}`,
+          filename: str(pl.filename) ?? "download",
+          path: str(pl.path) ?? "",
+          state: str(pl.state) ?? "completed",
+          size: Number(pl.size ?? 0),
+          totalBytes: pl.totalBytes ? Number(pl.totalBytes) : undefined,
+          startedAt: Number(pl.startedAt ?? Date.now()),
+          endedAt: pl.endedAt ? Number(pl.endedAt) : undefined,
+        });
+      case "view.popup":
+        // a native window/tab appeared outside pages.open (window.open allowed)
+        void pages.registerExternal({
+          marker: str(pl.marker)!,
+          url: str(pl.url) ?? "about:blank",
+          backend: "vector",
+        }).catch(() => {});
+        return;
+      case "view.removed": return pages.onNativeRemoved(str(pl.pageId)!);
+      case "app.closing": return pages.shuttingDown();
+    }
+  });
+
+  let closed = false;
+  const shutdown = async () => {
+    if (closed) return;
+    closed = true;
+    runs.coordinator.markInterrupted();
+    await drivers.vector?.disconnect().catch(() => {});
+    await drivers.chrome?.disconnect().catch(() => {});
+    await api.close().catch(() => {});
+    repo.db.close();
+  };
+  process.on("SIGTERM", () => void shutdown().then(() => process.exit(0)));
+  process.on("SIGINT", () => void shutdown().then(() => process.exit(0)));
+
+  // recover from an unclean stop: anything still "live" never completed.
+  // Invocation rows persisted 'running' before dispatch (§13.3) reconcile
+  // to 'interrupted' with unknown effect — never assumed applied or not.
+  runs.coordinator.markInterrupted();
+  repo.markRunningInvocationsInterrupted();
+
+  // bring back the tabs that were open when the app last quit
+  void pages.restoreTabs().catch(() => {});
+
+  channel?.notify("runtime.ready", { port });
+  return {
+    port,
+    token,
+    invoke: (m, p) => invoke(m, p),
+    close: shutdown,
+  };
+}
+
+const isDirectRun = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+if (isDirectRun || process.env.VECTOR_RUNTIME_AUTOSTART === "1") {
+  startRuntime().then((h) => {
+    console.log(`[vector-runtime] api=http://127.0.0.1:${h.port}`);
+  }).catch((e) => {
+    console.error("[vector-runtime] failed:", e);
+    process.exit(1);
+  });
+}

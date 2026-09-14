@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["vitest/globals"],
+    "noEmit": true,
+    "strict": true
+  },
+  "include": ["**/*.ts"],
+  "references": [
+    { "path": "../packages/contracts" },
+    { "path": "../packages/browser-driver" },
+    { "path": "../apps/runtime" }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "allowImportingTsExtensions": true,
+    "outDir": "dist-types",
+    "types": ["node"],
+    "noEmit": false
+  },
+  "include": ["records-app", "forms-app", "interaction-lab", "shared"]
+}

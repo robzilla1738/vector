@@ -1,0 +1,39 @@
+appId: dev.vector.browser
+productName: Vector
+copyright: Vector
+
+directories:
+  output: ../../release
+  buildResources: build
+
+files:
+  - dist/**
+  - package.json
+  - "!node_modules/**" # main+preload are esbuild-bundled; no runtime deps
+
+asar: true
+
+# the forked runtime + its production deps are staged by scripts/package-local.mjs
+extraResources:
+  - from: "../../release/.staging/runtime"
+    to: "runtime"
+    filter:
+      - "**/*"
+      - "**/node_modules"
+      - "**/node_modules/**" # bundled runtime deps — override default exclusion
+
+mac:
+  category: public.app-category.productivity
+  icon: icon.icns
+  target:
+    - dir # local dev package — unsigned, fast; add dmg/zip for distribution
+  identity: null
+
+win:
+  target:
+    - dir
+
+linux:
+  target:
+    - dir
+  category: Utility

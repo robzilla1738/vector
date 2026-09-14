@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist/main",
+    "rootDir": "main",
+    "types": ["node"]
+  },
+  "include": ["main"],
+  "references": [{ "path": "../../packages/contracts" }]
+}

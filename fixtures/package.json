@@ -1,0 +1,12 @@
+{
+  "name": "@vector/fixtures",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -b --force",
+    "records": "node records-app/serve.ts",
+    "forms": "node forms-app/serve.ts",
+    "lab": "node interaction-lab/serve.ts"
+  }
+}

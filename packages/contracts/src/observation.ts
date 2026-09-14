@@ -1,0 +1,120 @@
+import { z } from "zod";
+
+/**
+ * A ref is a stable-within-a-document handle to an interactive element.
+ * It resolves through the ref registry to locator strategies, never to a
+ * raw node id that outlives navigation.
+ */
+export const SelectorStrategySchema = z.object({
+  /** e.g. role=button[name="Save"] — preferred when available. */
+  role: z
+    .object({ role: z.string(), name: z.string().optional() })
+    .optional(),
+  /** CSS selector path; `>>` segments may pierce open shadow roots. */
+  css: z.string().optional(),
+  /** XPath fallback. */
+  xpath: z.string().optional(),
+  /** Text-based fallback. */
+  text: z.string().optional(),
+});
+export type SelectorStrategy = z.infer<typeof SelectorStrategySchema>;
+
+export const ElementRefSchema = z.object({
+  ref: z.string(),
+  frame: z.string().describe("frame key within the page, 'main' for top frame"),
+  tag: z.string(),
+  role: z.string().optional(),
+  name: z.string().optional(),
+  text: z.string().optional(),
+  type: z.string().optional(),
+  value: z.string().optional(),
+  checked: z.boolean().optional(),
+  selected: z.string().optional(),
+  href: z.string().optional(),
+  placeholder: z.string().optional(),
+  disabled: z.boolean().optional(),
+  rect: z
+    .object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() })
+    .optional(),
+  selector: SelectorStrategySchema,
+});
+export type ElementRef = z.infer<typeof ElementRefSchema>;
+
+export const FormFieldSchema = z.object({
+  ref: z.string(),
+  label: z.string().optional(),
+  name: z.string().optional(),
+  type: z.string(),
+  value: z.string().optional(),
+  required: z.boolean().optional(),
+  valid: z.boolean().optional(),
+  validationMessage: z.string().optional(),
+});
+export type FormField = z.infer<typeof FormFieldSchema>;
+
+export const TableBlockSchema = z.object({
+  ref: z.string(),
+  caption: z.string().optional(),
+  columns: z.array(z.string()),
+  rows: z.array(z.array(z.string())),
+  totalRows: z.number().optional(),
+  truncated: z.boolean(),
+});
+export type TableBlock = z.infer<typeof TableBlockSchema>;
+
+export const FrameInfoSchema = z.object({
+  frame: z.string(),
+  url: z.string(),
+  name: z.string().optional(),
+  sameOrigin: z.boolean(),
+});
+export type FrameInfo = z.infer<typeof FrameInfoSchema>;
+
+export const ObservationContentSchema = z.object({
+  url: z.string(),
+  title: z.string(),
+  viewport: z.object({ width: z.number(), height: z.number(), scale: z.number() }),
+  scroll: z.object({ x: z.number(), y: z.number(), maxY: z.number() }),
+  frames: z.array(FrameInfoSchema),
+  /** Compact structural text the model reads. */
+  text: z.string(),
+  headings: z.array(z.string()),
+  elements: z.array(ElementRefSchema),
+  formFields: z.array(FormFieldSchema),
+  tables: z.array(TableBlockSchema),
+  links: z.array(z.object({ ref: z.string(), text: z.string(), href: z.string() })),
+  dialogs: z.array(z.object({ type: z.string(), message: z.string() })),
+  /** True when content was cut to fit the budget. */
+  truncated: z.boolean(),
+  stats: z.object({
+    elementsTotal: z.number(),
+    elementsShown: z.number(),
+    textChars: z.number(),
+    approxTokens: z.number(),
+  }),
+});
+export type ObservationContent = z.infer<typeof ObservationContentSchema>;
+
+export const ObservationSchema = z.object({
+  observationId: z.string(),
+  pageId: z.string(),
+  documentEpoch: z.number(),
+  revision: z.number(),
+  observedAt: z.number(),
+  scope: z.enum(["full", "forms", "links", "tables", "subtree"]),
+  content: ObservationContentSchema,
+  /** Human/model-readable field-level diff vs the previous revision. */
+  changesSince: z.array(z.string()).optional(),
+  /** §8.5 — the observationId this delta applies to; absent on a first observation. */
+  deltaFrom: z.string().optional(),
+});
+export type Observation = z.infer<typeof ObservationSchema>;
+
+export const ObservationRequestSchema = z.object({
+  scope: z.enum(["full", "forms", "links", "tables", "subtree"]).default("full"),
+  subtreeRef: z.string().optional(),
+  maxElements: z.number().int().positive().default(120),
+  maxTextChars: z.number().int().positive().default(6000),
+  sinceRevision: z.number().optional(),
+});
+export type ObservationRequest = z.infer<typeof ObservationRequestSchema>;

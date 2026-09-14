@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist/preload",
+    "rootDir": "preload",
+    "types": ["node"],
+    "verbatimModuleSyntax": false
+  },
+  "include": ["preload"],
+  "references": [{ "path": "../../packages/contracts" }]
+}

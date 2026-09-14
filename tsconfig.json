@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/contracts" },
+    { "path": "packages/browser-driver" },
+    { "path": "packages/cli" },
+    { "path": "packages/mcp" },
+    { "path": "apps/runtime" },
+    { "path": "apps/desktop/tsconfig.main.json" },
+    { "path": "apps/desktop/tsconfig.preload.json" },
+    { "path": "fixtures" },
+    { "path": "tests" }
+  ]
+}
