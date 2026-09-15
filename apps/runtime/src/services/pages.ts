@@ -716,7 +716,8 @@ export class PageService {
       lp.target.controller = ctx.runId ? "agent" : lp.target.controller === "none" ? "external" : lp.target.controller;
       // controller/epoch changes are persisted once, after the program (speed P2-1)
       // pointer/keyboard input only lands on a visible, laid-out native view —
-      // hold the stage lease while a program with interactive steps runs
+      // mark the page working (rendered offscreen unless focused) while a
+      // program with interactive steps runs; no global lease (plan A8)
       const allSteps = collectSteps(program);
       const needsStage =
         lp.target.backend === "vector" &&

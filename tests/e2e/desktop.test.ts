@@ -134,6 +134,41 @@ describe("desktop e2e", () => {
     expect(a.targetId).not.toBe(b.targetId);
   }, 60_000);
 
+  it("interactive programs run in parallel on background pages without flipping the focused tab (A8)", async () => {
+    const front = await rpc<{ pageId: string }>("pages.open", { url: "http://127.0.0.1:4810/records", backend: "vector" });
+    const bgA = await rpc<{ pageId: string }>("pages.open", { url: "http://127.0.0.1:4810/new", backend: "vector", background: true });
+    const bgB = await rpc<{ pageId: string }>("pages.open", { url: "http://127.0.0.1:4810/new", backend: "vector", background: true });
+    const program = (pageId: string, value: string) => ({
+      pageId,
+      steps: [
+        { id: "f", op: "fill", target: "css:#n-title", value },
+        { id: "c", op: "click", target: "css:#n-title" },
+        { id: "p", op: "press", key: "End", target: "css:#n-title" },
+      ],
+    });
+    const readTitle = (pageId: string) =>
+      rpc<{ content: { formFields: { name?: string; label?: string; value?: string }[] } }>("pages.observe", { pageId, scope: "forms" }).then(
+        (o) => o.content.formFields.find((f) => f.name === "title" || f.label === "Title")?.value,
+      );
+    const t0 = Date.now();
+    const [a, b] = await Promise.all([
+      rpc<{ status: string; error?: string }>("pages.execute", { program: program(bgA.pageId, "alpha") }),
+      rpc<{ status: string; error?: string }>("pages.execute", { program: program(bgB.pageId, "bravo") }),
+    ]);
+    const wall = Date.now() - t0;
+    expect(a.status, a.error).toBe("completed");
+    expect(b.status, b.error).toBe("completed");
+    expect(await readTitle(bgA.pageId)).toBe("alpha");
+    expect(await readTitle(bgB.pageId)).toBe("bravo");
+    // the human's tab stayed on the stage the whole time
+    const ws = await rpc<{ activePageId: string | null }>("workspace.get");
+    expect(ws.activePageId).toBe(front.pageId);
+    // the pages ran at the same time (the sequential lease took turns);
+    // generous bound so CI variance cannot flake it
+    expect(wall).toBeLessThan(20_000);
+    for (const p of [bgA, bgB]) await rpc("pages.close", { pageId: p.pageId });
+  }, 90_000);
+
   it("native find and zoom round-trip through the API", async () => {
     const page = await rpc<{ pageId: string }>("pages.open", {
       url: "http://127.0.0.1:4810/records",
