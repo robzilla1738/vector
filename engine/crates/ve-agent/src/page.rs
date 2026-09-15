@@ -300,6 +300,8 @@ pub struct Page {
     scripts: Vec<FetchedScript>,
     /// Subresource counters for the current document.
     load_stats: LoadStats,
+    /// The script layer, when a VM is attached (plan A13).
+    pub(crate) scripting: Option<crate::scripting::Scripting>,
 }
 
 impl std::fmt::Debug for Page {
@@ -350,13 +352,48 @@ impl Page {
 
     /// Opens `url` through `loader` (the real pipeline: fetch → decode →
     /// streaming parse → cascade → layout).
-    pub fn open(id: u64, mut loader: Box<dyn Loader>, url: &str, viewport: Size) -> Result<Self> {
+    pub fn open(id: u64, loader: Box<dyn Loader>, url: &str, viewport: Size) -> Result<Self> {
+        Self::open_with(id, loader, url, viewport, None)
+    }
+
+    /// [`Self::open`] with an optional script VM attached *before* the
+    /// document loads, so its scripts run (plan A13). `allow_evaluate` gates
+    /// the `evaluate` step.
+    pub fn open_with(
+        id: u64,
+        mut loader: Box<dyn Loader>,
+        url: &str,
+        viewport: Size,
+        scripting: Option<(Box<dyn ve_script::JsVm>, bool)>,
+    ) -> Result<Self> {
         let parsed =
             url::Url::parse(url).map_err(|e| Error::invalid_params(format!("url {url:?}: {e}")))?;
         let loaded = loader.load(&NavigationRequest::get(parsed.to_string(), id))?;
         let mut page = Self::empty(id, viewport);
         page.loader = Some(loader);
+        if let Some((vm, allow_evaluate)) = scripting {
+            page.enable_scripting(vm, allow_evaluate)?;
+        }
         page.load(loaded, HistoryMode::Push);
+        Ok(page)
+    }
+
+    /// [`Self::from_html`] with a script VM attached before the load.
+    pub fn from_html_with(
+        id: u64,
+        html: &str,
+        url: Option<&str>,
+        viewport: Size,
+        scripting: Option<(Box<dyn ve_script::JsVm>, bool)>,
+    ) -> Result<Self> {
+        let mut page = Self::empty(id, viewport);
+        if let Some((vm, allow_evaluate)) = scripting {
+            page.enable_scripting(vm, allow_evaluate)?;
+        }
+        page.load(
+            LoadedDocument::html(url.unwrap_or("about:blank"), html),
+            HistoryMode::Push,
+        );
         Ok(page)
     }
 
@@ -399,6 +436,7 @@ impl Page {
             cancelled: false,
             scripts: Vec::new(),
             load_stats: LoadStats::default(),
+            scripting: None,
         }
     }
 
@@ -467,6 +505,11 @@ impl Page {
         self.style_engine.clear_author_styles();
         let sheets = self.fetch_subresources();
         self.add_styles(&sheets);
+        self.update();
+        if let Some(s) = self.scripting.as_mut() {
+            s.reset();
+        }
+        self.run_document_scripts();
         self.update();
         let entry = HistoryEntry {
             document: loaded,
@@ -1038,7 +1081,29 @@ impl Page {
             }
             break;
         }
+        // Script readiness (architecture §6 conditions 1, 2, 7): fire timers
+        // due within the window, drain microtasks, then report what remains.
+        if self.scripting.is_some() {
+            self.pump_timers(crate::scripting::TIMER_WINDOW_MS);
+            self.update();
+            let (soon, later, microtasks) = self.script_readiness();
+            if soon > 0 {
+                reasons.push(format!("timers({soon})"));
+            }
+            if later > 0 {
+                reasons.push(format!("timers-later({later})"));
+            }
+            if microtasks {
+                reasons.push("microtasks".into());
+            }
+        }
         let mut settled = self.pending_navigation.is_none();
+        if self.scripting.is_some() {
+            let (soon, _, microtasks) = self.script_readiness();
+            if soon > 0 || microtasks {
+                settled = false;
+            }
+        }
         if let Some(loader) = &self.loader {
             let in_flight = loader.in_flight(self.id);
             let blocking = in_flight

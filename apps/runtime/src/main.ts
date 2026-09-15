@@ -142,7 +142,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // setting (default "off" — nothing changes for existing users).
   let engineInfo: EngineAvailability = { available: false, error: "not loaded" };
   if (env.VECTOR_ENGINE !== "0") {
-    const d = new VectorEngineDriver({ config: { dataDir: config.dataDir } });
+    // VECTOR_ENGINE_SCRIPTING=1 runs page scripts in the engine's V8 (A13);
+    // default off until the DOM bindings (A14) give scripts something to act on
+    const d = new VectorEngineDriver({
+      config: { dataDir: config.dataDir, scripting: env.VECTOR_ENGINE_SCRIPTING === "1" },
+    });
     watchDriver(d, "vector-engine", "Vector Engine");
     try {
       await d.connect();

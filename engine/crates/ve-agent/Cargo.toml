@@ -12,6 +12,11 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = []
+## Forward: V8 JavaScript backend for page scripts (plan A13).
+v8 = ["ve-script/v8"]
+
 [dependencies]
 imagesize.workspace = true
 ve-core.workspace = true

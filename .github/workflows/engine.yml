@@ -58,10 +58,14 @@ jobs:
         with:
           workspaces: engine
           key: features
-      - name: http + quickjs + images
-        run: cargo clippy -p ve-api --all-targets --features http,quickjs -- -D warnings
+      - name: http + quickjs + v8 + images
+        run: cargo clippy -p ve-api --all-targets --features http,quickjs,v8 -- -D warnings
       - run: cargo test -p ve-net --features http
       - run: cargo test -p ve-script --features quickjs
+      - name: V8 backend (prebuilt static lib download)
+        run: cargo test -p ve-script --features v8
+      - name: Page scripting on V8 (timers, console, evaluate gating)
+        run: cargo test -p ve-agent --features v8
       - run: cargo test -p ve-gfx --features images
 
   perf-gate:

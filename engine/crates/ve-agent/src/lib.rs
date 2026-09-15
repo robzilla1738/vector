@@ -30,6 +30,7 @@ pub mod page;
 pub mod regex_lite;
 pub mod routing;
 pub mod screenshot;
+pub mod scripting;
 pub mod steps;
 pub mod target;
 
@@ -43,6 +44,7 @@ pub use page::{
 };
 pub use routing::{CssCoverage, RoutingInfo, classify};
 pub use screenshot::Screenshot;
+pub use scripting::{ConsoleLine, HOST_FUNCTIONS, PRELUDE, SCRIPT_DEADLINE, TIMER_WINDOW_MS};
 pub use steps::{
     Condition, DialogAction, ExtractField, MouseButton, Program, ProgramResult, ProgramStatus,
     ScrollDirection, SelectValue, SelectorState, Settled, Step, StepBase, StepError, StepOutcome,

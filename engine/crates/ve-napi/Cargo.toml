@@ -21,7 +21,10 @@ default = []
 ## (the engine host and hub still compile and are unit-tested without Node
 ## headers). A Node module without
 ## networking is useless, so the feature also turns on `http`.
-napi = ["dep:napi", "dep:napi-derive", "dep:napi-build", "http"]
+napi = ["dep:napi", "dep:napi-derive", "dep:napi-build", "http", "v8"]
+## Forward: V8 JavaScript backend for page scripts (decision D1). Part of
+## `napi` so the addon can run script-driven pages; adds ~50 MB to the binary.
+v8 = ["ve-api/v8"]
 ## Forward: real HTTP(S) transport so `http(s):` URLs can be opened.
 http = ["ve-api/http"]
 

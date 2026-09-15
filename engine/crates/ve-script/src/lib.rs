@@ -22,16 +22,21 @@
 //! Deliberate M0 stubs: no DOM bindings are registered in any VM yet; scripts
 //! see a bare JavaScript global. `document.write` is unsupported.
 
-#![forbid(unsafe_code)]
+// `unsafe` is confined to the V8 FFI module (architecture §10).
+#![deny(unsafe_code)]
 
 pub mod event_loop;
 #[cfg(feature = "quickjs")]
 pub mod quickjs;
+#[cfg(feature = "v8")]
+pub mod v8_vm;
 pub mod vm;
 pub mod webidl;
 
 pub use event_loop::{EventLoop, RunReport, TaskId, TaskSource};
 #[cfg(feature = "quickjs")]
 pub use quickjs::QuickJsVm;
-pub use vm::{JsValue, JsVm, NullVm, ScriptError, default_vm};
+#[cfg(feature = "v8")]
+pub use v8_vm::V8Vm;
+pub use vm::{HostApi, JsValue, JsVm, NoHost, NullVm, ScriptError, default_vm};
 pub use webidl::{Argument, Interface, Member, generate_rust_stub, parse_webidl};

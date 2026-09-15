@@ -77,6 +77,10 @@ pub struct EngineConfig {
     /// Policy for the default context and for contexts created without one
     /// (`block_loopback` on, no allowlist, `file:` off).
     pub policy: NetworkPolicy,
+    /// Attach a JavaScript VM to every page and run document scripts (plan
+    /// A13). Needs the `v8` (or `quickjs`) feature to do anything; with
+    /// neither the pages get the `NullVm` and scripts do not run.
+    pub scripting: bool,
 }
 
 impl Default for EngineConfig {
@@ -88,6 +92,7 @@ impl Default for EngineConfig {
             offline: false,
             max_pages: 64,
             policy: NetworkPolicy::default(),
+            scripting: false,
         }
     }
 }
@@ -110,6 +115,10 @@ pub struct OpenRequest {
     /// Viewport override.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub viewport: Option<Size>,
+    /// Allow `evaluate` steps on this page (capability gating, §10). Only
+    /// meaningful when the engine runs with `scripting`.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub allow_evaluate: bool,
 }
 
 impl OpenRequest {
@@ -471,11 +480,17 @@ impl VectorEngine {
         let viewport = request.viewport.unwrap_or(self.config.viewport);
         let id = self.next_page + 1;
         let loader: Box<dyn Loader> = Box::new(NetLoader { net });
+        let scripting = self
+            .config
+            .scripting
+            .then(|| (ve_script::default_vm(), request.allow_evaluate))
+            .filter(|(vm, _)| vm.name() != "null");
         let mut page = match (&request.html, &request.url) {
             (Some(html), url) => {
-                Page::from_html(id, html, url.as_deref(), viewport).with_loader(loader)
+                Page::from_html_with(id, html, url.as_deref(), viewport, scripting)?
+                    .with_loader(loader)
             }
-            (None, Some(url)) => Page::open(id, loader, url, viewport)?,
+            (None, Some(url)) => Page::open_with(id, loader, url, viewport, scripting)?,
             (None, None) => {
                 return Err(Error::invalid_params("open needs `url` or `html`"));
             }

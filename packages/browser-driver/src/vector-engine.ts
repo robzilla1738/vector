@@ -63,6 +63,8 @@ export interface EngineNativeConfig {
   offline?: boolean;
   maxPages?: number;
   dataDir?: string;
+  /** attach a V8 VM to every page and run document scripts (plan A13); needs an addon built with the `v8` feature */
+  scripting?: boolean;
 }
 
 /** Loads the addon; rejects with the loader's diagnostic when no binary exists. */

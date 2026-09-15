@@ -90,6 +90,19 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   `off`); `pages.open` results carry `routeReason`; `pnpm bench --backend
   chrome|vector-engine|both`.
 
+- **Script layer (A13)** — `ve-script::V8Vm` (feature `v8`, decision D1;
+  the `napi` addon includes it): one isolate per page, host functions
+  under `globalThis.__ve` dispatched by index to the page
+  (`ve-agent/src/scripting.rs`), a prelude for
+  `setTimeout/setInterval/queueMicrotask/requestAnimationFrame/console/
+  performance`, a 5 s per-script deadline via `terminate_execution`.
+  Document scripts run at load (classic in order, `defer`/module after;
+  errors isolated to the console). Timers live on the page's virtual clock:
+  `settle()` fires everything due within 50 ms, drains microtasks, and
+  reports `timers(n)`/`timers-later(n)`/`microtasks`. `EngineConfig.scripting`
+  (runtime: `VECTOR_ENGINE_SCRIPTING=1`) is off by default until the DOM
+  bindings land — without them page scripts only see the bare global.
+
 ### Deferred — reports `capability_unsupported`
 
 The addon forwards to `ve-agent`, so these are the engine's own gaps
@@ -98,7 +111,7 @@ refusals that stand regardless of what the engine can do.
 
 | Surface | Status |
 |---|---|
-| `evaluate`, `waitFor expression`, `javascript:` URLs / links / form actions | need `ve-script` DOM bindings (M2) |
+| `evaluate` | **supported** when the engine runs with `scripting` (V8, plan A13) and the page was opened with `allowEvaluate`; JSON-shaped result under `as` (default `value`). `waitFor expression`, `javascript:` URLs and DOM access from scripts still need the bindings of plan A14 |
 | `dialog` | no script means no `alert/confirm/prompt` can be pending; `<dialog>` elements are driven by clicking their controls |
 | `expectDownload`, `waitFor downloadCompleted`, links with `download` | downloads are not supported |
 | `xpath:` targets | unsupported (`r<n>`, `css:`, `text:`/`text=`, `role=…[name=…]`) |

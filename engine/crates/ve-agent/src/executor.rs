@@ -504,9 +504,33 @@ impl Page {
                     "resolving <dialog> elements through the dialog op needs the script layer; click its buttons instead",
                 ))
             }
-            Step::Evaluate { .. } => Err(Error::capability_unsupported(
-                "evaluate needs the script layer (ve-script) and a context created with allowEvaluate",
-            )),
+            Step::Evaluate {
+                expression, as_key, ..
+            } => {
+                if !self.scripting_enabled() {
+                    return Err(Error::capability_unsupported(
+                        "evaluate needs the script layer (open the page with scripting enabled)",
+                    ));
+                }
+                let value = self.evaluate(expression)?;
+                let mut map = Map::new();
+                map.insert(
+                    as_key.clone().unwrap_or_else(|| "value".into()),
+                    value.clone(),
+                );
+                let shown = value.to_string();
+                let shown = if shown.chars().count() > 200 {
+                    format!("{}…", shown.chars().take(200).collect::<String>())
+                } else {
+                    shown
+                };
+                Ok(StepOutput {
+                    detail: Some(format!("evaluated → {shown}")),
+                    extracted: Some(map),
+                    artifact_ids: None,
+                    settle_ms: SETTLE_STEP_MS,
+                })
+            }
         }
     }
 

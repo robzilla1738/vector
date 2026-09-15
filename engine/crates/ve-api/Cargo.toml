@@ -19,6 +19,8 @@ crate-type = ["rlib", "cdylib"]
 default = []
 ## Forward: QuickJS-NG JavaScript backend.
 quickjs = ["ve-script/quickjs"]
+## Forward: V8 JavaScript backend (decision D1).
+v8 = ["ve-script/v8", "ve-agent/v8"]
 ## Forward: vello + wgpu GPU rendering.
 gpu = ["ve-gfx/gpu"]
 ## Forward: hyper + rustls HTTP transport.
