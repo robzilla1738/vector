@@ -60,6 +60,16 @@
       "selector": {}
     },
     {
+      "ref": "r386",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "I agree to the privacy policy",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
       "ref": "r390",
       "frame": "main",
       "tag": "button",
@@ -831,16 +841,6 @@
       "role": "link",
       "name": "Sitemap",
       "href": "https://fixtures.vector.test/sitemap",
-      "selector": {}
-    },
-    {
-      "ref": "r386",
-      "frame": "main",
-      "tag": "input",
-      "role": "checkbox",
-      "name": "I agree to the privacy policy",
-      "type": "checkbox",
-      "checked": false,
       "selector": {}
     }
   ],

@@ -72,13 +72,20 @@ impl StackingContext {
             && bx.style.visibility == Visibility::Visible;
         let owner = bx.node.or(inherited_owner);
         if !matches!(bx.kind, BoxKind::Text(_)) {
+            // A non-replaced inline box that wraps across lines has `rect`
+            // equal to the union of its fragments, which is not geometry a
+            // pointer can land on (it covers earlier inline siblings on the
+            // first line). Its text fragments below carry `owner`, and atomic
+            // children are boxes of their own, so hit testing goes through
+            // those instead.
+            let own_geometry = !matches!(bx.kind, BoxKind::Inline);
             self.items.push(PaintItem {
                 node: bx.node,
                 element: owner,
                 rect: bx.rect,
                 text: None,
                 baseline: 0.0,
-                hit_testable: hit_testable && bx.node.is_some(),
+                hit_testable: hit_testable && own_geometry && bx.node.is_some(),
             });
         }
         for line in &bx.lines {

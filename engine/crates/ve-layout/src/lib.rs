@@ -57,6 +57,8 @@ pub struct LayoutTree {
     /// Stacking context tree derived from the boxes.
     pub stacking: StackingContext,
     geometry: HashMap<NodeId, Rect>,
+    /// `stacking` flattened once; hit testing and painting read this.
+    paint: Vec<PaintItem>,
     revision: Revision,
 }
 
@@ -86,15 +88,22 @@ impl LayoutTree {
     }
 
     /// The topmost hit-testable element at `point`, in paint order.
+    ///
+    /// Reads the cached paint order; the observation builder calls this once
+    /// per candidate element, so it must not re-flatten the stacking tree.
     #[must_use]
     pub fn hit_test(&self, point: Point) -> Option<NodeId> {
-        self.stacking.hit_test(point)
+        self.paint
+            .iter()
+            .rev()
+            .find(|item| item.hit_testable && item.rect.contains(point))
+            .and_then(|i| i.element)
     }
 
     /// Boxes in paint order (back to front).
     #[must_use]
-    pub fn paint_order(&self) -> Vec<PaintItem> {
-        self.stacking.paint_order()
+    pub fn paint_order(&self) -> &[PaintItem] {
+        &self.paint
     }
 }
 
@@ -139,6 +148,7 @@ impl LayoutEngine {
         let mut geometry = HashMap::new();
         collect_geometry(&root, &mut geometry);
         let stacking = StackingContext::build(&root);
+        let paint = stacking.paint_order();
         tracing::debug!(
             boxes = geometry.len(),
             height = root.rect.height(),
@@ -149,6 +159,7 @@ impl LayoutEngine {
             viewport,
             stacking,
             geometry,
+            paint,
             revision: styles.revision(),
         }
     }

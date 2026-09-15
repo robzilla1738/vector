@@ -230,6 +230,60 @@
       "selector": {}
     },
     {
+      "ref": "r286",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 1: Ut enim ad minim veniam, quis nostrud …",
+      "href": "https://fixtures.vector.test/2026/09/post-1",
+      "selector": {}
+    },
+    {
+      "ref": "r292",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 2: Duis aute irure dolor in reprehenderit…",
+      "href": "https://fixtures.vector.test/2026/08/post-2",
+      "selector": {}
+    },
+    {
+      "ref": "r298",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 3: Excepteur sint occaecat cupidatat non …",
+      "href": "https://fixtures.vector.test/2026/08/post-3",
+      "selector": {}
+    },
+    {
+      "ref": "r304",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 4: Lorem ipsum dolor sit amet, consectetu…",
+      "href": "https://fixtures.vector.test/2026/07/post-4",
+      "selector": {}
+    },
+    {
+      "ref": "r310",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 5: Ut enim ad minim veniam, quis nostrud …",
+      "href": "https://fixtures.vector.test/2026/07/post-5",
+      "selector": {}
+    },
+    {
+      "ref": "r316",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 6: Duis aute irure dolor in reprehenderit…",
+      "href": "https://fixtures.vector.test/2026/06/post-6",
+      "selector": {}
+    },
+    {
       "ref": "r18",
       "frame": "main",
       "tag": "a",
@@ -408,60 +462,6 @@
       "name": "RSS",
       "href": "https://fixtures.vector.test/feed.xml",
       "selector": {}
-    },
-    {
-      "ref": "r286",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Post title number 1: Ut enim ad minim veniam, quis nostrud …",
-      "href": "https://fixtures.vector.test/2026/09/post-1",
-      "selector": {}
-    },
-    {
-      "ref": "r292",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Post title number 2: Duis aute irure dolor in reprehenderit…",
-      "href": "https://fixtures.vector.test/2026/08/post-2",
-      "selector": {}
-    },
-    {
-      "ref": "r298",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Post title number 3: Excepteur sint occaecat cupidatat non …",
-      "href": "https://fixtures.vector.test/2026/08/post-3",
-      "selector": {}
-    },
-    {
-      "ref": "r304",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Post title number 4: Lorem ipsum dolor sit amet, consectetu…",
-      "href": "https://fixtures.vector.test/2026/07/post-4",
-      "selector": {}
-    },
-    {
-      "ref": "r310",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Post title number 5: Ut enim ad minim veniam, quis nostrud …",
-      "href": "https://fixtures.vector.test/2026/07/post-5",
-      "selector": {}
-    },
-    {
-      "ref": "r316",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Post title number 6: Duis aute irure dolor in reprehenderit…",
-      "href": "https://fixtures.vector.test/2026/06/post-6",
-      "selector": {}
     }
   ],
   "formFields": [
@@ -632,6 +632,36 @@
       "href": "https://fixtures.vector.test/about"
     },
     {
+      "ref": "r286",
+      "text": "Post title number 1: Ut enim ad minim veniam, quis nostrud …",
+      "href": "https://fixtures.vector.test/2026/09/post-1"
+    },
+    {
+      "ref": "r292",
+      "text": "Post title number 2: Duis aute irure dolor in reprehenderit…",
+      "href": "https://fixtures.vector.test/2026/08/post-2"
+    },
+    {
+      "ref": "r298",
+      "text": "Post title number 3: Excepteur sint occaecat cupidatat non …",
+      "href": "https://fixtures.vector.test/2026/08/post-3"
+    },
+    {
+      "ref": "r304",
+      "text": "Post title number 4: Lorem ipsum dolor sit amet, consectetu…",
+      "href": "https://fixtures.vector.test/2026/07/post-4"
+    },
+    {
+      "ref": "r310",
+      "text": "Post title number 5: Ut enim ad minim veniam, quis nostrud …",
+      "href": "https://fixtures.vector.test/2026/07/post-5"
+    },
+    {
+      "ref": "r316",
+      "text": "Post title number 6: Duis aute irure dolor in reprehenderit…",
+      "href": "https://fixtures.vector.test/2026/06/post-6"
+    },
+    {
       "ref": "r18",
       "text": "Skip to main content",
       "href": "https://fixtures.vector.test/blog-post.html#main"
@@ -720,36 +750,6 @@
       "ref": "r336",
       "text": "RSS",
       "href": "https://fixtures.vector.test/feed.xml"
-    },
-    {
-      "ref": "r286",
-      "text": "Post title number 1: Ut enim ad minim veniam, quis nostrud …",
-      "href": "https://fixtures.vector.test/2026/09/post-1"
-    },
-    {
-      "ref": "r292",
-      "text": "Post title number 2: Duis aute irure dolor in reprehenderit…",
-      "href": "https://fixtures.vector.test/2026/08/post-2"
-    },
-    {
-      "ref": "r298",
-      "text": "Post title number 3: Excepteur sint occaecat cupidatat non …",
-      "href": "https://fixtures.vector.test/2026/08/post-3"
-    },
-    {
-      "ref": "r304",
-      "text": "Post title number 4: Lorem ipsum dolor sit amet, consectetu…",
-      "href": "https://fixtures.vector.test/2026/07/post-4"
-    },
-    {
-      "ref": "r310",
-      "text": "Post title number 5: Ut enim ad minim veniam, quis nostrud …",
-      "href": "https://fixtures.vector.test/2026/07/post-5"
-    },
-    {
-      "ref": "r316",
-      "text": "Post title number 6: Duis aute irure dolor in reprehenderit…",
-      "href": "https://fixtures.vector.test/2026/06/post-6"
     }
   ],
   "dialogs": [],
