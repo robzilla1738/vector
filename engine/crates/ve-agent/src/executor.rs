@@ -1,554 +1,819 @@
-//! The step interpreter.
+//! `Page::execute(program) -> ProgramResult` (architecture §6).
+//!
+//! Per step: check the document epoch when a ref is involved, resolve the
+//! target, run the op, `settle()`, verify `expect`, record a [`StepOutcome`].
+//! Time inside waits is virtual: nothing in M1 changes without a step, so a
+//! condition that does not hold after settling fails immediately with
+//! `condition_timeout` (the wait budget is reported, not slept).
 
-use std::collections::HashSet;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
-use ve_core::{Error, NodeId, Result, Revision, Stage};
+use ve_a11y::{ObservationRequest, ref_for};
+use ve_core::{Error, ErrorCode, Result, Stage};
 
-use crate::page::{Page, outer_html};
-use crate::readiness::Readiness;
-use crate::steps::{ExtractKind, Presence, Program, Step, Target, WaitCondition};
+use crate::page::{
+    DEFAULT_TIMEOUT_MS, EngineObservation, Page, SETTLE_NAVIGATION_MS, SETTLE_STEP_MS,
+    now_millis, outer_html,
+};
+use crate::regex_lite::url_matches;
+use crate::steps::{
+    Condition, ExtractField, MouseButton, Program, ProgramResult, ProgramStatus, SelectorState,
+    Settled, Step, StepError, StepOutcome, StepStatus,
+};
 
-/// Outcome of one step.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "status", rename_all = "camelCase")]
-pub enum StepStatus {
-    /// The step completed.
-    Ok,
-    /// The step failed.
-    Failed {
-        /// Error message.
-        error: String,
-    },
-    /// The step was not run because an earlier step failed.
-    Skipped,
-}
-
-/// Record of one executed step.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// `pages.execute` request: a program plus an optional observation to take
+/// in the same round trip.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct StepResult {
-    /// Position in the program.
-    pub index: usize,
-    /// Action name.
-    pub action: String,
-    /// Outcome.
-    #[serde(flatten)]
-    pub status: StepStatus,
-    /// Step-specific output (extracted value, scroll position, matched refs…).
+pub struct ExecuteRequest {
+    /// The program.
+    pub program: Program,
+    /// Observe (Compact by default) after the program finishes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output: Option<Value>,
-    /// Wall-clock duration.
-    pub duration_ms: u64,
-    /// Readiness after the step settled.
-    pub readiness: Readiness,
+    pub return_observation: Option<ObservationRequest>,
 }
 
-/// Result of running a program.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExecutionReport {
-    /// Whether every step succeeded.
-    pub ok: bool,
-    /// Per-step results.
-    pub results: Vec<StepResult>,
-    /// Values collected by `extract` and `collectScroll`, keyed by name.
-    pub extracted: Map<String, Value>,
-    /// Document revision after the last step.
-    pub final_revision: Revision,
-    /// Final URL.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
-}
-
-impl ExecutionReport {
-    /// Serialises the report to JSON.
-    #[must_use]
-    pub fn to_json(&self) -> Value {
-        serde_json::to_value(self).expect("report is serialisable")
-    }
-
-    /// The first failure, if any.
-    #[must_use]
-    pub fn first_error(&self) -> Option<&str> {
-        self.results.iter().find_map(|r| match &r.status {
-            StepStatus::Failed { error } => Some(error.as_str()),
-            _ => None,
+impl ExecuteRequest {
+    /// Parses either `{ program, returnObservation? }` or a bare program /
+    /// step array.
+    pub fn from_json(json: &str) -> Result<Self> {
+        let value: Value = serde_json::from_str(json)
+            .map_err(|e| Error::invalid_params(format!("execute request: {e}")))?;
+        if let Some(obj) = value.as_object()
+            && obj.contains_key("program")
+        {
+            let program = Program::from_value(obj["program"].clone())?;
+            let return_observation = match obj.get("returnObservation") {
+                None | Some(Value::Null) => None,
+                Some(Value::Bool(true)) => Some(ObservationRequest::default()),
+                Some(Value::Bool(false)) => None,
+                Some(other) => Some(
+                    serde_json::from_value(other.clone())
+                        .map_err(|e| Error::invalid_params(format!("returnObservation: {e}")))?,
+                ),
+            };
+            return Ok(Self {
+                program,
+                return_observation,
+            });
+        }
+        Ok(Self {
+            program: Program::from_value(value)?,
+            return_observation: None,
         })
     }
 }
 
-/// Interprets programs against a [`Page`].
-#[derive(Clone, Copy, Debug)]
-pub struct Executor {
-    /// Virtual time advanced per `waitFor` poll.
-    pub poll_interval: Duration,
+/// `{ result, observation? }`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExecuteResult {
+    /// The program result.
+    pub result: ProgramResult,
+    /// The requested observation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observation: Option<EngineObservation>,
 }
 
-impl Default for Executor {
-    fn default() -> Self {
+fn merge_extracted(into: &mut Map<String, Value>, from: &Map<String, Value>) {
+    for (k, v) in from {
+        into.insert(k.clone(), v.clone());
+    }
+}
+
+/// What a step produced besides success.
+#[derive(Default)]
+struct StepOutput {
+    detail: Option<String>,
+    extracted: Option<Map<String, Value>>,
+    artifact_ids: Option<Vec<String>>,
+    /// Settle budget after this step.
+    settle_ms: u64,
+}
+
+impl StepOutput {
+    fn detail(text: impl Into<String>) -> Self {
         Self {
-            poll_interval: Duration::from_millis(50),
+            detail: Some(text.into()),
+            settle_ms: SETTLE_STEP_MS,
+            ..Self::default()
+        }
+    }
+
+    fn navigation(text: impl Into<String>) -> Self {
+        Self {
+            detail: Some(text.into()),
+            settle_ms: SETTLE_NAVIGATION_MS,
+            ..Self::default()
         }
     }
 }
 
-impl Executor {
-    /// Creates an executor with default settings.
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
+impl Page {
+    /// Executes a flat program.
+    pub fn execute(&mut self, program: &Program) -> ProgramResult {
+        self.execute_with_observation(program, None).result
     }
 
-    /// Runs `program` to completion (or first failure when `stop_on_error`).
-    pub fn run(&self, page: &mut dyn Page, program: &Program) -> ExecutionReport {
+    /// Executes a program and optionally observes in the same call.
+    pub fn execute_with_observation(
+        &mut self,
+        program: &Program,
+        return_observation: Option<&ObservationRequest>,
+    ) -> ExecuteResult {
         let span = Stage::Agent.span();
         let _guard = span.enter();
-        let budget = program.options.max_tasks_per_settle;
-        let mut results = Vec::with_capacity(program.steps.len());
+        let epoch = program.document_epoch;
+        let mut outcomes = Vec::with_capacity(program.steps.len());
         let mut extracted = Map::new();
-        let mut failed = false;
+        let mut failed: Option<String> = None;
+        let mut cancelled = false;
+        let mut last_settled = Settled {
+            settled: true,
+            ..Settled::default()
+        };
 
-        for (index, step) in program.steps.iter().enumerate() {
-            if failed && program.options.stop_on_error {
-                results.push(StepResult {
-                    index,
-                    action: step.action().to_owned(),
+        for step in &program.steps {
+            if failed.is_some() || cancelled {
+                outcomes.push(StepOutcome {
+                    step_id: step.id().clone(),
+                    op: step.op().into(),
                     status: StepStatus::Skipped,
-                    output: None,
+                    started_at: now_millis(),
                     duration_ms: 0,
-                    readiness: page.readiness(),
+                    detail: None,
+                    error: None,
+                    extracted: None,
+                    artifact_ids: None,
                 });
                 continue;
             }
+            let started_at = now_millis();
             let start = Instant::now();
-            page.settle(budget);
-            let outcome = self.run_step(page, program, step, &mut extracted);
-            let readiness = page.settle(budget);
-            let (status, output) = match outcome {
-                Ok(output) => (StepStatus::Ok, output),
-                Err(e) => {
-                    failed = true;
-                    (
-                        StepStatus::Failed {
-                            error: e.to_string(),
-                        },
-                        None,
-                    )
-                }
+            let step_span = tracing::info_span!("agent.step", op = step.op(), id = step.id());
+            let _step_guard = step_span.enter();
+            let result = if self.take_cancelled() {
+                cancelled = true;
+                Err(Error::coded(ErrorCode::Cancelled, "program cancelled"))
+            } else {
+                self.run_step(step, epoch, &extracted)
             };
-            tracing::debug!(index, action = step.action(), ?status, "step");
-            results.push(StepResult {
-                index,
-                action: step.action().to_owned(),
+            let (mut status, mut detail, mut error, mut step_extracted, artifact_ids, settle_ms) =
+                match result {
+                    Ok(out) => (
+                        StepStatus::Ok,
+                        out.detail,
+                        None,
+                        out.extracted,
+                        out.artifact_ids,
+                        out.settle_ms,
+                    ),
+                    Err(e) => (
+                        StepStatus::Failed,
+                        None,
+                        Some(StepError::from(&e)),
+                        None,
+                        None,
+                        SETTLE_STEP_MS,
+                    ),
+                };
+            let settled = self.settle(settle_ms);
+            if let Some(nav_error) = self.take_navigation_error()
+                && status == StepStatus::Ok
+            {
+                status = StepStatus::Failed;
+                error = Some(StepError::from(&Error::Network(nav_error)));
+            }
+            if status == StepStatus::Ok
+                && let Some(expect) = &step.base().expect
+            {
+                for condition in expect {
+                    let timeout = condition
+                        .timeout_ms()
+                        .or(step.base().timeout_ms)
+                        .unwrap_or(DEFAULT_TIMEOUT_MS);
+                    match self.evaluate_condition(condition, epoch, 0) {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            status = StepStatus::Failed;
+                            error = Some(StepError::from(&Error::coded_with(
+                                ErrorCode::ConditionTimeout,
+                                format!(
+                                    "expect {} did not hold after {timeout} ms",
+                                    condition.kind()
+                                ),
+                                json!({ "condition": condition, "timeoutMs": timeout }),
+                            )));
+                            break;
+                        }
+                        Err(e) => {
+                            status = StepStatus::Failed;
+                            error = Some(StepError::from(&e));
+                            break;
+                        }
+                    }
+                }
+            }
+            if let Some(unsettled) = settled.detail() {
+                detail = Some(match detail {
+                    Some(d) => format!("{d}; {unsettled}"),
+                    None => unsettled,
+                });
+            }
+            if status == StepStatus::Ok
+                && let Some(map) = &step_extracted
+            {
+                merge_extracted(&mut extracted, map);
+            } else {
+                step_extracted = None;
+            }
+            if status == StepStatus::Failed {
+                let message = error
+                    .as_ref()
+                    .map_or_else(|| "step failed".to_owned(), |e| e.message.clone());
+                if cancelled || error.as_ref().is_some_and(|e| e.code == ErrorCode::Cancelled) {
+                    cancelled = true;
+                } else if !step.is_optional() {
+                    failed = Some(format!("{}: {message}", step.id()));
+                }
+            }
+            tracing::debug!(id = step.id(), op = step.op(), ?status, "step");
+            last_settled = settled;
+            outcomes.push(StepOutcome {
+                step_id: step.id().clone(),
+                op: step.op().into(),
                 status,
-                output,
+                started_at,
                 duration_ms: u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX),
-                readiness,
+                detail,
+                error,
+                extracted: step_extracted,
+                artifact_ids,
             });
         }
-        ExecutionReport {
-            ok: !failed,
-            results,
-            extracted,
-            final_revision: page.document().revision(),
-            url: page.url().map(str::to_owned),
+
+        let status = if cancelled {
+            ProgramStatus::Cancelled
+        } else if failed.is_some() {
+            ProgramStatus::Failed
+        } else {
+            ProgramStatus::Completed
+        };
+        let observation = return_observation.map(|request| {
+            let settled = if last_settled.settled {
+                last_settled.clone()
+            } else {
+                self.settle(SETTLE_STEP_MS)
+            };
+            self.observe_after_settle(request, settled)
+        });
+        ExecuteResult {
+            result: ProgramResult {
+                status,
+                steps: outcomes,
+                extracted: (!extracted.is_empty()).then_some(extracted),
+                error: failed.or_else(|| cancelled.then(|| "program cancelled".to_owned())),
+            },
+            observation,
         }
     }
 
-    fn first(page: &dyn Page, target: &Target) -> Result<NodeId> {
-        Ok(page.resolve(target)?[0])
+    fn timeout_of(step: &Step) -> u64 {
+        step.base().timeout_ms.unwrap_or(DEFAULT_TIMEOUT_MS)
     }
 
     fn run_step(
-        &self,
-        page: &mut dyn Page,
-        program: &Program,
+        &mut self,
         step: &Step,
-        extracted: &mut Map<String, Value>,
-    ) -> Result<Option<Value>> {
+        epoch: Option<u64>,
+        extracted_so_far: &Map<String, Value>,
+    ) -> Result<StepOutput> {
+        let timeout = Self::timeout_of(step);
+        let _ = extracted_so_far;
         match step {
-            Step::Click { target } => {
-                let id = Self::first(page, target)?;
-                page.click(id)?;
-                Ok(Some(json!({ "ref": id.to_string() })))
+            Step::Navigate { url, .. } => {
+                self.navigate(url)?;
+                Ok(StepOutput::navigation(format!("navigating to {url}")))
             }
-            Step::Fill { target, value } => {
-                let id = Self::first(page, target)?;
-                page.fill(id, value)?;
-                Ok(Some(json!({ "ref": id.to_string() })))
+            Step::Back { .. } => {
+                self.back()?;
+                Ok(StepOutput::navigation(format!("back to {}", self.url())))
             }
-            Step::Select { target, value } => {
-                let id = Self::first(page, target)?;
-                page.select(id, value)?;
-                Ok(Some(json!({ "ref": id.to_string() })))
+            Step::Forward { .. } => {
+                self.forward()?;
+                Ok(StepOutput::navigation(format!("forward to {}", self.url())))
             }
-            Step::Press { key, target } => {
-                let id = target.as_ref().map(|t| Self::first(page, t)).transpose()?;
-                page.press(id, key)?;
-                Ok(page.focused().map(|f| json!({ "focused": f.to_string() })))
+            Step::Reload { .. } => {
+                self.reload()?;
+                Ok(StepOutput::navigation(format!("reloaded {}", self.url())))
             }
-            Step::Scroll { target, dx, dy } => {
-                let id = target.as_ref().map(|t| Self::first(page, t)).transpose()?;
-                let state = page.scroll(id, *dx, *dy)?;
-                Ok(Some(serde_json::to_value(state)?))
+            Step::Stop { .. } => {
+                let stopped = self.stop();
+                Ok(StepOutput::detail(if stopped {
+                    "cancelled pending navigation"
+                } else {
+                    "nothing to stop"
+                }))
             }
-            Step::Navigate { url } => {
-                page.navigate(url)?;
-                page.settle(program.options.max_tasks_per_settle);
-                if let Some(error) = page.take_last_error() {
-                    return Err(Error::Network(error));
-                }
-                Ok(Some(json!({ "url": page.url() })))
+            Step::Click { target, button, .. } => {
+                let id = self.resolve(target, epoch)?;
+                let detail = self.click(id, button.unwrap_or_default(), timeout)?;
+                Ok(if self.navigation_pending() {
+                    StepOutput::navigation(detail)
+                } else {
+                    StepOutput::detail(detail)
+                })
             }
-            Step::WaitFor {
-                condition,
-                timeout_ms,
-            } => {
-                let timeout =
-                    Duration::from_millis(timeout_ms.unwrap_or(program.options.default_timeout_ms));
-                self.wait_for(
-                    page,
-                    condition,
+            Step::Dblclick { target, .. } => {
+                let id = self.resolve(target, epoch)?;
+                let detail = self.dblclick(id, timeout)?;
+                Ok(StepOutput::detail(detail))
+            }
+            Step::Hover { target, .. } => {
+                let id = self.resolve(target, epoch)?;
+                Ok(StepOutput::detail(self.hover(id, timeout)?))
+            }
+            Step::Fill { target, value, .. } => {
+                let id = self.resolve(target, epoch)?;
+                Ok(StepOutput::detail(self.fill(id, value, timeout)?))
+            }
+            Step::Type { target, value, .. } => {
+                let id = self.resolve(target, epoch)?;
+                let detail = self.type_text(id, value, timeout)?;
+                Ok(if self.navigation_pending() {
+                    StepOutput::navigation(detail)
+                } else {
+                    StepOutput::detail(detail)
+                })
+            }
+            Step::Press { key, target, .. } => {
+                let id = target
+                    .as_deref()
+                    .map(|t| self.resolve(t, epoch))
+                    .transpose()?;
+                let detail = self.press(id, key, timeout)?;
+                Ok(if self.navigation_pending() {
+                    StepOutput::navigation(detail)
+                } else {
+                    StepOutput::detail(detail)
+                })
+            }
+            Step::Check { target, .. } => {
+                let id = self.resolve(target, epoch)?;
+                Ok(StepOutput::detail(self.set_checked(id, true, timeout)?))
+            }
+            Step::Uncheck { target, .. } => {
+                let id = self.resolve(target, epoch)?;
+                Ok(StepOutput::detail(self.set_checked(id, false, timeout)?))
+            }
+            Step::Select { target, value, .. } => {
+                let id = self.resolve(target, epoch)?;
+                Ok(StepOutput::detail(self.select_values(
+                    id,
+                    &value.values(),
                     timeout,
-                    program.options.max_tasks_per_settle,
-                )
+                )?))
             }
-            Step::Extract { name, what, target } => {
-                let value = self.extract(page, target.as_ref(), what)?;
-                extracted.insert(name.clone(), value.clone());
-                Ok(Some(value))
+            Step::Scroll {
+                target,
+                direction,
+                amount,
+                ..
+            } => {
+                let id = target
+                    .as_deref()
+                    .map(|t| self.resolve(t, epoch))
+                    .transpose()?;
+                let state = self.scroll(id, *direction, *amount)?;
+                Ok(StepOutput::detail(format!(
+                    "scrolled {} to y={} (max {})",
+                    state.container.clone().unwrap_or_else(|| "viewport".into()),
+                    state.y,
+                    state.max_y
+                )))
             }
+            Step::DragTo { target, to, .. } => {
+                let source = self.resolve(target, epoch)?;
+                let dest = self.resolve(to, epoch)?;
+                self.prepare_pointer(source, timeout)?;
+                self.prepare_pointer(dest, timeout)?;
+                self.focus(Some(source));
+                Ok(StepOutput::detail(format!(
+                    "pointer drag {} → {} (HTML5 drag events arrive with the script layer)",
+                    ref_for(source),
+                    ref_for(dest)
+                )))
+            }
+            Step::ClickPoint { x, y, button, .. } => {
+                let detail = self.click_point(*x, *y, button.unwrap_or_default())?;
+                Ok(if self.navigation_pending() {
+                    StepOutput::navigation(detail)
+                } else {
+                    StepOutput::detail(detail)
+                })
+            }
+            Step::WaitFor { condition, .. } => self.wait_for(condition, epoch, timeout),
+            Step::Screenshot {
+                full_page,
+                artifact,
+                ..
+            } => {
+                let shot = self.screenshot(full_page.unwrap_or(false))?;
+                let label = artifact.clone().unwrap_or_else(|| "screenshot".into());
+                Ok(StepOutput {
+                    detail: Some(format!(
+                        "png {}x{} @{}x ({} bytes)",
+                        shot.width,
+                        shot.height,
+                        shot.scale,
+                        shot.png.len()
+                    )),
+                    extracted: None,
+                    artifact_ids: Some(vec![label]),
+                    settle_ms: SETTLE_STEP_MS,
+                })
+            }
+            Step::Extract { fields, as_key, .. } => {
+                let values = self.extract(fields, epoch)?;
+                let mut map = Map::new();
+                match as_key {
+                    Some(key) => {
+                        map.insert(key.clone(), Value::Object(values));
+                    }
+                    None => map = values,
+                }
+                Ok(StepOutput {
+                    detail: Some(format!("extracted {} field(s)", fields.len())),
+                    extracted: Some(map),
+                    artifact_ids: None,
+                    settle_ms: SETTLE_STEP_MS,
+                })
+            }
+            Step::Upload { target, files, .. } => {
+                let id = self.resolve(target, epoch)?;
+                Ok(StepOutput::detail(self.upload(id, files, timeout)?))
+            }
+            Step::ExpectDownload { .. } => Err(Error::capability_unsupported(
+                "downloads are not supported in this milestone",
+            )),
             Step::CollectScroll {
-                name,
-                item_selector,
+                as_key,
+                item,
                 container,
+                key,
+                fields,
+                limit,
                 max_scrolls,
-                step_px,
+                ..
             } => {
                 let value = self.collect_scroll(
-                    page,
-                    container.as_ref(),
-                    item_selector,
-                    *max_scrolls,
-                    *step_px,
-                    program.options.max_tasks_per_settle,
+                    item,
+                    container.as_deref(),
+                    key.as_deref(),
+                    fields.as_deref().unwrap_or(&[]),
+                    *limit,
+                    max_scrolls.unwrap_or(20),
+                    epoch,
                 )?;
-                extracted.insert(name.clone(), value.clone());
-                Ok(Some(value))
+                let collected = value["collected"].as_u64().unwrap_or(0);
+                let mut map = Map::new();
+                map.insert(as_key.clone().unwrap_or_else(|| "items".into()), value);
+                Ok(StepOutput {
+                    detail: Some(format!("collected {collected} item(s)")),
+                    extracted: Some(map),
+                    artifact_ids: None,
+                    settle_ms: SETTLE_STEP_MS,
+                })
             }
+            Step::Dialog { action, .. } => {
+                let dialogs = self.open_dialogs();
+                if dialogs.is_empty() {
+                    return Err(Error::coded_with(
+                        ErrorCode::CapabilityUnsupported,
+                        "script dialogs (alert/confirm/prompt) need the script layer; no dialog is pending",
+                        json!({ "action": action }),
+                    ));
+                }
+                Err(Error::capability_unsupported(
+                    "resolving <dialog> elements through the dialog op needs the script layer; click its buttons instead",
+                ))
+            }
+            Step::Evaluate { .. } => Err(Error::capability_unsupported(
+                "evaluate needs the script layer (ve-script) and a context created with allowEvaluate",
+            )),
         }
     }
 
-    fn condition_holds(page: &dyn Page, condition: &WaitCondition) -> Result<bool> {
+    // ---------------------------------------------------------------------
+    // waitFor
+    // ---------------------------------------------------------------------
+
+    /// Evaluates a condition against the current (settled) state.
+    pub fn evaluate_condition(
+        &mut self,
+        condition: &Condition,
+        epoch: Option<u64>,
+        since_request_id: u64,
+    ) -> Result<bool> {
         Ok(match condition {
-            WaitCondition::Ready => page.readiness().is_ready(),
-            WaitCondition::Selector { selector, state } => {
-                let matches = match page.resolve(&Target::selector(selector)) {
+            Condition::TextVisible { text, .. } => {
+                let wanted = text.split_whitespace().collect::<Vec<_>>().join(" ");
+                self.update();
+                self.shown_text().contains(&wanted)
+            }
+            Condition::Selector {
+                selector, state, ..
+            } => {
+                let matches = match self.resolve_all(selector, epoch) {
                     Ok(m) => m,
-                    Err(Error::NoMatch(_)) => Vec::new(),
+                    Err(e) if e.code() == ErrorCode::NotFound => Vec::new(),
+                    Err(e) if e.code() == ErrorCode::TargetDetached => Vec::new(),
                     Err(e) => return Err(e),
                 };
+                self.update();
+                let any_shown = matches.iter().any(|&id| self.classify(id).shown);
                 match state {
-                    Presence::Present => !matches.is_empty(),
-                    Presence::Absent => matches.is_empty(),
-                    Presence::Visible => matches.iter().any(|&id| {
-                        page.style_tree().is_displayed(id)
-                            && page
-                                .layout_tree()
-                                .rect_of(id)
-                                .is_some_and(|r| !r.is_empty())
-                    }),
+                    SelectorState::Attached => !matches.is_empty(),
+                    SelectorState::Detached => matches.is_empty(),
+                    SelectorState::Visible => any_shown,
+                    SelectorState::Hidden => !any_shown,
                 }
             }
-            WaitCondition::Text { contains } => {
-                let root = page.document().body().unwrap_or(page.document().root());
-                page.document()
-                    .text_content(root)
-                    .contains(contains.as_str())
+            Condition::RefReady { reference, .. } => {
+                let id = self.resolve_ref(reference, epoch)?;
+                self.actionable(id, 0).is_ok()
             }
-            WaitCondition::Time { .. } => true,
+            Condition::UrlMatches { pattern, .. } => url_matches(pattern, self.url())?,
+            Condition::NavigationSettled { .. } => {
+                let settled = self.settle(SETTLE_NAVIGATION_MS);
+                settled.settled && !self.navigation_pending()
+            }
+            Condition::Settled { .. } => self.settle(SETTLE_STEP_MS).settled,
+            Condition::DownloadCompleted { .. } => {
+                return Err(Error::capability_unsupported(
+                    "downloads are not supported in this milestone",
+                ));
+            }
+            Condition::Response {
+                url_includes,
+                status,
+                ..
+            } => self.completed_responses().iter().any(|r| {
+                r.request_id >= since_request_id
+                    && r.url.contains(url_includes.as_str())
+                    && status.is_none_or(|s| s == r.status)
+            }),
+            Condition::Expression { .. } => {
+                return Err(Error::capability_unsupported(
+                    "waitFor expression needs the script layer",
+                ));
+            }
         })
     }
 
     fn wait_for(
-        &self,
-        page: &mut dyn Page,
-        condition: &WaitCondition,
-        timeout: Duration,
-        budget: usize,
-    ) -> Result<Option<Value>> {
-        if let WaitCondition::Time { ms } = condition {
-            page.advance_time(Duration::from_millis(*ms));
-            page.settle(budget);
-            return Ok(Some(json!({ "waitedMs": ms })));
-        }
-        let mut waited = Duration::ZERO;
-        loop {
-            page.settle(budget);
-            if Self::condition_holds(page, condition)? {
-                return Ok(Some(json!({ "waitedMs": waited.as_millis() as u64 })));
-            }
-            if waited >= timeout {
-                return Err(Error::Timeout {
-                    stage: Stage::Agent,
-                    millis: u64::try_from(timeout.as_millis()).unwrap_or(u64::MAX),
-                });
-            }
-            let step = self.poll_interval.min(timeout.saturating_sub(waited));
-            page.advance_time(step);
-            waited += step;
-        }
-    }
-
-    fn extract(
-        &self,
-        page: &mut dyn Page,
-        target: Option<&Target>,
-        what: &ExtractKind,
-    ) -> Result<Value> {
-        let ids = match target {
-            Some(t) => page.resolve(t)?,
-            None => page.document().document_element().into_iter().collect(),
-        };
-        if let ExtractKind::Count = what {
-            return Ok(json!(ids.len()));
-        }
-        if let ExtractKind::Snapshot { format } = what {
-            return Ok(match target {
-                None => page.snapshot(*format).to_json(),
-                Some(_) => {
-                    let snaps: Vec<Value> = ids
-                        .iter()
-                        .filter_map(|&id| page.snapshot_of(id, *format))
-                        .map(|s| s.to_json())
-                        .collect();
-                    if snaps.len() == 1 {
-                        snaps.into_iter().next().unwrap_or(Value::Null)
-                    } else {
-                        Value::Array(snaps)
-                    }
-                }
-            });
-        }
-        let doc = page.document();
-        let one = |id: NodeId| -> Value {
-            match what {
-                ExtractKind::Text => json!(
-                    doc.text_content(id)
-                        .split_whitespace()
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                ),
-                ExtractKind::Html => json!(outer_html(doc, id)),
-                ExtractKind::Attribute { name } => {
-                    doc.attribute(id, name).map_or(Value::Null, |v| json!(v))
-                }
-                ExtractKind::Value => {
-                    let value = if doc.element(id).is_some_and(|e| e.is_html("select")) {
-                        doc.descendants(id)
-                            .filter(|&d| doc.element(d).is_some_and(|e| e.is_html("option")))
-                            .find(|&d| doc.is_selected(d))
-                            .map(|d| {
-                                doc.attribute(d, "value").map_or_else(
-                                    || doc.text_content(d).trim().to_owned(),
-                                    str::to_owned,
-                                )
-                            })
-                    } else {
-                        doc.form_value(id)
-                    };
-                    value.map_or(Value::Null, |v| json!(v))
-                }
-                ExtractKind::Rect => page.layout_tree().rect_of(id).map_or(
-                    Value::Null,
-                    |r| json!({ "x": r.x(), "y": r.y(), "width": r.width(), "height": r.height() }),
-                ),
-                ExtractKind::Snapshot { .. } | ExtractKind::Count => Value::Null,
-            }
-        };
-        let mut values: Vec<Value> = ids.into_iter().map(one).collect();
-        Ok(if values.len() == 1 {
-            values.remove(0)
+        &mut self,
+        condition: &Condition,
+        epoch: Option<u64>,
+        step_timeout: u64,
+    ) -> Result<StepOutput> {
+        let timeout = condition.timeout_ms().unwrap_or(step_timeout);
+        let budget = if matches!(condition, Condition::NavigationSettled { .. }) {
+            SETTLE_NAVIGATION_MS
         } else {
-            Value::Array(values)
-        })
-    }
-
-    fn collect_scroll(
-        &self,
-        page: &mut dyn Page,
-        container: Option<&Target>,
-        item_selector: &str,
-        max_scrolls: u32,
-        step_px: f32,
-        budget: usize,
-    ) -> Result<Value> {
-        let container_id = container.map(|t| Self::first(page, t)).transpose()?;
-        let mut seen: HashSet<NodeId> = HashSet::new();
-        let mut items: Vec<Value> = Vec::new();
-        let mut scrolls = 0u32;
-        let collect = |page: &dyn Page,
-                       seen: &mut HashSet<NodeId>,
-                       items: &mut Vec<Value>|
-         -> Result<usize> {
-            let matches = match page.resolve(&Target::selector(item_selector)) {
-                Ok(m) => m,
-                Err(Error::NoMatch(_)) => Vec::new(),
-                Err(e) => return Err(e),
-            };
-            let doc = page.document();
-            let mut added = 0;
-            for id in matches {
-                if container_id.is_some_and(|c| !doc.is_ancestor_of(c, id)) || !seen.insert(id) {
+            SETTLE_STEP_MS
+        };
+        let settled = self.settle(budget);
+        let started = Instant::now();
+        // Re-evaluated at every readiness transition; in M1 the only
+        // time-driven transition is a delayed <meta refresh>, so the loop
+        // advances virtual time to it when that would still be in budget.
+        let mut waited_virtual = 0u64;
+        loop {
+            if self.evaluate_condition(condition, epoch, 0)? {
+                return Ok(StepOutput {
+                    detail: Some(format!(
+                        "{} held after {} ms{}",
+                        condition.kind(),
+                        waited_virtual + u64::try_from(started.elapsed().as_millis()).unwrap_or(0),
+                        settled.detail().map(|d| format!(" ({d})")).unwrap_or_default()
+                    )),
+                    extracted: None,
+                    artifact_ids: None,
+                    settle_ms: budget,
+                })
+            }
+            let refresh_in_ms = self
+                .meta()
+                .refresh
+                .as_ref()
+                .filter(|r| r.seconds > 0 && r.url.is_some())
+                .map(|r| r.seconds * 1000);
+            match refresh_in_ms {
+                Some(delay) if waited_virtual + delay <= timeout && self.follow_delayed_refresh() => {
+                    waited_virtual += delay;
+                    self.advance_virtual_time(delay);
+                    self.settle(SETTLE_NAVIGATION_MS);
                     continue;
                 }
-                items.push(json!({ "ref": id.to_string(), "text": doc.text_content(id).split_whitespace().collect::<Vec<_>>().join(" ") }));
-                added += 1;
+                _ => {}
             }
-            Ok(added)
+            return Err(Error::coded_with(
+                ErrorCode::ConditionTimeout,
+                format!(
+                    "waitFor {} did not hold within {timeout} ms (page settled; nothing pending)",
+                    condition.kind()
+                ),
+                json!({ "condition": condition, "timeoutMs": timeout, "url": self.url() }),
+            ));
+        }
+    }
+
+    /// Follows a delayed `<meta refresh>` now (virtual time). Returns
+    /// `false` when there is none to follow.
+    fn follow_delayed_refresh(&mut self) -> bool {
+        let Some(refresh) = self.meta().refresh.clone() else {
+            return false;
         };
-        collect(page, &mut seen, &mut items)?;
-        while scrolls < max_scrolls {
-            let state = page.scroll(container_id, 0.0, step_px)?;
+        let Some(target) = refresh.url.as_deref().and_then(|u| self.resolve_url(u)) else {
+            return false;
+        };
+        if target.starts_with("javascript:") {
+            return false;
+        }
+        self.navigate(&target).is_ok()
+    }
+
+    // ---------------------------------------------------------------------
+    // extract / collectScroll
+    // ---------------------------------------------------------------------
+
+    fn field_value(&self, id: ve_core::NodeId, attribute: Option<&str>) -> Value {
+        let doc = self.document();
+        match attribute {
+            Some(attr) => match attr {
+                "textContent" | "innerText" => json!(self.visible_text(id)),
+                "outerHTML" => json!(outer_html(doc, id)),
+                "innerHTML" => {
+                    let inner: String = doc.children(id).map(|c| outer_html(doc, c)).collect();
+                    json!(inner)
+                }
+                "value" => doc.form_value(id).map_or(Value::Null, |v| json!(v)),
+                "checked" => json!(doc.is_checked(id)),
+                "href" | "src" | "action" => doc
+                    .attribute(id, attr)
+                    .and_then(|h| self.resolve_url(h))
+                    .or_else(|| doc.attribute(id, attr).map(str::to_owned))
+                    .map_or(Value::Null, |v| json!(v)),
+                _ => doc.attribute(id, attr).map_or(Value::Null, |v| json!(v)),
+            },
+            None => {
+                if doc.element(id).is_some_and(|e| {
+                    matches!(e.name.as_str(), "input" | "textarea" | "select")
+                }) {
+                    return doc.form_value(id).map_or(Value::Null, |v| json!(v));
+                }
+                json!(self.visible_text(id))
+            }
+        }
+    }
+
+    /// `extract`: one pass resolving every field against the arena.
+    pub fn extract(
+        &mut self,
+        fields: &[ExtractField],
+        epoch: Option<u64>,
+    ) -> Result<Map<String, Value>> {
+        self.update();
+        let mut out = Map::new();
+        for field in fields {
+            let value = match &field.selector {
+                None => json!(self.shown_text()),
+                Some(selector) => {
+                    let matches = match self.resolve_all(selector, epoch) {
+                        Ok(m) => m,
+                        Err(e) if e.code() == ErrorCode::NotFound => Vec::new(),
+                        Err(e) => return Err(e),
+                    };
+                    if field.all == Some(true) {
+                        Value::Array(
+                            matches
+                                .iter()
+                                .map(|&id| self.field_value(id, field.attribute.as_deref()))
+                                .collect(),
+                        )
+                    } else {
+                        matches
+                            .first()
+                            .map_or(Value::Null, |&id| {
+                                self.field_value(id, field.attribute.as_deref())
+                            })
+                    }
+                }
+            };
+            out.insert(field.name.clone(), value);
+        }
+        Ok(out)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn collect_scroll(
+        &mut self,
+        item: &str,
+        container: Option<&str>,
+        key: Option<&str>,
+        fields: &[ExtractField],
+        limit: Option<usize>,
+        max_scrolls: usize,
+        epoch: Option<u64>,
+    ) -> Result<Value> {
+        let container_id = container
+            .map(|c| self.resolve(c, epoch))
+            .transpose()?;
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut items: Vec<Value> = Vec::new();
+        let mut scrolls = 0usize;
+        let mut idle_rounds = 0usize;
+        let mut last_height = self.layout_tree().content_height();
+        loop {
+            self.update();
+            let matches = match self.resolve_all(item, epoch) {
+                Ok(m) => m,
+                Err(e) if e.code() == ErrorCode::NotFound => Vec::new(),
+                Err(e) => return Err(e),
+            };
+            let mut added = 0usize;
+            for id in matches {
+                if let Some(c) = container_id
+                    && !self.document().is_ancestor_of(c, id)
+                {
+                    continue;
+                }
+                let dedupe = match key {
+                    Some(attr) => self
+                        .document()
+                        .attribute(id, attr)
+                        .map(str::to_owned)
+                        .unwrap_or_else(|| self.visible_text(id)),
+                    None => self.visible_text(id),
+                };
+                if !seen.insert(dedupe.clone()) {
+                    continue;
+                }
+                let mut entry = Map::new();
+                entry.insert("ref".into(), json!(ref_for(id)));
+                entry.insert("text".into(), json!(self.visible_text(id)));
+                if let Some(attr) = key {
+                    entry.insert("key".into(), json!(dedupe));
+                }
+                for field in fields {
+                    let value = match &field.selector {
+                        None => self.field_value(id, field.attribute.as_deref()),
+                        Some(selector) => {
+                            let within: Vec<ve_core::NodeId> = self
+                                .resolve_all(selector, epoch)
+                                .unwrap_or_default()
+                                .into_iter()
+                                .filter(|&m| m == id || self.document().is_ancestor_of(id, m))
+                                .collect();
+                            within
+                                .first()
+                                .map_or(Value::Null, |&m| self.field_value(m, field.attribute.as_deref()))
+                        }
+                    };
+                    entry.insert(field.name.clone(), value);
+                }
+                items.push(Value::Object(entry));
+                added += 1;
+                if limit.is_some_and(|l| items.len() >= l) {
+                    break;
+                }
+            }
+            if limit.is_some_and(|l| items.len() >= l) || scrolls >= max_scrolls {
+                break;
+            }
+            let state = self.scroll(container_id, crate::steps::ScrollDirection::Down, None)?;
             scrolls += 1;
-            page.settle(budget);
-            let added = collect(page, &mut seen, &mut items)?;
-            if state.at_bottom() && added == 0 {
+            self.settle(SETTLE_STEP_MS);
+            let height = self.layout_tree().content_height();
+            if added == 0 && (height - last_height).abs() < 0.5 {
+                idle_rounds += 1;
+            } else {
+                idle_rounds = 0;
+            }
+            last_height = height;
+            if idle_rounds >= 2 || (state.at_bottom() && added == 0) {
                 break;
             }
         }
-        Ok(json!({ "items": items, "count": items.len(), "scrolls": scrolls }))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::page::DomPage;
-
-    const HTML: &str = r#"<title>Shop</title><body>
-        <form><label for=q>Search</label><input id=q placeholder="Find"><button>Go</button></form>
-        <input type=checkbox id=c><label for=c>Remember</label>
-        <select id=size><option value=s>Small<option value=m>Medium</select>
-        <details><summary>Details</summary><p class=hidden-body>Body copy</p></details>
-        <ul id=feed><li>Item 1</li><li>Item 2</li></ul>
-        <a href="/next" id=next>Next</a></body>"#;
-
-    #[test]
-    fn runs_a_program_and_reports_each_step() {
-        let program = Program::from_json(
-            r##"[
-            {"action": "fill", "target": {"by": "label", "label": "Search"}, "value": "boots"},
-            {"action": "click", "target": {"by": "text", "text": "Remember"}},
-            {"action": "select", "target": {"by": "selector", "selector": "#size"}, "value": "Medium"},
-            {"action": "click", "target": {"by": "role", "role": "button", "name": "Details"}},
-            {"action": "waitFor", "condition": {"type": "selector", "selector": ".hidden-body", "state": "visible"}, "timeoutMs": 500},
-            {"action": "extract", "name": "query", "what": {"type": "value"}, "target": {"by": "selector", "selector": "#q"}},
-            {"action": "extract", "name": "size", "what": {"type": "value"}, "target": {"by": "selector", "selector": "#size"}},
-            {"action": "extract", "name": "items", "what": {"type": "text"}, "target": {"by": "selector", "selector": "#feed li"}},
-            {"action": "extract", "name": "count", "what": {"type": "count"}, "target": {"by": "selector", "selector": "li"}},
-            {"action": "extract", "name": "snap", "what": {"type": "snapshot"}},
-            {"action": "press", "key": "Tab"},
-            {"action": "scroll", "dy": 100}
-        ]"##,
-        )
-        .unwrap();
-        let mut page = DomPage::from_html(HTML, Some("https://shop.test/"));
-        let report = Executor::new().run(&mut page, &program);
-        assert!(report.ok, "{:?}", report.first_error());
-        assert_eq!(report.results.len(), 12);
-        assert!(report.results.iter().all(|r| r.readiness.is_ready()));
-        assert_eq!(report.extracted["query"], "boots");
-        assert_eq!(report.extracted["size"], "m");
-        assert_eq!(report.extracted["items"], json!(["Item 1", "Item 2"]));
-        assert_eq!(report.extracted["count"], 2);
-        assert_eq!(report.extracted["snap"]["format"], "compact");
-        assert!(
-            page.document()
-                .is_checked(page.document().element_by_id("c").unwrap())
-        );
-        let waited = report.results[4].output.as_ref().unwrap()["waitedMs"]
-            .as_u64()
-            .unwrap();
-        assert_eq!(waited, 0, "details opened synchronously");
-        assert_eq!(report.to_json()["results"][0]["status"], "ok");
+        Ok(json!({ "items": items, "collected": items.len(), "scrolls": scrolls }))
     }
 
-    #[test]
-    fn failures_stop_or_continue_and_wait_for_times_out_in_virtual_time() {
-        let mut program = Program::from_json(
-            r##"[
-            {"action": "click", "target": {"by": "selector", "selector": "#missing"}},
-            {"action": "extract", "name": "title", "what": {"type": "text"}, "target": {"by": "selector", "selector": "title"}}
-        ]"##,
-        )
-        .unwrap();
-        let mut page = DomPage::from_html(HTML, None);
-        let report = Executor::new().run(&mut page, &program);
-        assert!(!report.ok);
-        assert!(matches!(
-            report.results[0].status,
-            StepStatus::Failed { .. }
-        ));
-        assert_eq!(report.results[1].status, StepStatus::Skipped);
-        assert!(report.first_error().unwrap().contains("#missing"));
-
-        program.options.stop_on_error = false;
-        let report = Executor::new().run(&mut page, &program);
-        assert_eq!(report.extracted["title"], "Shop");
-
-        let wait = Program::from_json(r#"[{"action": "waitFor", "condition": {"type": "text", "contains": "never"}, "timeoutMs": 200}]"#).unwrap();
-        let start = Instant::now();
-        let report = Executor::new().run(&mut page, &wait);
-        assert!(
-            report
-                .first_error()
-                .unwrap()
-                .contains("timed out after 200 ms")
-        );
-        assert!(
-            start.elapsed() < Duration::from_millis(150),
-            "virtual time does not sleep"
-        );
-    }
-
-    #[test]
-    fn collect_scroll_and_navigation() {
-        let tall: String = (1..=40)
-            .map(|i| format!("<li style='height:50px'>Row {i}</li>"))
-            .collect();
-        let html = format!("<style>body{{margin:0}}</style><ul>{tall}</ul>");
-        let mut page = DomPage::from_html_with_viewport(
-            &html,
-            Some("https://feed.test/"),
-            ve_core::Size::new(800.0, 400.0),
-        )
-        .with_loader(Box::new(|url: &str| {
-            Ok(crate::page::LoadedDocument {
-                url: url.to_owned(),
-                html: "<h1>Second</h1>".into(),
-            })
-        }));
-        let program = Program::from_json(
-            r#"[
-            {"action": "collectScroll", "name": "rows", "itemSelector": "li", "maxScrolls": 3, "stepPx": 400},
-            {"action": "navigate", "url": "/second"},
-            {"action": "extract", "name": "h1", "what": {"type": "text"}, "target": {"by": "role", "role": "heading"}}
-        ]"#,
-        )
-        .unwrap();
-        let report = Executor::new().run(&mut page, &program);
-        assert!(report.ok, "{:?}", report.first_error());
-        let rows = &report.extracted["rows"];
-        assert_eq!(
-            rows["count"], 40,
-            "all rows are in the DOM already; dedupe keeps each once"
-        );
-        assert_eq!(rows["scrolls"], 3);
-        assert_eq!(report.extracted["h1"], "Second");
-        assert_eq!(report.url.as_deref(), Some("https://feed.test/second"));
+    /// Convenience for embedders: click by target string.
+    pub fn click_target(&mut self, target: &str) -> Result<String> {
+        let id = self.resolve(target, None)?;
+        self.click(id, MouseButton::Left, DEFAULT_TIMEOUT_MS)
     }
 }

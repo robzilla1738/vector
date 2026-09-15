@@ -2,6 +2,7 @@
 
 use std::time::{Duration, SystemTime};
 
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 /// `SameSite` attribute.
@@ -230,6 +231,88 @@ impl Cookie {
     }
 }
 
+/// The portable cookie shape shared with the runtime's `BrowserDriver`
+/// (`BrowserCookie` in `packages/browser-driver/src/types.ts`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BrowserCookie {
+    /// Name.
+    pub name: String,
+    /// Value.
+    pub value: String,
+    /// Domain; a leading dot marks a domain (non host-only) cookie.
+    pub domain: String,
+    /// Path.
+    pub path: String,
+    /// `Secure`.
+    pub secure: bool,
+    /// `HttpOnly`.
+    pub http_only: bool,
+    /// `Strict` | `Lax` | `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub same_site: Option<String>,
+    /// Unix seconds; absent for session cookies.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires: Option<f64>,
+}
+
+impl From<&Cookie> for BrowserCookie {
+    fn from(c: &Cookie) -> Self {
+        Self {
+            name: c.name.clone(),
+            value: c.value.clone(),
+            domain: if c.host_only {
+                c.domain.clone()
+            } else {
+                format!(".{}", c.domain)
+            },
+            path: c.path.clone(),
+            secure: c.secure,
+            http_only: c.http_only,
+            same_site: Some(
+                match c.same_site {
+                    SameSite::None => "None",
+                    SameSite::Lax => "Lax",
+                    SameSite::Strict => "Strict",
+                }
+                .to_owned(),
+            ),
+            expires: c.expires.and_then(|e| {
+                e.duration_since(SystemTime::UNIX_EPOCH)
+                    .ok()
+                    .map(|d| d.as_secs_f64())
+            }),
+        }
+    }
+}
+
+impl From<BrowserCookie> for Cookie {
+    fn from(b: BrowserCookie) -> Self {
+        let host_only = !b.domain.starts_with('.');
+        Self {
+            name: b.name,
+            value: b.value,
+            domain: b.domain.trim_start_matches('.').to_ascii_lowercase(),
+            host_only,
+            path: if b.path.starts_with('/') {
+                b.path
+            } else {
+                "/".into()
+            },
+            expires: b
+                .expires
+                .map(|secs| SystemTime::UNIX_EPOCH + Duration::from_secs_f64(secs.max(0.0))),
+            secure: b.secure,
+            http_only: b.http_only,
+            same_site: match b.same_site.as_deref() {
+                Some(s) if s.eq_ignore_ascii_case("strict") => SameSite::Strict,
+                Some(s) if s.eq_ignore_ascii_case("none") => SameSite::None,
+                _ => SameSite::Lax,
+            },
+        }
+    }
+}
+
 /// Per-context cookie storage.
 #[derive(Clone, Debug, Default)]
 pub struct CookieJar {
@@ -304,6 +387,25 @@ impl CookieJar {
     /// All cookies.
     pub fn iter(&self) -> impl Iterator<Item = &Cookie> {
         self.cookies.iter()
+    }
+
+    /// Exports every cookie in the portable [`BrowserCookie`] shape.
+    #[must_use]
+    pub fn export(&self) -> Vec<BrowserCookie> {
+        self.cookies.iter().map(BrowserCookie::from).collect()
+    }
+
+    /// Imports cookies in the portable shape. Returns the number stored.
+    pub fn import(&mut self, cookies: impl IntoIterator<Item = BrowserCookie>) -> usize {
+        let mut n = 0;
+        for c in cookies {
+            if c.name.is_empty() || c.domain.trim_matches('.').is_empty() {
+                continue;
+            }
+            self.store(Cookie::from(c));
+            n += 1;
+        }
+        n
     }
 }
 
@@ -414,5 +516,54 @@ mod tests {
         assert_eq!(jar.len(), 3, "Max-Age=0 deletes");
         jar.purge_expired(now() + Duration::from_secs(100));
         assert_eq!(jar.len(), 2);
+    }
+
+    #[test]
+    fn browser_cookie_shape_round_trips() {
+        let origin = Url::parse("https://shop.example.com/").unwrap();
+        let mut jar = CookieJar::new();
+        jar.store(
+            Cookie::parse(
+                "sid=abc; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=60",
+                &origin,
+                now(),
+            )
+            .unwrap(),
+        );
+        jar.store(Cookie::parse("host=1", &origin, now()).unwrap());
+        let exported = jar.export();
+        let json = serde_json::to_value(&exported).unwrap();
+        assert_eq!(json[0]["domain"], ".example.com");
+        assert_eq!(json[0]["httpOnly"], true);
+        assert_eq!(json[0]["sameSite"], "Strict");
+        assert_eq!(json[0]["expires"], 1_700_000_060.0);
+        assert_eq!(
+            json[1]["domain"], "shop.example.com",
+            "host-only has no dot"
+        );
+        assert!(json[1].get("expires").is_none(), "session cookie");
+
+        let mut other = CookieJar::new();
+        let imported: Vec<BrowserCookie> = serde_json::from_value(json).unwrap();
+        assert_eq!(other.import(imported), 2);
+        assert_eq!(
+            other.header_for(&Url::parse("https://api.example.com/").unwrap(), now()),
+            Some("sid=abc".into()),
+            "domain cookie applies to subdomains after import"
+        );
+        assert_eq!(
+            other.import([BrowserCookie {
+                name: String::new(),
+                value: "x".into(),
+                domain: "a.test".into(),
+                path: "/".into(),
+                secure: false,
+                http_only: false,
+                same_site: None,
+                expires: None,
+            }]),
+            0,
+            "nameless cookies are dropped"
+        );
     }
 }

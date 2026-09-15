@@ -175,6 +175,11 @@ pub enum Mutation {
     },
     /// The document's quirks mode was set.
     QuirksModeChanged,
+    /// A scroll container (or the viewport when `None`) was scrolled.
+    Scrolled {
+        /// The scroll container; `None` for the viewport.
+        node: Option<NodeId>,
+    },
 }
 
 impl Mutation {
@@ -190,6 +195,7 @@ impl Mutation {
             | Mutation::TextChanged { node }
             | Mutation::FormStateChanged { node } => Some(*node),
             Mutation::ShadowAttached { host, .. } => Some(*host),
+            Mutation::Scrolled { node } => *node,
             Mutation::QuirksModeChanged => None,
         }
     }

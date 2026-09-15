@@ -2603,9 +2603,11 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+ "url",
  "ve-core",
  "ve-dom",
  "ve-html",
+ "ve-layout",
  "ve-style",
 ]
 
@@ -2733,6 +2735,7 @@ dependencies = [
  "hyper-util",
  "rustls",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "tokio-rustls",

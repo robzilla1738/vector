@@ -24,7 +24,7 @@ pub mod geometry;
 pub mod id;
 pub mod trace;
 
-pub use error::{Error, Result};
+pub use error::{Error, ErrorCode, ErrorPayload, Result};
 pub use geometry::{Edges, Point, Rect, Size};
 pub use id::{NodeId, Revision};
 pub use trace::{Stage, StageSample, StageTimer};
