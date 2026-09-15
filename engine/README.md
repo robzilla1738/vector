@@ -147,6 +147,10 @@ UPDATE_GOLDEN=1 cargo test -p ve-api --test golden       # accept new golden Com
 cargo run --release -p wpt-runner -- --wpt-dir ../wpt                       # the M1 subsets, manifest conformance/m1.txt
 cargo run --release -p wpt-runner -- --wpt-dir ../wpt --subdir css/css-flexbox --filter align --progress
 cargo run --release -p wpt-runner -- --wpt-dir ../wpt --update-manifest     # append new passes to the manifest
+
+# Public-page corpus: router accuracy + observation budgets on real pages
+node tools/corpus/fetch.mjs                     # refresh engine/fixtures/public from conformance/corpus.json
+UPDATE_CORPUS=1 cargo test -p ve-api --test corpus -- --nocapture   # rewrite conformance/corpus-results.json
 ```
 
 The WPT runner renders each reftest and its `<link rel="match">` references

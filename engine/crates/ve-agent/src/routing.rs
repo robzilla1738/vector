@@ -229,7 +229,13 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
         }
     }
 
-    let reason = if text_len < 200 && external_scripts >= 1 {
+    // Thresholds are set from the public corpus (`engine/conformance/
+    // corpus-results.json`, `cargo test -p ve-api --test corpus`): the
+    // shortest server-rendered page there has ~1,500 chars of body text, and
+    // the ones carrying five or more external scripts have ~2,700+; the
+    // client-rendered shells top out around 1,450 chars of loading /
+    // marketing / ad-blocker copy.
+    let reason = if text_len < 500 && external_scripts >= 1 {
         Some(format!(
             "empty-shell: body text {text_len} chars with {external_scripts} external script(s)"
         ))
@@ -237,9 +243,13 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
         Some(format!(
             "empty-root-container: {root} has no element children"
         ))
-    } else if noscript_mentions_js && text_len < 1000 {
+    } else if noscript_mentions_js && text_len < 3000 {
         Some(format!(
             "noscript-requires-js: <noscript> mentions JavaScript and body text is {text_len} chars"
+        ))
+    } else if external_scripts >= 5 && text_len < 2000 {
+        Some(format!(
+            "script-heavy: {external_scripts} external scripts with only {text_len} chars of body text"
         ))
     } else if meta_refresh_js {
         Some("meta-refresh-javascript: <meta http-equiv=refresh> targets a javascript: URL".into())
@@ -249,7 +259,10 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
         ))
     } else if has_onsubmit_form {
         Some("form-onsubmit: a <form> has an onsubmit handler".into())
-    } else if form_without_submit {
+    } else if form_without_submit && text_len < 1000 {
+        // A script-only search box on an otherwise full page (docs sites,
+        // rust-book, postgresql.org) is not a reason to give up the whole
+        // page; submitting that one form fails at step time instead.
         Some(
             "form-without-action-or-submit: a <form> lacks both action and a submit control".into(),
         )

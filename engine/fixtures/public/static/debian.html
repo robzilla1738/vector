@@ -1,0 +1,1227 @@
+<!-- vector corpus snapshot: https://www.debian.org/ (final https://www.debian.org/) fetched 2026-09-15T21:17:15.598Z -->
+<!DOCTYPE html>
+<html lang="en">
+<head><base href="https://www.debian.org/">
+  <meta charset="utf-8">
+  <title>Debian -- The Universal Operating System </title>
+  <link rel="author" href="mailto:webmaster@debian.org">
+  <meta name="Description" content="Debian is an operating system and a distribution of Free Software. It is maintained and updated through the work of many users who volunteer their time and effort.">
+  <meta name="Generator" content="WML 2.32.0">
+  <meta name="Modified" content="2026-09-12 23:27:43">
+  <meta name="viewport" content="width=device-width">
+  <meta name="mobileoptimized" content="300">
+  <meta name="HandheldFriendly" content="true">
+<link rel="alternate" type="application/rss+xml"
+ title="Debian News" href="News/news">
+<link rel="alternate" type="application/rss+xml"
+ title="Debian Project News" href="News/weekly/dwn">
+<link rel="alternate" type="application/rss+xml"
+ title="Debian Security Advisories (titles only)" href="security/dsa">
+<link rel="alternate" type="application/rss+xml"
+ title="Debian Security Advisories (summaries)" href="security/dsa-long">
+<style data-inlined-from="https://www.debian.org/debhome.css">
+/*
+	https://www.debian.org Homepage Stylesheet
+
+	Copyright 2011 Kalle Söderman
+
+	This stylesheet is free software; you can redistribute it and/or modify it
+	under the terms of the GNU General Public License, version 2, as published by
+	the Free Software Foundation.
+
+	This program is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+	PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along with
+	this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+	Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+	The license text can also be found at https://www.gnu.org/copyleft/gpl.html and
+	/usr/share/common-licenses/GPL-2 on Debian.
+*/
+
+@import url("https://www.debian.org/debian.css");
+/* Try and force clients that can to get the HSTS header */
+@import url("https://www.debian.org/empty.css");
+
+#splash, #splash h1 {
+	background-position: top center;
+	background-repeat: no-repeat;
+	text-align: center;
+	overflow: hidden;
+}
+#splash {
+    background-color: #26475bff;
+	background-size: cover;
+	margin-top: 0;
+	margin-bottom: 1.5em;
+	height: 120px;
+}
+#splash h1 {
+	background-image: url('https://www.debian.org/Pics/ceratopsian-fg.svg');
+	background-position-x: center;
+	padding-top: 130px;
+	display: block;
+	margin: 0;
+	height: 0;
+}
+
+span.download {
+	display: block;
+	font-size: 0.75em;
+	line-height: 2;
+	background-color: green;
+	margin-top: 10px;
+}
+span.download a {
+	color: #fff;
+	font-weight: bold;
+	text-decoration: none;
+	border: 0.15em solid #339900;
+	display: block;
+	padding-left: 30px;
+	padding-right: 1em;
+}
+span.download a:hover {
+	text-decoration: none;
+	color: #fff;
+	background-color: #339900;
+}
+span.download a em {
+	font-size: 0.75em;
+	font-weight: normal;
+	clear: right;
+	color: #339900;
+	line-height: 0.5em;
+	font-style: normal;
+	display: block;
+	margin-bottom: 1em;
+}
+span.download a:hover em {
+	color: #fff; 
+	background-color: #339900;
+}
+#announce {
+	text-align: center;
+	float: left;
+	width: 41%;
+	min-width: 260px;
+	margin-bottom: 1.5em;
+}
+#intro {
+	padding-top: 0;
+}
+#intro p {
+	margin-top: 0;
+	padding: 0;
+}
+
+/* Homepage Links */
+#hometoc {
+	list-style: none;
+	margin: 0 0 2em;
+	padding: 0;
+	width: 100%;
+	font-size: 0.75em;
+	overflow: hidden;
+	line-height: 1.5em;
+	border: 0;
+}
+#hometoc a {
+	text-decoration: none;
+}
+#hometoc a:hover {
+	text-decoration: underline;
+}
+ul#hometoc-cola a, ul#hometoc-colb a, ul#hometoc-colc a, ul#hometoc-cold a, ul#hometoc-cole a {
+	padding-left: 5px;
+	display: block;
+}
+ul#hometoc-cola, ul#hometoc-colb,ul#hometoc-colc, ul#hometoc-cold, ul#hometoc-cole {
+	float: left;
+	width: 19.2%;
+	min-width: 11em;
+	min-height: 15em;	/* Update when adding items */
+	margin: 0 1% 0 0;
+	padding: 0;
+	border-bottom: dotted red;
+	border-width: 1px;
+	list-style: none;
+}
+ul#hometoc-cole {
+	width: 18.9%;
+	margin-right: 0;
+}
+#hometoc-wrap {
+	padding: 1em;
+	border-top: 1px solid #fff;
+}
+#hometoc a {
+	margin: 0;
+}
+#hometoc ul{
+	list-style: none;
+	padding: 0;
+}
+#hometoc ul ul {
+	padding: 0;
+}
+#hometoc li {
+	text-indent: 0;
+	background-color: transparent;
+	font-weight: bold;
+}
+#hometoc li ul {
+	margin: 0;
+	padding: 0;
+}
+#hometoc li li {
+	margin: 0;
+	text-indent: 0;
+	padding: 0;
+	margin-left: 1em;
+	font-weight: normal;
+	border: 0;
+	background-image: none;
+	background-color: transparent;
+}
+#hometoc li li a:before {
+	content: "» ";
+	width: 1em;
+}
+#hometoc li li a {
+	text-indent: -1em;
+}
+li.frontbutton {
+	padding-top: 1.25em; 
+	text-align: left; 
+	display: block;
+	width: 100%;
+	border-top: dotted grey;
+	border-width: 1px; 
+}
+.infobar {
+	margin: 0 0 2em;
+	padding: 0 0 2em;
+	line-height: 1em;
+	font-size: 0.75em;
+	border-bottom: dotted grey;
+	border-width: 1px;
+	clear: both;
+}
+
+/* For small screens */
+@media only screen and (max-width: 38em) {
+	div#content {
+		background-image: none;
+	}
+	span.download {
+		display: block;
+		position: relative;
+		left: 0;
+		right: 0;
+		margin: 0;
+	}
+}
+
+</style>
+   <style data-inlined-from="https://www.debian.org/startpage.css">
+/*
+  This stylesheet file is used within the intro website.
+
+  https://www.debian.org Stylesheet
+
+  Copyright Debian WebTeam 2019
+
+  This stylesheet is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License, version 2, as published by
+  the Free Software Foundation.
+
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+  PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License along with
+  this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+  Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+  The license text can also be found at http://www.gnu.org/copyleft/gpl.html and
+  /usr/share/common-licenses/GPL-2 on Debian.
+*/
+
+html {
+	font-size: 16px;
+}
+h1 {
+	font-size: 2.2em;
+}
+hr {
+	margin: 1em;
+}
+
+/* 
+	Basically taken from https://www.yudiz.com/3-easiest-ways-to-make-equal-height-blocks-using-css/
+	Method 3: Using CSS Flex Box
+	and https://dev.to/drews256/ridiculously-easy-row-and-column-layouts-with-flexbox-1k01
+*/
+.row {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	width: 100%;
+}
+.column {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	padding: 20px;
+	border: 1px solid #fff;
+	transition: all .2s ease-in-out;
+	width: 50%;
+}
+@media only screen and (max-width: 768px) {
+	.column {
+		flex-basis: 100%;
+	}
+}
+.column-left, .column-right {
+	/* Currently not used and empty. */
+}
+
+/* 
+	CSS classes for columns greater than 50%.
+  Only useful in combination with the base class 'column'.
+*/
+.column-2-parts {
+	display: flex;
+	flex-direction: column;
+	flex-basis: 100%;
+	flex: 2;
+}
+.column-3-parts {
+	display: flex;
+	flex-direction: column;
+	flex-basis: 100%;
+	flex: 3;
+}
+.column-4-parts {
+	display: flex;
+	flex-direction: column;
+	flex-basis: 100%;
+	flex: 4;
+}
+.community img {
+	height: 60px;
+}
+div .community {
+	padding: 10px 0;
+	color: #fff;
+}
+.column-2-parts > h2,
+.column-3-parts > h2,
+.column-4-parts > h2 {
+	padding-top: 20px;
+}
+.column-2-parts > p,
+.column-3-parts > p,
+.column-4-parts > p {
+	margin-top: 10px;
+}
+.community.column:focus img {
+	border: none;
+	outline: 0;
+}
+.community.column:hover {
+	border: 1px solid #fcfcfc;
+}
+.column:hover {
+	border: 1px solid #e2e2e2;
+	background: #fcfcfc;
+}
+.column h1 {
+	text-transform: uppercase;
+	text-align: center;
+	letter-spacing: 0.08em;
+	font-weight: bold;
+}
+.column h2 {
+	margin: .2em;
+}
+.column img {
+	object-fit: contain;
+	max-width: 96%;
+	max-height: 400px;
+	padding: 10px 0;
+}
+
+/* Classes used within 'The Operating System' */
+.os-img-container {
+	position: relative;
+	width: 100%;
+}
+.os-img-container img {
+	max-width: 100%;
+	height: auto;
+}
+.os-dl-btn {
+	width: 8em;
+	text-decoration: none;
+}
+
+/* 
+	Unfortunately the 'backdrop-filter' element isn't working even in FF >= 60.x,
+	which would be a nice use case here, using the classical CSS button method then.
+	For more info see: https://webkit.org/blog/3632/introducing-backdrop-filters/ 
+*/
+.os-img-container .os-dl-btn {
+	position: absolute;
+	top: 82%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	-ms-transform: translate(-50%, -50%);
+	background-color: #090909C0;
+	color: #fff;
+	font-size: 2.3em;
+	padding: 10px 40px;
+	border: none;
+	cursor: pointer;
+	border-radius: 10px;
+	text-decoration: none;
+}
+.os-img-container .os-dl-btn:hover {
+	background-color: #000;
+	color: #fff;
+}
+
+.os-img-container .os-other-download {
+	position: absolute;
+        top: 95%;
+        width: 100%;
+        display: block;
+        text-align: center;
+}
+/* END Classes used within 'The Operating System' */
+
+.styled-href-blue a,
+.project-news-content a,
+.styled-href-blue a:hover,
+.project-news-content a:hover {
+	text-decoration: none;
+	position: relative;
+	color: #3366FF;
+}
+.styled-href-blue a::after,
+.project-news-content a::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	width: 0;
+	border-bottom: 2px solid currentColor;
+	transition: 0.35s;
+}
+.styled-href-blue a:focus::after,
+.styled-href-blue a:hover::after,
+.project-news-content a:focus::after,
+.project-news-content a:hover::after {
+	width: 100%;
+}
+
+/* Classes used within 'Project News' */
+.project-news {
+	margin-left: 15%;
+	padding: 20px;
+}
+.project-news-content {
+	padding-left: 110px;
+	margin-top: -40px;
+	font-size: 1.1em;
+}
+.project-news-content-end {
+	position: relative;
+	top: 38px;
+	margin-bottom: 25px;
+}
+.end-of-list-arrow {
+	width: 0;
+	height: 0;
+	-webkit-transform: rotate(360deg);
+	-moz-transform: rotate(360deg);
+	border-style: solid;
+	border-width: 15px 0 15px 26px;
+	border-color: transparent transparent transparent #999;
+	position: relative;
+	left: 3.5em;
+	top: 24px;
+}
+
+/*
+	The following rules are taken from https://codepen.io/denilsonsa/pen/Etrba
+	but are modified to fit better into our design. 
+*/
+.date-as-calendar {
+	font-variant: normal;
+	font-style: normal;
+	font-weight: normal;
+	font-family: "Helvetica", "Arial", sans-serif;
+	/* It seems vertical-align: baseline does not work correctly with display: inline-flex. */
+	vertical-align: top;
+	color: #000;
+	background: #fff;
+	background: linear-gradient(to bottom right, #fff 0%, #eee 100%);
+	border: 1px solid #888;
+	border-radius: 3px;
+	overflow: hidden;
+	box-shadow: 2px 2px 2px -2px #000;
+}
+.date-as-calendar .day,
+.date-as-calendar .month,
+.date-as-calendar .year {
+	text-align: center;
+	line-height: 1.0;
+}
+.date-as-calendar .month {
+	font-family: "Oswald", sans-serif;
+	text-transform: uppercase;
+	background: #a00;
+	background: linear-gradient(to bottom right, #b60109 0%, #a00 100%);
+	color: #fff;
+}
+
+/* Layout rules using position: absolute and relative dimensions using em. */
+.position-em.date-as-calendar {
+	display: inline-block;
+	position: relative;
+	width: 4.4em;
+	height: 2.6em;
+}
+.position-em.date-as-calendar .day,
+.position-em.date-as-calendar .month,
+.position-em.date-as-calendar .year {
+	display: block;
+	position: absolute;
+	left: 0;
+	right: 0;
+	width: 100%;
+	height: 1em;
+}
+.position-em.date-as-calendar .month {
+	top: 0;
+	font-size: 0.6em;
+	padding: 0.2em 0;
+	margin-top: -0.1em;
+	line-height: 1.1em;
+}
+.position-em.date-as-calendar .day {
+	top: .6em;
+	font-size: 1.2em;
+	margin-top: 0.1em;
+}
+.position-em.date-as-calendar .year {
+	bottom: 0;
+	font-size: 0.6em;
+}
+
+/* Multiple sizes. */
+.date-as-calendar.size0_5x {
+	font-size: 8px;
+}
+.date-as-calendar.size0_75x {
+	font-size: 12px;
+}
+.date-as-calendar.size1x {
+	font-size: 16px;
+}
+.date-as-calendar.size1_25x {
+	font-size: 20px;
+}
+.date-as-calendar.size1_5x {
+	font-size: 24px;
+}
+.date-as-calendar.size1_75x {
+	font-size: 28px;
+}
+.date-as-calendar.size2x {
+	font-size: 32px;
+}
+.date-as-calendar.size3x {
+	font-size: 48px;
+}
+/* END Classes used within 'Project News' */
+
+/* Classes used within 'Why Debian' */
+ol.why-debian {
+	list-style-type: none;
+	list-style-type: decimal !ie; /*IE 7- hack*/
+	margin: 0;
+	font-size: 1.1em;
+	padding-left: 15%;
+	counter-reset: li-counter;
+}
+ol.why-debian > li {
+	position: relative;
+	margin: 1.5em 0 2.5em;
+	padding: 1.3em;
+	background-color: #eaeaea;
+	max-width: 75%;
+}
+
+ol.why-debian > li:before {
+	position: absolute;
+	top: -0.5em;
+	left: -0.8em;
+	width: 1.8em;
+	height: 1.2em;
+	font-size: 2em;
+	line-height: 1.2;
+	font-weight: bold;
+	text-align: center;
+	color: #fff;
+	background-color: #a80030;	/* The color of the swirl. */
+	transform: rotate(-15deg);
+	-ms-transform: rotate(-15deg);
+	-webkit-transform: rotate(-15deg);
+	z-index: 99;
+	overflow: hidden;
+	content: counter(li-counter);
+	counter-increment: li-counter;
+}
+/* END Classes used within 'Why Debian' */
+
+@media screen and (min-width: 800px) {
+	.column {
+		flex: 1;
+	}
+	.column-2-parts {
+		flex: 2;
+	}
+	.column-3-parts {
+		flex: 3;
+	}
+	.column-4-parts {
+		flex: 4;
+	}
+}
+@media(max-width: 1580px) {
+	html {
+		font-size: 15px;
+	}
+}
+@media(max-width: 1250px) {
+	html {
+		font-size: 14px;
+	}
+}
+@media(max-width: 980px) {
+	html {
+		font-size: 13px;
+	}
+}
+@media(max-width: 800px) {
+	html {
+		font-size: 12px;
+	}
+}
+
+</style>
+   <style data-inlined-from="https://www.debian.org/5img-carousel-slider.css">
+/*
+  This stylesheet is holding classes for a static image carousel for
+  six images.
+*/
+
+/* Number Of Slide Configuration */
+.wrapper {
+	max-width: 60em;
+	position: relative;
+}
+.wrapper input {
+	display: none;
+}
+.inner {
+	width: 600%;
+	line-height: 0;
+}
+.inner article {
+	width: 16.66%;
+	float: left;
+	position: relative;
+}
+.inner article img {
+	max-width: 95%;
+	height: auto;
+}
+
+/* Setup Control */
+.slider-prev-next-control {
+	height: 50px;
+	position: absolute;
+	top: 50%;
+	width: 100%;
+	-webkit-transform: translateY(-50%);
+	-moz-transform: translateY(-50%);
+	-ms-transform: translateY(-50%);
+	-o-transform: translateY(-50%);
+	transform: translateY(-50%);
+}
+.slider-prev-next-control label {
+	display: none;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	background: #5f5f5f;
+	opacity: 0.7;
+}
+.slider-prev-next-control label:hover {
+	opacity: 1;
+}
+.slider-dot-control {
+	position: absolute;
+	width: 100%;
+	bottom: 15px;
+	text-align: center;
+}
+.slider-dot-control label {
+	cursor: pointer;
+	border-radius: 5px;
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	background: #bbb;
+	-webkit-transition: all 0.3s;
+	-moz-transition: all 0.3s;
+	transition: all 0.3s;
+}
+.slider-dot-control label:hover {
+	background: #ccc;
+	border-color: #777;
+}
+
+/* Info Box */
+.info {
+	position: absolute;
+	font-style: italic;
+	line-height: 20px;
+	opacity: 0;
+	color: #000;
+	background-color: gainsboro;
+	border-radius: 5px;
+	-moz-border-radius: 5px;
+	text-align: left;
+	-webkit-transition: all 1000ms ease-out 600ms;
+	-moz-transition: all 1000ms ease-out 600ms;
+	transition: all 1000ms ease-out 600ms;
+}
+.info h3 {
+	color: #000;
+	margin: 0.4em;
+	font-weight: normal;
+	font-size: 0.9em;
+	font-style: normal;
+}
+.info.top-left {
+	top: 20px;
+	left: 55px;
+}
+.info.top-right {
+	top: 20px;
+	right: 55px;
+}
+.info.bottom-left {
+	bottom: 20px;
+	left: 55px;
+}
+.info.bottom-right {
+	bottom: 20px;
+	right: 55px;
+}
+
+/* Slider Styling */
+.slider-wrapper {
+	width: 100%;
+	overflow: hidden;
+	/*border-radius: 5px;*/
+	/*box-shadow: 1px 1px 4px #666;*/
+	/*background: #fff;*/
+	/*background: #fcfff4;*/
+	-webkit-transform: translateZ(0);
+	-moz-transform: translateZ(0);
+	-ms-transform: translateZ(0);
+	-o-transform: translateZ(0);
+	transform: translateZ(0);
+	-webkit-transition: all 500ms ease-out;
+	-moz-transition: all 500ms ease-out;
+	transition: all 500ms ease-out;
+}
+.slider-wrapper .inner {
+	-webkit-transform: translateZ(0);
+	-moz-transform: translateZ(0);
+	-ms-transform: translateZ(0);
+	-o-transform: translateZ(0);
+	transform: translateZ(0);
+	-webkit-transition: all 800ms cubic-bezier(0.77, 0, 0.175, 1);
+	-moz-transition: all 800ms cubic-bezier(0.77, 0, 0.175, 1);
+	transition: all 800ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* Set Position For Slide */
+#slide1:checked ~ .slider-prev-next-control label:nth-child(2)::after,
+#slide2:checked ~ .slider-prev-next-control label:nth-child(3)::after,
+#slide3:checked ~ .slider-prev-next-control label:nth-child(4)::after,
+#slide4:checked ~ .slider-prev-next-control label:nth-child(5)::after,
+#slide5:checked ~ .slider-prev-next-control label:nth-child(6)::after,
+#slide6:checked ~ .slider-prev-next-control label:nth-child(1)::after,
+#slide2:checked ~ .slider-prev-next-control label:nth-child(1)::after,
+#slide3:checked ~ .slider-prev-next-control label:nth-child(2)::after,
+#slide4:checked ~ .slider-prev-next-control label:nth-child(3)::after,
+#slide5:checked ~ .slider-prev-next-control label:nth-child(4)::after,
+#slide6:checked ~ .slider-prev-next-control label:nth-child(5)::after,
+#slide1:checked ~ .slider-prev-next-control label:nth-child(6)::after {
+	font-family: FontAwesome;
+	font-style: normal;
+	font-weight: normal;
+	text-decoration: inherit;
+	margin: 0;
+	line-height: 38px;
+	font-size: 3em;
+	display: block;
+	color: #fff;
+}
+#slide1:checked ~ .slider-prev-next-control label:nth-child(2)::after,
+#slide2:checked ~ .slider-prev-next-control label:nth-child(3)::after,
+#slide3:checked ~ .slider-prev-next-control label:nth-child(4)::after,
+#slide4:checked ~ .slider-prev-next-control label:nth-child(5)::after,
+#slide5:checked ~ .slider-prev-next-control label:nth-child(6)::after,
+#slide6:checked ~ .slider-prev-next-control label:nth-child(1)::after {
+
+	content: "\203a";
+	padding-left: 1px;
+}
+#slide1:checked ~ .slider-prev-next-control label:nth-child(2),
+#slide2:checked ~ .slider-prev-next-control label:nth-child(3),
+#slide3:checked ~ .slider-prev-next-control label:nth-child(4),
+#slide4:checked ~ .slider-prev-next-control label:nth-child(5),
+#slide5:checked ~ .slider-prev-next-control label:nth-child(6),
+#slide6:checked ~ .slider-prev-next-control label:nth-child(1) {
+	display: block;
+	float: right;
+	margin-right: 8%;
+}
+#slide2:checked ~ .slider-prev-next-control label:nth-child(1),
+#slide3:checked ~ .slider-prev-next-control label:nth-child(2),
+#slide4:checked ~ .slider-prev-next-control label:nth-child(3),
+#slide5:checked ~ .slider-prev-next-control label:nth-child(4),
+#slide6:checked ~ .slider-prev-next-control label:nth-child(5),
+#slide1:checked ~ .slider-prev-next-control label:nth-child(6) {
+	display: block;
+	float: left;
+	margin-left: 8%;
+}
+#slide2:checked ~ .slider-prev-next-control label:nth-child(1)::after,
+#slide3:checked ~ .slider-prev-next-control label:nth-child(2)::after,
+#slide4:checked ~ .slider-prev-next-control label:nth-child(3)::after,
+#slide5:checked ~ .slider-prev-next-control label:nth-child(4)::after,
+#slide6:checked ~ .slider-prev-next-control label:nth-child(5)::after,
+#slide1:checked ~ .slider-prev-next-control label:nth-child(6)::after {
+	content: "\2039";
+	padding-left: 1px;
+}
+#slide1:checked ~ .slider-dot-control label:nth-child(1),
+#slide2:checked ~ .slider-dot-control label:nth-child(2),
+#slide3:checked ~ .slider-dot-control label:nth-child(3),
+#slide4:checked ~ .slider-dot-control label:nth-child(4),
+#slide5:checked ~ .slider-dot-control label:nth-child(5),
+#slide6:checked ~ .slider-dot-control label:nth-child(6) {
+	background: #333;
+}
+#slide1:checked ~ .slider-wrapper article:nth-child(1) .info,
+#slide2:checked ~ .slider-wrapper article:nth-child(2) .info,
+#slide3:checked ~ .slider-wrapper article:nth-child(3) .info,
+#slide4:checked ~ .slider-wrapper article:nth-child(4) .info,
+#slide5:checked ~ .slider-wrapper article:nth-child(5) .info,
+#slide6:checked ~ .slider-wrapper article:nth-child(6) .info {
+	opacity: 1;
+}
+#slide1:checked ~ .slider-wrapper .inner {
+	margin-left: 0;
+}
+#slide2:checked ~ .slider-wrapper .inner {
+	margin-left: -100%;
+}
+#slide3:checked ~ .slider-wrapper .inner {
+	margin-left: -200%;
+}
+#slide4:checked ~ .slider-wrapper .inner {
+	margin-left: -300%;
+}
+#slide5:checked ~ .slider-wrapper .inner {
+	margin-left: -400%;
+}
+#slide6:checked ~ .slider-wrapper .inner {
+	margin-left: -500%;
+}
+
+/* Tablet */
+@media only screen and (max-width: 850px) and (min-width: 450px) {
+	.slider-wrapper {
+		border-radius: 0;
+	}
+}
+
+/* Mobile */
+@media only screen and (max-width: 450px) {
+	.slider-wrapper {
+		border-radius: 0;
+	}
+	.slider-wrapper .info {
+		opacity: 0;
+	}
+}
+
+</style>
+  <style data-inlined-from="https://www.debian.org/debian-en.css">
+/* Debian language css file for english - en */
+/* please do not touch for now! - Jutta Wrage 2005 */
+
+html[lang|=en] #serverselect {}
+html[lang|=en] #maincol {}
+html[lang|=en] #leftcol ul.cdmenu {
+	width: 10em;
+}
+q { font-style: italic; }
+
+/* quotes */
+html[lang|=en] q:before { content: "\201C"; }
+html[lang|=en] q:after { content: "\201D"; } 
+html[lang|=en] q q:before { content: "\2018"; }
+html[lang|=en] q q:after { content: "\2019"; }
+
+/* html[lang|=en] blockquote p:first-child:before { content: "\201C"; }
+html[lang|=en] blockquote p.notlast:after { content: ""; }
+html[lang|=en] blockquote p:after { content: "\201D"; }
+
+html[lang|=en] blockquote.question p:before { content: ""; }
+html[lang|=en] blockquote.question p:after, blockquote.documentquote p:after{ content: ""; }
+html[lang|=en] blockquote { font-style: italic; }
+*/
+
+/*
+html[lang=en] .en2 q:before { content: "\2018"; }
+html[lang=en] .en2 q:after { content: "\2019"; }
+html[lang=en] .en2 q q:before { content: "\201C"; }
+html[lang=en] .en2 q q:after { content: "\201D"; } 
+*/
+
+</style>
+  <link rel="shortcut icon" href="favicon.ico">
+  <meta name="Keywords" content="debian, GNU, linux, unix, open source, free, DFSG">
+<link rel="search" type="application/opensearchdescription+xml" title="Debian website search" href="./search.en.xml">
+</head>
+<body>
+<div id="header">
+  <div id="upperheader">
+    <div id="logo">
+    <a href="./" title="Debian Home"><img src="./Pics/openlogo-50.png" alt="Debian" width="50" height="61"></a>
+    </div> <!-- end logo -->
+    <div id="searchbox">
+      <form name="p" method="get" action="https://search.debian.org/cgi-bin/omega">
+      <p>
+<input type="hidden" name="DB" value="en">
+        <input name="P" value="" size="14">
+        <input type="submit" value="Search">
+      </p>
+      </form>
+    </div>   <!-- end sitetools -->
+  </div> <!-- end upperheader -->
+  <!--UdmComment-->
+  <div id="navbar">
+    <p class="hidecss"><a href="#content">Skip Quicknav</a></p>
+    <ul>
+      <!-- Link to Debian's own Social Media resources -->
+      <li><a href="https://bits.debian.org/" title="Bits from Debian">Blog</a></li>
+      <li><a href="https://micronews.debian.org" title="Micronews from Debian">Micronews</a></li>
+      <li><a href="https://planet.debian.org/" title="The Planet of Debian">Planet</a></li>
+      <li><a href="https://wiki.debian.org/" title="The Debian Wiki">Wiki</a></li>
+    </ul>
+  </div> <!-- end navbar -->
+  <p id="breadcrumbs">&nbsp; </p>
+</div> <!-- end header -->
+<!--/UdmComment-->
+<section>
+<div id="splash">
+  <h1>Debian</h1>
+</div>
+<!-- The first row of columns on the site. -->
+<div class="row">
+  <div class="column column-left">
+    <div style="text-align: center">
+      <h1>The Community</h1>
+      <h2>Debian is a Community of People!</h2>
+<!-- The following div is containing the static image carousel.
+     Currently made of five images. -->
+<div class="wrapper">
+  <input checked type="radio" name="slider" id="slide1">
+  <input type="radio" name="slider" id="slide2">
+  <input type="radio" name="slider" id="slide3">
+  <input type="radio" name="slider" id="slide4">
+  <input type="radio" name="slider" id="slide5">
+  <input type="radio" name="slider" id="slide6">
+  <div class="slider-wrapper">
+    <div class="inner">
+     <article>
+      <div class="info top-left">
+       <h3>DC26 Group Photo</h3>
+      </div>
+      <img src="Pics/debconf26_group_photo.jpg" alt="DebConf26 Group Photo" width="1024" height="751">
+     </article>
+     <article>
+      <div class="info top-left">
+       <h3>MiniDebConf Hamburg 2026</h3>
+      </div>
+      <img src="Pics/mini-dc26-hamburg.jpg" alt="Group photo of the MiniDebConf Hamburg 2026" width="933" height="576">
+     </article>
+     <article>
+      <div class="info top-left">
+       <h3>MiniDebConf Campinas 2026</h3>
+      </div>
+      <img src="Pics/mini-dc26-campinas.jpg" alt="Group photo of the MiniDebConf Campinas 2026" width="1024" height="575">
+     </article>
+     <article>
+      <div class="info top-left">
+       <h3>Screenshot Calamares Installer</h3>
+      </div>
+      <img src="Pics/calamares-installer.png" alt="Screenshot from the Calamares installer" width="1282" height="777">
+     </article>
+     <article>
+      <div class="info top-left">
+       <h3>Debian is like a Swiss Army Knife</h3>
+      </div>
+      <img src="Pics/debian-swiss-knife-hands-1024x576.jpg" alt="Debian is like a Swiss Army Knife" width="1024" height="576">
+     </article>
+     <article>
+      <div class="info top-left">
+       <h3>People have fun with Debian</h3>
+      </div>
+      <img src="Pics/debian-funny-people-1024x576.jpg" alt="Debian people at Debconf18 in Hsinchu really having fun" width="1024" height="576">
+     </article>
+    </div>  <!-- .inner -->
+  </div>  <!-- .slider-wrapper -->
+  <div class="slider-prev-next-control">
+   <label for="slide1"></label>
+   <label for="slide2"></label>
+   <label for="slide3"></label>
+   <label for="slide4"></label>
+   <label for="slide5"></label>
+   <label for="slide6"></label>
+  </div>  <!-- .slider-prev-next-control -->
+  <div class="slider-dot-control">
+   <label for="slide1"></label>
+   <label for="slide2"></label>
+   <label for="slide3"></label>
+   <label for="slide4"></label>
+   <label for="slide5"></label>
+   <label for="slide6"></label>
+  </div>  <!-- .slider-dot-control -->
+ </div>
+</div>
+    <div class="row">
+      <div class="community column">
+        <a href="intro/people" aria-hidden="true">
+          <img src="Pics/users.svg" width="512" alt="">
+        </a>
+      </div>
+      <div class="styled-href-blue column-4-parts">
+        <h2><a href="intro/people">People</a></h2>
+        <p>Who we are and what we do</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="community column">
+        <a href="intro/philosophy" aria-hidden="true">
+          <img src="Pics/heartbeat.svg" width="512" alt="">
+        </a>
+      </div>
+      <div class="styled-href-blue column-4-parts">
+        <h2><a href="intro/philosophy">Our Philosophy</a></h2>
+        <p>Why we do it, and how we do it</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="community column">
+        <a href="devel/join/" aria-hidden="true">
+          <img src="Pics/user-plus.svg" width="512" alt="">
+        </a>
+      </div>
+      <div class="styled-href-blue column-4-parts">
+        <h2><a href="devel/join/">Get Involved, Contribute</a></h2>
+        <p>How you can join us!</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="community column">
+        <a href="intro/index#community" aria-hidden="true">
+          <img src="Pics/list.svg" width="512" alt="">
+        </a>
+      </div>
+      <div class="styled-href-blue column-4-parts">
+        <h2><a href="intro/index#community">More...</a></h2>
+        <p>Additional information about the Debian community</p>
+      </div>
+    </div>
+  </div>
+  <div class="column column-right">
+    <div style="text-align: center">
+      <h1>The Operating System</h1>
+      <h2>Debian is a complete Free Operating System!</h2>
+      <div class="os-img-container">
+        <img src="Pics/debian-logo-1024x576.png" alt="Debian" width="1024" height="576">
+        <a href="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-13.7.0-amd64-netinst.iso" class="os-dl-btn">Download</a>
+        <a href="distrib" class="os-other-download">Other downloads</a>
+</div>
+    </div>
+    <div class="row">
+      <div class="community column">
+        <a href="intro/why_debian" aria-hidden="true">
+          <img src="Pics/trophy.svg" width="512" alt="">
+        </a>
+      </div>
+      <div class="styled-href-blue column-4-parts">
+        <h2><a href="intro/why_debian">Why Debian</a></h2>
+        <p>What makes Debian special</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="community column">
+        <a href="support" aria-hidden="true">
+          <img src="Pics/life-ring.svg" width="512" alt="">
+        </a>
+      </div>
+      <div class="styled-href-blue column-4-parts">
+        <h2><a href="support">User Support</a></h2>
+        <p>Getting help and documentation</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="community column">
+        <a href="security/" aria-hidden="true">
+          <img src="Pics/security.svg" width="512" alt="">
+        </a>
+      </div>
+      <div class="styled-href-blue column-4-parts">
+        <h2><a href="security/">Security Updates</a></h2>
+        <p>Debian Security Advisories (DSA)</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="community column">
+        <a href="intro/index#software" aria-hidden="true">
+          <img src="Pics/list.svg" width="512" alt="">
+        </a>
+      </div>
+      <div class="styled-href-blue column-4-parts">
+        <h2><a href="intro/index#software">More...</a></h2>
+        <p>Further links to downloads and software</p>
+      </div>
+    </div>
+  </div>
+</div>
+<hr>
+<!-- An optional row highlighting events happening now, such as releases, point releases, debconf and minidebconfs, and elections (dpl, GRs...).
+ <div class="row">
+   <div class="column styled-href-blue column-left">
+    <div style="align-items: center; display: flex;justify-content: center">
+    <a href="https://ch2026.mini.debconf.org/"><img src="Pics/minidebconf-badge.png" height="170" alt="" width="133"></a>
+       &nbsp;&nbsp;&nbsp;
+      <div style="text-align: center">
+        <h2><a href="https://ch2026.mini.debconf.org/">MiniDebConf Winterthur</a> is underway!</h2>
+        <p>The MiniDebConf Winterthur is being held in Switzerland</p>
+      </div>
+    </div>
+  </div>
+ </div>
+-->
+<!-- The next row of columns on the site. -->
+<!-- The News will be selected by the press team. -->
+<div class="row">
+  <div class="column styled-href-blue column-left">
+    <div style="text-align: center">
+      <h1>Project News</h1>
+      <h2>News and Announcements about Debian</h2>
+    </div>
+    <div class="project-news"><time datetime="2026-09-12" class="date-as-calendar position-em size1_25x"><span class="day">12</span><span class="month">September</span><span class="year">2026</span></time><div class="project-news-content"><a href="News/2026/20260912">Updated Debian 13: 13.7 released</a></div></div>
+<div class="project-news"><time datetime="2026-08-31" class="date-as-calendar position-em size1_25x"><span class="day">31</span><span class="month">August</span><span class="year">2026</span></time><div class="project-news-content"><a href="News/2026/20260831">Debian 11 Long Term Support reaches end-of-life</a></div></div>
+<div class="project-news"><time datetime="2026-08-07" class="date-as-calendar position-em size1_25x"><span class="day">07</span><span class="month">August</span><span class="year">2026</span></time><div class="project-news-content"><a href="News/2026/20260807">DebConf26 closes in Santa Fe and DebConf27 announced</a></div></div>
+<div class="project-news"><time datetime="2026-07-12" class="date-as-calendar position-em size1_25x"><span class="day">12</span><span class="month">July</span><span class="year">2026</span></time><div class="project-news-content"><a href="News/2026/20260712">Security support for Bookworm handed over to the LTS team</a></div></div>
+<div class="project-news"><time datetime="2026-07-11" class="date-as-calendar position-em size1_25x"><span class="day">11</span><span class="month">July</span><span class="year">2026</span></time><div class="project-news-content"><a href="News/2026/2026071102">Updated Debian 12: 12.15 released</a></div></div>
+    <!-- No more News entries behind this line! -->
+    <div class="project-news">
+      <div class="end-of-list-arrow"></div>
+      <div class="project-news-content project-news-content-end">
+        <a href="News">All the news</a> &emsp;&emsp;
+	<a class="rss_logo" style="float: none" href="News/news">RSS</a>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="clr"></div>
+</section> <!-- end content -->
+<footer id="footer">
+  <hr class="hidecss">
+  <!--UdmComment-->
+<div id="pageLang">
+<div id="langSelector">
+This page is also available in the following languages:
+<div id="langContainer">
+<select onchange="location = this.value;">
+<option value="" disabled selected>Select your language</option>
+ <option value="index.ca.html" title="Catalan" lang="ca">catal&agrave;</option>
+ <option value="index.da.html" title="Danish" lang="da">dansk</option>
+ <option value="index.de.html" title="German" lang="de">Deutsch</option>
+ <option value="index.es.html" title="Spanish" lang="es">espa&ntilde;ol</option>
+ <option value="index.fr.html" title="French" lang="fr">fran&ccedil;ais</option>
+ <option value="index.gl.html" title="Galician" lang="gl">Galego</option>
+ <option value="index.id.html" title="Indonesian" lang="id">Indonesia</option>
+ <option value="index.it.html" title="Italian" lang="it">Italiano</option>
+ <option value="index.hu.html" title="Hungarian" lang="hu">magyar</option>
+ <option value="index.nl.html" title="Dutch" lang="nl">Nederlands</option>
+ <option value="index.nb.html" title="Norwegian" lang="nb">norsk&nbsp;(bokm&aring;l)</option>
+ <option value="index.pl.html" title="Polish" lang="pl">polski</option>
+ <option value="index.pt.html" title="Portuguese" lang="pt">Portugu&ecirc;s</option>
+ <option value="index.fi.html" title="Finnish" lang="fi">suomi</option>
+ <option value="index.sv.html" title="Swedish" lang="sv">svenska</option>
+ <option value="index.vi.html" title="Vietnamese" lang="vi">Ti&#7871;ng Vi&#7879;t</option>
+ <option value="index.tr.html" title="Turkish" lang="tr">T&uuml;rk&ccedil;e</option>
+ <option value="index.bg.html" title="Bulgarian" lang="bg">&#1041;&#1098;&#1083;&#1075;&#1072;&#1088;&#1089;&#1082;&#1080; (B&#601;lgarski)</option>
+ <option value="index.ru.html" title="Russian" lang="ru">&#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081; (Russkij)</option>
+ <option value="index.uk.html" title="Ukrainian" lang="uk">&#1091;&#1082;&#1088;&#1072;&#1111;&#1085;&#1089;&#1100;&#1082;&#1072; (ukrajins'ka)</option>
+ <option value="index.ar.html" title="Arabic" lang="ar">&#1593;&#1585;&#1576;&#1610;&#1577; (Arabiya)</option>
+ <option value="index.zh-cn.html" title="Chinese (China)" lang="zh-CN">&#20013;&#25991;(&#31616;)</option>
+ <option value="index.zh-hk.html" title="Chinese (Hong Kong)" lang="zh-HK">&#20013;&#25991;(HK)</option>
+ <option value="index.zh-tw.html" title="Chinese (Taiwan)" lang="zh-TW">&#20013;&#25991;(&#32321;)</option>
+ <option value="index.ko.html" title="Korean" lang="ko">&#54620;&#44397;&#50612; (Korean)</option>
+ <option value="index.el.html" title="Greek" lang="el">&#917;&#955;&#955;&#951;&#957;&#953;&#954;&#940; (Ellinika)</option>
+ <option value="index.fa.html" title="Persian" lang="fa">&#x0641;&#x0627;&#x0631;&#x0633;&#x06cc; (Farsi)</option>
+</select>
+</div>
+How to set <a href="./intro/cn">the default document language</a>
+</div></div><!--/UdmComment-->
+<hr>
+<!--UdmComment-->
+<div id="fineprint">
+<!--UdmComment-->
+  <p>See our <a href="./contact">contact page</a> to get in touch. Web site source code is <a href="https://salsa.debian.org/webmaster-team/webwml">available</a>.</p>
+<p>
+Last Modified: Tue, Sep 1 19:24:14 UTC 2026
+&emsp;
+Last Built: Sat, Sep 12 23:27:43 UTC 2026
+  <br>
+  Copyright &copy; 1997-2026 <a href="https://www.spi-inc.org/">SPI</a> and others; See <a href="./license" rel="copyright">license terms</a><br>
+  Debian is a registered <a href="./trademark">trademark</a> of Software in the Public Interest, Inc.
+</p>
+<!--/UdmComment-->
+</div>
+<!--/UdmComment-->
+</footer> <!-- end footer -->
+</body>
+</html>
