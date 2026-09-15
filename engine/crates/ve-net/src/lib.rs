@@ -344,11 +344,12 @@ impl std::fmt::Debug for NetworkContext {
     }
 }
 
-/// Default `User-Agent`.
+/// Default `User-Agent`. Wikimedia and others refuse tokens without a
+/// contact URL, so the product token carries one (their UA policy).
 pub const DEFAULT_USER_AGENT: &str = concat!(
     "Mozilla/5.0 (compatible; VectorEngine/",
     env!("CARGO_PKG_VERSION"),
-    ")"
+    "; +https://github.com/vector-browser/vector)"
 );
 
 fn unix_millis(t: SystemTime) -> u64 {
@@ -475,12 +476,37 @@ impl NetworkContext {
             }
             self.policy.check(&request.url)?;
 
-            if request.method == Method::GET
-                && let CacheLookup::Fresh(mut cached) = self.cache.lookup(&request.cache_key(), now)
-            {
-                tracing::debug!(url = %request.url, "cache hit");
-                cached.from_cache = true;
-                return Ok(cached);
+            // Cache: a fresh entry is served directly; a stale one with
+            // validators is revalidated conditionally and a 304 refreshes it
+            // (RFC 9111 §4.3) — one round trip with no body instead of a
+            // full transfer.
+            let mut stale: Option<Response> = None;
+            if request.method == Method::GET {
+                match self.cache.lookup(&request.cache_key(), now) {
+                    CacheLookup::Fresh(mut cached) => {
+                        tracing::debug!(url = %request.url, "cache hit");
+                        cached.from_cache = true;
+                        return Ok(cached);
+                    }
+                    CacheLookup::Stale {
+                        response,
+                        etag,
+                        last_modified,
+                    } if etag.is_some() || last_modified.is_some() => {
+                        if let Some(v) = etag.as_deref().and_then(|v| HeaderValue::from_str(v).ok())
+                        {
+                            request.headers.insert(http::header::IF_NONE_MATCH, v);
+                        }
+                        if let Some(v) = last_modified
+                            .as_deref()
+                            .and_then(|v| HeaderValue::from_str(v).ok())
+                        {
+                            request.headers.insert(http::header::IF_MODIFIED_SINCE, v);
+                        }
+                        stale = Some(response);
+                    }
+                    CacheLookup::Stale { .. } | CacheLookup::Miss => {}
+                }
             }
 
             request
@@ -501,7 +527,22 @@ impl NetworkContext {
                 request.headers.remove(http::header::COOKIE);
             }
 
-            let response = self.transport.send(&request)?;
+            let mut response = self.transport.send(&request)?;
+            if response.status == StatusCode::NOT_MODIFIED
+                && let Some(mut cached) = stale.take()
+            {
+                tracing::debug!(url = %request.url, "revalidated (304)");
+                // the 304 carries fresh metadata (Date, Cache-Control, ETag…)
+                for (name, value) in &response.headers {
+                    cached.headers.insert(name.clone(), value.clone());
+                }
+                cached.from_cache = true;
+                self.cache
+                    .store(request.cache_key(), &request.headers, &cached, now);
+                response = cached;
+            }
+            request.headers.remove(http::header::IF_NONE_MATCH);
+            request.headers.remove(http::header::IF_MODIFIED_SINCE);
             for set_cookie in response.headers.get_all(http::header::SET_COOKIE) {
                 if let Ok(text) = set_cookie.to_str()
                     && let Some(cookie) = Cookie::parse(text, &request.url, now)
@@ -533,7 +574,7 @@ impl NetworkContext {
                 continue;
             }
 
-            if request.method == Method::GET {
+            if request.method == Method::GET && !response.from_cache {
                 self.cache
                     .store(request.cache_key(), &request.headers, &response, now);
             }
@@ -597,6 +638,47 @@ fn mime_for_path(path: &std::path::Path) -> &'static str {
 }
 
 /// Reads a `file:` URL from disk.
+/// Decodes a `Content-Encoding` body (`gzip`, `deflate`, `br`, possibly
+/// comma-chained) into identity bytes. Pure Rust; used by the transport and
+/// by anything replaying a stored encoded body.
+pub fn decode_body(encoding: &str, raw: &[u8]) -> Result<Bytes, NetError> {
+    use std::io::Read;
+    // codings are listed in application order; undo them last-first
+    let mut data: Vec<u8> = raw.to_vec();
+    for coding in encoding.split(',').map(str::trim).rev() {
+        let mut out = Vec::with_capacity(data.len() * 3);
+        match coding.to_ascii_lowercase().as_str() {
+            "" | "identity" => continue,
+            "gzip" | "x-gzip" => flate2::read::MultiGzDecoder::new(&data[..])
+                .read_to_end(&mut out)
+                .map_err(|e| NetError::Http(format!("gzip: {e}")))?,
+            "deflate" => {
+                // RFC 9110 deflate is zlib-wrapped, but raw deflate is common
+                if flate2::read::ZlibDecoder::new(&data[..])
+                    .read_to_end(&mut out)
+                    .is_err()
+                {
+                    out.clear();
+                    flate2::read::DeflateDecoder::new(&data[..])
+                        .read_to_end(&mut out)
+                        .map_err(|e| NetError::Http(format!("deflate: {e}")))?;
+                }
+                out.len()
+            }
+            "br" => brotli::Decompressor::new(&data[..], 8 * 1024)
+                .read_to_end(&mut out)
+                .map_err(|e| NetError::Http(format!("brotli: {e}")))?,
+            other => {
+                return Err(NetError::Http(format!(
+                    "unsupported content-encoding `{other}`"
+                )));
+            }
+        };
+        data = out;
+    }
+    Ok(Bytes::from(data))
+}
+
 fn file_url(url: &Url) -> Result<Response, NetError> {
     let path = url
         .to_file_path()
@@ -768,6 +850,113 @@ mod tests {
             0,
             "failures logged with status 0"
         );
+    }
+
+    #[test]
+    fn stale_entries_are_revalidated_and_a_304_refreshes_them() {
+        let mock = MockTransport::new();
+        let log = mock.log();
+        let hits = std::rc::Rc::new(std::cell::Cell::new(0u32));
+        let h = hits.clone();
+        mock.respond_with("https://example.com/doc", move |req| {
+            h.set(h.get() + 1);
+            if req
+                .headers
+                .get("if-none-match")
+                .is_some_and(|v| v == "\"v1\"")
+            {
+                MockTransport::response(
+                    req,
+                    304,
+                    &[("ETag", "\"v1\""), ("Cache-Control", "max-age=60")],
+                    "",
+                )
+            } else {
+                MockTransport::response(
+                    req,
+                    200,
+                    &[
+                        ("ETag", "\"v1\""),
+                        ("Cache-Control", "max-age=10"),
+                        ("Content-Type", "text/html"),
+                    ],
+                    "<p>v1</p>",
+                )
+            }
+        });
+        let mut ctx = NetworkContext::new(ContextId(1), Box::new(mock));
+        let t0 = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let first = ctx
+            .fetch_at(Request::get("https://example.com/doc").unwrap(), t0)
+            .unwrap();
+        assert_eq!(first.text(), "<p>v1</p>");
+        assert!(!first.from_cache);
+        // still fresh: served from cache, origin not contacted
+        let hit = ctx
+            .fetch_at(
+                Request::get("https://example.com/doc").unwrap(),
+                t0 + Duration::from_secs(5),
+            )
+            .unwrap();
+        assert!(hit.from_cache);
+        assert_eq!(hits.get(), 1);
+        // stale: conditional request, 304, body comes from the cache
+        let reval = ctx
+            .fetch_at(
+                Request::get("https://example.com/doc").unwrap(),
+                t0 + Duration::from_secs(20),
+            )
+            .unwrap();
+        assert_eq!(hits.get(), 2);
+        assert_eq!(reval.status, 200, "the caller never sees the 304");
+        assert_eq!(reval.text(), "<p>v1</p>");
+        assert!(reval.from_cache);
+        assert_eq!(
+            log.borrow()
+                .last()
+                .unwrap()
+                .headers
+                .get("if-none-match")
+                .unwrap(),
+            "\"v1\""
+        );
+        // the 304's Cache-Control (max-age=60) extended the freshness
+        let again = ctx
+            .fetch_at(
+                Request::get("https://example.com/doc").unwrap(),
+                t0 + Duration::from_secs(60),
+            )
+            .unwrap();
+        assert!(again.from_cache);
+        assert_eq!(
+            hits.get(),
+            2,
+            "no round trip while the refreshed entry is fresh"
+        );
+    }
+
+    #[test]
+    fn content_encodings_decode_to_identity() {
+        use std::io::Write;
+        let text = "<html>".repeat(500);
+        let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        gz.write_all(text.as_bytes()).unwrap();
+        let gz = gz.finish().unwrap();
+        assert_eq!(decode_body("gzip", &gz).unwrap(), text.as_bytes());
+        let mut zl = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::fast());
+        zl.write_all(text.as_bytes()).unwrap();
+        assert_eq!(
+            decode_body("deflate", &zl.finish().unwrap()).unwrap(),
+            text.as_bytes()
+        );
+        let mut br = Vec::new();
+        {
+            let mut w = brotli::CompressorWriter::new(&mut br, 4096, 5, 22);
+            w.write_all(text.as_bytes()).unwrap();
+        }
+        assert_eq!(decode_body("br", &br).unwrap(), text.as_bytes());
+        assert_eq!(decode_body("identity", b"x").unwrap(), &b"x"[..]);
+        assert!(decode_body("zstd", b"x").is_err());
     }
 
     #[test]
