@@ -46,7 +46,12 @@ impl Routing {
 
 const APP_ROOT_IDS: &[&str] = &["root", "app", "__next", "__nuxt"];
 const APP_ROOT_ATTRS: &[&str] = &["ng-version", "data-reactroot"];
-const DATA_SCRIPT_TYPES: &[&str] = &["application/ld+json", "application/json", "importmap", "speculationrules"];
+const DATA_SCRIPT_TYPES: &[&str] = &[
+    "application/ld+json",
+    "application/json",
+    "importmap",
+    "speculationrules",
+];
 
 fn elements_named<'a>(doc: &'a Document, name: &'a str) -> impl Iterator<Item = NodeId> + 'a {
     doc.elements()
@@ -64,7 +69,10 @@ pub fn body_text(doc: &Document, id: NodeId) -> String {
                     out.push_str(t);
                 }
                 Some(NodeKind::Element(e)) => {
-                    if matches!(e.name.as_str(), "script" | "style" | "template" | "noscript") {
+                    if matches!(
+                        e.name.as_str(),
+                        "script" | "style" | "template" | "noscript"
+                    ) {
                         continue;
                     }
                     walk(doc, child, out);
@@ -79,7 +87,8 @@ pub fn body_text(doc: &Document, id: NodeId) -> String {
 }
 
 fn has_element_children(doc: &Document, id: NodeId) -> bool {
-    doc.children(id).any(|c| doc.get(c).is_some_and(ve_dom::Node::is_element))
+    doc.children(id)
+        .any(|c| doc.get(c).is_some_and(ve_dom::Node::is_element))
 }
 
 fn is_submit_control(doc: &Document, id: NodeId) -> bool {
@@ -153,7 +162,11 @@ pub fn classify(doc: &Document) -> Routing {
     if text_len < 1000 {
         let mentions_js = elements_named(doc, "noscript").any(|id| {
             let t = doc.text_content(id).to_ascii_lowercase();
-            t.contains("javascript") || t.split_whitespace().collect::<Vec<_>>().join(" ").contains("enable js")
+            t.contains("javascript")
+                || t.split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" ")
+                    .contains("enable js")
         });
         if mentions_js {
             return Routing::script("noscript-requires-js");
@@ -216,16 +229,25 @@ mod tests {
             r#"<body><div id="app"></div><p>{}</p></body>"#,
             "static text ".repeat(40)
         ));
-        assert_eq!(classify(&doc).reason.as_deref(), Some("empty-app-root(#app)"));
+        assert_eq!(
+            classify(&doc).reason.as_deref(),
+            Some("empty-app-root(#app)")
+        );
 
         let doc = parse("<body><noscript>Please enable JavaScript</noscript><p>hi</p></body>");
-        assert_eq!(classify(&doc).reason.as_deref(), Some("noscript-requires-js"));
+        assert_eq!(
+            classify(&doc).reason.as_deref(),
+            Some("noscript-requires-js")
+        );
 
         let doc = parse("<body onload=\"boot()\"><p>content</p></body>");
         assert_eq!(classify(&doc).reason.as_deref(), Some("body-onload"));
 
         let doc = parse("<body><form><input name=a></form></body>");
-        assert_eq!(classify(&doc).reason.as_deref(), Some("form-without-action-or-submit"));
+        assert_eq!(
+            classify(&doc).reason.as_deref(),
+            Some("form-without-action-or-submit")
+        );
 
         let doc = parse("<body><form onsubmit=\"return go()\"><button>x</button></form></body>");
         assert_eq!(classify(&doc).reason.as_deref(), Some("form-onsubmit"));
@@ -241,7 +263,9 @@ mod tests {
 
     #[test]
     fn data_scripts_do_not_count_as_external() {
-        let doc = parse(r#"<body><p>short</p><script type="application/ld+json" src="/x.json"></script></body>"#);
+        let doc = parse(
+            r#"<body><p>short</p><script type="application/ld+json" src="/x.json"></script></body>"#,
+        );
         assert!(!classify(&doc).requires_script);
     }
 }

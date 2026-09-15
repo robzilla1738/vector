@@ -70,7 +70,8 @@ impl Hub {
     fn spawn_context(&mut self) -> u32 {
         let id = self.next_context;
         self.next_context += 1;
-        self.contexts.insert(id, Host::spawn(self.config.clone(), id));
+        self.contexts
+            .insert(id, Host::spawn(self.config.clone(), id));
         id
     }
 
@@ -147,7 +148,9 @@ impl Hub {
     /// Screenshots are not available until `ve-gfx` is wired (M2+).
     pub fn screenshot(&self, page: u64, _options_json: &str) -> Receiver<Value> {
         match self.host_of(page) {
-            Ok(_) => fail(&ApiError::unsupported("screenshot (ve-gfx not wired into ve-api yet)")),
+            Ok(_) => fail(&ApiError::unsupported(
+                "screenshot (ve-gfx not wired into ve-api yet)",
+            )),
             Err(e) => fail(&e),
         }
     }
@@ -205,12 +208,24 @@ mod tests {
 
     #[test]
     fn hub_routes_pages_to_contexts_and_isolates_cookies() {
-        let mut hub = Hub::from_json(r#"{"offline": true, "viewport": {"width": 800, "height": 600}}"#).unwrap();
+        let mut hub =
+            Hub::from_json(r#"{"offline": true, "viewport": {"width": 800, "height": 600}}"#)
+                .unwrap();
         let ctx2 = hub.new_context("{}").unwrap();
         assert_eq!(ctx2, 2);
 
-        let a = hub.open(DEFAULT_CONTEXT, "data:text/html,<title>A</title><button>Go</button>", "{}").recv().unwrap();
-        let b = hub.open(ctx2, "data:text/html,<title>B</title>", "{}").recv().unwrap();
+        let a = hub
+            .open(
+                DEFAULT_CONTEXT,
+                "data:text/html,<title>A</title><button>Go</button>",
+                "{}",
+            )
+            .recv()
+            .unwrap();
+        let b = hub
+            .open(ctx2, "data:text/html,<title>B</title>", "{}")
+            .recv()
+            .unwrap();
         assert_eq!(a["ok"], true, "{a}");
         assert_eq!(b["ok"], true, "{b}");
         let pa = a["page"].as_u64().unwrap();
@@ -232,11 +247,18 @@ mod tests {
         assert_eq!(bad["error"]["code"], "not_found");
 
         let ran = hub
-            .execute(pa, r#"{"steps":[{"id":"c","op":"click","target":"role=button[name=Go]"}]}"#, "{}")
+            .execute(
+                pa,
+                r#"{"steps":[{"id":"c","op":"click","target":"role=button[name=Go]"}]}"#,
+                "{}",
+            )
             .recv()
             .unwrap();
         assert_eq!(ran["status"], "completed", "{ran}");
-        assert_eq!(hub.execute(pa, "{}", "{}").recv().unwrap()["error"]["code"], "invalid_params");
+        assert_eq!(
+            hub.execute(pa, "{}", "{}").recv().unwrap()["error"]["code"],
+            "invalid_params"
+        );
 
         let shot = hub.screenshot(pa, "{}").recv().unwrap();
         assert_eq!(shot["error"]["code"], "capability_unsupported");
@@ -244,8 +266,20 @@ mod tests {
         hub.set_cookies(DEFAULT_CONTEXT, r#"[{"name":"a","value":"1","domain":"x.test","path":"/","secure":false,"httpOnly":false}]"#)
             .recv()
             .unwrap();
-        assert_eq!(hub.get_cookies(DEFAULT_CONTEXT, None).recv().unwrap()["cookies"].as_array().unwrap().len(), 1);
-        assert_eq!(hub.get_cookies(ctx2, None).recv().unwrap()["cookies"].as_array().unwrap().len(), 0);
+        assert_eq!(
+            hub.get_cookies(DEFAULT_CONTEXT, None).recv().unwrap()["cookies"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            hub.get_cookies(ctx2, None).recv().unwrap()["cookies"]
+                .as_array()
+                .unwrap()
+                .len(),
+            0
+        );
 
         assert_eq!(hub.close(pa).recv().unwrap()["closed"], true);
         assert_eq!(hub.close(pa).recv().unwrap()["closed"], false);

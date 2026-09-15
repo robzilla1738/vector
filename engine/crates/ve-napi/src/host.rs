@@ -37,7 +37,9 @@ pub struct Host {
 
 impl std::fmt::Debug for Host {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Host").field("context", &self.context_id).finish()
+        f.debug_struct("Host")
+            .field("context", &self.context_id)
+            .finish()
     }
 }
 
@@ -92,7 +94,10 @@ impl Host {
         F: FnOnce(&mut HostState) -> Value + Send + 'static,
     {
         self.call(f).recv().unwrap_or_else(|_| {
-            err_value(&ApiError::new("backend_unavailable", "engine thread has stopped"))
+            err_value(&ApiError::new(
+                "backend_unavailable",
+                "engine thread has stopped",
+            ))
         })
     }
 }
@@ -161,8 +166,7 @@ pub struct ExecuteOptions {
 fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
-        .unwrap_or(0)
+        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
 }
 
 fn str_of<'a>(step: &'a Value, key: &str) -> Option<&'a str> {
@@ -170,12 +174,17 @@ fn str_of<'a>(step: &'a Value, key: &str) -> Option<&'a str> {
 }
 
 fn read_file_url(url: &str) -> Result<(String, String), ApiError> {
-    let parsed = url::Url::parse(url).map_err(|e| ApiError::invalid(format!("bad URL {url}: {e}")))?;
+    let parsed =
+        url::Url::parse(url).map_err(|e| ApiError::invalid(format!("bad URL {url}: {e}")))?;
     let path = parsed
         .to_file_path()
         .map_err(|()| ApiError::invalid(format!("not a local file URL: {url}")))?;
-    let html = std::fs::read_to_string(&path)
-        .map_err(|e| ApiError::new("step_failed", format!("cannot read {}: {e}", path.display())))?;
+    let html = std::fs::read_to_string(&path).map_err(|e| {
+        ApiError::new(
+            "step_failed",
+            format!("cannot read {}: {e}", path.display()),
+        )
+    })?;
     Ok((html, parsed.to_string()))
 }
 
@@ -212,13 +221,21 @@ impl HostState {
 
     fn open_inner(&mut self, global: u64, url: &str) -> Result<Value, ApiError> {
         if self.pages.contains_key(&global) {
-            return Err(ApiError::new("conflict", format!("page {global} already open")));
+            return Err(ApiError::new(
+                "conflict",
+                format!("page {global} already open"),
+            ));
         }
         let source = if url.starts_with("file:") {
             let (html, url) = read_file_url(url)?;
-            OpenSource::Html { html, url: Some(url) }
+            OpenSource::Html {
+                html,
+                url: Some(url),
+            }
         } else {
-            OpenSource::Url { url: url.to_owned() }
+            OpenSource::Url {
+                url: url.to_owned(),
+            }
         };
         let id = self.engine.open(source)?;
         let page = self.engine.page(id)?;
@@ -279,8 +296,9 @@ impl HostState {
         let snapshot = match (req.scope.as_deref(), req.subtree_ref.as_deref()) {
             (Some("subtree"), Some(r)) => {
                 let id = resolve_ref(page, meta, r)?;
-                page.snapshot_of(id, SnapshotFormat::Full)
-                    .ok_or_else(|| ApiError::new("not_found", format!("{r} has no accessible subtree")))?
+                page.snapshot_of(id, SnapshotFormat::Full).ok_or_else(|| {
+                    ApiError::new("not_found", format!("{r} has no accessible subtree"))
+                })?
             }
             _ => page.snapshot(SnapshotFormat::Full),
         };
@@ -352,7 +370,10 @@ impl HostState {
                 Err(e) => {
                     outcome["status"] = json!("failed");
                     outcome["error"] = e.to_json();
-                    let optional = step.get("optional").and_then(Value::as_bool).unwrap_or(false);
+                    let optional = step
+                        .get("optional")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false);
                     if !optional && failed.is_none() {
                         failed = Some(e.message.clone());
                     }
@@ -391,7 +412,8 @@ impl HostState {
             let now = SystemTime::now();
             let cookies: Vec<&ve_net::Cookie> = match url {
                 Some(u) => {
-                    let parsed = url::Url::parse(u).map_err(|e| ApiError::invalid(format!("bad URL {u}: {e}")))?;
+                    let parsed = url::Url::parse(u)
+                        .map_err(|e| ApiError::invalid(format!("bad URL {u}: {e}")))?;
                     net.cookies.cookies_for(&parsed, now)
                 }
                 None => net.cookies.iter().collect(),
@@ -436,7 +458,8 @@ fn cookie_json(c: &ve_net::Cookie) -> Value {
 
 fn cookie_from_json(v: &Value) -> Result<ve_net::Cookie, ApiError> {
     let name = str_of(v, "name").ok_or_else(|| ApiError::invalid("cookie.name required"))?;
-    let domain_raw = str_of(v, "domain").ok_or_else(|| ApiError::invalid("cookie.domain required"))?;
+    let domain_raw =
+        str_of(v, "domain").ok_or_else(|| ApiError::invalid("cookie.domain required"))?;
     let host_only = !domain_raw.starts_with('.');
     let domain = domain_raw.trim_start_matches('.').to_ascii_lowercase();
     let same_site = match str_of(v, "sameSite") {
@@ -454,7 +477,10 @@ fn cookie_from_json(v: &Value) -> Result<ve_net::Cookie, ApiError> {
         value: str_of(v, "value").unwrap_or("").to_owned(),
         domain,
         host_only,
-        path: str_of(v, "path").filter(|p| !p.is_empty()).unwrap_or("/").to_owned(),
+        path: str_of(v, "path")
+            .filter(|p| !p.is_empty())
+            .unwrap_or("/")
+            .to_owned(),
         expires,
         secure: v.get("secure").and_then(Value::as_bool).unwrap_or(false),
         http_only: v.get("httpOnly").and_then(Value::as_bool).unwrap_or(false),
@@ -510,13 +536,17 @@ fn submit_form(
     let mut pairs: Vec<(String, String)> = Vec::new();
     for id in doc.descendants(form) {
         let Some(e) = doc.element(id) else { continue };
-        let Some(name) = e.attr("name").filter(|n| !n.is_empty()) else { continue };
+        let Some(name) = e.attr("name").filter(|n| !n.is_empty()) else {
+            continue;
+        };
         if e.has_attr("disabled") {
             continue;
         }
         let value = match e.name.as_str() {
             "input" => {
-                let ty = e.attr("type").map_or_else(|| "text".to_owned(), str::to_ascii_lowercase);
+                let ty = e
+                    .attr("type")
+                    .map_or_else(|| "text".to_owned(), str::to_ascii_lowercase);
                 match ty.as_str() {
                     "checkbox" | "radio" => {
                         if !doc.is_checked(id) {
@@ -568,7 +598,10 @@ fn submit_form(
 
 /// After a click: submit the enclosing form when the target was a submit
 /// control. Returns the submission URL when one was started.
-fn submit_after_click(page: &mut ve_agent::DomPage, id: NodeId) -> Result<Option<String>, ApiError> {
+fn submit_after_click(
+    page: &mut ve_agent::DomPage,
+    id: NodeId,
+) -> Result<Option<String>, ApiError> {
     let doc = page.document();
     if !is_submit_control(doc, id) || doc.attribute(id, "disabled").is_some() {
         return Ok(None);
@@ -636,10 +669,18 @@ impl StepOut {
 
 /// Resolves a contracts target string (`r12`, `css:…`, `text:…`,
 /// `role=button[name=Save]`, bare CSS) to an engine target.
-fn parse_target(meta: &PageMeta, page: &ve_agent::DomPage, target: &str) -> Result<Target, ApiError> {
+fn parse_target(
+    meta: &PageMeta,
+    page: &ve_agent::DomPage,
+    target: &str,
+) -> Result<Target, ApiError> {
     if let Some(index) = parse_ref(target) {
-        let id = lookup_ref(page, meta, index)
-            .ok_or_else(|| ApiError::new("not_found", format!("ref {target} is unknown — observe the page first")))?;
+        let id = lookup_ref(page, meta, index).ok_or_else(|| {
+            ApiError::new(
+                "not_found",
+                format!("ref {target} is unknown — observe the page first"),
+            )
+        })?;
         return Ok(Target::Ref {
             reference: id.to_string(),
         });
@@ -648,14 +689,19 @@ fn parse_target(meta: &PageMeta, page: &ve_agent::DomPage, target: &str) -> Resu
         return Ok(Target::selector(css));
     }
     if let Some(text) = target.strip_prefix("text:") {
-        return Ok(Target::Text { text: text.to_owned() });
+        return Ok(Target::Text {
+            text: text.to_owned(),
+        });
     }
     if target.starts_with("xpath:") {
         return Err(ApiError::unsupported("xpath targets"));
     }
     if let Some(rest) = target.strip_prefix("role=") {
         let (role, name) = match rest.find("[name=") {
-            Some(i) => (&rest[..i], Some(rest[i + 6..].trim_end_matches(']').trim_matches('"'))),
+            Some(i) => (
+                &rest[..i],
+                Some(rest[i + 6..].trim_end_matches(']').trim_matches('"')),
+            ),
             None => (rest, None),
         };
         return Ok(Target::role(role, name));
@@ -671,10 +717,17 @@ fn lookup_ref(page: &ve_agent::DomPage, meta: &PageMeta, index: u32) -> Option<N
 
 fn resolve_ref(page: &ve_agent::DomPage, meta: &PageMeta, r: &str) -> Result<NodeId, ApiError> {
     let index = parse_ref(r).ok_or_else(|| ApiError::invalid(format!("{r} is not a ref")))?;
-    let id = lookup_ref(page, meta, index)
-        .ok_or_else(|| ApiError::new("not_found", format!("ref {r} is unknown — observe the page first")))?;
+    let id = lookup_ref(page, meta, index).ok_or_else(|| {
+        ApiError::new(
+            "not_found",
+            format!("ref {r} is unknown — observe the page first"),
+        )
+    })?;
     if !page.document().contains(id) {
-        return Err(ApiError::new("target_detached", format!("ref {r} no longer exists")));
+        return Err(ApiError::new(
+            "target_detached",
+            format!("ref {r} no longer exists"),
+        ));
     }
     Ok(id)
 }
@@ -710,7 +763,9 @@ fn engine_step(
         .ok_or_else(|| ApiError::new("internal", "executor produced no result"))?;
     match result.status {
         ve_agent::StepStatus::Ok => Ok(result.output),
-        ve_agent::StepStatus::Failed { error } => Err(ApiError::new(code_from_message(&error), error)),
+        ve_agent::StepStatus::Failed { error } => {
+            Err(ApiError::new(code_from_message(&error), error))
+        }
         ve_agent::StepStatus::Skipped => Err(ApiError::new("cancelled", "step skipped")),
     }
 }
@@ -721,8 +776,10 @@ fn settle_after(page: &mut ve_agent::DomPage, meta: &mut PageMeta) -> Result<boo
     page.settle(SETTLE_BUDGET);
     if navigating {
         if let Some(e) = page.take_last_error() {
-            return Err(ApiError::new("step_failed", format!("navigation failed: {e}"))
-                .with_detail(json!({ "kind": "network" })));
+            return Err(
+                ApiError::new("step_failed", format!("navigation failed: {e}"))
+                    .with_detail(json!({ "kind": "network" })),
+            );
         }
         meta.generation += 1;
         meta.refs.clear();
@@ -741,8 +798,15 @@ fn wait_condition(
     let kind = str_of(cond, "kind").unwrap_or("");
     let timeout_ms = cond.get("timeoutMs").and_then(Value::as_u64);
     let engine_wait = |page: &mut ve_agent::DomPage, condition: WaitCondition| {
-        engine_step(page, executor, EngineStep::WaitFor { condition, timeout_ms })
-            .map(|o| StepOut::detail(o.map(|v| v.to_string()).unwrap_or_default()))
+        engine_step(
+            page,
+            executor,
+            EngineStep::WaitFor {
+                condition,
+                timeout_ms,
+            },
+        )
+        .map(|o| StepOut::detail(o.map(|v| v.to_string()).unwrap_or_default()))
     };
     match kind {
         "textVisible" => {
@@ -755,7 +819,11 @@ fn wait_condition(
                 "attached" => Presence::Present,
                 "visible" => Presence::Visible,
                 "detached" => Presence::Absent,
-                other => return Err(ApiError::unsupported(format!("waitFor selector state {other:?}"))),
+                other => {
+                    return Err(ApiError::unsupported(format!(
+                        "waitFor selector state {other:?}"
+                    )));
+                }
             };
             engine_wait(page, WaitCondition::Selector { selector, state })
         }
@@ -763,26 +831,38 @@ fn wait_condition(
             let r = required_str(cond, "ref")?;
             let id = resolve_ref(page, meta, r)?;
             let shown = page.style_tree().is_displayed(id)
-                && page.layout_tree().rect_of(id).is_some_and(|r| !r.is_empty());
+                && page
+                    .layout_tree()
+                    .rect_of(id)
+                    .is_some_and(|r| !r.is_empty());
             let disabled = page.document().attribute(id, "disabled").is_some();
             if shown && !disabled {
                 Ok(StepOut::detail(format!("{r} actionable")))
             } else {
                 Err(ApiError::new(
                     "condition_timeout",
-                    format!("{r} is not actionable ({})", if disabled { "disabled" } else { "not shown" }),
+                    format!(
+                        "{r} is not actionable ({})",
+                        if disabled { "disabled" } else { "not shown" }
+                    ),
                 ))
             }
         }
         "urlMatches" => {
             let pattern = required_str(cond, "pattern")?;
-            let needle = pattern.strip_prefix('/').and_then(|p| p.strip_suffix('/')).unwrap_or(pattern);
+            let needle = pattern
+                .strip_prefix('/')
+                .and_then(|p| p.strip_suffix('/'))
+                .unwrap_or(pattern);
             page.settle(SETTLE_BUDGET);
             let url = page.url().unwrap_or("");
             if url.contains(needle) {
                 Ok(StepOut::detail(format!("url {url}")))
             } else {
-                Err(ApiError::new("condition_timeout", format!("url {url:?} does not match {pattern:?}")))
+                Err(ApiError::new(
+                    "condition_timeout",
+                    format!("url {url:?} does not match {pattern:?}"),
+                ))
             }
         }
         "navigationSettled" | "settled" => {
@@ -791,17 +871,27 @@ fn wait_condition(
             Ok(StepOut::detail(format!(
                 "settled={} navigated={navigated}{}",
                 readiness.is_ready(),
-                if readiness.is_ready() { String::new() } else { format!(": {}", readiness.blockers().join(", ")) }
+                if readiness.is_ready() {
+                    String::new()
+                } else {
+                    format!(": {}", readiness.blockers().join(", "))
+                }
             )))
         }
         "downloadCompleted" | "response" | "expression" => {
             Err(ApiError::unsupported(format!("waitFor {kind}")))
         }
-        other => Err(ApiError::invalid(format!("unknown condition kind {other:?}"))),
+        other => Err(ApiError::invalid(format!(
+            "unknown condition kind {other:?}"
+        ))),
     }
 }
 
-fn extract_fields(page: &ve_agent::DomPage, meta: &PageMeta, fields: &[Value]) -> Result<Value, ApiError> {
+fn extract_fields(
+    page: &ve_agent::DomPage,
+    meta: &PageMeta,
+    fields: &[Value],
+) -> Result<Value, ApiError> {
     let doc = page.document();
     let mut out = Map::new();
     for f in fields {
@@ -857,7 +947,11 @@ fn run_step(
             wait_condition(page, meta, executor, cond).map_err(|e| {
                 ApiError::new(
                     "condition_timeout",
-                    format!("expect {} failed: {}", str_of(cond, "kind").unwrap_or("?"), e.message),
+                    format!(
+                        "expect {} failed: {}",
+                        str_of(cond, "kind").unwrap_or("?"),
+                        e.message
+                    ),
                 )
             })?;
         }
@@ -887,7 +981,9 @@ fn run_op(
             Ok(StepOut::none())
         }
         "stop" => Ok(StepOut::detail("no load in flight")),
-        "back" | "forward" => Err(ApiError::unsupported(format!("{op} (no session history in M1)"))),
+        "back" | "forward" => Err(ApiError::unsupported(format!(
+            "{op} (no session history in M1)"
+        ))),
         "click" => {
             if let Some(b) = str_of(step, "button")
                 && b != "left"
@@ -973,7 +1069,10 @@ fn run_op(
                 other => return Err(ApiError::invalid(format!("scroll direction {other:?}"))),
             };
             let state = page.scroll(target, 0.0, dy)?;
-            Ok(StepOut::detail(format!("y={} maxY={}", state.y, state.max_y)))
+            Ok(StepOut::detail(format!(
+                "y={} maxY={}",
+                state.y, state.max_y
+            )))
         }
         "waitFor" => {
             let cond = step
@@ -1002,7 +1101,10 @@ fn run_op(
                 .get("maxScrolls")
                 .and_then(Value::as_u64)
                 .map_or(10, |m| u32::try_from(m).unwrap_or(u32::MAX));
-            let limit = step.get("limit").and_then(Value::as_u64).map(|l| l as usize);
+            let limit = step
+                .get("limit")
+                .and_then(Value::as_u64)
+                .map(|l| l as usize);
             let out = engine_step(
                 page,
                 executor,
@@ -1066,7 +1168,10 @@ mod tests {
         assert_eq!(content["headings"][0], "h1 Data");
         let elements = content["elements"].as_array().unwrap();
         let button = elements.iter().find(|e| e["name"] == "Send").unwrap();
-        let name_ref = elements.iter().find(|e| e["tag"] == "input" && e["name"] == "Name").unwrap()["ref"]
+        let name_ref = elements
+            .iter()
+            .find(|e| e["tag"] == "input" && e["name"] == "Name")
+            .unwrap()["ref"]
             .as_str()
             .unwrap()
             .to_owned();
@@ -1089,12 +1194,23 @@ mod tests {
         let res = host.call_blocking(move |s| s.execute(7, &steps, &opts));
         assert_eq!(res["ok"], true, "{res}");
         assert_eq!(res["status"], "completed", "{res}");
-        let statuses: Vec<&str> = res["steps"].as_array().unwrap().iter().map(|s| s["status"].as_str().unwrap()).collect();
+        let statuses: Vec<&str> = res["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["status"].as_str().unwrap())
+            .collect();
         assert_eq!(statuses, ["ok", "ok", "ok", "ok", "failed", "ok", "ok"]);
         assert_eq!(res["steps"][4]["error"]["code"], "capability_unsupported");
         assert_eq!(res["extracted"]["out"]["h"], "Data");
-        assert_eq!(res["extracted"]["out"]["v"], "Ada", "value reads the live control value");
-        assert_eq!(res["observation"]["content"]["formFields"][0]["value"], "Ada");
+        assert_eq!(
+            res["extracted"]["out"]["v"], "Ada",
+            "value reads the live control value"
+        );
+        assert_eq!(
+            res["observation"]["content"]["formFields"][0]["value"],
+            "Ada"
+        );
         let cb = res["observation"]["content"]["elements"]
             .as_array()
             .unwrap()
@@ -1133,7 +1249,9 @@ mod tests {
         let host = offline_host();
         let opened = host.call_blocking(|s| s.open(1, PAGE));
         assert_eq!(opened["ok"], true);
-        let steps = vec![json!({ "id": "n", "op": "navigate", "url": "data:text/html,<title>Two</title><p>two</p>" })];
+        let steps = vec![
+            json!({ "id": "n", "op": "navigate", "url": "data:text/html,<title>Two</title><p>two</p>" }),
+        ];
         let res = host.call_blocking(move |s| s.execute(1, &steps, &ExecuteOptions::default()));
         assert_eq!(res["status"], "completed", "{res}");
         assert_eq!(res["generation"], 1);
@@ -1155,7 +1273,10 @@ mod tests {
         let opened = host.call_blocking(move |s| s.open(1, spa));
         assert_eq!(opened["ok"], true, "{opened}");
         assert_eq!(opened["routing"]["requiresScript"], true);
-        assert_eq!(opened["routing"]["reason"], "thin-body-with-external-script");
+        assert_eq!(
+            opened["routing"]["reason"],
+            "thin-body-with-external-script"
+        );
 
         let dir = std::env::temp_dir().join(format!("ve-napi-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -1187,23 +1308,36 @@ mod tests {
         assert_eq!(host.call_blocking(move |s| s.open(1, page))["ok"], true);
         let steps = vec![json!({ "id": "c", "op": "click", "target": "css:#apply" })];
         let res = host.call_blocking(move |s| s.execute(1, &steps, &ExecuteOptions::default()));
-        let detail = res["steps"][0]["error"]["detail"]["step"].as_str().unwrap_or("");
+        let detail = res["steps"][0]["error"]["detail"]["step"]
+            .as_str()
+            .unwrap_or("");
         assert!(
             detail.contains("http://records.test/records?status=approved&q=boots&c=on&go=1"),
             "submission url encodes the successful controls: {res}"
         );
-        assert!(!detail.contains("d="), "unchecked boxes are skipped: {detail}");
+        assert!(
+            !detail.contains("d="),
+            "unchecked boxes are skipped: {detail}"
+        );
 
-        let steps = vec![json!({ "id": "e", "op": "press", "key": "Enter", "target": "css:input[name=q]" })];
+        let steps = vec![
+            json!({ "id": "e", "op": "press", "key": "Enter", "target": "css:input[name=q]" }),
+        ];
         let res = host.call_blocking(move |s| s.execute(1, &steps, &ExecuteOptions::default()));
         assert!(
-            res["steps"][0]["error"]["detail"]["step"].as_str().unwrap_or("").contains("Enter submit http://records.test/records?status="),
+            res["steps"][0]["error"]["detail"]["step"]
+                .as_str()
+                .unwrap_or("")
+                .contains("Enter submit http://records.test/records?status="),
             "Enter submits through the default button: {res}"
         );
 
         let steps = vec![json!({ "id": "p", "op": "click", "target": "css:#save" })];
         let res = host.call_blocking(move |s| s.execute(1, &steps, &ExecuteOptions::default()));
-        assert_eq!(res["steps"][0]["error"]["code"], "capability_unsupported", "{res}");
+        assert_eq!(
+            res["steps"][0]["error"]["code"], "capability_unsupported",
+            "{res}"
+        );
     }
 
     #[test]

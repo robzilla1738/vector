@@ -118,7 +118,8 @@ pub mod bindings {
     }
 
     fn lock(hub: &Arc<Mutex<Hub>>) -> std::sync::MutexGuard<'_, Hub> {
-        hub.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+        hub.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     #[napi]
@@ -147,8 +148,17 @@ pub mod bindings {
         /// Opens `url` in `context_id`. Resolves to
         /// `{ok, page, url, title, generation, revision, settled, routing}`.
         #[napi]
-        pub fn open(&self, context_id: u32, url: String, options_json: Option<String>) -> AsyncTask<Pending> {
-            Pending::new(lock(&self.hub).open(context_id, &url, options_json.as_deref().unwrap_or("{}")))
+        pub fn open(
+            &self,
+            context_id: u32,
+            url: String,
+            options_json: Option<String>,
+        ) -> AsyncTask<Pending> {
+            Pending::new(lock(&self.hub).open(
+                context_id,
+                &url,
+                options_json.as_deref().unwrap_or("{}"),
+            ))
         }
 
         /// Observes a page. `options_json` mirrors `ObservationRequest`
@@ -156,7 +166,9 @@ pub mod bindings {
         /// `sinceRevision`). Resolves to `{ok, content, revision, generation, settled, changed?}`.
         #[napi]
         pub fn observe(&self, page: u32, options_json: Option<String>) -> AsyncTask<Pending> {
-            Pending::new(lock(&self.hub).observe(u64::from(page), options_json.as_deref().unwrap_or("{}")))
+            Pending::new(
+                lock(&self.hub).observe(u64::from(page), options_json.as_deref().unwrap_or("{}")),
+            )
         }
 
         /// Runs contracts steps (`steps_json` is a `Step[]`). `options_json`
@@ -164,7 +176,12 @@ pub mod bindings {
         /// `stopOnError`. Resolves to a `ProgramResult` plus
         /// `url`, `title`, `generation`, `navigated`, `revision`, `observation?`.
         #[napi]
-        pub fn execute(&self, page: u32, steps_json: String, options_json: Option<String>) -> AsyncTask<Pending> {
+        pub fn execute(
+            &self,
+            page: u32,
+            steps_json: String,
+            options_json: Option<String>,
+        ) -> AsyncTask<Pending> {
             Pending::new(lock(&self.hub).execute(
                 u64::from(page),
                 &steps_json,
@@ -175,7 +192,10 @@ pub mod bindings {
         /// Rasterises a page. Not available in M1 (`capability_unsupported`).
         #[napi]
         pub fn screenshot(&self, page: u32, options_json: Option<String>) -> AsyncTask<Pending> {
-            Pending::new(lock(&self.hub).screenshot(u64::from(page), options_json.as_deref().unwrap_or("{}")))
+            Pending::new(
+                lock(&self.hub)
+                    .screenshot(u64::from(page), options_json.as_deref().unwrap_or("{}")),
+            )
         }
 
         /// Closes a page. Resolves to `{ok, closed}`.

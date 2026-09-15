@@ -111,7 +111,11 @@ fn cell_text(nodes: &[SnapshotNode], i: usize) -> String {
         return cell.name.clone();
     }
     let mut out = Vec::new();
-    for n in nodes.iter().skip(i + 1).take_while(|n| n.depth > cell.depth) {
+    for n in nodes
+        .iter()
+        .skip(i + 1)
+        .take_while(|n| n.depth > cell.depth)
+    {
         if n.role == Role::StaticText && !n.name.is_empty() {
             out.push(n.name.clone());
         } else if let Some(v) = &n.value {
@@ -255,12 +259,10 @@ pub fn build_content(page: &DomPage, snapshot: &SemanticSnapshot, req: &ObserveR
 
     for (i, n) in nodes.iter().enumerate() {
         match n.role {
-            Role::Heading => headings.push(json!(format!(
-                "h{} {}",
-                n.level.unwrap_or(2),
-                n.name
-            ))),
-            Role::Dialog | Role::Alert => dialogs.push(json!({ "type": n.role.name(), "message": n.name })),
+            Role::Heading => headings.push(json!(format!("h{} {}", n.level.unwrap_or(2), n.name))),
+            Role::Dialog | Role::Alert => {
+                dialogs.push(json!({ "type": n.role.name(), "message": n.name }))
+            }
             Role::Table if want_tables => {
                 let depth = n.depth;
                 let mut rows: Vec<Vec<String>> = Vec::new();
@@ -273,7 +275,10 @@ pub fn build_content(page: &DomPage, snapshot: &SemanticSnapshot, req: &ObserveR
                         let mut header = false;
                         let mut k = j + 1;
                         while k < nodes.len() && nodes[k].depth > row_depth {
-                            if matches!(nodes[k].role, Role::Cell | Role::ColumnHeader | Role::RowHeader) {
+                            if matches!(
+                                nodes[k].role,
+                                Role::Cell | Role::ColumnHeader | Role::RowHeader
+                            ) {
                                 header |= nodes[k].role == Role::ColumnHeader;
                                 cells.push(cell_text(nodes, k));
                             }
@@ -329,7 +334,10 @@ pub fn build_content(page: &DomPage, snapshot: &SemanticSnapshot, req: &ObserveR
             if let Some(v) = &n.value {
                 f.insert("value".into(), json!(v));
             } else if n.role.is_checkable() {
-                f.insert("value".into(), json!(if state(n, "checked") { "on" } else { "" }));
+                f.insert(
+                    "value".into(),
+                    json!(if state(n, "checked") { "on" } else { "" }),
+                );
             }
             if state(n, "required") {
                 f.insert("required".into(), json!(true));
@@ -403,14 +411,21 @@ mod tests {
         assert_eq!(content["title"], "Shop");
         assert_eq!(content["headings"][0], "h1 Products");
         let elements = content["elements"].as_array().unwrap();
-        assert!(elements.iter().all(|e| e["ref"].as_str().unwrap().starts_with('r')));
+        assert!(
+            elements
+                .iter()
+                .all(|e| e["ref"].as_str().unwrap().starts_with('r'))
+        );
         let go = elements.iter().find(|e| e["name"] == "Go").expect("button");
         assert_eq!(go["role"], "button");
         assert_eq!(go["tag"], "button");
         assert_eq!(go["selector"]["css"], "#go");
         assert_eq!(go["selector"]["role"]["role"], "button");
         assert!(go["rect"]["w"].as_f64().unwrap() > 0.0);
-        let cb = elements.iter().find(|e| e["type"] == "checkbox").expect("checkbox");
+        let cb = elements
+            .iter()
+            .find(|e| e["type"] == "checkbox")
+            .expect("checkbox");
         assert_eq!(cb["checked"], true);
         let link = elements.iter().find(|e| e["role"] == "link").expect("link");
         assert_eq!(link["href"], "/next");
@@ -430,7 +445,10 @@ mod tests {
         let text = content["text"].as_str().unwrap();
         assert!(text.contains("heading h1 \"Products\""), "{text}");
         assert!(text.contains("- text \"Some prose\""), "{text}");
-        assert!(!text.contains("- generic"), "generic wrappers pruned: {text}");
+        assert!(
+            !text.contains("- generic"),
+            "generic wrappers pruned: {text}"
+        );
         assert_eq!(content["stats"]["elementsShown"], elements.len());
         assert_eq!(content["truncated"], false);
         assert_eq!(content["viewport"]["width"], 1280.0);
@@ -449,7 +467,14 @@ mod tests {
         assert_eq!(small["truncated"], true);
 
         // scopes
-        let forms = build_content(&page, &snap, &ObserveRequest { scope: Some("forms".into()), ..ObserveRequest::default() });
+        let forms = build_content(
+            &page,
+            &snap,
+            &ObserveRequest {
+                scope: Some("forms".into()),
+                ..ObserveRequest::default()
+            },
+        );
         assert!(forms["elements"].as_array().unwrap().is_empty());
         assert!(!forms["formFields"].as_array().unwrap().is_empty());
         assert_eq!(forms["text"], "");

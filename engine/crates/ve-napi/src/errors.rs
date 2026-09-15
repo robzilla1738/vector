@@ -72,7 +72,9 @@ impl From<ve_core::Error> for ApiError {
             E::NotAnElement(_) | E::NoMatch(_) => Self::new("not_found", message),
             E::Parse { .. } | E::Serialization(_) => Self::new("invalid_params", message),
             E::Unsupported(what) => Self::unsupported(what),
-            E::Network(_) => Self::new("step_failed", message).with_detail(json!({ "kind": "network" })),
+            E::Network(_) => {
+                Self::new("step_failed", message).with_detail(json!({ "kind": "network" }))
+            }
             E::Script(_) => Self::new("step_failed", message),
             E::Timeout { .. } => Self::new("condition_timeout", message),
             E::InvalidState(ref s) if s.starts_with("no such page") => {
@@ -104,9 +106,8 @@ pub fn code_from_message(message: &str) -> &'static str {
         "capability_unsupported"
     } else if message.starts_with("stale or unknown node") {
         "target_detached"
-    } else if message.contains("network") {
-        "step_failed"
     } else {
+        // network failures included: they are step failures, not capability gaps
         "step_failed"
     }
 }
@@ -118,10 +119,16 @@ mod tests {
     #[test]
     fn maps_engine_errors_to_runtime_codes() {
         let cases: Vec<(ve_core::Error, &str)> = vec![
-            (ve_core::Error::InvalidNodeId(ve_core::NodeId::new(1, 0)), "target_detached"),
+            (
+                ve_core::Error::InvalidNodeId(ve_core::NodeId::new(1, 0)),
+                "target_detached",
+            ),
             (ve_core::Error::NoMatch("#x".into()), "not_found"),
             (ve_core::Error::parse("ref", "bad"), "invalid_params"),
-            (ve_core::Error::unsupported("hover"), "capability_unsupported"),
+            (
+                ve_core::Error::unsupported("hover"),
+                "capability_unsupported",
+            ),
             (ve_core::Error::Network("boom".into()), "step_failed"),
             (
                 ve_core::Error::Timeout {
@@ -130,13 +137,22 @@ mod tests {
                 },
                 "condition_timeout",
             ),
-            (ve_core::Error::InvalidState("no such page 3".into()), "target_detached"),
-            (ve_core::Error::InvalidState("n1.0 is disabled".into()), "step_failed"),
+            (
+                ve_core::Error::InvalidState("no such page 3".into()),
+                "target_detached",
+            ),
+            (
+                ve_core::Error::InvalidState("n1.0 is disabled".into()),
+                "step_failed",
+            ),
         ];
         for (err, code) in cases {
             assert_eq!(ApiError::from(err).code, code);
         }
-        assert_eq!(code_from_message("timed out after 5 ms during agent"), "condition_timeout");
+        assert_eq!(
+            code_from_message("timed out after 5 ms during agent"),
+            "condition_timeout"
+        );
         assert_eq!(code_from_message("no element matches `x`"), "not_found");
         let j = ApiError::unsupported("hover").to_json();
         assert_eq!(j["code"], "capability_unsupported");
