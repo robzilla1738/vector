@@ -1,0 +1,31 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - heading "Records" [level=1] [ref=f1e3]
+    - link "All records" [ref=f1e4] [cursor=pointer]:
+      - /url: /records
+    - link "New record" [ref=f1e5] [cursor=pointer]:
+      - /url: /new
+    - link "Pop-up info" [ref=f1e6] [cursor=pointer]:
+      - /url: /popup-info
+    - link "State JSON" [ref=f1e7] [cursor=pointer]:
+      - /url: /api/state
+    - generic [ref=f1e8]: fixture :4810
+  - main [ref=f1e9]:
+    - generic [ref=f1e10]:
+      - heading "Record 07 — Charlie project" [level=2] [ref=f1e11]
+      - paragraph [ref=f1e12]:
+        - strong [ref=f1e13]: "Owner:"
+        - text: Jordan Lee
+      - paragraph [ref=f1e14]:
+        - strong [ref=f1e15]: "Status:"
+        - generic [ref=f1e16]: in review
+      - paragraph [ref=f1e18]: "Deterministic fixture record #7. Owned by Jordan Lee; status \"in review\"."
+      - paragraph [ref=f1e19]: id=rec-07 · updated 2026-09-08T10:00:00Z
+      - button "Edit record" [ref=f1e20] [cursor=pointer]
+      - button "Details…" [ref=f1e21] [cursor=pointer]
+      - link "Slow info (delayed)" [ref=f1e22] [cursor=pointer]:
+        - /url: /records/rec-07/slow-info
+    - generic [ref=f1e23]:
+      - heading "Attachments" [level=3] [ref=f1e24]
+      - list [ref=f1e25]:
+        - listitem [ref=f1e26]: none

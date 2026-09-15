@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Vector — a local agent-first browser. One execution runtime shared by a native human interface and structured agent interfaces.",
+  "description": "Vector \u2014 a local agent-first browser. One execution runtime shared by a native human interface and structured agent interfaces.",
   "packageManager": "pnpm@11.12.0",
   "engines": {
     "node": ">=22.18.0"
@@ -19,7 +19,8 @@
     "smoke:packaged": "node tests/smoke/packaged.mjs",
     "bench": "node tests/benchmarks/run.mjs",
     "package:local": "node scripts/package-local.mjs",
-    "cli": "node packages/cli/dist/main.js"
+    "cli": "node packages/cli/dist/main.js",
+    "bench:tasks": "node tests/benchmarks/tasks/run.mjs"
   },
   "devDependencies": {
     "@types/node": "24.3.0",

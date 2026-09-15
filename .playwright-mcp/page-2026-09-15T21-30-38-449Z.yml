@@ -1,0 +1,121 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - heading "Records" [level=1] [ref=f5e3]
+    - link "All records" [ref=f5e4] [cursor=pointer]:
+      - /url: /records
+    - link "New record" [ref=f5e5] [cursor=pointer]:
+      - /url: /new
+    - link "Pop-up info" [ref=f5e6] [cursor=pointer]:
+      - /url: /popup-info
+    - link "State JSON" [ref=f5e7] [cursor=pointer]:
+      - /url: /api/state
+    - generic [ref=f5e8]: fixture :4810
+  - main [ref=f5e9]:
+    - generic [ref=f5e10]:
+      - generic [ref=f5e11]:
+        - generic [ref=f5e12]: Filter by status
+        - combobox "Filter by status" [ref=f5e13]:
+          - option "All statuses" [selected]
+          - option "draft"
+          - option "in progress"
+          - option "in review"
+          - option "approved"
+          - option "archived"
+      - button "Apply filter" [ref=f5e14] [cursor=pointer]
+    - table [ref=f5e15]:
+      - rowgroup [ref=f5e16]:
+        - row [ref=f5e17]:
+          - columnheader "Title" [ref=f5e18]
+          - columnheader "Owner" [ref=f5e19]
+          - columnheader "Status" [ref=f5e20]
+          - columnheader "Updated" [ref=f5e21]
+          - columnheader "Files" [ref=f5e22]
+      - rowgroup [ref=f5e23]:
+        - row [ref=f5e24]:
+          - cell [ref=f5e25]:
+            - link "Record 11 — Bravo project" [ref=f5e26] [cursor=pointer]:
+              - /url: /records/rec-11
+          - cell "Sam Chen" [ref=f5e27]
+          - cell "in progress" [ref=f5e28]
+          - cell "2026-09-12" [ref=f5e30]
+          - cell "0 files" [ref=f5e31]
+        - row [ref=f5e32]:
+          - cell [ref=f5e33]:
+            - link "Record 12 — Charlie project" [ref=f5e34] [cursor=pointer]:
+              - /url: /records/rec-12
+          - cell "Jordan Lee" [ref=f5e35]
+          - cell "in review" [ref=f5e36]
+          - cell "2026-09-13" [ref=f5e38]
+          - cell "1 file" [ref=f5e39]
+        - row [ref=f5e40]:
+          - cell [ref=f5e41]:
+            - link "Record 13 — Delta project" [ref=f5e42] [cursor=pointer]:
+              - /url: /records/rec-13
+          - cell "Priya Patel" [ref=f5e43]
+          - cell "approved" [ref=f5e44]
+          - cell "2026-09-14" [ref=f5e46]
+          - cell "0 files" [ref=f5e47]
+        - row [ref=f5e48]:
+          - cell [ref=f5e49]:
+            - link "Record 14 — Echo project" [ref=f5e50] [cursor=pointer]:
+              - /url: /records/rec-14
+          - cell "Morgan Diaz" [ref=f5e51]
+          - cell "archived" [ref=f5e52]
+          - cell "2026-09-15" [ref=f5e54]
+          - cell "0 files" [ref=f5e55]
+        - row [ref=f5e56]:
+          - cell [ref=f5e57]:
+            - link "Record 15 — Alpha project" [ref=f5e58] [cursor=pointer]:
+              - /url: /records/rec-15
+          - cell "Alex Rivera" [ref=f5e59]
+          - cell "draft" [ref=f5e60]
+          - cell "2026-09-16" [ref=f5e62]
+          - cell "2 files" [ref=f5e63]
+        - row [ref=f5e64]:
+          - cell [ref=f5e65]:
+            - link "Record 16 — Bravo project" [ref=f5e66] [cursor=pointer]:
+              - /url: /records/rec-16
+          - cell "Sam Chen" [ref=f5e67]
+          - cell "in progress" [ref=f5e68]
+          - cell "2026-09-17" [ref=f5e70]
+          - cell "0 files" [ref=f5e71]
+        - row [ref=f5e72]:
+          - cell [ref=f5e73]:
+            - link "Record 17 — Charlie project" [ref=f5e74] [cursor=pointer]:
+              - /url: /records/rec-17
+          - cell "Jordan Lee" [ref=f5e75]
+          - cell "in review" [ref=f5e76]
+          - cell "2026-09-18" [ref=f5e78]
+          - cell "0 files" [ref=f5e79]
+        - row [ref=f5e80]:
+          - cell [ref=f5e81]:
+            - link "Record 18 — Delta project" [ref=f5e82] [cursor=pointer]:
+              - /url: /records/rec-18
+          - cell "Priya Patel" [ref=f5e83]
+          - cell "approved" [ref=f5e84]
+          - cell "2026-09-19" [ref=f5e86]
+          - cell "1 file" [ref=f5e87]
+        - row [ref=f5e88]:
+          - cell [ref=f5e89]:
+            - link "Record 19 — Echo project" [ref=f5e90] [cursor=pointer]:
+              - /url: /records/rec-19
+          - cell "Morgan Diaz" [ref=f5e91]
+          - cell "archived" [ref=f5e92]
+          - cell "2026-09-20" [ref=f5e94]
+          - cell "0 files" [ref=f5e95]
+        - row [ref=f5e96]:
+          - cell [ref=f5e97]:
+            - link "Record 20 — Alpha project" [ref=f5e98] [cursor=pointer]:
+              - /url: /records/rec-20
+          - cell "Alex Rivera" [ref=f5e99]
+          - cell "draft" [ref=f5e100]
+          - cell "2026-09-21" [ref=f5e102]
+          - cell "1 file" [ref=f5e103]
+    - navigation "pages" [ref=f5e104]:
+      - link "1" [ref=f5e105] [cursor=pointer]:
+        - /url: "?page=1"
+      - link "2" [ref=f5e106] [cursor=pointer]:
+        - /url: "?page=2"
+      - link "3" [ref=f5e107] [cursor=pointer]:
+        - /url: "?page=3"
+    - paragraph [ref=f5e108]: 30 records

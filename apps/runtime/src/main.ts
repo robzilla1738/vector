@@ -368,6 +368,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await drivers.chrome?.disconnect().catch(() => {});
     await drivers.engine?.disconnect().catch(() => {});
     await api.close().catch(() => {});
+    tracer.close();
     repo.db.close();
   };
   process.on("SIGTERM", () => void shutdown().then(() => process.exit(0)));

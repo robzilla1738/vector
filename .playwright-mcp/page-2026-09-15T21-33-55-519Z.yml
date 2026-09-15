@@ -1,0 +1,34 @@
+- generic [active] [ref=f11e1]:
+  - banner [ref=f11e2]:
+    - heading "Records" [level=1] [ref=f11e3]
+    - link "All records" [ref=f11e4] [cursor=pointer]:
+      - /url: /records
+    - link "New record" [ref=f11e5] [cursor=pointer]:
+      - /url: /new
+    - link "Pop-up info" [ref=f11e6] [cursor=pointer]:
+      - /url: /popup-info
+    - link "State JSON" [ref=f11e7] [cursor=pointer]:
+      - /url: /api/state
+    - generic [ref=f11e8]: fixture :4810
+  - main [ref=f11e9]:
+    - generic [ref=f11e10]:
+      - heading "Record 10 — Alpha project" [level=2] [ref=f11e11]
+      - paragraph [ref=f11e12]:
+        - strong [ref=f11e13]: "Owner:"
+        - text: Alex Rivera
+      - paragraph [ref=f11e14]:
+        - strong [ref=f11e15]: "Status:"
+        - generic [ref=f11e16]: draft
+      - paragraph [ref=f11e18]: "Deterministic fixture record #10. Owned by Alex Rivera; status \"draft\"."
+      - paragraph [ref=f11e19]: id=rec-10 · updated 2026-09-11T10:00:00Z
+      - button "Edit record" [ref=f11e20] [cursor=pointer]
+      - button "Details…" [ref=f11e21] [cursor=pointer]
+      - link "Slow info (delayed)" [ref=f11e22] [cursor=pointer]:
+        - /url: /records/rec-10/slow-info
+    - generic [ref=f11e23]:
+      - heading "Attachments" [level=3] [ref=f11e24]
+      - list [ref=f11e25]:
+        - listitem [ref=f11e26]:
+          - link "rec-10-data.csv" [ref=f11e27] [cursor=pointer]:
+            - /url: /records/rec-10/download/rec-10-data.csv
+          - text: 20 bytes

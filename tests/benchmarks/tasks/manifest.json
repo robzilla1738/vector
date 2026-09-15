@@ -1,0 +1,83 @@
+{
+  "$comment": "Local task-success suite against the deterministic fixture sites (pnpm fixtures). Gold answers follow from the seed in fixtures/records-app/serve.ts: owner = OWNERS[i % 5], status = STATUSES[i % 5], title suffix = [Alpha,Bravo,Charlie,Delta,Echo][i % 5], attachments at i % 3 == 0 (notes) and i % 5 == 0 (csv). Scoring is strict: normalized exact match, numbers within 1 %.",
+  "suite": "local",
+  "tasks": [
+    {
+      "id": "L01-owner",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "Who is the owner of the record titled 'Record 07 — Charlie project'? Answer with the owner's full name only.",
+      "expected": {
+        "type": "text",
+        "value": "Jordan Lee"
+      }
+    },
+    {
+      "id": "L02-status",
+      "url": "http://127.0.0.1:4810/records/rec-12",
+      "goal": "What is the current status of this record? Answer with the status text only.",
+      "expected": {
+        "type": "text",
+        "value": "in review"
+      }
+    },
+    {
+      "id": "L03-count-approved",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "How many records have the status 'approved'? Use the status filter and count every page. Answer with a number only.",
+      "expected": {
+        "type": "number",
+        "value": 6
+      }
+    },
+    {
+      "id": "L04-title",
+      "url": "http://127.0.0.1:4810/records?page=2",
+      "goal": "Open record rec-15 and report its exact title.",
+      "expected": {
+        "type": "text",
+        "value": "Record 15 — Alpha project"
+      }
+    },
+    {
+      "id": "L05-attachment",
+      "url": "http://127.0.0.1:4810/records/rec-09",
+      "goal": "What is the file name of the attachment on this record? Answer with the file name only.",
+      "expected": {
+        "type": "text",
+        "value": "rec-09-notes.txt"
+      }
+    },
+    {
+      "id": "L07-owner-count",
+      "url": "http://127.0.0.1:4810/records",
+      "goal": "How many records are owned by Priya Patel across all pages? Answer with a number only.",
+      "expected": {
+        "type": "number",
+        "value": 6
+      }
+    },
+    {
+      "id": "L08-csv-metric",
+      "url": "http://127.0.0.1:4810/records/rec-10",
+      "goal": "Open the CSV attachment on this record and report the value in its 'metric' column. Answer with a number only.",
+      "expected": {
+        "type": "number",
+        "value": 70
+      }
+    },
+    {
+      "id": "L06-edit-status",
+      "url": "http://127.0.0.1:4810/records/rec-04",
+      "goal": "Change this record's status to 'approved', save, and report the status shown after saving. Answer with the status text only.",
+      "expected": {
+        "type": "text",
+        "value": "approved"
+      },
+      "write": true
+    }
+  ],
+  "reset": {
+    "method": "POST",
+    "url": "http://127.0.0.1:4810/api/reset"
+  }
+}
