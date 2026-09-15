@@ -28,7 +28,6 @@ export function Settings() {
   const [key, setKey] = useState("");
   const [saved, setSaved] = useState(false);
   const [models, setModels] = useState<ModelEntry[]>([]);
-  const [modelsSource, setModelsSource] = useState<string>("");
   const [probe, setProbe] = useState<ProbeResult | null>(null);
   const [probing, setProbing] = useState(false);
   const [dataDir, setDataDir] = useState("");
@@ -37,11 +36,8 @@ export function Settings() {
 
   useEffect(() => {
     void bridge.dataDir().then(setDataDir);
-    void call<{ models: ModelEntry[]; source: string }>("models.list")
-      .then((r) => {
-        setModels(r.models);
-        setModelsSource(r.source);
-      })
+    void call<{ models: ModelEntry[] }>("models.list")
+      .then((r) => setModels(r.models))
       .catch(() => {});
   }, []);
 
@@ -68,7 +64,7 @@ export function Settings() {
   };
 
   const theme = (settings.theme as string) ?? "dark";
-  const plannerModel = (settings.plannerModel as string) ?? "anthropic/claude-sonnet-4.5";
+  const plannerModel = (settings.plannerModel as string) ?? "alibaba/qwen3.8-27b";
   const hasKey = settings.gatewayApiKey === KEY_MASK;
   const engineMode = readEngineMode(settings);
 
@@ -92,7 +88,7 @@ export function Settings() {
         </Field>
 
         <div className="drawer-section">Engine</div>
-        <Field label="Vector Engine" hint={<>{engineModeLabel(engineMode)}. {/* TODO(contracts): engineMode lands with the vector-engine backend; until then the runtime ignores this key. */}</>}>
+        <Field label="Vector Engine" hint={engineModeLabel(engineMode)}>
           <div className="seg" role="radiogroup" aria-label="Engine mode">
             {(["off", "auto", "always"] as EngineMode[]).map((m) => (
               <button key={m} role="radio" aria-checked={engineMode === m} className={engineMode === m ? "on" : ""} onClick={() => void set({ engineMode: m })}>
@@ -103,7 +99,7 @@ export function Settings() {
         </Field>
 
         <div className="drawer-section">Models</div>
-        <Field label="Vercel AI Gateway key" hint={<>{hasKey ? "A key is configured." : "No key configured."} Enables model planning — without it the runtime uses the mock planner.</>}>
+        <Field label="Vercel AI Gateway key" hint={<>{hasKey ? "A key is configured." : "No key configured."} Required for agent runs. Without it, starting a run fails.</>}>
           <div className="row">
             <input
               type="password"
@@ -122,16 +118,9 @@ export function Settings() {
           </div>
         </Field>
 
-        <Field label="Planner model" hint={modelsSource === "gateway" ? `${models.length} models from the Gateway catalog.` : "Static fallback list — add a Gateway key for the live catalog."}>
-          {models.length > 0 ? (
-            <select value={plannerModel} onChange={(e) => void set({ plannerModel: e.target.value })}>
-              {!models.some((m) => m.id === plannerModel) && <option value={plannerModel}>{plannerModel}</option>}
-              {models.map((m) => <option key={m.id} value={m.id}>{m.name ? `${m.name} — ${m.id}` : m.id}</option>)}
-            </select>
-          ) : (
-            <input defaultValue={plannerModel} onBlur={(e) => void set({ plannerModel: e.target.value })} />
-          )}
+        <Field label="Planner model" hint="Pinned to Cerebras Qwen 3.8 27B through the AI Gateway.">
           <div className="row">
+            <span className="hint mono selectable grow">{plannerModel}</span>
             <button className="btn sm" disabled={probing} onClick={() => void runProbe()}>{probing ? "Probing…" : "Test connection"}</button>
             {probe && (
               <span className={`hint ${probe.ok ? "ok" : "err"}`}>
@@ -141,7 +130,7 @@ export function Settings() {
           </div>
         </Field>
 
-        <Field label="Vision model" hint="Used once per run to re-plan from a screenshot when the structured path fails.">
+        <Field label="Vision model" hint="Screenshot replan is skipped on the Cerebras planner.">
           <select value={(settings.visionModel as string) ?? ""} onChange={(e) => void set({ visionModel: e.target.value })}>
             <option value="">Same as planner</option>
             {models.map((m) => <option key={m.id} value={m.id}>{m.name ? `${m.name} — ${m.id}` : m.id}</option>)}
@@ -153,7 +142,7 @@ export function Settings() {
             <input type="number" min={1} max={16} defaultValue={(settings.maxWorkers as number) ?? 4} onBlur={(e) => void set({ maxWorkers: Number(e.target.value) })} />
           </Field>
           <Field label="Max model calls per run">
-            <input type="number" min={1} max={8} defaultValue={(settings.maxModelCalls as number) ?? 3} onBlur={(e) => void set({ maxModelCalls: Number(e.target.value) })} />
+            <input type="number" min={1} max={8} defaultValue={(settings.maxModelCalls as number) ?? 8} onBlur={(e) => void set({ maxModelCalls: Number(e.target.value) })} />
           </Field>
         </div>
 

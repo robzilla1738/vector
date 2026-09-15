@@ -37,9 +37,12 @@ export function App() {
   const stageRef = useRef<HTMLDivElement>(null);
   const space = layout.spaces.find((s) => s.id === layout.activeSpaceId) ?? layout.spaces[0]!;
 
-  // theme + space tint on the root so tokens cascade everywhere
+  // theme + space tint on the root so tokens cascade everywhere, including
+  // the native window (vibrancy was why light mode never showed)
   useEffect(() => {
-    document.documentElement.dataset.theme = (settings.theme as string) ?? "dark";
+    const theme = settings.theme === "light" ? "light" : "dark";
+    document.documentElement.dataset.theme = theme;
+    void bridge.setAppearance(theme);
   }, [settings.theme]);
   useEffect(() => {
     document.documentElement.dataset.space = space.color;
@@ -267,7 +270,7 @@ export function App() {
     >
       {!connected && (
         <div className="degraded" role="alert">
-          <span className="pulse-dot warn" />
+          {I.alert}
           <span>Runtime disconnected — tabs keep working, the agent is paused while we reconnect.</span>
           <button className="btn sm" onClick={() => void useStore.getState().refresh()}>Reconnect now</button>
         </div>
@@ -275,7 +278,7 @@ export function App() {
       <div className="app-body">
         <Sidebar />
         <div className="main-col">
-          <Toolbar />
+          {sidebar === "hidden" && <Toolbar />}
           <div className="main">
             <div className="stage-wrap">
               {overlay === "find" && <FindBar />}

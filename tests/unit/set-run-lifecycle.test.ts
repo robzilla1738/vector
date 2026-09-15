@@ -70,6 +70,7 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
   const settings = {
     maxWorkers: () => maxWorkers,
     perOrigin: () => 8,
+    maxModelCalls: () => 8,
     model: () => opts.model ?? null,
     plannerModel: () => "mock/planner",
     recoveryModel: () => undefined,

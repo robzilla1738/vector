@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CompactObservation, Run } from "@vector/contracts";
-import { decodeBase64Json, isLive, useStore, call, errToast, toast } from "../store";
+import { decodeBase64Json, isLive, useStore, call, errToast } from "../store";
 import { hostOf } from "../workspace";
 import { ObservationPanel } from "./ObservationPanel";
 import { StepTimeline, fmtMs } from "./StepTimeline";
@@ -45,7 +45,7 @@ function fmtCost(usd: number, estimated: boolean): string {
   return `${estimated ? "≈" : ""}$${usd < 0.01 ? usd.toFixed(4) : usd.toFixed(2)}`;
 }
 
-/** Final answer: statusMessage as prose, result as a key/value list, one copy button. */
+/** Final answer as prose — no status chrome, copy is an icon. */
 function Answer({ run }: { run: Run }) {
   const [copied, setCopied] = useState(false);
   const text = useMemo(() => {
@@ -61,18 +61,15 @@ function Answer({ run }: { run: Run }) {
       setTimeout(() => setCopied(false), 1200);
     });
   };
-  const done = !isLive(run);
-  if (!done && !run.error) return null;
+  if (isLive(run) && !run.error) return null;
+  if (!run.statusMessage && !run.result && !run.error) return null;
   return (
-    <section className={`answer ${run.status}`}>
-      <div className="answer-head">
-        <span className={`st ${run.status}`}>{STATUS_LABEL[run.status]}</span>
-        <span className="sp" />
-        <button className="btn sm ghost" onClick={copy} aria-live="polite">
+    <section className="answer">
+      {text && (
+        <button className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} onClick={copy}>
           {copied ? I.check : I.copy}
-          {copied ? "Copied" : "Copy"}
         </button>
-      </div>
+      )}
       {run.statusMessage && <p className="answer-text">{run.statusMessage}</p>}
       {run.result && Object.keys(run.result).length > 0 && (
         <dl className="answer-result">
@@ -104,15 +101,20 @@ export function RunPanel({ runId }: { runId: string }) {
   const obs = useStore((s) => s.observations[runId]);
   const prompt = useStore((s) => s.prompt);
   const pages = useStore((s) => s.pages);
+  const activePageId = useStore((s) => s.activePageId);
   const loadRun = useStore((s) => s.loadRun);
   const answerRun = useStore((s) => s.answerRun);
   const returnControl = useStore((s) => s.returnControl);
   const startRun = useStore((s) => s.startRun);
   const activate = useStore((s) => s.activate);
   const [answer, setAnswer] = useState("");
-  const [showObs, setShowObs] = useState(true);
+  const [showObs, setShowObs] = useState(false);
+  const [showSteps, setShowSteps] = useState(false);
 
   useEffect(() => {
+    setShowObs(false);
+    const r = useStore.getState().runs.find((x) => x.runId === runId);
+    setShowSteps(!!r && isLive(r));
     if (!steps || (!obs && steps.length)) void loadRun(runId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId]);
@@ -142,21 +144,20 @@ export function RunPanel({ runId }: { runId: string }) {
   return (
     <div className="run-panel" data-testid="run-panel">
       <div className="run-goal">
-        <span className={`run-ico ${live ? "live" : run.status}`}>{live ? <span className="pulse-dot" /> : run.status === "completed" ? I.checkLg : run.status === "failed" ? I.alert : I.sparkles}</span>
         <h2>{run.goal}</h2>
       </div>
 
       <div className="run-status nums">
-        <span className={`st ${run.status}`}>{STATUS_LABEL[run.status]}</span>
+        <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>
         <span className="run-time" title="Elapsed">{fmtElapsed(elapsed)}</span>
-        {calls != null && (
-          <span className="run-calls" title="Model calls">
-            {calls} {calls === 1 ? "call" : "calls"}
-            {calls === 0 && <span className="zero"> · no model</span>}
-          </span>
+        {calls != null && <span title="Model calls">{calls} {calls === 1 ? "call" : "calls"}</span>}
+        {stats && stats.costUsd > 0 && <span title={`${stats.inputTokens.toLocaleString()} in · ${stats.outputTokens.toLocaleString()} out tokens`}>{fmtCost(stats.costUsd, stats.costEstimated)}</span>}
+        {page && page.pageId !== activePageId && (
+          <button className="run-host" onClick={() => void activate(page.pageId).catch(errToast)} title={page.url}>
+            {hostOf(page.url)}
+            {run.pageIds.length > 1 ? ` +${run.pageIds.length - 1}` : ""}
+          </button>
         )}
-        {stats && stats.costUsd > 0 && <span className="run-cost" title={`${stats.inputTokens.toLocaleString()} in · ${stats.outputTokens.toLocaleString()} out tokens`}>{fmtCost(stats.costUsd, stats.costEstimated)}</span>}
-        {run.config?.implementation && <span className="impl-badge" title={run.config.routeReason ?? run.config.implementation}>{run.config.implementation}</span>}
         <span className="sp" />
         <span className="run-acts">
           {run.status === "running" && <button className="icon-btn sm" title="Pause" aria-label="Pause run" onClick={() => act("runs.pause")}>{I.pause}</button>}
@@ -165,15 +166,6 @@ export function RunPanel({ runId }: { runId: string }) {
           {!live && <button className="icon-btn sm" title="Run again" aria-label="Run again" onClick={() => void startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{I.reload}</button>}
         </span>
       </div>
-
-      {page && (
-        <button className="run-page" onClick={() => void activate(page.pageId).catch(errToast)} title={page.url}>
-          {page.favicon ? <img src={page.favicon} alt="" /> : I.globe}
-          <span className="t">{page.title || hostOf(page.url)}</span>
-          <span className="h">{hostOf(page.url)}</span>
-          {run.pageIds.length > 1 && <span className="more nums">+{run.pageIds.length - 1}</span>}
-        </button>
-      )}
 
       {humanHolds && page && (
         <div className="takeover" role="status">
@@ -190,7 +182,7 @@ export function RunPanel({ runId }: { runId: string }) {
 
       {asksMe && question && (
         <div className="needs-input" role="group" aria-label="The agent needs your answer">
-          <div className="ni-head">{I.sparklesSm}<span>Needs your answer</span></div>
+          <div className="ni-head">{I.chat}<span>Needs your answer</span></div>
           <p className="ni-q">{question}</p>
           <div className="ni-row">
             <input
@@ -214,22 +206,23 @@ export function RunPanel({ runId }: { runId: string }) {
       <Answer run={run} />
 
       <section className="run-section">
-        <div className="run-section-head">
+        <button className="run-section-head toggle" aria-expanded={showSteps} onClick={() => setShowSteps((v) => !v)}>
+          <span className={`chev ${showSteps ? "open" : ""}`}>{I.right}</span>
           <span>Steps</span>
           <span className="count nums">{steps?.length ?? 0}</span>
           {steps && steps.length > 0 && <span className="sum nums">{fmtMs(steps.reduce((a, s) => a + (s.outcome?.durationMs ?? 0), 0))}</span>}
-        </div>
-        <StepTimeline steps={steps ?? []} live={live && !humanHolds && run.status !== "paused"} onInspect={(id) => void inspect(id)} />
+        </button>
+        {showSteps && <StepTimeline compact steps={steps ?? []} live={live && !humanHolds && run.status !== "paused"} onInspect={(id) => void inspect(id)} />}
       </section>
 
       {obs && (
         <section className="run-section">
           <button className="run-section-head toggle" aria-expanded={showObs} onClick={() => setShowObs((v) => !v)}>
             <span className={`chev ${showObs ? "open" : ""}`}>{I.right}</span>
-            <span>What the agent sees</span>
-            <span className="count nums">{obs.refs.length} refs</span>
+            <span>Page</span>
+            <span className="count nums">{obs.refs.length}</span>
           </button>
-          {showObs && <ObservationPanel obs={obs} onCopy={() => void navigator.clipboard.writeText(obs.text).then(() => toast("Observation copied"))} />}
+          {showObs && <ObservationPanel compact obs={obs} />}
         </section>
       )}
     </div>

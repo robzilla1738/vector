@@ -43,8 +43,7 @@ export interface ModelClient {
 }
 
 /** Static fallback list used until the Gateway catalog is reachable. */
+export const DEFAULT_PLANNER_MODEL = "alibaba/qwen3.8-27b";
 export const FALLBACK_MODELS = [
-  { id: "anthropic/claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
-  { id: "openai/gpt-5", name: "GPT-5" },
-  { id: "google/gemini-2.5-pro", name: "Gemini 2.5 Pro" },
+  { id: DEFAULT_PLANNER_MODEL, name: "Qwen 3.8 27B" },
 ];

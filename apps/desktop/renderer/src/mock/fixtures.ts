@@ -7,12 +7,6 @@ import type { CompactObservation, PageSet, PageTarget, Run, SavedProgram, SetMem
 
 const T0 = Date.now() - 2_000; // "now" at load, so elapsed timers read sensibly
 
-/** Inline SVG favicon — a letter on a brand colour, no network needed. */
-export function favicon(letter: string, bg: string, fg = "#fff"): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="${bg}"/><text x="16" y="21.5" font-family="-apple-system,Inter,Helvetica,Arial" font-size="17" font-weight="700" text-anchor="middle" fill="${fg}">${letter}</text></svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
-
 interface Site {
   url: string;
   title: string;
@@ -35,16 +29,16 @@ export const SITES: Site[] = [
   { url: "https://en.wikipedia.org/wiki/Web_browser_engine", title: "Web browser engine - Wikipedia", letter: "W", color: "#3a3a3a" },
 ];
 
-export function makePage(i: number, overrides: Partial<PageTarget> = {}): PageTarget {
-  const s = SITES[i % SITES.length]!;
-  const n = Math.floor(i / SITES.length);
+export function makePage(i: number, overrides: Partial<PageTarget> = {}, site?: Site): PageTarget {
+  const s = site ?? SITES[i % SITES.length]!;
+  const n = site ? 0 : Math.floor(i / SITES.length);
   return {
     pageId: `page-${i + 1}`,
     backend: "vector",
     targetId: `t-${i + 1}`,
     url: n ? `${s.url}${s.url.includes("?") ? "&" : "?"}p=${n}` : s.url,
     title: n ? `${s.title} (${n + 1})` : s.title,
-    favicon: favicon(s.letter, s.color),
+    favicon: undefined,
     documentEpoch: 1,
     lastRevision: 3,
     viewStatus: "hidden",
@@ -68,7 +62,7 @@ export function makeRun(overrides: Partial<Run> = {}): Run {
     goal: "Find every open review comment on this PR that mentions accessibility and summarise what still needs to change",
     status: "running",
     pageIds: ["page-1", "page-2", "page-3"],
-    config: { maxModelCalls: 20, modelId: "anthropic/claude-sonnet-4.5" },
+    config: { maxModelCalls: 8, modelId: "alibaba/qwen3.8-27b" },
     statusMessage: "Reading the second page of review comments",
     createdAt: T0 - 48_000,
     startedAt: T0 - 47_000,
@@ -220,4 +214,21 @@ export const MEMBERS: SetMember[] = SET.memberIds.map((memberId, i) => ({
 
 export const HISTORY = SITES.map((s, i) => ({ url: s.url, title: s.title, visitedAt: T0 - (i + 1) * 900_000 }));
 
-export const BOOKMARKS = SITES.slice(0, 5).map((s) => ({ url: s.url, title: s.title }));
+export const PIN_SITES: Site[] = [
+  { url: "https://chatgpt.com/", title: "ChatGPT", letter: "C", color: "#10a37f" },
+  { url: "https://www.cursor.com/", title: "Cursor", letter: "I", color: "#171717" },
+  { url: "https://kagi.com/", title: "Kagi", letter: "K", color: "#1a1a1a" },
+  { url: "https://gemini.google.com/", title: "Gemini", letter: "G", color: "#1a73e8" },
+  { url: "https://mail.google.com/mail/u/0/#inbox", title: "Gmail", letter: "M", color: "#d93025" },
+];
+
+export const SIDEBAR_TABS: Site[] = [
+  { url: "https://developer.apple.com/account", title: "Account – Apple Developer", letter: "A", color: "#555555" },
+  { url: "https://www.spaceship.com/login", title: "Spaceship Login – Secure Account…", letter: "S", color: "#2563eb" },
+  { url: "https://github.com/", title: "GitHub · Change is constant. GitHu…", letter: "G", color: "#24292f" },
+  { url: "https://dashboard.clerk.com/", title: "Dashboard | Clerk.com", letter: "C", color: "#171717" },
+  { url: "https://www.google.com/", title: "Google", letter: "G", color: "#4285f4" },
+  { url: "https://x.com/", title: "Home / X", letter: "X", color: "#171717" },
+];
+
+export const BOOKMARKS = PIN_SITES.map((s) => ({ url: s.url, title: s.title }));

@@ -6,6 +6,7 @@ import { ResizeHandle } from "./ResizeHandle";
 import { RunPanel } from "./RunPanel";
 import { SetPanel } from "./SetPanel";
 import { VirtualList } from "./VirtualList";
+import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 
 const ago = (ts: number) => {
@@ -23,7 +24,7 @@ function RunRow({ r, onOpen, selected }: { r: Run; onOpen: () => void; selected:
   const live = isLive(r);
   return (
     <button className={`run-row ${selected ? "on" : ""} ${live ? "live" : ""}`} onClick={onOpen} title={r.goal}>
-      <span className={`run-row-ico ${r.status}`}>{live ? <span className="pulse-dot" /> : r.status === "completed" ? I.check : r.status === "failed" ? I.alert : r.status === "needs_input" ? I.sparklesSm : I.circle}</span>
+      <span className={`run-row-ico ${r.status}`}>{r.status === "completed" ? I.check : r.status === "failed" ? I.alert : r.status === "needs_input" ? I.chat : live ? I.agentSm : I.circle}</span>
       <span className="run-row-main">
         <span className="run-row-title">{r.goal}</span>
         <span className="run-row-sub">
@@ -152,14 +153,14 @@ export function AgentRail() {
           {view.kind !== "home" ? (
             <button className="icon-btn" title="All runs" aria-label="Back to all runs" onClick={() => setRailView({ kind: "home" })}>{I.left}</button>
           ) : (
-            <span className="rail-title">{I.sparkles}<span>Agent</span></span>
+            <span className="rail-title">{I.agent}<span>Agent</span></span>
           )}
           {view.kind !== "home" && <span className="rail-title">{view.kind === "run" ? "Run" : "Set"}</span>}
           {!connected && <span className="rail-sub offline">offline</span>}
           {connected && live.length > 0 && view.kind === "home" && <span className="rail-sub nums">{live.length} live</span>}
           <span className="sp" />
           <button className="icon-btn" title="New task" aria-label="New task" onClick={() => { setRailView({ kind: "home" }); inputRef.current?.focus(); }}>{I.plus}</button>
-          <button className="icon-btn" title="Hide (⌘⇧A)" aria-label="Hide agent rail" onClick={toggleRail}>{I.close}</button>
+          <button className="icon-btn" title="Hide (⌘⇧A)" aria-label="Hide agent rail" onClick={toggleRail}>{I.rail}</button>
         </div>
 
         <div className="rail-body" ref={bodyRef}>
@@ -171,7 +172,7 @@ export function AgentRail() {
         <div className="composer">
           {hasPage && (
             <div className="composer-ctx" title={page!.url}>
-              {page!.favicon ? <img src={page!.favicon} alt="" /> : I.globe}
+              <FavIcon url={page!.url} src={page!.favicon} size="sm" />
               <span>{hostOf(page!.url)}</span>
             </div>
           )}

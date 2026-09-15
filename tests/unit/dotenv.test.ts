@@ -43,7 +43,9 @@ describe("minimal .env loader", () => {
       expect(merged.D).toBe("real"); // process env wins
       expect(env.A).toBeUndefined(); // input not mutated
       const files = dotEnvCandidates({ VECTOR_DATA_DIR: dataDir } as NodeJS.ProcessEnv, cwd);
-      expect(files).toEqual([join(dataDir, ".env"), join(cwd, ".env")]);
+      expect(files[0]).toBe(join(dataDir, ".env"));
+      expect(files[1]).toBe(join(cwd, ".env"));
+      expect(files).toContain(join(cwd, "..", "..", ".env"));
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

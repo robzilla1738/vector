@@ -67,7 +67,7 @@ export const StepTimeline = memo(function StepTimeline({
   compact,
 }: {
   steps: StepRecord[];
-  /** the run is still going — the last step without an outcome pulses */
+  /** the run is still going — the last unfinished step is marked current */
   live: boolean;
   onInspect?: (artifactId: string, step: StepRecord) => void;
   compact?: boolean;
@@ -77,7 +77,7 @@ export const StepTimeline = memo(function StepTimeline({
       <ol className={`timeline ${compact ? "compact" : ""}`} aria-label="Steps">
         {live && (
           <li className="tl-step running" aria-current="step">
-            <span className="tl-dot"><span className="pulse-dot" /></span>
+            <span className="tl-dot"><span className="live-dot" /></span>
             <span className="tl-body">
               <span className="tl-op">Observing</span>
               <span className="tl-detail">Reading the page before the first step</span>
@@ -96,7 +96,7 @@ export const StepTimeline = memo(function StepTimeline({
         return (
           <li key={s.stepId} className={`tl-step ${state}`} aria-current={live && last && state === "running" ? "step" : undefined} data-testid="tl-step">
             <span className="tl-dot">
-              {state === "ok" ? I.check : state === "failed" ? I.close : state === "skipped" ? <span className="tl-skip" /> : <span className="pulse-dot" />}
+              {state === "ok" ? I.check : state === "failed" ? I.close : state === "skipped" ? <span className="tl-skip" /> : <span className="live-dot" />}
             </span>
             <span className="tl-body">
               <span className="tl-head">
@@ -116,7 +116,7 @@ export const StepTimeline = memo(function StepTimeline({
       })}
       {live && steps[steps.length - 1]?.outcome && (
         <li className="tl-step running" aria-current="step">
-          <span className="tl-dot"><span className="pulse-dot" /></span>
+          <span className="tl-dot"><span className="live-dot" /></span>
           <span className="tl-body">
             <span className="tl-op">Thinking</span>
             <span className="tl-detail">Planning the next step</span>

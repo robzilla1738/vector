@@ -3,6 +3,7 @@ import { useStore, call, toast, errToast } from "../store";
 import { bridge } from "../bridge";
 import { detectIntent } from "../intent";
 import { hostOf } from "../workspace";
+import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 
 interface Cmd {
@@ -86,7 +87,7 @@ export function Palette() {
     if (splitPick) {
       for (const p of pages) {
         if (p.pageId === activePageId || !match(`${p.title} ${p.url}`)) continue;
-        out.push({ id: `sp-${p.pageId}`, section: "tabs", icon: p.favicon ? <img src={p.favicon} alt="" /> : I.globe, t: p.title || p.url, d: hostOf(p.url), run: () => useStore.setState({ splitPageId: p.pageId }) });
+        out.push({ id: `sp-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, t: p.title || p.url, d: hostOf(p.url), run: () => useStore.setState({ splitPageId: p.pageId }) });
       }
       if (out.length === 0) out.push({ id: "none", section: "tabs", t: "No other open pages", run: () => setSplitPick(false) });
       return out;
@@ -108,11 +109,11 @@ export function Palette() {
         });
       }
       if (intent.kind !== "command") {
-        out.push({ id: "ask", section: "go", icon: I.sparklesSm, t: `Ask the agent: “${v}”`, d: hasPage ? `on ${hostOf(activePage!.url)}` : "in a new tab", k: intent.kind === "run" ? "↵" : undefined, run: () => startRun(v) });
+        out.push({ id: "ask", section: "go", icon: I.agentSm, t: `Ask the agent: “${v}”`, d: hasPage ? `on ${hostOf(activePage!.url)}` : "in a new tab", k: intent.kind === "run" ? "↵" : undefined, run: () => startRun(v) });
       }
       // switch to an open tab
       for (const p of pages.filter((p) => !p.ownedByRuntime && p.pageId !== activePageId && match(`${p.title} ${p.url}`)).slice(0, 5)) {
-        out.push({ id: `tab-${p.pageId}`, section: "tabs", icon: p.favicon ? <img src={p.favicon} alt="" /> : I.globe, t: p.title || hostOf(p.url), d: hostOf(p.url), run: () => activate(p.pageId) });
+        out.push({ id: `tab-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, t: p.title || hostOf(p.url), d: hostOf(p.url), run: () => activate(p.pageId) });
       }
     }
 
@@ -120,7 +121,7 @@ export function Palette() {
       { id: "new", section: "window", t: "New tab", k: "⌘T", icon: I.plusSm, run: () => newTab() },
       ...(lastClosed ? [{ id: "reopen", section: "window" as const, t: `Reopen closed tab — ${lastClosed.title || lastClosed.url}`, k: "⌘⇧T", icon: I.reopen, run: async () => { useStore.setState((s) => ({ closedTabs: s.closedTabs.slice(0, -1) })); await newTab(lastClosed.url); } }] : []),
       { id: "ov", section: "window", t: "Tab overview", k: "⌘⇧O", icon: I.grid, run: async () => setMode("overview") },
-      { id: "rail", section: "agent", t: railOpen ? "Hide agent rail" : "Show agent rail", k: "⌘⇧A", icon: I.sparklesSm, run: () => useStore.getState().toggleRail() },
+      { id: "rail", section: "agent", t: railOpen ? "Hide agent rail" : "Show agent rail", k: "⌘⇧A", icon: I.agentSm, run: () => useStore.getState().toggleRail() },
       { id: "obs", section: "agent", t: "Inspect what the agent sees", d: "observe the active page", icon: I.obs, run: async () => { useStore.setState({ inspectorObs: null }); setOverlay("observe"); } },
       { id: "collect", section: "agent", t: "Collect open tabs into a set", d: "map a task over every tab", icon: I.layersSm, run: async () => {
         const ids = pages.filter((p) => !p.ownedByRuntime).map((p) => p.pageId);
@@ -169,7 +170,7 @@ export function Palette() {
     }
     w.push({ id: "space-new", section: "spaces", t: "New space", icon: I.plusSm, run: () => useStore.getState().addSpace(`Space ${layout.spaces.length + 1}`) });
     for (const s of sets) w.push({ id: `set-${s.setId}`, section: "sets", t: s.name, d: `${s.memberIds.length} members`, icon: I.layersSm, run: async () => { await refreshResults(s.setId); setMode("table"); } });
-    for (const b of bookmarks.slice(0, 30)) w.push({ id: `bm-${b.url}`, section: "bookmarks", t: b.title || b.url, d: hostOf(b.url), icon: I.bookmark, run: () => newTab(b.url) });
+    for (const b of bookmarks.slice(0, 30)) w.push({ id: `bm-${b.url}`, section: "bookmarks", t: b.title || b.url, d: hostOf(b.url), icon: <FavIcon url={b.url} size="sm" />, run: () => newTab(b.url) });
 
     const ORDER: Cmd["section"][] = ["go", "tabs", "agent", "window", "spaces", "sets", "chrome", "bookmarks"];
     const rest = (v ? w.filter((c) => match(`${c.t} ${c.d ?? ""}`)) : w).sort((a, b) => ORDER.indexOf(a.section) - ORDER.indexOf(b.section));

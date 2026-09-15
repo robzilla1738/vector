@@ -155,6 +155,30 @@ describe("vision fallback", () => {
     expect(recorded[0]?.obsArtifactId).toBe("art-obs-1");
   });
 
+  it("does not screenshot-replan when no vision model is configured", async () => {
+    const h = harness({
+      executeFails: 1,
+      structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
+      thenPlans: [{ status: "done", message: "ok", result: { note: "planner recovered" } }],
+      visionText: `{"status":"done","message":"via vision","result":{"note":"vision"}}`,
+    });
+    const coord = new RunCoordinator({
+      repo: h.repo,
+      events: new EventBus(h.repo),
+      pages: h.pages as never,
+      model: () => h.model,
+      defaultModel: () => "test/planner",
+      recoveryModel: () => undefined,
+      recordModelCall: () => {},
+    });
+    const run = await coord.start({ goal: "do it", pageIds: ["p1"] });
+    const final = await waitForRun(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toEqual({ note: "planner recovered" });
+    expect(h.generateText).not.toHaveBeenCalled();
+    expect(h.pages.capture).not.toHaveBeenCalled();
+  });
+
   it("falls back to the text planner when the vision response is not valid JSON", async () => {
     const h = harness({
       executeFails: 1,

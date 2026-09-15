@@ -37,5 +37,14 @@ export function ResizeHandle({ side, value, min, max, reset, onResize }: {
     window.addEventListener("pointerup", done);
     window.addEventListener("pointercancel", done);
   };
-  return <div className={`resize-handle ${side}`} onPointerDown={onDown} onDoubleClick={() => onResize(reset)} />;
+  return (
+    <div
+      className={`resize-handle ${side}`}
+      role="separator"
+      aria-orientation="vertical"
+      title="Drag to resize · double-click resets"
+      onPointerDown={onDown}
+      onDoubleClick={() => onResize(reset)}
+    />
+  );
 }

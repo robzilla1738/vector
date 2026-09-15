@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import "@fontsource-variable/inter/opsz.css";
 import "./tokens.css";
 import "./styles.css";
 

@@ -5,7 +5,7 @@
  *
  * Scenario is chosen by URL query:
  *   ?scenario=start         no tabs — start page
- *   ?scenario=browsing      6 tabs, second active (default)
+ *   ?scenario=browsing      6 tabs, Google unfiled and active (default)
  *   ?scenario=run           6 tabs + a live run with steps and an observation, rail open
  *   ?scenario=takeover      run scenario with the human holding the page
  *   ?scenario=needs-input   run scenario waiting on a question
@@ -16,7 +16,8 @@
  */
 import type { PageTarget, Run, StepRecord, VectorEvent } from "@vector/contracts";
 import type { VectorBridge } from "../bridge";
-import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, makePage, makeRun, makeSteps } from "./fixtures";
+import { DEFAULT_SPACE } from "../workspace";
+import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
 
 type Listener<T> = (v: T) => void;
 
@@ -24,11 +25,35 @@ export function installMockBridge(q: URLSearchParams) {
   const scenario = q.get("scenario") ?? "browsing";
   const live = q.get("live") === "1";
   const theme = q.get("theme") ?? "dark";
+  if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
   const sidebar = q.get("sidebar");
   if (sidebar) localStorage.setItem("vector.sidebar", sidebar);
   else localStorage.removeItem("vector.sidebar");
-  localStorage.removeItem("vector.layout.v1");
-  localStorage.setItem("vector.sb-w", q.get("sbw") ?? "240");
+  localStorage.setItem(
+    "vector.layout.v1",
+    JSON.stringify({
+      spaces: [DEFAULT_SPACE],
+      activeSpaceId: DEFAULT_SPACE.id,
+      tabSpace: {},
+      order: ["page-1", "page-2", "page-3", "page-4", "page-6", "page-5"],
+      pins: { [DEFAULT_SPACE.id]: BOOKMARKS },
+      folders: [
+        { id: "folder-dev", name: "Dev", spaceId: DEFAULT_SPACE.id, collapsed: false },
+        { id: "folder-social", name: "Social", spaceId: DEFAULT_SPACE.id, collapsed: true },
+        { id: "folder-design", name: "Design", spaceId: DEFAULT_SPACE.id, collapsed: true },
+        { id: "folder-rhema", name: "Rhema", spaceId: DEFAULT_SPACE.id, collapsed: true },
+        { id: "folder-ai", name: "AI", spaceId: DEFAULT_SPACE.id, collapsed: true },
+      ],
+      tabFolder: {
+        "page-1": "folder-dev",
+        "page-2": "folder-dev",
+        "page-3": "folder-dev",
+        "page-4": "folder-dev",
+        "page-6": "folder-social",
+      },
+    }),
+  );
+  localStorage.setItem("vector.sb-w", q.get("sbw") ?? "260");
   localStorage.setItem("vector.rail-w", q.get("railw") ?? "380");
   if (q.get("rail")) localStorage.setItem("vector.mock.rail", q.get("rail")!);
   else localStorage.removeItem("vector.mock.rail");
@@ -43,18 +68,20 @@ export function installMockBridge(q: URLSearchParams) {
   };
 
   const tabCount = scenario === "start" ? 0 : scenario === "many" ? 45 : 6;
-  let pages: PageTarget[] = Array.from({ length: tabCount }, (_, i) => makePage(i));
-  let activePageId: string | null = pages[1]?.pageId ?? pages[0]?.pageId ?? null;
+  let pages: PageTarget[] = tabCount === 6
+    ? SIDEBAR_TABS.map((s, i) => makePage(i, {}, s))
+    : Array.from({ length: tabCount }, (_, i) => makePage(i));
+  let activePageId: string | null = pages[4]?.pageId ?? pages[0]?.pageId ?? null;
   const withRun = ["run", "takeover", "needs-input"].includes(scenario);
   let runs: Run[] = [...PAST_RUNS];
   let steps: Record<string, StepRecord[]> = {};
   const settings: Record<string, unknown> = {
     theme,
     searchEngine: "https://duckduckgo.com/?q=%s",
-    plannerModel: "anthropic/claude-sonnet-4.5",
+    plannerModel: "alibaba/qwen3.8-27b",
     maxWorkers: 4,
-    maxModelCalls: 6,
-    engineMode: q.get("engine") ?? "auto",
+    maxModelCalls: 8,
+    engineMode: q.get("engine") ?? "off",
     gatewayApiKey: "••••••••",
   };
 
@@ -70,11 +97,16 @@ export function installMockBridge(q: URLSearchParams) {
     runs = [run, ...runs];
     steps[RUN_ID] = makeSteps(RUN_ID, scenario === "run" ? 6 : 8);
     pages = pages.map((p) => (p.pageId === "page-1" ? { ...p, controller: scenario === "takeover" ? "human" : "agent", controllerEpoch: 2 } : p));
-    // engine badge preview: the first page pretends the engine track routed it
-    pages = pages.map((p) => (p.pageId === "page-1" ? ({ ...p, route: { backend: "vector-engine", routeReason: "engineMode=auto · github.com is in the engine allowlist", routeMs: 14, firstPaintMs: 212 } } as PageTarget) : p));
+    if (settings.engineMode !== "off") {
+      pages = pages.map((p) => (p.pageId === "page-1" ? ({ ...p, route: { backend: "vector-engine", routeReason: "engineMode=auto · github.com is in the engine allowlist", routeMs: 14, firstPaintMs: 212 } } as PageTarget) : p));
+    }
   } else if (scenario !== "start" && pages.length) {
     pages = pages.map((p, i) =>
-      i === 2 ? ({ ...p, route: { backend: "vector-engine", routeReason: "engineMode=auto · docs site, static", routeMs: 9, firstPaintMs: 141 } } as PageTarget) : i === 4 ? { ...p, backend: "chrome" } : p,
+      settings.engineMode !== "off" && i === 2
+        ? ({ ...p, route: { backend: "vector-engine", routeReason: "engineMode=auto · docs site, static", routeMs: 9, firstPaintMs: 141 } } as PageTarget)
+        : i === 4
+          ? { ...p, backend: "chrome" }
+          : p,
     );
   }
   if (scenario === "many") pages = pages.map((p, i) => (i === 7 ? { ...p, loading: true } : i === 21 ? { ...p, viewStatus: "crashed" } : p));
@@ -123,7 +155,20 @@ export function installMockBridge(q: URLSearchParams) {
         return HISTORY.filter((h) => !query || h.title.toLowerCase().includes(query) || h.url.includes(query));
       }
       case "models.list":
-        return { models: [{ id: "anthropic/claude-sonnet-4.5", name: "Claude Sonnet 4.5" }, { id: "openai/gpt-5", name: "GPT-5" }], source: "static" };
+        return { models: [{ id: "alibaba/qwen3.8-27b", name: "Qwen 3.8 27B" }], source: "static" };
+      case "models.probe":
+        return { ok: true, modelId: (p.modelId as string) || "alibaba/qwen3.8-27b", latencyMs: 42, vision: false };
+      case "chrome.importCookies":
+        return { ok: true, source: "mock", imported: 0, skipped: 0, domains: 0, detail: "Cookie import is not available in mock." };
+      case "programs.run": {
+        const id = `run-${Math.random().toString(36).slice(2, 6)}`;
+        const run: Run = { runId: id, goal: `program ${(p.programId as string) ?? ""}`, status: "running", pageIds: p.pageId ? [p.pageId as string] : [], createdAt: Date.now(), startedAt: Date.now(), statusMessage: "Running saved program" };
+        runs = [run, ...runs];
+        emit("run.status", { run }, id);
+        steps[id] = [];
+        void scriptRun(id);
+        return { runId: id };
+      }
       case "sets.results":
         return MEMBERS.filter((m) => m.resultId).map((m, i) => ({
           resultId: m.resultId!,
@@ -246,7 +291,7 @@ export function installMockBridge(q: URLSearchParams) {
     }
     for (const st of script) {
       await sleep(900);
-      emit("model.call", { runId: id, modelId: "anthropic/claude-sonnet-4.5", role: "planner", durationMs: 1200 + Math.round(Math.random() * 800), costUsd: 0.0031, inputTokens: 2100, outputTokens: 180 }, id);
+      emit("model.call", { runId: id, modelId: "alibaba/qwen3.8-27b", role: "planner", durationMs: 1200 + Math.round(Math.random() * 800), costUsd: 0.0031, inputTokens: 2100, outputTokens: 180 }, id);
       steps[id] = [...(steps[id] ?? []), { ...st, pageId: target, startedAt: Date.now() }];
       emit("step.finished", { step: steps[id]![steps[id]!.length - 1] }, id);
       emit("observation.new", { runId: id, observation: { ...OBSERVATION, pageId: target, revision: OBSERVATION.revision + steps[id]!.length } }, id);
@@ -267,7 +312,7 @@ export function installMockBridge(q: URLSearchParams) {
       for (const st of more) {
         await sleep(2200);
         steps[RUN_ID] = [...(steps[RUN_ID] ?? []), st];
-        emit("model.call", { runId: RUN_ID, modelId: "anthropic/claude-sonnet-4.5", role: "planner", durationMs: 1400, costUsd: 0.0029, inputTokens: 2400, outputTokens: 160 }, RUN_ID);
+        emit("model.call", { runId: RUN_ID, modelId: "alibaba/qwen3.8-27b", role: "planner", durationMs: 1400, costUsd: 0.0029, inputTokens: 2400, outputTokens: 160 }, RUN_ID);
         emit("step.finished", { step: st }, RUN_ID);
       }
     })();
@@ -293,6 +338,7 @@ export function installMockBridge(q: URLSearchParams) {
     closeWindow: async () => true,
     openFile: async () => null,
     dataDir: async () => "/Users/you/Library/Application Support/Vector",
+    setAppearance: async () => true,
   };
   (window as unknown as { vector: VectorBridge; __vectorMock: boolean }).vector = bridge;
   (window as unknown as { __vectorMock: boolean }).__vectorMock = true;

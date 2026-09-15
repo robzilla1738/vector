@@ -279,7 +279,11 @@ export class RunService {
       this.launchSetRun(run, { setId: opts.setId, goal: opts.goal });
       return run;
     }
-    return this.coordinator.start({ ...opts, pageIds });
+    return this.coordinator.start({
+      ...opts,
+      pageIds,
+      maxModelCalls: opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
+    });
   }
 
   /**

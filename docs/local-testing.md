@@ -51,7 +51,9 @@ node packages/cli/dist/main.js observe <pageId>
 ```
 
 Or run the whole shell: `pnpm dev` (fixtures + Electron + runtime) and drive
-it with the CLI or MCP.
+it with the CLI or MCP. Chrome-only UI work: `pnpm -C apps/desktop dev:mock`
+serves the renderer at `http://127.0.0.1:5197` (see `docs/ui/shell.md` → Mock
+mode).
 
 ## Benchmarks
 

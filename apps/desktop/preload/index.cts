@@ -55,6 +55,7 @@ const vector = {
   /** file picker for ⌘O — returns a path or null */
   openFile: () => ipcRenderer.invoke("ui.openFile") as Promise<string | null>,
   dataDir: () => ipcRenderer.invoke("app.dataDir") as Promise<string>,
+  setAppearance: (theme: "dark" | "light") => ipcRenderer.invoke("ui.setAppearance", theme),
 };
 
 export type VectorBridge = typeof vector;

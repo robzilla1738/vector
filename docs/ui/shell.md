@@ -1,19 +1,21 @@
 # Vector desktop shell
 
 The renderer in `apps/desktop/renderer/src` is the browser chrome around the
-runtime's pages: a vertical sidebar, one command bar, an inset stage card, and a
-resizable agent rail. It is React 19 + zustand, styled with plain CSS on a
-single token sheet. Nothing in the shell talks to Electron except through the
-preload `contextBridge` (`bridge.ts`); `sandbox: true` and the permission
-handlers in `main/` are unchanged by the redesign.
+runtime's pages: an Arc-style sidebar, a command bar in that sidebar, an inset
+stage card, and a resizable agent rail. It is React 19 + zustand, styled with
+plain CSS on a single token sheet (Inter Variable, Lucide icons, charcoal).
+Nothing in the shell talks to Electron except through the preload
+`contextBridge` (`bridge.ts`); `sandbox: true` and the permission handlers in
+`main/` are unchanged by the redesign.
 
 ```
 .app
 ├── .degraded                     runtime-disconnected banner (full width, only when offline)
 └── .app-body
-    ├── .sidebar                  spaces · pinned tiles · tabs · agent items · footer
+    ├── .sidebar                  spaces · 5 pin tiles · folders · unfiled tabs · footer
+    │                             CommandBar lives here when the sidebar is expanded
     └── .main-col
-        ├── .toolbar              nav · CommandBar · control chip · overview / bookmark / rail
+        ├── .toolbar              only when the sidebar is hidden: nav · CommandBar · chrome
         └── .main
             ├── .stage-wrap       FindBar? · Stage (.stage-card) · Downloads?
             └── .rail             AgentRail (RunPanel | SetPanel | home) + composer
@@ -27,8 +29,8 @@ of `.app-body`; toasts sit bottom-left over the sidebar.
 | File | Role |
 | --- | --- |
 | `App.tsx` | Frame, shortcut dispatch (renderer + main-process shortcuts), stage-rect reporting to the native view, `narrow` media query |
-| `components/Sidebar.tsx` | Space switcher + menu/editor, pinned `SiteTile` grid, drag-reorder tab list (virtualized at 28+ tabs), runs/sets as `agent-item`s, collapsed rail with hover-peek, tab context menu |
-| `components/Toolbar.tsx` | Back/forward/reload, `CommandBar`, controller chip (Agent / You're in control → Return), overview, bookmark, rail toggle with live pip |
+| `components/Sidebar.tsx` | Space switcher, 5-up pin row, 📁 tab folders (indent, group hover, WAAPI open/close), unfiled tabs under New Tab, drag-reorder, collapsed rail with hover-peek, tab/folder context menus. Hosts `CommandBar` when expanded |
+| `components/Toolbar.tsx` | Shown only when the sidebar is hidden: back/forward/reload, `CommandBar`, controller chip, overview, bookmark, rail toggle |
 | `components/CommandBar.tsx` | One field for URL / search / agent prompt; intent chip; suggestion popover (open tabs, recent, saved programs, run again) |
 | `intent.ts` | Pure intent detection shared by command bar, palette and tests |
 | `components/Stage.tsx` | Inset rounded card; load progress line; `EngineBadge`; empty / loading / crashed / disconnected messages; `StartPage` for blank tabs; `MockPage` in mock mode |
@@ -39,10 +41,11 @@ of `.app-body`; toasts sit bottom-left over the sidebar.
 | `components/ObservationPanel.tsx` | Compact observation: title/url/viewport, headings, refs, raw text |
 | `components/SetPanel.tsx` | Set status, per-member segmented bar, member grid, failed list, Results |
 | `components/Palette.tsx` | ⌘K: intent routing, tab switch, agent/window/spaces/sets/chrome/bookmarks commands, two-level pickers (split view, borrow a Chrome tab) |
-| `components/StartPage.tsx` | Greeting, favourites, recent, suggested prompts + programs, recent runs |
+| `components/StartPage.tsx` | Weather, command bar, suggested prompts, favourites, recent |
 | `components/VirtualList.tsx` | Fixed-row-height windowed list used by the tab list and past runs |
 | `components/Overview.tsx`, `ResultsTable.tsx`, `History.tsx`, `Settings.tsx`, `Inspector.tsx`, `FindBar.tsx`, `Downloads.tsx` | Secondary surfaces restyled on the tokens |
-| `workspace.ts` | Spaces / pins / tab order (persisted in localStorage), `hostOf` |
+| `favicon.ts` | Favicon candidate chain (page icon → DuckDuckGo → Google s2) + host letter |
+| `workspace.ts` | Spaces / pins (cap 5) / folders / tab order (persisted in localStorage), `hostOf` |
 | `store.ts` | zustand workspace: runtime snapshot + events, UI state (mode, overlay, sidebar mode, rail view, widths, `narrow`) |
 | `mock/bridge.ts`, `mock/fixtures.ts` | Scripted bridge for browser-only development and screenshots |
 
@@ -87,36 +90,38 @@ context menu (reload, duplicate, copy URL, pin, move to space, close others).
 Every colour, radius, size and duration used by `styles.css` is a custom
 property defined once in `tokens.css`. Components never introduce literals.
 
-- **Type** — `--font-ui` (SF Pro → Inter → system), `--font-mono`; sizes
-  `--fs-2xs … --fs-3xl` = 10 / 11 / 12 / 13 / 15 / 17 / 22 / 28 px; line heights
-  `--lh-tight|normal|relaxed`; tracking `--tracking-tight|snug|wide`.
+- **Type** — `--font-ui` (`Inter Variable` → Inter → system), `--font-mono`;
+  sizes `--fs-2xs … --fs-3xl` = 11 / 12 / 12 / 13 / 15 / 18 / 22 / 28 px;
+  line heights `--lh-tight|normal|relaxed`; tracking `--tracking-tight|snug|wide`.
+- **Icons** — Lucide stroke at `--ico-sm 14` / `--ico 16` / `--ico-lg 20`.
+  Folder rows use the 📁 emoji, not a stroke folder.
 - **Spacing** — 4 px grid, `--space-0 … --space-9` (2 → 56 px).
 - **Radii** — `--r-xs … --r-2xl` = 4 / 6 / 8 / 10 / 12 / 16 px, `--r-pill`.
 - **Shell metrics** — `--toolbar-h 52`, `--sidebar-w 240`, `--sidebar-rail-w 56`,
   `--rail-w 360` (both panels are user-resizable; widths persist in
   localStorage `vector.sb-w` / `vector.rail-w`), `--stage-inset 8`,
-  `--stage-radius`, `--control-h 28`, `--control-h-lg 34`, `--hit 32`,
+  `--stage-radius` (`--r-2xl`), `--control-h 28`, `--control-h-lg 34`, `--hit 32`,
   `--traffic-inset 80` (macOS traffic lights).
 - **Motion** — `--t-fast 120`, `--t-med 180`, `--t-slow 240` ms; eases
   `--ease-out`, `--ease-spring`, `--ease-in-out`. `prefers-reduced-motion`
   zeroes the durations and collapses every animation/transition to 0.01 ms.
   `prefers-reduced-transparency` removes the backdrop blurs.
-- **Colour** — two appearances, `[data-theme="dark"|"light"]`, each defining
-  surfaces `--bg-window … --bg-3`, `--bg-hover/active`, glass, hairlines
-  `--line`, `--line-strong`, `--line-inset`; ink `--ink-0 … --ink-3`,
-  `--ink-inverse`; accent + `--ring`, `--selection`; semantic `--ok`, `--warn`,
-  `--err`, `--agent` (violet — anything the agent does), `--engine` (teal —
-  Vector Engine), each with a `-soft` fill and most with a `-line`.
+- **Colour** — two appearances, `[data-theme="dark"|"light"]`. Dark chrome
+  `--sb-bg` / `--bg-window` / `--stage-frame` is `#1f1f1f` so the stage floats
+  in an even gutter. Surfaces `--bg-0 … --bg-3`, `--bg-hover/active`, glass,
+  hairlines `--line`, `--line-strong`, `--line-inset`; ink `--ink-0 … --ink-3`,
+  `--ink-inverse`; accent is the inverse of the canvas (no purple agent tint,
+  no teal engine tint — `--agent` and `--engine` follow ink). Semantic
+  `--ok`, `--warn`, `--err` keep distinct hues.
 - **Space identity** — `[data-space="blue|violet|pink|orange|green|teal|slate"]`
-  sets `--space-color`, which tints the active tab pill, the space pip, the
-  start-page glow and the sidebar selection.
+  sets `--space-color` to grayscale steps, not a rainbow.
 - **Z** — `--z-stage < --z-panel < --z-peek < --z-scrim < --z-drawer < --z-toast`.
 
 ## States
 
-- **Empty** — no tabs: sidebar hint + `StartPage` (greeting, favourites, recent,
-  suggested prompts, recent runs). No runs: rail home explains where the agent
-  works.
+- **Empty** — no tabs: sidebar hint + `StartPage` (weather, command bar,
+  suggested prompts, favourites, recent). No runs: rail home explains where
+  the agent works.
 - **Loading** — 2 px sweeping progress line at the top of the stage card; tab
   favicon becomes a spinner.
 - **Disconnected** — full-width warning banner with *Reconnect now*; composer
@@ -130,9 +135,9 @@ property defined once in `tokens.css`. Components never introduce literals.
   button then closes the agent rail instead). ≤ 1000 px the command bar takes
   more of the toolbar and the control chip drops its label. ≤ 820 px the
   sidebar and rail float over the stage as glass panels.
-- **Controller** — the stage card ring goes violet while the agent drives,
-  amber when the human has taken over (with the *You're in control · Return*
-  chip in the toolbar and the takeover banner in the run panel).
+- **Controller** — a status chip marks agent vs human control; taking over
+  shows *You're in control · Return* (toolbar when visible, otherwise the
+  sidebar / run panel). The stage card does not use a colored agent ring.
 
 ## Accessibility
 
@@ -170,8 +175,10 @@ fifteen reference states in `docs/ui/screenshots/` with Playwright (1440×900
 - `pnpm -C apps/desktop typecheck` — main, preload and renderer.
 - `pnpm -C apps/desktop build` — tsc + esbuild bundle + vite build.
 - `pnpm -C apps/desktop test` — vitest: `intent.test.ts` (command-bar intent
-  detection), `workspace.test.ts` (space / tab / pin reducers),
-  `StepTimeline.test.tsx` and `ObservationPanel.test.tsx` (rendering).
+  detection), `workspace.test.ts` (space / tab / pin / folder reducers),
+  `favicon.test.ts`, `StepTimeline.test.tsx` and `ObservationPanel.test.tsx`.
+- `tests/unit/chrome-tokens.test.ts` — token and chrome CSS contracts
+  (sidebar/window match, 5-col pins, folder indent).
 
 ## Runtime contract dependencies
 

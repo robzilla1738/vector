@@ -3,6 +3,27 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
+## Shell + planner defaults (main)
+
+**Desktop** (`apps/desktop/renderer`, `docs/ui/shell.md`)
+
+- Arc-style sidebar: spaces, five pin tiles, 📁 tab folders (indent, group
+  hover, animated open/close), unfiled tabs under New Tab.
+- Command bar lives in the sidebar when expanded; the top toolbar shows only
+  when the sidebar is hidden. Start page has search/chat plus weather.
+- Inter Variable + Lucide; charcoal surfaces (dark chrome `#1f1f1f`); no
+  purple agent tint. Favicons try the page icon, then DuckDuckGo, then
+  Google s2, then a letter.
+
+**Runtime** (`apps/runtime`)
+
+- Planner default `alibaba/qwen3.8-27b` via Vercel AI Gateway, provider pin
+  Cerebras (`VECTOR_GATEWAY_ONLY`, default `cerebras`).
+- Vision fallback runs only when `visionModel` / `VECTOR_VISION_MODEL` is set
+  (Cerebras cannot take image parts).
+- Agent loop still observe → compact refs → typed program; MCP/CLI share the
+  same runtime.
+
 ## M1 — Vector Engine agent path (PRs #3–#6, merged into `m1/integrate`)
 
 Four tracks landed together: engine core (`m1/core`), style/layout, runtime

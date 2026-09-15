@@ -18,6 +18,7 @@ import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
 import type { ModelClient } from "./model-client.js";
+import { normalizePlannerObject } from "./gateway-client.js";
 import { buildFinalAnswerPrompt, buildPlannerPrompt, buildVisionPrompt, extractJson, FINAL_ANSWER_SYSTEM, PLANNER_SYSTEM, VISION_SYSTEM } from "./planner.js";
 
 interface RunControl {
@@ -477,22 +478,27 @@ export class RunCoordinator {
           if ((visionPending || thinObs) && !visionUsed) {
             visionUsed = true;
             visionPending = false;
-            this.setStatus(runId, "planning", "Looking at the page…");
-            const v = await this.tryVisionPlan({
-              runId,
-              pageId: activePageId,
-              goal: run.goal,
-              url: obs.content.url,
-              lastError,
-              outcomes,
-              model,
-              modelId: this.deps.visionModel?.() ?? modelId,
-              signal: c.abort.signal,
-              onModelCall: () => modelCalls++,
-            });
-            if (v) {
-              plan = v;
-              visionPlanned = true;
+            const visionId = this.deps.visionModel?.();
+            if (visionId) {
+              this.setStatus(runId, "planning", "Looking at the page…");
+              const v = await this.tryVisionPlan({
+                runId,
+                pageId: activePageId,
+                goal: run.goal,
+                url: obs.content.url,
+                lastError,
+                outcomes,
+                model,
+                modelId: visionId,
+                signal: c.abort.signal,
+                onModelCall: () => modelCalls++,
+              });
+              if (v) {
+                plan = v;
+                visionPlanned = true;
+              } else {
+                plan = await plannerCall();
+              }
             } else {
               plan = await plannerCall();
             }
@@ -734,19 +740,22 @@ export class RunCoordinator {
         inputTokens: res.inputTokens,
         outputTokens: res.outputTokens,
       });
-      const parsed = PlanChunkSchema.safeParse(extractJson(res.text));
+      const parsed = PlanChunkSchema.safeParse(normalizePlannerObject(extractJson(res.text)));
       return parsed.success ? parsed.data : null;
     } catch (e) {
       if (args.signal.aborted) throw e;
-      // a failed vision call still spent budget
-      args.onModelCall?.();
-      this.deps.recordModelCall({
-        runId: args.runId,
-        role: "vision",
-        modelId: args.modelId,
-        durationMs: Date.now() - started,
-        error: e instanceof Error ? e.message : String(e),
-      });
+      const msg = e instanceof Error ? e.message : String(e);
+      const skip = (e instanceof VectorError && e.code === "capability_unsupported") || /screenshots are not available|vision is not available/i.test(msg);
+      if (!skip) {
+        args.onModelCall?.();
+        this.deps.recordModelCall({
+          runId: args.runId,
+          role: "vision",
+          modelId: args.modelId,
+          durationMs: Date.now() - started,
+          error: msg,
+        });
+      }
       return null;
     }
   }

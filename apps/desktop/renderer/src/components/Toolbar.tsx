@@ -1,5 +1,5 @@
 import { inElectron } from "../bridge";
-import { isLive, useStore, call, errToast } from "../store";
+import { useStore, call, errToast } from "../store";
 import { CommandBar } from "./CommandBar";
 import { I } from "./icons";
 
@@ -10,15 +10,12 @@ export function Toolbar() {
   const setMode = useStore((s) => s.setMode);
   const railOpen = useStore((s) => s.railOpen);
   const toggleRail = useStore((s) => s.toggleRail);
-  const sidebar = useStore((s) => s.sidebar);
   const setSidebar = useStore((s) => s.setSidebar);
   const bookmarks = useStore((s) => s.bookmarks);
-  const runs = useStore((s) => s.runs);
   const returnControl = useStore((s) => s.returnControl);
   const page = pages.find((p) => p.pageId === activePageId);
   const web = !!page && page.url.startsWith("http");
   const bookmarked = web && bookmarks.some((b) => b.url === page.url);
-  const live = runs.filter(isLive).length;
 
   const toggleBookmark = () => {
     if (!page || !web) return;
@@ -31,11 +28,9 @@ export function Toolbar() {
   };
 
   return (
-    <header className={`toolbar ${inElectron && sidebar === "hidden" ? "traffic" : ""}`}>
+    <header className={`toolbar ${inElectron ? "traffic" : ""}`}>
       <div className="tb-left">
-        {sidebar === "hidden" && (
-          <button className="icon-btn" title="Show sidebar (⌘S)" aria-label="Show sidebar" onClick={() => setSidebar("expanded")}>{I.sidebar}</button>
-        )}
+        <button className="icon-btn" title="Show sidebar (⌘S)" aria-label="Show sidebar" onClick={() => setSidebar("expanded")}>{I.sidebar}</button>
         <div className="nav-btns">
           <button className="icon-btn" title="Back (⌘[)" aria-label="Back" disabled={!page?.canGoBack} onClick={() => page && void call("pages.back", { pageId: page.pageId }).catch(errToast)}>{I.back}</button>
           <button className="icon-btn" title="Forward (⌘])" aria-label="Forward" disabled={!page?.canGoForward} onClick={() => page && void call("pages.forward", { pageId: page.pageId }).catch(errToast)}>{I.fwd}</button>
@@ -53,23 +48,22 @@ export function Toolbar() {
         {page?.controller === "human" && (
           <button className="ctl-chip human" title="The agent is waiting while you use this page — hand it back when you're done" onClick={() => void returnControl(page.pageId)}>
             {I.handSm}
-            <span>You're in control</span>
+            <span className="ctl-chip-label">You're in control</span>
             <span className="ctl-return">Return</span>
           </button>
         )}
         {page && (page.controller === "agent" || page.controller === "external") && (
           <span className="ctl-chip agent" title="The agent is driving this page — click or type to take over">
-            {I.sparklesSm}
-            <span>Agent</span>
+            {I.agentSm}
+            <span className="ctl-chip-label">Agent</span>
           </span>
         )}
         <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title="Tab overview (⌘⇧O)" aria-label="Tab overview" aria-pressed={mode === "overview"} onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}</button>
         <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={bookmarked ? "Remove bookmark (⌘D)" : "Bookmark this page (⌘D)"} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web} onClick={toggleBookmark}>
           {bookmarked ? I.bookmarkFill : I.bookmark}
         </button>
-        <button className={`icon-btn rail-toggle ${railOpen ? "on" : ""}`} title="Agent (⌘⇧A)" aria-label="Toggle agent rail" aria-pressed={railOpen} onClick={toggleRail}>
-          {I.sparkles}
-          {live > 0 && <span className="live-pip" aria-label={`${live} live`} />}
+        <button className={`icon-btn ${railOpen ? "on" : ""}`} title="Agent (⌘⇧A)" aria-label="Toggle agent rail" aria-pressed={railOpen} onClick={toggleRail}>
+          {I.agent}
         </button>
       </div>
     </header>

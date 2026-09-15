@@ -19,6 +19,15 @@ export interface Pin {
   title: string;
 }
 
+export const MAX_PINS = 5;
+
+export interface Folder {
+  id: string;
+  name: string;
+  spaceId: string;
+  collapsed: boolean;
+}
+
 export interface Layout {
   spaces: Space[];
   activeSpaceId: string;
@@ -28,16 +37,21 @@ export interface Layout {
   order: string[];
   /** pinned sites per space */
   pins: Record<string, Pin[]>;
+  /** named tab folders within a space (Arc-style) */
+  folders: Folder[];
+  /** pageId → folderId; missing means unfiled (shown below New Tab) */
+  tabFolder: Record<string, string>;
 }
 
 export const DEFAULT_SPACE: Space = { id: "space-personal", name: "Personal", color: "blue" };
 
 export function emptyLayout(): Layout {
-  return { spaces: [DEFAULT_SPACE], activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] } };
+  return { spaces: [DEFAULT_SPACE], activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {} };
 }
 
 let seq = 0;
 export const newSpaceId = () => `space-${Date.now().toString(36)}-${(seq++).toString(36)}`;
+export const newFolderId = () => `folder-${Date.now().toString(36)}-${(seq++).toString(36)}`;
 
 /** Tabs the sidebar shows: human-facing, not worker pages. */
 export function isTab(p: Pick<PageTarget, "viewStatus" | "ownedByRuntime">): boolean {
@@ -116,7 +130,15 @@ export function reorderInSpace(layout: Layout, spaceId: string, from: number, to
 
 export function assignSpace(layout: Layout, pageId: string, spaceId: string): Layout {
   if (!layout.spaces.some((s) => s.id === spaceId)) return layout;
-  return { ...layout, tabSpace: { ...layout.tabSpace, [pageId]: spaceId } };
+  const tabSpace = { ...layout.tabSpace, [pageId]: spaceId };
+  const fid = layout.tabFolder[pageId];
+  const folder = fid ? layout.folders.find((f) => f.id === fid) : undefined;
+  if (folder && folder.spaceId !== spaceId) {
+    const tabFolder = { ...layout.tabFolder };
+    delete tabFolder[pageId];
+    return { ...layout, tabSpace, tabFolder };
+  }
+  return { ...layout, tabSpace };
 }
 
 export function createSpace(layout: Layout, name: string, color?: SpaceColor): Layout {
@@ -144,12 +166,14 @@ export function removeSpace(layout: Layout, spaceId: string): Layout {
   const moved = pins[spaceId] ?? [];
   delete pins[spaceId];
   pins[fallback.id] = dedupePins([...(pins[fallback.id] ?? []), ...moved]);
+  const folders = layout.folders.map((f) => (f.spaceId === spaceId ? { ...f, spaceId: fallback.id } : f));
   return {
     ...layout,
     spaces: layout.spaces.filter((s) => s.id !== spaceId),
     activeSpaceId: layout.activeSpaceId === spaceId ? fallback.id : layout.activeSpaceId,
     tabSpace,
     pins,
+    folders,
   };
 }
 
@@ -160,12 +184,92 @@ export function setActiveSpace(layout: Layout, spaceId: string): Layout {
 export function togglePin(layout: Layout, spaceId: string, pin: Pin): Layout {
   const cur = layout.pins[spaceId] ?? [];
   const has = cur.some((p) => p.url === pin.url);
-  const next = has ? cur.filter((p) => p.url !== pin.url) : [...cur, pin].slice(0, 12);
+  const next = has ? cur.filter((p) => p.url !== pin.url) : [...cur, pin].slice(0, MAX_PINS);
   return { ...layout, pins: { ...layout.pins, [spaceId]: next } };
 }
 
 export function isPinned(layout: Layout, spaceId: string, url: string): boolean {
   return (layout.pins[spaceId] ?? []).some((p) => p.url === url);
+}
+
+export function foldersInSpace(layout: Layout, spaceId: string): Folder[] {
+  return layout.folders.filter((f) => f.spaceId === spaceId);
+}
+
+export function tabsInFolder<T extends Pick<PageTarget, "pageId" | "viewStatus" | "ownedByRuntime">>(
+  layout: Layout,
+  pages: T[],
+  folderId: string,
+): T[] {
+  return tabsInSpace(layout, pages, layout.folders.find((f) => f.id === folderId)?.spaceId ?? "").filter((p) => layout.tabFolder[p.pageId] === folderId);
+}
+
+export function unfiledTabs<T extends Pick<PageTarget, "pageId" | "viewStatus" | "ownedByRuntime">>(
+  layout: Layout,
+  pages: T[],
+  spaceId: string,
+): T[] {
+  const ids = new Set(foldersInSpace(layout, spaceId).map((f) => f.id));
+  return tabsInSpace(layout, pages, spaceId).filter((p) => {
+    const fid = layout.tabFolder[p.pageId];
+    return !fid || !ids.has(fid);
+  });
+}
+
+export function createFolder(layout: Layout, spaceId: string, name: string): Layout {
+  if (!layout.spaces.some((s) => s.id === spaceId)) return layout;
+  const folder: Folder = { id: newFolderId(), name: name.trim() || "Untitled", spaceId, collapsed: false };
+  return { ...layout, folders: [...layout.folders, folder] };
+}
+
+export function renameFolder(layout: Layout, folderId: string, name: string): Layout {
+  const n = name.trim();
+  if (!n) return layout;
+  return { ...layout, folders: layout.folders.map((f) => (f.id === folderId ? { ...f, name: n } : f)) };
+}
+
+export function toggleFolder(layout: Layout, folderId: string): Layout {
+  return { ...layout, folders: layout.folders.map((f) => (f.id === folderId ? { ...f, collapsed: !f.collapsed } : f)) };
+}
+
+export function removeFolder(layout: Layout, folderId: string): Layout {
+  const tabFolder = { ...layout.tabFolder };
+  for (const [pageId, fid] of Object.entries(tabFolder)) if (fid === folderId) delete tabFolder[pageId];
+  return { ...layout, folders: layout.folders.filter((f) => f.id !== folderId), tabFolder };
+}
+
+export function assignFolder(layout: Layout, pageId: string, folderId: string | null): Layout {
+  const tabFolder = { ...layout.tabFolder };
+  if (!folderId) {
+    delete tabFolder[pageId];
+    return { ...layout, tabFolder };
+  }
+  if (!layout.folders.some((f) => f.id === folderId)) return layout;
+  tabFolder[pageId] = folderId;
+  return { ...layout, tabFolder };
+}
+
+/** Reorder tabs that currently display as one group (a folder, or the unfiled list). */
+export function reorderGroup(
+  layout: Layout,
+  spaceId: string,
+  folderId: string | null,
+  from: number,
+  to: number,
+  pages: Pick<PageTarget, "pageId" | "viewStatus" | "ownedByRuntime">[],
+): Layout {
+  const group = folderId ? tabsInFolder(layout, pages, folderId) : unfiledTabs(layout, pages, spaceId);
+  const ids = group.map((p) => p.pageId);
+  if (from < 0 || from >= ids.length || to < 0 || to > ids.length || from === to) return layout;
+  const moving = ids[from]!;
+  const rest = ids.filter((_, i) => i !== from);
+  const insertAt = to > from ? to - 1 : to;
+  rest.splice(insertAt, 0, moving);
+  const slots = new Set(ids);
+  let k = 0;
+  const order = layout.order.map((id) => (slots.has(id) ? rest[k++]! : id));
+  for (; k < rest.length; k++) order.push(rest[k]!);
+  return { ...layout, order };
 }
 
 function dedupePins(pins: Pin[]): Pin[] {
@@ -187,7 +291,20 @@ export function parseLayout(raw: string | null): Layout {
       activeSpaceId: active,
       tabSpace: v.tabSpace && typeof v.tabSpace === "object" ? v.tabSpace : {},
       order: Array.isArray(v.order) ? v.order.filter((x): x is string => typeof x === "string") : [],
-      pins: v.pins && typeof v.pins === "object" ? v.pins : {},
+      pins: v.pins && typeof v.pins === "object"
+        ? Object.fromEntries(
+            Object.entries(v.pins).map(([id, list]) => [id, Array.isArray(list) ? (list as Pin[]).slice(0, MAX_PINS) : []]),
+          )
+        : {},
+      folders: Array.isArray(v.folders)
+        ? v.folders.flatMap((f) => {
+            if (!f || typeof f.id !== "string" || typeof f.name !== "string" || typeof f.spaceId !== "string") return [];
+            return [{ id: f.id, name: f.name, spaceId: f.spaceId, collapsed: !!f.collapsed }];
+          })
+        : [],
+      tabFolder: v.tabFolder && typeof v.tabFolder === "object"
+        ? Object.fromEntries(Object.entries(v.tabFolder).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+        : {},
     };
   } catch {
     return emptyLayout();

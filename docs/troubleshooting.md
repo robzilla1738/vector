@@ -102,8 +102,11 @@ process that owns `process.send` (vitest forks).
 
 ## AI Gateway errors on `runs.start`
 
-`AI_GATEWAY_API_KEY` must be set (see `.env.example`). `models.probe` checks
-key + connectivity + latency without running a goal.
+`AI_GATEWAY_API_KEY` must be set (see `.env.example`). The planner is
+`alibaba/qwen3.8-27b` on Cerebras unless you override `VECTOR_PLANNER_MODEL`
+/ `VECTOR_GATEWAY_ONLY`. `models.probe` checks key + connectivity + latency
+without running a goal. Image/vision calls are skipped when Gateway is
+pinned to Cerebras.
 
 ## `runtime.describe` says `engine.available: false` / session `vector-engine` is `disconnected`
 

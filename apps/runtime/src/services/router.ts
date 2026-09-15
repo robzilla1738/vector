@@ -169,7 +169,10 @@ export class Router {
       return done({ backend: "vector-engine", reason: "explicit-backend:vector-engine", fallbackAllowed: false });
     const mode = this.mode();
     if (mode === "off") return done({ backend: "vector", reason: "engine-mode-off", fallbackAllowed: false });
-    if (mode === "always") return done({ backend: "vector-engine", reason: "engine-always", fallbackAllowed: false });
+    if (mode === "always") {
+      if (!this.engineAvailable()) return done({ backend: "vector", reason: "engine-unavailable", fallbackAllowed: false });
+      return done({ backend: "vector-engine", reason: "engine-always", fallbackAllowed: false });
+    }
     // auto
     if (!this.engineAvailable()) return done({ backend: "vector", reason: "engine-unavailable", fallbackAllowed: false });
     let scheme = "";

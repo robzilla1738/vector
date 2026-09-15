@@ -1,9 +1,9 @@
 # MCP server
 
 `packages/mcp` is a stdio MCP server that exposes the loopback API to any
-MCP-capable agent (Claude, Cursor, etc.). It reads `<dataDir>/runtime.json`
-for the port + bearer token — start the desktop app (or a standalone
-runtime) first.
+MCP-capable agent (Cursor, Codex, Claude, and others). It reads
+`<dataDir>/runtime.json` for the port + bearer token — start the desktop app
+(or a standalone runtime) first. Tools drive the same pages the human sees.
 
 ```bash
 node packages/mcp/dist/main.js          # stdio transport

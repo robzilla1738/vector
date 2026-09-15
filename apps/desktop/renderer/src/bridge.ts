@@ -34,6 +34,7 @@ export interface VectorBridge {
   closeWindow(): Promise<boolean>;
   openFile(): Promise<string | null>;
   dataDir(): Promise<string>;
+  setAppearance(theme: "dark" | "light"): Promise<boolean>;
 }
 
 const noop = () => () => {};
@@ -59,6 +60,7 @@ const stub: VectorBridge = {
   closeWindow: async () => true,
   openFile: async () => null,
   dataDir: async () => "",
+  setAppearance: async () => true,
 };
 
 type W = Window & { vector?: VectorBridge; __vectorMock?: boolean };

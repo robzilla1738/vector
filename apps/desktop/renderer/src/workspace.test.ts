@@ -2,19 +2,26 @@ import { describe, expect, it } from "vitest";
 import type { PageTarget } from "@vector/contracts";
 import {
   DEFAULT_SPACE,
+  assignFolder,
   assignSpace,
+  createFolder,
   createSpace,
   emptyLayout,
   isPinned,
   moveTab,
   parseLayout,
+  removeFolder,
   removeSpace,
+  reorderGroup,
   reorderInSpace,
   setActiveSpace,
   syncOrder,
   syncSpaces,
+  tabsInFolder,
   tabsInSpace,
+  toggleFolder,
   togglePin,
+  unfiledTabs,
 } from "./workspace";
 
 const page = (id: string, extra: Partial<PageTarget> = {}): PageTarget => ({
@@ -111,12 +118,44 @@ describe("spaces", () => {
 });
 
 describe("pins", () => {
-  it("toggles and caps at 12 per space", () => {
+  it("toggles and caps at 5 per space", () => {
     let layout = emptyLayout();
-    for (let i = 0; i < 14; i++) layout = togglePin(layout, DEFAULT_SPACE.id, { url: `https://s${i}.com/`, title: `s${i}` });
-    expect(layout.pins[DEFAULT_SPACE.id]).toHaveLength(12);
+    for (let i = 0; i < 7; i++) layout = togglePin(layout, DEFAULT_SPACE.id, { url: `https://s${i}.com/`, title: `s${i}` });
+    expect(layout.pins[DEFAULT_SPACE.id]).toHaveLength(5);
     layout = togglePin(layout, DEFAULT_SPACE.id, { url: "https://s0.com/", title: "s0" });
     expect(isPinned(layout, DEFAULT_SPACE.id, "https://s0.com/")).toBe(false);
+  });
+});
+
+describe("folders", () => {
+  it("files tabs into a folder and leaves the rest unfiled", () => {
+    const pages = [page("a"), page("b"), page("c")];
+    let layout = syncSpaces({ ...emptyLayout(), order: ["a", "b", "c"] }, pages);
+    layout = createFolder(layout, DEFAULT_SPACE.id, "Dev");
+    const folderId = layout.folders[0]!.id;
+    layout = assignFolder(layout, "a", folderId);
+    layout = assignFolder(layout, "b", folderId);
+    expect(tabsInFolder(layout, pages, folderId).map((p) => p.pageId)).toEqual(["a", "b"]);
+    expect(unfiledTabs(layout, pages, DEFAULT_SPACE.id).map((p) => p.pageId)).toEqual(["c"]);
+    layout = toggleFolder(layout, folderId);
+    expect(layout.folders[0]!.collapsed).toBe(true);
+    layout = assignFolder(layout, "a", null);
+    expect(unfiledTabs(layout, pages, DEFAULT_SPACE.id).map((p) => p.pageId)).toEqual(["a", "c"]);
+    layout = removeFolder(layout, folderId);
+    expect(layout.folders).toHaveLength(0);
+    expect(layout.tabFolder.b).toBeUndefined();
+  });
+
+  it("reorders inside a folder without shuffling unfiled tabs", () => {
+    const pages = [page("a"), page("b"), page("c"), page("d")];
+    let layout = syncSpaces({ ...emptyLayout(), order: ["a", "b", "c", "d"] }, pages);
+    layout = createFolder(layout, DEFAULT_SPACE.id, "Dev");
+    const folderId = layout.folders[0]!.id;
+    layout = assignFolder(layout, "a", folderId);
+    layout = assignFolder(layout, "b", folderId);
+    layout = reorderGroup(layout, DEFAULT_SPACE.id, folderId, 1, 0, pages);
+    expect(tabsInFolder(layout, pages, folderId).map((p) => p.pageId)).toEqual(["b", "a"]);
+    expect(unfiledTabs(layout, pages, DEFAULT_SPACE.id).map((p) => p.pageId)).toEqual(["c", "d"]);
   });
 });
 
@@ -130,5 +169,11 @@ describe("persistence", () => {
     const bad = parseLayout(JSON.stringify({ spaces: [{ id: "x", name: "X", color: "blue" }], activeSpaceId: "missing", order: [1, "ok"] }));
     expect(bad.activeSpaceId).toBe("x");
     expect(bad.order).toEqual(["ok"]);
+    expect(bad.folders).toEqual([]);
+    const withFolder = parseLayout(JSON.stringify({
+      spaces: [{ id: "x", name: "X", color: "blue" }],
+      folders: [{ id: "f1", name: "Dev", spaceId: "x" }],
+    }));
+    expect(withFolder.folders).toEqual([{ id: "f1", name: "Dev", spaceId: "x", collapsed: false }]);
   });
 });

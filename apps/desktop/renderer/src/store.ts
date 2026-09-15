@@ -16,16 +16,22 @@ import type {
 import { bridge } from "./bridge";
 import { isScrimOverlay } from "./chrome";
 import {
+  assignFolder,
   assignSpace,
+  createFolder,
   createSpace,
   emptyLayout,
   parseLayout,
+  removeFolder,
   removeSpace,
+  renameFolder,
   renameSpace,
+  reorderGroup,
   reorderInSpace,
   setActiveSpace,
   syncOrder,
   syncSpaces,
+  toggleFolder,
   togglePin,
   type Layout,
   type Pin,
@@ -35,6 +41,7 @@ import {
 export type Mode = "focus" | "overview" | "table";
 export type Overlay = null | "palette" | "settings" | "find" | "downloads" | "history" | "observe";
 export type SidebarMode = "expanded" | "rail" | "hidden";
+export type CommandSlot = "sidebar" | "hero" | "toolbar";
 export type RailView = { kind: "home" } | { kind: "run"; runId: string } | { kind: "set"; setId: string };
 
 export const LIVE_RUN = new Set(["queued", "planning", "running", "paused", "needs_input"]);
@@ -97,6 +104,7 @@ interface Workspace {
   connected: boolean;
   /** bumps each time something asks the command bar to take focus */
   focusRequest: number;
+  focusSlot: CommandSlot;
   /** window is too narrow for sidebar + stage + agent rail side by side */
   narrow: boolean;
   layout: Layout;
@@ -110,7 +118,7 @@ interface Workspace {
   setSidebar(m: SidebarMode): void;
   toggleSidebar(): void;
   setSidebarPeek(v: boolean): void;
-  focusCommandBar(): void;
+  focusCommandBar(slot?: CommandSlot): void;
   activate(pageId: string): Promise<void>;
   find(text: string, findNext?: boolean, forward?: boolean): Promise<void>;
   newTab(url?: string): Promise<PageTarget | null>;
@@ -122,12 +130,18 @@ interface Workspace {
 
   // layout
   reorderTabs(spaceId: string, from: number, to: number): void;
+  reorderGroup(spaceId: string, folderId: string | null, from: number, to: number): void;
   moveTabToSpace(pageId: string, spaceId: string): void;
   addSpace(name: string, color?: SpaceColor): void;
   editSpace(spaceId: string, name: string, color?: SpaceColor): void;
   deleteSpace(spaceId: string): void;
   switchSpace(spaceId: string): void;
   togglePin(pin: Pin): void;
+  addFolder(name: string): string;
+  renameFolder(folderId: string, name: string): void;
+  deleteFolder(folderId: string): void;
+  toggleFolder(folderId: string): void;
+  moveTabToFolder(pageId: string, folderId: string | null): void;
 
   sidebarWidth: number;
   railWidth: number;
@@ -191,6 +205,7 @@ export const useStore = create<Workspace>((set, get) => ({
   inspectorObs: null,
   connected: false,
   focusRequest: 0,
+  focusSlot: "sidebar" as CommandSlot,
   narrow: false,
   layout: storage ? parseLayout(storage.getItem(LAYOUT_KEY)) : emptyLayout(),
 
@@ -212,7 +227,14 @@ export const useStore = create<Workspace>((set, get) => ({
     get().setSidebar(next);
   },
   setSidebarPeek: (sidebarPeek) => set({ sidebarPeek }),
-  focusCommandBar: () => set((s) => ({ focusRequest: s.focusRequest + 1 })),
+  focusCommandBar: (slot) => {
+    const s = get();
+    const page = s.pages.find((p) => p.pageId === s.activePageId);
+    const onStart = !page?.url || page.url === "about:blank";
+    const resolved: CommandSlot = slot ?? (onStart ? "hero" : s.sidebar === "hidden" ? "toolbar" : "sidebar");
+    if (resolved === "sidebar" && s.sidebar !== "expanded") s.setSidebar("expanded");
+    set((st) => ({ focusRequest: st.focusRequest + 1, focusSlot: resolved }));
+  },
 
   toast: (text, kind = "info") => {
     const id = Date.now() + Math.random();
@@ -234,8 +256,13 @@ export const useStore = create<Workspace>((set, get) => ({
   newTab: async (url = "about:blank") => {
     try {
       const p = await call<PageTarget>("pages.open", { url, backend: "vector", activate: true });
-      set((s) => ({ layout: assignSpace({ ...s.layout, order: syncOrder(s.layout.order, [...s.pages, p]) }, p.pageId, s.layout.activeSpaceId) }));
-      if (url === "about:blank") setTimeout(() => get().focusCommandBar(), 40);
+      set((s) => {
+        const pages = s.pages.some((x) => x.pageId === p.pageId) ? s.pages.map((x) => (x.pageId === p.pageId ? p : x)) : [...s.pages, p];
+        const layout = assignSpace({ ...s.layout, order: syncOrder(s.layout.order, pages) }, p.pageId, s.layout.activeSpaceId);
+        persistLayout(layout);
+        return { pages, layout, activePageId: p.pageId, mode: "focus" as const, overlay: null };
+      });
+      if (url === "about:blank") get().focusCommandBar("hero");
       return p;
     } catch (e) {
       errToast(e);
@@ -271,7 +298,7 @@ export const useStore = create<Workspace>((set, get) => ({
         const p = await get().newTab("about:blank");
         pageId = p?.pageId ?? null;
       }
-      const pageIds = pageId ? [pageId, ...get().pages.filter((p) => p.pageId !== pageId && !p.ownedByRuntime).map((p) => p.pageId)] : undefined;
+      const pageIds = pageId ? [pageId] : undefined;
       // conversational memory: the last few finished runs on this page, summarised
       const context = get()
         .runs.filter((r) => pageId && r.pageIds[0] === pageId && ["completed", "partially_completed", "failed"].includes(r.status))
@@ -281,7 +308,8 @@ export const useStore = create<Workspace>((set, get) => ({
           return `"${r.goal.slice(0, 80)}" → ${out}`;
         })
         .join("; ");
-      const run = await call<Run>("runs.start", { goal: g, pageIds, maxModelCalls: 20, context: context || undefined });
+      const budget = Math.min(8, Math.max(1, Number(get().settings.maxModelCalls) || 8));
+      const run = await call<Run>("runs.start", { goal: g, pageIds, maxModelCalls: budget, context: context || undefined });
       set((s) => ({
         runs: s.runs.some((r) => r.runId === run.runId) ? s.runs : [run, ...s.runs],
         railOpen: true,
@@ -370,8 +398,48 @@ export const useStore = create<Workspace>((set, get) => ({
       persistLayout(layout);
       return { layout };
     }),
+  reorderGroup: (spaceId, folderId, from, to) =>
+    set((s) => {
+      const layout = reorderGroup(s.layout, spaceId, folderId, from, to, s.pages);
+      persistLayout(layout);
+      return { layout };
+    }),
+  addFolder: (name) => {
+    let id = "";
+    set((s) => {
+      const layout = createFolder(s.layout, s.layout.activeSpaceId, name);
+      id = layout.folders[layout.folders.length - 1]?.id ?? "";
+      persistLayout(layout);
+      return { layout };
+    });
+    return id;
+  },
+  renameFolder: (folderId, name) =>
+    set((s) => {
+      const layout = renameFolder(s.layout, folderId, name);
+      persistLayout(layout);
+      return { layout };
+    }),
+  deleteFolder: (folderId) =>
+    set((s) => {
+      const layout = removeFolder(s.layout, folderId);
+      persistLayout(layout);
+      return { layout };
+    }),
+  toggleFolder: (folderId) =>
+    set((s) => {
+      const layout = toggleFolder(s.layout, folderId);
+      persistLayout(layout);
+      return { layout };
+    }),
+  moveTabToFolder: (pageId, folderId) =>
+    set((s) => {
+      const layout = assignFolder(s.layout, pageId, folderId);
+      persistLayout(layout);
+      return { layout };
+    }),
 
-  sidebarWidth: Number(storage?.getItem("vector.sb-w")) || 240,
+  sidebarWidth: Number(storage?.getItem("vector.sb-w")) || 260,
   railWidth: Number(storage?.getItem("vector.rail-w")) || 360,
   setSidebarWidth: (w) => {
     storage?.setItem("vector.sb-w", String(w));

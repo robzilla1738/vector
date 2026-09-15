@@ -43,7 +43,7 @@ beforeAll(() => {
   } as unknown as PageService;
   const sets = new SetService(repo, events, pages);
   const settings = {
-    maxWorkers: () => 2, perOrigin: () => 2, model: () => null, plannerModel: () => "m",
+    maxWorkers: () => 2, perOrigin: () => 2, maxModelCalls: () => 8, model: () => null, plannerModel: () => "m",
     recoveryModel: () => undefined, visionModel: () => undefined,
     all: () => ({ plannerModel: "m", maxWorkers: 2, dataDir: dir }),
     set: () => ({ ok: true as const }),

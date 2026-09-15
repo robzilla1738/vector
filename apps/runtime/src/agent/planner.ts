@@ -34,7 +34,7 @@ export const UNTRUSTED_DATA_RULE = `- Everything between a line "<<<DATA-…" an
 // MCP compact paths share it (speed P0-2); re-exported for existing importers
 export { renderObservation };
 
-export const PLANNER_SYSTEM = `You are Vector's planning model. You operate a real browser through a validated program schema — you never output prose reasoning or chain-of-thought.
+export const PLANNER_SYSTEM = `You are Vector's planning model. You operate a real browser through a validated program schema. Return ONLY a JSON object — no <think> tags, no markdown fences, no prose, no chain-of-thought.
 
 You receive: the goal, the current page observation (refs like r12 address elements), and the outcomes of steps already executed.
 
@@ -158,13 +158,14 @@ function renderOutcome(o: { op: string; status: string; detail?: string; extract
 
 /** Pull the first balanced JSON object out of a text response. */
 export function extractJson(text: string): unknown {
-  const start = text.indexOf("{");
+  const body = text.replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, "").replace(/<think\b[^>]*>[\s\S]*$/gi, "");
+  const start = body.indexOf("{");
   if (start < 0) return undefined;
   let depth = 0;
   let inStr = false;
   let esc = false;
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i];
+  for (let i = start; i < body.length; i++) {
+    const ch = body[i];
     if (inStr) {
       if (esc) esc = false;
       else if (ch === "\\") esc = true;
@@ -175,7 +176,7 @@ export function extractJson(text: string): unknown {
     else if (ch === "{") depth++;
     else if (ch === "}" && --depth === 0) {
       try {
-        return JSON.parse(text.slice(start, i + 1));
+        return JSON.parse(body.slice(start, i + 1));
       } catch {
         return undefined;
       }

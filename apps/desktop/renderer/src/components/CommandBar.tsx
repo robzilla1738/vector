@@ -4,6 +4,7 @@ import { detectIntent, intentLabel, type Intent } from "../intent";
 import { isLive, useStore, call, errToast, toast } from "../store";
 import { hostOf } from "../workspace";
 import { EngineBadge } from "./EngineBadge";
+import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 
 interface Suggestion {
@@ -21,13 +22,15 @@ interface Suggestion {
  * detected as you type and shown as a chip; ↵ runs it, ⌘↵ opens a new tab /
  * new task, ⇥ flips a task between "this page" and "new task".
  */
-export function CommandBar() {
+export function CommandBar({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
+  const slot = hero ? "hero" : compact ? "sidebar" : "toolbar";
   const pages = useStore((s) => s.pages);
   const activePageId = useStore((s) => s.activePageId);
   const settings = useStore((s) => s.settings);
   const runs = useStore((s) => s.runs);
   const programs = useStore((s) => s.programs);
   const focusRequest = useStore((s) => s.focusRequest);
+  const focusSlot = useStore((s) => s.focusSlot);
   const startRun = useStore((s) => s.startRun);
   const activate = useStore((s) => s.activate);
   const newTab = useStore((s) => s.newTab);
@@ -47,11 +50,12 @@ export function CommandBar() {
   // ⌘L and friends land here
   useEffect(() => {
     if (!focusRequest) return;
+    if (focusSlot !== slot) return;
     const el = inputRef.current;
     if (!el) return;
     el.focus();
     el.select();
-  }, [focusRequest]);
+  }, [focusRequest, focusSlot, slot]);
 
   // switching tabs (or the first snapshot landing) resets any half-typed state
   useEffect(() => {
@@ -135,7 +139,7 @@ export function CommandBar() {
       out.push({
         id: "intent",
         section: "intent",
-        icon: intent.kind === "run" ? I.sparklesSm : intent.kind === "navigate" ? I.open : intent.kind === "command" ? I.right : I.search,
+        icon: intent.kind === "run" ? I.agentSm : intent.kind === "navigate" ? I.open : intent.kind === "command" ? I.command : I.search,
         title:
           intent.kind === "navigate" ? intent.display : intent.kind === "search" ? `Search for “${intent.query}”` : intent.kind === "run" ? intent.goal : `Command: ${intent.query}`,
         detail: intent.kind === "run" ? (intent.scope === "page" ? `Ask on ${hostOf(page?.url ?? "")}` : "Start a new task in a fresh tab") : intent.kind === "navigate" ? "Open" : intent.kind === "search" ? "Web search" : "Open the command palette",
@@ -145,10 +149,10 @@ export function CommandBar() {
     }
     if (intent.kind === "command") return out;
     for (const p of pages.filter((p) => p.pageId !== activePageId && !p.ownedByRuntime && (p.title.toLowerCase().includes(q) || p.url.toLowerCase().includes(q))).slice(0, 3)) {
-      out.push({ id: `tab-${p.pageId}`, section: "tabs", icon: p.favicon ? <img src={p.favicon} alt="" /> : I.globe, title: p.title || hostOf(p.url), detail: hostOf(p.url), hint: "Switch", run: () => activate(p.pageId) });
+      out.push({ id: `tab-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, title: p.title || hostOf(p.url), detail: hostOf(p.url), hint: "Switch", run: () => activate(p.pageId) });
     }
     for (const h of history.filter((h) => !pages.some((p) => p.url === h.url)).slice(0, 4)) {
-      out.push({ id: `h-${h.url}`, section: "recent", icon: I.clockSm, title: h.title || hostOf(h.url), detail: hostOf(h.url), run: () => (page ? call("pages.navigate", { pageId: page.pageId, url: h.url }) : newTab(h.url)) });
+      out.push({ id: `h-${h.url}`, section: "recent", icon: <FavIcon url={h.url} size="sm" />, title: h.title || hostOf(h.url), detail: hostOf(h.url), run: () => (page ? call("pages.navigate", { pageId: page.pageId, url: h.url }) : newTab(h.url)) });
     }
     for (const pr of programs.filter((pr: SavedProgram) => pr.name.toLowerCase().includes(q)).slice(0, 3)) {
       out.push({
@@ -166,7 +170,7 @@ export function CommandBar() {
       });
     }
     for (const r of runs.filter((r: Run) => !isLive(r) && r.goal.toLowerCase().includes(q) && r.goal.toLowerCase() !== q).slice(0, 3)) {
-      out.push({ id: `run-${r.runId}`, section: "runs", icon: I.reload, title: r.goal, detail: "Run again", run: () => startRun(r.goal) });
+      out.push({ id: `run-${r.runId}`, section: "runs", icon: I.reloadSm, title: r.goal, detail: "Run again", run: () => startRun(r.goal) });
     }
     return out;
   }, [typedSomething, raw, intent, pages, activePageId, history, programs, runs, page, exec, activate, newTab, startRun]);
@@ -203,23 +207,34 @@ export function CommandBar() {
   const secure = page?.url.startsWith("https://");
   const showIntent = typedSomething && intent.kind !== "empty";
   const title = page?.title || (hasPage ? hostOf(page!.url) : "");
+  const placeholder = hero ? "Search, ask, or go…" : compact ? "Search, address, or ask…" : "Search, enter an address, or ask the agent";
 
   return (
-    <div className={`cmdbar ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`} role="combobox" aria-expanded={suggestions.length > 0} aria-haspopup="listbox" aria-owns="cmdbar-list">
+    <div className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`} role="combobox" aria-expanded={suggestions.length > 0} aria-haspopup="listbox" aria-owns="cmdbar-list">
       <span className="cb-lead">
-        {page && hasPage ? <EngineBadge page={page as PageTarget} compact /> : <span className="cb-ico">{I.sparklesSm}</span>}
-        {hasPage && !editing && <span className={`cb-lock ${secure ? "secure" : ""}`} title={secure ? "Secure connection" : "Not secure"}>{secure ? I.lock : I.alert}</span>}
+        {compact ? (
+          <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : hasPage && !editing ? I.globe : I.search}</span>
+        ) : page && hasPage && !hero ? (
+          <EngineBadge page={page as PageTarget} compact />
+        ) : (
+          <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.searchLg}</span>
+        )}
+        {hasPage && !editing && !hero && !compact && <span className={`cb-lock ${secure ? "secure" : ""}`} title={secure ? "Secure connection" : "Not secure"}>{secure ? I.lock : I.alert}</span>}
       </span>
       <div className="cb-field">
         {!editing && (
           <span className="cb-display" aria-hidden onMouseDown={(e) => { e.preventDefault(); inputRef.current?.focus(); }}>
-            {hasPage ? (
-              <>
-                <span className="cb-title">{title}</span>
-                <span className="cb-host">{hostOf(page!.url)}</span>
-              </>
+            {hasPage && !hero ? (
+              compact ? (
+                <span className="cb-title">{hostOf(page!.url)}</span>
+              ) : (
+                <>
+                  <span className="cb-title">{title}</span>
+                  <span className="cb-host">{hostOf(page!.url)}</span>
+                </>
+              )
             ) : (
-              <span className="cb-placeholder">Search, enter an address, or ask the agent</span>
+              <span className="cb-placeholder">{placeholder}</span>
             )}
           </span>
         )}
@@ -231,7 +246,7 @@ export function CommandBar() {
           aria-autocomplete="list"
           aria-controls="cmdbar-list"
           aria-activedescendant={suggestions[sel] ? `cb-opt-${suggestions[sel]!.id}` : undefined}
-          placeholder={editing ? "Search, enter an address, or ask the agent" : ""}
+          placeholder={editing ? placeholder : ""}
           spellCheck={false}
           autoCorrect="off"
           autoCapitalize="off"
@@ -250,16 +265,32 @@ export function CommandBar() {
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => intent.kind === "run" && setScopeFlip((v) => !v)}
         >
-          {intent.kind === "run" ? I.sparklesSm : intent.kind === "navigate" ? I.open : intent.kind === "search" ? I.search : I.right}
+          {intent.kind === "run" ? I.agentSm : intent.kind === "navigate" ? I.open : intent.kind === "search" ? I.search : I.command}
           {intentLabel(intent)}
           {intent.kind === "run" && <kbd>⇥</kbd>}
         </button>
       ) : (
-        !editing && (
+        !editing && !compact && !hero && (
           <button type="button" className="cb-kbd" tabIndex={-1} title="Command palette (⌘K)" aria-label="Open command palette" onMouseDown={(e) => e.preventDefault()} onClick={() => setOverlay("palette")}>
             ⌘K
           </button>
         )
+      )}
+      {hero && typedSomething && (
+        <button
+          type="button"
+          className="cb-send"
+          tabIndex={-1}
+          title="Go (↵)"
+          aria-label="Submit"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            const chosen = suggestions[sel];
+            void (chosen && sel > 0 ? Promise.resolve(chosen.run()) : exec(intent)).catch(errToast).finally(() => inputRef.current?.blur());
+          }}
+        >
+          {intent.kind === "run" ? I.send : I.enter}
+        </button>
       )}
       {suggestions.length > 0 && (
         <div className="cb-pop pop-in" ref={listRef} role="listbox" id="cmdbar-list" onMouseDown={(e) => e.preventDefault()}>

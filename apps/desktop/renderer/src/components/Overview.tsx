@@ -3,6 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useStore, call, errToast } from "../store";
 import { bridge, inElectron } from "../bridge";
 import { hostOf } from "../workspace";
+import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 
 /** ⌘⇧O — every tab as a card with a preview; captures once on entry, not on a timer. */
@@ -76,12 +77,12 @@ export function Overview() {
               onClick={() => void activate(p.pageId).catch(errToast)}
               onKeyDown={(e) => { if (e.key === "Enter") void activate(p.pageId).catch(errToast); }}>
               <div className="ov-shot">
-                {shot ? <img src={shot} alt="" /> : <span className="ov-fallback">{p.favicon ? <img src={p.favicon} alt="" className="ov-bigfav" /> : I.globeLg}</span>}
+                {shot ? <img src={shot} alt="" /> : <span className="ov-fallback"><FavIcon url={p.url} src={p.favicon} className="ov-bigfav" /></span>}
                 {p.backend === "chrome" && <span className="ov-src">Chrome</span>}
                 <button className="ov-close icon-btn sm" aria-label={`Close ${p.title}`} onClick={(e) => { e.stopPropagation(); void closeTab(p.pageId); }}>{I.close}</button>
               </div>
               <div className="ov-meta">
-                {p.favicon && <img className="ov-fav" src={p.favicon} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}
+                <FavIcon url={p.url} src={p.favicon} className="ov-fav" size="sm" />
                 <span className="t">{p.title || "New Tab"}</span>
               </div>
               <div className="ov-url">{hostOf(p.url)}</div>

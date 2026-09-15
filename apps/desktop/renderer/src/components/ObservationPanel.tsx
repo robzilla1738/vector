@@ -46,8 +46,8 @@ function RefLine({ line }: { line: string }) {
   );
 }
 
-const ObsSection = memo(function ObsSection({ name, lines }: { name: string; lines: string[] }) {
-  const [open, setOpen] = useState(true);
+const ObsSection = memo(function ObsSection({ name, lines, startOpen }: { name: string; lines: string[]; startOpen: boolean }) {
+  const [open, setOpen] = useState(startOpen);
   const isRefs = /interactive|form|links|tables/i.test(name);
   const isHeadings = /heading/i.test(name);
   return (
@@ -68,22 +68,24 @@ const ObsSection = memo(function ObsSection({ name, lines }: { name: string; lin
 });
 
 export const ObservationPanel = memo(
-  function ObservationPanel({ obs, onCopy }: { obs: CompactObservation; onCopy?: () => void }) {
+  function ObservationPanel({ obs, onCopy, compact }: { obs: CompactObservation; onCopy?: () => void; compact?: boolean }) {
     const parsed = useMemo(() => parseCompact(obs.text), [obs.text]);
     return (
-      <div className="obs-panel" data-testid="observation">
-        <div className="obs-head">
-          <span className="obs-title" title={obs.url}>{obs.title || obs.url}</span>
-          <span className="obs-meta nums">rev {obs.revision} · {obs.refs.length} refs</span>
-          {onCopy && <button className="icon-btn xs" title="Copy observation" aria-label="Copy observation" onClick={onCopy}>{I.copy}</button>}
-        </div>
-        {parsed.header.slice(1).map((l, i) => (
+      <div className={`obs-panel ${compact ? "compact" : ""}`} data-testid="observation">
+        {!compact && (
+          <div className="obs-head">
+            <span className="obs-title" title={obs.url}>{obs.title || obs.url}</span>
+            <span className="obs-meta nums">rev {obs.revision} · {obs.refs.length} refs</span>
+            {onCopy && <button className="icon-btn xs" title="Copy observation" aria-label="Copy observation" onClick={onCopy}>{I.copy}</button>}
+          </div>
+        )}
+        {!compact && parsed.header.slice(1).map((l, i) => (
           <div key={i} className="obs-subtle nums">{l}</div>
         ))}
-        {parsed.sections.map((s) => <ObsSection key={s.name} name={s.name} lines={s.lines} />)}
+        {parsed.sections.map((s) => <ObsSection key={s.name} name={s.name} lines={s.lines} startOpen={!compact} />)}
         {parsed.sections.length === 0 && <pre className="obs-raw">{obs.text}</pre>}
       </div>
     );
   },
-  (a, b) => a.obs.pageId === b.obs.pageId && a.obs.revision === b.obs.revision && a.obs.text === b.obs.text,
+  (a, b) => a.obs.pageId === b.obs.pageId && a.obs.revision === b.obs.revision && a.obs.text === b.obs.text && a.compact === b.compact,
 );

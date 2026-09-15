@@ -1,7 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import type { EngineMode } from "@vector/contracts";
-import type { ModelClient } from "../agent/model-client.js";
-import { FALLBACK_MODELS } from "../agent/model-client.js";
+import { FALLBACK_MODELS, DEFAULT_PLANNER_MODEL, type ModelClient } from "../agent/model-client.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
 import type { Repo } from "../store/repo.js";
 
@@ -99,7 +98,8 @@ export class SettingsService {
   }
 
   plannerModel(): string {
-    return (this.get("plannerModel") as string) ?? this.env.VECTOR_PLANNER_MODEL ?? "anthropic/claude-sonnet-4.5";
+    // Pinned: ignore leftover catalog picks (Anthropic, etc.) from earlier builds.
+    return this.env.VECTOR_PLANNER_MODEL || DEFAULT_PLANNER_MODEL;
   }
   recoveryModel(): string | undefined {
     return (this.get("recoveryModel") as string) ?? this.env.VECTOR_RECOVERY_MODEL;
@@ -108,7 +108,7 @@ export class SettingsService {
     return (this.get("visionModel") as string) || this.env.VECTOR_VISION_MODEL || undefined;
   }
   searchEngine(): string {
-    return (this.get("searchEngine") as string) ?? "https://www.google.com/search?q=";
+    return (this.get("searchEngine") as string) ?? "https://duckduckgo.com/?q=%s";
   }
   maxWorkers(): number {
     return (this.get("maxWorkers") as number) ?? 4;
@@ -117,7 +117,7 @@ export class SettingsService {
     return (this.get("perOrigin") as number) ?? 2;
   }
   maxModelCalls(): number {
-    return (this.get("maxModelCalls") as number) ?? 2;
+    return (this.get("maxModelCalls") as number) ?? 8;
   }
 
   model(): ModelClient | null {
@@ -126,12 +126,19 @@ export class SettingsService {
     if (!key) return null;
     if (!this.gatewayClient) {
       const t = Number(this.env.VECTOR_MODEL_CALL_TIMEOUT_MS);
-      this.gatewayClient = new GatewayModelClient(key, { callTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined });
+      const only = this.env.VECTOR_GATEWAY_ONLY?.split(",").map((s) => s.trim()).filter(Boolean);
+      this.gatewayClient = new GatewayModelClient(key, {
+        callTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined,
+        only: only?.length ? only : ["cerebras"],
+      });
     }
     return this.gatewayClient;
   }
 
   async listModels(): Promise<{ models: { id: string; name?: string }[]; source: "gateway" | "static" }> {
+    const only = this.env.VECTOR_GATEWAY_ONLY?.split(",").map((s) => s.trim()).filter(Boolean);
+    const cerebrasOnly = !only?.length || (only.length === 1 && only[0] === "cerebras");
+    if (cerebrasOnly) return { models: FALLBACK_MODELS, source: "static" };
     const m = this.model();
     if (!m) return { models: FALLBACK_MODELS, source: "static" };
     try {

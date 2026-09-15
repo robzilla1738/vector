@@ -176,8 +176,10 @@ session and never logged or returned.
 lastSeq }` (renderer sync snapshot; settings come from `settings.get`) ·
 `settings.get` / `settings.set { gatewayApiKey?, plannerModel?,
 recoveryModel?, visionModel?, searchEngine?, maxWorkers?, perOrigin?,
-maxModelCalls?, theme?, zoomFactor?, engineMode? }` — `engineMode` is
-`"off" | "auto" | "always"` and takes effect on the next `pages.open` ·
+maxModelCalls?, theme?, zoomFactor?, engineMode? }` — `plannerModel`
+defaults to `alibaba/qwen3.8-27b` (Cerebras via the Gateway); `visionModel`
+is unset unless configured; `engineMode` is `"off" | "auto" | "always"` and
+takes effect on the next `pages.open` ·
 `models.list` / `models.probe` ·
 `history.list` / `history.clear` · `bookmarks.list|add|remove` — add/remove
 emit `bookmarks.changed` with the updated list so live clients stay in sync ·

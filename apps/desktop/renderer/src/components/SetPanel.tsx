@@ -77,7 +77,7 @@ export function SetPanel({ setId }: { setId: string }) {
               <span className="member-label">{label(m)}</span>
               <span className="member-foot">
                 {m.url && m.label && <span className="member-host">{hostOf(m.url)}</span>}
-                <span className="member-state">{m.status === "running" ? <span className="pulse-dot" /> : m.status === "completed" ? I.check : m.status === "failed" ? I.close : m.status === "queued" ? I.circle : I.close}</span>
+                <span className="member-state">{m.status === "running" ? I.play : m.status === "completed" ? I.check : m.status === "failed" ? I.close : m.status === "queued" ? I.circle : I.close}</span>
               </span>
             </button>
           ))}

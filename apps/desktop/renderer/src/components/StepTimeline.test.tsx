@@ -66,7 +66,7 @@ describe("StepTimeline", () => {
     const current = el.querySelectorAll("li[aria-current=step]");
     expect(current).toHaveLength(1);
     expect(current[0]!.textContent).toContain("Thinking");
-    expect(current[0]!.querySelector(".pulse-dot")).not.toBeNull();
+    expect(current[0]!.querySelector(".live-dot")).not.toBeNull();
   });
 
   it("shows an observing placeholder when a live run has no steps yet, and nothing when idle", () => {

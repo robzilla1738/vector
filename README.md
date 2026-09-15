@@ -52,10 +52,13 @@ VECTOR_ENGINE_MODE=auto pnpm dev
 Configuration is otherwise optional — copy `.env.example` to `.env` (in the
 repo root you launch from, or in the data dir
 `~/Library/Application Support/Vector`) and set `AI_GATEWAY_API_KEY` to
-enable agent goals (`runs.start`, `sets.map --goal`). The runtime loads
+enable agent goals (`runs.start`, `sets.map --goal`). The planner defaults
+to `alibaba/qwen3.8-27b` through Vercel AI Gateway, pinned to Cerebras
+(`VECTOR_GATEWAY_ONLY`, default `cerebras`). The runtime loads
 `<dataDir>/.env` then `<cwd>/.env` at startup; variables already set in the
 environment always win. Programs, observations, and saved-operation sets
-work with no key.
+work with no key. Other agents (Cursor, Codex, Claude) can drive the same
+runtime over [MCP](docs/mcp.md) or the [loopback API](docs/api.md).
 
 ## Benchmark
 
@@ -83,11 +86,13 @@ static corpus (`cargo run --release -p perf -- --gate m1`) are in
 ## Using the app
 
 The shell (`apps/desktop`, documented in [docs/ui/shell.md](docs/ui/shell.md))
-is a sidebar of spaces and tabs, one command bar, an inset stage card and a
-resizable agent rail.
+is an Arc-style sidebar (spaces, five pin tiles, tab folders), a command bar
+in that sidebar, an inset stage card, and a resizable agent rail. Type is
+Inter Variable; icons are Lucide. Dark chrome is `#1f1f1f`.
 
 - `⌘T` new tab · `⌘W` close · `⌘⇧T` reopen · `⌘1–9` switch · `⌃Tab` cycle
-- `⌘L` / `⌘E` focus the **command bar**: a URL or search navigates
+- `⌘L` / `⌘E` focus the **command bar** (sidebar field when expanded; top
+  toolbar only when the sidebar is hidden): a URL or search navigates
   immediately (no model); a prompt starts an agent run. Prefixes: `/`
   command, `>` force a run, `?` force a search.
 - `⌘K` command palette · `⌘⇧A` agent rail · `⌘⇧O` tab overview ·

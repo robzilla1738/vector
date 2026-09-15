@@ -32,7 +32,7 @@ export function FindBar() {
 
   return (
     <div className="findbar slide-down" role="search">
-      <span className="fb-ico">{I.searchLg}</span>
+      <span className="fb-ico">{I.find}</span>
       <input
         ref={ref}
         value={text}

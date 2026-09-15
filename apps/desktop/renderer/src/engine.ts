@@ -42,7 +42,9 @@ const LABELS: Record<EngineBackend, { label: string; short: string; description:
 
 /** Read the engine identity of a page, tolerating the pre-contract shape. */
 export function engineOf(page: Pick<PageTarget, "backend"> & { route?: EngineRoute; routeReason?: string }): EngineInfo {
-  const backend = (page.backend as EngineBackend) in LABELS ? (page.backend as EngineBackend) : "vector";
+  const routed = page.route?.backend;
+  const raw = routed && routed in LABELS ? routed : (page.backend as EngineBackend);
+  const backend = raw in LABELS ? raw : "vector";
   const meta = LABELS[backend];
   const route: EngineRoute | undefined =
     page.route ?? (page.routeReason ? { backend, routeReason: page.routeReason } : undefined);
@@ -52,7 +54,7 @@ export function engineOf(page: Pick<PageTarget, "backend"> & { route?: EngineRou
 export function engineModeLabel(mode: EngineMode | undefined): string {
   switch (mode) {
     case "always":
-      return "Vector Engine for every page";
+      return "Vector Engine for every page. Chromium is used if the native addon is missing.";
     case "auto":
       return "Vector Engine where it helps, Chromium elsewhere";
     default:

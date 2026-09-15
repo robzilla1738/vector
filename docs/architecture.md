@@ -129,16 +129,17 @@ structured fields.
 
 `runs.start` drives the agent loop: observe → plan (AI Gateway, structured
 output) → execute batch → verify → repeat, with human-takeover and pause/
-resume/answer control. Models without native structured-output support fall
+resume/answer control. The planner defaults to `alibaba/qwen3.8-27b`;
+Gateway routing is pinned to Cerebras unless `VECTOR_GATEWAY_ONLY` lists
+other providers. Models without native structured-output support fall
 back to JSON-in-text (the response is extracted and schema-validated), and
 reasoning models get extra output-token headroom for thinking tokens.
 
 Recovery ladder: a failed chunk re-observes and replans; once per run the
-**vision fallback** captures a screenshot and replans from pixels (the
-`visionModel` setting or `VECTOR_VISION_MODEL` picks the model; defaults to
-the planner model — use `models.probe` to check a model accepts images);
-the final retry escalates to the optional recovery model
-(`recoveryModel`/`VECTOR_RECOVERY_MODEL`).
+**vision fallback** captures a screenshot and replans from pixels when
+`visionModel` / `VECTOR_VISION_MODEL` is set (use `models.probe` to check a
+model accepts images). Unset, vision is skipped. The final retry escalates
+to the optional recovery model (`recoveryModel`/`VECTOR_RECOVERY_MODEL`).
 
 `sets.map` applies a saved program or a goal across set members through a
 bounded `WorkerPool` (global + per-origin limits). Successful member runs can

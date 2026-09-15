@@ -7,7 +7,7 @@
  * exposes native.* methods to it over fork IPC and forwards its event
  * stream to the renderer.
  */
-import { app, BaseWindow, BrowserWindow, dialog, ipcMain, Menu, shell, WebContentsView } from "electron";
+import { app, BaseWindow, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell, WebContentsView } from "electron";
 import { mkdirSync, readFileSync, existsSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -20,6 +20,28 @@ const CDP_PORT_FILE = "devtools-port";
 
 const DATA_DIR = process.env.VECTOR_DATA_DIR ?? join(homedir(), "Library", "Application Support", "Vector");
 mkdirSync(DATA_DIR, { recursive: true });
+
+const WINDOW_BG = { dark: "#1c1c1e", light: "#e4e4e1" } as const;
+
+function readStoredTheme(): "dark" | "light" {
+  try {
+    const raw = JSON.parse(readFileSync(join(DATA_DIR, "settings.json"), "utf8")) as { theme?: string };
+    return raw.theme === "light" ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+}
+
+function applyAppearance(theme: "dark" | "light") {
+  nativeTheme.themeSource = theme;
+  const bg = WINDOW_BG[theme];
+  try {
+    win?.setBackgroundColor(bg);
+  } catch {
+    /* BaseWindow may not expose setBackgroundColor on every build */
+  }
+  shellView?.setBackgroundColor(bg);
+}
 
 // CDP must be enabled before app ready. Port 0 → OS picks; the real port is
 // written to <userData>/DevToolsActivePort.
@@ -468,6 +490,10 @@ function wireRendererIpc() {
     return r.filePath;
   });
   ipcMain.handle("app.dataDir", () => DATA_DIR);
+  ipcMain.handle("ui.setAppearance", (_e, theme: unknown) => {
+    applyAppearance(theme === "light" ? "light" : "dark");
+    return true;
+  });
 }
 
 // ---------- downloads ----------
@@ -552,18 +578,18 @@ async function boot() {
     if (type === "event") shellView?.webContents.send("event", payload);
   });
 
+  const theme = readStoredTheme();
+  nativeTheme.themeSource = theme;
   win = new BaseWindow({
     width: 1440,
     height: 960,
     minWidth: 1100,
     minHeight: 720,
-    transparent: true,
+    backgroundColor: WINDOW_BG[theme],
     title: "Vector",
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 16, y: 18 },
     roundedCorners: true,
-    vibrancy: "sidebar",
-    visualEffectState: "active",
   });
 
   shellView = new WebContentsView({
@@ -575,7 +601,7 @@ async function boot() {
       nodeIntegration: false,
     },
   });
-  shellView.setBackgroundColor("#00000000");
+  shellView.setBackgroundColor(WINDOW_BG[theme]);
   // The shell renderer is the app UI, not a browser: it may only ever show
   // the bundled renderer (or the Vite dev server). Any other navigation —
   // e.g. an injected link inside the chrome — is blocked, and window.open
@@ -622,6 +648,7 @@ async function boot() {
   } else {
     await shellView.webContents.loadFile(join(import.meta.dirname, "..", "renderer", "index.html"));
   }
+  void shellView.webContents.executeJavaScript(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`);
   if (process.env.VECTOR_DEVTOOLS === "1") shellView.webContents.openDevTools({ mode: "detach" });
 
   wireRendererIpc();

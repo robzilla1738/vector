@@ -33,6 +33,7 @@ export function spawnRuntime(opts: {
   const proc = fork(entry, [], {
     execPath: process.execPath,
     silent: true,
+    cwd: app.isPackaged ? undefined : join(app.getAppPath(), "..", ".."),
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: "1",

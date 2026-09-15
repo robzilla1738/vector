@@ -14,6 +14,7 @@ describe("gateway fallback guard (P1-2 / retry amplification)", () => {
     expect(isStructuredOutputError(new TypeValidationError({ value: {}, cause: new Error("bad") }))).toBe(true);
     expect(isStructuredOutputError(new JSONParseError({ text: "{", cause: new Error("bad") }))).toBe(true);
     expect(isStructuredOutputError(apiErr(400, "response_format is not supported by this model"))).toBe(true);
+    expect(isStructuredOutputError(new Error("Unsupported JSON schema fields in schema with keys: dict_keys(['oneOf'])."))).toBe(true);
   });
   it("never retries auth, quota, server, network or abort errors", () => {
     expect(isStructuredOutputError(apiErr(401))).toBe(false);
