@@ -1,0 +1,157 @@
+# Vector Engine — an agent-first browser engine written from scratch in Rust.
+#
+# This is a Cargo workspace; every engine subsystem lives in `crates/` and the
+# conformance/performance harnesses live in `tools/`. Heavy or platform-bound
+# dependencies (JS VM, GPU rendering, HTTP stack, Node bindings) are gated
+# behind cargo features so that the default build is pure Rust and light.
+
+[workspace]
+resolver = "3"
+members = [
+    "crates/ve-core",
+    "crates/ve-net",
+    "crates/ve-html",
+    "crates/ve-dom",
+    "crates/ve-style",
+    "crates/ve-layout",
+    "crates/ve-a11y",
+    "crates/ve-script",
+    "crates/ve-gfx",
+    "crates/ve-agent",
+    "crates/ve-api",
+    "crates/ve-napi",
+    "tools/wpt-runner",
+    "tools/perf",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/vector-browser/vector"
+authors = ["Vector Engine contributors"]
+publish = false
+
+[workspace.dependencies]
+# ---- internal crates -------------------------------------------------------
+ve-core = { path = "crates/ve-core" }
+ve-net = { path = "crates/ve-net" }
+ve-html = { path = "crates/ve-html" }
+ve-dom = { path = "crates/ve-dom" }
+ve-style = { path = "crates/ve-style" }
+ve-layout = { path = "crates/ve-layout" }
+ve-a11y = { path = "crates/ve-a11y" }
+ve-script = { path = "crates/ve-script" }
+ve-gfx = { path = "crates/ve-gfx" }
+ve-agent = { path = "crates/ve-agent" }
+ve-api = { path = "crates/ve-api" }
+
+# ---- parsing (pure Rust, default) -----------------------------------------
+html5ever = "0.40.1"
+markup5ever = "0.40.0"
+# `selectors 0.40` is built against `cssparser ^0.37`; keep them in lockstep.
+cssparser = "0.37.0"
+selectors = "0.40.0"
+# `selectors` requires atom types to implement this trait.
+precomputed-hash = "0.1.1"
+
+# ---- layout & text (pure Rust, default) -----------------------------------
+taffy = { version = "0.14.0", default-features = false, features = ["std", "flexbox", "grid", "block_layout", "taffy_tree"] }
+parley = { version = "0.11.1", default-features = false, features = ["std"] }
+fontdb = { version = "0.24.0", default-features = false, features = ["std"] }
+swash = "0.2.10"
+
+# ---- networking (optional; feature `net`) ---------------------------------
+hyper = { version = "1.11.1", features = ["client", "http1", "http2"] }
+hyper-util = { version = "0.1.20", features = ["client", "client-legacy", "http1", "http2", "tokio"] }
+http = "1.5.0"
+http-body-util = "0.1.5"
+bytes = "1.12.1"
+rustls = { version = "0.23.45", default-features = false, features = ["std", "tls12", "ring"] }
+tokio-rustls = { version = "0.26.5", default-features = false, features = ["tls12", "ring"] }
+webpki-roots = "1.0.9"
+tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "net", "time", "sync", "macros"] }
+
+# ---- scripting (optional; feature `quickjs`) -------------------------------
+rquickjs = { version = "0.13.0", features = ["futures", "macro", "classes", "properties"] }
+
+# ---- graphics (optional; feature `gpu`) -----------------------------------
+# `vello 0.10` requires `wgpu ^29`; do not bump one without the other.
+vello = "0.10.0"
+wgpu = { version = "29.0.4", default-features = false, features = ["std", "wgsl", "vulkan", "metal", "dx12"] }
+peniko = "0.6.1"
+kurbo = "0.13.1"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+
+# ---- Node bindings (optional; crate ve-napi) --------------------------------
+napi = { version = "3.12.4", default-features = false, features = ["napi8", "serde-json"] }
+napi-derive = "3.6.5"
+napi-build = "2.4.2"
+
+# ---- general ---------------------------------------------------------------
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.20"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+url = "2.5.8"
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Pedantic lints we deliberately do not follow. Everything else in
+# `clippy::pedantic` is enforced (CI runs `-D warnings`).
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+struct_excessive_bools = "allow"
+struct_field_names = "allow"
+similar_names = "allow"
+many_single_char_names = "allow"
+# Geometry and CSS values are f32 by design; exact comparisons of computed
+# values (e.g. `width == 0.0`) are intentional, and narrowing casts are
+# range-checked at the call sites.
+float_cmp = "allow"
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+# Stylistic preferences the codebase does not adopt.
+too_many_lines = "allow"
+match_same_arms = "allow"
+semicolon_if_nothing_returned = "allow"
+needless_raw_string_hashes = "allow"
+elidable_lifetime_names = "allow"
+redundant_closure_for_method_calls = "allow"
+single_match_else = "allow"
+manual_let_else = "allow"
+if_not_else = "allow"
+items_after_statements = "allow"
+missing_fields_in_debug = "allow"
+self_named_constructors = "allow"
+wildcard_imports = "allow"
+unnecessary_wraps = "allow"
+needless_pass_by_value = "allow"
+unreadable_literal = "allow"
+trivially_copy_pass_by_ref = "allow"
+format_push_string = "allow"
+unused_self = "allow"
+format_collect = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+# Dependencies rarely need to be debugged; optimise them a little so tests
+# that run layout/parsing over fixtures stay fast in dev builds.
+opt-level = 1

@@ -1,0 +1,29 @@
+[package]
+name = "perf"
+description = "Per-stage performance harness for the Vector Engine; records spans to JSON."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+ve-api.workspace = true
+ve-core.workspace = true
+ve-dom.workspace = true
+ve-html.workspace = true
+ve-style.workspace = true
+ve-layout.workspace = true
+ve-a11y.workspace = true
+ve-gfx.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

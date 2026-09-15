@@ -1,0 +1,10 @@
+# Shared clippy configuration for the Vector Engine workspace.
+cognitive-complexity-threshold = 30
+too-many-arguments-threshold = 8
+type-complexity-threshold = 300
+avoid-breaking-exported-api = true
+doc-valid-idents = [
+    "WebIDL", "QuickJS", "OpenType", "TrueType", "WebGPU", "HiDPI", "WebAssembly", "JavaScript",
+    "TypeScript", "MathML", "XHTML", "HarfBuzz", "ICU4X", "WebP", "AVIF", "WebKit", "RGBA",
+    "ARIA", "GraphQL", "OpenGL", "SwiftUI", "..",
+]
