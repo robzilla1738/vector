@@ -7,7 +7,7 @@ use ve_layout::LayoutTree;
 use ve_style::StyleTree;
 
 /// A rendered screenshot.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Screenshot {
     /// Width in device pixels.

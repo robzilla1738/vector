@@ -2615,6 +2615,7 @@ dependencies = [
 name = "ve-agent"
 version = "0.0.1"
 dependencies = [
+ "png",
  "serde",
  "serde_json",
  "thiserror",
@@ -2623,8 +2624,10 @@ dependencies = [
  "ve-a11y",
  "ve-core",
  "ve-dom",
+ "ve-gfx",
  "ve-html",
  "ve-layout",
+ "ve-net",
  "ve-script",
  "ve-style",
 ]

@@ -138,7 +138,7 @@ impl Page {
         for step in &program.steps {
             if failed.is_some() || cancelled {
                 outcomes.push(StepOutcome {
-                    step_id: step.id().clone(),
+                    step_id: step.id().to_owned(),
                     op: step.op().into(),
                     status: StepStatus::Skipped,
                     started_at: now_millis(),
@@ -242,7 +242,7 @@ impl Page {
             tracing::debug!(id = step.id(), op = step.op(), ?status, "step");
             last_settled = settled;
             outcomes.push(StepOutcome {
-                step_id: step.id().clone(),
+                step_id: step.id().to_owned(),
                 op: step.op().into(),
                 status,
                 started_at,
@@ -765,7 +765,7 @@ impl Page {
                 let mut entry = Map::new();
                 entry.insert("ref".into(), json!(ref_for(id)));
                 entry.insert("text".into(), json!(self.visible_text(id)));
-                if let Some(attr) = key {
+                if key.is_some() {
                     entry.insert("key".into(), json!(dedupe));
                 }
                 for field in fields {

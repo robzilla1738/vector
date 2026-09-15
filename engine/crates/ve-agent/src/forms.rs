@@ -371,7 +371,7 @@ mod tests {
         <textarea name=notes>line</textarea>
         <input type=hidden name=csrf value=tok>
         <fieldset disabled><input name=locked value=1></fieldset>
-        <input name=nameless-skip>
+        <input value=nameless-skipped>
         <input type=file name=doc>
         <button name=do value=save formmethod=get formaction="/quick">Save</button>
         <button type=button name=nope value=1>Noop</button>

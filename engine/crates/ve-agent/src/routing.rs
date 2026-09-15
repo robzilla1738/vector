@@ -306,7 +306,7 @@ mod tests {
         let ng = classify_html(&format!("<p>{lorem}</p><app-root ng-version=\"17\"></app-root>"));
         assert!(ng.route_reason.contains("app-root"));
 
-        let noscript = classify_html("<noscript>You need to enable JavaScript to run this app.</noscript><p>Loading</p>");
+        let noscript = classify_html("<body><noscript>You need to enable JavaScript to run this app.</noscript><p>Loading</p></body>");
         assert!(noscript.route_reason.starts_with("noscript-requires-js"));
         let noscript_long = classify_html(&format!("<noscript>Please enable JavaScript</noscript><p>{}</p>", "text ".repeat(300)));
         assert!(!noscript_long.requires_script, "long static text outweighs the noscript notice");
