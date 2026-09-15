@@ -1,5 +1,7 @@
 # Vector — Agent Speed Audit
 
+> **Historical (Sep 2026, pre-M1).** This audit was written against the initial runtime. Most P0/P1 items were fixed in PR #1 and M1 (compact observations, act+observe, path-first refs, batched persistence, filtered response capture, quiescence readiness, `pnpm bench`). For current status use [`docs/engine/architecture.md` §0](../engine/architecture.md) and the code; the items still open are tracked in the plan (streaming plans, stage lease, pilot-then-fan-out, observation cache).
+
 Scope: read-only review of `/agent/workspace/vector` (runtime, browser-driver, contracts, mcp, desktop). Latency figures marked *est.* are engineering estimates from the code paths, not measurements — the repo currently has no runnable benchmark to measure them (see §E).
 
 ## Verdict
