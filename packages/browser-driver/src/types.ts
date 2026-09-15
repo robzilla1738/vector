@@ -37,6 +37,8 @@ export interface DriverPageEvents {
     method: string;
     status: number;
     contentType?: string;
+    /** Playwright resource type: document, script, stylesheet, xhr, fetch, image, … */
+    resourceType?: string;
     /** response body — captured only for capture-worthy types, may be truncated */
     body?: Buffer;
     bodyBytes?: number;
@@ -156,6 +158,15 @@ export interface BrowserDriver {
   /** Write cookies into the backend's storage partition. Returns count set. */
   setCookies?(cookies: BrowserCookie[]): Promise<number>;
   onTargetsChanged?: (targets: DiscoveredTarget[]) => void;
+  /**
+   * Re-establish the backend connection after the socket dropped. Resolves
+   * immediately when already connected; rejects when the backend is gone.
+   */
+  reconnect?(): Promise<void>;
+  /** The backend socket dropped — the runtime marks the session degraded. */
+  onDisconnected?: () => void;
+  /** A reconnect() succeeded after a drop. */
+  onReconnected?: () => void;
 }
 
 export interface ResolvedRef {

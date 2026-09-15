@@ -1,8 +1,47 @@
-import { generateObject, generateText } from "ai";
+import {
+  APICallError,
+  generateObject,
+  generateText,
+  JSONParseError,
+  NoObjectGeneratedError,
+  TypeValidationError,
+  UnsupportedFunctionalityError,
+} from "ai";
 import { createGateway } from "@ai-sdk/gateway";
 import { z } from "zod";
 import { VectorError } from "@vector/contracts";
 import type { ModelClient, StructuredCallResult, TextCallResult } from "./model-client.js";
+
+/** Per-call ceiling — a hung gateway must not stall a run until runs.cancel. */
+export const DEFAULT_MODEL_CALL_TIMEOUT_MS = 90_000;
+
+/**
+ * Combine the caller's signal with a per-call timeout. Either aborting
+ * aborts the SDK call; the timer never keeps the process alive.
+ */
+export function withCallTimeout(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
+
+/**
+ * Only failures of the *structured-output* mechanism justify the JSON-in-text
+ * fallback: the model answered but not with a parseable/valid object, or the
+ * provider rejected the schema/response_format feature itself. Auth (401/403),
+ * quota (429), server (5xx), network and abort errors are surfaced as-is —
+ * retrying them with a different prompt only amplifies cost.
+ */
+export function isStructuredOutputError(e: unknown): boolean {
+  if (NoObjectGeneratedError.isInstance(e)) return true;
+  if (TypeValidationError.isInstance(e)) return true;
+  if (JSONParseError.isInstance(e)) return true;
+  if (UnsupportedFunctionalityError.isInstance(e)) return true;
+  if (APICallError.isInstance(e)) {
+    // a 400 that names the structured-output feature — everything else is not ours to retry
+    return e.statusCode === 400 && /response_format|json_schema|structured|schema|tool_choice|tools?\b/i.test(e.message);
+  }
+  return false;
+}
 
 /** Pull the first balanced JSON value out of a text completion (fences or prose allowed around it). */
 export function extractJson(text: string): unknown {
@@ -33,10 +72,12 @@ export function extractJson(text: string): unknown {
  */
 export class GatewayModelClient implements ModelClient {
   private gateway: ReturnType<typeof createGateway>;
+  private readonly callTimeoutMs: number;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, opts: { callTimeoutMs?: number } = {}) {
     if (!apiKey) throw new VectorError("invalid_params", "AI_GATEWAY_API_KEY is required");
     this.gateway = createGateway({ apiKey });
+    this.callTimeoutMs = opts.callTimeoutMs && opts.callTimeoutMs > 0 ? opts.callTimeoutMs : DEFAULT_MODEL_CALL_TIMEOUT_MS;
   }
 
   async generateStructured<T>(opts: {
@@ -54,7 +95,7 @@ export class GatewayModelClient implements ModelClient {
         schema: opts.schema,
         system: opts.system,
         prompt: opts.prompt,
-        abortSignal: opts.signal,
+        abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
         maxRetries: 0,
         maxOutputTokens: opts.maxOutputTokens ?? 2000,
         providerOptions: {
@@ -76,6 +117,9 @@ export class GatewayModelClient implements ModelClient {
       if (opts.signal?.aborted) throw e;
       // Models without structured-output support (e.g. meta/muse-*) get a
       // JSON-in-text fallback: ask for strict JSON, extract, schema-validate.
+      // Anything that is not a structured-output failure (401/403/429/5xx,
+      // network, timeout) propagates untouched — no retry amplification.
+      if (!isStructuredOutputError(e)) throw e;
       const jsonSchema = JSON.stringify(z.toJSONSchema(opts.schema));
       const res = await this.generateText({
         modelId: opts.modelId,
@@ -138,7 +182,7 @@ export class GatewayModelClient implements ModelClient {
             },
           ]
         : [{ role: "user", content: opts.prompt }],
-      abortSignal: opts.signal,
+      abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0,
       maxOutputTokens: opts.maxOutputTokens ?? 1200,
       providerOptions: {

@@ -41,15 +41,39 @@ server.registerTool(
   },
 );
 
+const ObservationScope = z.enum(["full", "forms", "links", "tables", "subtree"]);
+const ObservationFormat = z.enum(["full", "compact"]);
+
+/** Compact observations are rendered as plain text — the model reads it directly. */
+const observationOut = (v: unknown) => {
+  const o = v as { observation?: { text?: string } } | undefined;
+  if (o && typeof o === "object" && o.observation && typeof o.observation.text === "string") {
+    return { content: [{ type: "text" as const, text: o.observation.text }] };
+  }
+  return text(v);
+};
+
 server.registerTool(
   "vector_page_observe",
   {
-    description: "Structured observation of a page: title, url, element refs, forms, tables, headings. Returns revision + ref handles usable by vector_page_execute.",
-    inputSchema: { pageId: z.string() },
+    description:
+      "Structured observation of a page: title, url, element refs (r1, r2, …), forms, tables, headings, text. " +
+      "format 'compact' (default) returns the rendered text view — one line per ref like `r12 button \"Save\"` — which is 5–10× smaller than 'full' JSON (elements with selectors/rects). " +
+      "Refs are valid until the page navigates (documentEpoch changes). Use scope to narrow (forms/links/tables, or subtree with subtreeRef).",
+    inputSchema: {
+      pageId: z.string(),
+      format: ObservationFormat.optional().describe("compact (default) or full JSON"),
+      scope: ObservationScope.optional().describe("full (default), forms, links, tables, or subtree"),
+      subtreeRef: z.string().optional().describe("ref to observe under when scope=subtree"),
+      maxElements: z.number().int().positive().optional().describe("cap on elements (default 120)"),
+      maxTextChars: z.number().int().positive().optional().describe("cap on page text (default 6000)"),
+    },
   },
-  async ({ pageId }) => {
+  async ({ pageId, format, scope, subtreeRef, maxElements, maxTextChars }) => {
     try {
-      return text(await rpc("pages.observe", { pageId }));
+      return observationOut(
+        await rpc("pages.observe", { pageId, format: format ?? "compact", scope, subtreeRef, maxElements, maxTextChars }),
+      );
     } catch (e) {
       return err(e);
     }
@@ -60,16 +84,41 @@ server.registerTool(
   "vector_page_execute",
   {
     description:
-      "Execute a typed action program on a page. Steps: navigate/click/fill/select/wait/extract/keyboard/screenshot/dialog/upload/download. Refs come from vector_page_observe; semantic locators (role/text/css) are portable.",
+      "Execute a typed program (array of steps) on a page; steps run in order and stop at the first non-optional failure. " +
+      "Each step: {id, op, ...fields, optional?, timeoutMs?, expect?: Condition[]}. `target` is a STRING: a ref from vector_page_observe (\"r3\") or a portable locator (\"css:#save\", \"text:Save\", \"role=button[name=Save]\"). " +
+      "Ops: navigate{url} click{target,button?} dblclick hover fill{target,value} type{target,value,delayMs?} press{key,target?} check uncheck select{target,value} " +
+      "scroll{direction,amount?,target?} dragTo{target,to} clickPoint{x,y} upload{target,files} waitFor{condition} extract{fields:[{name,selector?,attribute?,all?}],as?} " +
+      "screenshot{fullPage?} expectDownload dialog{action} collectScroll{item,container?,key?,fields?,limit?} evaluate{expression,as?}. " +
+      "Conditions (waitFor/expect): {kind:'textVisible',text} {kind:'selector',selector,state?} {kind:'urlMatches',pattern} {kind:'navigationSettled'} {kind:'settled'} {kind:'response',urlIncludes} {kind:'refReady',ref} {kind:'expression',expression}. " +
+      "Pass returnObservation to get the resulting page state in the same call (saves a round trip). Example: " +
+      "{pageId, steps:[{id:'s1',op:'fill',target:'r4',value:'hello'},{id:'s2',op:'press',key:'Enter',target:'r4',expect:[{kind:'textVisible',text:'Results'}]}], returnObservation:{format:'compact'}}",
     inputSchema: {
       pageId: z.string(),
-      steps: z.array(z.record(z.string(), z.unknown())).describe("array of step objects, e.g. {op:'click', target:{ref:'r3'}}"),
-      verify: z.boolean().optional(),
+      steps: z.array(z.record(z.string(), z.unknown())).describe("step objects, e.g. {id:'s1', op:'click', target:'r3'}"),
+      documentEpoch: z.number().int().nonnegative().optional().describe("epoch the refs were observed in; the program fails fast if the page navigated since"),
+      returnObservation: z
+        .object({
+          scope: ObservationScope.optional(),
+          subtreeRef: z.string().optional(),
+          format: ObservationFormat.optional().describe("compact (default) or full"),
+        })
+        .optional()
+        .describe("observe the page after the program and return it with the result"),
     },
   },
-  async ({ pageId, steps, verify }) => {
+  async ({ pageId, steps, documentEpoch, returnObservation }) => {
     try {
-      return text(await rpc("pages.execute", { program: { pageId, steps }, verify }));
+      const ro = returnObservation ? { ...returnObservation, format: returnObservation.format ?? "compact" } : undefined;
+      const res = (await rpc("pages.execute", { program: { pageId, documentEpoch, steps }, returnObservation: ro })) as {
+        observation?: { text?: string };
+      };
+      if (res.observation && typeof res.observation.text === "string") {
+        const { observation, ...result } = res;
+        return {
+          content: [{ type: "text" as const, text: `${JSON.stringify(result, null, 2)}\n\n=== OBSERVATION ===\n${observation.text}` }],
+        };
+      }
+      return text(res);
     } catch (e) {
       return err(e);
     }

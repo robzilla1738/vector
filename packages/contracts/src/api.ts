@@ -15,7 +15,7 @@ import {
   StepRecordSchema,
 } from "./entities.js";
 import { EventSchema } from "./events.js";
-import { ObservationSchema, ObservationRequestSchema } from "./observation.js";
+import { CompactObservationSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
 import { ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
 import { StateQuerySchema } from "./state.js";
 
@@ -39,8 +39,26 @@ export const PagesOpenParams = z.object({
 export const PagesCloseParams = z.object({ pageId: id });
 export const PagesActivateParams = z.object({ pageId: id });
 export const PagesNavigateParams = z.object({ pageId: id, url: z.string().min(1) });
-export const PagesObserveParams = z.object({ pageId: id }).merge(ObservationRequestSchema.partial());
-export const PagesExecuteParams = z.object({ program: ProgramSchema });
+export const PagesObserveParams = z
+  .object({
+    pageId: id,
+    /** "compact" returns { observation: CompactObservation } — rendered text + refs, no selectors/rects */
+    format: ObservationFormatSchema.optional(),
+  })
+  .merge(ObservationRequestSchema.partial());
+/** pages.execute `returnObservation` — observe the page in the same round trip (act-and-observe). */
+export const ReturnObservationSchema = z.object({
+  scope: z.enum(["full", "forms", "links", "tables", "subtree"]).optional(),
+  subtreeRef: z.string().optional(),
+  format: ObservationFormatSchema.optional(),
+  maxElements: z.number().int().positive().optional(),
+  maxTextChars: z.number().int().positive().optional(),
+});
+export type ReturnObservation = z.infer<typeof ReturnObservationSchema>;
+export const PagesExecuteParams = z.object({
+  program: ProgramSchema,
+  returnObservation: ReturnObservationSchema.optional(),
+});
 export const PagesCaptureParams = z.object({
   pageId: id,
   fullPage: z.boolean().optional(),
@@ -98,6 +116,8 @@ export const RunsStartParams = z.object({
   maxSteps: z.number().int().positive().optional(),
   maxModelCalls: z.number().int().positive().optional(),
   deadlineMs: z.number().int().positive().optional(),
+  /** prior turns / notes the planner should see ("EARLIER IN THIS SESSION") */
+  context: z.string().max(20_000).optional(),
   /** chat thread this run belongs to — groups turns into conversations */
   chatId: z.string().optional(),
 });
@@ -316,8 +336,11 @@ export const ResultSchemas = {
   "pages.forward": PageTargetSchema,
   "pages.reload": PageTargetSchema,
   "pages.stop": PageTargetSchema,
-  "pages.observe": ObservationSchema,
-  "pages.execute": ProgramResultSchema,
+  "pages.observe": z.union([ObservationSchema, z.object({ observation: CompactObservationSchema })]),
+  "pages.execute": ProgramResultSchema.extend({
+    /** present when the request carried returnObservation; full or compact per its format */
+    observation: z.union([ObservationSchema, CompactObservationSchema]).optional(),
+  }),
   "pages.capture": z.object({
     dataUrl: z.string().optional(),
     artifactId: z.string().optional(),
@@ -337,7 +360,7 @@ export const ResultSchemas = {
   "sets.map": z.object({ runId: z.string() }),
   "sets.results": z.array(ResultRecordSchema),
   "runs.start": RunSchema,
-  "runs.get": z.object({ run: RunSchema, steps: z.array(StepRecordSchema) }),
+  "runs.get": z.object({ run: RunSchema, steps: z.array(StepRecordSchema), modelCalls: z.number() }),
   "runs.list": z.array(RunSchema),
   "runs.pause": RunSchema,
   "runs.resume": RunSchema,

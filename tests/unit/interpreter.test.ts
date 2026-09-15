@@ -127,7 +127,7 @@ describe("node interpreter", () => {
           { kind: "let", name: "n", value: { eval: "inputs === undefined ? 0 : 0" } },
         ],
       },
-    ]));
+    ]), { allowEval: true });
     // `let` writes env var from eval — the body sets n via eval on vars? Here we
     // just verify the bound kicks in: n never reaches 3 via this body, so it
     // must hit maxIterations and fail.
@@ -145,7 +145,7 @@ describe("node interpreter", () => {
         body: [{ kind: "let", name: "i", value: { eval: "vars.i === undefined ? 1 : vars.i + 1" } }],
       },
       { kind: "return", value: { variable: "i" } },
-    ]));
+    ]), { allowEval: true });
     expect(res.status).toBe("completed");
     expect(res.returnValue).toBe(3);
   });

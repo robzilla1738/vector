@@ -19,11 +19,16 @@ export interface SetRunnerDeps {
   pages: PageService;
   sets: SetService;
   pool: WorkerPool;
-  /** creates a short agent run for one member when no program applies */
+  /**
+   * Creates a short agent run for one member when no program applies. The
+   * ctx carries the owning set-run's id (results are listable by run) and
+   * its abort signal (runs.cancel must stop model calls, not just bookkeeping).
+   */
   runAgentForMember: (
     member: SetMember,
     pageId: string,
     goal: string,
+    ctx: { runId: string; signal: AbortSignal },
   ) => Promise<{ result: ResultRecord; executedSteps?: Step[] }>;
   /** look up a saved program to replay */
   getProgram: (programId: string) => { stepsJson: string; siteKey: string } | undefined;
@@ -46,6 +51,24 @@ const siteKeyOf = (url: string) => {
   }
 };
 
+/** Minimal counting semaphore — the per-map `concurrency` cap on top of the global pool. */
+class Semaphore {
+  private queue: (() => void)[] = [];
+  private active = 0;
+  constructor(private readonly limit: number) {}
+  async acquire(): Promise<() => void> {
+    if (this.active >= this.limit) await new Promise<void>((r) => this.queue.push(r));
+    this.active++;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.active--;
+      this.queue.shift()?.();
+    };
+  }
+}
+
 /**
  * sets.map — apply a parameterized program (or agent goal) over set members
  * with bounded concurrency. Members without live pages get pooled workers;
@@ -60,9 +83,14 @@ export class SetRunner {
     program?: { steps?: Step[]; nodes?: Program["nodes"] };
     programId?: string;
     goal?: string;
+    /** per-map cap, applied on top of the global WorkerPool limits */
     concurrency?: number;
     memberIds?: string[];
     signal: AbortSignal;
+    /** pause gate — resolves immediately unless the owning run is paused */
+    waitIfPaused?: () => Promise<void>;
+    /** synchronous view of the gate, re-checked after waiting for capacity */
+    isPaused?: () => boolean;
   }): Promise<void> {
     const { set, members } = this.deps.sets.get(opts.setId);
     const target = members.filter(
@@ -74,31 +102,64 @@ export class SetRunner {
       const body = JSON.parse(json) as Step[] | { steps?: Step[]; nodes?: Program["nodes"] };
       return Array.isArray(body) ? { steps: body } : { steps: body.steps, nodes: body.nodes };
     };
-    let learned: { siteKey: string; steps?: Step[]; nodes?: Program["nodes"] } | undefined;
+    // `trusted` marks programs authored by the API caller or saved by a user;
+    // programs learned from a member agent's plan mid-map are model output
+    // and never get eval rights.
+    let learned: { siteKey: string; steps?: Step[]; nodes?: Program["nodes"]; trusted: boolean } | undefined;
     if (opts.programId) {
       const p = this.deps.getProgram(opts.programId);
-      if (p) learned = { siteKey: p.siteKey, ...parseSaved(p.stepsJson) };
+      if (p) learned = { siteKey: p.siteKey, ...parseSaved(p.stepsJson), trusted: true };
     } else if (opts.program) {
-      learned = { siteKey: "*", steps: opts.program.steps, nodes: opts.program.nodes };
+      learned = { siteKey: "*", steps: opts.program.steps, nodes: opts.program.nodes, trusted: true };
     } else if (set.programId) {
       const p = this.deps.getProgram(set.programId);
-      if (p) learned = { siteKey: p.siteKey, ...parseSaved(p.stepsJson) };
+      if (p) learned = { siteKey: p.siteKey, ...parseSaved(p.stepsJson), trusted: true };
     }
 
+    const sem = new Semaphore(Math.max(1, opts.concurrency ?? Number.MAX_SAFE_INTEGER));
     const jobs = target.map((m) => async () => {
-      if (opts.signal.aborted) return;
-      const url = m.url ?? this.deps.pages.get(m.pageId ?? "")?.url;
-      if (!url && !m.pageId) {
-        this.fail(m, "member has neither url nor page");
+      // gate order: pause → per-map concurrency → global pool. A paused run
+      // starts no new members; cancel while paused releases the gate (the
+      // owner rejects/resolves it) and the member is skipped below.
+      await opts.waitIfPaused?.();
+      if (opts.signal.aborted) {
+        this.skip(m, opts.runId);
         return;
       }
-      const release = await this.deps.pool.acquire(url ?? "unknown", opts.signal);
+      const url = m.url ?? this.deps.pages.get(m.pageId ?? "")?.url;
+      if (!url && !m.pageId) {
+        this.fail(m, "member has neither url nor page", opts.runId);
+        return;
+      }
+      let releaseSem: (() => void) | undefined;
+      let release: (() => void) | undefined;
       let workerPageId: string | undefined;
       try {
+        releaseSem = await sem.acquire();
+        // pause may have arrived while this member waited for capacity —
+        // re-check, and never hold a global pool slot while gated (other
+        // runs share the pool)
+        await opts.waitIfPaused?.();
+        release = await this.deps.pool.acquire(url ?? "unknown", opts.signal);
+        while (!opts.signal.aborted && opts.isPaused?.()) {
+          release();
+          release = undefined;
+          await opts.waitIfPaused?.();
+          release = await this.deps.pool.acquire(url ?? "unknown", opts.signal);
+        }
+        if (opts.signal.aborted) {
+          this.skip(m, opts.runId);
+          return;
+        }
         m.status = "running";
         this.deps.sets.updateMember(m);
         const outcome = await this.processMember(m, url!, opts, learned, (id) => (workerPageId = id));
+        if (opts.signal.aborted) {
+          this.skip(m, opts.runId);
+          return;
+        }
         const { result } = outcome;
+        result.runId ??= opts.runId;
         this.deps.repo.saveResult(result);
         m.status = result.status === "error" ? "failed" : "completed";
         m.resultId = result.resultId;
@@ -111,7 +172,7 @@ export class SetRunner {
         if (!learned && opts.goal && result.status === "ok" && outcome.executedSteps?.length) {
           const portable = this.deps.translateSteps(workerPageId ?? m.pageId ?? "", outcome.executedSteps);
           if (portable.length) {
-            learned = { siteKey: siteKeyOf(result.sourceUrl), steps: portable };
+            learned = { siteKey: siteKeyOf(result.sourceUrl), steps: portable, trusted: false };
             this.deps.saveProgram({
               name: `learned:${opts.setId}:${opts.goal.slice(0, 40)}`,
               siteKey: learned.siteKey,
@@ -121,11 +182,16 @@ export class SetRunner {
           }
         }
       } catch (e) {
-        if (opts.signal.aborted) return;
-        this.fail(m, e instanceof Error ? e.message : String(e));
+        if (opts.signal.aborted) {
+          // cancelled mid-flight: the member never finished — never leave it "running"
+          this.skip(m, opts.runId);
+          return;
+        }
+        this.fail(m, e instanceof Error ? e.message : String(e), opts.runId);
       } finally {
         if (workerPageId) await this.releaseWorker(workerPageId);
-        release();
+        release?.();
+        releaseSem?.();
       }
     });
 
@@ -137,7 +203,7 @@ export class SetRunner {
     m: SetMember,
     url: string,
     opts: { goal?: string; runId: string; signal: AbortSignal },
-    learned: { siteKey: string; steps?: Step[]; nodes?: Program["nodes"] } | undefined,
+    learned: { siteKey: string; steps?: Step[]; nodes?: Program["nodes"]; trusted: boolean } | undefined,
     setWorker: (id: string) => void,
   ): Promise<{ result: ResultRecord; executedSteps?: Step[] }> {
     // existing human-owned page: use it directly
@@ -158,17 +224,21 @@ export class SetRunner {
     // replay a validated program when the member's site matches its key
     if (learned && (learned.siteKey === "*" || siteKeyOf(url) === learned.siteKey)) {
       const program: Program = { pageId, steps: learned.steps, nodes: learned.nodes };
-      const res = await this.deps.pages.execute(program, { runId: opts.runId, signal: opts.signal });
-      if (res.status === "completed") return { result: this.resultOf(m, pageId, res) };
+      const res = await this.deps.pages.execute(program, { runId: opts.runId, signal: opts.signal, allowEval: learned.trusted });
+      // a completed replay is the result; so is any outcome when there is no
+      // agent to fall through to (re-running the same program would only
+      // repeat the failure) or the run was cancelled mid-program
+      if (res.status === "completed" || !opts.goal || opts.signal.aborted) return { result: this.resultOf(m, pageId, res) };
       // divergence: fall through to the agent for this member
     }
     if (opts.goal) {
-      const agentRes = await this.deps.runAgentForMember(m, pageId, opts.goal);
+      const agentRes = await this.deps.runAgentForMember(m, pageId, opts.goal, { runId: opts.runId, signal: opts.signal });
       return { result: agentRes.result, executedSteps: agentRes.executedSteps };
     }
     if (learned) {
+      // site key did not match and no goal: replay anyway rather than fail silently
       const program: Program = { pageId, steps: learned.steps, nodes: learned.nodes };
-      const res = await this.deps.pages.execute(program, { runId: opts.runId, signal: opts.signal });
+      const res = await this.deps.pages.execute(program, { runId: opts.runId, signal: opts.signal, allowEval: learned.trusted });
       return { result: this.resultOf(m, pageId, res) };
     }
     throw new VectorError("invalid_params", "sets.map needs program, programId, or goal");
@@ -188,12 +258,13 @@ export class SetRunner {
     };
   }
 
-  private fail(m: SetMember, error: string) {
+  private fail(m: SetMember, error: string, runId?: string) {
     m.status = "failed";
     m.error = error;
     this.deps.sets.updateMember(m);
     const result: ResultRecord = {
       resultId: newResultId(),
+      runId,
       memberId: m.memberId,
       sourceUrl: m.url ?? "",
       values: {},
@@ -203,6 +274,14 @@ export class SetRunner {
     };
     this.deps.repo.saveResult(result);
     m.resultId = result.resultId;
+    this.deps.sets.updateMember(m);
+  }
+
+  /** Cancelled before/while running: not a failure, not completed — skipped, re-runnable. */
+  private skip(m: SetMember, runId: string) {
+    if (m.status === "completed" || m.status === "failed") return;
+    m.status = "skipped";
+    m.error = `cancelled (run ${runId})`;
     this.deps.sets.updateMember(m);
   }
 

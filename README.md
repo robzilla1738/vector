@@ -18,9 +18,12 @@ pnpm bench        # benchmark harness
 pnpm package:local  # build Vector.app into release/
 ```
 
-Configuration is optional — copy `.env.example` to `.env` and set
-`AI_GATEWAY_API_KEY` to enable agent goals (`runs.start`, `sets.map --goal`).
-Programs, observations, and saved-operation sets work with no key.
+Configuration is optional — copy `.env.example` to `.env` (in the repo root
+you launch from, or in the data dir `~/Library/Application Support/Vector`)
+and set `AI_GATEWAY_API_KEY` to enable agent goals (`runs.start`,
+`sets.map --goal`). The runtime loads `<dataDir>/.env` then `<cwd>/.env` at
+startup; variables already set in the environment always win. Programs,
+observations, and saved-operation sets work with no key.
 
 ## Using the app
 

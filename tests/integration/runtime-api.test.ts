@@ -129,6 +129,123 @@ describe("pages", () => {
     expect(res.status).toBe("failed");
   }, 60_000);
 
+  it("compact observation is under 25% of the full JSON and carries usable refs", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
+    const full = await invoke<{ content: ObservationContent; revision: number }>("pages.observe", { pageId: page.pageId });
+    const compact = await invoke<{ observation: { pageId: string; url: string; title: string; revision: number; text: string; refs: { ref: string; role?: string; name?: string }[] } }>(
+      "pages.observe",
+      { pageId: page.pageId, format: "compact" },
+    );
+    const fullBytes = JSON.stringify(full).length;
+    const compactBytes = JSON.stringify(compact).length;
+    // MCP path: the tool emitted the pretty-printed full JSON before and emits
+    // the compact text now — that payload must shrink to under a quarter
+    const mcpBefore = JSON.stringify(full, null, 2).length;
+    const mcpAfter = compact.observation.text.length;
+    expect(mcpAfter, `mcp compact ${mcpAfter}B vs full ${mcpBefore}B`).toBeLessThan(mcpBefore * 0.25);
+    // raw JSON: the records page has only ~19 elements, so text/table content
+    // dominates both forms; the per-element saving still halves it
+    expect(compactBytes, `compact ${compactBytes}B vs full ${fullBytes}B`).toBeLessThan(fullBytes * 0.5);
+    const o = compact.observation;
+    expect(o.pageId).toBe(page.pageId);
+    expect(o.url).toContain("/records");
+    expect(o.revision).toBe(full.revision + 1);
+    expect(o.refs.length).toBe(full.content.elements.length);
+    expect(o.text).toContain("elements:");
+    expect(JSON.stringify(o)).not.toContain("nth-of-type"); // selectors stay server-side
+    // a compact ref is actionable
+    const apply = o.refs.find((r) => /apply filter/i.test(r.name ?? ""));
+    expect(apply, "apply-filter ref in compact refs").toBeTruthy();
+    const res = await invoke<ProgramResult>("pages.execute", {
+      program: { pageId: page.pageId, steps: [{ id: "h1", op: "hover", target: apply!.ref }] },
+    });
+    expect(res.status).toBe("completed");
+  }, 60_000);
+
+  it("pages.execute returnObservation returns the post-action state in one round trip", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
+    const res = await invoke<ProgramResult & { observation?: { pageId: string; url: string; text: string; refs: unknown[] } }>("pages.execute", {
+      program: {
+        pageId: page.pageId,
+        steps: [
+          { id: "s1", op: "select", target: "css:#status", value: "approved" },
+          { id: "s2", op: "click", target: "css:#apply-filter" },
+          { id: "s3", op: "waitFor", condition: { kind: "urlMatches", pattern: "status=approved" } },
+        ],
+      },
+      returnObservation: { format: "compact" },
+    });
+    expect(res.status).toBe("completed");
+    expect(res.steps).toHaveLength(3);
+    expect(res.observation?.pageId).toBe(page.pageId);
+    expect(res.observation?.url).toContain("status=approved");
+    expect(res.observation?.refs.length).toBeGreaterThan(3);
+    // full format is the plain Observation
+    const full = await invoke<ProgramResult & { observation?: { content?: ObservationContent } }>("pages.execute", {
+      program: { pageId: page.pageId, steps: [{ id: "r1", op: "reload" }] },
+      returnObservation: { format: "full", scope: "forms" },
+    });
+    expect(full.observation?.content?.formFields.length).toBeGreaterThan(0);
+    // without returnObservation the result shape is unchanged
+    const plain = await invoke<Record<string, unknown>>("pages.execute", {
+      program: { pageId: page.pageId, steps: [{ id: "r1", op: "reload" }] },
+    });
+    expect(plain).not.toHaveProperty("observation");
+  }, 60_000);
+
+  it("waitFor settled resolves once an in-flight fetch and its DOM update land", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
+    const res = await invoke<ProgramResult>("pages.execute", {
+      program: {
+        pageId: page.pageId,
+        steps: [
+          // kick off a request whose completion appends to the DOM — the
+          // expression returns immediately, so only the readiness signal can
+          // know when the page has reacted
+          {
+            id: "kick",
+            op: "evaluate",
+            expression:
+              "void fetch('/api/state').then(r => r.json()).then(() => fetch('/api/state')).then(r => r.json()).then(() => { document.body.insertAdjacentHTML('beforeend', '<p id=\"late-marker\">late</p>'); })",
+          },
+          { id: "settle", op: "waitFor", condition: { kind: "settled", timeoutMs: 2000 } },
+          { id: "read", op: "extract", fields: [{ name: "late", selector: "#late-marker" }], as: "out" },
+        ],
+      },
+    });
+    expect(res.status, JSON.stringify(res.steps)).toBe("completed");
+    expect((res.extracted?.out as { late?: string }).late).toBe("late");
+  }, 60_000);
+
+  it("settled is bounded: a slow in-flight request times out at the deadline, not later", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records/rec-01`, background: true });
+    const res = await invoke<ProgramResult>("pages.execute", {
+      program: {
+        pageId: page.pageId,
+        steps: [
+          { id: "slow", op: "evaluate", expression: "void fetch('/records/rec-01/slow-info')" }, // fixture delays 2.5s
+          { id: "settle", op: "waitFor", condition: { kind: "settled", timeoutMs: 400 } },
+        ],
+      },
+    });
+    expect(res.status).toBe("failed");
+    const settle = res.steps.find((s) => s.stepId === "settle")!;
+    expect(settle.error?.code).toBe("condition_timeout");
+    expect(settle.durationMs).toBeLessThan(1500);
+    expect(settle.durationMs).toBeGreaterThanOrEqual(350);
+  }, 60_000);
+
+  it("navigation waits for quiescence within its bound", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
+    const t = Date.now();
+    await invoke("pages.navigate", { pageId: page.pageId, url: `${RECORDS}/records/rec-02` });
+    const ms = Date.now() - t;
+    expect(ms).toBeLessThan(3000);
+    const obs = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId, format: "full" });
+    expect(obs.content.url).toContain("rec-02");
+    expect(obs.content.elements.length).toBeGreaterThan(0);
+  }, 60_000);
+
   it("collectScroll accumulates a virtualized list beyond the viewport", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: "http://127.0.0.1:4812/", background: true });
     // the vlist renders ~17 rows at a time — a static extract would see only those

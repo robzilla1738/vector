@@ -34,16 +34,54 @@ need the lease; they run in the user's real browser window).
 the standalone driver. Standalone mode requires a system Chrome install. Use
 `chrome.attach` for the user's real browser instead.
 
-## Stale element refs / `stale_ref` errors
+## Stale element refs / `target_detached` errors
 
-Refs are scoped to `documentEpoch`; any navigation invalidates them. Re-observe
-after navigating. Optional steps skip rather than fail.
+Refs are scoped to `documentEpoch`; any navigation invalidates them and the
+step fails with `target_detached` (there is no `stale_ref` code). Re-observe
+after navigating. Optional steps record `failed` but let the program continue.
 
 ## Runs stuck in `running` after a crash
 
 On startup the runtime marks orphaned active runs `interrupted` — check
-`runs.list`. If a run is `paused` waiting for a takeover, `runs.resume` returns
-control to the agent.
+`runs.list`. Runs are crash-safe (nothing is lost or replayed) but not
+resumable: start a new run; `runtime.describe` reports
+`checkpointResume: false`. While the runtime is alive, an unhandled fault
+fails the active runs with the fault as their `error` instead of leaving
+them spinning.
+
+## A run keeps failing with `conflict` after I clicked in the page
+
+Typing or clicking in an agent-driven page takes it over: the page's
+`controller` becomes `human` and every in-flight or later program on it
+fails with `conflict` until you hand it back (`pages.resume`, or the chip in
+the toolbar). The run is *not* paused by a takeover — cancel it, or resume the
+page and let the planner retry.
+
+## `sets.map` ignores `runs.pause` / `runs.cancel`
+
+It does not: pause stops new members from starting (in-flight members finish
+first); cancel aborts in-flight member agents and marks unfinished members
+`skipped`. If a run shows `cancelled` with some members `completed`, those
+finished before the cancel landed.
+
+## Set run reports `0` model calls
+
+Member agents record their calls under the set run's id (`runs.get` →
+`modelCalls`). A `0` means the map replayed a saved/learned program for every
+member and never needed the model.
+
+## `.env` is ignored
+
+The runtime loads `<dataDir>/.env` and then `<cwd>/.env` at startup, without
+overriding variables already set in the environment. If you run the desktop
+app from Finder, `cwd` is not the repo — put the file in the data dir
+(`~/Library/Application Support/Vector/.env`) or export the variable.
+
+## `pages.open` fails with `backend_unavailable` after the browser crashed
+
+A dropped driver connection marks the session `degraded` (`sessions.list`,
+`session.changed`); the next `pages.open` reconnects lazily. If it still
+fails, the backend is really gone — relaunch the shell or re-attach Chrome.
 
 ## Packaged app: runtime didn't start
 

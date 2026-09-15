@@ -26,7 +26,11 @@ export interface ExecContext {
   loadCheckpoint?: (name: string) =>
     | { inputs?: Record<string, unknown>; vars?: Record<string, unknown>; emitted?: unknown[] }
     | undefined;
-  /** eval exprs are a trusted-input escape hatch — disable for model output */
+  /**
+   * Trusted-source escape hatch: enables the `evaluate` op, `expression`
+   * wait/expect conditions, and interpreter `{eval:}` expressions. Defaults
+   * to false — model-authored plans can never reach page JS (P0-1).
+   */
   allowEval?: boolean;
   /** called before every dispatched step — throw to abort (e.g. takeover epoch) */
   checkValid?: () => void;
@@ -36,6 +40,19 @@ const stepInputs = (s: Step): Record<string, unknown> => {
   const { id, op, timeoutMs, optional, expect, ...rest } = s as Record<string, unknown>;
   return rest;
 };
+
+/** Reject page-JS surfaces unless the program came from a trusted source. */
+function assertEvalAllowed(step: Step, allowEval: boolean) {
+  if (allowEval) return;
+  const usesExpression = (c: Condition | undefined) => c?.kind === "expression";
+  if (
+    step.op === "evaluate" ||
+    (step.op === "waitFor" && usesExpression(step.condition)) ||
+    (step.expect ?? []).some((c) => usesExpression(c as Condition))
+  ) {
+    throw new VectorError("invalid_params", `step ${step.id}: page JS (evaluate/expression) is disabled for this program source`);
+  }
+}
 
 async function runStep(page: DriverPage, s: Step): Promise<Record<string, unknown> | undefined> {
   switch (s.op) {
@@ -109,6 +126,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
     const startedAt = Date.now();
     try {
       ctx.checkValid?.();
+      assertEvalAllowed(step, ctx.allowEval ?? false);
       const detail = await runStep(page, step);
       // verify post-conditions
       if (step.expect) {
@@ -245,7 +263,7 @@ export async function executeProgram(
       callOperation: ctx.callOperation,
       checkpoint: ctx.checkpoint,
       loadCheckpoint: ctx.loadCheckpoint,
-      allowEval: ctx.allowEval ?? true,
+      allowEval: ctx.allowEval ?? false,
     });
   }
 

@@ -49,14 +49,35 @@ export class WorkerPool {
     };
   }
 
+  /** Change limits at runtime (settings.set maxWorkers/perOrigin); wakes waiters if capacity grew. */
+  resize(opts: Partial<PoolOptions>) {
+    if (opts.maxWorkers !== undefined) this.opts.maxWorkers = Math.max(1, opts.maxWorkers);
+    if (opts.perOrigin !== undefined) this.opts.perOrigin = Math.max(1, opts.perOrigin);
+    this.pump();
+  }
+
+  limits(): PoolOptions {
+    return { ...this.opts };
+  }
+
   private waitForSlot(origin: string, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) return Promise.reject(new VectorError("cancelled", "pool acquire aborted"));
     return new Promise((resolve, reject) => {
-      const w: Waiter = { resolve, origin };
-      this.waiters.push(w);
-      signal?.addEventListener("abort", () => {
+      const onAbort = () => {
         this.waiters = this.waiters.filter((x) => x !== w);
         reject(new VectorError("cancelled", "pool acquire aborted"));
-      });
+      };
+      // the listener is removed on resolve — a long-lived run signal must not
+      // accumulate one closure per queued member
+      const w: Waiter = {
+        origin,
+        resolve: () => {
+          signal?.removeEventListener("abort", onAbort);
+          resolve();
+        },
+      };
+      this.waiters.push(w);
+      signal?.addEventListener("abort", onAbort, { once: true });
     });
   }
 

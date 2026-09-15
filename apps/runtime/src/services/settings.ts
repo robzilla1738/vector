@@ -107,7 +107,10 @@ export class SettingsService {
     if (this.modelOverride) return this.modelOverride;
     const key = this.gatewayKey();
     if (!key) return null;
-    if (!this.gatewayClient) this.gatewayClient = new GatewayModelClient(key);
+    if (!this.gatewayClient) {
+      const t = Number(this.env.VECTOR_MODEL_CALL_TIMEOUT_MS);
+      this.gatewayClient = new GatewayModelClient(key, { callTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined });
+    }
     return this.gatewayClient;
   }
 

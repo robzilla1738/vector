@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createDecipheriv, pbkdf2Sync } from "node:crypto";
-import { copyFileSync, existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -180,8 +180,10 @@ export class CookieService {
     const byKey = new Map<string, BrowserCookie>();
     let skipped = 0;
     let appBound = 0;
+    // The copies hold encrypted_value blobs and any plaintext `value` rows —
+    // they must not outlive the import (P1-11), hence the finally below.
     const tmp = mkdtempSync(join(tmpdir(), "vector-cookies-"));
-
+    try {
     for (const profile of profiles) {
       const src = join(dir, profile, "Cookies");
       const dst = join(tmp, `${profile}.db`);
@@ -233,6 +235,9 @@ export class CookieService {
       } finally {
         db?.close();
       }
+    }
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
     }
 
     const cookies = [...byKey.values()];
