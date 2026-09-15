@@ -779,9 +779,10 @@ impl Document {
                 .or_else(|| {
                     (!element.has_attr("multiple"))
                         .then(|| {
-                            options.iter().copied().find(|&o| {
-                                self.element(o).is_some_and(|e| !e.has_attr("disabled"))
-                            })
+                            options
+                                .iter()
+                                .copied()
+                                .find(|&o| self.element(o).is_some_and(|e| !e.has_attr("disabled")))
                         })
                         .flatten()
                 });
@@ -1020,7 +1021,11 @@ mod tests {
         assert!(matches!(doc.try_get(span), Err(Error::InvalidNodeId(_))));
 
         let fresh = html(&mut doc, "em");
-        assert_ne!(fresh.index(), span.index(), "slot indices are never recycled");
+        assert_ne!(
+            fresh.index(),
+            span.index(),
+            "slot indices are never recycled"
+        );
         assert!(doc.contains(fresh));
         assert_eq!(
             doc.node_at_index(span.index()),

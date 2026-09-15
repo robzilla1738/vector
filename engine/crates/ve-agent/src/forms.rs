@@ -122,7 +122,10 @@ pub fn entry_list(
         if e.has_attr("disabled") || in_disabled_fieldset(doc, id) {
             continue;
         }
-        if doc.ancestors(id).any(|a| doc.element(a).is_some_and(|p| p.is_html("datalist"))) {
+        if doc
+            .ancestors(id)
+            .any(|a| doc.element(a).is_some_and(|p| p.is_html("datalist")))
+        {
             continue;
         }
         let is_button = e.is_html("button")
@@ -143,12 +146,14 @@ pub fn entry_list(
         match e.name.as_str() {
             "select" => {
                 for option in doc.descendants(id).filter(|&d| {
-                    doc.element(d).is_some_and(|o| o.is_html("option") && !o.has_attr("disabled"))
+                    doc.element(d)
+                        .is_some_and(|o| o.is_html("option") && !o.has_attr("disabled"))
                 }) {
                     if doc.is_selected(option) {
-                        let value = doc
-                            .attribute(option, "value")
-                            .map_or_else(|| doc.text_content(option).trim().to_owned(), str::to_owned);
+                        let value = doc.attribute(option, "value").map_or_else(
+                            || doc.text_content(option).trim().to_owned(),
+                            str::to_owned,
+                        );
                         entries.push(Entry {
                             name: name.clone(),
                             value,
@@ -161,9 +166,10 @@ pub fn entry_list(
                     && !doc.descendants(id).any(|d| {
                         doc.element(d).is_some_and(|o| o.is_html("option")) && doc.is_selected(d)
                     })
-                    && let Some(first) = doc
-                        .descendants(id)
-                        .find(|&d| doc.element(d).is_some_and(|o| o.is_html("option") && !o.has_attr("disabled")))
+                    && let Some(first) = doc.descendants(id).find(|&d| {
+                        doc.element(d)
+                            .is_some_and(|o| o.is_html("option") && !o.has_attr("disabled"))
+                    })
                 {
                     let value = doc
                         .attribute(first, "value")
@@ -385,8 +391,10 @@ mod tests {
         let doc = doc();
         let form = doc.element_by_id("f").unwrap();
         let entries = entry_list(&doc, form, None, &|_| vec![]);
-        let pairs: Vec<(String, String)> =
-            entries.iter().map(|e| (e.name.clone(), e.value.clone())).collect();
+        let pairs: Vec<(String, String)> = entries
+            .iter()
+            .map(|e| (e.name.clone(), e.value.clone()))
+            .collect();
         assert_eq!(
             pairs,
             vec![
@@ -407,8 +415,16 @@ mod tests {
             .find(|&e| doc.attribute(e, "name") == Some("do"))
             .unwrap();
         let with_submitter = entry_list(&doc, form, Some(save), &|_| vec!["/tmp/a.pdf".into()]);
-        assert!(with_submitter.iter().any(|e| e.name == "do" && e.value == "save"));
-        assert!(with_submitter.iter().any(|e| e.name == "doc" && e.value == "/tmp/a.pdf"));
+        assert!(
+            with_submitter
+                .iter()
+                .any(|e| e.name == "do" && e.value == "save")
+        );
+        assert!(
+            with_submitter
+                .iter()
+                .any(|e| e.name == "doc" && e.value == "/tmp/a.pdf")
+        );
         assert!(!with_submitter.iter().any(|e| e.name == "nope"));
         assert_eq!(default_button(&doc, form), Some(save));
         assert_eq!(form_owner(&doc, save), Some(form));
@@ -419,13 +435,19 @@ mod tests {
         let doc = doc();
         let form = doc.element_by_id("f").unwrap();
         let plain = plan_submission(&doc, form, None, &|_| vec![]);
-        assert_eq!((plain.method, plain.enctype, plain.action.as_str()), (FormMethod::Post, Enctype::Multipart, "/save"));
+        assert_eq!(
+            (plain.method, plain.enctype, plain.action.as_str()),
+            (FormMethod::Post, Enctype::Multipart, "/save")
+        );
         let save = doc
             .elements()
             .find(|&e| doc.attribute(e, "name") == Some("do"))
             .unwrap();
         let quick = plan_submission(&doc, form, Some(save), &|_| vec![]);
-        assert_eq!((quick.method, quick.action.as_str()), (FormMethod::Get, "/quick"));
+        assert_eq!(
+            (quick.method, quick.action.as_str()),
+            (FormMethod::Get, "/quick")
+        );
     }
 
     #[test]
@@ -442,11 +464,16 @@ mod tests {
                 is_file: true,
             },
         ];
-        assert_eq!(urlencode(&entries), "q=a+b%26c%3Dd%2F%C3%A9&f=%2Ftmp%2Fx+y.txt");
+        assert_eq!(
+            urlencode(&entries),
+            "q=a+b%26c%3Dd%2F%C3%A9&f=%2Ftmp%2Fx+y.txt"
+        );
         let (body, ct) = multipart(&entries, "XYZ");
         let text = String::from_utf8(body).unwrap();
         assert_eq!(ct, "multipart/form-data; boundary=XYZ");
-        assert!(text.starts_with("--XYZ\r\nContent-Disposition: form-data; name=\"q\"\r\n\r\na b&c=d/é\r\n--XYZ\r\n"));
+        assert!(text.starts_with(
+            "--XYZ\r\nContent-Disposition: form-data; name=\"q\"\r\n\r\na b&c=d/é\r\n--XYZ\r\n"
+        ));
         assert!(text.contains("name=\"f\"; filename=\"x y.txt\""));
         assert!(text.ends_with("--XYZ--\r\n"));
         assert_eq!(text_plain(&entries), "q=a b&c=d/é\r\nf=/tmp/x y.txt\r\n");

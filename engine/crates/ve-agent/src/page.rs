@@ -8,8 +8,8 @@ use std::time::Instant;
 use serde::{Deserialize, Serialize};
 use ve_a11y::{
     DialogEntry, Format, LabelIndex, ObservationContent, ObservationDelta, ObservationRequest,
-    ObserveInput, Role, Scope, Visibility5, changes_between, compute_name_with, observe,
-    parse_ref, ref_for,
+    ObserveInput, Role, Scope, Visibility5, changes_between, compute_name_with, observe, parse_ref,
+    ref_for,
 };
 use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
 use ve_dom::{DirtyFlags, Document, NodeKind};
@@ -261,13 +261,9 @@ impl Page {
 
     /// Opens `url` through `loader` (the real pipeline: fetch → decode →
     /// streaming parse → cascade → layout).
-    pub fn open(
-        id: u64,
-        mut loader: Box<dyn Loader>,
-        url: &str,
-        viewport: Size,
-    ) -> Result<Self> {
-        let parsed = url::Url::parse(url).map_err(|e| Error::invalid_params(format!("url {url:?}: {e}")))?;
+    pub fn open(id: u64, mut loader: Box<dyn Loader>, url: &str, viewport: Size) -> Result<Self> {
+        let parsed =
+            url::Url::parse(url).map_err(|e| Error::invalid_params(format!("url {url:?}: {e}")))?;
         let loaded = loader.load(&NavigationRequest::get(parsed.to_string(), id))?;
         let mut page = Self::empty(id, viewport);
         page.loader = Some(loader);
@@ -335,17 +331,14 @@ impl Page {
     fn load(&mut self, loaded: LoadedDocument, mode: HistoryMode) {
         let span = Stage::Parse.span();
         let _guard = span.enter();
-        let charset = loaded
-            .content_type
-            .as_deref()
-            .and_then(|ct| {
-                ct.split(';').skip(1).find_map(|p| {
-                    let (k, v) = p.trim().split_once('=')?;
-                    k.trim()
-                        .eq_ignore_ascii_case("charset")
-                        .then(|| v.trim().trim_matches('"').to_owned())
-                })
-            });
+        let charset = loaded.content_type.as_deref().and_then(|ct| {
+            ct.split(';').skip(1).find_map(|p| {
+                let (k, v) = p.trim().split_once('=')?;
+                k.trim()
+                    .eq_ignore_ascii_case("charset")
+                    .then(|| v.trim().trim_matches('"').to_owned())
+            })
+        });
         let (outcome, _decoded) =
             ve_html::parse_document_bytes(&loaded.bytes, charset.as_deref(), 16 * 1024);
         if self.doc.node_count() > 1 || !self.history.is_empty() {
@@ -360,10 +353,13 @@ impl Page {
             (Some(href), None) => url::Url::parse(href).ok(),
             (None, _) => document_url,
         };
-        self.content_type = loaded
-            .content_type
-            .as_deref()
-            .map(|ct| ct.split(';').next().unwrap_or("").trim().to_ascii_lowercase());
+        self.content_type = loaded.content_type.as_deref().map(|ct| {
+            ct.split(';')
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_ascii_lowercase()
+        });
         self.status = loaded.status;
         self.routing = classify(&self.doc, self.content_type.as_deref());
         self.scroll = Point::ZERO;
@@ -633,10 +629,7 @@ impl Page {
             if let Some(refresh) = self.meta.refresh.clone()
                 && refresh.seconds == 0
                 && self.refreshes_followed < 3
-                && let Some(target) = refresh
-                    .url
-                    .as_deref()
-                    .and_then(|u| self.resolve_url(u))
+                && let Some(target) = refresh.url.as_deref().and_then(|u| self.resolve_url(u))
                 && !target.starts_with("javascript:")
                 && target != self.url
             {
@@ -958,7 +951,10 @@ impl Page {
             }
             Ok(None) => Err(Error::coded_with(
                 ErrorCode::TargetDetached,
-                format!("ref {reference} was removed from the document (epoch {})", self.generation),
+                format!(
+                    "ref {reference} was removed from the document (epoch {})",
+                    self.generation
+                ),
                 serde_json::json!({ "ref": reference, "epoch": self.generation }),
             )),
             Err(()) => Err(Error::not_found(format!(
@@ -1050,7 +1046,10 @@ impl Page {
                     .filter(|&id| {
                         self.style_tree.is_displayed(id)
                             && !doc.element(id).is_some_and(|e| {
-                                matches!(e.name.as_str(), "script" | "style" | "html" | "head" | "body")
+                                matches!(
+                                    e.name.as_str(),
+                                    "script" | "style" | "html" | "head" | "body"
+                                )
                             })
                     })
                     .collect();
@@ -1149,7 +1148,9 @@ impl Page {
                     .collect();
                 Err(Error::coded_with(
                     ErrorCode::TargetAmbiguous,
-                    format!("{target:?} matches {n} shown elements; pick one of the candidate refs"),
+                    format!(
+                        "{target:?} matches {n} shown elements; pick one of the candidate refs"
+                    ),
                     serde_json::json!({ "target": target, "matches": n, "candidates": candidates }),
                 ))
             }
@@ -1413,8 +1414,16 @@ impl Page {
         match self.input_type(id) {
             Some(t) => !matches!(
                 t.as_str(),
-                "checkbox" | "radio" | "button" | "submit" | "reset" | "hidden" | "image" | "file"
-                    | "range" | "color"
+                "checkbox"
+                    | "radio"
+                    | "button"
+                    | "submit"
+                    | "reset"
+                    | "hidden"
+                    | "image"
+                    | "file"
+                    | "range"
+                    | "color"
             ),
             None => {
                 self.doc.element(id).is_some_and(|e| e.is_html("textarea"))
@@ -1434,7 +1443,12 @@ impl Page {
         self.click_at_element(id, point, button)
     }
 
-    fn click_at_element(&mut self, id: NodeId, point: Point, button: MouseButton) -> Result<String> {
+    fn click_at_element(
+        &mut self,
+        id: NodeId,
+        point: Point,
+        button: MouseButton,
+    ) -> Result<String> {
         // Focus moves to the nearest focusable ancestor-or-self.
         let focus_target = std::iter::once(id)
             .chain(self.doc.ancestors(id))
@@ -1564,7 +1578,12 @@ impl Page {
     }
 
     fn activate_link(&mut self, link: NodeId) -> Result<String> {
-        let href = self.doc.attribute(link, "href").unwrap_or("").trim().to_owned();
+        let href = self
+            .doc
+            .attribute(link, "href")
+            .unwrap_or("")
+            .trim()
+            .to_owned();
         if self.doc.attribute(link, "download").is_some() {
             return Err(Error::capability_unsupported(
                 "downloads are not supported in this milestone",
@@ -1574,7 +1593,9 @@ impl Page {
             return self.jump_to_fragment(fragment);
         }
         let Some(resolved) = self.resolve_url(&href) else {
-            return Err(Error::invalid_params(format!("link href {href:?} is not a valid URL")));
+            return Err(Error::invalid_params(format!(
+                "link href {href:?} is not a valid URL"
+            )));
         };
         let parsed = url::Url::parse(&resolved)
             .map_err(|e| Error::invalid_params(format!("link href {href:?}: {e}")))?;
@@ -1792,7 +1813,8 @@ impl Page {
                         request.content_type = Some("application/x-www-form-urlencoded".into());
                     }
                     Enctype::Multipart => {
-                        let boundary = format!("----VectorEngineBoundary{:x}", self.doc.revision().0);
+                        let boundary =
+                            format!("----VectorEngineBoundary{:x}", self.doc.revision().0);
                         let (body, ct) = forms::multipart(&plan.entries, &boundary);
                         request.body = Some(body);
                         request.content_type = Some(ct);
@@ -1972,11 +1994,12 @@ impl Page {
             Key::Escape => {
                 // Close the innermost open dialog containing the focus, else blur.
                 if let Some(f) = focused
-                    && let Some(dialog) = std::iter::once(f).chain(self.doc.ancestors(f)).find(|&a| {
-                        self.doc
-                            .element(a)
-                            .is_some_and(|e| e.is_html("dialog") && e.has_attr("open"))
-                    })
+                    && let Some(dialog) =
+                        std::iter::once(f).chain(self.doc.ancestors(f)).find(|&a| {
+                            self.doc
+                                .element(a)
+                                .is_some_and(|e| e.is_html("dialog") && e.has_attr("open"))
+                        })
                 {
                     self.doc.remove_attribute(dialog, "open")?;
                     return Ok(format!("closed dialog {}", ref_for(dialog)));
@@ -2016,11 +2039,15 @@ impl Page {
                 };
                 let ty = self.input_type(id);
                 if matches!(ty.as_deref(), Some("checkbox" | "radio"))
-                    || self.doc.element(id).is_some_and(|e| {
-                        e.is_html("button") || e.is_html("summary")
-                    })
+                    || self
+                        .doc
+                        .element(id)
+                        .is_some_and(|e| e.is_html("button") || e.is_html("summary"))
                     || Role::for_element(&self.doc, id).is_some_and(|r| {
-                        matches!(r, Role::Button | Role::Checkbox | Role::Switch | Role::Radio)
+                        matches!(
+                            r,
+                            Role::Button | Role::Checkbox | Role::Switch | Role::Radio
+                        )
                     })
                 {
                     return self.activate(id);
@@ -2122,7 +2149,11 @@ impl Page {
             current.saturating_sub(1)
         };
         self.select_options(select, &[options[next]])?;
-        Ok(format!("{} selected option {}", ref_for(select), ref_for(options[next])))
+        Ok(format!(
+            "{} selected option {}",
+            ref_for(select),
+            ref_for(options[next])
+        ))
     }
 
     fn step_radio(&mut self, radio: NodeId, forward: bool) -> Result<String> {
@@ -2175,7 +2206,9 @@ impl Page {
                 }
                 self.click(id, MouseButton::Left, timeout_ms)
             }
-            _ if role.is_some_and(|r| matches!(r, Role::Checkbox | Role::Switch | Role::MenuItem)) => {
+            _ if role
+                .is_some_and(|r| matches!(r, Role::Checkbox | Role::Switch | Role::MenuItem)) =>
+            {
                 let current = self
                     .doc
                     .attribute(id, "aria-checked")
@@ -2183,8 +2216,11 @@ impl Page {
                 if current == checked {
                     return Ok(format!("{} already checked={checked}", ref_for(id)));
                 }
-                self.doc
-                    .set_attribute(id, "aria-checked", if checked { "true" } else { "false" })?;
+                self.doc.set_attribute(
+                    id,
+                    "aria-checked",
+                    if checked { "true" } else { "false" },
+                )?;
                 self.focus(Some(id));
                 Ok(format!("{} aria-checked={checked}", ref_for(id)))
             }
@@ -2220,13 +2256,20 @@ impl Page {
     }
 
     /// `select`: options by value, then label / text.
-    pub fn select_values(&mut self, id: NodeId, values: &[&str], timeout_ms: u64) -> Result<String> {
+    pub fn select_values(
+        &mut self,
+        id: NodeId,
+        values: &[&str],
+        timeout_ms: u64,
+    ) -> Result<String> {
         self.actionable(id, timeout_ms)?;
         let select = if self.doc.element(id).is_some_and(|e| e.is_html("option")) {
             self.doc
                 .ancestors(id)
                 .find(|&a| self.doc.element(a).is_some_and(|e| e.is_html("select")))
-                .ok_or_else(|| Error::invalid_params(format!("{} is not inside a select", ref_for(id))))?
+                .ok_or_else(|| {
+                    Error::invalid_params(format!("{} is not inside a select", ref_for(id)))
+                })?
         } else if self.doc.element(id).is_some_and(|e| e.is_html("select")) {
             id
         } else {
@@ -2284,9 +2327,7 @@ impl Page {
                     )
                 })?;
             if self.doc.attribute(found, "disabled").is_some() {
-                return Err(Error::step_failed(format!(
-                    "option {wanted:?} is disabled"
-                )));
+                return Err(Error::step_failed(format!("option {wanted:?} is disabled")));
             }
             chosen.push(found);
         }
@@ -2295,7 +2336,11 @@ impl Page {
         Ok(format!(
             "{} selected {}",
             ref_for(select),
-            chosen.iter().map(|&o| ref_for(o)).collect::<Vec<_>>().join(",")
+            chosen
+                .iter()
+                .map(|&o| ref_for(o))
+                .collect::<Vec<_>>()
+                .join(",")
         ))
     }
 
@@ -2303,12 +2348,17 @@ impl Page {
     /// overflow), if any.
     #[must_use]
     pub fn scroll_container_of(&self, id: NodeId) -> Option<NodeId> {
-        std::iter::once(id).chain(self.doc.ancestors(id)).find(|&a| {
-            self.style_tree
-                .get(a)
-                .is_some_and(|s| s.overflow.is_scrollable())
-                && self.doc.element(a).is_some_and(|e| !e.is_html("body") && !e.is_html("html"))
-        })
+        std::iter::once(id)
+            .chain(self.doc.ancestors(id))
+            .find(|&a| {
+                self.style_tree
+                    .get(a)
+                    .is_some_and(|s| s.overflow.is_scrollable())
+                    && self
+                        .doc
+                        .element(a)
+                        .is_some_and(|e| !e.is_html("body") && !e.is_html("html"))
+            })
     }
 
     fn scroll_viewport(&mut self, dy: f32) -> ScrollState {
@@ -2394,9 +2444,10 @@ impl Page {
     pub fn click_point(&mut self, x: f32, y: f32, button: MouseButton) -> Result<String> {
         self.update();
         let point = Point::new(x + self.scroll.x, y + self.scroll.y);
-        let hit = self.layout.hit_test(point).ok_or_else(|| {
-            Error::not_found(format!("nothing at ({x}, {y}) to click"))
-        })?;
+        let hit = self
+            .layout
+            .hit_test(point)
+            .ok_or_else(|| Error::not_found(format!("nothing at ({x}, {y}) to click")))?;
         let target = if self.doc.element(hit).is_some() {
             hit
         } else {

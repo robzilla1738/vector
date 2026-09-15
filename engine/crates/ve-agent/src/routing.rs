@@ -60,7 +60,10 @@ impl RoutingInfo {
 }
 
 fn normalized_len(text: &str) -> usize {
-    text.split_whitespace().map(|w| w.chars().count() + 1).sum::<usize>().saturating_sub(1)
+    text.split_whitespace()
+        .map(|w| w.chars().count() + 1)
+        .sum::<usize>()
+        .saturating_sub(1)
 }
 
 /// Text of `root` skipping script/style/template/noscript.
@@ -149,15 +152,23 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
         body_onload = be.is_some_and(|e| e.has_attr("onload"));
         let kids: Vec<_> = doc
             .children(b)
-            .filter(|&c| doc.element(c).is_some_and(|e| !matches!(e.name.as_str(), "script" | "style" | "noscript" | "template")))
+            .filter(|&c| {
+                doc.element(c).is_some_and(|e| {
+                    !matches!(
+                        e.name.as_str(),
+                        "script" | "style" | "noscript" | "template"
+                    )
+                })
+            })
             .collect();
         if !kids.is_empty() {
             body_canvas_only = kids
                 .iter()
                 .all(|&k| doc.element(k).is_some_and(|e| e.is_html("canvas")));
-            body_media_only = kids
-                .iter()
-                .all(|&k| doc.element(k).is_some_and(|e| matches!(e.name.as_str(), "video" | "audio")));
+            body_media_only = kids.iter().all(|&k| {
+                doc.element(k)
+                    .is_some_and(|e| matches!(e.name.as_str(), "video" | "audio"))
+            });
         }
     }
 
@@ -192,10 +203,11 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
                     .is_some_and(|v| v.eq_ignore_ascii_case("refresh"))
                     && let Some(content) = e.attr("content")
                     && let Some(refresh) = ve_html::parse_refresh_content(content)
-                    && refresh
-                        .url
-                        .as_deref()
-                        .is_some_and(|u| u.trim_start().to_ascii_lowercase().starts_with("javascript:"))
+                    && refresh.url.as_deref().is_some_and(|u| {
+                        u.trim_start()
+                            .to_ascii_lowercase()
+                            .starts_with("javascript:")
+                    })
                 {
                     meta_refresh_js = true;
                 }
@@ -222,7 +234,9 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
             "empty-shell: body text {text_len} chars with {external_scripts} external script(s)"
         ))
     } else if let Some(root) = empty_root {
-        Some(format!("empty-root-container: {root} has no element children"))
+        Some(format!(
+            "empty-root-container: {root} has no element children"
+        ))
     } else if noscript_mentions_js && text_len < 1000 {
         Some(format!(
             "noscript-requires-js: <noscript> mentions JavaScript and body text is {text_len} chars"
@@ -230,11 +244,15 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
     } else if meta_refresh_js {
         Some("meta-refresh-javascript: <meta http-equiv=refresh> targets a javascript: URL".into())
     } else if body_onload && text_len < 200 {
-        Some(format!("body-onload: <body onload> drives content ({text_len} chars)"))
+        Some(format!(
+            "body-onload: <body onload> drives content ({text_len} chars)"
+        ))
     } else if has_onsubmit_form {
         Some("form-onsubmit: a <form> has an onsubmit handler".into())
     } else if form_without_submit {
-        Some("form-without-action-or-submit: a <form> lacks both action and a submit control".into())
+        Some(
+            "form-without-action-or-submit: a <form> lacks both action and a submit control".into(),
+        )
     } else if (templates + slots) >= 3 && text_len < 200 {
         Some(format!(
             "template-heavy: {templates} <template>/{slots} <slot> with {text_len} chars of light-DOM text"
@@ -284,42 +302,75 @@ mod tests {
         assert!(!with_script.requires_script);
         assert_eq!(with_script.external_scripts, 1);
         // A GET form with a submit button is fine even without action.
-        let form = classify_html(&format!("<p>{lorem}</p><form><input name=q><input type=submit></form>"));
+        let form = classify_html(&format!(
+            "<p>{lorem}</p><form><input name=q><input type=submit></form>"
+        ));
         assert!(!form.requires_script);
         let empty = classify_html("<body></body>");
-        assert!(!empty.requires_script, "an empty static body is not a script shell");
+        assert!(
+            !empty.requires_script,
+            "an empty static body is not a script shell"
+        );
     }
 
     #[test]
     fn script_shells_are_routed_to_chromium() {
         let shell = classify_html("<div id=root></div><script src=/bundle.js></script>");
         assert!(shell.requires_script);
-        assert!(shell.route_reason.starts_with("empty-shell"), "{}", shell.route_reason);
+        assert!(
+            shell.route_reason.starts_with("empty-shell"),
+            "{}",
+            shell.route_reason
+        );
 
         let lorem = "words ".repeat(60);
         let root = classify_html(&format!("<p>{lorem}</p><div id=app></div>"));
-        assert!(root.route_reason.starts_with("empty-root-container: #app"), "{}", root.route_reason);
-        let ng = classify_html(&format!("<p>{lorem}</p><app-root ng-version=\"17\"></app-root>"));
+        assert!(
+            root.route_reason.starts_with("empty-root-container: #app"),
+            "{}",
+            root.route_reason
+        );
+        let ng = classify_html(&format!(
+            "<p>{lorem}</p><app-root ng-version=\"17\"></app-root>"
+        ));
         assert!(ng.route_reason.contains("app-root"));
 
-        let noscript = classify_html("<body><noscript>You need to enable JavaScript to run this app.</noscript><p>Loading</p></body>");
+        let noscript = classify_html(
+            "<body><noscript>You need to enable JavaScript to run this app.</noscript><p>Loading</p></body>",
+        );
         assert!(noscript.route_reason.starts_with("noscript-requires-js"));
-        let noscript_long = classify_html(&format!("<noscript>Please enable JavaScript</noscript><p>{}</p>", "text ".repeat(300)));
-        assert!(!noscript_long.requires_script, "long static text outweighs the noscript notice");
+        let noscript_long = classify_html(&format!(
+            "<noscript>Please enable JavaScript</noscript><p>{}</p>",
+            "text ".repeat(300)
+        ));
+        assert!(
+            !noscript_long.requires_script,
+            "long static text outweighs the noscript notice"
+        );
 
-        let refresh = classify_html(&format!("<meta http-equiv=refresh content=\"0; url=javascript:boot()\"><p>{lorem}</p>"));
+        let refresh = classify_html(&format!(
+            "<meta http-equiv=refresh content=\"0; url=javascript:boot()\"><p>{lorem}</p>"
+        ));
         assert!(refresh.route_reason.starts_with("meta-refresh-javascript"));
 
         let onload = classify_html("<body onload=\"init()\"><p>hi</p></body>");
         assert!(onload.route_reason.starts_with("body-onload"));
 
-        let onsubmit = classify_html(&format!("<p>{lorem}</p><form action=/x onsubmit=\"return go()\"><input name=q><button>Go</button></form>"));
+        let onsubmit = classify_html(&format!(
+            "<p>{lorem}</p><form action=/x onsubmit=\"return go()\"><input name=q><button>Go</button></form>"
+        ));
         assert!(onsubmit.route_reason.starts_with("form-onsubmit"));
 
         let no_submit = classify_html(&format!("<p>{lorem}</p><form><input name=q></form>"));
-        assert!(no_submit.route_reason.starts_with("form-without-action-or-submit"));
+        assert!(
+            no_submit
+                .route_reason
+                .starts_with("form-without-action-or-submit")
+        );
 
-        let templates = classify_html("<template><p>a</p></template><template><p>b</p></template><slot></slot><p>x</p>");
+        let templates = classify_html(
+            "<template><p>a</p></template><template><p>b</p></template><slot></slot><p>x</p>",
+        );
         assert!(templates.route_reason.starts_with("template-heavy"));
 
         let canvas = classify_html("<body><canvas></canvas></body>");
@@ -339,6 +390,9 @@ mod tests {
         let json = serde_json::to_value(RoutingInfo::static_page(10, 0)).unwrap();
         assert_eq!(json["requiresScript"], false);
         assert_eq!(json["routeReason"], "static");
-        assert!(json.get("cssCoverage").is_none(), "hook: absent until ve-style exposes counters");
+        assert!(
+            json.get("cssCoverage").is_none(),
+            "hook: absent until ve-style exposes counters"
+        );
     }
 }

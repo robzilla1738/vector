@@ -114,7 +114,8 @@ pub mod bindings {
         /// Frees a context and closes its pages.
         #[napi]
         pub fn free_context(&mut self, context: u32) -> bool {
-            self.inner.free_context(ve_api::ContextId(u64::from(context)))
+            self.inner
+                .free_context(ve_api::ContextId(u64::from(context)))
         }
 
         /// Cookies of a context as `{"ok":true,"cookies":[…]}`.
@@ -126,7 +127,8 @@ pub mod bindings {
         /// Imports `BrowserCookie`s; returns `{"ok":true,"imported":N}`.
         #[napi]
         pub fn set_cookies(&mut self, context: u32, cookies_json: String) -> String {
-            self.inner.set_cookies_json(u64::from(context), &cookies_json)
+            self.inner
+                .set_cookies_json(u64::from(context), &cookies_json)
         }
     }
 

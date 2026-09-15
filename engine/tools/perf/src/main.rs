@@ -32,7 +32,10 @@ use ve_core::Size;
 
 /// Command line options.
 #[derive(Parser, Debug)]
-#[command(name = "perf", about = "Times the Vector Engine agent path over the static fixture corpus")]
+#[command(
+    name = "perf",
+    about = "Times the Vector Engine agent path over the static fixture corpus"
+)]
 struct Args {
     /// Fixture directory (default: `engine/fixtures/static` next to this tool).
     #[arg(long)]
@@ -158,8 +161,7 @@ fn pick_targets(content: &ObservationContent) -> Targets {
             .elements
             .iter()
             .find(|e| {
-                e.role.as_deref().is_some_and(|r| roles.contains(&r))
-                    && e.disabled != Some(true)
+                e.role.as_deref().is_some_and(|r| roles.contains(&r)) && e.disabled != Some(true)
             })
             .map(|e| e.reference.clone())
     };
@@ -176,13 +178,22 @@ fn pick_targets(content: &ObservationContent) -> Targets {
             content
                 .elements
                 .iter()
-                .find(|e| e.tag == "button" && e.type_.as_deref() == Some("button") && e.disabled != Some(true))
+                .find(|e| {
+                    e.tag == "button"
+                        && e.type_.as_deref() == Some("button")
+                        && e.disabled != Some(true)
+                })
                 .map(|e| e.reference.clone())
         });
     let text = content
         .form_fields
         .iter()
-        .find(|f| matches!(f.type_.as_str(), "text" | "search" | "email" | "tel" | "textarea" | "url"))
+        .find(|f| {
+            matches!(
+                f.type_.as_str(),
+                "text" | "search" | "email" | "tel" | "textarea" | "url"
+            )
+        })
         .map(|f| f.reference.clone());
     let select = content
         .form_fields
@@ -214,8 +225,14 @@ fn push_step(steps: &mut Vec<Value>, mut step: Value) {
 fn ten_step_program(t: &Targets, iteration: u32) -> Program {
     let mut steps: Vec<Value> = Vec::new();
     if let Some(text) = &t.text {
-        push_step(&mut steps, json!({ "op": "fill", "target": text, "value": format!("perf {iteration}") }));
-        push_step(&mut steps, json!({ "op": "type", "target": text, "value": " more" }));
+        push_step(
+            &mut steps,
+            json!({ "op": "fill", "target": text, "value": format!("perf {iteration}") }),
+        );
+        push_step(
+            &mut steps,
+            json!({ "op": "type", "target": text, "value": " more" }),
+        );
     }
     if let Some(click) = &t.click {
         push_step(&mut steps, json!({ "op": "check", "target": click }));
@@ -226,13 +243,19 @@ fn ten_step_program(t: &Targets, iteration: u32) -> Program {
     if let Some(click) = &t.click {
         push_step(&mut steps, json!({ "op": "hover", "target": click }));
     }
-    push_step(&mut steps, json!({ "op": "extract", "fields": [{ "name": "title", "selector": "h1" }] }));
+    push_step(
+        &mut steps,
+        json!({ "op": "extract", "fields": [{ "name": "title", "selector": "h1" }] }),
+    );
     push_step(&mut steps, json!({ "op": "scroll", "direction": "top" }));
     if let Some(click) = &t.click {
         push_step(&mut steps, json!({ "op": "click", "target": click }));
     }
     while steps.len() < 10 {
-        push_step(&mut steps, json!({ "op": "scroll", "direction": "down", "amount": 40 }));
+        push_step(
+            &mut steps,
+            json!({ "op": "scroll", "direction": "down", "amount": 40 }),
+        );
     }
     steps.truncate(10);
     Program::from_value(Value::Array(steps)).expect("valid program")
@@ -339,7 +362,11 @@ fn measure_fixture(
 
         // diff_after_edit: two Compact observations around one field edit.
         let before = engine.observe(page, &request)?.observation.content;
-        run_program(engine, page, &one_step("fill", text, json!({ "value": "edited value" })))?;
+        run_program(
+            engine,
+            page,
+            &one_step("fill", text, json!({ "value": "edited value" })),
+        )?;
         let after = engine.observe(page, &request)?.observation.content;
         for _ in 0..iterations {
             let us = time_us(|| {
@@ -431,10 +458,13 @@ fn main() -> Result<()> {
     let pooled: std::collections::BTreeMap<String, Summary> = fixtures
         .iter()
         .flat_map(|f| f.metrics.iter())
-        .fold(std::collections::BTreeMap::<String, Vec<&Summary>>::new(), |mut acc, (k, s)| {
-            acc.entry(k.clone()).or_default().push(s);
-            acc
-        })
+        .fold(
+            std::collections::BTreeMap::<String, Vec<&Summary>>::new(),
+            |mut acc, (k, s)| {
+                acc.entry(k.clone()).or_default().push(s);
+                acc
+            },
+        )
         .into_iter()
         .map(|(k, list)| {
             let mut p50s: Vec<u64> = list.iter().map(|s| s.p50_us).collect();
@@ -457,7 +487,9 @@ fn main() -> Result<()> {
             bail!("unknown gate {gate:?} (supported: m1)");
         }
         for metric in METRICS {
-            let Some(gate_us) = m1_gate_us(metric) else { continue };
+            let Some(gate_us) = m1_gate_us(metric) else {
+                continue;
+            };
             let p95_us = pooled.get(metric).map_or(u64::MAX, |s| s.p95_us);
             gates.push(GateResult {
                 metric: metric.to_owned(),
@@ -470,7 +502,11 @@ fn main() -> Result<()> {
     let all_gates_pass = gates.iter().all(|g| g.pass);
     let report = Report {
         engine_version: ve_api::VERSION,
-        profile: if cfg!(debug_assertions) { "debug" } else { "release" },
+        profile: if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        },
         iterations: args.iterations,
         viewport,
         fixtures,
@@ -480,9 +516,15 @@ fn main() -> Result<()> {
         all_gates_pass,
     };
 
-    eprintln!("\n{:<17} {:>10} {:>10} {:>10}", "pooled", "p50 us", "p95 us", "max us");
+    eprintln!(
+        "\n{:<17} {:>10} {:>10} {:>10}",
+        "pooled", "p50 us", "p95 us", "max us"
+    );
     for (metric, s) in &report.pooled {
-        eprintln!("{:<17} {:>10} {:>10} {:>10}", metric, s.p50_us, s.p95_us, s.max_us);
+        eprintln!(
+            "{:<17} {:>10} {:>10} {:>10}",
+            metric, s.p50_us, s.p95_us, s.max_us
+        );
     }
     if !report.gates.is_empty() {
         eprintln!("\ngate {}:", report.gate.as_deref().unwrap_or(""));

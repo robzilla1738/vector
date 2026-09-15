@@ -19,14 +19,14 @@ This directory is a Cargo workspace. The architecture document lives in
 | `ve-dom` | Arena `Document` with stable ids, mutation journal + dirty flags, shadow DOM, form state |
 | `ve-style` | Own cascade: property table, computed values, inheritance, media queries, custom properties; `cssparser` + `selectors` for syntax and matching |
 | `ve-layout` | Own block + inline formatting (text via `parley`), flex/grid via `taffy`, positioned boxes, stacking contexts, hit testing |
-| `ve-a11y` | Accessibility tree, accessible names, `SemanticSnapshot` (`Compact` / `Full`), journal-driven diffs |
+| `ve-a11y` | Accessibility tree, accessible names (accname 1.2 outline), the agent `ObservationContent` builder (§5 visibility, ranking, budgets, `Compact` / `Full`), `changesSince` diffs |
 | `ve-script` | VM-agnostic `JsVm` trait, HTML event loop (tasks, microtasks, virtual-time timers), WebIDL stub generator; QuickJS-NG behind `quickjs` |
 | `ve-gfx` | Display lists, compositor, font database + glyph rasterisation, software renderer; vello + wgpu behind `gpu`, image decoding behind `images` |
-| `ve-agent` | Typed `Program` of steps (`click`, `fill`, `select`, `press`, `scroll`, `navigate`, `waitFor`, `extract`, `collectScroll`), `Readiness`, in-engine `DomPage` |
-| `ve-api` | `VectorEngine` facade (`open` / `observe` / `execute`) and the C ABI (`ve_engine_new/free/open/observe/execute`, JSON in and out) |
+| `ve-agent` | `Page` (document + style/layout + history + focus), contract-shaped `Program`/`Step`/`StepOutcome`, in-engine step semantics (§6) without JS, `settle()`, `r<index>` refs, static-page routing classification |
+| `ve-api` | `VectorEngine` facade (contexts, `open` / `observe` / `execute` / `screenshot` / cookies) and the C ABI (`ve_engine_new/free`, `ve_engine_open`, `ve_page_observe/execute/screenshot/close`, `ve_context_new/free`, `ve_engine_get/set_cookies`; JSON in and out, panics caught) |
 | `ve-napi` | Node.js bindings via napi-rs behind `napi` |
 | `tools/wpt-runner` | Web Platform Tests harness skeleton (loads tests, reports JSON) |
-| `tools/perf` | Per-stage timing harness (parse / style / layout / snapshot / paint → JSON) |
+| `tools/perf` | Agent-path harness over `fixtures/static/` (`--gate m1`: observe, open-to-observe, click/fill step, 10-step program, diff after edit; p50/p95 → JSON) |
 
 ## Building
 
@@ -62,25 +62,35 @@ features.
 ## Trying it
 
 ```rust
-use ve_api::{ObserveOptions, OpenSource, Program, VectorEngine};
+use ve_api::{ExecuteRequest, ObservationRequest, OpenRequest, Program, VectorEngine};
 
 let mut engine = VectorEngine::default();
-let page = engine.open(OpenSource::Html { html: "<label for=q>Search</label><input id=q>".into(), url: None })?;
-let observation = engine.observe(page, &ObserveOptions::default())?;
-println!("{}", observation.snapshot.to_text());
-// - document [ref=n1.0]
-//   - textbox "Search" [ref=n5.0]
+let opened = engine.open(OpenRequest::html(
+    "<label for=q>Search</label><input id=q><button>Go</button>",
+    Some("https://example.test/"),
+))?;
+assert!(!opened.routing.requires_script, "{}", opened.routing.route_reason);
 
-let program = Program::from_json(r#"[
-  {"action": "fill", "target": {"by": "label", "label": "Search"}, "value": "boots"},
-  {"action": "extract", "name": "q", "what": {"type": "value"}, "target": {"by": "ref", "ref": "n5.0"}}
-]"#)?;
-let report = engine.execute(page, &program)?;
-assert_eq!(report.extracted["q"], "boots");
+let observation = engine.observe(opened.page, &ObservationRequest::default())?;
+let field = &observation.observation.content.form_fields[0]; // { ref: "r5", type: "text", label: "Search", … }
+
+let program = Program::from_json(&format!(r#"[
+  {{"id": "s1", "op": "fill", "target": "{}", "value": "boots"}},
+  {{"id": "s2", "op": "extract", "fields": [{{"name": "q", "selector": "#q", "attribute": "value"}}]}}
+]"#, field.reference))?;
+let executed = engine.execute(opened.page, &ExecuteRequest { program, return_observation: None })?;
+assert_eq!(executed.result.extracted.unwrap()["q"], "boots");
 ```
 
+Every operation has a `*_json` twin (`open_json`, `observe_json`,
+`execute_json`, `screenshot_json`, `cookies_json`, …) returning
+`{"ok":true,…}` or `{"ok":false,"error":{"code","message","detail"?}}` with an
+exact `VectorErrorCode`; the C ABI in `ve_api::ffi` is a thin wrapper over
+them.
+
 ```sh
-cargo run -p perf -- --iterations 10            # per-stage timings as JSON
+cargo run --release -p perf -- --gate m1          # M1 p95 gates over fixtures/static (exit 1 on a miss)
+UPDATE_GOLDEN=1 cargo test -p ve-api --test golden # accept new golden Compact snapshots
 cargo run -p wpt-runner -- --wpt-dir ../wpt --filter html/dom --limit 50
 ```
 
@@ -99,10 +109,14 @@ a browser yet. Deliberate stubs, to be replaced in later milestones:
   queries; a focused property table (~55 longhands + common shorthands).
 - **Graphics**: no overflow clipping or opacity groups in the layout→display
   list conversion; no text in the vello backend; no replaced elements.
-- **Network**: no connection pooling, streaming bodies, revalidation
-  round-trips or charset sniffing; HTTP transport is opt-in.
+- **Network**: no connection pooling, streaming bodies or revalidation
+  round-trips; HTTP transport is opt-in (`http`). Loopback is blocked by
+  default and `file:` is opt-in per context policy.
 - **Accessibility**: shadow trees are exposed flattened without slot
   assignment; no live regions.
-- **Agent**: form submission does not navigate; `press` covers a small key set.
+- **Agent**: no script, so `evaluate`, `waitFor expression`, `dialog` and
+  downloads report `capability_unsupported` (the runtime falls back to
+  Chromium); `dragTo` moves the pointer but synthesises no HTML5 drag events.
 - **Tools**: the WPT runner only parses/lays out tests (`testharness.js` needs
-  script bindings); the perf tool measures stages, not end-to-end navigation.
+  script bindings). CSS coverage counters for the router are a marked hook
+  (`ve_agent::routing::CssCoverage`) until `ve-style` exposes them.

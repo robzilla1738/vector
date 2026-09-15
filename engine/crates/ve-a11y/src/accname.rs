@@ -145,10 +145,10 @@ fn collect_text(doc: &Document, id: NodeId, allow_hidden: bool, out: &mut String
                     }
                     "select" => {
                         // The selected option's label, not its value attribute.
-                        if let Some(option) = doc
-                            .descendants(child)
-                            .find(|&o| doc.element(o).is_some_and(|x| x.is_html("option")) && doc.is_selected(o))
-                        {
+                        if let Some(option) = doc.descendants(child).find(|&o| {
+                            doc.element(o).is_some_and(|x| x.is_html("option"))
+                                && doc.is_selected(o)
+                        }) {
                             let text = normalize(&doc.text_content(option));
                             if !text.is_empty() {
                                 out.push(' ');

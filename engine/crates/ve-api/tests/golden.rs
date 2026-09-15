@@ -23,7 +23,11 @@ fn fixture_paths() -> Vec<PathBuf> {
         .filter(|p| p.extension().is_some_and(|x| x == "html"))
         .collect();
     paths.sort();
-    assert!(paths.len() >= 6, "expected at least 6 static fixtures, found {}", paths.len());
+    assert!(
+        paths.len() >= 6,
+        "expected at least 6 static fixtures, found {}",
+        paths.len()
+    );
     paths
 }
 
@@ -74,7 +78,10 @@ fn compact_observations_match_goldens() {
             "{name}: Compact observe is {} tokens (gate: 4000)",
             content.stats.approx_tokens
         );
-        assert!(content.elements.len() <= 120, "{name}: element budget exceeded");
+        assert!(
+            content.elements.len() <= 120,
+            "{name}: element budget exceeded"
+        );
         assert!(!content.headings.is_empty(), "{name}: no headings observed");
         assert!(
             !content.text.contains("must not")
@@ -117,7 +124,10 @@ fn observations_are_deterministic_across_engines() {
     let observe = || {
         let mut engine = engine();
         let opened = engine
-            .open(OpenRequest::html(html.clone(), Some(&format!("{BASE_URL}gov-benefits-form.html"))))
+            .open(OpenRequest::html(
+                html.clone(),
+                Some(&format!("{BASE_URL}gov-benefits-form.html")),
+            ))
             .unwrap();
         engine
             .observe(opened.page, &ObservationRequest::default())

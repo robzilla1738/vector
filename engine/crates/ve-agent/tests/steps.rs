@@ -7,8 +7,7 @@ use std::rc::Rc;
 
 use ve_agent::{
     DEFAULT_VIEWPORT, ErrorCode, InFlightSummary, LoadedDocument, Loader, NavMethod,
-    NavigationRequest, ObservationRequest, Page, Program, ProgramResult, ProgramStatus,
-    StepStatus,
+    NavigationRequest, ObservationRequest, Page, Program, ProgramResult, ProgramStatus, StepStatus,
 };
 use ve_core::{Error, Result};
 
@@ -95,17 +94,30 @@ fn reference(page: &Page, target: &str) -> String {
 #[test]
 fn link_click_navigates_and_history_traverses() {
     let recorder = Recorder::default()
-        .serve("https://t.test/next", "<title>Next</title><h1>Second</h1><a href=/>Home</a>")
+        .serve(
+            "https://t.test/next",
+            "<title>Next</title><h1>Second</h1><a href=/>Home</a>",
+        )
         .serve(ORIGIN, "<title>Home</title><a href=/next>Next</a>");
     let log = recorder.log();
-    let mut page = page_with("<title>Home</title><a href=/next>Next</a><a href='#bottom'>Down</a><p id=bottom>end</p>", recorder);
+    let mut page = page_with(
+        "<title>Home</title><a href=/next>Next</a><a href='#bottom'>Down</a><p id=bottom>end</p>",
+        recorder,
+    );
     let epoch = page.generation();
 
-    let result = run(&mut page, r##"[{"id":"c","op":"click","target":"text=Next"}]"##);
+    let result = run(
+        &mut page,
+        r##"[{"id":"c","op":"click","target":"text=Next"}]"##,
+    );
     assert_ok(&result);
     assert_eq!(page.url(), "https://t.test/next");
     assert_eq!(page.title(), "Next");
-    assert_eq!(page.generation(), epoch + 1, "a new document bumps the epoch");
+    assert_eq!(
+        page.generation(),
+        epoch + 1,
+        "a new document bumps the epoch"
+    );
     assert_eq!(page.history(), (2, 1));
     let requests = log.borrow();
     assert_eq!(requests.len(), 1);
@@ -118,7 +130,13 @@ fn link_click_navigates_and_history_traverses() {
         r##"[{"id":"b","op":"back"},{"id":"f","op":"forward"},{"id":"r","op":"reload"}]"##,
     );
     assert_ok(&result);
-    assert!(result.steps[0].detail.as_deref().unwrap().contains("back to https://t.test/"));
+    assert!(
+        result.steps[0]
+            .detail
+            .as_deref()
+            .unwrap()
+            .contains("back to https://t.test/")
+    );
     assert_eq!(page.url(), "https://t.test/next");
     assert_eq!(page.history(), (2, 1));
     assert_eq!(
@@ -128,10 +146,17 @@ fn link_click_navigates_and_history_traverses() {
     );
 
     // Same-document fragment navigation scrolls instead of fetching.
-    let mut page = new_page("<a href='#bottom'>Down</a><div style='height:3000px'></div><p id=bottom>end</p>");
-    let result = run(&mut page, r##"[{"id":"c","op":"click","target":"text=Down"}]"##);
+    let mut page =
+        new_page("<a href='#bottom'>Down</a><div style='height:3000px'></div><p id=bottom>end</p>");
+    let result = run(
+        &mut page,
+        r##"[{"id":"c","op":"click","target":"text=Down"}]"##,
+    );
     assert_ok(&result);
-    assert!(page.scroll_offset().y > 0.0, "fragment click scrolls to the target");
+    assert!(
+        page.scroll_offset().y > 0.0,
+        "fragment click scrolls to the target"
+    );
     assert_eq!(page.generation(), 0, "no new document");
     assert!(page.url().ends_with("#bottom"));
 }
@@ -139,11 +164,17 @@ fn link_click_navigates_and_history_traverses() {
 #[test]
 fn navigate_step_validates_urls_and_reports_network_failures() {
     let mut page = new_page("<p>x</p>");
-    let result = run(&mut page, r##"[{"id":"n","op":"navigate","url":"javascript:alert(1)"}]"##);
+    let result = run(
+        &mut page,
+        r##"[{"id":"n","op":"navigate","url":"javascript:alert(1)"}]"##,
+    );
     assert_eq!(result.status, ProgramStatus::Failed);
     assert_eq!(error_code(&result, 0), ErrorCode::CapabilityUnsupported);
 
-    let result = run(&mut page, r##"[{"id":"n","op":"navigate","url":"https://t.test/missing"}]"##);
+    let result = run(
+        &mut page,
+        r##"[{"id":"n","op":"navigate","url":"https://t.test/missing"}]"##,
+    );
     assert_eq!(result.status, ProgramStatus::Failed);
     assert_eq!(error_code(&result, 0), ErrorCode::BackendUnavailable);
     assert_eq!(page.url(), ORIGIN, "the old document stays");
@@ -151,7 +182,8 @@ fn navigate_step_validates_urls_and_reports_network_failures() {
 
 #[test]
 fn immediate_meta_refresh_is_followed_during_settle() {
-    let recorder = Recorder::default().serve("https://t.test/dest", "<title>Dest</title><p>arrived</p>");
+    let recorder =
+        Recorder::default().serve("https://t.test/dest", "<title>Dest</title><p>arrived</p>");
     let mut page = page_with(
         r##"<meta http-equiv="refresh" content="0; url=/dest"><p>redirecting…</p>"##,
         recorder,
@@ -160,7 +192,11 @@ fn immediate_meta_refresh_is_followed_during_settle() {
     assert!(settled.settled, "{settled:?}");
     assert_eq!(page.url(), "https://t.test/dest");
     assert_eq!(page.title(), "Dest");
-    assert_eq!(page.history(), (1, 0), "refresh replaces rather than pushes");
+    assert_eq!(
+        page.history(),
+        (1, 0),
+        "refresh replaces rather than pushes"
+    );
 }
 
 #[test]
@@ -176,7 +212,13 @@ fn documents_are_decoded_with_the_declared_charset() {
             status: 200,
         },
     );
-    let page = Page::open(1, Box::new(loader), "https://t.test/latin1", DEFAULT_VIEWPORT).unwrap();
+    let page = Page::open(
+        1,
+        Box::new(loader),
+        "https://t.test/latin1",
+        DEFAULT_VIEWPORT,
+    )
+    .unwrap();
     assert_eq!(page.title(), "Café ©");
     assert_eq!(page.status(), 200);
     let content = page.observe_now(&ObservationRequest::default());
@@ -212,8 +254,7 @@ fn get_submission_encodes_the_entry_list_with_the_submitter() {
     assert_eq!(requests.len(), 1);
     assert_eq!(requests[0].method, NavMethod::Get);
     assert_eq!(
-        requests[0].url,
-        "https://t.test/search?q=boots+%26+co&lang=en&exact=on&sort=new&go=1",
+        requests[0].url, "https://t.test/search?q=boots+%26+co&lang=en&exact=on&sort=new&go=1",
         "only the clicked submitter participates"
     );
     assert!(requests[0].body.is_none());
@@ -230,7 +271,10 @@ fn post_submission_uses_the_form_enctype() {
            <form id=b action="/upload" method="post" enctype="multipart/form-data"><input name=kind value=doc><input type=file name=file><button>Upload</button></form>"##,
         recorder,
     );
-    let result = run(&mut page, r##"[{"id":"s","op":"click","target":"text=Save"}]"##);
+    let result = run(
+        &mut page,
+        r##"[{"id":"s","op":"click","target":"text=Save"}]"##,
+    );
     assert_ok(&result);
     {
         let requests = log.borrow();
@@ -304,7 +348,10 @@ fn enter_submits_tab_follows_order_space_toggles() {
         &format!(r##"[{{"id":"s","op":"press","target":"{cb}","key":"Space"}}]"##),
     );
     assert_ok(&result);
-    assert!(page.document().is_checked(page.resolve_all(&cb, None).unwrap()[0]));
+    assert!(
+        page.document()
+            .is_checked(page.resolve_all(&cb, None).unwrap()[0])
+    );
 
     let result = run(
         &mut page,
@@ -338,15 +385,30 @@ fn check_uncheck_radio_label_forwarding_select_and_details() {
             {"id":"4","op":"click","target":"text=Newsletter"}]"##,
     );
     assert_ok(&result);
-    assert!(result.steps[1].detail.as_deref().unwrap().contains("already checked=true"));
-    assert!(page.document().is_checked(cb), "clicking the label forwards to the control");
+    assert!(
+        result.steps[1]
+            .detail
+            .as_deref()
+            .unwrap()
+            .contains("already checked=true")
+    );
+    assert!(
+        page.document().is_checked(cb),
+        "clicking the label forwards to the control"
+    );
 
     let small = page.resolve_all("css:input[value=s]", None).unwrap()[0];
     let large = page.resolve_all("css:input[value=l]", None).unwrap()[0];
-    let result = run(&mut page, r##"[{"id":"r","op":"check","target":"label=Small"}]"##);
+    let result = run(
+        &mut page,
+        r##"[{"id":"r","op":"check","target":"label=Small"}]"##,
+    );
     assert_ok(&result);
     assert!(page.document().is_checked(small) && !page.document().is_checked(large));
-    let result = run(&mut page, r##"[{"id":"r","op":"uncheck","target":"label=Small"}]"##);
+    let result = run(
+        &mut page,
+        r##"[{"id":"r","op":"uncheck","target":"label=Small"}]"##,
+    );
     assert_eq!(error_code(&result, 0), ErrorCode::StepFailed);
 
     let result = run(
@@ -363,15 +425,25 @@ fn check_uncheck_radio_label_forwarding_select_and_details() {
     assert_eq!(extracted["colour"], "blue", "select by value");
     assert_eq!(extracted["colour2"], "red", "select by label");
     let multi = page.resolve_all("css:#multi option", None).unwrap();
-    assert!(page.document().is_selected(multi[0]) && !page.document().is_selected(multi[1]) && page.document().is_selected(multi[2]));
+    assert!(
+        page.document().is_selected(multi[0])
+            && !page.document().is_selected(multi[1])
+            && page.document().is_selected(multi[2])
+    );
     assert_eq!(error_code(&result, 5), ErrorCode::NotFound);
 
     let details = page.resolve_all("css:#d", None).unwrap()[0];
-    let result = run(&mut page, r##"[{"id":"s","op":"click","target":"text=More"}]"##);
+    let result = run(
+        &mut page,
+        r##"[{"id":"s","op":"click","target":"text=More"}]"##,
+    );
     assert_ok(&result);
     assert!(page.document().attribute(details, "open").is_some());
     assert!(page.shown_text().contains("Hidden until opened"));
-    let result = run(&mut page, r##"[{"id":"s","op":"click","target":"text=More"}]"##);
+    let result = run(
+        &mut page,
+        r##"[{"id":"s","op":"click","target":"text=More"}]"##,
+    );
     assert_ok(&result);
     assert!(page.document().attribute(details, "open").is_none());
 }
@@ -398,7 +470,11 @@ fn fill_replaces_type_appends_and_labels_ignore_control_values() {
     assert_eq!(extracted["t"], "line 1\nline 2");
     assert_eq!(result.steps[4].status, StepStatus::Failed, "read-only");
     assert_eq!(error_code(&result, 4), ErrorCode::StepFailed);
-    assert_eq!(error_code(&result, 5), ErrorCode::InvalidParams, "radio is not a text control");
+    assert_eq!(
+        error_code(&result, 5),
+        ErrorCode::InvalidParams,
+        "radio is not a text control"
+    );
 
     let content = page.observe_now(&ObservationRequest::default());
     let radio = content
@@ -406,7 +482,11 @@ fn fill_replaces_type_appends_and_labels_ignore_control_values() {
         .iter()
         .find(|f| f.type_ == "radio")
         .expect("radio field");
-    assert_eq!(radio.label.as_deref(), Some("Yes"), "value attribute must not leak into the name");
+    assert_eq!(
+        radio.label.as_deref(),
+        Some("Yes"),
+        "value attribute must not leak into the name"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -429,7 +509,13 @@ fn scroll_click_point_and_hover() {
             {"id":"6","op":"scroll","direction":"down","amount":100}]"##,
     );
     assert_ok(&result);
-    assert!(result.steps[0].detail.as_deref().unwrap().starts_with("scrolled viewport to y=720"));
+    assert!(
+        result.steps[0]
+            .detail
+            .as_deref()
+            .unwrap()
+            .starts_with("scrolled viewport to y=720")
+    );
     assert!(result.steps[1].detail.as_deref().unwrap().contains("(max "));
     assert!(result.steps[2].detail.as_deref().unwrap().contains("y=0"));
     let b = reference(&page, "css:#b");
@@ -438,7 +524,10 @@ fn scroll_click_point_and_hover() {
         "clickPoint hit-tests to the button: {:?}",
         result.steps[3].detail
     );
-    assert_eq!(page.focused(), Some(page.resolve_all("css:#b", None).unwrap()[0]));
+    assert_eq!(
+        page.focused(),
+        Some(page.resolve_all("css:#b", None).unwrap()[0])
+    );
     assert_eq!(page.scroll_offset().y, 100.0);
 }
 
@@ -463,10 +552,21 @@ fn wait_for_conditions_and_capability_gaps() {
     );
     assert_eq!(result.status, ProgramStatus::Failed);
     for i in 0..7 {
-        assert_eq!(result.steps[i].status, StepStatus::Ok, "{:#?}", result.steps[i]);
+        assert_eq!(
+            result.steps[i].status,
+            StepStatus::Ok,
+            "{:#?}",
+            result.steps[i]
+        );
     }
     assert_eq!(error_code(&result, 7), ErrorCode::ConditionTimeout);
-    let detail = result.steps[7].error.as_ref().unwrap().detail.as_ref().unwrap();
+    let detail = result.steps[7]
+        .error
+        .as_ref()
+        .unwrap()
+        .detail
+        .as_ref()
+        .unwrap();
     assert_eq!(detail["timeoutMs"], 20);
 
     let result = run(
@@ -477,10 +577,18 @@ fn wait_for_conditions_and_capability_gaps() {
             {"id":"g","op":"dialog","action":"accept","optional":true},
             {"id":"dl","op":"expectDownload","optional":true}]"##,
     );
-    assert_eq!(result.status, ProgramStatus::Completed, "optional steps do not fail the program");
+    assert_eq!(
+        result.status,
+        ProgramStatus::Completed,
+        "optional steps do not fail the program"
+    );
     for i in 0..5 {
         assert_eq!(result.steps[i].status, StepStatus::Failed);
-        assert_eq!(error_code(&result, i), ErrorCode::CapabilityUnsupported, "step {i}");
+        assert_eq!(
+            error_code(&result, i),
+            ErrorCode::CapabilityUnsupported,
+            "step {i}"
+        );
     }
 
     // `expect` after a step uses the same conditions.
@@ -514,7 +622,10 @@ fn extract_and_collect_scroll() {
     assert_ok(&result);
     let ex = result.extracted.as_ref().unwrap();
     assert_eq!(ex["page"]["title"], "Catalog");
-    assert_eq!(ex["page"]["first"], "https://t.test/p/1", "href is resolved");
+    assert_eq!(
+        ex["page"]["first"], "https://t.test/p/1",
+        "href is resolved"
+    );
     assert_eq!(ex["page"]["links"].as_array().unwrap().len(), 2);
     assert_eq!(ex["page"]["q"], "abc", "form controls extract their value");
     assert!(ex["page"]["missing"].is_null());
@@ -540,17 +651,28 @@ fn screenshot_upload_and_unsupported_targets() {
     );
     assert_eq!(result.status, ProgramStatus::Failed);
     assert_eq!(result.steps[0].status, StepStatus::Ok);
-    assert_eq!(result.steps[0].artifact_ids.as_deref(), Some(&["shot-1".to_owned()][..]));
+    assert_eq!(
+        result.steps[0].artifact_ids.as_deref(),
+        Some(&["shot-1".to_owned()][..])
+    );
     let shot = page.last_screenshot().expect("screenshot kept");
     assert_eq!(&shot.png[..8], b"\x89PNG\r\n\x1a\n");
     assert_eq!((shot.width, shot.height), (1280, 720));
     assert_eq!(result.steps[1].status, StepStatus::Ok);
     assert_eq!(result.steps[2].status, StepStatus::Ok);
-    assert_eq!(error_code(&result, 3), ErrorCode::InvalidParams, "multiple files need `multiple`");
+    assert_eq!(
+        error_code(&result, 3),
+        ErrorCode::InvalidParams,
+        "multiple files need `multiple`"
+    );
     let f = page.resolve_all("css:#f", None).unwrap()[0];
     assert_eq!(page.files(f), vec!["/tmp/a.txt".to_owned()]);
     let content = page.observe_now(&ObservationRequest::default());
-    let file_field = content.elements.iter().find(|e| e.type_.as_deref() == Some("file")).unwrap();
+    let file_field = content
+        .elements
+        .iter()
+        .find(|e| e.type_.as_deref() == Some("file"))
+        .unwrap();
     assert_eq!(file_field.value.as_deref(), Some("/tmp/a.txt"));
 }
 
@@ -598,8 +720,12 @@ fn actionability_names_the_failing_predicate() {
 
 #[test]
 fn target_resolution_errors_carry_exact_codes_and_candidates() {
-    let buttons: String = (0..7).map(|i| format!("<button class=dup>Dup {i}</button>")).collect();
-    let mut page = new_page(&format!("<div id=root>{buttons}<button id=one>One</button><span id=gone>bye</span></div>"));
+    let buttons: String = (0..7)
+        .map(|i| format!("<button class=dup>Dup {i}</button>"))
+        .collect();
+    let mut page = new_page(&format!(
+        "<div id=root>{buttons}<button id=one>One</button><span id=gone>bye</span></div>"
+    ));
     let gone_ref = reference(&page, "css:#gone");
     let gone = page.resolve_all("css:#gone", None).unwrap()[0];
     let epoch = page.generation();
@@ -612,20 +738,46 @@ fn target_resolution_errors_carry_exact_codes_and_candidates() {
             {"id":"d","op":"click","target":"role=button[name=\"One\"]"},
             {"id":"e","op":"click","target":"text=Dup 3"}]"##,
     );
-    assert_eq!(result.status, ProgramStatus::Completed, "{:?}", result.error);
+    assert_eq!(
+        result.status,
+        ProgramStatus::Completed,
+        "{:?}",
+        result.error
+    );
     let ambiguous = result.steps[0].error.as_ref().unwrap();
     assert_eq!(ambiguous.code, ErrorCode::TargetAmbiguous);
-    let candidates = ambiguous.detail.as_ref().unwrap()["candidates"].as_array().unwrap();
-    assert_eq!(candidates.len(), 5, "first five candidate refs: {candidates:?}");
-    assert!(candidates.iter().all(|c| c["ref"].as_str().is_some_and(|r| r.starts_with('r'))));
+    let candidates = ambiguous.detail.as_ref().unwrap()["candidates"]
+        .as_array()
+        .unwrap();
+    assert_eq!(
+        candidates.len(),
+        5,
+        "first five candidate refs: {candidates:?}"
+    );
+    assert!(
+        candidates
+            .iter()
+            .all(|c| c["ref"].as_str().is_some_and(|r| r.starts_with('r')))
+    );
     assert_eq!(error_code(&result, 1), ErrorCode::NotFound);
-    assert_eq!(error_code(&result, 2), ErrorCode::NotFound, "never-allocated ref");
+    assert_eq!(
+        error_code(&result, 2),
+        ErrorCode::NotFound,
+        "never-allocated ref"
+    );
     assert_eq!(result.steps[3].status, StepStatus::Ok);
-    assert_eq!(result.steps[4].status, StepStatus::Ok, "exact text match wins over substring");
+    assert_eq!(
+        result.steps[4].status,
+        StepStatus::Ok,
+        "exact text match wins over substring"
+    );
 
     // Detach the span, then use its old ref: tombstone → target_detached.
     page.document_mut().remove(gone).unwrap();
-    let result = run(&mut page, &format!(r##"[{{"id":"g","op":"click","target":"{gone_ref}"}}]"##));
+    let result = run(
+        &mut page,
+        &format!(r##"[{{"id":"g","op":"click","target":"{gone_ref}"}}]"##),
+    );
     assert_eq!(error_code(&result, 0), ErrorCode::TargetDetached);
 
     // Epoch mismatch → target_detached before anything runs.
@@ -679,14 +831,26 @@ fn settle_reports_blocking_fetches_and_layout_state() {
     let mut page = page_with("<p>x</p>", recorder);
     let settled = page.settle(500);
     assert!(!settled.settled);
-    assert_eq!(settled.reasons, vec!["fetch(1)".to_owned(), "fetch-old(2)".to_owned()]);
+    assert_eq!(
+        settled.reasons,
+        vec!["fetch(1)".to_owned(), "fetch-old(2)".to_owned()]
+    );
     assert_eq!(
         settled.detail().as_deref(),
         Some("settled=false: fetch(1) fetch-old(2)")
     );
-    let result = run(&mut page, r##"[{"id":"s","op":"scroll","direction":"down"}]"##);
+    let result = run(
+        &mut page,
+        r##"[{"id":"s","op":"scroll","direction":"down"}]"##,
+    );
     assert_ok(&result);
-    assert!(result.steps[0].detail.as_deref().unwrap().ends_with("; settled=false: fetch(1) fetch-old(2)"));
+    assert!(
+        result.steps[0]
+            .detail
+            .as_deref()
+            .unwrap()
+            .ends_with("; settled=false: fetch(1) fetch-old(2)")
+    );
 
     let mut page = new_page("<p>x</p>");
     let settled = page.settle(500);
@@ -698,13 +862,19 @@ fn settle_reports_blocking_fetches_and_layout_state() {
 
 #[test]
 fn observe_reports_changes_since_and_epoch_rollover() {
-    let recorder = Recorder::default().serve("https://t.test/two", "<title>Two</title><h1>Second page</h1>");
+    let recorder = Recorder::default().serve(
+        "https://t.test/two",
+        "<title>Two</title><h1>Second page</h1>",
+    );
     let mut page = page_with(
         r##"<title>One</title><label for=n>Name</label><input id=n><a href=/two>Two</a>"##,
         recorder,
     );
     let first = page.observe(&ObservationRequest::default()).unwrap();
-    assert_ok(&run(&mut page, r##"[{"id":"f","op":"fill","target":"label=Name","value":"Ada"}]"##));
+    assert_ok(&run(
+        &mut page,
+        r##"[{"id":"f","op":"fill","target":"label=Name","value":"Ada"}]"##,
+    ));
     let second = page
         .observe(&ObservationRequest {
             since_revision: Some(first.revision),
@@ -716,7 +886,10 @@ fn observe_reports_changes_since_and_epoch_rollover() {
     assert!(changes.iter().any(|c| c.contains("Ada")), "{changes:?}");
     assert!(second.delta.is_none(), "Compact carries lines only");
 
-    assert_ok(&run(&mut page, r##"[{"id":"c","op":"click","target":"text=Two"}]"##));
+    assert_ok(&run(
+        &mut page,
+        r##"[{"id":"c","op":"click","target":"text=Two"}]"##,
+    ));
     let third = page
         .observe(&ObservationRequest {
             since_revision: Some(second.revision),
@@ -725,7 +898,10 @@ fn observe_reports_changes_since_and_epoch_rollover() {
         .unwrap();
     assert_eq!(third.document_epoch, 1);
     let changes = third.changes_since.as_ref().expect("epoch change reported");
-    assert!(changes.iter().any(|c| c.contains("document epoch 0 → 1")), "{changes:?}");
+    assert!(
+        changes.iter().any(|c| c.contains("document epoch 0 → 1")),
+        "{changes:?}"
+    );
     assert!(changes.iter().any(|c| c.contains("~ url")), "{changes:?}");
 
     // Unknown revision: full snapshot, no delta.

@@ -14,8 +14,8 @@ use ve_a11y::{ObservationRequest, ref_for};
 use ve_core::{Error, ErrorCode, Result, Stage};
 
 use crate::page::{
-    DEFAULT_TIMEOUT_MS, EngineObservation, Page, SETTLE_NAVIGATION_MS, SETTLE_STEP_MS,
-    now_millis, outer_html,
+    DEFAULT_TIMEOUT_MS, EngineObservation, Page, SETTLE_NAVIGATION_MS, SETTLE_STEP_MS, now_millis,
+    outer_html,
 };
 use crate::regex_lite::url_matches;
 use crate::steps::{
@@ -233,7 +233,11 @@ impl Page {
                 let message = error
                     .as_ref()
                     .map_or_else(|| "step failed".to_owned(), |e| e.message.clone());
-                if cancelled || error.as_ref().is_some_and(|e| e.code == ErrorCode::Cancelled) {
+                if cancelled
+                    || error
+                        .as_ref()
+                        .is_some_and(|e| e.code == ErrorCode::Cancelled)
+                {
                     cancelled = true;
                 } else if !step.is_optional() {
                     failed = Some(format!("{}: {message}", step.id()));
@@ -598,12 +602,15 @@ impl Page {
                         "{} held after {} ms{}",
                         condition.kind(),
                         waited_virtual + u64::try_from(started.elapsed().as_millis()).unwrap_or(0),
-                        settled.detail().map(|d| format!(" ({d})")).unwrap_or_default()
+                        settled
+                            .detail()
+                            .map(|d| format!(" ({d})"))
+                            .unwrap_or_default()
                     )),
                     extracted: None,
                     artifact_ids: None,
                     settle_ms: budget,
-                })
+                });
             }
             let refresh_in_ms = self
                 .meta()
@@ -612,7 +619,9 @@ impl Page {
                 .filter(|r| r.seconds > 0 && r.url.is_some())
                 .map(|r| r.seconds * 1000);
             match refresh_in_ms {
-                Some(delay) if waited_virtual + delay <= timeout && self.follow_delayed_refresh() => {
+                Some(delay)
+                    if waited_virtual + delay <= timeout && self.follow_delayed_refresh() =>
+                {
                     waited_virtual += delay;
                     self.advance_virtual_time(delay);
                     self.settle(SETTLE_NAVIGATION_MS);
@@ -670,9 +679,10 @@ impl Page {
                 _ => doc.attribute(id, attr).map_or(Value::Null, |v| json!(v)),
             },
             None => {
-                if doc.element(id).is_some_and(|e| {
-                    matches!(e.name.as_str(), "input" | "textarea" | "select")
-                }) {
+                if doc
+                    .element(id)
+                    .is_some_and(|e| matches!(e.name.as_str(), "input" | "textarea" | "select"))
+                {
                     return doc.form_value(id).map_or(Value::Null, |v| json!(v));
                 }
                 json!(self.visible_text(id))
@@ -705,11 +715,9 @@ impl Page {
                                 .collect(),
                         )
                     } else {
-                        matches
-                            .first()
-                            .map_or(Value::Null, |&id| {
-                                self.field_value(id, field.attribute.as_deref())
-                            })
+                        matches.first().map_or(Value::Null, |&id| {
+                            self.field_value(id, field.attribute.as_deref())
+                        })
                     }
                 }
             };
@@ -729,9 +737,7 @@ impl Page {
         max_scrolls: usize,
         epoch: Option<u64>,
     ) -> Result<Value> {
-        let container_id = container
-            .map(|c| self.resolve(c, epoch))
-            .transpose()?;
+        let container_id = container.map(|c| self.resolve(c, epoch)).transpose()?;
         let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut items: Vec<Value> = Vec::new();
         let mut scrolls = 0usize;
@@ -777,9 +783,9 @@ impl Page {
                                 .into_iter()
                                 .filter(|&m| m == id || self.document().is_ancestor_of(id, m))
                                 .collect();
-                            within
-                                .first()
-                                .map_or(Value::Null, |&m| self.field_value(m, field.attribute.as_deref()))
+                            within.first().map_or(Value::Null, |&m| {
+                                self.field_value(m, field.attribute.as_deref())
+                            })
                         }
                     };
                     entry.insert(field.name.clone(), value);

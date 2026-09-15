@@ -11,7 +11,10 @@ use ve_core::{Error, Result};
 enum Atom {
     Any,
     Char(char),
-    Class { negated: bool, items: Vec<ClassItem> },
+    Class {
+        negated: bool,
+        items: Vec<ClassItem>,
+    },
     Start,
     End,
 }
@@ -127,7 +130,10 @@ impl Pattern {
             _ => {}
         }
         let ci = self.case_insensitive;
-        let one = |i: usize| text.get(i).is_some_and(|&c| atom_matches(&piece.atom, c, ci));
+        let one = |i: usize| {
+            text.get(i)
+                .is_some_and(|&c| atom_matches(&piece.atom, c, ci))
+        };
         match piece.quant {
             Quant::One => {
                 if one(ti) {
@@ -340,6 +346,9 @@ mod tests {
         assert_eq!(groups.code(), ve_core::ErrorCode::CapabilityUnsupported);
         let bad = url_matches("/*/", "a").unwrap_err();
         assert_eq!(bad.code(), ve_core::ErrorCode::InvalidParams);
-        assert!(url_matches("/records/", "/records/").unwrap(), "regex 'records'");
+        assert!(
+            url_matches("/records/", "/records/").unwrap(),
+            "regex 'records'"
+        );
     }
 }

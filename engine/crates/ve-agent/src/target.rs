@@ -45,14 +45,19 @@ impl TargetSpec {
         if let Some(text) = t.strip_prefix("text=").or_else(|| t.strip_prefix("text:")) {
             return Ok(Self::Text(unquote(text.trim()).to_owned()));
         }
-        if let Some(label) = t.strip_prefix("label=").or_else(|| t.strip_prefix("label:")) {
+        if let Some(label) = t
+            .strip_prefix("label=")
+            .or_else(|| t.strip_prefix("label:"))
+        {
             return Ok(Self::Label(unquote(label.trim()).to_owned()));
         }
         if let Some(rest) = t.strip_prefix("role=").or_else(|| t.strip_prefix("role:")) {
             let (role, attrs) = rest.split_once('[').unwrap_or((rest, ""));
             let role = role.trim().to_owned();
             if role.is_empty() {
-                return Err(Error::invalid_params(format!("target {target:?}: empty role")));
+                return Err(Error::invalid_params(format!(
+                    "target {target:?}: empty role"
+                )));
             }
             let mut name = None;
             if !attrs.is_empty() {
@@ -143,7 +148,9 @@ mod tests {
             ve_core::ErrorCode::InvalidParams
         );
         assert_eq!(
-            TargetSpec::parse("role=button[colour=red]").unwrap_err().code(),
+            TargetSpec::parse("role=button[colour=red]")
+                .unwrap_err()
+                .code(),
             ve_core::ErrorCode::InvalidParams
         );
     }

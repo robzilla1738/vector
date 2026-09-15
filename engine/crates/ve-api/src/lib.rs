@@ -351,7 +351,10 @@ impl VectorEngine {
         ids
     }
 
-    fn context(&mut self, context: Option<u64>) -> Result<(ContextId, Rc<RefCell<NetworkContext>>)> {
+    fn context(
+        &mut self,
+        context: Option<u64>,
+    ) -> Result<(ContextId, Rc<RefCell<NetworkContext>>)> {
         let id = context.map_or(DEFAULT_CONTEXT, ContextId);
         if let Some(net) = self.contexts.get(&id) {
             return Ok((id, net.clone()));
@@ -379,7 +382,11 @@ impl VectorEngine {
     }
 
     /// Imports cookies into a context; returns how many were stored.
-    pub fn set_cookies(&mut self, context: ContextId, cookies: Vec<BrowserCookie>) -> Result<usize> {
+    pub fn set_cookies(
+        &mut self,
+        context: ContextId,
+        cookies: Vec<BrowserCookie>,
+    ) -> Result<usize> {
         Ok(self.network(context)?.borrow_mut().cookies.import(cookies))
     }
 
@@ -534,7 +541,8 @@ impl VectorEngine {
     /// Returns `{"ok":true,"page":N,"content":{…},"revision","documentEpoch","changesSince"?,"delta"?,"settled":{…}}`.
     pub fn observe_json(&mut self, page: u64, request_json: &str) -> String {
         Self::json_result((|| {
-            let request: ObservationRequest = Self::parse_json(request_json, "observation request")?;
+            let request: ObservationRequest =
+                Self::parse_json(request_json, "observation request")?;
             Ok(serde_json::to_value(self.observe(PageId(page), &request)?)?)
         })())
     }
@@ -590,9 +598,9 @@ impl VectorEngine {
                 .map_err(|e| Error::invalid_params(format!("cookies: {e}")))?;
             let list = match value {
                 Value::Array(_) => value,
-                Value::Object(mut obj) => obj
-                    .remove("cookies")
-                    .ok_or_else(|| Error::invalid_params("cookies: expected an array or {\"cookies\": […]}"))?,
+                Value::Object(mut obj) => obj.remove("cookies").ok_or_else(|| {
+                    Error::invalid_params("cookies: expected an array or {\"cookies\": […]}")
+                })?,
                 _ => return Err(Error::invalid_params("cookies: expected an array")),
             };
             let cookies: Vec<BrowserCookie> = serde_json::from_value(list)
@@ -624,11 +632,17 @@ mod tests {
             .unwrap();
         assert_eq!(opened.title, "Hi");
         assert_eq!(opened.context, DEFAULT_CONTEXT);
-        assert!(!opened.routing.requires_script, "{}", opened.routing.route_reason);
+        assert!(
+            !opened.routing.requires_script,
+            "{}",
+            opened.routing.route_reason
+        );
         assert!(opened.settled.settled);
         let page = opened.page;
 
-        let obs = engine.observe(page, &ObservationRequest::default()).unwrap();
+        let obs = engine
+            .observe(page, &ObservationRequest::default())
+            .unwrap();
         assert_eq!(obs.page, page);
         assert_eq!(obs.observation.document_epoch, opened.document_epoch);
         let field = obs
@@ -764,21 +778,25 @@ mod tests {
     fn json_api_wraps_results_and_coded_errors() {
         let mut engine = offline();
         let opened: Value =
-            serde_json::from_str(&engine.open_json(r#"{"html": "<p>x</p><button>Go</button>"}"#)).unwrap();
+            serde_json::from_str(&engine.open_json(r#"{"html": "<p>x</p><button>Go</button>"}"#))
+                .unwrap();
         assert_eq!(opened["ok"], true);
         assert_eq!(opened["routing"]["routeReason"], "static");
         let page = opened["page"].as_u64().unwrap();
 
-        let observed: Value =
-            serde_json::from_str(&engine.observe_json(page, r#"{"format": "full", "scope": "full"}"#)).unwrap();
+        let observed: Value = serde_json::from_str(
+            &engine.observe_json(page, r#"{"format": "full", "scope": "full"}"#),
+        )
+        .unwrap();
         assert_eq!(observed["ok"], true);
         assert_eq!(observed["page"], page);
         assert!(observed["content"]["stats"]["approxTokens"].is_number());
         assert!(observed["settled"]["settled"].as_bool().unwrap());
 
-        let executed: Value = serde_json::from_str(
-            &engine.execute_json(page, r#"{"program":[{"id":"a","op":"scroll","direction":"down"}],"returnObservation":true}"#),
-        )
+        let executed: Value = serde_json::from_str(&engine.execute_json(
+            page,
+            r#"{"program":[{"id":"a","op":"scroll","direction":"down"}],"returnObservation":true}"#,
+        ))
         .unwrap();
         assert_eq!(executed["ok"], true);
         assert_eq!(executed["result"]["status"], "completed");
@@ -788,7 +806,12 @@ mod tests {
         let shot: Value = serde_json::from_str(&engine.screenshot_json(page, "")).unwrap();
         assert_eq!(shot["ok"], true);
         assert_eq!(shot["format"], "png");
-        assert!(shot["pngBase64"].as_str().unwrap().starts_with("iVBORw0KGgo"));
+        assert!(
+            shot["pngBase64"]
+                .as_str()
+                .unwrap()
+                .starts_with("iVBORw0KGgo")
+        );
 
         let missing: Value = serde_json::from_str(&engine.execute_json(999, "[]")).unwrap();
         assert_eq!(missing["ok"], false);

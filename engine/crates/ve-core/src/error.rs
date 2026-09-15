@@ -316,7 +316,10 @@ mod tests {
             .code(),
             ErrorCode::ConditionTimeout
         );
-        assert_eq!(Error::InvalidState("x".into()).code(), ErrorCode::StepFailed);
+        assert_eq!(
+            Error::InvalidState("x".into()).code(),
+            ErrorCode::StepFailed
+        );
         let ambiguous = Error::coded_with(
             ErrorCode::TargetAmbiguous,
             "2 matches",

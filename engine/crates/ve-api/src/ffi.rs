@@ -227,7 +227,11 @@ pub unsafe extern "C" fn ve_page_screenshot(
     options_json: *const c_char,
 ) -> *mut c_char {
     // SAFETY: forwarded caller guarantees.
-    unsafe { call(engine, options_json, |e, json| e.screenshot_json(page, json)) }
+    unsafe {
+        call(engine, options_json, |e, json| {
+            e.screenshot_json(page, json)
+        })
+    }
 }
 
 /// Closes a page. Returns `true` if it was open.
@@ -250,10 +254,7 @@ pub unsafe extern "C" fn ve_page_close(engine: *mut VeEngine, page: u64) -> bool
 /// # Safety
 /// `engine` must be null or a live engine; `policy_json` null or a valid C string.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn ve_context_new(
-    engine: *mut VeEngine,
-    policy_json: *const c_char,
-) -> u64 {
+pub unsafe extern "C" fn ve_context_new(engine: *mut VeEngine, policy_json: *const c_char) -> u64 {
     if engine.is_null() {
         return 0;
     }
@@ -312,7 +313,11 @@ pub unsafe extern "C" fn ve_engine_set_cookies(
         return error_string(ErrorCode::InvalidParams, "null cookies");
     }
     // SAFETY: forwarded caller guarantees.
-    unsafe { call(engine, cookies_json, |e, json| e.set_cookies_json(context, json)) }
+    unsafe {
+        call(engine, cookies_json, |e, json| {
+            e.set_cookies_json(context, json)
+        })
+    }
 }
 
 /// Frees a string returned by this API. Null is ignored.
@@ -369,7 +374,10 @@ mod tests {
         let observed = take(unsafe { ve_page_observe(engine, page, std::ptr::null()) });
         assert_eq!(observed["ok"], true);
         assert_eq!(observed["content"]["title"], "C");
-        assert_eq!(observed["content"]["viewport"]["width"].as_f64(), Some(800.0));
+        assert_eq!(
+            observed["content"]["viewport"]["width"].as_f64(),
+            Some(800.0)
+        );
         let button = observed["content"]["elements"]
             .as_array()
             .unwrap()
@@ -398,15 +406,19 @@ mod tests {
         assert_eq!(ctx, 2);
         let bad_policy = cstr("{\"blockLoopback\": \"yes\"}");
         assert_eq!(unsafe { ve_context_new(engine, bad_policy.as_ptr()) }, 0);
-        let cookies = cstr(r#"[{"name":"t","value":"1","domain":"c.test","path":"/","secure":false,"httpOnly":false}]"#);
+        let cookies = cstr(
+            r#"[{"name":"t","value":"1","domain":"c.test","path":"/","secure":false,"httpOnly":false}]"#,
+        );
         let set = take(unsafe { ve_engine_set_cookies(engine, ctx, cookies.as_ptr()) });
         assert_eq!(set["imported"], 1);
         let got = take(unsafe { ve_engine_get_cookies(engine, ctx) });
         assert_eq!(got["cookies"][0]["value"], "1");
-        assert!(take(unsafe { ve_engine_get_cookies(engine, 1) })["cookies"]
-            .as_array()
-            .unwrap()
-            .is_empty());
+        assert!(
+            take(unsafe { ve_engine_get_cookies(engine, 1) })["cookies"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
         assert!(unsafe { ve_context_free(engine, ctx) });
         assert!(!unsafe { ve_context_free(engine, ctx) });
 
@@ -430,11 +442,26 @@ mod tests {
         assert_eq!(err["ok"], false);
         assert_eq!(err["error"]["code"], "invalid_params");
         assert_eq!(err["error"]["message"], "null engine");
-        assert_eq!(take(unsafe { ve_page_observe(null_engine, 1, std::ptr::null()) })["ok"], false);
-        assert_eq!(take(unsafe { ve_page_execute(null_engine, 1, std::ptr::null()) })["ok"], false);
-        assert_eq!(take(unsafe { ve_page_screenshot(null_engine, 1, std::ptr::null()) })["ok"], false);
-        assert_eq!(take(unsafe { ve_engine_get_cookies(null_engine, 1) })["ok"], false);
-        assert_eq!(take(unsafe { ve_engine_set_cookies(null_engine, 1, std::ptr::null()) })["ok"], false);
+        assert_eq!(
+            take(unsafe { ve_page_observe(null_engine, 1, std::ptr::null()) })["ok"],
+            false
+        );
+        assert_eq!(
+            take(unsafe { ve_page_execute(null_engine, 1, std::ptr::null()) })["ok"],
+            false
+        );
+        assert_eq!(
+            take(unsafe { ve_page_screenshot(null_engine, 1, std::ptr::null()) })["ok"],
+            false
+        );
+        assert_eq!(
+            take(unsafe { ve_engine_get_cookies(null_engine, 1) })["ok"],
+            false
+        );
+        assert_eq!(
+            take(unsafe { ve_engine_set_cookies(null_engine, 1, std::ptr::null()) })["ok"],
+            false
+        );
         assert!(!unsafe { ve_page_close(null_engine, 1) });
         assert_eq!(unsafe { ve_context_new(null_engine, std::ptr::null()) }, 0);
         assert!(!unsafe { ve_context_free(null_engine, 1) });
@@ -464,9 +491,19 @@ mod tests {
         let value: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(value["ok"], false);
         assert_eq!(value["error"]["code"], "internal");
-        assert!(value["error"]["message"].as_str().unwrap().contains("boom 42"));
+        assert!(
+            value["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("boom 42")
+        );
         let json = guarded(|| std::panic::panic_any(7u8));
         let value: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert!(value["error"]["message"].as_str().unwrap().contains("unknown panic"));
+        assert!(
+            value["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("unknown panic")
+        );
     }
 }

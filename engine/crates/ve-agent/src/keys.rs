@@ -65,7 +65,11 @@ impl Chord {
         if text == " " || text == "+" {
             return Ok(Self {
                 modifiers: Modifiers::default(),
-                key: if text == " " { Key::Space } else { Key::Char('+') },
+                key: if text == " " {
+                    Key::Space
+                } else {
+                    Key::Char('+')
+                },
             });
         }
         let mut modifiers = Modifiers::default();
@@ -106,9 +110,7 @@ impl Chord {
                 match (chars.next(), chars.next()) {
                     (Some(c), None) => Key::Char(c),
                     _ => {
-                        return Err(Error::invalid_params(format!(
-                            "unknown key chord {text:?}"
-                        )));
+                        return Err(Error::invalid_params(format!("unknown key chord {text:?}")));
                     }
                 }
             }

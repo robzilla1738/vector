@@ -38,7 +38,11 @@ pub enum SelectorState {
 
 /// `ConditionSchema`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum Condition {
     /// Shown text contains `text`.
     TextVisible {
@@ -619,8 +623,8 @@ impl Program {
 
     /// Parses a program: a `ProgramSchema` object, or a bare array of steps.
     pub fn from_json(json: &str) -> Result<Self> {
-        let value: serde_json::Value =
-            serde_json::from_str(json).map_err(|e| Error::invalid_params(format!("program: {e}")))?;
+        let value: serde_json::Value = serde_json::from_str(json)
+            .map_err(|e| Error::invalid_params(format!("program: {e}")))?;
         Self::from_value(value)
     }
 
@@ -819,11 +823,41 @@ mod tests {
         assert_eq!(&ops[..5], ["navigate", "click", "fill", "type", "press"]);
         assert_eq!(program.steps[1].base().timeout_ms, Some(100));
         assert!(program.steps[2].is_optional());
-        assert!(matches!(&program.steps[5], Step::Select { value: SelectValue::Many(v), .. } if v.len() == 2));
-        assert!(matches!(&program.steps[6], Step::Scroll { direction: ScrollDirection::Bottom, amount: None, .. }));
-        assert!(matches!(&program.steps[8], Step::WaitFor { condition: Condition::Selector { state: SelectorState::Hidden, timeout_ms: Some(5), .. }, .. }));
-        assert!(matches!(&program.steps[9], Step::Extract { as_key: Some(k), fields, .. } if k == "page" && fields[0].all == Some(true)));
-        assert!(matches!(&program.steps[26], Step::WaitFor { condition: Condition::Response { status: Some(200), .. }, .. }));
+        assert!(
+            matches!(&program.steps[5], Step::Select { value: SelectValue::Many(v), .. } if v.len() == 2)
+        );
+        assert!(matches!(
+            &program.steps[6],
+            Step::Scroll {
+                direction: ScrollDirection::Bottom,
+                amount: None,
+                ..
+            }
+        ));
+        assert!(matches!(
+            &program.steps[8],
+            Step::WaitFor {
+                condition: Condition::Selector {
+                    state: SelectorState::Hidden,
+                    timeout_ms: Some(5),
+                    ..
+                },
+                ..
+            }
+        ));
+        assert!(
+            matches!(&program.steps[9], Step::Extract { as_key: Some(k), fields, .. } if k == "page" && fields[0].all == Some(true))
+        );
+        assert!(matches!(
+            &program.steps[26],
+            Step::WaitFor {
+                condition: Condition::Response {
+                    status: Some(200),
+                    ..
+                },
+                ..
+            }
+        ));
 
         let again = Program::from_value(program.to_json()).unwrap();
         assert_eq!(again, program);
@@ -832,7 +866,10 @@ mod tests {
         assert_eq!(serialized["steps"][1]["timeoutMs"], 100);
         assert_eq!(serialized["steps"][9]["as"], "page");
         assert_eq!(serialized["steps"][8]["condition"]["kind"], "selector");
-        assert!(serialized["steps"][0].get("timeoutMs").is_none(), "absent optionals are omitted");
+        assert!(
+            serialized["steps"][0].get("timeoutMs").is_none(),
+            "absent optionals are omitted"
+        );
     }
 
     #[test]
@@ -843,11 +880,18 @@ mod tests {
         assert_eq!(bad.code(), ve_core::ErrorCode::InvalidParams);
         let not_json = Program::from_json("nope").unwrap_err();
         assert_eq!(not_json.code(), ve_core::ErrorCode::InvalidParams);
-        let nodes = Program::from_json(r#"{"pageId":"p","nodes":[{"kind":"checkpoint"}]}"#).unwrap_err();
+        let nodes =
+            Program::from_json(r#"{"pageId":"p","nodes":[{"kind":"checkpoint"}]}"#).unwrap_err();
         assert_eq!(nodes.code(), ve_core::ErrorCode::CapabilityUnsupported);
         let selector_default: Condition =
             serde_json::from_str(r#"{"kind":"selector","selector":"x"}"#).unwrap();
-        assert!(matches!(selector_default, Condition::Selector { state: SelectorState::Visible, .. }));
+        assert!(matches!(
+            selector_default,
+            Condition::Selector {
+                state: SelectorState::Visible,
+                ..
+            }
+        ));
         assert_eq!(selector_default.kind(), "selector");
     }
 
@@ -888,7 +932,17 @@ mod tests {
             waited_ms: 2,
             reasons: vec!["timers(1)".into(), "fetch(2)".into()],
         };
-        assert_eq!(settled.detail().as_deref(), Some("settled=false: timers(1) fetch(2)"));
-        assert_eq!(Settled { settled: true, ..Settled::default() }.detail(), None);
+        assert_eq!(
+            settled.detail().as_deref(),
+            Some("settled=false: timers(1) fetch(2)")
+        );
+        assert_eq!(
+            Settled {
+                settled: true,
+                ..Settled::default()
+            }
+            .detail(),
+            None
+        );
     }
 }
