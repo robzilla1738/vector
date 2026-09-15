@@ -15,6 +15,13 @@ pub trait Transport {
     /// Performs the exchange.
     fn send(&self, request: &Request) -> Result<Response, NetError>;
 
+    /// Performs several exchanges, concurrently when the backend can (the
+    /// pooled hyper transport multiplexes them over its connections). Results
+    /// are in request order. The default runs them one after another.
+    fn send_many(&self, requests: &[Request]) -> Vec<Result<Response, NetError>> {
+        requests.iter().map(|r| self.send(r)).collect()
+    }
+
     /// Human readable backend name.
     fn name(&self) -> &'static str;
 }

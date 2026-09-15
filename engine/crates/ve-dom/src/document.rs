@@ -615,6 +615,16 @@ impl Document {
         Ok(old)
     }
 
+    /// Records the fetched intrinsic size of a replaced element (an image's
+    /// natural dimensions). Marks layout dirty; no journal record, because
+    /// this is not a DOM mutation a script could observe as one.
+    pub fn set_natural_size(&mut self, id: NodeId, width: u32, height: u32) -> Result<()> {
+        let element = self.try_element_mut(id)?;
+        element.natural_size = Some((width, height));
+        self.mark_dirty(id, DirtyFlags::ALL);
+        Ok(())
+    }
+
     /// Adds attributes that are not already present (parser semantics for a
     /// duplicate `<html>`/`<body>` start tag).
     pub fn add_attributes_if_missing(&mut self, id: NodeId, attrs: Vec<Attribute>) -> Result<()> {

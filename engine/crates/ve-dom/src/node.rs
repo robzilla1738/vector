@@ -100,6 +100,11 @@ pub struct ElementData {
     pub template_contents: Option<NodeId>,
     /// The element's shadow root, if one has been attached.
     pub shadow_root: Option<NodeId>,
+    /// Intrinsic size of a replaced element's content in CSS pixels
+    /// (`naturalWidth`/`naturalHeight` for `<img>`), set once the resource
+    /// has been fetched and its header decoded. Layout uses it when the
+    /// element has no `width`/`height` from CSS or attributes.
+    pub natural_size: Option<(u32, u32)>,
 }
 
 impl ElementData {
@@ -113,6 +118,7 @@ impl ElementData {
             form: None,
             template_contents: None,
             shadow_root: None,
+            natural_size: None,
         }
     }
 

@@ -118,6 +118,14 @@ impl HyperTransport {
     }
 
     async fn exchange(&self, request: &Request) -> Result<Response, NetError> {
+        exchange(self.client.clone(), request.clone()).await
+    }
+}
+
+/// One exchange on a cloned client handle (so several can run as spawned
+/// tasks on the transport's runtime).
+async fn exchange(client: PooledClient, request: Request) -> Result<Response, NetError> {
+    {
         let url = &request.url;
         let uri: Uri = url
             .as_str()
@@ -143,7 +151,7 @@ impl HyperTransport {
         let req = builder
             .body(body)
             .map_err(|e| NetError::Http(e.to_string()))?;
-        let res = self.client.request(req).await.map_err(|e| {
+        let res = client.request(req).await.map_err(|e| {
             NetError::Transport(format!("request {}: {e}", url.host_str().unwrap_or("?")))
         })?;
         let (mut parts, body) = res.into_parts();

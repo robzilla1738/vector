@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 1921.0
+    "maxY": 2285.0
   },
   "frames": [
     {
@@ -220,15 +220,6 @@
       "selector": {}
     },
     {
-      "ref": "r94",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "benchmark repository",
-      "href": "https://github.com/vector-browser/bench",
-      "selector": {}
-    },
-    {
       "ref": "r279",
       "frame": "main",
       "tag": "a",
@@ -298,6 +289,16 @@
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/blog-post.html#main",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r94",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "benchmark repository",
+      "href": "https://github.com/vector-browser/bench",
       "selector": {},
       "offscreen": true
     },
@@ -650,11 +651,6 @@
       "href": "https://fixtures.vector.test/2026/06/readiness"
     },
     {
-      "ref": "r94",
-      "text": "benchmark repository",
-      "href": "https://github.com/vector-browser/bench"
-    },
-    {
       "ref": "r279",
       "text": "More →",
       "href": "https://fixtures.vector.test/about"
@@ -693,6 +689,11 @@
       "ref": "r18",
       "text": "Skip to main content",
       "href": "https://fixtures.vector.test/blog-post.html#main"
+    },
+    {
+      "ref": "r94",
+      "text": "benchmark repository",
+      "href": "https://github.com/vector-browser/bench"
     },
     {
       "ref": "r167",

@@ -452,134 +452,259 @@ impl NetworkContext {
     fn fetch_inner(&mut self, mut request: Request, now: SystemTime) -> Result<Response, NetError> {
         let mut redirects = 0u8;
         loop {
-            match request.url.scheme() {
-                "data" => return data_url(&request.url),
-                "about" => {
-                    let mut headers = HeaderMap::new();
-                    headers.insert(
-                        http::header::CONTENT_TYPE,
-                        HeaderValue::from_static("text/html;charset=utf-8"),
-                    );
-                    return Ok(Response::new(
-                        request.url.clone(),
-                        StatusCode::OK,
-                        headers,
-                        Bytes::new(),
-                    ));
-                }
-                "file" => {
-                    self.policy.check(&request.url)?;
-                    return file_url(&request.url);
-                }
-                "http" | "https" => {}
-                other => return Err(NetError::UnsupportedScheme(other.to_owned())),
+            let prepared = match self.prepare(request, now)? {
+                Prepared::Done(response) => return Ok(*response),
+                Prepared::Send(p) => *p,
+            };
+            let response = self.transport.send(&prepared.request)?;
+            match self.finish(prepared, response, now, &mut redirects)? {
+                Finished::Done(response) => return Ok(response),
+                Finished::Redirect(next) => request = next,
             }
-            self.policy.check(&request.url)?;
-
-            // Cache: a fresh entry is served directly; a stale one with
-            // validators is revalidated conditionally and a 304 refreshes it
-            // (RFC 9111 §4.3) — one round trip with no body instead of a
-            // full transfer.
-            let mut stale: Option<Response> = None;
-            if request.method == Method::GET {
-                match self.cache.lookup(&request.cache_key(), now) {
-                    CacheLookup::Fresh(mut cached) => {
-                        tracing::debug!(url = %request.url, "cache hit");
-                        cached.from_cache = true;
-                        return Ok(cached);
-                    }
-                    CacheLookup::Stale {
-                        response,
-                        etag,
-                        last_modified,
-                    } if etag.is_some() || last_modified.is_some() => {
-                        if let Some(v) = etag.as_deref().and_then(|v| HeaderValue::from_str(v).ok())
-                        {
-                            request.headers.insert(http::header::IF_NONE_MATCH, v);
-                        }
-                        if let Some(v) = last_modified
-                            .as_deref()
-                            .and_then(|v| HeaderValue::from_str(v).ok())
-                        {
-                            request.headers.insert(http::header::IF_MODIFIED_SINCE, v);
-                        }
-                        stale = Some(response);
-                    }
-                    CacheLookup::Stale { .. } | CacheLookup::Miss => {}
-                }
-            }
-
-            request
-                .headers
-                .entry(http::header::USER_AGENT)
-                .or_insert_with(|| HeaderValue::from_str(&self.user_agent).expect("valid ua"));
-            request
-                .headers
-                .entry(http::header::ACCEPT)
-                .or_insert(HeaderValue::from_static(
-                    "text/html,application/xhtml+xml,*/*;q=0.8",
-                ));
-            if let Some(cookie) = self.cookies.header_for(&request.url, now) {
-                if let Ok(v) = HeaderValue::from_str(&cookie) {
-                    request.headers.insert(http::header::COOKIE, v);
-                }
-            } else {
-                request.headers.remove(http::header::COOKIE);
-            }
-
-            let mut response = self.transport.send(&request)?;
-            if response.status == StatusCode::NOT_MODIFIED
-                && let Some(mut cached) = stale.take()
-            {
-                tracing::debug!(url = %request.url, "revalidated (304)");
-                // the 304 carries fresh metadata (Date, Cache-Control, ETag…)
-                for (name, value) in &response.headers {
-                    cached.headers.insert(name.clone(), value.clone());
-                }
-                cached.from_cache = true;
-                self.cache
-                    .store(request.cache_key(), &request.headers, &cached, now);
-                response = cached;
-            }
-            request.headers.remove(http::header::IF_NONE_MATCH);
-            request.headers.remove(http::header::IF_MODIFIED_SINCE);
-            for set_cookie in response.headers.get_all(http::header::SET_COOKIE) {
-                if let Ok(text) = set_cookie.to_str()
-                    && let Some(cookie) = Cookie::parse(text, &request.url, now)
-                {
-                    self.cookies.store(cookie);
-                }
-            }
-
-            if response.status.is_redirection()
-                && let Some(location) = response
-                    .headers
-                    .get(http::header::LOCATION)
-                    .and_then(|v| v.to_str().ok())
-                && let Ok(target) = request.url.join(location)
-            {
-                redirects += 1;
-                if redirects > self.max_redirects {
-                    return Err(NetError::TooManyRedirects(self.max_redirects));
-                }
-                tracing::debug!(from = %request.url, to = %target, status = %response.status, "redirect");
-                let keep_method = matches!(response.status.as_u16(), 307 | 308);
-                if !keep_method {
-                    request.method = Method::GET;
-                    request.body = None;
-                    request.headers.remove(http::header::CONTENT_TYPE);
-                    request.headers.remove(http::header::CONTENT_LENGTH);
-                }
-                request.url = target;
-                continue;
-            }
-
-            if request.method == Method::GET && !response.from_cache {
-                self.cache
-                    .store(request.cache_key(), &request.headers, &response, now);
-            }
-            return Ok(response);
         }
+    }
+
+    /// Fetches several requests in one batch: cache hits are answered
+    /// immediately, the misses go to the transport together
+    /// ([`Transport::send_many`]) and redirects are followed individually.
+    /// Results are in request order. Every request is logged as
+    /// in-flight/completed exactly like [`Self::fetch`], so `settle()` sees
+    /// the batch.
+    pub fn fetch_many(&mut self, requests: Vec<Request>) -> Vec<Result<Response, NetError>> {
+        self.fetch_many_at(requests, SystemTime::now())
+    }
+
+    /// Like [`Self::fetch_many`] with an explicit clock.
+    pub fn fetch_many_at(
+        &mut self,
+        requests: Vec<Request>,
+        now: SystemTime,
+    ) -> Vec<Result<Response, NetError>> {
+        let span = Stage::Fetch.span();
+        let _guard = span.enter();
+        let started = Instant::now();
+        let started_at = unix_millis(now);
+        let mut results: Vec<Option<Result<Response, NetError>>> =
+            (0..requests.len()).map(|_| None).collect();
+        let mut meta = Vec::with_capacity(requests.len());
+        let mut pending: Vec<(usize, PreparedRequest)> = Vec::new();
+        for (i, request) in requests.into_iter().enumerate() {
+            self.next_request_id += 1;
+            meta.push((
+                self.next_request_id,
+                request.page,
+                request.method.to_string(),
+            ));
+            self.in_flight.push(InFlight {
+                request_id: self.next_request_id,
+                page: request.page,
+                url: request.url.clone(),
+                initiator: request.initiator,
+                background: request.background,
+                issued_at: started,
+            });
+            match self.prepare(request, now) {
+                Ok(Prepared::Done(r)) => results[i] = Some(Ok(*r)),
+                Ok(Prepared::Send(p)) => pending.push((i, *p)),
+                Err(e) => results[i] = Some(Err(e)),
+            }
+        }
+        let wire: Vec<Request> = pending.iter().map(|(_, p)| p.request.clone()).collect();
+        let responses = self.transport.send_many(&wire);
+        for ((i, prepared), response) in pending.into_iter().zip(responses) {
+            let mut redirects = 0u8;
+            results[i] = Some(match response {
+                Err(e) => Err(e),
+                Ok(response) => match self.finish(prepared, response, now, &mut redirects) {
+                    Ok(Finished::Done(r)) => Ok(r),
+                    Ok(Finished::Redirect(next)) => self.fetch_inner(next, now),
+                    Err(e) => Err(e),
+                },
+            });
+        }
+        let ended_at = started_at + u64::try_from(started.elapsed().as_millis()).unwrap_or(0);
+        for ((request_id, page, method), result) in meta.into_iter().zip(results.iter()) {
+            self.in_flight.retain(|r| r.request_id != request_id);
+            let record = match result.as_ref().expect("every slot filled") {
+                Ok(response) => CompletedResponse {
+                    request_id,
+                    page,
+                    url: response.url.to_string(),
+                    method,
+                    status: response.status.as_u16(),
+                    content_type: response.content_type().map(str::to_owned),
+                    body_bytes: response.body.len(),
+                    started_at,
+                    ended_at,
+                    from_cache: response.from_cache,
+                },
+                Err(e) => CompletedResponse {
+                    request_id,
+                    page,
+                    url: e.to_string(),
+                    method,
+                    status: 0,
+                    content_type: None,
+                    body_bytes: 0,
+                    started_at,
+                    ended_at,
+                    from_cache: false,
+                },
+            };
+            if self.completed.len() >= self.completed_capacity.max(1) {
+                self.completed.pop_front();
+            }
+            self.completed.push_back(record);
+        }
+        results
+            .into_iter()
+            .map(|r| r.expect("every slot filled"))
+            .collect()
+    }
+
+    /// Everything before the wire: scheme dispatch, policy, cache lookup
+    /// (fresh hit answers here), conditional headers, UA/Accept/Cookie.
+    fn prepare(&mut self, mut request: Request, now: SystemTime) -> Result<Prepared, NetError> {
+        match request.url.scheme() {
+            "data" => return data_url(&request.url).map(|r| Prepared::Done(Box::new(r))),
+            "about" => {
+                let mut headers = HeaderMap::new();
+                headers.insert(
+                    http::header::CONTENT_TYPE,
+                    HeaderValue::from_static("text/html;charset=utf-8"),
+                );
+                return Ok(Prepared::Done(Box::new(Response::new(
+                    request.url.clone(),
+                    StatusCode::OK,
+                    headers,
+                    Bytes::new(),
+                ))));
+            }
+            "file" => {
+                self.policy.check(&request.url)?;
+                return file_url(&request.url).map(|r| Prepared::Done(Box::new(r)));
+            }
+            "http" | "https" => {}
+            other => return Err(NetError::UnsupportedScheme(other.to_owned())),
+        }
+        self.policy.check(&request.url)?;
+
+        // Cache: a fresh entry is served directly; a stale one with
+        // validators is revalidated conditionally and a 304 refreshes it
+        // (RFC 9111 §4.3) — one round trip with no body instead of a
+        // full transfer.
+        let mut stale: Option<Response> = None;
+        if request.method == Method::GET {
+            match self.cache.lookup(&request.cache_key(), now) {
+                CacheLookup::Fresh(mut cached) => {
+                    tracing::debug!(url = %request.url, "cache hit");
+                    cached.from_cache = true;
+                    return Ok(Prepared::Done(Box::new(cached)));
+                }
+                CacheLookup::Stale {
+                    response,
+                    etag,
+                    last_modified,
+                } if etag.is_some() || last_modified.is_some() => {
+                    if let Some(v) = etag.as_deref().and_then(|v| HeaderValue::from_str(v).ok()) {
+                        request.headers.insert(http::header::IF_NONE_MATCH, v);
+                    }
+                    if let Some(v) = last_modified
+                        .as_deref()
+                        .and_then(|v| HeaderValue::from_str(v).ok())
+                    {
+                        request.headers.insert(http::header::IF_MODIFIED_SINCE, v);
+                    }
+                    stale = Some(response);
+                }
+                CacheLookup::Stale { .. } | CacheLookup::Miss => {}
+            }
+        }
+
+        request
+            .headers
+            .entry(http::header::USER_AGENT)
+            .or_insert_with(|| HeaderValue::from_str(&self.user_agent).expect("valid ua"));
+        request
+            .headers
+            .entry(http::header::ACCEPT)
+            .or_insert(HeaderValue::from_static(
+                "text/html,application/xhtml+xml,*/*;q=0.8",
+            ));
+        if let Some(cookie) = self.cookies.header_for(&request.url, now) {
+            if let Ok(v) = HeaderValue::from_str(&cookie) {
+                request.headers.insert(http::header::COOKIE, v);
+            }
+        } else {
+            request.headers.remove(http::header::COOKIE);
+        }
+        Ok(Prepared::Send(Box::new(PreparedRequest { request, stale })))
+    }
+
+    /// Everything after the wire: 304 → cached body, Set-Cookie, redirect
+    /// decision, cache store.
+    fn finish(
+        &mut self,
+        prepared: PreparedRequest,
+        mut response: Response,
+        now: SystemTime,
+        redirects: &mut u8,
+    ) -> Result<Finished, NetError> {
+        let PreparedRequest {
+            mut request,
+            mut stale,
+        } = prepared;
+        if response.status == StatusCode::NOT_MODIFIED
+            && let Some(mut cached) = stale.take()
+        {
+            tracing::debug!(url = %request.url, "revalidated (304)");
+            // the 304 carries fresh metadata (Date, Cache-Control, ETag…)
+            for (name, value) in &response.headers {
+                cached.headers.insert(name.clone(), value.clone());
+            }
+            cached.from_cache = true;
+            self.cache
+                .store(request.cache_key(), &request.headers, &cached, now);
+            response = cached;
+        }
+        request.headers.remove(http::header::IF_NONE_MATCH);
+        request.headers.remove(http::header::IF_MODIFIED_SINCE);
+        for set_cookie in response.headers.get_all(http::header::SET_COOKIE) {
+            if let Ok(text) = set_cookie.to_str()
+                && let Some(cookie) = Cookie::parse(text, &request.url, now)
+            {
+                self.cookies.store(cookie);
+            }
+        }
+
+        if response.status.is_redirection()
+            && let Some(location) = response
+                .headers
+                .get(http::header::LOCATION)
+                .and_then(|v| v.to_str().ok())
+            && let Ok(target) = request.url.join(location)
+        {
+            *redirects += 1;
+            if *redirects > self.max_redirects {
+                return Err(NetError::TooManyRedirects(self.max_redirects));
+            }
+            tracing::debug!(from = %request.url, to = %target, status = %response.status, "redirect");
+            let keep_method = matches!(response.status.as_u16(), 307 | 308);
+            if !keep_method {
+                request.method = Method::GET;
+                request.body = None;
+                request.headers.remove(http::header::CONTENT_TYPE);
+                request.headers.remove(http::header::CONTENT_LENGTH);
+            }
+            request.url = target;
+            return Ok(Finished::Redirect(request));
+        }
+
+        if request.method == Method::GET && !response.from_cache {
+            self.cache
+                .store(request.cache_key(), &request.headers, &response, now);
+        }
+        Ok(Finished::Done(response))
     }
 
     /// The transport's name.
@@ -638,6 +763,25 @@ fn mime_for_path(path: &std::path::Path) -> &'static str {
 }
 
 /// Reads a `file:` URL from disk.
+/// A request that must go to the wire, with the stale cache entry it may
+/// revalidate.
+struct PreparedRequest {
+    request: Request,
+    stale: Option<Response>,
+}
+
+enum Prepared {
+    /// Answered without the network (`data:` / `about:` / `file:` / fresh cache).
+    Done(Box<Response>),
+    Send(Box<PreparedRequest>),
+}
+
+enum Finished {
+    Done(Response),
+    /// Follow this request next.
+    Redirect(Request),
+}
+
 /// Decodes a `Content-Encoding` body (`gzip`, `deflate`, `br`, possibly
 /// comma-chained) into identity bytes. Pure Rust; used by the transport and
 /// by anything replaying a stored encoded body.

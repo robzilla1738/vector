@@ -13,6 +13,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+imagesize.workspace = true
 ve-core.workspace = true
 ve-dom.workspace = true
 ve-style.workspace = true

@@ -701,6 +701,40 @@ mod tests {
     }
 
     #[test]
+    fn replaced_elements_take_intrinsic_attribute_and_natural_sizes() {
+        // attributes → size; one attribute + natural ratio → scaled; iframe
+        // default 300×150; CSS width with auto height keeps the ratio
+        let html = "<style>body{margin:0} img,iframe{display:block} #css{width:100px}</style>\
+             <img id=attrs width=40 height=20>\
+             <img id=nat>\
+             <img id=half width=50>\
+             <iframe id=frame></iframe>\
+             <img id=css>\
+             <img id=none>";
+        let mut doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.media = ve_style::MediaEnv::screen(400.0, 600.0);
+        engine.add_document_styles(&doc);
+        for sel in ["#nat", "#half", "#css"] {
+            let id = engine.select_one(&doc, sel).unwrap();
+            doc.set_natural_size(id, 200, 100).unwrap();
+        }
+        let styles = engine.compute(&doc);
+        let tree = LayoutEngine::new().layout(&doc, &styles, Size::new(400.0, 600.0));
+        let r = |sel: &str| rect(&tree, &engine, &doc, sel);
+        assert_eq!(r("#attrs").size, Size::new(40.0, 20.0));
+        assert_eq!(r("#nat").size, Size::new(200.0, 100.0));
+        assert_eq!(r("#half").size, Size::new(50.0, 25.0));
+        assert_eq!(
+            r("#frame").size,
+            Size::new(304.0, 154.0),
+            "300×150 content plus the UA 2px border"
+        );
+        assert_eq!(r("#css").size, Size::new(100.0, 50.0));
+        assert_eq!(r("#none").size, Size::new(0.0, 0.0));
+    }
+
+    #[test]
     fn blocks_stack_vertically_with_margins_and_padding() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} div{height:50px} #b{margin-top:10px;padding:5px;width:50%}</style>\

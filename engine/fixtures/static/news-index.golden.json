@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 1448.0
+    "maxY": 1840.0
   },
   "frames": [
     {
@@ -153,96 +153,6 @@
       "selector": {}
     },
     {
-      "ref": "r60",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Continue reading →",
-      "href": "https://fixtures.vector.test/2026/09/15/riverfront",
-      "selector": {}
-    },
-    {
-      "ref": "r63",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "142 comments",
-      "href": "https://fixtures.vector.test/2026/09/15/riverfront#comments",
-      "selector": {}
-    },
-    {
-      "ref": "r70",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Council approves riverfront plan after marathon session",
-      "href": "https://fixtures.vector.test/2026/09/01/story-1",
-      "selector": {}
-    },
-    {
-      "ref": "r75",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Sports",
-      "href": "https://fixtures.vector.test/section/sports",
-      "selector": {}
-    },
-    {
-      "ref": "r82",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Local team clinches title in final-minute thriller",
-      "href": "https://fixtures.vector.test/2026/09/02/story-2",
-      "selector": {}
-    },
-    {
-      "ref": "r87",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Transit",
-      "href": "https://fixtures.vector.test/section/transit",
-      "selector": {}
-    },
-    {
-      "ref": "r94",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "New transit line opens to record ridership",
-      "href": "https://fixtures.vector.test/2026/09/03/story-3",
-      "selector": {}
-    },
-    {
-      "ref": "r99",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Weather",
-      "href": "https://fixtures.vector.test/section/weather",
-      "selector": {}
-    },
-    {
-      "ref": "r106",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Weather: heat advisory extended through Thursday",
-      "href": "https://fixtures.vector.test/2026/09/04/story-4",
-      "selector": {}
-    },
-    {
-      "ref": "r111",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Education",
-      "href": "https://fixtures.vector.test/section/education",
-      "selector": {}
-    },
-    {
       "ref": "r388",
       "frame": "main",
       "tag": "a",
@@ -312,6 +222,106 @@
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/news-index.html#main",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r60",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Continue reading →",
+      "href": "https://fixtures.vector.test/2026/09/15/riverfront",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r63",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "142 comments",
+      "href": "https://fixtures.vector.test/2026/09/15/riverfront#comments",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r70",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Council approves riverfront plan after marathon session",
+      "href": "https://fixtures.vector.test/2026/09/01/story-1",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r75",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Sports",
+      "href": "https://fixtures.vector.test/section/sports",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r82",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Local team clinches title in final-minute thriller",
+      "href": "https://fixtures.vector.test/2026/09/02/story-2",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r87",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Transit",
+      "href": "https://fixtures.vector.test/section/transit",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r94",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "New transit line opens to record ridership",
+      "href": "https://fixtures.vector.test/2026/09/03/story-3",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r99",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Weather",
+      "href": "https://fixtures.vector.test/section/weather",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r106",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Weather: heat advisory extended through Thursday",
+      "href": "https://fixtures.vector.test/2026/09/04/story-4",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r111",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Education",
+      "href": "https://fixtures.vector.test/section/education",
       "selector": {},
       "offscreen": true
     },
@@ -979,6 +989,46 @@
       "href": "https://fixtures.vector.test/2026/09/15/riverfront"
     },
     {
+      "ref": "r388",
+      "text": "privacy policy",
+      "href": "https://fixtures.vector.test/privacy"
+    },
+    {
+      "ref": "r397",
+      "text": "Local team clinches title in final-minute thriller",
+      "href": "https://fixtures.vector.test/2026/09/02/story-2"
+    },
+    {
+      "ref": "r400",
+      "text": "Tech firm announces 400 jobs at downtown campus",
+      "href": "https://fixtures.vector.test/2026/09/10/story-10"
+    },
+    {
+      "ref": "r403",
+      "text": "Weather: heat advisory extended through Thursday",
+      "href": "https://fixtures.vector.test/2026/09/04/story-4"
+    },
+    {
+      "ref": "r406",
+      "text": "Housing report shows rents flat for third month",
+      "href": "https://fixtures.vector.test/2026/09/07/story-7"
+    },
+    {
+      "ref": "r409",
+      "text": "Opinion: what the budget vote gets right",
+      "href": "https://fixtures.vector.test/2026/09/13/story-13"
+    },
+    {
+      "ref": "r418",
+      "text": "Full forecast",
+      "href": "https://fixtures.vector.test/weather"
+    },
+    {
+      "ref": "r18",
+      "text": "Skip to main content",
+      "href": "https://fixtures.vector.test/news-index.html#main"
+    },
+    {
       "ref": "r60",
       "text": "Continue reading →",
       "href": "https://fixtures.vector.test/2026/09/15/riverfront"
@@ -1027,46 +1077,6 @@
       "ref": "r111",
       "text": "Education",
       "href": "https://fixtures.vector.test/section/education"
-    },
-    {
-      "ref": "r388",
-      "text": "privacy policy",
-      "href": "https://fixtures.vector.test/privacy"
-    },
-    {
-      "ref": "r397",
-      "text": "Local team clinches title in final-minute thriller",
-      "href": "https://fixtures.vector.test/2026/09/02/story-2"
-    },
-    {
-      "ref": "r400",
-      "text": "Tech firm announces 400 jobs at downtown campus",
-      "href": "https://fixtures.vector.test/2026/09/10/story-10"
-    },
-    {
-      "ref": "r403",
-      "text": "Weather: heat advisory extended through Thursday",
-      "href": "https://fixtures.vector.test/2026/09/04/story-4"
-    },
-    {
-      "ref": "r406",
-      "text": "Housing report shows rents flat for third month",
-      "href": "https://fixtures.vector.test/2026/09/07/story-7"
-    },
-    {
-      "ref": "r409",
-      "text": "Opinion: what the budget vote gets right",
-      "href": "https://fixtures.vector.test/2026/09/13/story-13"
-    },
-    {
-      "ref": "r418",
-      "text": "Full forecast",
-      "href": "https://fixtures.vector.test/weather"
-    },
-    {
-      "ref": "r18",
-      "text": "Skip to main content",
-      "href": "https://fixtures.vector.test/news-index.html#main"
     },
     {
       "ref": "r118",

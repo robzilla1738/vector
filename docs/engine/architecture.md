@@ -17,10 +17,14 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
 ### Real
 
 - **Pipeline** — `ve-api::VectorEngine` (`engine/crates/ve-api/src/lib.rs`)
-  runs fetch → charset decode → streaming parse → cascade → layout →
+  runs fetch → charset decode → streaming parse → **subresources**
+  (external stylesheets incl. one level of `@import`, image natural sizes
+  from the header bytes, external script sources; one concurrent batch per
+  page, `Initiator::Parser`, `Page::load_stats()`) → cascade → layout →
   snapshot for `file:` (per-context policy), `data:`, `about:` and inline
-  HTML; `http(s):` through `ve-net`'s hyper/rustls transport behind the
-  `http` feature (one connection per request, no pooling). `open`,
+  HTML; `http(s):` through `ve-net`'s pooled hyper/rustls transport behind
+  the `http` feature (per-host keep-alive pool + h2 multiplexing, gzip/
+  deflate/br decoding, conditional revalidation). `open`,
   `observe`, `execute` (with `returnObservation`), `screenshot`, `close`,
   contexts, cookies; every call has a `*_json` twin and a C ABI wrapper in
   `ve_api::ffi` (function list in `engine/README.md`). Panics are caught at
@@ -116,9 +120,11 @@ registered).
 
 Also not in M1 (design §13 list stands): `position: sticky` (laid out as
 `relative`), parent/child margin collapsing, collapsed table borders, writing
-modes, `@font-face`/`@import`/`@keyframes`, cross-origin frames, downloads,
-persistent cache, process isolation, DOM bindings in the VM, slot assignment
-in the accessibility tree, live regions.
+modes, `@font-face`/`@keyframes` (`@import` is followed one level), cross-origin
+frames, downloads, persistent cache, process isolation, DOM bindings in the
+VM, slot assignment in the accessibility tree, live regions. Replaced
+elements are sized from natural size / `width`/`height` attributes / the
+300×150 default but not painted.
 
 ### Measured
 

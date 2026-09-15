@@ -213,6 +213,65 @@ impl Loader for NetLoader {
         })
     }
 
+    /// One concurrent batch through `NetworkContext::fetch_many`
+    /// (`Initiator::Parser`, kind-specific `Accept`), so a page's stylesheets,
+    /// images and scripts share the transport's pooled connections.
+    fn fetch_subresources(
+        &mut self,
+        requests: &[ve_agent::SubresourceRequest],
+    ) -> Vec<Result<ve_agent::LoadedResource>> {
+        let mut wire = Vec::with_capacity(requests.len());
+        let mut failed: Vec<(usize, Error)> = Vec::new();
+        for (i, r) in requests.iter().enumerate() {
+            match Request::get(&r.url) {
+                Ok(req) => {
+                    let accept = match r.kind {
+                        ve_agent::SubresourceKind::Stylesheet => "text/css,*/*;q=0.1",
+                        ve_agent::SubresourceKind::Image => {
+                            "image/avif,image/webp,image/apng,image/*,*/*;q=0.8"
+                        }
+                        ve_agent::SubresourceKind::Script => "*/*",
+                        ve_agent::SubresourceKind::Font => "font/woff2,font/woff,*/*;q=0.1",
+                    };
+                    let mut req = req
+                        .for_page(r.page)
+                        .with_initiator(Initiator::Parser)
+                        .header("accept", accept);
+                    if let Some(referrer) = r.referrer.as_deref().filter(|u| u.starts_with("http"))
+                    {
+                        req = req.header("referer", referrer);
+                    }
+                    wire.push((i, req));
+                }
+                Err(e) => failed.push((i, e.into())),
+            }
+        }
+        let responses = self
+            .net
+            .borrow_mut()
+            .fetch_many(wire.iter().map(|(_, r)| r.clone()).collect());
+        let mut out: Vec<Option<Result<ve_agent::LoadedResource>>> =
+            (0..requests.len()).map(|_| None).collect();
+        for ((i, _), response) in wire.into_iter().zip(responses) {
+            out[i] = Some(
+                response
+                    .map_err(Error::from)
+                    .map(|response| ve_agent::LoadedResource {
+                        url: response.url.to_string(),
+                        bytes: response.body.to_vec(),
+                        content_type: response.content_type().map(str::to_owned),
+                        status: response.status.as_u16(),
+                    }),
+            );
+        }
+        for (i, e) in failed {
+            out[i] = Some(Err(e));
+        }
+        out.into_iter()
+            .map(|r| r.unwrap_or_else(|| Err(Error::internal("subresource result missing"))))
+            .collect()
+    }
+
     fn in_flight(&self, page: u64) -> Vec<InFlightSummary> {
         self.net
             .borrow()

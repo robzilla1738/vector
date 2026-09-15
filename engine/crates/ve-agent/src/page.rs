@@ -103,11 +103,96 @@ pub struct InFlightSummary {
     pub background: bool,
 }
 
+/// What kind of subresource the parser found (drives `Accept` and priority).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SubresourceKind {
+    /// `<link rel=stylesheet>` or `@import`.
+    Stylesheet,
+    /// `<img src>`.
+    Image,
+    /// `<script src>`.
+    Script,
+    /// `@font-face src` (reserved; fonts are registered by the embedder).
+    Font,
+}
+
+/// A subresource fetch the page asks its [`Loader`] for.
+#[derive(Clone, Debug)]
+pub struct SubresourceRequest {
+    /// Absolute URL.
+    pub url: String,
+    /// Kind.
+    pub kind: SubresourceKind,
+    /// Page id for attribution (feeds `settle()`'s in-flight table).
+    pub page: u64,
+    /// The document URL.
+    pub referrer: Option<String>,
+}
+
+/// A fetched subresource.
+#[derive(Clone, Debug)]
+pub struct LoadedResource {
+    /// Final URL.
+    pub url: String,
+    /// Raw bytes (already content-decoded).
+    pub bytes: Vec<u8>,
+    /// `Content-Type`.
+    pub content_type: Option<String>,
+    /// HTTP status.
+    pub status: u16,
+}
+
+/// A script the parser found, external (fetched) or inline. Kept on the page
+/// in document order for the script layer.
+#[derive(Clone, Debug)]
+pub struct FetchedScript {
+    /// The `<script>` element.
+    pub node: NodeId,
+    /// `src` after resolution (None for inline).
+    pub url: Option<String>,
+    /// Source text (empty when the fetch failed).
+    pub source: String,
+    /// `type=module`.
+    pub module: bool,
+    /// `defer` attribute.
+    pub defer: bool,
+    /// `async` attribute.
+    pub async_: bool,
+    /// The fetch failed (status or transport); `source` is empty.
+    pub failed: bool,
+}
+
+/// Counters for one document load (subresource pipeline, plan A11).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct LoadStats {
+    /// Stylesheets fetched (`<link>` and `@import`).
+    pub stylesheets: usize,
+    /// Images whose natural size was decoded.
+    pub images: usize,
+    /// External scripts fetched.
+    pub scripts: usize,
+    /// Subresource fetches that failed.
+    pub failed: usize,
+    /// Wall time of the subresource batches in milliseconds.
+    pub fetch_ms: u64,
+}
+
 /// Fetches documents for navigations and answers network questions for the
 /// page. Supplied by the embedder (`ve-api` backs it with `ve-net`).
 pub trait Loader {
     /// Performs a navigation fetch.
     fn load(&mut self, request: &NavigationRequest) -> Result<LoadedDocument>;
+    /// Fetches the parser's subresources, concurrently when the transport
+    /// can. Results are in request order. Default: no subresource support.
+    fn fetch_subresources(
+        &mut self,
+        requests: &[SubresourceRequest],
+    ) -> Vec<Result<LoadedResource>> {
+        requests
+            .iter()
+            .map(|_| Err(Error::capability_unsupported("subresource fetching")))
+            .collect()
+    }
     /// Requests currently in flight for `page`.
     fn in_flight(&self, _page: u64) -> Vec<InFlightSummary> {
         Vec::new()
@@ -211,6 +296,10 @@ pub struct Page {
     last_navigation_error: Option<String>,
     virtual_time_ms: u64,
     cancelled: bool,
+    /// Scripts in document order (external ones fetched at load).
+    scripts: Vec<FetchedScript>,
+    /// Subresource counters for the current document.
+    load_stats: LoadStats,
 }
 
 impl std::fmt::Debug for Page {
@@ -308,6 +397,8 @@ impl Page {
             last_navigation_error: None,
             virtual_time_ms: 0,
             cancelled: false,
+            scripts: Vec::new(),
+            load_stats: LoadStats::default(),
         }
     }
 
@@ -374,7 +465,8 @@ impl Page {
         self.style_engine.interaction = ve_style::InteractionState::new();
         self.style_tree = StyleTree::default();
         self.style_engine.clear_author_styles();
-        self.style_engine.add_document_styles(&self.doc);
+        let sheets = self.fetch_subresources();
+        self.add_styles(&sheets);
         self.update();
         let entry = HistoryEntry {
             document: loaded,
@@ -402,6 +494,300 @@ impl Page {
             }
         }
         tracing::info!(page = self.id, url = %self.url, generation = self.generation, routing = %self.routing.route_reason, "loaded");
+    }
+
+    // ---------------------------------------------------------------------
+    // Subresources (plan A11)
+    // ---------------------------------------------------------------------
+
+    /// Discovers the parser's subresources and fetches them in one
+    /// concurrent batch (plus one more for `@import`s): external
+    /// stylesheets, images (for their natural size) and external scripts.
+    /// Returns the stylesheet texts keyed by `<link>` node so
+    /// [`Self::add_styles`] can keep cascade order. Without a loader (inline
+    /// HTML, tests) nothing is fetched.
+    fn fetch_subresources(&mut self) -> HashMap<NodeId, String> {
+        self.scripts.clear();
+        self.load_stats = LoadStats::default();
+        let mut sheets = HashMap::new();
+        let Some(base) = self.base_url.clone() else {
+            self.collect_scripts(&HashMap::new());
+            return sheets;
+        };
+        let has_loader = self.loader.is_some();
+        let page = self.id;
+        let referrer = Some(self.url.clone());
+        let resolve = |href: &str| base.join(href.trim()).ok().map(|u| u.to_string());
+
+        let mut requests: Vec<(NodeId, SubresourceRequest)> = Vec::new();
+        let mut data_images: Vec<(NodeId, u32, u32)> = Vec::new();
+        let ids: Vec<NodeId> = self.doc.elements().collect();
+        for id in ids {
+            let Some(e) = self.doc.element(id) else {
+                continue;
+            };
+            if e.is_html("link") {
+                let rel = self.doc.attribute(id, "rel").unwrap_or("");
+                let is_sheet = rel
+                    .split_ascii_whitespace()
+                    .any(|r| r.eq_ignore_ascii_case("stylesheet"));
+                let alternate = rel
+                    .split_ascii_whitespace()
+                    .any(|r| r.eq_ignore_ascii_case("alternate"));
+                if !is_sheet || alternate || self.doc.attribute(id, "disabled").is_some() {
+                    continue;
+                }
+                if let Some(m) = self.doc.attribute(id, "media")
+                    && !ve_style::MediaQueryList::parse_str(m).evaluate(&self.style_engine.media)
+                {
+                    continue;
+                }
+                if let Some(url) = self.doc.attribute(id, "href").and_then(resolve) {
+                    requests.push((
+                        id,
+                        SubresourceRequest {
+                            url,
+                            kind: SubresourceKind::Stylesheet,
+                            page,
+                            referrer: referrer.clone(),
+                        },
+                    ));
+                }
+            } else if e.is_html("img") {
+                // srcset: take the first candidate when src is missing
+                let src = self
+                    .doc
+                    .attribute(id, "src")
+                    .map(str::to_owned)
+                    .or_else(|| {
+                        self.doc
+                            .attribute(id, "srcset")
+                            .and_then(|ss| ss.split(',').next())
+                            .and_then(|c| c.split_ascii_whitespace().next())
+                            .map(str::to_owned)
+                    });
+                if let Some(url) = src.as_deref().and_then(resolve)
+                    && !url.starts_with("data:")
+                    && (self.doc.attribute(id, "width").is_none()
+                        || self.doc.attribute(id, "height").is_none())
+                {
+                    requests.push((
+                        id,
+                        SubresourceRequest {
+                            url,
+                            kind: SubresourceKind::Image,
+                            page,
+                            referrer: referrer.clone(),
+                        },
+                    ));
+                } else if let Some(data) = src.as_deref().filter(|s| s.starts_with("data:"))
+                    && let Some((w, h)) = decode_data_url_image_size(data)
+                {
+                    data_images.push((id, w, h));
+                }
+            } else if e.is_html("script") && script_is_classic_or_module(&self.doc, id) {
+                if let Some(url) = self.doc.attribute(id, "src").and_then(resolve) {
+                    requests.push((
+                        id,
+                        SubresourceRequest {
+                            url,
+                            kind: SubresourceKind::Script,
+                            page,
+                            referrer: referrer.clone(),
+                        },
+                    ));
+                }
+            }
+        }
+        for (id, w, h) in data_images {
+            let _ = self.doc.set_natural_size(id, w, h);
+            self.load_stats.images += 1;
+        }
+        if !has_loader || requests.is_empty() {
+            self.collect_scripts(&HashMap::new());
+            return sheets;
+        }
+        let started = Instant::now();
+        let batch: Vec<SubresourceRequest> = requests.iter().map(|(_, r)| r.clone()).collect();
+        let results = self
+            .loader
+            .as_mut()
+            .expect("loader")
+            .fetch_subresources(&batch);
+        let mut script_sources: HashMap<NodeId, Option<String>> = HashMap::new();
+        let mut imports: Vec<(NodeId, usize, SubresourceRequest)> = Vec::new();
+        for ((id, req), result) in requests.into_iter().zip(results) {
+            match (req.kind, result) {
+                (SubresourceKind::Stylesheet, Ok(res)) if res.status < 400 => {
+                    let css = decode_text(&res.bytes, res.content_type.as_deref());
+                    // nested @imports (one level) resolve against the sheet's URL
+                    if let Ok(sheet_url) = url::Url::parse(&res.url) {
+                        for (i, href) in collect_imports(&css).into_iter().enumerate() {
+                            if let Ok(u) = sheet_url.join(&href) {
+                                imports.push((
+                                    id,
+                                    i,
+                                    SubresourceRequest {
+                                        url: u.to_string(),
+                                        kind: SubresourceKind::Stylesheet,
+                                        page,
+                                        referrer: referrer.clone(),
+                                    },
+                                ));
+                            }
+                        }
+                    }
+                    sheets.insert(id, css);
+                    self.load_stats.stylesheets += 1;
+                }
+                (SubresourceKind::Image, Ok(res)) if res.status < 400 => {
+                    if let Ok(size) = imagesize::blob_size(&res.bytes) {
+                        let w = u32::try_from(size.width).unwrap_or(u32::MAX);
+                        let h = u32::try_from(size.height).unwrap_or(u32::MAX);
+                        let _ = self.doc.set_natural_size(id, w, h);
+                        self.load_stats.images += 1;
+                    } else {
+                        self.load_stats.failed += 1;
+                    }
+                }
+                (SubresourceKind::Script, Ok(res)) if res.status < 400 => {
+                    script_sources.insert(
+                        id,
+                        Some(decode_text(&res.bytes, res.content_type.as_deref())),
+                    );
+                    self.load_stats.scripts += 1;
+                }
+                (_, Ok(res)) => {
+                    tracing::debug!(url = %res.url, status = res.status, "subresource failed");
+                    self.load_stats.failed += 1;
+                    if req.kind == SubresourceKind::Script {
+                        script_sources.insert(id, None);
+                    }
+                }
+                (_, Err(e)) => {
+                    tracing::debug!(url = %req.url, error = %e, "subresource failed");
+                    self.load_stats.failed += 1;
+                    if req.kind == SubresourceKind::Script {
+                        script_sources.insert(id, None);
+                    }
+                }
+            }
+        }
+        if !imports.is_empty() {
+            let batch: Vec<SubresourceRequest> =
+                imports.iter().map(|(_, _, r)| r.clone()).collect();
+            let results = self
+                .loader
+                .as_mut()
+                .expect("loader")
+                .fetch_subresources(&batch);
+            // imported sheets precede the importing sheet in cascade order
+            let mut prefix: HashMap<NodeId, Vec<(usize, String)>> = HashMap::new();
+            for ((id, i, _), result) in imports.into_iter().zip(results) {
+                match result {
+                    Ok(res) if res.status < 400 => {
+                        prefix
+                            .entry(id)
+                            .or_default()
+                            .push((i, decode_text(&res.bytes, res.content_type.as_deref())));
+                        self.load_stats.stylesheets += 1;
+                    }
+                    _ => self.load_stats.failed += 1,
+                }
+            }
+            for (id, mut parts) in prefix {
+                parts.sort_by_key(|(i, _)| *i);
+                let mut text: String = parts.into_iter().map(|(_, t)| t + "\n").collect();
+                if let Some(own) = sheets.get(&id) {
+                    text.push_str(own);
+                }
+                sheets.insert(id, text);
+            }
+        }
+        self.load_stats.fetch_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+        self.collect_scripts(&script_sources);
+        tracing::info!(
+            page = self.id,
+            stylesheets = self.load_stats.stylesheets,
+            images = self.load_stats.images,
+            scripts = self.load_stats.scripts,
+            failed = self.load_stats.failed,
+            fetch_ms = self.load_stats.fetch_ms,
+            "subresources"
+        );
+        sheets
+    }
+
+    /// Author styles in cascade order: `<style>` text inline, `<link
+    /// rel=stylesheet>` from the fetched map, both in tree order.
+    fn add_styles(&mut self, sheets: &HashMap<NodeId, String>) {
+        let mut ordered: Vec<(NodeId, String)> = Vec::new();
+        for id in self.doc.elements() {
+            let Some(e) = self.doc.element(id) else {
+                continue;
+            };
+            if e.is_html("style") {
+                let media_ok = self.doc.attribute(id, "media").is_none_or(|m| {
+                    ve_style::MediaQueryList::parse_str(m).evaluate(&self.style_engine.media)
+                });
+                if media_ok {
+                    ordered.push((id, ve_style::strip_cdata(&self.doc.text_content(id))));
+                }
+            } else if let Some(css) = sheets.get(&id) {
+                ordered.push((id, css.clone()));
+            }
+        }
+        for (_, css) in ordered {
+            self.style_engine.add_stylesheet(&css);
+        }
+    }
+
+    /// Records every `<script>` in document order with its source.
+    fn collect_scripts(&mut self, external: &HashMap<NodeId, Option<String>>) {
+        let mut scripts = Vec::new();
+        for id in self.doc.elements() {
+            if !self.doc.element(id).is_some_and(|e| e.is_html("script"))
+                || !script_is_classic_or_module(&self.doc, id)
+            {
+                continue;
+            }
+            let module = self
+                .doc
+                .attribute(id, "type")
+                .is_some_and(|t| t.trim().eq_ignore_ascii_case("module"));
+            let url = self
+                .doc
+                .attribute(id, "src")
+                .and_then(|s| self.base_url.as_ref()?.join(s.trim()).ok())
+                .map(|u| u.to_string());
+            let (source, failed) = match (&url, external.get(&id)) {
+                (Some(_), Some(Some(src))) => (src.clone(), false),
+                (Some(_), _) => (String::new(), true),
+                (None, _) => (self.doc.text_content(id), false),
+            };
+            scripts.push(FetchedScript {
+                node: id,
+                url,
+                source,
+                module,
+                defer: self.doc.attribute(id, "defer").is_some(),
+                async_: self.doc.attribute(id, "async").is_some(),
+                failed,
+            });
+        }
+        self.scripts = scripts;
+    }
+
+    /// Scripts of the current document in order (external ones fetched at load).
+    #[must_use]
+    pub fn scripts(&self) -> &[FetchedScript] {
+        &self.scripts
+    }
+
+    /// Subresource counters for the current document.
+    #[must_use]
+    pub fn load_stats(&self) -> &LoadStats {
+        &self.load_stats
     }
 
     // ---------------------------------------------------------------------
@@ -2537,6 +2923,126 @@ impl Page {
         })
         .dialogs
     }
+}
+
+/// Decodes a text subresource (CSS, JS) using the transport charset, the
+/// same way the document decoder does (UTF-8 with BOM/meta sniffing).
+fn decode_text(bytes: &[u8], content_type: Option<&str>) -> String {
+    let charset = content_type.and_then(|ct| {
+        ct.split(';').skip(1).find_map(|p| {
+            let (k, v) = p.trim().split_once('=')?;
+            k.trim()
+                .eq_ignore_ascii_case("charset")
+                .then(|| v.trim().trim_matches('"').to_owned())
+        })
+    });
+    ve_html::decode_html_bytes(bytes, charset.as_deref()).text
+}
+
+/// `true` for a `<script>` the engine should treat as JavaScript: no type,
+/// a JavaScript MIME type, or `module`. Data blocks (JSON, importmap,
+/// templates) are skipped.
+fn script_is_classic_or_module(doc: &Document, id: NodeId) -> bool {
+    match doc.attribute(id, "type").map(str::trim) {
+        None | Some("") => true,
+        Some(t) => {
+            let t = t.to_ascii_lowercase();
+            t == "module"
+                || t == "text/javascript"
+                || t == "application/javascript"
+                || t == "text/ecmascript"
+                || t == "application/ecmascript"
+                || t == "text/jscript"
+                || t == "text/x-javascript"
+        }
+    }
+}
+
+/// The `@import` targets at the head of a stylesheet (after any `@charset`
+/// and `@layer` statements), in order. Media-conditioned imports are taken
+/// regardless of the condition; the cascade evaluates `@media` inside.
+fn collect_imports(css: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = css.trim_start();
+    loop {
+        // skip comments
+        while let Some(after) = rest.strip_prefix("/*") {
+            match after.find("*/") {
+                Some(end) => rest = after[end + 2..].trim_start(),
+                None => return out,
+            }
+        }
+        if let Some(after) = rest.strip_prefix("@charset") {
+            match after.find(';') {
+                Some(end) => rest = after[end + 1..].trim_start(),
+                None => return out,
+            }
+            continue;
+        }
+        if let Some(after) = rest.strip_prefix("@layer")
+            && let Some(end) = after.find(';')
+            && !after[..end].contains('{')
+        {
+            rest = after[end + 1..].trim_start();
+            continue;
+        }
+        let Some(after) = rest.strip_prefix("@import") else {
+            return out;
+        };
+        let Some(end) = after.find(';') else {
+            return out;
+        };
+        let stmt = after[..end].trim();
+        let target = stmt
+            .strip_prefix("url(")
+            .and_then(|u| u.find(')').map(|e| u[..e].trim().trim_matches(['"', '\''])))
+            .or_else(|| {
+                let q = stmt.chars().next()?;
+                (q == '"' || q == '\'').then(|| stmt[1..].split(q).next().unwrap_or(""))
+            });
+        if let Some(t) = target.filter(|t| !t.is_empty()) {
+            out.push(t.to_owned());
+        }
+        rest = after[end + 1..].trim_start();
+    }
+}
+
+/// Natural size of a `data:` image without fetching anything.
+fn decode_data_url_image_size(data_url: &str) -> Option<(u32, u32)> {
+    let (meta, payload) = data_url.strip_prefix("data:")?.split_once(',')?;
+    let bytes: Vec<u8> = if meta.ends_with(";base64") {
+        base64_decode(payload)?
+    } else {
+        percent_decode(payload).into_bytes()
+    };
+    let size = imagesize::blob_size(&bytes).ok()?;
+    Some((
+        u32::try_from(size.width).ok()?,
+        u32::try_from(size.height).ok()?,
+    ))
+}
+
+fn base64_decode(input: &str) -> Option<Vec<u8>> {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = Vec::with_capacity(input.len() * 3 / 4);
+    let mut buf = 0u32;
+    let mut bits = 0u8;
+    for c in input.bytes() {
+        let v = match c {
+            b'=' => break,
+            b'-' => 62,
+            b'_' => 63,
+            b if b.is_ascii_whitespace() => continue,
+            b => u32::try_from(TABLE.iter().position(|&t| t == b)?).ok()?,
+        };
+        buf = (buf << 6) | v;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push(u8::try_from((buf >> bits) & 0xff).ok()?);
+        }
+    }
+    Some(out)
 }
 
 fn percent_decode(input: &str) -> String {
