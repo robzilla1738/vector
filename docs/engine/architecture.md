@@ -102,6 +102,15 @@ loop, the cache and cookie jar (isolation semantics), the compositor. A taken
 crate must be wrappable behind a trait we own within one file; if we would
 need to fork it to reach our data structures, we build instead.
 
+**Manifest constraints worth knowing** (`engine/Cargo.toml`): `cssparser` is
+held at 0.37 because `selectors` 0.40 requires `^0.37`; `wgpu` is held at 29
+because `vello` 0.10 requires `^29`. `parley` and `fontdb` are built with
+`default-features = false, features = ["std"]` — parley's default `system`
+feature links libfontconfig on Linux, which would break the pure-Rust default
+build and CI; fonts are registered from bytes instead. Heavy dependencies sit
+behind features (`http`, `quickjs`, `gpu`, `images`, `napi`) so the default
+`cargo build` needs no C toolchain.
+
 ## 3. DOM and ref model
 
 ### Arena layout

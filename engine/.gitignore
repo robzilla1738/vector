@@ -1,0 +1,5 @@
+/target/
+# Sandbox/machine-local cargo overrides (linkers, target dirs) must never be committed.
+/.cargo/
+**/*.rs.bk
+*.profraw

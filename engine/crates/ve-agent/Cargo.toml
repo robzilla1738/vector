@@ -1,0 +1,27 @@
+[package]
+name = "ve-agent"
+description = "Agent action API for the Vector Engine: typed programs of steps executed against a live page with readiness tracking."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+ve-core.workspace = true
+ve-dom.workspace = true
+ve-style.workspace = true
+ve-layout.workspace = true
+ve-a11y.workspace = true
+ve-script.workspace = true
+ve-html.workspace = true
+url.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

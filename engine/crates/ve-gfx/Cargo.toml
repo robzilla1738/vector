@@ -1,0 +1,38 @@
+[package]
+name = "ve-gfx"
+description = "Graphics for the Vector Engine: display lists, compositor, font database and optional vello + wgpu rendering."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+## Raster image decoding (PNG, JPEG, GIF, WebP) through the `image` crate.
+images = ["dep:image"]
+## GPU rendering through vello + wgpu (implies `images`).
+gpu = ["images", "dep:vello", "dep:wgpu", "dep:peniko", "dep:kurbo"]
+
+[dependencies]
+ve-core.workspace = true
+ve-layout.workspace = true
+ve-style.workspace = true
+fontdb.workspace = true
+swash.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+vello = { workspace = true, optional = true }
+wgpu = { workspace = true, optional = true }
+peniko = { workspace = true, optional = true }
+kurbo = { workspace = true, optional = true }
+image = { workspace = true, optional = true }
+
+[dev-dependencies]
+ve-html.workspace = true
+ve-dom.workspace = true
