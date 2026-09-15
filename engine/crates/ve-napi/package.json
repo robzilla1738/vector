@@ -1,0 +1,43 @@
+{
+  "name": "@vector/engine-native",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Node bindings for the Vector Engine (napi-rs). Loads the platform .node binary built from crates/ve-napi.",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "*.node"
+  ],
+  "napi": {
+    "binaryName": "vector-engine",
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-apple-darwin",
+      "x86_64-apple-darwin",
+      "x86_64-pc-windows-msvc"
+    ]
+  },
+  "scripts": {
+    "build": "napi build --release --platform --features napi --cwd . --output-dir .",
+    "build:debug": "napi build --platform --features napi --cwd . --output-dir .",
+    "build:cargo": "node scripts/build.mjs",
+    "test": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "3.5.1"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

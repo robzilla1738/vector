@@ -3,8 +3,10 @@ import {
   newObservationId,
   newPageId,
   VectorError,
+  type Backend,
   type Observation,
   type ObservationContent,
+  type ObservationRequest,
   type PageTarget,
   type Program,
   type ProgramNode,
@@ -18,7 +20,21 @@ import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
 import { executeProgram, type ExecContext } from "../execution/executor.js";
+import { Router, isFallbackError } from "./router.js";
 import { AsyncLocalStorage } from "node:async_hooks";
+
+/** Backends the runtime can hold drivers for. */
+export interface DriverSet {
+  vector: BrowserDriver | null;
+  chrome: BrowserDriver | null;
+  /** the in-process Vector Engine (architecture §11); null when the addon is missing */
+  engine?: BrowserDriver | null;
+}
+
+type ObserveReq = Partial<Pick<ObservationRequest, "scope" | "subtreeRef" | "maxElements" | "maxTextChars" | "sinceRevision">>;
+
+/** `pages.execute` result: the program result plus the act-and-observe observation. */
+export type ExecuteResult = ProgramResult & { observation?: Observation };
 
 /** Ops that dispatch trusted input — they need a visible, laid-out view. */
 const INTERACTIVE_OPS = new Set([
@@ -45,7 +61,9 @@ export interface PageServiceDeps {
   repo: Repo;
   events: EventBus;
   native: NativeBridge;
-  drivers: () => { vector: BrowserDriver | null; chrome: BrowserDriver | null };
+  drivers: () => DriverSet;
+  /** engine/Chromium router — absent means "engine off" (legacy behaviour) */
+  router?: Router;
   recordStep?: (s: StepRecord) => void;
   artifacts?: { save(o: { runId?: string; pageId?: string; label: string; buffer: Buffer; mediaType: string }): { artifactId: string } };
   /** passive response capture — bound per page in wireDriverEvents */
@@ -90,7 +108,7 @@ export class PageService {
     }
   }
 
-  list(opts?: { backend?: "vector" | "chrome"; includeDetached?: boolean }): PageTarget[] {
+  list(opts?: { backend?: Backend; includeDetached?: boolean }): PageTarget[] {
     const persisted = this.deps.repo.listPages(opts);
     // live targets always win over stale rows
     const map = new Map(persisted.map((p) => [p.pageId, p]));
@@ -160,51 +178,110 @@ export class PageService {
     return run;
   }
 
+  private driverFor(backend: Backend): BrowserDriver | null {
+    const drivers = this.deps.drivers();
+    return backend === "vector" ? drivers.vector : backend === "chrome" ? drivers.chrome : (drivers.engine ?? null);
+  }
+
+  /**
+   * Open a page. `backend: "vector"` (the default) is routable: with
+   * `engineMode: "auto"` the router tries the Vector Engine first and falls
+   * back to Chromium when the engine classifies the document as needing
+   * script (architecture §11). The decision is logged and returned as
+   * `routeReason`.
+   */
   async open(opts: {
     url: string;
-    backend: "vector" | "chrome";
+    backend?: Backend;
     background: boolean;
     ownedByRuntime: boolean;
     activate?: boolean;
     targetId?: string; // chrome: attach an existing tab by CDP id
   }): Promise<PageTarget> {
-    const drivers = this.deps.drivers();
-    const driver = opts.backend === "vector" ? drivers.vector : drivers.chrome;
+    const router = this.deps.router;
+    const decision = router
+      ? router.decide(opts.url, opts.backend)
+      : { backend: opts.backend ?? "vector", reason: opts.backend ? `explicit-backend:${opts.backend}` : "engine-mode-off", fallbackAllowed: false };
+    if (decision.backend !== "vector-engine") return this.openOn(decision.backend, opts, decision.reason);
+    try {
+      return await this.openOn("vector-engine", opts, decision.reason, decision.fallbackAllowed);
+    } catch (e) {
+      if (!decision.fallbackAllowed || !isFallbackError(e)) throw e;
+      const reason = Router.fallbackReason(e);
+      router?.recordNeedsChromium(opts.url, reason);
+      this.deps.tracer?.incr("router.fallback.open");
+      return this.openOn("vector", opts, `fallback:${reason}`);
+    }
+  }
+
+  /** Create the backend surface for a page and return its target id. */
+  private async createSurface(
+    backend: Backend,
+    driver: BrowserDriver,
+    pageId: string,
+    initialUrl: string,
+    background: boolean,
+  ): Promise<{ targetId: string; nativeCreated: boolean }> {
+    if (backend === "vector") {
+      const marker = `vtab-${pageId}`;
+      if (this.deps.native.available()) {
+        await this.deps.native.createPage({ pageId, marker, url: initialUrl, background });
+        return { targetId: marker, nativeCreated: true };
+      }
+      if (driver.createTarget) {
+        // standalone mode: the driver owns the surface (headless chrome page)
+        return { targetId: await driver.createTarget(initialUrl), nativeCreated: false };
+      }
+      throw new VectorError("backend_unavailable", "vector backend needs the desktop shell or a standalone driver");
+    }
+    if (!driver.createTarget) {
+      throw new VectorError(
+        "invalid_params",
+        backend === "chrome"
+          ? "chrome pages.open requires targetId of an existing tab (list them with chrome.tabs)"
+          : `${backend} driver cannot create pages`,
+      );
+    }
+    return { targetId: await driver.createTarget(initialUrl), nativeCreated: false };
+  }
+
+  private async openOn(
+    backend: Backend,
+    opts: { url: string; background: boolean; ownedByRuntime: boolean; activate?: boolean; targetId?: string },
+    routeReason: string,
+    fallbackAllowed = false,
+  ): Promise<PageTarget> {
+    const driver = this.driverFor(backend);
     // a dropped socket is recovered lazily here rather than failing every
     // open until restart; a backend that is truly gone still fails below
     if (driver && !driver.isConnected() && driver.reconnect) await driver.reconnect().catch(() => {});
     if (!driver?.isConnected())
-      throw new VectorError("backend_unavailable", `${opts.backend} backend is not connected`);
+      throw new VectorError("backend_unavailable", `${backend} backend is not connected`);
 
     const pageId = newPageId();
     let targetId: string;
     let nativeCreated = false;
-    // open on about:blank, then navigate AFTER response listeners are wired —
-    // otherwise the page's own first load escapes passive capture entirely
-    const initialUrl = opts.targetId ? opts.url : "about:blank";
-    if (opts.backend === "vector") {
-      const marker = `vtab-${pageId}`;
-      if (this.deps.native.available()) {
-        await this.deps.native.createPage({ pageId, marker, url: initialUrl, background: opts.background });
-        nativeCreated = true;
-        targetId = marker;
-      } else if (driver.createTarget) {
-        // standalone mode: the driver owns the surface (headless chrome page)
-        targetId = await driver.createTarget(initialUrl);
-      } else {
-        throw new VectorError("backend_unavailable", "vector backend needs the desktop shell or a standalone driver");
-      }
+    // Chromium: open on about:blank, then navigate AFTER response listeners
+    // are wired — otherwise the page's own first load escapes passive capture.
+    // The engine parses and classifies on open, so it gets the real URL.
+    const initialUrl = opts.targetId || backend === "vector-engine" ? opts.url : "about:blank";
+    if (opts.targetId && backend === "chrome") {
+      targetId = opts.targetId;
     } else {
-      if (opts.targetId) {
-        targetId = opts.targetId;
-      } else if (driver.createTarget) {
-        targetId = await driver.createTarget(initialUrl);
-      } else {
-        throw new VectorError(
-          "invalid_params",
-          "chrome pages.open requires targetId of an existing tab (list them with chrome.tabs)",
-        );
+      ({ targetId, nativeCreated } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background));
+    }
+
+    // engine post-parse classification → capability_unsupported → the caller
+    // reopens on Chromium (auto mode); explicit/always placements keep the page
+    // and only annotate the route reason
+    if (backend === "vector-engine" && driver.routingOf) {
+      const routing = driver.routingOf(targetId);
+      const classified = this.deps.router?.classify(routing) ?? null;
+      if (classified && fallbackAllowed) {
+        await driver.attach(targetId, pageId).then((p) => p.dispose()).catch(() => {});
+        throw classified;
       }
+      if (routing?.requiresScript) routeReason = `${routeReason}(classified:${routing.reason ?? routing.kind})`;
     }
 
     let dp: DriverPage;
@@ -218,24 +295,26 @@ export class PageService {
     }
     const target: PageTarget = {
       pageId,
-      backend: opts.backend,
+      backend,
       targetId,
       url: opts.url,
       title: "",
       documentEpoch: 0,
       lastRevision: 0,
-      viewStatus: opts.backend === "chrome" ? "hidden" : opts.background ? "background" : "visible",
+      viewStatus: backend === "chrome" || backend === "vector-engine" ? "hidden" : opts.background ? "background" : "visible",
       controller: "none",
       controllerEpoch: 0,
       ownedByRuntime: opts.ownedByRuntime,
       createdAt: Date.now(),
       lastActiveAt: Date.now(),
+      routeReason,
     };
     const lp: LivePage = { target, driver: dp, queue: Promise.resolve() };
     this.live.set(pageId, lp);
     this.wireDriverEvents(lp);
     this.persist(lp);
     this.deps.events.emit(EventTypes.PageAdded, { page: target });
+    this.deps.tracer?.incr(`router.open.${backend}`);
     // the real navigation happens with listeners attached — captured like
     // any later navigation (metadata + bodies)
     if (dp && opts.url !== initialUrl) {
@@ -247,16 +326,45 @@ export class PageService {
     return target;
   }
 
+  /**
+   * Mid-program fallback (architecture §11 step 4): move a live engine page
+   * onto Chromium at its current URL. Same pageId, new driver page and
+   * target; refs are gone (new document epoch).
+   */
+  private async migrateToChromium(lp: LivePage, reason: string): Promise<DriverPage> {
+    const driver = this.driverFor("vector");
+    if (driver && !driver.isConnected() && driver.reconnect) await driver.reconnect().catch(() => {});
+    if (!driver?.isConnected()) throw new VectorError("backend_unavailable", "vector (Chromium) backend is not connected for fallback");
+    const pageId = lp.target.pageId;
+    const url = lp.driver?.url() ?? lp.target.url;
+    await lp.driver?.dispose().catch(() => {});
+    const { targetId } = await this.createSurface("vector", driver, pageId, "about:blank", true);
+    const dp = await driver.attach(targetId, pageId);
+    lp.driver = dp;
+    lp.target.backend = "vector";
+    lp.target.targetId = targetId;
+    lp.target.viewStatus = "background";
+    lp.target.routeReason = `fallback:${reason}`;
+    lp.target.documentEpoch++;
+    lp.lastText = undefined;
+    lp.lastFields = undefined;
+    this.wireDriverEvents(lp);
+    await dp.navigate(url).catch(() => {});
+    this.persist(lp);
+    this.deps.tracer?.incr("router.fallback.midProgram");
+    this.deps.events.emit(EventTypes.PageUpdated, { pageId, backend: "vector", targetId, url, routeReason: lp.target.routeReason });
+    return dp;
+  }
+
   /** Register a page created natively outside the open() path (popups, restored tabs). */
   async registerExternal(opts: {
     pageId?: string;
     marker: string;
     url: string;
-    backend: "vector" | "chrome";
+    backend: Backend;
     title?: string;
   }): Promise<PageTarget> {
-    const drivers = this.deps.drivers();
-    const driver = opts.backend === "vector" ? drivers.vector : drivers.chrome;
+    const driver = this.driverFor(opts.backend);
     const pageId = opts.pageId ?? newPageId();
     const dp = driver ? await driver.attach(opts.marker, pageId) : null;
     const target: PageTarget = {
@@ -469,54 +577,67 @@ export class PageService {
 
   // ---------- observation ----------
 
-  async observe(
-    pageId: string,
-    req: { scope?: "full" | "forms" | "links" | "tables" | "subtree"; subtreeRef?: string; maxElements?: number; maxTextChars?: number; sinceRevision?: number },
-  ): Promise<Observation> {
+  async observe(pageId: string, req: ObserveReq): Promise<Observation> {
     return this.enqueue(pageId, async () => {
       const dp = this.driverPageLenient(pageId);
       const content = await dp.observe(req);
-      const lp = this.live.get(pageId);
-      if (!lp) throw new VectorError("target_detached", `page ${pageId} detached during observation`);
-      const revision = (this.revCounters.get(pageId) ?? lp.target.lastRevision) + 1;
-      this.revCounters.set(pageId, revision);
-      lp.target.lastRevision = revision;
-      lp.target.url = content.url;
-      lp.target.title = content.title;
-      const changesSince = this.diffObservations(lp, content);
-      const deltaFrom = lp.lastObservationId;
-      lp.lastText = content.text;
-      lp.lastFields = new Map(content.formFields.map((f) => [f.label ?? f.name ?? f.ref ?? "?", f.value ?? ""]));
-      const obs: Observation = {
-        observationId: newObservationId(),
-        pageId,
-        documentEpoch: lp.target.documentEpoch,
-        revision,
-        observedAt: Date.now(),
-        scope: req.scope ?? "full",
-        content,
-        changesSince: changesSince.length ? changesSince : undefined,
-        deltaFrom: changesSince.length ? deltaFrom : undefined,
-      };
-      lp.lastObservationId = obs.observationId;
-      this.deps.repo.saveObservation({
-        observationId: obs.observationId,
-        pageId,
-        epoch: obs.documentEpoch,
-        revision,
-        observedAt: obs.observedAt,
-        scope: obs.scope,
-        json: JSON.stringify(obs),
-      });
-      this.persist(lp);
-      this.deps.events.emit(EventTypes.Observation, {
-        pageId,
-        revision,
-        epoch: obs.documentEpoch,
-        approxTokens: content.stats.approxTokens,
-      });
-      return obs;
+      return this.recordObservation(pageId, content, req);
     });
+  }
+
+  /**
+   * Stamp an `ObservationContent` (from `observe` or from an engine
+   * act-and-observe call) with ids/revision/epoch, diff it against the
+   * previous one, persist and announce it.
+   */
+  private recordObservation(pageId: string, content: ObservationContent, req: ObserveReq): Observation {
+    const lp = this.live.get(pageId);
+    if (!lp) throw new VectorError("target_detached", `page ${pageId} detached during observation`);
+    // the engine reports its own document revision/generation with the content
+    const engineMeta = (content as ObservationContent & { engine?: { revision?: number; generation?: number; changed?: string[] } }).engine;
+    if (engineMeta) {
+      delete (content as { engine?: unknown }).engine;
+      if (typeof engineMeta.generation === "number" && lp.target.backend === "vector-engine") lp.target.documentEpoch = engineMeta.generation;
+    }
+    const revision = (this.revCounters.get(pageId) ?? lp.target.lastRevision) + 1;
+    this.revCounters.set(pageId, revision);
+    lp.target.lastRevision = revision;
+    lp.target.url = content.url;
+    lp.target.title = content.title;
+    const changesSince = this.diffObservations(lp, content);
+    if (engineMeta?.changed?.length) changesSince.push(`refs changed: ${engineMeta.changed.slice(0, 20).join(" ")}`);
+    const deltaFrom = lp.lastObservationId;
+    lp.lastText = content.text;
+    lp.lastFields = new Map(content.formFields.map((f) => [f.label ?? f.name ?? f.ref ?? "?", f.value ?? ""]));
+    const obs: Observation = {
+      observationId: newObservationId(),
+      pageId,
+      documentEpoch: lp.target.documentEpoch,
+      revision,
+      observedAt: Date.now(),
+      scope: req.scope ?? "full",
+      content,
+      changesSince: changesSince.length ? changesSince : undefined,
+      deltaFrom: changesSince.length ? deltaFrom : undefined,
+    };
+    lp.lastObservationId = obs.observationId;
+    this.deps.repo.saveObservation({
+      observationId: obs.observationId,
+      pageId,
+      epoch: obs.documentEpoch,
+      revision,
+      observedAt: obs.observedAt,
+      scope: obs.scope,
+      json: JSON.stringify(obs),
+    });
+    this.persist(lp);
+    this.deps.events.emit(EventTypes.Observation, {
+      pageId,
+      revision,
+      epoch: obs.documentEpoch,
+      approxTokens: content.stats.approxTokens,
+    });
+    return obs;
   }
 
   private diffObservations(lp: LivePage, next: ObservationContent): string[] {
@@ -543,7 +664,14 @@ export class PageService {
 
   // ---------- execution ----------
 
-  async execute(program: Program, ctx: ExecContext = {}): Promise<ProgramResult> {
+  /**
+   * Run a program. `opts.returnObservation` observes the page after the
+   * program in the same round trip; on the engine backend that is a single
+   * native call (act-and-observe), elsewhere a follow-up observe on the
+   * same lane. A mid-program `capability_unsupported` on an engine page
+   * moves the page to Chromium and replays what it can (§11 step 4).
+   */
+  async execute(program: Program, ctx: ExecContext = {}, opts: { returnObservation?: ObserveReq } = {}): Promise<ExecuteResult> {
     const pageId = program.pageId;
     return this.withKeys(program.conflicts, () =>
       this.enqueue(pageId, async () => {
@@ -567,8 +695,9 @@ export class PageService {
       const span = this.deps.tracer?.start("program.execute", {
         runId: ctx.runId,
         pageId,
-        attrs: { steps: allSteps.length, nodes: program.nodes?.length },
+        attrs: { steps: allSteps.length, nodes: program.nodes?.length, backend: lp.target.backend },
       });
+      const engineActAndObserve = lp.target.backend === "vector-engine" && !!lp.driver.executeProgram && !program.nodes?.length;
       // §6.2 — proposed vs dispatched vs completed vs verified
       this.deps.tracer?.incr("actions.proposed", allSteps.length);
       // step rows are collected here and written in ONE transaction when the
@@ -585,13 +714,16 @@ export class PageService {
           /* the step ledger is observational — never fail the program for it */
         }
       };
-      let result: ProgramResult;
+      let result: ProgramResult & { observation?: ObservationContent };
+      let observation: Observation | undefined;
       try {
-        result = await executeProgram(lp.driver, program, {
+        const execCtx: ExecContext = {
           ...ctx,
           // after the spread: an explicit `allowEval: undefined` from a caller
           // must not re-enable page JS / new Function for untrusted programs
           allowEval: ctx.allowEval ?? false,
+          // engine path: the observation rides back in the same native call
+          returnObservation: engineActAndObserve ? opts.returnObservation : undefined,
           observe: (req) => this.observe(pageId, req).then((o) => o.content),
           onEmit: (label, value) =>
             this.deps.events.emit("page.emitted", { pageId, runId: ctx.runId, label, value }),
@@ -621,7 +753,22 @@ export class PageService {
             });
             ctx.onStep?.(outcome, step);
           },
-        });
+        };
+        result = await executeProgram(lp.driver, program, execCtx);
+        // §11 step 4 — the engine hit a capability gap mid-program
+        const fallbackAt = lp.target.backend === "vector-engine" ? Router.fallbackIndex(result.steps) : -1;
+        if (fallbackAt >= 0 && this.deps.router && this.deps.router.mode() === "auto") {
+          result = await this.fallbackMidProgram(lp, program, result, fallbackAt, execCtx);
+        }
+        if (result.observation) {
+          observation = this.recordObservation(pageId, result.observation, opts.returnObservation ?? {});
+          delete result.observation;
+        } else if (opts.returnObservation) {
+          // Chromium (or a fallen-back engine page): a follow-up observe on the
+          // same lane. A page that detached mid-program still returns the
+          // program result — the observation is best-effort.
+          observation = await this.observe(pageId, opts.returnObservation).catch(() => undefined);
+        }
       } catch (e) {
         flushSteps();
         if (lp.target.controller === "agent" || lp.target.controller === "external") lp.target.controller = "none";
@@ -641,10 +788,66 @@ export class PageService {
       span?.end(result.status === "completed" ? "ok" : result.status === "cancelled" ? "cancelled" : "failed", {
         status: result.status,
         steps: result.steps.length,
+        fallback: result.fallback?.reason,
       });
-      return result;
+      const { observation: _inline, ...programResult } = result;
+      return observation ? { ...programResult, observation } : programResult;
       }),
     );
+  }
+
+  /**
+   * Replay the rest of a flat program on Chromium after an engine
+   * `capability_unsupported`. Refs do not carry across backends: when any
+   * remaining step targets a ref the result stays failed with a REPAIR
+   * request for the planner; otherwise the remaining steps run on the new
+   * driver after a fresh observation and the outcomes are merged.
+   */
+  private async fallbackMidProgram(
+    lp: LivePage,
+    program: Program,
+    result: ProgramResult,
+    failedAt: number,
+    execCtx: ExecContext,
+  ): Promise<ProgramResult & { observation?: ObservationContent }> {
+    const router = this.deps.router!;
+    const pageId = lp.target.pageId;
+    const failedStep = result.steps[failedAt];
+    const reason = `mid-program:${failedStep?.op ?? "step"}:${failedStep?.error?.message ?? "capability_unsupported"}`;
+    router.recordNeedsChromium(lp.target.url, reason);
+    const plan = router.planReplay(program.steps ?? [], failedAt);
+    let dp: DriverPage;
+    try {
+      dp = await this.migrateToChromium(lp, reason);
+    } catch (e) {
+      // no Chromium to fall back to — the engine result stands, annotated
+      return {
+        ...result,
+        error: `${result.error ?? "capability_unsupported"} (fallback unavailable: ${e instanceof Error ? e.message : String(e)})`,
+        fallback: { from: "vector-engine", to: "vector", reason, replayedFrom: failedAt, repair: true, refSteps: plan.refSteps },
+      };
+    }
+    // fresh observation so the caller (and any replayed selector steps) see the Chromium document
+    const fresh = await dp.observe({}).catch(() => undefined);
+    if (fresh) this.recordObservation(pageId, fresh, {});
+    if (plan.repair || !plan.remaining.length) {
+      return {
+        ...result,
+        status: "failed",
+        error: plan.repair
+          ? `REPAIR: ${plan.refSteps.length} ref-targeted step(s) (${plan.refSteps.join(", ")}) cannot replay on Chromium — re-observe and replan`
+          : result.error,
+        fallback: { from: "vector-engine", to: "vector", reason, replayedFrom: failedAt, repair: plan.repair, refSteps: plan.refSteps },
+      };
+    }
+    const replay = await executeProgram(dp, { ...program, steps: plan.remaining, nodes: undefined }, { ...execCtx, returnObservation: undefined });
+    return {
+      status: replay.status,
+      steps: [...result.steps.slice(0, failedAt), ...replay.steps],
+      extracted: { ...(result.extracted ?? {}), ...(replay.extracted ?? {}) },
+      error: replay.error,
+      fallback: { from: "vector-engine", to: "vector", reason, replayedFrom: failedAt, repair: false },
+    };
   }
 
   // ---------- find / zoom / capture ----------
@@ -663,6 +866,10 @@ export class PageService {
   }
   async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact" }) {
     const dp = this.driverPageLenient(pageId);
+    if (this.live.get(pageId)?.target.backend === "vector-engine") {
+      // rendering lands with ve-gfx (M2+); be explicit rather than time out
+      throw new VectorError("capability_unsupported", "screenshots are not available on the vector-engine backend yet");
+    }
     const shot = await dp.screenshot({ fullPage: opts?.fullPage });
     if (opts?.format === "artifact") {
       const a = this.deps.artifacts?.save({ pageId, label: "capture", buffer: shot.buffer, mediaType: "image/png" });

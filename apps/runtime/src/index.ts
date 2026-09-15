@@ -2,10 +2,23 @@ export { startRuntime, type RuntimeHandle } from "./main.js";
 export { Repo } from "./store/repo.js";
 export { openDb, applyMigrations } from "./store/db.js";
 export { EventBus } from "./events.js";
+export { NullNativeBridge, type NativeBridge } from "./native.js";
 export { ApiServer, MAX_BODY_BYTES } from "./api/server.js";
 export { loadConfig, loadDotEnv, parseDotEnv, dotEnvCandidates } from "./config.js";
 export { RpcChannel, memoryTransportPair, type Transport } from "@vector/contracts";
-export { PageService } from "./services/pages.js";
+export { PageService, type DriverSet, type ExecuteResult } from "./services/pages.js";
+export {
+  Router,
+  MemoryRouterStore,
+  isFallbackError,
+  originOf,
+  stepTargetsRef,
+  NEEDS_CHROMIUM_TTL_MS,
+  type NeedsChromiumEntry,
+  type RouteDecision,
+  type ReplayPlan,
+  type RouterStore,
+} from "./services/router.js";
 export { SetService } from "./services/sets.js";
 export { RunService, substituteParameters } from "./services/runs.js";
 export { makeInvoker, type Services } from "./api/handlers.js";

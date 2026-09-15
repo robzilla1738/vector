@@ -1,17 +1,42 @@
 import type {
+  Backend,
   Condition,
   ElementRef,
   ObservationContent,
   ObservationRequest,
+  ProgramResult,
   SelectorStrategy,
+  Step,
 } from "@vector/contracts";
 
 export interface PageIdentity {
   /** Vector page id assigned by the target registry. */
   pageId: string;
-  /** Backend-native target id (CDP target id or marker). */
+  /** Backend-native target id (CDP target id, marker, or `ve-<ctx>-<page>`). */
   targetId: string;
-  backend: "vector" | "chrome";
+  backend: Backend;
+}
+
+/**
+ * Post-parse routing classification reported by the Vector Engine
+ * (architecture §11 step 2). Chromium-backed pages never report one.
+ */
+export interface PageRouting {
+  requiresScript: boolean;
+  reason?: string;
+  kind?: "requiresScript" | "unsupportedContent";
+}
+
+/** Options for the zero-IPC whole-program path. */
+export interface ExecuteProgramOptions {
+  signal?: AbortSignal;
+  /** Observe in the same native call after the last step (act-and-observe). */
+  returnObservation?: Partial<ObservationRequest>;
+}
+
+/** Result of `DriverPage.executeProgram` — a ProgramResult plus the observation when requested. */
+export interface ExecuteProgramResult extends ProgramResult {
+  observation?: ObservationContent;
 }
 
 export interface ScreenshotResult {
@@ -106,6 +131,18 @@ export interface DriverPage {
   extract(fields: { name: string; selector?: string; attribute?: string; all?: boolean }[]): Promise<Record<string, unknown>>;
   evaluate(expression: string): Promise<unknown>;
 
+  /**
+   * Zero-IPC path (architecture §11): run a whole flat step list in one
+   * backend call. Present on the Vector Engine page; the executor uses it
+   * when available and falls back to per-step calls otherwise. Steps are
+   * already validated; `optional`/`expect`/`timeoutMs` semantics match the
+   * per-step runner. A failed step yields a `failed` outcome with an error
+   * code — `capability_unsupported` tells the router to replay on Chromium.
+   */
+  executeProgram?(steps: Step[], opts?: ExecuteProgramOptions): Promise<ExecuteProgramResult>;
+  /** Engine-only: how the current document was classified after parse. */
+  routing?(): PageRouting | undefined;
+
   setEvents(events: DriverPageEvents): void;
   dispose(): Promise<void>;
 }
@@ -135,7 +172,7 @@ export interface BrowserCookie {
  * or the user's existing Chrome over its remote-debugging port.
  */
 export interface BrowserDriver {
-  readonly backend: "vector" | "chrome";
+  readonly backend: Backend;
   connect(): Promise<void>;
   disconnect(): Promise<void>;
   isConnected(): boolean;
@@ -151,6 +188,8 @@ export interface BrowserDriver {
   refEntry?(pageId: string, ref: string): ElementRef | undefined;
   /** Create a new tab in the backend browser; returns its target id. */
   createTarget?(url: string): Promise<string>;
+  /** Engine-only: post-parse classification of a target created by `createTarget`. */
+  routingOf?(targetId: string): PageRouting | undefined;
   /** Bring a borrowed tab forward in its owning browser. */
   activateTarget?(targetId: string): Promise<void>;
   /** Read the backend's full cookie store (browser-level CDP). */

@@ -1,6 +1,8 @@
 import {
   VectorError,
   type Condition,
+  type ObservationContent,
+  type ObservationRequest,
   type Program,
   type ProgramResult,
   type Step,
@@ -11,6 +13,12 @@ import type { DriverPage } from "@vector/browser-driver";
 export interface ExecContext {
   runId?: string;
   signal?: AbortSignal;
+  /**
+   * Act-and-observe on the zero-IPC path: when the page implements
+   * `executeProgram`, the observation is taken in the same backend call and
+   * returned as `observation` on the result. Ignored by the per-step path.
+   */
+  returnObservation?: Partial<ObservationRequest>;
   onStep?: (outcome: StepOutcome, step: Step) => void;
   /** artifacts captured during execution are reported here */
   onArtifact?: (label: string, buffer: Buffer, mediaType: string) => string | undefined;
@@ -236,7 +244,7 @@ export async function executeProgram(
   page: DriverPage,
   program: Program,
   ctx: ExecContext = {},
-): Promise<ProgramResult> {
+): Promise<ProgramResult & { observation?: ObservationContent }> {
   if (program.pageId !== page.identity.pageId) {
     throw new VectorError(
       "invalid_params",
@@ -272,6 +280,31 @@ export async function executeProgram(
   for (const s of steps) {
     if (seen.has(s.id)) throw new VectorError("invalid_params", `duplicate step id ${s.id}`);
     seen.add(s.id);
+  }
+
+  // Zero-IPC path (architecture §11): hand the whole flat step list to the
+  // backend in one call. Trust checks run up front exactly as the per-step
+  // runner would apply them; the expectDownload pair needs the local waiter
+  // fusion, so such programs stay on the per-step path.
+  if (page.executeProgram && steps.length && !steps.some((s) => s.op === "expectDownload")) {
+    for (const s of steps) assertEvalAllowed(s, ctx.allowEval ?? false);
+    ctx.checkValid?.();
+    const res = await page.executeProgram(steps, { signal: ctx.signal, returnObservation: ctx.returnObservation });
+    const byId = new Map(steps.map((s) => [s.id, s]));
+    for (const o of res.steps) {
+      const step = byId.get(o.stepId);
+      if (step) emit(o, step);
+      else outcomes.push(o);
+    }
+    const out: ProgramResult & { observation?: ObservationContent } = {
+      status: ctx.signal?.aborted && res.status === "completed" ? "cancelled" : res.status,
+      steps: outcomes,
+      extracted: res.extracted && Object.keys(res.extracted).length ? res.extracted : undefined,
+      error: res.error,
+    };
+    if (res.fallback) out.fallback = res.fallback;
+    if (res.observation) out.observation = res.observation;
+    return out;
   }
 
   for (let i = 0; i < steps.length; i++) {

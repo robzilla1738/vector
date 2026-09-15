@@ -2718,8 +2718,16 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
+ "serde",
  "serde_json",
+ "url",
+ "ve-a11y",
+ "ve-agent",
  "ve-api",
+ "ve-core",
+ "ve-dom",
+ "ve-html",
+ "ve-net",
 ]
 
 [[package]]

@@ -25,10 +25,10 @@ server.registerTool("vector_pages_list", { description: "List open browser pages
 server.registerTool(
   "vector_page_open",
   {
-    description: "Open a new page. Use backend chrome to open a tab in the user's attached Chrome.",
+    description: "Open a new page. Use backend chrome to open a tab in the user's attached Chrome; vector-engine forces the in-process Vector Engine.",
     inputSchema: {
       url: z.string().describe("URL to open"),
-      backend: z.enum(["vector", "chrome"]).optional().describe("vector (default) or chrome"),
+      backend: z.enum(["vector", "chrome", "vector-engine"]).optional().describe("vector (default, routable), chrome, or vector-engine"),
       background: z.boolean().optional().describe("open hidden worker page (no focus steal)"),
     },
   },

@@ -3,6 +3,7 @@ packages:
   - "packages/*"
   - "fixtures/*"
   - "tests"
+  - "engine/crates/ve-napi"
 
 allowBuilds:
   electron: true

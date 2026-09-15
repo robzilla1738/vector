@@ -467,6 +467,14 @@ export class Repo {
     }));
   }
 
+  // ---- engine router: needs-chromium table (architecture §11) ----
+  loadRouterTable<T>(): T[] {
+    return kvGetJson<T[]>(this.db, "router:needsChromium") ?? [];
+  }
+  saveRouterTable(entries: unknown[]) {
+    kvSetJson(this.db, "router:needsChromium", entries);
+  }
+
   // ---- settings ----
   getSetting<T>(key: string): T | undefined {
     return kvGetJson<T>(this.db, `setting:${key}`);

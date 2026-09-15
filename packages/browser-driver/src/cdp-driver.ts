@@ -15,6 +15,7 @@ export interface JsonTarget {
 /** Shared machinery for drivers that attach to a running CDP endpoint. */
 export abstract class CdpAttachedDriver implements BrowserDriver {
   abstract readonly backend: "vector" | "chrome";
+  /** CDP drivers never place engine pages. */
   protected endpoint: string;
   protected browser: Browser | null = null;
   protected context: BrowserContext | null = null;

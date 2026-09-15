@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   ArtifactSchema,
+  BackendSchema,
   BookmarkSchema,
   BrowserSessionSchema,
   DownloadSchema,
@@ -21,14 +22,23 @@ import { StateQuerySchema } from "./state.js";
 
 const id = z.string().min(1);
 
+/** How `pages.open` chooses between the Vector Engine and Chromium (architecture §11). */
+export const EngineModeSchema = z.enum(["off", "auto", "always"]);
+export type EngineMode = z.infer<typeof EngineModeSchema>;
+
 /** pages.* */
 export const PagesListParams = z.object({
-  backend: z.enum(["vector", "chrome"]).optional(),
+  backend: BackendSchema.optional(),
   includeDetached: z.boolean().optional(),
 });
 export const PagesOpenParams = z.object({
   url: z.string().min(1),
-  backend: z.enum(["vector", "chrome"]).default("vector"),
+  /**
+   * `vector` (default) is routable: with `engineMode: "auto"` the router may
+   * place the page on `vector-engine` and fall back to Chromium.
+   * `vector-engine` forces the engine (no fallback); `chrome` needs an attached Chrome.
+   */
+  backend: BackendSchema.default("vector"),
   /** hidden/background pages never steal focus; used for worker pages. */
   background: z.boolean().default(false),
   ownedByRuntime: z.boolean().default(false),
@@ -172,6 +182,8 @@ export const SettingsSetParams = z.object({
   maxModelCalls: z.number().int().min(1).max(8).optional(),
   theme: z.enum(["dark", "light"]).optional(),
   zoomFactor: z.number().optional(),
+  /** Vector Engine routing: off (default, Chromium only) | auto (router) | always (engine only). */
+  engineMode: EngineModeSchema.optional(),
 });
 export const SettingsGetParams = z.object({});
 

@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@vector/contracts": "workspace:*",
+    "@vector/engine-native": "workspace:*",
     "playwright-core": "1.63.0",
     "zod": "4.5.4"
   },

@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import type { EngineMode } from "@vector/contracts";
 import type { ModelClient } from "../agent/model-client.js";
 import { FALLBACK_MODELS } from "../agent/model-client.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
@@ -16,7 +17,16 @@ export interface Settings {
   theme?: "dark" | "light";
   zoomFactor?: number;
   dataDir?: string;
+  /**
+   * Vector Engine routing (architecture §11): "off" — Chromium only, the
+   * default so nothing changes for existing users; "auto" — the router
+   * tries the engine first and falls back; "always" — engine only
+   * (benchmarks/tests). Env override: VECTOR_ENGINE_MODE.
+   */
+  engineMode?: EngineMode;
 }
+
+const ENGINE_MODES: readonly EngineMode[] = ["off", "auto", "always"];
 
 export class SettingsService {
   /** Test hook — inject a mock model instead of the real Gateway client. */
@@ -54,8 +64,15 @@ export class SettingsService {
       maxModelCalls: this.maxModelCalls(),
       theme: (this.get("theme") as "dark" | "light") ?? "dark",
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,
+      engineMode: this.engineMode(),
       dataDir: this.settingsPath.replace(/\/settings\.json$/, ""),
     };
+  }
+
+  /** Setting wins over the env override; anything unrecognised is "off". */
+  engineMode(): EngineMode {
+    const v = (this.get("engineMode") as string | undefined) ?? this.env.VECTOR_ENGINE_MODE;
+    return ENGINE_MODES.includes(v as EngineMode) ? (v as EngineMode) : "off";
   }
 
   set(patch: Settings): { ok: true } {
