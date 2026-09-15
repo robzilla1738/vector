@@ -2,7 +2,7 @@
  * Vector shell — component styles. Tokens live in tokens.css; nothing here
  * should introduce a literal colour, radius, or duration.
  *
- * Layout:  .app ▸ .sidebar | .main-col ▸ .toolbar / .main ▸ .stage-wrap ▸ .stage-card | .rail
+ * Layout:  .app ▸ [.degraded] / .app-body ▸ .sidebar | .main-col ▸ .toolbar / .main ▸ .stage-wrap ▸ .stage-card | .rail
  */
 
 * { box-sizing: border-box; }
@@ -142,8 +142,9 @@ kbd {
 .space-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--space-color, var(--accent)); flex: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--space-color, var(--accent)) 25%, transparent); }
 
 /* ---------- app frame ---------- */
-.app { display: flex; height: 100%; overflow: hidden; background: var(--bg-window); position: relative; }
+.app { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--bg-window); position: relative; }
 .app.electron { background: transparent; }
+.app-body { display: flex; flex: 1; min-height: 0; position: relative; }
 .main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
 .main { display: flex; flex: 1; min-height: 0; position: relative; }
 
@@ -153,6 +154,7 @@ kbd {
   box-shadow: inset 0 -1px 0 var(--warn-line); animation: slide-down var(--t-med) var(--ease-out);
 }
 .degraded .btn { margin-left: auto; }
+.app.electron .degraded { padding-left: var(--traffic-inset); }
 
 /* ---------- toolbar ---------- */
 .toolbar {
@@ -305,7 +307,7 @@ body.resizing .sidebar { transition: none; }
 .tab-state { display: grid; place-items: center; width: 18px; height: 18px; border-radius: var(--r-xs); flex: none; }
 .tab-state.agent { color: var(--agent); background: var(--agent-soft); }
 .tab-state.human { color: var(--warn); background: var(--warn-soft); }
-.tab-engine { font-size: 9px; font-weight: 700; letter-spacing: 0.04em; padding: 1px 4px; border-radius: 3px; flex: none; background: var(--bg-3); color: var(--ink-2); }
+.tab-engine { display: grid; place-items: center; width: 18px; height: 18px; border-radius: var(--r-xs); flex: none; background: var(--bg-3); color: var(--ink-2); }
 .tab-engine.vector-engine { color: var(--engine); background: var(--engine-soft); }
 .tab-engine.chrome { color: var(--ok); background: var(--ok-soft); }
 .tab-close { width: 22px; height: 22px; display: grid; place-items: center; border-radius: var(--r-xs); color: var(--ink-2); flex: none; opacity: 0; transition: opacity var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out); }
@@ -650,12 +652,22 @@ body.resizing .rail { transition: none; }
 .member.failed { box-shadow: inset 0 0 0 1px var(--err-line); }
 .member.queued { opacity: 0.7; }
 .member-label { font-size: var(--fs-xs); font-weight: 500; color: var(--ink-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.member-state { display: grid; place-items: center; width: 14px; height: 14px; color: var(--ink-2); }
+.member-foot { display: flex; align-items: center; gap: var(--space-1); min-width: 0; margin-top: auto; }
+.member-host { flex: 1; min-width: 0; font-size: var(--fs-2xs); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-state { display: grid; place-items: center; width: 14px; height: 14px; color: var(--ink-3); flex: none; margin-left: auto; }
 .member.completed .member-state { color: var(--ok); }
 .member.failed .member-state { color: var(--err); }
+.set-bar { display: flex; gap: 2px; height: 6px; }
+.set-bar i { flex: 1; border-radius: 2px; background: var(--bg-3); transition: background var(--t-med) var(--ease-out); }
+.set-bar i.completed { background: var(--ok); }
+.set-bar i.running { background: var(--agent); animation: pulse 1.4s var(--ease-in-out) infinite; }
+.set-bar i.failed { background: var(--err); }
+.set-bar i.skipped { background: var(--ink-3); }
 .set-errors { display: flex; flex-direction: column; gap: var(--space-1); }
-.set-error { display: flex; gap: var(--space-2); font-size: var(--fs-xs); }
-.set-error .err { color: var(--err); }
+.set-error { display: flex; align-items: center; gap: var(--space-2); min-height: 32px; padding: 0 var(--space-2); border-radius: var(--r-md); background: var(--err-soft); font-size: var(--fs-xs); }
+.set-error-ico { display: grid; place-items: center; color: var(--err); flex: none; }
+.set-error .member-label { flex: none; }
+.set-error .err { color: var(--err); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
 
 /* composer */
 .composer { flex: none; padding: var(--space-2) var(--space-3) var(--space-1); display: flex; flex-direction: column; gap: var(--space-1); }
@@ -664,7 +676,7 @@ body.resizing .rail { transition: none; }
 .composer-row { display: flex; align-items: flex-end; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); border-radius: var(--r-xl); background: var(--bg-2); box-shadow: var(--line-inset), var(--shadow-sm); transition: box-shadow var(--t-med) var(--ease-out); }
 .composer-row:focus-within { box-shadow: 0 0 0 1px var(--agent-line), 0 0 0 4px var(--agent-soft); }
 .composer textarea { flex: 1; min-width: 0; background: none; border: none; outline: none; resize: none; font-size: var(--fs-md); line-height: 1.4; color: var(--ink-0); padding: 7px 0; max-height: 120px; overflow-y: auto; }
-.composer textarea::placeholder { color: var(--ink-2); }
+.composer textarea::placeholder { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .composer textarea:disabled { opacity: 0.5; }
 .composer-send { width: 30px; height: 30px; border-radius: var(--r-lg); display: grid; place-items: center; background: var(--agent); color: var(--accent-ink); flex: none; transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-spring); }
 .composer-send:hover:not(:disabled) { transform: scale(1.05); }
@@ -786,6 +798,10 @@ body.resizing * { pointer-events: none !important; }
 body.resizing .resize-handle { pointer-events: auto !important; }
 
 /* ---------- narrow windows ---------- */
+@media (max-width: 1100px) {
+  .rail.open { width: min(var(--rail-w), 340px); }
+  .rail-inner { width: min(var(--rail-w), 340px); }
+}
 @media (max-width: 1000px) {
   .cmdbar { flex: 3; }
   .tb-left, .tb-right { flex: 0 0 auto; }

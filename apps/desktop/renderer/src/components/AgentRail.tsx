@@ -181,7 +181,7 @@ export function AgentRail() {
               value={text}
               rows={1}
               aria-label="Ask the agent"
-              placeholder={hasPage ? "Ask about this page or tell the agent what to do…" : "Tell the agent what to do…"}
+              placeholder={hasPage ? "Ask about this page, or give a task…" : "Tell the agent what to do…"}
               disabled={!connected}
               onChange={(e) => {
                 setText(e.target.value);

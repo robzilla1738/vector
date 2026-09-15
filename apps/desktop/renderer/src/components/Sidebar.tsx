@@ -85,7 +85,11 @@ const TabRow = memo(function TabRow({ p, active, index, dragging, dropBefore, dr
       ) : p.controller === "human" ? (
         <span className="tab-state human" title="You're in control — the agent is waiting">{I.handSm}</span>
       ) : null}
-      {eng.backend !== "vector" && <span className={`tab-engine ${eng.backend}`} title={eng.label}>{eng.short}</span>}
+      {eng.backend !== "vector" && (
+        <span className={`tab-engine ${eng.backend}`} title={`${eng.label} — ${eng.description}`} aria-label={eng.label}>
+          {eng.backend === "chrome" ? I.chromeSm : I.engine}
+        </span>
+      )}
       <button
         className="tab-close"
         tabIndex={-1}
@@ -205,10 +209,15 @@ function SetItem({ s, members, selected, onOpen }: { s: PageSet; members: SetMem
 /* ------------------------------------------------------------------ */
 
 export function Sidebar() {
-  const sidebar = useStore((s) => s.sidebar);
+  const sidebarPref = useStore((s) => s.sidebar);
+  const narrow = useStore((s) => s.narrow);
+  const railOpenNow = useStore((s) => s.railOpen);
+  // in a narrow window the expanded sidebar yields to the agent rail and folds to its thin rail
+  const sidebar: typeof sidebarPref = sidebarPref === "expanded" && narrow && railOpenNow ? "rail" : sidebarPref;
   const peek = useStore((s) => s.sidebarPeek);
   const setPeek = useStore((s) => s.setSidebarPeek);
   const toggleSidebar = useStore((s) => s.toggleSidebar);
+  const toggleRail = useStore((s) => s.toggleRail);
   const layout = useStore((s) => s.layout);
   const pages = useStore((s) => s.pages);
   const runs = useStore((s) => s.runs);
@@ -418,7 +427,11 @@ export function Sidebar() {
   const rail = (
     <div className="sb-rail" onMouseEnter={railEnter} onMouseLeave={railLeave}>
       <div className={`sb-head ${inElectron ? "electron" : ""}`}>
-        <button className="icon-btn" title="Expand sidebar (⌘S)" aria-label="Expand sidebar" onClick={toggleSidebar}>{I.sidebar}</button>
+        {sidebarPref === "expanded" ? (
+          <button className="icon-btn" title="Expand sidebar — closes the agent rail in this narrow window" aria-label="Expand sidebar" onClick={toggleRail}>{I.sidebar}</button>
+        ) : (
+          <button className="icon-btn" title="Expand sidebar (⌘S)" aria-label="Expand sidebar" onClick={toggleSidebar}>{I.sidebar}</button>
+        )}
       </div>
       <div className="rail-tiles" role="tablist" aria-label="Tabs">
         {tabs.slice(0, 40).map((p) => (

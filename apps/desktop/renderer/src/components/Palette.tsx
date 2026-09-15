@@ -86,7 +86,7 @@ export function Palette() {
     if (splitPick) {
       for (const p of pages) {
         if (p.pageId === activePageId || !match(`${p.title} ${p.url}`)) continue;
-        out.push({ id: `sp-${p.pageId}`, section: "tabs", t: p.title || p.url, d: hostOf(p.url), run: () => useStore.setState({ splitPageId: p.pageId }) });
+        out.push({ id: `sp-${p.pageId}`, section: "tabs", icon: p.favicon ? <img src={p.favicon} alt="" /> : I.globe, t: p.title || p.url, d: hostOf(p.url), run: () => useStore.setState({ splitPageId: p.pageId }) });
       }
       if (out.length === 0) out.push({ id: "none", section: "tabs", t: "No other open pages", run: () => setSplitPick(false) });
       return out;
@@ -118,7 +118,7 @@ export function Palette() {
 
     const w: Cmd[] = [
       { id: "new", section: "window", t: "New tab", k: "⌘T", icon: I.plusSm, run: () => newTab() },
-      ...(lastClosed ? [{ id: "reopen", section: "window" as const, t: `Reopen closed tab — ${lastClosed.title || lastClosed.url}`, k: "⌘⇧T", run: async () => { useStore.setState((s) => ({ closedTabs: s.closedTabs.slice(0, -1) })); await newTab(lastClosed.url); } }] : []),
+      ...(lastClosed ? [{ id: "reopen", section: "window" as const, t: `Reopen closed tab — ${lastClosed.title || lastClosed.url}`, k: "⌘⇧T", icon: I.reopen, run: async () => { useStore.setState((s) => ({ closedTabs: s.closedTabs.slice(0, -1) })); await newTab(lastClosed.url); } }] : []),
       { id: "ov", section: "window", t: "Tab overview", k: "⌘⇧O", icon: I.grid, run: async () => setMode("overview") },
       { id: "rail", section: "agent", t: railOpen ? "Hide agent rail" : "Show agent rail", k: "⌘⇧A", icon: I.sparklesSm, run: () => useStore.getState().toggleRail() },
       { id: "obs", section: "agent", t: "Inspect what the agent sees", d: "observe the active page", icon: I.obs, run: async () => { useStore.setState({ inspectorObs: null }); setOverlay("observe"); } },
@@ -128,12 +128,12 @@ export function Palette() {
         await call("sets.create", { name: `Tabs ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`, source: "tabs", pageIds: ids });
         toast(`Set created from ${ids.length} tabs`);
       } },
-      { id: "reload", section: "window", t: "Reload page", k: "⌘R", run: async () => { if (activePageId) await call("pages.reload", { pageId: activePageId }); } },
-      { id: "hard", section: "window", t: "Hard reload", k: "⇧⌘R", run: async () => { if (activePageId) await bridge.hardReload(activePageId); } },
-      { id: "find", section: "window", t: "Find in page", k: "⌘F", run: async () => setOverlay("find") },
-      { id: "sb", section: "window", t: "Toggle sidebar", k: "⌘S", run: async () => useStore.getState().toggleSidebar() },
-      { id: "hide-sb", section: "window", t: useStore.getState().sidebar === "hidden" ? "Show sidebar" : "Hide sidebar completely", run: async () => useStore.getState().setSidebar(useStore.getState().sidebar === "hidden" ? "expanded" : "hidden") },
-      { id: "bm", section: "window", t: activePage && bookmarks.some((b) => b.url === activePage.url) ? "Remove bookmark" : "Bookmark this page", k: "⌘D", run: async () => {
+      { id: "reload", section: "window", t: "Reload page", k: "⌘R", icon: I.reloadSm, run: async () => { if (activePageId) await call("pages.reload", { pageId: activePageId }); } },
+      { id: "hard", section: "window", t: "Hard reload", k: "⇧⌘R", icon: I.reloadSm, run: async () => { if (activePageId) await bridge.hardReload(activePageId); } },
+      { id: "find", section: "window", t: "Find in page", k: "⌘F", icon: I.findSm, run: async () => setOverlay("find") },
+      { id: "sb", section: "window", t: "Toggle sidebar", k: "⌘S", icon: I.sidebarSm, run: async () => useStore.getState().toggleSidebar() },
+      { id: "hide-sb", section: "window", t: useStore.getState().sidebar === "hidden" ? "Show sidebar" : "Hide sidebar completely", icon: I.sidebarCloseSm, run: async () => useStore.getState().setSidebar(useStore.getState().sidebar === "hidden" ? "expanded" : "hidden") },
+      { id: "bm", section: "window", t: activePage && bookmarks.some((b) => b.url === activePage.url) ? "Remove bookmark" : "Bookmark this page", k: "⌘D", icon: I.bookmarkSm, run: async () => {
         if (!activePage || !activePage.url.startsWith("http")) return;
         const marked = bookmarks.some((b) => b.url === activePage.url);
         await call(marked ? "bookmarks.remove" : "bookmarks.add", { url: activePage.url, title: activePage.title });
@@ -141,28 +141,28 @@ export function Palette() {
         useStore.setState({ bookmarks: marked ? s.bookmarks.filter((b) => b.url !== activePage.url) : [...s.bookmarks, { url: activePage.url, title: activePage.title }] });
       } },
       { id: "pin", section: "window", t: "Pin this site to the space", icon: I.pin, run: async () => { if (activePage && activePage.url.startsWith("http")) useStore.getState().togglePin({ url: activePage.url, title: activePage.title || hostOf(activePage.url) }); } },
-      { id: "split", section: "window", t: "Split view with page…", d: "two pages side by side", keep: true, run: async () => { setSplitPick(true); setQ(""); } },
-      ...(splitPageId ? [{ id: "unsplit", section: "window" as const, t: "Close split view", run: () => useStore.setState({ splitPageId: null }) }] : []),
-      { id: "open", section: "window", t: "Open file…", k: "⌘O", run: async () => {
+      { id: "split", section: "window", t: "Split view with page…", d: "two pages side by side", icon: I.split, keep: true, run: async () => { setSplitPick(true); setQ(""); } },
+      ...(splitPageId ? [{ id: "unsplit", section: "window" as const, t: "Close split view", icon: I.split, run: () => useStore.setState({ splitPageId: null }) }] : []),
+      { id: "open", section: "window", t: "Open file…", k: "⌘O", icon: I.folder, run: async () => {
         const path = await bridge.openFile();
         if (!path) return;
         const url = `file://${encodeURI(path)}`;
         if (activePageId) await call("pages.navigate", { pageId: activePageId, url });
         else await newTab(url);
       } },
-      { id: "print", section: "window", t: "Print…", k: "⌘P", run: async () => { if (activePageId) await bridge.printPage(activePageId); } },
-      { id: "dev", section: "window", t: "Developer tools", k: "⌥⌘I", run: async () => { if (activePageId) await bridge.devTools(activePageId); } },
+      { id: "print", section: "window", t: "Print…", k: "⌘P", icon: I.print, run: async () => { if (activePageId) await bridge.printPage(activePageId); } },
+      { id: "dev", section: "window", t: "Developer tools", k: "⌥⌘I", icon: I.code, run: async () => { if (activePageId) await bridge.devTools(activePageId); } },
       { id: "settings", section: "window", t: "Settings", k: "⌘,", icon: I.gear, run: async () => setOverlay("settings") },
       { id: "history", section: "window", t: "History", k: "⌘Y", icon: I.clockSm, run: async () => setOverlay("history") },
       { id: "downloads", section: "window", t: "Downloads", k: "⌘⇧J", icon: I.downloadSm, run: async () => setOverlay("downloads") },
       { id: "attach", section: "chrome", t: "Attach Chrome", d: "your signed-in Chrome, port 9222", icon: I.chromeSm, run: async () => { await call("chrome.attach", { port: 9222 }); toast("Chrome attached"); } },
-      ...(chromeConnected ? [{ id: "borrow", section: "chrome" as const, t: "Add a Chrome tab…", d: "borrow a tab from your Chrome", keep: true, run: async () => { setChromeTabs((await call("chrome.tabs")) as ChromeTab[]); setQ(""); } }] : []),
-      { id: "detach", section: "chrome", t: "Detach Chrome", run: async () => { await call("chrome.detach"); toast("Chrome detached"); } },
-      { id: "cookies", section: "chrome", t: "Import cookies from Chrome", d: chromeConnected ? "via attached Chrome" : "from your Chrome profile", run: async () => {
+      ...(chromeConnected ? [{ id: "borrow", section: "chrome" as const, t: "Add a Chrome tab…", d: "borrow a tab from your Chrome", icon: I.chromeSm, keep: true, run: async () => { setChromeTabs((await call("chrome.tabs")) as ChromeTab[]); setQ(""); } }] : []),
+      { id: "detach", section: "chrome", t: "Detach Chrome", icon: I.unplug, run: async () => { await call("chrome.detach"); toast("Chrome detached"); } },
+      { id: "cookies", section: "chrome", t: "Import cookies from Chrome", d: chromeConnected ? "via attached Chrome" : "from your Chrome profile", icon: I.cookie, run: async () => {
         const r = await call<{ imported: number; domains: number }>("chrome.importCookies", { source: "auto" });
         toast(`${r.imported} cookies imported from ${r.domains} domains`);
       } },
-      ...(activePage?.backend === "chrome" ? [{ id: "live", section: "chrome" as const, t: "Open live in Chrome", run: async () => { await call("pages.openLive", { pageId: activePage.pageId }); } }] : []),
+      ...(activePage?.backend === "chrome" ? [{ id: "live", section: "chrome" as const, t: "Open live in Chrome", icon: I.external, run: async () => { await call("pages.openLive", { pageId: activePage.pageId }); } }] : []),
     ];
     for (const s of layout.spaces) {
       if (s.id !== layout.activeSpaceId) w.push({ id: `space-${s.id}`, section: "spaces", t: `Switch to ${s.name}`, icon: <span className="space-dot" data-space={s.color} />, run: () => useStore.getState().switchSpace(s.id) });
@@ -219,7 +219,7 @@ export function Palette() {
               <div key={c.id}>
                 {first && SECTION[c.section] && <div className="pal-section">{SECTION[c.section]}</div>}
                 <div id={`pal-${c.id}`} role="option" aria-selected={i === sel} className={`pal-item ${i === sel ? "sel" : ""}`} onMouseMove={() => sel !== i && setSel(i)} onClick={() => exec(c)}>
-                  <span className="pal-ico">{c.icon ?? I.right}</span>
+                  <span className="pal-ico">{c.icon ?? I.command}</span>
                   <span className="t">{c.t}</span>
                   {c.d && <span className="d">{c.d}</span>}
                   {c.k && <kbd>{c.k}</kbd>}

@@ -97,9 +97,12 @@ interface Workspace {
   connected: boolean;
   /** bumps each time something asks the command bar to take focus */
   focusRequest: number;
+  /** window is too narrow for sidebar + stage + agent rail side by side */
+  narrow: boolean;
   layout: Layout;
 
   setMode(m: Mode): void;
+  setNarrow(v: boolean): void;
   setOverlay(o: Overlay): void;
   toggleRail(): void;
   openRail(view?: RailView): void;
@@ -188,9 +191,11 @@ export const useStore = create<Workspace>((set, get) => ({
   inspectorObs: null,
   connected: false,
   focusRequest: 0,
+  narrow: false,
   layout: storage ? parseLayout(storage.getItem(LAYOUT_KEY)) : emptyLayout(),
 
   setMode: (mode) => set({ mode }),
+  setNarrow: (narrow) => set({ narrow }),
   setOverlay: (overlay) => {
     void bridge.overlay(isScrimOverlay(overlay));
     set({ overlay });

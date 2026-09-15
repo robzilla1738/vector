@@ -62,6 +62,15 @@ export function App() {
     return unsub;
   }, []);
 
+  // narrow windows: the sidebar folds to its thin rail while the agent rail is open
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1100px)");
+    const apply = () => useStore.getState().setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
   // initial sync + event stream
   useEffect(() => {
     void useStore.getState().refresh();
@@ -256,23 +265,25 @@ export function App() {
         void bridge.contextMenu(editable ? null : useStore.getState().activePageId);
       }}
     >
-      <Sidebar />
-      <div className="main-col">
-        {!connected && (
-          <div className="degraded" role="alert">
-            <span className="pulse-dot warn" />
-            <span>Runtime disconnected — tabs keep working, the agent is paused while we reconnect.</span>
-            <button className="btn sm" onClick={() => void useStore.getState().refresh()}>Reconnect now</button>
+      {!connected && (
+        <div className="degraded" role="alert">
+          <span className="pulse-dot warn" />
+          <span>Runtime disconnected — tabs keep working, the agent is paused while we reconnect.</span>
+          <button className="btn sm" onClick={() => void useStore.getState().refresh()}>Reconnect now</button>
+        </div>
+      )}
+      <div className="app-body">
+        <Sidebar />
+        <div className="main-col">
+          <Toolbar />
+          <div className="main">
+            <div className="stage-wrap">
+              {overlay === "find" && <FindBar />}
+              <Stage ref={stageRef} page={activePage} />
+              {overlay === "downloads" && <Downloads />}
+            </div>
+            <AgentRail />
           </div>
-        )}
-        <Toolbar />
-        <div className="main">
-          <div className="stage-wrap">
-            {overlay === "find" && <FindBar />}
-            <Stage ref={stageRef} page={activePage} />
-            {overlay === "downloads" && <Downloads />}
-          </div>
-          <AgentRail />
         </div>
       </div>
       {overlay === "palette" && <Palette />}

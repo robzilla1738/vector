@@ -21,6 +21,10 @@ export function SetPanel({ setId }: { setId: string }) {
   }, [members]);
   if (!set) return <div className="rail-empty">This set is no longer available.</div>;
   const total = members.length || set.memberIds.length;
+  const list: SetMember[] = members.length ? members : set.memberIds.map((id, i) => ({ memberId: id, setId: set.setId, ordinal: i, status: "queued" as const }));
+  const running = counts.running > 0;
+  const failed = list.filter((m) => m.status === "failed");
+  const label = (m: SetMember) => m.label ?? (m.url ? hostOf(m.url) : m.memberId);
 
   return (
     <div className="set-panel">
@@ -28,45 +32,74 @@ export function SetPanel({ setId }: { setId: string }) {
         <span className="run-ico set">{I.layers}</span>
         <h2>{set.name}</h2>
       </div>
+
+      <div className="run-status nums">
+        <span className={`st ${running ? "running" : counts.failed && counts.completed + counts.failed === total ? "partial" : counts.completed === total ? "completed" : "queued"}`}>
+          {running ? "Working" : counts.completed === total ? "Done" : counts.queued === total ? "Queued" : "Partly done"}
+        </span>
+        <span className="run-time" title="Members done">{counts.completed}/{total} done</span>
+        <span className="sp" />
+        <button className="btn sm" onClick={() => { void refreshResults(set.setId).then(() => setMode("table")).catch(errToast); }}>
+          {I.table} Results
+        </button>
+      </div>
+
+      {/* one segment per member, in ordinal order — the shape of progress, not a percentage */}
+      <div className="set-bar" role="img" aria-label={`${counts.completed} of ${total} members completed`}>
+        {list.map((m) => <i key={m.memberId} className={m.status} />)}
+      </div>
       <div className="set-counts nums">
         {ORDER.filter((k) => counts[k] > 0).map((k) => (
           <span key={k} className={`set-count ${k}`}>
             <b>{counts[k]}</b> {k}
           </span>
         ))}
-        <span className="set-count total"><b>{total}</b> members</span>
-        <span className="sp" />
-        <button className="btn sm" onClick={() => { void refreshResults(set.setId).then(() => setMode("table")).catch(errToast); }}>
-          {I.table} Results
-        </button>
       </div>
-      <div className="member-grid" role="list" aria-label="Members">
-        {(members.length ? members : set.memberIds.map((id, i) => ({ memberId: id, setId: set.setId, ordinal: i, status: "queued" as const }))).map((m: SetMember) => (
-          <button
-            key={m.memberId}
-            role="listitem"
-            className={`member ${m.status}`}
-            title={`${m.label ?? m.url ?? m.memberId} — ${m.status}${m.error ? `: ${m.error}` : ""}`}
-            aria-label={`${m.label ?? m.url ?? m.memberId}: ${m.status}`}
-            onClick={() => {
-              if (m.pageId) void activate(m.pageId).catch(errToast);
-              else if (m.url) void call("pages.open", { url: m.url, backend: "vector", activate: true }).catch(errToast);
-            }}
-          >
-            <span className="member-label">{m.label ?? (m.url ? hostOf(m.url) : m.memberId)}</span>
-            <span className="member-state">{m.status === "running" ? <span className="pulse-dot" /> : m.status === "completed" ? I.check : m.status === "failed" ? I.close : null}</span>
-          </button>
-        ))}
-      </div>
-      {counts.failed > 0 && (
-        <div className="set-errors">
-          {members.filter((m) => m.status === "failed").slice(0, 5).map((m) => (
-            <div key={m.memberId} className="set-error">
-              <span className="member-label">{m.label ?? hostOf(m.url ?? "")}</span>
-              <span className="err">{m.error ?? "failed"}</span>
-            </div>
+
+      <section className="run-section">
+        <div className="run-section-head">
+          <span>Members</span>
+          <span className="count nums">{total}</span>
+        </div>
+        <div className="member-grid" role="list" aria-label="Members">
+          {list.map((m) => (
+            <button
+              key={m.memberId}
+              role="listitem"
+              className={`member ${m.status}`}
+              title={`${label(m)} — ${m.status}${m.error ? `: ${m.error}` : ""}${m.url ? `\n${m.url}` : ""}`}
+              aria-label={`${label(m)}: ${m.status}`}
+              onClick={() => {
+                if (m.pageId) void activate(m.pageId).catch(errToast);
+                else if (m.url) void call("pages.open", { url: m.url, backend: "vector", activate: true }).catch(errToast);
+              }}
+            >
+              <span className="member-label">{label(m)}</span>
+              <span className="member-foot">
+                {m.url && m.label && <span className="member-host">{hostOf(m.url)}</span>}
+                <span className="member-state">{m.status === "running" ? <span className="pulse-dot" /> : m.status === "completed" ? I.check : m.status === "failed" ? I.close : m.status === "queued" ? I.circle : I.close}</span>
+              </span>
+            </button>
           ))}
         </div>
+      </section>
+
+      {failed.length > 0 && (
+        <section className="run-section">
+          <div className="run-section-head">
+            <span>Failed</span>
+            <span className="count nums">{failed.length}</span>
+          </div>
+          <div className="set-errors">
+            {failed.slice(0, 5).map((m) => (
+              <div key={m.memberId} className="set-error">
+                <span className="set-error-ico">{I.alert}</span>
+                <span className="member-label">{label(m)}</span>
+                <span className="err selectable">{m.error ?? "failed"}</span>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );
