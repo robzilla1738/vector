@@ -39,3 +39,5 @@ export { renderObservation, compactObservation } from "./services/observation-re
 export { WorkerPool } from "./scheduler/pool.js";
 export { runMemberAgent } from "./agent/member-agent.js";
 export { SetRunner } from "./scheduler/set-runner.js";
+export { EarlyDispatcher } from "./agent/early-dispatch.js";
+export { PlanStreamParser } from "./agent/plan-stream.js";

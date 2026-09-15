@@ -30,6 +30,22 @@ export interface ModelClient {
     maxOutputTokens?: number;
   }): Promise<StructuredCallResult<T>>;
 
+  /**
+   * Same contract as generateStructured, but the raw completion text is
+   * streamed through `onText` as it arrives so the caller can start acting
+   * on completed parts (plan steps) before the object is finished. Optional:
+   * the coordinator falls back to generateStructured when absent.
+   */
+  streamStructured?<T>(opts: {
+    modelId: string;
+    system: string;
+    prompt: string;
+    schema: z.ZodType<T>;
+    signal?: AbortSignal;
+    maxOutputTokens?: number;
+    onText: (delta: string) => void;
+  }): Promise<StructuredCallResult<T>>;
+
   generateText(opts: {
     modelId: string;
     system?: string;

@@ -4,6 +4,7 @@ import {
   generateText,
   JSONParseError,
   NoObjectGeneratedError,
+  streamText,
   TypeValidationError,
   UnsupportedFunctionalityError,
 } from "ai";
@@ -210,6 +211,69 @@ export class GatewayModelClient implements ModelClient {
       }
     }
     return this.structuredFromText(opts, started);
+  }
+
+  /**
+   * Streamed variant of the JSON-in-text path (plan A5). The completion is
+   * requested with `streamText`; every text delta is forwarded to `onText`
+   * so the coordinator can parse and dispatch steps as they complete. The
+   * finished text is validated exactly like the non-streaming path. On a
+   * parse failure it falls back to one non-streamed retry — by then the
+   * caller has already executed whatever steps streamed in cleanly, and
+   * the retry's object is reconciled against those.
+   */
+  async streamStructured<T>(opts: {
+    modelId: string;
+    system: string;
+    prompt: string;
+    schema: z.ZodType<T>;
+    signal?: AbortSignal;
+    maxOutputTokens?: number;
+    onText: (delta: string) => void;
+  }): Promise<StructuredCallResult<T>> {
+    const started = Date.now();
+    const schemaHint = schemaNeedsJsonFallback(opts.schema)
+      ? `\n\n${PLAN_JSON_HINT}`
+      : `\n\nRespond with ONLY a JSON value that validates against this JSON Schema — no prose, no markdown fences:\n${JSON.stringify(z.toJSONSchema(opts.schema))}`;
+    const parse = (text: string): T => opts.schema.parse(normalizePlannerObject(extractJson(text)));
+    const stream = streamText({
+      model: this.gateway(opts.modelId),
+      system: `${opts.system}${schemaHint}`,
+      messages: [{ role: "user", content: opts.prompt }],
+      abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
+      maxRetries: 0,
+      maxOutputTokens: opts.maxOutputTokens ?? 2000,
+      providerOptions: gatewayProviderOptions(this.only),
+    });
+    let text = "";
+    for await (const delta of stream.textStream) {
+      text += delta;
+      opts.onText(delta);
+    }
+    const usage = await Promise.resolve(stream.usage).catch(() => undefined);
+    try {
+      return {
+        object: parse(text),
+        durationMs: Date.now() - started,
+        inputTokens: usage?.inputTokens,
+        outputTokens: usage?.outputTokens,
+      };
+    } catch (e) {
+      if (opts.signal?.aborted) throw e;
+      const retry = await this.generateText({
+        modelId: opts.modelId,
+        system: `${opts.system}\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.`,
+        prompt: opts.prompt,
+        signal: opts.signal,
+        maxOutputTokens: (opts.maxOutputTokens ?? 2000) * 2,
+      });
+      return {
+        object: parse(retry.text),
+        durationMs: Date.now() - started,
+        inputTokens: retry.inputTokens,
+        outputTokens: retry.outputTokens,
+      };
+    }
   }
 
   private async structuredFromText<T>(
