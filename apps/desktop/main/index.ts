@@ -526,7 +526,7 @@ async function boot() {
     transparent: true,
     title: "Vector",
     titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 13, y: 13 },
+    trafficLightPosition: { x: 16, y: 18 },
     roundedCorners: true,
     vibrancy: "sidebar",
     visualEffectState: "active",

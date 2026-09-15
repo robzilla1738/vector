@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore, call, toast, errToast } from "../store";
 import { bridge } from "../bridge";
-import { toUrl, isUrlLike } from "./Toolbar";
+import { toUrl, isUrlLike } from "../chrome";
 
 interface Cmd {
   k?: string;
@@ -91,6 +91,7 @@ export function Palette() {
         t: `Ask the agent: “${v}”`,
         d: "runs.start on the active page",
         run: async () => {
+          useStore.setState({ railOpen: true });
           await call("runs.start", { goal: v, pageId: activePageId ?? undefined });
           toast("Agent started");
         },
@@ -145,7 +146,8 @@ export function Palette() {
         },
       },
       { t: "Find in page", k: "⌘F", run: async () => setOverlay("find") },
-      { t: railOpen ? "Hide agent panel" : "Show agent panel", run: () => useStore.getState().toggleRail() },
+      { t: railOpen ? "Hide agent inspector" : "Show agent inspector", run: () => useStore.getState().toggleRail() },
+      { t: useStore.getState().shelfOpen ? "Hide activity" : "Show activity", run: () => useStore.getState().toggleShelf() },
       { t: "Collect open tabs into a set", d: "sets.create from tabs", run: async () => {
         const ids = pages.filter((p) => !p.ownedByRuntime).map((p) => p.pageId);
         if (ids.length) {
@@ -228,7 +230,7 @@ export function Palette() {
   };
 
   return (
-    <div className="overlay-scrim fade-in" onMouseDown={close}>
+    <div className="overlay-scrim" onMouseDown={close}>
       <div className="palette" onMouseDown={(e) => e.stopPropagation()}>
         <input
           autoFocus

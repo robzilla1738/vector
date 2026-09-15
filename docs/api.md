@@ -62,8 +62,8 @@ replay.
 
 `runs.start { goal, pageId?, pageIds?, setId?, modelId?, chatId?,
 maxSteps?, maxModelCalls?, deadlineMs? }` → `runId` — `chatId` groups
-runs into durable chat threads (the agent rail scopes history and
-follow-up context per thread) ·
+runs into durable chat threads (the optional agent inspector scopes
+history and follow-up context per thread) ·
 `runs.get { runId }` · `runs.list { limit? }` ·
 `runs.pause` / `runs.resume` / `runs.cancel { runId }` ·
 `runs.answer { runId, answer }` — reply to an agent question ·

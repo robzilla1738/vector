@@ -21,7 +21,8 @@ skips ports that are already listening.
 
 ```bash
 pnpm test            # unit + integration (vitest run tests/unit tests/integration)
-pnpm test:unit       # contracts, refs, rpc channel, executor, repo, worker pool
+pnpm test:unit       # contracts, refs, rpc, executor, repo, pool, chrome shell
+                     # (address vs search, overlay→native-view, stylesheet tokens)
 pnpm test:e2e        # launches real Electron, drives the loopback API
 pnpm exec vitest run tests/integration   # real headless-Chrome runtime + fixtures
 ```

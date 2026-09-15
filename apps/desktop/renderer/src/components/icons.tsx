@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
-  Bot,
   Bookmark,
   ChevronDown,
   ChevronUp,
@@ -12,6 +11,7 @@ import {
   Download,
   Eye,
   Globe,
+  Layers,
   LayoutGrid,
   ListChecks,
   Lock,
@@ -26,11 +26,9 @@ import {
   ScanEye,
   Search,
   Settings,
-  Sparkles,
   Table2,
   TriangleAlert,
   X,
-  Zap,
 } from "lucide-react";
 import type { ReactElement } from "react";
 
@@ -47,7 +45,7 @@ export const I = {
   globe: <Globe {...sm} />,
   grid: <LayoutGrid {...sz} />,
   table: <Table2 {...sz} />,
-  bolt: <Zap {...sz} />,
+  layers: <Layers {...sz} />,
   download: <Download {...sz} />,
   gear: <Settings {...sz} />,
   rail: <PanelRight {...sz} />,
@@ -69,10 +67,9 @@ export const I = {
   send: <ArrowUp {...sz} />,
   obs: <ScanEye {...sm} />,
   eye: <Eye {...sm} />,
-  // timeline kinds
-  run: <Bot {...sm} />,
+  run: <Play {...sm} />,
   result: <ListChecks {...sm} />,
-  model: <Sparkles {...sm} />,
+  model: <ScanEye {...sm} />,
   downloadSm: <ArrowDownToLine {...sm} />,
   alert: <TriangleAlert {...sm} />,
 } satisfies Record<string, ReactElement>;

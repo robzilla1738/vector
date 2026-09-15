@@ -24,25 +24,35 @@ Programs, observations, and saved-operation sets work with no key.
 
 ## Using the app
 
+The window is a compact macOS browser: traffic lights in a `hiddenInset`
+titlebar, a ~52px toolbar, tabs/sets in a collapsible left rail, and the page
+occupying most of the stage. The agent inspector is closed until you open it.
+
 - `⌘T` new tab · `⌘W` close tab · `⌘⇧T` reopen closed tab · `⌘1–9` switch tabs
-- The address field lives in the **sidebar** — `⌘L` focuses it (opening the
-  sidebar if collapsed). Type a URL, a search, or `> task` / `⇥` to send the
-  agent. A new tab shows an ask card with pinned sites.
-- `⌘K` command palette — sets, Chrome attach, observation inspector, split
-  view, bookmarks
+- Address field is in the **toolbar** — `⌘L` focuses it. Type a URL or a search
+  and it navigates immediately (no model). A new tab explains that and focuses
+  the field; favorites sit underneath if you have bookmarks.
+- `⌘K` command palette — commands, URL/search, agent tasks, sets, Chrome
+  attach, observation inspector, split view, bookmarks
 - `⌘F` find in page · `⌘R` reload · `⌘=`/`⌘-`/`⌘0` zoom · `⌥←`/`⌥→` back/forward
-- `⌘⇧A` tab overview · `⌘Y` history · `⌘⇧J` downloads · `⌘,` settings ·
-  `⌘S` toggle sidebar
-- Both panels are **drag-resizable** (double-click the edge to reset) and
-  collapse/expand fluidly; widths persist across restarts.
-- The agent rail keeps **chat threads** — `+` starts a new conversation, the
-  history button lists past threads, and follow-ups stay scoped to the thread.
-- Type or click inside an agent-driven page to take it over; the toolbar chip
-  shows who controls the page and hands control back with one click.
-- Results table: sort columns, filter, export CSV/JSON, click a source URL to
-  reopen its page.
-- Run steps carry a ◉ button — inspect the exact observation the planner saw
-  when it produced that step (marked historical; it doesn't rewind the page).
+- Toolbar: Focus / Overview / Table · `⌘⇧A` overview · `⌘Y` history ·
+  `⌘⇧J` downloads · `⌘,` settings · `⌘S` toggle the tab rail
+- The tab rail and agent inspector are **drag-resizable** (double-click the
+  edge to reset); widths persist. The activity shelf at the bottom of the
+  stage is collapsed by default and shows complete / active / queued / files
+  — never an invented percentage.
+- Open the **agent inspector** from the toolbar when you want chat. Threads
+  stay scoped; `+` starts a new conversation.
+- The toolbar labels **Vector** vs **Chrome**. Type or click inside an
+  agent-driven page to take it over; the chip hands control back with one
+  click. Attached Chrome tabs stay in Chrome — use Open live in Chrome.
+- Command palette, settings, history, and the observation inspector hide the
+  native page so they are not covered by `WebContentsView`. Find and downloads
+  shrink the stage instead.
+- Results table: sort, filter, export CSV/JSON, click a source URL to reopen
+  its page.
+- Run steps carry an inspect control — the exact observation the planner saw
+  (marked historical; it doesn't rewind the page).
 - `collectScroll` program steps accumulate virtualized/infinite lists by
   stable key — see docs/api.md.
 

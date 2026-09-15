@@ -294,7 +294,7 @@ export function Rail() {
         <div className="rail-body" ref={bodyRef}>
           {turns.length === 0 && (
             <div className="rail-empty">
-              Tell Vector what to do — it sees the page and acts on it.
+              Ask Vector to work this page. Browsing stays in the address field.
             </div>
           )}
           {turns.map((r) => (

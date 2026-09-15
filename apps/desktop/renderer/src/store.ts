@@ -11,6 +11,7 @@ import type {
   VectorEvent,
 } from "@vector/contracts";
 import { bridge } from "./bridge";
+import { isScrimOverlay } from "./chrome";
 
 export type Mode = "focus" | "overview" | "table";
 export type Overlay = null | "palette" | "settings" | "find" | "downloads" | "history" | "observe";
@@ -39,6 +40,7 @@ interface Workspace {
   overlay: Overlay;
   railOpen: boolean;
   sidebarOpen: boolean;
+  shelfOpen: boolean;
   findText: string;
   findMatches: { matches: number; activeMatch?: number } | null;
   activeSetId: string | null;
@@ -64,6 +66,7 @@ interface Workspace {
   setOverlay(o: Overlay): void;
   toggleRail(): void;
   toggleSidebar(): void;
+  toggleShelf(): void;
   activate(pageId: string): Promise<void>;
   find(text: string, findNext?: boolean, forward?: boolean): Promise<void>;
   /** chat composer → queues an agent run (serial — one agent on the tabs at a time) */
@@ -102,8 +105,9 @@ export const useStore = create<Workspace>((set, get) => ({
   lastSeq: 0,
   mode: "focus",
   overlay: null,
-  railOpen: true,
+  railOpen: false,
   sidebarOpen: true,
+  shelfOpen: false,
   findText: "",
   findMatches: null,
   activeSetId: null,
@@ -124,13 +128,12 @@ export const useStore = create<Workspace>((set, get) => ({
 
   setMode: (mode) => set({ mode }),
   setOverlay: (overlay) => {
-    // Only full-scrim overlays hide the native page — the find bar and the
-    // downloads shelf live in the layout flow so the page stays live.
-    void bridge.overlay(overlay === "palette" || overlay === "settings" || overlay === "history" || overlay === "observe");
+    void bridge.overlay(isScrimOverlay(overlay));
     set({ overlay });
   },
   toggleRail: () => set((s) => ({ railOpen: !s.railOpen })),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  toggleShelf: () => set((s) => ({ shelfOpen: !s.shelfOpen })),
 
   toast: (text, kind = "info") => {
     const id = Date.now() + Math.random();
@@ -168,7 +171,7 @@ export const useStore = create<Workspace>((set, get) => ({
   },
   selectChat: (chatId) => set({ activeChatId: chatId, railOpen: true }),
 
-  sidebarWidth: Number(localStorage.getItem("vector.sb-w")) || 232,
+  sidebarWidth: Number(localStorage.getItem("vector.sb-w")) || 216,
   railWidth: Number(localStorage.getItem("vector.rail-w")) || 340,
   setSidebarWidth: (w) => {
     localStorage.setItem("vector.sb-w", String(w));

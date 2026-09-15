@@ -44,7 +44,7 @@ Single-writer SQLite (`node:sqlite`) with these tables: `sessions`, `pages`
 | MCP + CLI over the same API | `packages/mcp`, `packages/cli` — no second browser connection |
 | Agent convergence guards | coordinator: plan-repeat detection, no-progress detection, model-error ladder, vision fallback, forced final-answer call |
 | Shadow-DOM-aware observation/extract | `observe-script.ts` + `playwright-page.ts` (open shadow roots for elements + text) |
-| Human-facing chat surface | desktop rail: user bubbles, agent cards, queued messages, needs-input answers, retry, structured results |
+| Human-facing chat surface | optional agent inspector (closed by default): user bubbles, agent cards, queued messages, needs-input answers, retry, structured results |
 
 ## Actual gaps vs. the roadmap (the work items)
 

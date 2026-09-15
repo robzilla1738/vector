@@ -113,8 +113,12 @@ export function ResultsTable() {
         )}
       </div>
       {results.length === 0 ? (
-        <div style={{ color: "var(--ink-2)", padding: 20 }}>
-          No results yet. Pick a set in ⌘K, or run <span className="mono">sets.map</span> via the CLI.
+        <div className="empty-state" style={{ marginTop: 48 }}>
+          <h2>No extracted records</h2>
+          <p>Collect open tabs into a set, or run a page set. Each row stays tied to its source page.</p>
+          <button className="btn primary" onClick={() => useStore.getState().setOverlay("palette")}>
+            Collect tabs…
+          </button>
         </div>
       ) : (
         <table className="rt">

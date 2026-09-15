@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useStore, call, toast, errToast } from "./store";
 import { bridge, inElectron } from "./bridge";
+import { nativePageId } from "./chrome";
 import { Sidebar } from "./components/Sidebar";
 import { Toolbar } from "./components/Toolbar";
 import { Rail } from "./components/Rail";
@@ -13,55 +14,28 @@ import { Settings } from "./components/Settings";
 import { History } from "./components/History";
 import { Inspector } from "./components/Inspector";
 import { SiteTile } from "./components/SiteTile";
-import { I } from "./components/icons";
+import { ActivityShelf } from "./components/ActivityShelf";
 
-/** New-tab home — centered ask box + pinned sites, Comet-style. */
 function NewTabHome({ bookmarks }: { bookmarks: { url: string; title: string }[] }) {
-  const [q, setQ] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => inputRef.current?.focus(), []);
-
-  const submit = async () => {
-    const v = q.trim();
-    if (!v) return;
-    setQ("");
-    // a URL or obvious domain opens as a page; anything else goes to the agent
-    if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$|^https?:\/\/|^about:|^file:/.test(v)) {
-      const url = /^[a-z]+:/i.test(v) ? v : `https://${v}`;
-      const { pages, activePageId } = useStore.getState();
-      const blank = pages.find((p) => p.pageId === activePageId && (!p.url || p.url === "about:blank"));
-      const req = blank
-        ? call("pages.navigate", { pageId: blank.pageId, url })
-        : call("pages.open", { url, backend: "vector", activate: true });
-      await req.catch(errToast);
-    } else {
-      await useStore.getState().sendChat(v).catch(errToast);
-    }
-  };
+  useEffect(() => {
+    document.querySelector<HTMLInputElement>(".omnibox input")?.focus();
+  }, []);
 
   const openSite = (url: string) =>
     void call("pages.open", { url, backend: "vector", activate: true }).catch(errToast);
 
   return (
     <div className="stage-empty">
-      <div className="ask-card">
-        <span className="ask-ico">{I.search}</span>
-        <input
-          ref={inputRef}
-          value={q}
-          placeholder="Ask anything…"
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void submit();
-          }}
-        />
-        <button className="ask-send" title="Send" disabled={!q.trim()} onClick={() => void submit()}>
-          {I.send}
+      <div className="empty-state">
+        <h2>New Tab</h2>
+        <p>Type an address or search above.</p>
+        <button className="btn primary" onClick={() => document.querySelector<HTMLInputElement>(".omnibox input")?.focus()}>
+          Focus address field
         </button>
       </div>
       {bookmarks.length > 0 && (
         <div className="ask-row">
-          <span className="apps-label">Jump back in</span>
+          <span className="apps-label">Favorites</span>
           {bookmarks.slice(0, 8).map((b) => (
             <SiteTile key={b.url} url={b.url} title={b.title} onClick={() => openSite(b.url)} />
           ))}
@@ -78,6 +52,7 @@ export function App() {
   const sidebarOpen = useStore((s) => s.sidebarOpen);
   const activePageId = useStore((s) => s.activePageId);
   const pages = useStore((s) => s.pages);
+  const activePage = pages.find((p) => p.pageId === activePageId);
   const splitPageId = useStore((s) => s.splitPageId);
   const sidebarWidth = useStore((s) => s.sidebarWidth);
   const railWidth = useStore((s) => s.railWidth);
@@ -121,8 +96,7 @@ export function App() {
       // would cover them); in-flow strips like the find bar and downloads
       // shelf shrink the stage instead, so the page stays live — findInPage
       // highlighting and page interaction keep working.
-      const scrim = overlay === "palette" || overlay === "settings" || overlay === "history" || overlay === "observe";
-      const showPage = mode === "focus" && !scrim ? activePageId : null;
+      const showPage = nativePageId({ mode, overlay, activePageId, url: activePage?.url });
       const split = showPage ? splitPageId : null;
       void bridge.setStage(showPage, { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }, split);
     };
@@ -130,7 +104,7 @@ export function App() {
     ro.observe(el);
     report();
     return () => ro.disconnect();
-  }, [activePageId, splitPageId, mode, overlay, railOpen, sidebarOpen]);
+  }, [activePageId, activePage?.url, splitPageId, mode, overlay, railOpen, sidebarOpen]);
 
   const dispatchShortcut = (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }) => {
     const k = s.key.toLowerCase().replace(/^arrow/, "");
@@ -255,13 +229,8 @@ export function App() {
   };
 
   const focusOmni = () => {
-    const st = useStore.getState();
-    const wasClosed = !st.sidebarOpen;
-    if (wasClosed) st.toggleSidebar();
-    // let the open transition run before focusing so the field is visible
-    setTimeout(() => document.querySelector<HTMLInputElement>(".omnibox input")?.focus(), wasClosed ? 250 : 0);
+    document.querySelector<HTMLInputElement>(".omnibox input")?.focus();
   };
-  const activePage = pages.find((p) => p.pageId === activePageId);
 
   // renderer-side keys (when shell itself has focus)
   useEffect(() => {
@@ -307,26 +276,28 @@ export function App() {
               <div id="stage" ref={stageRef} />
               {mode === "focus" && activePage?.backend === "chrome" && (
                 <div className="stage-empty">
-                  <div className="hint" style={{ maxWidth: 380, textAlign: "center" }}>
-                    This tab lives in your Chrome window — Vector drives it over CDP.
-                  </div>
-                  <div className="stage-empty-actions">
-                    <button
-                      className="btn"
-                      onClick={() => void call("pages.openLive", { pageId: activePage.pageId }).catch(errToast)}
-                    >
-                      Open live in Chrome
-                    </button>
+                  <div className="empty-state">
+                    <h2>This tab is in Chrome</h2>
+                    <p>Vector drives it over CDP. Type, click, and upload in the real Chrome window.</p>
+                    <div className="stage-empty-actions">
+                      <button
+                        className="btn primary"
+                        onClick={() => void call("pages.openLive", { pageId: activePage.pageId }).catch(errToast)}
+                      >
+                        Open live in Chrome
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
-              {mode === "focus" && (!activePage || !activePage.url || activePage.url === "about:blank") && (
+              {mode === "focus" && activePage?.backend !== "chrome" && (!activePage || !activePage.url || activePage.url === "about:blank") && (
                 <NewTabHome bookmarks={bookmarks} />
               )}
               {mode === "overview" && <Overview />}
               {mode === "table" && <ResultsTable />}
             </div>
             {overlay === "downloads" && <Downloads />}
+            <ActivityShelf />
           </div>
           <Rail />
         </div>

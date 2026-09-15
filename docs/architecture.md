@@ -7,7 +7,8 @@ and several thin surfaces that talk to it.
             ┌─────────────────────────────────────────────┐
             │              Electron shell                  │
             │  BaseWindow ── WebContentsView (per page)    │
-            │  React renderer (tabs, omnibox, rail, …)     │
+            │  React renderer (toolbar omnibox, tab rail,  │
+            │   optional agent inspector, activity shelf)  │
             └───────┬──────────────────────┬───────────────┘
             fork-RPC (native.*, api.invoke)│ CDP (Playwright)
                     │                      │
@@ -36,7 +37,13 @@ and several thin surfaces that talk to it.
   the forked runtime child. It exposes `native.*` methods to the runtime over
   fork-RPC and forwards `api.invoke` calls from the renderer.
 - **Renderer** is a React shell synced from `workspace.get` + the WS event
-  stream. It positions the visible page view via `ui.setStage`.
+  stream. It positions the visible page view via `ui.setStage`. Address
+  entry (`chrome.ts` `toUrl` / `addressNavigate`) navigates or searches
+  without starting a run. `nativePageId` hides the native view for scrim
+  overlays (palette, settings, history, observe) and for missing/`about:blank`
+  URLs so New Tab is not covered by an opaque `WebContentsView`. Find and
+  downloads stay in-flow and keep the page live. The agent inspector is
+  optional and closed by default.
 - **CLI / MCP** are stateless clients of the loopback API.
 
 ## Browser drivers

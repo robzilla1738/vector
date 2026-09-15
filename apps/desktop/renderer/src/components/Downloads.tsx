@@ -19,7 +19,7 @@ export function Downloads() {
         <span>Downloads</span>
         <button className="icon-btn sm" title="Close (Esc)" onClick={() => setOverlay(null)}>{I.close}</button>
       </div>
-      {items.length === 0 && <div className="shelf-empty">Nothing downloaded yet.</div>}
+      {items.length === 0 && <div className="shelf-empty">No files yet. Downloads from this window appear here.</div>}
       {items.map((d) => {
         const active = d.state === "started" || d.state === "progressing";
         const pct = active && d.totalBytes ? Math.min(100, Math.round((d.size / d.totalBytes) * 100)) : null;

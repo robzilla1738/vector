@@ -2,13 +2,12 @@ import { useShallow } from "zustand/react/shallow";
 import { useStore, call, toast, errToast } from "../store";
 import { SiteTile } from "./SiteTile";
 import { ResizeHandle } from "./ResizeHandle";
-import { OmniBox } from "./Toolbar";
 import { I } from "./icons";
 import type { PageTarget } from "@vector/contracts";
 
 const ctlColor: Record<string, string> = {
   human: "var(--warn)",
-  agent: "var(--agent)",
+  agent: "var(--accent)",
   external: "var(--accent)",
 };
 
@@ -30,12 +29,13 @@ function SbTab({ p, active }: { p: PageTarget; active: boolean }) {
       <span className="fav">
         {crashed ? I.alert : p.loading ? <span className="spin" /> : p.favicon ? <img src={p.favicon} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} /> : I.globe}
       </span>
-      <span className="t">{p.title || p.url || "New tab"}</span>
+      <span className="t">{p.title || p.url || "New Tab"}</span>
       {p.controller !== "none" && <span className="ctl-dot" style={{ background: ctlColor[p.controller] }} />}
-      {p.backend === "chrome" && <span className="badge-agent" style={{ color: "var(--ok)", borderColor: "var(--ok-soft)" }}>C</span>}
+      {p.backend === "chrome" && <span className="badge-agent">Chrome</span>}
       <button
         className="x"
         title="Close tab (⌘W)"
+        aria-label="Close tab"
         onClick={(e) => {
           e.stopPropagation();
           void call("pages.close", { pageId: p.pageId }).catch(errToast);
@@ -49,11 +49,15 @@ function SbTab({ p, active }: { p: PageTarget; active: boolean }) {
 
 export function Sidebar() {
   const pages = useStore(useShallow((s) => s.pages.filter((p) => p.viewStatus !== "background" && !p.ownedByRuntime)));
+  const sets = useStore((s) => s.sets);
+  const members = useStore((s) => s.members);
   const activePageId = useStore((s) => s.activePageId);
+  const activeSetId = useStore((s) => s.activeSetId);
   const sessions = useStore((s) => s.sessions);
   const setMode = useStore((s) => s.setMode);
   const mode = useStore((s) => s.mode);
   const setOverlay = useStore((s) => s.setOverlay);
+  const refreshResults = useStore((s) => s.refreshResults);
   const bookmarks = useStore((s) => s.bookmarks);
   const sidebarWidth = useStore((s) => s.sidebarWidth);
   const setSidebarWidth = useStore((s) => s.setSidebarWidth);
@@ -65,19 +69,9 @@ export function Sidebar() {
     <div className="sidebar">
       <div className="sb-top">
         <span className="sp" />
-        <button
-          className={`icon-btn ${mode === "overview" ? "on" : ""}`}
-          title="Tab overview (⌘⇧A)"
-          onClick={() => setMode(mode === "overview" ? "focus" : "overview")}
-        >
-          {I.grid}
-        </button>
-        <button className="icon-btn" title="New tab (⌘T)" onClick={newTab}>
+        <button className="icon-btn" title="New tab (⌘T)" aria-label="New tab" onClick={newTab}>
           {I.plus}
         </button>
-      </div>
-      <div className="sb-omni">
-        <OmniBox compact />
       </div>
       {pins.length > 0 && (
         <div className="sb-pins">
@@ -92,12 +86,34 @@ export function Sidebar() {
         </div>
       )}
       <div className="sb-tabs">
+        <div className="sb-label">Tabs</div>
         {pages.map((p) => (
           <SbTab key={p.pageId} p={p} active={p.pageId === activePageId && mode === "focus"} />
         ))}
         <button className="sb-newtab" onClick={newTab}>
-          {I.plus} New tab
+          {I.plus} New Tab
         </button>
+        {sets.length > 0 && (
+          <>
+            <div className="sb-label">Sets</div>
+            {sets.map((st) => {
+              const n = members.filter((m) => m.setId === st.setId).length || st.memberIds.length;
+              return (
+                <button
+                  key={st.setId}
+                  className={`sb-tab ${activeSetId === st.setId && mode === "table" ? "active" : ""}`}
+                  onClick={() => {
+                    void refreshResults(st.setId).then(() => setMode("table"));
+                  }}
+                >
+                  <span className="fav">{I.layers}</span>
+                  <span className="t">{st.name}</span>
+                  <span className="sb-count">{n}</span>
+                </button>
+              );
+            })}
+          </>
+        )}
       </div>
       <div className="sb-foot">
         {chrome && (
@@ -117,20 +133,21 @@ export function Sidebar() {
           >
             {I.chrome}
             <span className="dot" />
+            Chrome
           </button>
         )}
         <span className="sp" />
-        <button className="icon-btn" title="History (⌘Y)" onClick={() => setOverlay("history")}>
+        <button className="icon-btn" title="History (⌘Y)" aria-label="History" onClick={() => setOverlay("history")}>
           {I.clock}
         </button>
-        <button className="icon-btn" title="Downloads (⌘⇧J)" onClick={() => setOverlay("downloads")}>
+        <button className="icon-btn" title="Downloads (⌘⇧J)" aria-label="Downloads" onClick={() => setOverlay("downloads")}>
           {I.download}
         </button>
-        <button className="icon-btn" title="Settings (⌘,)" onClick={() => setOverlay("settings")}>
+        <button className="icon-btn" title="Settings (⌘,)" aria-label="Settings" onClick={() => setOverlay("settings")}>
           {I.gear}
         </button>
       </div>
-      <ResizeHandle side="left" value={sidebarWidth} min={176} max={360} reset={232} onResize={setSidebarWidth} />
+      <ResizeHandle side="left" value={sidebarWidth} min={176} max={360} reset={216} onResize={setSidebarWidth} />
     </div>
   );
 }
