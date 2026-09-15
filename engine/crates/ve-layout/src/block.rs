@@ -271,10 +271,10 @@ fn place_marker(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) {
     let Some(marker) = &bx.marker else { return };
     let style = bx.style.clone();
     let width = ctx.shaper.measure(&marker.text, &style);
-    let line_height = bx
-        .lines
-        .first()
-        .map_or_else(|| style.line_height.to_px(style.font_size), |l| l.rect.height());
+    let line_height = bx.lines.first().map_or_else(
+        || style.line_height.to_px(style.font_size),
+        |l| l.rect.height(),
+    );
     let x = match marker.position {
         ListStylePosition::Outside => bx.content.x() - width,
         ListStylePosition::Inside => bx.content.x(),

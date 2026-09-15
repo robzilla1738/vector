@@ -7,8 +7,10 @@
 
 use std::rc::Rc;
 
-use ve_core::{NodeId, Rect};
+use ve_core::{NodeId, Point, Rect};
 use ve_dom::{Document, NodeKind};
+
+use crate::block::{ContainingBlock, Forced};
 use ve_style::{
     ComputedStyle, Content, Display, ListStylePosition, ListStyleType, PseudoElement, StyleTree,
     WhiteSpace,
@@ -137,6 +139,26 @@ pub struct LayoutBox {
     /// Memoised `(min-content, max-content)` widths, valid for one layout
     /// pass (the box tree is rebuilt whenever styles change).
     pub intrinsic_cache: Option<(f32, f32)>,
+    /// Memoised complete layouts of this box for a flex/grid parent, keyed
+    /// by the inputs that fully determine an independent formatting
+    /// context's geometry. Same lifetime as [`Self::intrinsic_cache`]. See
+    /// `flex::layout_item`.
+    pub layout_cache: Vec<LayoutMemo>,
+}
+
+/// One memoised layout of a flex/grid item: the inputs it was laid out
+/// with and the resulting subtree (with nested caches stripped, so memos do
+/// not nest).
+#[derive(Clone, Debug)]
+pub struct LayoutMemo {
+    /// Containing block the item was sized against.
+    pub cb: ContainingBlock,
+    /// Sizes forced by the container.
+    pub forced: Forced,
+    /// Margin-box origin the snapshot is positioned at.
+    pub origin: Point,
+    /// The laid-out box.
+    pub snapshot: Box<LayoutBox>,
 }
 
 impl LayoutBox {
@@ -160,6 +182,15 @@ impl LayoutBox {
             marker_fragment: None,
             cb_width: 0.0,
             intrinsic_cache: None,
+            layout_cache: Vec::new(),
+        }
+    }
+
+    /// Drops every layout memo in this subtree.
+    pub fn clear_layout_caches(&mut self) {
+        self.layout_cache.clear();
+        for child in &mut self.children {
+            child.clear_layout_caches();
         }
     }
 
@@ -314,7 +345,10 @@ pub fn build_element_box(doc: &Document, styles: &StyleTree, id: NodeId) -> Opti
 fn span_attr(doc: &Document, id: NodeId, name: &str, default: u32) -> u32 {
     doc.attribute(id, name)
         .and_then(|v| v.trim().parse::<u32>().ok())
-        .map_or(default, |v| v.clamp(if name == "rowspan" { 0 } else { 1 }, 1000))
+        .map_or(default, |v| {
+            let min = u32::from(name != "rowspan");
+            v.clamp(min, 1000)
+        })
 }
 
 fn container_kind(display: Display) -> BoxKind {
@@ -564,7 +598,7 @@ fn normalize_flow(bx: &mut LayoutBox) {
         .children
         .iter()
         .any(|c| !c.is_block_level() && c.is_in_flow());
-    if !is_flex_or_grid && !(has_block && has_inline) {
+    if !is_flex_or_grid && (!has_block || !has_inline) {
         return;
     }
 
@@ -587,7 +621,8 @@ fn normalize_flow(bx: &mut LayoutBox) {
     };
     for child in children {
         let wrap = if is_flex_or_grid {
-            matches!(child.kind, BoxKind::Text(_)) || (child.pseudo.is_some() && !child.is_block_level())
+            matches!(child.kind, BoxKind::Text(_))
+                || (child.pseudo.is_some() && !child.is_block_level())
         } else {
             !child.is_block_level() && child.is_in_flow()
         };
@@ -804,7 +839,11 @@ mod tests {
         assert_eq!(table.children.len(), 1, "one anonymous row group");
         let group = &table.children[0];
         assert_eq!(group.kind, BoxKind::TableRowGroup);
-        assert_eq!(group.children.len(), 2, "anonymous row with two cells + the bare row");
+        assert_eq!(
+            group.children.len(),
+            2,
+            "anonymous row with two cells + the bare row"
+        );
         assert_eq!(group.children[0].children.len(), 2);
 
         // Cells outside a table get an anonymous table.
@@ -815,6 +854,9 @@ mod tests {
         assert_eq!(div.children.len(), 2);
         assert_eq!(div.children[0].kind, BoxKind::Table);
         assert!(div.children[0].node.is_none(), "anonymous");
-        assert_eq!(div.children[0].children[0].children[0].children[0].kind, BoxKind::TableCell);
+        assert_eq!(
+            div.children[0].children[0].children[0].children[0].kind,
+            BoxKind::TableCell
+        );
     }
 }

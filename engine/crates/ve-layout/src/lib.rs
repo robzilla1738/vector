@@ -587,7 +587,9 @@ fn own_clip(bx: &LayoutBox) -> Option<Rect> {
             left.resolve(bx.rect.width()),
         ));
         clip = Some(match clip {
-            Some(c) => c.intersection(&inset).unwrap_or(Rect::new(inset.x(), inset.y(), 0.0, 0.0)),
+            Some(c) => c
+                .intersection(&inset)
+                .unwrap_or(Rect::new(inset.x(), inset.y(), 0.0, 0.0)),
             None => inset,
         });
     }
@@ -597,10 +599,12 @@ fn own_clip(bx: &LayoutBox) -> Option<Rect> {
 fn intersect(a: Option<Rect>, b: Option<Rect>) -> Option<Rect> {
     match (a, b) {
         (None, x) | (x, None) => x,
-        (Some(a), Some(b)) => Some(
-            a.intersection(&b)
-                .unwrap_or(Rect::new(a.x().max(b.x()), a.y().max(b.y()), 0.0, 0.0)),
-        ),
+        (Some(a), Some(b)) => Some(a.intersection(&b).unwrap_or(Rect::new(
+            a.x().max(b.x()),
+            a.y().max(b.y()),
+            0.0,
+            0.0,
+        ))),
     }
 }
 
@@ -692,7 +696,10 @@ mod tests {
              <div id=a></div><div id=b></div>",
             400.0,
         );
-        assert_eq!(rect(&tree, &engine, &doc, "#a"), Rect::new(0.0, 0.0, 400.0, 50.0));
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#a"),
+            Rect::new(0.0, 0.0, 400.0, 50.0)
+        );
         assert_eq!(
             rect(&tree, &engine, &doc, "#b"),
             Rect::new(0.0, 60.0, 210.0, 60.0),
@@ -725,8 +732,14 @@ mod tests {
              <div class=row><div class=item id=a></div><div class=item id=big></div></div>",
             400.0,
         );
-        assert_eq!(rect(&tree, &engine, &doc, "#a"), Rect::new(0.0, 0.0, 100.0, 30.0));
-        assert_eq!(rect(&tree, &engine, &doc, "#big"), Rect::new(100.0, 0.0, 200.0, 30.0));
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#a"),
+            Rect::new(0.0, 0.0, 100.0, 30.0)
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#big"),
+            Rect::new(100.0, 0.0, 200.0, 30.0)
+        );
         assert_eq!(
             tree.hit_test(Point::new(150.0, 10.0)),
             engine.select_one(&doc, "#big").ok()
@@ -739,6 +752,36 @@ mod tests {
     }
 
     #[test]
+    fn nested_flex_containers_lay_out_in_linear_time() {
+        // Every level is a row flex container holding a fixed item and the
+        // next level. Without memoised item layouts each level costs a
+        // multiple of the level below (taffy measures plus the final pass),
+        // which is exponential in depth and never finishes at this depth.
+        const DEPTH: usize = 40;
+        let mut html = String::from(
+            "<style>body{margin:0} .f{display:flex} .a{flex:0 0 10px;height:10px}</style>",
+        );
+        for _ in 0..DEPTH {
+            html.push_str("<div class=f><div class=a></div>");
+        }
+        html.push_str("<div class=a id=leaf></div>");
+        for _ in 0..DEPTH {
+            html.push_str("</div>");
+        }
+        let (doc, engine, tree) = layout(&html, 800.0);
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#leaf"),
+            Rect::new(10.0 * DEPTH as f32, 0.0, 10.0, 10.0)
+        );
+        // Roughly 3 boxes per level, each laid out a bounded number of times.
+        assert!(
+            tree.boxes_laid_out < 40 * DEPTH,
+            "boxes laid out: {}",
+            tree.boxes_laid_out
+        );
+    }
+
+    #[test]
     fn grid_placement_and_order_are_honoured() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} .g{display:grid;grid-template-columns:100px 100px;grid-template-rows:20px 20px;width:200px}\
@@ -746,10 +789,19 @@ mod tests {
              <div class=g><div id=a></div><div id=b></div><div id=c></div></div>",
             400.0,
         );
-        assert_eq!(rect(&tree, &engine, &doc, "#a"), Rect::new(100.0, 0.0, 100.0, 20.0));
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#a"),
+            Rect::new(100.0, 0.0, 100.0, 20.0)
+        );
         // Auto-placed items fill the remaining cells in order-modified order: c then b.
-        assert_eq!(rect(&tree, &engine, &doc, "#c"), Rect::new(0.0, 0.0, 100.0, 20.0));
-        assert_eq!(rect(&tree, &engine, &doc, "#b"), Rect::new(0.0, 20.0, 100.0, 20.0));
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#c"),
+            Rect::new(0.0, 0.0, 100.0, 20.0)
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#b"),
+            Rect::new(0.0, 20.0, 100.0, 20.0)
+        );
     }
 
     #[test]
@@ -761,8 +813,14 @@ mod tests {
              <div id=rel></div><div id=under></div><div id=abs></div>",
             400.0,
         );
-        assert_eq!(rect(&tree, &engine, &doc, "#rel"), Rect::new(5.0, 5.0, 400.0, 20.0));
-        assert_eq!(rect(&tree, &engine, &doc, "#abs"), Rect::new(20.0, 10.0, 50.0, 50.0));
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#rel"),
+            Rect::new(5.0, 5.0, 400.0, 20.0)
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#abs"),
+            Rect::new(20.0, 10.0, 50.0, 50.0)
+        );
         assert_eq!(
             tree.hit_test(Point::new(30.0, 30.0)),
             engine.select_one(&doc, "#abs").ok()
@@ -793,15 +851,32 @@ mod tests {
              <div id=c></div><div id=next></div>",
             300.0,
         );
-        assert_eq!(rect(&tree, &engine, &doc, "#f"), Rect::new(0.0, 0.0, 100.0, 60.0));
-        assert_eq!(rect(&tree, &engine, &doc, "#r"), Rect::new(250.0, 0.0, 50.0, 10.0));
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#f"),
+            Rect::new(0.0, 0.0, 100.0, 60.0)
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#r"),
+            Rect::new(250.0, 0.0, 50.0, 10.0)
+        );
         let p = engine.select_one(&doc, "p").unwrap();
         let lines = &tree.root.find(p).unwrap().lines;
-        assert_eq!(lines[0].rect, Rect::new(100.0, 0.0, 150.0, 20.0), "shortened by both floats");
-        assert_eq!(lines[1].rect, Rect::new(100.0, 20.0, 200.0, 20.0), "right float ended");
+        assert_eq!(
+            lines[0].rect,
+            Rect::new(100.0, 0.0, 150.0, 20.0),
+            "shortened by both floats"
+        );
+        assert_eq!(
+            lines[1].rect,
+            Rect::new(100.0, 20.0, 200.0, 20.0),
+            "right float ended"
+        );
         assert_eq!(lines[0].fragments[0].rect.x(), 100.0);
         // Two words of 4 chars (32px) + space fit per 150px line? 3 words = 32*3 + 16 = 112 -> yes.
-        assert_eq!(lines[0].fragments[0].text.as_deref(), Some("aaaa bbbb cccc"));
+        assert_eq!(
+            lines[0].fragments[0].text.as_deref(),
+            Some("aaaa bbbb cccc")
+        );
         // The p itself is not shortened (block box spans the container).
         assert_eq!(tree.rect_of(p).unwrap().width(), 300.0);
         // The paragraph ends at 40px; clear:left goes below the 60px left float.
@@ -818,9 +893,19 @@ mod tests {
              <div><span id=a></span><span id=b></span><span id=c></span></div>",
             100.0,
         );
-        assert_eq!(rect(&tree, &engine, &doc, "#a"), Rect::new(5.0, 0.0, 40.0, 30.0));
-        assert_eq!(rect(&tree, &engine, &doc, "#b"), Rect::new(55.0, 0.0, 40.0, 30.0));
-        assert_eq!(rect(&tree, &engine, &doc, "#c"), Rect::new(5.0, 30.0, 40.0, 30.0), "wrapped");
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#a"),
+            Rect::new(5.0, 0.0, 40.0, 30.0)
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#b"),
+            Rect::new(55.0, 0.0, 40.0, 30.0)
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#c"),
+            Rect::new(5.0, 30.0, 40.0, 30.0),
+            "wrapped"
+        );
         assert_eq!(rect(&tree, &engine, &doc, "div").height(), 60.0);
     }
 
@@ -834,12 +919,32 @@ mod tests {
             400.0,
         );
         assert_eq!(rect(&tree, &engine, &doc, "table").width(), 300.0);
-        assert_eq!(rect(&tree, &engine, &doc, "#a"), Rect::new(0.0, 0.0, 100.0, 20.0));
-        assert_eq!(rect(&tree, &engine, &doc, "#b"), Rect::new(100.0, 0.0, 200.0, 20.0));
-        assert_eq!(rect(&tree, &engine, &doc, "#c"), Rect::new(0.0, 20.0, 300.0, 20.0), "colspan");
-        assert_eq!(rect(&tree, &engine, &doc, "#e"), Rect::new(100.0, 40.0, 200.0, 20.0));
-        assert_eq!(rect(&tree, &engine, &doc, "#f"), Rect::new(100.0, 60.0, 200.0, 40.0));
-        assert_eq!(rect(&tree, &engine, &doc, "#d"), Rect::new(0.0, 40.0, 100.0, 60.0), "rowspan");
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#a"),
+            Rect::new(0.0, 0.0, 100.0, 20.0)
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#b"),
+            Rect::new(100.0, 0.0, 200.0, 20.0)
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#c"),
+            Rect::new(0.0, 20.0, 300.0, 20.0),
+            "colspan"
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#e"),
+            Rect::new(100.0, 40.0, 200.0, 20.0)
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#f"),
+            Rect::new(100.0, 60.0, 200.0, 40.0)
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#d"),
+            Rect::new(0.0, 40.0, 100.0, 60.0),
+            "rowspan"
+        );
         assert_eq!(rect(&tree, &engine, &doc, "table").height(), 100.0);
         let rows: Vec<Rect> = engine
             .select(&doc, "tr")
@@ -862,11 +967,12 @@ mod tests {
             400.0,
         );
         let p = engine.select_one(&doc, "p").unwrap();
-        let frags: Vec<(Option<ve_style::PseudoElement>, String)> = tree.root.find(p).unwrap().lines[0]
-            .fragments
-            .iter()
-            .map(|f| (f.pseudo, f.text.clone().unwrap_or_default()))
-            .collect();
+        let frags: Vec<(Option<ve_style::PseudoElement>, String)> =
+            tree.root.find(p).unwrap().lines[0]
+                .fragments
+                .iter()
+                .map(|f| (f.pseudo, f.text.clone().unwrap_or_default()))
+                .collect();
         assert_eq!(
             frags,
             vec![
@@ -879,10 +985,16 @@ mod tests {
         let marker = tree.root.find(li).unwrap().marker_fragment.clone().unwrap();
         assert_eq!(marker.text.as_deref(), Some("1. "));
         assert_eq!(marker.pseudo, Some(ve_style::PseudoElement::Marker));
-        assert!(marker.rect.right() <= 40.0, "outside marker ends at the content edge");
+        assert!(
+            marker.rect.right() <= 40.0,
+            "outside marker ends at the content edge"
+        );
         let inner = engine.select_one(&doc, "#inner").unwrap();
         assert_eq!(tree.clip_of(inner), Some(Rect::new(0.0, 40.0, 100.0, 50.0)));
-        assert_eq!(tree.visible_rect_of(inner), Some(Rect::new(0.0, 40.0, 100.0, 50.0)));
+        assert_eq!(
+            tree.visible_rect_of(inner),
+            Some(Rect::new(0.0, 40.0, 100.0, 50.0))
+        );
         let cp = engine.select_one(&doc, "#cp").unwrap();
         assert_eq!(tree.clip_of(cp), Some(Rect::new(20.0, 100.0, 360.0, 0.0)));
     }
@@ -927,7 +1039,11 @@ mod tests {
         );
         assert!(stats.boxes_laid_out < total_boxes / 2);
         assert_eq!(tree.rect_of(t).unwrap().height(), 30.0);
-        assert_eq!(tree.rect_of(c).unwrap(), Rect::new(0.0, 200.0, 100.0, 100.0), "unmoved");
+        assert_eq!(
+            tree.rect_of(c).unwrap(),
+            Rect::new(0.0, 200.0, 100.0, 100.0),
+            "unmoved"
+        );
         assert!(!doc.dirty(t).intersects(DirtyFlags::LAYOUT));
         // The sibling below #t moved: a Geometry journal record was appended.
         let sibling = doc.next_sibling(t).unwrap();

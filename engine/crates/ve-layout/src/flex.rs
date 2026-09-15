@@ -15,13 +15,64 @@ use taffy::prelude::*;
 use taffy::tree::{LayoutInput, LayoutOutput};
 use ve_core::{Point, Rect as CoreRect};
 use ve_style::{
-    AlignItems as CssAlign, ComputedStyle, FlexDirection as CssDir, FlexWrap as CssWrap,
-    GridLine, JustifyContent as CssJustify, LengthPercentage as CssLp,
-    LengthPercentageAuto as CssLpa, MaxSize, SelfAlignment, TrackSize,
+    AlignItems as CssAlign, ComputedStyle, FlexDirection as CssDir, FlexWrap as CssWrap, GridLine,
+    JustifyContent as CssJustify, LengthPercentage as CssLp, LengthPercentageAuto as CssLpa,
+    MaxSize, SelfAlignment, TrackSize,
 };
 
-use crate::block::{ContainingBlock, Forced, LayoutCtx, layout_box_at, resolve_margins};
-use crate::box_tree::LayoutBox;
+use crate::block::{
+    ContainingBlock, Forced, LayoutCtx, layout_box_at, resolve_margins, translate_subtree,
+};
+use crate::box_tree::{LayoutBox, LayoutMemo};
+
+/// Memos kept per item. Taffy probes an item at min-content, max-content
+/// and one or two definite sizes (with and without a known cross size)
+/// before the final pass; the bound must exceed the number of distinct
+/// inputs or the FIFO thrashes and the layout is exponential again.
+const ITEM_MEMOS: usize = 8;
+
+/// Lays out a flex/grid item at `origin`, reusing a memoised layout when the
+/// item was already laid out with the same containing block and forced
+/// sizes. Items establish independent formatting contexts, so those inputs
+/// fully determine their geometry and a hit only needs a translation.
+///
+/// Without the memo every taffy measure call and the final pass each run a
+/// complete subtree layout, so nested containers cost `O(k^depth)`; a
+/// nested chain of a few dozen flex containers (as produced by XHTML
+/// self-closing tags parsed as HTML) would never finish.
+fn layout_item(
+    child: &mut LayoutBox,
+    ctx: &mut LayoutCtx<'_>,
+    cb: ContainingBlock,
+    origin: Point,
+    forced: Forced,
+) {
+    if let Some(pos) = child
+        .layout_cache
+        .iter()
+        .position(|m| m.cb == cb && m.forced == forced)
+    {
+        let memos = std::mem::take(&mut child.layout_cache);
+        let memo = &memos[pos];
+        let (dx, dy) = (origin.x - memo.origin.x, origin.y - memo.origin.y);
+        *child = (*memo.snapshot).clone();
+        translate_subtree(child, dx, dy);
+        child.layout_cache = memos;
+        return;
+    }
+    layout_box_at(child, ctx, cb, origin, forced);
+    let mut snapshot = child.clone();
+    snapshot.clear_layout_caches();
+    if child.layout_cache.len() >= ITEM_MEMOS {
+        child.layout_cache.remove(0);
+    }
+    child.layout_cache.push(LayoutMemo {
+        cb,
+        forced,
+        origin,
+        snapshot: Box::new(snapshot),
+    });
+}
 
 /// Percentage bases for pre-resolving `calc()`.
 #[derive(Clone, Copy)]
@@ -319,7 +370,7 @@ pub fn layout_flex(
                 width: known.width,
                 height: known.height,
             };
-            layout_box_at(
+            layout_item(
                 child,
                 ctx,
                 ContainingBlock {
@@ -350,7 +401,7 @@ pub fn layout_flex(
             width: Some(layout.size.width),
             height: Some(layout.size.height),
         };
-        layout_box_at(
+        layout_item(
             child,
             ctx,
             ContainingBlock {

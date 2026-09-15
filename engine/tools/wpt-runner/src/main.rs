@@ -80,7 +80,7 @@ struct Args {
     /// Geometry tolerance in CSS pixels.
     #[arg(long, default_value_t = 1.0)]
     tolerance: f32,
-    /// Viewport as WIDTHxHEIGHT.
+    /// Viewport as `WIDTHxHEIGHT`.
     #[arg(long, default_value = "800x600")]
     viewport: String,
     /// Print the differing signature items of failing tests.
@@ -408,7 +408,11 @@ fn signature(r: &Rendered) -> Vec<Item> {
         }
         items.push(Item::Box {
             rect: visible,
-            color: if bg.is_transparent() { [0; 4] } else { rgba(bg) },
+            color: if bg.is_transparent() {
+                [0; 4]
+            } else {
+                rgba(bg)
+            },
             borders: if has_border { borders } else { [0.0; 4] },
         });
     }
@@ -449,7 +453,8 @@ fn resolve_reference(wpt_dir: &Path, test: &Path, href: &str) -> PathBuf {
     if let Some(abs) = href.strip_prefix('/') {
         wpt_dir.join(abs)
     } else {
-        test.parent().map_or_else(|| PathBuf::from(href), |p| p.join(href))
+        test.parent()
+            .map_or_else(|| PathBuf::from(href), |p| p.join(href))
     }
 }
 
@@ -645,7 +650,11 @@ fn main() -> Result<()> {
             },
         };
         if args.progress && result.status != Status::Pass {
-            eprintln!("  {:?} {}", result.status, result.detail.as_deref().unwrap_or(""));
+            eprintln!(
+                "  {:?} {}",
+                result.status,
+                result.detail.as_deref().unwrap_or("")
+            );
         }
         results.push(result);
     }

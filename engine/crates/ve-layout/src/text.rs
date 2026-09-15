@@ -70,7 +70,7 @@ pub trait TextShaper {
     /// Width of the widest unbreakable unit (word) of `text`: the
     /// min-content contribution.
     fn min_content(&mut self, text: &str, style: &ComputedStyle) -> f32 {
-        text.split(|c: char| c == ' ' || c == '\n')
+        text.split([' ', '\n'])
             .map(|w| self.measure(w, style))
             .fold(0.0, f32::max)
     }
@@ -114,12 +114,16 @@ impl CharClass {
     #[must_use]
     pub fn of(c: char) -> Self {
         match c {
-            '\u{200B}' | '\u{200C}' | '\u{200D}' | '\u{00AD}' | '\u{FEFF}' | '\u{2060}' => Self::Zero,
-            '\u{0300}'..='\u{036F}' | '\u{20D0}'..='\u{20FF}' | '\u{FE20}'..='\u{FE2F}' => Self::Zero,
+            '\u{200B}' | '\u{200C}' | '\u{200D}' | '\u{00AD}' | '\u{FEFF}' | '\u{2060}' => {
+                Self::Zero
+            }
+            '\u{0300}'..='\u{036F}' | '\u{20D0}'..='\u{20FF}' | '\u{FE20}'..='\u{FE2F}' => {
+                Self::Zero
+            }
             ' ' | '\u{00A0}' | '\t' => Self::Space,
             'i' | 'j' | 'l' | 't' | 'f' | 'r' | 'I' | '.' | ',' | ':' | ';' | '\'' | '!' | '|'
-            | '`' | '\u{00B4}' | '(' | ')' | '[' | ']' | '{' | '}' | '/' | '\\' | '"' | '*' | '-'
-            | '\u{2019}' | '\u{2018}' | '\u{00B7}' => Self::Narrow,
+            | '`' | '\u{00B4}' | '(' | ')' | '[' | ']' | '{' | '}' | '/' | '\\' | '"' | '*'
+            | '-' | '\u{2019}' | '\u{2018}' | '\u{00B7}' => Self::Narrow,
             'm' | 'w' | 'M' | 'W' | '@' | '%' | '&' | '\u{2500}'..='\u{257F}' => Self::Wide,
             'a'..='z' => Self::Lower,
             '0'..='9' => Self::Digit,
@@ -584,7 +588,11 @@ mod tests {
         assert_eq!(shaper.measure("A", &style), 6.5);
         assert_eq!(shaper.measure("7", &style), 5.5);
         assert_eq!(shaper.measure("\u{4E2D}", &style), 10.0);
-        assert_eq!(shaper.measure("a\u{0301}", &style), 5.0, "combining mark is zero-width");
+        assert_eq!(
+            shaper.measure("a\u{0301}", &style),
+            5.0,
+            "combining mark is zero-width"
+        );
         assert_eq!(shaper.ascent(&style), 8.0);
         assert_eq!(shaper.descent(&style), 2.0);
         let spaced = ComputedStyle {

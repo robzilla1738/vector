@@ -74,12 +74,10 @@ impl InlineState<'_, '_> {
 
     /// Starts a new (empty) line at `y`, shortened by the floats there.
     fn start_line(&mut self, y: f32) -> Line {
-        let (l, r) = self.ctx.floats().edges(
-            y,
-            self.line_height,
-            self.content.x(),
-            self.content.right(),
-        );
+        let (l, r) =
+            self.ctx
+                .floats()
+                .edges(y, self.line_height, self.content.x(), self.content.right());
         Line {
             y,
             x: l,

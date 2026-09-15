@@ -106,8 +106,8 @@ fn build_grid(bx: &LayoutBox) -> Grid {
                     if occupancy[rr].len() < col + col_span {
                         occupancy[rr].resize(col + col_span, false);
                     }
-                    for cc in col..col + col_span {
-                        occupancy[rr][cc] = true;
+                    for slot in occupancy[rr].iter_mut().skip(col).take(col_span) {
+                        *slot = true;
                     }
                 }
                 n_cols = n_cols.max(col + col_span);
@@ -142,7 +142,12 @@ fn cell_mut<'a>(bx: &'a mut LayoutBox, gc: &GridCell) -> &'a mut LayoutBox {
     &mut bx.children[gc.group].children[gc.row].children[gc.cell]
 }
 
-fn column_widths(bx: &mut LayoutBox, grid: &Grid, spacing: f32, ctx: &mut LayoutCtx<'_>) -> Columns {
+fn column_widths(
+    bx: &mut LayoutBox,
+    grid: &Grid,
+    spacing: f32,
+    ctx: &mut LayoutCtx<'_>,
+) -> Columns {
     let n = grid.n_cols;
     let mut cols = Columns {
         min: vec![0.0; n],
@@ -225,15 +230,15 @@ fn distribute(cols: &Columns, available: f32) -> Vec<f32> {
     let mut remaining = available;
     let mut flexible: Vec<usize> = Vec::new();
     let mut fixed: Vec<usize> = Vec::new();
-    for c in 0..n {
+    for (c, width) in widths.iter_mut().enumerate().take(n) {
         match cols.spec[c] {
             ColSpec::Percent(p) => {
-                widths[c] = (available * p / 100.0).max(cols.min[c]);
-                remaining -= widths[c];
+                *width = (available * p / 100.0).max(cols.min[c]);
+                remaining -= *width;
             }
             ColSpec::Px(_) => {
-                widths[c] = cols.max[c];
-                remaining -= widths[c];
+                *width = cols.max[c];
+                remaining -= *width;
                 fixed.push(c);
             }
             ColSpec::Auto => flexible.push(c),
@@ -291,7 +296,10 @@ fn distribute(cols: &Columns, available: f32) -> Vec<f32> {
 
 /// The horizontal `border-spacing` used by `bx` (zero when collapsing).
 fn spacing_of(bx: &LayoutBox) -> Size {
-    Size::new(bx.style.border_spacing_x.max(0.0), bx.style.border_spacing_y.max(0.0))
+    Size::new(
+        bx.style.border_spacing_x.max(0.0),
+        bx.style.border_spacing_y.max(0.0),
+    )
 }
 
 /// Min- and max-content widths of the table's **border box** (captions
@@ -398,7 +406,16 @@ pub fn layout_table(
     let table_border_width = content_width + bp_h;
     for side in [CaptionSide::Top, CaptionSide::Bottom] {
         if side == CaptionSide::Bottom {
-            cursor_y = layout_rows(bx, ctx, &grid, &widths, spacing, content_x, cursor_y, content_width);
+            cursor_y = layout_rows(
+                bx,
+                ctx,
+                &grid,
+                &widths,
+                spacing,
+                content_x,
+                cursor_y,
+                content_width,
+            );
         }
         for caption in bx
             .children
@@ -434,17 +451,13 @@ pub fn layout_table(
     let content_height = match forced.height {
         Some(h) => (h - bp_v).max(0.0),
         None => {
-            let specified = style
-                .height
-                .maybe_resolve(cb.height)
-                .map(|h| {
-                    if style.box_sizing == BoxSizing::BorderBox {
-                        (h - bp_v).max(0.0)
-                    } else {
-                        h
-                    }
-                })
-                .unwrap_or(0.0);
+            let specified = style.height.maybe_resolve(cb.height).map_or(0.0, |h| {
+                if style.box_sizing == BoxSizing::BorderBox {
+                    (h - bp_v).max(0.0)
+                } else {
+                    h
+                }
+            });
             natural.max(specified)
         }
     };
@@ -583,22 +596,29 @@ fn layout_rows(
     }
     for (grid_row, &(g, r)) in grid.rows.iter().enumerate() {
         let row = &mut bx.children[g].children[r];
-        row.rect = Rect::new(content_x, row_y[grid_row], content_width, row_heights[grid_row]);
+        row.rect = Rect::new(
+            content_x,
+            row_y[grid_row],
+            content_width,
+            row_heights[grid_row],
+        );
         row.content = row.rect;
         row.cb_width = content_width;
         for child in row.children.iter_mut().filter(|c| c.is_out_of_flow()) {
             child.rect = Rect::new(content_x, row_y[grid_row], 0.0, 0.0);
         }
     }
-    for (g, first_row) in grid.rows.iter().enumerate().fold(
-        Vec::<(usize, usize)>::new(),
-        |mut acc, (i, &(g, _))| {
-            if acc.last().is_none_or(|(lg, _)| *lg != g) {
-                acc.push((g, i));
-            }
-            acc
-        },
-    ) {
+    for (g, first_row) in
+        grid.rows
+            .iter()
+            .enumerate()
+            .fold(Vec::<(usize, usize)>::new(), |mut acc, (i, &(g, _))| {
+                if acc.last().is_none_or(|(lg, _)| *lg != g) {
+                    acc.push((g, i));
+                }
+                acc
+            })
+    {
         let last_row = grid
             .rows
             .iter()
