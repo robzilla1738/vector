@@ -810,24 +810,26 @@ fn programs_skip_after_failure_and_honour_optional() {
 
 #[test]
 fn settle_reports_blocking_fetches_and_layout_state() {
-    let mut recorder = Recorder::default();
-    recorder.in_flight = vec![
-        InFlightSummary {
-            url: "https://t.test/api".into(),
-            age_ms: 10,
-            background: false,
-        },
-        InFlightSummary {
-            url: "https://t.test/stream".into(),
-            age_ms: 10,
-            background: true,
-        },
-        InFlightSummary {
-            url: "https://t.test/slow".into(),
-            age_ms: 5_000,
-            background: false,
-        },
-    ];
+    let recorder = Recorder {
+        in_flight: vec![
+            InFlightSummary {
+                url: "https://t.test/api".into(),
+                age_ms: 10,
+                background: false,
+            },
+            InFlightSummary {
+                url: "https://t.test/stream".into(),
+                age_ms: 10,
+                background: true,
+            },
+            InFlightSummary {
+                url: "https://t.test/slow".into(),
+                age_ms: 5_000,
+                background: false,
+            },
+        ],
+        ..Recorder::default()
+    };
     let mut page = page_with("<p>x</p>", recorder);
     let settled = page.settle(500);
     assert!(!settled.settled);
