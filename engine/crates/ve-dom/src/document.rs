@@ -440,9 +440,11 @@ impl Document {
                 node: child,
                 parent,
             });
+            // STYLE: the remaining siblings' structural pseudo-classes
+            // (`:nth-child`, `:empty`, sibling combinators) may change.
             self.mark_dirty(
                 parent,
-                DirtyFlags::LAYOUT | DirtyFlags::A11Y | DirtyFlags::PAINT,
+                DirtyFlags::STYLE | DirtyFlags::LAYOUT | DirtyFlags::A11Y | DirtyFlags::PAINT,
             );
         }
         Ok(parent)

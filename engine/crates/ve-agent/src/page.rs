@@ -555,12 +555,19 @@ impl Page {
     // Style / layout / settle
     // ---------------------------------------------------------------------
 
+    // Dirtiness is tracked by the per-node `DirtyFlags` that every DOM
+    // mutation sets (structure and attributes mark everything; focus, hover,
+    // checkedness mark STYLE). Journal records that change neither style nor
+    // geometry — `Scrolled`, a text control's dirty value — still bump the
+    // document revision, so the revision must not be part of the test: a
+    // `fill` or `scroll` step would otherwise restyle and relayout the page.
+    // An empty style tree marks "never computed" (`load`, `set_viewport`).
     fn style_clean(&self) -> bool {
-        self.style_tree.revision() == self.doc.revision() && !self.doc.any_dirty(DirtyFlags::STYLE)
+        !self.style_tree.is_empty() && !self.doc.any_dirty(DirtyFlags::STYLE)
     }
 
     fn layout_clean(&self) -> bool {
-        self.layout.revision() == self.doc.revision()
+        self.layout.revision() == self.style_tree.revision()
             && !self.doc.any_dirty(DirtyFlags::LAYOUT | DirtyFlags::TEXT)
     }
 
