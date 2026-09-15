@@ -198,10 +198,11 @@ impl NonTSPseudoClass for PseudoClass {
     }
 }
 
-/// Pseudo-elements the engine parses. None generate boxes in M0; they are
+/// Pseudo-elements the engine parses. `::before` and `::after` generate
+/// boxes when their `content` is not `normal`/`none`; the others are
 /// recognised so that rules using them parse and are ignored rather than
 /// invalidating the surrounding stylesheet.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PseudoElement {
     /// `::before`
     Before,

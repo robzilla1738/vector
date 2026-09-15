@@ -801,6 +801,21 @@ impl Document {
     }
 
     // ----------------------------------------------------------------------
+    // Geometry
+    // ----------------------------------------------------------------------
+
+    /// Records that layout changed the node's document-space rectangle. Sets
+    /// the `A11Y` and `PAINT` bits (snapshots and paint consume geometry) and
+    /// appends a [`Mutation::GeometryChanged`] record.
+    pub fn record_geometry_change(&mut self, node: NodeId) {
+        if !self.contains(node) {
+            return;
+        }
+        self.journal.record(Mutation::GeometryChanged { node });
+        self.mark_dirty(node, DirtyFlags::A11Y | DirtyFlags::PAINT);
+    }
+
+    // ----------------------------------------------------------------------
     // Dirty tracking
     // ----------------------------------------------------------------------
 

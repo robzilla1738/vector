@@ -18,8 +18,7 @@ body { margin: 8px; }
 address, blockquote, center, dialog, div, figure, figcaption, footer, form,
 header, hr, legend, listing, main, p, plaintext, pre, search, xmp,
 article, aside, h1, h2, h3, h4, h5, h6, hgroup, nav, section,
-dir, dd, dl, dt, menu, ol, ul, li, details, summary, fieldset, optgroup,
-table, caption, colgroup, col, thead, tbody, tfoot, tr, td, th { display: block; }
+dir, dd, dl, dt, menu, ol, ul, li, details, summary, fieldset, optgroup { display: block; }
 
 blockquote, figure, listing, p, plaintext, pre, xmp { margin-top: 1em; margin-bottom: 1em; }
 blockquote, figure { margin-left: 40px; margin-right: 40px; }
@@ -40,13 +39,30 @@ dir, dd, dl, dt, menu, ol, ul { }
 dir, dl, menu, ol, ul { margin-top: 1em; margin-bottom: 1em; }
 dir, menu, ol, ul { padding-left: 40px; }
 dd { margin-left: 40px; }
+ol { list-style-type: decimal; }
+ul, menu, dir { list-style-type: disc; }
+ol ul, ul ul, menu ul, dir ul { list-style-type: circle; }
+ol ol ul, ol ul ul, ul ol ul, ul ul ul { list-style-type: square; }
 li { display: list-item; }
+summary { display: list-item; }
+ul, ol, menu, dir { list-style-position: outside; }
 
-/* --- tables (block fallback until a table formatter exists) ---------- */
-table { box-sizing: border-box; }
-td, th { padding: 1px; }
+/* --- tables ---------------------------------------------------------- */
+table { display: table; box-sizing: border-box; border-spacing: 2px; border-collapse: separate; text-indent: 0; }
+caption { display: table-caption; text-align: center; }
+colgroup { display: table-column-group; }
+col { display: table-column; }
+thead { display: table-header-group; vertical-align: middle; }
+tbody { display: table-row-group; vertical-align: middle; }
+tfoot { display: table-footer-group; vertical-align: middle; }
+tr { display: table-row; vertical-align: inherit; }
+td, th { display: table-cell; vertical-align: inherit; padding: 1px; }
 th { font-weight: bold; text-align: center; }
-caption { text-align: center; }
+table[border] > tr > td, table[border] > tr > th,
+table[border] > thead > tr > td, table[border] > thead > tr > th,
+table[border] > tbody > tr > td, table[border] > tbody > tr > th,
+table[border] > tfoot > tr > td, table[border] > tfoot > tr > th { border: 1px solid; }
+table[border] { border: 1px outset; }
 
 /* --- phrasing content ------------------------------------------------ */
 b, strong { font-weight: bolder; }
@@ -57,6 +73,16 @@ s, strike, del { text-decoration: line-through; }
 big { font-size: larger; }
 small { font-size: smaller; }
 sub, sup { font-size: smaller; line-height: normal; }
+sub { vertical-align: sub; }
+sup { vertical-align: super; }
+bdi, output { unicode-bidi: isolate; }
+bdo { unicode-bidi: bidi-override; }
+[dir=ltr i] { direction: ltr; unicode-bidi: isolate; }
+[dir=rtl i] { direction: rtl; unicode-bidi: isolate; }
+q::before { content: open-quote; }
+q::after { content: close-quote; }
+nobr { white-space: nowrap; }
+wbr { display: inline; }
 mark { background-color: yellow; color: black; }
 abbr[title], acronym[title] { text-decoration: underline; }
 a:any-link { color: rgb(0, 0, 238); text-decoration: underline; }

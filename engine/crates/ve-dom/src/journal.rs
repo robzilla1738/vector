@@ -35,6 +35,17 @@ impl DirtyFlags {
     /// Some descendant carries dirty flags (set on ancestors so traversals
     /// can skip clean subtrees).
     pub const DESCENDANTS: Self = Self(1 << 5);
+    /// Every descendant's computed style must be recomputed (an inherited
+    /// property changed, or a sibling-/`:has()`-dependent rule was hit).
+    /// Cleared by style recalc.
+    pub const STYLE_DESCENDANTS: Self = Self(1 << 6);
+    /// Ancestor path marker set by layout invalidation from a `LAYOUT` node
+    /// up to the nearest layout boundary. Cleared by layout.
+    pub const LAYOUT_CHILDREN: Self = Self(1 << 7);
+    /// Alias of [`Self::STYLE`]: this node's own computed style is stale.
+    pub const STYLE_SELF: Self = Self::STYLE;
+    /// Alias of [`Self::LAYOUT`]: this node's own geometry is stale.
+    pub const LAYOUT_SELF: Self = Self::LAYOUT;
     /// Every flag that applies to the node itself.
     pub const ALL: Self =
         Self(Self::STYLE.0 | Self::LAYOUT.0 | Self::TEXT.0 | Self::A11Y.0 | Self::PAINT.0);
@@ -100,6 +111,8 @@ impl fmt::Debug for DirtyFlags {
             (Self::A11Y, "A11Y"),
             (Self::PAINT, "PAINT"),
             (Self::DESCENDANTS, "DESCENDANTS"),
+            (Self::STYLE_DESCENDANTS, "STYLE_DESCENDANTS"),
+            (Self::LAYOUT_CHILDREN, "LAYOUT_CHILDREN"),
         ];
         let mut first = true;
         write!(f, "DirtyFlags(")?;
@@ -175,6 +188,12 @@ pub enum Mutation {
     },
     /// The document's quirks mode was set.
     QuirksModeChanged,
+    /// Layout moved or resized the node's border box (emitted by `ve-layout`
+    /// when a fragment's document-space rectangle changes between passes).
+    GeometryChanged {
+        /// The node whose geometry changed.
+        node: NodeId,
+    },
 }
 
 impl Mutation {
@@ -188,6 +207,7 @@ impl Mutation {
             | Mutation::NodeDestroyed { node }
             | Mutation::AttributeChanged { node, .. }
             | Mutation::TextChanged { node }
+            | Mutation::GeometryChanged { node }
             | Mutation::FormStateChanged { node } => Some(*node),
             Mutation::ShadowAttached { host, .. } => Some(*host),
             Mutation::QuirksModeChanged => None,
