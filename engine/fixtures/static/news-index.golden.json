@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 1472.0
+    "maxY": 1448.0
   },
   "frames": [
     {
@@ -292,6 +292,15 @@
       "role": "link",
       "name": "Opinion: what the budget vote gets right",
       "href": "https://fixtures.vector.test/2026/09/13/story-13",
+      "selector": {}
+    },
+    {
+      "ref": "r418",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Full forecast",
+      "href": "https://fixtures.vector.test/weather",
       "selector": {}
     },
     {
@@ -691,15 +700,6 @@
       "selector": {}
     },
     {
-      "ref": "r418",
-      "frame": "main",
-      "tag": "a",
-      "role": "link",
-      "name": "Full forecast",
-      "href": "https://fixtures.vector.test/weather",
-      "selector": {}
-    },
-    {
       "ref": "r425",
       "frame": "main",
       "tag": "a",
@@ -997,6 +997,11 @@
       "href": "https://fixtures.vector.test/2026/09/13/story-13"
     },
     {
+      "ref": "r418",
+      "text": "Full forecast",
+      "href": "https://fixtures.vector.test/weather"
+    },
+    {
       "ref": "r18",
       "text": "Skip to main content",
       "href": "https://fixtures.vector.test/news-index.html#main"
@@ -1215,11 +1220,6 @@
       "ref": "r371",
       "text": "Older stories ›",
       "href": "https://fixtures.vector.test/latest?page=2"
-    },
-    {
-      "ref": "r418",
-      "text": "Full forecast",
-      "href": "https://fixtures.vector.test/weather"
     },
     {
       "ref": "r425",

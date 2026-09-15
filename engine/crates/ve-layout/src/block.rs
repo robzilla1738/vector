@@ -558,6 +558,17 @@ fn intrinsic_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 
     inner + own_horizontal_edges(bx)
 }
 
+/// Fit-content border-box width of a flex/grid item measured by its
+/// container: max-content clamped to the available space and floored at
+/// min-content (CSS Sizing §5.2.1). `available` is the container's
+/// available main size (`f32::INFINITY` for a max-content probe).
+pub fn fit_content_width(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, available: f32) -> f32 {
+    let margins = resolve_margins(&bx.style, available.min(f32::MAX)).horizontal();
+    let max = intrinsic_width(bx, ctx) - margins;
+    let min = intrinsic_min_width(bx, ctx) - margins;
+    max.min((available - margins).max(0.0)).max(min).max(0.0)
+}
+
 fn intrinsic_min_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
     let style = bx.style.clone();
     if bx.kind == BoxKind::Table {

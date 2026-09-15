@@ -194,6 +194,25 @@ impl LayoutBox {
         }
     }
 
+    /// Clones the laid-out subtree without any `layout_cache` entries. Unlike
+    /// `clone()` + [`Self::clear_layout_caches`], this never copies the
+    /// descendants' memos (each of which holds its own subtree snapshot), so
+    /// the cost is one pass over the live boxes.
+    #[must_use]
+    pub fn snapshot_without_caches(&mut self) -> LayoutBox {
+        let cache = std::mem::take(&mut self.layout_cache);
+        let children = std::mem::take(&mut self.children);
+        let mut snap = self.clone();
+        let mut children = children;
+        snap.children = children
+            .iter_mut()
+            .map(LayoutBox::snapshot_without_caches)
+            .collect();
+        self.children = children;
+        self.layout_cache = cache;
+        snap
+    }
+
     /// Returns `true` if the box is block-level in its parent's flow.
     #[must_use]
     pub fn is_block_level(&self) -> bool {
