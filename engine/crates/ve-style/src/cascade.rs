@@ -9,8 +9,9 @@ use selectors::context::{
     SelectorCaches,
 };
 use selectors::matching::{matches_selector, matches_selector_list};
+use selectors::parser::{Component, Selector};
 use ve_core::{Error, NodeId, Result, Revision, Stage};
-use ve_dom::{Document, Node};
+use ve_dom::{Document, ElementData, Node};
 
 use crate::computed::{ComputeContext, ComputedStyle};
 use crate::element::{DomElement, InteractionState};
@@ -85,6 +86,99 @@ struct CascadeKey {
     level: u8,
     specificity: u32,
     order: u32,
+}
+
+/// `(rule index, selector index within the rule's list)`.
+type SelectorRef = (u32, u32);
+
+/// Selectors bucketed by the rightmost compound, so an element only tries
+/// the selectors that can match it: those keyed by its id, one of its
+/// classes, or its local name, plus the unkeyed rest. Matching every
+/// selector of every rule against every element was the dominant cost of a
+/// restyle (≈200 selectors × 400 elements on the static fixtures).
+#[derive(Default)]
+struct RuleIndex {
+    universal: Vec<SelectorRef>,
+    by_tag: HashMap<String, Vec<SelectorRef>>,
+    by_id: HashMap<String, Vec<SelectorRef>>,
+    by_class: HashMap<String, Vec<SelectorRef>>,
+}
+
+impl RuleIndex {
+    fn build(rules: &[(Origin, &StyleRule)], quirks: QuirksMode) -> Self {
+        let mut index = Self::default();
+        // In quirks mode id and class matching is case-insensitive; keying
+        // by the literal text would miss matches, so only tags are keyed.
+        let key_idents = quirks != QuirksMode::Quirks;
+        for (r, (_, rule)) in rules.iter().enumerate() {
+            for (s, selector) in rule.selectors.slice().iter().enumerate() {
+                let sref = (r as u32, s as u32);
+                let (mut id, mut class, mut tag) = (None, None, None);
+                // `iter()` yields the rightmost compound only (a combinator
+                // ends it), which is the compound tested against the element.
+                for component in selector.iter() {
+                    match component {
+                        Component::ID(v) if key_idents => id = Some(v.as_str()),
+                        Component::Class(v) if key_idents => class = Some(v.as_str()),
+                        Component::LocalName(n) => tag = Some(n),
+                        _ => {}
+                    }
+                }
+                if let Some(id) = id {
+                    index.by_id.entry(id.to_owned()).or_default().push(sref);
+                } else if let Some(class) = class {
+                    index
+                        .by_class
+                        .entry(class.to_owned())
+                        .or_default()
+                        .push(sref);
+                } else if let Some(tag) = tag {
+                    // Matching uses `lower_name` for HTML elements and `name`
+                    // otherwise; key under both so the lookup by the element's
+                    // own name always finds the selector.
+                    index
+                        .by_tag
+                        .entry(tag.lower_name.0.clone())
+                        .or_default()
+                        .push(sref);
+                    if tag.name != tag.lower_name {
+                        index
+                            .by_tag
+                            .entry(tag.name.0.clone())
+                            .or_default()
+                            .push(sref);
+                    }
+                } else {
+                    index.universal.push(sref);
+                }
+            }
+        }
+        index
+    }
+
+    /// Selector references that may match `element`, unordered, possibly
+    /// with duplicates (a tag keyed under two spellings).
+    fn candidates<'a>(
+        &'a self,
+        element: &'a ElementData,
+    ) -> impl Iterator<Item = SelectorRef> + 'a {
+        let by_tag = self.by_tag.get(element.name.as_str());
+        let by_id = element.id().and_then(|id| self.by_id.get(id));
+        let by_class = element.classes().filter_map(|c| self.by_class.get(c));
+        self.universal
+            .iter()
+            .chain(by_tag.into_iter().flatten())
+            .chain(by_id.into_iter().flatten())
+            .chain(by_class.flatten())
+            .copied()
+    }
+}
+
+fn selector_of<'a>(
+    rules: &[(Origin, &'a StyleRule)],
+    sref: SelectorRef,
+) -> &'a Selector<VeSelectorImpl> {
+    &rules[sref.0 as usize].1.selectors.slice()[sref.1 as usize]
 }
 
 /// Owns stylesheets and computes styles for documents.
@@ -188,6 +282,7 @@ impl StyleEngine {
         let _guard = span.enter();
 
         let rules = self.applicable_rules();
+        let index = RuleIndex::build(&rules, Self::quirks(doc));
         let mut caches = SelectorCaches::default();
         let mut matching = MatchingContext::new(
             MatchingMode::Normal,
@@ -197,6 +292,8 @@ impl StyleEngine {
             NeedsSelectorFlags::No,
             MatchingForInvalidation::No,
         );
+        // Reused per element: (rule index, specificity) of matching selectors.
+        let mut matched: Vec<(u32, u32)> = Vec::new();
 
         let mut tree = StyleTree {
             styles: HashMap::with_capacity(doc.node_count()),
@@ -222,23 +319,30 @@ impl StyleEngine {
 
             let element = DomElement::new(doc, &self.interaction, id);
             let mut candidates: Vec<(CascadeKey, &PropertyDeclaration)> = Vec::new();
-            for (order, (origin, rule)) in rules.iter().enumerate() {
-                let specificity = rule
-                    .selectors
-                    .slice()
-                    .iter()
-                    .filter(|s| matches_selector(s, 0, None, &element, &mut matching))
-                    .map(|s| s.specificity())
-                    .max();
-                if let Some(specificity) = specificity {
-                    for decl in &rule.block.declarations {
-                        let key = CascadeKey {
-                            level: level(*origin, decl.important),
-                            specificity,
-                            order: order as u32,
-                        };
-                        candidates.push((key, decl));
+            matched.clear();
+            if let Some(data) = doc.element(id) {
+                for sref in index.candidates(data) {
+                    let selector = selector_of(&rules, sref);
+                    if matches_selector(selector, 0, None, &element, &mut matching) {
+                        matched.push((sref.0, selector.specificity()));
                     }
+                }
+            }
+            // A rule applies with the highest specificity among its matching
+            // selectors; `order` is its position in cascade source order.
+            // Sort rule-ascending, specificity-descending so dedup keeps the
+            // maximum (and drops a tag selector found under two spellings).
+            matched.sort_unstable_by(|a, b| a.0.cmp(&b.0).then(b.1.cmp(&a.1)));
+            matched.dedup_by_key(|m| m.0);
+            for &(order, specificity) in &matched {
+                let (origin, rule) = rules[order as usize];
+                for decl in &rule.block.declarations {
+                    let key = CascadeKey {
+                        level: level(origin, decl.important),
+                        specificity,
+                        order,
+                    };
+                    candidates.push((key, decl));
                 }
             }
             // Inline `style=""`: author origin, beats any selector.

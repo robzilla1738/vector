@@ -288,11 +288,7 @@ mod tests {
             tree.hit_test(Point::new(30.0, 30.0)),
             engine.select_one(&doc, "#abs").ok()
         );
-        let order: Vec<_> = tree
-            .paint_order()
-            .into_iter()
-            .filter_map(|i| i.node)
-            .collect();
+        let order: Vec<_> = tree.paint_order().iter().filter_map(|i| i.node).collect();
         let pos = |sel: &str| {
             order
                 .iter()
