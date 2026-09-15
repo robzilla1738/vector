@@ -755,8 +755,7 @@ impl Page {
                     Some(attr) => self
                         .document()
                         .attribute(id, attr)
-                        .map(str::to_owned)
-                        .unwrap_or_else(|| self.visible_text(id)),
+                        .map_or_else(|| self.visible_text(id), str::to_owned),
                     None => self.visible_text(id),
                 };
                 if !seen.insert(dedupe.clone()) {

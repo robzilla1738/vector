@@ -95,7 +95,7 @@ pub fn is_submit_button(e: &ElementData) -> bool {
 pub fn default_button(doc: &Document, form: NodeId) -> Option<NodeId> {
     doc.elements().find(|&id| {
         doc.element(id).is_some_and(is_submit_button)
-            && !doc.attribute(id, "disabled").is_some()
+            && doc.attribute(id, "disabled").is_none()
             && form_owner(doc, id) == Some(form)
     })
 }
@@ -183,8 +183,7 @@ pub fn entry_list(
             "input" => {
                 let ty = e
                     .attr("type")
-                    .map(str::to_ascii_lowercase)
-                    .unwrap_or_else(|| "text".into());
+                    .map_or_else(|| "text".into(), str::to_ascii_lowercase);
                 match ty.as_str() {
                     "checkbox" | "radio" => {
                         if doc.is_checked(id) {

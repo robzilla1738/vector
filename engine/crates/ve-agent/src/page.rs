@@ -352,7 +352,7 @@ impl Page {
             self.generation = self.generation.wrapping_add(1);
         }
         self.doc = outcome.document;
-        self.url = loaded.url.clone();
+        self.url.clone_from(&loaded.url);
         self.meta = ve_html::document_meta(&self.doc);
         let document_url = url::Url::parse(&self.url).ok();
         self.base_url = match (&self.meta.base_href, &document_url) {
@@ -1002,9 +1002,11 @@ impl Page {
     /// Whole-page text in the shown-text sense (for `textVisible`).
     #[must_use]
     pub fn shown_text(&self) -> String {
-        let mut request = ObservationRequest::default();
-        request.max_text_chars = usize::MAX / 2;
-        request.max_elements = 1;
+        let request = ObservationRequest {
+            max_text_chars: usize::MAX / 2,
+            max_elements: 1,
+            ..ObservationRequest::default()
+        };
         self.observe_now(&request).text
     }
 
@@ -1461,8 +1463,7 @@ impl Page {
                 "button" => {
                     let ty = e
                         .attr("type")
-                        .map(str::to_ascii_lowercase)
-                        .unwrap_or_else(|| "submit".into());
+                        .map_or_else(|| "submit".into(), str::to_ascii_lowercase);
                     return match ty.as_str() {
                         "submit" => self.submit_from(node),
                         "reset" => self.reset_form_of(node),
@@ -2074,7 +2075,7 @@ impl Page {
                     if lower == 'a' {
                         return Ok("select all".into());
                     }
-                    return Ok(format!("chord {key:?} has no default action", key = chord));
+                    return Ok(format!("chord {chord:?} has no default action"));
                 }
                 if let Some(id) = focused
                     && self.is_text_control(id)

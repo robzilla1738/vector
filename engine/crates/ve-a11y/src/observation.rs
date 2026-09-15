@@ -392,16 +392,30 @@ impl ObservationContent {
         self.elements.iter().find(|e| e.reference == reference)
     }
 
-    /// Approximate size of the rendered (planner-facing) text, in characters.
+    /// Approximate size of the rendered (planner-facing) text for a `full`
+    /// scope observation, in characters.
     #[must_use]
     pub fn rendered_chars(&self) -> usize {
+        self.rendered_chars_for(Scope::Full)
+    }
+
+    /// Approximate size of what the runtime's `renderObservation` prints for
+    /// `scope`, in characters: form fields for `full|forms|subtree`, elements
+    /// and text for `full|subtree`, tables for `full|tables|subtree`, and the
+    /// link list only for `links`.
+    #[must_use]
+    pub fn rendered_chars_for(&self, scope: Scope) -> usize {
+        let want_fields = matches!(scope, Scope::Full | Scope::Forms | Scope::Subtree);
+        let want_elements = matches!(scope, Scope::Full | Scope::Subtree);
+        let want_tables = matches!(scope, Scope::Full | Scope::Tables | Scope::Subtree);
+        let want_links = scope == Scope::Links;
         let mut chars = self.url.chars().count() + self.title.chars().count() + 80;
         chars += self
             .headings
             .iter()
             .map(|h| h.chars().count() + 3)
             .sum::<usize>();
-        for e in &self.elements {
+        for e in self.elements.iter().filter(|_| want_elements) {
             chars += 8
                 + e.role
                     .as_ref()
@@ -412,13 +426,13 @@ impl ObservationContent {
                 + usize::from(e.checked.is_some()) * 14
                 + e.selected.as_ref().map_or(0, |s| s.chars().count() + 11);
         }
-        for f in &self.form_fields {
+        for f in self.form_fields.iter().filter(|_| want_fields) {
             chars += 10
                 + f.type_.chars().count()
                 + f.label.as_ref().map_or(0, |l| l.chars().count())
                 + f.value.as_ref().map_or(0, |v| v.chars().count() + 3);
         }
-        for t in &self.tables {
+        for t in self.tables.iter().filter(|_| want_tables) {
             chars += 20
                 + t.columns
                     .iter()
@@ -428,10 +442,13 @@ impl ObservationContent {
                 chars += r.iter().map(|c| c.chars().count() + 3).sum::<usize>();
             }
         }
-        for l in &self.links {
+        for l in self.links.iter().filter(|_| want_links) {
             chars += l.text.chars().count() + l.href.chars().count() + 10;
         }
-        chars + self.text.chars().count()
+        if want_elements {
+            chars += self.text.chars().count();
+        }
+        chars
     }
 }
 
@@ -1584,7 +1601,7 @@ impl<'a> Builder<'a> {
             elements_total,
             elements_shown: content.elements.len(),
             text_chars: content.text.chars().count(),
-            approx_tokens: content.rendered_chars().div_ceil(4),
+            approx_tokens: content.rendered_chars_for(self.request.scope).div_ceil(4),
         };
         content
     }

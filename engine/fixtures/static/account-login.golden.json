@@ -1,0 +1,463 @@
+{
+  "url": "https://fixtures.vector.test/account-login.html",
+  "title": "Sign in · Acme Cloud",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 542.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://fixtures.vector.test/account-login.html",
+      "sameOrigin": true
+    }
+  ],
+  "text": "[header]\nAcme Cloud\n[nav]\nProducts Pricing Docs Support\n[form]\n[Search]\n[main]\n[nav]\nSign in · Create an account · Single sign-on\n# Sign in to Acme Cloud\n[form]\nEmail or username\nPassword\nForgot your password?\nKeep me signed in on this device\n[Sign in] [Continue with SSO]\nBy signing in you agree to the Terms of Service and Privacy Policy .\n## Trouble signing in?\nI forgot my password\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\nI no longer have access to my email\nWhy am I asked for a verification code?\nHow do I delete my account?\n## New to Acme Cloud?\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\nCreate a free account →\n[footer]\n[nav]\nStatus Security Privacy Terms Contact\n© Fixture Corp. Static corpus for engine benchmarks.",
+  "headings": [
+    "Sign in to Acme Cloud",
+    "Trouble signing in?",
+    "New to Acme Cloud?"
+  ],
+  "elements": [
+    {
+      "ref": "r37",
+      "frame": "main",
+      "tag": "input",
+      "role": "searchbox",
+      "name": "Search",
+      "type": "search",
+      "value": "",
+      "placeholder": "Search…",
+      "selector": {}
+    },
+    {
+      "ref": "r38",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Search",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r66",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Email or username",
+      "type": "text",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r70",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Password",
+      "type": "password",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r77",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "1 Keep me signed in on this device",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r81",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Sign in",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r84",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Continue with SSO",
+      "type": "button",
+      "disabled": true,
+      "selector": {}
+    },
+    {
+      "ref": "r103",
+      "frame": "main",
+      "tag": "details",
+      "role": "group",
+      "name": "I forgot my password",
+      "selector": {}
+    },
+    {
+      "ref": "r104",
+      "frame": "main",
+      "tag": "summary",
+      "role": "button",
+      "name": "I forgot my password",
+      "selector": {}
+    },
+    {
+      "ref": "r22",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Acme Cloud",
+      "href": "https://fixtures.vector.test/",
+      "selector": {}
+    },
+    {
+      "ref": "r25",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Products",
+      "href": "https://fixtures.vector.test/products",
+      "selector": {}
+    },
+    {
+      "ref": "r27",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Pricing",
+      "href": "https://fixtures.vector.test/pricing",
+      "selector": {}
+    },
+    {
+      "ref": "r29",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Docs",
+      "href": "https://fixtures.vector.test/docs",
+      "selector": {}
+    },
+    {
+      "ref": "r31",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Support",
+      "href": "https://fixtures.vector.test/support",
+      "selector": {}
+    },
+    {
+      "ref": "r45",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Sign in",
+      "href": "https://fixtures.vector.test/login",
+      "selector": {}
+    },
+    {
+      "ref": "r49",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Create an account",
+      "href": "https://fixtures.vector.test/signup",
+      "selector": {}
+    },
+    {
+      "ref": "r52",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Single sign-on",
+      "href": "https://fixtures.vector.test/sso",
+      "selector": {}
+    },
+    {
+      "ref": "r73",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Forgot your password?",
+      "href": "https://fixtures.vector.test/reset",
+      "selector": {}
+    },
+    {
+      "ref": "r89",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Terms of Service",
+      "href": "https://fixtures.vector.test/terms",
+      "selector": {}
+    },
+    {
+      "ref": "r92",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Privacy Policy",
+      "href": "https://fixtures.vector.test/privacy",
+      "selector": {}
+    },
+    {
+      "ref": "r18",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Skip to main content",
+      "href": "https://fixtures.vector.test/account-login.html#main",
+      "selector": {}
+    },
+    {
+      "ref": "r108",
+      "frame": "main",
+      "tag": "details",
+      "role": "group",
+      "name": "I no longer have access to my email",
+      "selector": {}
+    },
+    {
+      "ref": "r109",
+      "frame": "main",
+      "tag": "summary",
+      "role": "button",
+      "name": "I no longer have access to my email",
+      "selector": {}
+    },
+    {
+      "ref": "r113",
+      "frame": "main",
+      "tag": "details",
+      "role": "group",
+      "name": "Why am I asked for a verification code?",
+      "selector": {}
+    },
+    {
+      "ref": "r114",
+      "frame": "main",
+      "tag": "summary",
+      "role": "button",
+      "name": "Why am I asked for a verification code?",
+      "selector": {}
+    },
+    {
+      "ref": "r118",
+      "frame": "main",
+      "tag": "details",
+      "role": "group",
+      "name": "How do I delete my account?",
+      "selector": {}
+    },
+    {
+      "ref": "r119",
+      "frame": "main",
+      "tag": "summary",
+      "role": "button",
+      "name": "How do I delete my account?",
+      "selector": {}
+    },
+    {
+      "ref": "r130",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Create a free account →",
+      "href": "https://fixtures.vector.test/signup",
+      "selector": {}
+    },
+    {
+      "ref": "r136",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Status",
+      "href": "https://status.acme.test/",
+      "selector": {}
+    },
+    {
+      "ref": "r138",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Security",
+      "href": "https://fixtures.vector.test/security",
+      "selector": {}
+    },
+    {
+      "ref": "r140",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Privacy",
+      "href": "https://fixtures.vector.test/privacy",
+      "selector": {}
+    },
+    {
+      "ref": "r142",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Terms",
+      "href": "https://fixtures.vector.test/terms",
+      "selector": {}
+    },
+    {
+      "ref": "r144",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Contact",
+      "href": "https://fixtures.vector.test/contact",
+      "selector": {}
+    }
+  ],
+  "formFields": [
+    {
+      "ref": "r37",
+      "label": "Search",
+      "name": "q",
+      "type": "search",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r66",
+      "label": "Email or username",
+      "name": "login",
+      "type": "text",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r70",
+      "label": "Password",
+      "name": "password",
+      "type": "password",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r77",
+      "label": "1 Keep me signed in on this device",
+      "name": "remember",
+      "type": "checkbox",
+      "value": "",
+      "valid": true
+    }
+  ],
+  "tables": [],
+  "links": [
+    {
+      "ref": "r22",
+      "text": "Acme Cloud",
+      "href": "https://fixtures.vector.test/"
+    },
+    {
+      "ref": "r25",
+      "text": "Products",
+      "href": "https://fixtures.vector.test/products"
+    },
+    {
+      "ref": "r27",
+      "text": "Pricing",
+      "href": "https://fixtures.vector.test/pricing"
+    },
+    {
+      "ref": "r29",
+      "text": "Docs",
+      "href": "https://fixtures.vector.test/docs"
+    },
+    {
+      "ref": "r31",
+      "text": "Support",
+      "href": "https://fixtures.vector.test/support"
+    },
+    {
+      "ref": "r45",
+      "text": "Sign in",
+      "href": "https://fixtures.vector.test/login"
+    },
+    {
+      "ref": "r49",
+      "text": "Create an account",
+      "href": "https://fixtures.vector.test/signup"
+    },
+    {
+      "ref": "r52",
+      "text": "Single sign-on",
+      "href": "https://fixtures.vector.test/sso"
+    },
+    {
+      "ref": "r73",
+      "text": "Forgot your password?",
+      "href": "https://fixtures.vector.test/reset"
+    },
+    {
+      "ref": "r89",
+      "text": "Terms of Service",
+      "href": "https://fixtures.vector.test/terms"
+    },
+    {
+      "ref": "r92",
+      "text": "Privacy Policy",
+      "href": "https://fixtures.vector.test/privacy"
+    },
+    {
+      "ref": "r18",
+      "text": "Skip to main content",
+      "href": "https://fixtures.vector.test/account-login.html#main"
+    },
+    {
+      "ref": "r130",
+      "text": "Create a free account →",
+      "href": "https://fixtures.vector.test/signup"
+    },
+    {
+      "ref": "r136",
+      "text": "Status",
+      "href": "https://status.acme.test/"
+    },
+    {
+      "ref": "r138",
+      "text": "Security",
+      "href": "https://fixtures.vector.test/security"
+    },
+    {
+      "ref": "r140",
+      "text": "Privacy",
+      "href": "https://fixtures.vector.test/privacy"
+    },
+    {
+      "ref": "r142",
+      "text": "Terms",
+      "href": "https://fixtures.vector.test/terms"
+    },
+    {
+      "ref": "r144",
+      "text": "Contact",
+      "href": "https://fixtures.vector.test/contact"
+    }
+  ],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 33,
+    "elementsShown": 33,
+    "textChars": 1111,
+    "approxTokens": 828
+  }
+}

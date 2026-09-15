@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apply for household energy assistance | Benefits Portal</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1c1e21;line-height:1.5;background:#fff}
+a{color:#0b57d0}a:hover{text-decoration:underline}
+header.site{background:#0b3d91;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:24px}
+header.site a{color:#fff;text-decoration:none;font-weight:600}
+header.site nav a{margin-right:16px;font-weight:400}
+.wrap{max-width:1100px;margin:0 auto;padding:24px;display:flex;gap:32px}
+main{flex:1;min-width:0}aside{width:260px;flex:none}
+aside h3{font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:#555;margin:16px 0 8px}
+aside ul{list-style:none;padding:0;margin:0}aside li{padding:4px 0}
+h1{font-size:32px;margin:0 0 8px}h2{font-size:22px;margin:32px 0 8px;border-bottom:1px solid #e3e3e3;padding-bottom:4px}h3{font-size:17px;margin:20px 0 6px}
+p{margin:0 0 12px}pre{background:#f4f5f7;border:1px solid #e1e4e8;border-radius:6px;padding:12px;overflow:auto;font-size:13px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:#f4f5f7;padding:1px 4px;border-radius:3px}
+table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:14px}th{background:#f7f7f7}
+form.inline{display:flex;gap:8px;align-items:center}input,select,textarea,button{font:inherit;padding:6px 8px;border:1px solid #bbb;border-radius:4px}
+button,input[type=submit]{background:#0b57d0;color:#fff;border-color:#0b57d0;cursor:pointer}button[disabled]{background:#9aa;border-color:#9aa;cursor:default}
+button.secondary{background:#fff;color:#0b57d0}
+label{display:block;margin:10px 0 4px;font-weight:600}fieldset{border:1px solid #ddd;border-radius:6px;padding:12px 16px;margin:16px 0}legend{font-weight:700;padding:0 6px}
+.row{display:flex;gap:16px}.row>div{flex:1}.hint{font-size:13px;color:#666}
+footer.site{border-top:1px solid #e3e3e3;margin-top:48px;padding:24px;font-size:13px;color:#555}footer.site a{margin-right:14px}
+.visually-hidden{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+.nojs{display:none}.ghost{visibility:hidden}
+details{border:1px solid #ddd;border-radius:6px;padding:8px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+.badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:12px;background:#e8f0fe;color:#0b3d91}
+.muted{color:#777}.card{border:1px solid #e3e3e3;border-radius:8px;padding:16px;margin:12px 0}
+.pagination a,.pagination span{display:inline-block;padding:4px 10px;border:1px solid #ddd;margin-right:4px;border-radius:4px}
+</style>
+</head>
+<body>
+<a class="visually-hidden" href="#main">Skip to main content</a>
+<header class="site"><a href="/">Benefits Portal</a><nav aria-label="Primary"><a href="/">Home</a><a href="/apply">Apply</a><a href="/status">Check status</a><a href="/help">Help</a></nav>
+<form class="inline" action="/search" method="get" role="search" style="margin-left:auto"><label for="q" class="visually-hidden">Search</label><input id="q" name="q" type="search" placeholder="Search…"><button type="submit">Search</button></form></header>
+<div class="wrap"><main id="main">
+<h1>Apply for household energy assistance</h1>
+<p>Complete all required fields (marked <abbr title="required">*</abbr>). Your application is saved when you submit; you can return with your confirmation number.</p>
+<div class="card"><strong>Before you start</strong><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p><ul><li>Proof of identity for each adult in the household</li><li>Most recent utility bill</li><li>Income statements for the last 30 days</li></ul></div>
+<form action="/apply/submit" method="post" enctype="multipart/form-data" id="application">
+<fieldset><legend>1. Applicant</legend>
+<div class="row"><div><label for="first">First name <abbr title="required">*</abbr></label><input id="first" name="firstName" required autocomplete="given-name"></div>
+<div><label for="last">Last name <abbr title="required">*</abbr></label><input id="last" name="lastName" required autocomplete="family-name"></div></div>
+<label for="dob">Date of birth <abbr title="required">*</abbr></label><input id="dob" name="dob" type="date" required>
+<label for="ssn">Social Security number (last 4)</label><input id="ssn" name="ssn4" inputmode="numeric" maxlength="4" pattern="[0-9]{4}"><p class="hint">Optional. Speeds up identity verification.</p>
+<label for="email">Email address <abbr title="required">*</abbr></label><input id="email" name="email" type="email" required autocomplete="email">
+<label for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="(555) 555-0100">
+</fieldset>
+<fieldset><legend>2. Address</legend>
+<label for="addr1">Street address <abbr title="required">*</abbr></label><input id="addr1" name="address1" required autocomplete="address-line1">
+<label for="addr2">Apartment, suite, etc.</label><input id="addr2" name="address2" autocomplete="address-line2">
+<div class="row"><div><label for="city">City <abbr title="required">*</abbr></label><input id="city" name="city" required></div>
+<div><label for="state">State <abbr title="required">*</abbr></label><select id="state" name="state" required><option value="">Select a state</option><option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option><option value="CA">California</option><option value="CO">Colorado</option><option value="FL">Florida</option><option value="GA">Georgia</option><option value="IL">Illinois</option><option value="NY">New York</option><option value="TX">Texas</option><option value="WA">Washington</option></select></div>
+<div><label for="zip">ZIP code <abbr title="required">*</abbr></label><input id="zip" name="zip" required inputmode="numeric" pattern="[0-9]{5}"></div></div>
+<label><input type="checkbox" name="mailingSame" checked> Mailing address is the same as above</label>
+</fieldset>
+<fieldset><legend>3. Household</legend>
+<label for="size">Number of people in household <abbr title="required">*</abbr></label><input id="size" name="householdSize" type="number" min="1" max="20" value="1" required>
+<fieldset><legend>Housing type</legend>
+<label><input type="radio" name="housing" value="own" required> Own</label><label><input type="radio" name="housing" value="rent"> Rent</label><label><input type="radio" name="housing" value="other"> Other</label></fieldset>
+<fieldset><legend>Anyone in the household is… (check all that apply)</legend>
+<label><input type="checkbox" name="hh[]" value="senior"> Age 60 or older</label><label><input type="checkbox" name="hh[]" value="disabled"> Living with a disability</label><label><input type="checkbox" name="hh[]" value="child"> Under 6 years old</label><label><input type="checkbox" name="hh[]" value="veteran"> A veteran</label></fieldset>
+<label for="heat">Primary heating source</label><select id="heat" name="heatSource"><option value="gas">Natural gas</option><option value="electric" selected>Electricity</option><option value="oil">Heating oil</option><option value="propane">Propane</option><option value="wood">Wood</option></select>
+</fieldset>
+<fieldset><legend>4. Income</legend>
+<label for="income">Total gross monthly household income (USD) <abbr title="required">*</abbr></label><input id="income" name="monthlyIncome" type="number" min="0" step="1" required>
+<label for="bill">Upload your most recent utility bill</label><input id="bill" name="utilityBill" type="file" accept=".pdf,image/*"><p class="hint">PDF, JPG or PNG up to 10 MB.</p>
+<label for="notes">Anything else we should know?</label><textarea id="notes" name="notes" rows="4" maxlength="1000"></textarea>
+</fieldset>
+<fieldset><legend>5. Review and sign</legend>
+<details><summary>Privacy Act statement</summary><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p></details>
+<details><summary>Penalty for false statements</summary><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p></details>
+<label><input type="checkbox" name="certify" required> I certify that the information provided is true and complete <abbr title="required">*</abbr></label>
+<label for="sig">Type your full name as signature <abbr title="required">*</abbr></label><input id="sig" name="signature" required>
+</fieldset>
+<p><button type="submit" name="action" value="submit">Submit application</button> <button type="submit" name="action" value="save" class="secondary" formnovalidate>Save and finish later</button> <button type="reset" class="secondary">Clear form</button></p>
+<p class="hint">Need help? Call <a href="tel:+18005550100">1-800-555-0100</a> (TTY 711), Monday–Friday 8 am–6 pm.</p>
+</form>
+<span aria-hidden="true" class="muted">◆ ◆ ◆</span>
+</main>
+<aside><h3>Related</h3><ul><li><a href="/programs/energy">About the program</a></li><li><a href="/eligibility">Eligibility checker</a></li><li><a href="/status">Check application status</a></li><li><a href="/appeals">Appeals process</a></li></ul>
+<h3>Languages</h3><ul><li><a href="/es/apply">Español</a></li><li><a href="/zh/apply">中文</a></li><li><a href="/vi/apply">Tiếng Việt</a></li></ul></aside></div><footer class="site"><nav aria-label="Footer"><a href="/accessibility">Accessibility</a><a href="/privacy">Privacy</a><a href="/foia">FOIA</a><a href="/nofear">No FEAR Act</a><a href="https://www.usa.gov">USA.gov</a></nav><p class="muted">© Fixture Corp. Static corpus for engine benchmarks.</p></footer>
+</body>
+</html>

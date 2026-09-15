@@ -1,8 +1,9 @@
 //! Node.js bindings for the Vector Engine (napi-rs).
 //!
 //! With the `napi` feature this crate builds a Node addon exposing an
-//! [`Engine`](bindings::Engine) class with `open`, `observe`, `execute` and
-//! `close` methods that speak JSON, mirroring the C ABI in `ve-api::ffi`.
+//! [`Engine`](bindings::Engine) class with `open`, `observe`, `execute`,
+//! `screenshot`, `close`, context and cookie methods that speak JSON,
+//! mirroring the C ABI in `ve-api::ffi`.
 //! Without the feature the crate is an inert placeholder so that the default
 //! workspace build needs no Node headers or C toolchain.
 //!
@@ -68,29 +69,64 @@ pub mod bindings {
             })
         }
 
-        /// Opens a page; returns `{"ok":true,"page":N}` JSON.
+        /// Opens a page from a JSON `OpenRequest`; returns the `OpenResult`
+        /// JSON (`{"ok":true,"page":N,"routing":{…},…}`).
         #[napi]
-        pub fn open(&mut self, source_json: String) -> String {
-            self.inner.open_json(&source_json)
+        pub fn open(&mut self, request_json: String) -> String {
+            self.inner.open_json(&request_json)
         }
 
-        /// Observes a page; returns an `Observation` JSON.
+        /// Observes a page with a JSON `ObservationRequest`; returns an
+        /// `Observation` JSON (`{"ok":true,"content":{…},…}`).
         #[napi]
-        pub fn observe(&mut self, page: u32, options_json: Option<String>) -> String {
+        pub fn observe(&mut self, page: u32, request_json: Option<String>) -> String {
             self.inner
-                .observe_json(u64::from(page), options_json.as_deref().unwrap_or("{}"))
+                .observe_json(u64::from(page), request_json.as_deref().unwrap_or("{}"))
         }
 
-        /// Executes a JSON program; returns an `ExecutionReport` JSON.
+        /// Executes a JSON program (`{program, returnObservation?}`); returns
+        /// `{"ok":true,"result":{…},"observation"?:{…}}`.
         #[napi]
-        pub fn execute(&mut self, page: u32, program_json: String) -> String {
-            self.inner.execute_json(u64::from(page), &program_json)
+        pub fn execute(&mut self, page: u32, request_json: String) -> String {
+            self.inner.execute_json(u64::from(page), &request_json)
+        }
+
+        /// Screenshots a page; returns `{"ok":true,"pngBase64":…,…}`.
+        #[napi]
+        pub fn screenshot(&mut self, page: u32, options_json: Option<String>) -> String {
+            self.inner
+                .screenshot_json(u64::from(page), options_json.as_deref().unwrap_or("{}"))
         }
 
         /// Closes a page.
         #[napi]
         pub fn close(&mut self, page: u32) -> bool {
             self.inner.close(ve_api::PageId(u64::from(page)))
+        }
+
+        /// Creates a context from a JSON `NetworkPolicy`; returns `{"ok":true,"context":N}`.
+        #[napi]
+        pub fn new_context(&mut self, policy_json: Option<String>) -> String {
+            self.inner
+                .new_context_json(policy_json.as_deref().unwrap_or(""))
+        }
+
+        /// Frees a context and closes its pages.
+        #[napi]
+        pub fn free_context(&mut self, context: u32) -> bool {
+            self.inner.free_context(ve_api::ContextId(u64::from(context)))
+        }
+
+        /// Cookies of a context as `{"ok":true,"cookies":[…]}`.
+        #[napi]
+        pub fn get_cookies(&self, context: u32) -> String {
+            self.inner.cookies_json(u64::from(context))
+        }
+
+        /// Imports `BrowserCookie`s; returns `{"ok":true,"imported":N}`.
+        #[napi]
+        pub fn set_cookies(&mut self, context: u32, cookies_json: String) -> String {
+            self.inner.set_cookies_json(u64::from(context), &cookies_json)
         }
     }
 

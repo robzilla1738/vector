@@ -141,7 +141,6 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
     let mut empty_root: Option<String> = None;
     let mut body_onload = false;
     let mut meta_refresh_js = false;
-    let mut body_element_children = 0usize;
     let mut body_canvas_only = false;
     let mut body_media_only = false;
 
@@ -152,7 +151,6 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
             .children(b)
             .filter(|&c| doc.element(c).is_some_and(|e| !matches!(e.name.as_str(), "script" | "style" | "noscript" | "template")))
             .collect();
-        body_element_children = kids.len();
         if !kids.is_empty() {
             body_canvas_only = kids
                 .iter()
@@ -245,8 +243,6 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
         Some("unsupported-content: <canvas>-only body".into())
     } else if body_media_only {
         Some("unsupported-content: media-only body".into())
-    } else if body_element_children == 0 && text_len == 0 && external_scripts == 0 && body.is_some() {
-        None
     } else {
         None
     };

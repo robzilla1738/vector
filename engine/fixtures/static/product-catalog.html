@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apparel — Outfitter</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1c1e21;line-height:1.5;background:#fff}
+a{color:#0b57d0}a:hover{text-decoration:underline}
+header.site{background:#0b3d91;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:24px}
+header.site a{color:#fff;text-decoration:none;font-weight:600}
+header.site nav a{margin-right:16px;font-weight:400}
+.wrap{max-width:1100px;margin:0 auto;padding:24px;display:flex;gap:32px}
+main{flex:1;min-width:0}aside{width:260px;flex:none}
+aside h3{font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:#555;margin:16px 0 8px}
+aside ul{list-style:none;padding:0;margin:0}aside li{padding:4px 0}
+h1{font-size:32px;margin:0 0 8px}h2{font-size:22px;margin:32px 0 8px;border-bottom:1px solid #e3e3e3;padding-bottom:4px}h3{font-size:17px;margin:20px 0 6px}
+p{margin:0 0 12px}pre{background:#f4f5f7;border:1px solid #e1e4e8;border-radius:6px;padding:12px;overflow:auto;font-size:13px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:#f4f5f7;padding:1px 4px;border-radius:3px}
+table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:14px}th{background:#f7f7f7}
+form.inline{display:flex;gap:8px;align-items:center}input,select,textarea,button{font:inherit;padding:6px 8px;border:1px solid #bbb;border-radius:4px}
+button,input[type=submit]{background:#0b57d0;color:#fff;border-color:#0b57d0;cursor:pointer}button[disabled]{background:#9aa;border-color:#9aa;cursor:default}
+button.secondary{background:#fff;color:#0b57d0}
+label{display:block;margin:10px 0 4px;font-weight:600}fieldset{border:1px solid #ddd;border-radius:6px;padding:12px 16px;margin:16px 0}legend{font-weight:700;padding:0 6px}
+.row{display:flex;gap:16px}.row>div{flex:1}.hint{font-size:13px;color:#666}
+footer.site{border-top:1px solid #e3e3e3;margin-top:48px;padding:24px;font-size:13px;color:#555}footer.site a{margin-right:14px}
+.visually-hidden{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+.nojs{display:none}.ghost{visibility:hidden}
+details{border:1px solid #ddd;border-radius:6px;padding:8px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+.badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:12px;background:#e8f0fe;color:#0b3d91}
+.muted{color:#777}.card{border:1px solid #e3e3e3;border-radius:8px;padding:16px;margin:12px 0}
+.pagination a,.pagination span{display:inline-block;padding:4px 10px;border:1px solid #ddd;margin-right:4px;border-radius:4px}
+</style>
+</head>
+<body>
+<a class="visually-hidden" href="#main">Skip to main content</a>
+<header class="site"><a href="/">Outfitter</a><nav aria-label="Primary"><a href="/c/men">Men</a><a href="/c/women">Women</a><a href="/c/gear">Gear</a><a href="/sale">Sale</a></nav>
+<form class="inline" action="/search" method="get" role="search" style="margin-left:auto"><label for="q" class="visually-hidden">Search</label><input id="q" name="q" type="search" placeholder="Search…"><button type="submit">Search</button></form></header>
+<div class="wrap"><aside>
+<form action="/c/all" method="get" id="filters"><h3>Filter</h3>
+<label for="cat">Category</label><select id="cat" name="category"><option value="">All categories</option><option value="footwear">Footwear</option><option value="apparel" selected>Apparel</option><option value="gear">Gear</option><option value="camping">Camping</option></select>
+<label for="sort">Sort by</label><select id="sort" name="sort"><option value="relevance">Relevance</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option><option value="rating">Rating</option></select>
+<label for="min">Min price</label><input id="min" name="min" type="number" min="0" placeholder="0">
+<label for="max">Max price</label><input id="max" name="max" type="number" min="0" placeholder="500">
+<label><input type="checkbox" name="inStock" value="1" checked> In stock only</label>
+<label><input type="checkbox" name="onSale" value="1"> On sale</label>
+<fieldset><legend>Brand</legend><label><input type="checkbox" name="brand" value="north"> Northline</label><label><input type="checkbox" name="brand" value="ridge"> Ridgeway</label><label><input type="checkbox" name="brand" value="alt"> Altitude</label></fieldset>
+<button type="submit">Apply filters</button> <a href="/c/all">Reset</a></form>
+<h3>Help</h3><ul><li><a href="/size-guide">Size guide</a></li><li><a href="/shipping">Shipping &amp; returns</a></li><li><a href="/contact">Contact us</a></li></ul></aside>
+<main id="main"><nav aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/c/all">All products</a> › Apparel</nav>
+<h1>Apparel <span class="muted">(312 results)</span></h1>
+<p>Showing 1–20 of 312. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+<form action="/cart/add" method="post">
+<table><caption>Products</caption><thead><tr><th scope="col"><a href="?sort=name">Product</a></th><th scope="col">Category</th><th scope="col"><a href="?sort=price-asc">Price</a></th><th scope="col">Availability</th><th scope="col"><a href="?sort=rating">Rating</a></th><th scope="col">Action</th></tr></thead>
+<tbody><tr><td><a href="/p/1">Trail Runner 3</a></td><td>Apparel</td><td>$33.36</td><td>Low stock</td><td>4.1 ★ <span class="muted">(17)</span></td><td><button type="submit" name="add" value="1">Add to cart</button></td></tr><tr><td><a href="/p/2">Summit Jacket</a></td><td>Gear</td><td>$46.73</td><td>Out of stock</td><td>4.2 ★ <span class="muted">(34)</span></td><td><button type="submit" name="add" value="2" disabled>Add to cart</button></td></tr><tr><td><a href="/p/3">Compass Pro</a></td><td>Camping</td><td>$60.10</td><td>In stock</td><td>4.3 ★ <span class="muted">(51)</span></td><td><button type="submit" name="add" value="3">Add to cart</button></td></tr><tr><td><a href="/p/4">Ridge Tent 2P</a></td><td>Footwear</td><td>$73.47</td><td>Low stock</td><td>4.4 ★ <span class="muted">(68)</span></td><td><button type="submit" name="add" value="4">Add to cart</button></td></tr><tr><td><a href="/p/5">Alpine Stove</a></td><td>Apparel</td><td>$86.84</td><td>In stock</td><td>4.5 ★ <span class="muted">(85)</span></td><td><button type="submit" name="add" value="5">Add to cart</button></td></tr><tr><td><a href="/p/6">Canyon Pack 45L</a></td><td>Gear</td><td>$100.21</td><td>In stock</td><td>4.6 ★ <span class="muted">(102)</span></td><td><button type="submit" name="add" value="6">Add to cart</button></td></tr><tr><td><a href="/p/7">Glacier Bottle 1L</a></td><td>Camping</td><td>$113.58</td><td>Low stock</td><td>4.7 ★ <span class="muted">(119)</span></td><td><button type="submit" name="add" value="7">Add to cart</button></td></tr><tr><td><a href="/p/8">Basecamp Chair</a></td><td>Footwear</td><td>$126.95</td><td>Out of stock</td><td>4.8 ★ <span class="muted">(136)</span></td><td><button type="submit" name="add" value="8" disabled>Add to cart</button></td></tr><tr><td><a href="/p/9">Meridian Headlamp</a></td><td>Apparel</td><td>$140.32</td><td>In stock</td><td>4.9 ★ <span class="muted">(153)</span></td><td><button type="submit" name="add" value="9">Add to cart</button></td></tr><tr><td><a href="/p/10">Storm Shell</a></td><td>Gear</td><td>$153.69</td><td>In stock</td><td>4.0 ★ <span class="muted">(170)</span></td><td><button type="submit" name="add" value="10">Add to cart</button></td></tr><tr><td><a href="/p/11">Peak Poles</a></td><td>Camping</td><td>$167.06</td><td>Out of stock</td><td>4.1 ★ <span class="muted">(187)</span></td><td><button type="submit" name="add" value="11" disabled>Add to cart</button></td></tr><tr><td><a href="/p/12">Ember Sleeping Bag</a></td><td>Footwear</td><td>$180.43</td><td>In stock</td><td>4.2 ★ <span class="muted">(204)</span></td><td><button type="submit" name="add" value="12">Add to cart</button></td></tr><tr><td><a href="/p/13">Cascade Rain Pants</a></td><td>Apparel</td><td>$193.80</td><td>Low stock</td><td>4.3 ★ <span class="muted">(221)</span></td><td><button type="submit" name="add" value="13">Add to cart</button></td></tr><tr><td><a href="/p/14">Lookout Binoculars</a></td><td>Gear</td><td>$207.17</td><td>Out of stock</td><td>4.4 ★ <span class="muted">(238)</span></td><td><button type="submit" name="add" value="14" disabled>Add to cart</button></td></tr><tr><td><a href="/p/15">Trailhead Socks (3-pack)</a></td><td>Camping</td><td>$220.54</td><td>In stock</td><td>4.5 ★ <span class="muted">(255)</span></td><td><button type="submit" name="add" value="15">Add to cart</button></td></tr><tr><td><a href="/p/16">Nimbus Down Vest</a></td><td>Footwear</td><td>$233.91</td><td>Low stock</td><td>4.6 ★ <span class="muted">(272)</span></td><td><button type="submit" name="add" value="16">Add to cart</button></td></tr><tr><td><a href="/p/17">Crag Climbing Shoes</a></td><td>Apparel</td><td>$247.28</td><td>Out of stock</td><td>4.7 ★ <span class="muted">(289)</span></td><td><button type="submit" name="add" value="17" disabled>Add to cart</button></td></tr><tr><td><a href="/p/18">Fjord Dry Bag</a></td><td>Gear</td><td>$20.65</td><td>In stock</td><td>4.8 ★ <span class="muted">(306)</span></td><td><button type="submit" name="add" value="18">Add to cart</button></td></tr><tr><td><a href="/p/19">Tundra Mittens</a></td><td>Camping</td><td>$34.02</td><td>Low stock</td><td>4.9 ★ <span class="muted">(323)</span></td><td><button type="submit" name="add" value="19">Add to cart</button></td></tr><tr><td><a href="/p/20">Delta Cook Set</a></td><td>Footwear</td><td>$47.39</td><td>In stock</td><td>4.0 ★ <span class="muted">(340)</span></td><td><button type="submit" name="add" value="20">Add to cart</button></td></tr></tbody></table></form>
+<nav class="pagination" aria-label="Pagination"><span aria-current="page">1</span><a href="?page=2">2</a><a href="?page=3">3</a><a href="?page=4">4</a><span>…</span><a href="?page=16">16</a><a href="?page=2" rel="next">Next ›</a></nav>
+<section class="card"><h2 style="margin-top:0">Recently viewed</h2><ul><li><a href="/p/88">Horizon Sunglasses</a> — $59.00</li><li><a href="/p/41">Kestrel Windbreaker</a> — $129.00</li></ul></section>
+</main></div><footer class="site"><nav aria-label="Footer"><a href="/stores">Stores</a><a href="/careers">Careers</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/accessibility">Accessibility</a></nav><p class="muted">© Fixture Corp. Static corpus for engine benchmarks.</p></footer>
+</body>
+</html>

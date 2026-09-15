@@ -12,7 +12,7 @@ use std::time::Instant;
 use anyhow::{Context, Result};
 use clap::Parser;
 use serde::Serialize;
-use ve_api::{ObserveOptions, OpenSource, Page, VectorEngine};
+use ve_api::{ObservationRequest, OpenRequest, VectorEngine};
 
 /// Command line options.
 #[derive(Parser, Debug)]
@@ -115,14 +115,12 @@ fn run_test(engine: &mut VectorEngine, path: &Path) -> TestResult {
             };
         }
     };
-    let opened = engine.open(OpenSource::Html {
-        html,
-        url: Some(format!("file://{display}")),
-    });
+    let opened = engine.open(OpenRequest::html(html, Some(&format!("file://{display}"))));
     let (status, nodes, error) = match opened {
-        Ok(page) => {
+        Ok(opened) => {
+            let page = opened.page;
             let nodes = engine.page(page).map_or(0, |p| p.document().node_count());
-            let observed = engine.observe(page, &ObserveOptions::default());
+            let observed = engine.observe(page, &ObservationRequest::default());
             engine.close(page);
             match observed {
                 Ok(_) => ("PARSED", nodes, None),
