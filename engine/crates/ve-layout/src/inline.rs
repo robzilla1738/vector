@@ -1,29 +1,35 @@
 //! Inline formatting: flowing text runs and atomic inlines into line boxes.
+//!
+//! Line boxes are shortened by the floats of the enclosing block formatting
+//! context (CSS 2.1 §9.5): every new line asks the [`FloatContext`] for the
+//! free band at its `y`, a line that is too narrow for its first piece of
+//! content drops below the next float, and a float encountered *inside* the
+//! inline content is placed at the current line's top and shortens it.
+//!
+//! [`FloatContext`]: crate::floats::FloatContext
 
 use ve_core::{NodeId, Point, Rect};
 use ve_style::{ComputedStyle, TextAlign};
 
 use crate::block::{
-    ContainingBlock, Forced, LayoutCtx, layout_box_at, resolve_margins, translate_subtree,
+    ContainingBlock, Forced, LayoutCtx, layout_box_at, layout_float, resolve_margins,
+    translate_subtree,
 };
 use crate::box_tree::{BoxKind, Fragment, LayoutBox, LineBox};
 
 /// One line under construction.
 struct Line {
     y: f32,
+    /// Left edge of the line box (after float shortening).
+    x: f32,
+    /// Available width of the line box (after float shortening).
+    width: f32,
+    /// Distance from `x` to the right edge of the last fragment.
     advance: f32,
     fragments: Vec<Fragment>,
 }
 
 impl Line {
-    fn new(y: f32) -> Self {
-        Self {
-            y,
-            advance: 0.0,
-            fragments: Vec::new(),
-        }
-    }
-
     fn is_empty(&self) -> bool {
         self.fragments.is_empty()
     }
@@ -40,8 +46,10 @@ struct OpenInline {
 
 struct InlineState<'a, 'c> {
     ctx: &'a mut LayoutCtx<'c>,
-    origin: Point,
-    width: f32,
+    /// Content box of the block container.
+    content: Rect,
+    /// `line-height` of the container, used to probe the float band.
+    line_height: f32,
     line: Line,
     lines: Vec<LineBox>,
     open: Vec<OpenInline>,
@@ -51,11 +59,44 @@ struct InlineState<'a, 'c> {
 
 impl InlineState<'_, '_> {
     fn remaining(&self) -> f32 {
-        (self.width - self.line.advance).max(0.0)
+        (self.line.width - self.line.advance).max(0.0)
     }
 
     fn owner(&self) -> Option<NodeId> {
         self.open.last().map(|o| o.node).or(self.container)
+    }
+
+    /// Returns `true` if the current line is narrower than the container
+    /// because of floats.
+    fn is_shortened(&self) -> bool {
+        self.line.width + 0.01 < self.content.width()
+    }
+
+    /// Starts a new (empty) line at `y`, shortened by the floats there.
+    fn start_line(&mut self, y: f32) -> Line {
+        let (l, r) = self.ctx.floats().edges(
+            y,
+            self.line_height,
+            self.content.x(),
+            self.content.right(),
+        );
+        Line {
+            y,
+            x: l,
+            width: (r - l).max(0.0),
+            advance: 0.0,
+            fragments: Vec::new(),
+        }
+    }
+
+    /// Moves an empty current line down to the next float bottom (where the
+    /// available width can change). Returns `false` if there is none.
+    fn drop_below_float(&mut self) -> bool {
+        let Some(next) = self.ctx.floats().next_bottom_after(self.line.y) else {
+            return false;
+        };
+        self.line = self.start_line(next);
+        true
     }
 
     /// Closes the current line: aligns fragments vertically on a common
@@ -81,11 +122,11 @@ impl InlineState<'_, '_> {
             .fragments
             .iter()
             .map(|f| f.rect.right())
-            .fold(self.origin.x, f32::max)
-            - self.origin.x;
+            .fold(self.line.x, f32::max)
+            - self.line.x;
         let shift = match align {
-            TextAlign::Center => ((self.width - line_width) / 2.0).max(0.0),
-            TextAlign::Right | TextAlign::End => (self.width - line_width).max(0.0),
+            TextAlign::Center => ((self.line.width - line_width) / 2.0).max(0.0),
+            TextAlign::Right | TextAlign::End => (self.line.width - line_width).max(0.0),
             _ => 0.0,
         };
         let mut fragments = std::mem::take(&mut self.line.fragments);
@@ -100,14 +141,18 @@ impl InlineState<'_, '_> {
         for open in &mut self.open {
             open.start = 0;
         }
-        let rect = Rect::new(self.origin.x, self.line.y, self.width, height);
+        let rect = Rect::new(self.line.x, self.line.y, self.line.width, height);
         self.lines.push(LineBox { rect, fragments });
-        self.line = Line::new(rect.bottom());
+        self.line = self.start_line(rect.bottom());
     }
 
     fn push_fragment(&mut self, fragment: Fragment) {
-        self.line.advance = fragment.rect.right() - self.origin.x;
+        self.line.advance = fragment.rect.right() - self.line.x;
         self.line.fragments.push(fragment);
+    }
+
+    fn pen(&self) -> Point {
+        Point::new(self.line.x + self.line.advance, self.line.y)
     }
 }
 
@@ -115,15 +160,25 @@ impl InlineState<'_, '_> {
 /// height of the inline formatting context.
 pub fn layout_inline(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect) -> f32 {
     let align = bx.style.text_align;
+    let line_height = bx.style.line_height.to_px(bx.style.font_size);
+    let indent = bx.style.text_indent.resolve(content.width());
     let mut state = InlineState {
         ctx,
-        origin: content.origin,
-        width: content.width(),
-        line: Line::new(content.y()),
+        content,
+        line_height,
+        line: Line {
+            y: content.y(),
+            x: content.x(),
+            width: content.width(),
+            advance: 0.0,
+            fragments: Vec::new(),
+        },
         lines: Vec::new(),
         open: Vec::new(),
         container: bx.node,
     };
+    state.line = state.start_line(content.y());
+    state.line.advance = indent.max(0.0);
     let mut children = std::mem::take(&mut bx.children);
     flow_children(&mut children, &mut state, align);
     state.finish_line(align);
@@ -142,7 +197,9 @@ fn sync_atomic_boxes(children: &mut [LayoutBox], lines: &[LineBox]) {
     for child in children {
         match child.kind {
             BoxKind::Inline => sync_atomic_boxes(&mut child.children, lines),
-            BoxKind::InlineBlock | BoxKind::Flex | BoxKind::Grid if child.node.is_some() => {
+            BoxKind::InlineBlock | BoxKind::Flex | BoxKind::Grid | BoxKind::Table
+                if child.node.is_some() && child.is_in_flow() =>
+            {
                 let fragment = lines
                     .iter()
                     .flat_map(|l| &l.fragments)
@@ -161,7 +218,12 @@ fn sync_atomic_boxes(children: &mut [LayoutBox], lines: &[LineBox]) {
 fn flow_children(children: &mut [LayoutBox], state: &mut InlineState<'_, '_>, align: TextAlign) {
     for child in children {
         if child.is_out_of_flow() {
-            child.rect = Rect::new(state.origin.x + state.line.advance, state.line.y, 0.0, 0.0);
+            let pen = state.pen();
+            child.rect = Rect::new(pen.x, pen.y, 0.0, 0.0);
+            continue;
+        }
+        if child.is_float() {
+            flow_float(child, state);
             continue;
         }
         match &child.kind {
@@ -170,7 +232,12 @@ fn flow_children(children: &mut [LayoutBox], state: &mut InlineState<'_, '_>, al
                 flow_text(child, &text, state, align);
             }
             BoxKind::Inline => {
-                let node = child.node.expect("inline boxes come from elements");
+                let Some(node) = child.node else {
+                    // A generated inline (`::before` with `display: inline`):
+                    // flow its children as part of the owner.
+                    flow_children(&mut child.children, state, align);
+                    continue;
+                };
                 state.open.push(OpenInline {
                     node,
                     acc: Rect::ZERO,
@@ -189,25 +256,55 @@ fn flow_children(children: &mut [LayoutBox], state: &mut InlineState<'_, '_>, al
     }
 }
 
+/// A float inside inline content: placed no higher than the current line's
+/// top, then the current line is shortened (a left float pushes content
+/// already on the line to the right).
+fn flow_float(child: &mut LayoutBox, state: &mut InlineState<'_, '_>) {
+    let content = state.content;
+    layout_float(child, state.ctx, content, state.line.y);
+    let (l, r) = state.ctx.floats().edges(
+        state.line.y,
+        state.line_height.max(1.0),
+        content.x(),
+        content.right(),
+    );
+    let dx = l - state.line.x;
+    if dx != 0.0 {
+        for f in &mut state.line.fragments {
+            f.rect = f.rect.translate(dx, 0.0);
+        }
+    }
+    state.line.x = l;
+    state.line.width = (r - l).max(0.0);
+}
+
 fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>, align: TextAlign) {
     let style: &ComputedStyle = &child.style;
     let wrap = style.white_space.wraps();
     let mut lines = state
         .ctx
         .shaper
-        .shape(text, style, state.remaining(), state.width, wrap);
-    // If the first piece does not fit next to existing content, start a new line and reshape.
-    if wrap
-        && !state.line.is_empty()
+        .shape(text, style, state.remaining(), state.line.width, wrap);
+    // If the first piece does not fit next to existing content, start a new
+    // line; if it does not fit on an empty line shortened by floats, drop
+    // below the floats. Then reshape.
+    let mut guard = 0;
+    while wrap
         && lines
             .first()
             .is_some_and(|l| l.width > state.remaining() + 0.01)
+        && guard < 64
     {
-        state.finish_line(align);
+        guard += 1;
+        if !state.line.is_empty() {
+            state.finish_line(align);
+        } else if !(state.is_shortened() && state.drop_below_float()) {
+            break;
+        }
         lines = state
             .ctx
             .shaper
-            .shape(text, style, state.width, state.width, wrap);
+            .shape(text, style, state.remaining(), state.line.width, wrap);
     }
     let mut union = Rect::ZERO;
     for (i, shaped) in lines.into_iter().enumerate() {
@@ -229,29 +326,23 @@ fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>,
             if i == 0 && !state.line.is_empty() && text.starts_with(' ') {
                 // A lone collapsible space between inline content keeps its advance.
                 let space = state.ctx.shaper.measure(" ", style);
-                let rect = Rect::new(
-                    state.origin.x + state.line.advance,
-                    state.line.y,
-                    space,
-                    shaped.height,
-                );
+                let pen = state.pen();
+                let rect = Rect::new(pen.x, pen.y, space, shaped.height);
                 state.push_fragment(Fragment {
                     node: child.node,
                     owner: state.owner(),
                     rect,
                     text: Some(" ".into()),
                     baseline: shaped.baseline,
+                    clip: None,
+                    pseudo: child.pseudo,
                 });
                 union = union.union(&rect);
             }
             continue;
         }
-        let rect = Rect::new(
-            state.origin.x + state.line.advance,
-            state.line.y,
-            width.max(0.0),
-            shaped.height,
-        );
+        let pen = state.pen();
+        let rect = Rect::new(pen.x, pen.y, width.max(0.0), shaped.height);
         union = union.union(&rect);
         state.push_fragment(Fragment {
             node: child.node,
@@ -259,26 +350,35 @@ fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>,
             rect,
             text: Some(piece.to_owned()),
             baseline: shaped.baseline,
+            clip: None,
+            pseudo: child.pseudo,
         });
     }
     child.rect = union;
     child.content = union;
 }
 
-/// Places an atomic inline (inline-block, inline flex/grid) on the line.
+/// Places an atomic inline (inline-block, inline flex/grid/table) on the line.
 fn flow_atomic(child: &mut LayoutBox, state: &mut InlineState<'_, '_>, align: TextAlign) {
     let cb = ContainingBlock {
-        width: state.width,
+        width: state.content.width(),
         height: None,
     };
-    let margins = resolve_margins(&child.style, state.width);
-    let origin = Point::new(state.origin.x + state.line.advance, state.line.y);
+    let margins = resolve_margins(&child.style, cb.width);
+    let origin = state.pen();
     layout_box_at(child, state.ctx, cb, origin, Forced::default());
     let margin_width = child.rect.width() + margins.horizontal();
-    if !state.line.is_empty() && margin_width > state.remaining() + 0.01 {
-        state.finish_line(align);
-        let dx = state.origin.x + margins.left - child.rect.x();
-        let dy = state.line.y + margins.top - child.rect.y();
+    let mut guard = 0;
+    while margin_width > state.remaining() + 0.01 && guard < 64 {
+        guard += 1;
+        if !state.line.is_empty() {
+            state.finish_line(align);
+        } else if !(state.is_shortened() && state.drop_below_float()) {
+            break;
+        }
+        let pen = state.pen();
+        let dx = pen.x + margins.left - child.rect.x();
+        let dy = pen.y + margins.top - child.rect.y();
         translate_subtree(child, dx, dy);
     }
     let margin_box = child.rect.outset(margins);
@@ -289,5 +389,7 @@ fn flow_atomic(child: &mut LayoutBox, state: &mut InlineState<'_, '_>, align: Te
         rect: margin_box,
         text: None,
         baseline: margin_box.height(),
+        clip: None,
+        pseudo: child.pseudo,
     });
 }

@@ -273,7 +273,6 @@ fn greedy_wrap(
                 &mut lines,
             );
             line_start = idx;
-            line_end = idx;
             limit = available;
         }
         // The word starts a line. Does it fit on its own?

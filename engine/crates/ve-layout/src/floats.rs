@@ -164,7 +164,9 @@ mod tests {
         // Too wide for the remaining band at y=10 -> drops below the right float.
         let d = ctx.place(Float::Right, Size::new(120.0, 20.0), 10.0, 0.0, 400.0);
         assert_eq!(d, Point::new(280.0, 30.0));
-        assert_eq!(ctx.edges(5.0, 10.0, 0.0, 400.0), (200.0, 400.0));
+        // The band [5, 15) overlaps the right float placed at y = 10.
+        assert_eq!(ctx.edges(5.0, 10.0, 0.0, 400.0), (200.0, 250.0));
+        assert_eq!(ctx.edges(0.0, 10.0, 0.0, 400.0), (200.0, 400.0));
         assert_eq!(ctx.edges(15.0, 10.0, 0.0, 400.0), (200.0, 250.0));
         assert_eq!(ctx.edges(40.0, 10.0, 0.0, 400.0), (100.0, 280.0));
         assert_eq!(ctx.edges(60.0, 10.0, 0.0, 400.0), (0.0, 400.0));

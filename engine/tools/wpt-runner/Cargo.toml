@@ -1,6 +1,6 @@
 [package]
 name = "wpt-runner"
-description = "Web Platform Tests harness skeleton for the Vector Engine."
+description = "Web Platform Tests geometry runner for the Vector Engine: reftests compared by fragment geometry."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,7 +13,11 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-ve-api.workspace = true
+ve-core.workspace = true
+ve-dom.workspace = true
+ve-html.workspace = true
+ve-style.workspace = true
+ve-layout.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 serde.workspace = true

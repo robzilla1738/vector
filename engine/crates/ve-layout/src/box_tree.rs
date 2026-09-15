@@ -134,6 +134,9 @@ pub struct LayoutBox {
     /// Width of the containing block this box was last laid out against
     /// (recorded so a subtree can be re-laid-out in place).
     pub cb_width: f32,
+    /// Memoised `(min-content, max-content)` widths, valid for one layout
+    /// pass (the box tree is rebuilt whenever styles change).
+    pub intrinsic_cache: Option<(f32, f32)>,
 }
 
 impl LayoutBox {
@@ -156,6 +159,7 @@ impl LayoutBox {
             marker: None,
             marker_fragment: None,
             cb_width: 0.0,
+            intrinsic_cache: None,
         }
     }
 
@@ -473,7 +477,8 @@ fn is_space_text(bx: &LayoutBox) -> bool {
 
 /// Wraps `children` in an anonymous box of `kind` carrying `style`.
 fn anonymous(kind: BoxKind, style: &Rc<ComputedStyle>, owner: Option<NodeId>) -> LayoutBox {
-    let mut anon = LayoutBox::new(None, kind, Rc::new(anonymous_style(style, &kind_display(&kind))));
+    let display = kind_display(&kind);
+    let mut anon = LayoutBox::new(None, kind, Rc::new(anonymous_style(style, &display)));
     anon.owner = owner;
     anon
 }

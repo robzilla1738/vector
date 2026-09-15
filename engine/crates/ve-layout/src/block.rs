@@ -375,7 +375,6 @@ fn layout_block_flow(
                 if needed.is_some_and(|w| w > r - l + 0.01) {
                     if let Some(next) = ctx.floats().next_bottom_after(top) {
                         cursor = next;
-                        prev_margin_bottom = margins.top;
                         margin_origin = Point::new(content.x(), cursor - margins.top);
                     }
                 } else {
@@ -487,8 +486,32 @@ fn own_horizontal_edges(bx: &LayoutBox) -> f32 {
 
 /// Max-content width of a box: the width it would take if nothing wrapped.
 /// Includes the box's own margins, border and padding. Used for
-/// shrink-to-fit sizing and flex/grid/table measurement.
+/// shrink-to-fit sizing and flex/grid/table measurement. Memoised per box
+/// (see [`LayoutBox::intrinsic_cache`]) so nested shrink-to-fit boxes and
+/// tables stay linear.
 pub fn intrinsic_width(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
+    if let Some((_, max)) = bx.intrinsic_cache {
+        return max;
+    }
+    let max = intrinsic_width_uncached(bx, ctx);
+    let min = intrinsic_min_width_uncached(bx, ctx);
+    bx.intrinsic_cache = Some((min, max));
+    max
+}
+
+/// Min-content width of a box: the narrowest it can be without overflowing
+/// (the widest unbreakable word, or the widest child's min-content).
+pub fn intrinsic_min_width(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
+    if let Some((min, _)) = bx.intrinsic_cache {
+        return min;
+    }
+    let max = intrinsic_width_uncached(bx, ctx);
+    let min = intrinsic_min_width_uncached(bx, ctx);
+    bx.intrinsic_cache = Some((min, max));
+    min
+}
+
+fn intrinsic_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
     let style = bx.style.clone();
     if bx.kind == BoxKind::Table {
         let (_, max) = table::intrinsic_widths(bx, ctx);
@@ -535,16 +558,14 @@ pub fn intrinsic_width(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
     inner + own_horizontal_edges(bx)
 }
 
-/// Min-content width of a box: the narrowest it can be without overflowing
-/// (the widest unbreakable word, or the widest child's min-content).
-pub fn intrinsic_min_width(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
+fn intrinsic_min_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
     let style = bx.style.clone();
     if bx.kind == BoxKind::Table {
         let (min, _) = table::intrinsic_widths(bx, ctx);
         return min + resolve_margins(&style, 0.0).horizontal();
     }
     if let LengthPercentageAuto::Px(_) = style.width {
-        return intrinsic_width(bx, ctx);
+        return intrinsic_width_uncached(bx, ctx);
     }
     let inner = match &bx.kind {
         BoxKind::Text(text) => {

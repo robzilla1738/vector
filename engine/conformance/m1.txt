@@ -1,0 +1,2 @@
+# WPT reftests that pass the Vector Engine geometry runner (engine/tools/wpt-runner).
+# This manifest only grows: every test listed here must keep passing.
