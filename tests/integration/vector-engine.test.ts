@@ -30,6 +30,10 @@ const engine = await probeEngineNative();
 const chromium = findChromium();
 // the standalone driver reads the real process env for the browser path
 if (chromium) process.env.VECTOR_BROWSER_PATH = chromium;
+// CI sets VECTOR_REQUIRE_ENGINE=1 so a missing addon fails the job instead of
+// silently skipping every engine assertion.
+if (!engine.available && process.env.VECTOR_REQUIRE_ENGINE === "1")
+  throw new Error(`[vector-engine.test] VECTOR_REQUIRE_ENGINE=1 but the addon did not load: ${engine.error}`);
 if (!engine.available) console.warn(`[vector-engine.test] skipped: ${engine.error}`);
 if (!chromium) console.warn("[vector-engine.test] fallback test skipped: no Chromium (set VECTOR_BROWSER_PATH or `pnpm exec playwright install chromium-headless-shell`)");
 

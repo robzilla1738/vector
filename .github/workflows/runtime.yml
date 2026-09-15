@@ -1,0 +1,100 @@
+name: runtime
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["engine/**", "docs/**", "*.md"]
+  pull_request:
+    paths-ignore: ["engine/**", "docs/**", "*.md"]
+
+concurrency:
+  group: runtime-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-unit:
+    name: typecheck + unit (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm --filter @vector/desktop typecheck
+      - run: pnpm --filter @vector/desktop build
+      - run: pnpm test:unit
+
+  integration:
+    name: integration (headless Chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Install headless Chromium (playwright-core download, no browsers bundled)
+        run: pnpm --filter @vector/browser-driver exec playwright-core install --with-deps chromium-headless-shell
+      - name: Integration suite against the fixture sites
+        run: pnpm exec vitest run tests/integration
+        env:
+          VECTOR_CAPTURE_RESPONSES: "1"
+
+  integration-engine:
+    name: integration (vector-engine backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: addon
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @vector/engine-native build:cargo
+      - run: pnpm --filter @vector/browser-driver exec playwright-core install --with-deps chromium-headless-shell
+      - name: Engine-backed integration + router tests (VECTOR_REQUIRE_ENGINE fails instead of skipping)
+        run: pnpm exec vitest run tests/integration/vector-engine.test.ts tests/unit/engine-routing.test.ts tests/unit/vector-engine-driver.test.ts
+        env:
+          VECTOR_REQUIRE_ENGINE: "1"
+      - name: Benchmark both backends (report only)
+        run: pnpm bench --backend both || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-reports
+          path: tests/benchmarks/reports/
+          if-no-files-found: ignore
+
+  e2e:
+    name: Electron e2e (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @vector/desktop build
+      - run: pnpm test:e2e

@@ -1,0 +1,146 @@
+name: engine
+
+on:
+  push:
+    branches: [main]
+    paths: ["engine/**", ".github/workflows/engine.yml"]
+  pull_request:
+    paths: ["engine/**", ".github/workflows/engine.yml"]
+
+concurrency:
+  group: engine-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+defaults:
+  run:
+    working-directory: engine
+
+jobs:
+  check:
+    name: fmt + clippy + test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo build --workspace
+      - run: cargo test --workspace
+      - name: Golden snapshots are current
+        run: cargo test -p ve-api --test golden
+
+  features:
+    name: optional features build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: features
+      - name: http + quickjs + images
+        run: cargo clippy -p ve-api --all-targets --features http,quickjs -- -D warnings
+      - run: cargo test -p ve-net --features http
+      - run: cargo test -p ve-script --features quickjs
+      - run: cargo test -p ve-gfx --features images
+
+  perf-gate:
+    name: perf --gate m1
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: perf
+      - name: Enforce the M1 latency gates (p95 over the static corpus)
+        run: cargo run --release -p perf -- --gate m1 --out perf-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perf-report
+          path: engine/perf-report.json
+
+  wpt:
+    name: WPT geometry reftests (manifest m1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: wpt
+      - name: Sparse WPT checkout (M1 subsets + references)
+        working-directory: ${{ runner.temp }}
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/web-platform-tests/wpt.git wpt
+          cd wpt
+          git sparse-checkout set \
+            css/CSS2/normal-flow css/CSS2/box-display css/CSS2/positioning css/CSS2/reference css/CSS2/support \
+            css/css-flexbox css/css-flexbox/reference css/css-flexbox/support \
+            css/css-grid/alignment css/css-grid/reference \
+            css/selectors css/mediaqueries css/reference css/support \
+            accname html-aam common resources
+      - name: Every manifest test must still pass
+        run: cargo run --release -p wpt-runner -- --wpt-dir "${{ runner.temp }}/wpt" --out wpt-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wpt-report
+          path: engine/wpt-report.json
+
+  addon:
+    name: "@vector/engine-native (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: addon
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - run: cargo test -p ve-napi --features napi
+      - name: Build the .node binary next to index.js
+        run: pnpm --filter @vector/engine-native build:cargo
+        working-directory: .
+      - name: Addon smoke test
+        run: pnpm --filter @vector/engine-native test
+        working-directory: .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engine-native-${{ matrix.os }}
+          path: engine/crates/ve-napi/vector-engine.*.node
