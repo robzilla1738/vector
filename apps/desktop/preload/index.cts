@@ -32,9 +32,9 @@ const vector = {
     return () => ipcRenderer.removeListener("view.loading", l);
   },
 
-  /** position the visible native page inside the stage rectangle (CSS px) */
-  setStage: (pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null) =>
-    ipcRenderer.invoke("ui.setStage", pageId, bounds, split),
+  /** position the visible native page inside the stage rectangle (CSS px); `radius` rounds its corners to match the stage card */
+  setStage: (pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null, radius?: number) =>
+    ipcRenderer.invoke("ui.setStage", pageId, bounds, split, radius),
   /** hide native pages while a DOM overlay (palette/menus/overview) is up */
   overlay: (open: boolean) => ipcRenderer.invoke("ui.overlay", open),
   /** thumbnail data-url for a native page */

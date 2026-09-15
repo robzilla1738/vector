@@ -1,8 +1,17 @@
 /**
  * Typed access to the preload bridge. In a plain browser (vite dev without
- * electron) we expose a stub so the UI renders for visual development.
+ * electron) we expose a stub so the UI renders for visual development; in
+ * `--mode mock` main.tsx installs a scripted bridge before this module reads
+ * window.vector (see mock/bridge.ts).
  */
 import type { VectorEvent } from "@vector/contracts";
+
+export interface StageBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 export interface VectorBridge {
   invoke(method: string, params?: unknown): Promise<unknown>;
@@ -10,7 +19,8 @@ export interface VectorBridge {
   onShortcut(cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }) => void): () => void;
   onDownload(cb: (d: unknown) => void): () => void;
   onLoading(cb: (s: { pageId: string; loading: boolean }) => void): () => void;
-  setStage(pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null): Promise<boolean>;
+  /** position the visible native page; `radius` rounds the view to match the stage card */
+  setStage(pageId: string | null, bounds: StageBounds, split?: string | null, radius?: number): Promise<boolean>;
   overlay(open: boolean): Promise<boolean>;
   preview(pageId: string): Promise<string | null>;
   contextMenu(pageId: string | null): Promise<boolean>;
@@ -51,5 +61,11 @@ const stub: VectorBridge = {
   dataDir: async () => "",
 };
 
-export const bridge: VectorBridge = (window as unknown as { vector?: VectorBridge }).vector ?? stub;
-export const inElectron = !!(window as unknown as { vector?: VectorBridge }).vector;
+type W = Window & { vector?: VectorBridge; __vectorMock?: boolean };
+const w = window as unknown as W;
+
+export const bridge: VectorBridge = w.vector ?? stub;
+/** true only inside the real Electron shell — native page views exist */
+export const inElectron = !!w.vector && !w.__vectorMock;
+/** scripted bridge for visual development and screenshots */
+export const inMock = !!w.__vectorMock;

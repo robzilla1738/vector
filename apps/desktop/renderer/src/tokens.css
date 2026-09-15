@@ -1,0 +1,216 @@
+/*
+ * Vector shell — design tokens. The single source of truth for type, spacing,
+ * radii, motion, and semantic color in both appearances. Components consume
+ * tokens only; literal px/colour values outside this file are a bug.
+ *
+ * Grid: 4px. Type: 11 / 12 / 13 / 15 / 17 / 22 / 28. Radii: 4 / 6 / 8 / 10 / 12 / 16.
+ * Motion: 120 / 180 / 240 ms on a spring-ish out-curve; reduced-motion collapses to 0.
+ */
+
+:root {
+  /* ---- type ---- */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Inter", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, "JetBrains Mono", monospace;
+
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 15px;
+  --fs-xl: 17px;
+  --fs-2xl: 22px;
+  --fs-3xl: 28px;
+
+  --lh-tight: 1.2;
+  --lh-normal: 1.45;
+  --lh-relaxed: 1.6;
+
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.008em;
+  --tracking-wide: 0.04em;
+
+  /* ---- spacing (4px grid) ---- */
+  --space-0: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 56px;
+
+  /* ---- radii ---- */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-xl: 12px;
+  --r-2xl: 16px;
+  --r-pill: 999px;
+
+  /* ---- shell metrics ---- */
+  --toolbar-h: 52px;
+  --traffic-inset: 80px;
+  --sidebar-w: 240px;
+  --sidebar-rail-w: 56px;
+  --rail-w: 360px;
+  --stage-inset: 8px;
+  --stage-radius: var(--r-xl);
+  --control-h: 28px;
+  --control-h-lg: 34px;
+  --hit: 32px;
+
+  /* ---- motion ---- */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-fast: 120ms;
+  --t-med: 180ms;
+  --t-slow: 240ms;
+
+  /* ---- z ---- */
+  --z-stage: 1;
+  --z-panel: 10;
+  --z-peek: 30;
+  --z-scrim: 40;
+  --z-drawer: 45;
+  --z-toast: 60;
+}
+
+/* ---------- dark ---------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* surfaces — window glass → panel → card → raised */
+  --bg-window: #111113;
+  --bg-0: #161618;
+  --bg-1: #1c1c1f;
+  --bg-2: #242428;
+  --bg-3: #2e2e33;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-active: rgba(255, 255, 255, 0.1);
+  --glass: rgba(24, 24, 27, 0.72);
+  --glass-strong: rgba(24, 24, 27, 0.88);
+  --stage-bg: #ffffff;
+  --stage-frame: #0e0e10;
+
+  /* hairlines */
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.13);
+  --line-inset: inset 0 0 0 1px var(--line);
+
+  /* ink */
+  --ink-0: #f4f4f5;
+  --ink-1: #a7a7ad;
+  --ink-2: #6f6f76;
+  --ink-3: #4b4b52;
+  --ink-inverse: #111113;
+
+  /* accent + semantic */
+  --accent: #5b8cff;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(91, 140, 255, 0.16);
+  --accent-line: rgba(91, 140, 255, 0.42);
+  --ring: rgba(91, 140, 255, 0.5);
+  --selection: rgba(91, 140, 255, 0.36);
+
+  --ok: #34c77b;
+  --ok-soft: rgba(52, 199, 123, 0.14);
+  --warn: #f5b93a;
+  --warn-soft: rgba(245, 185, 58, 0.16);
+  --warn-line: rgba(245, 185, 58, 0.4);
+  --err: #ff5d5d;
+  --err-soft: rgba(255, 93, 93, 0.14);
+  --err-line: rgba(255, 93, 93, 0.4);
+  --agent: #b07cff;
+  --agent-soft: rgba(176, 124, 255, 0.16);
+  --agent-line: rgba(176, 124, 255, 0.42);
+  --engine: #33c5c5;
+  --engine-soft: rgba(51, 197, 197, 0.14);
+
+  /* elevation */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.4), 0 24px 64px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --img-outline: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- light ---------- */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-window: #e9e9ee;
+  --bg-0: #f2f2f6;
+  --bg-1: #f7f7fa;
+  --bg-2: #ffffff;
+  --bg-3: #ececf1;
+  --bg-hover: rgba(0, 0, 0, 0.045);
+  --bg-active: rgba(0, 0, 0, 0.08);
+  --glass: rgba(242, 242, 246, 0.72);
+  --glass-strong: rgba(242, 242, 246, 0.9);
+  --stage-bg: #ffffff;
+  --stage-frame: #dcdce2;
+
+  --line: rgba(0, 0, 0, 0.07);
+  --line-strong: rgba(0, 0, 0, 0.13);
+  --line-inset: inset 0 0 0 1px var(--line);
+
+  --ink-0: #1a1a1e;
+  --ink-1: #5f5f68;
+  --ink-2: #8a8a93;
+  --ink-3: #b8b8c0;
+  --ink-inverse: #ffffff;
+
+  --accent: #2f6df6;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(47, 109, 246, 0.1);
+  --accent-line: rgba(47, 109, 246, 0.32);
+  --ring: rgba(47, 109, 246, 0.35);
+  --selection: rgba(47, 109, 246, 0.22);
+
+  --ok: #1f9d5a;
+  --ok-soft: rgba(31, 157, 90, 0.12);
+  --warn: #b06d00;
+  --warn-soft: rgba(176, 109, 0, 0.12);
+  --warn-line: rgba(176, 109, 0, 0.3);
+  --err: #d93030;
+  --err-soft: rgba(217, 48, 48, 0.1);
+  --err-line: rgba(217, 48, 48, 0.32);
+  --agent: #7a4fd6;
+  --agent-soft: rgba(122, 79, 214, 0.1);
+  --agent-line: rgba(122, 79, 214, 0.32);
+  --engine: #0f8f8f;
+  --engine-soft: rgba(15, 143, 143, 0.12);
+
+  --shadow-card: 0 1px 2px rgba(20, 20, 40, 0.08), 0 12px 32px rgba(20, 20, 40, 0.12);
+  --shadow-pop: 0 2px 6px rgba(20, 20, 40, 0.08), 0 24px 64px rgba(20, 20, 40, 0.18);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --img-outline: rgba(0, 0, 0, 0.08);
+}
+
+/* Space identity colours — a space tints its selection pill and accent. */
+[data-space="blue"]   { --space-color: #5b8cff; }
+[data-space="violet"] { --space-color: #a97bff; }
+[data-space="pink"]   { --space-color: #ff6fae; }
+[data-space="orange"] { --space-color: #ff9457; }
+[data-space="green"]  { --space-color: #3ccf8e; }
+[data-space="teal"]   { --space-color: #33c5c5; }
+[data-space="slate"]  { --space-color: #8b93a7; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+    --t-slow: 0ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
