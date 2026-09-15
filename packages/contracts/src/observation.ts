@@ -33,6 +33,25 @@ export const ElementRefSchema = z.object({
   href: z.string().optional(),
   placeholder: z.string().optional(),
   disabled: z.boolean().optional(),
+  /** `<select>` / listbox choices (labels, capped) so the model can pick without a second look (A10). */
+  options: z.array(z.string()).optional(),
+  /** aria-expanded / open `<details>`; only present when the element has the state. */
+  expanded: z.boolean().optional(),
+  /** aria-pressed toggle state. */
+  pressed: z.boolean().optional(),
+  /** currently the document's active element */
+  focused: z.boolean().optional(),
+  required: z.boolean().optional(),
+  /** outside the viewport (needs a scroll before a click lands) */
+  offscreen: z.boolean().optional(),
+  /** covered at its centre point by another element (overlay, sticky bar) */
+  occluded: z.boolean().optional(),
+  /** attached but not shown (Full only) */
+  hidden: z.boolean().optional(),
+  /** accessible description (Full only) */
+  description: z.string().optional(),
+  /** expanded state names (Full only, engine) */
+  states: z.array(z.string()).optional(),
   rect: z
     .object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() })
     .optional(),

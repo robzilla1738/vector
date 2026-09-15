@@ -204,6 +204,21 @@ pub struct ElementRef {
     /// Disabled (only when true).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disabled: Option<bool>,
+    /// `<select>` / listbox choice labels, capped (plan A10).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options: Option<Vec<String>>,
+    /// `aria-expanded` / open `<details>` (only when the element has the state).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expanded: Option<bool>,
+    /// `aria-pressed`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pressed: Option<bool>,
+    /// The document's focused element (only when true).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub focused: Option<bool>,
+    /// `required` / `aria-required` (only when true).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub required: Option<bool>,
     /// Viewport rect (Full).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rect: Option<RectJson>,
@@ -1029,6 +1044,47 @@ impl<'a> Builder<'a> {
         out
     }
 
+    /// Choice labels of a `<select>` or an ARIA listbox/menu/radiogroup, capped at 20.
+    fn option_labels(&self, id: NodeId, e: &ve_dom::ElementData) -> Option<Vec<String>> {
+        let doc = self.doc;
+        let labels: Vec<String> = if e.is_html("select") {
+            doc.descendants(id)
+                .filter(|&d| doc.element(d).is_some_and(|o| o.is_html("option")))
+                .map(|o| {
+                    normalize(
+                        &doc.attribute(o, "label")
+                            .map_or_else(|| doc.text_content(o), str::to_owned),
+                    )
+                })
+                .filter(|l| !l.is_empty())
+                .take(20)
+                .collect()
+        } else if e
+            .attr("role")
+            .is_some_and(|r| matches!(r, "listbox" | "menu" | "radiogroup"))
+        {
+            doc.descendants(id)
+                .filter(|&d| {
+                    doc.element(d).is_some_and(|o| {
+                        o.attr("role")
+                            .is_some_and(|r| matches!(r, "option" | "menuitem" | "radio"))
+                    })
+                })
+                .map(|o| {
+                    normalize(
+                        &doc.attribute(o, "aria-label")
+                            .map_or_else(|| doc.text_content(o), str::to_owned),
+                    )
+                })
+                .filter(|l| !l.is_empty())
+                .take(20)
+                .collect()
+        } else {
+            return None;
+        };
+        (!labels.is_empty()).then_some(labels)
+    }
+
     fn selected_option(&self, select: NodeId) -> Option<(String, String)> {
         let doc = self.doc;
         let options: Vec<NodeId> = doc
@@ -1176,10 +1232,28 @@ impl<'a> Builder<'a> {
             href,
             placeholder: e.attr("placeholder").map(normalize),
             disabled: disabled.then_some(true),
+            options: self.option_labels(id, &e),
+            expanded: if let Some(v) = e.attr("aria-expanded") {
+                Some(v.eq_ignore_ascii_case("true"))
+            } else if e.is_html("summary") {
+                doc.parent(id).map(|d| doc.attribute(d, "open").is_some())
+            } else {
+                None
+            },
+            pressed: e
+                .attr("aria-pressed")
+                .map(|v| v.eq_ignore_ascii_case("true")),
+            focused: (self.input.focused == Some(id)).then_some(true),
+            required: (e.has_attr("required")
+                || e.attr("aria-required")
+                    .is_some_and(|v| v.eq_ignore_ascii_case("true")))
+            .then_some(true),
             rect: None,
             selector: SelectorStrategy::default(),
-            offscreen: None,
-            occluded: None,
+            // Compact carries these only when true: a click on such an
+            // element needs a scroll first or will not land at all.
+            offscreen: c.vis.offscreen.then_some(true),
+            occluded: c.vis.occluded.then_some(true),
             hidden: None,
             description: None,
             states: None,

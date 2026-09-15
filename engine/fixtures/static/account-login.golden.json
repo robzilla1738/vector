@@ -53,6 +53,7 @@
       "name": "Email or username",
       "type": "text",
       "value": "",
+      "required": true,
       "selector": {}
     },
     {
@@ -63,6 +64,7 @@
       "name": "Password",
       "type": "password",
       "value": "",
+      "required": true,
       "selector": {}
     },
     {
@@ -108,6 +110,7 @@
       "tag": "summary",
       "role": "button",
       "name": "I forgot my password",
+      "expanded": true,
       "selector": {}
     },
     {
@@ -216,7 +219,8 @@
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/account-login.html#main",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r108",
@@ -224,7 +228,8 @@
       "tag": "details",
       "role": "group",
       "name": "I no longer have access to my email",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r109",
@@ -232,7 +237,9 @@
       "tag": "summary",
       "role": "button",
       "name": "I no longer have access to my email",
-      "selector": {}
+      "expanded": false,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r113",
@@ -240,7 +247,8 @@
       "tag": "details",
       "role": "group",
       "name": "Why am I asked for a verification code?",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r114",
@@ -248,7 +256,9 @@
       "tag": "summary",
       "role": "button",
       "name": "Why am I asked for a verification code?",
-      "selector": {}
+      "expanded": false,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r118",
@@ -256,7 +266,8 @@
       "tag": "details",
       "role": "group",
       "name": "How do I delete my account?",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r119",
@@ -264,7 +275,9 @@
       "tag": "summary",
       "role": "button",
       "name": "How do I delete my account?",
-      "selector": {}
+      "expanded": false,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r130",
@@ -273,7 +286,8 @@
       "role": "link",
       "name": "Create a free account →",
       "href": "https://fixtures.vector.test/signup",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r136",
@@ -282,7 +296,8 @@
       "role": "link",
       "name": "Status",
       "href": "https://status.acme.test/",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r138",
@@ -291,7 +306,8 @@
       "role": "link",
       "name": "Security",
       "href": "https://fixtures.vector.test/security",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r140",
@@ -300,7 +316,8 @@
       "role": "link",
       "name": "Privacy",
       "href": "https://fixtures.vector.test/privacy",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r142",
@@ -309,7 +326,8 @@
       "role": "link",
       "name": "Terms",
       "href": "https://fixtures.vector.test/terms",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r144",
@@ -318,7 +336,8 @@
       "role": "link",
       "name": "Contact",
       "href": "https://fixtures.vector.test/contact",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     }
   ],
   "formFields": [

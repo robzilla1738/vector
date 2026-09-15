@@ -671,17 +671,42 @@ export class PlaywrightDriverPage implements DriverPage {
         )) === true
       );
     };
+    // Subtree scope (plan A10): `subtreeRef` is an `rN` from the last
+    // observation or a css selector. A ref resolves through the registry to
+    // its css path *and* frame; a ref to an <iframe> scopes the observation
+    // to that frame's document instead.
+    let subtree: { css?: string; frameKey?: string; onlyFrame?: Frame } | undefined;
+    if (req?.scope === "subtree" && req.subtreeRef) {
+      const parsed = parseTarget(req.subtreeRef);
+      if (parsed.kind === "ref") {
+        const entry = this.refs.resolve(this.identity.pageId, parsed.ref);
+        if (!entry) throw new VectorError("target_detached", `subtreeRef ${parsed.ref} is unknown or stale — re-observe the page`);
+        subtree = { css: entry.selector.css, frameKey: entry.frame };
+        if (entry.tag === "iframe" && entry.selector.css) {
+          const owner = this.frameForKey(entry.frame);
+          const child = await bounded(
+            owner.$(entry.selector.css).then((h) => h?.contentFrame() ?? null),
+            FRAME_PROBE_MS,
+          ).catch(() => null);
+          if (child) subtree = { onlyFrame: child };
+        }
+      } else {
+        subtree = { css: parsed.strategy.css ?? req.subtreeRef, frameKey: "main" };
+      }
+    }
     for (const [key, frame] of frameMap) {
       const sameOrigin = await sameOriginOf(frame);
       frames.push({ frame: key, url: frame.url(), name: frame.name() || undefined, sameOrigin });
       if (!sameOrigin) continue;
+      if (subtree?.onlyFrame && frame !== subtree.onlyFrame) continue;
+      if (subtree?.frameKey && key !== subtree.frameKey && key !== "main") continue;
       let part: ObserveScriptResult | undefined;
       try {
         part = await bounded(
           frame.evaluate(collectObservation, {
             maxElements: Math.max(10, maxElements - allElements.length),
             maxTextChars,
-            subtreeCss: req?.scope === "subtree" ? req.subtreeRef : undefined,
+            subtreeCss: subtree && !subtree.onlyFrame && key === subtree.frameKey ? subtree.css : undefined,
             frameKey: key,
             refStart,
           }),

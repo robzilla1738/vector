@@ -57,6 +57,7 @@
       "type": "email",
       "value": "",
       "placeholder": "you@example.com",
+      "required": true,
       "selector": {}
     },
     {
@@ -67,6 +68,7 @@
       "name": "I agree to the privacy policy",
       "type": "checkbox",
       "checked": false,
+      "required": true,
       "selector": {}
     },
     {
@@ -310,7 +312,8 @@
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/news-index.html#main",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r118",
@@ -319,7 +322,8 @@
       "role": "link",
       "name": "Schools adopt later start times from January",
       "href": "https://fixtures.vector.test/2026/09/05/story-5",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r123",
@@ -328,7 +332,8 @@
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r130",
@@ -337,7 +342,8 @@
       "role": "link",
       "name": "Museum unveils restored 17th-century tapestry",
       "href": "https://fixtures.vector.test/2026/09/06/story-6",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r135",
@@ -346,7 +352,8 @@
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r142",
@@ -355,7 +362,8 @@
       "role": "link",
       "name": "Housing report shows rents flat for third month",
       "href": "https://fixtures.vector.test/2026/09/07/story-7",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r147",
@@ -364,7 +372,8 @@
       "role": "link",
       "name": "Transit",
       "href": "https://fixtures.vector.test/section/transit",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r154",
@@ -373,7 +382,8 @@
       "role": "link",
       "name": "Farmers' market moves indoors for winter season",
       "href": "https://fixtures.vector.test/2026/09/08/story-8",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r159",
@@ -382,7 +392,8 @@
       "role": "link",
       "name": "Weather",
       "href": "https://fixtures.vector.test/section/weather",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r166",
@@ -391,7 +402,8 @@
       "role": "link",
       "name": "Library expands weekend hours at four branches",
       "href": "https://fixtures.vector.test/2026/09/09/story-9",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r171",
@@ -400,7 +412,8 @@
       "role": "link",
       "name": "Education",
       "href": "https://fixtures.vector.test/section/education",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r178",
@@ -409,7 +422,8 @@
       "role": "link",
       "name": "Tech firm announces 400 jobs at downtown campus",
       "href": "https://fixtures.vector.test/2026/09/10/story-10",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r183",
@@ -418,7 +432,8 @@
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r190",
@@ -427,7 +442,8 @@
       "role": "link",
       "name": "Bridge repairs to close two lanes overnight",
       "href": "https://fixtures.vector.test/2026/09/11/story-11",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r195",
@@ -436,7 +452,8 @@
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r202",
@@ -445,7 +462,8 @@
       "role": "link",
       "name": "Interview: the chef bringing regional cuisine downtown",
       "href": "https://fixtures.vector.test/2026/09/12/story-12",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r207",
@@ -454,7 +472,8 @@
       "role": "link",
       "name": "Transit",
       "href": "https://fixtures.vector.test/section/transit",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r214",
@@ -463,7 +482,8 @@
       "role": "link",
       "name": "Opinion: what the budget vote gets right",
       "href": "https://fixtures.vector.test/2026/09/13/story-13",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r219",
@@ -472,7 +492,8 @@
       "role": "link",
       "name": "Weather",
       "href": "https://fixtures.vector.test/section/weather",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r226",
@@ -481,7 +502,8 @@
       "role": "link",
       "name": "Photos: harvest festival draws thousands",
       "href": "https://fixtures.vector.test/2026/09/14/story-14",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r231",
@@ -490,7 +512,8 @@
       "role": "link",
       "name": "Education",
       "href": "https://fixtures.vector.test/section/education",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r238",
@@ -499,7 +522,8 @@
       "role": "link",
       "name": "Explainer: how the new recycling rules work",
       "href": "https://fixtures.vector.test/2026/09/15/story-15",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r243",
@@ -508,7 +532,8 @@
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r250",
@@ -517,7 +542,8 @@
       "role": "link",
       "name": "University breaks ground on research centre",
       "href": "https://fixtures.vector.test/2026/09/16/story-16",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r255",
@@ -526,7 +552,8 @@
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r262",
@@ -535,7 +562,8 @@
       "role": "link",
       "name": "Police report drop in vehicle thefts",
       "href": "https://fixtures.vector.test/2026/09/17/story-17",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r267",
@@ -544,7 +572,8 @@
       "role": "link",
       "name": "Transit",
       "href": "https://fixtures.vector.test/section/transit",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r274",
@@ -553,7 +582,8 @@
       "role": "link",
       "name": "Theatre season opens with a bold revival",
       "href": "https://fixtures.vector.test/2026/09/18/story-18",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r279",
@@ -562,7 +592,8 @@
       "role": "link",
       "name": "Weather",
       "href": "https://fixtures.vector.test/section/weather",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r286",
@@ -571,7 +602,8 @@
       "role": "link",
       "name": "Startup raises funding for battery recycling",
       "href": "https://fixtures.vector.test/2026/09/19/story-19",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r291",
@@ -580,7 +612,8 @@
       "role": "link",
       "name": "Education",
       "href": "https://fixtures.vector.test/section/education",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r298",
@@ -589,7 +622,8 @@
       "role": "link",
       "name": "Hikers rescued after overnight ordeal",
       "href": "https://fixtures.vector.test/2026/09/20/story-20",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r303",
@@ -598,7 +632,8 @@
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r310",
@@ -607,7 +642,8 @@
       "role": "link",
       "name": "Historic diner reopens under new owners",
       "href": "https://fixtures.vector.test/2026/09/21/story-21",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r315",
@@ -616,7 +652,8 @@
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r322",
@@ -625,7 +662,8 @@
       "role": "link",
       "name": "City hall to livestream all committee meetings",
       "href": "https://fixtures.vector.test/2026/09/22/story-22",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r327",
@@ -634,7 +672,8 @@
       "role": "link",
       "name": "Transit",
       "href": "https://fixtures.vector.test/section/transit",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r334",
@@ -643,7 +682,8 @@
       "role": "link",
       "name": "Youth orchestra to tour three countries",
       "href": "https://fixtures.vector.test/2026/09/23/story-23",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r339",
@@ -652,7 +692,8 @@
       "role": "link",
       "name": "Weather",
       "href": "https://fixtures.vector.test/section/weather",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r346",
@@ -661,7 +702,8 @@
       "role": "link",
       "name": "Analysis: the numbers behind the transit boom",
       "href": "https://fixtures.vector.test/2026/09/24/story-24",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r351",
@@ -670,7 +712,8 @@
       "role": "link",
       "name": "Education",
       "href": "https://fixtures.vector.test/section/education",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r358",
@@ -679,7 +722,8 @@
       "role": "link",
       "name": "Volunteers plant 2,000 trees in a single weekend",
       "href": "https://fixtures.vector.test/2026/09/25/story-25",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r363",
@@ -688,7 +732,8 @@
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r371",
@@ -697,7 +742,8 @@
       "role": "link",
       "name": "Older stories ›",
       "href": "https://fixtures.vector.test/latest?page=2",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r425",
@@ -706,7 +752,8 @@
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r428",
@@ -715,7 +762,8 @@
       "role": "link",
       "name": "Politics",
       "href": "https://fixtures.vector.test/section/politics",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r431",
@@ -724,7 +772,8 @@
       "role": "link",
       "name": "Business",
       "href": "https://fixtures.vector.test/section/business",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r434",
@@ -733,7 +782,8 @@
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r437",
@@ -742,7 +792,8 @@
       "role": "link",
       "name": "Culture",
       "href": "https://fixtures.vector.test/section/culture",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r440",
@@ -751,7 +802,8 @@
       "role": "link",
       "name": "Opinion",
       "href": "https://fixtures.vector.test/section/opinion",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r443",
@@ -760,7 +812,8 @@
       "role": "link",
       "name": "Obituaries",
       "href": "https://fixtures.vector.test/section/obituaries",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r446",
@@ -769,7 +822,8 @@
       "role": "link",
       "name": "Classifieds",
       "href": "https://fixtures.vector.test/section/classifieds",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r449",
@@ -778,7 +832,8 @@
       "role": "link",
       "name": "Puzzles",
       "href": "https://fixtures.vector.test/section/puzzles",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r453",
@@ -787,7 +842,8 @@
       "role": "link",
       "name": "About us",
       "href": "https://fixtures.vector.test/about",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r455",
@@ -796,7 +852,8 @@
       "role": "link",
       "name": "Contact",
       "href": "https://fixtures.vector.test/contact",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r457",
@@ -805,7 +862,8 @@
       "role": "link",
       "name": "Advertise",
       "href": "https://fixtures.vector.test/advertise",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r459",
@@ -814,7 +872,8 @@
       "role": "link",
       "name": "Subscribe",
       "href": "https://fixtures.vector.test/subscribe",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r461",
@@ -823,7 +882,8 @@
       "role": "link",
       "name": "Privacy",
       "href": "https://fixtures.vector.test/privacy",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r463",
@@ -832,7 +892,8 @@
       "role": "link",
       "name": "Terms",
       "href": "https://fixtures.vector.test/terms",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r465",
@@ -841,7 +902,8 @@
       "role": "link",
       "name": "Sitemap",
       "href": "https://fixtures.vector.test/sitemap",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     }
   ],
   "formFields": [

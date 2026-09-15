@@ -248,6 +248,53 @@ describe("pages", () => {
     expect(after2.content.formFields.find((f) => f.name === "title" || f.label === "Title")?.value).toBe("fallback node");
   }, 60_000);
 
+  it("observation carries select options, focus, offscreen and occlusion; subtree scope accepts a ref (A10)", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
+    type Obs = { content: ObservationContent };
+    // make the page tall and cover the submit button with an overlay
+    await invoke("pages.execute", {
+      program: {
+        pageId: page.pageId,
+        steps: [
+          {
+            id: "e",
+            op: "evaluate",
+            expression: `(() => {
+              const far = document.createElement("button"); far.id = "far"; far.textContent = "Far away";
+              far.style.cssText = "position:absolute;top:5000px;left:10px"; document.body.appendChild(far);
+              const btn = document.querySelector('button[type=submit],#create-record,form button') || document.querySelector("button");
+              const r = btn.getBoundingClientRect();
+              const cover = document.createElement("div"); cover.id = "cover";
+              cover.style.cssText = "position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;background:rgba(0,0,0,.4);z-index:9999";
+              document.body.appendChild(cover);
+              document.getElementById("n-title").focus();
+              return 1; })()`,
+          },
+        ],
+      },
+      allowEval: true,
+    });
+    const obs = await invoke<Obs>("pages.observe", { pageId: page.pageId });
+    const status = obs.content.elements.find((e) => e.selector?.css?.includes("n-status"))!;
+    expect(status.options).toEqual(expect.arrayContaining(["draft", "in progress", "approved"]));
+    expect(obs.content.elements.find((e) => e.selector?.css?.includes("n-title"))?.focused).toBe(true);
+    expect(obs.content.elements.find((e) => e.name === "Far away")?.offscreen).toBe(true);
+    const covered = obs.content.elements.find((e) => e.tag === "button" && e.name !== "Far away" && e.occluded);
+    expect(covered, "the covered submit button is marked occluded").toBeTruthy();
+    // the compact rendering carries the same signals for the model
+    const compact = await invoke<{ observation: { text: string } }>("pages.observe", { pageId: page.pageId, format: "compact" });
+    expect(compact.observation.text).toMatch(/options=\[.*"approved".*\]/);
+    expect(compact.observation.text).toContain(" occluded");
+    expect(compact.observation.text).toContain(" offscreen");
+    // subtree scope: a css target, and a ref (which used to go straight into querySelector)
+    const sub = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "subtree", subtreeRef: "css:form" });
+    expect(sub.content.elements.length).toBeGreaterThan(0);
+    expect(sub.content.elements.every((e) => e.name !== "Far away")).toBe(true);
+    const byRef = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "subtree", subtreeRef: status.ref });
+    expect(byRef.content.elements.every((e) => e.name !== "Far away")).toBe(true);
+    await expect(invoke("pages.observe", { pageId: page.pageId, scope: "subtree", subtreeRef: "r99999" })).rejects.toThrow(/stale|unknown/);
+  }, 60_000);
+
   it("observation cache: an unchanged page is served from cache; typing or navigating invalidates it (A6)", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
     type Obs = { observationId: string; revision: number; cached?: boolean; changesSince?: string[]; content: ObservationContent };

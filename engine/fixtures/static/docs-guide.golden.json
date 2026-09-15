@@ -61,7 +61,8 @@
       "name": "Yes",
       "type": "radio",
       "checked": false,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r349",
@@ -71,7 +72,8 @@
       "name": "No",
       "type": "radio",
       "checked": false,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r354",
@@ -81,7 +83,8 @@
       "name": "Tell us more",
       "type": "textarea",
       "value": "",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r357",
@@ -91,7 +94,8 @@
       "name": "You may contact me about this feedback",
       "type": "checkbox",
       "checked": false,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r22",
@@ -343,7 +347,8 @@
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/docs-guide.html#main",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r102",
@@ -352,7 +357,8 @@
       "role": "link",
       "name": "Install",
       "href": "https://fixtures.vector.test/docs-guide.html#install",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r105",
@@ -361,7 +367,8 @@
       "role": "link",
       "name": "Quick start",
       "href": "https://fixtures.vector.test/docs-guide.html#quickstart",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r108",
@@ -370,7 +377,8 @@
       "role": "link",
       "name": "Options",
       "href": "https://fixtures.vector.test/docs-guide.html#options",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r111",
@@ -379,7 +387,8 @@
       "role": "link",
       "name": "Examples",
       "href": "https://fixtures.vector.test/docs-guide.html#examples",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r114",
@@ -388,7 +397,8 @@
       "role": "link",
       "name": "Troubleshooting",
       "href": "https://fixtures.vector.test/docs-guide.html#troubleshooting",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r171",
@@ -397,7 +407,8 @@
       "role": "link",
       "name": "the observation shape",
       "href": "https://fixtures.vector.test/docs/observations",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r309",
@@ -406,7 +417,8 @@
       "role": "link",
       "name": "cookie import and export",
       "href": "https://fixtures.vector.test/docs/cookies",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r316",
@@ -414,7 +426,8 @@
       "tag": "details",
       "role": "group",
       "name": "The engine reports backend_unavailable",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r317",
@@ -422,7 +435,9 @@
       "tag": "summary",
       "role": "button",
       "name": "The engine reports backend_unavailable",
-      "selector": {}
+      "expanded": false,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r324",
@@ -430,7 +445,8 @@
       "tag": "details",
       "role": "group",
       "name": "My page is routed to Chromium",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r325",
@@ -438,7 +454,9 @@
       "tag": "summary",
       "role": "button",
       "name": "My page is routed to Chromium",
-      "selector": {}
+      "expanded": false,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r333",
@@ -446,7 +464,8 @@
       "tag": "details",
       "role": "group",
       "name": "Screenshots are blank",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r334",
@@ -454,7 +473,9 @@
       "tag": "summary",
       "role": "button",
       "name": "Screenshots are blank",
-      "selector": {}
+      "expanded": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r360",
@@ -463,7 +484,8 @@
       "role": "button",
       "name": "Send feedback",
       "type": "submit",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r364",
@@ -472,7 +494,8 @@
       "role": "link",
       "name": "← Installation",
       "href": "https://fixtures.vector.test/docs/installation",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r366",
@@ -481,7 +504,8 @@
       "role": "link",
       "name": "CLI reference →",
       "href": "https://fixtures.vector.test/docs/cli-reference",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r371",
@@ -490,7 +514,8 @@
       "role": "link",
       "name": "Privacy",
       "href": "https://fixtures.vector.test/privacy",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r373",
@@ -499,7 +524,8 @@
       "role": "link",
       "name": "Terms",
       "href": "https://fixtures.vector.test/terms",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r375",
@@ -508,7 +534,8 @@
       "role": "link",
       "name": "Status",
       "href": "https://status.vector.test/",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r377",
@@ -517,7 +544,8 @@
       "role": "link",
       "name": "Twitter",
       "href": "https://twitter.com/vectorengine",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     }
   ],
   "formFields": [

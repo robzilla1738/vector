@@ -152,7 +152,8 @@
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/wiki-article.html#main",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r98",
@@ -161,7 +162,8 @@
       "role": "link",
       "name": "city.example",
       "href": "https://www.city.example/",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r115",
@@ -170,7 +172,8 @@
       "role": "link",
       "name": "1 Etymology",
       "href": "https://fixtures.vector.test/wiki-article.html#s0",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r118",
@@ -179,7 +182,8 @@
       "role": "link",
       "name": "2 History",
       "href": "https://fixtures.vector.test/wiki-article.html#s1",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r121",
@@ -188,7 +192,8 @@
       "role": "link",
       "name": "3 Geography",
       "href": "https://fixtures.vector.test/wiki-article.html#s2",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r124",
@@ -197,7 +202,8 @@
       "role": "link",
       "name": "4 Economy",
       "href": "https://fixtures.vector.test/wiki-article.html#s3",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r127",
@@ -206,7 +212,8 @@
       "role": "link",
       "name": "5 Culture",
       "href": "https://fixtures.vector.test/wiki-article.html#s4",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r130",
@@ -215,7 +222,8 @@
       "role": "link",
       "name": "6 Notable people",
       "href": "https://fixtures.vector.test/wiki-article.html#s5",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r133",
@@ -224,7 +232,8 @@
       "role": "link",
       "name": "7 See also",
       "href": "https://fixtures.vector.test/wiki-article.html#s6",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r136",
@@ -233,7 +242,8 @@
       "role": "link",
       "name": "8 References",
       "href": "https://fixtures.vector.test/wiki-article.html#s7",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r142",
@@ -242,7 +252,8 @@
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=0",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r146",
@@ -251,7 +262,8 @@
       "role": "link",
       "name": "Topic 1",
       "href": "https://fixtures.vector.test/wiki/Topic_1",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r149",
@@ -260,7 +272,8 @@
       "role": "link",
       "name": "Topic 2",
       "href": "https://fixtures.vector.test/wiki/Topic_2",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r152",
@@ -269,7 +282,8 @@
       "role": "link",
       "name": "Topic 3",
       "href": "https://fixtures.vector.test/wiki/Topic_3",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r156",
@@ -278,7 +292,8 @@
       "role": "link",
       "name": "[1]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref0",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r159",
@@ -287,7 +302,8 @@
       "role": "link",
       "name": "[2]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref1",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r164",
@@ -296,7 +312,8 @@
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=1",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r168",
@@ -305,7 +322,8 @@
       "role": "link",
       "name": "Topic 4",
       "href": "https://fixtures.vector.test/wiki/Topic_4",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r171",
@@ -314,7 +332,8 @@
       "role": "link",
       "name": "Topic 5",
       "href": "https://fixtures.vector.test/wiki/Topic_5",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r174",
@@ -323,7 +342,8 @@
       "role": "link",
       "name": "Topic 6",
       "href": "https://fixtures.vector.test/wiki/Topic_6",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r178",
@@ -332,7 +352,8 @@
       "role": "link",
       "name": "[3]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref2",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r181",
@@ -341,7 +362,8 @@
       "role": "link",
       "name": "[4]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref3",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r194",
@@ -350,7 +372,8 @@
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=2",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r198",
@@ -359,7 +382,8 @@
       "role": "link",
       "name": "Topic 7",
       "href": "https://fixtures.vector.test/wiki/Topic_7",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r201",
@@ -368,7 +392,8 @@
       "role": "link",
       "name": "Topic 8",
       "href": "https://fixtures.vector.test/wiki/Topic_8",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r204",
@@ -377,7 +402,8 @@
       "role": "link",
       "name": "Topic 9",
       "href": "https://fixtures.vector.test/wiki/Topic_9",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r208",
@@ -386,7 +412,8 @@
       "role": "link",
       "name": "[5]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref4",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r211",
@@ -395,7 +422,8 @@
       "role": "link",
       "name": "[6]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref5",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r216",
@@ -404,7 +432,8 @@
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=3",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r220",
@@ -413,7 +442,8 @@
       "role": "link",
       "name": "Topic 10",
       "href": "https://fixtures.vector.test/wiki/Topic_10",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r223",
@@ -422,7 +452,8 @@
       "role": "link",
       "name": "Topic 11",
       "href": "https://fixtures.vector.test/wiki/Topic_11",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r226",
@@ -431,7 +462,8 @@
       "role": "link",
       "name": "Topic 12",
       "href": "https://fixtures.vector.test/wiki/Topic_12",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r230",
@@ -440,7 +472,8 @@
       "role": "link",
       "name": "[7]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref6",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r233",
@@ -449,7 +482,8 @@
       "role": "link",
       "name": "[8]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref7",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r238",
@@ -458,7 +492,8 @@
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=4",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r242",
@@ -467,7 +502,8 @@
       "role": "link",
       "name": "Topic 13",
       "href": "https://fixtures.vector.test/wiki/Topic_13",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r245",
@@ -476,7 +512,8 @@
       "role": "link",
       "name": "Topic 14",
       "href": "https://fixtures.vector.test/wiki/Topic_14",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r248",
@@ -485,7 +522,8 @@
       "role": "link",
       "name": "Topic 15",
       "href": "https://fixtures.vector.test/wiki/Topic_15",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r252",
@@ -494,7 +532,8 @@
       "role": "link",
       "name": "[9]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref8",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r255",
@@ -503,7 +542,8 @@
       "role": "link",
       "name": "[10]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref9",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r260",
@@ -512,7 +552,8 @@
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=5",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r264",
@@ -521,7 +562,8 @@
       "role": "link",
       "name": "Topic 16",
       "href": "https://fixtures.vector.test/wiki/Topic_16",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r267",
@@ -530,7 +572,8 @@
       "role": "link",
       "name": "Topic 17",
       "href": "https://fixtures.vector.test/wiki/Topic_17",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r270",
@@ -539,7 +582,8 @@
       "role": "link",
       "name": "Topic 18",
       "href": "https://fixtures.vector.test/wiki/Topic_18",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r274",
@@ -548,7 +592,8 @@
       "role": "link",
       "name": "[11]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref10",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r277",
@@ -557,7 +602,8 @@
       "role": "link",
       "name": "[12]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref11",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r284",
@@ -566,7 +612,8 @@
       "role": "link",
       "name": "Related article 1",
       "href": "https://fixtures.vector.test/wiki/Related_1",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r287",
@@ -575,7 +622,8 @@
       "role": "link",
       "name": "Related article 2",
       "href": "https://fixtures.vector.test/wiki/Related_2",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r290",
@@ -584,7 +632,8 @@
       "role": "link",
       "name": "Related article 3",
       "href": "https://fixtures.vector.test/wiki/Related_3",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r293",
@@ -593,7 +642,8 @@
       "role": "link",
       "name": "Related article 4",
       "href": "https://fixtures.vector.test/wiki/Related_4",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r296",
@@ -602,7 +652,8 @@
       "role": "link",
       "name": "Related article 5",
       "href": "https://fixtures.vector.test/wiki/Related_5",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r299",
@@ -611,7 +662,8 @@
       "role": "link",
       "name": "Related article 6",
       "href": "https://fixtures.vector.test/wiki/Related_6",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r302",
@@ -620,7 +672,8 @@
       "role": "link",
       "name": "Related article 7",
       "href": "https://fixtures.vector.test/wiki/Related_7",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r305",
@@ -629,7 +682,8 @@
       "role": "link",
       "name": "Related article 8",
       "href": "https://fixtures.vector.test/wiki/Related_8",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r316",
@@ -638,7 +692,8 @@
       "role": "link",
       "name": "doi:10.1000/1",
       "href": "https://doi.example/10.1000/1",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r324",
@@ -647,7 +702,8 @@
       "role": "link",
       "name": "doi:10.1000/2",
       "href": "https://doi.example/10.1000/2",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r332",
@@ -656,7 +712,8 @@
       "role": "link",
       "name": "doi:10.1000/3",
       "href": "https://doi.example/10.1000/3",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r340",
@@ -665,7 +722,8 @@
       "role": "link",
       "name": "doi:10.1000/4",
       "href": "https://doi.example/10.1000/4",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r348",
@@ -674,7 +732,8 @@
       "role": "link",
       "name": "doi:10.1000/5",
       "href": "https://doi.example/10.1000/5",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r356",
@@ -683,7 +742,8 @@
       "role": "link",
       "name": "doi:10.1000/6",
       "href": "https://doi.example/10.1000/6",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r364",
@@ -692,7 +752,8 @@
       "role": "link",
       "name": "doi:10.1000/7",
       "href": "https://doi.example/10.1000/7",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r372",
@@ -701,7 +762,8 @@
       "role": "link",
       "name": "doi:10.1000/8",
       "href": "https://doi.example/10.1000/8",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r380",
@@ -710,7 +772,8 @@
       "role": "link",
       "name": "doi:10.1000/9",
       "href": "https://doi.example/10.1000/9",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r388",
@@ -719,7 +782,8 @@
       "role": "link",
       "name": "doi:10.1000/10",
       "href": "https://doi.example/10.1000/10",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r396",
@@ -728,7 +792,8 @@
       "role": "link",
       "name": "doi:10.1000/11",
       "href": "https://doi.example/10.1000/11",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r404",
@@ -737,7 +802,8 @@
       "role": "link",
       "name": "doi:10.1000/12",
       "href": "https://doi.example/10.1000/12",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r420",
@@ -746,7 +812,8 @@
       "role": "link",
       "name": "Related changes",
       "href": "https://fixtures.vector.test/wiki/Special:RecentChangesLinked/Fixtureville",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r423",
@@ -755,7 +822,8 @@
       "role": "link",
       "name": "Cite this page",
       "href": "https://fixtures.vector.test/wiki/Special:Cite?page=Fixtureville",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r426",
@@ -764,7 +832,8 @@
       "role": "link",
       "name": "Printable version",
       "href": "https://fixtures.vector.test/w/index.php?title=Fixtureville&printable=yes",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r433",
@@ -773,7 +842,8 @@
       "role": "link",
       "name": "Deutsch",
       "href": "https://de.encyclopedia.test/wiki/Fixtureville",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r436",
@@ -782,7 +852,8 @@
       "role": "link",
       "name": "Español",
       "href": "https://es.encyclopedia.test/wiki/Fixtureville",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r439",
@@ -791,7 +862,8 @@
       "role": "link",
       "name": "Français",
       "href": "https://fr.encyclopedia.test/wiki/Fixtureville",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r442",
@@ -800,7 +872,8 @@
       "role": "link",
       "name": "Italiano",
       "href": "https://it.encyclopedia.test/wiki/Fixtureville",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r445",
@@ -809,7 +882,8 @@
       "role": "link",
       "name": "日本語",
       "href": "https://ja.encyclopedia.test/wiki/Fixtureville",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r448",
@@ -818,7 +892,8 @@
       "role": "link",
       "name": "Português",
       "href": "https://pt.encyclopedia.test/wiki/Fixtureville",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r452",
@@ -827,7 +902,8 @@
       "role": "link",
       "name": "About",
       "href": "https://fixtures.vector.test/wiki/About",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r454",
@@ -836,7 +912,8 @@
       "role": "link",
       "name": "Disclaimers",
       "href": "https://fixtures.vector.test/wiki/Disclaimers",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r456",
@@ -845,7 +922,8 @@
       "role": "link",
       "name": "Mobile view",
       "href": "https://fixtures.vector.test/m/",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r458",
@@ -854,7 +932,8 @@
       "role": "link",
       "name": "Privacy policy",
       "href": "https://fixtures.vector.test/wiki/Privacy",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     }
   ],
   "formFields": [

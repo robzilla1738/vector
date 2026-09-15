@@ -53,6 +53,7 @@
       "name": "First name *",
       "type": "text",
       "value": "",
+      "required": true,
       "selector": {}
     },
     {
@@ -63,6 +64,7 @@
       "name": "Last name *",
       "type": "text",
       "value": "",
+      "required": true,
       "selector": {}
     },
     {
@@ -73,6 +75,7 @@
       "name": "Date of birth *",
       "type": "date",
       "value": "",
+      "required": true,
       "selector": {}
     },
     {
@@ -93,7 +96,9 @@
       "name": "Email address *",
       "type": "email",
       "value": "",
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r107",
@@ -104,7 +109,8 @@
       "type": "tel",
       "value": "",
       "placeholder": "(555) 555-0100",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r118",
@@ -114,7 +120,9 @@
       "name": "Street address *",
       "type": "text",
       "value": "",
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r122",
@@ -124,7 +132,8 @@
       "name": "Apartment, suite, etc.",
       "type": "text",
       "value": "",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r130",
@@ -134,7 +143,9 @@
       "name": "City *",
       "type": "text",
       "value": "",
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r137",
@@ -145,7 +156,23 @@
       "type": "select",
       "value": "",
       "selected": "Select a state",
-      "selector": {}
+      "options": [
+        "Select a state",
+        "Alabama",
+        "Alaska",
+        "Arizona",
+        "California",
+        "Colorado",
+        "Florida",
+        "Georgia",
+        "Illinois",
+        "New York",
+        "Texas",
+        "Washington"
+      ],
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r168",
@@ -155,7 +182,9 @@
       "name": "ZIP code *",
       "type": "text",
       "value": "",
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r171",
@@ -165,7 +194,8 @@
       "name": "Mailing address is the same as above",
       "type": "checkbox",
       "checked": true,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r183",
@@ -175,7 +205,9 @@
       "name": "Number of people in household *",
       "type": "number",
       "value": "1",
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r190",
@@ -185,7 +217,9 @@
       "name": "Own",
       "type": "radio",
       "checked": false,
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r193",
@@ -195,7 +229,8 @@
       "name": "Rent",
       "type": "radio",
       "checked": false,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r196",
@@ -205,7 +240,8 @@
       "name": "Other",
       "type": "radio",
       "checked": false,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r204",
@@ -215,7 +251,8 @@
       "name": "Age 60 or older",
       "type": "checkbox",
       "checked": false,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r207",
@@ -225,7 +262,8 @@
       "name": "Living with a disability",
       "type": "checkbox",
       "checked": false,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r210",
@@ -235,7 +273,8 @@
       "name": "Under 6 years old",
       "type": "checkbox",
       "checked": false,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r213",
@@ -245,7 +284,8 @@
       "name": "A veteran",
       "type": "checkbox",
       "checked": false,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r218",
@@ -256,7 +296,15 @@
       "type": "select",
       "value": "electric",
       "selected": "Electricity",
-      "selector": {}
+      "options": [
+        "Natural gas",
+        "Electricity",
+        "Heating oil",
+        "Propane",
+        "Wood"
+      ],
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r239",
@@ -266,7 +314,9 @@
       "name": "Total gross monthly household income (USD) *",
       "type": "number",
       "value": "",
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r243",
@@ -276,7 +326,8 @@
       "name": "Upload your most recent utility bill",
       "type": "file",
       "value": "",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r249",
@@ -286,7 +337,8 @@
       "name": "Anything else we should know?",
       "type": "textarea",
       "value": "",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r269",
@@ -296,7 +348,9 @@
       "name": "I certify that the information provided is true and complete *",
       "type": "checkbox",
       "checked": false,
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r278",
@@ -306,7 +360,9 @@
       "name": "Type your full name as signature *",
       "type": "text",
       "value": "",
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r22",
@@ -423,7 +479,8 @@
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/gov-benefits-form.html#main",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r256",
@@ -431,7 +488,8 @@
       "tag": "details",
       "role": "group",
       "name": "Privacy Act statement",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r257",
@@ -439,7 +497,9 @@
       "tag": "summary",
       "role": "button",
       "name": "Privacy Act statement",
-      "selector": {}
+      "expanded": false,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r262",
@@ -447,7 +507,8 @@
       "tag": "details",
       "role": "group",
       "name": "Penalty for false statements",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r263",
@@ -455,7 +516,9 @@
       "tag": "summary",
       "role": "button",
       "name": "Penalty for false statements",
-      "selector": {}
+      "expanded": false,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r282",
@@ -464,7 +527,8 @@
       "role": "button",
       "name": "Submit application",
       "type": "submit",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r285",
@@ -473,7 +537,8 @@
       "role": "button",
       "name": "Save and finish later",
       "type": "submit",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r288",
@@ -482,7 +547,8 @@
       "role": "button",
       "name": "Clear form",
       "type": "reset",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r293",
@@ -491,7 +557,8 @@
       "role": "link",
       "name": "1-800-555-0100",
       "href": "tel:+18005550100",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r333",
@@ -500,7 +567,8 @@
       "role": "link",
       "name": "Accessibility",
       "href": "https://fixtures.vector.test/accessibility",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r335",
@@ -509,7 +577,8 @@
       "role": "link",
       "name": "Privacy",
       "href": "https://fixtures.vector.test/privacy",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r337",
@@ -518,7 +587,8 @@
       "role": "link",
       "name": "FOIA",
       "href": "https://fixtures.vector.test/foia",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r339",
@@ -527,7 +597,8 @@
       "role": "link",
       "name": "No FEAR Act",
       "href": "https://fixtures.vector.test/nofear",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r341",
@@ -536,7 +607,8 @@
       "role": "link",
       "name": "USA.gov",
       "href": "https://www.usa.gov/",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     }
   ],
   "formFields": [

@@ -49,7 +49,14 @@ export function renderObservation(obs: Observation): string {
       if (e.checked !== undefined) bits.push(`checked=${e.checked}`);
       if (e.selected !== undefined) bits.push(`selected=${JSON.stringify(e.selected)}`);
       if (e.href) bits.push(`href=${e.href}`);
+      if (e.options?.length) bits.push(`options=[${e.options.map((o) => JSON.stringify(o)).join("|")}]`);
+      if (e.expanded !== undefined) bits.push(`expanded=${e.expanded}`);
+      if (e.pressed !== undefined) bits.push(`pressed=${e.pressed}`);
+      if (e.focused) bits.push("focused");
+      if (e.required) bits.push("required");
       if (e.disabled) bits.push("disabled");
+      if (e.offscreen) bits.push("offscreen");
+      if (e.occluded) bits.push("occluded");
       if (e.frame !== "main") bits.push(`@${e.frame}`);
       lines.push(`  ${e.ref} ${bits.join(" ")}`);
     }

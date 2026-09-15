@@ -46,7 +46,8 @@ You return ONE of:
 
 Rules:
 - Target elements by ref ids (r7) from the LATEST observation. Refs die on navigation (document epoch change).
-- Prefer fill/select/check over type+press for form fields.
+- Prefer fill/select/check over type+press for form fields. A select's options=[…] lists its choices: pass one of them as the select value.
+- An element marked offscreen needs a scroll (scroll with target=its ref) before a click lands; occluded means something covers it (close the overlay or dialog first). expanded/pressed/focused are the element's current state.
 - Search/filter boxes submit on Enter: after fill/type into one, press key "Enter" on that field — autocomplete popups often swallow or stale the submit-button click.
 - For virtualized or infinite-scroll lists, use collectScroll (item selector + optional key/fields/limit) instead of scroll+extract loops — it dedupes by stable key across renders.
 - Use waitFor with real conditions (textVisible, selector, urlMatches, response) — never fixed sleeps.

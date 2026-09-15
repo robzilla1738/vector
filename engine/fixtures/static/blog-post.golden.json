@@ -60,7 +60,9 @@
       "name": "Name",
       "type": "text",
       "value": "",
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r256",
@@ -70,7 +72,9 @@
       "name": "Email (not published)",
       "type": "email",
       "value": "",
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r260",
@@ -80,7 +84,9 @@
       "name": "Comment",
       "type": "textarea",
       "value": "",
-      "selector": {}
+      "required": true,
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r263",
@@ -90,7 +96,8 @@
       "name": "Notify me of follow-up comments",
       "type": "checkbox",
       "checked": false,
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r327",
@@ -101,7 +108,8 @@
       "type": "email",
       "value": "",
       "placeholder": "you@example.com",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r22",
@@ -290,7 +298,8 @@
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/blog-post.html#main",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r167",
@@ -299,7 +308,8 @@
       "role": "link",
       "name": "Grace",
       "href": "https://fixtures.vector.test/authors/grace",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r170",
@@ -308,7 +318,8 @@
       "role": "link",
       "name": "Linus",
       "href": "https://fixtures.vector.test/authors/linus",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r175",
@@ -317,7 +328,8 @@
       "role": "link",
       "name": "Share on Twitter",
       "href": "https://twitter.com/intent/tweet?url=https://blog.example/2026/09/settled",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r178",
@@ -326,7 +338,8 @@
       "role": "link",
       "name": "Share on HN",
       "href": "https://news.ycombinator.com/submitlink?u=https://blog.example/2026/09/settled",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r183",
@@ -335,7 +348,8 @@
       "role": "link",
       "name": "← Refs that survive",
       "href": "https://fixtures.vector.test/2026/08/refs",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r185",
@@ -344,7 +358,8 @@
       "role": "link",
       "name": "Routing, deterministically →",
       "href": "https://fixtures.vector.test/2026/09/routing",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r198",
@@ -353,7 +368,8 @@
       "role": "link",
       "name": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c1",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r202",
@@ -362,7 +378,8 @@
       "role": "link",
       "name": "Reply",
       "href": "https://fixtures.vector.test/reply?c=1",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r211",
@@ -371,7 +388,8 @@
       "role": "link",
       "name": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c2",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r215",
@@ -380,7 +398,8 @@
       "role": "link",
       "name": "Reply",
       "href": "https://fixtures.vector.test/reply?c=2",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r224",
@@ -389,7 +408,8 @@
       "role": "link",
       "name": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c3",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r228",
@@ -398,7 +418,8 @@
       "role": "link",
       "name": "Reply",
       "href": "https://fixtures.vector.test/reply?c=3",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r237",
@@ -407,7 +428,8 @@
       "role": "link",
       "name": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c4",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r241",
@@ -416,7 +438,8 @@
       "role": "link",
       "name": "Reply",
       "href": "https://fixtures.vector.test/reply?c=4",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r268",
@@ -425,7 +448,8 @@
       "role": "button",
       "name": "Post comment",
       "type": "submit",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r328",
@@ -434,7 +458,8 @@
       "role": "button",
       "name": "Subscribe",
       "type": "submit",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r332",
@@ -443,7 +468,8 @@
       "role": "link",
       "name": "Archive",
       "href": "https://fixtures.vector.test/archive",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r334",
@@ -452,7 +478,8 @@
       "role": "link",
       "name": "Colophon",
       "href": "https://fixtures.vector.test/colophon",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     },
     {
       "ref": "r336",
@@ -461,7 +488,8 @@
       "role": "link",
       "name": "RSS",
       "href": "https://fixtures.vector.test/feed.xml",
-      "selector": {}
+      "selector": {},
+      "offscreen": true
     }
   ],
   "formFields": [
