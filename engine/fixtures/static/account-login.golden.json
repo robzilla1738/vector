@@ -70,7 +70,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "1 Keep me signed in on this device",
+      "name": "Keep me signed in on this device",
       "type": "checkbox",
       "checked": false,
       "selector": {}
@@ -352,7 +352,7 @@
     },
     {
       "ref": "r77",
-      "label": "1 Keep me signed in on this device",
+      "label": "Keep me signed in on this device",
       "name": "remember",
       "type": "checkbox",
       "value": "",
@@ -458,6 +458,6 @@
     "elementsTotal": 33,
     "elementsShown": 33,
     "textChars": 1111,
-    "approxTokens": 828
+    "approxTokens": 827
   }
 }

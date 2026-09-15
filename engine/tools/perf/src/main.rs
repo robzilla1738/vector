@@ -223,9 +223,7 @@ fn ten_step_program(t: &Targets, iteration: u32) -> Program {
     }
     push_step(&mut steps, json!({ "op": "press", "key": "Tab" }));
     push_step(&mut steps, json!({ "op": "scroll", "direction": "down" }));
-    if let Some(select) = &t.select {
-        push_step(&mut steps, json!({ "op": "select", "target": select, "index": 1 }));
-    } else if let Some(click) = &t.click {
+    if let Some(click) = &t.click {
         push_step(&mut steps, json!({ "op": "hover", "target": click }));
     }
     push_step(&mut steps, json!({ "op": "extract", "fields": [{ "name": "title", "selector": "h1" }] }));

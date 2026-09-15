@@ -225,7 +225,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "1 Send me a copy of this ticket",
+      "name": "Send me a copy of this ticket",
       "type": "checkbox",
       "checked": false,
       "selector": {}
@@ -235,7 +235,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "1 Mark as outage (Enterprise plans only)",
+      "name": "Mark as outage (Enterprise plans only)",
       "type": "checkbox",
       "checked": false,
       "disabled": true,
@@ -700,7 +700,7 @@
     },
     {
       "ref": "r275",
-      "label": "1 Send me a copy of this ticket",
+      "label": "Send me a copy of this ticket",
       "name": "cc",
       "type": "checkbox",
       "value": "",
@@ -708,7 +708,7 @@
     },
     {
       "ref": "r279",
-      "label": "1 Mark as outage (Enterprise plans only)",
+      "label": "Mark as outage (Enterprise plans only)",
       "name": "urgent",
       "type": "checkbox",
       "value": "",
@@ -864,6 +864,6 @@
     "elementsTotal": 66,
     "elementsShown": 66,
     "textChars": 1703,
-    "approxTokens": 1509
+    "approxTokens": 1507
   }
 }

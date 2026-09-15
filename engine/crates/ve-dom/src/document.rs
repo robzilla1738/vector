@@ -765,6 +765,31 @@ impl Document {
         if let Some(v) = element.form.as_ref().and_then(|f| f.value.clone()) {
             return Some(v);
         }
+        if element.is_html("select") {
+            // The selected option's value; a single select with nothing
+            // selected reports its first enabled option (the browser default).
+            let options: Vec<NodeId> = self
+                .descendants(id)
+                .filter(|&d| self.element(d).is_some_and(|o| o.is_html("option")))
+                .collect();
+            let selected = options
+                .iter()
+                .copied()
+                .find(|&o| self.is_selected(o))
+                .or_else(|| {
+                    (!element.has_attr("multiple"))
+                        .then(|| {
+                            options.iter().copied().find(|&o| {
+                                self.element(o).is_some_and(|e| !e.has_attr("disabled"))
+                            })
+                        })
+                        .flatten()
+                });
+            return selected.map(|o| {
+                self.attribute(o, "value")
+                    .map_or_else(|| self.text_content(o).trim().to_owned(), str::to_owned)
+            });
+        }
         if let Some(v) = element.attr("value") {
             return Some(v.to_owned());
         }

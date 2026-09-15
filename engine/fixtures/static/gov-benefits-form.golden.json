@@ -182,7 +182,7 @@
       "frame": "main",
       "tag": "input",
       "role": "radio",
-      "name": "own Own",
+      "name": "Own",
       "type": "radio",
       "checked": false,
       "selector": {}
@@ -192,7 +192,7 @@
       "frame": "main",
       "tag": "input",
       "role": "radio",
-      "name": "rent Rent",
+      "name": "Rent",
       "type": "radio",
       "checked": false,
       "selector": {}
@@ -202,7 +202,7 @@
       "frame": "main",
       "tag": "input",
       "role": "radio",
-      "name": "other Other",
+      "name": "Other",
       "type": "radio",
       "checked": false,
       "selector": {}
@@ -212,7 +212,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "senior Age 60 or older",
+      "name": "Age 60 or older",
       "type": "checkbox",
       "checked": false,
       "selector": {}
@@ -222,7 +222,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "disabled Living with a disability",
+      "name": "Living with a disability",
       "type": "checkbox",
       "checked": false,
       "selector": {}
@@ -232,7 +232,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "child Under 6 years old",
+      "name": "Under 6 years old",
       "type": "checkbox",
       "checked": false,
       "selector": {}
@@ -242,7 +242,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "veteran A veteran",
+      "name": "A veteran",
       "type": "checkbox",
       "checked": false,
       "selector": {}
@@ -671,7 +671,7 @@
     },
     {
       "ref": "r190",
-      "label": "own Own",
+      "label": "Own",
       "name": "housing",
       "type": "radio",
       "value": "",
@@ -681,7 +681,7 @@
     },
     {
       "ref": "r193",
-      "label": "rent Rent",
+      "label": "Rent",
       "name": "housing",
       "type": "radio",
       "value": "",
@@ -689,7 +689,7 @@
     },
     {
       "ref": "r196",
-      "label": "other Other",
+      "label": "Other",
       "name": "housing",
       "type": "radio",
       "value": "",
@@ -697,7 +697,7 @@
     },
     {
       "ref": "r204",
-      "label": "senior Age 60 or older",
+      "label": "Age 60 or older",
       "name": "hh[]",
       "type": "checkbox",
       "value": "",
@@ -705,7 +705,7 @@
     },
     {
       "ref": "r207",
-      "label": "disabled Living with a disability",
+      "label": "Living with a disability",
       "name": "hh[]",
       "type": "checkbox",
       "value": "",
@@ -713,7 +713,7 @@
     },
     {
       "ref": "r210",
-      "label": "child Under 6 years old",
+      "label": "Under 6 years old",
       "name": "hh[]",
       "type": "checkbox",
       "value": "",
@@ -721,7 +721,7 @@
     },
     {
       "ref": "r213",
-      "label": "veteran A veteran",
+      "label": "A veteran",
       "name": "hh[]",
       "type": "checkbox",
       "value": "",
@@ -886,6 +886,6 @@
     "elementsTotal": 54,
     "elementsShown": 54,
     "textChars": 1801,
-    "approxTokens": 1522
+    "approxTokens": 1499
   }
 }

@@ -385,14 +385,15 @@ impl Page {
             scroll: Point::ZERO,
         };
         match mode {
-            HistoryMode::Push | HistoryMode::Refresh => {
+            HistoryMode::Push => {
                 if !self.history.is_empty() {
                     self.history.truncate(self.history_index + 1);
                 }
                 self.history.push(entry);
                 self.history_index = self.history.len() - 1;
             }
-            HistoryMode::Replace => {
+            // Client redirects (`<meta refresh>`) replace the current entry.
+            HistoryMode::Replace | HistoryMode::Refresh => {
                 if self.history.is_empty() {
                     self.history.push(entry);
                     self.history_index = 0;
@@ -1207,11 +1208,18 @@ impl Page {
         )
     }
 
+    /// Whether `id` is still part of the document tree (not merely alive in
+    /// the arena after a removal).
+    fn is_connected(&self, id: NodeId) -> bool {
+        let root = self.doc.root();
+        id == root || self.doc.ancestors(id).any(|a| a == root)
+    }
+
     /// Actionability, checked in order: attached → shown → enabled →
     /// stable → unoccluded. Returns the document-coordinate rect.
     pub fn actionable(&mut self, id: NodeId, timeout_ms: u64) -> Result<Rect> {
         self.update();
-        if self.doc.element(id).is_none() {
+        if self.doc.element(id).is_none() || !self.is_connected(id) {
             return Err(Error::coded_with(
                 ErrorCode::TargetDetached,
                 format!("{} is detached", ref_for(id)),

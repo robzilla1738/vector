@@ -58,7 +58,7 @@
       "frame": "main",
       "tag": "input",
       "role": "radio",
-      "name": "yes Yes",
+      "name": "Yes",
       "type": "radio",
       "checked": false,
       "selector": {}
@@ -68,7 +68,7 @@
       "frame": "main",
       "tag": "input",
       "role": "radio",
-      "name": "no No",
+      "name": "No",
       "type": "radio",
       "checked": false,
       "selector": {}
@@ -531,7 +531,7 @@
     },
     {
       "ref": "r346",
-      "label": "yes Yes",
+      "label": "Yes",
       "name": "helpful",
       "type": "radio",
       "value": "",
@@ -539,7 +539,7 @@
     },
     {
       "ref": "r349",
-      "label": "no No",
+      "label": "No",
       "name": "helpful",
       "type": "radio",
       "value": "",
@@ -851,6 +851,6 @@
     "elementsTotal": 54,
     "elementsShown": 54,
     "textChars": 3084,
-    "approxTokens": 1989
+    "approxTokens": 1985
   }
 }

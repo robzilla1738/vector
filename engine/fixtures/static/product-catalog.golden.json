@@ -95,7 +95,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "1 In stock only",
+      "name": "In stock only",
       "type": "checkbox",
       "checked": true,
       "selector": {}
@@ -105,7 +105,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "1 On sale",
+      "name": "On sale",
       "type": "checkbox",
       "checked": false,
       "selector": {}
@@ -115,7 +115,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "north Northline",
+      "name": "Northline",
       "type": "checkbox",
       "checked": false,
       "selector": {}
@@ -125,7 +125,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "ridge Ridgeway",
+      "name": "Ridgeway",
       "type": "checkbox",
       "checked": false,
       "selector": {}
@@ -135,7 +135,7 @@
       "frame": "main",
       "tag": "input",
       "role": "checkbox",
-      "name": "alt Altitude",
+      "name": "Altitude",
       "type": "checkbox",
       "checked": false,
       "selector": {}
@@ -801,7 +801,7 @@
     },
     {
       "ref": "r83",
-      "label": "1 In stock only",
+      "label": "In stock only",
       "name": "inStock",
       "type": "checkbox",
       "value": "on",
@@ -809,7 +809,7 @@
     },
     {
       "ref": "r87",
-      "label": "1 On sale",
+      "label": "On sale",
       "name": "onSale",
       "type": "checkbox",
       "value": "",
@@ -817,7 +817,7 @@
     },
     {
       "ref": "r94",
-      "label": "north Northline",
+      "label": "Northline",
       "name": "brand",
       "type": "checkbox",
       "value": "",
@@ -825,7 +825,7 @@
     },
     {
       "ref": "r97",
-      "label": "ridge Ridgeway",
+      "label": "Ridgeway",
       "name": "brand",
       "type": "checkbox",
       "value": "",
@@ -833,7 +833,7 @@
     },
     {
       "ref": "r100",
-      "label": "alt Altitude",
+      "label": "Altitude",
       "name": "brand",
       "type": "checkbox",
       "value": "",
@@ -1197,6 +1197,6 @@
     "elementsTotal": 79,
     "elementsShown": 79,
     "textChars": 702,
-    "approxTokens": 1647
+    "approxTokens": 1637
   }
 }

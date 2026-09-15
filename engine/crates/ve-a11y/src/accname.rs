@@ -105,11 +105,56 @@ fn collect_text(doc: &Document, id: NodeId, allow_hidden: bool, out: &mut String
                             out.push(' ');
                         }
                     }
-                    "input" | "select" | "textarea" => {
+                    // accname §2E: only embedded textboxes, comboboxes /
+                    // listboxes and ranges contribute; checkboxes, radios,
+                    // buttons, hidden and file inputs contribute nothing.
+                    "textarea" => {
                         if let Some(v) = doc.form_value(child) {
                             out.push(' ');
                             out.push_str(&v);
                             out.push(' ');
+                        }
+                    }
+                    "input" => {
+                        let ty = e.attr("type").map(str::to_ascii_lowercase);
+                        let textbox_like = match ty.as_deref() {
+                            None => true,
+                            Some(t) => matches!(
+                                t,
+                                "text"
+                                    | "search"
+                                    | "email"
+                                    | "tel"
+                                    | "url"
+                                    | "password"
+                                    | "number"
+                                    | "range"
+                                    | "date"
+                                    | "time"
+                                    | "datetime-local"
+                                    | "month"
+                                    | "week"
+                                    | "color"
+                            ),
+                        };
+                        if textbox_like && let Some(v) = doc.form_value(child) {
+                            out.push(' ');
+                            out.push_str(&v);
+                            out.push(' ');
+                        }
+                    }
+                    "select" => {
+                        // The selected option's label, not its value attribute.
+                        if let Some(option) = doc
+                            .descendants(child)
+                            .find(|&o| doc.element(o).is_some_and(|x| x.is_html("option")) && doc.is_selected(o))
+                        {
+                            let text = normalize(&doc.text_content(option));
+                            if !text.is_empty() {
+                                out.push(' ');
+                                out.push_str(&text);
+                                out.push(' ');
+                            }
                         }
                     }
                     "br" => out.push(' '),
