@@ -17,6 +17,7 @@ import {
   READINESS_INIT_SCRIPT,
   SETTLED_CONDITION_MS,
   SETTLED_QUIET_MS,
+  observationFingerprint,
   settledProbe,
 } from "./readiness.js";
 import type { DriverPage, DriverPageEvents, PageIdentity, ScreenshotResult, WaitOutcome } from "./types.js";
@@ -578,6 +579,18 @@ export class PlaywrightDriverPage implements DriverPage {
       .evaluate(() => ({ w: innerWidth, h: innerHeight, s: devicePixelRatio || 1 }))
       .catch(() => ({ w: 0, h: 0, s: 1 }));
     return { buffer, width: meta.w, height: meta.h, scale: meta.s };
+  }
+
+  /** One small evaluate on the main frame; frames are folded in by URL so a child navigation invalidates too. */
+  async observeFingerprint(): Promise<string> {
+    const main = await bounded(this.page.evaluate(observationFingerprint), FRAME_PROBE_MS);
+    if (typeof main !== "string") throw new VectorError("backend_unavailable", "fingerprint probe timed out");
+    const frames = this.page
+      .frames()
+      .filter((f) => f !== this.page.mainFrame())
+      .map((f) => f.url())
+      .join("\u0002");
+    return frames ? `${main}\u0001frames:${frames}` : main;
   }
 
   async observe(req?: Partial<ObservationRequest>): Promise<ObservationContent> {

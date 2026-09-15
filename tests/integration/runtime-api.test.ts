@@ -149,7 +149,9 @@ describe("pages", () => {
     const o = compact.observation;
     expect(o.pageId).toBe(page.pageId);
     expect(o.url).toContain("/records");
-    expect(o.revision).toBe(full.revision + 1);
+    // the page did not change between the two calls, so the compact form is
+    // rendered from the cached observation (A6): same revision, no re-walk
+    expect(o.revision).toBe(full.revision);
     expect(o.refs.length).toBe(full.content.elements.length);
     expect(o.text).toContain("elements:");
     expect(JSON.stringify(o)).not.toContain("nth-of-type"); // selectors stay server-side
@@ -191,6 +193,36 @@ describe("pages", () => {
       program: { pageId: page.pageId, steps: [{ id: "r1", op: "reload" }] },
     });
     expect(plain).not.toHaveProperty("observation");
+  }, 60_000);
+
+  it("observation cache: an unchanged page is served from cache; typing or navigating invalidates it (A6)", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
+    type Obs = { observationId: string; revision: number; cached?: boolean; changesSince?: string[]; content: ObservationContent };
+    const first = await invoke<Obs>("pages.observe", { pageId: page.pageId });
+    expect(first.cached).toBeUndefined();
+    const second = await invoke<Obs>("pages.observe", { pageId: page.pageId });
+    expect(second.cached).toBe(true);
+    expect(second.observationId).toBe(first.observationId);
+    expect(second.revision).toBe(first.revision);
+    // a different request shape is a different observation
+    const forms = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "forms" });
+    expect(forms.cached).toBeUndefined();
+    // a form value change is invisible to a MutationObserver but must miss the cache
+    await invoke("pages.execute", {
+      program: { pageId: page.pageId, steps: [{ id: "f", op: "fill", target: "css:#n-title", value: "Cache probe" }] },
+    });
+    const third = await invoke<Obs>("pages.observe", { pageId: page.pageId });
+    expect(third.cached).toBeUndefined();
+    expect(third.revision).toBeGreaterThan(first.revision);
+    expect(third.content.formFields.some((f) => f.value === "Cache probe")).toBe(true);
+    // sinceRevision diffs against the revision the caller last saw, not just the previous one
+    const since = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "full", sinceRevision: first.revision, maxElements: 119 });
+    expect(since.changesSince?.some((c) => c.includes("Cache probe"))).toBe(true);
+    // navigation changes the epoch: no stale hit
+    await invoke("pages.navigate", { pageId: page.pageId, url: `${RECORDS}/records` });
+    const afterNav = await invoke<Obs>("pages.observe", { pageId: page.pageId });
+    expect(afterNav.cached).toBeUndefined();
+    expect(afterNav.content.url).toContain("/records");
   }, 60_000);
 
   it("waitFor settled resolves once an in-flight fetch and its DOM update land", async () => {

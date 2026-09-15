@@ -301,6 +301,7 @@ export class RunCoordinator {
     let lastActionFailed = false;
     let doneChallenged = false;
     let pendingObs: { scope?: "full" | "forms" | "links" | "tables" | "subtree"; subtreeRef?: string } | undefined;
+    let carriedObs: Observation | undefined;
 
     /**
      * Every structured call goes through here so the budget counts attempts
@@ -417,7 +418,15 @@ export class RunCoordinator {
         pendingObs = undefined;
         let obs: Observation;
         try {
-          obs = await this.deps.pages.observe(activePageId, obsReq);
+          // an observation that rode along with the last program (plan A6)
+          // is exactly what a fresh observe would return — skip the trip
+          if (carriedObs && carriedObs.pageId === activePageId) {
+            obs = carriedObs;
+            carriedObs = undefined;
+          } else {
+            carriedObs = undefined;
+            obs = await this.deps.pages.observe(activePageId, obsReq);
+          }
         } catch (e) {
           // The tab closed/crashed out from under the run — retarget to
           // another live page in scope instead of dying on the dead one.
@@ -477,6 +486,13 @@ export class RunCoordinator {
         };
         let early: EarlyDispatcher | undefined;
         let repeatNudge: string | undefined;
+        // the observation request the next iteration would make; consumed by
+        // the program's trailing observe so the loop top can reuse it
+        const nextObserveReq = () => {
+          const r = pendingObs ?? {};
+          pendingObs = undefined;
+          return r;
+        };
         const canStream = typeof model.streamStructured === "function" && run.pageIds.length <= 1;
         const plannerCall = async (): Promise<PlanChunk> => {
           const prompt = buildPlannerPrompt({
@@ -492,10 +508,11 @@ export class RunCoordinator {
           const parser = new PlanStreamParser();
           const epoch = obs.documentEpoch;
           const dispatcher = new EarlyDispatcher(
-            (steps, first) =>
+            (steps, { first, last }) =>
               this.deps.pages.execute(
                 { pageId: activePageId!, ...(first ? { documentEpoch: epoch } : {}), steps },
                 { runId, signal: c.abort.signal, onStep: onStepRecorded },
+                last ? { returnObservation: nextObserveReq() } : {},
               ),
             24,
           );
@@ -686,7 +703,9 @@ export class RunCoordinator {
         const program = { pageId: activePageId, documentEpoch: obs.documentEpoch, steps: plan.steps };
         const result = early
           ? await early.finish(plan.steps)
-          : await this.deps.pages.execute(program, { runId, signal: c.abort.signal, onStep: onStepRecorded });
+          : await this.deps.pages.execute(program, { runId, signal: c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
+        const carried = early ? early.observation : (result as { observation?: Observation }).observation;
+        if (carried && carried.pageId === activePageId) carriedObs = carried;
         stepsRun += plan.steps.length;
         lastError = repeatNudge;
         repeatNudge = undefined;

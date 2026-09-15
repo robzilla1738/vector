@@ -64,6 +64,41 @@ export const READINESS_INIT_SCRIPT = `(() => {
   else observe();
 })();`;
 
+/**
+ * Evaluated in the page for the observation cache (plan A6). Everything an
+ * observation depends on that the MutationObserver cannot see is folded in:
+ * form control values (the `value` property is not an attribute), the
+ * focused element, scroll offsets, viewport and URL. Costs one small
+ * evaluate instead of the full observe walk.
+ */
+export function observationFingerprint(): string {
+  const st = (globalThis as unknown as Record<string, { mutations?: number } | undefined>)["__vectorReady"];
+  const d = document;
+  let values = "";
+  const controls = d.querySelectorAll("input,textarea,select");
+  for (let i = 0; i < controls.length && i < 400; i++) {
+    const c = controls[i] as HTMLInputElement;
+    values += c.type === "checkbox" || c.type === "radio" ? (c.checked ? "1" : "0") : `${c.value.length}:${c.value.slice(0, 32)}`;
+    values += "|";
+  }
+  const a = d.activeElement;
+  const focus = a ? `${a.tagName}#${a.id}.${a.className}` : "";
+  const w = globalThis as unknown as Window;
+  return [
+    st?.mutations ?? "nomo",
+    location.href,
+    d.title,
+    Math.round(w.scrollX),
+    Math.round(w.scrollY),
+    w.innerWidth,
+    w.innerHeight,
+    d.readyState,
+    controls.length,
+    values,
+    focus,
+  ].join("\u0001");
+}
+
 export interface SettledProbeArgs {
   timeoutMs: number;
   quietMs: number;

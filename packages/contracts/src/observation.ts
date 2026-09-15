@@ -107,6 +107,8 @@ export const ObservationSchema = z.object({
   changesSince: z.array(z.string()).optional(),
   /** §8.5 — the observationId this delta applies to; absent on a first observation. */
   deltaFrom: z.string().optional(),
+  /** Served from the observation cache: the page fingerprint was unchanged since this observation was taken (plan A6). */
+  cached: z.boolean().optional(),
 });
 export type Observation = z.infer<typeof ObservationSchema>;
 

@@ -127,6 +127,14 @@ export interface DriverPage {
 
   screenshot(opts?: { fullPage?: boolean }): Promise<ScreenshotResult>;
   observe(req?: Partial<ObservationRequest>): Promise<ObservationContent>;
+  /**
+   * Cheap state fingerprint for the observation cache (plan A6): changes
+   * whenever the DOM mutated, the URL/scroll/viewport moved, a form value
+   * changed or focus moved. Two equal fingerprints mean `observe()` would
+   * return the same content, so the runtime can serve the previous one
+   * without re-walking the page. Optional; absent means "always re-observe".
+   */
+  observeFingerprint?(): Promise<string>;
   expandRef(ref: string, maxElements?: number): Promise<ElementRef[]>;
   extract(fields: { name: string; selector?: string; attribute?: string; all?: boolean }[]): Promise<Record<string, unknown>>;
   evaluate(expression: string): Promise<unknown>;

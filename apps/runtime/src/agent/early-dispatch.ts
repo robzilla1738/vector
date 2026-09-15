@@ -1,4 +1,13 @@
-import { PlanStepSchema, type PlanStep, type ProgramResult } from "@vector/contracts";
+import { PlanStepSchema, type Observation, type PlanStep, type ProgramResult } from "@vector/contracts";
+
+export interface DispatchBatchOpts {
+  /** the batch carries the observation's documentEpoch (first batch of the plan) */
+  first: boolean;
+  /** the batch is the plan's last: ask the executor to observe afterwards in the same lane trip */
+  last: boolean;
+}
+
+export type DispatchResult = ProgramResult & { observation?: Observation };
 
 /**
  * Executes plan steps while the planner is still streaming them (plan A5).
@@ -28,9 +37,12 @@ export class EarlyDispatcher {
   private error: string | undefined;
   /** Wall-clock when the first step started executing (undefined if none did). */
   firstDispatchAt: number | undefined;
+  /** Observation returned with the last batch (plan A6: no separate observe round trip). */
+  observation: Observation | undefined;
+  private finishing = false;
 
   constructor(
-    private readonly execute: (steps: PlanStep[], first: boolean) => Promise<ProgramResult>,
+    private readonly execute: (steps: PlanStep[], opts: DispatchBatchOpts) => Promise<DispatchResult>,
     private readonly maxSteps = 24,
   ) {}
 
@@ -66,6 +78,7 @@ export class EarlyDispatcher {
    * accepted), wait for everything, and return one combined ProgramResult.
    */
   async finish(steps: PlanStep[]): Promise<ProgramResult> {
+    this.finishing = true;
     if (this.status === "completed") {
       for (const step of steps.slice(this.accepted)) {
         this.accepted++;
@@ -89,9 +102,12 @@ export class EarlyDispatcher {
     const first = this.first;
     this.first = false;
     this.firstDispatchAt ??= Date.now();
-    this.running = this.execute(batch, first)
+    // the plan is fully known and nothing is left behind this batch
+    const last = this.finishing && this.queue.length === 0;
+    this.running = this.execute(batch, { first, last })
       .then((r) => {
         this.outcomes.push(...r.steps);
+        if (r.observation) this.observation = r.observation;
         if (r.extracted) this.extracted = { ...(this.extracted ?? {}), ...r.extracted };
         if (r.fallback) this.fallback = r.fallback;
         if (r.status !== "completed") {
