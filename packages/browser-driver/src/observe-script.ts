@@ -11,6 +11,8 @@ export interface ObserveScriptArgs {
   subtreeCss?: string;
   frameKey: string;
   refStart: number;
+  /** add to this frame's live ref map instead of replacing it (expandRef) */
+  mergeRefs?: boolean;
 }
 
 export interface ObserveScriptResult {
@@ -283,6 +285,13 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   }
   const ordered = inView.concat(offView);
 
+  // Live ref map (speed P0-3 / plan A7): the driver resolves `rN` with one
+  // map lookup (`evaluateHandle`) instead of a css/xpath/role search, and
+  // falls back to the selectors only when the node is gone. A fresh map per
+  // observe: refs from an older observation are stale by contract.
+  const g: any = globalThis as any;
+  const refMap: Map<string, any> = args.mergeRefs && g.__vectorRefs instanceof Map ? g.__vectorRefs : new Map();
+  g.__vectorRefs = refMap;
   let refNum = args.refStart;
   for (const el of ordered) {
     if (result.elements.length >= args.maxElements) {
@@ -319,6 +328,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     const txt = (el.innerText || "").replace(/\s+/g, " ").trim();
     if (txt && txt !== name) entry.text = txt.slice(0, 140);
     result.elements.push(entry);
+    refMap.set(entry.ref, el);
     if (tag === "a" && entry.href) result.links.push({ ref: entry.ref, text: name || txt || entry.href, href: entry.href });
   }
   result.nextRef = refNum;

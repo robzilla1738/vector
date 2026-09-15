@@ -195,6 +195,59 @@ describe("pages", () => {
     expect(plain).not.toHaveProperty("observation");
   }, 60_000);
 
+  it("refs resolve to the exact observed node even after the DOM shifts, and fall back when it is gone (A7)", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
+    const obs = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
+    const title = obs.content.elements.find((e) => e.selector?.css?.includes("n-title") || e.name === "Title")!;
+    expect(title).toBeTruthy();
+    // insert a decoy input before the target: a positional css path now points
+    // at the decoy, the live ref map still points at the real field
+    await invoke("pages.execute", {
+      program: {
+        pageId: page.pageId,
+        steps: [
+          {
+            id: "e",
+            op: "evaluate",
+            // strip the id too, so every stored selector (css #id, xpath position,
+            // label-derived role name) now misses or points at the decoy
+            expression: `(() => { const t = document.getElementById("n-title"); const d = document.createElement("input"); d.name = "decoy"; t.parentElement.insertBefore(d, t); t.removeAttribute("id"); return 1; })()`,
+          },
+          { id: "f", op: "fill", target: title.ref, value: "exact node" },
+        ],
+      },
+      allowEval: true,
+    });
+    const after = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
+    expect(after.content.formFields.find((f) => f.name === "title")?.value).toBe("exact node");
+    expect(after.content.formFields.find((f) => f.name === "decoy")?.value ?? "").toBe("");
+    // restore the id for the second scenario
+    await invoke("pages.execute", {
+      program: { pageId: page.pageId, steps: [{ id: "e2", op: "evaluate", expression: `(() => { document.querySelector('input[name=title]').id = "n-title"; return 1; })()` }] },
+      allowEval: true,
+    });
+    // the node is replaced (framework re-render): the handle is gone, the
+    // selector fallback finds the replacement by its path/role instead
+    const obs2 = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
+    const title2 = obs2.content.elements.find((e) => e.selector?.css?.includes("n-title"))!;
+    await invoke("pages.execute", {
+      program: {
+        pageId: page.pageId,
+        steps: [
+          {
+            id: "e",
+            op: "evaluate",
+            expression: `(() => { const t = document.getElementById("n-title"); const c = t.cloneNode(true); t.replaceWith(c); return 1; })()`,
+          },
+          { id: "f", op: "fill", target: title2.ref, value: "fallback node" },
+        ],
+      },
+      allowEval: true,
+    });
+    const after2 = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
+    expect(after2.content.formFields.find((f) => f.name === "title" || f.label === "Title")?.value).toBe("fallback node");
+  }, 60_000);
+
   it("observation cache: an unchanged page is served from cache; typing or navigating invalidates it (A6)", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
     type Obs = { observationId: string; revision: number; cached?: boolean; changesSince?: string[]; content: ObservationContent };
