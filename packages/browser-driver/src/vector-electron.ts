@@ -21,12 +21,11 @@ export class VectorElectronDriver extends CdpAttachedDriver {
   /** attachDirect fallback matches by marker too — /json/list only has ids. */
   protected override async attachDirect(targetId: string, pageId: string) {
     const targets = await this.jsonTargets().catch(() => []);
-    const { chromium } = await import("playwright-core");
     for (const t of targets) {
       if (t.type !== "page" || !t.webSocketDebuggerUrl) continue;
       let browser;
       try {
-        browser = await chromium.connectOverCDP(t.webSocketDebuggerUrl, { timeout: 6_000 });
+        browser = await this.connectOverCDP(t.webSocketDebuggerUrl, { timeout: 6_000 });
       } catch {
         continue;
       }
@@ -36,15 +35,17 @@ export class VectorElectronDriver extends CdpAttachedDriver {
         await browser.close().catch(() => {});
         continue;
       }
-      const marker = await this.markerOf(page, VECTOR_MARKER_GLOBAL);
+      const marker = await this.markerOf(page, VECTOR_MARKER_GLOBAL).catch(() => null);
       if (marker === targetId) {
         const { PlaywrightDriverPage } = await import("./playwright-page.js");
-        return new PlaywrightDriverPage({
+        const dp = new PlaywrightDriverPage({
           page,
           context: ctx!,
           identity: { pageId, targetId, backend: this.backend },
           refs: this.refs,
         });
+        // the per-target connection is owned by the driver and closed with the page/dispose
+        return this.trackDirect(targetId, browser, page, dp);
       }
       // keep the extra connection alive only if needed elsewhere — close it
       await browser.close().catch(() => {});

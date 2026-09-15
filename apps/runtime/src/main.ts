@@ -7,12 +7,12 @@
  * serves the versioned loopback API for external agents.
  */
 import { randomUUID } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { VectorError, type Step } from "@vector/contracts";
 import { RpcChannel, type Transport } from "@vector/contracts";
 import { AttachedChromeDriver, StandaloneDriver, VectorElectronDriver, type BrowserDriver } from "@vector/browser-driver";
-import { loadConfig } from "./config.js";
+import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb } from "./store/db.js";
 import { Repo } from "./store/repo.js";
 import { EventBus } from "./events.js";
@@ -38,7 +38,10 @@ export interface RuntimeHandle {
   close: () => Promise<void>;
 }
 
-export async function startRuntime(env = process.env): Promise<RuntimeHandle> {
+export async function startRuntime(processEnv = process.env): Promise<RuntimeHandle> {
+  // `.env` in the data dir, then in the cwd — real environment variables
+  // always win. The README promised this; nothing loaded it before.
+  const env = loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
   const repo = new Repo(openDb(config.dbPath));
   const events = new EventBus(repo);
@@ -77,8 +80,21 @@ export async function startRuntime(env = process.env): Promise<RuntimeHandle> {
     vector: null,
     chrome: null,
   };
+  // socket drops mark the session degraded and tell the UI; the next
+  // pages.open attempts a lazy reconnect and, on success, restores it
+  const watchDriver = (d: BrowserDriver, sessionId: "vector" | "chrome", label: string) => {
+    d.onDisconnected = () => {
+      repo.upsertSession({ sessionId, backend: d.backend, label, status: "degraded", detail: "backend connection dropped — reconnecting on next use" });
+      events.emit("session.changed", { backend: d.backend, status: "degraded" });
+    };
+    d.onReconnected = () => {
+      repo.upsertSession({ sessionId, backend: d.backend, label, status: "connected" });
+      events.emit("session.changed", { backend: d.backend, status: "connected" });
+    };
+  };
   if (config.electronCdp) {
     const d = new VectorElectronDriver(config.electronCdp);
+    watchDriver(d, "vector", "Vector");
     try {
       await d.connect();
       drivers.vector = d;
@@ -95,6 +111,7 @@ export async function startRuntime(env = process.env): Promise<RuntimeHandle> {
   } else if (env.VECTOR_STANDALONE !== "0") {
     // No Electron shell — drive a headless system Chrome so the full API still works.
     const d = new StandaloneDriver();
+    watchDriver(d, "vector", "Vector (headless)");
     try {
       await d.connect();
       drivers.vector = d;
@@ -174,6 +191,7 @@ export async function startRuntime(env = process.env): Promise<RuntimeHandle> {
       return repo.listSessions().find((s) => s.backend === "chrome");
     }
     const d = new AttachedChromeDriver(`http://127.0.0.1:${port}`);
+    watchDriver(d, "chrome", `Chrome :${port}`);
     await d.connect();
     drivers.chrome = d;
     repo.upsertSession({
@@ -226,7 +244,15 @@ export async function startRuntime(env = process.env): Promise<RuntimeHandle> {
   const token = config.apiToken || randomUUID();
   const api = new ApiServer({ token, invoke, events });
   const port = await api.listen(config.apiPort);
-  writeFileSync(join(config.dataDir, "runtime.json"), JSON.stringify({ port, token, pid: process.pid }));
+  // the bearer token lives here — owner-only, and re-chmod'd because
+  // writeFileSync's mode applies only when the file is first created
+  const runtimeFile = join(config.dataDir, "runtime.json");
+  writeFileSync(runtimeFile, JSON.stringify({ port, token, pid: process.pid }), { mode: 0o600 });
+  try {
+    chmodSync(runtimeFile, 0o600);
+  } catch {
+    /* non-POSIX fs */
+  }
 
   // ---- channel surface for the shell ----
   resolveInvoker!(invoke);
@@ -281,6 +307,8 @@ export async function startRuntime(env = process.env): Promise<RuntimeHandle> {
   const shutdown = async () => {
     if (closed) return;
     closed = true;
+    process.off("unhandledRejection", onUnhandledRejection);
+    process.off("uncaughtException", onUncaughtException);
     runs.coordinator.markInterrupted();
     await drivers.vector?.disconnect().catch(() => {});
     await drivers.chrome?.disconnect().catch(() => {});
@@ -289,6 +317,35 @@ export async function startRuntime(env = process.env): Promise<RuntimeHandle> {
   };
   process.on("SIGTERM", () => void shutdown().then(() => process.exit(0)));
   process.on("SIGINT", () => void shutdown().then(() => process.exit(0)));
+
+  // Process-level faults (P1-10). Node would otherwise exit on an unhandled
+  // rejection, taking every tab and run with it and leaving runs 'running'
+  // in the ledger. Log, fail the active runs with the fault as their error,
+  // and keep serving. An uncaught exception is not recoverable in-process:
+  // fail runs, flush, and exit non-zero so the shell can respawn.
+  const describeFault = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
+  const onUnhandledRejection = (reason: unknown) => {
+    if (closed) return;
+    console.error("[vector-runtime] unhandled rejection:", reason instanceof Error ? reason.stack ?? reason.message : reason);
+    try {
+      const failed = runs.coordinator.failActive(`runtime fault — unhandled rejection: ${describeFault(reason)}`);
+      if (failed.length) console.error(`[vector-runtime] marked ${failed.length} active run(s) failed`);
+    } catch {
+      /* the ledger itself may be the thing that failed */
+    }
+  };
+  const onUncaughtException = (err: Error) => {
+    if (closed) return;
+    console.error("[vector-runtime] uncaught exception:", err.stack ?? err.message);
+    try {
+      runs.coordinator.failActive(`runtime fault — uncaught exception: ${describeFault(err)}`);
+    } catch {
+      /* best effort */
+    }
+    void shutdown().finally(() => process.exit(1));
+  };
+  process.on("unhandledRejection", onUnhandledRejection);
+  process.on("uncaughtException", onUncaughtException);
 
   // recover from an unclean stop: anything still "live" never completed.
   // Invocation rows persisted 'running' before dispatch (§13.3) reconcile

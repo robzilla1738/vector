@@ -10,6 +10,15 @@ import {
 } from "@vector/contracts";
 import { collectObservation, type ObserveScriptResult } from "./observe-script.js";
 import { parseTarget, RefRegistry } from "./ref-registry.js";
+import { locatorAttempts, selectUniqueLocator } from "./locator-resolve.js";
+import { bodyCapturePolicy, defaultResponseCaptureOptions, type ResponseCaptureOptions } from "./response-capture.js";
+import {
+  POST_NAVIGATION_SETTLE_MS,
+  READINESS_INIT_SCRIPT,
+  SETTLED_CONDITION_MS,
+  SETTLED_QUIET_MS,
+  settledProbe,
+} from "./readiness.js";
 import type { DriverPage, DriverPageEvents, PageIdentity, ScreenshotResult, WaitOutcome } from "./types.js";
 
 const DEFAULT_STEP_TIMEOUT = 15_000;
@@ -27,10 +36,8 @@ export function bounded<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
   ]);
 }
 
-/** Passive response capture — env-off switch plus the capture policy. */
+/** Passive response capture — env-off switch; the body policy lives in response-capture.ts. */
 const CAPTURE_RESPONSES = process.env.VECTOR_CAPTURE_RESPONSES !== "0";
-const BODY_CAP = 256 * 1024;
-const CAPTURABLE_TYPE = /json|text\/|xml|javascript|x-www-form-urlencoded|csv|html/i;
 
 interface FrameKeys {
   /** 'main' or 'f1'..'fN' in page.frames() order at observe time. */
@@ -53,18 +60,31 @@ export class PlaywrightDriverPage implements DriverPage {
     timer: NodeJS.Timeout;
   }[] = [];
   private attached = true;
+  private capture: ResponseCaptureOptions;
 
   constructor(opts: {
     page: Page;
     context: BrowserContext;
     identity: PageIdentity;
     refs: RefRegistry;
+    /** override which response bodies are captured (default: xhr/fetch JSON+text) */
+    responseCapture?: Partial<ResponseCaptureOptions>;
   }) {
     this.page = opts.page;
     this.context = opts.context;
     this.identity = opts.identity;
     this.refs = opts.refs;
+    this.capture = { ...defaultResponseCaptureOptions(), ...opts.responseCapture };
     this.wireEvents();
+    // readiness signal (P1-8): every new document tracks in-flight fetch/XHR
+    // and DOM mutations so navigate/waitFor can wait for quiescence
+    // best-effort: a page handle that cannot take init scripts (or a test
+    // double) must not break attach — readiness then falls back to bounded waits
+    try {
+      void this.page.addInitScript(READINESS_INIT_SCRIPT).catch(() => {});
+    } catch {
+      /* readiness probe unavailable on this page */
+    }
   }
 
   private wireEvents() {
@@ -107,9 +127,10 @@ export class PlaywrightDriverPage implements DriverPage {
 
   /**
    * Passive response capture (§8): every completed response reports metadata;
-   * bodies are fetched only for machine-readable types under a size cap.
-   * Failures (redirect chains, aborted fetches) are swallowed — capture must
-   * never interfere with the page.
+   * bodies are fetched only for data responses (xhr/fetch, JSON/text) under
+   * a size cap — never for scripts/stylesheets/documents unless the driver
+   * was constructed with those resource types. Failures (redirect chains,
+   * aborted fetches) are swallowed — capture must never interfere with the page.
    */
   private async captureResponse(response: Response) {
     const handler = this.events.onResponse;
@@ -119,23 +140,33 @@ export class PlaywrightDriverPage implements DriverPage {
     const timing = req.timing();
     const headers = response.headers();
     const contentType = headers["content-type"];
+    const resourceType = req.resourceType();
     const info: Parameters<NonNullable<DriverPageEvents["onResponse"]>>[0] = {
       requestId: `rq_${this.identity.pageId}_${++this.responseSeq}`,
       url: response.url(),
       method: req.method(),
       status: response.status(),
       contentType,
+      resourceType,
       // timing().startTime is already epoch-ms — -1 when unavailable
       startedAt: timing.startTime > 0 ? Math.round(timing.startTime) : endedAt,
       endedAt,
     };
-    if (CAPTURABLE_TYPE.test(contentType ?? "")) {
+    const declared = Number(headers["content-length"]);
+    const decision = bodyCapturePolicy(
+      { resourceType, contentType, contentLength: Number.isFinite(declared) && declared >= 0 ? declared : undefined },
+      this.capture,
+    );
+    if (decision === "too-large") {
+      info.bodyBytes = declared;
+      info.truncated = true;
+    } else if (decision === "capture") {
       try {
         const body = await response.body();
         info.bodyBytes = body.length;
-        if (body.length <= BODY_CAP) info.body = body;
+        if (body.length <= this.capture.bodyCapBytes) info.body = body;
         else {
-          info.body = body.subarray(0, BODY_CAP);
+          info.body = body.subarray(0, this.capture.bodyCapBytes);
           info.truncated = true;
         }
       } catch {
@@ -192,17 +223,34 @@ export class PlaywrightDriverPage implements DriverPage {
 
   async navigate(url: string, timeoutMs = 30_000) {
     await this.page.goto(url, { timeout: timeoutMs, waitUntil: "domcontentloaded" });
+    await this.waitForSettled(POST_NAVIGATION_SETTLE_MS);
   }
   async back(timeoutMs = 15_000) {
     const res = await this.page.goBack({ timeout: timeoutMs, waitUntil: "domcontentloaded" }).catch(() => null);
     if (!res) throw new VectorError("step_failed", "No back history");
+    await this.waitForSettled(POST_NAVIGATION_SETTLE_MS);
   }
   async forward(timeoutMs = 15_000) {
     const res = await this.page.goForward({ timeout: timeoutMs, waitUntil: "domcontentloaded" }).catch(() => null);
     if (!res) throw new VectorError("step_failed", "No forward history");
+    await this.waitForSettled(POST_NAVIGATION_SETTLE_MS);
   }
   async reload(timeoutMs = 30_000) {
     await this.page.reload({ timeout: timeoutMs, waitUntil: "domcontentloaded" });
+    await this.waitForSettled(POST_NAVIGATION_SETTLE_MS);
+  }
+
+  /**
+   * Bounded quiescence wait: two animation frames, no in-flight fetch/XHR,
+   * and no DOM mutation for ~100 ms — or the deadline. Returns whether the
+   * page settled. Never throws; a wedged renderer just reports false.
+   */
+  async waitForSettled(timeoutMs = SETTLED_CONDITION_MS): Promise<boolean> {
+    const r = await bounded(
+      this.page.evaluate(settledProbe, { timeoutMs, quietMs: SETTLED_QUIET_MS }).catch(() => false),
+      timeoutMs + 250,
+    );
+    return r === true;
   }
   async stop() {
     // bounded — window.stop() itself needs the renderer's event loop, which
@@ -232,23 +280,6 @@ export class PlaywrightDriverPage implements DriverPage {
     return map;
   }
 
-  private locatorIn(frame: Frame, strategy: SelectorStrategy): Locator {
-    const candidates: Locator[] = [];
-    if (strategy.role) {
-      candidates.push(
-        frame.getByRole(strategy.role.role as never, {
-          name: strategy.role.name,
-          exact: false,
-        }),
-      );
-    }
-    if (strategy.css) candidates.push(frame.locator(strategy.css));
-    if (strategy.xpath) candidates.push(frame.locator(strategy.xpath));
-    if (strategy.text) candidates.push(frame.getByText(strategy.text, { exact: false }));
-    if (candidates.length === 0) throw new VectorError("invalid_params", "Empty selector strategy");
-    return candidates[0]!;
-  }
-
   /** Resolve a step target to a Locator in the right frame. */
   private async resolveLocator(target: string): Promise<Locator> {
     const parsed = parseTarget(target);
@@ -268,38 +299,7 @@ export class PlaywrightDriverPage implements DriverPage {
       strategy = parsed.strategy;
     }
     const frame = this.frameForKey(frameKey);
-
-    // Try strategies in order of reliability; require exactly one match.
-    const attempts: Locator[] = [];
-    if (strategy.role) attempts.push(frame.getByRole(strategy.role.role as never, { name: strategy.role.name, exact: false }));
-    if (strategy.css) attempts.push(frame.locator(strategy.css));
-    if (strategy.xpath) attempts.push(frame.locator(strategy.xpath));
-    if (strategy.text) attempts.push(frame.getByText(strategy.text, { exact: false }));
-
-    let lastErr: unknown = null;
-    for (const loc of attempts) {
-      try {
-        const count = await loc.count();
-        if (count === 1) return loc;
-        if (count > 1) {
-          // narrow to first visible match rather than failing blind
-          const visible = loc.filter({ visible: true });
-          const vc = await visible.count();
-          if (vc === 1) return visible;
-          throw new VectorError(
-            "target_ambiguous",
-            `Target "${target}" matched ${count} elements — re-observe or use a more specific selector`,
-          );
-        }
-      } catch (e) {
-        if (e instanceof VectorError) throw e;
-        lastErr = e;
-      }
-    }
-    throw new VectorError(
-      "target_detached",
-      `Target "${target}" did not match any element${lastErr ? ` (${String(lastErr)})` : ""}`,
-    );
+    return selectUniqueLocator(locatorAttempts(frame, strategy), target);
   }
 
   // ---------- actions ----------
@@ -378,8 +378,12 @@ export class PlaywrightDriverPage implements DriverPage {
   /**
    * Scroll through a container or the viewport, accumulating items keyed by a
    * stable attribute/text so virtualized and infinite lists collect fully.
-   * Stops on item-limit, at scroller end with nothing new, or after repeated
-   * scrolls yield no new keys.
+   * Stops on item-limit, or at the scroller's end once nothing new appears.
+   *
+   * A pass that adds no keys while the scroll position is still advancing is
+   * NOT stagnation — a loaded batch can span several viewports of already
+   * collected rows. Waits are condition-based: a MutationObserver resolves
+   * the moment the list grows or re-renders, `settleMs` is only the cap.
    */
   async collectScroll(opts: {
     item: string;
@@ -394,7 +398,7 @@ export class PlaywrightDriverPage implements DriverPage {
     const limit = opts.limit ?? 1000;
     const maxScrolls = opts.maxScrolls ?? 60;
     const settle = opts.settleMs ?? 180;
-    type Batch = { rows: { k: string; data: Record<string, unknown> }[]; atEnd: boolean };
+    type Batch = { rows: { k: string; data: Record<string, unknown> }[]; atEnd: boolean; sig: string };
     const collectOnce = (scroll: boolean): Promise<Batch> =>
       this.page.evaluate(
         ({ container, item, key, fields, doScroll }) => {
@@ -423,10 +427,44 @@ export class PlaywrightDriverPage implements DriverPage {
             if (doScroll) window.scrollBy(0, window.innerHeight);
             atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4;
           }
-          return { rows, atEnd };
+          const sig = `${roots.length}:${rows[0]?.k ?? ""}:${rows[rows.length - 1]?.k ?? ""}`;
+          return { rows, atEnd, sig };
         },
         { container: opts.container, item: opts.item, key: opts.key, fields: opts.fields, doScroll: scroll },
       );
+    /** Resolve true as soon as the item set differs from `sig` (append or
+     * virtualized re-render), false once `timeoutMs` passes without change. */
+    const waitForChange = (sig: string, timeoutMs: number): Promise<boolean> =>
+      this.page
+        .evaluate(
+          ({ container, item, key, sig, timeoutMs }) =>
+            new Promise<boolean>((resolve) => {
+              const scroller = container ? document.querySelector(container) : null;
+              const root = scroller ?? document.body ?? document.documentElement;
+              const current = () => {
+                const roots = (scroller ?? document).querySelectorAll(item);
+                const keyOf = (el: Element) => (key ? el.getAttribute(key) : null) ?? el.textContent?.trim() ?? "";
+                const first = roots[0];
+                const last = roots[roots.length - 1];
+                return `${roots.length}:${first ? keyOf(first) : ""}:${last ? keyOf(last) : ""}`;
+              };
+              if (current() !== sig) return resolve(true);
+              let timer = 0;
+              const mo = new MutationObserver(() => {
+                if (current() === sig) return;
+                mo.disconnect();
+                clearTimeout(timer);
+                resolve(true);
+              });
+              mo.observe(root, { childList: true, subtree: true, characterData: true });
+              timer = setTimeout(() => {
+                mo.disconnect();
+                resolve(false);
+              }, timeoutMs) as unknown as number;
+            }),
+          { container: opts.container, item: opts.item, key: opts.key, sig, timeoutMs },
+        )
+        .catch(() => false);
     const absorb = (batch: Batch) => {
       let added = 0;
       for (const r of batch.rows) {
@@ -437,31 +475,27 @@ export class PlaywrightDriverPage implements DriverPage {
       }
       return added;
     };
-    let stagnant = 0;
+    let stagnantAtEnd = 0;
     for (let i = 0; i < maxScrolls && collected.size < limit; i++) {
-      const added = absorb(await collectOnce(true));
-      if (added === 0) stagnant++;
-      else stagnant = 0;
-      if (stagnant >= 4) break;
-      await new Promise((r) => setTimeout(r, settle));
-      // hitting the bottom is exactly what makes infinite scrollers load —
-      // before treating it as the end, settle and re-scan without scrolling;
-      // a batch can still be in flight past the first wait
-      if (stagnant >= 2) {
-        let revived = false;
-        for (let j = 0; j < 2 && !revived; j++) {
-          if (absorb(await collectOnce(false)) > 0) revived = true;
-          else if (!(await collectOnce(false)).atEnd) break; // not actually at the end
-          else await new Promise((r) => setTimeout(r, settle));
-        }
-        if (revived) {
-          stagnant = 0;
-          continue;
-        }
-        if ((await collectOnce(false)).atEnd) break;
+      const batch = await collectOnce(true);
+      const added = absorb(batch);
+      if (collected.size >= limit) break;
+      if (added > 0) stagnantAtEnd = 0;
+      // the scroll event that drives loaders/virtualizers fires on the next
+      // frame — wait for the list to react rather than a fixed interval
+      let changed = await waitForChange(batch.sig, settle);
+      if (!batch.atEnd) continue; // still traversing content — never stagnation
+      if (added === 0 && ++stagnantAtEnd >= 3) break; // end reached, list churns but yields nothing new
+      if (!changed) {
+        // hitting the bottom is exactly what makes infinite scrollers load —
+        // give a slow batch a longer, bounded window before calling it the end
+        changed = await waitForChange(batch.sig, settle * 3);
+        if (!changed) break;
       }
     }
-    return { items: [...collected.values()], collected: collected.size };
+    // a batch that landed during the last wait is still on the page
+    absorb(await collectOnce(false));
+    return { items: [...collected.values()], collected: Math.min(collected.size, limit) };
   }
 
   // ---------- waits ----------
@@ -491,6 +525,11 @@ export class PlaywrightDriverPage implements DriverPage {
           await this.page.waitForLoadState("domcontentloaded", { timeout });
           await this.page.waitForLoadState("load", { timeout: Math.min(timeout, 10_000) }).catch(() => {});
           break;
+        case "settled": {
+          const ok = await this.waitForSettled(condition.timeoutMs ?? SETTLED_CONDITION_MS);
+          if (!ok) return { ok: false, timedOut: true, detail: "page did not settle: requests in flight or DOM still changing" };
+          break;
+        }
         case "downloadCompleted": {
           const res = await this.waitForDownload(timeout);
           return { ok: true, timedOut: false, detail: res.suggestedFilename };
@@ -557,6 +596,7 @@ export class PlaywrightDriverPage implements DriverPage {
     let viewport = { width: 0, height: 0, scale: 1 };
     let scroll = { x: 0, y: 0, maxY: 0 };
     let refStart = 1;
+    let title: string | undefined;
 
     let mainOrigin: string | null = null;
     try {
@@ -610,6 +650,7 @@ export class PlaywrightDriverPage implements DriverPage {
         scroll = part.scroll;
         text = part.text;
         headings = part.headings;
+        title = part.title; // the script already read document.title — no extra round trip
       } else {
         // keep subframe text out of the main summary; elements carry frame key
       }
@@ -627,7 +668,7 @@ export class PlaywrightDriverPage implements DriverPage {
     const textChars = text.length;
     return {
       url: this.page.url(),
-      title: await this.title(),
+      title: title ?? (await this.title()),
       viewport,
       scroll,
       frames,

@@ -31,7 +31,7 @@ export async function runBench(opts: {
   let chromiumVersion: string | undefined;
   try {
     const ua = await pages
-      .execute({ pageId: page.pageId, steps: [{ id: "ua", op: "evaluate", expression: "navigator.userAgent" }] }, {})
+      .execute({ pageId: page.pageId, steps: [{ id: "ua", op: "evaluate", expression: "navigator.userAgent" }] }, { allowEval: true })
       .then((r) => {
         const d = r.steps[0]?.detail;
         try { return d ? String(JSON.parse(d)) : ""; } catch { return String(d ?? ""); }

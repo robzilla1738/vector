@@ -23,7 +23,41 @@ const P = <T>(s: string | null | undefined, fb: T): T => (s ? (JSON.parse(s) as 
 
 /** Repository: the runtime's single-writer persistence surface. */
 export class Repo {
+  private txDepth = 0;
+
   constructor(readonly db: DatabaseSync) {}
+
+  /**
+   * Run `fn` atomically. Multi-statement writes (delete + N inserts) must
+   * never be observable half-done after a crash. Nested calls join the
+   * outer transaction; the outermost commits or rolls back.
+   */
+  transaction<T>(fn: () => T): T {
+    if (this.txDepth > 0) {
+      this.txDepth++;
+      try {
+        return fn();
+      } finally {
+        this.txDepth--;
+      }
+    }
+    this.db.exec("BEGIN");
+    this.txDepth = 1;
+    try {
+      const out = fn();
+      this.db.exec("COMMIT");
+      return out;
+    } catch (e) {
+      try {
+        this.db.exec("ROLLBACK");
+      } catch {
+        /* already rolled back by sqlite */
+      }
+      throw e;
+    } finally {
+      this.txDepth = 0;
+    }
+  }
 
   // ---- pages / targets ----
   upsertPage(p: PageTarget) {
@@ -87,8 +121,11 @@ export class Repo {
     const ins = this.db.prepare(
       "INSERT INTO tabs(page_id,ordinal,url,title,backend,active) VALUES(?,?,?,?,?,?)",
     );
-    del.run();
-    for (const t of tabs) ins.run(t.pageId, t.ordinal, t.url, t.title, t.backend, t.active ? 1 : 0);
+    // atomic: a crash between the delete and the inserts must not lose the restore list
+    this.transaction(() => {
+      del.run();
+      for (const t of tabs) ins.run(t.pageId, t.ordinal, t.url, t.title, t.backend, t.active ? 1 : 0);
+    });
   }
   loadTabs() {
     return this.db.prepare("SELECT * FROM tabs ORDER BY ordinal").all() as {
@@ -293,7 +330,10 @@ export class Repo {
       .prepare(
         `INSERT INTO programs(program_id,name,description,version,site_key,parameters,steps_json,preconditions,postconditions,use_count,last_used_at,created_at)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-         ON CONFLICT(program_id) DO UPDATE SET name=excluded.name,description=excluded.description,version=excluded.version,use_count=excluded.use_count,last_used_at=excluded.last_used_at`,
+         ON CONFLICT(program_id) DO UPDATE SET name=excluded.name,description=excluded.description,version=excluded.version,
+           site_key=excluded.site_key,parameters=excluded.parameters,steps_json=excluded.steps_json,
+           preconditions=excluded.preconditions,postconditions=excluded.postconditions,
+           use_count=excluded.use_count,last_used_at=excluded.last_used_at`,
       )
       .run(p.programId, p.name, p.description ?? null, p.version, p.siteKey, J(p.parameters), p.stepsJson, p.preconditions ? J(p.preconditions) : null, p.postconditions ? J(p.postconditions) : null, p.useCount, p.lastUsedAt ?? null, p.createdAt);
   }

@@ -7,6 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 
 const SCHEMA = `
 PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
 CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions(
   session_id TEXT PRIMARY KEY, backend TEXT NOT NULL, label TEXT NOT NULL,
@@ -112,16 +113,28 @@ const MIGRATIONS = [
 
 export type Db = DatabaseSync;
 
+/**
+ * Apply idempotent ALTER TABLE migrations. Only "duplicate column" (the
+ * column already exists — expected on every start after the first) is
+ * swallowed; disk-full, corruption or a bad statement propagate so a real
+ * schema failure is never mistaken for "already migrated".
+ */
+export function applyMigrations(db: DatabaseSync, migrations: readonly string[] = MIGRATIONS): void {
+  for (const sql of migrations) {
+    try {
+      db.exec(sql);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/duplicate column/i.test(msg)) continue;
+      throw e;
+    }
+  }
+}
+
 export function openDb(path: string): DatabaseSync {
   const db = new DatabaseSync(path);
   db.exec(SCHEMA);
-  for (const sql of MIGRATIONS) {
-    try {
-      db.exec(sql);
-    } catch {
-      /* column already exists */
-    }
-  }
+  applyMigrations(db);
   return db;
 }
 

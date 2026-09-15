@@ -5,12 +5,15 @@ import {
   PlanChunkSchema,
   RepairChunkSchema,
   VectorError,
+  type FinalDecision,
   type Observation,
   type PlanChunk,
+  type RepairChunk,
   type Run,
   type Step,
   type StepOutcome,
 } from "@vector/contracts";
+import type { z } from "zod";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
@@ -20,6 +23,8 @@ import { buildFinalAnswerPrompt, buildPlannerPrompt, buildVisionPrompt, extractJ
 interface RunControl {
   abort: AbortController;
   paused: boolean;
+  /** set when the run's deadline (not the user) fired the abort */
+  deadlineHit?: boolean;
   answerWaiter?: { resolve: (answer: string) => void };
   span?: { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void };
 }
@@ -56,6 +61,7 @@ export interface CoordinatorDeps {
   };
 }
 
+const TERMINAL_STATUSES: ReadonlySet<Run["status"]> = new Set(["completed", "partially_completed", "failed", "cancelled", "interrupted"]);
 const DEFAULT_MAX_STEPS = 60;
 const DEFAULT_MAX_MODEL_CALLS = 40;
 const MAX_REPAIRS = 3;
@@ -179,7 +185,7 @@ export class RunCoordinator {
       c.answerWaiter?.resolve("");
     }
     const run = this.get(runId);
-    if (!["completed", "partially_completed", "failed", "cancelled", "interrupted"].includes(run.status)) {
+    if (!TERMINAL_STATUSES.has(run.status)) {
       this.finish(runId, "cancelled", undefined, "Cancelled by user");
     }
     return this.get(runId);
@@ -255,7 +261,20 @@ export class RunCoordinator {
     const modelId = run.config?.modelId ?? this.deps.defaultModel();
     const maxSteps = run.config?.maxSteps ?? DEFAULT_MAX_STEPS;
     const maxModelCalls = run.config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
-    const deadline = run.config?.deadlineMs ? Date.now() + run.config.deadlineMs : undefined;
+    // The deadline is an AbortSignal chained into the run controller, so it
+    // interrupts a long model call or pages.execute — not just the loop top.
+    if (run.config?.deadlineMs) {
+      AbortSignal.timeout(run.config.deadlineMs).addEventListener(
+        "abort",
+        () => {
+          if (c.abort.signal.aborted) return;
+          c.deadlineHit = true;
+          c.abort.abort();
+          c.answerWaiter?.resolve("");
+        },
+        { once: true },
+      );
+    }
 
     this.setStatus(runId, "planning", "Planning");
     const startedAt = Date.now();
@@ -281,6 +300,41 @@ export class RunCoordinator {
     let pendingObs: { scope?: "full" | "forms" | "links" | "tables" | "subtree"; subtreeRef?: string } | undefined;
 
     /**
+     * Every structured call goes through here so the budget counts attempts
+     * (not just successes) and failed calls land in the model_calls ledger
+     * with their error — a run that burns its budget on failures must stop.
+     */
+    const structuredCall = async <T>(
+      role: "planner" | "repair" | "final",
+      args: { modelId: string; system: string; prompt: string; schema: z.ZodType<T>; maxOutputTokens: number },
+    ) => {
+      modelCalls++;
+      const started = Date.now();
+      try {
+        const call = await model.generateStructured<T>({ ...args, signal: c.abort.signal });
+        this.deps.recordModelCall({
+          runId,
+          role,
+          modelId: args.modelId,
+          durationMs: call.durationMs,
+          inputTokens: call.inputTokens,
+          outputTokens: call.outputTokens,
+          providerMetadata: call.providerMetadata,
+        });
+        return call;
+      } catch (e) {
+        this.deps.recordModelCall({
+          runId,
+          role,
+          modelId: args.modelId,
+          durationMs: Date.now() - started,
+          error: e instanceof Error ? e.message : String(e),
+        });
+        throw e;
+      }
+    };
+
+    /**
      * A guard stopped the action loop — give the model one last, action-free
      * call to report what it concluded or ask a human. "done" finishes the
      * run with the best supported answer; "input" hands back to the loop with
@@ -289,7 +343,7 @@ export class RunCoordinator {
      */
     const tryFinalDecision = async (reason: string, obs: Observation): Promise<"done" | "input" | "gave_up"> => {
       try {
-        const call = await model.generateStructured({
+        const call = await structuredCall<FinalDecision>("final", {
           modelId,
           system: FINAL_ANSWER_SYSTEM,
           prompt: buildFinalAnswerPrompt({
@@ -300,18 +354,7 @@ export class RunCoordinator {
             context: run.config?.context,
           }),
           schema: FinalDecisionSchema,
-          signal: c.abort.signal,
           maxOutputTokens: 4096,
-        });
-        modelCalls++;
-        this.deps.recordModelCall({
-          runId,
-          role: "final",
-          modelId,
-          durationMs: call.durationMs,
-          inputTokens: call.inputTokens,
-          outputTokens: call.outputTokens,
-          providerMetadata: call.providerMetadata,
         });
         const d = call.object;
         if (d.status === "needs_input" && d.question) {
@@ -350,7 +393,6 @@ export class RunCoordinator {
     try {
       while (true) {
         await this.waitIfPaused(c, runId);
-        if (deadline && Date.now() > deadline) throw new VectorError("condition_timeout", "run deadline exceeded");
         if (modelCalls >= maxModelCalls) throw new VectorError("step_failed", "model call budget exhausted");
         if (stepsRun >= maxSteps) throw new VectorError("step_failed", "step budget exhausted");
         if (!activePageId) throw new VectorError("invalid_params", "run has no target page");
@@ -417,23 +459,12 @@ export class RunCoordinator {
             repairNote: lastError,
             context: run.config?.context,
           });
-          const call = await model.generateStructured({
+          const call = await structuredCall<PlanChunk>("planner", {
             modelId,
             system: PLANNER_SYSTEM,
             prompt,
             schema: PlanChunkSchema,
-            signal: c.abort.signal,
             maxOutputTokens: 8192,
-          });
-          modelCalls++;
-          this.deps.recordModelCall({
-            runId,
-            role: "planner",
-            modelId,
-            durationMs: call.durationMs,
-            inputTokens: call.inputTokens,
-            outputTokens: call.outputTokens,
-            providerMetadata: call.providerMetadata,
           });
           return call.object;
         };
@@ -619,16 +650,13 @@ export class RunCoordinator {
           if (repairCount === MAX_REPAIRS && recoveryModelId && recoveryModelId !== modelId) {
             // one stronger-model repair attempt before surrendering
             const fresh = await this.deps.pages.observe(activePageId, {});
-            const repair = await model.generateStructured({
+            const repair = await structuredCall<RepairChunk>("repair", {
               modelId: recoveryModelId,
               system: `${PLANNER_SYSTEM}\n\nYou are the recovery model. A chunk failed: ${lastError}. Produce a corrected bounded chunk.`,
               prompt: buildPlannerPrompt({ goal: run.goal, observations: [fresh], recentOutcomes: outcomes, pageIds: run.pageIds, repairNote: lastError, context: run.config?.context }),
               schema: RepairChunkSchema,
-              signal: c.abort.signal,
               maxOutputTokens: 8192,
             });
-            modelCalls++;
-            this.deps.recordModelCall({ runId, role: "repair", modelId: recoveryModelId, durationMs: repair.durationMs, inputTokens: repair.inputTokens, outputTokens: repair.outputTokens });
             if (repair.object.steps.length) {
               const r2 = await this.deps.pages.execute({ pageId: activePageId, steps: repair.object.steps }, { runId, signal: c.abort.signal });
               stepsRun += repair.object.steps.length;
@@ -653,6 +681,18 @@ export class RunCoordinator {
         partial ? "Couldn't fully finish — here's what I found" : undefined,
       );
     } finally {
+      // A deadline abort exits through the same silent paths as a user cancel
+      // (cancel() already settled the run); settle it here instead.
+      if (c.deadlineHit && !TERMINAL_STATUSES.has(this.get(runId).status)) {
+        const partial = outcomes.some((o) => o.status === "ok" && (o.extracted !== undefined || o.detail !== undefined));
+        this.finish(
+          runId,
+          partial ? "partially_completed" : "failed",
+          partial ? harvestResults(outcomes) : undefined,
+          `run deadline exceeded (${run.config?.deadlineMs}ms)`,
+          partial ? "Ran out of time — here's what I found" : "Ran out of time",
+        );
+      }
       this.controls.delete(runId);
     }
   }
@@ -698,6 +738,8 @@ export class RunCoordinator {
       return parsed.success ? parsed.data : null;
     } catch (e) {
       if (args.signal.aborted) throw e;
+      // a failed vision call still spent budget
+      args.onModelCall?.();
       this.deps.recordModelCall({
         runId: args.runId,
         role: "vision",
@@ -711,6 +753,26 @@ export class RunCoordinator {
 
   private assertTargetAlive(obs: Observation) {
     if (!obs) throw new VectorError("target_detached", "observation empty");
+  }
+
+  /**
+   * A process-level fault (unhandled rejection / uncaught exception) means
+   * in-flight runs can no longer be trusted to finish: abort them and record
+   * the fault as the run error so the UI does not show a run spinning forever.
+   */
+  failActive(reason: string): string[] {
+    const failed: string[] = [];
+    for (const run of this.deps.repo.listRuns(200)) {
+      if (!["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) continue;
+      const c = this.controls.get(run.runId);
+      if (c) {
+        c.abort.abort();
+        c.answerWaiter?.resolve("");
+      }
+      this.finish(run.runId, "failed", undefined, reason, "Stopped by a runtime fault");
+      failed.push(run.runId);
+    }
+    return failed;
   }
 
   /** On shutdown: mark active runs interrupted — never replay on restart. */

@@ -555,7 +555,9 @@ export class OperationService {
           })()`;
           const result = await this.deps.pages.execute(
             { pageId, steps: [{ id: "req", op: "evaluate", expression: expr, as: "response" } as never] },
-            { runId, allowEval: false },
+            // the expression is built here from a validated request template,
+            // not from model output — a trusted source
+            { runId, allowEval: true },
           );
           const r = (result as ProgramResult).extracted?.response as { status: number; ok: boolean; body: string } | undefined;
           if (!r) throw new VectorError("step_failed", `in-page request ${req.method} ${url} returned no result`);

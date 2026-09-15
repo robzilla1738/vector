@@ -1,7 +1,11 @@
 import { z } from "zod";
 
-/** Conditions the executor can wait on — no fixed sleeps. */
-export const ConditionSchema = z.discriminatedUnion("kind", [
+/**
+ * Conditions the executor can wait on — no fixed sleeps. `safeConditions`
+ * are the declarative ones; `expression` (arbitrary page JS) is appended only
+ * to the trusted-source `ConditionSchema`, never to the planner-facing one.
+ */
+const safeConditions = [
   z.object({
     kind: z.literal("textVisible"),
     text: z.string(),
@@ -28,6 +32,11 @@ export const ConditionSchema = z.discriminatedUnion("kind", [
     timeoutMs: z.number().int().positive().optional(),
   }),
   z.object({
+    /** quiescence: 2 frames + no in-flight fetch/XHR + no DOM mutation for ~100ms (bounded, default 2s) */
+    kind: z.literal("settled"),
+    timeoutMs: z.number().int().positive().optional(),
+  }),
+  z.object({
     kind: z.literal("downloadCompleted"),
     timeoutMs: z.number().int().positive().optional(),
   }),
@@ -37,13 +46,20 @@ export const ConditionSchema = z.discriminatedUnion("kind", [
     status: z.number().int().optional(),
     timeoutMs: z.number().int().positive().optional(),
   }),
-  z.object({
-    kind: z.literal("expression"),
-    expression: z.string().describe("JS expression evaluated in page; truthy passes"),
-    timeoutMs: z.number().int().positive().optional(),
-  }),
-]);
+] as const;
+
+const expressionCondition = z.object({
+  kind: z.literal("expression"),
+  expression: z.string().describe("JS expression evaluated in page; truthy passes"),
+  timeoutMs: z.number().int().positive().optional(),
+});
+
+export const ConditionSchema = z.discriminatedUnion("kind", [...safeConditions, expressionCondition]);
 export type Condition = z.infer<typeof ConditionSchema>;
+
+/** Planner-facing conditions: everything except page-JS `expression`. */
+export const PlanConditionSchema = z.discriminatedUnion("kind", [...safeConditions]);
+export type PlanCondition = z.infer<typeof PlanConditionSchema>;
 
 const targetFields = {
   target: z
@@ -52,14 +68,20 @@ const targetFields = {
 };
 const targetFieldsOptional = z.object(targetFields).partial().shape;
 
-const stepBase = {
-  id: z.string().describe("unique step id within the program"),
-  timeoutMs: z.number().int().positive().optional(),
-  optional: z.boolean().optional().describe("failure does not fail the program"),
-  expect: z.array(ConditionSchema).optional().describe("verified after the step runs"),
-};
-
-export const StepSchema = z.discriminatedUnion("op", [
+/**
+ * Step options are built from a condition schema so the trusted `StepSchema`
+ * and the planner-facing `PlanStepSchema` share one definition. The planner
+ * variant drops `evaluate` and `expression` conditions: model output must
+ * never be able to run arbitrary JS in the user's logged-in pages (P0-1).
+ */
+const stepOptions = <C extends z.ZodType>(condition: C) => {
+  const stepBase = {
+    id: z.string().describe("unique step id within the program"),
+    timeoutMs: z.number().int().positive().optional(),
+    optional: z.boolean().optional().describe("failure does not fail the program"),
+    expect: z.array(condition).optional().describe("verified after the step runs"),
+  };
+  return [
   z.object({ ...stepBase, op: z.literal("navigate"), url: z.string().url() }),
   z.object({ ...stepBase, op: z.literal("back") }),
   z.object({ ...stepBase, op: z.literal("forward") }),
@@ -110,7 +132,7 @@ export const StepSchema = z.discriminatedUnion("op", [
     y: z.number(),
     button: z.enum(["left", "right", "middle"]).optional(),
   }),
-  z.object({ ...stepBase, op: z.literal("waitFor"), condition: ConditionSchema }),
+  z.object({ ...stepBase, op: z.literal("waitFor"), condition }),
   z.object({
     ...stepBase,
     op: z.literal("screenshot"),
@@ -166,15 +188,30 @@ export const StepSchema = z.discriminatedUnion("op", [
     action: z.enum(["accept", "dismiss"]),
     promptText: z.string().optional(),
   }),
-  z.object({
-    ...stepBase,
-    op: z.literal("evaluate"),
-    expression: z.string().describe("developer escape hatch; not for normal plans"),
-    /** result key under which the return value is exposed in `extracted` */
-    as: z.string().optional(),
-  }),
-]);
+  ] as const;
+};
+
+const evaluateStep = z.object({
+  id: z.string().describe("unique step id within the program"),
+  timeoutMs: z.number().int().positive().optional(),
+  optional: z.boolean().optional().describe("failure does not fail the program"),
+  expect: z.array(ConditionSchema).optional().describe("verified after the step runs"),
+  op: z.literal("evaluate"),
+  expression: z.string().describe("developer escape hatch; trusted program sources only — never planner output"),
+  /** result key under which the return value is exposed in `extracted` */
+  as: z.string().optional(),
+});
+
+/** Full step vocabulary for trusted program sources (API, CLI, MCP, saved programs). */
+export const StepSchema = z.discriminatedUnion("op", [...stepOptions(ConditionSchema), evaluateStep]);
 export type Step = z.infer<typeof StepSchema>;
+
+/**
+ * Planner-facing steps: what a model-authored PlanChunk may contain. No
+ * `evaluate`, no `expression` waits/expects — every op is declarative.
+ */
+export const PlanStepSchema = z.discriminatedUnion("op", [...stepOptions(PlanConditionSchema)]);
+export type PlanStep = z.infer<typeof PlanStepSchema>;
 
 /* ------------------------------------------------------------------ */
 /*  Control-flow programs (Runtime vNext §7): a bounded node language    */

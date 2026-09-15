@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StepSchema } from "./program.js";
+import { PlanStepSchema } from "./program.js";
 
 /**
  * What the planner model returns on each call: a bounded chunk of work,
@@ -12,8 +12,9 @@ export const PlanChunkSchema = z.object({
   message: z.string().max(280),
   /** Page this chunk targets — defaults to the run's current page. */
   pageId: z.string().optional(),
-  /** 1..8 meaningful operations to run locally before returning to the model. */
-  steps: z.array(StepSchema).max(24).optional(),
+  /** 1..8 meaningful operations to run locally before returning to the model.
+   *  Planner-restricted vocabulary: no `evaluate`, no `expression` waits. */
+  steps: z.array(PlanStepSchema).max(24).optional(),
   /** Ask for a new observation instead of executing (e.g. wrong/stale scope). */
   observationRequest: z
     .object({
@@ -158,6 +159,6 @@ export type Invocation = z.infer<typeof InvocationSchema>;
 /** Repair calls return a corrected chunk plus an optional note. */
 export const RepairChunkSchema = z.object({
   message: z.string().max(280),
-  steps: z.array(StepSchema).max(12),
+  steps: z.array(PlanStepSchema).max(12),
 });
 export type RepairChunk = z.infer<typeof RepairChunkSchema>;

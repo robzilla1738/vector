@@ -20,9 +20,25 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
   protected context: BrowserContext | null = null;
   protected refs = new RefRegistry();
   private pagesByTarget = new Map<string, PlaywrightDriverPage>();
+  /**
+   * Per-target Browser handles opened by attachDirect. Each is its own CDP
+   * WebSocket; they must be closed on dispose or when their page goes away,
+   * or every fallback attach leaks a connection for the runtime's lifetime.
+   */
+  private directBrowsers = new Map<string, Browser>();
+  /** set while a reconnect() is in flight so concurrent opens share it */
+  private reconnecting: Promise<void> | null = null;
+  /** true between an unexpected drop and the next successful connect */
+  private dropped = false;
 
-  constructor(endpoint: string) {
+  onDisconnected?: () => void;
+  onReconnected?: () => void;
+  /** CDP connector — injectable so lifecycle tests can run without a browser. */
+  protected readonly connectOverCDP: (endpoint: string, opts: { timeout: number }) => Promise<Browser>;
+
+  constructor(endpoint: string, deps: { connectOverCDP?: (endpoint: string, opts: { timeout: number }) => Promise<Browser> } = {}) {
     this.endpoint = endpoint;
+    this.connectOverCDP = deps.connectOverCDP ?? ((e, o) => chromium.connectOverCDP(e, o));
   }
 
   httpBase(): string {
@@ -32,22 +48,81 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
   async connect(): Promise<void> {
     const endpoint = this.endpoint;
     // connectOverCDP accepts either the http(s) base or a ws URL.
-    this.browser = await chromium.connectOverCDP(endpoint, { timeout: 15_000 });
-    const contexts = this.browser.contexts();
-    this.context = contexts[0] ?? (await this.browser.newContext());
+    const browser = await this.connectOverCDP(endpoint, { timeout: 15_000 });
+    this.browser = browser;
+    const contexts = browser.contexts();
+    this.context = contexts[0] ?? (await browser.newContext());
     this.context.on("page", () => this.notifyTargetsChanged());
+    browser.on("disconnected", () => {
+      // only the current connection may mark us degraded — a stale handle
+      // closing during a reconnect must not clobber the new one
+      if (this.browser !== browser) return;
+      this.browser = null;
+      this.context = null;
+      this.dropped = true;
+      for (const p of this.pagesByTarget.values()) void p.dispose().catch(() => {});
+      this.pagesByTarget.clear();
+      this.onDisconnected?.();
+    });
+    if (this.dropped) {
+      this.dropped = false;
+      this.onReconnected?.();
+    }
+  }
+
+  /**
+   * Lazy recovery for a dropped socket: `pages.open` calls this before
+   * failing with backend_unavailable. Concurrent callers share one attempt.
+   */
+  async reconnect(): Promise<void> {
+    if (this.isConnected()) return;
+    if (!this.reconnecting) {
+      this.reconnecting = this.connect().finally(() => {
+        this.reconnecting = null;
+      });
+    }
+    await this.reconnecting;
   }
 
   async disconnect(): Promise<void> {
     for (const p of this.pagesByTarget.values()) await p.dispose().catch(() => {});
     this.pagesByTarget.clear();
-    await this.browser?.close().catch(() => {});
-    this.browser = null;
+    for (const b of this.directBrowsers.values()) await b.close().catch(() => {});
+    this.directBrowsers.clear();
+    const browser = this.browser;
+    this.browser = null; // clear first so the "disconnected" handler treats this close as intentional
     this.context = null;
+    await browser?.close().catch(() => {});
   }
 
   isConnected(): boolean {
     return this.browser?.isConnected() ?? false;
+  }
+
+  /** Register a page reached through its own per-target connection; owns that connection. */
+  protected trackDirect(targetId: string, browser: Browser, page: Page, dp: PlaywrightDriverPage): PlaywrightDriverPage {
+    const prev = this.directBrowsers.get(targetId);
+    if (prev && prev !== browser) void prev.close().catch(() => {});
+    this.directBrowsers.set(targetId, browser);
+    this.pagesByTarget.set(targetId, dp);
+    const drop = () => {
+      this.pagesByTarget.delete(targetId);
+      if (this.directBrowsers.get(targetId) === browser) {
+        this.directBrowsers.delete(targetId);
+        void browser.close().catch(() => {});
+      }
+    };
+    page.on("close", drop);
+    page.on("crash", drop);
+    browser.on("disconnected", () => {
+      if (this.directBrowsers.get(targetId) === browser) this.directBrowsers.delete(targetId);
+    });
+    return dp;
+  }
+
+  /** Test/diagnostic: number of per-target connections currently owned. */
+  directConnectionCount(): number {
+    return this.directBrowsers.size;
   }
 
   protected abstract identityOfPage(page: Page): Promise<string | null>;
@@ -148,7 +223,7 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
     for (const t of targets) {
       if (t.type !== "page" || !t.webSocketDebuggerUrl) continue;
       if (t.id !== targetId) continue;
-      const browser = await chromium.connectOverCDP(t.webSocketDebuggerUrl, { timeout: 8_000 });
+      const browser = await this.connectOverCDP(t.webSocketDebuggerUrl, { timeout: 8_000 });
       const ctx = browser.contexts()[0];
       const page = ctx?.pages()[0];
       if (!page) {
@@ -161,8 +236,7 @@ export abstract class CdpAttachedDriver implements BrowserDriver {
         identity: { pageId, targetId, backend: this.backend },
         refs: this.refs,
       });
-      this.pagesByTarget.set(targetId, dp);
-      return dp;
+      return this.trackDirect(targetId, browser, page, dp);
     }
     return null;
   }

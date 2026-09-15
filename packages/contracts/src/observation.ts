@@ -110,6 +110,26 @@ export const ObservationSchema = z.object({
 });
 export type Observation = z.infer<typeof ObservationSchema>;
 
+/**
+ * `format: "compact"` wire form (speed P0-2): the rendered text the internal
+ * planner reads plus a minimal ref list. No css/xpath/rect — those stay
+ * server-side in the ref registry; a ref is all a client needs to act.
+ */
+export const CompactObservationSchema = z.object({
+  pageId: z.string(),
+  url: z.string(),
+  title: z.string(),
+  documentEpoch: z.number(),
+  revision: z.number(),
+  /** compact rendering: header, headings, form fields, one line per ref, tables, text */
+  text: z.string(),
+  refs: z.array(z.object({ ref: z.string(), role: z.string().optional(), name: z.string().optional() })),
+});
+export type CompactObservation = z.infer<typeof CompactObservationSchema>;
+
+export const ObservationFormatSchema = z.enum(["full", "compact"]);
+export type ObservationFormat = z.infer<typeof ObservationFormatSchema>;
+
 export const ObservationRequestSchema = z.object({
   scope: z.enum(["full", "forms", "links", "tables", "subtree"]).default("full"),
   subtreeRef: z.string().optional(),

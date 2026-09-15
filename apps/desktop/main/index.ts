@@ -47,6 +47,23 @@ function log(...args: unknown[]) {
   process.stdout.write(`[main] ${args.join(" ")}\n`);
 }
 
+/**
+ * Only web URLs may be handed to the OS. `file:`, `smb:`, custom schemes
+ * etc. reach arbitrary local handlers — never from a page or the renderer.
+ */
+function isWebUrl(u: unknown): u is string {
+  if (typeof u !== "string") return false;
+  try {
+    const p = new URL(u).protocol;
+    return p === "http:" || p === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** Permissions a page may hold in the shared profile partition. Everything else is denied. */
+const ALLOWED_PAGE_PERMISSIONS = new Set(["clipboard-read", "fullscreen"]);
+
 function readCdpPort(): number {
   const f = join(app.getPath("userData"), "DevToolsActivePort");
   for (let i = 0; i < 50; i++) {
@@ -193,7 +210,9 @@ function registerNativeHandlers(ch: RpcChannel) {
     return { dataUrl: resized.toDataURL() };
   });
   ch.onMethod("native.openExternal", (p) => {
-    void shell.openExternal((p as { url: string }).url);
+    const { url } = p as { url: unknown };
+    if (!isWebUrl(url)) return { ok: false, error: "only http(s) URLs can be opened externally" };
+    void shell.openExternal(url);
     return { ok: true };
   });
   ch.onMethod("native.findInPage", async (p) => {
@@ -399,7 +418,10 @@ function wireRendererIpc() {
     Menu.buildFromTemplate(template).popup();
     return true;
   });
-  ipcMain.handle("ui.openExternal", (_e, url: string) => shell.openExternal(url));
+  ipcMain.handle("ui.openExternal", (_e, url: unknown) => {
+    if (!isWebUrl(url)) return false;
+    return shell.openExternal(url).then(() => true);
+  });
   ipcMain.handle("ui.print", (_e, pageId: string) => {
     registry.get(pageId)?.view.webContents.print();
     return true;
@@ -536,12 +558,45 @@ async function boot() {
     webPreferences: {
       preload: join(import.meta.dirname, "..", "preload", "index.cjs"),
       contextIsolation: true,
-      sandbox: false,
+      // the preload uses only contextBridge/ipcRenderer, so it runs sandboxed
+      sandbox: true,
       nodeIntegration: false,
     },
   });
   shellView.setBackgroundColor("#00000000");
+  // The shell renderer is the app UI, not a browser: it may only ever show
+  // the bundled renderer (or the Vite dev server). Any other navigation —
+  // e.g. an injected link inside the chrome — is blocked, and window.open
+  // never spawns a window from it.
+  const devUrl = process.env.VITE_DEV_SERVER_URL;
+  const shellOrigin = devUrl ? new URL(devUrl).origin : null;
+  const isShellUrl = (u: string) => {
+    try {
+      const url = new URL(u);
+      return url.protocol === "file:" || (shellOrigin !== null && url.origin === shellOrigin);
+    } catch {
+      return false;
+    }
+  };
+  shellView.webContents.on("will-navigate", (event, url) => {
+    if (!isShellUrl(url)) {
+      event.preventDefault();
+      log("blocked shell navigation to", url);
+    }
+  });
+  shellView.webContents.setWindowOpenHandler(({ url }) => {
+    if (isWebUrl(url)) viewHooks.openAsTab(url);
+    return { action: "deny" };
+  });
   win.contentView.addChildView(shellView);
+
+  // Page permissions in the shared profile partition: deny by default.
+  // Camera, microphone, geolocation, notifications, MIDI, USB, HID… all
+  // prompt-free denials; clipboard-read and fullscreen stay usable.
+  profileSession().setPermissionRequestHandler((_wc, permission, callback) => {
+    callback(ALLOWED_PAGE_PERMISSIONS.has(permission));
+  });
+  profileSession().setPermissionCheckHandler((_wc, permission) => ALLOWED_PAGE_PERMISSIONS.has(permission));
   const layoutShell = () => {
     if (!win || !shellView) return;
     const { width, height } = win.getContentBounds();
@@ -550,7 +605,6 @@ async function boot() {
   win.on("resize", layoutShell);
   layoutShell();
 
-  const devUrl = process.env.VITE_DEV_SERVER_URL;
   if (devUrl) {
     await shellView.webContents.loadURL(devUrl);
   } else {

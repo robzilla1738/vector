@@ -94,21 +94,51 @@ and replayed cheaply on later members.
 
 `node:sqlite` under `VECTOR_DATA_DIR`. Pages, runs, steps, results, sets,
 programs, artifacts, sessions, history, bookmarks, and a monotonic event log
-(`events.since`/`/ws`). On startup, runs left in active states are marked
-`interrupted`; persisted pages whose native surface is gone come back
-`detached`.
+(`events.since`/`/ws`). Multi-row writes go through `Repo.transaction`.
+
+Runs are **crash-safe, not resumable**: every step, model call and status
+change is in the ledger, so nothing is lost or replayed after a crash — but
+the agent loop's in-memory state is not checkpointed. On startup, runs left
+in active states are marked `interrupted` (`runtime.describe` reports
+`checkpointResume: false`); persisted pages whose native surface is gone
+come back `detached`. The only resume primitive is program-level:
+`checkpoint` nodes plus `resumeFrom` (`programCheckpoints: true`).
+
+An unhandled rejection in the runtime fails the active runs with the fault
+as their error and keeps serving; an uncaught exception fails them, flushes,
+and exits non-zero so the shell can respawn. A dropped driver socket marks
+the session `degraded` (`session.changed`) and the next `pages.open`
+reconnects lazily.
 
 ## The loopback API
 
-`POST /rpc` `{method, params}` with `Authorization: Bearer <token>`; the port
-and token are written to `<dataDir>/runtime.json` at startup. `GET /health`
-is unauthenticated. `GET /ws?token=…` streams events. See [api.md](api.md).
+`POST /rpc` `{method, params}` with `Authorization: Bearer <token>` — the
+bearer header is the only accepted HTTP credential. The port and token are
+written to `<dataDir>/runtime.json` (mode `0600`, data dir `0700`) at
+startup. `GET /health` is unauthenticated. `GET /ws?token=…` streams events
+(the query form is accepted only on the WebSocket upgrade, where browser
+clients cannot set headers). Bodies over 2 MB are rejected with `413`. See
+[api.md](api.md).
 
 ## Human takeover
 
-`input-event` on an agent-controlled view flips `controller` to `human`; in-
-flight execution fails with a conflict and the run pauses. `pages.resume`
-returns control to the agent.
+`input-event` on an agent-controlled view flips `controller` to `human` and
+bumps the page's `controllerEpoch`. The in-flight program fails at its next
+step with `conflict` ("changed controller mid-run"); the run itself is *not*
+paused — the coordinator treats the failed chunk like any other failure
+(re-observe, repair ladder) and will keep failing with `conflict` until the
+human hands the page back with `pages.resume` or the run is cancelled.
+`runs.pause`/`runs.resume` control the agent loop independently of page
+control.
+
+## Model output is untrusted
+
+The planner may only emit the declarative step vocabulary (`PlanStepSchema`):
+no `evaluate`, no `expression` waits. Page-derived text in prompts
+(observations, extracted values) is fenced with a per-prompt random delimiter
+and the system prompt states that fenced content is data, never instructions.
+`evaluate`/`{eval:}` remain available to trusted program sources (API, CLI,
+MCP, saved programs) via the executor's `allowEval` flag, which defaults off.
 
 ## The stage lease
 

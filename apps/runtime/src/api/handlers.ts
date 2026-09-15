@@ -11,6 +11,7 @@ import type { Tracer } from "../services/tracing.js";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { BrowserDriver } from "@vector/browser-driver";
+import { compactObservation } from "../services/observation-render.js";
 
 export interface Services {
   pages: PageService;
@@ -51,11 +52,26 @@ export function makeInvoker(s: Services) {
       case "pages.forward": return s.pages.forward(params.pageId);
       case "pages.reload": return s.pages.reload(params.pageId);
       case "pages.stop": return s.pages.stop(params.pageId);
-      case "pages.observe": return s.pages.observe(params.pageId, params as never);
-      case "pages.execute":
+      case "pages.observe": {
+        const { format, ...req } = params as { format?: "full" | "compact" } & Record<string, unknown>;
+        const obs = await s.pages.observe(params.pageId, req as never);
+        return format === "compact" ? { observation: compactObservation(obs) } : obs;
+      }
+      case "pages.execute": {
         // `call` nodes dispatch through PageService's operation-registry
-        // hook ("host/name" explicitly, or bare name → page's host)
-        return s.pages.execute((params as never as { program: never }).program, {});
+        // hook ("host/name" explicitly, or bare name → page's host).
+        // API callers hold the bearer token and author the program directly —
+        // a trusted source, so evaluate/eval stay available to them.
+        const p = params as { program: { pageId: string }; returnObservation?: { format?: "full" | "compact" } & Record<string, unknown> };
+        const result = await s.pages.execute(p.program as never, { allowEval: true });
+        if (!p.returnObservation) return result;
+        // act-and-observe (speed P0-2): the caller sees the resulting state in
+        // the same round trip. A page that detached mid-program still returns
+        // the program result — the observation is best-effort.
+        const { format, ...req } = p.returnObservation;
+        const obs = await s.pages.observe(p.program.pageId, req as never).catch(() => undefined);
+        return { ...result, observation: obs ? (format === "compact" ? compactObservation(obs) : obs) : undefined };
+      }
       case "pages.capture": return s.pages.capture(params.pageId, params as never);
       case "pages.find": {
         const p = params as { pageId: string; text: string; forward: boolean; findNext: boolean };
@@ -170,6 +186,8 @@ export function makeInvoker(s: Services) {
       case "settings.get": return s.settings.all();
       case "settings.set": {
         const r = s.settings.set(params as never);
+        // worker limits apply live — no restart needed
+        s.runs.refreshPool();
         s.events.emit(EventTypes.SettingsChanged, { settings: s.settings.all() });
         return r;
       }
@@ -216,16 +234,19 @@ export function makeInvoker(s: Services) {
       // ---- runtime-vnext: response capture / state / datasets / operations / traces ----
       case "responses.list": {
         if (!s.responses) throw new VectorError("backend_unavailable", "response capture not wired");
+        await s.responses.flush(); // capture persists asynchronously — readers see everything landed so far
         return s.responses.list(params.pageId, params as never);
       }
       case "responses.body": {
         if (!s.responses) throw new VectorError("backend_unavailable", "response capture not wired");
+        await s.responses.flush();
         const b = s.responses.body(params.requestId);
         if (!b) throw new VectorError("not_found", `no captured body for ${params.requestId}`);
         return { mediaType: b.mediaType, dataBase64: b.buffer.toString("base64") };
       }
       case "state.query": {
         if (!s.state) throw new VectorError("backend_unavailable", "state index not wired");
+        if (params.entity === "responses") await s.responses?.flush();
         return s.state.query(params);
       }
       case "state.datasets": {
@@ -321,10 +342,7 @@ export function makeInvoker(s: Services) {
       }
       case "traces.counters": {
         if (!s.tracer) throw new VectorError("backend_unavailable", "tracing not wired");
-        const rows = s.repo.db
-          .prepare("SELECT key,value FROM kv WHERE key LIKE 'counter:%'")
-          .all() as { key: string; value: string }[];
-        return Object.fromEntries(rows.map((r) => [r.key.slice(8), Number(r.value)]));
+        return s.tracer.counters(); // flushes the in-memory increments first
       }
       case "runtime.describe": {
         // capability surface for external clients — what this runtime can do (§16.2)
@@ -357,7 +375,11 @@ export function makeInvoker(s: Services) {
             tracing: !!s.tracer,
             chromeAttach: true,
             takeover: true,
-            checkpointResume: true,
+            // Runs are crash-safe (the ledger marks them interrupted) but NOT
+            // resumable after a restart; program checkpoints (`resumeFrom`)
+            // are the only resume primitive. Advertise exactly that.
+            checkpointResume: false,
+            programCheckpoints: true,
             invocationIdempotency: true,
             routeFallback: true,
             webmcpTools: false, // not available in this Chromium — capability-gated off

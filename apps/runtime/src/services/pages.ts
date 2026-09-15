@@ -170,6 +170,9 @@ export class PageService {
   }): Promise<PageTarget> {
     const drivers = this.deps.drivers();
     const driver = opts.backend === "vector" ? drivers.vector : drivers.chrome;
+    // a dropped socket is recovered lazily here rather than failing every
+    // open until restart; a backend that is truly gone still fails below
+    if (driver && !driver.isConnected() && driver.reconnect) await driver.reconnect().catch(() => {});
     if (!driver?.isConnected())
       throw new VectorError("backend_unavailable", `${opts.backend} backend is not connected`);
 
@@ -549,7 +552,7 @@ export class PageService {
       if (lp.target.controller === "human")
         throw new VectorError("conflict", `page ${pageId} is under human control`);
       lp.target.controller = ctx.runId ? "agent" : lp.target.controller === "none" ? "external" : lp.target.controller;
-      this.persist(lp);
+      // controller/epoch changes are persisted once, after the program (speed P2-1)
       // pointer/keyboard input only lands on a visible, laid-out native view —
       // hold the stage lease while a program with interactive steps runs
       const allSteps = collectSteps(program);
@@ -568,11 +571,27 @@ export class PageService {
       });
       // §6.2 — proposed vs dispatched vs completed vs verified
       this.deps.tracer?.incr("actions.proposed", allSteps.length);
+      // step rows are collected here and written in ONE transaction when the
+      // program ends instead of an autocommit per step (speed P2-1)
+      const stepRecords: StepRecord[] = [];
+      const flushSteps = () => {
+        if (!stepRecords.length || !this.deps.recordStep) return;
+        const rows = stepRecords.splice(0);
+        try {
+          this.deps.repo.transaction(() => {
+            for (const r of rows) this.deps.recordStep!(r);
+          });
+        } catch {
+          /* the step ledger is observational — never fail the program for it */
+        }
+      };
       let result: ProgramResult;
       try {
         result = await executeProgram(lp.driver, program, {
-          allowEval: false,
           ...ctx,
+          // after the spread: an explicit `allowEval: undefined` from a caller
+          // must not re-enable page JS / new Function for untrusted programs
+          allowEval: ctx.allowEval ?? false,
           observe: (req) => this.observe(pageId, req).then((o) => o.content),
           onEmit: (label, value) =>
             this.deps.events.emit("page.emitted", { pageId, runId: ctx.runId, label, value }),
@@ -591,7 +610,7 @@ export class PageService {
             t?.incr("actions.dispatched");
             t?.incr(`actions.${outcome.status === "ok" ? "completed" : outcome.status}`);
             if (outcome.status === "ok" && VERIFY_OPS.has(step.op)) t?.incr("actions.verified");
-            this.deps.recordStep?.({
+            stepRecords.push({
               stepId: newStepId(),
               runId: ctx.runId ?? "",
               pageId,
@@ -604,21 +623,25 @@ export class PageService {
           },
         });
       } catch (e) {
-        span?.end("failed", { error: e instanceof Error ? e.message : String(e) });
+        flushSteps();
+        if (lp.target.controller === "agent" || lp.target.controller === "external") lp.target.controller = "none";
+        this.persist(lp);
         this.deps.tracer?.incr("program.error");
+        span?.end("failed", { error: e instanceof Error ? e.message : String(e) });
         throw e;
       } finally {
         if (needsStage) await this.deps.native.releaseStage(pageId).catch(() => {});
       }
+      flushSteps();
       if (lp.target.controller === "agent" || lp.target.controller === "external") {
         lp.target.controller = "none";
       }
-      this.persist(lp); // documentEpoch already advanced via onNavigated events
+      this.persist(lp); // single persist per program; documentEpoch already advanced via onNavigated events
+      this.deps.tracer?.incr(`program.${result.status}`);
       span?.end(result.status === "completed" ? "ok" : result.status === "cancelled" ? "cancelled" : "failed", {
         status: result.status,
         steps: result.steps.length,
       });
-      this.deps.tracer?.incr(`program.${result.status}`);
       return result;
       }),
     );

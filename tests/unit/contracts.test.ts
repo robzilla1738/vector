@@ -30,6 +30,13 @@ describe("StepSchema", () => {
     expect(StepSchema.safeParse({ op: "click", target: "r1" }).success).toBe(false); // no id
   });
 
+  it("waitFor accepts the settled readiness condition", () => {
+    expect(StepSchema.safeParse({ id: "w", op: "waitFor", condition: { kind: "settled" } }).success).toBe(true);
+    expect(StepSchema.safeParse({ id: "w", op: "waitFor", condition: { kind: "settled", timeoutMs: 500 } }).success).toBe(true);
+    expect(StepSchema.safeParse({ id: "w", op: "click", target: "r1", expect: [{ kind: "settled" }] }).success).toBe(true);
+    expect(StepSchema.safeParse({ id: "w", op: "waitFor", condition: { kind: "settled", timeoutMs: 0 } }).success).toBe(false);
+  });
+
   it("press/scroll make target optional", () => {
     expect(StepSchema.safeParse({ id: "s", op: "press", key: "Tab" }).success).toBe(true);
     expect(StepSchema.safeParse({ id: "s", op: "scroll", direction: "top" }).success).toBe(true);
@@ -58,6 +65,25 @@ describe("API schemas", () => {
     ]) {
       expect(MethodSchemas, m).toHaveProperty(m);
     }
+  });
+
+  it("pages.observe accepts format compact|full alongside the observation request", () => {
+    const P = MethodSchemas["pages.observe"];
+    expect(P.safeParse({ pageId: "p1" }).success).toBe(true);
+    expect(P.safeParse({ pageId: "p1", format: "compact", scope: "forms", maxElements: 40 }).success).toBe(true);
+    expect(P.safeParse({ pageId: "p1", format: "tiny" }).success).toBe(false);
+    // backward compatible: an omitted format parses to undefined (full behaviour)
+    expect((P.parse({ pageId: "p1" }) as { format?: string }).format).toBeUndefined();
+  });
+
+  it("pages.execute accepts returnObservation {scope, format, subtreeRef}", () => {
+    const P = MethodSchemas["pages.execute"];
+    const program = { pageId: "p1", steps: [{ id: "s1", op: "click", target: "r1" }] };
+    expect(P.safeParse({ program }).success).toBe(true);
+    expect(P.safeParse({ program, returnObservation: { format: "compact" } }).success).toBe(true);
+    expect(P.safeParse({ program, returnObservation: { scope: "subtree", subtreeRef: "r2", format: "full" } }).success).toBe(true);
+    expect(P.safeParse({ program, returnObservation: { scope: "everything" } }).success).toBe(false);
+    expect(P.safeParse({ program, returnObservation: { format: "yaml" } }).success).toBe(false);
   });
 
   it("validates events", () => {
