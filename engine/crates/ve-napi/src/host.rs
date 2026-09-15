@@ -570,11 +570,27 @@ fn submit_form(
             }
             "textarea" => doc.form_value(id).unwrap_or_else(|| doc.text_content(id)),
             "select" => {
-                let Some(opt) = doc
+                let options: Vec<NodeId> = doc
                     .descendants(id)
                     .filter(|&d| doc.element(d).is_some_and(|o| o.is_html("option")))
+                    .collect();
+                // a single select with no explicit selection has its first
+                // non-disabled option selected by default (HTML "ask for a reset")
+                let selected = options
+                    .iter()
+                    .copied()
                     .find(|&d| doc.is_selected(d))
-                else {
+                    .or_else(|| {
+                        if e.has_attr("multiple") {
+                            None
+                        } else {
+                            options
+                                .iter()
+                                .copied()
+                                .find(|&d| doc.attribute(d, "disabled").is_none())
+                        }
+                    });
+                let Some(opt) = selected else {
                     continue;
                 };
                 doc.attribute(opt, "value")
@@ -1304,7 +1320,7 @@ mod tests {
         );
         // an offline loader makes the navigation itself fail, but the failure
         // detail names the URL the submission built
-        let page = "data:text/html,<form action=http://records.test/records method=get><select name=status><option value=''>All<option value=approved selected>approved</select><input name=q value=boots><input type=checkbox name=c checked><input type=checkbox name=d><button id=apply name=go value=1>Apply</button></form><form id=p method=post action=/save><input name=t><button id=save>Save</button></form>";
+        let page = "data:text/html,<form action=http://records.test/records method=get><select name=status><option value=''>All<option value=approved selected>approved</select><input name=q value=boots><input type=checkbox name=c checked><input type=checkbox name=d><button id=apply name=go value=1>Apply</button></form><form id=p method=post action=/save><input name=t><button id=save>Save</button></form><form id=g method=get action=http://records.test/f><select name=s><option value=''>All<option value=x>X</select><select name=m multiple><option value=a>A</select><button id=go>Go</button></form>";
         assert_eq!(host.call_blocking(move |s| s.open(1, page))["ok"], true);
         let steps = vec![json!({ "id": "c", "op": "click", "target": "css:#apply" })];
         let res = host.call_blocking(move |s| s.execute(1, &steps, &ExecuteOptions::default()));
@@ -1337,6 +1353,18 @@ mod tests {
         assert_eq!(
             res["steps"][0]["error"]["code"], "capability_unsupported",
             "{res}"
+        );
+
+        // a single select with no explicit `selected` submits its first option
+        // (Chromium: `?s=`); a multiple select with nothing selected submits nothing
+        let steps = vec![json!({ "id": "g", "op": "click", "target": "css:#go" })];
+        let res = host.call_blocking(move |s| s.execute(1, &steps, &ExecuteOptions::default()));
+        let detail = res["steps"][0]["error"]["detail"]["step"]
+            .as_str()
+            .unwrap_or("");
+        assert!(
+            detail.contains("http://records.test/f?s=") && !detail.contains("m="),
+            "default selectedness: {res}"
         );
     }
 
