@@ -65,18 +65,17 @@ impl Document {
 
     fn alloc(&mut self, kind: NodeKind) -> NodeId {
         self.live += 1;
-        let id = if let Some(index) = self.free.pop() {
-            let slot = &mut self.slots[index as usize];
-            slot.node = Some(Node::new(kind));
-            NodeId::new(index, slot.generation)
-        } else {
-            let index = u32::try_from(self.slots.len()).expect("arena exceeds u32::MAX nodes");
-            self.slots.push(Slot {
-                generation: 0,
-                node: Some(Node::new(kind)),
-            });
-            NodeId::new(index, 0)
-        };
+        // Slot indices are never recycled within a document (architecture §3):
+        // the agent ref `r<index>` must keep failing with `target_detached`
+        // after the node is destroyed instead of silently pointing at a new
+        // element. Freed slots are kept on `free` only for accounting; they are
+        // reused when the whole document is torn down (i.e. never here).
+        let index = u32::try_from(self.slots.len()).expect("arena exceeds u32::MAX nodes");
+        self.slots.push(Slot {
+            generation: 0,
+            node: Some(Node::new(kind)),
+        });
+        let id = NodeId::new(index, 0);
         self.journal.record(Mutation::NodeCreated { node: id });
         id
     }
@@ -114,6 +113,33 @@ impl Document {
     #[must_use]
     pub fn contains(&self, id: NodeId) -> bool {
         self.slot(id).is_some()
+    }
+
+    /// Resolves an arena slot index (the `r<index>` agent ref) to the live
+    /// node occupying it.
+    ///
+    /// * `Ok(Some(id))` — the slot holds a live node.
+    /// * `Ok(None)` — the slot existed but its node was destroyed (tombstone).
+    /// * `Err(())` — no node ever occupied this index.
+    #[allow(clippy::result_unit_err)]
+    pub fn node_at_index(&self, index: u32) -> Result<Option<NodeId>, ()> {
+        let slot = self.slots.get(index as usize).ok_or(())?;
+        Ok(slot
+            .node
+            .as_ref()
+            .map(|_| NodeId::new(index, slot.generation)))
+    }
+
+    /// Number of arena slots ever allocated (live + tombstones).
+    #[must_use]
+    pub fn slot_count(&self) -> usize {
+        self.slots.len()
+    }
+
+    /// Records a scroll of `container` (`None` = the viewport) in the journal
+    /// so observers can report it. Does not mark anything dirty.
+    pub fn record_scrolled(&mut self, container: Option<NodeId>) {
+        self.journal.record(Mutation::Scrolled { node: container });
     }
 
     /// Number of live nodes, including the document node.
@@ -414,9 +440,11 @@ impl Document {
                 node: child,
                 parent,
             });
+            // STYLE: the remaining siblings' structural pseudo-classes
+            // (`:nth-child`, `:empty`, sibling combinators) may change.
             self.mark_dirty(
                 parent,
-                DirtyFlags::LAYOUT | DirtyFlags::A11Y | DirtyFlags::PAINT,
+                DirtyFlags::STYLE | DirtyFlags::LAYOUT | DirtyFlags::A11Y | DirtyFlags::PAINT,
             );
         }
         Ok(parent)
@@ -739,6 +767,32 @@ impl Document {
         if let Some(v) = element.form.as_ref().and_then(|f| f.value.clone()) {
             return Some(v);
         }
+        if element.is_html("select") {
+            // The selected option's value; a single select with nothing
+            // selected reports its first enabled option (the browser default).
+            let options: Vec<NodeId> = self
+                .descendants(id)
+                .filter(|&d| self.element(d).is_some_and(|o| o.is_html("option")))
+                .collect();
+            let selected = options
+                .iter()
+                .copied()
+                .find(|&o| self.is_selected(o))
+                .or_else(|| {
+                    (!element.has_attr("multiple"))
+                        .then(|| {
+                            options
+                                .iter()
+                                .copied()
+                                .find(|&o| self.element(o).is_some_and(|e| !e.has_attr("disabled")))
+                        })
+                        .flatten()
+                });
+            return selected.map(|o| {
+                self.attribute(o, "value")
+                    .map_or_else(|| self.text_content(o).trim().to_owned(), str::to_owned)
+            });
+        }
         if let Some(v) = element.attr("value") {
             return Some(v.to_owned());
         }
@@ -798,6 +852,21 @@ impl Document {
         self.journal.record(Mutation::FormStateChanged { node: id });
         self.mark_dirty(id, DirtyFlags::STYLE | DirtyFlags::A11Y | DirtyFlags::PAINT);
         Ok(())
+    }
+
+    // ----------------------------------------------------------------------
+    // Geometry
+    // ----------------------------------------------------------------------
+
+    /// Records that layout changed the node's document-space rectangle. Sets
+    /// the `A11Y` and `PAINT` bits (snapshots and paint consume geometry) and
+    /// appends a [`Mutation::GeometryChanged`] record.
+    pub fn record_geometry_change(&mut self, node: NodeId) {
+        if !self.contains(node) {
+            return;
+        }
+        self.journal.record(Mutation::GeometryChanged { node });
+        self.mark_dirty(node, DirtyFlags::A11Y | DirtyFlags::PAINT);
     }
 
     // ----------------------------------------------------------------------
@@ -954,7 +1023,7 @@ mod tests {
     }
 
     #[test]
-    fn destroy_invalidates_ids_and_reuses_slots() {
+    fn destroy_invalidates_ids_and_never_recycles_slots() {
         let mut doc = Document::new();
         let root = doc.root();
         let div = html(&mut doc, "div");
@@ -968,14 +1037,21 @@ mod tests {
         assert!(!doc.contains(span));
         assert!(matches!(doc.try_get(span), Err(Error::InvalidNodeId(_))));
 
-        let reused = html(&mut doc, "em");
-        assert_eq!(reused.index(), span.index(), "slot reused");
-        assert_eq!(
-            reused.generation(),
-            span.generation() + 1,
-            "generation bumped"
+        let fresh = html(&mut doc, "em");
+        assert_ne!(
+            fresh.index(),
+            span.index(),
+            "slot indices are never recycled"
         );
-        assert!(doc.contains(reused));
+        assert!(doc.contains(fresh));
+        assert_eq!(
+            doc.node_at_index(span.index()),
+            Ok(None),
+            "destroyed slot is a tombstone"
+        );
+        assert_eq!(doc.node_at_index(fresh.index()), Ok(Some(fresh)));
+        assert_eq!(doc.node_at_index(9_999), Err(()), "never allocated");
+        assert_eq!(doc.slot_count(), before + 1);
     }
 
     #[test]

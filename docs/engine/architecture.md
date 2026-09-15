@@ -4,6 +4,165 @@ Status: authoritative design for `engine/`. Terminology matches
 `packages/contracts` (Observation, Program/Step, Condition, VectorError) and
 `packages/browser-driver` (DriverPage). Where this document and the Chromium
 path disagree, the engine is the target and the Chromium path is the fallback.
+Sections 1–13 are the design; the section below records what of it is
+implemented on the integration branch.
+
+## 0. Status (M1 landed)
+
+**M0** (PR #2) merged the twelve-crate workspace with real initial
+implementations and 68 tests. **M1** (PRs #3–#6: core, style/layout,
+runtime, shell) landed the agent path end to end. Everything below is backed
+by code on `m1/integrate`; anything not listed under *real* is not there.
+
+### Real
+
+- **Pipeline** — `ve-api::VectorEngine` (`engine/crates/ve-api/src/lib.rs`)
+  runs fetch → charset decode → streaming parse → cascade → layout →
+  snapshot for `file:` (per-context policy), `data:`, `about:` and inline
+  HTML; `http(s):` through `ve-net`'s hyper/rustls transport behind the
+  `http` feature (one connection per request, no pooling). `open`,
+  `observe`, `execute` (with `returnObservation`), `screenshot`, `close`,
+  contexts, cookies; every call has a `*_json` twin and a C ABI wrapper in
+  `ve_api::ffi` (function list in `engine/README.md`). Panics are caught at
+  both boundaries and reported as `internal`.
+- **Observation** — `ve-a11y` emits `ObservationContent` in the contracts
+  shape: Compact (default) and Full, `maxElements`/`maxTextChars` budgets
+  honored during collection, scope `full|forms|links|tables|subtree`,
+  `changesSince` lines and the Full `delta` (§5). Golden Compact snapshots
+  for the static corpus: `engine/fixtures/static/*.html` ↔ `*.golden.json`
+  (8 fixtures, not the ~40 of the §12 table; regenerate with
+  `UPDATE_GOLDEN=1 cargo test -p ve-api --test golden`).
+- **Steps without JS** (`ve-agent`) — target resolution (`r<index>`,
+  `css:`, `text:`/`text=`, `role=…[name=…]`), actionability, `click` with
+  activation behaviour (link navigation incl. fragments, checkbox/radio,
+  label forwarding, GET and POST form submission), `fill`, `type`, `press`
+  (chords, Enter implicit submission, Tab order), `check`/`uncheck`,
+  `select`, `scroll`, `waitFor` (`textVisible`, `selector`, `refReady`,
+  `urlMatches`, `navigationSettled`, `settled`, `response`), `extract`,
+  `collectScroll`, `upload` (file list from caller paths), `settle()` over
+  the in-flight table and dirty bits, `<meta http-equiv=refresh>`, and the
+  routing classification `RoutingInfo { requiresScript, routeReason,
+  cssCoverage, … }` (`ve-agent/src/routing.rs`).
+- **Style** (`ve-style`) — the §4 phase-1 property set with unknown/deferred
+  declarations counted in `CssCoverage` for the router; invalidation maps
+  (`class`, `id`, attribute, state); `restyle_incremental` driven by the
+  mutation journal; `@media`, `@supports`, `@layer` blocks; custom
+  properties and `var()`; `calc()`.
+- **Layout** (`ve-layout`) — block and inline formatting with floats and
+  `clear`, inline-block, automatic table layout with `colspan`/`rowspan`,
+  flex/grid via `taffy`, positioned boxes, `overflow`/`clip-path: inset()`
+  clip rectangles on every fragment, `::before`/`::after` boxes, list-item
+  markers, stacking contexts + hit testing, layout boundaries with
+  `relayout_incremental`, and a deterministic `MetricShaper` used when no
+  font data is registered (CI, unit tests, the WPT runner).
+- **Conformance** — `engine/tools/wpt-runner` runs WPT *reftests* through
+  parse/cascade/layout and compares the geometry signature (painted boxes and
+  text fragments in paint order, 1 px tolerance) of test vs `rel=match`
+  reference; `testharness.js` tests are `NOTRUN`. Manifest
+  `engine/conformance/m1.txt` (770 tests) only grows; a listed test that
+  stops passing exits non-zero.
+- **Performance** — `engine/tools/perf --gate m1` times `observe`,
+  `open_to_observe`, `click_step`, `fill_step`, `program_10` and
+  `diff_after_edit` over the static corpus against the §12 M1 gates.
+- **Node addon and runtime** — `engine/crates/ve-napi` builds
+  `@vector/engine-native` (napi-rs 3, `ABI_VERSION` 3): an `Engine` class
+  whose page methods return Promises resolved off the event loop, one
+  engine thread per browsing context (`hub.rs`/`host.rs`). The host is a
+  JSON ferry over `VectorEngine`'s `*_json` facade — step semantics,
+  observation shaping (`format: compact|full`, `changesSince`, `delta`)
+  and routing classification are the engine's, so the addon exposes
+  exactly `ve-agent`'s step surface; `screenshot` returns the software
+  PNG; `responses` carry completed-request metadata. Without an explicit
+  `policy` the addon runs the engine with `NetworkPolicy::permissive()`
+  (loopback and `file:` allowed) because the runtime enforces URL policy
+  before reaching it. `packages/browser-driver/src/vector-engine.ts`
+  is the `vector-engine` `BrowserDriver`; `Backend` is
+  `"vector" | "chrome" | "vector-engine"`. The runtime router
+  (`apps/runtime/src/services/router.ts`) implements §11 steps 1–4:
+  persisted needs-chromium table (24 h TTL), engine-first open with
+  Chromium reopen on `capability_unsupported`, mid-program migration and
+  replay (`ProgramResult.fallback`, `repair: true` when ref-targeted steps
+  remain). `settings.engineMode: "off" | "auto" | "always"` (default
+  `off`); `pages.open` results carry `routeReason`; `pnpm bench --backend
+  chrome|vector-engine|both`.
+
+### Deferred — reports `capability_unsupported`
+
+The addon forwards to `ve-agent`, so these are the engine's own gaps
+(`ve-agent/src/executor.rs`, `page.rs`, `target.rs`), plus two runtime-side
+refusals that stand regardless of what the engine can do.
+
+| Surface | Status |
+|---|---|
+| `evaluate`, `waitFor expression`, `javascript:` URLs / links / form actions | need `ve-script` DOM bindings (M2) |
+| `dialog` | no script means no `alert/confirm/prompt` can be pending; `<dialog>` elements are driven by clicking their controls |
+| `expectDownload`, `waitFor downloadCompleted`, links with `download` | downloads are not supported |
+| `xpath:` targets | unsupported (`r<n>`, `css:`, `text:`/`text=`, `role=…[name=…]`) |
+| `dragTo` | pointer sequence only — no HTML5 drag events until the script layer |
+| control-flow `nodes` | interpreted by the runtime; the engine executes flat `steps` |
+| `<script>`-dependent documents | classified on open (`RoutingInfo.routeReason`) and, in `auto`, reopened on Chromium. Reasons: `empty-shell`, `empty-root-container: <selector>`, `noscript-requires-js`, `meta-refresh-javascript`, `body-onload`, `form-onsubmit`, `template-heavy`, `unsupported-content: <canvas>-only body` / `media-only body` / `application/pdf` / `<content-type>`; `static` otherwise |
+| `pages.capture` on an engine page (runtime) | `PageService.capture` throws `capability_unsupported` for `vector-engine` pages even though the addon's `screenshot` renders a software PNG — not wired in M1 |
+| `pages.activate` on an engine page (runtime) | `capability_unsupported` — headless, no native view |
+
+Supported through the addon and therefore on the runtime's engine backend:
+`navigate`, `back`/`forward` (engine session history), `reload`, `stop`,
+`click` (any button, activation incl. GET/POST/multipart form submission),
+`dblclick`, `hover`, `fill`, `type`, `press`, `check`/`uncheck`, `select`
+(one or many values, by value then label), `scroll`, `clickPoint`,
+`upload`, `waitFor` (`textVisible`, `selector`, `refReady`, `urlMatches`,
+`navigationSettled`, `settled`, `response`), `extract`, `collectScroll`,
+`screenshot` (software renderer, `MetricShaper` text when no fonts are
+registered).
+
+Also not in M1 (design §13 list stands): `position: sticky` (laid out as
+`relative`), parent/child margin collapsing, collapsed table borders, writing
+modes, `@font-face`/`@import`/`@keyframes`, cross-origin frames, downloads,
+persistent cache, process isolation, DOM bindings in the VM, slot assignment
+in the accessibility tree, live regions.
+
+### Measured
+
+`pnpm bench --backend both`, records fixture, 10 repeats, p50, headless
+Chromium (`engineMode: off`) vs Vector Engine (`engineMode: always`), same
+harness (`tests/benchmarks/run.mjs`):
+
+| Metric | Chromium | Vector Engine |
+|---|---:|---:|
+| `pages.open` | 72.8 ms | 2.1 ms |
+| `pages.observe` full | 13.7 ms | 1.2 ms |
+| `pages.observe` compact | 10.8 ms | 1.5 ms |
+| click by ref | 71.9 ms | 2.3 ms |
+| fill by ref | 23.7 ms | 0.8 ms |
+| navigate + observe | 56.5 ms | 2.4 ms |
+| act + observe | 13.1 ms | 2.0 ms |
+| full observation | 9,499 bytes | 13,148 bytes |
+
+The engine observation is larger because it surfaces more elements than the
+Chromium observe script.
+
+**Integrated gate (m1/integrate, 2026-09-15, 2-core Linux sandbox):**
+
+| Gate | Result |
+|---|---|
+| `cargo test --workspace` | 161 tests: 160 pass, 1 unverified (see outstanding) |
+| `cargo clippy --workspace --all-targets -- -D warnings` | clean (pedantic on) |
+| `cargo fmt --all --check` | clean |
+| WPT geometry reftests (800×600, 1 px tolerance) | 770 / 2,845 pass; manifest `engine/conformance/m1.txt` = 770, 0 regressions. Per directory: normal-flow 294/746, flexbox 236/1010, selectors 134/224, positioning 28/520, grid/alignment 32/167, mediaqueries 25/58, box-display 21/120. accname / html-aam are testharness tests (not run: needs script bindings, M2). |
+| `perf --gate m1` (p95, N=200 warm, 8 static fixtures) | observe **0.42 ms** (gate 5) ✔ · open-to-observe **3.5 ms** (gate 50) ✔ · fill step **0.01 ms** (gate 2) ✔ · 10-step program **13.0 ms** (gate 20) ✔ · diff after edit **0.02 ms** (gate 0.5) ✔ · click step **2.50 ms** (gate 2) ✘ |
+| TypeScript | `pnpm typecheck` / `pnpm build` clean · unit 227/227 (35 files) · engine integration 3/3 · desktop typecheck + build clean, 30/30 |
+| Native addon | `cargo test -p ve-napi --features napi` 10/10 · `smoke.mjs` ok · `pnpm bench --backend both` see table above |
+
+**Outstanding after M1 (known, tracked here until an issue tracker exists):**
+
+1. **Nested-flex memo fix unverified.** `nested_flex_containers_lay_out_in_linear_time` hung on the merged tree (exponential relayout: a memo hit restored a snapshot whose nested item caches were cleared, so the next miss re-laid the subtree out cold). The fix — `graft_layout_caches` in `ve-layout/src/flex.rs`, re-attaching the live nested caches on a hit — is committed but its test run was cut short by the session; run `cargo test -p ve-layout nested_flex` to confirm.
+2. **Click-step p95 2.50 ms vs the 2 ms gate.** Clicks that activate (link navigation, form submission) pay a full restyle + relayout of the new document; the other five gates pass with 4–100× headroom. Candidates: skip the a11y rebuild until the next observe, and reuse the style engine's rule index across navigations on the same origin.
+3. **Runtime refusals on engine pages:** `pages.capture` and `pages.activate` short-circuit for `vector-engine` pages in `apps/runtime/src/services/pages.ts` even though the driver's `screenshot()` now works; lift the guard and route capture through the engine.
+4. **Engine still unsupported (by design in M1):** `evaluate`, `waitFor { kind: "expression" }`, `dialog`, downloads, `xpath:` targets — all route to Chromium via `capability_unsupported`.
+5. **CI workflow not in the repo.** The GitHub connection used for pushing lacks the `workflow` scope; `.github/workflows/engine.yml` (ubuntu + macOS matrix: fmt, clippy `-D warnings`, build, test, optional-feature job) must be added by hand.
+6. **UI screenshots are not committed.** `docs/ui/screenshots/*.png` (15 files) could not travel through the text-only API push; they are attached to the build thread as a zip and should be added from a machine with git credentials. `docs/ui/shell.md` references them by path.
+7. **Corpus size.** Golden Compact snapshots cover 8 static fixtures, not the ~40 in the §12 design table; the goldens were regenerated after the layout merge (element / form-field / link / heading / text counts identical before and after; only geometry changed).
+8. **Router false-positive rate** (static page sent to Chromium) has not been measured on a public corpus yet — only on the fixtures.
+
 
 ## 1. Thesis and non-goals
 

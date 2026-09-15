@@ -1,0 +1,763 @@
+{
+  "url": "https://fixtures.vector.test/blog-post.html",
+  "title": "What a settled page actually means — Notes from the Engine Room",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 1945.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://fixtures.vector.test/blog-post.html",
+      "sameOrigin": true
+    }
+  ],
+  "text": "[header]\nNotes from the Engine Room\n[nav]\nHome Archive About RSS\n[form]\n[Search]\n[main]\n# What a settled page actually means\nBy Ada Example · 2 September 2026 · 9 min read · rust browsers performance agents design\n[img: Diagram of a page reaching a quiescent state]\nLorem ipsum earlier post on readiness sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n## Seven conditions\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\nAn unsettled page is not an error. The step succeeds, the outcome says why, and the observation is taken anyway.\n## What we measured\nLorem ipsum benchmark repository sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n[table: Median settle cost by fixture class]\n## Where this breaks down\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n### Timers\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n### Streams\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\nThanks to Grace and Linus for reviewing drafts.\nShare on Twitter · Share on HN\n[nav]\n← Refs that survive Routing, deterministically →\n## 4 comments\nReader 1 · 3 days ago · permalink\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nReply\nReader 2 · 6 days ago · permalink\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nReply\nReader 3 · 9 days ago · permalink\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nReply\nReader 4 · 12 days ago · permalink\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nReply\n[form]\n### Leave a comment\nName\nEmail (not published)\nComment\nNotify me of follow-up comments\n[Post comment]\n[aside]\n[img: Portrait of Ada Example]\nAda Example writes about browser engines and agents. More →\n### Recent posts\nPost title number 1: Ut enim ad minim veniam, quis nostrud …\nSep 2, 2026\nPost title number 2: Duis aute irure dolor in reprehenderit…\nAug 21, 2026\nPost title number 3: Excepteur sint occaecat cupidatat non …\nAug 3, 2026\nPost title number 4: Lorem ipsum dolor sit amet, consectetu…\nJul 19, 2026\nPost title number 5: Ut enim ad minim veniam, quis nostrud …\nJul 1, 2026\nPost title number 6: Duis aute irure dolor in reprehenderit…\nJun 12, 2026\n### Subscribe\n[form]\nEmail\n[Subscribe]\n[footer]\n[nav]\nArchive Colophon RSS\n© Fixture Corp. Static corpus for engine benchmarks.",
+  "headings": [
+    "What a settled page actually means",
+    "Seven conditions",
+    "What we measured",
+    "Where this breaks down",
+    "Timers",
+    "Streams",
+    "4 comments",
+    "Leave a comment",
+    "Recent posts",
+    "Subscribe"
+  ],
+  "elements": [
+    {
+      "ref": "r37",
+      "frame": "main",
+      "tag": "input",
+      "role": "searchbox",
+      "name": "Search",
+      "type": "search",
+      "value": "",
+      "placeholder": "Search…",
+      "selector": {}
+    },
+    {
+      "ref": "r38",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Search",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r252",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Name",
+      "type": "text",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r256",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Email (not published)",
+      "type": "email",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r260",
+      "frame": "main",
+      "tag": "textarea",
+      "role": "textbox",
+      "name": "Comment",
+      "type": "textarea",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r263",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "Notify me of follow-up comments",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r327",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Email",
+      "type": "email",
+      "value": "",
+      "placeholder": "you@example.com",
+      "selector": {}
+    },
+    {
+      "ref": "r22",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Notes from the Engine Room",
+      "href": "https://fixtures.vector.test/",
+      "selector": {}
+    },
+    {
+      "ref": "r25",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Home",
+      "href": "https://fixtures.vector.test/",
+      "selector": {}
+    },
+    {
+      "ref": "r27",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Archive",
+      "href": "https://fixtures.vector.test/archive",
+      "selector": {}
+    },
+    {
+      "ref": "r29",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "About",
+      "href": "https://fixtures.vector.test/about",
+      "selector": {}
+    },
+    {
+      "ref": "r31",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "RSS",
+      "href": "https://fixtures.vector.test/feed.xml",
+      "selector": {}
+    },
+    {
+      "ref": "r51",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Ada Example",
+      "href": "https://fixtures.vector.test/authors/ada",
+      "selector": {}
+    },
+    {
+      "ref": "r57",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "rust",
+      "href": "https://fixtures.vector.test/tag/rust",
+      "selector": {}
+    },
+    {
+      "ref": "r60",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "browsers",
+      "href": "https://fixtures.vector.test/tag/browsers",
+      "selector": {}
+    },
+    {
+      "ref": "r63",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "performance",
+      "href": "https://fixtures.vector.test/tag/performance",
+      "selector": {}
+    },
+    {
+      "ref": "r66",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "agents",
+      "href": "https://fixtures.vector.test/tag/agents",
+      "selector": {}
+    },
+    {
+      "ref": "r69",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "design",
+      "href": "https://fixtures.vector.test/tag/design",
+      "selector": {}
+    },
+    {
+      "ref": "r77",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "earlier post on readiness",
+      "href": "https://fixtures.vector.test/2026/06/readiness",
+      "selector": {}
+    },
+    {
+      "ref": "r94",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "benchmark repository",
+      "href": "https://github.com/vector-browser/bench",
+      "selector": {}
+    },
+    {
+      "ref": "r279",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "More →",
+      "href": "https://fixtures.vector.test/about",
+      "selector": {}
+    },
+    {
+      "ref": "r286",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 1: Ut enim ad minim veniam, quis nostrud …",
+      "href": "https://fixtures.vector.test/2026/09/post-1",
+      "selector": {}
+    },
+    {
+      "ref": "r292",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 2: Duis aute irure dolor in reprehenderit…",
+      "href": "https://fixtures.vector.test/2026/08/post-2",
+      "selector": {}
+    },
+    {
+      "ref": "r298",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 3: Excepteur sint occaecat cupidatat non …",
+      "href": "https://fixtures.vector.test/2026/08/post-3",
+      "selector": {}
+    },
+    {
+      "ref": "r304",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 4: Lorem ipsum dolor sit amet, consectetu…",
+      "href": "https://fixtures.vector.test/2026/07/post-4",
+      "selector": {}
+    },
+    {
+      "ref": "r310",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 5: Ut enim ad minim veniam, quis nostrud …",
+      "href": "https://fixtures.vector.test/2026/07/post-5",
+      "selector": {}
+    },
+    {
+      "ref": "r316",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Post title number 6: Duis aute irure dolor in reprehenderit…",
+      "href": "https://fixtures.vector.test/2026/06/post-6",
+      "selector": {}
+    },
+    {
+      "ref": "r18",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Skip to main content",
+      "href": "https://fixtures.vector.test/blog-post.html#main",
+      "selector": {}
+    },
+    {
+      "ref": "r167",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Grace",
+      "href": "https://fixtures.vector.test/authors/grace",
+      "selector": {}
+    },
+    {
+      "ref": "r170",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Linus",
+      "href": "https://fixtures.vector.test/authors/linus",
+      "selector": {}
+    },
+    {
+      "ref": "r175",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Share on Twitter",
+      "href": "https://twitter.com/intent/tweet?url=https://blog.example/2026/09/settled",
+      "selector": {}
+    },
+    {
+      "ref": "r178",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Share on HN",
+      "href": "https://news.ycombinator.com/submitlink?u=https://blog.example/2026/09/settled",
+      "selector": {}
+    },
+    {
+      "ref": "r183",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "← Refs that survive",
+      "href": "https://fixtures.vector.test/2026/08/refs",
+      "selector": {}
+    },
+    {
+      "ref": "r185",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Routing, deterministically →",
+      "href": "https://fixtures.vector.test/2026/09/routing",
+      "selector": {}
+    },
+    {
+      "ref": "r198",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "permalink",
+      "href": "https://fixtures.vector.test/blog-post.html#c1",
+      "selector": {}
+    },
+    {
+      "ref": "r202",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Reply",
+      "href": "https://fixtures.vector.test/reply?c=1",
+      "selector": {}
+    },
+    {
+      "ref": "r211",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "permalink",
+      "href": "https://fixtures.vector.test/blog-post.html#c2",
+      "selector": {}
+    },
+    {
+      "ref": "r215",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Reply",
+      "href": "https://fixtures.vector.test/reply?c=2",
+      "selector": {}
+    },
+    {
+      "ref": "r224",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "permalink",
+      "href": "https://fixtures.vector.test/blog-post.html#c3",
+      "selector": {}
+    },
+    {
+      "ref": "r228",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Reply",
+      "href": "https://fixtures.vector.test/reply?c=3",
+      "selector": {}
+    },
+    {
+      "ref": "r237",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "permalink",
+      "href": "https://fixtures.vector.test/blog-post.html#c4",
+      "selector": {}
+    },
+    {
+      "ref": "r241",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Reply",
+      "href": "https://fixtures.vector.test/reply?c=4",
+      "selector": {}
+    },
+    {
+      "ref": "r268",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Post comment",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r328",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Subscribe",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r332",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Archive",
+      "href": "https://fixtures.vector.test/archive",
+      "selector": {}
+    },
+    {
+      "ref": "r334",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Colophon",
+      "href": "https://fixtures.vector.test/colophon",
+      "selector": {}
+    },
+    {
+      "ref": "r336",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "RSS",
+      "href": "https://fixtures.vector.test/feed.xml",
+      "selector": {}
+    }
+  ],
+  "formFields": [
+    {
+      "ref": "r37",
+      "label": "Search",
+      "name": "q",
+      "type": "search",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r252",
+      "label": "Name",
+      "name": "name",
+      "type": "text",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r256",
+      "label": "Email (not published)",
+      "name": "email",
+      "type": "email",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r260",
+      "label": "Comment",
+      "name": "body",
+      "type": "textarea",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r263",
+      "label": "Notify me of follow-up comments",
+      "name": "subscribe",
+      "type": "checkbox",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r327",
+      "label": "Email",
+      "name": "email",
+      "type": "email",
+      "value": "",
+      "valid": true
+    }
+  ],
+  "tables": [
+    {
+      "ref": "r98",
+      "caption": "Median settle cost by fixture class",
+      "columns": [
+        "Class",
+        "Pages",
+        "p50 (µs)",
+        "p95 (µs)"
+      ],
+      "rows": [
+        [
+          "Docs",
+          "12",
+          "18",
+          "41"
+        ],
+        [
+          "Encyclopedia",
+          "9",
+          "22",
+          "57"
+        ],
+        [
+          "Forms",
+          "15",
+          "15",
+          "36"
+        ],
+        [
+          "News",
+          "11",
+          "27",
+          "66"
+        ]
+      ],
+      "totalRows": 4,
+      "truncated": false
+    }
+  ],
+  "links": [
+    {
+      "ref": "r22",
+      "text": "Notes from the Engine Room",
+      "href": "https://fixtures.vector.test/"
+    },
+    {
+      "ref": "r25",
+      "text": "Home",
+      "href": "https://fixtures.vector.test/"
+    },
+    {
+      "ref": "r27",
+      "text": "Archive",
+      "href": "https://fixtures.vector.test/archive"
+    },
+    {
+      "ref": "r29",
+      "text": "About",
+      "href": "https://fixtures.vector.test/about"
+    },
+    {
+      "ref": "r31",
+      "text": "RSS",
+      "href": "https://fixtures.vector.test/feed.xml"
+    },
+    {
+      "ref": "r51",
+      "text": "Ada Example",
+      "href": "https://fixtures.vector.test/authors/ada"
+    },
+    {
+      "ref": "r57",
+      "text": "rust",
+      "href": "https://fixtures.vector.test/tag/rust"
+    },
+    {
+      "ref": "r60",
+      "text": "browsers",
+      "href": "https://fixtures.vector.test/tag/browsers"
+    },
+    {
+      "ref": "r63",
+      "text": "performance",
+      "href": "https://fixtures.vector.test/tag/performance"
+    },
+    {
+      "ref": "r66",
+      "text": "agents",
+      "href": "https://fixtures.vector.test/tag/agents"
+    },
+    {
+      "ref": "r69",
+      "text": "design",
+      "href": "https://fixtures.vector.test/tag/design"
+    },
+    {
+      "ref": "r77",
+      "text": "earlier post on readiness",
+      "href": "https://fixtures.vector.test/2026/06/readiness"
+    },
+    {
+      "ref": "r94",
+      "text": "benchmark repository",
+      "href": "https://github.com/vector-browser/bench"
+    },
+    {
+      "ref": "r279",
+      "text": "More →",
+      "href": "https://fixtures.vector.test/about"
+    },
+    {
+      "ref": "r286",
+      "text": "Post title number 1: Ut enim ad minim veniam, quis nostrud …",
+      "href": "https://fixtures.vector.test/2026/09/post-1"
+    },
+    {
+      "ref": "r292",
+      "text": "Post title number 2: Duis aute irure dolor in reprehenderit…",
+      "href": "https://fixtures.vector.test/2026/08/post-2"
+    },
+    {
+      "ref": "r298",
+      "text": "Post title number 3: Excepteur sint occaecat cupidatat non …",
+      "href": "https://fixtures.vector.test/2026/08/post-3"
+    },
+    {
+      "ref": "r304",
+      "text": "Post title number 4: Lorem ipsum dolor sit amet, consectetu…",
+      "href": "https://fixtures.vector.test/2026/07/post-4"
+    },
+    {
+      "ref": "r310",
+      "text": "Post title number 5: Ut enim ad minim veniam, quis nostrud …",
+      "href": "https://fixtures.vector.test/2026/07/post-5"
+    },
+    {
+      "ref": "r316",
+      "text": "Post title number 6: Duis aute irure dolor in reprehenderit…",
+      "href": "https://fixtures.vector.test/2026/06/post-6"
+    },
+    {
+      "ref": "r18",
+      "text": "Skip to main content",
+      "href": "https://fixtures.vector.test/blog-post.html#main"
+    },
+    {
+      "ref": "r167",
+      "text": "Grace",
+      "href": "https://fixtures.vector.test/authors/grace"
+    },
+    {
+      "ref": "r170",
+      "text": "Linus",
+      "href": "https://fixtures.vector.test/authors/linus"
+    },
+    {
+      "ref": "r175",
+      "text": "Share on Twitter",
+      "href": "https://twitter.com/intent/tweet?url=https://blog.example/2026/09/settled"
+    },
+    {
+      "ref": "r178",
+      "text": "Share on HN",
+      "href": "https://news.ycombinator.com/submitlink?u=https://blog.example/2026/09/settled"
+    },
+    {
+      "ref": "r183",
+      "text": "← Refs that survive",
+      "href": "https://fixtures.vector.test/2026/08/refs"
+    },
+    {
+      "ref": "r185",
+      "text": "Routing, deterministically →",
+      "href": "https://fixtures.vector.test/2026/09/routing"
+    },
+    {
+      "ref": "r198",
+      "text": "permalink",
+      "href": "https://fixtures.vector.test/blog-post.html#c1"
+    },
+    {
+      "ref": "r202",
+      "text": "Reply",
+      "href": "https://fixtures.vector.test/reply?c=1"
+    },
+    {
+      "ref": "r211",
+      "text": "permalink",
+      "href": "https://fixtures.vector.test/blog-post.html#c2"
+    },
+    {
+      "ref": "r215",
+      "text": "Reply",
+      "href": "https://fixtures.vector.test/reply?c=2"
+    },
+    {
+      "ref": "r224",
+      "text": "permalink",
+      "href": "https://fixtures.vector.test/blog-post.html#c3"
+    },
+    {
+      "ref": "r228",
+      "text": "Reply",
+      "href": "https://fixtures.vector.test/reply?c=3"
+    },
+    {
+      "ref": "r237",
+      "text": "permalink",
+      "href": "https://fixtures.vector.test/blog-post.html#c4"
+    },
+    {
+      "ref": "r241",
+      "text": "Reply",
+      "href": "https://fixtures.vector.test/reply?c=4"
+    },
+    {
+      "ref": "r332",
+      "text": "Archive",
+      "href": "https://fixtures.vector.test/archive"
+    },
+    {
+      "ref": "r334",
+      "text": "Colophon",
+      "href": "https://fixtures.vector.test/colophon"
+    },
+    {
+      "ref": "r336",
+      "text": "RSS",
+      "href": "https://fixtures.vector.test/feed.xml"
+    }
+  ],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 47,
+    "elementsShown": 47,
+    "textChars": 4184,
+    "approxTokens": 2070
+  }
+}

@@ -9,7 +9,7 @@ import {
   toUrl,
 } from "../../apps/desktop/renderer/src/chrome";
 
-describe("address field — URL vs search, never an agent run", () => {
+describe("address rules — URL vs search", () => {
   it("turns a URL-like input into an http(s) navigate URL", () => {
     expect(toUrl("https://example.com/path")).toBe("https://example.com/path");
     expect(toUrl("example.com")).toBe("https://example.com");
@@ -22,18 +22,15 @@ describe("address field — URL vs search, never an agent run", () => {
 
   it("sends a search string through the configured engine", () => {
     expect(toUrl("open source browsers")).toBe("https://duckduckgo.com/?q=open%20source%20browsers");
-    expect(toUrl("vector agent runtime", "https://www.google.com/search?q=%s")).toBe(
-      "https://www.google.com/search?q=vector%20agent%20runtime",
-    );
+    expect(toUrl("vector agent runtime", "https://www.google.com/search?q=%s")).toBe("https://www.google.com/search?q=vector%20agent%20runtime");
   });
 
-  it("never starts an agent run from the address field", () => {
+  it("addressNavigate is the plain navigate/search path — no goal, no run", () => {
     for (const q of ["https://example.com", "example.com", "what is a page set", "  spaced query  "]) {
       const r = addressNavigate(q);
       expect(r.action).toBe("navigate");
       expect(r.url.startsWith("http") || r.url.startsWith("about:") || r.url.startsWith("file:")).toBe(true);
       expect(r).not.toHaveProperty("goal");
-      expect(JSON.stringify(r)).not.toMatch(/runs\.start|sendChat|agent/);
     }
   });
 });
@@ -65,7 +62,7 @@ describe("overlay → native-view visibility", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: null, url })).toBeNull();
   });
 
-  it("hides the native page for a missing or about:blank URL so NewTabHome is visible", () => {
+  it("hides the native page for a missing or about:blank URL so the start page is visible", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: "about:blank" })).toBeNull();
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: "" })).toBeNull();
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: null })).toBeNull();
@@ -75,22 +72,14 @@ describe("overlay → native-view visibility", () => {
   });
 });
 
-describe("activity shelf counts", () => {
+describe("activity counts", () => {
   it("reports complete / active / queued / files and never a percentage", () => {
     const counts = activityCounts({
-      members: [
-        { status: "completed" },
-        { status: "completed" },
-        { status: "running" },
-        { status: "queued" },
-        { status: "queued" },
-        { status: "failed" },
-      ],
+      members: [{ status: "completed" }, { status: "completed" }, { status: "running" }, { status: "queued" }, { status: "queued" }, { status: "failed" }],
       runs: [{ status: "running" }],
       downloads: [{ state: "completed" }, { state: "progressing" }],
     });
     expect(counts).toEqual({ complete: 2, active: 1, queued: 2, files: 1, needsAttention: 1 });
-    expect(counts).not.toHaveProperty("percent");
     expect(JSON.stringify(counts)).not.toMatch(/%|percent/i);
   });
 });

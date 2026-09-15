@@ -105,6 +105,9 @@ pub struct DomElement<'a> {
     pub interaction: &'a InteractionState,
     /// The element id.
     pub id: NodeId,
+    /// When matching rules for a pseudo-element (`a::before`), the
+    /// pseudo-element being styled; `None` for the element itself.
+    pub pseudo: Option<PseudoElement>,
 }
 
 impl fmt::Debug for DomElement<'_> {
@@ -124,6 +127,23 @@ impl<'a> DomElement<'a> {
             doc,
             interaction,
             id,
+            pseudo: None,
+        }
+    }
+
+    /// Wraps `id` for matching rules that target `pseudo` on it.
+    #[must_use]
+    pub fn for_pseudo(
+        doc: &'a Document,
+        interaction: &'a InteractionState,
+        id: NodeId,
+        pseudo: PseudoElement,
+    ) -> Self {
+        Self {
+            doc,
+            interaction,
+            id,
+            pseudo: Some(pseudo),
         }
     }
 
@@ -138,6 +158,7 @@ impl<'a> DomElement<'a> {
             doc: self.doc,
             interaction: self.interaction,
             id,
+            pseudo: None,
         }
     }
 
@@ -343,10 +364,10 @@ impl Element for DomElement<'_> {
 
     fn match_pseudo_element(
         &self,
-        _pe: &PseudoElement,
+        pe: &PseudoElement,
         _context: &mut MatchingContext<VeSelectorImpl>,
     ) -> bool {
-        false
+        self.pseudo == Some(*pe)
     }
 
     fn apply_selector_flags(&self, _flags: ElementSelectorFlags) {}

@@ -1,4 +1,29 @@
 //! Text shaping abstraction: [`TextShaper`], [`ParleyShaper`], [`MetricShaper`].
+//!
+//! # Deterministic metrics
+//!
+//! CI machines have no fonts, and geometry must be reproducible across
+//! platforms, so the default shaper is [`MetricShaper`]: a documented,
+//! font-free metric model. For a font size `s`:
+//!
+//! | Quantity | Value |
+//! |---|---|
+//! | ascent | `0.8 s` |
+//! | descent | `0.2 s` |
+//! | content area | `1.0 s` (ascent + descent) |
+//! | `line-height: normal` | `1.2 s` (from `ve-style`) |
+//! | baseline in a line of height `h` | `(h - s) / 2 + 0.8 s` (half-leading + ascent) |
+//! | advance of a character | `class(c) × s + letter-spacing` |
+//!
+//! Character classes ([`CharClass`]): `Narrow` (`i j l t f r I . , : ; ' ! \|`
+//! and similar) `0.3 s`; `Space` `0.5 s`; `Lower` (other ASCII lowercase)
+//! `0.5 s`; `Digit` `0.55 s`; `Upper` (other ASCII uppercase) `0.65 s`;
+//! `Wide` (`m w M W @ %` and box-drawing) `0.8 s`; `Ideograph` (CJK,
+//! fullwidth) `1.0 s`; `Other` `0.5 s`. Combining marks and zero-width
+//! characters advance `0`.
+//!
+//! [`ParleyShaper`] shapes real glyphs and is used only when fonts have been
+//! registered; without fonts it delegates to the metric model.
 
 use std::ops::Range;
 
@@ -41,33 +66,165 @@ pub trait TextShaper {
             .map(|l| l.width)
             .sum()
     }
+
+    /// Width of the widest unbreakable unit (word) of `text`: the
+    /// min-content contribution.
+    fn min_content(&mut self, text: &str, style: &ComputedStyle) -> f32 {
+        text.split([' ', '\n'])
+            .map(|w| self.measure(w, style))
+            .fold(0.0, f32::max)
+    }
+
+    /// Ascent above the baseline for `style`'s font, in pixels.
+    fn ascent(&mut self, style: &ComputedStyle) -> f32 {
+        style.font_size * MetricShaper::ASCENT_RATIO
+    }
+
+    /// Descent below the baseline for `style`'s font, in pixels.
+    fn descent(&mut self, style: &ComputedStyle) -> f32 {
+        style.font_size * MetricShaper::DESCENT_RATIO
+    }
 }
 
-/// Deterministic shaper: every character advances `advance_ratio × font-size`.
-///
-/// Used when no font data is available and in tests. Wrapping is greedy at
-/// spaces; forced `\n` breaks are honoured.
-#[derive(Clone, Copy, Debug)]
-pub struct MetricShaper {
-    /// Advance per character as a fraction of the font size.
-    pub advance_ratio: f32,
-    /// Baseline position as a fraction of the line height.
-    pub baseline_ratio: f32,
+/// Character width classes of the deterministic metric model.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CharClass {
+    /// Zero-width: combining marks, ZWSP, ZWJ/ZWNJ, soft hyphen.
+    Zero,
+    /// `i j l t f r I . , : ; ' ! | ` ´ and thin punctuation.
+    Narrow,
+    /// The space character (and NBSP).
+    Space,
+    /// Other ASCII lowercase letters.
+    Lower,
+    /// ASCII digits.
+    Digit,
+    /// Other ASCII uppercase letters.
+    Upper,
+    /// `m w M W @ % &` and box drawing.
+    Wide,
+    /// CJK ideographs, kana, hangul, fullwidth forms.
+    Ideograph,
+    /// Everything else.
+    Other,
 }
 
-impl Default for MetricShaper {
-    fn default() -> Self {
-        Self {
-            advance_ratio: 0.5,
-            baseline_ratio: 0.8,
+impl CharClass {
+    /// Classifies a character.
+    #[must_use]
+    pub fn of(c: char) -> Self {
+        match c {
+            '\u{200B}' | '\u{200C}' | '\u{200D}' | '\u{00AD}' | '\u{FEFF}' | '\u{2060}' => {
+                Self::Zero
+            }
+            '\u{0300}'..='\u{036F}' | '\u{20D0}'..='\u{20FF}' | '\u{FE20}'..='\u{FE2F}' => {
+                Self::Zero
+            }
+            ' ' | '\u{00A0}' | '\t' => Self::Space,
+            'i' | 'j' | 'l' | 't' | 'f' | 'r' | 'I' | '.' | ',' | ':' | ';' | '\'' | '!' | '|'
+            | '`' | '\u{00B4}' | '(' | ')' | '[' | ']' | '{' | '}' | '/' | '\\' | '"' | '*'
+            | '-' | '\u{2019}' | '\u{2018}' | '\u{00B7}' => Self::Narrow,
+            'm' | 'w' | 'M' | 'W' | '@' | '%' | '&' | '\u{2500}'..='\u{257F}' => Self::Wide,
+            'a'..='z' => Self::Lower,
+            '0'..='9' => Self::Digit,
+            'A'..='Z' => Self::Upper,
+            '\u{1100}'..='\u{11FF}'
+            | '\u{2E80}'..='\u{9FFF}'
+            | '\u{AC00}'..='\u{D7AF}'
+            | '\u{F900}'..='\u{FAFF}'
+            | '\u{FF00}'..='\u{FF60}'
+            | '\u{FFE0}'..='\u{FFE6}'
+            | '\u{20000}'..='\u{2FA1F}' => Self::Ideograph,
+            _ => Self::Other,
+        }
+    }
+
+    /// Advance as a fraction of the font size.
+    #[must_use]
+    pub fn advance_ratio(self) -> f32 {
+        match self {
+            Self::Zero => 0.0,
+            Self::Narrow => 0.3,
+            Self::Space | Self::Lower | Self::Other => 0.5,
+            Self::Digit => 0.55,
+            Self::Upper => 0.65,
+            Self::Wide => 0.8,
+            Self::Ideograph => 1.0,
         }
     }
 }
 
-impl MetricShaper {
-    fn width_of(&self, text: &str, font_size: f32) -> f32 {
-        text.chars().count() as f32 * font_size * self.advance_ratio
+/// Deterministic shaper: character advances from [`CharClass`], ascent
+/// `0.8em`, descent `0.2em`. See the module documentation.
+///
+/// Used when no font data is available and in tests. Wrapping is greedy at
+/// spaces; forced `\n` breaks are honoured; `word-break: break-all` and
+/// `overflow-wrap: anywhere|break-word` allow breaking inside words that do
+/// not fit on a line of their own.
+#[derive(Clone, Copy, Debug)]
+pub struct MetricShaper {
+    /// When `true` (the default) every character advances by its class
+    /// ratio; when `false` every character advances `0.5em` (the M0 model).
+    pub per_class: bool,
+}
+
+impl Default for MetricShaper {
+    fn default() -> Self {
+        Self { per_class: true }
     }
+}
+
+impl MetricShaper {
+    /// Ascent as a fraction of the font size.
+    pub const ASCENT_RATIO: f32 = 0.8;
+    /// Descent as a fraction of the font size.
+    pub const DESCENT_RATIO: f32 = 0.2;
+
+    /// Advance of one character in pixels (before letter-spacing).
+    #[must_use]
+    pub fn char_advance(&self, c: char, font_size: f32) -> f32 {
+        let ratio = if self.per_class {
+            CharClass::of(c).advance_ratio()
+        } else {
+            0.5
+        };
+        ratio * font_size
+    }
+
+    fn width_of(&self, text: &str, style: &ComputedStyle) -> f32 {
+        let font_size = style.font_size;
+        let mut width = 0.0;
+        let mut chars = 0usize;
+        for c in text.chars() {
+            let advance = self.char_advance(c, font_size);
+            width += advance;
+            if advance > 0.0 {
+                chars += 1;
+            }
+            if c == ' ' {
+                width += style.word_spacing;
+            }
+        }
+        width + style.letter_spacing * chars as f32
+    }
+
+    /// Baseline offset from the top of a line of `line_height` for `style`.
+    #[must_use]
+    pub fn baseline_in(style: &ComputedStyle, line_height: f32) -> f32 {
+        let half_leading = (line_height - style.font_size) / 2.0;
+        half_leading + style.font_size * Self::ASCENT_RATIO
+    }
+}
+
+/// Whether `style` lets a word be broken anywhere when it would overflow.
+fn breaks_words(style: &ComputedStyle) -> bool {
+    matches!(
+        style.word_break,
+        ve_style::WordBreak::BreakAll | ve_style::WordBreak::BreakWord
+    ) || matches!(
+        style.overflow_wrap,
+        ve_style::OverflowWrap::Anywhere | ve_style::OverflowWrap::BreakWord
+    )
 }
 
 /// Greedy word-wrapping over `text` using a width oracle. Shared by the
@@ -77,6 +234,7 @@ fn greedy_wrap(
     first_available: f32,
     available: f32,
     wrap: bool,
+    break_words: bool,
     height: f32,
     baseline: f32,
     width_of: &dyn Fn(&str) -> f32,
@@ -107,22 +265,40 @@ fn greedy_wrap(
         let candidate_end = idx + word.len();
         let candidate = text[line_start..candidate_end].trim_end();
         let fits = !wrap || width_of(candidate) <= limit + 0.01;
-        if fits || line_end == line_start {
-            // Either it fits, or it is the first word on the line (overflow rather than drop it).
+        if fits {
             line_end = candidate_end;
-        } else {
+            continue;
+        }
+        if line_end != line_start {
+            // Break before this word.
             push_line(
                 line_start,
                 text[line_start..line_end].trim_end().len() + line_start,
                 &mut lines,
             );
             line_start = idx;
-            line_end = candidate_end;
             limit = available;
-            if !fits && lines.len() == 1 && first_available < available {
-                // The word may fit on a fresh full-width line; re-check by continuing.
+        }
+        // The word starts a line. Does it fit on its own?
+        let word_trimmed = word.trim_end();
+        if width_of(word_trimmed) <= limit + 0.01 || !break_words {
+            // Fits (or must overflow rather than be dropped).
+            line_end = candidate_end;
+            continue;
+        }
+        // Break inside the word, character by character.
+        let mut piece_start = idx;
+        for (ci, ch) in word_trimmed.char_indices() {
+            let abs = idx + ci;
+            let with_char = &text[piece_start..abs + ch.len_utf8()];
+            if abs > piece_start && width_of(with_char) > limit + 0.01 {
+                push_line(piece_start, abs, &mut lines);
+                piece_start = abs;
+                limit = available;
             }
         }
+        line_start = piece_start;
+        line_end = candidate_end;
     }
     let trimmed_end = line_start + text[line_start..line_end].trim_end().len();
     if trimmed_end > line_start || lines.is_empty() {
@@ -176,17 +352,24 @@ impl TextShaper for MetricShaper {
     ) -> Vec<ShapedLine> {
         let font_size = style.font_size;
         let height = style.line_height.to_px(font_size);
-        let baseline = height * self.baseline_ratio;
-        let width_of = |s: &str| self.width_of(s, font_size);
+        let baseline = Self::baseline_in(style, height);
+        let width_of = |s: &str| self.width_of(s, style);
         greedy_wrap(
             text,
             first_available,
             available,
             wrap,
+            breaks_words(style),
             height,
             baseline,
             &width_of,
         )
+    }
+
+    fn measure(&mut self, text: &str, style: &ComputedStyle) -> f32 {
+        text.split('\n')
+            .map(|line| self.width_of(line, style))
+            .fold(0.0, f32::max)
     }
 }
 
@@ -293,6 +476,9 @@ impl ParleyShaper {
         builder.push_default(parley::StyleProperty::LineHeight(
             parley::LineHeight::FontSizeRelative(line_height),
         ));
+        if style.letter_spacing != 0.0 {
+            builder.push_default(parley::StyleProperty::LetterSpacing(style.letter_spacing));
+        }
         let mut layout = builder.build(text);
         layout.break_all_lines(max_advance);
         layout
@@ -336,10 +522,6 @@ impl TextShaper for ParleyShaper {
         let first = self.layout_run(text, style, Some(first_available.max(0.0)));
         let mut lines = Self::lines_of(&first, 0);
         if lines.len() <= 1 || (first_available - available).abs() < 0.01 {
-            if lines.len() > 1 {
-                // Same width for every line: the single pass is already correct.
-                return lines;
-            }
             return lines;
         }
         // Keep the first line, re-flow the remainder at full width.
@@ -369,12 +551,13 @@ mod tests {
             line_height: ve_style::LineHeight::Px(12.0),
             ..ComputedStyle::initial()
         };
-        let mut shaper = MetricShaper::default(); // 5px per char
+        let mut shaper = MetricShaper::default(); // 5px per lowercase char / space
         let lines = shaper.shape("aaaa bbbb cccc", &style, 45.0, 45.0, true);
         assert_eq!(lines.len(), 2);
         assert_eq!(&"aaaa bbbb cccc"[lines[0].range.clone()], "aaaa bbbb");
         assert_eq!(lines[0].width, 45.0);
         assert_eq!(lines[1].height, 12.0);
+        assert_eq!(lines[1].baseline, 9.0, "(12 - 10) / 2 + 8");
 
         let lines = shaper.shape("ab cd", &style, 10.0, 100.0, true);
         assert_eq!(lines.len(), 2, "first line has room for one word only");
@@ -390,6 +573,44 @@ mod tests {
             2,
             "overflowing word stays whole"
         );
+        assert_eq!(shaper.min_content("aa bbbb c", &style), 20.0);
+    }
+
+    #[test]
+    fn metric_shaper_char_classes_and_spacing_are_documented_values() {
+        let style = ComputedStyle {
+            font_size: 10.0,
+            ..ComputedStyle::initial()
+        };
+        let mut shaper = MetricShaper::default();
+        assert_eq!(shaper.measure("i", &style), 3.0);
+        assert_eq!(shaper.measure("m", &style), 8.0);
+        assert_eq!(shaper.measure("A", &style), 6.5);
+        assert_eq!(shaper.measure("7", &style), 5.5);
+        assert_eq!(shaper.measure("\u{4E2D}", &style), 10.0);
+        assert_eq!(
+            shaper.measure("a\u{0301}", &style),
+            5.0,
+            "combining mark is zero-width"
+        );
+        assert_eq!(shaper.ascent(&style), 8.0);
+        assert_eq!(shaper.descent(&style), 2.0);
+        let spaced = ComputedStyle {
+            letter_spacing: 1.0,
+            ..style.clone()
+        };
+        assert_eq!(shaper.measure("aaa", &spaced), 18.0);
+        let uniform = MetricShaper { per_class: false };
+        assert_eq!(uniform.char_advance('W', 10.0), 5.0);
+
+        // break-all splits a word that cannot fit on a line of its own.
+        let breaking = ComputedStyle {
+            word_break: ve_style::WordBreak::BreakAll,
+            ..style
+        };
+        let lines = shaper.shape("aaaaaaaa", &breaking, 20.0, 20.0, true);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0].width, 20.0);
     }
 
     #[test]

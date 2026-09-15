@@ -10,8 +10,10 @@ import type { StateService } from "../services/state.js";
 import type { Tracer } from "../services/tracing.js";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
-import type { BrowserDriver } from "@vector/browser-driver";
+import type { EngineAvailability } from "@vector/browser-driver";
 import { compactObservation } from "../services/observation-render.js";
+import type { DriverSet } from "../services/pages.js";
+import type { Router } from "../services/router.js";
 
 export interface Services {
   pages: PageService;
@@ -25,7 +27,10 @@ export interface Services {
   operations?: OperationService;
   state?: StateService;
   tracer?: Tracer;
-  drivers: () => { vector: BrowserDriver | null; chrome: BrowserDriver | null };
+  drivers: () => DriverSet;
+  /** engine router + native availability, for runtime.describe (absent = engine off) */
+  router?: Router;
+  engine?: () => EngineAvailability;
   chromeAttach: (port: number) => Promise<unknown>;
   chromeDetach: () => Promise<unknown>;
   chromeTabs: () => Promise<unknown>;
@@ -63,14 +68,15 @@ export function makeInvoker(s: Services) {
         // API callers hold the bearer token and author the program directly —
         // a trusted source, so evaluate/eval stay available to them.
         const p = params as { program: { pageId: string }; returnObservation?: { format?: "full" | "compact" } & Record<string, unknown> };
-        const result = await s.pages.execute(p.program as never, { allowEval: true });
-        if (!p.returnObservation) return result;
         // act-and-observe (speed P0-2): the caller sees the resulting state in
-        // the same round trip. A page that detached mid-program still returns
-        // the program result — the observation is best-effort.
-        const { format, ...req } = p.returnObservation;
-        const obs = await s.pages.observe(p.program.pageId, req as never).catch(() => undefined);
-        return { ...result, observation: obs ? (format === "compact" ? compactObservation(obs) : obs) : undefined };
+        // the same round trip — one native call on the engine backend, a
+        // same-lane follow-up observe on Chromium (PageService.execute).
+        const { format, ...req } = p.returnObservation ?? {};
+        const { observation, ...result } = await s.pages.execute(p.program as never, { allowEval: true }, {
+          returnObservation: p.returnObservation ? (req as never) : undefined,
+        });
+        if (!p.returnObservation) return result;
+        return { ...result, observation: observation ? (format === "compact" ? compactObservation(observation) : observation) : undefined };
       }
       case "pages.capture": return s.pages.capture(params.pageId, params as never);
       case "pages.find": {
@@ -98,7 +104,8 @@ export function makeInvoker(s: Services) {
           await s.pages.activate(page.pageId);
           return { ok: true };
         }
-        throw new VectorError("capability_unsupported", "cannot focus that page's native surface");
+        // vector-engine pages have no native surface to show (headless engine)
+        throw new VectorError("capability_unsupported", `cannot focus a ${page.backend} page's native surface`);
       }
 
       // sets
@@ -347,8 +354,17 @@ export function makeInvoker(s: Services) {
       case "runtime.describe": {
         // capability surface for external clients — what this runtime can do (§16.2)
         const backends = [...new Set(s.repo.listPages({ includeDetached: true }).map((p) => p.backend))];
+        const engineInfo = s.engine?.() ?? { available: false, error: "engine not wired" };
         return {
           version: 1,
+          // Vector Engine (architecture §11): whether the native module loaded,
+          // its version, the routing mode and the needs-chromium table size
+          engine: {
+            ...engineInfo,
+            mode: s.router?.mode() ?? s.settings.engineMode?.() ?? "off",
+            connected: !!s.drivers().engine?.isConnected(),
+            needsChromiumOrigins: s.router?.entries().length ?? 0,
+          },
           methods: Object.keys(MethodSchemas).sort(),
           entities: ["pages", "sets", "runs", "programs", "operations", "datasets", "responses", "artifacts", "observations", "spans"],
           programForms: { steps: true, nodes: true },

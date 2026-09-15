@@ -9,3 +9,4 @@ export * from "./cdp-driver.js";
 export * from "./vector-electron.js";
 export * from "./attached-chrome.js";
 export * from "./standalone.js";
+export * from "./vector-engine.js";

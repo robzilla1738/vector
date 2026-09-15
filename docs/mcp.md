@@ -24,7 +24,7 @@ Register it in your MCP client config:
 | Tool | Purpose |
 |---|---|
 | `vector_pages_list` | list open pages |
-| `vector_page_open` | open a page (vector tab or adopted chrome tab) |
+| `vector_page_open` | open a page. `backend`: `vector` (default, *routable* — with `engineMode: auto` the runtime may place it on the Vector Engine and fall back to Chromium), `chrome` (adopt an attached Chrome tab), `vector-engine` (force the in-process engine, no fallback); `background`. The result's `routeReason` says where it landed and why (`docs/api.md` → Backends and routing) |
 | `vector_page_observe` | observation → element refs. `format` `compact` (default) returns the rendered text view (one line per ref, ~5–10× smaller than `full` JSON); `scope` (`full`/`forms`/`links`/`tables`/`subtree` + `subtreeRef`), `maxElements`, `maxTextChars` |
 | `vector_page_execute` | run a typed program on a page. `steps` use string targets (`"r3"`, `"css:#save"`); `documentEpoch` fails fast on a navigated page; `returnObservation { scope?, subtreeRef?, format? }` appends the post-action observation to the result so act + observe is one tool call. A trusted source: `evaluate` is allowed here |
 | `vector_page_capture` | screenshot / artifact |
@@ -94,3 +94,13 @@ Things an MCP client should expect:
   and marks unfinished members `skipped`; the run stays `cancelled`.
 - Runs are crash-safe but not resumable across a runtime restart
   (`runtime.describe` → `checkpointResume: false`).
+- A page may be served by the **Vector Engine** (`backend: "vector-engine"`
+  on the page, `routeReason` on the open result). Its refs work the same
+  way, but in M1 the engine runs no JavaScript: `evaluate`, `dialog`,
+  `expectDownload`, `xpath:` targets, `javascript:` URLs and
+  `vector_page_capture` fail with `capability_unsupported` (`dragTo` sends
+  pointer events only). With `engineMode: auto` the runtime moves
+  the page to Chromium and replays the rest; the `vector_page_execute`
+  result then carries `fallback { from, to, reason, replayedFrom, repair,
+  refSteps }`. `repair: true` means ref-targeted steps could not be replayed
+  — re-observe and retry with fresh refs.

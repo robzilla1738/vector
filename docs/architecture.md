@@ -7,26 +7,39 @@ and several thin surfaces that talk to it.
             ┌─────────────────────────────────────────────┐
             │              Electron shell                  │
             │  BaseWindow ── WebContentsView (per page)    │
-            │  React renderer (toolbar omnibox, tab rail,  │
-            │   optional agent inspector, activity shelf)  │
+            │  React renderer (sidebar, command bar,       │
+            │   stage card + engine badge, agent rail)     │
             └───────┬──────────────────────┬───────────────┘
             fork-RPC (native.*, api.invoke)│ CDP (Playwright)
                     │                      │
             ┌───────▼──────────────────────▼───────────────┐
             │            vector-runtime (node)             │
             │                                              │
+            │  Router        engine vs Chromium per open,  │
+            │                needs-chromium table, fallback│
             │  PageService   page lifecycle + observe      │
             │  Executor      typed programs on exact refs  │
             │  Coordinator   agent loop (plan → act → verify)
             │  SetRunner     bounded parallel set mapping  │
             │  Repo          node:sqlite persistence       │
             │  ApiServer     loopback HTTP + WS            │
-            └───────┬──────────────┬───────────┬───────────┘
-                    │              │           │
-              HTTP /rpc      WS /ws events   stdio
-                    │              │           │
-                 vector CLI    renderer      MCP server
+            └───┬───────────┬──────────────┬───────────┬───┘
+                │ N-API     │              │           │
+        ┌───────▼────────┐  HTTP /rpc  WS /ws events  stdio
+        │ Vector Engine  │     │            │           │
+        │ (Rust, in-proc,│  vector CLI   renderer   MCP server
+        │  thread/context)│
+        └────────────────┘
 ```
+
+Two page backends sit under the runtime: **Chromium** (the shell's
+`WebContentsView`, headless Chromium in standalone mode, or the user's
+attached Chrome) and the **Vector Engine** — Vector's own Rust engine
+(`engine/`, design in [engine/architecture.md](engine/architecture.md))
+loaded in-process as the `@vector/engine-native` addon. The engine does the
+agent work natively (semantic observation from its own trees, `r<n>` refs
+that are DOM arena indices, whole programs executed in one native call);
+Chromium is the fallback for pages that need JavaScript.
 
 ## Who owns what
 
@@ -37,32 +50,74 @@ and several thin surfaces that talk to it.
   the forked runtime child. It exposes `native.*` methods to the runtime over
   fork-RPC and forwards `api.invoke` calls from the renderer.
 - **Renderer** is a React shell synced from `workspace.get` + the WS event
-  stream. It positions the visible page view via `ui.setStage`. Address
-  entry (`chrome.ts` `toUrl` / `addressNavigate`) navigates or searches
-  without starting a run. `nativePageId` hides the native view for scrim
-  overlays (palette, settings, history, observe) and for missing/`about:blank`
-  URLs so New Tab is not covered by an opaque `WebContentsView`. Find and
-  downloads stay in-flow and keep the page live. The agent inspector is
-  optional and closed by default.
+  stream (see [ui/shell.md](ui/shell.md)). It positions the visible page
+  view via `bridge.setStage` from the stage card's rect. The command bar
+  (`intent.ts`, `chrome.ts` `toUrl` / `addressNavigate`) navigates or
+  searches without starting a run and starts a run for a prompt.
+  `nativePageId` hides the native view for scrim overlays (palette,
+  settings, history, observe) and for missing/`about:blank` URLs so the
+  start page is not covered by an opaque `WebContentsView`. Find and
+  downloads stay in-flow and keep the page live. The agent rail is closed by
+  default.
 - **CLI / MCP** are stateless clients of the loopback API.
 
 ## Browser drivers
 
-`packages/browser-driver` defines `BrowserDriver`/`DriverPage` over
-Playwright-Core CDP. Three implementations:
+`packages/browser-driver` defines `BrowserDriver`/`DriverPage`. Four
+implementations, three of them over Playwright-Core CDP:
 
-| Driver | Use |
-|---|---|
-| `VectorElectronDriver` | pages hosted in the desktop shell; identity via an injected `__vectorTid` marker so same-URL tabs stay distinct |
-| `StandaloneDriver` | runtime without the shell — headless system Chrome for tests/CLI |
-| `AttachedChromeDriver` | the user's Chrome at `--remote-debugging-port`; real CDP target ids, borrowed tabs are never closed |
+| Driver | Backend | Use |
+|---|---|---|
+| `VectorElectronDriver` | `vector` | pages hosted in the desktop shell; identity via an injected `__vectorTid` marker so same-URL tabs stay distinct |
+| `StandaloneDriver` | `vector` | runtime without the shell — headless Chromium (system Chrome, `VECTOR_BROWSER_PATH`, or a Playwright `chromium_headless_shell` found by `scripts/chromium.mjs`) for tests/CLI/bench |
+| `AttachedChromeDriver` | `chrome` | the user's Chrome at `--remote-debugging-port`; real CDP target ids, borrowed tabs are never closed |
+| `VectorEngineDriver` (`vector-engine.ts`) | `vector-engine` | the in-process Vector Engine via `@vector/engine-native`; `targetId = "ve-<context>-<page>"`; every `DriverPage` method is a one-step program and `executeProgram(steps, { returnObservation })` runs a whole program plus its observation in one native call |
+
+## Engine backend and router
+
+`apps/runtime/src/main.ts` loads the engine addon at startup when it is
+present (`VECTOR_ENGINE=0` skips it) and registers a `vector-engine` session
+either `connected` or `disconnected` with the loader's diagnostic. Whether
+pages are *routed* to it is `settings.engineMode`: `off` (default — nothing
+changes for existing users), `auto`, `always`; `VECTOR_ENGINE_MODE` is the
+env override.
+
+`Router` (`apps/runtime/src/services/router.ts`) decides per `pages.open`
+and returns the decision as `PageTarget.routeReason`:
+
+1. explicit `backend: "chrome" | "vector-engine"` → that backend, no fallback;
+2. `off` → Chromium; `always` → engine, no fallback;
+3. `auto` → Chromium if the engine is not connected, the URL scheme is not
+   `http(s):`/`file:`/`data:`/`about:`, or the origin is in the
+   **needs-chromium table** (SQLite kv, 24 h TTL); otherwise engine-first.
+
+The engine parses and classifies the document on open (`requiresScript` +
+reason, e.g. `empty-root-container: #root`, `body-onload`,
+`form-onsubmit`, `template-heavy`, `unsupported-content: application/pdf`).
+In `auto` a classified page is closed, the origin recorded, and the URL
+reopened on Chromium with `routeReason: "fallback:<reason>"`. A mid-program
+`capability_unsupported` (`evaluate`, `dialog`, downloads, `xpath:`
+targets, …) migrates the live page to Chromium at its
+current URL — same `pageId`, new target, `documentEpoch` bumped — takes a
+fresh observation, and replays the remaining steps; `ProgramResult.fallback`
+records it, with `repair: true` when ref-targeted steps could not be replayed
+(engine refs do not exist on Chromium) so the coordinator re-observes and
+replans. Decisions are counted in `traces.counters` (`router.decide`,
+`router.fallback.open`, `router.fallback.midProgram`, `router.open.<backend>`)
+and logged to stderr with `VECTOR_ROUTER_LOG=1`.
+
+Engine pages are headless: `pages.activate` and `pages.capture` on them
+fail with `capability_unsupported`, they never take the stage lease, and
+the shell shows them with the *Vector Engine* badge only.
 
 ## Page identity
 
 Every page has a `pageId` (runtime-issued), a `targetId` (driver-level), and a
 `documentEpoch` that increments on navigation. Observation element refs
 (`r1`, `r2`, …) are scoped to `(pageId, documentEpoch)` — stale refs fail
-loudly instead of acting on the wrong document.
+loudly instead of acting on the wrong document. On the engine backend the
+epoch is the engine's document `generation` and a ref is the node's arena
+index; on Chromium refs are registry entries resolved to locators.
 
 ## Execution model
 
@@ -145,8 +200,11 @@ MCP, saved programs) via the executor's `allowEval` flag, which defaults off.
 Chromium only delivers trusted input (pointer, keyboard) to a *visible,
 laid-out* view — hidden background pages can't be clicked. When a program
 with interactive steps (`click`, `fill`, `press`, `select`, …) runs on a
-vector page, the runtime takes a serialized **stage lease**
-(`native.acquireStage`): the page's view is shown at stage bounds for the
-program's duration, then released. Parallel set members take turns on the
-stage instead of racing it; pure observation programs (navigate, extract,
-waitFor, screenshot) don't need the lease and run fully in the background.
+`vector` page inside the shell, the runtime takes a serialized **stage
+lease** (`native.acquireStage`): the page's view is shown at stage bounds
+for the program's duration, then released. Parallel set members take turns
+on the stage instead of racing it; pure observation programs (navigate,
+extract, waitFor, screenshot) don't need the lease and run fully in the
+background. `vector-engine` pages never take the lease: the engine *is* the
+input device, so every step event is trusted regardless of visibility and
+parallel programs on different engine pages never serialize on input.

@@ -31,8 +31,12 @@ need the lease; they run in the user's real browser window).
 ## `No native surface: the runtime is not attached to a Vector desktop shell`
 
 `backend: "vector"` pages need either the desktop shell (Electron fork-RPC) or
-the standalone driver. Standalone mode requires a system Chrome install. Use
-`chrome.attach` for the user's real browser instead.
+the standalone driver. Standalone mode needs a Chromium: `VECTOR_BROWSER_PATH`
+if set, else the Playwright channels `chrome`, `chrome-headless-shell`,
+`chromium` in that order (`pnpm exec playwright install
+chromium-headless-shell` provides one; the bench and integration tests find
+it via `scripts/chromium.mjs`). Use `chrome.attach` for the user's real
+browser, or `backend: "vector-engine"` for pages the engine can serve.
 
 ## Stale element refs / `target_detached` errors
 
@@ -100,3 +104,85 @@ process that owns `process.send` (vitest forks).
 
 `AI_GATEWAY_API_KEY` must be set (see `.env.example`). `models.probe` checks
 key + connectivity + latency without running a goal.
+
+## `runtime.describe` says `engine.available: false` / session `vector-engine` is `disconnected`
+
+The `@vector/engine-native` addon (`engine/crates/ve-napi`) is not built by
+`pnpm build`. The loader (`engine/crates/ve-napi/index.js`) looks for
+`VECTOR_ENGINE_NATIVE`, then `vector-engine.<platform>-<arch>.node` next to
+`index.js`, then `engine/target/{release,debug}/libve_napi.{so,dylib,dll}`
+(`$CARGO_TARGET_DIR` first). Its error lists every path it tried. Build it:
+
+```bash
+cd engine && cargo build -p ve-napi --features napi --release
+# or: pnpm --filter @vector/engine-native build      (napi-rs CLI → vector-engine.<platform>-<arch>.node)
+# or: node engine/crates/ve-napi/scripts/build.mjs   (cargo, then copies the cdylib next to index.js)
+node engine/crates/ve-napi/scripts/smoke.mjs         # load, open a data: URL, observe, run a program
+```
+
+Needs a stable Rust toolchain (`rust-version = 1.85`) and a C compiler (the
+`napi` feature turns on `http`, which builds `ring`). The addon is a
+`cdylib`, so a binary built for another platform/arch will not load. If the
+addon lives elsewhere, `VECTOR_ENGINE_NATIVE=/path/to/vector-engine.node`.
+`VECTOR_ENGINE=0` disables loading entirely. `pnpm test` skips the engine
+integration test with the loader's diagnostic when the addon is missing, and
+`pnpm bench --backend vector-engine` reports `skipped — vector-engine
+unavailable`.
+
+## Pages open on Chromium although the engine is available
+
+Routing is off by default. Check `runtime.describe` → `engine.mode`; set
+`settings.set { engineMode: "auto" }` (or `VECTOR_ENGINE_MODE=auto`; the
+stored setting wins over the env). Then read `routeReason` on the
+`pages.open` result:
+
+- `engine-mode-off` — the setting is still `off`.
+- `engine-unavailable` — the addon did not load (section above).
+- `unsupported-scheme:<scheme>` — the engine opens `http(s):`, `file:`,
+  `data:`, `about:` only.
+- `needs-chromium-table:<reason>` — this origin fell back within the last
+  24 h and is pinned to Chromium until the entry expires
+  (`runtime.describe` → `engine.needsChromiumOrigins` counts them; there is
+  no RPC to clear the table — wait for the TTL or use a fresh
+  `VECTOR_DATA_DIR`).
+- `fallback:<reason>` — the engine opened the page, classified it as
+  script-dependent (`empty-shell`, `empty-root-container: #root`,
+  `body-onload`, `form-onsubmit`, `template-heavy`,
+  `unsupported-content: …`) or failed mid-program
+  (`mid-program:<op>:…`), and the page was reopened on Chromium. Expected
+  for SPAs in M1 (no JavaScript).
+
+`VECTOR_ROUTER_LOG=1` prints every decision to the runtime's stderr;
+`traces.counters` has `router.decide`, `router.fallback.open`,
+`router.fallback.midProgram` and `router.open.<backend>`.
+
+## Forcing a backend
+
+`pages.open { backend: "vector-engine" }` (CLI/MCP: `backend
+vector-engine`) forces the engine with no fallback — a script-dependent page
+stays there and the reason is appended to `routeReason` as
+`(classified:<reason>)`. `settings.set { engineMode: "always" }` does the
+same for every open (what `pnpm bench --backend vector-engine` uses).
+`engineMode: "off"` or `backend: "vector"` with `off` forces Chromium.
+
+## A program on an engine page came back with `fallback` / `REPAIR:`
+
+A step hit `capability_unsupported` on the engine (in M1: `evaluate`,
+`dialog`, `expectDownload`, `xpath:` targets, `javascript:` URLs, `waitFor
+expression | downloadCompleted`). With `engineMode:
+auto` the runtime moved the page to Chromium (same `pageId`, new
+`documentEpoch`, `routeReason: fallback:mid-program:<op>:…`) and replayed the
+remaining steps — `ProgramResult.fallback.replayedFrom` is the first index
+run on Chromium. `repair: true` with an error starting `REPAIR:` means some
+remaining steps named engine refs (`r<n>`), which do not exist on Chromium:
+re-observe and issue fresh refs. `fallback unavailable` in `error` means no
+Chromium backend was connected to fall back to.
+
+## `pages.capture` / `pages.activate` fail with `capability_unsupported` on an engine page
+
+Engine pages are headless in M1: no native view to focus, and
+`PageService.capture` refuses `vector-engine` pages (the addon's own
+`screenshot` renders a software PNG, but the runtime does not use it yet).
+Open the page on Chromium (`backend: "vector"`) when
+you need a screenshot or a visible tab (the agent loop's vision fallback
+also goes through `pages.capture`, so it cannot capture an engine page).

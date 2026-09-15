@@ -21,11 +21,19 @@
 #![forbid(unsafe_code)]
 
 pub mod accname;
+pub mod diff;
+pub mod observation;
 pub mod roles;
 pub mod snapshot;
 pub mod tree;
 
-pub use accname::{compute_description, compute_name};
+pub use accname::{LabelIndex, compute_description, compute_name, compute_name_with};
+pub use diff::{FieldChange, ObservationDelta, TextOp, changes_between};
+pub use observation::{
+    DialogEntry, ElementRef, FormField, Format, FrameInfo, LinkEntry, ObservationContent,
+    ObservationRequest, ObserveInput, RectJson, RoleSelector, Scope, ScrollInfo, SelectorStrategy,
+    Stats, TableBlock, ViewportInfo, Visibility5, classify, observe, parse_ref, ref_for,
+};
 pub use roles::Role;
 pub use snapshot::{
     SemanticSnapshot, SnapshotDiff, SnapshotFormat, SnapshotNode, changed_refs_since,

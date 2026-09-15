@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useStore, call, toast, errToast } from "../store";
 import { bridge } from "../bridge";
+import { engineModeLabel, readEngineMode, type EngineMode } from "../engine";
 import { I } from "./icons";
 
 /** what settings.get returns in place of the real key */
@@ -10,12 +11,20 @@ interface ModelEntry { id: string; name?: string }
 interface ProbeResult { ok: boolean; modelId: string; latencyMs?: number; vision?: boolean; error?: string }
 interface CookieImportResult { ok: boolean; source: string; imported: number; skipped: number; domains: number; detail?: string }
 
+function Field({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="field">
+      <label>{label}</label>
+      {children}
+      {hint && <span className="hint">{hint}</span>}
+    </div>
+  );
+}
+
 export function Settings() {
   const settings = useStore((s) => s.settings);
   const setOverlay = useStore((s) => s.setOverlay);
   const refresh = useStore((s) => s.refresh);
-  // never seed the masked value back into the field — saving it would
-  // overwrite the real key with bullets
   const [key, setKey] = useState("");
   const [saved, setSaved] = useState(false);
   const [models, setModels] = useState<ModelEntry[]>([]);
@@ -23,6 +32,7 @@ export function Settings() {
   const [probe, setProbe] = useState<ProbeResult | null>(null);
   const [probing, setProbing] = useState(false);
   const [dataDir, setDataDir] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
   const [cookieImport, setCookieImport] = useState<{ busy: boolean; result?: CookieImportResult; error?: string }>({ busy: false });
 
   useEffect(() => {
@@ -60,108 +70,102 @@ export function Settings() {
   const theme = (settings.theme as string) ?? "dark";
   const plannerModel = (settings.plannerModel as string) ?? "anthropic/claude-sonnet-4.5";
   const hasKey = settings.gatewayApiKey === KEY_MASK;
+  const engineMode = readEngineMode(settings);
 
   return (
     <div className="overlay-scrim fade-in" onMouseDown={() => setOverlay(null)}>
-      <div className="drawer" onMouseDown={(e) => e.stopPropagation()} style={{ top: 0, right: 0, height: "100%" }}>
+      <div className="drawer slide-in" role="dialog" aria-label="Settings" onMouseDown={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <h3>Settings</h3>
-          <button className="icon-btn" title="Close (Esc)" onClick={() => setOverlay(null)}>{I.close}</button>
+          <span className="sp" />
+          {saved && <span className="saved">{I.check} Saved</span>}
+          <button className="icon-btn" title="Close (Esc)" aria-label="Close settings" onClick={() => setOverlay(null)}>{I.close}</button>
         </div>
 
-        <div className="field">
-          <label>Theme</label>
-          <div className="seg">
-            {["dark", "light"].map((t) => (
-              <button key={t} className={theme === t ? "on" : ""} onClick={() => void set({ theme: t })}>{t}</button>
+        <div className="drawer-section">Appearance</div>
+        <Field label="Theme">
+          <div className="seg" role="radiogroup" aria-label="Theme">
+            {(["dark", "light"] as const).map((t) => (
+              <button key={t} role="radio" aria-checked={theme === t} className={theme === t ? "on" : ""} onClick={() => void set({ theme: t })}>{t === "dark" ? "Dark" : "Light"}</button>
             ))}
           </div>
-        </div>
+        </Field>
 
-        <div className="field">
-          <label>Vercel AI Gateway key</label>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="drawer-section">Engine</div>
+        <Field label="Vector Engine" hint={<>{engineModeLabel(engineMode)}. {/* TODO(contracts): engineMode lands with the vector-engine backend; until then the runtime ignores this key. */}</>}>
+          <div className="seg" role="radiogroup" aria-label="Engine mode">
+            {(["off", "auto", "always"] as EngineMode[]).map((m) => (
+              <button key={m} role="radio" aria-checked={engineMode === m} className={engineMode === m ? "on" : ""} onClick={() => void set({ engineMode: m })}>
+                {m === "off" ? "Off" : m === "auto" ? "Auto" : "Always"}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        <div className="drawer-section">Models</div>
+        <Field label="Vercel AI Gateway key" hint={<>{hasKey ? "A key is configured." : "No key configured."} Enables model planning — without it the runtime uses the mock planner.</>}>
+          <div className="row">
             <input
               type="password"
-              style={{ flex: 1 }}
+              className="grow"
               value={key}
               placeholder={hasKey ? "Key saved — enter a new key to replace" : "vg_…  (stored locally)"}
               onChange={(e) => setKey(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && key.trim() && key !== KEY_MASK) {
-                  void set({ gatewayApiKey: key.trim() }).then(() => setKey(""));
-                }
+                if (e.key === "Enter" && key.trim() && key !== KEY_MASK) void set({ gatewayApiKey: key.trim() }).then(() => setKey(""));
               }}
               onBlur={() => {
                 if (key.trim() && key !== KEY_MASK) void set({ gatewayApiKey: key.trim() }).then(() => setKey(""));
               }}
             />
-            {hasKey && (
-              <button
-                className="btn sm"
-                title="Remove the saved Gateway key"
-                onClick={() => void set({ gatewayApiKey: "" }).then(() => toast("Gateway key removed"))}
-              >
-                Clear
-              </button>
-            )}
+            {hasKey && <button className="btn sm" title="Remove the saved Gateway key" onClick={() => void set({ gatewayApiKey: "" }).then(() => toast("Gateway key removed"))}>Clear</button>}
           </div>
-          <span className="hint">
-            {hasKey ? "A key is configured." : "No key configured."} Enables model planning — without it the runtime uses the mock planner.
-          </span>
-        </div>
+        </Field>
 
-        <div className="field">
-          <label>Planner model</label>
+        <Field label="Planner model" hint={modelsSource === "gateway" ? `${models.length} models from the Gateway catalog.` : "Static fallback list — add a Gateway key for the live catalog."}>
           {models.length > 0 ? (
             <select value={plannerModel} onChange={(e) => void set({ plannerModel: e.target.value })}>
               {!models.some((m) => m.id === plannerModel) && <option value={plannerModel}>{plannerModel}</option>}
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>{m.name ? `${m.name} — ${m.id}` : m.id}</option>
-              ))}
+              {models.map((m) => <option key={m.id} value={m.id}>{m.name ? `${m.name} — ${m.id}` : m.id}</option>)}
             </select>
           ) : (
-            <input
-              defaultValue={plannerModel}
-              onBlur={(e) => void set({ plannerModel: e.target.value })}
-            />
+            <input defaultValue={plannerModel} onBlur={(e) => void set({ plannerModel: e.target.value })} />
           )}
-          <span className="hint">
-            {modelsSource === "gateway" ? `${models.length} models from the Gateway catalog.` : "Static fallback list — add a Gateway key for the live catalog."}
-          </span>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button className="btn" disabled={probing} onClick={() => void runProbe()}>
-              {probing ? "Probing…" : "Test connection"}
-            </button>
+          <div className="row">
+            <button className="btn sm" disabled={probing} onClick={() => void runProbe()}>{probing ? "Probing…" : "Test connection"}</button>
             {probe && (
-              <span className="hint" style={{ color: probe.ok ? "var(--ok)" : "var(--err)" }}>
-                {probe.ok
-                  ? `ok · ${probe.latencyMs}ms${probe.vision === true ? " · vision" : probe.vision === false ? " · no vision" : ""}`
-                  : `failed — ${probe.error}`}
+              <span className={`hint ${probe.ok ? "ok" : "err"}`}>
+                {probe.ok ? `ok · ${probe.latencyMs} ms${probe.vision === true ? " · vision" : probe.vision === false ? " · no vision" : ""}` : `failed — ${probe.error}`}
               </span>
             )}
           </div>
-        </div>
+        </Field>
 
-        <div className="field">
-          <label>Vision model</label>
-          <select
-            value={(settings.visionModel as string) ?? ""}
-            onChange={(e) => void set({ visionModel: e.target.value })}
-          >
+        <Field label="Vision model" hint="Used once per run to re-plan from a screenshot when the structured path fails.">
+          <select value={(settings.visionModel as string) ?? ""} onChange={(e) => void set({ visionModel: e.target.value })}>
             <option value="">Same as planner</option>
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>{m.name ? `${m.name} — ${m.id}` : m.id}</option>
-            ))}
+            {models.map((m) => <option key={m.id} value={m.id}>{m.name ? `${m.name} — ${m.id}` : m.id}</option>)}
           </select>
-          <span className="hint">Used once per run to re-plan from a screenshot when the structured path fails. The probe reports whether the model accepts images.</span>
+        </Field>
+
+        <div className="row two">
+          <Field label="Parallel worker pages">
+            <input type="number" min={1} max={16} defaultValue={(settings.maxWorkers as number) ?? 4} onBlur={(e) => void set({ maxWorkers: Number(e.target.value) })} />
+          </Field>
+          <Field label="Max model calls per run">
+            <input type="number" min={1} max={8} defaultValue={(settings.maxModelCalls as number) ?? 3} onBlur={(e) => void set({ maxModelCalls: Number(e.target.value) })} />
+          </Field>
         </div>
 
-        <div className="field">
-          <label>Chrome cookies</label>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="drawer-section">Browsing</div>
+        <Field label="Search engine" hint="URL template — %s is replaced by the query.">
+          <input defaultValue={(settings.searchEngine as string) ?? "https://duckduckgo.com/?q=%s"} onBlur={(e) => void set({ searchEngine: e.target.value })} />
+        </Field>
+
+        <Field label="Chrome cookies" hint={cookieImport.result?.detail ?? "Brings your Chrome logins into Vector. Attaching Chrome imports everything, including app-bound cookies; from disk, macOS asks for keychain access."}>
+          <div className="row">
             <button
-              className="btn"
+              className="btn sm"
               disabled={cookieImport.busy}
               onClick={() => {
                 setCookieImport({ busy: true });
@@ -172,57 +176,30 @@ export function Settings() {
             >
               {cookieImport.busy ? "Importing…" : "Import from Chrome"}
             </button>
-            {cookieImport.result && (
-              <span className="hint" style={{ color: "var(--ok)" }}>
-                {cookieImport.result.imported} imported · {cookieImport.result.domains} domains
-              </span>
-            )}
-            {cookieImport.error && <span className="hint" style={{ color: "var(--err)" }}>{cookieImport.error}</span>}
+            {cookieImport.result && <span className="hint ok">{cookieImport.result.imported} imported · {cookieImport.result.domains} domains</span>}
+            {cookieImport.error && <span className="hint err">{cookieImport.error}</span>}
           </div>
-          <span className="hint">
-            {cookieImport.result?.detail ??
-              "Brings your Chrome logins into Vector. Attaching Chrome imports everything, including newer app-bound cookies; from disk, macOS will ask for keychain access."}
-          </span>
-        </div>
-
-        <div className="field">
-          <label>Search engine</label>
-          <input
-            defaultValue={(settings.searchEngine as string) ?? "https://duckduckgo.com/?q=%s"}
-            onBlur={(e) => void set({ searchEngine: e.target.value })}
-          />
-          <span className="hint">URL template — %s is replaced by the query.</span>
-        </div>
-
-        <div className="field">
-          <label>Worker pages (parallel)</label>
-          <input
-            type="number" min={1} max={16}
-            defaultValue={(settings.maxWorkers as number) ?? 4}
-            onBlur={(e) => void set({ maxWorkers: Number(e.target.value) })}
-          />
-        </div>
-
-        <div className="field">
-          <label>Max model calls per run</label>
-          <input
-            type="number" min={1} max={8}
-            defaultValue={(settings.maxModelCalls as number) ?? 3}
-            onBlur={(e) => void set({ maxModelCalls: Number(e.target.value) })}
-          />
-        </div>
+        </Field>
 
         {dataDir && (
-          <div className="field">
-            <label>Data directory</label>
-            <span className="hint mono" style={{ wordBreak: "break-all", userSelect: "text", cursor: "text" }}>{dataDir}</span>
-            <button className="btn" style={{ alignSelf: "flex-start" }} onClick={() => void bridge.revealPath(dataDir)}>Reveal in Finder</button>
-          </div>
+          <Field label="Data directory">
+            <div className="row">
+              <span className="hint mono selectable grow">{dataDir}</span>
+              <button className="btn sm" onClick={() => void bridge.revealPath(dataDir)}>Reveal</button>
+            </div>
+          </Field>
         )}
 
-        <div style={{ marginTop: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-          {saved && <span style={{ fontSize: 11, color: "var(--ok)" }}>Saved</span>}
-          <button className="btn danger" onClick={() => void call("history.clear")}>Clear history</button>
+        <div className="drawer-foot">
+          {confirmClear ? (
+            <>
+              <span className="hint">Clear all browsing history?</span>
+              <button className="btn sm" onClick={() => setConfirmClear(false)}>Cancel</button>
+              <button className="btn sm danger" onClick={() => void call("history.clear").then(() => { toast("History cleared"); setConfirmClear(false); }).catch(errToast)}>Clear history</button>
+            </>
+          ) : (
+            <button className="btn sm ghost danger" onClick={() => setConfirmClear(true)}>Clear history…</button>
+          )}
         </div>
       </div>
     </div>

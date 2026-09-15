@@ -1,230 +1,582 @@
-//! The [`Page`] trait and its in-engine implementation [`DomPage`].
+//! [`Page`]: one document with its style/layout state, history, scroll and
+//! focus, the in-engine action semantics of architecture §6, `settle()`, and
+//! `observe()`.
 
-use std::collections::HashMap;
-use std::time::Duration;
+use std::collections::{HashMap, VecDeque};
+use std::time::Instant;
 
+use serde::{Deserialize, Serialize};
 use ve_a11y::{
-    AccessibilityTree, BuildOptions, Role, SemanticSnapshot, SnapshotFormat, compute_name,
+    DialogEntry, Format, LabelIndex, ObservationContent, ObservationDelta, ObservationRequest,
+    ObserveInput, Role, Scope, Visibility5, changes_between, compute_name_with, observe, parse_ref,
+    ref_for,
 };
-use ve_core::{Error, NodeId, Point, Rect, Result, Size, Stage};
+use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
 use ve_dom::{DirtyFlags, Document, NodeKind};
+use ve_gfx::SoftwareRenderer;
+use ve_html::DocumentMeta;
 use ve_layout::{LayoutEngine, LayoutTree};
-use ve_script::{EventLoop, JsVm, TaskSource, default_vm};
 use ve_style::{StyleEngine, StyleTree};
 
-use crate::readiness::Readiness;
-use crate::steps::Target;
+use crate::forms::{self, Enctype, FormMethod};
+use crate::keys::{Chord, Key};
+use crate::routing::{RoutingInfo, classify};
+use crate::screenshot::{self, Screenshot};
+use crate::steps::{MouseButton, ScrollDirection, Settled};
+use crate::target::TargetSpec;
 
-/// The result of a navigation performed by a [`Loader`].
+/// Navigation method.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum NavMethod {
+    /// GET.
+    Get,
+    /// POST.
+    Post,
+}
+
+/// What the page asks its [`Loader`] to fetch.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NavigationRequest {
+    /// Absolute URL.
+    pub url: String,
+    /// Method.
+    pub method: NavMethod,
+    /// Body (POST).
+    pub body: Option<Vec<u8>>,
+    /// `Content-Type` of the body.
+    pub content_type: Option<String>,
+    /// Referrer (the current document URL).
+    pub referrer: Option<String>,
+    /// Page id for attribution.
+    pub page: u64,
+}
+
+impl NavigationRequest {
+    /// A GET navigation.
+    #[must_use]
+    pub fn get(url: impl Into<String>, page: u64) -> Self {
+        Self {
+            url: url.into(),
+            method: NavMethod::Get,
+            body: None,
+            content_type: None,
+            referrer: None,
+            page,
+        }
+    }
+}
+
+/// A fetched document (bytes; decoding happens in the page).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LoadedDocument {
-    /// Final URL (after redirects).
+    /// Final URL after redirects.
     pub url: String,
-    /// Decoded HTML source.
-    pub html: String,
+    /// Raw bytes.
+    pub bytes: Vec<u8>,
+    /// `Content-Type` header.
+    pub content_type: Option<String>,
+    /// HTTP status (200 for non-HTTP sources).
+    pub status: u16,
 }
 
-/// Fetches documents for navigations. Supplied by the embedder (usually
-/// backed by `ve-net`) so this crate stays independent of the network stack.
-pub type Loader = Box<dyn FnMut(&str) -> Result<LoadedDocument>>;
-
-/// Scroll position after a scroll step.
-#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct ScrollState {
-    /// Horizontal offset.
-    pub x: f32,
-    /// Vertical offset.
-    pub y: f32,
-    /// Maximum horizontal offset.
-    pub max_x: f32,
-    /// Maximum vertical offset.
-    pub max_y: f32,
-}
-
-impl ScrollState {
-    /// Whether the container is scrolled to its bottom.
-    #[must_use]
-    pub fn at_bottom(&self) -> bool {
-        self.y >= self.max_y - 0.5
+impl LoadedDocument {
+    /// Wraps already-decoded HTML.
+    pub fn html(url: impl Into<String>, html: &str) -> Self {
+        Self {
+            url: url.into(),
+            bytes: html.as_bytes().to_vec(),
+            content_type: Some("text/html; charset=utf-8".into()),
+            status: 200,
+        }
     }
 }
 
-/// A live page as seen by the [`crate::Executor`].
-pub trait Page {
-    /// The DOM.
-    fn document(&self) -> &Document;
-    /// Current computed styles.
-    fn style_tree(&self) -> &StyleTree;
-    /// Current layout.
-    fn layout_tree(&self) -> &LayoutTree;
-    /// Document URL, if any.
-    fn url(&self) -> Option<&str>;
-    /// Current readiness without doing any work.
-    fn readiness(&self) -> Readiness;
-    /// Runs the event loop, pending navigations and restyle/relayout until
-    /// the page is ready or `max_tasks` tasks have run.
-    fn settle(&mut self, max_tasks: usize) -> Readiness;
-    /// Advances virtual time (fires due timers on the next settle).
-    fn advance_time(&mut self, by: Duration);
-    /// Requests a navigation; completed by [`Self::settle`].
-    fn navigate(&mut self, url: &str) -> Result<()>;
-    /// Resolves a target to elements in document order.
-    fn resolve(&self, target: &Target) -> Result<Vec<NodeId>>;
-    /// Activates an element.
-    fn click(&mut self, id: NodeId) -> Result<()>;
-    /// Sets a text control's value.
-    fn fill(&mut self, id: NodeId, value: &str) -> Result<()>;
-    /// Selects an option by value or text.
-    fn select(&mut self, id: NodeId, value: &str) -> Result<()>;
-    /// Presses a key, optionally focusing `target` first.
-    fn press(&mut self, target: Option<NodeId>, key: &str) -> Result<()>;
-    /// Scrolls the page (or `target`) by a delta.
-    fn scroll(&mut self, target: Option<NodeId>, dx: f32, dy: f32) -> Result<ScrollState>;
-    /// Captures a semantic snapshot of the whole page.
-    fn snapshot(&self, format: SnapshotFormat) -> SemanticSnapshot;
-    /// Captures a snapshot of one element's subtree.
-    fn snapshot_of(&self, id: NodeId, format: SnapshotFormat) -> Option<SemanticSnapshot>;
-    /// The focused element.
-    fn focused(&self) -> Option<NodeId>;
-    /// Takes the last asynchronous failure (e.g. a navigation that could not
-    /// load), if one happened since the previous call.
-    fn take_last_error(&mut self) -> Option<String>;
+/// A request still in flight, as seen by `settle()`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InFlightSummary {
+    /// URL.
+    pub url: String,
+    /// Age in milliseconds.
+    pub age_ms: u64,
+    /// Background requests never block.
+    pub background: bool,
 }
 
-/// In-engine page: DOM + styles + layout + event loop + VM.
-pub struct DomPage {
-    doc: Document,
-    url: Option<String>,
-    style_engine: StyleEngine,
-    style_tree: StyleTree,
-    layout_engine: LayoutEngine,
-    layout: LayoutTree,
-    event_loop: EventLoop,
-    vm: Box<dyn JsVm>,
-    viewport: Size,
+/// Fetches documents for navigations and answers network questions for the
+/// page. Supplied by the embedder (`ve-api` backs it with `ve-net`).
+pub trait Loader {
+    /// Performs a navigation fetch.
+    fn load(&mut self, request: &NavigationRequest) -> Result<LoadedDocument>;
+    /// Requests currently in flight for `page`.
+    fn in_flight(&self, _page: u64) -> Vec<InFlightSummary> {
+        Vec::new()
+    }
+    /// Completed responses for `page`, oldest first.
+    fn completed(&self, _page: u64) -> Vec<ve_net::CompletedResponse> {
+        Vec::new()
+    }
+}
+
+/// A [`Loader`] from a closure (tests, recorded fixtures).
+pub struct FnLoader<F>(pub F);
+
+impl<F: FnMut(&NavigationRequest) -> Result<LoadedDocument>> Loader for FnLoader<F> {
+    fn load(&mut self, request: &NavigationRequest) -> Result<LoadedDocument> {
+        (self.0)(request)
+    }
+}
+
+#[derive(Clone, Debug)]
+struct HistoryEntry {
+    document: LoadedDocument,
     scroll: Point,
-    element_scroll: HashMap<NodeId, Point>,
-    pending_navigation: Option<String>,
-    loader: Option<Loader>,
-    last_error: Option<String>,
 }
 
-impl std::fmt::Debug for DomPage {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DomPage")
-            .field("url", &self.url)
-            .field("nodes", &self.doc.node_count())
-            .field("revision", &self.doc.revision())
-            .field("viewport", &self.viewport)
-            .finish_non_exhaustive()
-    }
+#[derive(Clone, Debug)]
+struct CachedObservation {
+    revision: u64,
+    generation: u32,
+    scope: Scope,
+    format: Format,
+    subtree_ref: Option<String>,
+    content: ObservationContent,
 }
 
-/// Default viewport for pages created without one.
+/// An observation together with the engine-side envelope fields the runtime
+/// stamps onto `Observation`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EngineObservation {
+    /// `ObservationContent`.
+    pub content: ObservationContent,
+    /// Document revision.
+    pub revision: u64,
+    /// Document epoch (`generation`).
+    pub document_epoch: u64,
+    /// `changesSince` lines (when `sinceRevision` matched a cached observation).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub changes_since: Option<Vec<String>>,
+    /// Full-format structured delta.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delta: Option<ObservationDelta>,
+    /// The settle that preceded the observation.
+    pub settled: Settled,
+}
+
+/// Default viewport.
 pub const DEFAULT_VIEWPORT: Size = Size {
     width: 1280.0,
     height: 720.0,
 };
 
-impl DomPage {
-    /// Parses `html` into a fully styled and laid-out page.
+/// Budget for `settle()` after an ordinary step.
+pub const SETTLE_STEP_MS: u64 = 500;
+/// Budget for `settle()` after a navigation.
+pub const SETTLE_NAVIGATION_MS: u64 = 2000;
+/// In-flight requests younger than this block `settle()`.
+pub const FETCH_BLOCKING_AGE_MS: u64 = 2000;
+/// Default actionability timeout.
+pub const DEFAULT_TIMEOUT_MS: u64 = 5000;
+
+/// A live page.
+pub struct Page {
+    id: u64,
+    generation: u32,
+    doc: Document,
+    url: String,
+    base_url: Option<url::Url>,
+    meta: DocumentMeta,
+    routing: RoutingInfo,
+    content_type: Option<String>,
+    status: u16,
+    history: Vec<HistoryEntry>,
+    history_index: usize,
+    style_engine: StyleEngine,
+    style_tree: StyleTree,
+    layout_engine: LayoutEngine,
+    layout: LayoutTree,
+    viewport: Size,
+    scale: f32,
+    scroll: Point,
+    element_scroll: HashMap<NodeId, Point>,
+    files: HashMap<NodeId, Vec<String>>,
+    focused: Option<NodeId>,
+    loader: Option<Box<dyn Loader>>,
+    pending_navigation: Option<NavigationRequest>,
+    refreshes_followed: u8,
+    observations: VecDeque<CachedObservation>,
+    renderer: Option<SoftwareRenderer>,
+    last_screenshot: Option<Screenshot>,
+    last_navigation_error: Option<String>,
+    virtual_time_ms: u64,
+    cancelled: bool,
+}
+
+impl std::fmt::Debug for Page {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Page")
+            .field("id", &self.id)
+            .field("url", &self.url)
+            .field("generation", &self.generation)
+            .field("nodes", &self.doc.node_count())
+            .field("revision", &self.doc.revision())
+            .finish_non_exhaustive()
+    }
+}
+
+fn normalize(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn unix_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
+}
+
+impl Page {
+    // ---------------------------------------------------------------------
+    // Construction and loading
+    // ---------------------------------------------------------------------
+
+    /// A page from inline HTML.
     #[must_use]
-    pub fn from_html(html: &str, url: Option<&str>) -> Self {
-        Self::from_html_with_viewport(html, url, DEFAULT_VIEWPORT)
+    pub fn from_html(id: u64, html: &str, url: Option<&str>, viewport: Size) -> Self {
+        let mut page = Self::empty(id, viewport);
+        page.load(
+            LoadedDocument::html(url.unwrap_or("about:blank"), html),
+            HistoryMode::Push,
+        );
+        page
     }
 
-    /// Like [`Self::from_html`] with an explicit viewport.
+    /// A page from a fetched document.
     #[must_use]
-    pub fn from_html_with_viewport(html: &str, url: Option<&str>, viewport: Size) -> Self {
-        let doc = ve_html::parse_document(html).document;
+    pub fn from_loaded(id: u64, loaded: LoadedDocument, viewport: Size) -> Self {
+        let mut page = Self::empty(id, viewport);
+        page.load(loaded, HistoryMode::Push);
+        page
+    }
+
+    /// Opens `url` through `loader` (the real pipeline: fetch → decode →
+    /// streaming parse → cascade → layout).
+    pub fn open(id: u64, mut loader: Box<dyn Loader>, url: &str, viewport: Size) -> Result<Self> {
+        let parsed =
+            url::Url::parse(url).map_err(|e| Error::invalid_params(format!("url {url:?}: {e}")))?;
+        let loaded = loader.load(&NavigationRequest::get(parsed.to_string(), id))?;
+        let mut page = Self::empty(id, viewport);
+        page.loader = Some(loader);
+        page.load(loaded, HistoryMode::Push);
+        Ok(page)
+    }
+
+    fn empty(id: u64, viewport: Size) -> Self {
         let mut style_engine = StyleEngine::new();
         style_engine.media = ve_style::MediaEnv::screen(viewport.width, viewport.height);
-        let mut page = Self {
+        let doc = Document::new();
+        let style_tree = StyleTree::default();
+        let layout = LayoutEngine::new().layout(&doc, &style_tree, viewport);
+        Self {
+            id,
+            generation: 0,
             doc,
-            url: url.map(str::to_owned),
+            url: "about:blank".into(),
+            base_url: None,
+            meta: DocumentMeta::default(),
+            routing: RoutingInfo::static_page(0, 0),
+            content_type: None,
+            status: 200,
+            history: Vec::new(),
+            history_index: 0,
             style_engine,
-            style_tree: StyleTree::default(),
+            style_tree,
             layout_engine: LayoutEngine::new(),
-            layout: LayoutEngine::new().layout(&Document::new(), &StyleTree::default(), viewport),
-            event_loop: EventLoop::new(),
-            vm: default_vm(),
+            layout,
             viewport,
+            scale: 1.0,
             scroll: Point::ZERO,
             element_scroll: HashMap::new(),
-            pending_navigation: None,
+            files: HashMap::new(),
+            focused: None,
             loader: None,
-            last_error: None,
-        };
-        page.rebuild_styles();
-        page.update();
-        page
+            pending_navigation: None,
+            refreshes_followed: 0,
+            observations: VecDeque::new(),
+            renderer: None,
+            last_screenshot: None,
+            last_navigation_error: None,
+            virtual_time_ms: 0,
+            cancelled: false,
+        }
     }
 
     /// Installs the loader used for navigations.
     #[must_use]
-    pub fn with_loader(mut self, loader: Loader) -> Self {
+    pub fn with_loader(mut self, loader: Box<dyn Loader>) -> Self {
         self.loader = Some(loader);
         self
     }
 
-    /// Replaces the JavaScript VM.
-    pub fn set_vm(&mut self, vm: Box<dyn JsVm>) {
-        self.vm = vm;
+    /// Replaces the loader.
+    pub fn set_loader(&mut self, loader: Box<dyn Loader>) {
+        self.loader = Some(loader);
     }
 
-    /// Mutable DOM access; the next [`Page::settle`] restyles as needed.
+    /// Sets the device pixel ratio used for screenshots and `viewport.scale`.
+    pub fn set_scale(&mut self, scale: f32) {
+        self.scale = scale;
+    }
+
+    fn load(&mut self, loaded: LoadedDocument, mode: HistoryMode) {
+        let span = Stage::Parse.span();
+        let _guard = span.enter();
+        let charset = loaded.content_type.as_deref().and_then(|ct| {
+            ct.split(';').skip(1).find_map(|p| {
+                let (k, v) = p.trim().split_once('=')?;
+                k.trim()
+                    .eq_ignore_ascii_case("charset")
+                    .then(|| v.trim().trim_matches('"').to_owned())
+            })
+        });
+        let (outcome, _decoded) =
+            ve_html::parse_document_bytes(&loaded.bytes, charset.as_deref(), 16 * 1024);
+        if self.doc.node_count() > 1 || !self.history.is_empty() {
+            self.generation = self.generation.wrapping_add(1);
+        }
+        self.doc = outcome.document;
+        self.url.clone_from(&loaded.url);
+        self.meta = ve_html::document_meta(&self.doc);
+        let document_url = url::Url::parse(&self.url).ok();
+        self.base_url = match (&self.meta.base_href, &document_url) {
+            (Some(href), Some(doc_url)) => doc_url.join(href).ok().or(document_url.clone()),
+            (Some(href), None) => url::Url::parse(href).ok(),
+            (None, _) => document_url,
+        };
+        self.content_type = loaded.content_type.as_deref().map(|ct| {
+            ct.split(';')
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_ascii_lowercase()
+        });
+        self.status = loaded.status;
+        self.routing = classify(&self.doc, self.content_type.as_deref());
+        self.scroll = Point::ZERO;
+        self.element_scroll.clear();
+        self.files.clear();
+        self.focused = None;
+        self.refreshes_followed = if matches!(mode, HistoryMode::Refresh) {
+            self.refreshes_followed + 1
+        } else {
+            0
+        };
+        self.style_engine.interaction = ve_style::InteractionState::new();
+        self.style_tree = StyleTree::default();
+        self.style_engine.clear_author_styles();
+        self.style_engine.add_document_styles(&self.doc);
+        self.update();
+        let entry = HistoryEntry {
+            document: loaded,
+            scroll: Point::ZERO,
+        };
+        match mode {
+            HistoryMode::Push => {
+                if !self.history.is_empty() {
+                    self.history.truncate(self.history_index + 1);
+                }
+                self.history.push(entry);
+                self.history_index = self.history.len() - 1;
+            }
+            // Client redirects (`<meta refresh>`) replace the current entry.
+            HistoryMode::Replace | HistoryMode::Refresh => {
+                if self.history.is_empty() {
+                    self.history.push(entry);
+                    self.history_index = 0;
+                } else {
+                    self.history[self.history_index] = entry;
+                }
+            }
+            HistoryMode::Traverse(index) => {
+                self.history_index = index;
+            }
+        }
+        tracing::info!(page = self.id, url = %self.url, generation = self.generation, routing = %self.routing.route_reason, "loaded");
+    }
+
+    // ---------------------------------------------------------------------
+    // Accessors
+    // ---------------------------------------------------------------------
+
+    /// Page id.
+    #[must_use]
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+
+    /// Document epoch.
+    #[must_use]
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    /// The DOM.
+    #[must_use]
+    pub fn document(&self) -> &Document {
+        &self.doc
+    }
+
+    /// Mutable DOM access (tests, embedders); the next settle restyles.
     pub fn document_mut(&mut self) -> &mut Document {
         &mut self.doc
     }
 
-    /// The event loop (to queue tasks or timers).
-    pub fn event_loop_mut(&mut self) -> &mut EventLoop {
-        &mut self.event_loop
+    /// Computed styles.
+    #[must_use]
+    pub fn style_tree(&self) -> &StyleTree {
+        &self.style_tree
     }
 
-    /// The style engine (to add stylesheets or tweak the media environment).
-    pub fn style_engine_mut(&mut self) -> &mut StyleEngine {
-        &mut self.style_engine
+    /// Layout.
+    #[must_use]
+    pub fn layout_tree(&self) -> &LayoutTree {
+        &self.layout
     }
 
-    /// Viewport size.
+    /// Document URL.
+    #[must_use]
+    pub fn url(&self) -> &str {
+        &self.url
+    }
+
+    /// Document title.
+    #[must_use]
+    pub fn title(&self) -> String {
+        self.doc.title().unwrap_or_default()
+    }
+
+    /// Router classification of the current document.
+    #[must_use]
+    pub fn routing(&self) -> &RoutingInfo {
+        &self.routing
+    }
+
+    /// Document metadata (`<base>`, `<meta refresh>`, charset).
+    #[must_use]
+    pub fn meta(&self) -> &DocumentMeta {
+        &self.meta
+    }
+
+    /// HTTP status of the current document.
+    #[must_use]
+    pub fn status(&self) -> u16 {
+        self.status
+    }
+
+    /// Viewport.
     #[must_use]
     pub fn viewport(&self) -> Size {
         self.viewport
     }
 
-    /// Changes the viewport and relayouts on the next settle.
+    /// Changes the viewport; relayout happens on the next settle.
     pub fn set_viewport(&mut self, viewport: Size) {
         self.viewport = viewport;
         self.style_engine.media.viewport = viewport;
         self.style_tree = StyleTree::default();
     }
 
-    /// Current page scroll offset.
+    /// Viewport scroll offset.
     #[must_use]
     pub fn scroll_offset(&self) -> Point {
         self.scroll
     }
 
-    fn rebuild_styles(&mut self) {
-        self.style_engine.clear_author_styles();
-        self.style_engine.add_document_styles(&self.doc);
+    /// Focused element.
+    #[must_use]
+    pub fn focused(&self) -> Option<NodeId> {
+        self.focused
     }
 
+    /// History length and current index.
+    #[must_use]
+    pub fn history(&self) -> (usize, usize) {
+        (self.history.len(), self.history_index)
+    }
+
+    /// The last screenshot taken by a `screenshot` step.
+    #[must_use]
+    pub fn last_screenshot(&self) -> Option<&Screenshot> {
+        self.last_screenshot.as_ref()
+    }
+
+    /// Files set by `upload` on a file input.
+    #[must_use]
+    pub fn files(&self, id: NodeId) -> Vec<String> {
+        self.files.get(&id).cloned().unwrap_or_default()
+    }
+
+    /// Cancels the running program (next step fails with `cancelled`).
+    pub fn cancel(&mut self) {
+        self.cancelled = true;
+    }
+
+    pub(crate) fn take_cancelled(&mut self) -> bool {
+        std::mem::take(&mut self.cancelled)
+    }
+
+    /// Virtual clock (advanced by waits).
+    #[must_use]
+    pub fn virtual_time_ms(&self) -> u64 {
+        self.virtual_time_ms
+    }
+
+    pub(crate) fn advance_virtual_time(&mut self, ms: u64) {
+        self.virtual_time_ms += ms;
+    }
+
+    /// Resolves `href` against the base URL.
+    #[must_use]
+    pub fn resolve_url(&self, href: &str) -> Option<String> {
+        let href = href.trim();
+        match &self.base_url {
+            Some(base) => base.join(href).ok().map(|u| u.to_string()),
+            None => url::Url::parse(href).ok().map(|u| u.to_string()),
+        }
+    }
+
+    /// The ref string for a node.
+    #[must_use]
+    pub fn ref_of(&self, id: NodeId) -> String {
+        ref_for(id)
+    }
+
+    // ---------------------------------------------------------------------
+    // Style / layout / settle
+    // ---------------------------------------------------------------------
+
+    // Dirtiness is tracked by the per-node `DirtyFlags` that every DOM
+    // mutation sets (structure and attributes mark everything; focus, hover,
+    // checkedness mark STYLE). Journal records that change neither style nor
+    // geometry — `Scrolled`, a text control's dirty value — still bump the
+    // document revision, so the revision must not be part of the test: a
+    // `fill` or `scroll` step would otherwise restyle and relayout the page.
+    // An empty style tree marks "never computed" (`load`, `set_viewport`).
     fn style_clean(&self) -> bool {
-        self.style_tree.revision() == self.doc.revision() && !self.doc.any_dirty(DirtyFlags::STYLE)
+        !self.style_tree.is_empty() && !self.doc.any_dirty(DirtyFlags::STYLE)
     }
 
     fn layout_clean(&self) -> bool {
-        self.layout.revision() == self.doc.revision()
+        self.layout.revision() == self.style_tree.revision()
             && !self.doc.any_dirty(DirtyFlags::LAYOUT | DirtyFlags::TEXT)
     }
 
     /// Recomputes styles and layout if anything is dirty.
-    fn update(&mut self) {
+    pub fn update(&mut self) {
         if self.style_clean() && self.layout_clean() {
             return;
         }
+        self.style_engine.interaction.set_focus(self.focused, true);
         self.style_tree = self.style_engine.compute(&self.doc);
         self.layout = self
             .layout_engine
@@ -234,224 +586,395 @@ impl DomPage {
         );
     }
 
+    /// Whether a navigation is pending.
+    #[must_use]
+    pub fn navigation_pending(&self) -> bool {
+        self.pending_navigation.is_some()
+    }
+
+    /// Takes the last navigation failure message.
+    pub fn take_navigation_error(&mut self) -> Option<String> {
+        self.last_navigation_error.take()
+    }
+
     fn perform_navigation(&mut self) -> Result<()> {
-        let Some(url) = self.pending_navigation.take() else {
+        let Some(request) = self.pending_navigation.take() else {
             return Ok(());
         };
         let Some(loader) = self.loader.as_mut() else {
-            return Err(Error::unsupported(format!(
-                "navigation to {url} requires a loader"
+            return Err(Error::Network(format!(
+                "navigation to {} requires a loader",
+                request.url
             )));
         };
-        let loaded = loader(&url)?;
-        tracing::info!(url = %loaded.url, "navigated");
-        self.doc = ve_html::parse_document(&loaded.html).document;
-        self.url = Some(loaded.url);
-        self.scroll = Point::ZERO;
-        self.element_scroll.clear();
-        self.event_loop = EventLoop::new();
-        self.style_engine.interaction = ve_style::InteractionState::new();
-        self.style_tree = StyleTree::default();
-        self.rebuild_styles();
+        let span = Stage::Fetch.span();
+        let _guard = span.enter();
+        let loaded = loader.load(&request)?;
+        self.load(loaded, HistoryMode::Push);
         Ok(())
     }
 
-    fn element_named(&self, id: NodeId, name: &str) -> bool {
-        self.doc.element(id).is_some_and(|e| e.is_html(name))
+    /// `settle()` (architecture §6). In M1 the script conditions are
+    /// trivially true; this performs pending navigations, follows immediate
+    /// `<meta refresh>`, runs restyle + relayout, and reports in-flight
+    /// fetches attributed to the page.
+    pub fn settle(&mut self, budget_ms: u64) -> Settled {
+        let span = Stage::Agent.span();
+        let _guard = span.enter();
+        let start = Instant::now();
+        let mut reasons = Vec::new();
+        for _ in 0..8 {
+            if self.pending_navigation.is_some() {
+                if let Err(e) = self.perform_navigation() {
+                    tracing::warn!(error = %e, "navigation failed");
+                    self.last_navigation_error = Some(e.to_string());
+                }
+            }
+            self.update();
+            // Immediate meta refresh (delay 0) is part of loading; longer
+            // delays are timers beyond the 50 ms window and do not block.
+            if let Some(refresh) = self.meta.refresh.clone()
+                && refresh.seconds == 0
+                && self.refreshes_followed < 3
+                && let Some(target) = refresh.url.as_deref().and_then(|u| self.resolve_url(u))
+                && !target.starts_with("javascript:")
+                && target != self.url
+            {
+                let mut request = NavigationRequest::get(target, self.id);
+                request.referrer = Some(self.url.clone());
+                self.pending_navigation = Some(request);
+                self.refreshes_followed += 1;
+                // Refresh navigations replace rather than push.
+                if let Err(e) = self.perform_refresh() {
+                    self.last_navigation_error = Some(e.to_string());
+                }
+                continue;
+            }
+            break;
+        }
+        let mut settled = self.pending_navigation.is_none();
+        if let Some(loader) = &self.loader {
+            let in_flight = loader.in_flight(self.id);
+            let blocking = in_flight
+                .iter()
+                .filter(|r| !r.background && r.age_ms < FETCH_BLOCKING_AGE_MS)
+                .count();
+            let old = in_flight.len() - blocking;
+            if blocking > 0 {
+                settled = false;
+                reasons.push(format!("fetch({blocking})"));
+            }
+            if old > 0 {
+                reasons.push(format!("fetch-old({old})"));
+            }
+        }
+        if self.pending_navigation.is_some() {
+            reasons.push("navigation".into());
+        }
+        if !self.style_clean() || !self.layout_clean() {
+            settled = false;
+            reasons.push("layout".into());
+        }
+        let waited = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
+        if waited > budget_ms {
+            reasons.push(format!("budget({budget_ms}ms)"));
+        }
+        Settled {
+            settled,
+            waited_ms: waited,
+            reasons,
+        }
     }
 
-    fn input_type(&self, id: NodeId) -> Option<String> {
-        let e = self.doc.element(id)?;
-        e.is_html("input").then(|| {
-            e.attr("type")
-                .map_or_else(|| "text".to_owned(), str::to_ascii_lowercase)
-        })
-    }
-
-    fn is_focusable(&self, id: NodeId) -> bool {
-        let Some(e) = self.doc.element(id) else {
-            return false;
+    fn perform_refresh(&mut self) -> Result<()> {
+        let Some(request) = self.pending_navigation.take() else {
+            return Ok(());
         };
-        if e.has_attr("disabled") {
-            return false;
-        }
-        e.has_attr("tabindex")
-            || matches!(
-                e.name.as_str(),
-                "input" | "button" | "select" | "textarea" | "summary"
-            )
-            || (e.is_html("a") && e.has_attr("href"))
-            || e.attr("contenteditable")
-                .is_some_and(|v| !v.eq_ignore_ascii_case("false"))
-    }
-
-    fn focus(&mut self, id: Option<NodeId>) {
-        self.style_engine.interaction.set_focus(id, true);
-        if let Some(id) = id {
-            self.doc.mark_dirty(id, DirtyFlags::STYLE);
-        }
-    }
-
-    fn focusable_elements(&self) -> Vec<NodeId> {
-        self.doc
-            .elements()
-            .filter(|&id| self.is_focusable(id) && self.style_tree.is_displayed(id))
-            .collect()
-    }
-
-    fn is_text_control(&self, id: NodeId) -> bool {
-        match self.input_type(id) {
-            Some(t) => !matches!(
-                t.as_str(),
-                "checkbox" | "radio" | "button" | "submit" | "reset" | "hidden" | "image" | "file"
-            ),
-            None => {
-                self.element_named(id, "textarea")
-                    || self
-                        .doc
-                        .attribute(id, "contenteditable")
-                        .is_some_and(|v| !v.eq_ignore_ascii_case("false"))
-            }
-        }
-    }
-
-    fn queue_interaction(&mut self, id: NodeId, event: &'static str) {
-        tracing::debug!(%id, event, "dispatch");
-        // Listener dispatch arrives with DOM bindings; the task keeps the
-        // event-loop accounting honest so readiness reflects the interaction.
-        self.event_loop
-            .queue_task(TaskSource::UserInteraction, |_| {});
-    }
-
-    fn activate(&mut self, id: NodeId) -> Result<()> {
-        let element = self.doc.try_element(id)?.clone();
-        match element.name.as_str() {
-            "input" => match self.input_type(id).as_deref() {
-                Some("checkbox") => {
-                    let now = !self.doc.is_checked(id);
-                    self.doc.set_checked(id, now)?;
-                }
-                Some("radio") => {
-                    let group = element.attr("name").map(str::to_owned);
-                    let form = self
-                        .doc
-                        .ancestors(id)
-                        .find(|&a| self.element_named(a, "form"));
-                    let peers: Vec<NodeId> = self
-                        .doc
-                        .elements()
-                        .filter(|&o| {
-                            o != id
-                                && self.input_type(o).as_deref() == Some("radio")
-                                && group.is_some()
-                                && self.doc.attribute(o, "name").map(str::to_owned) == group
-                                && self
-                                    .doc
-                                    .ancestors(o)
-                                    .find(|&a| self.element_named(a, "form"))
-                                    == form
-                        })
-                        .collect();
-                    for peer in peers {
-                        self.doc.set_checked(peer, false)?;
-                    }
-                    self.doc.set_checked(id, true)?;
-                }
-                _ => {}
-            },
-            "a" | "area" => {
-                if let Some(href) = element.attr("href")
-                    && !href.starts_with('#')
-                    && !href.starts_with("javascript:")
-                {
-                    self.navigate(href)?;
-                }
-            }
-            "summary" => {
-                if let Some(details) = self
-                    .doc
-                    .parent(id)
-                    .filter(|&p| self.element_named(p, "details"))
-                {
-                    if self.doc.attribute(details, "open").is_some() {
-                        self.doc.remove_attribute(details, "open")?;
-                    } else {
-                        self.doc.set_attribute(details, "open", "")?;
-                    }
-                }
-            }
-            "option" => {
-                if let Some(select) = self
-                    .doc
-                    .ancestors(id)
-                    .find(|&a| self.element_named(a, "select"))
-                {
-                    self.select_option(select, id)?;
-                }
-            }
-            "label" => {
-                let control = element
-                    .attr("for")
-                    .and_then(|f| self.doc.element_by_id(f))
-                    .or_else(|| {
-                        self.doc
-                            .descendants(id)
-                            .find(|&d| self.is_focusable(d) && !self.element_named(d, "label"))
-                    });
-                if let Some(control) = control {
-                    return self.click(control);
-                }
-            }
-            _ => {}
-        }
+        let Some(loader) = self.loader.as_mut() else {
+            return Err(Error::Network(format!(
+                "meta refresh to {} requires a loader",
+                request.url
+            )));
+        };
+        let loaded = loader.load(&request)?;
+        self.load(loaded, HistoryMode::Refresh);
         Ok(())
     }
 
-    fn select_option(&mut self, select: NodeId, option: NodeId) -> Result<()> {
-        let multiple = self.doc.attribute(select, "multiple").is_some();
-        let options: Vec<NodeId> = self
-            .doc
-            .descendants(select)
-            .filter(|&d| self.element_named(d, "option"))
-            .collect();
-        for o in options {
-            if o == option {
-                self.doc.set_selected(o, true)?;
-            } else if !multiple {
-                self.doc.set_selected(o, false)?;
-            }
+    // ---------------------------------------------------------------------
+    // Navigation
+    // ---------------------------------------------------------------------
+
+    /// Requests a navigation (completed by [`Self::settle`]).
+    pub fn navigate(&mut self, url: &str) -> Result<()> {
+        let resolved = self
+            .resolve_url(url)
+            .ok_or_else(|| Error::invalid_params(format!("invalid url {url:?}")))?;
+        let parsed = url::Url::parse(&resolved)
+            .map_err(|e| Error::invalid_params(format!("invalid url {url:?}: {e}")))?;
+        if parsed.scheme() == "javascript" {
+            return Err(Error::capability_unsupported(
+                "javascript: URLs need the script layer",
+            ));
         }
-        self.queue_interaction(select, "change");
+        let mut request = NavigationRequest::get(parsed.to_string(), self.id);
+        request.referrer = Some(self.url.clone());
+        self.pending_navigation = Some(request);
         Ok(())
     }
 
-    fn scroll_container_of(&self, id: NodeId) -> Option<NodeId> {
-        std::iter::once(id)
-            .chain(self.doc.ancestors(id))
-            .find(|&a| {
-                self.style_tree
-                    .get(a)
-                    .is_some_and(|s| s.overflow.is_scrollable())
+    /// Requests a submission navigation.
+    fn navigate_with(&mut self, request: NavigationRequest) {
+        self.pending_navigation = Some(request);
+    }
+
+    /// History back (from the in-memory history cache; no network).
+    pub fn back(&mut self) -> Result<()> {
+        if self.history_index == 0 {
+            return Err(Error::step_failed("no previous history entry"));
+        }
+        let index = self.history_index - 1;
+        self.traverse(index);
+        Ok(())
+    }
+
+    /// History forward.
+    pub fn forward(&mut self) -> Result<()> {
+        if self.history_index + 1 >= self.history.len() {
+            return Err(Error::step_failed("no next history entry"));
+        }
+        let index = self.history_index + 1;
+        self.traverse(index);
+        Ok(())
+    }
+
+    fn traverse(&mut self, index: usize) {
+        if let Some(current) = self.history.get_mut(self.history_index) {
+            current.scroll = self.scroll;
+        }
+        let entry = self.history[index].clone();
+        self.load(entry.document, HistoryMode::Traverse(index));
+        self.scroll = entry.scroll;
+    }
+
+    /// Reload: refetches through the loader when there is one, else
+    /// re-parses the cached bytes.
+    pub fn reload(&mut self) -> Result<()> {
+        let entry = self
+            .history
+            .get(self.history_index)
+            .cloned()
+            .ok_or_else(|| Error::step_failed("nothing to reload"))?;
+        let can_refetch = self.loader.is_some()
+            && url::Url::parse(&entry.document.url)
+                .is_ok_and(|u| matches!(u.scheme(), "http" | "https" | "file" | "data"));
+        let loaded = if can_refetch {
+            let request = NavigationRequest::get(entry.document.url.clone(), self.id);
+            self.loader
+                .as_mut()
+                .expect("loader present")
+                .load(&request)?
+        } else {
+            entry.document
+        };
+        self.load(loaded, HistoryMode::Replace);
+        Ok(())
+    }
+
+    /// Cancels a pending navigation.
+    pub fn stop(&mut self) -> bool {
+        self.pending_navigation.take().is_some()
+    }
+
+    // ---------------------------------------------------------------------
+    // Observation
+    // ---------------------------------------------------------------------
+
+    fn observe_input(&self) -> ObserveInput<'_> {
+        ObserveInput {
+            doc: &self.doc,
+            styles: &self.style_tree,
+            layout: &self.layout,
+            viewport: self.viewport,
+            scale: self.scale,
+            scroll: self.scroll,
+            focused: self.focused,
+            url: &self.url,
+            base_url: self.base_url.as_ref().map(url::Url::as_str),
+            pending_dialogs: &[],
+        }
+    }
+
+    /// Builds an observation without settling or caching (perf probes).
+    #[must_use]
+    pub fn observe_now(&self, request: &ObservationRequest) -> ObservationContent {
+        let mut content = observe(&self.observe_input(), request);
+        for e in &mut content.elements {
+            if e.type_.as_deref() == Some("file")
+                && let Some(files) = parse_ref(&e.reference)
+                    .and_then(|i| self.doc.node_at_index(i).ok().flatten())
+                    .and_then(|id| self.files.get(&id))
+            {
+                e.value = Some(files.join(", "));
+            }
+        }
+        content
+    }
+
+    /// Settles, observes, and computes `changesSince` against the cached
+    /// observation taken at `sinceRevision` (same scope and format).
+    pub fn observe(&mut self, request: &ObservationRequest) -> Result<EngineObservation> {
+        let settled = self.settle(SETTLE_STEP_MS);
+        Ok(self.observe_after_settle(request, settled))
+    }
+
+    pub(crate) fn observe_after_settle(
+        &mut self,
+        request: &ObservationRequest,
+        settled: Settled,
+    ) -> EngineObservation {
+        let span = Stage::Snapshot.span();
+        let _guard = span.enter();
+        let revision = self.doc.revision().0;
+        let cached_same = request.since_revision.and_then(|since| {
+            self.observations.iter().find(|c| {
+                c.revision == since
+                    && c.generation == self.generation
+                    && c.scope == request.scope
+                    && c.format == request.format
+                    && c.subtree_ref == request.subtree_ref
             })
+        });
+        // Fast path: nothing changed since the cached observation.
+        let content = match cached_same {
+            Some(c) if c.revision == revision => c.content.clone(),
+            _ => self.observe_now(request),
+        };
+        let (changes_since, delta) = match request.since_revision {
+            None => (None, None),
+            Some(since) => {
+                let previous = self.observations.iter().find(|c| {
+                    c.revision == since
+                        && c.scope == request.scope
+                        && c.format == request.format
+                        && c.subtree_ref == request.subtree_ref
+                });
+                match previous {
+                    Some(prev) if prev.generation == self.generation => {
+                        let (lines, delta) = changes_between(&prev.content, &content);
+                        (
+                            Some(lines),
+                            (request.format == Format::Full).then_some(delta),
+                        )
+                    }
+                    Some(prev) => {
+                        // A new document: refs do not carry across epochs.
+                        let mut lines = Vec::new();
+                        if prev.content.url != content.url {
+                            lines.push(format!("~ url {} → {}", prev.content.url, content.url));
+                        }
+                        lines.push(format!(
+                            "~ document epoch {} → {} (all refs replaced)",
+                            prev.generation, self.generation
+                        ));
+                        let delta = ObservationDelta {
+                            added: content.elements.clone(),
+                            removed: prev
+                                .content
+                                .elements
+                                .iter()
+                                .map(|e| e.reference.clone())
+                                .collect(),
+                            changed: Vec::new(),
+                            text_ops: Vec::new(),
+                        };
+                        (
+                            Some(lines),
+                            (request.format == Format::Full).then_some(delta),
+                        )
+                    }
+                    // Journal floor / unknown revision: full snapshot, no delta.
+                    None => (None, None),
+                }
+            }
+        };
+        self.observations.retain(|c| {
+            !(c.revision == revision
+                && c.scope == request.scope
+                && c.format == request.format
+                && c.subtree_ref == request.subtree_ref)
+        });
+        self.observations.push_back(CachedObservation {
+            revision,
+            generation: self.generation,
+            scope: request.scope,
+            format: request.format,
+            subtree_ref: request.subtree_ref.clone(),
+            content: content.clone(),
+        });
+        while self.observations.len() > 8 {
+            self.observations.pop_front();
+        }
+        EngineObservation {
+            content,
+            revision,
+            document_epoch: u64::from(self.generation),
+            changes_since,
+            delta,
+            settled,
+        }
     }
 
-    fn a11y_tree(&self) -> AccessibilityTree {
-        let layout = &self.layout;
-        let bounds = move |id: NodeId| layout.rect_of(id);
-        AccessibilityTree::build(
-            &self.doc,
-            &BuildOptions {
-                styles: Some(&self.style_tree),
-                bounds: Some(&bounds),
-                focused: self.style_engine.interaction.focused(),
-            },
-        )
+    // ---------------------------------------------------------------------
+    // Target resolution
+    // ---------------------------------------------------------------------
+
+    /// Resolves an `r<index>` ref: `target_detached` for tombstones (and
+    /// epoch mismatches), `not_found` for never-allocated indices.
+    pub fn resolve_ref(&self, reference: &str, epoch: Option<u64>) -> Result<NodeId> {
+        let index = parse_ref(reference)
+            .ok_or_else(|| Error::invalid_params(format!("malformed ref {reference:?}")))?;
+        if let Some(epoch) = epoch
+            && epoch != u64::from(self.generation)
+        {
+            return Err(Error::coded_with(
+                ErrorCode::TargetDetached,
+                format!(
+                    "ref {reference} belongs to document epoch {epoch}; the page is at epoch {}",
+                    self.generation
+                ),
+                serde_json::json!({ "ref": reference, "epoch": epoch, "currentEpoch": self.generation }),
+            ));
+        }
+        match self.doc.node_at_index(index) {
+            Ok(Some(id)) => {
+                if self.doc.element(id).is_some() {
+                    Ok(id)
+                } else {
+                    self.doc.parent(id).ok_or_else(|| {
+                        Error::not_found(format!("ref {reference} is not an element"))
+                    })
+                }
+            }
+            Ok(None) => Err(Error::coded_with(
+                ErrorCode::TargetDetached,
+                format!(
+                    "ref {reference} was removed from the document (epoch {})",
+                    self.generation
+                ),
+                serde_json::json!({ "ref": reference, "epoch": self.generation }),
+            )),
+            Err(()) => Err(Error::not_found(format!(
+                "ref {reference} never existed in document epoch {}",
+                self.generation
+            ))),
+        }
     }
 
-    /// Text of `id` and its *rendered* descendants (display:none subtrees,
-    /// scripts and styles excluded), whitespace normalised.
-    fn visible_text(&self, id: NodeId) -> String {
-        fn walk(page: &DomPage, id: NodeId, out: &mut String) {
+    /// Text of `id` and its rendered descendants, whitespace normalised.
+    #[must_use]
+    pub fn visible_text(&self, id: NodeId) -> String {
+        fn walk(page: &Page, id: NodeId, out: &mut String) {
             for child in page.doc.children(id) {
                 match page.doc.get(child).map(|n| &n.kind) {
                     Some(NodeKind::Text(t)) => {
@@ -477,107 +1000,64 @@ impl DomPage {
             out.push_str(t);
         }
         walk(self, id, &mut out);
-        out.split_whitespace().collect::<Vec<_>>().join(" ")
-    }
-}
-
-impl Page for DomPage {
-    fn document(&self) -> &Document {
-        &self.doc
+        normalize(&out)
     }
 
-    fn style_tree(&self) -> &StyleTree {
-        &self.style_tree
-    }
-
-    fn layout_tree(&self) -> &LayoutTree {
-        &self.layout
-    }
-
-    fn url(&self) -> Option<&str> {
-        self.url.as_deref()
-    }
-
-    fn readiness(&self) -> Readiness {
-        Readiness {
-            revision: self.doc.revision(),
-            event_loop_quiescent: self.event_loop.is_quiescent() && !self.vm.has_pending_jobs(),
-            pending_tasks: self.event_loop.pending_tasks() + self.event_loop.pending_microtasks(),
-            pending_async: self.event_loop.pending_async(),
-            style_clean: self.style_clean(),
-            layout_clean: self.layout_clean(),
-            navigation_pending: self.pending_navigation.is_some(),
-        }
-    }
-
-    fn settle(&mut self, max_tasks: usize) -> Readiness {
-        let span = Stage::Agent.span();
-        let _guard = span.enter();
-        let mut budget = max_tasks;
-        for _ in 0..8 {
-            if self.pending_navigation.is_some()
-                && let Err(e) = self.perform_navigation()
-            {
-                tracing::warn!(error = %e, "navigation failed");
-                self.last_error = Some(e.to_string());
-            }
-            let report = self.event_loop.run_until_quiescent(budget);
-            budget = budget.saturating_sub(report.tasks_run);
-            if let Err(e) = self.vm.run_pending_jobs() {
-                tracing::warn!(error = %e, "promise job failed");
-            }
-            self.update();
-            let readiness = self.readiness();
-            if readiness.is_ready() || budget == 0 {
-                return readiness;
-            }
-        }
-        self.readiness()
-    }
-
-    fn advance_time(&mut self, by: Duration) {
-        self.event_loop.advance(by);
-    }
-
-    fn navigate(&mut self, url: &str) -> Result<()> {
-        let resolved = match self
-            .url
-            .as_deref()
-            .and_then(|base| url::Url::parse(base).ok())
-        {
-            Some(base) => base
-                .join(url)
-                .map(|u| u.to_string())
-                .map_err(|e| Error::parse("url", e.to_string()))?,
-            None => url::Url::parse(url)
-                .map(|u| u.to_string())
-                .map_err(|e| Error::parse("url", e.to_string()))?,
+    /// Whole-page text in the shown-text sense (for `textVisible`).
+    #[must_use]
+    pub fn shown_text(&self) -> String {
+        let request = ObservationRequest {
+            max_text_chars: usize::MAX / 2,
+            max_elements: 1,
+            ..ObservationRequest::default()
         };
-        self.pending_navigation = Some(resolved);
-        Ok(())
+        self.observe_now(&request).text
     }
 
-    fn resolve(&self, target: &Target) -> Result<Vec<NodeId>> {
-        let found = match target {
-            Target::Selector { selector } => self.style_engine.select(&self.doc, selector)?,
-            Target::Ref { reference } => {
-                let id = Target::parse_reference(reference)
-                    .ok_or_else(|| Error::parse("ref", reference.clone()))?;
-                match self.doc.get(id) {
-                    Some(node) if node.is_element() => vec![id],
-                    Some(_) => self.doc.parent(id).into_iter().collect(),
-                    None => return Err(Error::InvalidNodeId(id)),
+    /// All matches of a target, in document order (no shown filtering).
+    pub fn resolve_all(&self, target: &str, epoch: Option<u64>) -> Result<Vec<NodeId>> {
+        let spec = TargetSpec::parse(target)?;
+        self.resolve_spec_all(&spec, epoch)
+    }
+
+    fn resolve_spec_all(&self, spec: &TargetSpec, epoch: Option<u64>) -> Result<Vec<NodeId>> {
+        let doc = &self.doc;
+        Ok(match spec {
+            TargetSpec::Ref(index) => vec![self.resolve_ref(&format!("r{index}"), epoch)?],
+            TargetSpec::Css(selector) => {
+                // `>>` pierces open shadow roots: match each segment inside the
+                // shadow tree of the previous matches.
+                let segments: Vec<&str> = selector.split(">>").map(str::trim).collect();
+                let mut current: Vec<NodeId> = self.style_engine.select(doc, segments[0])?;
+                for segment in &segments[1..] {
+                    let mut next = Vec::new();
+                    for host in &current {
+                        if let Some(root) = doc.shadow_root(*host) {
+                            for candidate in doc.descendants(root) {
+                                if doc.element(candidate).is_some()
+                                    && self.style_engine.matches(doc, candidate, segment)?
+                                {
+                                    next.push(candidate);
+                                }
+                            }
+                        }
+                    }
+                    current = next;
                 }
+                current
             }
-            Target::Text { text } => {
-                let wanted = text.split_whitespace().collect::<Vec<_>>().join(" ");
-                let candidates: Vec<NodeId> = self
-                    .doc
+            TargetSpec::Text(text) => {
+                let wanted = normalize(text);
+                let candidates: Vec<NodeId> = doc
                     .elements()
                     .filter(|&id| {
                         self.style_tree.is_displayed(id)
-                            && !self.element_named(id, "script")
-                            && !self.element_named(id, "style")
+                            && !doc.element(id).is_some_and(|e| {
+                                matches!(
+                                    e.name.as_str(),
+                                    "script" | "style" | "html" | "head" | "body"
+                                )
+                            })
                     })
                     .collect();
                 let exact: Vec<NodeId> = candidates
@@ -585,316 +1065,1529 @@ impl Page for DomPage {
                     .copied()
                     .filter(|&id| self.visible_text(id) == wanted)
                     .collect();
-                // Prefer the innermost exact matches (drop ancestors of other matches).
-                let innermost: Vec<NodeId> = exact
-                    .iter()
-                    .copied()
-                    .filter(|&id| {
-                        !exact
-                            .iter()
-                            .any(|&o| o != id && self.doc.is_ancestor_of(id, o))
-                    })
-                    .collect();
-                if !innermost.is_empty() {
-                    innermost
+                let innermost = |set: &[NodeId]| -> Vec<NodeId> {
+                    set.iter()
+                        .copied()
+                        .filter(|&id| !set.iter().any(|&o| o != id && doc.is_ancestor_of(id, o)))
+                        .collect()
+                };
+                let exact = innermost(&exact);
+                if !exact.is_empty() {
+                    exact
                 } else {
                     let partial: Vec<NodeId> = candidates
                         .into_iter()
-                        .filter(|&id| self.visible_text(id).contains(&wanted))
+                        .filter(|&id| self.visible_text(id).contains(wanted.as_str()))
                         .collect();
-                    partial
-                        .iter()
-                        .copied()
-                        .filter(|&id| {
-                            !partial
-                                .iter()
-                                .any(|&o| o != id && self.doc.is_ancestor_of(id, o))
-                        })
-                        .collect()
+                    innermost(&partial)
                 }
             }
-            Target::Role { role, name } => {
-                let wanted =
-                    Role::from_aria(role).ok_or_else(|| Error::parse("role", role.clone()))?;
-                self.a11y_tree()
-                    .iter()
-                    .filter(|n| {
-                        n.role == wanted
-                            && name.as_ref().is_none_or(|w| n.name.eq_ignore_ascii_case(w))
-                    })
-                    .map(|n| n.id)
-                    .collect()
-            }
-            Target::Label { label } => {
-                let wanted = label.split_whitespace().collect::<Vec<_>>().join(" ");
-                self.doc
-                    .elements()
+            TargetSpec::Role { role, name } => {
+                let wanted = Role::from_aria(role)
+                    .ok_or_else(|| Error::invalid_params(format!("unknown role {role:?}")))?;
+                let labels = LabelIndex::build(doc);
+                doc.elements()
+                    .filter(|&id| Role::for_element(doc, id) == Some(wanted))
                     .filter(|&id| {
-                        matches!(
-                            self.doc.element(id).map(|e| e.name.as_str()),
-                            Some("input" | "select" | "textarea" | "button")
-                        )
+                        name.as_ref().is_none_or(|w| {
+                            compute_name_with(doc, id, Some(&labels)).eq_ignore_ascii_case(w)
+                        })
                     })
-                    .filter(|&id| compute_name(&self.doc, id).eq_ignore_ascii_case(&wanted))
                     .collect()
             }
-        };
-        if found.is_empty() {
-            return Err(Error::NoMatch(target.to_string()));
-        }
-        Ok(found)
+            TargetSpec::Label(label) => {
+                let wanted = normalize(label);
+                let labels = LabelIndex::build(doc);
+                doc.elements()
+                    .filter(|&id| {
+                        doc.element(id).is_some_and(|e| {
+                            matches!(e.name.as_str(), "input" | "select" | "textarea" | "button")
+                        })
+                    })
+                    .filter(|&id| {
+                        compute_name_with(doc, id, Some(&labels)).eq_ignore_ascii_case(&wanted)
+                    })
+                    .collect()
+            }
+        })
     }
 
-    fn click(&mut self, id: NodeId) -> Result<()> {
-        self.doc.try_element(id)?;
-        if self.doc.attribute(id, "disabled").is_some() {
-            return Err(Error::InvalidState(format!("{id} is disabled")));
+    /// Resolves a target to exactly one element (architecture §6).
+    ///
+    /// Refs resolve directly. Selector targets that match more than one
+    /// *shown* element fail with `target_ambiguous` listing the first five
+    /// candidate refs; when only one match is shown it wins; when none is
+    /// shown the first match is returned (actionability then explains why).
+    pub fn resolve(&mut self, target: &str, epoch: Option<u64>) -> Result<NodeId> {
+        let span = tracing::info_span!("agent.resolve", target);
+        let _guard = span.enter();
+        let spec = TargetSpec::parse(target)?;
+        let matches = self.resolve_spec_all(&spec, epoch)?;
+        if matches.is_empty() {
+            return Err(Error::not_found(format!("no element matches {target:?}")));
         }
-        if self.is_focusable(id) {
-            self.focus(Some(id));
+        if matches.len() == 1 || matches!(spec, TargetSpec::Ref(_)) {
+            return Ok(matches[0]);
         }
-        self.queue_interaction(id, "click");
+        self.update();
+        let shown: Vec<NodeId> = matches
+            .iter()
+            .copied()
+            .filter(|&id| self.classify(id).shown)
+            .collect();
+        match shown.len() {
+            0 => Ok(matches[0]),
+            1 => Ok(shown[0]),
+            n => {
+                let candidates: Vec<serde_json::Value> = shown
+                    .iter()
+                    .take(5)
+                    .map(|&id| {
+                        let e = self.doc.element(id).expect("live");
+                        let name = compute_name_with(&self.doc, id, None);
+                        serde_json::json!({
+                            "ref": ref_for(id),
+                            "tag": e.name,
+                            "role": Role::for_element(&self.doc, id).map(Role::name),
+                            "name": name,
+                        })
+                    })
+                    .collect();
+                Err(Error::coded_with(
+                    ErrorCode::TargetAmbiguous,
+                    format!(
+                        "{target:?} matches {n} shown elements; pick one of the candidate refs"
+                    ),
+                    serde_json::json!({ "target": target, "matches": n, "candidates": candidates }),
+                ))
+            }
+        }
+    }
+
+    /// §5 visibility of one element.
+    #[must_use]
+    pub fn classify(&self, id: NodeId) -> Visibility5 {
+        ve_a11y::classify(&self.observe_input(), id)
+    }
+
+    // ---------------------------------------------------------------------
+    // Actionability
+    // ---------------------------------------------------------------------
+
+    fn is_disabled(&self, id: NodeId) -> bool {
+        let doc = &self.doc;
+        doc.attribute(id, "disabled").is_some()
+            || doc
+                .attribute(id, "aria-disabled")
+                .is_some_and(|v| v.eq_ignore_ascii_case("true"))
+            || doc.ancestors(id).any(|a| {
+                doc.element(a).is_some_and(|e| {
+                    (e.is_html("fieldset") && e.has_attr("disabled")) || e.has_attr("inert")
+                })
+            })
+            || doc.attribute(id, "inert").is_some()
+    }
+
+    fn actionability_error(
+        &self,
+        predicate: &str,
+        id: NodeId,
+        timeout_ms: u64,
+        extra: serde_json::Value,
+    ) -> Error {
+        let mut detail = serde_json::json!({
+            "predicate": predicate,
+            "ref": ref_for(id),
+            "timeoutMs": timeout_ms,
+            "settled": true,
+        });
+        if let (Some(d), Some(x)) = (detail.as_object_mut(), extra.as_object()) {
+            for (k, v) in x {
+                d.insert(k.clone(), v.clone());
+            }
+        }
+        Error::coded_with(
+            ErrorCode::StepFailed,
+            format!(
+                "{} is not actionable: `{predicate}` failed (page settled; waited 0 of {timeout_ms} ms)",
+                ref_for(id)
+            ),
+            detail,
+        )
+    }
+
+    /// Whether `id` is still part of the document tree (not merely alive in
+    /// the arena after a removal).
+    fn is_connected(&self, id: NodeId) -> bool {
+        let root = self.doc.root();
+        id == root || self.doc.ancestors(id).any(|a| a == root)
+    }
+
+    /// Actionability, checked in order: attached → shown → enabled →
+    /// stable → unoccluded. Returns the document-coordinate rect.
+    pub fn actionable(&mut self, id: NodeId, timeout_ms: u64) -> Result<Rect> {
+        self.update();
+        if self.doc.element(id).is_none() || !self.is_connected(id) {
+            return Err(Error::coded_with(
+                ErrorCode::TargetDetached,
+                format!("{} is detached", ref_for(id)),
+                serde_json::json!({ "predicate": "attached", "ref": ref_for(id) }),
+            ));
+        }
+        let vis = self.classify(id);
+        if !vis.shown {
+            let why = if !self.style_tree.is_displayed(id) {
+                "display: none"
+            } else if self.layout.rect_of(id).is_none_or(|r| r.is_empty()) {
+                "no box / zero size"
+            } else {
+                "visibility, opacity or overflow clipping"
+            };
+            return Err(self.actionability_error(
+                "shown",
+                id,
+                timeout_ms,
+                serde_json::json!({ "reason": why }),
+            ));
+        }
+        if self.is_disabled(id) {
+            return Err(self.actionability_error(
+                "enabled",
+                id,
+                timeout_ms,
+                serde_json::Value::Null,
+            ));
+        }
+        let before = self.layout.rect_of(id).unwrap_or(Rect::ZERO);
+        // Stable: two consecutive layout passes agree. Without scripts or
+        // animations a clean layout is stable by construction; a dirty one is
+        // recomputed and compared.
+        self.update();
+        let after = self.layout.rect_of(id).unwrap_or(Rect::ZERO);
+        if before != after {
+            return Err(self.actionability_error(
+                "stable",
+                id,
+                timeout_ms,
+                serde_json::json!({ "before": format!("{before:?}"), "after": format!("{after:?}") }),
+            ));
+        }
+        Ok(after)
+    }
+
+    /// Scrolls the viewport so `rect` (document coordinates) is visible.
+    fn scroll_into_view(&mut self, rect: Rect) {
+        let vw = self.viewport.width;
+        let vh = self.viewport.height;
+        let mut changed = false;
+        if rect.y() < self.scroll.y || rect.bottom() > self.scroll.y + vh {
+            let max_y = (self.layout.content_height() - vh).max(0.0);
+            let target = (rect.y() + rect.height() / 2.0 - vh / 2.0).clamp(0.0, max_y);
+            if (target - self.scroll.y).abs() > 0.5 {
+                self.scroll.y = target;
+                changed = true;
+            }
+        }
+        if rect.x() < self.scroll.x || rect.right() > self.scroll.x + vw {
+            let max_x = (self.layout.root.rect.right() - vw).max(0.0);
+            let target = (rect.x() + rect.width() / 2.0 - vw / 2.0).clamp(0.0, max_x);
+            if (target - self.scroll.x).abs() > 0.5 {
+                self.scroll.x = target;
+                changed = true;
+            }
+        }
+        if changed {
+            self.doc.record_scrolled(None);
+        }
+    }
+
+    /// Full actionability including the unoccluded check at the dispatch
+    /// point (after scrolling into view). Returns the dispatch point.
+    pub fn prepare_pointer(&mut self, id: NodeId, timeout_ms: u64) -> Result<Point> {
+        let rect = self.actionable(id, timeout_ms)?;
+        self.scroll_into_view(rect);
+        let viewport = Rect::new(
+            self.scroll.x,
+            self.scroll.y,
+            self.viewport.width,
+            self.viewport.height,
+        );
+        let visible = rect.intersection(&viewport).unwrap_or(rect);
+        let point = visible.center();
+        if let Some(hit) = self.layout.hit_test(point)
+            && hit != id
+            && !self.doc.is_ancestor_of(id, hit)
+            && !self.doc.is_ancestor_of(hit, id)
+        {
+            return Err(self.actionability_error(
+                "unoccluded",
+                id,
+                timeout_ms,
+                serde_json::json!({ "occludedBy": ref_for(hit), "point": { "x": point.x - self.scroll.x, "y": point.y - self.scroll.y } }),
+            ));
+        }
+        Ok(point)
+    }
+
+    // ---------------------------------------------------------------------
+    // Focus
+    // ---------------------------------------------------------------------
+
+    fn is_focusable(&self, id: NodeId) -> bool {
+        let Some(e) = self.doc.element(id) else {
+            return false;
+        };
+        if self.is_disabled(id) {
+            return false;
+        }
+        if e.attr("tabindex")
+            .and_then(|t| t.trim().parse::<i32>().ok())
+            .is_some_and(|t| t < 0)
+        {
+            return true; // programmatically focusable, skipped by Tab
+        }
+        e.has_attr("tabindex")
+            || matches!(
+                e.name.as_str(),
+                "input" | "button" | "select" | "textarea" | "summary" | "iframe"
+            )
+            || ((e.is_html("a") || e.is_html("area")) && e.has_attr("href"))
+            || e.attr("contenteditable")
+                .is_some_and(|v| !v.eq_ignore_ascii_case("false"))
+    }
+
+    /// Moves focus.
+    pub fn focus(&mut self, id: Option<NodeId>) {
+        if self.focused == id {
+            return;
+        }
+        if let Some(old) = self.focused {
+            self.doc.mark_dirty(old, DirtyFlags::STYLE);
+        }
+        self.focused = id.filter(|&n| self.doc.element(n).is_some());
+        self.style_engine.interaction.set_focus(self.focused, true);
+        if let Some(n) = self.focused {
+            self.doc.mark_dirty(n, DirtyFlags::STYLE);
+        }
+    }
+
+    /// Sequential focus navigation order: positive `tabindex` ascending,
+    /// then the rest in tree order; negative `tabindex`, disabled and
+    /// unshown elements are skipped.
+    #[must_use]
+    pub fn tab_order(&self) -> Vec<NodeId> {
+        let mut positive: Vec<(i32, usize, NodeId)> = Vec::new();
+        let mut rest: Vec<NodeId> = Vec::new();
+        for (order, id) in self.doc.elements().enumerate() {
+            if !self.is_focusable(id) {
+                continue;
+            }
+            let tabindex = self
+                .doc
+                .attribute(id, "tabindex")
+                .and_then(|t| t.trim().parse::<i32>().ok());
+            if tabindex.is_some_and(|t| t < 0) {
+                continue;
+            }
+            if !self.style_tree.is_displayed(id) || !self.classify(id).shown {
+                continue;
+            }
+            match tabindex {
+                Some(t) if t > 0 => positive.push((t, order, id)),
+                _ => rest.push(id),
+            }
+        }
+        positive.sort_by_key(|&(t, order, _)| (t, order));
+        positive
+            .into_iter()
+            .map(|(_, _, id)| id)
+            .chain(rest)
+            .collect()
+    }
+
+    // ---------------------------------------------------------------------
+    // Actions
+    // ---------------------------------------------------------------------
+
+    fn input_type(&self, id: NodeId) -> Option<String> {
+        let e = self.doc.element(id)?;
+        e.is_html("input").then(|| {
+            e.attr("type")
+                .map_or_else(|| "text".to_owned(), str::to_ascii_lowercase)
+        })
+    }
+
+    fn is_text_control(&self, id: NodeId) -> bool {
+        match self.input_type(id) {
+            Some(t) => !matches!(
+                t.as_str(),
+                "checkbox"
+                    | "radio"
+                    | "button"
+                    | "submit"
+                    | "reset"
+                    | "hidden"
+                    | "image"
+                    | "file"
+                    | "range"
+                    | "color"
+            ),
+            None => {
+                self.doc.element(id).is_some_and(|e| e.is_html("textarea"))
+                    || self
+                        .doc
+                        .attribute(id, "contenteditable")
+                        .is_some_and(|v| !v.eq_ignore_ascii_case("false"))
+            }
+        }
+    }
+
+    /// Clicks an element: actionability, scroll into view, focus, then the
+    /// activation behaviour of the nearest activatable ancestor-or-self.
+    /// Returns a human-readable detail.
+    pub fn click(&mut self, id: NodeId, button: MouseButton, timeout_ms: u64) -> Result<String> {
+        let point = self.prepare_pointer(id, timeout_ms)?;
+        self.click_at_element(id, point, button)
+    }
+
+    fn click_at_element(
+        &mut self,
+        id: NodeId,
+        point: Point,
+        button: MouseButton,
+    ) -> Result<String> {
+        // Focus moves to the nearest focusable ancestor-or-self.
+        let focus_target = std::iter::once(id)
+            .chain(self.doc.ancestors(id))
+            .find(|&n| self.is_focusable(n) && self.doc.element(n).is_some());
+        if let Some(target) = focus_target {
+            let is_text = self.is_text_control(target);
+            self.focus(Some(target));
+            let _ = is_text;
+        } else {
+            self.focus(None);
+        }
+        tracing::debug!(%id, ?point, ?button, "click");
+        if button != MouseButton::Left {
+            return Ok(format!(
+                "{} {:?} click (no activation)",
+                ref_for(id),
+                button
+            ));
+        }
         self.activate(id)
     }
 
-    fn fill(&mut self, id: NodeId, value: &str) -> Result<()> {
-        self.doc.try_element(id)?;
-        if self.element_named(id, "select") {
-            return self.select(id, value);
+    /// Runs the activation behaviour for a click on `id`.
+    fn activate(&mut self, id: NodeId) -> Result<String> {
+        let chain: Vec<NodeId> = std::iter::once(id).chain(self.doc.ancestors(id)).collect();
+        for node in chain {
+            let Some(e) = self.doc.element(node).cloned() else {
+                continue;
+            };
+            match e.name.as_str() {
+                "a" | "area" if e.has_attr("href") => {
+                    return self.activate_link(node);
+                }
+                "button" => {
+                    let ty = e
+                        .attr("type")
+                        .map_or_else(|| "submit".into(), str::to_ascii_lowercase);
+                    return match ty.as_str() {
+                        "submit" => self.submit_from(node),
+                        "reset" => self.reset_form_of(node),
+                        _ => Ok(format!("clicked button {}", ref_for(node))),
+                    };
+                }
+                "input" => {
+                    let ty = self.input_type(node).unwrap_or_default();
+                    return match ty.as_str() {
+                        "checkbox" => {
+                            let now = !self.doc.is_checked(node);
+                            self.doc.set_checked(node, now)?;
+                            Ok(format!("{} checked={now}", ref_for(node)))
+                        }
+                        "radio" => {
+                            self.check_radio(node)?;
+                            Ok(format!("{} checked=true", ref_for(node)))
+                        }
+                        "submit" | "image" => self.submit_from(node),
+                        "reset" => self.reset_form_of(node),
+                        "file" => Ok(format!(
+                            "{} file chooser suppressed (use upload)",
+                            ref_for(node)
+                        )),
+                        _ => Ok(format!("focused {}", ref_for(node))),
+                    };
+                }
+                "label" => {
+                    let control = e
+                        .attr("for")
+                        .and_then(|f| self.doc.element_by_id(f))
+                        .or_else(|| {
+                            self.doc.descendants(node).find(|&d| {
+                                self.doc.element(d).is_some_and(|c| {
+                                    matches!(
+                                        c.name.as_str(),
+                                        "input" | "select" | "textarea" | "button"
+                                    )
+                                })
+                            })
+                        });
+                    if let Some(control) = control
+                        && control != id
+                        && !self.is_disabled(control)
+                    {
+                        if self.is_focusable(control) {
+                            self.focus(Some(control));
+                        }
+                        return self.activate(control);
+                    }
+                    return Ok(format!("clicked label {}", ref_for(node)));
+                }
+                "summary" => {
+                    if let Some(details) = self
+                        .doc
+                        .parent(node)
+                        .filter(|&p| self.doc.element(p).is_some_and(|d| d.is_html("details")))
+                    {
+                        let open = self.doc.attribute(details, "open").is_some();
+                        if open {
+                            self.doc.remove_attribute(details, "open")?;
+                        } else {
+                            self.doc.set_attribute(details, "open", "")?;
+                        }
+                        return Ok(format!("{} open={}", ref_for(details), !open));
+                    }
+                    return Ok(format!("clicked summary {}", ref_for(node)));
+                }
+                "option" => {
+                    if let Some(select) = self
+                        .doc
+                        .ancestors(node)
+                        .find(|&a| self.doc.element(a).is_some_and(|s| s.is_html("select")))
+                    {
+                        self.select_options(select, &[node])?;
+                        return Ok(format!("{} selected", ref_for(node)));
+                    }
+                    return Ok(format!("clicked option {}", ref_for(node)));
+                }
+                "select" | "textarea" => {
+                    return Ok(format!("focused {}", ref_for(node)));
+                }
+                "dialog" | "form" | "body" | "html" => {
+                    return Ok(format!("clicked {}", ref_for(id)));
+                }
+                _ => {}
+            }
         }
-        if !self.is_text_control(id) {
-            return Err(Error::InvalidState(format!("{id} is not a text control")));
+        Ok(format!("clicked {}", ref_for(id)))
+    }
+
+    fn activate_link(&mut self, link: NodeId) -> Result<String> {
+        let href = self
+            .doc
+            .attribute(link, "href")
+            .unwrap_or("")
+            .trim()
+            .to_owned();
+        if self.doc.attribute(link, "download").is_some() {
+            return Err(Error::capability_unsupported(
+                "downloads are not supported in this milestone",
+            ));
         }
-        if self.doc.attribute(id, "disabled").is_some()
-            || self.doc.attribute(id, "readonly").is_some()
-        {
-            return Err(Error::InvalidState(format!(
-                "{id} is disabled or read-only"
+        if let Some(fragment) = href.strip_prefix('#') {
+            return self.jump_to_fragment(fragment);
+        }
+        let Some(resolved) = self.resolve_url(&href) else {
+            return Err(Error::invalid_params(format!(
+                "link href {href:?} is not a valid URL"
             )));
+        };
+        let parsed = url::Url::parse(&resolved)
+            .map_err(|e| Error::invalid_params(format!("link href {href:?}: {e}")))?;
+        match parsed.scheme() {
+            "javascript" => {
+                return Err(Error::capability_unsupported(
+                    "javascript: links need the script layer",
+                ));
+            }
+            "http" | "https" | "file" | "data" | "about" => {}
+            other => {
+                return Ok(format!(
+                    "link {} to {other}: scheme handed off (not navigated)",
+                    ref_for(link)
+                ));
+            }
         }
-        self.focus(Some(id));
+        // Same-document fragment navigation.
+        if let Some(fragment) = parsed.fragment()
+            && let Ok(current) = url::Url::parse(&self.url)
+        {
+            let mut a = parsed.clone();
+            a.set_fragment(None);
+            let mut b = current;
+            b.set_fragment(None);
+            if a == b {
+                return self.jump_to_fragment(fragment);
+            }
+        }
+        let target = self.doc.attribute(link, "target").map(str::to_owned);
+        let mut request = NavigationRequest::get(parsed.to_string(), self.id);
+        request.referrer = Some(self.url.clone());
+        self.navigate_with(request);
+        Ok(match target.as_deref() {
+            Some(t) if !t.is_empty() && t != "_self" => {
+                format!("navigating to {resolved} (target={t} followed in-place)")
+            }
+            _ => format!("navigating to {resolved}"),
+        })
+    }
+
+    fn jump_to_fragment(&mut self, fragment: &str) -> Result<String> {
+        let decoded = percent_decode(fragment);
+        let target = if decoded.is_empty() || decoded == "top" {
+            None
+        } else {
+            self.doc.element_by_id(&decoded).or_else(|| {
+                self.doc.elements().find(|&e| {
+                    self.doc.element(e).is_some_and(|el| el.is_html("a"))
+                        && self.doc.attribute(e, "name") == Some(decoded.as_str())
+                })
+            })
+        };
+        self.update();
+        match target {
+            Some(id) => {
+                if let Some(rect) = self.layout.rect_of(id) {
+                    let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+                    self.scroll.y = rect.y().clamp(0.0, max_y);
+                    self.doc.record_scrolled(None);
+                }
+                self.style_engine.interaction.set_target(Some(id));
+                self.doc.mark_dirty(id, DirtyFlags::STYLE);
+                if let Ok(mut u) = url::Url::parse(&self.url) {
+                    u.set_fragment(Some(fragment));
+                    self.url = u.to_string();
+                }
+                Ok(format!("scrolled to #{decoded} ({})", ref_for(id)))
+            }
+            None => {
+                self.scroll.y = 0.0;
+                self.doc.record_scrolled(None);
+                Ok("scrolled to top".into())
+            }
+        }
+    }
+
+    fn check_radio(&mut self, radio: NodeId) -> Result<()> {
+        let group = self.doc.attribute(radio, "name").map(str::to_owned);
+        let form = forms::form_owner(&self.doc, radio);
+        if let Some(group) = group {
+            let peers: Vec<NodeId> = self
+                .doc
+                .elements()
+                .filter(|&o| {
+                    o != radio
+                        && self.input_type(o).as_deref() == Some("radio")
+                        && self.doc.attribute(o, "name") == Some(group.as_str())
+                        && forms::form_owner(&self.doc, o) == form
+                })
+                .collect();
+            for peer in peers {
+                if self.doc.is_checked(peer) {
+                    self.doc.set_checked(peer, false)?;
+                }
+            }
+        }
+        self.doc.set_checked(radio, true)
+    }
+
+    fn reset_form_of(&mut self, control: NodeId) -> Result<String> {
+        let Some(form) = forms::form_owner(&self.doc, control) else {
+            return Ok(format!("reset button {} has no form", ref_for(control)));
+        };
+        let controls: Vec<NodeId> = self
+            .doc
+            .elements()
+            .filter(|&id| forms::form_owner(&self.doc, id) == Some(form))
+            .filter(|&id| {
+                self.doc.element(id).is_some_and(|e| {
+                    matches!(e.name.as_str(), "input" | "select" | "textarea" | "option")
+                })
+            })
+            .collect();
+        for id in controls {
+            let e = self.doc.element(id).expect("live").clone();
+            match e.name.as_str() {
+                "input" => {
+                    let checked_attr = e.has_attr("checked");
+                    if matches!(self.input_type(id).as_deref(), Some("checkbox" | "radio")) {
+                        self.doc.set_checked(id, checked_attr)?;
+                    } else {
+                        let default = e.attr("value").unwrap_or("").to_owned();
+                        self.doc.set_form_value(id, default)?;
+                    }
+                }
+                "textarea" => {
+                    let default = self.doc.text_content(id);
+                    self.doc.set_form_value(id, default)?;
+                }
+                "option" => {
+                    let selected = e.has_attr("selected");
+                    self.doc.set_selected(id, selected)?;
+                }
+                _ => {}
+            }
+        }
+        self.files.clear();
+        Ok(format!("reset form {}", ref_for(form)))
+    }
+
+    /// Submits the form owning `submitter` (a submit button) or the form
+    /// itself when `submitter` is a form / a field (implicit submission).
+    pub fn submit_from(&mut self, control: NodeId) -> Result<String> {
+        let form = if self.doc.element(control).is_some_and(|e| e.is_html("form")) {
+            control
+        } else {
+            match forms::form_owner(&self.doc, control) {
+                Some(f) => f,
+                None => {
+                    return Ok(format!(
+                        "clicked {} (no form owner; nothing submitted)",
+                        ref_for(control)
+                    ));
+                }
+            }
+        };
+        let submitter = self
+            .doc
+            .element(control)
+            .filter(|e| forms::is_submit_button(e))
+            .map(|_| control);
+        self.submit_form(form, submitter)
+    }
+
+    /// Submits `form` with an optional submitter button.
+    pub fn submit_form(&mut self, form: NodeId, submitter: Option<NodeId>) -> Result<String> {
+        let files = self.files.clone();
+        let plan = forms::plan_submission(&self.doc, form, submitter, &|id| {
+            files.get(&id).cloned().unwrap_or_default()
+        });
+        if plan.method == FormMethod::Dialog {
+            if let Some(dialog) = self
+                .doc
+                .ancestors(form)
+                .find(|&a| self.doc.element(a).is_some_and(|e| e.is_html("dialog")))
+            {
+                self.doc.remove_attribute(dialog, "open")?;
+                return Ok(format!("closed dialog {}", ref_for(dialog)));
+            }
+            return Ok("method=dialog outside a dialog: nothing to close".into());
+        }
+        let action = if plan.action.trim().is_empty() {
+            let mut u = url::Url::parse(&self.url)
+                .map_err(|e| Error::invalid_params(format!("document url: {e}")))?;
+            u.set_fragment(None);
+            u
+        } else {
+            let resolved = self.resolve_url(&plan.action).ok_or_else(|| {
+                Error::invalid_params(format!("form action {:?} is not a valid URL", plan.action))
+            })?;
+            url::Url::parse(&resolved).map_err(|e| Error::invalid_params(e.to_string()))?
+        };
+        if action.scheme() == "javascript" {
+            return Err(Error::capability_unsupported(
+                "javascript: form actions need the script layer",
+            ));
+        }
+        let mut request = NavigationRequest::get(String::new(), self.id);
+        request.referrer = Some(self.url.clone());
+        match plan.method {
+            FormMethod::Get => {
+                let mut url = action;
+                let query = forms::urlencode(&plan.entries);
+                url.set_query(if query.is_empty() { None } else { Some(&query) });
+                url.set_fragment(None);
+                request.url = url.to_string();
+            }
+            FormMethod::Post => {
+                request.method = NavMethod::Post;
+                request.url = action.to_string();
+                match plan.enctype {
+                    Enctype::UrlEncoded => {
+                        request.body = Some(forms::urlencode(&plan.entries).into_bytes());
+                        request.content_type = Some("application/x-www-form-urlencoded".into());
+                    }
+                    Enctype::Multipart => {
+                        let boundary =
+                            format!("----VectorEngineBoundary{:x}", self.doc.revision().0);
+                        let (body, ct) = forms::multipart(&plan.entries, &boundary);
+                        request.body = Some(body);
+                        request.content_type = Some(ct);
+                    }
+                    Enctype::TextPlain => {
+                        request.body = Some(forms::text_plain(&plan.entries).into_bytes());
+                        request.content_type = Some("text/plain".into());
+                    }
+                }
+            }
+            FormMethod::Dialog => unreachable!("handled above"),
+        }
+        let detail = format!(
+            "submitting form {} ({} {}, {} field(s))",
+            ref_for(form),
+            match request.method {
+                NavMethod::Get => "GET",
+                NavMethod::Post => "POST",
+            },
+            request.url,
+            plan.entries.len()
+        );
+        self.navigate_with(request);
+        Ok(detail)
+    }
+
+    /// Double click: two activations (a checkbox ends where it started).
+    pub fn dblclick(&mut self, id: NodeId, timeout_ms: u64) -> Result<String> {
+        let point = self.prepare_pointer(id, timeout_ms)?;
+        let first = self.click_at_element(id, point, MouseButton::Left)?;
+        if self.pending_navigation.is_some() {
+            return Ok(first);
+        }
+        let second = self.click_at_element(id, point, MouseButton::Left)?;
+        Ok(format!("{first}; {second}"))
+    }
+
+    /// Hover: actionability then the `:hover` chain.
+    pub fn hover(&mut self, id: NodeId, timeout_ms: u64) -> Result<String> {
+        self.prepare_pointer(id, timeout_ms)?;
+        let chain: Vec<NodeId> = std::iter::once(id).chain(self.doc.ancestors(id)).collect();
+        self.style_engine.interaction.set_hover_chain(&chain);
+        for n in &chain {
+            self.doc.mark_dirty(*n, DirtyFlags::STYLE);
+        }
+        Ok(format!("hovering {}", ref_for(id)))
+    }
+
+    fn sanitize_value(&self, id: NodeId, value: &str) -> String {
+        let mut v = value.to_owned();
+        match self.input_type(id).as_deref() {
+            Some("number") => {
+                if v.trim().parse::<f64>().is_err() {
+                    v.clear();
+                }
+            }
+            Some("email" | "text" | "search" | "tel" | "url" | "password") => {
+                v = v.replace(['\n', '\r'], "");
+            }
+            _ => {}
+        }
+        if let Some(max) = self
+            .doc
+            .attribute(id, "maxlength")
+            .and_then(|m| m.trim().parse::<usize>().ok())
+            && v.chars().count() > max
+        {
+            v = v.chars().take(max).collect();
+        }
+        v
+    }
+
+    fn set_text_value(&mut self, id: NodeId, value: &str) -> Result<()> {
         if self.doc.attribute(id, "contenteditable").is_some()
-            && !self.element_named(id, "textarea")
             && self.input_type(id).is_none()
+            && !self.doc.element(id).is_some_and(|e| e.is_html("textarea"))
         {
             let kids: Vec<NodeId> = self.doc.children(id).collect();
             for kid in kids {
                 self.doc.destroy(kid)?;
             }
             self.doc.append_text(id, value)?;
-        } else {
-            self.doc.set_form_value(id, value)?;
+            return Ok(());
         }
-        self.queue_interaction(id, "input");
-        Ok(())
+        let sanitized = self.sanitize_value(id, value);
+        self.doc.set_form_value(id, sanitized)
     }
 
-    fn select(&mut self, id: NodeId, value: &str) -> Result<()> {
-        let select = if self.element_named(id, "option") {
-            self.doc
-                .ancestors(id)
-                .find(|&a| self.element_named(a, "select"))
-                .ok_or_else(|| Error::InvalidState(format!("{id} is not inside a select")))?
-        } else if self.element_named(id, "select") {
-            id
+    /// `fill`: focus → select all → set value (sanitised) → input.
+    pub fn fill(&mut self, id: NodeId, value: &str, timeout_ms: u64) -> Result<String> {
+        self.actionable(id, timeout_ms)?;
+        if self.doc.element(id).is_some_and(|e| e.is_html("select")) {
+            return self.select_values(id, &[value], timeout_ms);
+        }
+        if !self.is_text_control(id) {
+            return Err(Error::invalid_params(format!(
+                "{} is not a text control (use click/check/select)",
+                ref_for(id)
+            )));
+        }
+        if self.doc.attribute(id, "readonly").is_some() {
+            return Err(Error::step_failed(format!("{} is read-only", ref_for(id))));
+        }
+        self.focus(Some(id));
+        self.set_text_value(id, value)?;
+        let stored = self.doc.form_value(id).unwrap_or_default();
+        Ok(format!("{} value={stored:?}", ref_for(id)))
+    }
+
+    /// `type`: appends per character to the focused text control.
+    pub fn type_text(&mut self, id: NodeId, value: &str, timeout_ms: u64) -> Result<String> {
+        self.actionable(id, timeout_ms)?;
+        if !self.is_text_control(id) {
+            return Err(Error::invalid_params(format!(
+                "{} is not a text control",
+                ref_for(id)
+            )));
+        }
+        if self.doc.attribute(id, "readonly").is_some() {
+            return Err(Error::step_failed(format!("{} is read-only", ref_for(id))));
+        }
+        self.focus(Some(id));
+        let mut current = if self.doc.attribute(id, "contenteditable").is_some()
+            && self.input_type(id).is_none()
+            && !self.doc.element(id).is_some_and(|e| e.is_html("textarea"))
+        {
+            self.doc.text_content(id)
         } else {
-            return Err(Error::InvalidState(format!("{id} is not a select")));
+            self.doc.form_value(id).unwrap_or_default()
         };
+        let mut typed = 0usize;
+        for c in value.chars() {
+            if c == '\n' && !self.doc.element(id).is_some_and(|e| e.is_html("textarea")) {
+                // Enter in a single-line field: implicit submission after typing.
+                self.set_text_value(id, &current)?;
+                let submit = self.press_key(Some(id), &Chord::parse("Enter")?)?;
+                return Ok(format!("typed {typed} chars; {submit}"));
+            }
+            current.push(c);
+            typed += 1;
+        }
+        self.set_text_value(id, &current)?;
+        Ok(format!("typed {typed} chars into {}", ref_for(id)))
+    }
+
+    /// `press`: a key chord with default actions.
+    pub fn press(&mut self, target: Option<NodeId>, key: &str, timeout_ms: u64) -> Result<String> {
+        let chord = Chord::parse(key)?;
+        if let Some(id) = target {
+            self.actionable(id, timeout_ms)?;
+            self.focus(Some(id));
+        }
+        self.press_key(target, &chord)
+    }
+
+    fn press_key(&mut self, _target: Option<NodeId>, chord: &Chord) -> Result<String> {
+        let focused = self.focused;
+        match &chord.key {
+            Key::Tab => {
+                self.update();
+                let order = self.tab_order();
+                let next = match (
+                    focused.and_then(|f| order.iter().position(|&o| o == f)),
+                    chord.modifiers.shift,
+                ) {
+                    (Some(i), false) => order.get(i + 1).copied(),
+                    (Some(i), true) => i.checked_sub(1).and_then(|j| order.get(j).copied()),
+                    (None, false) => order.first().copied(),
+                    (None, true) => order.last().copied(),
+                };
+                self.focus(next);
+                Ok(match next {
+                    Some(n) => format!("focus moved to {}", ref_for(n)),
+                    None => "focus left the document".into(),
+                })
+            }
+            Key::Escape => {
+                // Close the innermost open dialog containing the focus, else blur.
+                if let Some(f) = focused
+                    && let Some(dialog) =
+                        std::iter::once(f).chain(self.doc.ancestors(f)).find(|&a| {
+                            self.doc
+                                .element(a)
+                                .is_some_and(|e| e.is_html("dialog") && e.has_attr("open"))
+                        })
+                {
+                    self.doc.remove_attribute(dialog, "open")?;
+                    return Ok(format!("closed dialog {}", ref_for(dialog)));
+                }
+                self.focus(None);
+                Ok("blurred".into())
+            }
+            Key::Enter => {
+                let Some(id) = focused else {
+                    return Ok("Enter with no focus".into());
+                };
+                let e = self.doc.element(id).cloned();
+                if let Some(e) = e {
+                    if e.is_html("textarea") {
+                        let mut v = self.doc.form_value(id).unwrap_or_default();
+                        v.push('\n');
+                        self.doc.set_form_value(id, v)?;
+                        return Ok(format!("newline in {}", ref_for(id)));
+                    }
+                    if self.is_text_control(id) || e.is_html("select") {
+                        // Implicit submission: the form's default button, else the
+                        // form itself when it has no other blocking fields.
+                        if let Some(form) = forms::form_owner(&self.doc, id) {
+                            if let Some(button) = forms::default_button(&self.doc, form) {
+                                return self.submit_form(form, Some(button));
+                            }
+                            return self.submit_form(form, None);
+                        }
+                        return Ok(format!("Enter in {} (no form)", ref_for(id)));
+                    }
+                }
+                self.activate(id)
+            }
+            Key::Space => {
+                let Some(id) = focused else {
+                    return Ok("Space with no focus".into());
+                };
+                let ty = self.input_type(id);
+                if matches!(ty.as_deref(), Some("checkbox" | "radio"))
+                    || self
+                        .doc
+                        .element(id)
+                        .is_some_and(|e| e.is_html("button") || e.is_html("summary"))
+                    || Role::for_element(&self.doc, id).is_some_and(|r| {
+                        matches!(
+                            r,
+                            Role::Button | Role::Checkbox | Role::Switch | Role::Radio
+                        )
+                    })
+                {
+                    return self.activate(id);
+                }
+                if self.is_text_control(id) {
+                    let mut v = self.doc.form_value(id).unwrap_or_default();
+                    v.push(' ');
+                    self.set_text_value(id, &v)?;
+                    return Ok(format!("space in {}", ref_for(id)));
+                }
+                Ok("Space ignored".into())
+            }
+            Key::Backspace | Key::Delete => {
+                if let Some(id) = focused
+                    && self.is_text_control(id)
+                {
+                    let mut v = self.doc.form_value(id).unwrap_or_default();
+                    if chord.modifiers.control || chord.modifiers.alt {
+                        while v.pop().is_some_and(|c| c != ' ') {}
+                    } else {
+                        v.pop();
+                    }
+                    self.set_text_value(id, &v)?;
+                    return Ok(format!("{} value={v:?}", ref_for(id)));
+                }
+                Ok("Backspace ignored".into())
+            }
+            Key::ArrowUp | Key::ArrowDown | Key::ArrowLeft | Key::ArrowRight => {
+                let forward = matches!(chord.key, Key::ArrowDown | Key::ArrowRight);
+                if let Some(id) = focused {
+                    if self.doc.element(id).is_some_and(|e| e.is_html("select")) {
+                        return self.step_select(id, forward);
+                    }
+                    if self.input_type(id).as_deref() == Some("radio") {
+                        return self.step_radio(id, forward);
+                    }
+                }
+                // Viewport scroll by 40px (up/down) like a browser.
+                if matches!(chord.key, Key::ArrowUp | Key::ArrowDown) {
+                    let state = self.scroll_viewport(if forward { 40.0 } else { -40.0 });
+                    return Ok(format!("scrolled to y={}", state.y));
+                }
+                Ok("arrow ignored".into())
+            }
+            Key::Home | Key::End | Key::PageUp | Key::PageDown => {
+                let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+                let y = match chord.key {
+                    Key::Home => 0.0,
+                    Key::End => max_y,
+                    Key::PageUp => (self.scroll.y - self.viewport.height).max(0.0),
+                    _ => (self.scroll.y + self.viewport.height).min(max_y),
+                };
+                self.scroll.y = y;
+                self.doc.record_scrolled(None);
+                Ok(format!("scrolled to y={y}"))
+            }
+            Key::Char(c) => {
+                if chord.modifiers.control || chord.modifiers.meta {
+                    let lower = c.to_ascii_lowercase();
+                    if lower == 'a' {
+                        return Ok("select all".into());
+                    }
+                    return Ok(format!("chord {chord:?} has no default action"));
+                }
+                if let Some(id) = focused
+                    && self.is_text_control(id)
+                    && let Some(ch) = chord.typed_char()
+                {
+                    let mut v = self.doc.form_value(id).unwrap_or_default();
+                    v.push(ch);
+                    self.set_text_value(id, &v)?;
+                    return Ok(format!("{} value={v:?}", ref_for(id)));
+                }
+                Ok(format!("key {c:?} ignored"))
+            }
+        }
+    }
+
+    fn step_select(&mut self, select: NodeId, forward: bool) -> Result<String> {
         let options: Vec<NodeId> = self
             .doc
             .descendants(select)
-            .filter(|&d| self.element_named(d, "option"))
+            .filter(|&d| {
+                self.doc
+                    .element(d)
+                    .is_some_and(|e| e.is_html("option") && !e.has_attr("disabled"))
+            })
             .collect();
-        let wanted = value.trim();
-        let chosen = options
+        if options.is_empty() {
+            return Ok("select has no options".into());
+        }
+        let current = options
             .iter()
-            .copied()
-            .find(|&o| self.doc.attribute(o, "value").is_some_and(|v| v == wanted))
-            .or_else(|| {
-                options
-                    .iter()
-                    .copied()
-                    .find(|&o| self.visible_text(o).eq_ignore_ascii_case(wanted))
-            })
-            .or_else(|| {
-                options.iter().copied().find(|&o| {
-                    self.doc
-                        .attribute(o, "label")
-                        .is_some_and(|l| l.eq_ignore_ascii_case(wanted))
-                })
-            })
-            .ok_or_else(|| Error::NoMatch(format!("option {wanted:?} in {select}")))?;
-        self.focus(Some(select));
-        self.select_option(select, chosen)
+            .position(|&o| self.doc.is_selected(o))
+            .unwrap_or(0);
+        let next = if forward {
+            (current + 1).min(options.len() - 1)
+        } else {
+            current.saturating_sub(1)
+        };
+        self.select_options(select, &[options[next]])?;
+        Ok(format!(
+            "{} selected option {}",
+            ref_for(select),
+            ref_for(options[next])
+        ))
     }
 
-    fn press(&mut self, target: Option<NodeId>, key: &str) -> Result<()> {
-        if let Some(id) = target {
-            self.doc.try_element(id)?;
-            self.focus(Some(id));
-        }
-        let focused = self.style_engine.interaction.focused();
-        match key {
-            "Tab" | "Shift+Tab" => {
-                let order = self.focusable_elements();
-                let next = match (
-                    focused.and_then(|f| order.iter().position(|&o| o == f)),
-                    key,
-                ) {
-                    (Some(i), "Tab") => order.get(i + 1).copied(),
-                    (Some(i), _) => i.checked_sub(1).and_then(|j| order.get(j).copied()),
-                    (None, "Tab") => order.first().copied(),
-                    (None, _) => order.last().copied(),
-                };
-                self.focus(next);
+    fn step_radio(&mut self, radio: NodeId, forward: bool) -> Result<String> {
+        let group = self.doc.attribute(radio, "name").map(str::to_owned);
+        let form = forms::form_owner(&self.doc, radio);
+        let peers: Vec<NodeId> = self
+            .doc
+            .elements()
+            .filter(|&o| {
+                self.input_type(o).as_deref() == Some("radio")
+                    && self.doc.attribute(o, "name").map(str::to_owned) == group
+                    && forms::form_owner(&self.doc, o) == form
+                    && !self.is_disabled(o)
+            })
+            .collect();
+        let Some(pos) = peers.iter().position(|&p| p == radio) else {
+            return Ok("radio group not found".into());
+        };
+        let next = if forward {
+            (pos + 1) % peers.len()
+        } else {
+            (pos + peers.len() - 1) % peers.len()
+        };
+        self.check_radio(peers[next])?;
+        self.focus(Some(peers[next]));
+        Ok(format!("{} checked=true", ref_for(peers[next])))
+    }
+
+    /// `check` / `uncheck`.
+    pub fn set_checked(&mut self, id: NodeId, checked: bool, timeout_ms: u64) -> Result<String> {
+        self.actionable(id, timeout_ms)?;
+        let ty = self.input_type(id);
+        let role = Role::for_element(&self.doc, id);
+        match ty.as_deref() {
+            Some("checkbox") => {
+                if self.doc.is_checked(id) == checked {
+                    return Ok(format!("{} already checked={checked}", ref_for(id)));
+                }
+                self.click(id, MouseButton::Left, timeout_ms)
             }
-            "Escape" => self.focus(None),
-            "Enter" => {
-                if let Some(id) = focused {
-                    if self.is_text_control(id) && !self.element_named(id, "textarea") {
-                        // Implicit form submission: fire on the form's default button if any.
-                        let submit = self
-                            .doc
-                            .ancestors(id)
-                            .find(|&a| self.element_named(a, "form"))
-                            .and_then(|form| {
-                                self.doc.descendants(form).find(|&d| {
-                                    self.element_named(d, "button")
-                                        && !self
-                                            .doc
-                                            .attribute(d, "type")
-                                            .is_some_and(|t| t.eq_ignore_ascii_case("button"))
-                                        || self.input_type(d).as_deref() == Some("submit")
-                                })
-                            });
-                        self.queue_interaction(id, "keydown:Enter");
-                        if let Some(button) = submit {
-                            return self.click(button);
-                        }
-                    } else {
-                        return self.click(id);
+            Some("radio") => {
+                if !checked {
+                    return Err(Error::step_failed(format!(
+                        "{} is a radio button; radios cannot be unchecked directly",
+                        ref_for(id)
+                    )));
+                }
+                if self.doc.is_checked(id) {
+                    return Ok(format!("{} already checked", ref_for(id)));
+                }
+                self.click(id, MouseButton::Left, timeout_ms)
+            }
+            _ if role
+                .is_some_and(|r| matches!(r, Role::Checkbox | Role::Switch | Role::MenuItem)) =>
+            {
+                let current = self
+                    .doc
+                    .attribute(id, "aria-checked")
+                    .is_some_and(|v| v.eq_ignore_ascii_case("true"));
+                if current == checked {
+                    return Ok(format!("{} already checked={checked}", ref_for(id)));
+                }
+                self.doc.set_attribute(
+                    id,
+                    "aria-checked",
+                    if checked { "true" } else { "false" },
+                )?;
+                self.focus(Some(id));
+                Ok(format!("{} aria-checked={checked}", ref_for(id)))
+            }
+            _ => Err(Error::invalid_params(format!(
+                "{} is not a checkbox or radio",
+                ref_for(id)
+            ))),
+        }
+    }
+
+    fn select_options(&mut self, select: NodeId, chosen: &[NodeId]) -> Result<()> {
+        let multiple = self.doc.attribute(select, "multiple").is_some();
+        let options: Vec<NodeId> = self
+            .doc
+            .descendants(select)
+            .filter(|&d| self.doc.element(d).is_some_and(|e| e.is_html("option")))
+            .collect();
+        for o in options {
+            let want = chosen.contains(&o);
+            if want {
+                self.doc.set_selected(o, true)?;
+            } else if !multiple || !chosen.is_empty() {
+                if multiple {
+                    if self.doc.is_selected(o) {
+                        self.doc.set_selected(o, false)?;
                     }
+                } else {
+                    self.doc.set_selected(o, false)?;
                 }
             }
-            " " | "Space" => {
-                if let Some(id) = focused
-                    && (matches!(self.input_type(id).as_deref(), Some("checkbox" | "radio"))
-                        || self.element_named(id, "button"))
-                {
-                    return self.click(id);
-                }
-                if let Some(id) = focused
-                    && self.is_text_control(id)
-                {
-                    let current = self.doc.form_value(id).unwrap_or_default();
-                    self.doc.set_form_value(id, format!("{current} "))?;
-                }
-            }
-            "Backspace" => {
-                if let Some(id) = focused
-                    && self.is_text_control(id)
-                {
-                    let mut current = self.doc.form_value(id).unwrap_or_default();
-                    current.pop();
-                    self.doc.set_form_value(id, current)?;
-                }
-            }
-            other if other.chars().count() == 1 => {
-                if let Some(id) = focused
-                    && self.is_text_control(id)
-                {
-                    let current = self.doc.form_value(id).unwrap_or_default();
-                    self.doc.set_form_value(id, format!("{current}{other}"))?;
-                }
-            }
-            other => return Err(Error::unsupported(format!("key {other:?}"))),
-        }
-        if let Some(id) = focused {
-            self.queue_interaction(id, "keydown");
         }
         Ok(())
     }
 
-    fn scroll(&mut self, target: Option<NodeId>, dx: f32, dy: f32) -> Result<ScrollState> {
-        match target.and_then(|t| self.scroll_container_of(t)) {
+    /// `select`: options by value, then label / text.
+    pub fn select_values(
+        &mut self,
+        id: NodeId,
+        values: &[&str],
+        timeout_ms: u64,
+    ) -> Result<String> {
+        self.actionable(id, timeout_ms)?;
+        let select = if self.doc.element(id).is_some_and(|e| e.is_html("option")) {
+            self.doc
+                .ancestors(id)
+                .find(|&a| self.doc.element(a).is_some_and(|e| e.is_html("select")))
+                .ok_or_else(|| {
+                    Error::invalid_params(format!("{} is not inside a select", ref_for(id)))
+                })?
+        } else if self.doc.element(id).is_some_and(|e| e.is_html("select")) {
+            id
+        } else {
+            return Err(Error::invalid_params(format!(
+                "{} is not a <select>",
+                ref_for(id)
+            )));
+        };
+        let multiple = self.doc.attribute(select, "multiple").is_some();
+        if values.len() > 1 && !multiple {
+            return Err(Error::invalid_params(format!(
+                "{} is a single select; {} values given",
+                ref_for(select),
+                values.len()
+            )));
+        }
+        let options: Vec<NodeId> = self
+            .doc
+            .descendants(select)
+            .filter(|&d| self.doc.element(d).is_some_and(|e| e.is_html("option")))
+            .collect();
+        let mut chosen = Vec::new();
+        for wanted in values {
+            let wanted = wanted.trim();
+            let found = options
+                .iter()
+                .copied()
+                .find(|&o| self.doc.attribute(o, "value") == Some(wanted))
+                .or_else(|| {
+                    options
+                        .iter()
+                        .copied()
+                        .find(|&o| self.visible_text(o).eq_ignore_ascii_case(wanted))
+                })
+                .or_else(|| {
+                    options.iter().copied().find(|&o| {
+                        self.doc
+                            .attribute(o, "label")
+                            .is_some_and(|l| l.eq_ignore_ascii_case(wanted))
+                    })
+                })
+                .ok_or_else(|| {
+                    let available: Vec<String> = options
+                        .iter()
+                        .map(|&o| {
+                            self.doc
+                                .attribute(o, "value")
+                                .map_or_else(|| self.visible_text(o), str::to_owned)
+                        })
+                        .collect();
+                    Error::coded_with(
+                        ErrorCode::NotFound,
+                        format!("option {wanted:?} not found in {}", ref_for(select)),
+                        serde_json::json!({ "options": available }),
+                    )
+                })?;
+            if self.doc.attribute(found, "disabled").is_some() {
+                return Err(Error::step_failed(format!("option {wanted:?} is disabled")));
+            }
+            chosen.push(found);
+        }
+        self.focus(Some(select));
+        self.select_options(select, &chosen)?;
+        Ok(format!(
+            "{} selected {}",
+            ref_for(select),
+            chosen
+                .iter()
+                .map(|&o| ref_for(o))
+                .collect::<Vec<_>>()
+                .join(",")
+        ))
+    }
+
+    /// Nearest scroll container of `id` (self or ancestor with scrollable
+    /// overflow), if any.
+    #[must_use]
+    pub fn scroll_container_of(&self, id: NodeId) -> Option<NodeId> {
+        std::iter::once(id)
+            .chain(self.doc.ancestors(id))
+            .find(|&a| {
+                self.style_tree
+                    .get(a)
+                    .is_some_and(|s| s.overflow.is_scrollable())
+                    && self
+                        .doc
+                        .element(a)
+                        .is_some_and(|e| !e.is_html("body") && !e.is_html("html"))
+            })
+    }
+
+    fn scroll_viewport(&mut self, dy: f32) -> ScrollState {
+        let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+        let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
+        self.scroll = Point::new(
+            self.scroll.x.clamp(0.0, max_x),
+            (self.scroll.y + dy).clamp(0.0, max_y),
+        );
+        self.doc.record_scrolled(None);
+        ScrollState {
+            x: self.scroll.x,
+            y: self.scroll.y,
+            max_x,
+            max_y,
+            container: None,
+        }
+    }
+
+    /// `scroll`: the nearest scroll container of `target` (or the viewport).
+    pub fn scroll(
+        &mut self,
+        target: Option<NodeId>,
+        direction: ScrollDirection,
+        amount: Option<f32>,
+    ) -> Result<ScrollState> {
+        self.update();
+        let container = target.and_then(|t| self.scroll_container_of(t));
+        match container {
             Some(container) => {
                 let outer = self.layout.rect_of(container).unwrap_or(Rect::ZERO);
-                let content_bottom = self
+                let (content_bottom, content_right) = self
                     .doc
                     .descendants(container)
                     .filter_map(|d| self.layout.rect_of(d))
-                    .map(|r| r.bottom())
-                    .fold(outer.bottom(), f32::max);
-                let content_right = self
-                    .doc
-                    .descendants(container)
-                    .filter_map(|d| self.layout.rect_of(d))
-                    .map(|r| r.right())
-                    .fold(outer.right(), f32::max);
+                    .fold((outer.bottom(), outer.right()), |(b, r), rect| {
+                        (b.max(rect.bottom()), r.max(rect.right()))
+                    });
                 let max = Point::new(
                     (content_right - outer.right()).max(0.0),
                     (content_bottom - outer.bottom()).max(0.0),
                 );
+                let step = amount.unwrap_or(outer.height().max(1.0));
                 let cur = self.element_scroll.entry(container).or_default();
-                *cur = Point::new(
-                    (cur.x + dx).clamp(0.0, max.x),
-                    (cur.y + dy).clamp(0.0, max.y),
-                );
+                let y = match direction {
+                    ScrollDirection::Down => cur.y + step,
+                    ScrollDirection::Up => cur.y - step,
+                    ScrollDirection::Top => 0.0,
+                    ScrollDirection::Bottom => max.y,
+                };
+                *cur = Point::new(cur.x.clamp(0.0, max.x), y.clamp(0.0, max.y));
                 let state = ScrollState {
                     x: cur.x,
                     y: cur.y,
                     max_x: max.x,
                     max_y: max.y,
+                    container: Some(ref_for(container)),
                 };
-                self.queue_interaction(container, "scroll");
+                self.doc.record_scrolled(Some(container));
                 Ok(state)
             }
             None => {
+                let step = amount.unwrap_or(self.viewport.height);
                 let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
-                let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
-                self.scroll = Point::new(
-                    (self.scroll.x + dx).clamp(0.0, max_x),
-                    (self.scroll.y + dy).clamp(0.0, max_y),
-                );
-                if let Some(root) = self.doc.document_element() {
-                    self.queue_interaction(root, "scroll");
-                }
-                Ok(ScrollState {
-                    x: self.scroll.x,
-                    y: self.scroll.y,
-                    max_x,
-                    max_y,
-                })
+                let dy = match direction {
+                    ScrollDirection::Down => step,
+                    ScrollDirection::Up => -step,
+                    ScrollDirection::Top => -self.scroll.y,
+                    ScrollDirection::Bottom => max_y - self.scroll.y,
+                };
+                Ok(self.scroll_viewport(dy))
             }
         }
     }
 
-    fn snapshot(&self, format: SnapshotFormat) -> SemanticSnapshot {
-        let snapshot = SemanticSnapshot::capture(&self.a11y_tree(), format);
-        match &self.url {
-            Some(url) => snapshot.with_url(url.clone()),
-            None => snapshot,
+    /// Element scroll offset (containers).
+    #[must_use]
+    pub fn element_scroll(&self, id: NodeId) -> Point {
+        self.element_scroll.get(&id).copied().unwrap_or_default()
+    }
+
+    /// `clickPoint`: hit test at viewport CSS pixels, then click.
+    pub fn click_point(&mut self, x: f32, y: f32, button: MouseButton) -> Result<String> {
+        self.update();
+        let point = Point::new(x + self.scroll.x, y + self.scroll.y);
+        let hit = self
+            .layout
+            .hit_test(point)
+            .ok_or_else(|| Error::not_found(format!("nothing at ({x}, {y}) to click")))?;
+        let target = if self.doc.element(hit).is_some() {
+            hit
+        } else {
+            self.doc
+                .parent(hit)
+                .ok_or_else(|| Error::not_found(format!("nothing at ({x}, {y})")))?
+        };
+        if self.is_disabled(target) {
+            return Err(Error::step_failed(format!(
+                "{} at ({x}, {y}) is disabled",
+                ref_for(target)
+            )));
         }
+        let detail = self.click_at_element(target, point, button)?;
+        Ok(format!("hit {} at ({x}, {y}): {detail}", ref_for(target)))
     }
 
-    fn snapshot_of(&self, id: NodeId, format: SnapshotFormat) -> Option<SemanticSnapshot> {
-        let tree = self.a11y_tree();
-        let node = tree.find(id)?.clone();
-        Some(SemanticSnapshot::capture(
-            &AccessibilityTree {
-                root: node,
-                revision: tree.revision,
-            },
-            format,
-        ))
+    /// `upload`: sets the file list of a file input.
+    pub fn upload(&mut self, id: NodeId, files: &[String], timeout_ms: u64) -> Result<String> {
+        self.actionable(id, timeout_ms)?;
+        if self.input_type(id).as_deref() != Some("file") {
+            return Err(Error::invalid_params(format!(
+                "{} is not an <input type=file>",
+                ref_for(id)
+            )));
+        }
+        if files.len() > 1 && self.doc.attribute(id, "multiple").is_none() {
+            return Err(Error::invalid_params(format!(
+                "{} does not accept multiple files",
+                ref_for(id)
+            )));
+        }
+        let names: Vec<String> = files
+            .iter()
+            .map(|f| f.rsplit(['/', '\\']).next().unwrap_or(f).to_owned())
+            .collect();
+        self.files.insert(id, files.to_vec());
+        let shown = names
+            .first()
+            .map(|n| format!("C:\\fakepath\\{n}"))
+            .unwrap_or_default();
+        self.doc.set_form_value(id, shown)?;
+        self.focus(Some(id));
+        Ok(format!("{} files={}", ref_for(id), names.join(", ")))
     }
 
-    fn focused(&self) -> Option<NodeId> {
-        self.style_engine.interaction.focused()
+    /// `screenshot` through the software renderer.
+    pub fn screenshot(&mut self, full_page: bool) -> Result<Screenshot> {
+        self.update();
+        let renderer = self.renderer.get_or_insert_with(SoftwareRenderer::new);
+        let shot = screenshot::capture(
+            renderer,
+            &self.layout,
+            &self.style_tree,
+            self.viewport,
+            self.scroll,
+            self.scale,
+            full_page,
+        )?;
+        self.last_screenshot = Some(shot.clone());
+        Ok(shot)
     }
 
-    fn take_last_error(&mut self) -> Option<String> {
-        self.last_error.take()
+    /// Completed responses for this page (through the loader).
+    #[must_use]
+    pub fn completed_responses(&self) -> Vec<ve_net::CompletedResponse> {
+        self.loader
+            .as_ref()
+            .map(|l| l.completed(self.id))
+            .unwrap_or_default()
+    }
+
+    /// Open dialogs (for the `dialog` op and observations).
+    #[must_use]
+    pub fn open_dialogs(&self) -> Vec<DialogEntry> {
+        self.observe_now(&ObservationRequest {
+            max_elements: 1,
+            max_text_chars: 16,
+            ..ObservationRequest::default()
+        })
+        .dialogs
+    }
+}
+
+fn percent_decode(input: &str) -> String {
+    let bytes = input.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%'
+            && i + 2 < bytes.len()
+            && let Ok(v) = u8::from_str_radix(&input[i + 1..i + 3], 16)
+        {
+            out.push(v);
+            i += 3;
+            continue;
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+#[derive(Clone, Copy, Debug)]
+enum HistoryMode {
+    Push,
+    Replace,
+    Refresh,
+    Traverse(usize),
+}
+
+/// Scroll position after a scroll step.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScrollState {
+    /// Horizontal offset.
+    pub x: f32,
+    /// Vertical offset.
+    pub y: f32,
+    /// Maximum horizontal offset.
+    pub max_x: f32,
+    /// Maximum vertical offset.
+    pub max_y: f32,
+    /// The scrolled container's ref (`None` = viewport).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub container: Option<String>,
+}
+
+impl ScrollState {
+    /// Whether the container is scrolled to its bottom.
+    #[must_use]
+    pub fn at_bottom(&self) -> bool {
+        self.y >= self.max_y - 0.5
     }
 }
 
@@ -979,136 +2672,8 @@ pub fn outer_html(doc: &Document, id: NodeId) -> String {
     out
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const HTML: &str = r#"<title>Form</title><body>
-        <label for=e>Email</label><input id=e>
-        <input type=checkbox id=c><label for=c>Agree</label>
-        <select id=s><option value=a>Alpha<option value=b>Beta</select>
-        <details id=d><summary>More</summary><p>Hidden body</p></details>
-        <a id=l href="/next">Next page</a><button id=b disabled>Nope</button>
-        <p id=p>Some <b>bold</b> text</p></body>"#;
-
-    #[test]
-    fn interactions_update_the_dom_and_readiness() {
-        let mut page = DomPage::from_html(HTML, Some("https://example.test/start"));
-        assert!(
-            page.readiness().is_ready(),
-            "{:?}",
-            page.readiness().blockers()
-        );
-
-        let email = page
-            .resolve(&Target::Label {
-                label: "Email".into(),
-            })
-            .unwrap()[0];
-        page.fill(email, "a@b.c").unwrap();
-        assert!(!page.readiness().is_ready(), "interaction queued a task");
-        assert!(page.settle(100).is_ready());
-        assert_eq!(page.document().form_value(email).as_deref(), Some("a@b.c"));
-        assert_eq!(page.focused(), Some(email));
-
-        let agree = page
-            .resolve(&Target::Text {
-                text: "Agree".into(),
-            })
-            .unwrap()[0];
-        page.click(agree).unwrap(); // label -> checkbox
-        let checkbox = page.document().element_by_id("c").unwrap();
-        assert!(page.document().is_checked(checkbox));
-        page.press(None, " ").unwrap();
-        assert!(
-            !page.document().is_checked(checkbox),
-            "space toggles the focused checkbox"
-        );
-
-        let select = page.resolve(&Target::selector("#s")).unwrap()[0];
-        page.select(select, "Beta").unwrap();
-        let beta = page.resolve(&Target::selector("option[value=b]")).unwrap()[0];
-        assert!(page.document().is_selected(beta));
-        page.settle(100);
-        assert!(
-            page.snapshot(SnapshotFormat::Compact)
-                .to_text()
-                .contains("value=\"Beta\"")
-        );
-
-        let summary = page.resolve(&Target::role("button", Some("More"))).unwrap()[0];
-        assert!(
-            page.resolve(&Target::Text {
-                text: "Hidden body".into()
-            })
-            .is_err(),
-            "closed details content is not rendered"
-        );
-        page.click(summary).unwrap();
-        page.settle(100);
-        assert!(
-            page.resolve(&Target::Text {
-                text: "Hidden body".into()
-            })
-            .is_ok()
-        );
-
-        let button = page.resolve(&Target::selector("#b")).unwrap()[0];
-        assert!(matches!(page.click(button), Err(Error::InvalidState(_))));
-        let bold = page
-            .resolve(&Target::Text {
-                text: "bold".into(),
-            })
-            .unwrap();
-        assert!(
-            page.document().element(bold[0]).unwrap().is_html("b"),
-            "innermost text match"
-        );
-        assert_eq!(outer_html(page.document(), bold[0]), "<b>bold</b>");
-        assert!(
-            page.resolve(&Target::Ref {
-                reference: "n9999.0".into()
-            })
-            .is_err()
-        );
-    }
-
-    #[test]
-    fn navigation_uses_the_loader_and_resets_state() {
-        let mut page = DomPage::from_html(HTML, Some("https://example.test/start")).with_loader(
-            Box::new(|url: &str| {
-                Ok(LoadedDocument {
-                    url: url.to_owned(),
-                    html: format!("<title>Loaded</title><h1>{url}</h1>"),
-                })
-            }),
-        );
-        let link = page.resolve(&Target::selector("#l")).unwrap()[0];
-        page.click(link).unwrap();
-        assert!(page.readiness().navigation_pending);
-        let readiness = page.settle(100);
-        assert!(readiness.is_ready());
-        assert_eq!(page.url(), Some("https://example.test/next"));
-        assert_eq!(page.document().title().as_deref(), Some("Loaded"));
-        assert!(page.focused().is_none());
-        assert!(page.resolve(&Target::role("heading", None)).is_ok());
-
-        let mut offline = DomPage::from_html("<p>x</p>", None);
-        offline.navigate("https://nowhere.test/").unwrap();
-        assert!(offline.readiness().navigation_pending);
-        assert!(
-            offline.settle(10).is_ready(),
-            "a failed navigation leaves the old document in place"
-        );
-        assert!(
-            offline
-                .take_last_error()
-                .is_some_and(|e| e.contains("loader"))
-        );
-        assert!(
-            offline.take_last_error().is_none(),
-            "errors are reported once"
-        );
-        assert!(offline.navigate("not a url").is_err());
-    }
+/// Current wall-clock time in Unix milliseconds (for `startedAt`).
+#[must_use]
+pub fn now_millis() -> u64 {
+    unix_millis()
 }

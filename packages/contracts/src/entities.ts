@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { StepOutcomeSchema } from "./program.js";
 
-export const BackendSchema = z.enum(["vector", "chrome"]);
+export const BackendSchema = z.enum(["vector", "chrome", "vector-engine"]);
 export type BackendT = z.infer<typeof BackendSchema>;
 
 export const BrowserSessionSchema = z.object({
@@ -38,6 +38,13 @@ export const PageTargetSchema = z.object({
   canGoBack: z.boolean().optional(),
   canGoForward: z.boolean().optional(),
   error: z.string().optional(),
+  /**
+   * Why the router placed this page on its backend (architecture §11):
+   * `engine-mode-off`, `explicit-backend:<b>`, `needs-chromium-table`,
+   * `engine-first`, `engine-always`, `engine-unavailable`,
+   * `fallback:<reason>` (engine classified/failed → reopened on Chromium).
+   */
+  routeReason: z.string().optional(),
 });
 export type PageTarget = z.infer<typeof PageTargetSchema>;
 

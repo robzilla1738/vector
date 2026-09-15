@@ -3,12 +3,18 @@
 //! # Contract
 //!
 //! * A [`NetworkContext`] is the unit of isolation: it owns a [`CookieJar`],
-//!   an [`HttpCache`] and a [`Transport`]. Two contexts never share state, so
-//!   an embedder can run many independent "profiles" in one process.
+//!   an [`HttpCache`], a [`NetworkPolicy`] and a [`Transport`]. Two contexts
+//!   never share state, so an embedder can run many independent "profiles"
+//!   in one process.
 //! * [`NetworkContext::fetch`] implements the engine-side parts of Fetch that
-//!   do not depend on the wire: cookie attachment and storage, cache lookup /
-//!   storage, redirect following, `data:` and `about:` URLs. The wire itself
-//!   is behind the [`Transport`] trait.
+//!   do not depend on the wire: policy enforcement, cookie attachment and
+//!   storage, cache lookup / storage, redirect following, `data:`, `about:`
+//!   and `file:` URLs. The wire itself is behind the [`Transport`] trait.
+//! * Every request carries attribution ([`Request::page`],
+//!   [`Request::initiator`], [`Request::background`]); the context keeps the
+//!   in-flight set and a bounded log of completed responses so `settle()`
+//!   (architecture §6, condition 3) and `waitFor { kind: "response" }` can be
+//!   answered without callbacks.
 //! * The default build has **no** real transport (pure Rust, no TLS): use
 //!   [`MockTransport`] for tests or enable the `http` feature for
 //!   [`HyperTransport`] (hyper 1 + rustls + HTTP/1.1 and HTTP/2).
@@ -22,20 +28,24 @@ pub mod cache;
 pub mod cookie;
 #[cfg(feature = "http")]
 pub mod hyper_transport;
+pub mod policy;
 pub mod transport;
 
-use std::time::SystemTime;
+use std::collections::VecDeque;
+use std::time::{Instant, SystemTime};
 
 use bytes::Bytes;
 use http::header::{HeaderMap, HeaderName, HeaderValue};
 use http::{Method, StatusCode};
+use serde::{Deserialize, Serialize};
 use url::Url;
 use ve_core::Stage;
 
 pub use cache::{CacheLookup, HttpCache};
-pub use cookie::{Cookie, CookieJar, SameSite};
+pub use cookie::{BrowserCookie, Cookie, CookieJar, SameSite};
 #[cfg(feature = "http")]
 pub use hyper_transport::HyperTransport;
+pub use policy::NetworkPolicy;
 pub use transport::{MockTransport, NullTransport, Transport};
 
 /// Errors from the network layer.
@@ -50,6 +60,12 @@ pub enum NetError {
     /// No transport is configured for network schemes.
     #[error("no network transport configured (enable the `http` feature or supply a Transport)")]
     NoTransport,
+    /// The request was refused by the context's [`NetworkPolicy`].
+    #[error("blocked by network policy: {0}")]
+    Blocked(String),
+    /// A `file:` URL could not be read.
+    #[error("file: {0}")]
+    Io(String),
     /// The transport failed.
     #[error("transport: {0}")]
     Transport(String),
@@ -63,8 +79,31 @@ pub enum NetError {
 
 impl From<NetError> for ve_core::Error {
     fn from(e: NetError) -> Self {
-        ve_core::Error::Network(e.to_string())
+        match e {
+            NetError::InvalidUrl(_) => ve_core::Error::parse("url", e.to_string()),
+            NetError::UnsupportedScheme(_) | NetError::Blocked(_) => {
+                ve_core::Error::invalid_params(e.to_string())
+            }
+            other => ve_core::Error::Network(other.to_string()),
+        }
     }
+}
+
+/// Who issued a request (architecture §8, attribution).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Initiator {
+    /// A top-level navigation (open, link activation, form submission).
+    #[default]
+    Navigation,
+    /// The HTML parser (stylesheets, images, scripts).
+    Parser,
+    /// Page script (`fetch`, `XMLHttpRequest`).
+    Script,
+    /// An agent step (`upload`, `waitFor response` probes).
+    Agent,
+    /// Speculative prefetch.
+    Prefetch,
 }
 
 /// An outgoing request.
@@ -78,6 +117,12 @@ pub struct Request {
     pub headers: HeaderMap,
     /// Request body.
     pub body: Option<Bytes>,
+    /// The page this request is attributed to (engine page id), if any.
+    pub page: Option<u64>,
+    /// What issued the request.
+    pub initiator: Initiator,
+    /// Background requests (streams, beacons) never block `settle()`.
+    pub background: bool,
 }
 
 impl Request {
@@ -88,7 +133,19 @@ impl Request {
             url: Url::parse(url)?,
             headers: HeaderMap::new(),
             body: None,
+            page: None,
+            initiator: Initiator::Navigation,
+            background: false,
         })
+    }
+
+    /// A `POST` request with a body and `Content-Type`.
+    pub fn post(url: &str, body: impl Into<Bytes>, content_type: &str) -> Result<Self, NetError> {
+        let mut request = Self::get(url)?;
+        request.method = Method::POST;
+        request.body = Some(body.into());
+        request = request.header("content-type", content_type);
+        Ok(request)
     }
 
     /// Adds a header (invalid names/values are ignored).
@@ -97,6 +154,27 @@ impl Request {
         if let (Ok(n), Ok(v)) = (HeaderName::try_from(name), HeaderValue::from_str(value)) {
             self.headers.insert(n, v);
         }
+        self
+    }
+
+    /// Attributes the request to a page.
+    #[must_use]
+    pub fn for_page(mut self, page: u64) -> Self {
+        self.page = Some(page);
+        self
+    }
+
+    /// Sets the initiator.
+    #[must_use]
+    pub fn with_initiator(mut self, initiator: Initiator) -> Self {
+        self.initiator = initiator;
+        self
+    }
+
+    /// Marks the request as background (never blocks readiness).
+    #[must_use]
+    pub fn background(mut self) -> Self {
+        self.background = true;
         self
     }
 
@@ -153,7 +231,23 @@ impl Response {
         })
     }
 
-    /// Body decoded as UTF-8 (lossy). Charset sniffing is a follow-up.
+    /// The `charset` parameter of `Content-Type`, lower-cased, if present.
+    #[must_use]
+    pub fn charset(&self) -> Option<String> {
+        self.content_type()?
+            .split(';')
+            .skip(1)
+            .map(str::trim)
+            .find_map(|p| {
+                let (k, v) = p.split_once('=')?;
+                k.trim()
+                    .eq_ignore_ascii_case("charset")
+                    .then(|| v.trim().trim_matches('"').to_ascii_lowercase())
+            })
+    }
+
+    /// Body decoded as UTF-8 (lossy). Charset-aware decoding of HTML lives in
+    /// `ve-html` (`decode_html_bytes`), which also honours `<meta charset>`.
     #[must_use]
     pub fn text(&self) -> String {
         String::from_utf8_lossy(&self.body).into_owned()
@@ -167,8 +261,54 @@ impl Response {
 }
 
 /// Identifies a [`NetworkContext`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ContextId(pub u64);
+
+/// A request that has been issued and not yet completed.
+#[derive(Clone, Debug)]
+pub struct InFlight {
+    /// Sequence number (monotonic per context).
+    pub request_id: u64,
+    /// The page the request is attributed to.
+    pub page: Option<u64>,
+    /// URL as issued.
+    pub url: Url,
+    /// Initiator.
+    pub initiator: Initiator,
+    /// Background flag.
+    pub background: bool,
+    /// When the request was issued.
+    pub issued_at: Instant,
+}
+
+/// Metadata of a completed exchange (the `onResponse` payload, body omitted).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletedResponse {
+    /// Sequence number (monotonic per context).
+    pub request_id: u64,
+    /// The page the request was attributed to.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page: Option<u64>,
+    /// Final URL.
+    pub url: String,
+    /// Method.
+    pub method: String,
+    /// Status code (0 when the transport failed).
+    pub status: u16,
+    /// `Content-Type` header.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_type: Option<String>,
+    /// Body size in bytes.
+    pub body_bytes: usize,
+    /// Wall-clock start, milliseconds since the Unix epoch.
+    pub started_at: u64,
+    /// Wall-clock end, milliseconds since the Unix epoch.
+    pub ended_at: u64,
+    /// Served from cache.
+    pub from_cache: bool,
+}
 
 /// An isolated networking profile.
 pub struct NetworkContext {
@@ -178,11 +318,18 @@ pub struct NetworkContext {
     pub cookies: CookieJar,
     /// HTTP cache for this context.
     pub cache: HttpCache,
+    /// Request policy (loopback blocking, allowlist, `file:` access).
+    pub policy: NetworkPolicy,
     /// `User-Agent` sent with every request.
     pub user_agent: String,
     /// Maximum redirects followed per fetch.
     pub max_redirects: u8,
+    /// Maximum retained [`CompletedResponse`] records.
+    pub completed_capacity: usize,
     transport: Box<dyn Transport>,
+    in_flight: Vec<InFlight>,
+    completed: VecDeque<CompletedResponse>,
+    next_request_id: u64,
 }
 
 impl std::fmt::Debug for NetworkContext {
@@ -191,6 +338,7 @@ impl std::fmt::Debug for NetworkContext {
             .field("id", &self.id)
             .field("cookies", &self.cookies.len())
             .field("cache_entries", &self.cache.len())
+            .field("policy", &self.policy)
             .field("transport", &self.transport.name())
             .finish_non_exhaustive()
     }
@@ -203,24 +351,42 @@ pub const DEFAULT_USER_AGENT: &str = concat!(
     ")"
 );
 
+fn unix_millis(t: SystemTime) -> u64 {
+    t.duration_since(SystemTime::UNIX_EPOCH)
+        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
+}
+
 impl NetworkContext {
-    /// Creates a context over `transport`.
+    /// Creates a context over `transport` with the default (secure) policy.
     #[must_use]
     pub fn new(id: ContextId, transport: Box<dyn Transport>) -> Self {
         Self {
             id,
             cookies: CookieJar::new(),
             cache: HttpCache::new(HttpCache::DEFAULT_MAX_BYTES),
+            policy: NetworkPolicy::default(),
             user_agent: DEFAULT_USER_AGENT.to_owned(),
             max_redirects: 20,
+            completed_capacity: 256,
             transport,
+            in_flight: Vec::new(),
+            completed: VecDeque::new(),
+            next_request_id: 0,
         }
     }
 
-    /// A context that can only resolve `data:` / `about:` URLs.
+    /// A context that can only resolve `data:` / `about:` (and, if the policy
+    /// allows, `file:`) URLs.
     #[must_use]
     pub fn offline(id: ContextId) -> Self {
         Self::new(id, Box::new(NullTransport))
+    }
+
+    /// Replaces the policy.
+    #[must_use]
+    pub fn with_policy(mut self, policy: NetworkPolicy) -> Self {
+        self.policy = policy;
+        self
     }
 
     /// Fetches `request`, following redirects, using the current time.
@@ -229,13 +395,60 @@ impl NetworkContext {
     }
 
     /// Like [`Self::fetch`] with an explicit clock (deterministic tests).
-    pub fn fetch_at(
-        &mut self,
-        mut request: Request,
-        now: SystemTime,
-    ) -> Result<Response, NetError> {
+    pub fn fetch_at(&mut self, request: Request, now: SystemTime) -> Result<Response, NetError> {
         let span = Stage::Fetch.span();
         let _guard = span.enter();
+        self.next_request_id += 1;
+        let request_id = self.next_request_id;
+        let started = Instant::now();
+        let started_at = unix_millis(now);
+        let method = request.method.to_string();
+        let page = request.page;
+        self.in_flight.push(InFlight {
+            request_id,
+            page,
+            url: request.url.clone(),
+            initiator: request.initiator,
+            background: request.background,
+            issued_at: started,
+        });
+        let result = self.fetch_inner(request, now);
+        self.in_flight.retain(|r| r.request_id != request_id);
+        let ended_at = started_at + u64::try_from(started.elapsed().as_millis()).unwrap_or(0);
+        let record = match &result {
+            Ok(response) => CompletedResponse {
+                request_id,
+                page,
+                url: response.url.to_string(),
+                method,
+                status: response.status.as_u16(),
+                content_type: response.content_type().map(str::to_owned),
+                body_bytes: response.body.len(),
+                started_at,
+                ended_at,
+                from_cache: response.from_cache,
+            },
+            Err(e) => CompletedResponse {
+                request_id,
+                page,
+                url: e.to_string(),
+                method,
+                status: 0,
+                content_type: None,
+                body_bytes: 0,
+                started_at,
+                ended_at,
+                from_cache: false,
+            },
+        };
+        if self.completed.len() >= self.completed_capacity.max(1) {
+            self.completed.pop_front();
+        }
+        self.completed.push_back(record);
+        result
+    }
+
+    fn fetch_inner(&mut self, mut request: Request, now: SystemTime) -> Result<Response, NetError> {
         let mut redirects = 0u8;
         loop {
             match request.url.scheme() {
@@ -253,9 +466,14 @@ impl NetworkContext {
                         Bytes::new(),
                     ));
                 }
+                "file" => {
+                    self.policy.check(&request.url)?;
+                    return file_url(&request.url);
+                }
                 "http" | "https" => {}
                 other => return Err(NetError::UnsupportedScheme(other.to_owned())),
             }
+            self.policy.check(&request.url)?;
 
             if request.method == Method::GET
                 && let CacheLookup::Fresh(mut cached) = self.cache.lookup(&request.cache_key(), now)
@@ -328,6 +546,73 @@ impl NetworkContext {
     pub fn transport_name(&self) -> &'static str {
         self.transport.name()
     }
+
+    /// Requests currently in flight (attributed to `page` when given).
+    #[must_use]
+    pub fn in_flight(&self, page: Option<u64>) -> Vec<&InFlight> {
+        self.in_flight
+            .iter()
+            .filter(|r| page.is_none() || r.page == page)
+            .collect()
+    }
+
+    /// Completed exchanges, oldest first (attributed to `page` when given).
+    #[must_use]
+    pub fn completed(&self, page: Option<u64>) -> Vec<&CompletedResponse> {
+        self.completed
+            .iter()
+            .filter(|r| page.is_none() || r.page == page)
+            .collect()
+    }
+
+    /// The sequence number the next request will receive; callers remember it
+    /// to look only at responses completed after a given point.
+    #[must_use]
+    pub fn next_request_id(&self) -> u64 {
+        self.next_request_id + 1
+    }
+}
+
+/// Guesses a `Content-Type` from a file extension.
+fn mime_for_path(path: &std::path::Path) -> &'static str {
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase)
+        .as_deref()
+    {
+        Some("html" | "htm" | "xhtml") => "text/html",
+        Some("css") => "text/css",
+        Some("js" | "mjs") => "text/javascript",
+        Some("json") => "application/json",
+        Some("txt" | "md") => "text/plain",
+        Some("svg") => "image/svg+xml",
+        Some("png") => "image/png",
+        Some("jpg" | "jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("pdf") => "application/pdf",
+        _ => "application/octet-stream",
+    }
+}
+
+/// Reads a `file:` URL from disk.
+fn file_url(url: &Url) -> Result<Response, NetError> {
+    let path = url
+        .to_file_path()
+        .map_err(|()| NetError::Io(format!("{url} is not a local file path")))?;
+    let body =
+        std::fs::read(&path).map_err(|e| NetError::Io(format!("{}: {e}", path.display())))?;
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        http::header::CONTENT_TYPE,
+        HeaderValue::from_static(mime_for_path(&path)),
+    );
+    headers.insert(
+        http::header::CACHE_CONTROL,
+        HeaderValue::from_static("no-store"),
+    );
+    Ok(Response::new(url.clone(), StatusCode::OK, headers, body))
 }
 
 /// Decodes a `data:` URL into a response.
@@ -421,6 +706,34 @@ fn base64_decode(input: &[u8]) -> Option<Vec<u8>> {
     Some(out)
 }
 
+/// Standard base64 encoding with padding (used for screenshot payloads).
+#[must_use]
+pub fn base64_encode(input: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
+    for chunk in input.chunks(3) {
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
+        let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
+        out.push(TABLE[((n >> 18) & 63) as usize] as char);
+        out.push(TABLE[((n >> 12) & 63) as usize] as char);
+        out.push(if chunk.len() > 1 {
+            TABLE[((n >> 6) & 63) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            TABLE[(n & 63) as usize] as char
+        } else {
+            '='
+        });
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -440,6 +753,7 @@ mod tests {
         assert_eq!(r.text(), "Hello, Vector");
         let r = ctx.fetch(Request::get("data:,plain").unwrap()).unwrap();
         assert_eq!(r.mime_type().as_deref(), Some("text/plain"));
+        assert_eq!(r.charset().as_deref(), Some("us-ascii"));
         assert!(matches!(
             ctx.fetch(Request::get("https://example.com/").unwrap()),
             Err(NetError::NoTransport)
@@ -448,6 +762,12 @@ mod tests {
             ctx.fetch(Request::get("mailto:x@y").unwrap()),
             Err(NetError::UnsupportedScheme(_))
         ));
+        assert_eq!(ctx.completed(None).len(), 5, "every fetch is logged");
+        assert_eq!(
+            ctx.completed(None)[3].status,
+            0,
+            "failures logged with status 0"
+        );
     }
 
     #[test]
@@ -467,7 +787,7 @@ mod tests {
             200,
             &[
                 ("Cache-Control", "max-age=60"),
-                ("Content-Type", "text/html"),
+                ("Content-Type", "text/html; charset=ISO-8859-1"),
             ],
             "<p>home</p>",
         );
@@ -476,10 +796,16 @@ mod tests {
         let t0 = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
 
         let r = ctx
-            .fetch_at(Request::get("https://example.com/login").unwrap(), t0)
+            .fetch_at(
+                Request::get("https://example.com/login")
+                    .unwrap()
+                    .for_page(3),
+                t0,
+            )
             .unwrap();
         assert_eq!(r.status, 200);
         assert_eq!(r.url.as_str(), "https://example.com/home");
+        assert_eq!(r.charset().as_deref(), Some("iso-8859-1"));
         assert!(!r.from_cache);
         {
             let requests = log.borrow();
@@ -500,6 +826,15 @@ mod tests {
                     .contains("VectorEngine")
             );
         }
+        let done = ctx.completed(Some(3));
+        assert_eq!(done.len(), 1);
+        assert_eq!(done[0].url, "https://example.com/home");
+        assert_eq!(done[0].status, 200);
+        assert!(ctx.completed(Some(99)).is_empty());
+        assert!(
+            ctx.in_flight(None).is_empty(),
+            "synchronous fetch leaves nothing in flight"
+        );
 
         let again = ctx
             .fetch_at(
@@ -519,5 +854,81 @@ mod tests {
         assert!(!stale.from_cache);
         assert_eq!(log.borrow().len(), 3, "expired entry refetched");
         assert_eq!(ctx.cookies.len(), 1);
+    }
+
+    #[test]
+    fn post_requests_carry_body_and_content_type_and_redirect_to_get() {
+        let mock = MockTransport::new();
+        mock.respond(
+            "https://example.com/submit",
+            303,
+            &[("Location", "/done")],
+            "",
+        );
+        mock.respond("https://example.com/done", 200, &[], "ok");
+        let log = mock.log();
+        let mut ctx = NetworkContext::new(ContextId(1), Box::new(mock));
+        let r = ctx
+            .fetch(
+                Request::post(
+                    "https://example.com/submit",
+                    "a=1&b=2",
+                    "application/x-www-form-urlencoded",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(r.text(), "ok");
+        let requests = log.borrow();
+        assert_eq!(requests[0].method, Method::POST);
+        assert_eq!(requests[0].body.as_deref(), Some(&b"a=1&b=2"[..]));
+        assert_eq!(
+            requests[0].headers.get("content-type").unwrap(),
+            "application/x-www-form-urlencoded"
+        );
+        assert_eq!(requests[1].method, Method::GET, "303 switches to GET");
+        assert!(requests[1].body.is_none());
+    }
+
+    #[test]
+    fn file_urls_are_policy_gated_and_typed_by_extension() {
+        let dir = std::env::temp_dir().join(format!("ve-net-file-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("page.html");
+        std::fs::write(&path, "<title>File</title>").unwrap();
+        let url = Url::from_file_path(&path).unwrap();
+
+        let mut locked = NetworkContext::offline(ContextId(1));
+        assert!(matches!(
+            locked.fetch(Request::get(url.as_str()).unwrap()),
+            Err(NetError::Blocked(_))
+        ));
+
+        let mut open = NetworkContext::offline(ContextId(1)).with_policy(NetworkPolicy {
+            allow_file: true,
+            ..NetworkPolicy::default()
+        });
+        let r = open.fetch(Request::get(url.as_str()).unwrap()).unwrap();
+        assert_eq!(r.mime_type().as_deref(), Some("text/html"));
+        assert_eq!(r.text(), "<title>File</title>");
+        let missing = Url::from_file_path(dir.join("missing.html")).unwrap();
+        assert!(matches!(
+            open.fetch(Request::get(missing.as_str()).unwrap()),
+            Err(NetError::Io(_))
+        ));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn base64_round_trip() {
+        for input in [&b""[..], b"f", b"fo", b"foo", b"foob", b"fooba", b"foobar"] {
+            let encoded = base64_encode(input);
+            assert_eq!(
+                base64_decode(encoded.as_bytes()).unwrap(),
+                input,
+                "{encoded}"
+            );
+        }
+        assert_eq!(base64_encode(b"Hello, Vector"), "SGVsbG8sIFZlY3Rvcg==");
     }
 }

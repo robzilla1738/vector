@@ -1624,6 +1624,7 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber",
+ "url",
  "ve-a11y",
  "ve-api",
  "ve-core",
@@ -2603,9 +2604,11 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+ "url",
  "ve-core",
  "ve-dom",
  "ve-html",
+ "ve-layout",
  "ve-style",
 ]
 
@@ -2613,6 +2616,7 @@ dependencies = [
 name = "ve-agent"
 version = "0.0.1"
 dependencies = [
+ "png",
  "serde",
  "serde_json",
  "thiserror",
@@ -2621,8 +2625,10 @@ dependencies = [
  "ve-a11y",
  "ve-core",
  "ve-dom",
+ "ve-gfx",
  "ve-html",
  "ve-layout",
+ "ve-net",
  "ve-script",
  "ve-style",
 ]
@@ -2635,6 +2641,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tracing",
+ "url",
  "ve-a11y",
  "ve-agent",
  "ve-core",
@@ -2718,8 +2725,12 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
+ "serde",
  "serde_json",
+ "url",
  "ve-api",
+ "ve-core",
+ "ve-net",
 ]
 
 [[package]]
@@ -2733,6 +2744,7 @@ dependencies = [
  "hyper-util",
  "rustls",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "tokio-rustls",
@@ -3325,7 +3337,11 @@ dependencies = [
  "clap",
  "serde",
  "serde_json",
- "ve-api",
+ "ve-core",
+ "ve-dom",
+ "ve-html",
+ "ve-layout",
+ "ve-style",
 ]
 
 [[package]]

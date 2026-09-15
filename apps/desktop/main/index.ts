@@ -37,6 +37,8 @@ let focusedPageId: string | null = null;
 // steps, serialized so parallel members can't steal the stage mid-step
 let leasePageId: string | null = null;
 let splitPageId: string | null = null;
+// corner radius of the stage card — page views are clipped to match it
+let stageRadius = 0;
 let stageLease: Promise<void> = Promise.resolve();
 // pages whose find session has emitted found-in-page at least once —
 // cold sessions need a re-issue, warm ones must not be reset
@@ -342,6 +344,15 @@ function applyStage() {
   // the focused page. A stage lease (agent pointer work) takes the whole stage.
   const split = !leasePageId && !overlayOpen && splitPageId && splitPageId !== shown ? splitPageId : null;
   for (const entry of registry.all()) {
+    // WebContentsView.setBorderRadius exists in current Electron; guard for the popup pseudo-views
+    const rounded = entry.view as { setBorderRadius?: (r: number) => void };
+    if (typeof rounded.setBorderRadius === "function") {
+      try {
+        rounded.setBorderRadius(stageRadius);
+      } catch {
+        /* unsupported on this platform */
+      }
+    }
     if (entry.pageId === shown && (!overlayOpen || entry.pageId === leasePageId)) {
       if (split) {
         const w = Math.floor(bounds.width / 2);
@@ -367,10 +378,11 @@ function wireRendererIpc() {
     if (!channel) throw new Error("runtime not connected");
     return channel.call("api.invoke", { method, params }, 60_000);
   });
-  ipcMain.handle("ui.setStage", (_e, pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null) => {
+  ipcMain.handle("ui.setStage", (_e, pageId: string | null, bounds: { x: number; y: number; width: number; height: number }, split?: string | null, radius?: number) => {
     stageBounds = bounds;
     focusedPageId = pageId;
     splitPageId = split ?? null;
+    if (typeof radius === "number" && Number.isFinite(radius)) stageRadius = Math.max(0, Math.min(24, Math.round(radius)));
     applyStage();
     return true;
   });

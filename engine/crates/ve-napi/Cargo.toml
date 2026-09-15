@@ -17,12 +17,21 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = []
-## Build the real N-API module. Without it the crate is an inert placeholder.
-napi = ["dep:napi", "dep:napi-derive", "dep:napi-build"]
+## Build the real N-API module. Without it the crate is an inert placeholder
+## (the engine host and hub still compile and are unit-tested without Node
+## headers). A Node module without
+## networking is useless, so the feature also turns on `http`.
+napi = ["dep:napi", "dep:napi-derive", "dep:napi-build", "http"]
+## Forward: real HTTP(S) transport so `http(s):` URLs can be opened.
+http = ["ve-api/http"]
 
 [dependencies]
 ve-api.workspace = true
+ve-core.workspace = true
+ve-net.workspace = true
+serde.workspace = true
 serde_json.workspace = true
+url.workspace = true
 napi = { workspace = true, optional = true }
 napi-derive = { workspace = true, optional = true }
 

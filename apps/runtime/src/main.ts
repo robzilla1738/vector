@@ -11,13 +11,21 @@ import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { VectorError, type Step } from "@vector/contracts";
 import { RpcChannel, type Transport } from "@vector/contracts";
-import { AttachedChromeDriver, StandaloneDriver, VectorElectronDriver, type BrowserDriver } from "@vector/browser-driver";
+import {
+  AttachedChromeDriver,
+  StandaloneDriver,
+  VectorElectronDriver,
+  VectorEngineDriver,
+  type BrowserDriver,
+  type EngineAvailability,
+} from "@vector/browser-driver";
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb } from "./store/db.js";
 import { Repo } from "./store/repo.js";
 import { EventBus } from "./events.js";
 import { ChannelNativeBridge, NullNativeBridge, type NativeBridge } from "./native.js";
-import { PageService } from "./services/pages.js";
+import { PageService, type DriverSet } from "./services/pages.js";
+import { Router, type NeedsChromiumEntry } from "./services/router.js";
 import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
 import { ArtifactStore } from "./services/artifacts.js";
@@ -76,13 +84,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   });
 
   // ---- drivers ----
-  const drivers: { vector: BrowserDriver | null; chrome: BrowserDriver | null } = {
+  const drivers: DriverSet = {
     vector: null,
     chrome: null,
+    engine: null,
   };
   // socket drops mark the session degraded and tell the UI; the next
   // pages.open attempts a lazy reconnect and, on success, restores it
-  const watchDriver = (d: BrowserDriver, sessionId: "vector" | "chrome", label: string) => {
+  const watchDriver = (d: BrowserDriver, sessionId: "vector" | "chrome" | "vector-engine", label: string) => {
     d.onDisconnected = () => {
       repo.upsertSession({ sessionId, backend: d.backend, label, status: "degraded", detail: "backend connection dropped — reconnecting on next use" });
       events.emit("session.changed", { backend: d.backend, status: "degraded" });
@@ -127,7 +136,49 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     }
   }
 
+  // ---- Vector Engine (architecture §11) ----
+  // The native addon is loaded whenever it is present so `runtime.describe`
+  // can report it; whether pages are *routed* to it is the `engineMode`
+  // setting (default "off" — nothing changes for existing users).
+  let engineInfo: EngineAvailability = { available: false, error: "not loaded" };
+  if (env.VECTOR_ENGINE !== "0") {
+    const d = new VectorEngineDriver({ config: { dataDir: config.dataDir } });
+    watchDriver(d, "vector-engine", "Vector Engine");
+    try {
+      await d.connect();
+      drivers.engine = d;
+      engineInfo = d.describe();
+      repo.upsertSession({
+        sessionId: "vector-engine",
+        backend: "vector-engine",
+        label: "Vector Engine",
+        status: "connected",
+        detail: `v${engineInfo.version ?? "?"} — routing ${settings.engineMode()}`,
+      });
+    } catch (e) {
+      engineInfo = { available: false, error: e instanceof Error ? e.message : String(e) };
+      repo.upsertSession({
+        sessionId: "vector-engine",
+        backend: "vector-engine",
+        label: "Vector Engine",
+        status: "disconnected",
+        detail: engineInfo.error,
+      });
+    }
+  }
   const tracer = new Tracer(repo.db, { traceDir: join(config.dataDir, "traces") });
+  const router = new Router({
+    mode: () => settings.engineMode(),
+    engineAvailable: () => !!drivers.engine?.isConnected(),
+    store: {
+      load: () => repo.loadRouterTable<NeedsChromiumEntry>(),
+      save: (entries) => repo.saveRouterTable(entries),
+    },
+    log: (message, attrs) => {
+      tracer.incr(message);
+      if (env.VECTOR_ROUTER_LOG === "1") console.error(`[vector-runtime] ${message}`, JSON.stringify(attrs));
+    },
+  });
   const responses = new ResponseStore({ repo, events, artifacts });
   // pages↔operations are mutually dependent — late-bind via a lazy ref
   let operations!: OperationService;
@@ -136,6 +187,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     events,
     native,
     drivers: () => drivers,
+    router,
     artifacts,
     responses,
     tracer,
@@ -154,7 +206,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const sets = new SetService(repo, events, pages);
 
   const refLookup = (pageId: string, ref: string) =>
-    drivers.vector?.refEntry?.(pageId, ref) ?? drivers.chrome?.refEntry?.(pageId, ref);
+    drivers.vector?.refEntry?.(pageId, ref) ?? drivers.chrome?.refEntry?.(pageId, ref) ?? drivers.engine?.refEntry?.(pageId, ref);
   const translateSteps = (pageId: string, steps: Step[]): Step[] =>
     steps
       .filter((s) => s.op !== "navigate")
@@ -227,6 +279,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     state,
     tracer,
     drivers: () => drivers,
+    router,
+    engine: () => engineInfo,
     chromeAttach,
     chromeDetach,
     chromeTabs,
@@ -312,6 +366,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     runs.coordinator.markInterrupted();
     await drivers.vector?.disconnect().catch(() => {});
     await drivers.chrome?.disconnect().catch(() => {});
+    await drivers.engine?.disconnect().catch(() => {});
     await api.close().catch(() => {});
     repo.db.close();
   };

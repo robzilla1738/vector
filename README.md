@@ -1,9 +1,22 @@
 # Vector
 
-A local agent-first desktop browser. One durable execution runtime is shared by
-a native human interface (Electron) and structured agent interfaces (loopback
-API, MCP, CLI) — the same tool-driven flow works identically in local and cloud
-environments.
+A local agent-first browser. One durable execution runtime is shared by a
+native human interface (Electron) and structured agent interfaces (loopback
+API, MCP, CLI). Pages run on one of two backends:
+
+- **Vector Engine** — Vector's own browser engine in Rust (`engine/`), built
+  for agents: the semantic observation, stable refs, batched step execution
+  and readiness come from the engine's own trees, with no injected scripts
+  and no per-step IPC. M1 covers static pages (no JavaScript yet).
+- **Chromium** — the Electron `WebContentsView` (or headless Chromium in
+  standalone mode), plus the user's own Chrome over CDP. Chromium is the
+  fallback for pages the engine classifies as script-dependent.
+
+A router (`apps/runtime/src/services/router.ts`) decides per `pages.open`;
+the decision is returned as `routeReason` and a persisted needs-chromium
+table (24 h TTL) keeps script-dependent origins off the engine. Routing is
+controlled by the `engineMode` setting: `off` (default — Chromium only),
+`auto` (engine first, Chromium fallback), `always` (engine only).
 
 ## Quickstart
 
@@ -12,70 +25,106 @@ pnpm install
 pnpm build
 pnpm dev          # fixtures + Electron shell + runtime
 pnpm fixtures     # fixture sites only (http://127.0.0.1:4810–4812)
-pnpm test         # unit + integration suites
+pnpm test         # unit + integration suites (engine tests skip without the addon)
 pnpm test:e2e     # Electron end-to-end
-pnpm bench        # benchmark harness
+pnpm bench        # benchmark harness, --backend chrome|vector-engine|both
 pnpm package:local  # build Vector.app into release/
 ```
 
-Configuration is optional — copy `.env.example` to `.env` (in the repo root
-you launch from, or in the data dir `~/Library/Application Support/Vector`)
-and set `AI_GATEWAY_API_KEY` to enable agent goals (`runs.start`,
-`sets.map --goal`). The runtime loads `<dataDir>/.env` then `<cwd>/.env` at
-startup; variables already set in the environment always win. Programs,
-observations, and saved-operation sets work with no key.
+The engine addon (`@vector/engine-native`, `engine/crates/ve-napi`) is not
+built by `pnpm build`. Build it once with a stable Rust toolchain:
+
+```bash
+cd engine && cargo build -p ve-napi --features napi --release
+# or: pnpm --filter @vector/engine-native build   (napi-rs CLI)
+```
+
+The runtime loads the addon at startup whenever it is present (set
+`VECTOR_ENGINE=0` to skip it) and reports it in `runtime.describe` →
+`engine`. Pages are only *routed* to it when `engineMode` is `auto` or
+`always` — via `settings.set { engineMode }`, the Settings sheet in the
+shell, or the `VECTOR_ENGINE_MODE` environment override:
+
+```bash
+VECTOR_ENGINE_MODE=auto pnpm dev
+```
+
+Configuration is otherwise optional — copy `.env.example` to `.env` (in the
+repo root you launch from, or in the data dir
+`~/Library/Application Support/Vector`) and set `AI_GATEWAY_API_KEY` to
+enable agent goals (`runs.start`, `sets.map --goal`). The runtime loads
+`<dataDir>/.env` then `<cwd>/.env` at startup; variables already set in the
+environment always win. Programs, observations, and saved-operation sets
+work with no key.
+
+## Benchmark
+
+`pnpm bench --backend both`, records fixture (`http://127.0.0.1:4810/records`),
+same harness (`tests/benchmarks/run.mjs`), 10 repeats, p50. Chromium is the
+headless standalone driver with `engineMode: off`; Vector Engine is
+`engineMode: always`.
+
+| Metric | Chromium | Vector Engine |
+|---|---:|---:|
+| `pages.open` | 72.8 ms | 2.1 ms |
+| `pages.observe` (full) | 13.7 ms | 1.2 ms |
+| `pages.observe` (compact) | 10.8 ms | 1.5 ms |
+| click by ref (`pages.execute`) | 71.9 ms | 2.3 ms |
+| fill by ref (`pages.execute`) | 23.7 ms | 0.8 ms |
+| navigate + observe | 56.5 ms | 2.4 ms |
+| act + observe (`returnObservation`) | 13.1 ms | 2.0 ms |
+| full observation size | 9,499 bytes | 13,148 bytes |
+
+The engine observation is larger because it surfaces more of the page
+(elements the Chromium observe script skips). Engine-side numbers for the
+static corpus (`cargo run --release -p perf -- --gate m1`) are in
+`docs/engine/architecture.md` → Status.
 
 ## Using the app
 
-The window is a compact macOS browser: traffic lights in a `hiddenInset`
-titlebar, a ~52px toolbar, tabs/sets in a collapsible left rail, and the page
-occupying most of the stage. The agent inspector is closed until you open it.
+The shell (`apps/desktop`, documented in [docs/ui/shell.md](docs/ui/shell.md))
+is a sidebar of spaces and tabs, one command bar, an inset stage card and a
+resizable agent rail.
 
-- `⌘T` new tab · `⌘W` close tab · `⌘⇧T` reopen closed tab · `⌘1–9` switch tabs
-- Address field is in the **toolbar** — `⌘L` focuses it. Type a URL or a search
-  and it navigates immediately (no model). A new tab explains that and focuses
-  the field; favorites sit underneath if you have bookmarks.
-- `⌘K` command palette — commands, URL/search, agent tasks, sets, Chrome
-  attach, observation inspector, split view, bookmarks
-- `⌘F` find in page · `⌘R` reload · `⌘=`/`⌘-`/`⌘0` zoom · `⌥←`/`⌥→` back/forward
-- Toolbar: Focus / Overview / Table · `⌘⇧A` overview · `⌘Y` history ·
-  `⌘⇧J` downloads · `⌘,` settings · `⌘S` toggle the tab rail
-- The tab rail and agent inspector are **drag-resizable** (double-click the
-  edge to reset); widths persist. The activity shelf at the bottom of the
-  stage is collapsed by default and shows complete / active / queued / files
-  — never an invented percentage.
-- Open the **agent inspector** from the toolbar when you want chat. Threads
-  stay scoped; `+` starts a new conversation.
-- The toolbar labels **Vector** vs **Chrome**. Type or click inside an
-  agent-driven page to take it over; the chip hands control back with one
-  click. Attached Chrome tabs stay in Chrome — use Open live in Chrome.
-- Command palette, settings, history, and the observation inspector hide the
-  native page so they are not covered by `WebContentsView`. Find and downloads
-  shrink the stage instead.
-- Results table: sort, filter, export CSV/JSON, click a source URL to reopen
-  its page.
-- Run steps carry an inspect control — the exact observation the planner saw
-  (marked historical; it doesn't rewind the page).
-- `collectScroll` program steps accumulate virtualized/infinite lists by
-  stable key — see docs/api.md.
+- `⌘T` new tab · `⌘W` close · `⌘⇧T` reopen · `⌘1–9` switch · `⌃Tab` cycle
+- `⌘L` / `⌘E` focus the **command bar**: a URL or search navigates
+  immediately (no model); a prompt starts an agent run. Prefixes: `/`
+  command, `>` force a run, `?` force a search.
+- `⌘K` command palette · `⌘⇧A` agent rail · `⌘⇧O` tab overview ·
+  `⌘S` collapse the sidebar · `⌘F` find · `⌘R` reload · `⌘=`/`⌘-`/`⌘0` zoom ·
+  `⌘[`/`⌘]` back/forward · `⌘Y` history · `⌘⇧J` downloads · `⌘,` settings
+- The stage card carries an **engine badge** — Chromium, Your Chrome or
+  Vector Engine — with the router's `routeReason` in its hover card.
+  Settings → Vector Engine switches `engineMode`.
+- Type or click inside an agent-driven page to take it over; the toolbar
+  chip (*You're in control · Return*) hands it back. Programs on a
+  taken-over page fail with `conflict` until then.
+- Run steps in the agent rail carry the exact observation the planner saw;
+  results tables sort, filter and export CSV/JSON.
+- Engine-backed pages are headless: they have no native view, so
+  `pages.activate` and `pages.capture` on them fail with
+  `capability_unsupported` in M1.
 
 ## Layout
 
 ```
 apps/desktop     Electron main + React renderer (native WebContentsView tabs)
-apps/runtime     the authoritative runtime: pages, programs, runs, sets, API
+apps/runtime     the authoritative runtime: pages, router, programs, runs, sets, API
+engine/          Vector Engine — Rust cargo workspace (crates/, tools/, fixtures/, conformance/)
+engine/crates/ve-napi   @vector/engine-native — napi-rs 3 addon the runtime loads
 packages/contracts      zod schemas shared by every surface
-packages/browser-driver CDP/Playwright drivers (vector, standalone, attached Chrome)
+packages/browser-driver drivers: vector (Electron/standalone Chromium), chrome (attached), vector-engine
 packages/cli            `vector` CLI over the loopback API
 packages/mcp            MCP stdio server over the loopback API
 fixtures/               deterministic test sites (records, forms, interaction-lab)
 tests/                  unit, integration, e2e, benchmarks
-scripts/                dev, fixtures, packaging
+scripts/                dev, fixtures, Chromium discovery, packaging
 ```
 
 ## Docs
 
-- [Architecture](docs/architecture.md)
-- [Local testing](docs/local-testing.md)
+- [Architecture](docs/architecture.md) · [Engine architecture](docs/engine/architecture.md) · [Engine README](engine/README.md)
+- [Local testing](docs/local-testing.md) · [Desktop shell](docs/ui/shell.md)
 - [Loopback API](docs/api.md) · [CLI](docs/cli.md) · [MCP](docs/mcp.md)
 - [Packaging](docs/packaging.md) · [Troubleshooting](docs/troubleshooting.md)
+- [Changelog](CHANGELOG.md)

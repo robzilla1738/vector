@@ -14,7 +14,7 @@
     "fixtures": "node scripts/fixtures.mjs",
     "typecheck": "tsc -b tsconfig.json --force",
     "test": "vitest run",
-    "test:unit": "vitest run tests/unit",
+    "test:unit": "vitest run tests/unit apps/desktop/renderer",
     "test:e2e": "vitest run --config tests/e2e/vitest.config.ts",
     "smoke:packaged": "node tests/smoke/packaged.mjs",
     "bench": "node tests/benchmarks/run.mjs",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@types/node": "24.3.0",
     "typescript": "5.9.3",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "jsdom": "26.1.0"
   }
 }

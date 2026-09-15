@@ -1,10 +1,44 @@
 //! Accessible name and description computation (a pragmatic subset of the
 //! Accessible Name and Description Computation 1.2 algorithm).
 
+use std::collections::HashMap;
+
 use ve_core::NodeId;
 use ve_dom::{Document, ElementData, NodeKind};
 
 use crate::roles::Role;
+
+/// Pre-computed `<label for>` index so that naming every control on a page
+/// costs O(n) instead of O(n × labels). Build once per observation.
+#[derive(Clone, Debug, Default)]
+pub struct LabelIndex {
+    by_target: HashMap<String, Vec<NodeId>>,
+}
+
+impl LabelIndex {
+    /// Indexes every `<label for="…">` in the light tree.
+    #[must_use]
+    pub fn build(doc: &Document) -> Self {
+        let mut by_target: HashMap<String, Vec<NodeId>> = HashMap::new();
+        for id in doc.elements() {
+            if let Some(e) = doc.element(id)
+                && e.is_html("label")
+                && let Some(target) = e.attr("for")
+            {
+                by_target.entry(target.to_owned()).or_default().push(id);
+            }
+        }
+        Self { by_target }
+    }
+
+    /// Labels whose `for` attribute equals `control_id`.
+    #[must_use]
+    pub fn labels_for(&self, control_id: &str) -> &[NodeId] {
+        self.by_target
+            .get(control_id)
+            .map_or(&[][..], Vec::as_slice)
+    }
+}
 
 /// Collapses whitespace runs and trims.
 fn normalize(text: &str) -> String {
@@ -71,11 +105,56 @@ fn collect_text(doc: &Document, id: NodeId, allow_hidden: bool, out: &mut String
                             out.push(' ');
                         }
                     }
-                    "input" | "select" | "textarea" => {
+                    // accname §2E: only embedded textboxes, comboboxes /
+                    // listboxes and ranges contribute; checkboxes, radios,
+                    // buttons, hidden and file inputs contribute nothing.
+                    "textarea" => {
                         if let Some(v) = doc.form_value(child) {
                             out.push(' ');
                             out.push_str(&v);
                             out.push(' ');
+                        }
+                    }
+                    "input" => {
+                        let ty = e.attr("type").map(str::to_ascii_lowercase);
+                        let textbox_like = match ty.as_deref() {
+                            None => true,
+                            Some(t) => matches!(
+                                t,
+                                "text"
+                                    | "search"
+                                    | "email"
+                                    | "tel"
+                                    | "url"
+                                    | "password"
+                                    | "number"
+                                    | "range"
+                                    | "date"
+                                    | "time"
+                                    | "datetime-local"
+                                    | "month"
+                                    | "week"
+                                    | "color"
+                            ),
+                        };
+                        if textbox_like && let Some(v) = doc.form_value(child) {
+                            out.push(' ');
+                            out.push_str(&v);
+                            out.push(' ');
+                        }
+                    }
+                    "select" => {
+                        // The selected option's label, not its value attribute.
+                        if let Some(option) = doc.descendants(child).find(|&o| {
+                            doc.element(o).is_some_and(|x| x.is_html("option"))
+                                && doc.is_selected(o)
+                        }) {
+                            let text = normalize(&doc.text_content(option));
+                            if !text.is_empty() {
+                                out.push(' ');
+                                out.push_str(&text);
+                                out.push(' ');
+                            }
                         }
                     }
                     "br" => out.push(' '),
@@ -113,13 +192,21 @@ fn collect_text(doc: &Document, id: NodeId, allow_hidden: bool, out: &mut String
 
 /// The `<label>` elements associated with a form control (by `for` or by
 /// wrapping).
-fn labels_for(doc: &Document, id: NodeId, element: &ElementData) -> Vec<NodeId> {
+fn labels_for(
+    doc: &Document,
+    id: NodeId,
+    element: &ElementData,
+    index: Option<&LabelIndex>,
+) -> Vec<NodeId> {
     let mut labels = Vec::new();
     if let Some(control_id) = element.id() {
-        labels.extend(doc.elements().filter(|&l| {
-            doc.element(l)
-                .is_some_and(|e| e.is_html("label") && e.attr("for") == Some(control_id))
-        }));
+        match index {
+            Some(index) => labels.extend_from_slice(index.labels_for(control_id)),
+            None => labels.extend(doc.elements().filter(|&l| {
+                doc.element(l)
+                    .is_some_and(|e| e.is_html("label") && e.attr("for") == Some(control_id))
+            })),
+        }
     }
     if let Some(wrapper) = doc
         .ancestors(id)
@@ -134,7 +221,12 @@ fn labels_for(doc: &Document, id: NodeId, element: &ElementData) -> Vec<NodeId> 
 
 /// Native (host language) labelling: `alt`, `<label>`, `value` of buttons,
 /// `<legend>`, `<caption>`, `<figcaption>`, `<title>` of SVG.
-fn native_name(doc: &Document, id: NodeId, element: &ElementData) -> Option<String> {
+fn native_name(
+    doc: &Document,
+    id: NodeId,
+    element: &ElementData,
+    index: Option<&LabelIndex>,
+) -> Option<String> {
     let first_child_named = |name: &str| {
         doc.children(id)
             .find(|&c| doc.element(c).is_some_and(|e| e.is_html(name)))
@@ -161,11 +253,13 @@ fn native_name(doc: &Document, id: NodeId, element: &ElementData) -> Option<Stri
                 "image" => attr_nonempty(element, "alt")
                     .or_else(|| attr_nonempty(element, "value"))
                     .map(normalize),
-                _ => label_text(doc, id, element),
+                _ => label_text(doc, id, element, index),
             }
         }
-        "select" | "textarea" | "meter" | "progress" | "output" => label_text(doc, id, element),
-        "button" => label_text(doc, id, element),
+        "select" | "textarea" | "meter" | "progress" | "output" => {
+            label_text(doc, id, element, index)
+        }
+        "button" => label_text(doc, id, element, index),
         "fieldset" => first_child_named("legend"),
         "table" => first_child_named("caption"),
         "figure" => first_child_named("figcaption"),
@@ -175,8 +269,13 @@ fn native_name(doc: &Document, id: NodeId, element: &ElementData) -> Option<Stri
     }
 }
 
-fn label_text(doc: &Document, id: NodeId, element: &ElementData) -> Option<String> {
-    let parts: Vec<String> = labels_for(doc, id, element)
+fn label_text(
+    doc: &Document,
+    id: NodeId,
+    element: &ElementData,
+    index: Option<&LabelIndex>,
+) -> Option<String> {
+    let parts: Vec<String> = labels_for(doc, id, element, index)
         .into_iter()
         .map(|l| name_from_content(doc, l, false))
         .filter(|s| !s.is_empty())
@@ -188,6 +287,12 @@ fn label_text(doc: &Document, id: NodeId, element: &ElementData) -> Option<Strin
 /// when the element has no name.
 #[must_use]
 pub fn compute_name(doc: &Document, id: NodeId) -> String {
+    compute_name_with(doc, id, None)
+}
+
+/// [`compute_name`] with a pre-built [`LabelIndex`].
+#[must_use]
+pub fn compute_name_with(doc: &Document, id: NodeId, index: Option<&LabelIndex>) -> String {
     let Some(element) = doc.element(id) else {
         return doc
             .get(id)
@@ -206,7 +311,7 @@ pub fn compute_name(doc: &Document, id: NodeId) -> String {
         return normalize(label);
     }
     // 3. host language labelling
-    if let Some(native) = native_name(doc, id, element) {
+    if let Some(native) = native_name(doc, id, element, index) {
         return native;
     }
     // 4. name from content
@@ -309,5 +414,12 @@ mod tests {
         );
         assert_eq!(compute_description(&doc, nth("button", 1), "Go"), "Tip");
         assert_eq!(compute_name(&doc, nth("fieldset", 0)), "Ship to");
+        let index = LabelIndex::build(&doc);
+        assert_eq!(index.labels_for("e").len(), 1);
+        assert_eq!(
+            compute_name_with(&doc, nth("input", 0), Some(&index)),
+            "Email address",
+            "indexed lookup agrees with the scan"
+        );
     }
 }

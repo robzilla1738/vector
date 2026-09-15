@@ -13,7 +13,7 @@ use ve_core::Size;
 pub use crate::properties::{ComputedStyle, ConvertContext, CustomProperties};
 use crate::properties::{PropertyId, SpecifiedValue};
 use crate::stylesheet::PropertyDeclaration;
-use crate::values::{Display, Rgba};
+use crate::values::{BorderCollapse, Display, Float, Rgba};
 
 /// Per-element facts the cascade needs that are not in the declarations.
 #[derive(Clone, Copy, Debug)]
@@ -144,14 +144,73 @@ impl ComputedStyle {
         }
     }
 
-    /// Post-cascade adjustments mandated by CSS Display / Positioning.
+    /// Post-cascade adjustments mandated by CSS Display / Positioning /
+    /// Backgrounds: blockification of out-of-flow and floated boxes, the
+    /// root's display, and border widths of sides whose style paints nothing.
     fn fix_up(&mut self, is_root: bool) {
-        if self.position.is_out_of_flow() || is_root {
+        if self.position.is_out_of_flow() {
+            // Absolutely positioned boxes do not float.
+            self.float = Float::None;
+        }
+        if self.position.is_out_of_flow() || self.float != Float::None || is_root {
             self.display = self.display.blockified();
         }
         if is_root && self.display == Display::Contents {
             self.display = Display::Block;
         }
+        if self.border_top_style.is_none() {
+            self.border_top_width = 0.0;
+        }
+        if self.border_right_style.is_none() {
+            self.border_right_width = 0.0;
+        }
+        if self.border_bottom_style.is_none() {
+            self.border_bottom_width = 0.0;
+        }
+        if self.border_left_style.is_none() {
+            self.border_left_width = 0.0;
+        }
+        if self.border_collapse == BorderCollapse::Collapse {
+            self.border_spacing_x = 0.0;
+            self.border_spacing_y = 0.0;
+        }
+    }
+
+    /// Returns `true` if the two styles differ in a way that changes layout
+    /// (anything except paint-only properties).
+    #[must_use]
+    pub fn layout_eq(&self, other: &Self) -> bool {
+        let paint_only = |s: &Self| {
+            (
+                s.color,
+                s.background_color,
+                s.border_top_color,
+                s.border_right_color,
+                s.border_bottom_color,
+                s.border_left_color,
+                s.opacity,
+                s.visibility,
+                s.pointer_events,
+                s.text_decoration_line,
+            )
+        };
+        let mut a = self.clone();
+        let mut b = other.clone();
+        // Neutralise paint-only differences before comparing.
+        if paint_only(&a) != paint_only(&b) {
+            a.color = b.color;
+            a.background_color = b.background_color;
+            a.border_top_color = b.border_top_color;
+            a.border_right_color = b.border_right_color;
+            a.border_bottom_color = b.border_bottom_color;
+            a.border_left_color = b.border_left_color;
+            a.opacity = b.opacity;
+            a.visibility = b.visibility;
+            a.pointer_events = b.pointer_events;
+            a.text_decoration_line = b.text_decoration_line;
+        }
+        b.custom_properties = a.custom_properties.clone();
+        a == b
     }
 
     /// Returns `true` if the element generates a box (`display != none`).

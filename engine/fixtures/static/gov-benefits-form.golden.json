@@ -1,0 +1,891 @@
+{
+  "url": "https://fixtures.vector.test/gov-benefits-form.html",
+  "title": "Apply for household energy assistance | Benefits Portal",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 2189.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://fixtures.vector.test/gov-benefits-form.html",
+      "sameOrigin": true
+    }
+  ],
+  "text": "[header]\nBenefits Portal\n[nav]\nHome Apply Check status Help\n[form]\n[Search]\n[main]\n# Apply for household energy assistance\nComplete all required fields (marked * ). Your application is saved when you submit; you can return with your confirmation number.\nBefore you start\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\nProof of identity for each adult in the household\nMost recent utility bill\nIncome statements for the last 30 days\n[form]\n1. Applicant\nFirst name *\nLast name *\nDate of birth *\nSocial Security number (last 4)\nOptional. Speeds up identity verification.\nEmail address *\nPhone\n2. Address\nStreet address *\nApartment, suite, etc.\nCity *\nState *\nZIP code *\nMailing address is the same as above\n3. Household\nNumber of people in household *\nHousing type\nOwn\nRent\nOther\nAnyone in the household is… (check all that apply)\nAge 60 or older\nLiving with a disability\nUnder 6 years old\nA veteran\nPrimary heating source\n4. Income\nTotal gross monthly household income (USD) *\nUpload your most recent utility bill\nPDF, JPG or PNG up to 10 MB.\nAnything else we should know?\n5. Review and sign\nPrivacy Act statement\nPenalty for false statements\nI certify that the information provided is true and complete *\nType your full name as signature *\n[Submit application] [Save and finish later] [Clear form]\nNeed help? Call 1-800-555-0100 (TTY 711), Monday–Friday 8 am–6 pm.\n[aside]\n### Related\nAbout the program\nEligibility checker\nCheck application status\nAppeals process\n### Languages\nEspañol\n中文\nTiếng Việt\n[footer]\n[nav]\nAccessibility Privacy FOIA No FEAR Act USA.gov\n© Fixture Corp. Static corpus for engine benchmarks.",
+  "headings": [
+    "Apply for household energy assistance",
+    "Related",
+    "Languages"
+  ],
+  "elements": [
+    {
+      "ref": "r37",
+      "frame": "main",
+      "tag": "input",
+      "role": "searchbox",
+      "name": "Search",
+      "type": "search",
+      "value": "",
+      "placeholder": "Search…",
+      "selector": {}
+    },
+    {
+      "ref": "r38",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Search",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r78",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "First name *",
+      "type": "text",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r85",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Last name *",
+      "type": "text",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r91",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Date of birth *",
+      "type": "date",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r95",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Social Security number (last 4)",
+      "type": "text",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r103",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Email address *",
+      "type": "email",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r107",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Phone",
+      "type": "tel",
+      "value": "",
+      "placeholder": "(555) 555-0100",
+      "selector": {}
+    },
+    {
+      "ref": "r118",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Street address *",
+      "type": "text",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r122",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Apartment, suite, etc.",
+      "type": "text",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r130",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "City *",
+      "type": "text",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r137",
+      "frame": "main",
+      "tag": "select",
+      "role": "combobox",
+      "name": "State *",
+      "type": "select",
+      "value": "",
+      "selected": "Select a state",
+      "selector": {}
+    },
+    {
+      "ref": "r168",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "ZIP code *",
+      "type": "text",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r171",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "Mailing address is the same as above",
+      "type": "checkbox",
+      "checked": true,
+      "selector": {}
+    },
+    {
+      "ref": "r183",
+      "frame": "main",
+      "tag": "input",
+      "role": "spinbutton",
+      "name": "Number of people in household *",
+      "type": "number",
+      "value": "1",
+      "selector": {}
+    },
+    {
+      "ref": "r190",
+      "frame": "main",
+      "tag": "input",
+      "role": "radio",
+      "name": "Own",
+      "type": "radio",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r193",
+      "frame": "main",
+      "tag": "input",
+      "role": "radio",
+      "name": "Rent",
+      "type": "radio",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r196",
+      "frame": "main",
+      "tag": "input",
+      "role": "radio",
+      "name": "Other",
+      "type": "radio",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r204",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "Age 60 or older",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r207",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "Living with a disability",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r210",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "Under 6 years old",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r213",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "A veteran",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r218",
+      "frame": "main",
+      "tag": "select",
+      "role": "combobox",
+      "name": "Primary heating source",
+      "type": "select",
+      "value": "electric",
+      "selected": "Electricity",
+      "selector": {}
+    },
+    {
+      "ref": "r239",
+      "frame": "main",
+      "tag": "input",
+      "role": "spinbutton",
+      "name": "Total gross monthly household income (USD) *",
+      "type": "number",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r243",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Upload your most recent utility bill",
+      "type": "file",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r249",
+      "frame": "main",
+      "tag": "textarea",
+      "role": "textbox",
+      "name": "Anything else we should know?",
+      "type": "textarea",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r269",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "I certify that the information provided is true and complete *",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r278",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Type your full name as signature *",
+      "type": "text",
+      "value": "",
+      "selector": {}
+    },
+    {
+      "ref": "r22",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Benefits Portal",
+      "href": "https://fixtures.vector.test/",
+      "selector": {}
+    },
+    {
+      "ref": "r25",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Home",
+      "href": "https://fixtures.vector.test/",
+      "selector": {}
+    },
+    {
+      "ref": "r27",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Apply",
+      "href": "https://fixtures.vector.test/apply",
+      "selector": {}
+    },
+    {
+      "ref": "r29",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Check status",
+      "href": "https://fixtures.vector.test/status",
+      "selector": {}
+    },
+    {
+      "ref": "r31",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Help",
+      "href": "https://fixtures.vector.test/help",
+      "selector": {}
+    },
+    {
+      "ref": "r307",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "About the program",
+      "href": "https://fixtures.vector.test/programs/energy",
+      "selector": {}
+    },
+    {
+      "ref": "r310",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Eligibility checker",
+      "href": "https://fixtures.vector.test/eligibility",
+      "selector": {}
+    },
+    {
+      "ref": "r313",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Check application status",
+      "href": "https://fixtures.vector.test/status",
+      "selector": {}
+    },
+    {
+      "ref": "r316",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Appeals process",
+      "href": "https://fixtures.vector.test/appeals",
+      "selector": {}
+    },
+    {
+      "ref": "r323",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Español",
+      "href": "https://fixtures.vector.test/es/apply",
+      "selector": {}
+    },
+    {
+      "ref": "r326",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "中文",
+      "href": "https://fixtures.vector.test/zh/apply",
+      "selector": {}
+    },
+    {
+      "ref": "r329",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Tiếng Việt",
+      "href": "https://fixtures.vector.test/vi/apply",
+      "selector": {}
+    },
+    {
+      "ref": "r18",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Skip to main content",
+      "href": "https://fixtures.vector.test/gov-benefits-form.html#main",
+      "selector": {}
+    },
+    {
+      "ref": "r256",
+      "frame": "main",
+      "tag": "details",
+      "role": "group",
+      "name": "Privacy Act statement",
+      "selector": {}
+    },
+    {
+      "ref": "r257",
+      "frame": "main",
+      "tag": "summary",
+      "role": "button",
+      "name": "Privacy Act statement",
+      "selector": {}
+    },
+    {
+      "ref": "r262",
+      "frame": "main",
+      "tag": "details",
+      "role": "group",
+      "name": "Penalty for false statements",
+      "selector": {}
+    },
+    {
+      "ref": "r263",
+      "frame": "main",
+      "tag": "summary",
+      "role": "button",
+      "name": "Penalty for false statements",
+      "selector": {}
+    },
+    {
+      "ref": "r282",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Submit application",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r285",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Save and finish later",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r288",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Clear form",
+      "type": "reset",
+      "selector": {}
+    },
+    {
+      "ref": "r293",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "1-800-555-0100",
+      "href": "tel:+18005550100",
+      "selector": {}
+    },
+    {
+      "ref": "r333",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Accessibility",
+      "href": "https://fixtures.vector.test/accessibility",
+      "selector": {}
+    },
+    {
+      "ref": "r335",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Privacy",
+      "href": "https://fixtures.vector.test/privacy",
+      "selector": {}
+    },
+    {
+      "ref": "r337",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "FOIA",
+      "href": "https://fixtures.vector.test/foia",
+      "selector": {}
+    },
+    {
+      "ref": "r339",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "No FEAR Act",
+      "href": "https://fixtures.vector.test/nofear",
+      "selector": {}
+    },
+    {
+      "ref": "r341",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "USA.gov",
+      "href": "https://www.usa.gov/",
+      "selector": {}
+    }
+  ],
+  "formFields": [
+    {
+      "ref": "r37",
+      "label": "Search",
+      "name": "q",
+      "type": "search",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r78",
+      "label": "First name *",
+      "name": "firstName",
+      "type": "text",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r85",
+      "label": "Last name *",
+      "name": "lastName",
+      "type": "text",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r91",
+      "label": "Date of birth *",
+      "name": "dob",
+      "type": "date",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r95",
+      "label": "Social Security number (last 4)",
+      "name": "ssn4",
+      "type": "text",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r103",
+      "label": "Email address *",
+      "name": "email",
+      "type": "email",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r107",
+      "label": "Phone",
+      "name": "phone",
+      "type": "tel",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r118",
+      "label": "Street address *",
+      "name": "address1",
+      "type": "text",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r122",
+      "label": "Apartment, suite, etc.",
+      "name": "address2",
+      "type": "text",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r130",
+      "label": "City *",
+      "name": "city",
+      "type": "text",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r137",
+      "label": "State *",
+      "name": "state",
+      "type": "select",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please select an item in the list."
+    },
+    {
+      "ref": "r168",
+      "label": "ZIP code *",
+      "name": "zip",
+      "type": "text",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r171",
+      "label": "Mailing address is the same as above",
+      "name": "mailingSame",
+      "type": "checkbox",
+      "value": "on",
+      "valid": true
+    },
+    {
+      "ref": "r183",
+      "label": "Number of people in household *",
+      "name": "householdSize",
+      "type": "number",
+      "value": "1",
+      "required": true,
+      "valid": true
+    },
+    {
+      "ref": "r190",
+      "label": "Own",
+      "name": "housing",
+      "type": "radio",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please select one of these options."
+    },
+    {
+      "ref": "r193",
+      "label": "Rent",
+      "name": "housing",
+      "type": "radio",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r196",
+      "label": "Other",
+      "name": "housing",
+      "type": "radio",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r204",
+      "label": "Age 60 or older",
+      "name": "hh[]",
+      "type": "checkbox",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r207",
+      "label": "Living with a disability",
+      "name": "hh[]",
+      "type": "checkbox",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r210",
+      "label": "Under 6 years old",
+      "name": "hh[]",
+      "type": "checkbox",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r213",
+      "label": "A veteran",
+      "name": "hh[]",
+      "type": "checkbox",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r218",
+      "label": "Primary heating source",
+      "name": "heatSource",
+      "type": "select",
+      "value": "electric",
+      "valid": true
+    },
+    {
+      "ref": "r239",
+      "label": "Total gross monthly household income (USD) *",
+      "name": "monthlyIncome",
+      "type": "number",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    },
+    {
+      "ref": "r243",
+      "label": "Upload your most recent utility bill",
+      "name": "utilityBill",
+      "type": "file",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r249",
+      "label": "Anything else we should know?",
+      "name": "notes",
+      "type": "textarea",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r269",
+      "label": "I certify that the information provided is true and complete *",
+      "name": "certify",
+      "type": "checkbox",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please check this box if you want to proceed."
+    },
+    {
+      "ref": "r278",
+      "label": "Type your full name as signature *",
+      "name": "signature",
+      "type": "text",
+      "value": "",
+      "required": true,
+      "valid": false,
+      "validationMessage": "Please fill out this field."
+    }
+  ],
+  "tables": [],
+  "links": [
+    {
+      "ref": "r22",
+      "text": "Benefits Portal",
+      "href": "https://fixtures.vector.test/"
+    },
+    {
+      "ref": "r25",
+      "text": "Home",
+      "href": "https://fixtures.vector.test/"
+    },
+    {
+      "ref": "r27",
+      "text": "Apply",
+      "href": "https://fixtures.vector.test/apply"
+    },
+    {
+      "ref": "r29",
+      "text": "Check status",
+      "href": "https://fixtures.vector.test/status"
+    },
+    {
+      "ref": "r31",
+      "text": "Help",
+      "href": "https://fixtures.vector.test/help"
+    },
+    {
+      "ref": "r307",
+      "text": "About the program",
+      "href": "https://fixtures.vector.test/programs/energy"
+    },
+    {
+      "ref": "r310",
+      "text": "Eligibility checker",
+      "href": "https://fixtures.vector.test/eligibility"
+    },
+    {
+      "ref": "r313",
+      "text": "Check application status",
+      "href": "https://fixtures.vector.test/status"
+    },
+    {
+      "ref": "r316",
+      "text": "Appeals process",
+      "href": "https://fixtures.vector.test/appeals"
+    },
+    {
+      "ref": "r323",
+      "text": "Español",
+      "href": "https://fixtures.vector.test/es/apply"
+    },
+    {
+      "ref": "r326",
+      "text": "中文",
+      "href": "https://fixtures.vector.test/zh/apply"
+    },
+    {
+      "ref": "r329",
+      "text": "Tiếng Việt",
+      "href": "https://fixtures.vector.test/vi/apply"
+    },
+    {
+      "ref": "r18",
+      "text": "Skip to main content",
+      "href": "https://fixtures.vector.test/gov-benefits-form.html#main"
+    },
+    {
+      "ref": "r293",
+      "text": "1-800-555-0100",
+      "href": "tel:+18005550100"
+    },
+    {
+      "ref": "r333",
+      "text": "Accessibility",
+      "href": "https://fixtures.vector.test/accessibility"
+    },
+    {
+      "ref": "r335",
+      "text": "Privacy",
+      "href": "https://fixtures.vector.test/privacy"
+    },
+    {
+      "ref": "r337",
+      "text": "FOIA",
+      "href": "https://fixtures.vector.test/foia"
+    },
+    {
+      "ref": "r339",
+      "text": "No FEAR Act",
+      "href": "https://fixtures.vector.test/nofear"
+    },
+    {
+      "ref": "r341",
+      "text": "USA.gov",
+      "href": "https://www.usa.gov/"
+    }
+  ],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 54,
+    "elementsShown": 54,
+    "textChars": 1801,
+    "approxTokens": 1499
+  }
+}

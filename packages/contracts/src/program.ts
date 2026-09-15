@@ -368,5 +368,22 @@ export const ProgramResultSchema = z.object({
   /** checkpoint names reached before completion/failure */
   checkpoints: z.array(z.string()).optional(),
   error: z.string().optional(),
+  /**
+   * Set when the Vector Engine hit `capability_unsupported` mid-program and
+   * the runtime moved the page to Chromium (architecture §11 step 4).
+   * `replayedFrom` is the index of the first step run on Chromium;
+   * `repair: true` means ref-targeted steps could not be replayed (refs do
+   * not carry across backends) and the planner must re-observe and REPAIR.
+   */
+  fallback: z
+    .object({
+      from: z.string(),
+      to: z.string(),
+      reason: z.string(),
+      replayedFrom: z.number().int().nonnegative(),
+      repair: z.boolean(),
+      refSteps: z.array(z.string()).optional(),
+    })
+    .optional(),
 });
 export type ProgramResult = z.infer<typeof ProgramResultSchema>;

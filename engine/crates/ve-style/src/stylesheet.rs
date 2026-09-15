@@ -8,6 +8,7 @@ use selectors::SelectorList;
 use selectors::parser::ParseRelative;
 use ve_core::Stage;
 
+use crate::coverage::CssCoverage;
 use crate::media::MediaQueryList;
 use crate::properties::{PropertyId, SpecifiedValue, expand_shorthand};
 use crate::selector_impl::{SelectorParser, StyleParseErrorKind, VeSelectorImpl};
@@ -81,6 +82,8 @@ pub struct Stylesheet {
     pub origin: Origin,
     /// Rules in source order.
     pub rules: Vec<CssRule>,
+    /// Declaration coverage counters for this sheet.
+    pub coverage: CssCoverage,
 }
 
 impl Stylesheet {
@@ -90,6 +93,7 @@ impl Stylesheet {
         Self {
             origin,
             rules: Vec::new(),
+            coverage: CssCoverage::default(),
         }
     }
 
@@ -109,6 +113,14 @@ impl Stylesheet {
     }
 }
 
+/// Strips the XML `<![CDATA[` … `]]>` wrapper XHTML documents often put
+/// inside `<style>` (it is raw text to an HTML parser, but would break the
+/// first rule for the CSS tokenizer).
+#[must_use]
+pub fn strip_cdata(css: &str) -> String {
+    css.replace("<![CDATA[", "").replace("]]>", "")
+}
+
 /// Parses a stylesheet. Invalid rules and declarations are skipped, as CSS
 /// error recovery requires; nothing here can fail.
 #[must_use]
@@ -117,7 +129,9 @@ pub fn parse_stylesheet(css: &str, origin: Origin) -> Stylesheet {
     let _guard = span.enter();
     let mut input = ParserInput::new(css);
     let mut parser = Parser::new(&mut input);
-    let mut rule_parser = RuleParser;
+    let mut rule_parser = RuleParser {
+        coverage: CssCoverage::default(),
+    };
     let rules = StyleSheetParser::new(&mut parser, &mut rule_parser)
         .filter_map(|r| match r {
             Ok(rule) => Some(rule),
@@ -127,19 +141,34 @@ pub fn parse_stylesheet(css: &str, origin: Origin) -> Stylesheet {
             }
         })
         .collect();
-    Stylesheet { origin, rules }
+    Stylesheet {
+        origin,
+        rules,
+        coverage: rule_parser.coverage,
+    }
 }
 
 /// Parses a declaration list, e.g. the contents of a `style=""` attribute.
 #[must_use]
 pub fn parse_declaration_block(css: &str) -> DeclarationBlock {
-    let mut input = ParserInput::new(css);
-    let mut parser = Parser::new(&mut input);
-    parse_declarations(&mut parser)
+    parse_declaration_block_counted(css).0
 }
 
-fn parse_declarations<'i>(input: &mut Parser<'i, '_>) -> DeclarationBlock {
-    let mut decl_parser = DeclarationListParser;
+/// Like [`parse_declaration_block`], also returning the coverage counters.
+#[must_use]
+pub fn parse_declaration_block_counted(css: &str) -> (DeclarationBlock, CssCoverage) {
+    let mut input = ParserInput::new(css);
+    let mut parser = Parser::new(&mut input);
+    let mut coverage = CssCoverage::default();
+    let block = parse_declarations(&mut parser, &mut coverage);
+    (block, coverage)
+}
+
+fn parse_declarations<'i>(
+    input: &mut Parser<'i, '_>,
+    coverage: &mut CssCoverage,
+) -> DeclarationBlock {
+    let mut decl_parser = DeclarationListParser { coverage };
     let mut block = DeclarationBlock::default();
     for item in RuleBodyParser::new(input, &mut decl_parser) {
         match item {
@@ -154,9 +183,11 @@ fn parse_declarations<'i>(input: &mut Parser<'i, '_>) -> DeclarationBlock {
 // Declaration lists
 // ---------------------------------------------------------------------------
 
-struct DeclarationListParser;
+struct DeclarationListParser<'c> {
+    coverage: &'c mut CssCoverage,
+}
 
-impl<'i> DeclarationParser<'i> for DeclarationListParser {
+impl<'i> DeclarationParser<'i> for DeclarationListParser<'_> {
     type Declaration = Vec<PropertyDeclaration>;
     type Error = StyleParseErrorKind<'i>;
 
@@ -171,11 +202,16 @@ impl<'i> DeclarationParser<'i> for DeclarationListParser {
             |input: &mut Parser<'i, 't>| input.try_parse(parse_important).is_ok();
 
         if let Some(expanded) = expand_shorthand(&name, input) {
-            let pairs = expanded.ok_or_else(|| {
-                input.new_custom_error(StyleParseErrorKind::InvalidValue(name.clone()))
-            })?;
+            let Some(pairs) = expanded else {
+                self.coverage.record_invalid(None, &name);
+                return Err(input.new_custom_error(StyleParseErrorKind::InvalidValue(name.clone())));
+            };
             let important = important_at_end(input);
-            input.expect_exhausted()?;
+            if input.expect_exhausted().is_err() {
+                self.coverage.record_invalid(None, &name);
+                return Err(input.new_custom_error(StyleParseErrorKind::InvalidValue(name.clone())));
+            }
+            self.coverage.record_supported();
             return Ok(pairs
                 .into_iter()
                 .map(|(property, value)| PropertyDeclaration {
@@ -186,9 +222,10 @@ impl<'i> DeclarationParser<'i> for DeclarationListParser {
                 .collect());
         }
 
-        let property = PropertyId::from_name(&name).ok_or_else(|| {
-            input.new_custom_error(StyleParseErrorKind::UnknownProperty(name.clone()))
-        })?;
+        let Some(property) = PropertyId::from_name(&name) else {
+            self.coverage.record_unknown(&name);
+            return Err(input.new_custom_error(StyleParseErrorKind::UnknownProperty(name.clone())));
+        };
 
         if let PropertyId::Custom(_) = property {
             let mut value = property.parse_value(input).ok_or_else(|| {
@@ -201,6 +238,7 @@ impl<'i> DeclarationParser<'i> for DeclarationListParser {
                 important = true;
                 value = SpecifiedValue::Raw(stripped.to_owned());
             }
+            self.coverage.record_supported();
             return Ok(vec![PropertyDeclaration {
                 property,
                 value,
@@ -208,13 +246,24 @@ impl<'i> DeclarationParser<'i> for DeclarationListParser {
             }]);
         }
 
-        let value = input.parse_until_before(cssparser::Delimiter::Bang, |i| {
+        let parsed = input.parse_until_before(cssparser::Delimiter::Bang, |i| {
             property
                 .parse_value(i)
                 .ok_or_else(|| i.new_custom_error(StyleParseErrorKind::InvalidValue(name.clone())))
-        })?;
+        });
+        let value = match parsed {
+            Ok(v) => v,
+            Err(e) => {
+                self.coverage.record_invalid(Some(&property), &name);
+                return Err(e);
+            }
+        };
         let important = important_at_end(input);
-        input.expect_exhausted()?;
+        if input.expect_exhausted().is_err() {
+            self.coverage.record_invalid(Some(&property), &name);
+            return Err(input.new_custom_error(StyleParseErrorKind::InvalidValue(name.clone())));
+        }
+        self.coverage.record_supported();
         Ok(vec![PropertyDeclaration {
             property,
             value,
@@ -232,20 +281,20 @@ fn strip_important(raw: &str) -> Option<&str> {
         .then(|| trimmed[..bang].trim_end())
 }
 
-impl<'i> QualifiedRuleParser<'i> for DeclarationListParser {
+impl<'i> QualifiedRuleParser<'i> for DeclarationListParser<'_> {
     type Prelude = ();
     type QualifiedRule = Vec<PropertyDeclaration>;
     type Error = StyleParseErrorKind<'i>;
 }
 
-impl<'i> AtRuleParser<'i> for DeclarationListParser {
+impl<'i> AtRuleParser<'i> for DeclarationListParser<'_> {
     type Prelude = ();
     type AtRule = Vec<PropertyDeclaration>;
     type Error = StyleParseErrorKind<'i>;
 }
 
 impl<'i> RuleBodyItemParser<'i, Vec<PropertyDeclaration>, StyleParseErrorKind<'i>>
-    for DeclarationListParser
+    for DeclarationListParser<'_>
 {
     fn parse_declarations(&self) -> bool {
         true
@@ -260,11 +309,17 @@ impl<'i> RuleBodyItemParser<'i, Vec<PropertyDeclaration>, StyleParseErrorKind<'i
 // Rules
 // ---------------------------------------------------------------------------
 
-struct RuleParser;
+struct RuleParser {
+    coverage: CssCoverage,
+}
 
 /// Prelude of a supported at-rule.
 enum AtPrelude {
     Media(MediaQueryList),
+    /// `@supports` / `@layer` / `@scope`: the body is parsed as rules; the
+    /// condition is treated as true (`@supports not (...)` is rare in static
+    /// pages and errs on the side of applying styles).
+    Transparent,
 }
 
 impl<'i> QualifiedRuleParser<'i> for RuleParser {
@@ -285,7 +340,7 @@ impl<'i> QualifiedRuleParser<'i> for RuleParser {
         _start: &ParserState,
         input: &mut Parser<'i, 't>,
     ) -> Result<CssRule, ParseError<'i, Self::Error>> {
-        let block = parse_declarations(input);
+        let block = parse_declarations(input, &mut self.coverage);
         Ok(CssRule::Style(StyleRule { selectors, block }))
     }
 }
@@ -302,6 +357,12 @@ impl<'i> AtRuleParser<'i> for RuleParser {
     ) -> Result<Self::Prelude, ParseError<'i, Self::Error>> {
         if name.eq_ignore_ascii_case("media") {
             Ok(AtPrelude::Media(MediaQueryList::parse(input)))
+        } else if name.eq_ignore_ascii_case("supports")
+            || name.eq_ignore_ascii_case("layer")
+            || name.eq_ignore_ascii_case("scope")
+        {
+            while input.next().is_ok() {}
+            Ok(AtPrelude::Transparent)
         } else {
             Err(input.new_custom_error(StyleParseErrorKind::UnsupportedAtRule(name)))
         }
@@ -313,19 +374,21 @@ impl<'i> AtRuleParser<'i> for RuleParser {
         _start: &ParserState,
         input: &mut Parser<'i, 't>,
     ) -> Result<CssRule, ParseError<'i, Self::Error>> {
+        let rules = RuleBodyParser::new(input, self)
+            .filter_map(|r| match r {
+                Ok(rule) => Some(rule),
+                Err((err, slice)) => {
+                    tracing::debug!(?err.kind, slice, "skipping invalid nested rule");
+                    None
+                }
+            })
+            .collect();
         match prelude {
-            AtPrelude::Media(query) => {
-                let rules = RuleBodyParser::new(input, self)
-                    .filter_map(|r| match r {
-                        Ok(rule) => Some(rule),
-                        Err((err, slice)) => {
-                            tracing::debug!(?err.kind, slice, "skipping invalid nested rule");
-                            None
-                        }
-                    })
-                    .collect();
-                Ok(CssRule::Media(MediaRule { query, rules }))
-            }
+            AtPrelude::Media(query) => Ok(CssRule::Media(MediaRule { query, rules })),
+            AtPrelude::Transparent => Ok(CssRule::Media(MediaRule {
+                query: MediaQueryList::default(),
+                rules,
+            })),
         }
     }
 }
@@ -360,10 +423,11 @@ mod tests {
             @font-face { font-family: X }
             a::after { content: 'x' }
             123 { color: green }
+            @supports (display: grid) { .g { display: grid } }
             ",
             Origin::Author,
         );
-        assert_eq!(sheet.style_rule_count(), 3, "p, h1 (nested), a::after");
+        assert_eq!(sheet.style_rule_count(), 4, "p, h1 (nested), a::after, .g");
         let CssRule::Style(p) = &sheet.rules[0] else {
             panic!("first rule is a style rule")
         };
@@ -384,6 +448,8 @@ mod tests {
             panic!("nested style rule")
         };
         assert!(h1.block.declarations[0].important);
+        assert_eq!(sheet.coverage.declarations_unknown, 1, "bogus");
+        assert_eq!(sheet.coverage.declarations_invalid, 1, "12furlongs");
     }
 
     #[test]
@@ -395,5 +461,6 @@ mod tests {
         assert!(block.declarations[1].important);
         assert_eq!(block.declarations[2].value, SpecifiedValue::Raw("1".into()));
         assert!(block.declarations[2].important);
+        assert_eq!(strip_cdata("<![CDATA[ a{} ]]>"), " a{} ");
     }
 }

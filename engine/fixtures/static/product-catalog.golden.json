@@ -1,0 +1,1202 @@
+{
+  "url": "https://fixtures.vector.test/product-catalog.html",
+  "title": "Apparel — Outfitter",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 927.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://fixtures.vector.test/product-catalog.html",
+      "sameOrigin": true
+    }
+  ],
+  "text": "[header]\nOutfitter\n[nav]\nMen Women Gear Sale\n[form]\n[Search]\n[aside]\n[form]\n### Filter\nCategory\nSort by\nMin price\nMax price\nIn stock only\nOn sale\nBrand\nNorthline\nRidgeway\nAltitude\n[Apply filters] Reset\n### Help\nSize guide\nShipping & returns\nContact us\n[main]\n[nav]\nHome › All products › Apparel\n# Apparel (312 results)\nShowing 1–20 of 312. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n[form]\n[table: Products]\n[nav]\n1 2 3 4 … 16 Next ›\n## Recently viewed\nHorizon Sunglasses — $59.00\nKestrel Windbreaker — $129.00\n[footer]\n[nav]\nStores Careers Privacy Terms Accessibility\n© Fixture Corp. Static corpus for engine benchmarks.",
+  "headings": [
+    "Filter",
+    "Help",
+    "Apparel (312 results)",
+    "Recently viewed"
+  ],
+  "elements": [
+    {
+      "ref": "r37",
+      "frame": "main",
+      "tag": "input",
+      "role": "searchbox",
+      "name": "Search",
+      "type": "search",
+      "value": "",
+      "placeholder": "Search…",
+      "selector": {}
+    },
+    {
+      "ref": "r38",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Search",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r50",
+      "frame": "main",
+      "tag": "select",
+      "role": "combobox",
+      "name": "Category",
+      "type": "select",
+      "value": "apparel",
+      "selected": "Apparel",
+      "selector": {}
+    },
+    {
+      "ref": "r64",
+      "frame": "main",
+      "tag": "select",
+      "role": "combobox",
+      "name": "Sort by",
+      "type": "select",
+      "value": "relevance",
+      "selected": "Relevance",
+      "selector": {}
+    },
+    {
+      "ref": "r76",
+      "frame": "main",
+      "tag": "input",
+      "role": "spinbutton",
+      "name": "Min price",
+      "type": "number",
+      "value": "",
+      "placeholder": "0",
+      "selector": {}
+    },
+    {
+      "ref": "r80",
+      "frame": "main",
+      "tag": "input",
+      "role": "spinbutton",
+      "name": "Max price",
+      "type": "number",
+      "value": "",
+      "placeholder": "500",
+      "selector": {}
+    },
+    {
+      "ref": "r83",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "In stock only",
+      "type": "checkbox",
+      "checked": true,
+      "selector": {}
+    },
+    {
+      "ref": "r87",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "On sale",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r94",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "Northline",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r178",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r195",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "disabled": true,
+      "selector": {}
+    },
+    {
+      "ref": "r212",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r229",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r246",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r263",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r280",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r297",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "disabled": true,
+      "selector": {}
+    },
+    {
+      "ref": "r314",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r97",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "Ridgeway",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r100",
+      "frame": "main",
+      "tag": "input",
+      "role": "checkbox",
+      "name": "Altitude",
+      "type": "checkbox",
+      "checked": false,
+      "selector": {}
+    },
+    {
+      "ref": "r22",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Outfitter",
+      "href": "https://fixtures.vector.test/",
+      "selector": {}
+    },
+    {
+      "ref": "r25",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Men",
+      "href": "https://fixtures.vector.test/c/men",
+      "selector": {}
+    },
+    {
+      "ref": "r27",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Women",
+      "href": "https://fixtures.vector.test/c/women",
+      "selector": {}
+    },
+    {
+      "ref": "r29",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Gear",
+      "href": "https://fixtures.vector.test/c/gear",
+      "selector": {}
+    },
+    {
+      "ref": "r31",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Sale",
+      "href": "https://fixtures.vector.test/sale",
+      "selector": {}
+    },
+    {
+      "ref": "r124",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Home",
+      "href": "https://fixtures.vector.test/",
+      "selector": {}
+    },
+    {
+      "ref": "r127",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "All products",
+      "href": "https://fixtures.vector.test/c/all",
+      "selector": {}
+    },
+    {
+      "ref": "r147",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Product",
+      "href": "https://fixtures.vector.test/product-catalog.html?sort=name",
+      "selector": {}
+    },
+    {
+      "ref": "r152",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Price",
+      "href": "https://fixtures.vector.test/product-catalog.html?sort=price-asc",
+      "selector": {}
+    },
+    {
+      "ref": "r157",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Rating",
+      "href": "https://fixtures.vector.test/product-catalog.html?sort=rating",
+      "selector": {}
+    },
+    {
+      "ref": "r165",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Trail Runner 3",
+      "href": "https://fixtures.vector.test/p/1",
+      "selector": {}
+    },
+    {
+      "ref": "r182",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Summit Jacket",
+      "href": "https://fixtures.vector.test/p/2",
+      "selector": {}
+    },
+    {
+      "ref": "r199",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Compass Pro",
+      "href": "https://fixtures.vector.test/p/3",
+      "selector": {}
+    },
+    {
+      "ref": "r216",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Ridge Tent 2P",
+      "href": "https://fixtures.vector.test/p/4",
+      "selector": {}
+    },
+    {
+      "ref": "r233",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Alpine Stove",
+      "href": "https://fixtures.vector.test/p/5",
+      "selector": {}
+    },
+    {
+      "ref": "r250",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Canyon Pack 45L",
+      "href": "https://fixtures.vector.test/p/6",
+      "selector": {}
+    },
+    {
+      "ref": "r267",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Glacier Bottle 1L",
+      "href": "https://fixtures.vector.test/p/7",
+      "selector": {}
+    },
+    {
+      "ref": "r284",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Basecamp Chair",
+      "href": "https://fixtures.vector.test/p/8",
+      "selector": {}
+    },
+    {
+      "ref": "r301",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Meridian Headlamp",
+      "href": "https://fixtures.vector.test/p/9",
+      "selector": {}
+    },
+    {
+      "ref": "r18",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Skip to main content",
+      "href": "https://fixtures.vector.test/product-catalog.html#main",
+      "selector": {}
+    },
+    {
+      "ref": "r103",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Apply filters",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r106",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Reset",
+      "href": "https://fixtures.vector.test/c/all",
+      "selector": {}
+    },
+    {
+      "ref": "r113",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Size guide",
+      "href": "https://fixtures.vector.test/size-guide",
+      "selector": {}
+    },
+    {
+      "ref": "r116",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Shipping & returns",
+      "href": "https://fixtures.vector.test/shipping",
+      "selector": {}
+    },
+    {
+      "ref": "r119",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Contact us",
+      "href": "https://fixtures.vector.test/contact",
+      "selector": {}
+    },
+    {
+      "ref": "r318",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Storm Shell",
+      "href": "https://fixtures.vector.test/p/10",
+      "selector": {}
+    },
+    {
+      "ref": "r331",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r335",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Peak Poles",
+      "href": "https://fixtures.vector.test/p/11",
+      "selector": {}
+    },
+    {
+      "ref": "r348",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "disabled": true,
+      "selector": {}
+    },
+    {
+      "ref": "r352",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Ember Sleeping Bag",
+      "href": "https://fixtures.vector.test/p/12",
+      "selector": {}
+    },
+    {
+      "ref": "r365",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r369",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Cascade Rain Pants",
+      "href": "https://fixtures.vector.test/p/13",
+      "selector": {}
+    },
+    {
+      "ref": "r382",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r386",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Lookout Binoculars",
+      "href": "https://fixtures.vector.test/p/14",
+      "selector": {}
+    },
+    {
+      "ref": "r399",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "disabled": true,
+      "selector": {}
+    },
+    {
+      "ref": "r403",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Trailhead Socks (3-pack)",
+      "href": "https://fixtures.vector.test/p/15",
+      "selector": {}
+    },
+    {
+      "ref": "r416",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r420",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Nimbus Down Vest",
+      "href": "https://fixtures.vector.test/p/16",
+      "selector": {}
+    },
+    {
+      "ref": "r433",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r437",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Crag Climbing Shoes",
+      "href": "https://fixtures.vector.test/p/17",
+      "selector": {}
+    },
+    {
+      "ref": "r450",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "disabled": true,
+      "selector": {}
+    },
+    {
+      "ref": "r454",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Fjord Dry Bag",
+      "href": "https://fixtures.vector.test/p/18",
+      "selector": {}
+    },
+    {
+      "ref": "r467",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r471",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Tundra Mittens",
+      "href": "https://fixtures.vector.test/p/19",
+      "selector": {}
+    },
+    {
+      "ref": "r484",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r488",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Delta Cook Set",
+      "href": "https://fixtures.vector.test/p/20",
+      "selector": {}
+    },
+    {
+      "ref": "r501",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add to cart",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r507",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "2",
+      "href": "https://fixtures.vector.test/product-catalog.html?page=2",
+      "selector": {}
+    },
+    {
+      "ref": "r509",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "3",
+      "href": "https://fixtures.vector.test/product-catalog.html?page=3",
+      "selector": {}
+    },
+    {
+      "ref": "r511",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "4",
+      "href": "https://fixtures.vector.test/product-catalog.html?page=4",
+      "selector": {}
+    },
+    {
+      "ref": "r515",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "16",
+      "href": "https://fixtures.vector.test/product-catalog.html?page=16",
+      "selector": {}
+    },
+    {
+      "ref": "r517",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Next ›",
+      "href": "https://fixtures.vector.test/product-catalog.html?page=2",
+      "selector": {}
+    },
+    {
+      "ref": "r525",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Horizon Sunglasses",
+      "href": "https://fixtures.vector.test/p/88",
+      "selector": {}
+    },
+    {
+      "ref": "r529",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Kestrel Windbreaker",
+      "href": "https://fixtures.vector.test/p/41",
+      "selector": {}
+    },
+    {
+      "ref": "r535",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Stores",
+      "href": "https://fixtures.vector.test/stores",
+      "selector": {}
+    },
+    {
+      "ref": "r537",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Careers",
+      "href": "https://fixtures.vector.test/careers",
+      "selector": {}
+    },
+    {
+      "ref": "r539",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Privacy",
+      "href": "https://fixtures.vector.test/privacy",
+      "selector": {}
+    },
+    {
+      "ref": "r541",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Terms",
+      "href": "https://fixtures.vector.test/terms",
+      "selector": {}
+    },
+    {
+      "ref": "r543",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Accessibility",
+      "href": "https://fixtures.vector.test/accessibility",
+      "selector": {}
+    }
+  ],
+  "formFields": [
+    {
+      "ref": "r37",
+      "label": "Search",
+      "name": "q",
+      "type": "search",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r50",
+      "label": "Category",
+      "name": "category",
+      "type": "select",
+      "value": "apparel",
+      "valid": true
+    },
+    {
+      "ref": "r64",
+      "label": "Sort by",
+      "name": "sort",
+      "type": "select",
+      "value": "relevance",
+      "valid": true
+    },
+    {
+      "ref": "r76",
+      "label": "Min price",
+      "name": "min",
+      "type": "number",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r80",
+      "label": "Max price",
+      "name": "max",
+      "type": "number",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r83",
+      "label": "In stock only",
+      "name": "inStock",
+      "type": "checkbox",
+      "value": "on",
+      "valid": true
+    },
+    {
+      "ref": "r87",
+      "label": "On sale",
+      "name": "onSale",
+      "type": "checkbox",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r94",
+      "label": "Northline",
+      "name": "brand",
+      "type": "checkbox",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r97",
+      "label": "Ridgeway",
+      "name": "brand",
+      "type": "checkbox",
+      "value": "",
+      "valid": true
+    },
+    {
+      "ref": "r100",
+      "label": "Altitude",
+      "name": "brand",
+      "type": "checkbox",
+      "value": "",
+      "valid": true
+    }
+  ],
+  "tables": [
+    {
+      "ref": "r141",
+      "caption": "Products",
+      "columns": [
+        "Product",
+        "Category",
+        "Price",
+        "Availability",
+        "Rating",
+        "Action"
+      ],
+      "rows": [
+        [
+          "Trail Runner 3",
+          "Apparel",
+          "$33.36",
+          "Low stock",
+          "4.1 ★ (17)",
+          "Add to cart"
+        ],
+        [
+          "Summit Jacket",
+          "Gear",
+          "$46.73",
+          "Out of stock",
+          "4.2 ★ (34)",
+          "Add to cart"
+        ],
+        [
+          "Compass Pro",
+          "Camping",
+          "$60.10",
+          "In stock",
+          "4.3 ★ (51)",
+          "Add to cart"
+        ],
+        [
+          "Ridge Tent 2P",
+          "Footwear",
+          "$73.47",
+          "Low stock",
+          "4.4 ★ (68)",
+          "Add to cart"
+        ],
+        [
+          "Alpine Stove",
+          "Apparel",
+          "$86.84",
+          "In stock",
+          "4.5 ★ (85)",
+          "Add to cart"
+        ],
+        [
+          "Canyon Pack 45L",
+          "Gear",
+          "$100.21",
+          "In stock",
+          "4.6 ★ (102)",
+          "Add to cart"
+        ],
+        [
+          "Glacier Bottle 1L",
+          "Camping",
+          "$113.58",
+          "Low stock",
+          "4.7 ★ (119)",
+          "Add to cart"
+        ],
+        [
+          "Basecamp Chair",
+          "Footwear",
+          "$126.95",
+          "Out of stock",
+          "4.8 ★ (136)",
+          "Add to cart"
+        ],
+        [
+          "Meridian Headlamp",
+          "Apparel",
+          "$140.32",
+          "In stock",
+          "4.9 ★ (153)",
+          "Add to cart"
+        ],
+        [
+          "Storm Shell",
+          "Gear",
+          "$153.69",
+          "In stock",
+          "4.0 ★ (170)",
+          "Add to cart"
+        ],
+        [
+          "Peak Poles",
+          "Camping",
+          "$167.06",
+          "Out of stock",
+          "4.1 ★ (187)",
+          "Add to cart"
+        ],
+        [
+          "Ember Sleeping Bag",
+          "Footwear",
+          "$180.43",
+          "In stock",
+          "4.2 ★ (204)",
+          "Add to cart"
+        ]
+      ],
+      "totalRows": 20,
+      "truncated": true
+    }
+  ],
+  "links": [
+    {
+      "ref": "r22",
+      "text": "Outfitter",
+      "href": "https://fixtures.vector.test/"
+    },
+    {
+      "ref": "r25",
+      "text": "Men",
+      "href": "https://fixtures.vector.test/c/men"
+    },
+    {
+      "ref": "r27",
+      "text": "Women",
+      "href": "https://fixtures.vector.test/c/women"
+    },
+    {
+      "ref": "r29",
+      "text": "Gear",
+      "href": "https://fixtures.vector.test/c/gear"
+    },
+    {
+      "ref": "r31",
+      "text": "Sale",
+      "href": "https://fixtures.vector.test/sale"
+    },
+    {
+      "ref": "r124",
+      "text": "Home",
+      "href": "https://fixtures.vector.test/"
+    },
+    {
+      "ref": "r127",
+      "text": "All products",
+      "href": "https://fixtures.vector.test/c/all"
+    },
+    {
+      "ref": "r147",
+      "text": "Product",
+      "href": "https://fixtures.vector.test/product-catalog.html?sort=name"
+    },
+    {
+      "ref": "r152",
+      "text": "Price",
+      "href": "https://fixtures.vector.test/product-catalog.html?sort=price-asc"
+    },
+    {
+      "ref": "r157",
+      "text": "Rating",
+      "href": "https://fixtures.vector.test/product-catalog.html?sort=rating"
+    },
+    {
+      "ref": "r165",
+      "text": "Trail Runner 3",
+      "href": "https://fixtures.vector.test/p/1"
+    },
+    {
+      "ref": "r182",
+      "text": "Summit Jacket",
+      "href": "https://fixtures.vector.test/p/2"
+    },
+    {
+      "ref": "r199",
+      "text": "Compass Pro",
+      "href": "https://fixtures.vector.test/p/3"
+    },
+    {
+      "ref": "r216",
+      "text": "Ridge Tent 2P",
+      "href": "https://fixtures.vector.test/p/4"
+    },
+    {
+      "ref": "r233",
+      "text": "Alpine Stove",
+      "href": "https://fixtures.vector.test/p/5"
+    },
+    {
+      "ref": "r250",
+      "text": "Canyon Pack 45L",
+      "href": "https://fixtures.vector.test/p/6"
+    },
+    {
+      "ref": "r267",
+      "text": "Glacier Bottle 1L",
+      "href": "https://fixtures.vector.test/p/7"
+    },
+    {
+      "ref": "r284",
+      "text": "Basecamp Chair",
+      "href": "https://fixtures.vector.test/p/8"
+    },
+    {
+      "ref": "r301",
+      "text": "Meridian Headlamp",
+      "href": "https://fixtures.vector.test/p/9"
+    },
+    {
+      "ref": "r18",
+      "text": "Skip to main content",
+      "href": "https://fixtures.vector.test/product-catalog.html#main"
+    },
+    {
+      "ref": "r106",
+      "text": "Reset",
+      "href": "https://fixtures.vector.test/c/all"
+    },
+    {
+      "ref": "r113",
+      "text": "Size guide",
+      "href": "https://fixtures.vector.test/size-guide"
+    },
+    {
+      "ref": "r116",
+      "text": "Shipping & returns",
+      "href": "https://fixtures.vector.test/shipping"
+    },
+    {
+      "ref": "r119",
+      "text": "Contact us",
+      "href": "https://fixtures.vector.test/contact"
+    },
+    {
+      "ref": "r318",
+      "text": "Storm Shell",
+      "href": "https://fixtures.vector.test/p/10"
+    },
+    {
+      "ref": "r335",
+      "text": "Peak Poles",
+      "href": "https://fixtures.vector.test/p/11"
+    },
+    {
+      "ref": "r352",
+      "text": "Ember Sleeping Bag",
+      "href": "https://fixtures.vector.test/p/12"
+    },
+    {
+      "ref": "r369",
+      "text": "Cascade Rain Pants",
+      "href": "https://fixtures.vector.test/p/13"
+    },
+    {
+      "ref": "r386",
+      "text": "Lookout Binoculars",
+      "href": "https://fixtures.vector.test/p/14"
+    },
+    {
+      "ref": "r403",
+      "text": "Trailhead Socks (3-pack)",
+      "href": "https://fixtures.vector.test/p/15"
+    },
+    {
+      "ref": "r420",
+      "text": "Nimbus Down Vest",
+      "href": "https://fixtures.vector.test/p/16"
+    },
+    {
+      "ref": "r437",
+      "text": "Crag Climbing Shoes",
+      "href": "https://fixtures.vector.test/p/17"
+    },
+    {
+      "ref": "r454",
+      "text": "Fjord Dry Bag",
+      "href": "https://fixtures.vector.test/p/18"
+    },
+    {
+      "ref": "r471",
+      "text": "Tundra Mittens",
+      "href": "https://fixtures.vector.test/p/19"
+    },
+    {
+      "ref": "r488",
+      "text": "Delta Cook Set",
+      "href": "https://fixtures.vector.test/p/20"
+    },
+    {
+      "ref": "r507",
+      "text": "2",
+      "href": "https://fixtures.vector.test/product-catalog.html?page=2"
+    },
+    {
+      "ref": "r509",
+      "text": "3",
+      "href": "https://fixtures.vector.test/product-catalog.html?page=3"
+    },
+    {
+      "ref": "r511",
+      "text": "4",
+      "href": "https://fixtures.vector.test/product-catalog.html?page=4"
+    },
+    {
+      "ref": "r515",
+      "text": "16",
+      "href": "https://fixtures.vector.test/product-catalog.html?page=16"
+    },
+    {
+      "ref": "r517",
+      "text": "Next ›",
+      "href": "https://fixtures.vector.test/product-catalog.html?page=2"
+    },
+    {
+      "ref": "r525",
+      "text": "Horizon Sunglasses",
+      "href": "https://fixtures.vector.test/p/88"
+    },
+    {
+      "ref": "r529",
+      "text": "Kestrel Windbreaker",
+      "href": "https://fixtures.vector.test/p/41"
+    },
+    {
+      "ref": "r535",
+      "text": "Stores",
+      "href": "https://fixtures.vector.test/stores"
+    },
+    {
+      "ref": "r537",
+      "text": "Careers",
+      "href": "https://fixtures.vector.test/careers"
+    },
+    {
+      "ref": "r539",
+      "text": "Privacy",
+      "href": "https://fixtures.vector.test/privacy"
+    },
+    {
+      "ref": "r541",
+      "text": "Terms",
+      "href": "https://fixtures.vector.test/terms"
+    },
+    {
+      "ref": "r543",
+      "text": "Accessibility",
+      "href": "https://fixtures.vector.test/accessibility"
+    }
+  ],
+  "dialogs": [],
+  "truncated": true,
+  "stats": {
+    "elementsTotal": 79,
+    "elementsShown": 79,
+    "textChars": 702,
+    "approxTokens": 1637
+  }
+}

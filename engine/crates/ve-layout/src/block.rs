@@ -1,12 +1,16 @@
 //! Block formatting: sizing a box against its containing block and stacking
-//! block-level children vertically.
+//! block-level children vertically, placing floats and honouring `clear`.
 
 use ve_core::{Edges, Point, Rect, Size};
-use ve_style::{BoxSizing, ComputedStyle, LengthPercentageAuto, Position};
+use ve_style::{
+    BoxSizing, ComputedStyle, Float, LengthPercentageAuto, ListStylePosition, Position,
+    PseudoElement,
+};
 
-use crate::box_tree::{BoxKind, LayoutBox};
-use crate::text::TextShaper;
-use crate::{flex, inline};
+use crate::box_tree::{BoxKind, Fragment, LayoutBox};
+use crate::floats::FloatContext;
+use crate::text::{MetricShaper, TextShaper};
+use crate::{flex, inline, table};
 
 /// Mutable state shared by the whole layout pass.
 pub struct LayoutCtx<'a> {
@@ -14,6 +18,30 @@ pub struct LayoutCtx<'a> {
     pub shaper: &'a mut dyn TextShaper,
     /// Viewport size (initial containing block, `vw`/`vh` already resolved by style).
     pub viewport: Size,
+    /// Stack of float contexts, one per open block formatting context.
+    pub floats: Vec<FloatContext>,
+    /// Number of boxes laid out by this pass (for incremental-layout tests).
+    pub laid_out: usize,
+}
+
+impl<'a> LayoutCtx<'a> {
+    /// Creates a context with one (root) float context.
+    pub fn new(shaper: &'a mut dyn TextShaper, viewport: Size) -> Self {
+        Self {
+            shaper,
+            viewport,
+            floats: vec![FloatContext::new()],
+            laid_out: 0,
+        }
+    }
+
+    /// The innermost block formatting context's floats.
+    pub fn floats(&mut self) -> &mut FloatContext {
+        if self.floats.is_empty() {
+            self.floats.push(FloatContext::new());
+        }
+        self.floats.last_mut().expect("non-empty")
+    }
 }
 
 /// The containing block a box is sized against.
@@ -25,7 +53,7 @@ pub struct ContainingBlock {
     pub height: Option<f32>,
 }
 
-/// Sizes imposed from outside (flex/grid items, positioned boxes).
+/// Sizes imposed from outside (flex/grid items, positioned boxes, table cells).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Forced {
     /// Border-box width to use instead of the computed one.
@@ -51,22 +79,36 @@ pub fn resolve_margins(style: &ComputedStyle, cb_width: f32) -> Edges {
 #[must_use]
 pub fn resolve_padding(style: &ComputedStyle, cb_width: f32) -> Edges {
     Edges::new(
-        style.padding_top.resolve(cb_width),
-        style.padding_right.resolve(cb_width),
-        style.padding_bottom.resolve(cb_width),
-        style.padding_left.resolve(cb_width),
+        style.padding_top.resolve(cb_width).max(0.0),
+        style.padding_right.resolve(cb_width).max(0.0),
+        style.padding_bottom.resolve(cb_width).max(0.0),
+        style.padding_left.resolve(cb_width).max(0.0),
     )
 }
 
-/// Border widths as edges.
+/// Used border widths as edges.
 #[must_use]
 pub fn border_edges(style: &ComputedStyle) -> Edges {
     Edges::new(
-        style.border_top_width,
-        style.border_right_width,
-        style.border_bottom_width,
-        style.border_left_width,
+        style.border_top(),
+        style.border_right(),
+        style.border_bottom(),
+        style.border_left(),
     )
+}
+
+/// Margin, padding and border of a box (all zero for anonymous boxes).
+#[must_use]
+pub fn box_edges(bx: &LayoutBox, cb_width: f32) -> (Edges, Edges, Edges) {
+    if bx.has_own_edges() {
+        (
+            resolve_margins(&bx.style, cb_width),
+            resolve_padding(&bx.style, cb_width),
+            border_edges(&bx.style),
+        )
+    } else {
+        (Edges::ZERO, Edges::ZERO, Edges::ZERO)
+    }
 }
 
 /// Lays out the root box against the viewport and then places positioned
@@ -92,25 +134,26 @@ pub fn layout_box_at(
     origin: Point,
     forced: Forced,
 ) {
+    ctx.laid_out += 1;
+    bx.cb_width = cb.width;
+    if bx.kind == BoxKind::Table {
+        table::layout_table(bx, ctx, cb, origin, forced);
+        return;
+    }
     let style = bx.style.clone();
-    let is_anonymous = bx.node.is_none();
-    let (margin, padding, border) = if is_anonymous {
-        (Edges::ZERO, Edges::ZERO, Edges::ZERO)
-    } else {
-        (
-            resolve_margins(&style, cb.width),
-            resolve_padding(&style, cb.width),
-            border_edges(&style),
-        )
-    };
+    let (margin, padding, border) = box_edges(bx, cb.width);
     let bp_h = padding.horizontal() + border.horizontal();
     let bp_v = padding.vertical() + border.vertical();
+    let shrink_to_fit = !bx.is_block_level()
+        || bx.is_float()
+        || bx.is_out_of_flow()
+        || matches!(bx.kind, BoxKind::TableCell | BoxKind::TableCaption) && forced.width.is_none();
 
     // ---- width -------------------------------------------------------------
     let mut margin_left = margin.left;
     let content_width = if let Some(w) = forced.width {
         (w - bp_h).max(0.0)
-    } else if is_anonymous {
+    } else if !bx.has_own_edges() {
         cb.width
     } else {
         match style.width.resolve(cb.width) {
@@ -125,7 +168,7 @@ pub fn layout_box_at(
                 let free = cb.width - content - bp_h;
                 let left_auto = style.margin_left.is_auto();
                 let right_auto = style.margin_right.is_auto();
-                if bx.is_block_level() && (left_auto || right_auto) {
+                if bx.is_block_level() && bx.is_in_flow() && (left_auto || right_auto) {
                     margin_left = if left_auto && right_auto {
                         (free / 2.0).max(0.0)
                     } else if left_auto {
@@ -136,19 +179,19 @@ pub fn layout_box_at(
                 }
                 content
             }
-            None if bx.is_block_level() || matches!(bx.kind, BoxKind::AnonymousBlock) => {
-                clamp_width(
-                    &style,
-                    (cb.width - margin.horizontal() - bp_h).max(0.0),
-                    cb.width,
-                    bp_h,
-                )
-            }
+            None if !shrink_to_fit => clamp_width(
+                &style,
+                (cb.width - margin.horizontal() - bp_h).max(0.0),
+                cb.width,
+                bp_h,
+            ),
             None => {
-                // Shrink-to-fit for inline-blocks and positioned boxes.
+                // Shrink-to-fit for inline-blocks, floats, cells and positioned boxes.
                 let available = (cb.width - margin.horizontal() - bp_h).max(0.0);
-                let preferred = intrinsic_width(bx, ctx);
-                clamp_width(&style, preferred.min(available), cb.width, bp_h)
+                let preferred = intrinsic_width(bx, ctx) - bp_h - margin.horizontal();
+                let minimum = intrinsic_min_width(bx, ctx) - bp_h - margin.horizontal();
+                let fit = preferred.min(available).max(minimum).max(0.0);
+                clamp_width(&style, fit, cb.width, bp_h)
             }
         }
     };
@@ -172,18 +215,29 @@ pub fn layout_box_at(
                 h
             }
         });
-    let content_height = match bx.kind {
+    let bfc = bx.establishes_bfc();
+    if bfc {
+        ctx.floats.push(FloatContext::new());
+    }
+    let mut content_height = match bx.kind {
         BoxKind::Text(_) => 0.0,
         BoxKind::Flex | BoxKind::Grid => flex::layout_flex(bx, ctx, content_rect, child_cb_height),
         _ if bx
             .children
             .iter()
-            .any(|c| !c.is_block_level() && !c.is_out_of_flow()) =>
+            .any(|c| !c.is_block_level() && c.is_in_flow()) =>
         {
             inline::layout_inline(bx, ctx, content_rect)
         }
         _ => layout_block_flow(bx, ctx, content_rect, child_cb_height),
     };
+    if bfc {
+        let floats = ctx.floats.pop().unwrap_or_default();
+        // Floats extend the auto height of the formatting context root.
+        if let Some(bottom) = floats.bottom() {
+            content_height = content_height.max(bottom - content_origin.y);
+        }
+    }
 
     // ---- height ------------------------------------------------------------
     let content_height = if let Some(h) = forced.height {
@@ -206,6 +260,35 @@ pub fn layout_box_at(
         content_width + bp_h,
         content_height + bp_v,
     );
+    if bx.marker.is_some() {
+        place_marker(bx, ctx);
+    }
+}
+
+/// Positions the list marker of a `display: list-item` box just outside (or
+/// at the start of) its content box, on the first line.
+fn place_marker(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) {
+    let Some(marker) = &bx.marker else { return };
+    let style = bx.style.clone();
+    let width = ctx.shaper.measure(&marker.text, &style);
+    let line_height = bx.lines.first().map_or_else(
+        || style.line_height.to_px(style.font_size),
+        |l| l.rect.height(),
+    );
+    let x = match marker.position {
+        ListStylePosition::Outside => bx.content.x() - width,
+        ListStylePosition::Inside => bx.content.x(),
+    };
+    let rect = Rect::new(x, bx.content.y(), width, line_height);
+    bx.marker_fragment = Some(Fragment {
+        node: None,
+        owner: bx.node,
+        rect,
+        text: Some(marker.text.clone()),
+        baseline: MetricShaper::baseline_in(&style, line_height),
+        clip: None,
+        pseudo: Some(PseudoElement::Marker),
+    });
 }
 
 fn clamp_width(style: &ComputedStyle, content: f32, cb_width: f32, bp_h: f32) -> f32 {
@@ -223,11 +306,7 @@ fn clamp_height(style: &ComputedStyle, content: f32, cb_height: Option<f32>, bp_
     let border_box = style.box_sizing == BoxSizing::BorderBox;
     let adjust = |v: f32| if border_box { (v - bp_v).max(0.0) } else { v };
     let mut h = content;
-    if let Some(basis) = cb_height
-        && let Some(max) = style.max_height.resolve(basis)
-    {
-        h = h.min(adjust(max));
-    } else if let ve_style::MaxSize::Px(max) = style.max_height {
+    if let Some(max) = style.max_height.maybe_resolve(cb_height) {
         h = h.min(adjust(max));
     }
     if let Some(min) = style.min_height.maybe_resolve(cb_height) {
@@ -250,23 +329,61 @@ fn layout_block_flow(
     let mut cursor = content.y();
     let mut prev_margin_bottom = 0.0_f32;
     let mut last_margin_bottom = 0.0_f32;
-    let parent_has_bottom_edge = bx.style.padding_bottom != ve_style::LengthPercentage::ZERO
-        || bx.style.border_bottom_width > 0.0;
+    let parent_has_bottom_edge = bx.has_own_edges()
+        && (bx.style.padding_bottom != ve_style::LengthPercentage::ZERO
+            || bx.style.border_bottom() > 0.0
+            || bx.establishes_bfc());
 
     for child in &mut bx.children {
         if child.is_out_of_flow() {
             child.rect = Rect::new(content.x(), cursor, 0.0, 0.0);
             continue;
         }
-        let margins = if child.node.is_some() {
+        if child.is_float() {
+            layout_float(child, ctx, content, cursor);
+            continue;
+        }
+        let margins = if child.has_own_edges() {
             resolve_margins(&child.style, cb.width)
         } else {
             Edges::ZERO
         };
+        // `clear` moves the box below the relevant floats (its own margin
+        // then no longer collapses through).
+        if child.has_own_edges()
+            && let Some(clearance) = ctx.floats().clearance(child.style.clear)
+            && clearance > cursor + margins.top.max(prev_margin_bottom) - prev_margin_bottom
+        {
+            cursor = clearance;
+            prev_margin_bottom = margins.top;
+        }
         // Adjoining sibling margins collapse to the larger of the two.
         let gap = margins.top.max(prev_margin_bottom) - prev_margin_bottom;
-        let margin_origin = Point::new(content.x(), cursor + gap - margins.top);
-        layout_box_at(child, ctx, cb, margin_origin, Forced::default());
+        let mut margin_origin = Point::new(content.x(), cursor + gap - margins.top);
+        let mut child_cb = cb;
+        if child.establishes_bfc() && !ctx.floats().is_empty() {
+            // A new formatting context must not overlap floats: narrow it to
+            // the free band, or move it below the floats if it does not fit.
+            let top = cursor + gap;
+            let (l, r) = ctx.floats().edges(top, 1.0, content.x(), content.right());
+            if l > content.x() || r < content.right() {
+                let needed = child
+                    .style
+                    .width
+                    .resolve(cb.width)
+                    .map(|w| w + margins.horizontal());
+                if needed.is_some_and(|w| w > r - l + 0.01) {
+                    if let Some(next) = ctx.floats().next_bottom_after(top) {
+                        cursor = next;
+                        margin_origin = Point::new(content.x(), cursor - margins.top);
+                    }
+                } else {
+                    margin_origin.x = l;
+                    child_cb.width = r - l;
+                }
+            }
+        }
+        layout_box_at(child, ctx, child_cb, margin_origin, Forced::default());
         if child.style.position == Position::Relative || child.style.position == Position::Sticky {
             apply_relative_offset(child, cb);
         }
@@ -280,6 +397,38 @@ fn layout_block_flow(
         height -= last_margin_bottom;
     }
     height.max(0.0)
+}
+
+/// Lays out a float (shrink-to-fit) and places it against the current
+/// block formatting context's floats, no higher than `y_min`.
+pub fn layout_float(child: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect, y_min: f32) {
+    let cb = ContainingBlock {
+        width: content.width(),
+        height: None,
+    };
+    layout_box_at(child, ctx, cb, Point::ZERO, Forced::default());
+    let margins = resolve_margins(&child.style, cb.width);
+    let size = Size::new(
+        child.rect.width() + margins.horizontal(),
+        child.rect.height() + margins.vertical(),
+    );
+    let mut y = y_min;
+    if let Some(clearance) = ctx.floats().clearance(child.style.clear) {
+        y = y.max(clearance);
+    }
+    let side = if child.style.float == Float::Right {
+        Float::Right
+    } else {
+        Float::Left
+    };
+    let origin = ctx
+        .floats()
+        .place(side, size, y, content.x(), content.right());
+    translate_subtree(
+        child,
+        origin.x + margins.left - child.rect.x(),
+        origin.y + margins.top - child.rect.y(),
+    );
 }
 
 /// Shifts a relatively positioned box (and everything inside it) by its
@@ -302,8 +451,11 @@ fn apply_relative_offset(bx: &mut LayoutBox, cb: ContainingBlock) {
     }
 }
 
-/// Moves a box and all its descendants, lines and fragments.
+/// Moves a box and all its descendants, lines, fragments and marker.
 pub fn translate_subtree(bx: &mut LayoutBox, dx: f32, dy: f32) {
+    if dx == 0.0 && dy == 0.0 {
+        return;
+    }
     bx.rect = bx.rect.translate(dx, dy);
     bx.content = bx.content.translate(dx, dy);
     for line in &mut bx.lines {
@@ -312,27 +464,71 @@ pub fn translate_subtree(bx: &mut LayoutBox, dx: f32, dy: f32) {
             fragment.rect = fragment.rect.translate(dx, dy);
         }
     }
+    if let Some(m) = &mut bx.marker_fragment {
+        m.rect = m.rect.translate(dx, dy);
+    }
     for child in &mut bx.children {
         translate_subtree(child, dx, dy);
     }
 }
 
+/// Own horizontal edges (border + padding + margin) resolved against a zero
+/// basis, for intrinsic sizing.
+fn own_horizontal_edges(bx: &LayoutBox) -> f32 {
+    if bx.has_own_edges() {
+        border_edges(&bx.style).horizontal()
+            + resolve_padding(&bx.style, 0.0).horizontal()
+            + resolve_margins(&bx.style, 0.0).horizontal()
+    } else {
+        0.0
+    }
+}
+
 /// Max-content width of a box: the width it would take if nothing wrapped.
-/// Used for shrink-to-fit sizing and flex/grid measurement.
+/// Includes the box's own margins, border and padding. Used for
+/// shrink-to-fit sizing and flex/grid/table measurement. Memoised per box
+/// (see [`LayoutBox::intrinsic_cache`]) so nested shrink-to-fit boxes and
+/// tables stay linear.
 pub fn intrinsic_width(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
+    if let Some((_, max)) = bx.intrinsic_cache {
+        return max;
+    }
+    let max = intrinsic_width_uncached(bx, ctx);
+    let min = intrinsic_min_width_uncached(bx, ctx);
+    bx.intrinsic_cache = Some((min, max));
+    max
+}
+
+/// Min-content width of a box: the narrowest it can be without overflowing
+/// (the widest unbreakable word, or the widest child's min-content).
+pub fn intrinsic_min_width(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
+    if let Some((min, _)) = bx.intrinsic_cache {
+        return min;
+    }
+    let max = intrinsic_width_uncached(bx, ctx);
+    let min = intrinsic_min_width_uncached(bx, ctx);
+    bx.intrinsic_cache = Some((min, max));
+    min
+}
+
+fn intrinsic_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
     let style = bx.style.clone();
-    if let Some(w) = style.width.resolve(f32::NAN).filter(|w| !w.is_nan()) {
-        // Definite pixel width.
-        let bp = if bx.node.is_some() {
+    if bx.kind == BoxKind::Table {
+        let (_, max) = table::intrinsic_widths(bx, ctx);
+        return max + resolve_margins(&style, 0.0).horizontal();
+    }
+    if let LengthPercentageAuto::Px(w) = style.width {
+        let bp = if bx.has_own_edges() {
             border_edges(&style).horizontal() + resolve_padding(&style, 0.0).horizontal()
         } else {
             0.0
         };
-        return if style.box_sizing == BoxSizing::BorderBox {
+        let content = if style.box_sizing == BoxSizing::BorderBox {
             w
         } else {
             w + bp
         };
+        return content + resolve_margins(&style, 0.0).horizontal();
     }
     let inner = match &bx.kind {
         BoxKind::Text(text) => text
@@ -354,13 +550,50 @@ pub fn intrinsic_width(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
             if all_inline { sum } else { max }
         }
     };
-    if bx.node.is_none() {
-        return inner;
+    let inner = if bx.has_own_edges() {
+        clamp_width(&style, inner, 0.0, 0.0)
+    } else {
+        inner
+    };
+    inner + own_horizontal_edges(bx)
+}
+
+fn intrinsic_min_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
+    let style = bx.style.clone();
+    if bx.kind == BoxKind::Table {
+        let (min, _) = table::intrinsic_widths(bx, ctx);
+        return min + resolve_margins(&style, 0.0).horizontal();
     }
-    inner
-        + border_edges(&style).horizontal()
-        + resolve_padding(&style, 0.0).horizontal()
-        + resolve_margins(&style, 0.0).horizontal()
+    if let LengthPercentageAuto::Px(_) = style.width {
+        return intrinsic_width_uncached(bx, ctx);
+    }
+    let inner = match &bx.kind {
+        BoxKind::Text(text) => {
+            if style.white_space.wraps() {
+                ctx.shaper.min_content(text, &style)
+            } else {
+                text.split('\n')
+                    .map(|line| ctx.shaper.measure(line, &style))
+                    .fold(0.0, f32::max)
+            }
+        }
+        _ => {
+            let mut max = 0.0_f32;
+            for child in &mut bx.children {
+                if child.is_out_of_flow() {
+                    continue;
+                }
+                max = max.max(intrinsic_min_width(child, ctx));
+            }
+            max
+        }
+    };
+    let inner = if bx.has_own_edges() {
+        clamp_width(&style, inner, 0.0, 0.0)
+    } else {
+        inner
+    };
+    inner + own_horizontal_edges(bx)
 }
 
 /// Second pass: places `absolute` / `fixed` boxes against their containing
@@ -372,7 +605,7 @@ pub fn layout_positioned(
     abs_cb: Rect,
     viewport: Rect,
 ) {
-    let own_cb = if bx.node.is_some() && bx.style.position.is_positioned() {
+    let own_cb = if bx.has_own_edges() && bx.style.position.is_positioned() {
         // Padding box of this box.
         let border = border_edges(&bx.style);
         bx.rect.inset(border)
@@ -406,12 +639,10 @@ fn place_absolute(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, cb_rect: Rect) {
     let right = style.right.resolve(cb.width);
     let top = style.top.resolve(cb_rect.height());
     let bottom = style.bottom.resolve(cb_rect.height());
-    let bp = border_edges(&style).horizontal() + resolve_padding(&style, cb.width).horizontal();
     let forced_width = match (style.width.is_auto(), left, right) {
         (true, Some(l), Some(r)) => Some((cb.width - l - r - margins.horizontal()).max(0.0)),
         _ => None,
     };
-    let _ = bp;
 
     // Lay out at a provisional origin to learn the size, then position.
     layout_box_at(

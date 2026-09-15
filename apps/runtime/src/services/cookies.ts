@@ -113,13 +113,17 @@ export function decryptValue(encrypted: Buffer, key: Buffer, metaVersion: number
 export class CookieService {
   constructor(
     private deps: {
-      drivers: () => { vector: BrowserDriver | null; chrome: BrowserDriver | null };
+      drivers: () => { vector: BrowserDriver | null; chrome: BrowserDriver | null; engine?: BrowserDriver | null };
       native: NativeBridge;
     },
   ) {}
 
   private async inject(cookies: BrowserCookie[]): Promise<number> {
     const { native } = this.deps;
+    // the Vector Engine keeps its own jar — mirror imports there so engine-routed
+    // pages see the same sessions (best-effort; the Chromium count is authoritative)
+    const engine = this.deps.drivers().engine;
+    if (engine?.isConnected() && engine.setCookies) await engine.setCookies(cookies).catch(() => 0);
     if (native.available()) {
       const res = await native.setCookies(cookies);
       return res.count;

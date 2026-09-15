@@ -1,6 +1,15 @@
 /** Branded id helpers shared across runtime, drivers, and UI. */
 
-export type Backend = "vector" | "chrome";
+/**
+ * Page backends: `vector` — Vector's own Chromium views (Electron shell or
+ * headless standalone); `chrome` — the user's attached Chrome over CDP;
+ * `vector-engine` — the in-process Vector Engine (docs/engine/architecture.md §11).
+ */
+export type Backend = "vector" | "chrome" | "vector-engine";
+export const BACKENDS = ["vector", "chrome", "vector-engine"] as const;
+
+/** Backends implemented by a Chromium — the fallback targets for the engine router. */
+export const isChromiumBackend = (b: Backend): boolean => b === "vector" || b === "chrome";
 
 export interface TargetRef {
   backend: Backend;

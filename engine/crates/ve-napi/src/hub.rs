@@ -1,0 +1,361 @@
+//! The hub: routes calls to the right context host and allocates global
+//! page ids. Plain Rust so it is testable without Node.
+
+use std::collections::HashMap;
+use std::sync::mpsc::{self, Receiver};
+
+use serde_json::{Value, json};
+use ve_api::{EngineConfig, NetworkPolicy};
+
+use crate::errors::ApiError;
+use crate::host::{ExecuteOptions, Host};
+
+/// The default browsing context every engine starts with.
+pub const DEFAULT_CONTEXT: u32 = 1;
+
+/// Owns the context hosts and the page → context map.
+pub struct Hub {
+    config: EngineConfig,
+    contexts: HashMap<u32, Host>,
+    pages: HashMap<u64, u32>,
+    next_context: u32,
+    next_page: u64,
+}
+
+impl std::fmt::Debug for Hub {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Hub")
+            .field("contexts", &self.contexts.len())
+            .field("pages", &self.pages.len())
+            .finish_non_exhaustive()
+    }
+}
+
+fn immediate(value: Value) -> Receiver<Value> {
+    let (tx, rx) = mpsc::channel();
+    let _ = tx.send(value);
+    rx
+}
+
+fn fail(e: &ApiError) -> Receiver<Value> {
+    immediate(e.to_reply())
+}
+
+fn parse_options(options_json: &str) -> Result<Value, ApiError> {
+    if options_json.trim().is_empty() {
+        return Ok(json!({}));
+    }
+    let value: Value = serde_json::from_str(options_json)?;
+    match value {
+        Value::Null => Ok(json!({})),
+        Value::Object(_) => Ok(value),
+        other => Err(ApiError::invalid(format!(
+            "options must be a JSON object, got {other}"
+        ))),
+    }
+}
+
+/// Parses an `EngineConfig` from JSON. The addon serves a trusted local
+/// embedder (the runtime enforces its own URL policy), so when the config
+/// names no `policy` the engine's default `NetworkPolicy` — loopback
+/// blocked, `file:` refused — is replaced by [`NetworkPolicy::permissive`]
+/// so fixture servers on `127.0.0.1` and local `file:` pages open.
+pub fn parse_config(config_json: &str) -> Result<EngineConfig, ApiError> {
+    if config_json.trim().is_empty() {
+        return Ok(EngineConfig {
+            policy: NetworkPolicy::permissive(),
+            ..EngineConfig::default()
+        });
+    }
+    let value: Value = serde_json::from_str(config_json)?;
+    let has_policy = value.get("policy").is_some_and(|p| !p.is_null());
+    let mut config: EngineConfig = serde_json::from_value(value)?;
+    if !has_policy {
+        config.policy = NetworkPolicy::permissive();
+    }
+    Ok(config)
+}
+
+impl Hub {
+    /// Creates a hub with the default context started.
+    #[must_use]
+    pub fn new(config: EngineConfig) -> Self {
+        let mut hub = Self {
+            config,
+            contexts: HashMap::new(),
+            pages: HashMap::new(),
+            next_context: DEFAULT_CONTEXT,
+            next_page: 0,
+        };
+        hub.spawn_context(None);
+        hub
+    }
+
+    /// Creates a hub from an `EngineConfig` JSON object (see [`parse_config`]).
+    pub fn from_json(config_json: &str) -> Result<Self, ApiError> {
+        Ok(Self::new(parse_config(config_json)?))
+    }
+
+    fn spawn_context(&mut self, policy: Option<NetworkPolicy>) -> u32 {
+        let id = self.next_context;
+        self.next_context += 1;
+        let mut config = self.config.clone();
+        if let Some(policy) = policy {
+            config.policy = policy;
+        }
+        self.contexts.insert(id, Host::spawn(config, id));
+        id
+    }
+
+    /// Creates an isolated context (own cookie jar, own thread).
+    /// `options_json` may carry a `policy` (`NetworkPolicy`) override.
+    pub fn new_context(&mut self, options_json: &str) -> Result<u32, ApiError> {
+        if self.contexts.is_empty() {
+            return Err(ApiError::new("backend_unavailable", "engine is shut down"));
+        }
+        let options = parse_options(options_json)?;
+        let policy = match options.get("policy") {
+            None | Some(Value::Null) => None,
+            Some(p) => Some(
+                serde_json::from_value::<NetworkPolicy>(p.clone())
+                    .map_err(|e| ApiError::invalid(format!("network policy: {e}")))?,
+            ),
+        };
+        Ok(self.spawn_context(policy))
+    }
+
+    fn context(&self, id: u32) -> Result<&Host, ApiError> {
+        self.contexts
+            .get(&id)
+            .ok_or_else(|| ApiError::new("not_found", format!("no such context {id}")))
+    }
+
+    fn host_of(&self, page: u64) -> Result<&Host, ApiError> {
+        let ctx = self
+            .pages
+            .get(&page)
+            .ok_or_else(|| ApiError::no_such_page(page))?;
+        self.context(*ctx)
+    }
+
+    /// Opens a page in a context; the reply carries the new page id.
+    pub fn open(&mut self, context_id: u32, url: &str, options_json: &str) -> Receiver<Value> {
+        let options = match parse_options(options_json) {
+            Ok(o) => o,
+            Err(e) => return fail(&e),
+        };
+        if let Err(e) = self.context(context_id) {
+            return fail(&e);
+        }
+        self.next_page += 1;
+        let page = self.next_page;
+        self.pages.insert(page, context_id);
+        let url = url.to_owned();
+        match self.context(context_id) {
+            Ok(host) => host.call(move |s| s.open(page, &url, &options)),
+            Err(e) => fail(&e),
+        }
+    }
+
+    /// Observes a page.
+    pub fn observe(&self, page: u64, options_json: &str) -> Receiver<Value> {
+        let options = match parse_options(options_json) {
+            Ok(o) => o,
+            Err(e) => return fail(&e),
+        };
+        match self.host_of(page) {
+            Ok(h) => h.call(move |s| s.observe(page, &options)),
+            Err(e) => fail(&e),
+        }
+    }
+
+    /// Executes contracts steps on a page (`steps_json` is a `Step[]` or a
+    /// `Program` object with a `steps` array).
+    pub fn execute(&self, page: u64, steps_json: &str, options_json: &str) -> Receiver<Value> {
+        let steps: Value = match serde_json::from_str::<Value>(steps_json) {
+            Ok(v @ Value::Array(_)) => v,
+            Ok(v @ Value::Object(_)) if v.get("steps").is_some_and(Value::is_array) => v,
+            Ok(Value::Object(_)) => return fail(&ApiError::invalid("program has no steps array")),
+            Ok(_) => return fail(&ApiError::invalid("steps must be an array")),
+            Err(e) => return fail(&e.into()),
+        };
+        let opts: ExecuteOptions = match serde_json::from_str(options_json) {
+            Ok(o) => o,
+            Err(e) => return fail(&e.into()),
+        };
+        match self.host_of(page) {
+            Ok(h) => h.call(move |s| s.execute(page, &steps, &opts)),
+            Err(e) => fail(&e),
+        }
+    }
+
+    /// Screenshots a page as PNG (`options_json` may carry `fullPage`).
+    pub fn screenshot(&self, page: u64, options_json: &str) -> Receiver<Value> {
+        let options = match parse_options(options_json) {
+            Ok(o) => o,
+            Err(e) => return fail(&e),
+        };
+        match self.host_of(page) {
+            Ok(h) => h.call(move |s| s.screenshot(page, &options)),
+            Err(e) => fail(&e),
+        }
+    }
+
+    /// Closes a page.
+    pub fn close(&mut self, page: u64) -> Receiver<Value> {
+        let Some(ctx) = self.pages.remove(&page) else {
+            return immediate(json!({ "ok": true, "closed": false }));
+        };
+        match self.context(ctx) {
+            Ok(h) => h.call(move |s| s.close(page)),
+            Err(e) => fail(&e),
+        }
+    }
+
+    /// Cookies of a context.
+    pub fn get_cookies(&self, context_id: u32, url: Option<&str>) -> Receiver<Value> {
+        let url = url.map(str::to_owned);
+        match self.context(context_id) {
+            Ok(h) => h.call(move |s| s.get_cookies(url.as_deref())),
+            Err(e) => fail(&e),
+        }
+    }
+
+    /// Stores cookies into a context.
+    pub fn set_cookies(&self, context_id: u32, cookies_json: &str) -> Receiver<Value> {
+        let cookies = cookies_json.to_owned();
+        match self.context(context_id) {
+            Ok(h) => h.call(move |s| s.set_cookies(&cookies)),
+            Err(e) => fail(&e),
+        }
+    }
+
+    /// Tracked page ids.
+    #[must_use]
+    pub fn pages(&self) -> Vec<u64> {
+        let mut v: Vec<u64> = self.pages.keys().copied().collect();
+        v.sort_unstable();
+        v
+    }
+
+    /// Drops every host (their threads exit once queued jobs finish).
+    pub fn shutdown(&mut self) {
+        self.contexts.clear();
+        self.pages.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn config_defaults_to_a_permissive_policy_unless_given() {
+        let c = parse_config("").unwrap();
+        assert!(!c.policy.block_loopback && c.policy.allow_file);
+        let c = parse_config(r#"{"offline": true, "dataDir": "/tmp/x"}"#).unwrap();
+        assert!(c.offline && c.policy.allow_file);
+        let c = parse_config(r#"{"policy": {"blockLoopback": true}}"#).unwrap();
+        assert!(c.policy.block_loopback && !c.policy.allow_file);
+        assert_eq!(parse_config("nope").unwrap_err().code, "invalid_params");
+    }
+
+    #[test]
+    fn hub_routes_pages_to_contexts_and_isolates_cookies() {
+        let mut hub =
+            Hub::from_json(r#"{"offline": true, "viewport": {"width": 800, "height": 600}}"#)
+                .unwrap();
+        let ctx2 = hub.new_context("{}").unwrap();
+        assert_eq!(ctx2, 2);
+        assert_eq!(
+            hub.new_context(r#"{"policy": {"blockLoopback": "yes"}}"#)
+                .unwrap_err()
+                .code,
+            "invalid_params"
+        );
+
+        let a = hub
+            .open(
+                DEFAULT_CONTEXT,
+                "data:text/html,<title>A</title><button>Go</button>",
+                "{}",
+            )
+            .recv()
+            .unwrap();
+        let b = hub
+            .open(ctx2, "data:text/html,<title>B</title>", "")
+            .recv()
+            .unwrap();
+        assert_eq!(a["ok"], true, "{a}");
+        assert_eq!(b["ok"], true, "{b}");
+        assert_eq!(a["context"], 1);
+        assert_eq!(b["context"], 2);
+        let pa = a["page"].as_u64().unwrap();
+        let pb = b["page"].as_u64().unwrap();
+        assert_ne!(pa, pb);
+        assert_eq!(hub.pages(), vec![pa, pb]);
+
+        let obs = hub.observe(pa, "{}").recv().unwrap();
+        assert_eq!(obs["content"]["title"], "A");
+        assert_eq!(obs["content"]["viewport"]["width"], 800.0);
+        let obs = hub.observe(pb, r#"{"scope":"links"}"#).recv().unwrap();
+        assert_eq!(obs["content"]["title"], "B");
+
+        let bad = hub.observe(999, "{}").recv().unwrap();
+        assert_eq!(bad["error"]["code"], "target_detached");
+        let bad = hub.observe(pa, "not json").recv().unwrap();
+        assert_eq!(bad["error"]["code"], "invalid_params");
+        let bad = hub.observe(pa, "[1]").recv().unwrap();
+        assert_eq!(bad["error"]["code"], "invalid_params");
+        let bad = hub.open(42, "about:blank", "{}").recv().unwrap();
+        assert_eq!(bad["error"]["code"], "not_found");
+
+        let ran = hub
+            .execute(
+                pa,
+                r#"{"steps":[{"id":"c","op":"click","target":"role=button[name=Go]"}]}"#,
+                r#"{"returnObservation": true}"#,
+            )
+            .recv()
+            .unwrap();
+        assert_eq!(ran["status"], "completed", "{ran}");
+        assert_eq!(ran["observation"]["content"]["title"], "A");
+        assert_eq!(
+            hub.execute(pa, "{}", "{}").recv().unwrap()["error"]["code"],
+            "invalid_params"
+        );
+        assert_eq!(
+            hub.execute(pa, "[]", "nope").recv().unwrap()["error"]["code"],
+            "invalid_params"
+        );
+
+        let shot = hub.screenshot(pa, "{}").recv().unwrap();
+        assert_eq!(shot["ok"], true, "{shot}");
+        assert_eq!(shot["width"], 800);
+        assert!(shot["pngBase64"].as_str().unwrap().starts_with("iVBOR"));
+
+        hub.set_cookies(DEFAULT_CONTEXT, r#"[{"name":"a","value":"1","domain":"x.test","path":"/","secure":false,"httpOnly":false}]"#)
+            .recv()
+            .unwrap();
+        assert_eq!(
+            hub.get_cookies(DEFAULT_CONTEXT, None).recv().unwrap()["cookies"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            hub.get_cookies(ctx2, None).recv().unwrap()["cookies"]
+                .as_array()
+                .unwrap()
+                .len(),
+            0
+        );
+
+        assert_eq!(hub.close(pa).recv().unwrap()["closed"], true);
+        assert_eq!(hub.close(pa).recv().unwrap()["closed"], false);
+        assert_eq!(hub.pages(), vec![pb]);
+        hub.shutdown();
+        assert!(hub.new_context("{}").is_err());
+    }
+}
