@@ -233,6 +233,7 @@ export class RunCoordinator {
       this.controls.get(runId)!.span = undefined;
     }
     this.deps.tracer?.incr(`run.${status}`);
+    for (const pageId of run.pageIds) this.deps.pages.releaseAgent?.(pageId);
   }
 
   private async waitIfPaused(c: RunControl, runId: string) {

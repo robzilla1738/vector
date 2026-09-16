@@ -335,6 +335,11 @@ pub struct Page {
     scripts: Vec<FetchedScript>,
     /// Subresource counters for the current document.
     load_stats: LoadStats,
+    /// Cross-origin iframes as separate browsing contexts (plan A16).
+    /// Declared before `scripting` so nested pages drop before the parent VM.
+    isolated_frames: HashMap<NodeId, Box<Page>>,
+    /// Document `<script>`s not yet evaluated (open/classify skips them).
+    document_scripts_pending: bool,
     /// The script layer, when a VM is attached (plan A13).
     pub(crate) scripting: Option<crate::scripting::Scripting>,
     /// Origin-keyed `localStorage`.
@@ -353,8 +358,6 @@ pub struct Page {
     download_dir: Option<std::path::PathBuf>,
     /// Iframe node ids that are cross-origin (contentDocument is null).
     cross_origin_frames: std::collections::HashSet<NodeId>,
-    /// Cross-origin iframes as separate browsing contexts with their own realm (plan A16).
-    isolated_frames: HashMap<NodeId, Box<Page>>,
     /// Registered service workers (plan A23).
     pub(crate) service_workers: Vec<ServiceWorkerRegistration>,
 }
@@ -515,6 +518,8 @@ impl Page {
             cancelled: false,
             scripts: Vec::new(),
             load_stats: LoadStats::default(),
+            isolated_frames: HashMap::new(),
+            document_scripts_pending: false,
             scripting: None,
             local_storage: HashMap::new(),
             session_storage: HashMap::new(),
@@ -524,7 +529,6 @@ impl Page {
             downloads: Vec::new(),
             download_dir: None,
             cross_origin_frames: std::collections::HashSet::new(),
-            isolated_frames: HashMap::new(),
             service_workers: Vec::new(),
         }
     }
@@ -614,9 +618,9 @@ impl Page {
         if self.scripting.is_some() {
             let _ = self.call_script("__veResetDocument", &[]);
         }
-        self.run_document_scripts();
-        self.update();
+        self.document_scripts_pending = self.scripting.is_some();
         self.apply_css_coverage();
+        self.apply_visual_routing();
         let entry = HistoryEntry {
             document: loaded,
             scroll: Point::ZERO,
@@ -1210,6 +1214,36 @@ impl Page {
         }
     }
 
+    /// HTML can be full of text that CSS never lays out (display:none until JS,
+    /// zero-height shells). The first screen then paints blank; Chromium must
+    /// take over in auto mode.
+    fn apply_visual_routing(&mut self) {
+        if self.routing.requires_script {
+            return;
+        }
+        let body = self.routing.body_text_chars;
+        if body < 500 {
+            return;
+        }
+        let view = Rect::new(0.0, 0.0, self.viewport.width, self.viewport.height);
+        let painted: usize = self
+            .layout
+            .paint_order()
+            .iter()
+            .filter(|item| {
+                item.rect.intersects(&view) && item.rect.width() > 2.0 && item.rect.height() > 2.0
+            })
+            .filter_map(|item| item.text.as_deref())
+            .map(|t| t.trim().chars().count())
+            .sum();
+        if painted < 40 {
+            self.routing.requires_script = true;
+            self.routing.route_reason = format!(
+                "empty-viewport: {painted} painted chars in view vs {body} in the document"
+            );
+        }
+    }
+
     /// Whether a navigation is pending.
     #[must_use]
     pub fn navigation_pending(&self) -> bool {
@@ -1238,11 +1272,20 @@ impl Page {
         Ok(())
     }
 
-    /// `settle()` (architecture §6). In M1 the script conditions are
-    /// trivially true; this performs pending navigations, follows immediate
-    /// `<meta refresh>`, runs restyle + relayout, and reports in-flight
-    /// fetches attributed to the page.
-    pub fn settle(&mut self, budget_ms: u64) -> Settled {
+    /// Runs pending document scripts once. Open/classify skips this so
+    /// the router can fall back without executing page JS.
+    pub(crate) fn ensure_document_scripts(&mut self) {
+        if !self.document_scripts_pending {
+            return;
+        }
+        self.document_scripts_pending = false;
+        self.run_document_scripts();
+        self.update();
+        self.apply_css_coverage();
+    }
+
+    /// `settle()` without running pending document scripts (the open path).
+    pub fn settle_passive(&mut self, budget_ms: u64) -> Settled {
         let span = Stage::Agent.span();
         let _guard = span.enter();
         let start = Instant::now();
@@ -1335,6 +1378,14 @@ impl Page {
             waited_ms: waited,
             reasons,
         }
+    }
+
+    /// `settle()` (architecture §6). Runs pending document scripts, then
+    /// pending navigations, `<meta refresh>`, restyle + relayout, and
+    /// in-flight fetches attributed to the page.
+    pub fn settle(&mut self, budget_ms: u64) -> Settled {
+        self.ensure_document_scripts();
+        self.settle_passive(budget_ms)
     }
 
     fn perform_refresh(&mut self) -> Result<()> {
@@ -1498,6 +1549,7 @@ impl Page {
     /// Settles, observes, and computes `changesSince` against the cached
     /// observation taken at `sinceRevision` (same scope and format).
     pub fn observe(&mut self, request: &ObservationRequest) -> Result<EngineObservation> {
+        self.ensure_document_scripts();
         let settled = self.settle(SETTLE_STEP_MS);
         Ok(self.observe_after_settle(request, settled))
     }

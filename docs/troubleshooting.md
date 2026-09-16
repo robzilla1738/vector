@@ -23,10 +23,11 @@ in focus mode.
 ## Pointer steps time out on a hidden page
 
 Trusted input (click/press/fill/…) requires a visible, laid-out view. The
-runtime handles this automatically via the stage lease — the page is shown
-at stage bounds for the duration of the program. If a step still times out,
-check that the target is a `vector` backend page (attached-Chrome tabs don't
-need the lease; they run in the user's real browser window).
+runtime marks the page working (`native.acquireStage`) for the duration of
+an interactive program — offscreen at stage size if it is not the focused
+tab. If a step still times out, check that the target is a `vector` backend
+page (attached-Chrome tabs don't need that; they run in the user's real
+browser window).
 
 ## `No native surface: the runtime is not attached to a Vector desktop shell`
 
@@ -55,11 +56,12 @@ them spinning.
 
 ## A run keeps failing with `conflict` after I clicked in the page
 
-Typing or clicking in an agent-driven page takes it over: the page's
-`controller` becomes `human` and every in-flight or later program on it
-fails with `conflict` until you hand it back (`pages.resume`, or the chip in
-the toolbar). The run is *not* paused by a takeover — cancel it, or resume the
-page and let the planner retry.
+A real click or key in an agent-driven page (between programs) takes it
+over: `controller` becomes `human`, live runs on that page pause, and
+programs fail with `conflict` until you hand it back (`pages.resume`, or
+*Return control* in the toolbar). Agent clicks while a program is running
+are ignored. If you did not touch the page and still see the chip, quit and
+relaunch so main/runtime pick up the current build.
 
 ## `sets.map` ignores `runs.pause` / `runs.cancel`
 
@@ -134,13 +136,15 @@ unavailable`.
 
 ## Pages open on Chromium although the engine is available
 
-Routing is off by default. Check `runtime.describe` → `engine.mode`; set
-`settings.set { engineMode: "auto" }` (or `VECTOR_ENGINE_MODE=auto`; the
-stored setting wins over the env). Then read `routeReason` on the
-`pages.open` result:
+`engineMode` defaults to `auto`. Check `runtime.describe` → `engine.mode`;
+`VECTOR_ENGINE_MODE` is the env override (the stored setting wins). Then read
+`routeReason` on the `pages.open` result:
 
-- `engine-mode-off` — the setting is still `off`.
+- `engine-mode-off` — the setting is `off`.
 - `engine-unavailable` — the addon did not load (section above).
+- `engine-first:native-view` — a visible desktop tab. Auto-mode tabs the
+  shell will show open on Chromium so the stage has a `WebContentsView`.
+  Background/CLI opens still go engine-first.
 - `unsupported-scheme:<scheme>` — the engine opens `http(s):`, `file:`,
   `data:`, `about:` only.
 - `needs-chromium-table:<reason>` — this origin fell back within the last
@@ -150,11 +154,11 @@ stored setting wins over the env). Then read `routeReason` on the
   `VECTOR_DATA_DIR`).
 - `fallback:<reason>` — the engine opened the page, classified it as
   script-dependent (`empty-shell`, `empty-root-container: #root`,
-  `body-onload`, `form-onsubmit`, `template-heavy`,
-  `unsupported-content: …`) or failed mid-program
-  (`mid-program:<op>:…`), and the page was reopened on Chromium. Expected
-  for documents the engine classifies as script-dependent (empty SPA
-  shells, `body-onload`, unsupported content types).
+  `empty-viewport: …`, `body-onload`, `form-onsubmit`, `template-heavy`,
+  `unsupported-content: …`) or failed mid-program / open
+  (`mid-program:<op>:…`, `backend_unavailable`, `internal`), and the page
+  was reopened on Chromium. Expected for documents the engine classifies as
+  script-dependent (empty SPA shells, hidden SSR, unsupported content types).
 
 `VECTOR_ROUTER_LOG=1` prints every decision to the runtime's stderr;
 `traces.counters` has `router.decide`, `router.fallback.open`,
@@ -183,6 +187,8 @@ Chromium backend was connected to fall back to.
 
 ## `pages.capture` / `pages.activate` on an engine page
 
-Engine pages are headless: there is no Chromium view to focus. `pages.activate`
-marks the page active; `pages.capture` uses the software renderer (system
-fonts). `pages.openLive` on an engine page likewise marks it active.
+Background/CLI engine pages have no Chromium view. `pages.activate` marks
+the page active; `pages.capture` uses the software renderer (system fonts).
+In the desktop shell the stage paints that PNG (`EngineView`) and maps
+click/wheel through `pages.execute`. Visible auto-mode tabs never land
+here — they open on Chromium (`engine-first:native-view`).

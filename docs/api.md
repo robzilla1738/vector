@@ -75,9 +75,10 @@ decision as `PageTarget.routeReason`:
 | `engine-unavailable` | `auto`, but the addon is not loaded/connected — Chromium |
 | `unsupported-scheme:<scheme>` / `unparseable-url` | `auto`, URL the engine cannot open (it opens `http:`, `https:`, `file:`, `data:`, `about:`) — Chromium |
 | `needs-chromium-table:<reason>` | `auto`, origin recorded as Chromium-only within the last 24 h — Chromium |
-| `engine-first` | `auto` — opened on the engine |
+| `engine-first` | `auto` — opened on the engine (background/CLI, or `engineMode: always`) |
+| `engine-first:native-view` | `auto` in the desktop shell: a tab that will be shown opens on Chromium so the stage has a `WebContentsView` |
 | `engine-always(classified:<reason>)` / `explicit-backend:vector-engine(classified:<reason>)` | the document was classified script-dependent but fallback is not allowed, so the page stays on the engine |
-| `fallback:<reason>` | `auto`: the engine classified the document as script-dependent (`empty-shell`, `empty-root-container: …`, `noscript-requires-js`, `meta-refresh-javascript`, `body-onload`, `form-onsubmit`, `template-heavy`, `unsupported-content: …`) or failed mid-program (`mid-program:<op>:<message>`); the page was reopened on Chromium and the origin recorded in the needs-chromium table |
+| `fallback:<reason>` | `auto`: the engine classified the document as script-dependent (`empty-shell`, `empty-root-container: …`, `empty-viewport: …`, `noscript-requires-js`, `meta-refresh-javascript`, `body-onload`, `form-onsubmit`, `template-heavy`, `unsupported-content: …`) or failed mid-program / open (`mid-program:<op>:<message>`, `backend_unavailable`, `internal`); the page was reopened on Chromium and the origin recorded in the needs-chromium table |
 
 Mid-program fallback: when a step on an engine page fails with
 `capability_unsupported`, the runtime moves the page to Chromium at its

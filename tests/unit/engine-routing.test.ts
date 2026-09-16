@@ -9,7 +9,7 @@
  *   - returnObservation on the engine path is one native call
  */
 import { describe, it, expect, vi } from "vitest";
-import { EventBus, MemoryRouterStore, NullNativeBridge, PageService, Repo, Router, openDb, type DriverSet } from "@vector/runtime";
+import { EventBus, MemoryRouterStore, NullNativeBridge, PageService, Repo, Router, openDb, type DriverSet, type NativeBridge } from "@vector/runtime";
 import type { BrowserDriver, DriverPage, ExecuteProgramOptions, ExecuteProgramResult, PageRouting } from "@vector/browser-driver";
 import type { EngineMode, ObservationContent, Step } from "@vector/contracts";
 
@@ -94,7 +94,30 @@ function fakeDriver(opts: FakeOpts) {
   return { driver, calls, pages };
 }
 
-function harness(mode: EngineMode, engineOpts: Partial<FakeOpts> = {}) {
+function shellNative(): NativeBridge {
+  const ok = async () => ({ ok: true as const });
+  return {
+    available: () => true,
+    createPage: async () => ({ ok: true as const }),
+    closePage: ok,
+    showPage: ok,
+    hidePage: ok,
+    focusPage: ok,
+    stopPage: ok,
+    acquireStage: ok,
+    releaseStage: ok,
+    capturePage: async () => ({ dataUrl: "" }),
+    openExternal: ok,
+    findInPage: async () => ({ matches: 0 }),
+    stopFind: ok,
+    setZoom: async () => ({ level: 1 }),
+    setCookies: async () => ({ ok: true, count: 0 }),
+    storeSecret: async () => ({ ok: true }),
+    readSecret: async () => ({ value: undefined }),
+  };
+}
+
+function harness(mode: EngineMode, engineOpts: Partial<FakeOpts> = {}, native: NativeBridge = new NullNativeBridge()) {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
   const vector = fakeDriver({ backend: "vector" });
@@ -102,7 +125,7 @@ function harness(mode: EngineMode, engineOpts: Partial<FakeOpts> = {}) {
   const drivers: DriverSet = { vector: vector.driver, chrome: null, engine: engine.driver };
   const store = new MemoryRouterStore();
   const router = new Router({ mode: () => mode, engineAvailable: () => true, store });
-  const pages = new PageService({ repo, events, native: new NullNativeBridge(), drivers: () => drivers, router });
+  const pages = new PageService({ repo, events, native, drivers: () => drivers, router });
   return { repo, events, pages, router, vector, engine, store };
 }
 
@@ -131,6 +154,15 @@ describe("pages.open routing", () => {
     expect(h.engine.calls).toEqual(["vector-engine:createTarget:https://a.test/"]);
     expect(h.vector.calls).toEqual([]);
     expect(h.repo.getPage(page.pageId)?.routeReason).toBe("engine-first");
+  });
+
+  it("auto: a visible tab in the desktop shell opens on Chromium", async () => {
+    const h = harness("auto", {}, shellNative());
+    const page = await h.pages.open({ url: "https://cnn.test/", background: false, ownedByRuntime: false });
+    expect(page.backend).toBe("vector");
+    expect(page.routeReason).toBe("engine-first:native-view");
+    expect(h.engine.calls).toEqual([]);
+    expect(h.vector.calls).toEqual(["vector:navigate:https://cnn.test/"]);
   });
 
   it("auto: a requiresScript classification reopens on Chromium and records the origin", async () => {
@@ -307,5 +339,41 @@ describe("engine execution path", () => {
     await expect(
       h.pages.execute({ pageId: page.pageId, steps: [{ id: "e", op: "evaluate", expression: "1" }] }, { allowEval: false }),
     ).rejects.toMatchObject({ code: "invalid_params" });
+  });
+});
+
+describe("native takeover vs agent input", () => {
+  it("Playwright clicks during execute do not claim the page", async () => {
+    const h = harness("off");
+    const page = await h.pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
+    let during = "";
+    const dp = h.vector.pages[0];
+    const click = dp.click.bind(dp);
+    dp.click = async (t) => {
+      h.pages.onNativeTakeover(page.pageId);
+      during = h.pages.get(page.pageId).controller;
+      return click(t);
+    };
+    const res = await h.pages.execute(
+      { pageId: page.pageId, steps: [{ id: "a", op: "click", target: "css:#x" }] },
+      { runId: "run-1" },
+    );
+    expect(res.status).toBe("completed");
+    expect(during).toBe("agent");
+    expect(h.pages.get(page.pageId).controller).toBe("agent");
+    h.pages.releaseAgent(page.pageId);
+    expect(h.pages.get(page.pageId).controller).toBe("none");
+  });
+
+  it("a click after the program still takeovers", async () => {
+    const h = harness("off");
+    const page = await h.pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
+    await h.pages.execute(
+      { pageId: page.pageId, steps: [{ id: "a", op: "click", target: "css:#x" }] },
+      { runId: "run-1" },
+    );
+    expect(h.pages.get(page.pageId).controller).toBe("agent");
+    h.pages.onNativeTakeover(page.pageId);
+    expect(h.pages.get(page.pageId).controller).toBe("human");
   });
 });

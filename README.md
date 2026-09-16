@@ -9,10 +9,12 @@ API, MCP, CLI). Pages run on one of two backends:
   and readiness come from the engine's own trees, with no injected scripts
   and no per-step IPC. V8 runs page scripts; the router falls back to
   Chromium when a document is classified as script-dependent beyond what
-  the engine can settle.
+  the engine can settle. Auto-mode tabs the desktop will show open on
+  Chromium (`engine-first:native-view`) so the stage has a real view.
 - **Chromium** — the Electron `WebContentsView` (or headless Chromium in
   standalone mode), plus the user's own Chrome over CDP. Chromium is the
-  fallback for pages the engine classifies as script-dependent.
+  fallback for pages the engine classifies as script-dependent, and the
+  default for visible desktop tabs.
 
 A router (`apps/runtime/src/services/router.ts`) decides per `pages.open`;
 the decision is returned as `routeReason` and a persisted needs-chromium
@@ -122,14 +124,15 @@ Inter Variable; icons are Lucide. Dark chrome is `#1f1f1f`.
 - The stage card carries an **engine badge** — Chromium, Your Chrome or
   Vector Engine — with the router's `routeReason` in its hover card.
   Settings → Vector Engine switches `engineMode`.
-- Type or click inside an agent-driven page to take it over; the toolbar
-  chip (*You're in control · Return*) hands it back. Programs on a
-  taken-over page fail with `conflict` until then.
+- Type or click inside an agent-driven page (when the agent is not
+  mid-program) to take it over; the run pauses and the toolbar chip
+  (*You're in control · Return*) hands it back. Agent clicks on the
+  page you are watching are not a takeover.
 - Run steps in the agent rail carry the exact observation the planner saw;
   results tables sort, filter and export CSV/JSON.
-- Engine-backed pages are headless (no native `WebContentsView`).
-  `pages.activate` still marks them active; `pages.capture` paints a
-  PNG through the software renderer with system fonts.
+- Visible auto-mode tabs open on Chromium. Background/CLI engine pages have
+  no `WebContentsView`; the stage paints `pages.capture` (software PNG)
+  and maps click/wheel through `pages.execute`.
 
 ## Layout
 

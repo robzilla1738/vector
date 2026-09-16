@@ -336,6 +336,7 @@ impl Page {
                 "evaluate needs a context created with allowEvaluate",
             ));
         }
+        self.ensure_document_scripts();
         self.run_script(expression, "vector:evaluate")
             .map(serde_json::Value::from)
     }

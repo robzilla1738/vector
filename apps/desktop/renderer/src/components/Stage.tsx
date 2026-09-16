@@ -2,6 +2,7 @@ import { forwardRef } from "react";
 import type { PageTarget } from "@vector/contracts";
 import { inElectron, inMock } from "../bridge";
 import { useStore, call, errToast } from "../store";
+import { EngineView } from "./EngineView";
 import { MockPage } from "./MockPage";
 import { Overview } from "./Overview";
 import { ResultsTable } from "./ResultsTable";
@@ -11,7 +12,7 @@ import { I } from "./icons";
 /**
  * The page area — Arc's card: a rounded viewport inset from the window edge
  * with a soft shadow. `#stage` is the rect the native WebContentsView is
- * pinned to; everything else here is DOM that shows when no native page is.
+ * pinned to; engine pages paint a software screenshot here instead.
  */
 export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }>(function Stage({ page }, ref) {
   const mode = useStore((s) => s.mode);
@@ -59,6 +60,7 @@ export const Stage = forwardRef<HTMLDivElement, { page: PageTarget | undefined }
             </div>
           </div>
         )}
+        {mode === "focus" && hasUrl && page?.backend === "vector-engine" && page.viewStatus !== "crashed" && inElectron && <EngineView page={page} />}
         {mode === "focus" && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !inElectron && inMock && <MockPage page={page} />}
         {mode === "overview" && <Overview />}
         {mode === "table" && <ResultsTable />}

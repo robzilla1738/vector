@@ -130,6 +130,8 @@ describe("classification → fallback mapping", () => {
     expect(content?.message).toContain("unsupportedContent");
     expect(Router.fallbackReason(new VectorError("capability_unsupported", "hover"))).toBe("hover");
     expect(isFallbackError(new VectorError("step_failed", "x"))).toBe(false);
+    expect(isFallbackError(new VectorError("backend_unavailable", "engine panic"))).toBe(true);
+    expect(isFallbackError(new VectorError("internal", "engine panic"))).toBe(true);
     expect(isFallbackError(new Error("x"))).toBe(false);
   });
 });

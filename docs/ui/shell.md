@@ -176,7 +176,8 @@ fifteen reference states in `docs/ui/screenshots/` with Playwright (1440×900
 - `pnpm -C apps/desktop build` — tsc + esbuild bundle + vite build.
 - `pnpm -C apps/desktop test` — vitest: `intent.test.ts` (command-bar intent
   detection), `workspace.test.ts` (space / tab / pin / folder reducers),
-  `favicon.test.ts`, `StepTimeline.test.tsx` and `ObservationPanel.test.tsx`.
+  `favicon.test.ts`, `EngineView.test.tsx`, `StepTimeline.test.tsx` and
+  `ObservationPanel.test.tsx`.
 - `tests/unit/chrome-tokens.test.ts` — token and chrome CSS contracts
   (sidebar/window match, 5-col pins, folder indent).
 

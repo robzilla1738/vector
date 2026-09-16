@@ -85,9 +85,11 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   `"vector" | "chrome" | "vector-engine"`. The runtime router
   (`apps/runtime/src/services/router.ts`) implements §11 steps 1–4:
   persisted needs-chromium table (24 h TTL), engine-first open with
-  Chromium reopen on `capability_unsupported`, mid-program migration and
+  Chromium reopen on `capability_unsupported` / `backend_unavailable` /
+  `internal`, mid-program migration and
   replay (`ProgramResult.fallback`, `repair: true` when ref-targeted steps
-  remain).   `settings.engineMode: "off" | "auto" | "always"` (default
+  remain). Visible auto-mode desktop tabs skip the engine
+  (`engine-first:native-view`).   `settings.engineMode: "off" | "auto" | "always"` (default
   `auto`); `pages.open` results carry `routeReason`; `pnpm bench --backend
   chrome|vector-engine|both`.
 
@@ -97,8 +99,14 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   (`ve-agent/src/scripting.rs`), a prelude for
   `setTimeout/setInterval/queueMicrotask/requestAnimationFrame/console/
   performance`, a 5 s per-script deadline via `terminate_execution`.
-  Document scripts run at load (classic in order, `defer`/module after;
-  errors isolated to the console). Timers live on the page's virtual clock:
+  Isolates on one engine thread are entered on creation; `V8Vm::run`
+  exits newer isolates before eval and re-enters them after, and Drop
+  parks until LIFO is legal. Host jobs wrap `catch_unwind` so a panic
+  returns `internal` instead of killing `ve-context-N`.
+  Document scripts are collected on open but not evaluated until after
+  classify (`settle_passive`); `observe`/`execute` run them. Classic
+  scripts then run in order, `defer`/module after; errors isolated to the
+  console. Timers live on the page's virtual clock:
   `settle()` fires everything due within 50 ms, drains microtasks, and
   reports `timers(n)`/`timers-later(n)`/`microtasks`. `EngineConfig.scripting`
   (runtime: `VECTOR_ENGINE_SCRIPTING=0` disables it) is on by default so
@@ -114,10 +122,12 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   `restyle_incremental` / `relayout_incremental`. `CssCoverage` is always
   populated; `requiresScript` flips only at 50% miss + geometry.
   `evaluate`, `dialog`, `waitFor expression`, `javascript:` URLs.
+  A first screen with almost no painted text against a large body of
+  document text is `empty-viewport` (auto → Chromium).
 - **Frames / downloads / drag (A16)** — same-origin and `srcdoc` iframes
   expose `contentDocument`; cross-origin iframes are a separate `Page`
-  (parent `contentDocument` is null; a second V8 isolate cannot be entered
-  while the parent isolate is entered). Downloads write into the page
+  (parent `contentDocument` is null; nested pages do not attach a second
+  V8 isolate). Downloads write into the page
   download dir. `dragTo` fires HTML5 drag events when scripting.
 - **Typed ferry (A17)** — `observeBuf` / `executeBuf` / `screenshotPng`;
   generation-checked refs; arena recycling.
@@ -148,8 +158,8 @@ The addon forwards to `ve-agent`, so these are the engine's own gaps
 | `xpath:` targets | unsupported (`r<n>`, `css:`, `text:`/`text=`, `role=…[name=…]`) — used as the auto-mode fallback probe |
 | `dragTo` | **supported** HTML5 `dragstart`/`enter`/`over`/`drop`/`dragend` when scripting is on |
 | control-flow `nodes` | interpreted by the runtime; the engine executes flat `steps` |
-| `<script>`-dependent documents | classified on open (`RoutingInfo.routeReason`) and, in `auto`, reopened on Chromium |
-| `pages.capture` / `pages.activate` on an engine page | **supported** (A19): capture uses the software renderer; activate sets the active page (headless, no native Chromium view) |
+| `<script>`-dependent documents | classified on open (`RoutingInfo.routeReason`, including `empty-viewport`) and, in `auto`, reopened on Chromium; visible desktop tabs skip the engine (`engine-first:native-view`) |
+| `pages.capture` / `pages.activate` on an engine page | **supported** (A19): capture uses the software renderer; the desktop stage paints it (`EngineView`); activate sets the active page |
 
 Supported through the addon and therefore on the runtime's engine backend:
 `navigate`, `back`/`forward` (engine session history), `reload`, `stop`,
@@ -744,8 +754,9 @@ exactly a `VectorErrorCode`:
 | Human took over the page / concurrent program on same page | `conflict` |
 | Network failure, engine panic caught at the boundary | `backend_unavailable` / `internal` |
 
-The runtime's fallback router (§11) treats `capability_unsupported` as
-"retry this program on Chromium" and everything else as a normal failure.
+The runtime's fallback router (§11) treats `capability_unsupported`,
+`backend_unavailable`, and `internal` as "retry this program on Chromium"
+and everything else as a normal failure.
 
 ## 7. Script layer
 

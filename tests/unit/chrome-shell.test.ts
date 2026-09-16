@@ -70,6 +70,12 @@ describe("overlay → native-view visibility", () => {
     expect(nativePageId({ mode: "focus", overlay: "find", activePageId: page, url: "about:blank" })).toBeNull();
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: "https://example.com/" })).toBe(page);
   });
+
+  it("does not pin a native view for engine or Chrome tabs", () => {
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "vector-engine" })).toBeNull();
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "chrome" })).toBeNull();
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "vector" })).toBe(page);
+  });
 });
 
 describe("activity counts", () => {

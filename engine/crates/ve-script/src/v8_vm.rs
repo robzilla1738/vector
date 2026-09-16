@@ -16,6 +16,9 @@
 
 #![allow(unsafe_code)]
 
+use std::cell::{Cell, RefCell};
+use std::mem::ManuallyDrop;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Once};
 use std::time::Duration;
@@ -23,6 +26,99 @@ use std::time::Duration;
 use crate::vm::{HostApi, JsValue, JsVm, ScriptError};
 
 static V8_INIT: Once = Once::new();
+
+thread_local! {
+    static NEXT_ORD: Cell<u64> = const { Cell::new(0) };
+    static LIVE: RefCell<Vec<LiveSlot>> = const { RefCell::new(Vec::new()) };
+    static RETIRED: RefCell<Vec<(u64, RetiredIsolate)>> = const { RefCell::new(Vec::new()) };
+    static SCOPE_DEPTH: Cell<usize> = const { Cell::new(0) };
+}
+
+struct LiveSlot {
+    ord: u64,
+    raw: v8::UnsafeRawIsolatePtr,
+}
+
+/// Restores the isolate enter stack after an eval that had to exit newer VMs.
+struct RunGuard {
+    exited: Vec<v8::UnsafeRawIsolatePtr>,
+}
+
+impl Drop for RunGuard {
+    fn drop(&mut self) {
+        SCOPE_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+        enter_raws(&self.exited);
+        flush_retired();
+    }
+}
+
+fn exit_newer_than(ord: u64) -> Vec<v8::UnsafeRawIsolatePtr> {
+    let mut exited = Vec::new();
+    LIVE.with(|l| {
+        for slot in l.borrow().iter().rev() {
+            if slot.ord <= ord {
+                break;
+            }
+            // SAFETY: these isolates were entered on creation and are still live.
+            unsafe {
+                v8::Isolate::from_raw_isolate_ptr(slot.raw).exit();
+            }
+            exited.push(slot.raw);
+        }
+    });
+    exited
+}
+
+fn enter_raws(raws: &[v8::UnsafeRawIsolatePtr]) {
+    for raw in raws.iter().rev() {
+        // SAFETY: paired with `exit_newer_than`; the isolate is still allocated.
+        unsafe {
+            v8::Isolate::from_raw_isolate_ptr(*raw).enter();
+        }
+    }
+}
+
+/// Isolate parked because a newer isolate on this thread is still entered.
+#[allow(dead_code)]
+struct RetiredIsolate {
+    context: v8::Global<v8::Context>,
+    isolate: v8::OwnedIsolate,
+}
+
+fn alloc_ord() -> u64 {
+    NEXT_ORD.with(|c| {
+        let n = c.get();
+        c.set(n + 1);
+        n
+    })
+}
+
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+    payload
+        .downcast_ref::<String>()
+        .cloned()
+        .or_else(|| payload.downcast_ref::<&str>().map(|s| (*s).to_owned()))
+        .unwrap_or_else(|| "unknown panic".to_owned())
+}
+
+fn flush_retired() {
+    if SCOPE_DEPTH.with(|d| d.get() > 0) {
+        return;
+    }
+    loop {
+        let max_live = LIVE.with(|l| l.borrow().iter().map(|s| s.ord).max());
+        let Some((_, retired)) = RETIRED.with(|r| {
+            let mut r = r.borrow_mut();
+            match r.last() {
+                Some((ord, _)) if max_live.is_none_or(|m| *ord > m) => r.pop(),
+                _ => None,
+            }
+        }) else {
+            break;
+        };
+        drop(retired);
+    }
+}
 
 fn init_v8() {
     V8_INIT.call_once(|| {
@@ -39,8 +135,11 @@ struct CurrentHost(*mut dyn HostApi);
 
 /// V8 virtual machine.
 pub struct V8Vm {
-    isolate: v8::OwnedIsolate,
-    context: v8::Global<v8::Context>,
+    /// Dropped before [`Self::isolate`] (rusty_v8 globals must not outlive it).
+    context: ManuallyDrop<v8::Global<v8::Context>>,
+    isolate: ManuallyDrop<v8::OwnedIsolate>,
+    /// Creation order on this thread; drop is LIFO across VMs.
+    ord: u64,
     /// Set after any evaluation until the next microtask checkpoint.
     maybe_pending: bool,
     deadline: Option<Duration>,
@@ -76,9 +175,13 @@ impl V8Vm {
             let context = v8::Context::new(scope, v8::ContextOptions::default());
             v8::Global::new(scope, context)
         };
+        let ord = alloc_ord();
+        let raw = unsafe { isolate.as_raw_isolate_ptr() };
+        LIVE.with(|l| l.borrow_mut().push(LiveSlot { ord, raw }));
         Ok(Self {
-            isolate,
-            context,
+            context: ManuallyDrop::new(context),
+            isolate: ManuallyDrop::new(isolate),
+            ord,
             maybe_pending: false,
             deadline: None,
             host_names: Vec::new(),
@@ -113,9 +216,10 @@ impl V8Vm {
         &mut self,
         f: impl for<'s> FnOnce(&mut v8::PinScope<'s, '_>) -> Option<R>,
     ) -> Result<R, ScriptError> {
+        let handle = self.isolate.thread_safe_handle();
         let watchdog = self.deadline.map(|deadline| {
             let done = Arc::new(AtomicBool::new(false));
-            let handle = self.isolate.thread_safe_handle();
+            let watchdog_handle = handle.clone();
             let flag = Arc::clone(&done);
             std::thread::spawn(move || {
                 let step = Duration::from_millis(5);
@@ -127,20 +231,31 @@ impl V8Vm {
                         return;
                     }
                 }
-                handle.terminate_execution();
+                watchdog_handle.terminate_execution();
             });
             done
         });
-        let context = self.context.clone();
+        let context = (*self.context).clone();
+        SCOPE_DEPTH.with(|d| d.set(d.get() + 1));
+        let _run_guard = RunGuard {
+            exited: exit_newer_than(self.ord),
+        };
         let result = {
-            v8::scope!(let scope, &mut self.isolate);
+            v8::scope!(let scope, &mut *self.isolate);
             let context = v8::Local::new(scope, context);
             let scope = &mut v8::ContextScope::new(scope, context);
             v8::tc_scope!(let tc, scope);
             let value = f(tc);
+            if let Some(done) = &watchdog {
+                done.store(true, Ordering::Release);
+            }
+            let terminated = tc.has_terminated() || handle.is_execution_terminating();
+            if terminated {
+                handle.cancel_terminate_execution();
+            }
             match value {
                 Some(v) => Ok(v),
-                None if tc.has_terminated() => Err(ScriptError::Internal(
+                None if terminated => Err(ScriptError::Internal(
                     "script terminated: deadline exceeded".into(),
                 )),
                 None => match tc.exception() {
@@ -165,11 +280,28 @@ impl V8Vm {
         if let Some(done) = watchdog {
             done.store(true, Ordering::Release);
         }
-        if self.isolate.is_execution_terminating() {
-            self.isolate.cancel_terminate_execution();
+        if handle.is_execution_terminating() {
+            handle.cancel_terminate_execution();
         }
         self.maybe_pending = true;
         result
+    }
+}
+
+impl Drop for V8Vm {
+    fn drop(&mut self) {
+        LIVE.with(|l| l.borrow_mut().retain(|s| s.ord != self.ord));
+        // SAFETY: Drop runs once; the isolate and context are not used after.
+        let retired = RetiredIsolate {
+            context: unsafe { ManuallyDrop::take(&mut self.context) },
+            isolate: unsafe { ManuallyDrop::take(&mut self.isolate) },
+        };
+        RETIRED.with(|r| {
+            let mut r = r.borrow_mut();
+            let pos = r.partition_point(|(o, _)| *o < self.ord);
+            r.insert(pos, (self.ord, retired));
+        });
+        flush_retired();
     }
 }
 
@@ -246,13 +378,20 @@ fn host_trampoline(
     // only invokes callbacks while a script is running inside that frame.
     let host: &mut dyn HostApi = unsafe { &mut *ptr };
     let index = usize::try_from(index).unwrap_or(usize::MAX);
-    match host.call(index, &converted) {
-        Ok(value) => {
+    let result = catch_unwind(AssertUnwindSafe(|| host.call(index, &converted)));
+    match result {
+        Ok(Ok(value)) => {
             let v = from_js_value(scope, &value);
             rv.set(v);
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             let msg = v8::String::new(scope, &e.to_string()).unwrap();
+            let exc = v8::Exception::error(scope, msg);
+            scope.throw_exception(exc);
+        }
+        Err(payload) => {
+            let message = format!("host panic: {}", panic_message(payload.as_ref()));
+            let msg = v8::String::new(scope, &message).unwrap();
             let exc = v8::Exception::error(scope, msg);
             scope.throw_exception(exc);
         }
@@ -566,5 +705,40 @@ mod tests {
         // the isolate is usable afterwards
         vm.set_call_deadline(None);
         assert_eq!(vm.eval("7", "<t>").unwrap(), JsValue::Number(7.0));
+        drop(vm);
+    }
+
+    #[test]
+    fn two_isolates_can_drop_older_first() {
+        let older = V8Vm::new().unwrap();
+        let newer = V8Vm::new().unwrap();
+        drop(older);
+        drop(newer);
+    }
+
+    #[test]
+    fn drop_older_while_newer_is_evaling() {
+        let older = V8Vm::new().unwrap();
+        let mut newer = V8Vm::new().unwrap();
+        drop(older);
+        assert_eq!(newer.eval("1+1", "<t>").unwrap(), JsValue::Number(2.0));
+        drop(newer);
+    }
+
+    #[test]
+    fn eval_older_while_newer_exists() {
+        let mut older = V8Vm::new().unwrap();
+        let newer = V8Vm::new().unwrap();
+        assert_eq!(older.eval("1+1", "<t>").unwrap(), JsValue::Number(2.0));
+        drop(newer);
+        drop(older);
+    }
+
+    #[test]
+    fn terminated_isolate_drops_cleanly() {
+        let mut vm = V8Vm::new().unwrap();
+        vm.set_call_deadline(Some(Duration::from_millis(40)));
+        let _ = vm.eval("for(;;) {}", "<t>");
+        drop(vm);
     }
 }
