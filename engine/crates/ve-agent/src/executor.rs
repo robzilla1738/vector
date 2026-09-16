@@ -123,6 +123,7 @@ impl Page {
         program: &Program,
         return_observation: Option<&ObservationRequest>,
     ) -> ExecuteResult {
+        self.ensure_document_scripts();
         let span = Stage::Agent.span();
         let _guard = span.enter();
         let epoch = program.document_epoch;

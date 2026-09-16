@@ -569,6 +569,7 @@ body.resizing .sidebar { transition: none; }
 .stage-progress::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 32%; border-radius: 1px; background: var(--ink-0); animation: sweep 1.1s var(--ease-in-out) infinite; }
 .stage-card.loading .stage-progress { opacity: 1; }
 
+.engine-view { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; background: #fff; user-select: none; }
 .stage-message { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--space-7); background: var(--bg-0); }
 .empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); max-width: 26rem; }
 .empty-ico { width: var(--row-h-lg); height: var(--row-h-lg); border-radius: var(--r-xl); display: grid; place-items: center; background: var(--bg-2); color: var(--ink-1); box-shadow: var(--line-inset); margin-bottom: var(--space-2); }

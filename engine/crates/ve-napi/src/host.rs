@@ -13,6 +13,7 @@
 //! shaping and routing classification all live in the engine.
 
 use std::collections::HashMap;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::SystemTime;
@@ -23,6 +24,14 @@ use ve_api::{BrowserCookie, DEFAULT_CONTEXT, EngineConfig, PageId, VectorEngine}
 use crate::errors::ApiError;
 
 type Job = Box<dyn FnOnce(&mut HostState) -> Value + Send>;
+
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+    payload
+        .downcast_ref::<String>()
+        .cloned()
+        .or_else(|| payload.downcast_ref::<&str>().map(|s| (*s).to_owned()))
+        .unwrap_or_else(|| "unknown panic".to_owned())
+}
 
 /// Handle to an engine thread or a `ve-host` child (plan A21).
 pub struct Host {
@@ -61,7 +70,14 @@ impl Host {
             .spawn(move || {
                 let mut state = HostState::new(config, context_id);
                 while let Ok(job) = rx.recv() {
-                    let _ = job(&mut state);
+                    if let Err(payload) = catch_unwind(AssertUnwindSafe(|| {
+                        let _ = job(&mut state);
+                    })) {
+                        eprintln!(
+                            "[ve-context-{context_id}] engine panic escaped a job: {}",
+                            panic_message(payload.as_ref())
+                        );
+                    }
                 }
             })
             .expect("spawn engine thread");
@@ -83,7 +99,14 @@ impl Host {
     ) -> Receiver<Value> {
         let (reply, rx) = mpsc::channel();
         let job: Job = Box::new(move |state| {
-            let v = f(state);
+            let v = match catch_unwind(AssertUnwindSafe(|| f(state))) {
+                Ok(v) => v,
+                Err(payload) => {
+                    let message = panic_message(payload.as_ref());
+                    eprintln!("[ve-context] engine panic: {message}");
+                    ApiError::new("internal", format!("engine panic: {message}")).to_reply()
+                }
+            };
             let _ = reply.send(v.clone());
             v
         });
@@ -994,5 +1017,19 @@ mod tests {
         assert_eq!(options_json(&Value::Null), "{}");
         assert_eq!(resource_type(Some("text/css; charset=utf-8")), "stylesheet");
         assert_eq!(resource_type(None), "document");
+    }
+
+    #[test]
+    fn a_panicking_job_does_not_stop_the_thread() {
+        let host = offline_host();
+        let res = host.call_blocking(|_| panic!("boom"));
+        assert_eq!(res["ok"], false, "{res}");
+        assert_eq!(res["error"]["code"], "internal");
+        assert!(
+            res["error"]["message"].as_str().unwrap().contains("boom"),
+            "{res}"
+        );
+        let opened = host.call_blocking(|s| s.open(1, PAGE, &json!({})));
+        assert_eq!(opened["ok"], true, "{opened}");
     }
 }

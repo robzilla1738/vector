@@ -3,6 +3,24 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
+## Native view, V8 isolates, takeover (PR #8)
+
+Visible tabs, engine thread survival, and human takeover matching the UI.
+
+- **Visible auto-mode desktop tabs** open on Chromium
+  (`engine-first:native-view`). Background/CLI still go engine-first.
+  `empty-viewport` classification sends hidden-SSR documents to Chromium.
+  Open `backend_unavailable` / `internal` is an auto-mode fallback.
+- **EngineView** paints `pages.capture` on the stage for engine pages and
+  maps click/wheel through `pages.execute`.
+- **V8** (`ve-script::V8Vm`): isolates drop newest-first; eval exits newer
+  isolates and re-enters them after; host jobs `catch_unwind` so a panic
+  is `internal` instead of killing `ve-context-N`. Document scripts wait
+  until after classify.
+- **Takeover:** Playwright input during `acquireStage` / `pages.execute`
+  is not a human takeover. A real click between programs pauses the run;
+  *Return control* resumes it.
+
 ## Engine M2 / A14–A23 (PR #7)
 
 V8 DOM bindings, engine-as-default, isolation. Details in

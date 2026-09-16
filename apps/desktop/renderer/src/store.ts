@@ -590,10 +590,23 @@ export const useStore = create<Workspace>((set, get) => ({
       }
       case "observation.new": {
         // keep the live run's observation fresh without a round trip when the payload carries it
-        const { runId, observation } = e.payload as { runId?: string; observation?: CompactObservation };
-        if (runId && observation && typeof observation.text === "string") {
-          set((st) => ({ observations: { ...st.observations, [runId]: observation } }));
-        }
+        const { runId, observation, pageId, revision } = e.payload as {
+          runId?: string;
+          observation?: CompactObservation;
+          pageId?: string;
+          revision?: number;
+        };
+        set((st) => {
+          const observations =
+            runId && observation && typeof observation.text === "string"
+              ? { ...st.observations, [runId]: observation }
+              : st.observations;
+          const pages =
+            typeof pageId === "string" && typeof revision === "number"
+              ? st.pages.map((p) => (p.pageId === pageId ? { ...p, lastRevision: revision } : p))
+              : st.pages;
+          return { observations, pages };
+        });
         break;
       }
       case "result.added": {

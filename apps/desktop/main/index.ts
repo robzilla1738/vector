@@ -130,9 +130,10 @@ const viewHooks = {
   onDestroyed: (pageId: string) => notifyRuntime("view.removed", { pageId }),
   onPopup: (entry: ViewEntry) => notifyRuntime("view.popup", { pageId: entry.pageId, marker: entry.marker, url: entry.view.webContents.getURL() }),
   onTakeover: (pageId: string) => {
-    // Trusted input the runtime dispatches into an offscreen working page is
-    // not a human taking over; input into the page on the stage is.
-    if (offscreenActive.has(pageId) && pageId !== focusedPageId) return;
+    // acquireStage is held for the whole program, including when the human is
+    // watching the same tab. Playwright clicks land as mouseDown/keyDown and
+    // must not steal the page. A real click after the program still takeovers.
+    if (offscreenActive.has(pageId)) return;
     notifyRuntime("view.takeover", { pageId });
   },
   openAsTab: (url: string) => {

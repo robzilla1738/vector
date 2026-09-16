@@ -9,7 +9,7 @@
 import { randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { VectorError, type Step } from "@vector/contracts";
+import { EventTypes, VectorError, type Step } from "@vector/contracts";
 import { RpcChannel, type Transport } from "@vector/contracts";
 import {
   AttachedChromeDriver,
@@ -241,6 +241,21 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     translateSteps,
     nativeAvailable: () => native.available(),
     tracer,
+  });
+
+  events.subscribe((e) => {
+    if (e.type !== EventTypes.PageTakeover) return;
+    const pageId = e.payload.pageId;
+    const controller = e.payload.controller;
+    if (typeof pageId !== "string" || typeof controller !== "string") return;
+    for (const run of repo.listRuns(200)) {
+      if (!run.pageIds.includes(pageId)) continue;
+      if (controller === "human") {
+        if (run.status === "running" || run.status === "planning") runs.pause(run.runId);
+      } else if (run.status === "paused") {
+        runs.resume(run.runId);
+      }
+    }
   });
 
   // ---- chrome attach ----

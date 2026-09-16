@@ -102,7 +102,7 @@ export function App() {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const r = el.getBoundingClientRect();
-        const showPage = nativePageId({ mode, overlay, activePageId, url: activePage?.url });
+        const showPage = nativePageId({ mode, overlay, activePageId, url: activePage?.url, backend: activePage?.backend });
         const split = showPage ? splitPageId : null;
         void bridge.setStage(showPage, { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }, split, STAGE_RADIUS);
       });
@@ -117,7 +117,7 @@ export function App() {
       cancelAnimationFrame(raf);
       window.clearTimeout(t);
     };
-  }, [activePageId, activePage?.url, activePage?.viewStatus, splitPageId, mode, overlay, railOpen, sidebar]);
+  }, [activePageId, activePage?.url, activePage?.backend, activePage?.viewStatus, splitPageId, mode, overlay, railOpen, sidebar]);
 
   const dispatchShortcut = (s: Shortcut) => {
     const k = s.key.toLowerCase().replace(/^arrow/, "");

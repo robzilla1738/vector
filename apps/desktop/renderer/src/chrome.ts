@@ -38,12 +38,14 @@ export function nativePageId(input: {
   overlay: string | null;
   activePageId: string | null;
   url: string | null | undefined;
+  backend?: string | null;
 }): string | null {
   if (input.mode !== "focus") return null;
   if (isScrimOverlay(input.overlay)) return null;
   if (!input.activePageId) return null;
   const url = input.url?.trim() ?? "";
   if (!url || url === "about:blank") return null;
+  if (input.backend === "chrome" || input.backend === "vector-engine") return null;
   return input.activePageId;
 }
 

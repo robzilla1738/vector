@@ -88,8 +88,10 @@ Things an MCP client should expect:
   object.
 - A ref whose document navigated away fails with `target_detached` (there
   is no `stale_ref` code); re-observe and retry with fresh refs.
-- If the human clicks or types in an agent-driven page, programs on it fail
-  with `conflict` until `pages.resume` — the run is not paused by a takeover.
+- If the human clicks or types in an agent-driven page *between* programs,
+  that page's `controller` becomes `human`, live runs on it pause, and
+  further programs fail with `conflict` until `pages.resume`. Agent
+  Playwright input during `pages.execute` is not a takeover.
 - `vector_run_control cancel` on a set run aborts in-flight member agents
   and marks unfinished members `skipped`; the run stays `cancelled`.
 - Runs are crash-safe but not resumable across a runtime restart

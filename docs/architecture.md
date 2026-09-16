@@ -95,19 +95,28 @@ The engine parses and classifies the document on open (`requiresScript` +
 reason, e.g. `empty-root-container: #root`, `body-onload`,
 `form-onsubmit`, `template-heavy`, `unsupported-content: application/pdf`).
 In `auto` a classified page is closed, the origin recorded, and the URL
-reopened on Chromium with `routeReason: "fallback:<reason>"`. A mid-program
-`capability_unsupported` (`xpath:` targets, canvas/WebGL, PDF, …)
+reopened on Chromium with `routeReason: "fallback:<reason>"`. Classification
+includes an empty first screen (`empty-viewport: …`: plenty of document
+text, almost nothing painted in the viewport). A mid-program
+`capability_unsupported`, `backend_unavailable`, or `internal`
+(`xpath:` targets, canvas/WebGL, PDF, an engine panic, …)
 migrates the live page to Chromium at its
 current URL — same `pageId`, new target, `documentEpoch` bumped — takes a
 fresh observation, and replays the remaining steps; `ProgramResult.fallback`
 records it, with `repair: true` when ref-targeted steps could not be replayed
 (engine refs do not exist on Chromium) so the coordinator re-observes and
-replans. Decisions are counted in `traces.counters` (`router.decide`,
+replans.
+
+In the desktop shell, an auto-mode tab that will be shown (`background:
+false`) skips the engine and opens on Chromium with
+`routeReason: "engine-first:native-view"`: the stage is a `WebContentsView`,
+and software paint of CSS/JS sites is a blank card. Background/worker pages
+and CLI/MCP opens still go engine-first. The shell paints engine pages with
+`EngineView` (`pages.capture` software PNG, clicks/wheel via `pages.execute`).
+
+Decisions are counted in `traces.counters` (`router.decide`,
 `router.fallback.open`, `router.fallback.midProgram`, `router.open.<backend>`)
 and logged to stderr with `VECTOR_ROUTER_LOG=1`.
-
-Engine pages are headless: `pages.activate` marks them active without a
-native Chromium view; `pages.capture` uses the software renderer.
 
 ## Page identity
 
@@ -177,14 +186,18 @@ clients cannot set headers). Bodies over 2 MB are rejected with `413`. See
 
 ## Human takeover
 
-`input-event` on an agent-controlled view flips `controller` to `human` and
-bumps the page's `controllerEpoch`. The in-flight program fails at its next
-step with `conflict` ("changed controller mid-run"); the run itself is *not*
-paused — the coordinator treats the failed chunk like any other failure
-(re-observe, repair ladder) and will keep failing with `conflict` until the
-human hands the page back with `pages.resume` or the run is cancelled.
-`runs.pause`/`runs.resume` control the agent loop independently of page
-control.
+A real click or key in an agent-controlled native view flips `controller` to
+`human`, bumps `controllerEpoch`, and pauses every live run that targets
+that page. The in-flight program fails at its next step with `conflict`.
+`pages.resume` (the *Return control* chip) releases the page and resumes
+those runs. `runs.pause`/`runs.resume` still control the agent loop on their
+own.
+
+Playwright/CDP input is not a takeover. While `native.acquireStage` is held
+or `pages.execute` is in-flight on that page, `input-event` `mouseDown`/
+`keyDown` is ignored — including on the focused tab the human is watching.
+The page stays `controller: "agent"` for the whole run (`ctx.runId`); it
+returns to `none` when the run finishes.
 
 ## Model output is untrusted
 
@@ -207,8 +220,8 @@ working page that is not the focused tab is rendered at stage size just
 outside the window: laid out, producing frames, receiving input, invisible
 to the human. Any number of pages can be working at once and the focused
 tab never flips — there is no global lease and parallel set members really
-run in parallel (plan A8). Human input into the focused tab is a takeover;
-runtime input into an offscreen page is not. Pure observation programs
-(navigate, extract, waitFor, screenshot) don't need the view laid out.
-`vector-engine` pages never take part: the engine *is* the input device, so
-every step event is trusted regardless of visibility.
+run in parallel (plan A8). Runtime input into a working page — focused or
+offscreen — is not a takeover; a human click after the program still is.
+Pure observation programs (navigate, extract, waitFor, screenshot) don't
+need the view laid out. `vector-engine` pages never take part: the engine
+*is* the input device, so every step event is trusted regardless of visibility.

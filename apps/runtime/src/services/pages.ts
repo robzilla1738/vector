@@ -97,6 +97,8 @@ export class PageService {
   private activeId: string | null = null;
   /** set on app teardown — view.removed storms must not touch the restore list */
   private closing = false;
+  /** pages with an in-flight program — Playwright input is not a human takeover */
+  private programInflight = new Set<string>();
 
   shuttingDown() {
     this.closing = true;
@@ -194,8 +196,7 @@ export class PageService {
    * Open a page. `backend: "vector"` (the default) is routable: with
    * `engineMode: "auto"` the router tries the Vector Engine first and falls
    * back to Chromium when the engine classifies the document as needing
-   * script (architecture §11). The decision is logged and returned as
-   * `routeReason`.
+   * script, or when the desktop shell needs a native view (architecture §11).
    */
   async open(opts: {
     url: string;
@@ -210,6 +211,12 @@ export class PageService {
       ? router.decide(opts.url, opts.backend)
       : { backend: opts.backend ?? "vector", reason: opts.backend ? `explicit-backend:${opts.backend}` : "engine-mode-off", fallbackAllowed: false };
     if (decision.backend !== "vector-engine") return this.openOn(decision.backend, opts, decision.reason);
+    // The stage is a WebContentsView. Auto-mode background/worker pages can
+    // stay on the engine; a tab the shell will show cannot — software paint of
+    // CSS/JS sites is a blank card (CNN, news, anything that hides the SSR).
+    if (decision.fallbackAllowed && this.deps.native.available() && !opts.background) {
+      return this.openOn("vector", opts, `${decision.reason}:native-view`);
+    }
     try {
       return await this.openOn("vector-engine", opts, decision.reason, decision.fallbackAllowed);
     } catch (e) {
@@ -713,6 +720,8 @@ export class PageService {
       if (!lp?.driver?.isAttached()) throw new VectorError("target_detached", `page ${pageId} is not attached`);
       if (lp.target.controller === "human")
         throw new VectorError("conflict", `page ${pageId} is under human control`);
+      this.programInflight.add(pageId);
+      try {
       lp.target.controller = ctx.runId ? "agent" : lp.target.controller === "none" ? "external" : lp.target.controller;
       // controller/epoch changes are persisted once, after the program (speed P2-1)
       // pointer/keyboard input only lands on a visible, laid-out native view —
@@ -806,7 +815,9 @@ export class PageService {
         }
       } catch (e) {
         flushSteps();
-        if (lp.target.controller === "agent" || lp.target.controller === "external") lp.target.controller = "none";
+        if (!ctx.runId && (lp.target.controller === "agent" || lp.target.controller === "external")) {
+          lp.target.controller = "none";
+        }
         this.persist(lp);
         this.deps.tracer?.incr("program.error");
         span?.end("failed", { error: e instanceof Error ? e.message : String(e) });
@@ -815,7 +826,7 @@ export class PageService {
         if (needsStage) await this.deps.native.releaseStage(pageId).catch(() => {});
       }
       flushSteps();
-      if (lp.target.controller === "agent" || lp.target.controller === "external") {
+      if (!ctx.runId && (lp.target.controller === "agent" || lp.target.controller === "external")) {
         lp.target.controller = "none";
       }
       this.persist(lp); // single persist per program; documentEpoch already advanced via onNavigated events
@@ -827,6 +838,9 @@ export class PageService {
       });
       const { observation: _inline, ...programResult } = result;
       return observation ? { ...programResult, observation } : programResult;
+      } finally {
+        this.programInflight.delete(pageId);
+      }
       }),
     );
   }
@@ -940,11 +954,21 @@ export class PageService {
   onNativeTakeover(pageId: string) {
     const lp = this.live.get(pageId);
     if (!lp) return;
+    if (this.programInflight.has(pageId)) return;
     // Only agent/external-controlled pages hand control to the human —
     // ordinary browsing must not pin the page as human-owned forever.
     if (lp.target.controller === "agent" || lp.target.controller === "external") {
       this.takeover(pageId);
     }
+  }
+
+  /** Run finished — drop agent control if the human did not take the page. */
+  releaseAgent(pageId: string) {
+    const lp = this.live.get(pageId);
+    if (!lp || lp.target.controller !== "agent") return;
+    lp.target.controller = "none";
+    this.persist(lp);
+    this.deps.events.emit(EventTypes.PageTakeover, { pageId, controller: "none" });
   }
 
   onNativeNavigated(pageId: string, url: string) {

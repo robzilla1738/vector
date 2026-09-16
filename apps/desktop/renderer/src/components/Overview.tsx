@@ -25,12 +25,12 @@ export function Overview() {
       for (const p of pages) {
         if (previews[p.pageId] || next[p.pageId]) continue;
         try {
-          if (p.backend === "chrome") {
-            const c = await call<{ dataUrl?: string }>("pages.capture", { pageId: p.pageId });
-            if (c.dataUrl) next[p.pageId] = c.dataUrl;
-          } else {
+          if (p.backend === "vector") {
             const d = await bridge.preview(p.pageId);
             if (d) next[p.pageId] = d;
+          } else {
+            const c = await call<{ dataUrl?: string }>("pages.capture", { pageId: p.pageId });
+            if (c.dataUrl) next[p.pageId] = c.dataUrl;
           }
         } catch {
           /* page raced away */

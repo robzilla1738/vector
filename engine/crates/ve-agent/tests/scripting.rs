@@ -37,7 +37,8 @@ fn document_scripts_run_in_order_and_timers_fire_inside_settle() {
            <script>order.push('after-error')</script>"#,
         true,
     );
-    // load ran: classic in order, then defer; the throwing script was isolated
+    let settled = page.settle(500);
+    // document scripts run on the first settle (open/classify skips them)
     let (run, errors) = page.script_stats();
     assert_eq!((run, errors), (5, 1));
     assert_eq!(page.console().len(), 2, "{:?}", page.console());
@@ -46,13 +47,12 @@ fn document_scripts_run_in_order_and_timers_fire_inside_settle() {
 
     let order = page.evaluate("order.join(',')").unwrap();
     // classic scripts in order (microtasks drain after each), then `defer`;
-    // timers within the 50 ms window fired during load's pump; the 5 s one is
+    // timers within the 50 ms window fired during settle's pump; the 5 s one is
     // armed but not due
     assert_eq!(
         order,
         serde_json::json!("a,b,micro,after-error,deferred,t10,iv,iv")
     );
-    let settled = page.settle(500);
     assert!(settled.settled, "{settled:?}");
     assert!(
         settled
@@ -108,6 +108,7 @@ fn a_runaway_script_is_cut_off_and_the_page_survives() {
         "<script>for(;;){}</script><script>globalThis.ok = 1</script><p id=p>text</p>",
         true,
     );
+    page.settle(500);
     assert!(started.elapsed() < std::time::Duration::from_secs(20));
     assert_eq!(page.script_stats(), (2, 1));
     assert_eq!(page.evaluate("ok").unwrap(), serde_json::json!(1));

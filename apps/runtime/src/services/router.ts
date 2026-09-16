@@ -87,7 +87,10 @@ export function originOf(url: string): string | null {
 
 /** True for the engine's "this needs Chromium" signal. */
 export const isFallbackError = (e: unknown): e is VectorError =>
-  e instanceof VectorError && e.code === "capability_unsupported";
+  e instanceof VectorError &&
+  (e.code === "capability_unsupported" ||
+    e.code === "backend_unavailable" ||
+    e.code === "internal");
 
 export class Router {
   private readonly store: RouterStore;

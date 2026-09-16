@@ -315,6 +315,8 @@ pub struct VectorEngine {
     config: EngineConfig,
     contexts: HashMap<ContextId, Rc<RefCell<NetworkContext>>>,
     pages: HashMap<PageId, PageEntry>,
+    /// Live pages in creation order; Drop and close walk this newest-first.
+    page_order: Vec<PageId>,
     next_context: u64,
     next_page: u64,
     /// Shared wire owner (plan A21): contexts never hold a socket.
@@ -334,6 +336,15 @@ impl std::fmt::Debug for VectorEngine {
 impl Default for VectorEngine {
     fn default() -> Self {
         Self::new(EngineConfig::default())
+    }
+}
+
+impl Drop for VectorEngine {
+    fn drop(&mut self) {
+        while let Some(id) = self.page_order.pop() {
+            drop(self.pages.remove(&id));
+        }
+        self.pages.clear();
     }
 }
 
@@ -376,6 +387,7 @@ impl VectorEngine {
             config,
             contexts: HashMap::new(),
             pages: HashMap::new(),
+            page_order: Vec::new(),
             next_context: 0,
             next_page: 0,
             broker,
@@ -420,7 +432,16 @@ impl VectorEngine {
         if self.contexts.remove(&context).is_none() {
             return false;
         }
-        self.pages.retain(|_, entry| entry.context != context);
+        let ids: Vec<PageId> = self
+            .page_order
+            .iter()
+            .copied()
+            .filter(|id| self.pages.get(id).is_some_and(|e| e.context == context))
+            .collect();
+        for id in ids.into_iter().rev() {
+            self.page_order.retain(|p| *p != id);
+            drop(self.pages.remove(&id));
+        }
         true
     }
 
@@ -509,7 +530,7 @@ impl VectorEngine {
             }
         };
         page.set_scale(self.config.scale);
-        let settled = page.settle(SETTLE_NAVIGATION_MS);
+        let settled = page.settle_passive(SETTLE_NAVIGATION_MS);
         if let Some(error) = page.take_navigation_error() {
             tracing::warn!(page = id, error, "post-load navigation failed");
         }
@@ -528,12 +549,14 @@ impl VectorEngine {
             open_ms: u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX),
         };
         tracing::info!(page = id, url = %result.url, route = %result.routing.route_reason, "opened");
+        self.page_order.push(page_id);
         self.pages.insert(page_id, PageEntry { context, page });
         Ok(result)
     }
 
     /// Closes a page. Returns `true` if it was open.
     pub fn close(&mut self, page: PageId) -> bool {
+        self.page_order.retain(|id| *id != page);
         self.pages.remove(&page).is_some()
     }
 
@@ -933,5 +956,28 @@ mod tests {
         assert_eq!(got["cookies"][0]["name"], "a");
         let bad_ctx: Value = serde_json::from_str(&engine.cookies_json(777)).unwrap();
         assert_eq!(bad_ctx["error"]["code"], "not_found");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn closing_an_older_scripted_page_does_not_panic() {
+        let mut engine = VectorEngine::new(EngineConfig {
+            offline: true,
+            scripting: true,
+            ..EngineConfig::default()
+        });
+        let a = engine
+            .open(OpenRequest::html("<p>one</p>", Some("https://a.test/")))
+            .unwrap();
+        let b = engine
+            .open(OpenRequest::html("<p>two</p>", Some("https://b.test/")))
+            .unwrap();
+        assert!(engine.close(a.page));
+        assert!(
+            engine
+                .observe(b.page, &ObservationRequest::default())
+                .is_ok()
+        );
+        assert!(engine.close(b.page));
     }
 }

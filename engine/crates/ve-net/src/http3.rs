@@ -15,8 +15,7 @@ pub fn advertises_http3(headers: &HeaderMap) -> bool {
 
 fn value_has_h3(v: &HeaderValue) -> bool {
     v.to_str()
-        .ok()
-        .is_some_and(|s| s.to_ascii_lowercase().contains("h3="))
+        .is_ok_and(|s| s.to_ascii_lowercase().contains("h3="))
 }
 
 /// Protocols a context has observed on the wire.

@@ -238,6 +238,7 @@ fn javascript_url_dialog_and_wait_for_expression() {
              alert('hi');
            </script>"#,
     );
+    page.settle(50);
     assert_eq!(page.open_dialogs().len(), 2, "script alert + html dialog");
     let program = Program {
         steps: vec![
