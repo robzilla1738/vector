@@ -175,10 +175,12 @@ same for every open (what `pnpm bench --backend vector-engine` uses).
 
 ## A program on an engine page came back with `fallback` / `REPAIR:`
 
-A step hit `capability_unsupported` on the engine (today: `xpath:`
-targets, canvas/WebGL, PDF, control-flow `nodes`). With `engineMode:
+A step hit `capability_unsupported`, `backend_unavailable`, or `internal`
+on the engine (today: `xpath:` targets, canvas/WebGL, PDF, control-flow
+`nodes`, or an engine panic caught at the host). With `engineMode:
 auto` the runtime moved the page to Chromium (same `pageId`, new
-`documentEpoch`, `routeReason: fallback:mid-program:<op>:…`) and replayed the
+`documentEpoch`, `routeReason: fallback:mid-program:<op>:…` or
+`fallback:backend_unavailable` / `fallback:internal`) and replayed the
 remaining steps — `ProgramResult.fallback.replayedFrom` is the first index
 run on Chromium. `repair: true` with an error starting `REPAIR:` means some
 remaining steps named engine refs (`r<n>`), which do not exist on Chromium:

@@ -155,13 +155,19 @@ pub mod bindings {
     /// Software-renderer PNG as a typed object with a Buffer body.
     #[napi(object)]
     pub struct ScreenshotPng {
+        /// CSS pixels of the painted viewport.
         pub width: u32,
+        /// CSS pixels of the painted viewport.
         pub height: u32,
+        /// Device pixel ratio used for the paint.
         pub scale: f64,
+        /// `true` when the paint covered the full document, not just the viewport.
         pub full_page: bool,
+        /// PNG bytes.
         pub png: Buffer,
     }
 
+    /// Screenshot reply, resolved on the libuv thread pool.
     pub struct PendingPng {
         rx: Option<Receiver<Value>>,
     }
@@ -322,8 +328,7 @@ pub mod bindings {
         pub fn observe_buf(&self, page: u32, options: Option<Buffer>) -> AsyncTask<PendingBuf> {
             let options_json = options
                 .as_ref()
-                .map(|b| String::from_utf8_lossy(b).into_owned())
-                .unwrap_or_else(|| "{}".into());
+                .map_or_else(|| "{}".into(), |b| String::from_utf8_lossy(b).into_owned());
             PendingBuf::new(lock(&self.hub).observe(u64::from(page), &options_json))
         }
 
@@ -338,8 +343,7 @@ pub mod bindings {
             let steps_json = String::from_utf8_lossy(&steps).into_owned();
             let options_json = options
                 .as_ref()
-                .map(|b| String::from_utf8_lossy(b).into_owned())
-                .unwrap_or_else(|| "{}".into());
+                .map_or_else(|| "{}".into(), |b| String::from_utf8_lossy(b).into_owned());
             PendingBuf::new(lock(&self.hub).execute(u64::from(page), &steps_json, &options_json))
         }
 

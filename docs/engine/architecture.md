@@ -89,7 +89,7 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   `internal`, mid-program migration and
   replay (`ProgramResult.fallback`, `repair: true` when ref-targeted steps
   remain). Visible auto-mode desktop tabs skip the engine
-  (`engine-first:native-view`).   `settings.engineMode: "off" | "auto" | "always"` (default
+  (`engine-first:native-view`). `settings.engineMode: "off" | "auto" | "always"` (default
   `auto`); `pages.open` results carry `routeReason`; `pnpm bench --backend
   chrome|vector-engine|both`.
 

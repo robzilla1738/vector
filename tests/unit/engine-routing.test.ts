@@ -348,6 +348,7 @@ describe("native takeover vs agent input", () => {
     const page = await h.pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     let during = "";
     const dp = h.vector.pages[0];
+    if (!dp) throw new Error("open did not attach a Chromium page");
     const click = dp.click.bind(dp);
     dp.click = async (t) => {
       h.pages.onNativeTakeover(page.pageId);

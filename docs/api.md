@@ -81,7 +81,8 @@ decision as `PageTarget.routeReason`:
 | `fallback:<reason>` | `auto`: the engine classified the document as script-dependent (`empty-shell`, `empty-root-container: …`, `empty-viewport: …`, `noscript-requires-js`, `meta-refresh-javascript`, `body-onload`, `form-onsubmit`, `template-heavy`, `unsupported-content: …`) or failed mid-program / open (`mid-program:<op>:<message>`, `backend_unavailable`, `internal`); the page was reopened on Chromium and the origin recorded in the needs-chromium table |
 
 Mid-program fallback: when a step on an engine page fails with
-`capability_unsupported`, the runtime moves the page to Chromium at its
+`capability_unsupported`, `backend_unavailable`, or `internal`, the runtime
+moves the page to Chromium at its
 current URL (same `pageId`, new `targetId`, `documentEpoch` bumped, a
 `page.updated` event with the new `routeReason`), records the origin, takes a
 fresh observation, and replays the remaining steps there. `ProgramResult`
@@ -103,9 +104,8 @@ and `fallback unavailable` in `error`.
 `runtime.describe` → `engine` reports `{ available, version, abiVersion,
 binaryPath, capabilities, error?, mode, connected, needsChromiumOrigins }`
 — `capabilities` is the addon's own `describe()` map (`screenshot`,
-`evaluate`, `history`, `isolatedContexts`, `cookies`, `fileUrls`,
-`postForms`, `xpath`, `dialogs`, `downloads`; in M1 `evaluate`, `xpath`,
-`dialogs` and `downloads` are `false`) — and
+`evaluate` (V8), `history`, `isolatedContexts`, `cookies`, `fileUrls`,
+`postForms`, `xpath` (false), `dialogs`, `downloads`) — and
 `features.routeFallback: true`. Engine sessions appear in `sessions.list`
 as `backend: "vector-engine"` (`connected` or `disconnected` with the
 loader's diagnostic).

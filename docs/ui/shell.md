@@ -33,7 +33,7 @@ of `.app-body`; toasts sit bottom-left over the sidebar.
 | `components/Toolbar.tsx` | Shown only when the sidebar is hidden: back/forward/reload, `CommandBar`, controller chip, overview, bookmark, rail toggle |
 | `components/CommandBar.tsx` | One field for URL / search / agent prompt; intent chip; suggestion popover (open tabs, recent, saved programs, run again) |
 | `intent.ts` | Pure intent detection shared by command bar, palette and tests |
-| `components/Stage.tsx` | Inset rounded card; load progress line; `EngineBadge`; empty / loading / crashed / disconnected messages; `StartPage` for blank tabs; `MockPage` in mock mode |
+| `components/Stage.tsx` | Inset rounded card; load progress line; `EngineBadge`; empty / loading / crashed / disconnected messages; `StartPage` for blank tabs; `EngineView` (`pages.capture`) for engine pages; `MockPage` in mock mode |
 | `components/EngineBadge.tsx`, `engine.ts` | Chromium / Your Chrome / Vector Engine badge with hover card (route reason, route ms, first paint) |
 | `components/AgentRail.tsx` | Rail chrome, home view (live, sets, searchable past runs — virtualized at 30+), composer, `ResizeHandle` |
 | `components/RunPanel.tsx` | Goal, status/elapsed/model calls/cost, page chip, takeover banner + Return control, needs-input prompt, final answer with copy, `StepTimeline`, `ObservationPanel` |

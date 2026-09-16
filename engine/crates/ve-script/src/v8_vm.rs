@@ -135,7 +135,7 @@ struct CurrentHost(*mut dyn HostApi);
 
 /// V8 virtual machine.
 pub struct V8Vm {
-    /// Dropped before [`Self::isolate`] (rusty_v8 globals must not outlive it).
+    /// Dropped before [`Self::isolate`] (`rusty_v8` globals must not outlive it).
     context: ManuallyDrop<v8::Global<v8::Context>>,
     isolate: ManuallyDrop<v8::OwnedIsolate>,
     /// Creation order on this thread; drop is LIFO across VMs.
