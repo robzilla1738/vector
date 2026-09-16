@@ -901,10 +901,6 @@ export class PageService {
   }
   async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact" }) {
     const dp = this.driverPageLenient(pageId);
-    if (this.live.get(pageId)?.target.backend === "vector-engine") {
-      // rendering lands with ve-gfx (M2+); be explicit rather than time out
-      throw new VectorError("capability_unsupported", "screenshots are not available on the vector-engine backend yet");
-    }
     const shot = await dp.screenshot({ fullPage: opts?.fullPage });
     if (opts?.format === "artifact") {
       const a = this.deps.artifacts?.save({ pageId, label: "capture", buffer: shot.buffer, mediaType: "image/png" });

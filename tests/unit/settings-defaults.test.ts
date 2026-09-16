@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_PLANNER_MODEL, openDb, Repo, SettingsService } from "@vector/runtime";
@@ -33,21 +33,28 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
-  it("defaults search to DuckDuckGo, engine off, and 8 model calls", () => {
+  it("defaults search to DuckDuckGo, engine auto, and 8 model calls", () => {
     const { dir, settings } = harness();
     try {
       expect(settings.searchEngine()).toBe("https://duckduckgo.com/?q=%s");
-      expect(settings.engineMode()).toBe("off");
+      expect(settings.engineMode()).toBe("auto");
       expect(settings.maxModelCalls()).toBe(8);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it("listModels stays on the pinned Qwen catalog when Cerebras is the only provider", async () => {
-    const { dir, settings } = harness();
+  it("stores the gateway key in a 0600 file, not sqlite", () => {
+    const { dir, repo, settings } = harness();
     try {
-      expect(await settings.listModels()).toEqual({ models: [{ id: DEFAULT_PLANNER_MODEL, name: "Qwen 3.8 27B" }], source: "static" });
+      settings.set({ gatewayApiKey: "sk-test-secret" });
+      const keyFile = join(dir, "gateway.key");
+      expect(existsSync(keyFile)).toBe(true);
+      expect(readFileSync(keyFile, "utf8")).toBe("sk-test-secret");
+      expect(statSync(keyFile).mode & 0o777).toBe(0o600);
+      expect(repo.getSetting("gatewayApiKey")).toBeUndefined();
+      expect(settings.gatewayKey()).toBe("sk-test-secret");
+      expect(settings.all().gatewayApiKey).toBe("••••••••");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

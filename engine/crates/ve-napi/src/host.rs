@@ -24,10 +24,15 @@ use crate::errors::ApiError;
 
 type Job = Box<dyn FnOnce(&mut HostState) -> Value + Send>;
 
-/// Handle to an engine thread.
+/// Handle to an engine thread or a `ve-host` child (plan A21).
 pub struct Host {
-    tx: Sender<Job>,
+    inner: HostInner,
     context_id: u32,
+}
+
+enum HostInner {
+    Thread { tx: Sender<Job> },
+    Process(crate::isolate::ProcessClient),
 }
 
 impl std::fmt::Debug for Host {
@@ -39,9 +44,17 @@ impl std::fmt::Debug for Host {
 }
 
 impl Host {
-    /// Spawns the engine thread for one browsing context.
+    /// Spawns the engine thread for one browsing context. When
+    /// `VECTOR_ENGINE_HOST` names a `ve-host` binary, the context runs in
+    /// that process and fetches through the parent broker.
     #[must_use]
     pub fn spawn(config: EngineConfig, context_id: u32) -> Self {
+        if let Some(client) = crate::isolate::ProcessClient::try_spawn(config.clone(), context_id) {
+            return Self {
+                inner: HostInner::Process(client),
+                context_id,
+            };
+        }
         let (tx, rx) = mpsc::channel::<Job>();
         thread::Builder::new()
             .name(format!("ve-context-{context_id}"))
@@ -52,7 +65,10 @@ impl Host {
                 }
             })
             .expect("spawn engine thread");
-        Self { tx, context_id }
+        Self {
+            inner: HostInner::Thread { tx },
+            context_id,
+        }
     }
 
     /// The context this host serves.
@@ -61,23 +77,43 @@ impl Host {
         self.context_id
     }
 
-    /// Queues a job; the receiver yields its JSON result.
-    pub fn call<F>(&self, f: F) -> Receiver<Value>
-    where
-        F: FnOnce(&mut HostState) -> Value + Send + 'static,
-    {
+    fn send_thread(
+        tx: &Sender<Job>,
+        f: impl FnOnce(&mut HostState) -> Value + Send + 'static,
+    ) -> Receiver<Value> {
         let (reply, rx) = mpsc::channel();
         let job: Job = Box::new(move |state| {
             let v = f(state);
             let _ = reply.send(v.clone());
             v
         });
-        if self.tx.send(job).is_err() {
+        if tx.send(job).is_err() {
             let (reply, rx) = mpsc::channel();
             let _ = reply.send(ApiError::thread_stopped().to_reply());
             return rx;
         }
         rx
+    }
+
+    /// Queues a job; the receiver yields its JSON result.
+    pub fn call<F>(&self, f: F) -> Receiver<Value>
+    where
+        F: FnOnce(&mut HostState) -> Value + Send + 'static,
+    {
+        match &self.inner {
+            HostInner::Thread { tx } => Self::send_thread(tx, f),
+            HostInner::Process(_) => {
+                let (reply, rx) = mpsc::channel();
+                let _ = reply.send(
+                    ApiError::new(
+                        "internal",
+                        "context process cannot take a closure; use named host ops",
+                    )
+                    .to_reply(),
+                );
+                rx
+            }
+        }
     }
 
     /// Runs a job and waits for it (tests and synchronous callers).
@@ -88,6 +124,100 @@ impl Host {
         self.call(f)
             .recv()
             .unwrap_or_else(|_| ApiError::thread_stopped().to_reply())
+    }
+
+    /// [`HostState::open`] on whichever backend this host uses.
+    pub fn open(&self, global: u64, url: &str, options: &Value) -> Receiver<Value> {
+        match &self.inner {
+            HostInner::Thread { tx } => {
+                let url = url.to_owned();
+                let options = options.clone();
+                Self::send_thread(tx, move |s| s.open(global, &url, &options))
+            }
+            HostInner::Process(c) => c.request(crate::isolate::Op::Open {
+                global,
+                url: url.to_owned(),
+                options: options.clone(),
+            }),
+        }
+    }
+
+    /// [`HostState::observe`].
+    pub fn observe(&self, global: u64, options: &Value) -> Receiver<Value> {
+        match &self.inner {
+            HostInner::Thread { tx } => {
+                let options = options.clone();
+                Self::send_thread(tx, move |s| s.observe(global, &options))
+            }
+            HostInner::Process(c) => c.request(crate::isolate::Op::Observe {
+                global,
+                options: options.clone(),
+            }),
+        }
+    }
+
+    /// [`HostState::execute`].
+    pub fn execute(&self, global: u64, steps: &Value, opts: &ExecuteOptions) -> Receiver<Value> {
+        match &self.inner {
+            HostInner::Thread { tx } => {
+                let steps = steps.clone();
+                let opts = opts.clone();
+                Self::send_thread(tx, move |s| s.execute(global, &steps, &opts))
+            }
+            HostInner::Process(c) => c.request(crate::isolate::Op::Execute {
+                global,
+                steps: steps.clone(),
+                options: opts.clone(),
+            }),
+        }
+    }
+
+    /// [`HostState::screenshot`].
+    pub fn screenshot(&self, global: u64, options: &Value) -> Receiver<Value> {
+        match &self.inner {
+            HostInner::Thread { tx } => {
+                let options = options.clone();
+                Self::send_thread(tx, move |s| s.screenshot(global, &options))
+            }
+            HostInner::Process(c) => c.request(crate::isolate::Op::Screenshot {
+                global,
+                options: options.clone(),
+            }),
+        }
+    }
+
+    /// [`HostState::close`].
+    pub fn close(&self, global: u64) -> Receiver<Value> {
+        match &self.inner {
+            HostInner::Thread { tx } => Self::send_thread(tx, move |s| s.close(global)),
+            HostInner::Process(c) => c.request(crate::isolate::Op::Close { global }),
+        }
+    }
+
+    /// [`HostState::get_cookies`].
+    pub fn get_cookies(&self, url: Option<&str>) -> Receiver<Value> {
+        match &self.inner {
+            HostInner::Thread { tx } => {
+                let url = url.map(str::to_owned);
+                Self::send_thread(tx, move |s| s.get_cookies(url.as_deref()))
+            }
+            HostInner::Process(c) => c.request(crate::isolate::Op::GetCookies {
+                url: url.map(str::to_owned),
+            }),
+        }
+    }
+
+    /// [`HostState::set_cookies`].
+    pub fn set_cookies(&self, cookies: &str) -> Receiver<Value> {
+        match &self.inner {
+            HostInner::Thread { tx } => {
+                let cookies = cookies.to_owned();
+                Self::send_thread(tx, move |s| s.set_cookies(&cookies))
+            }
+            HostInner::Process(c) => c.request(crate::isolate::Op::SetCookies {
+                cookies: cookies.to_owned(),
+            }),
+        }
     }
 }
 
@@ -262,7 +392,7 @@ impl std::fmt::Debug for HostState {
 }
 
 /// Options for [`HostState::execute`].
-#[derive(Clone, Debug, Default, serde::Deserialize)]
+#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ExecuteOptions {
     /// Observe the page after the last step, in the same call (an
@@ -275,8 +405,14 @@ pub struct ExecuteOptions {
 
 impl HostState {
     fn new(config: EngineConfig, context_id: u32) -> Self {
+        Self::with_engine(VectorEngine::new(config), context_id)
+    }
+
+    /// Builds state over an existing engine (context processes, plan A21).
+    #[must_use]
+    pub fn with_engine(engine: VectorEngine, context_id: u32) -> Self {
         Self {
-            engine: VectorEngine::new(config),
+            engine,
             pages: HashMap::new(),
             context_id,
         }

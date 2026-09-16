@@ -23,6 +23,7 @@ pub const HOST_FUNCTIONS: &[&str] = &[
     "setTimer",   // 1: setTimer(id, delayMs, repeat)
     "clearTimer", // 2: clearTimer(id)
     "now",        // 3: now() → virtual ms
+    "dom",        // 4: dom(op, ...args) — plan A14
 ];
 
 /// Longest a single script may run before the VM terminates it.
@@ -84,6 +85,9 @@ pub const PRELUDE: &str = r#"(() => {
   globalThis.performance.getEntriesByType = () => []; globalThis.performance.getEntriesByName = () => [];
   globalThis.structuredClone = globalThis.structuredClone || ((v) => JSON.parse(JSON.stringify(v)));
 })();"#;
+
+/// DOM/Web API prelude (plan A14).
+pub const DOM_PRELUDE: &str = include_str!("dom_prelude.js");
 
 /// A console line captured from the page.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -241,6 +245,9 @@ impl HostApi for PageHost<'_> {
                 Ok(JsValue::Undefined)
             }
             Some("now") => Ok(JsValue::Number(self.page.virtual_time_ms() as f64)),
+            Some("dom") => {
+                crate::dom::host_call(self.page, &arg_str(0), args.get(1..).unwrap_or(&[]))
+            }
             _ => Err(ScriptError::Unsupported(format!("host function #{index}"))),
         }
     }
@@ -254,6 +261,7 @@ impl Page {
         let scripting = Scripting::new(vm, allow_evaluate)?;
         self.scripting = Some(scripting);
         self.run_script(PRELUDE, "vector:prelude")?;
+        self.run_script(DOM_PRELUDE, "vector:dom")?;
         Ok(())
     }
 
@@ -302,6 +310,7 @@ impl Page {
         if let Some(s) = self.scripting.as_mut() {
             s.vm = Some(vm);
         }
+        self.flush_observers();
         result.map_err(Error::from)
     }
 

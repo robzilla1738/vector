@@ -2,11 +2,9 @@
   "static_pages": 36,
   "spa_pages": 22,
   "false_positives": [],
-  "false_negatives": [
-    "photopea (body 2742 chars, 0 scripts)"
-  ],
+  "false_negatives": [],
   "false_positive_rate": 0.0,
-  "false_negative_rate": 0.045454545454545456,
+  "false_negative_rate": 0.0,
   "over_token_budget": [],
   "pages": [
     {
@@ -21,8 +19,8 @@
       "elements_shown": 104,
       "approx_tokens": 3386,
       "headings": 43,
-      "open_us": 69670,
-      "observe_us": 5351
+      "open_us": 78371,
+      "observe_us": 5176
     },
     {
       "name": "arch-install",
@@ -34,10 +32,10 @@
       "external_scripts": 1,
       "elements_total": 311,
       "elements_shown": 120,
-      "approx_tokens": 4480,
+      "approx_tokens": 4470,
       "headings": 7,
-      "open_us": 33296,
-      "observe_us": 10643
+      "open_us": 39088,
+      "observe_us": 10651
     },
     {
       "name": "canada-benefits",
@@ -51,8 +49,8 @@
       "elements_shown": 77,
       "approx_tokens": 3173,
       "headings": 27,
-      "open_us": 27066,
-      "observe_us": 3786
+      "open_us": 34215,
+      "observe_us": 3984
     },
     {
       "name": "cnn-lite",
@@ -66,8 +64,8 @@
       "elements_shown": 106,
       "approx_tokens": 5979,
       "headings": 0,
-      "open_us": 17737,
-      "observe_us": 2815
+      "open_us": 20036,
+      "observe_us": 2811
     },
     {
       "name": "craigslist-sf-apa",
@@ -81,8 +79,8 @@
       "elements_shown": 120,
       "approx_tokens": 7144,
       "headings": 1,
-      "open_us": 130086,
-      "observe_us": 12349
+      "open_us": 125241,
+      "observe_us": 17366
     },
     {
       "name": "crates-io-serde-docs",
@@ -96,8 +94,8 @@
       "elements_shown": 60,
       "approx_tokens": 2153,
       "headings": 11,
-      "open_us": 50125,
-      "observe_us": 2492
+      "open_us": 68234,
+      "observe_us": 2843
     },
     {
       "name": "ddg-html",
@@ -111,8 +109,8 @@
       "elements_shown": 47,
       "approx_tokens": 3094,
       "headings": 10,
-      "open_us": 23144,
-      "observe_us": 2543
+      "open_us": 28313,
+      "observe_us": 4624
     },
     {
       "name": "debian",
@@ -126,8 +124,8 @@
       "elements_shown": 32,
       "approx_tokens": 1153,
       "headings": 20,
-      "open_us": 15741,
-      "observe_us": 2023
+      "open_us": 17384,
+      "observe_us": 2028
     },
     {
       "name": "go-getting-started",
@@ -141,8 +139,8 @@
       "elements_shown": 84,
       "approx_tokens": 2871,
       "headings": 6,
-      "open_us": 57474,
-      "observe_us": 3304
+      "open_us": 69729,
+      "observe_us": 6079
     },
     {
       "name": "gov-uk-benefits",
@@ -156,8 +154,8 @@
       "elements_shown": 53,
       "approx_tokens": 1997,
       "headings": 14,
-      "open_us": 54679,
-      "observe_us": 2633
+      "open_us": 60743,
+      "observe_us": 2852
     },
     {
       "name": "gov-uk-universal-credit",
@@ -171,8 +169,8 @@
       "elements_shown": 97,
       "approx_tokens": 3946,
       "headings": 16,
-      "open_us": 94581,
-      "observe_us": 3681
+      "open_us": 104785,
+      "observe_us": 3694
     },
     {
       "name": "gutenberg-book",
@@ -186,8 +184,8 @@
       "elements_shown": 78,
       "approx_tokens": 2294,
       "headings": 3,
-      "open_us": 37119,
-      "observe_us": 2510
+      "open_us": 40259,
+      "observe_us": 2586
     },
     {
       "name": "hn-front",
@@ -201,8 +199,8 @@
       "elements_shown": 120,
       "approx_tokens": 3738,
       "headings": 0,
-      "open_us": 33496,
-      "observe_us": 5122
+      "open_us": 37318,
+      "observe_us": 6005
     },
     {
       "name": "hn-newest",
@@ -216,8 +214,8 @@
       "elements_shown": 120,
       "approx_tokens": 4159,
       "headings": 0,
-      "open_us": 36687,
-      "observe_us": 5553
+      "open_us": 42741,
+      "observe_us": 5464
     },
     {
       "name": "irs-form-1040",
@@ -231,8 +229,8 @@
       "elements_shown": 120,
       "approx_tokens": 4185,
       "headings": 20,
-      "open_us": 113146,
-      "observe_us": 8065
+      "open_us": 122905,
+      "observe_us": 8846
     },
     {
       "name": "kernel",
@@ -246,8 +244,8 @@
       "elements_shown": 96,
       "approx_tokens": 2445,
       "headings": 3,
-      "open_us": 11244,
-      "observe_us": 2111
+      "open_us": 13571,
+      "observe_us": 2348
     },
     {
       "name": "lobsters",
@@ -261,8 +259,8 @@
       "elements_shown": 120,
       "approx_tokens": 3073,
       "headings": 51,
-      "open_us": 94684,
-      "observe_us": 5698
+      "open_us": 92048,
+      "observe_us": 6262
     },
     {
       "name": "mdn-aria-button",
@@ -276,8 +274,8 @@
       "elements_shown": 120,
       "approx_tokens": 5272,
       "headings": 7,
-      "open_us": 316607,
-      "observe_us": 10002
+      "open_us": 381832,
+      "observe_us": 7110
     },
     {
       "name": "mdn-css-flex",
@@ -291,8 +289,8 @@
       "elements_shown": 120,
       "approx_tokens": 5000,
       "headings": 13,
-      "open_us": 1321467,
-      "observe_us": 14930
+      "open_us": 1564986,
+      "observe_us": 16695
     },
     {
       "name": "mdn-input",
@@ -306,8 +304,8 @@
       "elements_shown": 120,
       "approx_tokens": 6676,
       "headings": 6,
-      "open_us": 1171308,
-      "observe_us": 15384
+      "open_us": 1038615,
+      "observe_us": 13605
     },
     {
       "name": "nginx-docs",
@@ -321,8 +319,8 @@
       "elements_shown": 120,
       "approx_tokens": 3793,
       "headings": 6,
-      "open_us": 14122,
-      "observe_us": 3640
+      "open_us": 14326,
+      "observe_us": 3536
     },
     {
       "name": "nhs-conditions",
@@ -336,8 +334,8 @@
       "elements_shown": 120,
       "approx_tokens": 4005,
       "headings": 5,
-      "open_us": 260462,
-      "observe_us": 16460
+      "open_us": 244994,
+      "observe_us": 14830
     },
     {
       "name": "npr-text",
@@ -351,8 +349,8 @@
       "elements_shown": 28,
       "approx_tokens": 1169,
       "headings": 1,
-      "open_us": 3171,
-      "observe_us": 776
+      "open_us": 3256,
+      "observe_us": 769
     },
     {
       "name": "osm-copyright",
@@ -366,8 +364,8 @@
       "elements_shown": 58,
       "approx_tokens": 2690,
       "headings": 8,
-      "open_us": 52816,
-      "observe_us": 2432
+      "open_us": 46508,
+      "observe_us": 1710
     },
     {
       "name": "php-array-map",
@@ -379,10 +377,10 @@
       "external_scripts": 49,
       "elements_total": 1766,
       "elements_shown": 120,
-      "approx_tokens": 4037,
+      "approx_tokens": 4105,
       "headings": 6,
-      "open_us": 212049,
-      "observe_us": 30969
+      "open_us": 196885,
+      "observe_us": 27608
     },
     {
       "name": "postgres-select",
@@ -396,8 +394,8 @@
       "elements_shown": 93,
       "approx_tokens": 3560,
       "headings": 3,
-      "open_us": 246788,
-      "observe_us": 11355
+      "open_us": 190758,
+      "observe_us": 8773
     },
     {
       "name": "pypi-requests",
@@ -411,8 +409,8 @@
       "elements_shown": 120,
       "approx_tokens": 4305,
       "headings": 25,
-      "open_us": 426556,
-      "observe_us": 20856
+      "open_us": 379203,
+      "observe_us": 18504
     },
     {
       "name": "python-os",
@@ -426,8 +424,8 @@
       "elements_shown": 120,
       "approx_tokens": 4221,
       "headings": 2,
-      "open_us": 76076,
-      "observe_us": 9005
+      "open_us": 75604,
+      "observe_us": 8044
     },
     {
       "name": "python-tutorial",
@@ -441,8 +439,8 @@
       "elements_shown": 79,
       "approx_tokens": 3245,
       "headings": 5,
-      "open_us": 94919,
-      "observe_us": 10697
+      "open_us": 68135,
+      "observe_us": 7105
     },
     {
       "name": "rust-book-install",
@@ -456,8 +454,8 @@
       "elements_shown": 18,
       "approx_tokens": 2005,
       "headings": 10,
-      "open_us": 19271,
-      "observe_us": 1763
+      "open_us": 16139,
+      "observe_us": 1528
     },
     {
       "name": "sqlite-lang-expr",
@@ -471,8 +469,8 @@
       "elements_shown": 93,
       "approx_tokens": 4817,
       "headings": 3,
-      "open_us": 86396,
-      "observe_us": 13328
+      "open_us": 83011,
+      "observe_us": 12000
     },
     {
       "name": "ssa-retirement",
@@ -486,8 +484,8 @@
       "elements_shown": 65,
       "approx_tokens": 1781,
       "headings": 11,
-      "open_us": 31999,
-      "observe_us": 8393
+      "open_us": 25993,
+      "observe_us": 4716
     },
     {
       "name": "usa-gov-benefits",
@@ -501,8 +499,8 @@
       "elements_shown": 71,
       "approx_tokens": 2723,
       "headings": 19,
-      "open_us": 18593,
-      "observe_us": 6601
+      "open_us": 17078,
+      "observe_us": 4688
     },
     {
       "name": "wikibooks-main",
@@ -514,10 +512,10 @@
       "external_scripts": 1,
       "elements_total": 284,
       "elements_shown": 120,
-      "approx_tokens": 3784,
+      "approx_tokens": 3873,
       "headings": 0,
-      "open_us": 49807,
-      "observe_us": 13079
+      "open_us": 36987,
+      "observe_us": 10749
     },
     {
       "name": "wikipedia-web-browser",
@@ -529,10 +527,10 @@
       "external_scripts": 1,
       "elements_total": 1231,
       "elements_shown": 120,
-      "approx_tokens": 9025,
+      "approx_tokens": 9050,
       "headings": 4,
-      "open_us": 465250,
-      "observe_us": 44682
+      "open_us": 306259,
+      "observe_us": 32809
     },
     {
       "name": "wiktionary-browser",
@@ -544,10 +542,10 @@
       "external_scripts": 1,
       "elements_total": 502,
       "elements_shown": 120,
-      "approx_tokens": 3919,
+      "approx_tokens": 3913,
       "headings": 19,
-      "open_us": 123159,
-      "observe_us": 26631
+      "open_us": 101259,
+      "observe_us": 19102
     },
     {
       "name": "diagrams-net",
@@ -561,8 +559,8 @@
       "elements_shown": 0,
       "approx_tokens": 149,
       "headings": 2,
-      "open_us": 17805,
-      "observe_us": 125
+      "open_us": 14152,
+      "observe_us": 103
     },
     {
       "name": "element-web",
@@ -576,8 +574,8 @@
       "elements_shown": 0,
       "approx_tokens": 28,
       "headings": 0,
-      "open_us": 24212,
-      "observe_us": 130
+      "open_us": 19592,
+      "observe_us": 105
     },
     {
       "name": "excalidraw",
@@ -591,8 +589,8 @@
       "elements_shown": 0,
       "approx_tokens": 33,
       "headings": 0,
-      "open_us": 18110,
-      "observe_us": 67
+      "open_us": 13435,
+      "observe_us": 52
     },
     {
       "name": "jsfiddle",
@@ -606,23 +604,23 @@
       "elements_shown": 0,
       "approx_tokens": 62,
       "headings": 1,
-      "open_us": 18429,
-      "observe_us": 676
+      "open_us": 10377,
+      "observe_us": 349
     },
     {
       "name": "photopea",
       "kind": "spa",
       "url": "https://www.photopea.com/",
-      "requires_script": false,
-      "route_reason": "static",
+      "requires_script": true,
+      "route_reason": "dynamic-script-loader: inline script injects 3 .js resources",
       "body_text_chars": 2742,
       "external_scripts": 0,
       "elements_total": 17,
       "elements_shown": 17,
       "approx_tokens": 1150,
       "headings": 19,
-      "open_us": 8051,
-      "observe_us": 1444
+      "open_us": 6356,
+      "observe_us": 921
     },
     {
       "name": "proton-mail",
@@ -636,8 +634,8 @@
       "elements_shown": 0,
       "approx_tokens": 29,
       "headings": 0,
-      "open_us": 52930,
-      "observe_us": 111
+      "open_us": 35053,
+      "observe_us": 57
     },
     {
       "name": "regex101",
@@ -651,8 +649,8 @@
       "elements_shown": 68,
       "approx_tokens": 825,
       "headings": 4,
-      "open_us": 137011,
-      "observe_us": 4223
+      "open_us": 73508,
+      "observe_us": 2730
     },
     {
       "name": "rust-playground",
@@ -666,8 +664,8 @@
       "elements_shown": 0,
       "approx_tokens": 32,
       "headings": 0,
-      "open_us": 5352,
-      "observe_us": 59
+      "open_us": 3279,
+      "observe_us": 42
     },
     {
       "name": "squoosh",
@@ -681,8 +679,8 @@
       "elements_shown": 6,
       "approx_tokens": 264,
       "headings": 4,
-      "open_us": 12061,
-      "observe_us": 716
+      "open_us": 7565,
+      "observe_us": 615
     },
     {
       "name": "todomvc-angular",
@@ -696,8 +694,8 @@
       "elements_shown": 1,
       "approx_tokens": 69,
       "headings": 0,
-      "open_us": 3257,
-      "observe_us": 150
+      "open_us": 2086,
+      "observe_us": 78
     },
     {
       "name": "todomvc-backbone",
@@ -711,8 +709,8 @@
       "elements_shown": 2,
       "approx_tokens": 93,
       "headings": 1,
-      "open_us": 5545,
-      "observe_us": 344
+      "open_us": 3445,
+      "observe_us": 153
     },
     {
       "name": "todomvc-emberjs",
@@ -726,8 +724,8 @@
       "elements_shown": 0,
       "approx_tokens": 36,
       "headings": 0,
-      "open_us": 4819,
-      "observe_us": 40
+      "open_us": 2471,
+      "observe_us": 21
     },
     {
       "name": "todomvc-javascript-es6",
@@ -741,8 +739,8 @@
       "elements_shown": 6,
       "approx_tokens": 178,
       "headings": 1,
-      "open_us": 3214,
-      "observe_us": 233
+      "open_us": 2042,
+      "observe_us": 184
     },
     {
       "name": "todomvc-jquery",
@@ -756,8 +754,8 @@
       "elements_shown": 3,
       "approx_tokens": 113,
       "headings": 1,
-      "open_us": 3629,
-      "observe_us": 203
+      "open_us": 3417,
+      "observe_us": 158
     },
     {
       "name": "todomvc-lit",
@@ -771,8 +769,8 @@
       "elements_shown": 2,
       "approx_tokens": 77,
       "headings": 0,
-      "open_us": 2203,
-      "observe_us": 147
+      "open_us": 1443,
+      "observe_us": 72
     },
     {
       "name": "todomvc-preact",
@@ -786,8 +784,8 @@
       "elements_shown": 1,
       "approx_tokens": 66,
       "headings": 0,
-      "open_us": 2109,
-      "observe_us": 146
+      "open_us": 1519,
+      "observe_us": 62
     },
     {
       "name": "todomvc-react-redux",
@@ -801,8 +799,8 @@
       "elements_shown": 1,
       "approx_tokens": 69,
       "headings": 0,
-      "open_us": 2285,
-      "observe_us": 87
+      "open_us": 1419,
+      "observe_us": 52
     },
     {
       "name": "todomvc-react",
@@ -816,8 +814,8 @@
       "elements_shown": 1,
       "approx_tokens": 66,
       "headings": 0,
-      "open_us": 1697,
-      "observe_us": 70
+      "open_us": 1408,
+      "observe_us": 51
     },
     {
       "name": "todomvc-svelte",
@@ -831,8 +829,8 @@
       "elements_shown": 1,
       "approx_tokens": 66,
       "headings": 0,
-      "open_us": 2479,
-      "observe_us": 97
+      "open_us": 1486,
+      "observe_us": 58
     },
     {
       "name": "todomvc-vue",
@@ -846,8 +844,8 @@
       "elements_shown": 1,
       "approx_tokens": 65,
       "headings": 0,
-      "open_us": 2333,
-      "observe_us": 84
+      "open_us": 1545,
+      "observe_us": 66
     },
     {
       "name": "todomvc-web-components",
@@ -861,8 +859,8 @@
       "elements_shown": 2,
       "approx_tokens": 98,
       "headings": 1,
-      "open_us": 2192,
-      "observe_us": 117
+      "open_us": 1920,
+      "observe_us": 95
     },
     {
       "name": "vscode-dev",
@@ -876,8 +874,8 @@
       "elements_shown": 0,
       "approx_tokens": 25,
       "headings": 0,
-      "open_us": 2665,
-      "observe_us": 33
+      "open_us": 2071,
+      "observe_us": 22
     }
   ]
 }

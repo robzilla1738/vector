@@ -15,17 +15,18 @@ implemented.
 | Crate | Role |
 | --- | --- |
 | `ve-core` | Shared vocabulary: `NodeId` (index + generation), `Revision`, geometry, the `VectorErrorCode` error taxonomy, tracing stages |
-| `ve-net` | Per-context fetch: `NetworkPolicy` (loopback blocked by default, `file:` opt-in), RFC 6265 cookie jar, RFC 9111 cache subset, redirects, request attribution and in-flight table for `settle()`, `data:`/`about:`; hyper + rustls transport behind `http` (one connection per request) |
-| `ve-html` | html5ever tokenizer + tree builder feeding the arena DOM; streaming `DocumentParser`, charset-aware byte decoding, declarative shadow DOM |
-| `ve-dom` | Arena `Document` with stable ids (no slot recycling — `r<index>` refs), mutation journal + dirty flags, shadow DOM, form state |
+| `ve-net` | Per-context fetch: `NetworkPolicy`, RFC 6265 cookies, RFC 9111 cache, redirects, in-flight table; hyper + rustls behind `http` (per-host keep-alive pool + h2, gzip/br decode, revalidation); Alt-Svc h3 tracking; RFC 6455 WebSocket (`ws`/`wss`); parent `NetworkBroker` + JSON wire for `ve-host` |
+| `ve-html` | html5ever tokenizer + tree builder feeding the arena DOM; streaming `DocumentParser`, charset-aware byte decoding, declarative shadow DOM; `scripting_enabled` for `<noscript>` |
+| `ve-dom` | Arena `Document` with `NodeId` (index + generation); recycled slots bump generation so stale `r<index>` refs miss; mutation journal + dirty flags, shadow DOM, form state |
 | `ve-style` | Own cascade: phase-1 property table, computed values, inheritance, media queries, custom properties, `calc()`, invalidation maps, `restyle_incremental`, `CssCoverage` counters for the router; `cssparser` + `selectors` for syntax and matching |
 | `ve-layout` | Own block + inline formatting (floats, `clear`, inline-block), automatic table layout, flex/grid via `taffy`, positioned boxes, overflow / `clip-path: inset()` clip rects, `::before`/`::after`, list markers, stacking contexts, hit testing, layout boundaries + `relayout_incremental`; text via `parley` or the deterministic `MetricShaper` |
 | `ve-a11y` | Accessibility tree, accessible names (accname 1.2 outline), the agent `ObservationContent` builder (§5 visibility, ranking, budgets, `Compact` / `Full`), `changesSince` / `delta` diffs |
-| `ve-script` | VM-agnostic `JsVm` trait, HTML event loop (tasks, microtasks, virtual-time timers), WebIDL stub generator; QuickJS-NG behind `quickjs`. No DOM bindings yet (M2) |
-| `ve-gfx` | Display lists, compositor, font database + glyph rasterisation, software renderer; vello + wgpu behind `gpu` (no text in that backend yet), image decoding behind `images` |
-| `ve-agent` | `Page` (fetch → parse → cascade → layout, history, focus, scroll), contract-shaped `Program`/`Step`/`StepOutcome`, in-engine step semantics (§6) without JS, `settle()`, `r<index>` refs, static-page routing classification (`routing::classify`), software screenshots |
+| `ve-script` | VM-agnostic `JsVm` trait, HTML event loop, WebIDL parser + `build.rs` traits from `idl/*.webidl`; V8 behind `v8`, QuickJS-NG behind `quickjs` |
+| `ve-gfx` | Display lists, compositor, `fontdb` system fonts + glyph rasterisation, software renderer; vello + wgpu behind `gpu`, image decoding behind `images` |
+| `ve-agent` | `Page` (fetch → parse → subresources → cascade → layout, V8 DOM bindings, iframes, downloads, `settle()`, contract-shaped `Program`/`Step`), software screenshots |
 | `ve-api` | `VectorEngine` facade (contexts, `open` / `observe` / `execute` / `screenshot` / `close` / cookies, `*_json` twins) and the C ABI in `ve_api::ffi` (below) |
-| `ve-napi` | `@vector/engine-native`: napi-rs 3 addon behind `napi` (`ABI_VERSION` 3) — async `Engine` class, one engine thread per browsing context (`hub.rs` / `host.rs`); a JSON ferry over `ve-api`'s `*_json` facade, so steps, observations and routing are the engine's own. Defaults to a permissive `NetworkPolicy` unless one is passed |
+| `ve-napi` | `@vector/engine-native`: napi-rs 3 addon behind `napi` (`ABI_VERSION` 4) — async `Engine` class, JSON plus UTF-8 JSON/PNG Buffers; optional `ve-host` child per context |
+| `ve-host` | Isolated engine process: JSON control pipe, sandbox (macOS `sandbox_init` / Linux seccomp), fetches through the parent broker |
 | `tools/wpt-runner` | WPT reftest runner comparing fragment *geometry* (not pixels) against `rel=match` references; per-milestone manifest |
 | `tools/perf` | Agent-path harness over `fixtures/static/` (`--gate m1`: observe, open-to-observe, click/fill step, 10-step program, diff after edit; p50/p95 → JSON) |
 
@@ -52,6 +53,7 @@ Optional features (all off by default):
 | Feature | Pulls in | Needs |
 | --- | --- | --- |
 | `http` (on `ve-api`, `ve-napi`) | hyper 1, rustls, tokio | a C compiler (`ring`) |
+| `v8` (on `ve-api`, `ve-script`, `ve-agent`) | `v8` crate (prebuilt static lib) | C++ toolchain on first download |
 | `quickjs` (on `ve-api`, `ve-script`) | rquickjs (QuickJS-NG) | a C compiler |
 | `images` (on `ve-gfx`) | image (PNG, JPEG, GIF, WebP decoding) | — |
 | `gpu` (on `ve-api`, `ve-gfx`; implies `images`) | vello, wgpu, peniko, kurbo | GPU/EGL/Vulkan dev libraries on Linux |
@@ -78,8 +80,14 @@ then `vector-engine.<platform>-<arch>[-musl].node` beside it, then
 error listing every path tried. The runtime (`apps/runtime`) loads it at
 startup and routes pages to it per `settings.engineMode`.
 
-There is no committed CI workflow in this repository; run the four commands
-above (fmt, clippy `-D warnings`, build, test) before merging.
+`.github/workflows/engine.yml` runs fmt, clippy `-D warnings`, tests, V8
+SPA goldens, the perf gate and WPT. Run the same locally before merging:
+
+```sh
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
 
 ## Trying it
 

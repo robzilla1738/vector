@@ -23,9 +23,10 @@
 pub mod errors;
 pub mod host;
 pub mod hub;
+pub mod isolate;
 
-/// Version of the JSON binding surface (bump on incompatible changes).
-pub const ABI_VERSION: u32 = 3;
+/// Version of the JSON/Buffer binding surface (bump on incompatible changes).
+pub const ABI_VERSION: u32 = 4;
 
 /// Whether the real N-API module is compiled in.
 #[must_use]
@@ -46,7 +47,7 @@ pub fn version() -> &'static str {
 }
 
 /// Describes the binding as JSON
-/// (`{"abiVersion":3,"engine":"0.0.1","enabled":false,"http":false,"capabilities":{…}}`).
+/// (`{"abiVersion":4,"engine":"0.0.1","enabled":false,"http":false,"capabilities":{…}}`).
 #[must_use]
 pub fn describe() -> String {
     serde_json::json!({
@@ -56,15 +57,20 @@ pub fn describe() -> String {
         "http": has_http(),
         "capabilities": {
             "screenshot": true,
-            "evaluate": false,
+            "evaluate": cfg!(feature = "v8"),
             "history": true,
             "isolatedContexts": true,
             "cookies": true,
             "fileUrls": true,
             "postForms": true,
             "xpath": false,
-            "dialogs": false,
-            "downloads": false,
+            "dialogs": true,
+            "downloads": true,
+            "typedFerry": true,
+            "http3": true,
+            "websocket": true,
+            "serviceWorkers": true,
+            "isolatedProcesses": true,
         },
     })
     .to_string()
@@ -113,6 +119,106 @@ pub mod bindings {
 
         fn resolve(&mut self, _env: Env, output: String) -> Result<String> {
             Ok(output)
+        }
+    }
+
+    /// JSON envelope as a UTF-8 Buffer (plan A17 typed ferry).
+    pub struct PendingBuf {
+        rx: Option<Receiver<Value>>,
+    }
+
+    impl PendingBuf {
+        fn new(rx: Receiver<Value>) -> AsyncTask<Self> {
+            AsyncTask::new(Self { rx: Some(rx) })
+        }
+    }
+
+    impl Task for PendingBuf {
+        type Output = Vec<u8>;
+        type JsValue = Buffer;
+
+        fn compute(&mut self) -> Result<Vec<u8>> {
+            let rx = self
+                .rx
+                .take()
+                .ok_or_else(|| Error::from_reason("engine call already consumed"))?;
+            rx.recv()
+                .map(|v| v.to_string().into_bytes())
+                .map_err(|_| Error::from_reason("engine thread stopped before replying"))
+        }
+
+        fn resolve(&mut self, _env: Env, output: Vec<u8>) -> Result<Buffer> {
+            Ok(output.into())
+        }
+    }
+
+    /// Software-renderer PNG as a typed object with a Buffer body.
+    #[napi(object)]
+    pub struct ScreenshotPng {
+        pub width: u32,
+        pub height: u32,
+        pub scale: f64,
+        pub full_page: bool,
+        pub png: Buffer,
+    }
+
+    pub struct PendingPng {
+        rx: Option<Receiver<Value>>,
+    }
+
+    impl PendingPng {
+        fn new(rx: Receiver<Value>) -> AsyncTask<Self> {
+            AsyncTask::new(Self { rx: Some(rx) })
+        }
+    }
+
+    impl Task for PendingPng {
+        type Output = (u32, u32, f64, bool, Vec<u8>);
+        type JsValue = ScreenshotPng;
+
+        fn compute(&mut self) -> Result<(u32, u32, f64, bool, Vec<u8>)> {
+            let rx = self
+                .rx
+                .take()
+                .ok_or_else(|| Error::from_reason("engine call already consumed"))?;
+            let v = rx
+                .recv()
+                .map_err(|_| Error::from_reason("engine thread stopped before replying"))?;
+            if v.get("ok").and_then(Value::as_bool) == Some(false) {
+                let msg = v
+                    .get("error")
+                    .and_then(|e| e.get("message"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("screenshot failed");
+                return Err(Error::from_reason(msg));
+            }
+            let b64 = v
+                .get("pngBase64")
+                .and_then(Value::as_str)
+                .ok_or_else(|| Error::from_reason("screenshot returned no image"))?;
+            let png = ve_net::base64_decode(b64.as_bytes())
+                .ok_or_else(|| Error::from_reason("screenshot pngBase64 was not valid base64"))?;
+            Ok((
+                v.get("width").and_then(Value::as_u64).unwrap_or(0) as u32,
+                v.get("height").and_then(Value::as_u64).unwrap_or(0) as u32,
+                v.get("scale").and_then(Value::as_f64).unwrap_or(1.0),
+                v.get("fullPage").and_then(Value::as_bool).unwrap_or(false),
+                png,
+            ))
+        }
+
+        fn resolve(
+            &mut self,
+            _env: Env,
+            output: (u32, u32, f64, bool, Vec<u8>),
+        ) -> Result<ScreenshotPng> {
+            Ok(ScreenshotPng {
+                width: output.0,
+                height: output.1,
+                scale: output.2,
+                full_page: output.3,
+                png: output.4.into(),
+            })
         }
     }
 
@@ -209,6 +315,43 @@ pub mod bindings {
                 lock(&self.hub)
                     .screenshot(u64::from(page), options_json.as_deref().unwrap_or("{}")),
             )
+        }
+
+        /// Observes a page; request and reply are UTF-8 JSON Buffers (plan A17).
+        #[napi]
+        pub fn observe_buf(&self, page: u32, options: Option<Buffer>) -> AsyncTask<PendingBuf> {
+            let options_json = options
+                .as_ref()
+                .map(|b| String::from_utf8_lossy(b).into_owned())
+                .unwrap_or_else(|| "{}".into());
+            PendingBuf::new(lock(&self.hub).observe(u64::from(page), &options_json))
+        }
+
+        /// Runs contracts steps from a UTF-8 JSON Buffer; reply is a Buffer.
+        #[napi]
+        pub fn execute_buf(
+            &self,
+            page: u32,
+            steps: Buffer,
+            options: Option<Buffer>,
+        ) -> AsyncTask<PendingBuf> {
+            let steps_json = String::from_utf8_lossy(&steps).into_owned();
+            let options_json = options
+                .as_ref()
+                .map(|b| String::from_utf8_lossy(b).into_owned())
+                .unwrap_or_else(|| "{}".into());
+            PendingBuf::new(lock(&self.hub).execute(u64::from(page), &steps_json, &options_json))
+        }
+
+        /// Rasterises a page; PNG bytes travel as a Buffer (no base64).
+        #[napi]
+        pub fn screenshot_png(&self, page: u32, full_page: Option<bool>) -> AsyncTask<PendingPng> {
+            let options = if full_page.unwrap_or(false) {
+                "{\"fullPage\":true}"
+            } else {
+                "{}"
+            };
+            PendingPng::new(lock(&self.hub).screenshot(u64::from(page), options))
         }
 
         /// Closes a page. Resolves to `{ok, closed}`.

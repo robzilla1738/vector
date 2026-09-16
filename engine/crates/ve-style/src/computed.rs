@@ -281,6 +281,129 @@ fn split_balanced(text: &str) -> Option<(&str, &str)> {
     None
 }
 
+impl ComputedStyle {
+    /// Serialises a longhand (or custom property) as CSS text for
+    /// `getComputedStyle`. Unknown names yield the empty string.
+    #[must_use]
+    pub fn property_css(&self, name: &str) -> String {
+        use crate::values::{LengthPercentage, LengthPercentageAuto, MaxSize};
+
+        fn px(v: f32) -> String {
+            if v == 0.0 {
+                "0px".into()
+            } else {
+                format!("{v}px")
+            }
+        }
+        fn lp(v: LengthPercentage) -> String {
+            match v {
+                LengthPercentage::Px(v) => px(v),
+                LengthPercentage::Percent(p) => format!("{p}%"),
+                LengthPercentage::Calc { px, percent } => format!("calc({px}px + {percent}%)"),
+            }
+        }
+        fn lpa(v: LengthPercentageAuto) -> String {
+            match v {
+                LengthPercentageAuto::Auto => "auto".into(),
+                LengthPercentageAuto::Px(v) => px(v),
+                LengthPercentageAuto::Percent(p) => format!("{p}%"),
+                LengthPercentageAuto::Calc { px, percent } => format!("calc({px}px + {percent}%)"),
+            }
+        }
+        fn max_size(v: MaxSize) -> String {
+            match v {
+                MaxSize::None => "none".into(),
+                MaxSize::Px(v) => px(v),
+                MaxSize::Percent(p) => format!("{p}%"),
+                MaxSize::Calc { px, percent } => format!("calc({px}px + {percent}%)"),
+            }
+        }
+
+        if name.starts_with("--") {
+            return self
+                .custom_properties
+                .get(name)
+                .cloned()
+                .unwrap_or_default();
+        }
+        let Some(id) = PropertyId::from_name(name) else {
+            return String::new();
+        };
+        match id {
+            PropertyId::Display => self.display.to_string(),
+            PropertyId::Position => self.position.to_string(),
+            PropertyId::Visibility => self.visibility.to_string(),
+            PropertyId::OverflowX => self.overflow.to_string(),
+            PropertyId::OverflowY => self.overflow_y.to_string(),
+            PropertyId::Float => self.float.to_string(),
+            PropertyId::Clear => self.clear.to_string(),
+            PropertyId::BoxSizing => self.box_sizing.to_string(),
+            PropertyId::PointerEvents => self.pointer_events.to_string(),
+            PropertyId::TextAlign => self.text_align.to_string(),
+            PropertyId::WhiteSpace => self.white_space.to_string(),
+            PropertyId::FontStyle => self.font_style.to_string(),
+            PropertyId::TextDecorationLine => self.text_decoration_line.to_string(),
+            PropertyId::TextTransform => self.text_transform.to_string(),
+            PropertyId::Direction => self.direction.to_string(),
+            PropertyId::Color => self.color.to_css_string(),
+            PropertyId::BackgroundColor => match self.background_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::Opacity => {
+                if (self.opacity - 1.0).abs() < f32::EPSILON {
+                    "1".into()
+                } else {
+                    format!("{}", self.opacity)
+                }
+            }
+            PropertyId::FontSize => px(self.font_size),
+            PropertyId::FontWeight => format!("{}", self.font_weight.0),
+            PropertyId::FontFamily => self
+                .font_family
+                .iter()
+                .map(crate::values::FontFamily::to_css)
+                .collect::<Vec<_>>()
+                .join(", "),
+            PropertyId::ZIndex => match self.z_index {
+                crate::values::ZIndex::Auto => "auto".into(),
+                crate::values::ZIndex::Integer(i) => i.to_string(),
+            },
+            PropertyId::Width => lpa(self.width),
+            PropertyId::Height => lpa(self.height),
+            PropertyId::MinWidth => lp(self.min_width),
+            PropertyId::MinHeight => lp(self.min_height),
+            PropertyId::MaxWidth => max_size(self.max_width),
+            PropertyId::MaxHeight => max_size(self.max_height),
+            PropertyId::Top => lpa(self.top),
+            PropertyId::Right => lpa(self.right),
+            PropertyId::Bottom => lpa(self.bottom),
+            PropertyId::Left => lpa(self.left),
+            PropertyId::MarginTop => lpa(self.margin_top),
+            PropertyId::MarginRight => lpa(self.margin_right),
+            PropertyId::MarginBottom => lpa(self.margin_bottom),
+            PropertyId::MarginLeft => lpa(self.margin_left),
+            PropertyId::PaddingTop => lp(self.padding_top),
+            PropertyId::PaddingRight => lp(self.padding_right),
+            PropertyId::PaddingBottom => lp(self.padding_bottom),
+            PropertyId::PaddingLeft => lp(self.padding_left),
+            PropertyId::BorderTopWidth => px(self.border_top()),
+            PropertyId::BorderRightWidth => px(self.border_right()),
+            PropertyId::BorderBottomWidth => px(self.border_bottom()),
+            PropertyId::BorderLeftWidth => px(self.border_left()),
+            PropertyId::BorderTopStyle => self.border_top_style.to_string(),
+            PropertyId::BorderRightStyle => self.border_right_style.to_string(),
+            PropertyId::BorderBottomStyle => self.border_bottom_style.to_string(),
+            PropertyId::BorderLeftStyle => self.border_left_style.to_string(),
+            PropertyId::FlexDirection => self.flex_direction.to_string(),
+            PropertyId::FlexWrap => self.flex_wrap.to_string(),
+            PropertyId::JustifyContent => self.justify_content.to_string(),
+            PropertyId::AlignItems => self.align_items.to_string(),
+            _ => String::new(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

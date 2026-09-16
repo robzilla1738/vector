@@ -3,8 +3,10 @@
  *
  * Every method that does page work returns a Promise that resolves off the
  * Node event loop (the engine runs on a dedicated thread per browsing
- * context). All payloads cross the boundary as JSON *strings*; the typed
- * wrappers in `packages/browser-driver/src/vector-engine.ts` parse them.
+ * context). All payloads cross the boundary as JSON *strings* or UTF-8 JSON *Buffers*
+(plan A17). Screenshots also have a typed `screenshotPng` that returns PNG
+bytes as a Node `Buffer`. The typed wrappers in
+`packages/browser-driver/src/vector-engine.ts` parse them.
  * Results are `{ ok: true, ... }` or `{ ok: false, error: { code, message, detail? } }`
  * where `code` is a runtime `VectorErrorCode`.
  */
@@ -159,6 +161,15 @@ export interface ScreenshotResult {
   pngBase64: string;
 }
 
+/** Typed screenshot (ABI 4): PNG bytes as a Buffer, no base64. */
+export interface ScreenshotPng {
+  width: number;
+  height: number;
+  scale: number;
+  fullPage: boolean;
+  png: Buffer;
+}
+
 export declare class Engine {
   /** `configJson` is a JSON-encoded `EngineConfig`. */
   constructor(configJson?: string | null);
@@ -168,10 +179,16 @@ export declare class Engine {
   open(contextId: number, url: string, optionsJson?: string | null): Promise<string>;
   /** Resolves to JSON `NativeResult<ObserveResult>`; `optionsJson` is an `ObserveOptions`. */
   observe(page: number, optionsJson?: string | null): Promise<string>;
+  /** Observe; request/reply are UTF-8 JSON Buffers (plan A17). */
+  observeBuf(page: number, options?: Buffer | null): Promise<Buffer>;
   /** Resolves to JSON `NativeResult<ExecuteResult>`; `stepsJson` is a contracts `Step[]`. */
   execute(page: number, stepsJson: string, optionsJson?: string | null): Promise<string>;
+  /** Execute; steps and reply are UTF-8 JSON Buffers. */
+  executeBuf(page: number, steps: Buffer, options?: Buffer | null): Promise<Buffer>;
   /** Resolves to JSON `NativeResult<ScreenshotResult>`; `optionsJson` may carry `{ fullPage }`. */
   screenshot(page: number, optionsJson?: string | null): Promise<string>;
+  /** PNG as a typed object with a Buffer body. */
+  screenshotPng(page: number, fullPage?: boolean | null): Promise<ScreenshotPng>;
   /** Resolves to JSON `{ ok, closed }`. */
   close(page: number): Promise<string>;
   /** Resolves to JSON `{ ok, cookies: BrowserCookie[] }`. */

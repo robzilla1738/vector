@@ -26,6 +26,41 @@ pub trait Transport {
     fn name(&self) -> &'static str;
 }
 
+/// A transport that delegates to a callback (the parent broker over IPC).
+pub struct FnTransport {
+    send: Box<dyn Fn(&Request) -> Result<Response, NetError>>,
+    label: &'static str,
+}
+
+impl std::fmt::Debug for FnTransport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FnTransport")
+            .field("name", &self.label)
+            .finish_non_exhaustive()
+    }
+}
+
+impl FnTransport {
+    /// Wraps `send` as a [`Transport`].
+    #[must_use]
+    pub fn new(send: impl Fn(&Request) -> Result<Response, NetError> + 'static) -> Self {
+        Self {
+            send: Box::new(send),
+            label: "ipc",
+        }
+    }
+}
+
+impl Transport for FnTransport {
+    fn send(&self, request: &Request) -> Result<Response, NetError> {
+        (self.send)(request)
+    }
+
+    fn name(&self) -> &'static str {
+        self.label
+    }
+}
+
 /// A transport that refuses every network request.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NullTransport;

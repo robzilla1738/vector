@@ -30,13 +30,33 @@ pub fn ref_for(id: NodeId) -> String {
 }
 
 /// Parses an `r<index>` ref into the slot index.
+///
+/// `r12`, `r12.3` and `r12:3` are accepted; the generation is ignored here
+/// (see [`parse_ref_parts`]).
 #[must_use]
 pub fn parse_ref(text: &str) -> Option<u32> {
+    parse_ref_parts(text).map(|(index, _)| index)
+}
+
+/// Parses `r<index>`, `r<index>.<generation>` or `r<index>:<generation>`.
+#[must_use]
+pub fn parse_ref_parts(text: &str) -> Option<(u32, Option<u32>)> {
     let digits = text.strip_prefix('r')?;
-    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+    let (index, generation) = if let Some((i, g)) = digits.split_once(['.', ':']) {
+        (i, Some(g))
+    } else {
+        (digits, None)
+    };
+    if index.is_empty() || !index.bytes().all(|b| b.is_ascii_digit()) {
         return None;
     }
-    digits.parse().ok()
+    if let Some(g) = generation {
+        if g.is_empty() || !g.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        return Some((index.parse().ok()?, Some(g.parse().ok()?)));
+    }
+    Some((index.parse().ok()?, None))
 }
 
 /// Observation scope (`ObservationRequest.scope`).
@@ -1806,6 +1826,15 @@ mod tests {
     use super::*;
     use ve_layout::LayoutEngine;
     use ve_style::{MediaEnv, StyleEngine};
+
+    #[test]
+    fn parse_ref_accepts_generation_suffixes() {
+        assert_eq!(parse_ref_parts("r12"), Some((12, None)));
+        assert_eq!(parse_ref_parts("r12.3"), Some((12, Some(3))));
+        assert_eq!(parse_ref_parts("r12:3"), Some((12, Some(3))));
+        assert_eq!(parse_ref("r12:3"), Some(12));
+        assert_eq!(parse_ref_parts("x12"), None);
+    }
 
     struct Page {
         doc: Document,

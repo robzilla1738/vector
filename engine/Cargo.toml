@@ -20,6 +20,7 @@ members = [
     "crates/ve-agent",
     "crates/ve-api",
     "crates/ve-napi",
+    "crates/ve-host",
     "tools/wpt-runner",
     "tools/perf",
 ]
@@ -59,7 +60,7 @@ precomputed-hash = "0.1.1"
 # ---- layout & text (pure Rust, default) -----------------------------------
 taffy = { version = "0.14.0", default-features = false, features = ["std", "flexbox", "grid", "block_layout", "taffy_tree"] }
 parley = { version = "0.11.1", default-features = false, features = ["std"] }
-fontdb = { version = "0.24.0", default-features = false, features = ["std"] }
+fontdb = { version = "0.24.0", default-features = false, features = ["std", "fs"] }
 swash = "0.2.10"
 
 # ---- networking (optional; feature `net`) ---------------------------------

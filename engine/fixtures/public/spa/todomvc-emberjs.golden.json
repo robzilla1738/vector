@@ -1,0 +1,35 @@
+{
+  "url": "https://todomvc.com/examples/emberjs/todomvc/dist/",
+  "title": "TodoMVC: Ember",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 0.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://todomvc.com/examples/emberjs/todomvc/dist/",
+      "sameOrigin": true
+    }
+  ],
+  "text": "",
+  "headings": [],
+  "elements": [],
+  "formFields": [],
+  "tables": [],
+  "links": [],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 0,
+    "elementsShown": 0,
+    "textChars": 0,
+    "approxTokens": 36
+  }
+}

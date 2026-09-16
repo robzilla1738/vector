@@ -35,6 +35,7 @@ beforeAll(async () => {
     ...process.env,
     VECTOR_DATA_DIR: mkdtempSync(join(tmpdir(), "vector-sets-")),
     VECTOR_ELECTRON_CDP: "",
+    VECTOR_ENGINE_MODE: "off",
   });
 }, 60_000);
 

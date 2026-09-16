@@ -7,7 +7,9 @@ API, MCP, CLI). Pages run on one of two backends:
 - **Vector Engine** — Vector's own browser engine in Rust (`engine/`), built
   for agents: the semantic observation, stable refs, batched step execution
   and readiness come from the engine's own trees, with no injected scripts
-  and no per-step IPC. M1 covers static pages (no JavaScript yet).
+  and no per-step IPC. V8 runs page scripts; the router falls back to
+  Chromium when a document is classified as script-dependent beyond what
+  the engine can settle.
 - **Chromium** — the Electron `WebContentsView` (or headless Chromium in
   standalone mode), plus the user's own Chrome over CDP. Chromium is the
   fallback for pages the engine classifies as script-dependent.
@@ -15,8 +17,8 @@ API, MCP, CLI). Pages run on one of two backends:
 A router (`apps/runtime/src/services/router.ts`) decides per `pages.open`;
 the decision is returned as `routeReason` and a persisted needs-chromium
 table (24 h TTL) keeps script-dependent origins off the engine. Routing is
-controlled by the `engineMode` setting: `off` (default — Chromium only),
-`auto` (engine first, Chromium fallback), `always` (engine only).
+controlled by the `engineMode` setting: `off` (Chromium only),
+`auto` (default — engine first, Chromium fallback), `always` (engine only).
 
 ## Quickstart
 
@@ -41,13 +43,9 @@ cd engine && cargo build -p ve-napi --features napi --release
 
 The runtime loads the addon at startup whenever it is present (set
 `VECTOR_ENGINE=0` to skip it) and reports it in `runtime.describe` →
-`engine`. Pages are only *routed* to it when `engineMode` is `auto` or
-`always` — via `settings.set { engineMode }`, the Settings sheet in the
-shell, or the `VECTOR_ENGINE_MODE` environment override:
-
-```bash
-VECTOR_ENGINE_MODE=auto pnpm dev
-```
+`engine`. Pages route to it when `engineMode` is `auto` (the default) or
+`always`. Pin Chromium with `settings.set { engineMode: "off" }` or
+`VECTOR_ENGINE_MODE=off`.
 
 Configuration is otherwise optional — copy `.env.example` to `.env` (in the
 repo root you launch from, or in the data dir
@@ -83,6 +81,29 @@ The engine observation is larger because it surfaces more of the page
 static corpus (`cargo run --release -p perf -- --gate m1`) are in
 `docs/engine/architecture.md` → Status.
 
+Same fixtures, published competitor numbers (Sep 2026) plus Vector's own
+`pnpm bench` / `pnpm bench:tasks` (same model `alibaba/qwen3.8-27b`):
+
+| System | Navigate+snapshot (warm) | Memory vs Chrome | Task success |
+|---|---|---|---|
+| Vector Engine | 2.4 ms open+observe | in-process, no Chrome | local suite 6/8 (`vector-engine`) |
+| Vector Chromium | 56.5 ms navigate+observe | Electron/headless Chrome | local suite 6/8 (`vector`) |
+| agent-browser (raw CDP) | 8 ms warm navigate+snapshot | one Chrome per daemon | not measured here; adapter `agent-browser` |
+| Lightpanda (Zig+V8) | 9–11× Chrome (their claim) | 16× less memory (their claim) | 69.7% AssistantBench / 83% GAIA-L1 (published) |
+
+Task-success on the in-tree local suite (`tests/benchmarks/tasks/`, same
+model, 2026-09-15):
+
+| Adapter | Pass | p50 wall | Model calls (mean) | Tokens (mean) |
+|---|---:|---:|---:|---:|
+| `vector` (runtime loop, Chromium) | 6/8 | 1.5 s | 2.8 | 5.7 k |
+| `vector-engine` (runtime loop) | 6/8 | 1.0 s | 4.8 | 11.1 k |
+| `vector-mcp` | 8/8 | 2.6 s | 5.5 | 32.7 k |
+| `playwright-mcp` | 8/8 | 4.0 s | 5.4 | 36.1 k |
+
+`pnpm bench:tasks --adapter agent-browser,lightpanda-mcp` records those
+rows when the binaries are on PATH.
+
 ## Using the app
 
 The shell (`apps/desktop`, documented in [docs/ui/shell.md](docs/ui/shell.md))
@@ -106,9 +127,9 @@ Inter Variable; icons are Lucide. Dark chrome is `#1f1f1f`.
   taken-over page fail with `conflict` until then.
 - Run steps in the agent rail carry the exact observation the planner saw;
   results tables sort, filter and export CSV/JSON.
-- Engine-backed pages are headless: they have no native view, so
-  `pages.activate` and `pages.capture` on them fail with
-  `capability_unsupported` in M1.
+- Engine-backed pages are headless (no native `WebContentsView`).
+  `pages.activate` still marks them active; `pages.capture` paints a
+  PNG through the software renderer with system fonts.
 
 ## Layout
 

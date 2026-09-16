@@ -3103,6 +3103,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ve-host"
+version = "0.0.1"
+dependencies = [
+ "libc",
+ "serde_json",
+ "ve-napi",
+]
+
+[[package]]
 name = "ve-html"
 version = "0.0.1"
 dependencies = [

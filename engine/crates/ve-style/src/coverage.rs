@@ -101,9 +101,9 @@ impl CssCoverage {
         }
     }
 
-    /// The router's rule: more than `threshold` (e.g. `0.05`) of declarations
-    /// missed *and* at least one of them affects display / position /
-    /// visibility.
+    /// Router rule: miss ratio above `threshold` *and* at least one missed
+    /// declaration affects display / position / visibility. The agent
+    /// router uses `0.50`; `0.05` false-positives real stylesheets.
     #[must_use]
     pub fn exceeds(&self, threshold: f32) -> bool {
         self.affects_geometry && self.miss_ratio() > threshold

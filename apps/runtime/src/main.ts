@@ -52,6 +52,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const env = loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
   const repo = new Repo(openDb(config.dbPath));
+  repo.pruneEvents();
   const events = new EventBus(repo);
   const settings = new SettingsService(repo, config.settingsPath, env);
   const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
@@ -72,6 +73,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     channel = new RpcChannel(transport, "runtime->shell");
   }
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
+  settings.attachNative(native);
 
   // Register api.invoke immediately — the renderer can call before services
   // finish booting; calls wait on the invoker promise instead of failing.
@@ -139,13 +141,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // ---- Vector Engine (architecture §11) ----
   // The native addon is loaded whenever it is present so `runtime.describe`
   // can report it; whether pages are *routed* to it is the `engineMode`
-  // setting (default "off" — nothing changes for existing users).
+  // setting (default "auto" — engine first, Chromium fallback).
   let engineInfo: EngineAvailability = { available: false, error: "not loaded" };
   if (env.VECTOR_ENGINE !== "0") {
     // VECTOR_ENGINE_SCRIPTING=1 runs page scripts in the engine's V8 (A13);
     // default off until the DOM bindings (A14) give scripts something to act on
     const d = new VectorEngineDriver({
-      config: { dataDir: config.dataDir, scripting: env.VECTOR_ENGINE_SCRIPTING === "1" },
+      config: { dataDir: config.dataDir, scripting: env.VECTOR_ENGINE_SCRIPTING !== "0" },
     });
     watchDriver(d, "vector-engine", "Vector Engine");
     try {

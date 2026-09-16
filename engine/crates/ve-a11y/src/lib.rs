@@ -32,7 +32,8 @@ pub use diff::{FieldChange, ObservationDelta, TextOp, changes_between};
 pub use observation::{
     DialogEntry, ElementRef, FormField, Format, FrameInfo, LinkEntry, ObservationContent,
     ObservationRequest, ObserveInput, RectJson, RoleSelector, Scope, ScrollInfo, SelectorStrategy,
-    Stats, TableBlock, ViewportInfo, Visibility5, classify, observe, parse_ref, ref_for,
+    Stats, TableBlock, ViewportInfo, Visibility5, classify, observe, parse_ref, parse_ref_parts,
+    ref_for,
 };
 pub use roles::Role;
 pub use snapshot::{

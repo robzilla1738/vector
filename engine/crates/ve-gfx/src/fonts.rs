@@ -81,6 +81,12 @@ impl FontSystem {
         self.db.is_empty()
     }
 
+    /// Discovers fonts installed on the host (plan A19) so screenshots can
+    /// paint real glyphs. Safe to call more than once.
+    pub fn load_system_fonts(&mut self) {
+        self.db.load_system_fonts();
+    }
+
     /// Sets the concrete family used for a generic one (e.g. `sans-serif`).
     pub fn set_generic(&mut self, generic: &FontFamily, name: &str) {
         match generic {
@@ -156,31 +162,26 @@ impl FontSystem {
 
     /// Rasterises a glyph to an alpha mask.
     pub fn rasterize(&mut self, id: fontdb::ID, glyph: GlyphId, size: f32) -> Option<GlyphBitmap> {
-        let (data, index) = self
-            .db
-            .face_source(id)
-            .and_then(|(source, index)| match source {
-                fontdb::Source::Binary(bin) => Some((bin, index)),
-                #[allow(unreachable_patterns)]
-                _ => None,
-            })?;
-        let bytes: &[u8] = (*data).as_ref();
-        let font = FontRef::from_index(bytes, index as usize)?;
-        let mut scaler = self.scaler.builder(font).size(size).hint(true).build();
-        let image = Render::new(&[
-            Source::ColorOutline(0),
-            Source::ColorBitmap(StrikeWith::BestFit),
-            Source::Outline,
-        ])
-        .format(Format::Alpha)
-        .render(&mut scaler, glyph)?;
-        Some(GlyphBitmap {
-            width: image.placement.width,
-            height: image.placement.height,
-            left: image.placement.left,
-            top: image.placement.top,
-            data: image.data,
+        let FontSystem { db, scaler } = self;
+        db.with_face_data(id, |bytes, index| {
+            let font = FontRef::from_index(bytes, index as usize)?;
+            let mut built = scaler.builder(font).size(size).hint(true).build();
+            let image = Render::new(&[
+                Source::ColorOutline(0),
+                Source::ColorBitmap(StrikeWith::BestFit),
+                Source::Outline,
+            ])
+            .format(Format::Alpha)
+            .render(&mut built, glyph)?;
+            Some(GlyphBitmap {
+                width: image.placement.width,
+                height: image.placement.height,
+                left: image.placement.left,
+                top: image.placement.top,
+                data: image.data,
+            })
         })
+        .flatten()
     }
 }
 
@@ -213,6 +214,29 @@ mod tests {
                 FontStyle::Italic
             )
             .is_none()
+        );
+    }
+
+    #[test]
+    fn system_fonts_rasterize_a_glyph() {
+        let mut fs = FontSystem::new();
+        fs.load_system_fonts();
+        let Some(id) = fs.query(
+            &[FontFamily::SansSerif],
+            FontWeight::NORMAL,
+            FontStyle::Normal,
+        ) else {
+            return;
+        };
+        let Some(glyph) = fs.glyph_for_char(id, 'A') else {
+            return;
+        };
+        let bitmap = fs
+            .rasterize(id, glyph, 16.0)
+            .expect("system fonts are File sources and must still rasterize (plan A19)");
+        assert!(
+            bitmap.width > 0 && bitmap.height > 0 && !bitmap.data.is_empty(),
+            "empty glyph mask {bitmap:?}"
         );
     }
 }

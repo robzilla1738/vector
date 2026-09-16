@@ -19,6 +19,9 @@ quickjs = ["dep:rquickjs"]
 ## Enable the V8 backend (downloads a prebuilt static library; ~50 MB).
 v8 = ["dep:v8"]
 
+[build-dependencies]
+thiserror.workspace = true
+
 [dependencies]
 ve-core.workspace = true
 ve-dom.workspace = true

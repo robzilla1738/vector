@@ -96,10 +96,9 @@ Things an MCP client should expect:
   (`runtime.describe` → `checkpointResume: false`).
 - A page may be served by the **Vector Engine** (`backend: "vector-engine"`
   on the page, `routeReason` on the open result). Its refs work the same
-  way, but in M1 the engine runs no JavaScript: `evaluate`, `dialog`,
-  `expectDownload`, `xpath:` targets, `javascript:` URLs and
-  `vector_page_capture` fail with `capability_unsupported` (`dragTo` sends
-  pointer events only). With `engineMode: auto` the runtime moves
+  way. `evaluate`, `dialog`, downloads, `javascript:` URLs, HTML5 `dragTo`
+  and `vector_page_capture` run in-engine. `xpath:` targets still fail with
+  `capability_unsupported`. With `engineMode: auto` the runtime moves
   the page to Chromium and replays the rest; the `vector_page_execute`
   result then carries `fallback { from, to, reason, replayedFrom, repair,
   refSteps }`. `repair: true` means ref-targeted steps could not be replayed

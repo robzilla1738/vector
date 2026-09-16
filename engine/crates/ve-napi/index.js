@@ -76,6 +76,25 @@ if (!native) {
 }
 
 export const binaryPath = loaded;
+if (!process.env.VECTOR_ENGINE_HOST) {
+  const hostName = process.platform === "win32" ? "ve-host.exe" : "ve-host";
+  const nextToNative = join(dirname(loaded), hostName);
+  const nextToHere = join(here, hostName);
+  if (existsSync(nextToNative)) process.env.VECTOR_ENGINE_HOST = nextToNative;
+  else if (existsSync(nextToHere)) process.env.VECTOR_ENGINE_HOST = nextToHere;
+  else {
+    for (const dir of targetDirs) {
+      for (const profile of ["release", "debug"]) {
+        const p = join(dir, profile, hostName);
+        if (existsSync(p)) {
+          process.env.VECTOR_ENGINE_HOST = p;
+          break;
+        }
+      }
+      if (process.env.VECTOR_ENGINE_HOST) break;
+    }
+  }
+}
 export const Engine = native.Engine;
 export const describe = native.describe;
 export const version = native.version;

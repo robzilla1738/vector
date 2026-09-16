@@ -399,7 +399,15 @@ export class Repo {
     const info = this.db
       .prepare("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)")
       .run(e.runId ?? null, e.type, J(e.payload), e.ts);
-    return Number(info.lastInsertRowid);
+    const seq = Number(info.lastInsertRowid);
+    if (seq % 64 === 0) this.pruneEvents();
+    return seq;
+  }
+  /** Drop events older than `maxAgeMs` (default 7 days, plan A22). */
+  pruneEvents(maxAgeMs = 7 * 24 * 60 * 60 * 1000): number {
+    const cutoff = Date.now() - maxAgeMs;
+    const info = this.db.prepare("DELETE FROM events WHERE ts < ?").run(cutoff);
+    return Number(info.changes ?? 0);
   }
   eventsSince(sinceSeq: number, limit = 500, runId?: string): { events: VectorEvent[]; lastSeq: number } {
     const rows = runId

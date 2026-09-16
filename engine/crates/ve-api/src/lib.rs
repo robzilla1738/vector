@@ -241,6 +241,7 @@ impl Loader for NetLoader {
                         }
                         ve_agent::SubresourceKind::Script => "*/*",
                         ve_agent::SubresourceKind::Font => "font/woff2,font/woff,*/*;q=0.1",
+                        ve_agent::SubresourceKind::Document => "text/html,*/*;q=0.1",
                     };
                     let mut req = req
                         .for_page(r.page)
@@ -316,6 +317,8 @@ pub struct VectorEngine {
     pages: HashMap<PageId, PageEntry>,
     next_context: u64,
     next_page: u64,
+    /// Shared wire owner (plan A21): contexts never hold a socket.
+    broker: ve_net::NetworkBroker,
 }
 
 impl std::fmt::Debug for VectorEngine {
@@ -360,12 +363,22 @@ impl VectorEngine {
     /// Creates an engine with one default context.
     #[must_use]
     pub fn new(config: EngineConfig) -> Self {
+        let transport = make_transport(&config);
+        Self::with_transport(config, transport)
+    }
+
+    /// Creates an engine whose contexts share `transport` (plan A21: the
+    /// parent broker, or an IPC callback in a context process).
+    #[must_use]
+    pub fn with_transport(config: EngineConfig, transport: Box<dyn ve_net::Transport>) -> Self {
+        let broker = ve_net::NetworkBroker::new(transport);
         let mut engine = Self {
             config,
             contexts: HashMap::new(),
             pages: HashMap::new(),
             next_context: 0,
             next_page: 0,
+            broker,
         };
         engine.new_context(None);
         engine
@@ -386,7 +399,7 @@ impl VectorEngine {
     // ---- contexts -----------------------------------------------------------
 
     fn build_context(&self, id: ContextId, policy: Option<NetworkPolicy>) -> NetworkContext {
-        let mut net = NetworkContext::new(id, make_transport(&self.config))
+        let mut net = NetworkContext::new(id, Box::new(self.broker.clone()))
             .with_policy(policy.unwrap_or_else(|| self.config.policy.clone()));
         self.config.user_agent.clone_into(&mut net.user_agent);
         net

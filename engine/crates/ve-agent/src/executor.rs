@@ -401,13 +401,23 @@ impl Page {
             Step::DragTo { target, to, .. } => {
                 let source = self.resolve(target, epoch)?;
                 let dest = self.resolve(to, epoch)?;
-                self.prepare_pointer(source, timeout)?;
-                self.prepare_pointer(dest, timeout)?;
+                let src_pt = self.prepare_pointer(source, timeout)?;
+                let dst_pt = self.prepare_pointer(dest, timeout)?;
                 self.focus(Some(source));
+                let _ = self.dispatch_js_event(source, "dragstart", true, true, Some(src_pt));
+                let _ = self.dispatch_js_event(dest, "dragenter", true, true, Some(dst_pt));
+                let _ = self.dispatch_js_event(dest, "dragover", true, true, Some(dst_pt));
+                let prevented = self.dispatch_js_event(dest, "drop", true, true, Some(dst_pt));
+                let _ = self.dispatch_js_event(source, "dragend", true, true, Some(src_pt));
                 Ok(StepOutput::detail(format!(
-                    "pointer drag {} → {} (HTML5 drag events arrive with the script layer)",
+                    "HTML5 drag {} → {}{}",
                     ref_for(source),
-                    ref_for(dest)
+                    ref_for(dest),
+                    if prevented {
+                        " (drop default prevented)"
+                    } else {
+                        ""
+                    }
                 )))
             }
             Step::ClickPoint { x, y, button, .. } => {
@@ -459,9 +469,33 @@ impl Page {
                 let id = self.resolve(target, epoch)?;
                 Ok(StepOutput::detail(self.upload(id, files, timeout)?))
             }
-            Step::ExpectDownload { .. } => Err(Error::capability_unsupported(
-                "downloads are not supported in this milestone",
-            )),
+            Step::ExpectDownload { save_as, .. } => {
+                if self.downloads().is_empty() {
+                    return Err(Error::step_failed("no download has completed"));
+                }
+                let last = self.downloads().last().expect("non-empty");
+                if let Some(name) = save_as.as_deref().filter(|s| !s.is_empty()) {
+                    let dest = self
+                        .download_dir()
+                        .join(crate::page::sanitize_filename(name));
+                    if dest != last.path {
+                        std::fs::copy(&last.path, &dest).map_err(|e| {
+                            Error::step_failed(format!("saving download as {name}: {e}"))
+                        })?;
+                    }
+                    Ok(StepOutput::detail(format!(
+                        "download saved as {} ({} bytes)",
+                        dest.display(),
+                        last.bytes
+                    )))
+                } else {
+                    Ok(StepOutput::detail(format!(
+                        "download {} ({} bytes)",
+                        last.path.display(),
+                        last.bytes
+                    )))
+                }
+            }
             Step::CollectScroll {
                 as_key,
                 item,
@@ -491,18 +525,18 @@ impl Page {
                     settle_ms: SETTLE_STEP_MS,
                 })
             }
-            Step::Dialog { action, .. } => {
-                let dialogs = self.open_dialogs();
-                if dialogs.is_empty() {
-                    return Err(Error::coded_with(
-                        ErrorCode::CapabilityUnsupported,
-                        "script dialogs (alert/confirm/prompt) need the script layer; no dialog is pending",
-                        json!({ "action": action }),
-                    ));
-                }
-                Err(Error::capability_unsupported(
-                    "resolving <dialog> elements through the dialog op needs the script layer; click its buttons instead",
-                ))
+            Step::Dialog {
+                action,
+                prompt_text,
+                ..
+            } => {
+                let detail = self.resolve_dialog(*action, prompt_text.as_deref())?;
+                Ok(StepOutput {
+                    detail: Some(detail),
+                    extracted: None,
+                    artifact_ids: None,
+                    settle_ms: SETTLE_STEP_MS,
+                })
             }
             Step::Evaluate {
                 expression, as_key, ..
@@ -579,11 +613,7 @@ impl Page {
                 settled.settled && !self.navigation_pending()
             }
             Condition::Settled { .. } => self.settle(SETTLE_STEP_MS).settled,
-            Condition::DownloadCompleted { .. } => {
-                return Err(Error::capability_unsupported(
-                    "downloads are not supported in this milestone",
-                ));
-            }
+            Condition::DownloadCompleted { .. } => !self.downloads().is_empty(),
             Condition::Response {
                 url_includes,
                 status,
@@ -593,10 +623,16 @@ impl Page {
                     && r.url.contains(url_includes.as_str())
                     && status.is_none_or(|s| s == r.status)
             }),
-            Condition::Expression { .. } => {
-                return Err(Error::capability_unsupported(
-                    "waitFor expression needs the script layer",
-                ));
+            Condition::Expression { expression, .. } => {
+                if self.scripting.is_none() {
+                    return Err(Error::capability_unsupported(
+                        "waitFor expression needs the script layer",
+                    ));
+                }
+                match self.run_script(expression, "vector:waitFor") {
+                    Ok(v) => v.is_truthy(),
+                    Err(_) => false,
+                }
             }
         })
     }
@@ -652,6 +688,13 @@ impl Page {
                     continue;
                 }
                 _ => {}
+            }
+            if self.scripting_enabled() && waited_virtual + 50 <= timeout {
+                self.pump_timers(50);
+                self.advance_virtual_time(50);
+                self.settle(budget);
+                waited_virtual += 50;
+                continue;
             }
             return Err(Error::coded_with(
                 ErrorCode::ConditionTimeout,

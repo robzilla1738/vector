@@ -1,0 +1,649 @@
+{
+  "url": "https://regex101.com/",
+  "title": "regex101: build, test, and debug regex",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 720.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://regex101.com/",
+      "sameOrigin": true
+    }
+  ],
+  "text": "[header]\n# regular expressions 101\n[nav]\n## Manage Workspace\nSave & Share\n## Editor\nFlavor: PCRE2 (PHP)\nMatch\nSubstitution\nList\nUnit Tests\nPipeline Pro\n## Tools\nCode Generator\nRegex Debugger\nExport Matches\nBenchmark Regex Pro\nFormat Regex Pro\nSponso⁠rs\n[Fewer distractions and more power with regex101 Pro.]",
+  "headings": [
+    "regular expressions 101",
+    "Manage Workspace",
+    "Editor",
+    "Tools"
+  ],
+  "elements": [
+    {
+      "ref": "r385",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Live Help",
+      "type": "button",
+      "selector": {}
+    },
+    {
+      "ref": "r390",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Keyboard Shortcuts",
+      "type": "button",
+      "selector": {}
+    },
+    {
+      "ref": "r401",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Settings",
+      "type": "button",
+      "selector": {}
+    },
+    {
+      "ref": "r602",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Collapse Explanation",
+      "type": "button",
+      "expanded": true,
+      "selector": {}
+    },
+    {
+      "ref": "r615",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Collapse Match Information",
+      "type": "button",
+      "expanded": true,
+      "selector": {}
+    },
+    {
+      "ref": "r629",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Collapse Quick Reference",
+      "type": "button",
+      "expanded": true,
+      "selector": {}
+    },
+    {
+      "ref": "r643",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "Search reference",
+      "type": "text",
+      "value": "",
+      "placeholder": "Search reference",
+      "selector": {}
+    },
+    {
+      "ref": "r647",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "All Tokens",
+      "selector": {}
+    },
+    {
+      "ref": "r659",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Common Tokens",
+      "selector": {}
+    },
+    {
+      "ref": "r668",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "General Tokens",
+      "selector": {}
+    },
+    {
+      "ref": "r681",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Anchors",
+      "selector": {}
+    },
+    {
+      "ref": "r692",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Meta Sequences",
+      "selector": {}
+    },
+    {
+      "ref": "r702",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Quantifiers",
+      "selector": {}
+    },
+    {
+      "ref": "r712",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Group Constructs",
+      "selector": {}
+    },
+    {
+      "ref": "r722",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Character Classes",
+      "selector": {}
+    },
+    {
+      "ref": "r732",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Flags/Modifiers",
+      "selector": {}
+    },
+    {
+      "ref": "r742",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Substitution",
+      "selector": {}
+    },
+    {
+      "ref": "r760",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "A single character of: a, b or c [abc]",
+      "selector": {}
+    },
+    {
+      "ref": "r766",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "A character except: a, b or c [^abc]",
+      "selector": {}
+    },
+    {
+      "ref": "r772",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "A character in the range: a-z [a-z]",
+      "selector": {}
+    },
+    {
+      "ref": "r778",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "A character not in the range: a-z [^a-z]",
+      "selector": {}
+    },
+    {
+      "ref": "r784",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "A character in the range: a-z or A-Z [a-zA-Z]",
+      "selector": {}
+    },
+    {
+      "ref": "r790",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Any single character .",
+      "selector": {}
+    },
+    {
+      "ref": "r796",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Alternate - match either a or b a|b",
+      "selector": {}
+    },
+    {
+      "ref": "r802",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Any whitespace character \\s",
+      "selector": {}
+    },
+    {
+      "ref": "r808",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Any non-whitespace character \\S",
+      "selector": {}
+    },
+    {
+      "ref": "r814",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Any digit \\d",
+      "selector": {}
+    },
+    {
+      "ref": "r820",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Any non-digit \\D",
+      "selector": {}
+    },
+    {
+      "ref": "r826",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Any word character \\w",
+      "selector": {}
+    },
+    {
+      "ref": "r832",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Any non-word character \\W",
+      "selector": {}
+    },
+    {
+      "ref": "r919",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Regex delimiter",
+      "type": "button",
+      "selector": {}
+    },
+    {
+      "ref": "r926",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Regex options",
+      "type": "button",
+      "selector": {}
+    },
+    {
+      "ref": "r944",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Add test string",
+      "type": "button",
+      "selector": {}
+    },
+    {
+      "ref": "r283",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "regular expressions 101",
+      "href": "https://regex101.com/",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r293",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Upgrade to Pro",
+      "type": "button",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r306",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Enterprise",
+      "type": "button",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r323",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Sponsor",
+      "type": "button",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r336",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Info",
+      "type": "button",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r838",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Non-capturing group (?:...)",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r844",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Capturing Group (...)",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r850",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Zero or one of a a?",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r856",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Zero or more of a a*",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r862",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "One or more of a a+",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r868",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Exactly 3 of a a{3}",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r874",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "3 or more of a a{3,}",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r880",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Between 3 and 6 of a a{3,6}",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r886",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Start of string ^",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r892",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "End of string $",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r898",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "A word boundary \\b",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r904",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Non-word boundary \\B",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r951",
+      "frame": "main",
+      "tag": "section",
+      "role": "region",
+      "name": "Notifications alt+T",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r361",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Community Library",
+      "href": "https://regex101.com/library",
+      "selector": {},
+      "occluded": true
+    },
+    {
+      "ref": "r369",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Account",
+      "href": "https://regex101.com/account/mine",
+      "selector": {},
+      "occluded": true
+    },
+    {
+      "ref": "r375",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Regex Quiz",
+      "href": "https://regex101.com/quiz",
+      "selector": {},
+      "occluded": true
+    },
+    {
+      "ref": "r411",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Save & Share",
+      "selector": {},
+      "occluded": true
+    },
+    {
+      "ref": "r427",
+      "frame": "main",
+      "tag": "li",
+      "role": "button",
+      "name": "Flavor: PCRE2 (PHP)",
+      "selector": {},
+      "occluded": true
+    },
+    {
+      "ref": "r441",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Match",
+      "href": "https://regex101.com/",
+      "selector": {},
+      "occluded": true
+    },
+    {
+      "ref": "r452",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Substitution",
+      "href": "https://regex101.com/substitution",
+      "selector": {},
+      "occluded": true
+    },
+    {
+      "ref": "r468",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "List",
+      "href": "https://regex101.com/list-substitution",
+      "selector": {},
+      "occluded": true
+    },
+    {
+      "ref": "r486",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Unit Tests",
+      "href": "https://regex101.com/unit-tests",
+      "selector": {},
+      "occluded": true
+    },
+    {
+      "ref": "r498",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "PipelinePro",
+      "href": "https://regex101.com/substitution-pipeline",
+      "selector": {},
+      "occluded": true
+    },
+    {
+      "ref": "r584",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Fewer distractions and more power with regex101 Pro.",
+      "type": "button",
+      "selector": {},
+      "occluded": true
+    }
+  ],
+  "formFields": [
+    {
+      "ref": "r643",
+      "label": "Search reference",
+      "type": "text",
+      "value": "",
+      "valid": true
+    }
+  ],
+  "tables": [],
+  "links": [
+    {
+      "ref": "r283",
+      "text": "regular expressions 101",
+      "href": "https://regex101.com/"
+    },
+    {
+      "ref": "r361",
+      "text": "Community Library",
+      "href": "https://regex101.com/library"
+    },
+    {
+      "ref": "r369",
+      "text": "Account",
+      "href": "https://regex101.com/account/mine"
+    },
+    {
+      "ref": "r375",
+      "text": "Regex Quiz",
+      "href": "https://regex101.com/quiz"
+    },
+    {
+      "ref": "r441",
+      "text": "Match",
+      "href": "https://regex101.com/"
+    },
+    {
+      "ref": "r452",
+      "text": "Substitution",
+      "href": "https://regex101.com/substitution"
+    },
+    {
+      "ref": "r468",
+      "text": "List",
+      "href": "https://regex101.com/list-substitution"
+    },
+    {
+      "ref": "r486",
+      "text": "Unit Tests",
+      "href": "https://regex101.com/unit-tests"
+    },
+    {
+      "ref": "r498",
+      "text": "PipelinePro",
+      "href": "https://regex101.com/substitution-pipeline"
+    }
+  ],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 62,
+    "elementsShown": 62,
+    "textChars": 307,
+    "approxTokens": 767
+  }
+}

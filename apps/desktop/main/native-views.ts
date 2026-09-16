@@ -17,6 +17,7 @@ export interface ViewHooks {
 }
 
 const PROFILE_PARTITION = "persist:vector-default";
+const AGENT_PARTITION = "persist:vector-agent";
 
 /** Inject the Vector target marker into a webContents — every document. */
 export function installMarker(view: WebContentsView, marker: string) {
@@ -50,9 +51,10 @@ export function createPageView(opts: {
   background: boolean;
   hooks: ViewHooks;
 }): ViewEntry {
+  const partition = opts.background ? AGENT_PARTITION : PROFILE_PARTITION;
   const view = new WebContentsView({
     webPreferences: {
-      partition: PROFILE_PARTITION,
+      partition,
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
@@ -230,7 +232,12 @@ export function downloadsSession() {
   return session.fromPartition(PROFILE_PARTITION);
 }
 
-/** The shared profile partition all page views run in (cookies, cache, storage). */
+/** The shared profile partition human page views run in (cookies, cache, storage). */
 export function profileSession() {
   return session.fromPartition(PROFILE_PARTITION);
+}
+
+/** Isolated partition for background agent workers (plan A22). */
+export function agentSession() {
+  return session.fromPartition(AGENT_PARTITION);
 }

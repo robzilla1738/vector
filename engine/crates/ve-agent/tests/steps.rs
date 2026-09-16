@@ -572,7 +572,7 @@ fn wait_for_conditions_and_capability_gaps() {
     let result = run(
         &mut page,
         r##"[{"id":"e","op":"waitFor","condition":{"kind":"expression","expression":"document.readyState === 'complete'"},"optional":true},
-            {"id":"d","op":"waitFor","condition":{"kind":"downloadCompleted"},"optional":true},
+            {"id":"d","op":"waitFor","condition":{"kind":"downloadCompleted","timeoutMs":0},"optional":true},
             {"id":"x","op":"evaluate","expression":"1+1","optional":true},
             {"id":"g","op":"dialog","action":"accept","optional":true},
             {"id":"dl","op":"expectDownload","optional":true}]"##,
@@ -582,14 +582,14 @@ fn wait_for_conditions_and_capability_gaps() {
         ProgramStatus::Completed,
         "optional steps do not fail the program"
     );
-    for i in 0..5 {
-        assert_eq!(result.steps[i].status, StepStatus::Failed);
-        assert_eq!(
-            error_code(&result, i),
-            ErrorCode::CapabilityUnsupported,
-            "step {i}"
-        );
-    }
+    // expression + evaluate still need a VM.
+    // downloads (A16) time out immediately when none completed; dialog (A15)
+    // fails with step_failed when none is open.
+    assert_eq!(error_code(&result, 0), ErrorCode::CapabilityUnsupported);
+    assert_eq!(error_code(&result, 1), ErrorCode::ConditionTimeout);
+    assert_eq!(error_code(&result, 2), ErrorCode::CapabilityUnsupported);
+    assert_eq!(error_code(&result, 3), ErrorCode::StepFailed);
+    assert_eq!(error_code(&result, 4), ErrorCode::StepFailed);
 
     // `expect` after a step uses the same conditions.
     let result = run(

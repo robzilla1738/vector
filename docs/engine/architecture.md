@@ -7,7 +7,7 @@ path disagree, the engine is the target and the Chromium path is the fallback.
 Sections 1–13 are the design; the section below records what of it is
 implemented on the integration branch.
 
-## 0. Status (M1 landed)
+## 0. Status (M1 landed; A14–A23 on top)
 
 **M0** (PR #2) merged the twelve-crate workspace with real initial
 implementations and 68 tests. **M1** (PRs #3–#6: core, style/layout,
@@ -69,7 +69,7 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   `open_to_observe`, `click_step`, `fill_step`, `program_10` and
   `diff_after_edit` over the static corpus against the §12 M1 gates.
 - **Node addon and runtime** — `engine/crates/ve-napi` builds
-  `@vector/engine-native` (napi-rs 3, `ABI_VERSION` 3): an `Engine` class
+  `@vector/engine-native` (napi-rs 3, `ABI_VERSION` 4): an `Engine` class
   whose page methods return Promises resolved off the event loop, one
   engine thread per browsing context (`hub.rs`/`host.rs`). The host is a
   JSON ferry over `VectorEngine`'s `*_json` facade — step semantics,
@@ -86,8 +86,8 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   persisted needs-chromium table (24 h TTL), engine-first open with
   Chromium reopen on `capability_unsupported`, mid-program migration and
   replay (`ProgramResult.fallback`, `repair: true` when ref-targeted steps
-  remain). `settings.engineMode: "off" | "auto" | "always"` (default
-  `off`); `pages.open` results carry `routeReason`; `pnpm bench --backend
+  remain).   `settings.engineMode: "off" | "auto" | "always"` (default
+  `auto`); `pages.open` results carry `routeReason`; `pnpm bench --backend
   chrome|vector-engine|both`.
 
 - **Script layer (A13)** — `ve-script::V8Vm` (feature `v8`, decision D1;
@@ -100,26 +100,55 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   errors isolated to the console). Timers live on the page's virtual clock:
   `settle()` fires everything due within 50 ms, drains microtasks, and
   reports `timers(n)`/`timers-later(n)`/`microtasks`. `EngineConfig.scripting`
-  (runtime: `VECTOR_ENGINE_SCRIPTING=1`) is off by default until the DOM
-  bindings land — without them page scripts only see the bare global.
+  (runtime: `VECTOR_ENGINE_SCRIPTING=0` disables it) is on by default so
+  page scripts run. `allowEvaluate` still gates the `evaluate` step.
+
+- **DOM / Web APIs (A14)** — WebIDL traits from `engine/crates/ve-script/idl/*.webidl`
+  (`build.rs`); `ve-agent` implements them over `ve-dom` (`dom.rs` +
+  `dom_prelude.js`). `ve-html` parses with `scripting_enabled`. Exit:
+  22 SPA goldens settle (`engine/conformance/spa-results.json`, hit rate
+  1.0); `interaction-lab` (shadow counter, virtual list, infinite scroll)
+  runs on the engine.
+- **Incremental + routing (A15)** — `Page::update` calls
+  `restyle_incremental` / `relayout_incremental`. `CssCoverage` is always
+  populated; `requiresScript` flips only at 50% miss + geometry.
+  `evaluate`, `dialog`, `waitFor expression`, `javascript:` URLs.
+- **Frames / downloads / drag (A16)** — same-origin and `srcdoc` iframes
+  expose `contentDocument`; cross-origin iframes are a separate `Page`
+  (parent `contentDocument` is null; a second V8 isolate cannot be entered
+  while the parent isolate is entered). Downloads write into the page
+  download dir. `dragTo` fires HTML5 drag events when scripting.
+- **Typed ferry (A17)** — `observeBuf` / `executeBuf` / `screenshotPng`;
+  generation-checked refs; arena recycling.
+- **Default auto (A18)** — corpus FP 0 / FN 0; SPA hit 100%;
+  `engineMode` default `auto`.
+- **Capture / fonts (A19)** — software PNG with `fontdb` system fonts
+  (File sources rasterize); `pages.activate` marks engine pages active.
+- **Published benches (A20)** — `README.md` tables vs Chromium,
+  agent-browser, Lightpanda, local task-success.
+- **Isolation (A21)** — `ve-host` child, parent `NetworkBroker`, macOS
+  App Sandbox / Linux seccomp deny-socket.
+- **Desktop hardening (A22)** — CDP `127.0.0.1`, port files `0600`,
+  `persist:vector-agent`, `gateway.key` + `safeStorage`, 7-day event prune.
+- **H3 / WS / SW (A23)** — `Alt-Svc` h3 advertisement (hyper speaks
+  HTTP/1.1 and HTTP/2); RFC 6455 `ws`/`wss`; SW `register` with `respond:`
+  intercept only.
 
 ### Deferred — reports `capability_unsupported`
 
 The addon forwards to `ve-agent`, so these are the engine's own gaps
-(`ve-agent/src/executor.rs`, `page.rs`, `target.rs`), plus two runtime-side
-refusals that stand regardless of what the engine can do.
+(`ve-agent/src/executor.rs`, `page.rs`, `target.rs`).
 
 | Surface | Status |
 |---|---|
-| `evaluate` | **supported** when the engine runs with `scripting` (V8, plan A13) and the page was opened with `allowEvaluate`; JSON-shaped result under `as` (default `value`). `waitFor expression`, `javascript:` URLs and DOM access from scripts still need the bindings of plan A14 |
-| `dialog` | no script means no `alert/confirm/prompt` can be pending; `<dialog>` elements are driven by clicking their controls |
-| `expectDownload`, `waitFor downloadCompleted`, links with `download` | downloads are not supported |
-| `xpath:` targets | unsupported (`r<n>`, `css:`, `text:`/`text=`, `role=…[name=…]`) |
-| `dragTo` | pointer sequence only — no HTML5 drag events until the script layer |
+| `evaluate` | **supported** when the engine runs with `scripting` (V8) and the page was opened with `allowEvaluate` |
+| `dialog` | **supported** when a script dialog is pending; `step_failed` if none is open |
+| `expectDownload`, `waitFor downloadCompleted`, links with `download` | **supported** (A16); files write into the page download dir |
+| `xpath:` targets | unsupported (`r<n>`, `css:`, `text:`/`text=`, `role=…[name=…]`) — used as the auto-mode fallback probe |
+| `dragTo` | **supported** HTML5 `dragstart`/`enter`/`over`/`drop`/`dragend` when scripting is on |
 | control-flow `nodes` | interpreted by the runtime; the engine executes flat `steps` |
-| `<script>`-dependent documents | classified on open (`RoutingInfo.routeReason`) and, in `auto`, reopened on Chromium. Reasons: `empty-shell`, `empty-root-container: <selector>`, `noscript-requires-js`, `meta-refresh-javascript`, `body-onload`, `form-onsubmit`, `template-heavy`, `unsupported-content: <canvas>-only body` / `media-only body` / `application/pdf` / `<content-type>`; `static` otherwise |
-| `pages.capture` on an engine page (runtime) | `PageService.capture` throws `capability_unsupported` for `vector-engine` pages even though the addon's `screenshot` renders a software PNG — not wired in M1 |
-| `pages.activate` on an engine page (runtime) | `capability_unsupported` — headless, no native view |
+| `<script>`-dependent documents | classified on open (`RoutingInfo.routeReason`) and, in `auto`, reopened on Chromium |
+| `pages.capture` / `pages.activate` on an engine page | **supported** (A19): capture uses the software renderer; activate sets the active page (headless, no native Chromium view) |
 
 Supported through the addon and therefore on the runtime's engine backend:
 `navigate`, `back`/`forward` (engine session history), `reload`, `stop`,
@@ -128,16 +157,15 @@ Supported through the addon and therefore on the runtime's engine backend:
 (one or many values, by value then label), `scroll`, `clickPoint`,
 `upload`, `waitFor` (`textVisible`, `selector`, `refReady`, `urlMatches`,
 `navigationSettled`, `settled`, `response`), `extract`, `collectScroll`,
-`screenshot` (software renderer, `MetricShaper` text when no fonts are
-registered).
+`screenshot` (software renderer, system fonts via `fontdb`).
 
-Also not in M1 (design §13 list stands): `position: sticky` (laid out as
+Also remaining: `position: sticky` (laid out as
 `relative`), parent/child margin collapsing, collapsed table borders, writing
-modes, `@font-face`/`@keyframes` (`@import` is followed one level), cross-origin
-frames, downloads, persistent cache, process isolation, DOM bindings in the
-VM, slot assignment in the accessibility tree, live regions. Replaced
-elements are sized from natural size / `width`/`height` attributes / the
-300×150 default but not painted.
+modes, `@keyframes`, Canvas/WebGL, speaking HTTP/3 (QUIC) rather than
+recording `Alt-Svc`, a second V8 isolate per cross-origin iframe, slot
+assignment in the accessibility tree, live regions. Replaced elements are
+sized from natural size / `width`/`height` attributes / the 300×150
+default but not painted.
 
 ### Measured
 
@@ -175,12 +203,12 @@ Chromium observe script.
 
 1. ~~Nested-flex memo fix unverified.~~ Fixed: the 8-entry memo FIFO evicted live keys (about 3 per nesting level), so nested containers re-laid out cold and the test ran for 388 s. `ITEM_MEMOS` is 256, snapshots no longer copy nested memos, and a nested flex/grid item measured by a flex container is fit-content sized instead of filling the available width. `cargo test -p ve-layout` runs in well under a second.
 2. ~~Click-step p95 2.50 ms vs the 2 ms gate.~~ 1.31 ms after the nested-flex fix; all six `perf --gate m1` gates pass.
-3. **Runtime refusals on engine pages:** `pages.capture` and `pages.activate` short-circuit for `vector-engine` pages in `apps/runtime/src/services/pages.ts` even though the driver's `screenshot()` now works; lift the guard and route capture through the engine.
-4. **Engine still unsupported (by design in M1):** `evaluate`, `waitFor { kind: "expression" }`, `dialog`, downloads, `xpath:` targets — all route to Chromium via `capability_unsupported`.
-5. ~~CI workflow not in the repo.~~ `.github/workflows/engine.yml` (fmt, clippy, test, optional features, perf gate, WPT manifest, addon build) and `runtime.yml` (typecheck, unit, integration with headless Chromium and with the engine addon, e2e).
+3. ~~Runtime refusals on engine pages.~~ `pages.capture` routes through the software renderer; `pages.activate` / `pages.openLive` mark the engine page active.
+4. ~~Engine gaps that forced Chromium in M1.~~ `evaluate` (when `allowEvaluate`), `waitFor expression`, `dialog`, downloads, HTML5 `dragTo` are implemented. `xpath:` remains the auto-mode fallback probe.
+5. ~~CI workflow not in the repo.~~ `.github/workflows/engine.yml` (fmt, clippy, test, optional features, V8 SPA goldens, perf gate, WPT manifest, addon build) and `runtime.yml` (typecheck, unit, integration with headless Chromium and with the engine addon, e2e).
 6. **UI screenshots are not committed.** `docs/ui/screenshots/*.png` (15 files) could not travel through the text-only API push; they are attached to the build thread as a zip and should be added from a machine with git credentials. `docs/ui/shell.md` references them by path.
 7. ~~Corpus size.~~ `engine/fixtures/public/` holds 36 server-rendered public pages and 22 client-rendered shells (manifest `engine/conformance/corpus.json`, fetcher `engine/tools/corpus/fetch.mjs`, external CSS inlined). The 8 hand-written fixtures keep their goldens; the public corpus is gated on routing and budgets, not goldens, because the pages change upstream.
-8. ~~Router false-positive rate not measured.~~ `cargo test -p ve-api --test corpus` (results in `engine/conformance/corpus-results.json`): **false positives 0/36**, **false negatives 1/22** (photopea: real landing copy, script-only app — a gray zone the heuristic cannot see), 0/36 static pages over the 10 k-token Compact budget (range 1.2–9.0 k; the 4 k design target holds only on the small fixtures, see plan A10). Thresholds were tuned from this data: empty-shell < 500 chars, noscript < 3000 chars, new `script-heavy` rule (≥ 5 external scripts and < 2000 chars), `form-without-action-or-submit` only on pages under 1000 chars (a script-only search box no longer routes a whole docs page to Chromium). Open-to-observe on these pages is 3–350 ms with two MDN outliers at 1.2 s (670-element pages; full cascade + layout, see A15).
+8. ~~Router false-positive rate not measured.~~ `cargo test -p ve-api --test corpus` (results in `engine/conformance/corpus-results.json`): **false positives 0/36**, **false negatives 0/22**, 0/36 static pages over the 10 k-token Compact budget (range 1.2–9.0 k; the 4 k design target holds only on the small fixtures, see plan A10). Thresholds were tuned from this data: empty-shell < 500 chars, noscript < 3000 chars, `script-heavy` (≥ 2 relative `.js` URLs injected from one inline script, or ≥ 5 external scripts and < 2000 chars), `form-without-action-or-submit` only on pages under 1000 chars. Open-to-observe on these pages is 3–350 ms with two MDN outliers at 1.2 s (670-element pages; full cascade + layout, see A15). SPA settle/hit-rate is gated by `cargo test -p ve-api --features v8 --test spa` (`engine/conformance/spa-results.json`, hit rate 1.0, 22/22 settled).
 
 
 ## 1. Thesis and non-goals
@@ -643,8 +671,8 @@ observation) out.
   `textVisible` is a shown-text index lookup; `selector` reads arena
   attached/visible/hidden/detached state; `refReady` = actionability passes;
   `navigationSettled` = new document parsed + `settle()`; `response` = a
-  `ve-net` completion matching `urlIncludes`/`status`; `expression` needs
-  `ve-script` → `capability_unsupported` in M1.
+  `ve-net` completion matching `urlIncludes`/`status`; `expression` runs
+  in the page VM when scripting is attached.
 - **extract**: one pass resolving all fields against the arena; `attribute`
   reads the attribute, else `textContent` (deterministic, layout-free).
 - **collectScroll**: loop { scroll container one viewport; `settle()`;
@@ -934,7 +962,7 @@ and `DriverPage` over `ve-napi`:
   `executeProgram(steps): Promise<ProgramResult>` lets the executor hand the
   engine whole chunks — the zero-IPC path. `observe(req)` returns the
   engine's Compact `ObservationContent`; `expandRef` returns the Full
-  subtree; `evaluate` throws `capability_unsupported` until M2.
+  subtree; `evaluate` runs in the page VM when `allowEvaluate` is on.
 - `setEvents` wires `onNavigated(url, generation)`, `onTitleChanged`,
   `onLoading`, `onDialog`, `onDownload`, `onResponse` (metadata; body only
   when capture-worthy), `onDestroyed`.
@@ -1044,15 +1072,15 @@ plus payload bytes and `approxTokens` per observe.
 | Vello/wgpu instability on CI machines | `gfx` is a feature; CI uses the CPU rasterizer; the agent path never requires it |
 | Parallel work on `engine/` scaffolding drifts from this document | crate names, feature flags, and the acceptance table here are normative; deviations require editing this file in the same PR |
 
-**Not in M1**: any JavaScript execution; floats/tables layout; `@font-face`;
-pixels of any kind; `evaluate`/`expression`; iframes beyond same-origin
-static inclusion (cross-origin frames are listed in `frames` and otherwise
-empty); downloads; dialogs; HTTP/3; persistent cache; process isolation;
-Windows/Linux shells.
+**Not in M1** (shipped in A13–A23 unless noted): JavaScript execution; floats/
+tables layout; `@font-face` / system fonts; software pixels; `evaluate`/
+`expression`; iframes; downloads; dialogs; HTTP/3 advertisement; persistent
+cache; process isolation (`ve-host`).
 
-**Not in M2**: Canvas 2D, WebGL, WebAudio, WebRTC, WebSockets, Workers,
-Service Workers, WebAssembly, Notifications, Clipboard, Payment, WebAuthn,
-`<video>/<audio>` playback (elements exist, do not play), CSS
-animations/transitions (end state only), drag-and-drop beyond synthesized
-pointer sequences, IndexedDB (localStorage only), printing, extensions,
-h3, sandboxed processes.
+**Not in this tree**: Canvas 2D, WebGL, WebAudio, WebRTC, Workers (beyond
+the SW `register` + `respond:` intercept), WebAssembly, Notifications,
+Clipboard, Payment, WebAuthn, `<video>/<audio>` playback (elements exist, do
+not play), CSS animations/transitions (end state only), IndexedDB
+(localStorage only), printing, extensions, speaking HTTP/3 (QUIC).
+WebSockets are RFC 6455 including `wss`. HTML5 `dragTo` is implemented
+when scripting is on.

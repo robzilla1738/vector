@@ -152,7 +152,7 @@ impl Hub {
         self.pages.insert(page, context_id);
         let url = url.to_owned();
         match self.context(context_id) {
-            Ok(host) => host.call(move |s| s.open(page, &url, &options)),
+            Ok(host) => host.open(page, &url, &options),
             Err(e) => fail(&e),
         }
     }
@@ -164,7 +164,7 @@ impl Hub {
             Err(e) => return fail(&e),
         };
         match self.host_of(page) {
-            Ok(h) => h.call(move |s| s.observe(page, &options)),
+            Ok(h) => h.observe(page, &options),
             Err(e) => fail(&e),
         }
     }
@@ -184,7 +184,7 @@ impl Hub {
             Err(e) => return fail(&e.into()),
         };
         match self.host_of(page) {
-            Ok(h) => h.call(move |s| s.execute(page, &steps, &opts)),
+            Ok(h) => h.execute(page, &steps, &opts),
             Err(e) => fail(&e),
         }
     }
@@ -196,7 +196,7 @@ impl Hub {
             Err(e) => return fail(&e),
         };
         match self.host_of(page) {
-            Ok(h) => h.call(move |s| s.screenshot(page, &options)),
+            Ok(h) => h.screenshot(page, &options),
             Err(e) => fail(&e),
         }
     }
@@ -207,7 +207,7 @@ impl Hub {
             return immediate(json!({ "ok": true, "closed": false }));
         };
         match self.context(ctx) {
-            Ok(h) => h.call(move |s| s.close(page)),
+            Ok(h) => h.close(page),
             Err(e) => fail(&e),
         }
     }
@@ -216,7 +216,7 @@ impl Hub {
     pub fn get_cookies(&self, context_id: u32, url: Option<&str>) -> Receiver<Value> {
         let url = url.map(str::to_owned);
         match self.context(context_id) {
-            Ok(h) => h.call(move |s| s.get_cookies(url.as_deref())),
+            Ok(h) => h.get_cookies(url.as_deref()),
             Err(e) => fail(&e),
         }
     }
@@ -225,7 +225,7 @@ impl Hub {
     pub fn set_cookies(&self, context_id: u32, cookies_json: &str) -> Receiver<Value> {
         let cookies = cookies_json.to_owned();
         match self.context(context_id) {
-            Ok(h) => h.call(move |s| s.set_cookies(&cookies)),
+            Ok(h) => h.set_cookies(&cookies),
             Err(e) => fail(&e),
         }
     }

@@ -24,12 +24,16 @@
 
 #![forbid(unsafe_code)]
 
+pub mod broker;
 pub mod cache;
 pub mod cookie;
+pub mod http3;
 #[cfg(feature = "http")]
 pub mod hyper_transport;
 pub mod policy;
 pub mod transport;
+pub mod websocket;
+pub mod wire;
 
 use std::collections::VecDeque;
 use std::time::{Instant, SystemTime};
@@ -41,12 +45,16 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use ve_core::Stage;
 
+pub use broker::{FetchJob, NetworkBroker};
 pub use cache::{CacheLookup, HttpCache};
 pub use cookie::{BrowserCookie, Cookie, CookieJar, SameSite};
+pub use http3::{ProtocolSupport, advertises_http3};
 #[cfg(feature = "http")]
 pub use hyper_transport::HyperTransport;
 pub use policy::NetworkPolicy;
-pub use transport::{MockTransport, NullTransport, Transport};
+pub use transport::{FnTransport, MockTransport, NullTransport, Transport};
+pub use websocket::WebSocketClient;
+pub use wire::{WireRequest, WireResponse};
 
 /// Errors from the network layer.
 #[derive(Debug, thiserror::Error)]
@@ -327,6 +335,8 @@ pub struct NetworkContext {
     /// Maximum retained [`CompletedResponse`] records.
     pub completed_capacity: usize,
     transport: Box<dyn Transport>,
+    /// Protocols observed on this context (plan A23).
+    pub protocols: crate::http3::ProtocolSupport,
     in_flight: Vec<InFlight>,
     completed: VecDeque<CompletedResponse>,
     next_request_id: u64,
@@ -370,6 +380,7 @@ impl NetworkContext {
             max_redirects: 20,
             completed_capacity: 256,
             transport,
+            protocols: crate::http3::ProtocolSupport::default(),
             in_flight: Vec::new(),
             completed: VecDeque::new(),
             next_request_id: 0,
@@ -457,6 +468,14 @@ impl NetworkContext {
                 Prepared::Send(p) => *p,
             };
             let response = self.transport.send(&prepared.request)?;
+            if crate::http3::advertises_http3(&response.headers) {
+                self.protocols.http3 = true;
+            }
+            match prepared.request.url.scheme() {
+                "http" | "https" => self.protocols.http1 = true,
+                "ws" | "wss" => self.protocols.websocket = true,
+                _ => {}
+            }
             match self.finish(prepared, response, now, &mut redirects)? {
                 Finished::Done(response) => return Ok(response),
                 Finished::Redirect(next) => request = next,
@@ -904,7 +923,7 @@ fn percent_decode(input: &str) -> Vec<u8> {
 }
 
 /// Standard (and URL-safe) base64 decoding with optional padding.
-fn base64_decode(input: &[u8]) -> Option<Vec<u8>> {
+pub fn base64_decode(input: &[u8]) -> Option<Vec<u8>> {
     fn val(c: u8) -> Option<u32> {
         Some(match c {
             b'A'..=b'Z' => u32::from(c - b'A'),

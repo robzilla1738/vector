@@ -1,0 +1,86 @@
+{
+  "url": "https://todomvc.com/examples/jquery/dist/",
+  "title": "TodoMVC: jQuery",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 0.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://todomvc.com/examples/jquery/dist/",
+      "sameOrigin": true
+    }
+  ],
+  "text": "# todos\n[footer]\nDouble-click to edit a todo\nCreated by Sindre Sorhus\nUpdated by the TodoMVC Team\nPart of TodoMVC",
+  "headings": [
+    "todos"
+  ],
+  "elements": [
+    {
+      "ref": "r37",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "What needs to be done?",
+      "type": "text",
+      "value": "",
+      "placeholder": "What needs to be done?",
+      "selector": {}
+    },
+    {
+      "ref": "r63",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Sindre Sorhus",
+      "href": "http://sindresorhus.com/",
+      "selector": {}
+    },
+    {
+      "ref": "r71",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "TodoMVC",
+      "href": "http://todomvc.com/",
+      "selector": {}
+    }
+  ],
+  "formFields": [
+    {
+      "ref": "r37",
+      "label": "What needs to be done?",
+      "type": "text",
+      "value": "",
+      "valid": true
+    }
+  ],
+  "tables": [],
+  "links": [
+    {
+      "ref": "r63",
+      "text": "Sindre Sorhus",
+      "href": "http://sindresorhus.com/"
+    },
+    {
+      "ref": "r71",
+      "text": "TodoMVC",
+      "href": "http://todomvc.com/"
+    }
+  ],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 3,
+    "elementsShown": 3,
+    "textChars": 113,
+    "approxTokens": 113
+  }
+}

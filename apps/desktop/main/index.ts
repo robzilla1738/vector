@@ -7,8 +7,8 @@
  * exposes native.* methods to it over fork IPC and forwards its event
  * stream to the renderer.
  */
-import { app, BaseWindow, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell, WebContentsView } from "electron";
-import { mkdirSync, readFileSync, existsSync, writeFileSync } from "node:fs";
+import { app, BaseWindow, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, safeStorage, shell, WebContentsView } from "electron";
+import { mkdirSync, readFileSync, existsSync, writeFileSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { RpcChannel, type Transport } from "@vector/contracts";
@@ -44,7 +44,8 @@ function applyAppearance(theme: "dark" | "light") {
 }
 
 // CDP must be enabled before app ready. Port 0 → OS picks; the real port is
-// written to <userData>/DevToolsActivePort.
+// written to <userData>/DevToolsActivePort. Bind loopback only (plan A22).
+app.commandLine.appendSwitch("remote-debugging-address", "127.0.0.1");
 app.commandLine.appendSwitch("remote-debugging-port", "0");
 
 let win: BaseWindow | null = null;
@@ -95,7 +96,14 @@ function readCdpPort(): number {
     if (existsSync(f)) {
       const [port] = readFileSync(f, "utf8").split("\n");
       const n = Number(port);
-      if (n > 0) return n;
+      if (n > 0) {
+        try {
+          chmodSync(f, 0o600);
+        } catch {
+          /* non-POSIX fs */
+        }
+        return n;
+      }
     }
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
   }
@@ -343,6 +351,36 @@ function registerNativeHandlers(ch: RpcChannel) {
     }
     return { ok: true, count };
   });
+  ch.onMethod("native.storeSecret", (p) => {
+    const { name, value } = p as { name: string; value: string };
+    const dir = join(DATA_DIR, "secrets");
+    mkdirSync(dir, { recursive: true });
+    const path = join(dir, name.replace(/[^a-zA-Z0-9._-]/g, "_"));
+    const payload = safeStorage.isEncryptionAvailable()
+      ? safeStorage.encryptString(value)
+      : Buffer.from(value, "utf8");
+    writeFileSync(path, payload, { mode: 0o600 });
+    try {
+      chmodSync(path, 0o600);
+    } catch {
+      /* non-POSIX fs */
+    }
+    return { ok: true };
+  });
+  ch.onMethod("native.readSecret", (p) => {
+    const { name } = p as { name: string };
+    const path = join(DATA_DIR, "secrets", name.replace(/[^a-zA-Z0-9._-]/g, "_"));
+    if (!existsSync(path)) return { value: undefined };
+    const raw = readFileSync(path);
+    try {
+      const value = safeStorage.isEncryptionAvailable()
+        ? safeStorage.decryptString(raw)
+        : raw.toString("utf8");
+      return { value };
+    } catch {
+      return { value: undefined };
+    }
+  });
 }
 
 // ---------- stage layout ----------
@@ -557,6 +595,12 @@ function wirePopupAdoption() {
 async function boot() {
   const cdpPort = readCdpPort();
   log("cdp port", cdpPort);
+  try {
+    writeFileSync(join(DATA_DIR, CDP_PORT_FILE), String(cdpPort), { mode: 0o600 });
+    chmodSync(join(DATA_DIR, CDP_PORT_FILE), 0o600);
+  } catch {
+    /* non-POSIX fs */
+  }
 
   // spawn the runtime — forked under ELECTRON_RUN_AS_NODE
   const runtime = spawnRuntime({

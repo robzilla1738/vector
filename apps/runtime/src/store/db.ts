@@ -3,6 +3,7 @@
  * The runtime process is the only writer; the renderer and external
  * clients read through the API/event stream.
  */
+import { chmodSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 
 const SCHEMA = `
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS model_calls(
 CREATE TABLE IF NOT EXISTS events(
   seq INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT, type TEXT NOT NULL,
   payload TEXT NOT NULL, ts REAL NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
 CREATE TABLE IF NOT EXISTS history(
   url TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', page_id TEXT, visited_at REAL NOT NULL,
   PRIMARY KEY(url, visited_at));
@@ -109,6 +111,7 @@ const MIGRATIONS = [
   "ALTER TABLE downloads ADD COLUMN total_bytes INTEGER",
   "ALTER TABLE pages ADD COLUMN controller_epoch INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE operation_invocations ADD COLUMN request_key TEXT",
+  "CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts)",
 ];
 
 export type Db = DatabaseSync;
@@ -135,6 +138,13 @@ export function openDb(path: string): DatabaseSync {
   const db = new DatabaseSync(path);
   db.exec(SCHEMA);
   applyMigrations(db);
+  if (path !== ":memory:") {
+    try {
+      chmodSync(path, 0o600);
+    } catch {
+      /* non-POSIX fs */
+    }
+  }
   return db;
 }
 

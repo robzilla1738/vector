@@ -53,6 +53,7 @@ pub mod table;
 pub mod text;
 
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use ve_core::{Edges, NodeId, Point, Rect, Revision, Size, Stage};
 use ve_dom::{DirtyFlags, Document, Node};
@@ -86,6 +87,22 @@ pub struct LayoutTree {
 }
 
 impl LayoutTree {
+    /// An empty tree used as a stand-in when taking ownership of a previous
+    /// layout for [`LayoutEngine::relayout_incremental`].
+    #[must_use]
+    pub fn blank(viewport: Size) -> Self {
+        Self {
+            root: LayoutBox::new(None, BoxKind::Block, Rc::new(ComputedStyle::initial())),
+            viewport,
+            stacking: StackingContext::default(),
+            geometry: HashMap::new(),
+            clips: HashMap::new(),
+            paint: Vec::new(),
+            revision: Revision(0),
+            boxes_laid_out: 0,
+        }
+    }
+
     /// Border-box rectangle of `node` (first fragment; union for inlines).
     #[must_use]
     pub fn rect_of(&self, node: NodeId) -> Option<Rect> {

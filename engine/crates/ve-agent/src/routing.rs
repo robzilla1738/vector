@@ -12,11 +12,9 @@ use ve_dom::{Document, NodeKind};
 
 /// CSS coverage counters from `ve-style`.
 ///
-/// **Hook:** the layout track is adding `declarations_total` / `unknown` /
-/// `deferred` counters to the style engine. Until they land this is always
-/// `None`; once present, [`classify`] should also set `requires_script` when
-/// `(unknown + deferred) / declarations_total > 5 %` for declarations that
-/// affect `display` / `position` / `visibility`.
+/// Always populated after parse. `requires_script` flips only when the miss
+/// ratio exceeds 50% *and* missed declarations affect display / position /
+/// visibility. A 5% threshold false-positives real stylesheets.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CssCoverage {
@@ -105,6 +103,66 @@ fn is_json_like_script(ty: Option<&str>) -> bool {
             || t == "speculationrules"
             || t.ends_with("+json")
     })
+}
+
+fn looks_like_js_url(s: &str) -> bool {
+    let path = s.split(['?', '#']).next().unwrap_or(s).trim();
+    path.len() > 3 && path.to_ascii_lowercase().ends_with(".js")
+}
+
+fn is_relative_js_url(s: &str) -> bool {
+    looks_like_js_url(s) && !s.contains("://") && !s.starts_with("//")
+}
+
+/// Unique relative `.js` URLs quoted in `text` (app bundles, not `https://…/analytics.js`).
+fn quoted_js_urls(text: &str) -> usize {
+    let mut urls = std::collections::BTreeSet::new();
+    let bytes = text.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let q = bytes[i];
+        if q == b'"' || q == b'\'' {
+            let rest = &text[i + 1..];
+            if let Some(end) = rest.find(q as char) {
+                let inner = &rest[..end];
+                if is_relative_js_url(inner) {
+                    urls.insert(inner.to_ascii_lowercase());
+                }
+                i += end + 2;
+                continue;
+            }
+        }
+        i += 1;
+    }
+    urls.len()
+}
+
+fn creates_script_element(text: &str) -> bool {
+    let t = text.to_ascii_lowercase();
+    t.contains("createelement")
+        && (t.contains("createelement('script'")
+            || t.contains("createelement(\"script\")")
+            || t.contains("createelement(`script`")
+            || t.contains("createelement(isjs")
+            || t.contains("createelement(is_js"))
+}
+
+/// Inline scripts that inject two or more distinct `.js` files in one
+/// tag (Photopea's app loader). A page of one-file analytics snippets does
+/// not match: we take the max per script, not the sum.
+fn dynamic_script_loads(doc: &Document) -> usize {
+    let mut max = 0usize;
+    for id in doc.elements() {
+        let Some(e) = doc.element(id) else { continue };
+        if e.name != "script" || e.has_attr("src") || is_json_like_script(e.attr("type")) {
+            continue;
+        }
+        let text = doc.text_content(id);
+        if creates_script_element(&text) {
+            max = max.max(quoted_js_urls(&text));
+        }
+    }
+    max
 }
 
 /// Classifies a parsed document. `content_type` is the response MIME type.
@@ -275,7 +333,14 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
     } else if body_media_only {
         Some("unsupported-content: media-only body".into())
     } else {
-        None
+        let injected = dynamic_script_loads(doc);
+        if injected >= 2 {
+            Some(format!(
+                "dynamic-script-loader: inline script injects {injected} .js resources"
+            ))
+        } else {
+            None
+        }
     };
 
     match reason {
@@ -385,6 +450,19 @@ mod tests {
             "<template><p>a</p></template><template><p>b</p></template><slot></slot><p>x</p>",
         );
         assert!(templates.route_reason.starts_with("template-heavy"));
+
+        let loader = classify_html(
+            r#"<p>marketing copy that is long enough not to look like a shell. extra words here.</p>
+               <script>
+                 var fls = ["code/a.js", "code/b.js", "code/c.js"];
+                 document.createElement(isJS ? "script" : "link");
+               </script>"#,
+        );
+        assert!(
+            loader.route_reason.starts_with("dynamic-script-loader"),
+            "{}",
+            loader.route_reason
+        );
 
         let canvas = classify_html("<body><canvas></canvas></body>");
         assert!(canvas.route_reason.contains("canvas"));

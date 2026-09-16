@@ -66,6 +66,8 @@ jobs:
         run: cargo test -p ve-script --features v8
       - name: Page scripting on V8 (timers, console, evaluate gating)
         run: cargo test -p ve-agent --features v8
+      - name: SPA fixtures settle on V8
+        run: cargo test -p ve-api --features v8 --test spa
       - run: cargo test -p ve-gfx --features images
 
   perf-gate:

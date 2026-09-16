@@ -6,7 +6,7 @@
 //! stores plain strings.
 
 use std::borrow::Cow;
-use std::cell::{Ref, RefCell};
+use std::cell::{Cell, Ref, RefCell};
 use std::collections::HashMap;
 
 use html5ever::tendril::StrTendril;
@@ -21,6 +21,8 @@ pub struct DomSink {
     doc: RefCell<Document>,
     names: RefCell<HashMap<NodeId, QualName>>,
     errors: RefCell<Vec<String>>,
+    /// First element created during this parse (the fragment context element).
+    first_element: Cell<Option<NodeId>>,
 }
 
 impl DomSink {
@@ -31,7 +33,32 @@ impl DomSink {
             doc: RefCell::new(doc),
             names: RefCell::new(HashMap::new()),
             errors: RefCell::new(Vec::new()),
+            first_element: Cell::new(None),
         }
+    }
+
+    /// A sink over an existing document, with `elem_name` seeded for every
+    /// live element so fragment parsing can use a live context node.
+    #[must_use]
+    pub fn for_existing(doc: Document) -> Self {
+        let mut names = HashMap::new();
+        for id in doc.elements() {
+            if let Some(e) = doc.element(id) {
+                names.insert(id, qual_name_for(e.namespace.uri(), &e.name));
+            }
+        }
+        Self {
+            doc: RefCell::new(doc),
+            names: RefCell::new(names),
+            errors: RefCell::new(Vec::new()),
+            first_element: Cell::new(None),
+        }
+    }
+
+    /// The first element `create_element` produced, if any.
+    #[must_use]
+    pub fn first_element(&self) -> Option<NodeId> {
+        self.first_element.get()
     }
 
     fn convert_attrs(attrs: Vec<Attribute>) -> Vec<ve_dom::Attribute> {
@@ -56,6 +83,14 @@ impl DomSink {
     }
 }
 
+fn qual_name_for(ns_uri: &str, local: &str) -> QualName {
+    QualName::new(
+        None,
+        html5ever::Namespace::from(ns_uri),
+        html5ever::LocalName::from(local),
+    )
+}
+
 /// `prefix:local` for prefixed attributes, `local` otherwise.
 fn qualified_attr_name(name: &QualName) -> String {
     match &name.prefix {
@@ -71,6 +106,7 @@ impl TreeSink for DomSink {
 
     fn finish(self) -> ParseOutcome {
         ParseOutcome {
+            context_element: self.first_element.get(),
             document: self.doc.into_inner(),
             errors: self.errors.into_inner(),
         }
@@ -106,6 +142,9 @@ impl TreeSink for DomSink {
                 .expect("fresh template element");
         }
         self.names.borrow_mut().insert(id, name);
+        if self.first_element.get().is_none() {
+            self.first_element.set(Some(id));
+        }
         id
     }
 

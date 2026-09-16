@@ -29,7 +29,7 @@ afterAll(() => {
 
 describe("restart recovery", () => {
   it("marks live runs interrupted and detaches pages on reopen", async () => {
-    const env = { ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_ELECTRON_CDP: "" };
+    const env = { ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_ELECTRON_CDP: "", VECTOR_ENGINE_MODE: "off" };
 
     const rt1: RuntimeHandle = await startRuntime(env);
     const page = await rt1.invoke("pages.open", { url: `${RECORDS}/records`, background: true }) as PageTarget;

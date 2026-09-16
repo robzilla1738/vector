@@ -59,6 +59,14 @@ describe("Repo", () => {
     expect(r.eventsSince(0, 10, "run-1").events.map((e) => e.type)).toEqual(["c"]);
   });
 
+  it("prunes events older than the retention window", () => {
+    const r = memRepo();
+    r.appendEvent({ type: "old", payload: {}, ts: Date.now() - 8 * 24 * 60 * 60 * 1000 });
+    r.appendEvent({ type: "new", payload: {}, ts: Date.now() });
+    expect(r.pruneEvents()).toBeGreaterThanOrEqual(1);
+    expect(r.eventsSince(0).events.map((e) => e.type)).toEqual(["new"]);
+  });
+
   it("persists runs, steps, results, programs, history", () => {
     const r = memRepo();
     r.saveRun(run("r1"));

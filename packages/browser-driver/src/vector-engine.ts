@@ -41,8 +41,11 @@ export interface NativeEngine {
   newContext(optionsJson?: string | null): number;
   open(contextId: number, url: string, optionsJson?: string | null): Promise<string>;
   observe(page: number, optionsJson?: string | null): Promise<string>;
+  observeBuf?(page: number, options?: Buffer | null): Promise<Buffer>;
   execute(page: number, stepsJson: string, optionsJson?: string | null): Promise<string>;
+  executeBuf?(page: number, steps: Buffer, options?: Buffer | null): Promise<Buffer>;
   screenshot(page: number, optionsJson?: string | null): Promise<string>;
+  screenshotPng?(page: number, fullPage?: boolean | null): Promise<{ width: number; height: number; scale: number; fullPage: boolean; png: Buffer }>;
   close(page: number): Promise<string>;
   getCookies(contextId: number, url?: string | null): Promise<string>;
   setCookies(contextId: number, cookiesJson: string): Promise<string>;
@@ -170,6 +173,10 @@ export function unwrapNative<T>(json: string): T {
   return parsed as T;
 }
 
+function unwrapNativeFromBuf<T>(buf: Buffer): T {
+  return unwrapNative<T>(buf.toString("utf8"));
+}
+
 /** `Omit` that distributes over the Step union so each op keeps its own fields. */
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 type StepInput = DistributiveOmit<Step, "id"> & { id?: string };
@@ -251,13 +258,16 @@ export class VectorEnginePage implements DriverPage {
     if (mayNavigate) this.events.onLoading?.(true);
     let res: ExecuteResult;
     try {
-      res = unwrapNative<ExecuteResult>(
-        await this.native.execute(
-          this.pageNum,
-          JSON.stringify(steps),
-          JSON.stringify({ returnObservation: opts.returnObservation ? JSON.parse(observeOptions(opts.returnObservation)) : undefined }),
-        ),
-      );
+      const optionsJson = JSON.stringify({ returnObservation: opts.returnObservation ? JSON.parse(observeOptions(opts.returnObservation)) : undefined });
+      if (this.native.executeBuf) {
+        res = unwrapNativeFromBuf<ExecuteResult>(
+          await this.native.executeBuf(this.pageNum, Buffer.from(JSON.stringify(steps), "utf8"), Buffer.from(optionsJson, "utf8")),
+        );
+      } else {
+        res = unwrapNative<ExecuteResult>(
+          await this.native.execute(this.pageNum, JSON.stringify(steps), optionsJson),
+        );
+      }
     } finally {
       if (mayNavigate) this.events.onLoading?.(false);
     }
@@ -386,7 +396,15 @@ export class VectorEnginePage implements DriverPage {
   }
 
   async waitForDownload(): Promise<{ suggestedFilename: string; path?: string }> {
-    throw new VectorError("capability_unsupported", "downloads are not available on the vector-engine backend in M1");
+    const res = await this.executeProgram([{ id: `ve${++this.stepCounter}`, op: "waitFor", condition: { kind: "downloadCompleted" } }]);
+    const outcome = res.steps[0];
+    if (!outcome || outcome.status !== "ok") {
+      throw new VectorError(
+        outcome?.error?.code === "capability_unsupported" ? "capability_unsupported" : "condition_timeout",
+        outcome?.error?.message ?? "download did not complete",
+      );
+    }
+    return { suggestedFilename: outcome.detail ?? "download" };
   }
   async handleDialog(action: "accept" | "dismiss", promptText?: string): Promise<void> {
     await this.one({ op: "dialog", action, promptText });
@@ -408,6 +426,10 @@ export class VectorEnginePage implements DriverPage {
 
   async screenshot(opts?: { fullPage?: boolean }): Promise<ScreenshotResult> {
     this.ensureAttached();
+    if (this.native.screenshotPng) {
+      const shot = await this.native.screenshotPng(this.pageNum, opts?.fullPage);
+      return { buffer: Buffer.from(shot.png), width: shot.width, height: shot.height, scale: shot.scale };
+    }
     const res = unwrapNative<{ pngBase64?: string; width?: number; height?: number; scale?: number }>(
       await this.native.screenshot(this.pageNum, JSON.stringify(opts ?? {})),
     );
@@ -417,7 +439,9 @@ export class VectorEnginePage implements DriverPage {
 
   async observe(req?: Partial<ObservationRequest>): Promise<ObservationContent> {
     this.ensureAttached();
-    const res = unwrapNative<ObserveResult>(await this.native.observe(this.pageNum, observeOptions(req)));
+    const res = this.native.observeBuf
+      ? unwrapNativeFromBuf<ObserveResult>(await this.native.observeBuf(this.pageNum, Buffer.from(observeOptions(req), "utf8")))
+      : unwrapNative<ObserveResult>(await this.native.observe(this.pageNum, observeOptions(req)));
     this.generation = res.generation;
     this.urlValue = res.content.url;
     this.titleValue = res.content.title;
@@ -440,8 +464,9 @@ export class VectorEnginePage implements DriverPage {
     return (outcome.extracted ?? {}) as Record<string, unknown>;
   }
 
-  async evaluate(): Promise<unknown> {
-    throw new VectorError("capability_unsupported", "evaluate needs ve-script (M2); the router replays evaluate programs on Chromium");
+  async evaluate(expression?: string): Promise<unknown> {
+    const outcome = await this.one({ op: "evaluate", expression: expression ?? "undefined" });
+    return outcome.extracted?.value ?? outcome.extracted ?? outcome.detail ?? null;
   }
 
   setEvents(events: DriverPageEvents): void {

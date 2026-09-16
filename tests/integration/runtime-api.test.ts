@@ -33,6 +33,7 @@ beforeAll(async () => {
     VECTOR_DATA_DIR: dataDir,
     VECTOR_ELECTRON_CDP: "",
     VECTOR_API_TOKEN: "test-token",
+    VECTOR_ENGINE_MODE: "off",
   });
 }, 60_000);
 

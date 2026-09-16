@@ -78,8 +78,8 @@ implementations, three of them over Playwright-Core CDP:
 `apps/runtime/src/main.ts` loads the engine addon at startup when it is
 present (`VECTOR_ENGINE=0` skips it) and registers a `vector-engine` session
 either `connected` or `disconnected` with the loader's diagnostic. Whether
-pages are *routed* to it is `settings.engineMode`: `off` (default — nothing
-changes for existing users), `auto`, `always`; `VECTOR_ENGINE_MODE` is the
+pages are *routed* to it is `settings.engineMode`: `off` (Chromium only),
+`auto` (default — engine first, Chromium fallback), `always`; `VECTOR_ENGINE_MODE` is the
 env override.
 
 `Router` (`apps/runtime/src/services/router.ts`) decides per `pages.open`
@@ -96,8 +96,8 @@ reason, e.g. `empty-root-container: #root`, `body-onload`,
 `form-onsubmit`, `template-heavy`, `unsupported-content: application/pdf`).
 In `auto` a classified page is closed, the origin recorded, and the URL
 reopened on Chromium with `routeReason: "fallback:<reason>"`. A mid-program
-`capability_unsupported` (`evaluate`, `dialog`, downloads, `xpath:`
-targets, …) migrates the live page to Chromium at its
+`capability_unsupported` (`xpath:` targets, canvas/WebGL, PDF, …)
+migrates the live page to Chromium at its
 current URL — same `pageId`, new target, `documentEpoch` bumped — takes a
 fresh observation, and replays the remaining steps; `ProgramResult.fallback`
 records it, with `repair: true` when ref-targeted steps could not be replayed
@@ -106,9 +106,8 @@ replans. Decisions are counted in `traces.counters` (`router.decide`,
 `router.fallback.open`, `router.fallback.midProgram`, `router.open.<backend>`)
 and logged to stderr with `VECTOR_ROUTER_LOG=1`.
 
-Engine pages are headless: `pages.activate` and `pages.capture` on them
-fail with `capability_unsupported`, they never need the view laid out, and
-the shell shows them with the *Vector Engine* badge only.
+Engine pages are headless: `pages.activate` marks them active without a
+native Chromium view; `pages.capture` uses the software renderer.
 
 ## Page identity
 

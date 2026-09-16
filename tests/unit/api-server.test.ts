@@ -121,7 +121,7 @@ describe("token file permissions", () => {
   it("creates the data dir 0700 and runtime.json 0600", async () => {
     const parent = mkdtempSync(join(tmpdir(), "vector-perm-"));
     const dataDir = join(parent, "data");
-    const env = { ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_STANDALONE: "0", VECTOR_IPC: "0" } as NodeJS.ProcessEnv;
+    const env = { ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_STANDALONE: "0", VECTOR_IPC: "0", VECTOR_ENGINE_MODE: "off" } as NodeJS.ProcessEnv;
     loadConfig(env);
     expect(statSync(dataDir).mode & 0o777).toBe(0o700);
     const rt = await startRuntime(env);
