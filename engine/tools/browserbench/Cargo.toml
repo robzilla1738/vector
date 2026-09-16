@@ -1,0 +1,28 @@
+[package]
+name = "browserbench"
+description = "Official Speedometer / JetStream / MotionMark identity lab (VEC-021)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+v8 = ["ve-api/v8"]
+gpu = ["ve-gfx/gpu"]
+
+[dependencies]
+ve-api.workspace = true
+ve-core.workspace = true
+ve-gfx.workspace = true
+ve-style.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true

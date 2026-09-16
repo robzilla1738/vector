@@ -29,7 +29,7 @@ pub struct WebSocketClient {
 #[cfg(feature = "http")]
 enum WsIo {
     Plain(std::net::TcpStream),
-    Tls(rustls::StreamOwned<rustls::ClientConnection, std::net::TcpStream>),
+    Tls(Box<rustls::StreamOwned<rustls::ClientConnection, std::net::TcpStream>>),
 }
 
 #[cfg(feature = "http")]
@@ -163,7 +163,7 @@ fn try_handshake(url: &Url, tls: bool) -> Result<WebSocketClient, NetError> {
     let (open, io) = if tls {
         let mut tls_stream = wrap_tls(stream, host)?;
         let open = upgrade(&mut tls_stream, &req)?;
-        (open, WsIo::Tls(tls_stream))
+        (open, WsIo::Tls(Box::new(tls_stream)))
     } else {
         let mut plain = stream;
         let open = upgrade(&mut plain, &req)?;
@@ -233,12 +233,12 @@ fn write_frame(io: &mut WsIo, opcode: u8, payload: &[u8]) -> Result<(), NetError
     match io {
         WsIo::Plain(s) => {
             s.write_all(&header)
-                .and_then(|_| s.write_all(&masked))
+                .and_then(|()| s.write_all(&masked))
                 .map_err(|e| NetError::Transport(e.to_string()))?;
         }
         WsIo::Tls(s) => {
             s.write_all(&header)
-                .and_then(|_| s.write_all(&masked))
+                .and_then(|()| s.write_all(&masked))
                 .map_err(|e| NetError::Transport(e.to_string()))?;
         }
     }

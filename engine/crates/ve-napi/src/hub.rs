@@ -283,6 +283,14 @@ mod tests {
         assert!(c.offline && c.policy.block_loopback);
         let c = parse_config(r#"{"policy": {"blockLoopback": true}}"#).unwrap();
         assert!(c.policy.block_loopback && !c.policy.allow_file);
+        let c = parse_config(
+            r#"{"policy":{"blockLoopback":true,"allowlist":["127.0.0.1:4810","localhost:4810"]}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            c.policy.allowlist,
+            vec!["127.0.0.1:4810".to_owned(), "localhost:4810".to_owned()]
+        );
         assert_eq!(parse_config("nope").unwrap_err().code, "invalid_params");
     }
 

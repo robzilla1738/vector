@@ -90,6 +90,8 @@ pub struct FormState {
 pub struct ElementData {
     /// Local name. Lower-case for HTML elements.
     pub name: String,
+    /// Namespace prefix from the qualified name, if any (`x` in `x:b`).
+    pub prefix: Option<String>,
     /// Element namespace.
     pub namespace: Namespace,
     /// Content attributes in source order.
@@ -116,6 +118,7 @@ impl ElementData {
     pub fn new(name: impl Into<String>, namespace: Namespace) -> Self {
         Self {
             name: name.into(),
+            prefix: None,
             namespace,
             attributes: Vec::new(),
             form: None,
@@ -123,6 +126,26 @@ impl ElementData {
             content_document: None,
             shadow_root: None,
             natural_size: None,
+        }
+    }
+
+    /// Qualified name (`prefix:local` or `local`).
+    #[must_use]
+    pub fn qualified_name(&self) -> String {
+        match &self.prefix {
+            Some(prefix) if !prefix.is_empty() => format!("{}:{}", prefix, self.name),
+            _ => self.name.clone(),
+        }
+    }
+
+    /// DOM `tagName` / element `nodeName`.
+    #[must_use]
+    pub fn tag_name(&self) -> String {
+        let qname = self.qualified_name();
+        if self.namespace == Namespace::Html {
+            qname.to_ascii_uppercase()
+        } else {
+            qname
         }
     }
 
@@ -142,9 +165,19 @@ impl ElementData {
     }
 
     /// Returns `true` if the attribute is present (even if empty).
+    ///
+    /// HTML elements match ASCII-case-insensitively and ignore the attribute
+    /// namespace, matching `Element.hasAttribute`.
     #[must_use]
     pub fn has_attr(&self, name: &str) -> bool {
-        self.attributes.iter().any(|a| a.name == name)
+        self.attributes.iter().any(|a| {
+            let local = a.name.rsplit_once(':').map_or(a.name.as_str(), |(_, l)| l);
+            if self.namespace == Namespace::Html {
+                a.name.eq_ignore_ascii_case(name) || local.eq_ignore_ascii_case(name)
+            } else {
+                a.name == name || local == name
+            }
+        })
     }
 
     /// The `id` attribute.
@@ -168,7 +201,9 @@ impl ElementData {
 /// What a node is.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NodeKind {
-    /// The document root. Exactly one per [`crate::Document`].
+    /// A document node. The arena's [`crate::Document::root`] is one;
+    /// `createHTMLDocument` allocates additional detached document nodes in
+    /// the same arena.
     Document,
     /// `<!DOCTYPE …>`.
     Doctype {
@@ -282,6 +317,16 @@ impl Node {
         }
     }
 
+    /// Text, comment, or processing-instruction data.
+    #[must_use]
+    pub fn as_character_data(&self) -> Option<&str> {
+        match &self.kind {
+            NodeKind::Text(t) | NodeKind::Comment(t) => Some(t),
+            NodeKind::ProcessingInstruction { data, .. } => Some(data),
+            _ => None,
+        }
+    }
+
     /// Text if this node is a text node.
     #[must_use]
     pub fn as_text(&self) -> Option<&str> {
@@ -289,6 +334,12 @@ impl Node {
             NodeKind::Text(t) => Some(t),
             _ => None,
         }
+    }
+
+    /// `true` when this is a document node.
+    #[must_use]
+    pub fn is_document(&self) -> bool {
+        matches!(self.kind, NodeKind::Document)
     }
 
     /// Returns `true` for element nodes.

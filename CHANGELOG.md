@@ -6,29 +6,34 @@ the integration tracks that were merged.
 ## VEC-001–025 engine roadmap (unreleased on `main`)
 
 Independent Vector Engine work after A14–A23. Ticket reports:
-`docs/engine/evidence/`. This is not a claim that every acceptance line in
-the roadmap is met.
+`docs/engine/evidence/`. Roadmap text: `Vector_Engine_Roadmap.md`. This is
+not a claim that every acceptance line is met (IDL generation and storage
+remain subsets; ve-vm is research).
 
 - **M0.** `engineMode: always` returns `vector-engine` with `fallbackAllowed:
   false`. Production `ve-host` sandbox (forbidden file, exec, sockets,
   malformed/oversized IPC). Authoritative `NetworkBroker` (forged context,
-  DNS rebinding, credential strip). CI: rustc 1.88, clippy `-D warnings`,
-  v8/http features, wpt + wpt-harness, addon. Capability ledger
+  DNS rebinding, credential strip, engine allowlist applied on the broker).
+  CI: rustc 1.88, clippy `-D warnings`, product `ve-shell`, v8/http, wpt +
+  wpt-harness tree HTTP, browserbench, addon + `ve-host`. Capability ledger
   (`capabilities.json`); `describe()` `websocket:true`, `http3:false`,
   `serviceWorkers:false`.
 - **M1.** Event loop task sources; async `fetchStart`/`fetchPoll`; RFC 6455
   WebSocket; frames; IndexedDB unique/compound/versionchange; workers in
-  `ve-vm` (not a second V8 isolate). `wpt-harness` with pinned
-  `testharness.js`, pixel PNG sampling, expected-failures, one upstream
-  `document.title` testharness file.
-- **M2.** GPU glyph outlines (vello paths), overflow clips, opacity, `<img>`
-  pixels, `present_scene` without readback. `NativeBrowser` + `ve-shell --gui`
-  (winit/softbuffer). Visible hybrid desktop tabs still Chromium
-  (`engine-first:native-view`). `signedUpdates: false`.
+  `ve-vm` (not a second V8 isolate). `wpt-harness` with pinned testharness +
+  idlharness, `--http --tree`, Ahem at `/fonts`. Geometry `wpt-runner`;
+  `--use-reftest-fonts` is capability, not the m1 scorer.
+- **M2.** GPU glyph outlines, clips/opacity/`<img>`, `present_list` without
+  readback. Product is `ve-shell` (`pnpm dev` / `pnpm package:local`).
+  Electron is labeled hybrid (`pnpm dev:electron` / `pnpm package:electron`).
+  `signedUpdates: false`.
 - **M3.** Action receipts, coordinator crash recovery, guarded skills, agent
-  policy, BiDi adapter — unit-tested, not held-out 2× p95.
-- **M4.** `perf --gate m1`, process RSS, optional host RAPL. No official
-  Speedometer/JetStream/MotionMark.
+  policy, BiDi adapter. Held-out p95 vs Chromium is measured
+  (`docs/engine/evidence/held-out-latest.json`): 5.32× on `act+observe`.
+  Token stretch is not claimed (tokens not collected).
+- **M4.** `perf --gate m1`, process RSS, optional host RAPL. Official
+  Speedometer 3.0 (32/32 executed), JetStream, MotionMark GPU
+  (`tools/browserbench`).
 - **M5.** `ve-replay`; `ve-vm` Test262 subset. V8 stays production.
 
 ## Native view, V8 isolates, takeover (PR #8)

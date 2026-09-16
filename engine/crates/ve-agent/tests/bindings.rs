@@ -391,7 +391,7 @@ fn indexeddb_index_cursor_and_isolated_worker() {
                  window.__idx = (g.result && g.result.name === 'Ada') ? 'ok' : 'bad';
                };
              };
-             const w = new Worker("onmessage=function(e){postMessage({iso: typeof document, echo: e.data})}");
+             const w = new Worker("onmessage=function(e){postMessage({iso: typeof document, echo: e.data, wr: typeof WeakRef})}");
              w.onmessage = (e) => { window.__iso = e.data; };
              w.postMessage('ping');
            </script>"#,
@@ -409,6 +409,43 @@ fn indexeddb_index_cursor_and_isolated_worker() {
         page.evaluate("window.__iso.echo").unwrap(),
         serde_json::json!("ping")
     );
+    assert_eq!(
+        page.evaluate("window.__iso.wr").unwrap(),
+        serde_json::json!("function")
+    );
+}
+
+#[test]
+fn doctype_pi_and_prefixed_html_nodename() {
+    let mut page = open("<!DOCTYPE html><body></body>");
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var HTMLNS = "http://www.w3.org/1999/xhtml";
+              var pi = document.createProcessingInstruction("pi", "A PI!");
+              pi.nodeValue = "test again";
+              var dt = document.implementation.createDocumentType("x", "", "");
+              var xb = document.createElementNS(HTMLNS, "x:b");
+              document.body.textContent = "keep";
+              var root = document.documentElement;
+              document.textContent = "a";
+              return {
+                doctype: document.doctype && document.doctype.nodeName === "html",
+                doctypeNull: document.doctype.nodeValue === null && document.doctype.textContent === null,
+                pi: pi.nodeName === "pi" && pi.nodeValue === "test again" && pi.target === "pi",
+                dt: dt.nodeName === "x" && dt.name === "x" && dt.textContent === null,
+                xb: xb.nodeName === "X:B" && xb.prefix === "x",
+                docText: document.textContent === null && document.documentElement === root
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["doctype"], true, "{v}");
+    assert_eq!(v["doctypeNull"], true, "{v}");
+    assert_eq!(v["pi"], true, "{v}");
+    assert_eq!(v["dt"], true, "{v}");
+    assert_eq!(v["xb"], true, "{v}");
+    assert_eq!(v["docText"], true, "{v}");
 }
 
 #[test]
@@ -476,4 +513,148 @@ fn get_element_by_id_stringifies_null_and_undefined() {
     assert_eq!(v["byNull"], true, "{v}");
     assert_eq!(v["byUndef"], true, "{v}");
     assert_eq!(v["byStr"], true, "{v}");
+}
+
+#[test]
+fn create_html_document_and_live_collections() {
+    let mut page = open(r#"<body><a href="">one</a><a href="">two</a><form id="f"></form></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var doc = document.implementation.createHTMLDocument("Hello");
+              var childless = document.implementation.createHTMLDocument("");
+              childless.removeChild(childless.documentElement);
+              var html = childless.appendChild(childless.createElement("html"));
+              var b = html.appendChild(childless.createElement("body"));
+              html.appendChild(childless.createElement("frameset"));
+              var links = document.links;
+              var a = document.createElement("a");
+              a.setAttribute("href", "");
+              document.body.appendChild(a);
+              var grew = links.length;
+              document.body.removeChild(a);
+              return {
+                title: doc.title,
+                hasBody: doc.body instanceof HTMLBodyElement,
+                childlessBody: childless.body === b,
+                linksLive: grew === 3 && document.links.length === 2,
+                forms: document.forms.length === 1 && document.forms instanceof HTMLCollection,
+                impl: typeof document.implementation.hasFeature === "function"
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["title"], "Hello", "{v}");
+    assert_eq!(v["hasBody"], true, "{v}");
+    assert_eq!(v["childlessBody"], true, "{v}");
+    assert_eq!(v["linksLive"], true, "{v}");
+    assert_eq!(v["forms"], true, "{v}");
+    assert_eq!(v["impl"], true, "{v}");
+}
+
+#[test]
+fn canvas_fillrect_records_ops() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 40;
+              c.height = 20;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 10, 10);
+              ctx.clearRect(0, 0, 5, 5);
+              return {
+                ctx: ctx instanceof CanvasRenderingContext2D,
+                w: c.width,
+                h: c.height,
+                webgl: c.getContext("webgl") === null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ctx"], true, "{v}");
+    assert_eq!(v["w"], 40, "{v}");
+    assert_eq!(v["h"], 20, "{v}");
+    assert_eq!(v["webgl"], true, "{v}");
+}
+
+#[test]
+fn iframe_about_blank_isconnected() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var f = document.createElement("iframe");
+              var d = document.createElement("div");
+              document.body.appendChild(f);
+              f.contentDocument.body.appendChild(d);
+              var connected = d.isConnected === true && f.isConnected === true;
+              f.remove();
+              return {
+                connected: connected,
+                still: d.isConnected === true,
+                frameGone: f.isConnected === false
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["connected"], true, "{v}");
+    assert_eq!(v["still"], true, "{v}");
+    assert_eq!(v["frameGone"], true, "{v}");
+}
+
+#[test]
+fn domparser_replacechildren_and_keycode() {
+    let mut page = open(r#"<body><div id="h"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var p = new DOMParser();
+              var d = p.parseFromString("<p id=x>hi</p>", "text/html");
+              var host = document.getElementById("h");
+              host.replaceChildren(d.body.firstChild.cloneNode(true));
+              var ke = new KeyboardEvent("keypress", {key:"Enter", keyCode:13});
+              return {
+                parser: p instanceof DOMParser,
+                kids: host.childNodes.length,
+                text: host.textContent,
+                keyCode: ke.keyCode
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["parser"], true, "{v}");
+    assert_eq!(v["kids"], 1, "{v}");
+    assert_eq!(v["text"], "hi", "{v}");
+    assert_eq!(v["keyCode"], 13, "{v}");
+}
+
+#[test]
+fn template_content_cssstylesheet_and_import_node() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var t = document.createElement("template");
+              t.innerHTML = "<p class='x'>ok</p>";
+              var n = document.importNode(t.content, true);
+              document.body.append(n);
+              var sheet = new CSSStyleSheet();
+              sheet.replaceSync("p { color: red }");
+              var host = document.createElement("div");
+              var root = host.attachShadow({mode:"open"});
+              root.adoptedStyleSheets = [sheet];
+              return {
+                text: document.querySelector("p.x").textContent,
+                sheet: sheet instanceof CSSStyleSheet,
+                adopted: root.adoptedStyleSheets.length
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["text"], "ok", "{v}");
+    assert_eq!(v["sheet"], true, "{v}");
+    assert_eq!(v["adopted"], 1, "{v}");
 }

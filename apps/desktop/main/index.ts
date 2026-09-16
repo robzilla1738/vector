@@ -13,7 +13,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { RpcChannel, type Transport } from "@vector/contracts";
 import { TargetRegistry, type ViewEntry } from "./target-registry.js";
-import { createPageView, destroyPageView, downloadsSession, installMarker, profileSession } from "./native-views.js";
+import { createPageView, destroyPageView, downloadsSession, installMarker, profileSession, setEngineFrame } from "./native-views.js";
 import { spawnRuntime } from "./runtime-proc.js";
 
 const CDP_PORT_FILE = "devtools-port";
@@ -148,9 +148,15 @@ const viewHooks = {
 
 function registerNativeHandlers(ch: RpcChannel) {
   ch.onMethod("native.createPage", (p) => {
-    const { pageId, marker, url, background } = p as { pageId: string; marker: string; url: string; background: boolean };
+    const { pageId, marker, url, background, kind } = p as {
+      pageId: string;
+      marker: string;
+      url: string;
+      background: boolean;
+      kind?: "chromium" | "engine";
+    };
     if (!win) throw new Error("no window");
-    createPageView({ win, registry, pageId, marker, url, background, hooks: viewHooks });
+    createPageView({ win, registry, pageId, marker, url, background, kind, hooks: viewHooks });
     applyStage();
     const wc = registry.get(pageId)?.view.webContents;
     if (wc) notifyRuntime("view.navState", { pageId, canGoBack: wc.navigationHistory.canGoBack(), canGoForward: wc.navigationHistory.canGoForward() });
@@ -230,6 +236,13 @@ function registerNativeHandlers(ch: RpcChannel) {
     const size = img.getSize();
     const resized = scale < 1 ? img.resize({ width: Math.round(size.width * scale) }) : img;
     return { dataUrl: resized.toDataURL() };
+  });
+  ch.onMethod("native.setEngineFrame", (p) => {
+    const { pageId, dataUrl } = p as { pageId: string; dataUrl: string };
+    const entry = registry.get(pageId);
+    if (!entry) return { ok: false };
+    setEngineFrame(entry, dataUrl);
+    return { ok: true };
   });
   ch.onMethod("native.openExternal", (p) => {
     const { url } = p as { url: unknown };
@@ -432,6 +445,12 @@ function applyStage() {
 // ---------- renderer IPC ----------
 
 function wireRendererIpc() {
+  ipcMain.on("engine-input", (event, payload: { type?: string; x?: number; y?: number; button?: number; key?: string }) => {
+    const entry = registry.byWebContentsId(event.sender.id);
+    if (!entry) return;
+    notifyRuntime("view.engineInput", { pageId: entry.pageId, ...payload });
+    viewHooks.onTakeover(entry.pageId);
+  });
   ipcMain.handle("api.invoke", async (_e, method: string, params: unknown) => {
     if (!channel) throw new Error("runtime not connected");
     return channel.call("api.invoke", { method, params }, 60_000);

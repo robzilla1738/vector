@@ -1,0 +1,19 @@
+{
+  "jetstream": {
+    "repo": "https://github.com/WebKit/JetStream",
+    "revision": "c603c04db8505477867974a69789309ded2cc948",
+    "tests": ["SunSpider/n-body.js", "SunSpider/crypto-sha1.js"]
+  },
+  "speedometer": {
+    "repo": "https://github.com/WebKit/Speedometer",
+    "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+    "status": "official-3.0",
+    "note": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply."
+  },
+  "motionmark": {
+    "repo": "https://github.com/WebKit/MotionMark",
+    "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+    "status": "gpu",
+    "note": "Canvas fillRect class on the engine 2D buffer plus MotionMark Multiply-class GPU present through vello present_list (no CPU readback)."
+  }
+}

@@ -11,6 +11,7 @@
   "scripts": {
     "build": "tsc -b tsconfig.json",
     "dev": "node scripts/dev.mjs",
+    "dev:electron": "VECTOR_ELECTRON=1 node scripts/dev.mjs",
     "fixtures": "node scripts/fixtures.mjs",
     "typecheck": "tsc -b tsconfig.json --force",
     "test": "vitest run",
@@ -18,7 +19,8 @@
     "test:e2e": "vitest run --config tests/e2e/vitest.config.ts",
     "smoke:packaged": "node tests/smoke/packaged.mjs",
     "bench": "node tests/benchmarks/run.mjs",
-    "package:local": "node scripts/package-local.mjs",
+    "package:local": "node scripts/package-native.mjs",
+    "package:electron": "node scripts/package-local.mjs",
     "cli": "node packages/cli/dist/main.js",
     "bench:tasks": "node tests/benchmarks/tasks/run.mjs"
   },

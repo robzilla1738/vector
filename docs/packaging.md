@@ -1,14 +1,32 @@
 # Packaging
 
+## Native product
+
 ```bash
 pnpm package:local
 ```
 
-Produces `release/mac-arm64/Vector.app` (unsigned local build).
+Builds `ve-shell` (`--features product`: window + V8 + HTTP) into
+`release/ve-shell`. Identity: `backend: vector-engine`, `chromium: false`.
+Smoke: `pnpm smoke:packaged` (native-only exit 0 when Electron is absent).
 
-## How it works
+```bash
+./release/ve-shell about:blank
+pnpm dev   # cargo run -p ve-shell --features window,v8,http -- --gui
+```
 
-`scripts/package-local.mjs`:
+## Electron hybrid (not the product)
+
+```bash
+pnpm package:electron
+```
+
+Produces `release/mac-arm64/Vector.app` (unsigned local build). Dev:
+`pnpm dev:electron`.
+
+## How the hybrid packager works
+
+`scripts/package-local.mjs` (invoked as `pnpm package:electron`):
 
 1. `tsc -b` the workspace + `vite build` the renderer + `bundle.mjs` the
    Electron main/preload into self-contained files (no node_modules in the

@@ -85,6 +85,21 @@ pub enum NativeEvent {
     Paste,
     /// Copy: no-op on chrome besides keeping clipboard (page cannot steal).
     Copy,
+    /// Activate the next tab (chrome, wrap-around).
+    NextTab,
+    /// Activate the previous tab (chrome, wrap-around).
+    PrevTab,
+    /// Focus the address bar. Page script cannot do this.
+    FocusUrlbar,
+    /// Leave the address bar. Subsequent keys go to the page.
+    BlurUrlbar,
+    /// Type into the focused address bar.
+    UrlbarType {
+        /// Character or `Backspace`.
+        text: String,
+    },
+    /// Navigate the active tab to the address-bar contents.
+    UrlbarSubmit,
 }
 
 /// Result of handling one native event.
@@ -118,6 +133,8 @@ pub struct NativeBrowser {
     permissions: HashMap<String, bool>,
     surface: Frame,
     pointer: Point,
+    urlbar: String,
+    urlbar_focused: bool,
 }
 
 impl NativeBrowser {
@@ -146,6 +163,8 @@ impl NativeBrowser {
             permissions: HashMap::new(),
             surface: Frame::filled(1280, 720, [255, 255, 255, 255]),
             pointer: Point::ZERO,
+            urlbar: String::new(),
+            urlbar_focused: false,
         }
     }
 
@@ -153,6 +172,7 @@ impl NativeBrowser {
     #[must_use]
     pub fn identity(&self) -> serde_json::Value {
         serde_json::json!({
+            "product": "ve-shell",
             "backend": "vector-engine",
             "chromium": false,
             "electron": false,
@@ -241,7 +261,11 @@ impl NativeBrowser {
             if i == self.active {
                 nodes.push(ChromeAxNode {
                     role: "urlbar".into(),
-                    name: tab.url.clone(),
+                    name: if self.urlbar_focused {
+                        self.urlbar.clone()
+                    } else {
+                        tab.url.clone()
+                    },
                     from_page: false,
                 });
             }
@@ -336,6 +360,46 @@ impl NativeBrowser {
                     if self.active >= self.tabs.len() {
                         self.active = self.tabs.len().saturating_sub(1);
                     }
+                    self.urlbar_focused = false;
+                }
+            }
+            NativeEvent::NextTab => {
+                if !self.tabs.is_empty() {
+                    self.active = (self.active + 1) % self.tabs.len();
+                    self.urlbar_focused = false;
+                    let _ = self.present();
+                }
+            }
+            NativeEvent::PrevTab => {
+                if !self.tabs.is_empty() {
+                    self.active = (self.active + self.tabs.len() - 1) % self.tabs.len();
+                    self.urlbar_focused = false;
+                    let _ = self.present();
+                }
+            }
+            NativeEvent::FocusUrlbar => {
+                self.urlbar_focused = true;
+                self.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
+            }
+            NativeEvent::BlurUrlbar => {
+                self.urlbar_focused = false;
+            }
+            NativeEvent::UrlbarType { text } => {
+                if self.urlbar_focused {
+                    if text == "Backspace" {
+                        self.urlbar.pop();
+                    } else {
+                        self.urlbar.push_str(&text);
+                    }
+                }
+            }
+            NativeEvent::UrlbarSubmit => {
+                if self.urlbar_focused {
+                    let url = self.urlbar.clone();
+                    self.urlbar_focused = false;
+                    if !url.is_empty() {
+                        let _ = self.handle_event(NativeEvent::Navigate { url })?;
+                    }
                 }
             }
             NativeEvent::Navigate { url } => {
@@ -348,8 +412,20 @@ impl NativeBrowser {
                 }
             }
             NativeEvent::Key { key } => {
-                let _ = self.press_key(&key);
-                let _ = self.present();
+                if self.urlbar_focused {
+                    if key == "Enter" {
+                        let _ = self.handle_event(NativeEvent::UrlbarSubmit)?;
+                    } else if key == "Escape" {
+                        self.urlbar_focused = false;
+                    } else if key == "Backspace" {
+                        self.urlbar.pop();
+                    } else if key.len() == 1 {
+                        self.urlbar.push_str(&key);
+                    }
+                } else {
+                    let _ = self.press_key(&key);
+                    let _ = self.present();
+                }
             }
             NativeEvent::Ime { text } => {
                 let _ = self.execute_active(Program::from_value(serde_json::json!([
@@ -422,6 +498,24 @@ impl NativeBrowser {
     pub fn tab_count(&self) -> usize {
         self.tabs.len()
     }
+
+    /// Address-bar editing buffer (chrome-owned).
+    #[must_use]
+    pub fn urlbar(&self) -> &str {
+        &self.urlbar
+    }
+
+    /// Whether the address bar currently owns keyboard input.
+    #[must_use]
+    pub fn urlbar_focused(&self) -> bool {
+        self.urlbar_focused
+    }
+
+    /// Index of the active tab.
+    #[must_use]
+    pub fn active_index(&self) -> usize {
+        self.active
+    }
 }
 
 impl Default for NativeBrowser {
@@ -448,6 +542,8 @@ mod tests {
         assert_ne!(browser.chrome_title(), browser.page_title().unwrap());
         let id = browser.identity();
         assert_eq!(id["chromium"], false);
+        assert_eq!(id["electron"], false);
+        assert_eq!(id["product"], "ve-shell");
         assert_eq!(id["backend"], "vector-engine");
         assert!(browser.screen_reader_text().contains("Vector"));
         assert_eq!(browser.update_status()["signedUpdates"], false);
@@ -523,5 +619,47 @@ mod tests {
         let quit = browser.handle_event(NativeEvent::Quit).unwrap();
         assert!(quit.quit);
         assert_eq!(browser.pointer().x, 10.0);
+    }
+
+    #[test]
+    fn urlbar_and_tab_switch_are_chrome_owned() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<title>A</title>".into(),
+                url: "https://a.test/".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<title>B</title>".into(),
+                url: "https://b.test/".into(),
+            })
+            .unwrap();
+        assert_eq!(browser.tab_count(), 2);
+        assert_eq!(
+            browser.active_tab().map(|t| t.url.as_str()),
+            Some("https://b.test/")
+        );
+        browser.handle_event(NativeEvent::NextTab).unwrap();
+        assert_eq!(
+            browser.active_tab().map(|t| t.url.as_str()),
+            Some("https://a.test/")
+        );
+        browser.handle_event(NativeEvent::PrevTab).unwrap();
+        assert_eq!(
+            browser.active_tab().map(|t| t.url.as_str()),
+            Some("https://b.test/")
+        );
+        browser.handle_event(NativeEvent::FocusUrlbar).unwrap();
+        assert!(browser.urlbar_focused());
+        browser
+            .handle_event(NativeEvent::UrlbarType { text: "x".into() })
+            .unwrap();
+        assert!(browser.urlbar().ends_with('x'), "{}", browser.urlbar());
+        browser.handle_event(NativeEvent::BlurUrlbar).unwrap();
+        assert!(!browser.urlbar_focused());
+        let ax = browser.chrome_ax();
+        assert!(ax.iter().any(|n| n.role == "urlbar" && !n.from_page));
     }
 }

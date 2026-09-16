@@ -21,7 +21,10 @@ const release = join(root, "release");
 const fail = (msg) => { console.error(`✗ ${msg}`); process.exit(1); };
 const ok = (msg) => console.log(`✓ ${msg}`);
 
-// locate the packaged runtime entry
+const nativeBin = join(release, process.platform === "win32" ? "ve-shell.exe" : "ve-shell");
+if (existsSync(nativeBin)) ok(`native product: ${nativeBin}`);
+
+// locate the packaged runtime entry (Electron hybrid, if present)
 let entry;
 for (const dir of ["mac-arm64", "mac", "linux-unpacked", "win-unpacked"]) {
   const p = join(release, dir, "Vector.app", "Contents", "Resources", "runtime", "dist", "main.js");
@@ -29,7 +32,13 @@ for (const dir of ["mac-arm64", "mac", "linux-unpacked", "win-unpacked"]) {
   const alt = join(release, dir, "resources", "runtime", "dist", "main.js");
   if (existsSync(alt)) { entry = alt; break; }
 }
-if (!entry) fail(`no packaged runtime under ${release} — run pnpm package:local first`);
+if (!entry) {
+  if (existsSync(nativeBin)) {
+    ok("native product packaged; Electron hybrid not present (pnpm package:electron)");
+    process.exit(0);
+  }
+  fail(`no packaged runtime under ${release} — run pnpm package:electron`);
+}
 ok(`packaged runtime: ${entry}`);
 
 // fixture server — the dev fixture bundle (all three apps, fixed ports).

@@ -30,7 +30,7 @@ use clap::Parser;
 use serde::Serialize;
 use ve_core::{Rect, Size};
 use ve_dom::Document;
-use ve_layout::{LayoutEngine, LayoutTree};
+use ve_layout::{LayoutEngine, LayoutTree, ParleyShaper};
 use ve_style::{MediaEnv, StyleEngine, StyleTree, Visibility};
 
 /// The M1 WPT subsets (architecture §12), relative to the checkout root.
@@ -83,6 +83,12 @@ struct Args {
     /// Viewport as `WIDTHxHEIGHT`.
     #[arg(long, default_value = "800x600")]
     viewport: String,
+    /// Directory of reftest fonts (`Ahem.ttf`).
+    #[arg(long, default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/fonts"))]
+    fonts_dir: PathBuf,
+    /// Shape with Parley + Ahem instead of [`ve_layout::MetricShaper`].
+    #[arg(long)]
+    use_reftest_fonts: bool,
     /// Print the differing signature items of failing tests.
     #[arg(long)]
     verbose: bool,
@@ -253,13 +259,30 @@ struct Rendered {
     layout: LayoutTree,
 }
 
-fn render(html: &str, viewport: Size) -> Rendered {
+fn render(html: &str, viewport: Size, fonts_dir: Option<&Path>) -> Rendered {
     let doc = ve_html::parse_document(html).document;
     let mut engine = StyleEngine::new();
     engine.media = MediaEnv::screen(viewport.width, viewport.height);
     engine.add_document_styles(&doc);
     let styles = engine.compute(&doc);
-    let layout = LayoutEngine::new().layout(&doc, &styles, viewport);
+    let mut layout_engine = if let Some(dir) = fonts_dir {
+        let mut shaper = ParleyShaper::new();
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                if ext.eq_ignore_ascii_case("ttf") || ext.eq_ignore_ascii_case("otf") {
+                    if let Ok(bytes) = std::fs::read(&path) {
+                        let _ = shaper.register_font(bytes);
+                    }
+                }
+            }
+        }
+        LayoutEngine::with_shaper(Box::new(shaper))
+    } else {
+        LayoutEngine::new()
+    };
+    let layout = layout_engine.layout(&doc, &styles, viewport);
     Rendered {
         doc,
         styles,
@@ -466,6 +489,7 @@ struct Runner {
     viewport: Size,
     tolerance: f32,
     verbose: bool,
+    fonts_dir: Option<PathBuf>,
 }
 
 impl Runner {
@@ -475,8 +499,10 @@ impl Runner {
             return Err("file too large".into());
         }
         let viewport = self.viewport;
-        catch_unwind(AssertUnwindSafe(|| render(&html, viewport)))
-            .map_err(|_| "panic during parse/style/layout".to_owned())
+        catch_unwind(AssertUnwindSafe(|| {
+            render(&html, viewport, self.fonts_dir.as_deref())
+        }))
+        .map_err(|_| "panic during parse/style/layout".to_owned())
     }
 
     fn run_test(&self, path: &Path) -> TestResult {
@@ -621,6 +647,7 @@ fn main() -> Result<()> {
         viewport,
         tolerance: args.tolerance,
         verbose: args.verbose,
+        fonts_dir: args.use_reftest_fonts.then(|| args.fonts_dir.clone()),
     });
     let limit = std::time::Duration::from_secs(args.timeout_secs.max(1));
     let mut results: Vec<TestResult> = Vec::with_capacity(tests.len());
@@ -749,4 +776,26 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ahem_reftest_font_is_vendored() {
+        let p = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../conformance/fonts/Ahem.ttf");
+        assert!(p.exists(), "missing {}", p.display());
+        assert!(std::fs::metadata(&p).unwrap().len() > 1000);
+    }
+
+    #[test]
+    fn use_reftest_fonts_shapes_through_parley() {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../conformance/fonts");
+        let html = r#"<!doctype html><p style="font-family:Ahem;font-size:16px">X</p>"#;
+        let with = render(html, Size::new(400.0, 300.0), Some(&dir));
+        let without = render(html, Size::new(400.0, 300.0), None);
+        assert!(with.layout.content_height() > 0.0);
+        assert!(without.layout.content_height() > 0.0);
+    }
 }

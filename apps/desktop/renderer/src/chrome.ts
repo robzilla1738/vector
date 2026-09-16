@@ -45,7 +45,7 @@ export function nativePageId(input: {
   if (!input.activePageId) return null;
   const url = input.url?.trim() ?? "";
   if (!url || url === "about:blank") return null;
-  if (input.backend === "chrome" || input.backend === "vector-engine") return null;
+  if (input.backend === "chrome") return null;
   return input.activePageId;
 }
 

@@ -250,6 +250,35 @@ impl std::fmt::Debug for VelloRenderer {
 }
 
 impl VelloRenderer {
+    /// Creates a headless GPU renderer (high-performance adapter, then fallback).
+    ///
+    /// Returns the renderer and a short adapter identity string
+    /// (`backend:name`). Used by `MotionMark` GPU presentation.
+    pub fn headless() -> Result<(Self, String), GfxError> {
+        let instance = wgpu::Instance::default();
+        let adapter =
+            match pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: None,
+                force_fallback_adapter: false,
+            })) {
+                Ok(a) => a,
+                Err(_) => {
+                    pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                        force_fallback_adapter: true,
+                        ..wgpu::RequestAdapterOptions::default()
+                    }))
+                    .map_err(|e| GfxError::Gpu(e.to_string()))?
+                }
+            };
+        let info = adapter.get_info();
+        let identity = format!("{:?}:{}", info.backend, info.name);
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
+                .map_err(|e| GfxError::Gpu(e.to_string()))?;
+        Ok((Self::new(device, queue)?, identity))
+    }
+
     /// Creates a renderer for `device`.
     pub fn new(device: wgpu::Device, queue: wgpu::Queue) -> Result<Self, GfxError> {
         let renderer = vello::Renderer::new(
@@ -364,6 +393,42 @@ impl VelloRenderer {
         self.renderer
             .render_to_texture(&self.device, &self.queue, scene, view, &params)
             .map_err(|e| GfxError::Gpu(e.to_string()))
+    }
+
+    /// GPU present of `list` with no CPU readback (`MotionMark` / VEC-013).
+    pub fn present_list(
+        &mut self,
+        list: &DisplayList,
+        width: u32,
+        height: u32,
+        scale: f32,
+    ) -> Result<(), GfxError> {
+        if width == 0 || height == 0 {
+            return Err(GfxError::Gpu("zero-sized frame".into()));
+        }
+        let scene = build_scene_fonts(
+            list,
+            if scale > 0.0 { scale } else { 1.0 },
+            None,
+            Some(&mut self.fonts),
+        );
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ve-gfx present target"),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        self.present_scene(&scene, &view, width, height)
     }
 }
 

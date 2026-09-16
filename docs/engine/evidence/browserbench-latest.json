@@ -1,0 +1,222 @@
+{
+  "backend": "vector-engine",
+  "chromium": false,
+  "arch": "aarch64",
+  "os": "macos",
+  "security_mode": "developer-offline",
+  "engine_version": "0.0.1",
+  "pins": {
+    "jetstream": {
+      "repo": "https://github.com/WebKit/JetStream",
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "tests": [
+        "SunSpider/n-body.js",
+        "SunSpider/crypto-sha1.js"
+      ]
+    },
+    "motionmark": {
+      "note": "Canvas fillRect class on the engine 2D buffer plus MotionMark Multiply-class GPU present through vello present_list (no CPU readback).",
+      "repo": "https://github.com/WebKit/MotionMark",
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "status": "gpu"
+    },
+    "speedometer": {
+      "note": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply.",
+      "repo": "https://github.com/WebKit/Speedometer",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "official-3.0"
+    }
+  },
+  "suites": [
+    {
+      "name": "jetstream.n-body",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "jetstream.crypto-sha1",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES5",
+      "status": "PASS",
+      "detail": "kind=todomvc added=100 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES5-Complex-DOM",
+      "status": "PASS",
+      "detail": "kind=todomvc added=100 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack-Complex-DOM",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-WebComponents",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-WebComponents-Complex-DOM",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-React",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-React-Complex-DOM",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-React-Redux",
+      "status": "PASS",
+      "detail": "kind=todomvc added=100 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-React-Redux-Complex-DOM",
+      "status": "PASS",
+      "detail": "kind=todomvc added=100 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Backbone",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Backbone-Complex-DOM",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Angular",
+      "status": "PASS",
+      "detail": "kind=todomvc added=100 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Angular-Complex-DOM",
+      "status": "PASS",
+      "detail": "kind=todomvc added=100 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Vue",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Vue-Complex-DOM",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-jQuery",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-jQuery-Complex-DOM",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Preact",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Preact-Complex-DOM",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Svelte",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Svelte-Complex-DOM",
+      "status": "FAIL",
+      "detail": "kind=todomvc added=0 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Lit",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+    },
+    {
+      "name": "speedometer.3.0.TodoMVC-Lit-Complex-DOM",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+    },
+    {
+      "name": "speedometer.3.0.NewsSite-Next",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+    },
+    {
+      "name": "speedometer.3.0.NewsSite-Nuxt",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+    },
+    {
+      "name": "speedometer.3.0.Editor-CodeMirror",
+      "status": "PASS",
+      "detail": "kind=editor added=1 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.Editor-TipTap",
+      "status": "PASS",
+      "detail": "kind=editor added=1 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.Charts-observable-plot",
+      "status": "PASS",
+      "detail": "kind=chart added=1 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.Charts-chartjs",
+      "status": "PASS",
+      "detail": "kind=chart added=1 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.React-Stockcharts-SVG",
+      "status": "PASS",
+      "detail": "kind=stock added=1 remaining=0"
+    },
+    {
+      "name": "speedometer.3.0.Perf-Dashboard",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+    },
+    {
+      "name": "speedometer.todomvc-class",
+      "status": "PARTIAL",
+      "detail": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply."
+    },
+    {
+      "name": "motionmark.canvas-class",
+      "status": "PARTIAL",
+      "detail": "Canvas fillRect class on the engine 2D buffer plus MotionMark Multiply-class GPU present through vello present_list (no CPU readback)."
+    },
+    {
+      "name": "motionmark.gpu.multiply",
+      "status": "PASS",
+      "detail": "adapter=Metal:Apple M5; init_ms=608"
+    }
+  ],
+  "counts": {
+    "PASS": 14,
+    "FAIL": 21,
+    "PARTIAL": 2
+  }
+}

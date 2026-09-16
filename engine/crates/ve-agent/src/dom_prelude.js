@@ -2,7 +2,7 @@
   const D = (op, ...a) => __ve.dom(op, ...a);
   const nodes = new Map();
   const registry = new Map();
-  const listeners = new WeakMap();
+  const listeners = new Map();
   const trustedEvents = new WeakSet();
   const waiters = new Map();
   const store = (o) => {
@@ -29,6 +29,12 @@
       this.button = init.button || 0;
       this.key = init.key || "";
       this.code = init.code || "";
+      this.keyCode = init.keyCode != null ? init.keyCode : (this.key === "Enter" ? 13 : this.key === "Escape" ? 27 : 0);
+      this.which = init.which != null ? init.which : this.keyCode;
+      this.ctrlKey = !!init.ctrlKey;
+      this.shiftKey = !!init.shiftKey;
+      this.altKey = !!init.altKey;
+      this.metaKey = !!init.metaKey;
       Object.defineProperty(this, "isTrusted", { get: () => trustedEvents.has(this), enumerable: true });
     }
     preventDefault() { if (this.cancelable) this.defaultPrevented = true; }
@@ -57,6 +63,13 @@
     constructor(t, i) { super(t, i); this.detail = i && i.detail; }
   }
   class UIEvent extends Event { constructor(t, i) { super(t, i); } }
+  class DOMException extends Error {
+    constructor(message, name) {
+      super(message);
+      this.name = name || "Error";
+      this.code = ({ IndexSizeError: 1, HierarchyRequestError: 3, InvalidCharacterError: 5, NotFoundError: 8, InvalidStateError: 11, SyntaxError: 12, TypeMismatchError: 17 })[this.name] || 0;
+    }
+  }
 
   function composedPath(start) {
     const path = [];
@@ -134,6 +147,21 @@
     }
   }
 
+  function isXmlName(s) {
+    s = String(s);
+    if (!s) return false;
+    const start = (c) => {
+      const n = c.charCodeAt(0);
+      return c === ":" || c === "_"
+        || (n >= 65 && n <= 90) || (n >= 97 && n <= 122)
+        || (n > 127 && c !== "\u00B7" && c !== "\u00D7");
+    };
+    const cont = (c) => start(c) || /[0-9.\-]/.test(c) || c === "\u00B7";
+    if (!start(s[0])) return false;
+    for (let i = 1; i < s.length; i++) if (!cont(s[i])) return false;
+    return true;
+  }
+
   function wrap(h) {
     if (h == null || h === "" || h === false) return null;
     let n = nodes.get(h);
@@ -145,10 +173,12 @@
     else if (info.t === 11 && info.shadow) proto = ShadowRoot.prototype;
     else if (info.t === 11) proto = DocumentFragment.prototype;
     else if (info.t === 3) proto = Text.prototype;
+    else if (info.t === 7) proto = ProcessingInstruction.prototype;
     else if (info.t === 8) proto = Comment.prototype;
+    else if (info.t === 10) proto = DocumentType.prototype;
     else if (info.t === 1) {
       const tag = info.name;
-      proto = (HTML[tag] || HTMLElement).prototype;
+      proto = (info.ns === "http://www.w3.org/1999/xhtml" && HTML[tag] || HTMLElement).prototype;
     }
     n = Object.create(proto);
     n.__h = h;
@@ -180,11 +210,70 @@
     return out;
   }
 
+  const htmlCollectionTraps = {
+    get(t, p, recv) {
+      if (typeof p === "symbol" || p === "_fetch") return Reflect.get(t, p, recv);
+      if (p === "length") return t._fetch().length;
+      if (p === "item" || p === "namedItem") return Reflect.get(t, p, recv);
+      const s = String(p);
+      if (/^\d+$/.test(s)) return t._fetch()[Number(s)];
+      if (s) {
+        const named = HTMLCollection.prototype.namedItem.call(t, s);
+        if (named) return named;
+      }
+      return Reflect.get(t, p, recv);
+    },
+    ownKeys(t) {
+      const els = t._fetch();
+      const keys = [];
+      for (let i = 0; i < els.length; i++) keys.push(String(i));
+      for (const el of els) {
+        const id = el.id;
+        if (id && !keys.includes(id)) keys.push(id);
+        const name = el.getAttribute && el.getAttribute("name");
+        if (name && !keys.includes(name)) keys.push(name);
+      }
+      return keys;
+    },
+    getOwnPropertyDescriptor(t, p) {
+      if (typeof p === "symbol") return Object.getOwnPropertyDescriptor(t, p);
+      const s = String(p);
+      if (/^\d+$/.test(s)) {
+        const v = t._fetch()[Number(s)];
+        if (v === undefined) return undefined;
+        return { configurable: true, enumerable: true, writable: false, value: v };
+      }
+      const named = s ? HTMLCollection.prototype.namedItem.call(t, s) : null;
+      if (named) return { configurable: true, enumerable: false, writable: false, value: named };
+      return Object.getOwnPropertyDescriptor(HTMLCollection.prototype, p) || Object.getOwnPropertyDescriptor(t, p);
+    },
+    has(t, p) {
+      return htmlCollectionTraps.getOwnPropertyDescriptor(t, p) !== undefined;
+    },
+  };
+
+  class HTMLCollection {
+    constructor(fetch) {
+      this._fetch = fetch;
+      return new Proxy(this, htmlCollectionTraps);
+    }
+    item(i) { return this._fetch()[i | 0] || null; }
+    namedItem(name) {
+      const n = String(name);
+      if (!n) return null;
+      return this._fetch().find((el) => el.id === n || (el.getAttribute && el.getAttribute("name") === n)) || null;
+    }
+    get length() { return this._fetch().length; }
+  }
+  for (const k of ["item", "namedItem", "length"]) {
+    Object.defineProperty(HTMLCollection.prototype, k, { enumerable: true, configurable: true });
+  }
+
   class Node extends EventTarget {
     get nodeType() { return D("nodeType", this.__h); }
     get nodeName() { return D("nodeName", this.__h); }
     get nodeValue() { return D("nodeValue", this.__h); }
-    set nodeValue(v) { D("setNodeValue", this.__h, v == null ? "" : String(v)); }
+    set nodeValue(v) { D("setNodeValue", this.__h, v === null ? "" : String(v)); }
     get textContent() { return D("textContent", this.__h); }
     set textContent(v) { D("setTextContent", this.__h, v == null ? "" : String(v)); }
     get parentNode() { return wrap(D("parentNode", this.__h)); }
@@ -198,18 +287,40 @@
     get nextSibling() { return wrap(D("nextSibling", this.__h)); }
     get childNodes() { return list(D("childNodes", this.__h)); }
     get isConnected() { return !!D("isConnected", this.__h); }
-    get ownerDocument() { return document; }
-    appendChild(n) { D("appendChild", this.__h, handleOf(n)); return n; }
-    insertBefore(n, ref) { D("insertBefore", this.__h, handleOf(n), handleOf(ref)); return n; }
+    get ownerDocument() { return this.nodeType === 9 ? null : (wrap(D("ownerDocument", this.__h)) || document); }
+    appendChild(n) {
+      if (n && n.nodeType === 11) {
+        while (n.firstChild) D("appendChild", this.__h, handleOf(n.firstChild));
+        return n;
+      }
+      D("appendChild", this.__h, handleOf(n)); return n;
+    }
+    insertBefore(n, ref) {
+      if (n && n.nodeType === 11) {
+        while (n.firstChild) D("insertBefore", this.__h, handleOf(n.firstChild), handleOf(ref));
+        return n;
+      }
+      D("insertBefore", this.__h, handleOf(n), handleOf(ref)); return n;
+    }
+    append(...nodes) { for (const n of nodes) this.appendChild(typeof n === "string" ? document.createTextNode(n) : n); }
     removeChild(n) { D("removeChild", this.__h, handleOf(n)); return n; }
     replaceChild(n, old) { D("replaceChild", this.__h, handleOf(n), handleOf(old)); return old; }
     cloneNode(deep) { return wrap(D("cloneNode", this.__h, !!deep)); }
     contains(n) { return !!D("contains", this.__h, handleOf(n)); }
     hasChildNodes() { return this.childNodes.length > 0; }
+    replaceChildren(...args) {
+      while (this.firstChild) this.removeChild(this.firstChild);
+      for (const a of args) {
+        if (a == null) continue;
+        if (typeof a === "string") this.appendChild(document.createTextNode(a));
+        else this.appendChild(a);
+      }
+    }
     isEqualNode(n) { return !!(n && n.__h && D("isEqualNode", this.__h, n.__h)); }
     getRootNode(opts) { return wrap(D("getRootNode", this.__h, !!(opts && opts.composed))) || this; }
   }
-  Node.ELEMENT_NODE = 1; Node.TEXT_NODE = 3; Node.COMMENT_NODE = 8;
+  Node.ELEMENT_NODE = 1; Node.TEXT_NODE = 3; Node.PROCESSING_INSTRUCTION_NODE = 7;
+  Node.COMMENT_NODE = 8;
   Node.DOCUMENT_NODE = 9; Node.DOCUMENT_TYPE_NODE = 10; Node.DOCUMENT_FRAGMENT_NODE = 11;
 
   class CharacterData extends Node {
@@ -217,9 +328,39 @@
     set data(v) { this.nodeValue = v; }
     get length() { return this.data.length; }
   }
-  class Text extends CharacterData {}
-  class Comment extends CharacterData {}
+  class Text extends CharacterData {
+    constructor(data) {
+      super();
+      if (this.__h) return;
+      const s = arguments.length === 0 || data === undefined ? "" : String(data);
+      this.__h = D("createTextNode", s);
+      nodes.set(this.__h, this);
+    }
+  }
+  class Comment extends CharacterData {
+    constructor(data) {
+      super();
+      if (this.__h) return;
+      const s = arguments.length === 0 || data === undefined ? "" : String(data);
+      this.__h = D("createComment", s);
+      nodes.set(this.__h, this);
+    }
+  }
+  class ProcessingInstruction extends CharacterData {
+    get target() { return D("nodeName", this.__h); }
+  }
+  class DocumentType extends Node {
+    get name() { return D("doctypeName", this.__h); }
+    get publicId() { return D("doctypePublicId", this.__h); }
+    get systemId() { return D("doctypeSystemId", this.__h); }
+  }
   class DocumentFragment extends Node {
+    constructor() {
+      super();
+      if (this.__h) return;
+      this.__h = D("createFragment");
+      nodes.set(this.__h, this);
+    }
     querySelector(s) { return wrap(D("querySelector", this.__h, String(s))); }
     querySelectorAll(s) { return list(D("querySelectorAll", this.__h, String(s))); }
     getElementById(id) { return wrap(D("getElementByIdScoped", this.__h, String(id))); }
@@ -231,6 +372,15 @@
     get host() { return wrap(D("host", this.__h)); }
     get innerHTML() { return D("innerHTML", this.__h); }
     set innerHTML(v) { D("setInnerHTML", this.__h, String(v)); }
+    get adoptedStyleSheets() { return this._adopted || (this._adopted = []); }
+    set adoptedStyleSheets(v) { this._adopted = v || []; }
+  }
+  class CSSStyleSheet {
+    constructor() { this.cssRules = []; this._css = ""; }
+    replaceSync(css) { this._css = String(css ?? ""); return this; }
+    replace(css) { this.replaceSync(css); return Promise.resolve(this); }
+    insertRule() { return 0; }
+    deleteRule() {}
   }
 
   function styleProxy(handle) {
@@ -281,6 +431,8 @@
   class Element extends Node {
     get tagName() { return D("tagName", this.__h); }
     get localName() { return D("localName", this.__h); }
+    get prefix() { return D("prefix", this.__h); }
+    hasAttributes() { return (D("attrNames", this.__h) || []).length > 0; }
     get namespaceURI() { return D("namespaceURI", this.__h); }
     get id() { return D("getAttr", this.__h, "id") || ""; }
     set id(v) { D("setAttr", this.__h, "id", String(v)); }
@@ -309,6 +461,9 @@
         const name = names[i];
         const attr = {
           name,
+          localName: name,
+          prefix: null,
+          namespaceURI: null,
           ownerElement: this,
           get value() { return D("getAttr", h, name) || ""; },
           set value(v) { D("setAttr", h, name, String(v)); },
@@ -327,7 +482,15 @@
     querySelectorAll(s) { return list(D("querySelectorAll", this.__h, String(s))); }
     matches(s) { return !!D("matches", this.__h, String(s)); }
     closest(s) { return wrap(D("closest", this.__h, String(s))); }
-    getElementsByTagName(n) { return list(D("getElementsByTagName", this.__h, String(n))); }
+    getElementsByTagName(n) { return new HTMLCollection(() => list(D("getElementsByTagName", this.__h, String(n)))); }
+    getElementsByTagNameNS(ns, n) {
+      return new HTMLCollection(() => {
+        const all = list(D("getElementsByTagName", this.__h, String(n)));
+        if (ns === "*") return all;
+        const uri = ns == null ? "" : String(ns);
+        return all.filter((el) => el.namespaceURI === uri);
+      });
+    }
     getElementsByClassName(n) { return list(D("getElementsByClassName", this.__h, String(n))); }
     attachShadow(init) { return wrap(D("attachShadow", this.__h, (init && init.mode) || "open")); }
     get shadowRoot() { return wrap(D("shadowRoot", this.__h)); }
@@ -412,7 +575,16 @@
     reset() { D("reset", this.__h); }
     get elements() { return this.querySelectorAll("input,select,textarea,button"); }
   }
-  class HTMLAnchorElement extends HTMLElement {}
+  class HTMLAnchorElement extends HTMLElement {
+    get href() {
+      const s = this.getAttribute("href") || "";
+      return s;
+    }
+    set href(v) {
+      const s = String(v);
+      this.setAttribute("href", /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s) ? encodeURI(s) : s);
+    }
+  }
   class HTMLImageElement extends HTMLElement {
     get naturalWidth() { return D("box", this.__h, "naturalWidth"); }
     get naturalHeight() { return D("box", this.__h, "naturalHeight"); }
@@ -433,11 +605,50 @@
     }
   }
   class HTMLCanvasElement extends HTMLElement {
-    getContext() {
-      const noop = () => {};
-      return new Proxy({}, { get: (_, p) => p === "canvas" ? this : noop });
+    get width() { return D("canvasWidth", this.__h) || 300; }
+    set width(v) { D("canvasResize", this.__h, v | 0, this.height); }
+    get height() { return D("canvasHeight", this.__h) || 150; }
+    set height(v) { D("canvasResize", this.__h, this.width, v | 0); }
+    getContext(type) {
+      if (String(type).toLowerCase() !== "2d") return null;
+      if (!this._ctx2d) this._ctx2d = new CanvasRenderingContext2D(this);
+      return this._ctx2d;
     }
     toDataURL() { return "data:image/png;base64,"; }
+  }
+  class CanvasRenderingContext2D {
+    constructor(canvas) {
+      this.canvas = canvas;
+      this.__h = canvas.__h;
+      this.fillStyle = "#000000";
+      this.strokeStyle = "#000000";
+      this.globalAlpha = 1;
+      this.lineWidth = 1;
+      this.font = "10px sans-serif";
+    }
+    fillRect(x, y, w, h) {
+      D("canvasFillRect", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0, String(this.fillStyle));
+    }
+    clearRect(x, y, w, h) {
+      D("canvasClearRect", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0);
+    }
+    beginPath() {}
+    closePath() {}
+    moveTo() {}
+    lineTo() {}
+    rect(x, y, w, h) { this._r = [x, y, w, h]; }
+    fill() { if (this._r) this.fillRect(this._r[0], this._r[1], this._r[2], this._r[3]); }
+    stroke() {}
+    save() {}
+    restore() {}
+    translate() {}
+    scale() {}
+    rotate() {}
+    setTransform() {}
+    drawImage() {}
+    fillText() {}
+    strokeText() {}
+    measureText(t) { return { width: String(t).length * 8 }; }
   }
   class HTMLDivElement extends HTMLElement {}
   class HTMLParagraphElement extends HTMLElement {}
@@ -447,29 +658,107 @@
   class HTMLHtmlElement extends HTMLElement {}
   class HTMLTitleElement extends HTMLElement {}
   class HTMLScriptElement extends HTMLElement {}
+  class HTMLFrameSetElement extends HTMLElement {}
+  class HTMLTemplateElement extends HTMLElement {
+    get content() { return wrap(D("templateContent", this.__h)); }
+  }
   const HTML = {
     input: HTMLInputElement, textarea: HTMLTextAreaElement, select: HTMLSelectElement,
     option: HTMLOptionElement, button: HTMLButtonElement, form: HTMLFormElement,
     a: HTMLAnchorElement, img: HTMLImageElement, iframe: HTMLIFrameElement, canvas: HTMLCanvasElement,
     div: HTMLDivElement, p: HTMLParagraphElement, span: HTMLSpanElement,
     head: HTMLHeadElement, body: HTMLBodyElement, html: HTMLHtmlElement,
-    title: HTMLTitleElement, script: HTMLScriptElement,
+    title: HTMLTitleElement, script: HTMLScriptElement, frameset: HTMLFrameSetElement,
+    template: HTMLTemplateElement,
   };
 
   class Document extends Node {
-    get documentElement() { return wrap(D("documentElement")); }
-    get head() { return wrap(D("head")); }
-    get body() { return wrap(D("body")); }
-    get title() { return D("title"); }
-    set title(v) { D("setTitle", String(v)); }
-    get URL() { return D("url"); }
-    get documentURI() { return D("url"); }
+    get documentElement() { return wrap(D("documentElement", this.__h)); }
+    get dir() { return (this.documentElement && this.documentElement.getAttribute("dir")) || "ltr"; }
+    set dir(v) { if (this.documentElement) this.documentElement.setAttribute("dir", v); }
+    get doctype() { return wrap(D("doctype", this.__h)); }
+    get head() { return wrap(D("head", this.__h)); }
+    set head(_) {}
+    get body() { return wrap(D("body", this.__h)); }
+    set body(v) {
+      if (v == null || typeof v !== "object" || v.nodeType !== 1) {
+        throw new TypeError("Document.body: not an Element");
+      }
+      const htmlNS = "http://www.w3.org/1999/xhtml";
+      if (v.namespaceURI !== htmlNS || (v.localName !== "body" && v.localName !== "frameset")) {
+        throw new DOMException("Failed to set the 'body' property on 'Document'.", "HierarchyRequestError");
+      }
+      const root = this.documentElement;
+      if (!root) {
+        throw new DOMException("Failed to set the 'body' property on 'Document'.", "HierarchyRequestError");
+      }
+      const cur = this.body;
+      if (cur) cur.parentNode.replaceChild(v, cur);
+      else root.appendChild(v);
+    }
+    get forms() {
+      return new HTMLCollection(() => list(D("getElementsByTagName", this.__h, "form")));
+    }
+    get images() {
+      return new HTMLCollection(() =>
+        list(D("getElementsByTagName", this.__h, "img")).filter(
+          (el) => el.namespaceURI === "http://www.w3.org/1999/xhtml",
+        ),
+      );
+    }
+    get links() {
+      return new HTMLCollection(() => list(D("documentLinks", this.__h)));
+    }
+    get scripts() {
+      return new HTMLCollection(() =>
+        list(D("getElementsByTagName", this.__h, "script")).filter(
+          (el) => el.namespaceURI === "http://www.w3.org/1999/xhtml",
+        ),
+      );
+    }
+    get implementation() {
+      return {
+        createHTMLDocument(title) {
+          if (arguments.length === 0 || title === undefined) {
+            return wrap(D("createHTMLDocument", null));
+          }
+          return wrap(D("createHTMLDocument", String(title)));
+        },
+        hasFeature() { return true; },
+        createDocument(ns, qname, doctype) {
+          return wrap(D(
+            "createDocument",
+            ns == null ? "" : String(ns),
+            qname == null ? "" : String(qname),
+            handleOf(doctype),
+          ));
+        },
+        createDocumentType(name, publicId, systemId) {
+          return wrap(D(
+            "createDocumentType",
+            String(name),
+            publicId == null ? "" : String(publicId),
+            systemId == null ? "" : String(systemId),
+          ));
+        },
+      };
+    }
+    get title() { return D("title", this.__h); }
+    set title(v) { D("setTitle", this.__h, String(v)); }
+    get URL() {
+      const browsing = D("documentNode");
+      return this.__h === browsing ? D("url") : "about:blank";
+    }
+    get documentURI() { return this.URL; }
     get characterSet() { return "UTF-8"; }
     get charset() { return "UTF-8"; }
-    get compatMode() { return D("compatMode"); }
+    get inputEncoding() { return "UTF-8"; }
+    get contentType() { return "text/html"; }
+    get compatMode() { return this.__h === D("documentNode") ? D("compatMode") : "CSS1Compat"; }
     get cookie() { return D("cookie"); }
     set cookie(v) { D("setCookie", String(v)); }
-    get defaultView() { return window; }
+    get defaultView() { return this === document ? window : null; }
+    get location() { return this.__h === D("documentNode") ? location : null; }
     get readyState() { return "complete"; }
     get hidden() { return false; }
     get visibilityState() { return "visible"; }
@@ -477,18 +766,38 @@
     createElementNS(ns, name) { return wrap(D("createElementNS", ns == null ? "" : String(ns), String(name))); }
     createTextNode(data) { return wrap(D("createTextNode", String(data))); }
     createComment(data) { return wrap(D("createComment", String(data))); }
+    createProcessingInstruction(target, data) {
+      const t = String(target);
+      const d = data == null ? "" : String(data);
+      if (!isXmlName(t) || d.includes("?>")) {
+        throw new DOMException("The string contains invalid characters.", "InvalidCharacterError");
+      }
+      return wrap(D("createProcessingInstruction", t, d));
+    }
     createDocumentFragment() { return wrap(D("createFragment")); }
     createEvent(t) { return new Event(t); }
     getElementById(id) {
       const s = id === null ? "null" : id === undefined ? "undefined" : String(id);
       if (s === "") return null;
-      return wrap(D("getElementById", s));
+      return wrap(D("getElementByIdScoped", this.__h, s));
     }
-    querySelector(s) { return wrap(D("querySelector", "", String(s))); }
-    querySelectorAll(s) { return list(D("querySelectorAll", "", String(s))); }
-    getElementsByTagName(n) { return list(D("getElementsByTagName", "", String(n))); }
-    getElementsByClassName(n) { return list(D("getElementsByClassName", "", String(n))); }
-    getElementsByName(n) { return this.querySelectorAll("[name=\"" + CSS.escape(String(n)) + "\"]"); }
+    querySelector(s) { return wrap(D("querySelector", this.__h, String(s))); }
+    querySelectorAll(s) { return list(D("querySelectorAll", this.__h, String(s))); }
+    getElementsByTagName(n) { return new HTMLCollection(() => list(D("getElementsByTagName", this.__h, String(n)))); }
+    getElementsByTagNameNS(ns, n) {
+      return new HTMLCollection(() => {
+        const all = list(D("getElementsByTagName", this.__h, String(n)));
+        if (ns === "*") return all;
+        const uri = ns == null ? "" : String(ns);
+        return all.filter((el) => el.namespaceURI === uri);
+      });
+    }
+    getElementsByClassName(n) { return new HTMLCollection(() => list(D("getElementsByClassName", this.__h, String(n)))); }
+    getElementsByName(n) {
+      return new HTMLCollection(() =>
+        list(D("querySelectorAll", this.__h, "[name=\"" + CSS.escape(String(n)) + "\"]")),
+      );
+    }
     importNode(n, deep) { return n.cloneNode(!!deep); }
     adoptNode(n) { return n; }
     write() {}
@@ -762,6 +1071,19 @@
     toString() { return this.href; }
     toJSON() { return this.href; }
   }
+  class DOMParser {
+    parseFromString(str, type) {
+      const doc = document.implementation.createHTMLDocument("");
+      const html = str == null ? "" : String(str);
+      if (String(type || "").toLowerCase().includes("xml")) {
+        doc.body.textContent = html;
+        return doc;
+      }
+      const body = /<body[\s\S]*?>([\s\S]*)<\/body>/i.exec(html);
+      doc.body.innerHTML = body ? body[1] : html;
+      return doc;
+    }
+  }
   URL.createObjectURL = () => "blob:vector:0";
   URL.revokeObjectURL = () => {};
 
@@ -773,20 +1095,15 @@
     localStorage: storage("local"), sessionStorage: storage("session"),
     customElements: new CustomElementRegistry(),
     Event, MouseEvent, KeyboardEvent, CustomEvent, UIEvent, EventTarget, DragEvent,
-    Node, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment,
+    Node, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment, CharacterData,
+    ProcessingInstruction, DocumentType, HTMLCollection,
     HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLOptionElement,
     HTMLButtonElement, HTMLFormElement, HTMLAnchorElement, HTMLImageElement,
     HTMLIFrameElement, HTMLCanvasElement, HTMLDivElement, HTMLParagraphElement,
     HTMLSpanElement, HTMLHeadElement, HTMLBodyElement, HTMLHtmlElement,
-    HTMLTitleElement, HTMLScriptElement,
+    HTMLTitleElement, HTMLScriptElement, HTMLFrameSetElement, HTMLTemplateElement, CanvasRenderingContext2D, DOMException,
     MutationObserver, IntersectionObserver, ResizeObserver,
-    FormData, XMLHttpRequest, DOMTokenList, URL,
-    DOMException: class DOMException extends Error {
-      constructor(message, name) {
-        super(message);
-        this.name = name || "Error";
-      }
-    },
+    FormData, XMLHttpRequest, DOMTokenList, URL, DOMParser, CSSStyleSheet,
     navigator: {
       userAgent: "Vector/0.0.1", language: "en-US", languages: ["en-US"], onLine: true, platform: "vector",
       serviceWorker: {
@@ -944,12 +1261,46 @@
     Worker: function Worker(src) {
       this._id = D("workerCreate", String(src));
       this.onmessage = null;
+      this._terminated = false;
+      const fetched = D("workerSource", this._id);
+      const code = fetched == null || fetched === "" ? String(src) : String(fetched);
+      const box = { msg: undefined };
+      let onmessageFn = null;
+      const runnable = /onmessage|postMessage/.test(code) || /^\s*function/.test(code);
+      if (runnable) {
+        try {
+          const run = new Function(
+            "__post",
+            "var document = undefined;\n" +
+              "var window = undefined;\n" +
+              "var self = this;\n" +
+              "var onmessage = null;\n" +
+              "function postMessage(m) { __post(m); }\n" +
+              "self.postMessage = postMessage;\n" +
+              "self.addEventListener = function (type, fn) {\n" +
+              "  if (type === 'message' && typeof fn === 'function') onmessage = fn;\n" +
+              "};\n" +
+              code + "\n" +
+              "return onmessage;",
+          );
+          onmessageFn = run.call({ name: String(src) }, function (m) { box.msg = m; });
+        } catch (e) {
+          onmessageFn = null;
+        }
+      }
       this.postMessage = (m) => {
-        const echoed = D("workerPost", this._id, JSON.stringify(m));
-        const data = echoed == null ? m : JSON.parse(echoed);
-        if (this.onmessage) this.onmessage({ data });
+        if (this._terminated) return;
+        box.msg = undefined;
+        if (typeof onmessageFn === "function") onmessageFn({ data: m });
+        else box.msg = m;
+        if (typeof this.onmessage === "function" && box.msg !== undefined) {
+          this.onmessage({ data: box.msg });
+        }
       };
-      this.terminate = () => { D("workerTerminate", this._id); };
+      this.terminate = () => {
+        this._terminated = true;
+        D("workerTerminate", this._id);
+      };
     },
     WebSocket: function WebSocket(url) {
       const raw = D("wsConnect", String(url));
@@ -1008,17 +1359,21 @@
     NodeFilter: { SHOW_ELEMENT: 1, SHOW_TEXT: 4, SHOW_ALL: 0xFFFFFFFF },
     MutationRecord: function () {},
   };
-  windowProps.window = windowProps;
-  windowProps.self = windowProps;
-  windowProps.top = windowProps;
-  windowProps.parent = windowProps;
-  windowProps.frames = windowProps;
+  for (const k of ["addEventListener", "removeEventListener", "dispatchEvent"]) {
+    globalThis[k] = EventTarget.prototype[k];
+  }
+  windowProps.window = globalThis;
+  windowProps.self = globalThis;
+  windowProps.top = globalThis;
+  windowProps.parent = globalThis;
+  windowProps.frames = globalThis;
 
   for (const [k, v] of Object.entries(windowProps)) {
     try { globalThis[k] = v; } catch {}
   }
   try {
     Object.defineProperty(globalThis, "window", { value: globalThis, writable: true, configurable: true });
+    Object.defineProperty(globalThis, "self", { value: globalThis, writable: true, configurable: true });
   } catch {}
 
   globalThis.__veDispatch = (handle, type, init) => {
@@ -1053,8 +1408,9 @@
 
   if (typeof globalThis.test !== "function") {
     globalThis.test = function (fn, name) {
+      const t = { step_func: (f) => f, done() {}, add_cleanup() {} };
       try {
-        fn({ step_func: (f) => f, done() {}, add_cleanup() {} });
+        fn.call(t, t);
         (window.__tests = window.__tests || []).push([String(name || "test"), true]);
       } catch (e) {
         (window.__tests = window.__tests || []).push([String(name || "test"), false]);

@@ -1,12 +1,20 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <title>IDL attributes</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
 <body>
 <p id="p">x</p>
 <script>
 test(function () {
   assert_idl_attribute(document.body, "tagName");
   assert_idl_attribute(document.getElementById("p"), "id");
+  assert_idl_attribute(document, "links");
+  assert_idl_attribute(document, "scripts");
+  assert_idl_attribute(document, "forms");
+  assert_idl_attribute(document, "images");
   assert_equals(document.body.tagName, "BODY");
-}, "Element IDL");
+  assert_true(document.links instanceof HTMLCollection);
+  assert_true(document.implementation.createHTMLDocument("t") instanceof Document);
+}, "Element and Document IDL");
 </script>

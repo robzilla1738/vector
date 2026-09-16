@@ -25,6 +25,7 @@ pub const FEATURE_MANIFEST: &[&str] = &[
     "typeof",
     "string concat",
     "object literals",
+    "array literals",
     "property access",
     "identifiers (env)",
 ];
@@ -228,6 +229,9 @@ impl Evaluator<'_> {
         if src.starts_with('{') && src.ends_with('}') && wrapping_braces(src) {
             return self.parse_object(&src[1..src.len() - 1]);
         }
+        if src.starts_with('[') && src.ends_with(']') && wrapping_brackets(src) {
+            return self.parse_array(&src[1..src.len() - 1]);
+        }
         if src == "true" {
             return Ok(Value::Bool(true));
         }
@@ -263,6 +267,18 @@ impl Evaluator<'_> {
             let key = parse_string(k.trim()).unwrap_or_else(|| k.trim().to_owned());
             map.insert(key, self.eval_expr(v)?);
         }
+        Ok(Value::Object(map))
+    }
+
+    fn parse_array(&self, body: &str) -> Result<Value, VmError> {
+        let body = body.trim();
+        let mut map = BTreeMap::new();
+        if !body.is_empty() {
+            for (i, part) in split_top_all(body, ',').into_iter().enumerate() {
+                map.insert(i.to_string(), self.eval_expr(part)?);
+            }
+        }
+        map.insert("length".into(), Value::Number(map.len() as f64));
         Ok(Value::Object(map))
     }
 }
@@ -396,6 +412,10 @@ fn wrapping_parens(src: &str) -> bool {
 
 fn wrapping_braces(src: &str) -> bool {
     wrapping(src, b'{', b'}')
+}
+
+fn wrapping_brackets(src: &str) -> bool {
+    wrapping(src, b'[', b']')
 }
 
 fn wrapping(src: &str, open: u8, close: u8) -> bool {
@@ -575,6 +595,8 @@ mod tests {
         assert_eq!(eval("null").unwrap(), Value::Null);
         let obj = eval("{a: 1}").unwrap();
         assert_eq!(eval("({a: 1}).a").unwrap(), Value::Number(1.0));
+        assert_eq!(eval("[1, 2].length").unwrap(), Value::Number(2.0));
+        assert_eq!(eval("[].length").unwrap(), Value::Number(0.0));
         assert!(matches!(obj, Value::Object(_)));
         assert!(eval("function(){}").is_err());
         let mut env = BTreeMap::new();

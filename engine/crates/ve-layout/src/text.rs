@@ -622,4 +622,30 @@ mod tests {
         assert_eq!(lines.len(), 1);
         assert!(lines[0].width > 0.0);
     }
+
+    #[test]
+    fn parley_shaper_registers_ahem_reftest_font() {
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../conformance/fonts/Ahem.ttf");
+        let bytes =
+            std::fs::read(&path).unwrap_or_else(|e| panic!("missing {}: {e}", path.display()));
+        let mut shaper = ParleyShaper::new();
+        assert!(
+            shaper.register_font(bytes) >= 1,
+            "Ahem.ttf must register at least one family"
+        );
+        assert!(shaper.has_fonts());
+        let style = ComputedStyle {
+            font_size: 16.0,
+            font_family: vec![FontFamily::Named("Ahem".into())],
+            ..ComputedStyle::initial()
+        };
+        let lines = shaper.shape("XXXX", &style, 1000.0, 1000.0, true);
+        assert_eq!(lines.len(), 1);
+        assert!(
+            (lines[0].width - 64.0).abs() < 1.0,
+            "Ahem is square: 4×16px = 64, got {}",
+            lines[0].width
+        );
+    }
 }

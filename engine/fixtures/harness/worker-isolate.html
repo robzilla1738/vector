@@ -4,10 +4,11 @@
 <body>
 <script>
 window.__tests = [];
-const w = new Worker("onmessage=function(e){postMessage({iso: typeof document, echo: e.data})}");
+const w = new Worker("onmessage=function(e){postMessage({iso: typeof document, echo: e.data, wr: typeof WeakRef})}");
 w.onmessage = (e) => {
   window.__tests.push(["worker.isolated-document", e.data && e.data.iso === "undefined"]);
   window.__tests.push(["worker.round-trip", e.data && e.data.echo === "ping"]);
+  window.__tests.push(["worker.v8-weakref", e.data && e.data.wr === "function"]);
 };
 w.postMessage("ping");
 </script>

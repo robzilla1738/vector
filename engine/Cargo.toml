@@ -27,6 +27,7 @@ members = [
     "tools/wpt-harness",
     "tools/perf",
     "tools/ve-shell",
+    "tools/browserbench",
 ]
 
 [workspace.package]
@@ -97,6 +98,7 @@ peniko = "0.6.1"
 kurbo = "0.13.1"
 png = "0.18.1"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+pollster = "0.4.0"
 
 # ---- Node bindings (optional; crate ve-napi) --------------------------------
 napi = { version = "3.12.4", default-features = false, features = ["napi8", "serde-json"] }

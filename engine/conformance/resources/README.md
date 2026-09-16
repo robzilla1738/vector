@@ -2,10 +2,14 @@
 
 Pinned WPT revision: see `../wpt-revision.txt`.
 
-`testharness.js` is the upstream file from
-https://github.com/web-platform-tests/wpt at that revision (W3C 3-clause BSD).
-`wpt-harness` inlines it into script fixtures so tests that use
-`<script src="/resources/testharness.js">` run without a WPT HTTP server.
+Vendored from that revision (W3C 3-clause BSD):
+
+- `testharness.js`
+- `testharnessreport.js`
+- `idlharness.js`
+- `WebIDLParser.js` / `webidl2.js` (WPT `resources/webidl2/lib/webidl2.js`, served as `/resources/WebIDLParser.js`)
+
+`wpt-harness` inlines them so fixtures run without a live WPT checkout. `--http` also serves this directory at `/resources` and `../fonts/Ahem.ttf` at `/fonts`.
 
 Vendored upstream tests live in `../wpt/` and are copied into
 `../../fixtures/harness/` for the supported-subset manifest.

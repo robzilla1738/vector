@@ -211,12 +211,6 @@ export class PageService {
       ? router.decide(opts.url, opts.backend)
       : { backend: opts.backend ?? "vector", reason: opts.backend ? `explicit-backend:${opts.backend}` : "engine-mode-off", fallbackAllowed: false };
     if (decision.backend !== "vector-engine") return this.openOn(decision.backend, opts, decision.reason);
-    // The stage is a WebContentsView. Auto-mode background/worker pages can
-    // stay on the engine; a tab the shell will show cannot — software paint of
-    // CSS/JS sites is a blank card (CNN, news, anything that hides the SSR).
-    if (decision.fallbackAllowed && this.deps.native.available() && !opts.background) {
-      return this.openOn("vector", opts, `${decision.reason}:native-view`);
-    }
     try {
       return await this.openOn("vector-engine", opts, decision.reason, decision.fallbackAllowed);
     } catch (e) {
@@ -307,6 +301,16 @@ export class PageService {
       if (nativeCreated) await this.deps.native.closePage(pageId).catch(() => {});
       throw e;
     }
+    if (backend === "vector-engine" && this.deps.native.available() && !opts.background) {
+      await this.deps.native.createPage({
+        pageId,
+        marker: `vetab-${pageId}`,
+        url: opts.url,
+        background: false,
+        kind: "engine",
+      });
+      nativeCreated = true;
+    }
     const target: PageTarget = {
       pageId,
       backend,
@@ -315,7 +319,7 @@ export class PageService {
       title: "",
       documentEpoch: 0,
       lastRevision: 0,
-      viewStatus: backend === "chrome" || backend === "vector-engine" ? "hidden" : opts.background ? "background" : "visible",
+      viewStatus: backend === "chrome" ? "hidden" : opts.background ? "background" : "visible",
       controller: "none",
       controllerEpoch: 0,
       ownedByRuntime: opts.ownedByRuntime,
@@ -335,6 +339,7 @@ export class PageService {
       await lp.driver!.navigate(opts.url).catch(() => {});
     }
     void this.refreshMeta(lp);
+    if (nativeCreated && backend === "vector-engine") void this.paintEngine(pageId);
     // pages default to surfacing in the shell unless explicitly backgrounded
     if (opts.activate ?? !opts.background) await this.activate(pageId).catch(() => {});
     return target;
@@ -512,7 +517,7 @@ export class PageService {
       this.live.delete(pageId);
       await lp.driver?.dispose().catch(() => {});
     }
-    if (lp?.target.backend === "vector" && this.deps.native.available()) {
+    if ((lp?.target.backend === "vector" || lp?.target.backend === "vector-engine") && this.deps.native.available()) {
       await this.deps.native.closePage(pageId).catch(() => {});
     }
     if (this.activeId === pageId) {
@@ -529,7 +534,7 @@ export class PageService {
   async activate(pageId: string): Promise<PageTarget> {
     const lp = this.live.get(pageId);
     if (!lp) throw new VectorError("not_found", `no page ${pageId}`);
-    if (lp.target.backend === "vector" && this.deps.native.available()) {
+    if ((lp.target.backend === "vector" || lp.target.backend === "vector-engine") && this.deps.native.available()) {
       await this.deps.native.focusPage(pageId);
       lp.target.viewStatus = "visible";
     }
@@ -547,6 +552,7 @@ export class PageService {
       if (!lp) throw new VectorError("target_detached", `page ${pageId} detached during navigation`);
       lp.target.url = url;
       this.persist(lp);
+      if (lp.target.backend === "vector-engine") void this.paintEngine(pageId);
       return lp.target;
     });
   }
@@ -942,6 +948,36 @@ export class PageService {
       height: shot.height,
       scale: shot.scale,
     };
+  }
+
+  /** Present the engine framebuffer in the desktop stage (VEC-014). */
+  private async paintEngine(pageId: string) {
+    const lp = this.live.get(pageId);
+    if (!lp?.driver || lp.target.backend !== "vector-engine" || !this.deps.native.available()) return;
+    try {
+      const shot = await lp.driver.screenshot();
+      if (!shot.buffer?.length) return;
+      await this.deps.native.setEngineFrame(pageId, `data:image/png;base64,${shot.buffer.toString("base64")}`);
+    } catch {
+      /* paint is best-effort; the engine page still runs */
+    }
+  }
+
+  /** Human pointer/key on the engine paint view — same document the agent uses. */
+  async onEngineInput(pageId: string, input: { type: string; x?: number; y?: number; button?: number; key?: string }) {
+    const lp = this.live.get(pageId);
+    if (!lp?.driver || lp.target.backend !== "vector-engine") return;
+    this.onNativeTakeover(pageId);
+    try {
+      if (input.type === "pointerdown" || input.type === "click") {
+        await lp.driver.clickPoint(input.x ?? 0, input.y ?? 0);
+      } else if (input.type === "key" && input.key) {
+        await lp.driver.press(input.key);
+      }
+    } catch {
+      /* input is best-effort */
+    }
+    void this.paintEngine(pageId);
   }
 
   // ---------- takeover ----------

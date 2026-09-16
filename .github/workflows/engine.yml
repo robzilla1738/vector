@@ -105,9 +105,9 @@ jobs:
           key: features
       - name: http + quickjs + v8 + images
         run: cargo clippy -p ve-api --all-targets --features http,quickjs,v8 -- -D warnings
-      - name: native shell window feature
+      - name: native product shell
         if: runner.os == 'macOS'
-        run: cargo clippy -p ve-shell --all-targets --features window -- -D warnings
+        run: cargo clippy -p ve-shell --all-targets --features product -- -D warnings
       - run: cargo test -p ve-net --features http
       - run: cargo test -p ve-script --features quickjs
       - name: V8 backend (prebuilt static lib download)
@@ -159,17 +159,25 @@ jobs:
             css/css-flexbox css/css-flexbox/reference css/css-flexbox/support \
             css/css-grid/alignment css/css-grid/reference \
             css/selectors css/mediaqueries css/reference css/support \
-            accname html-aam common resources testharness.js testharnessreport.js
+            html/dom \
+            accname html-aam common resources testharness.js testharnessreport.js \
+            fonts interfaces
+      - name: Vendored Ahem reftest font
+        run: test -f conformance/fonts/Ahem.ttf
+      - name: Reftest fonts via Parley (not the m1 scorer)
+        run: cargo run --release -p wpt-runner -- --wpt-dir "${{ runner.temp }}/wpt" --use-reftest-fonts --limit 8 --manifest conformance/reftest-fonts.txt --out wpt-fonts-report.json
       - name: Every manifest test must still pass
         run: cargo run --release -p wpt-runner -- --wpt-dir "${{ runner.temp }}/wpt" --out wpt-report.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: wpt-report
-          path: engine/wpt-report.json
+          path: |
+            engine/wpt-report.json
+            engine/wpt-fonts-report.json
 
   wpt-harness:
-    name: WPT testharness (supported subset)
+    name: WPT testharness (supported subset + tree HTTP)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -178,13 +186,43 @@ jobs:
         with:
           workspaces: engine
           key: wpt-harness
-      - name: Supported testharness + pixel fixtures
-        run: cargo run --release -p wpt-harness --features v8 -- --out wpt-harness-report.json
+      - name: Pinned WPT checkout
+        working-directory: ${{ runner.temp }}
+        run: |
+          REV=$(cat "${{ github.workspace }}/engine/conformance/wpt-revision.txt")
+          git clone --filter=blob:none --sparse https://github.com/web-platform-tests/wpt.git wpt
+          cd wpt
+          git fetch --depth 1 origin "$REV"
+          git checkout "$REV"
+          git sparse-checkout set \
+            html/dom resources testharness.js testharnessreport.js fonts interfaces
+      - name: Vendored Ahem reftest font
+        run: test -f conformance/fonts/Ahem.ttf
+      - name: Supported testharness + whole-tree HTTP sample
+        run: cargo run --release -p wpt-harness --features v8 -- --http --wpt-dir "${{ runner.temp }}/wpt" --tree --tree-limit 40 --out wpt-harness-report.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: wpt-harness-report
           path: engine/wpt-harness-report.json
+
+  browserbench:
+    name: Speedometer/JetStream/MotionMark identity lab
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: browserbench
+      - name: Official Speedometer 3.0 / JetStream / MotionMark GPU identity
+        run: cargo run --release -p browserbench --features v8,gpu -- --iterations 2 --out browserbench-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browserbench-report
+          path: engine/browserbench-report.json
 
   addon:
     name: "@vector/engine-native (${{ matrix.os }})"

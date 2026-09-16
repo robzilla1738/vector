@@ -12,7 +12,7 @@ use ve_api::{NativeBrowser, NativeEvent};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::keyboard::{Key, NamedKey};
+use winit::keyboard::{Key, ModifiersState, NamedKey};
 use winit::window::{Window, WindowId};
 
 /// Runs until the window is closed.
@@ -24,6 +24,7 @@ pub fn run(browser: NativeBrowser) -> Result<()> {
         window: None,
         context: None,
         surface: None,
+        mods: ModifiersState::default(),
     };
     event_loop.run_app(&mut app)?;
     Ok(())
@@ -35,6 +36,7 @@ struct App {
     #[allow(dead_code)]
     context: Option<Context<Rc<Window>>>,
     surface: Option<Surface<Rc<Window>, Rc<Window>>>,
+    mods: ModifiersState,
 }
 
 impl App {
@@ -111,6 +113,9 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => self.redraw(),
+            WindowEvent::ModifiersChanged(m) => {
+                self.mods = m.state();
+            }
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state != ElementState::Pressed {
                     return;
@@ -124,7 +129,22 @@ impl ApplicationHandler for App {
                     Key::Character(c) => c.to_string(),
                     _ => return,
                 };
-                let _ = self.browser.handle_event(NativeEvent::Key { key });
+                let chrome = self.mods.control_key() || self.mods.super_key();
+                let ev = if chrome && key == "t" {
+                    NativeEvent::NewTab {
+                        html: "<body></body>".into(),
+                        url: "about:blank".into(),
+                    }
+                } else if chrome && key == "w" {
+                    NativeEvent::CloseTab
+                } else if chrome && key == "l" {
+                    NativeEvent::FocusUrlbar
+                } else if chrome && key == "Tab" {
+                    NativeEvent::NextTab
+                } else {
+                    NativeEvent::Key { key }
+                };
+                let _ = self.browser.handle_event(ev);
                 if let Some(w) = &self.window {
                     w.request_redraw();
                 }

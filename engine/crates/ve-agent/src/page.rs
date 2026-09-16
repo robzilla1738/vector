@@ -384,6 +384,8 @@ pub struct Page {
     /// Dedicated workers (script source + last message).
     pub(crate) workers: HashMap<u64, WorkerRecord>,
     pub(crate) next_worker: u64,
+    /// Per-canvas 2D pixel buffers (VEC-008).
+    pub(crate) canvases: HashMap<NodeId, CanvasSurface>,
 }
 
 /// One `IndexedDB` index (VEC-010).
@@ -411,6 +413,64 @@ pub(crate) struct WorkerRecord {
     pub source: String,
     /// Last `postMessage` payload (JSON text).
     pub last_message: Option<String>,
+}
+
+/// Software 2D canvas backing store.
+#[derive(Clone, Debug)]
+pub(crate) struct CanvasSurface {
+    width: u32,
+    height: u32,
+    pixels: Vec<u8>,
+    ops: u64,
+}
+
+impl CanvasSurface {
+    fn new(width: u32, height: u32) -> Self {
+        let width = width.clamp(1, 4096);
+        let height = height.clamp(1, 4096);
+        Self {
+            pixels: vec![0; width as usize * height as usize * 4],
+            width,
+            height,
+            ops: 0,
+        }
+    }
+
+    fn resize(&mut self, width: u32, height: u32) {
+        *self = Self::new(width, height);
+    }
+
+    fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: [u8; 4]) {
+        if w <= 0 || h <= 0 {
+            self.ops += 1;
+            return;
+        }
+        let x0 = x.max(0) as u32;
+        let y0 = y.max(0) as u32;
+        let x1 = (x.saturating_add(w)).max(0) as u32;
+        let y1 = (y.saturating_add(h)).max(0) as u32;
+        let x1 = x1.min(self.width);
+        let y1 = y1.min(self.height);
+        let x0 = x0.min(x1);
+        let y0 = y0.min(y1);
+        for row in y0..y1 {
+            let start = (row * self.width + x0) as usize * 4;
+            let end = (row * self.width + x1) as usize * 4;
+            let mut i = start;
+            while i + 3 < end {
+                self.pixels[i] = color[0];
+                self.pixels[i + 1] = color[1];
+                self.pixels[i + 2] = color[2];
+                self.pixels[i + 3] = color[3];
+                i += 4;
+            }
+        }
+        self.ops += 1;
+    }
+
+    fn clear_rect(&mut self, x: i32, y: i32, w: i32, h: i32) {
+        self.fill_rect(x, y, w, h, [0, 0, 0, 0]);
+    }
 }
 
 /// A finished download (plan A16).
@@ -601,6 +661,7 @@ impl Page {
             indexed_db_versions: HashMap::new(),
             workers: HashMap::new(),
             next_worker: 0,
+            canvases: HashMap::new(),
         }
     }
 
@@ -676,6 +737,7 @@ impl Page {
     }
 
     pub(crate) fn create_worker(&mut self, source: String) -> u64 {
+        let source = self.load_worker_source(source);
         self.next_worker += 1;
         let id = self.next_worker;
         self.workers.insert(
@@ -686,6 +748,94 @@ impl Page {
             },
         );
         id
+    }
+
+    pub(crate) fn terminate_worker(&mut self, id: u64) {
+        self.workers.remove(&id);
+    }
+
+    pub(crate) fn maybe_attach_blank_iframe(&mut self, id: NodeId) {
+        let Some(el) = self.doc.element(id) else {
+            return;
+        };
+        if !el.is_html("iframe") && !el.is_html("frame") {
+            return;
+        }
+        if self.doc.content_document(id).is_some() {
+            return;
+        }
+        if self.cross_origin_frames.contains(&id) {
+            return;
+        }
+        let src = self.doc.attribute(id, "src").unwrap_or_default();
+        if !src.is_empty() && src != "about:blank" {
+            return;
+        }
+        if !self.doc.is_connected(id) {
+            return;
+        }
+        let nested = self.doc.create_html_document(None);
+        let _ = self.doc.set_content_document(id, nested);
+    }
+
+    pub(crate) fn canvas_size(&mut self, id: NodeId) -> (u32, u32) {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        (c.width, c.height)
+    }
+
+    pub(crate) fn canvas_resize(&mut self, id: NodeId, width: u32, height: u32) {
+        self.canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(width, height))
+            .resize(width, height);
+    }
+
+    pub(crate) fn canvas_fill_rect(
+        &mut self,
+        id: NodeId,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+        color: &str,
+    ) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.fill_rect(x, y, w, h, parse_css_color(color));
+        c.ops
+    }
+
+    pub(crate) fn canvas_clear_rect(&mut self, id: NodeId, x: i32, y: i32, w: i32, h: i32) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.clear_rect(x, y, w, h);
+        c.ops
+    }
+
+    pub(crate) fn canvas_ops(&self, id: NodeId) -> u64 {
+        self.canvases.get(&id).map_or(0, |c| c.ops)
+    }
+
+    fn load_worker_source(&mut self, source: String) -> String {
+        if !is_worker_url(&source) {
+            return source;
+        }
+        let url = self.resolve_url(&source).unwrap_or_else(|| source.clone());
+        let id = self.id();
+        if let Some(loader) = self.loader.as_mut()
+            && let Ok(res) = loader.script_fetch(&url, "GET", &[], id)
+            && res.status < 400
+        {
+            return String::from_utf8_lossy(&res.bytes).into_owned();
+        }
+        source
     }
 
     fn install_image(&mut self, id: NodeId, bytes: &[u8]) {
@@ -3946,11 +4096,10 @@ pub fn outer_html(doc: &Document, id: NodeId) -> String {
     out
 }
 
-/// Runs a dedicated worker script in an isolated realm (no page `document`).
-///
-/// A second V8 isolate cannot be entered on the page thread inside a
-/// `HandleScope`, and spawning one on another thread wedges the V8 platform.
-/// Worker scripts therefore evaluate in [`ve_vm`] with `document` unbound.
+/// Page `Worker` scripts evaluate in a page-isolate function realm (`var document
+/// = undefined`). This helper remains for host `workerPost` fallbacks. A second
+/// V8 isolate cannot be created on the page thread inside a `HandleScope`
+/// (SIGSEGV in `rusty_v8`).
 pub(crate) fn dispatch_worker(source: &str, msg: &str) -> Option<String> {
     if !looks_like_worker_script(source) {
         return None;
@@ -4025,6 +4174,81 @@ fn extract_post_message_arg(source: &str) -> Option<&str> {
 fn looks_like_worker_script(source: &str) -> bool {
     let t = source.trim();
     t.contains("onmessage") || t.contains("postMessage") || t.starts_with("function")
+}
+
+fn is_worker_url(source: &str) -> bool {
+    let t = source.trim();
+    t.starts_with("http://")
+        || t.starts_with("https://")
+        || t.starts_with('/')
+        || t.starts_with("./")
+        || std::path::Path::new(t)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("js"))
+}
+
+/// Body a registered service worker should return for `fetch`, if it intercepts.
+///
+/// Supports the explicit `respond:` subset and `event.respondWith(new Response("…"))`.
+/// Listeners that do not call `respondWith` leave the network response in place.
+pub(crate) fn service_worker_response_body(script: &str) -> Option<String> {
+    let script = script.trim();
+    if let Some(rest) = script.strip_prefix("respond:") {
+        return Some(rest.trim().to_owned());
+    }
+    if !script.contains("respondWith") {
+        return None;
+    }
+    let i = script.find("new Response(")?;
+    let mut rest = script[i + "new Response(".len()..].trim_start();
+    let quote = rest.chars().next()?;
+    if quote != '"' && quote != '\'' && quote != '`' {
+        return None;
+    }
+    rest = &rest[quote.len_utf8()..];
+    let end = rest.find(quote)?;
+    Some(rest[..end].to_owned())
+}
+
+fn parse_css_color(s: &str) -> [u8; 4] {
+    let t = s.trim();
+    if let Some(hex) = t.strip_prefix('#') {
+        let expand = |c: u8| -> u8 { (c << 4) | c };
+        let digit = |c: u8| -> Option<u8> {
+            Some(match c {
+                b'0'..=b'9' => c - b'0',
+                b'a'..=b'f' => c - b'a' + 10,
+                b'A'..=b'F' => c - b'A' + 10,
+                _ => return None,
+            })
+        };
+        let b = hex.as_bytes();
+        if b.len() == 3 {
+            if let (Some(r), Some(g), Some(bl)) = (digit(b[0]), digit(b[1]), digit(b[2])) {
+                return [expand(r), expand(g), expand(bl), 255];
+            }
+        }
+        if b.len() == 6 {
+            if let (Some(r1), Some(r0), Some(g1), Some(g0), Some(b1), Some(b0)) = (
+                digit(b[0]),
+                digit(b[1]),
+                digit(b[2]),
+                digit(b[3]),
+                digit(b[4]),
+                digit(b[5]),
+            ) {
+                return [(r1 << 4) | r0, (g1 << 4) | g0, (b1 << 4) | b0, 255];
+            }
+        }
+    }
+    match t.to_ascii_lowercase().as_str() {
+        "white" => [255, 255, 255, 255],
+        "red" => [255, 0, 0, 255],
+        "blue" => [0, 0, 255, 255],
+        "green" => [0, 128, 0, 255],
+        "transparent" => [0, 0, 0, 0],
+        _ => [0, 0, 0, 255],
+    }
 }
 
 /// Current wall-clock time in Unix milliseconds (for `startedAt`).

@@ -1,4 +1,5 @@
 import { clipboard, Menu, session, WebContentsView, type BaseWindow, type MenuItemConstructorOptions } from "electron";
+import { join } from "node:path";
 import type { TargetRegistry, ViewEntry } from "./target-registry.js";
 
 export interface ViewHooks {
@@ -15,6 +16,14 @@ export interface ViewHooks {
   /** app-level shortcuts pressed while a page view is focused */
   sendShortcut(s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }): void;
 }
+
+const ENGINE_PAINT_HTML = `data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html>
+<meta charset=utf-8>
+<title>Vector Engine</title>
+<style>html,body{margin:0;height:100%;background:#fff;overflow:hidden}img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none}</style>
+<body tabindex=0><img id=f alt=""></body>
+<script>document.body.focus();</script>
+`)}`;
 
 const PROFILE_PARTITION = "persist:vector-default";
 const AGENT_PARTITION = "persist:vector-agent";
@@ -49,16 +58,19 @@ export function createPageView(opts: {
   marker: string;
   url: string;
   background: boolean;
+  kind?: "chromium" | "engine";
   hooks: ViewHooks;
 }): ViewEntry {
-  const partition = opts.background ? AGENT_PARTITION : PROFILE_PARTITION;
+  const enginePaint = opts.kind === "engine";
+  const partition = enginePaint ? "persist:vector-engine-paint" : opts.background ? AGENT_PARTITION : PROFILE_PARTITION;
   const view = new WebContentsView({
     webPreferences: {
       partition,
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
-      spellcheck: true,
+      spellcheck: !enginePaint,
+      preload: enginePaint ? join(import.meta.dirname, "..", "preload", "engine-paint.cjs") : undefined,
     },
   });
   const entry: ViewEntry = {
@@ -66,15 +78,17 @@ export function createPageView(opts: {
     marker: opts.marker,
     view,
     owned: true,
+    kind: enginePaint ? "engine" : "chromium",
   };
   opts.registry.add(entry);
-  installMarker(view, opts.marker);
+  if (!enginePaint) installMarker(view, opts.marker);
   wireEvents(entry, opts.hooks);
   opts.win.contentView.addChildView(view);
   if (!opts.background) view.webContents.focus();
-  // loadURL even for about:blank — the navigation is what reliably triggers
-  // did-navigate → marker injection → the runtime's target attach
-  if (opts.url) {
+  if (enginePaint) {
+    view.webContents.loadURL(ENGINE_PAINT_HTML).catch(() => {});
+    opts.hooks.onNavigated(opts.pageId, opts.url);
+  } else if (opts.url) {
     view.webContents.loadURL(opts.url).catch(() => {});
   }
   return entry;
@@ -216,6 +230,14 @@ function showPageMenu(entry: ViewEntry, p: Electron.ContextMenuParams, hooks: Vi
     },
   });
   Menu.buildFromTemplate(t).popup();
+}
+
+export function setEngineFrame(entry: ViewEntry, dataUrl: string) {
+  if (entry.kind !== "engine") return;
+  const src = JSON.stringify(dataUrl);
+  entry.view.webContents
+    .executeJavaScript(`(function(){var i=document.getElementById("f"); if(i) i.src=${src};})()`)
+    .catch(() => {});
 }
 
 export function destroyPageView(entry: ViewEntry, win: BaseWindow) {

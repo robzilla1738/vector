@@ -6,7 +6,7 @@ import { VectorError, type RpcChannel } from "@vector/contracts";
  * vector page creation returns an explicit error.
  */
 export interface NativeBridge {
-  createPage(opts: { pageId: string; marker: string; url: string; background: boolean }): Promise<{ ok: true }>;
+  createPage(opts: { pageId: string; marker: string; url: string; background: boolean; kind?: "chromium" | "engine" }): Promise<{ ok: true }>;
   closePage(pageId: string): Promise<{ ok: boolean }>;
   showPage(pageId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<{ ok: boolean }>;
   hidePage(pageId: string): Promise<{ ok: boolean }>;
@@ -17,6 +17,7 @@ export interface NativeBridge {
   acquireStage(pageId: string): Promise<{ ok: boolean }>;
   releaseStage(pageId: string): Promise<{ ok: boolean }>;
   capturePage(pageId: string, scale: number): Promise<{ dataUrl: string }>;
+  setEngineFrame(pageId: string, dataUrl: string): Promise<{ ok: boolean }>;
   openExternal(url: string): Promise<{ ok: boolean }>;
   findInPage(pageId: string, text: string, forward: boolean, findNext: boolean): Promise<{ matches: number; activeMatch?: number }>;
   stopFind(pageId: string, action: "clear" | "keep"): Promise<{ ok: boolean }>;
@@ -34,7 +35,7 @@ export class ChannelNativeBridge implements NativeBridge {
   available() {
     return true;
   }
-  createPage(o: { pageId: string; marker: string; url: string; background: boolean }) {
+  createPage(o: { pageId: string; marker: string; url: string; background: boolean; kind?: "chromium" | "engine" }) {
     return this.channel.call<{ ok: true }>("native.createPage", o);
   }
   closePage(pageId: string) {
@@ -60,6 +61,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   capturePage(pageId: string, scale: number) {
     return this.channel.call<{ dataUrl: string }>("native.capturePage", { pageId, scale });
+  }
+  setEngineFrame(pageId: string, dataUrl: string) {
+    return this.channel.call<{ ok: boolean }>("native.setEngineFrame", { pageId, dataUrl });
   }
   openExternal(url: string) {
     return this.channel.call<{ ok: boolean }>("native.openExternal", { url });
@@ -103,6 +107,7 @@ export class NullNativeBridge implements NativeBridge {
   acquireStage(): never { this.fail(); }
   releaseStage(): never { this.fail(); }
   capturePage(): never { this.fail(); }
+  setEngineFrame(): never { this.fail(); }
   openExternal(): never { this.fail(); }
   findInPage(): never { this.fail(); }
   stopFind(): never { this.fail(); }

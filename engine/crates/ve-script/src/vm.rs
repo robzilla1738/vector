@@ -249,6 +249,14 @@ pub trait JsVm {
     fn memory_used(&self) -> Option<usize> {
         None
     }
+
+    /// Exit this isolate so an older isolate on the thread can resume.
+    ///
+    /// Used for nested worker realms created while a page isolate is entered.
+    fn park(&mut self) {}
+
+    /// Re-enter a parked isolate before evaluating worker scripts.
+    fn unpark(&mut self) {}
 }
 
 /// The backend used when no real VM is compiled in.

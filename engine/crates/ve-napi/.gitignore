@@ -1,2 +1,4 @@
 *.node
 node_modules/
+ve-host
+ve-host.exe

@@ -27,7 +27,7 @@ pub const HOST_FUNCTIONS: &[&str] = &[
 ];
 
 /// Longest a single script may run before the VM terminates it.
-pub const SCRIPT_DEADLINE: Duration = Duration::from_secs(5);
+pub const SCRIPT_DEADLINE: Duration = Duration::from_secs(20);
 /// Timers due within this window block `settle()` (architecture §6 cond. 2).
 pub const TIMER_WINDOW_MS: u64 = 50;
 /// Console lines kept per page.

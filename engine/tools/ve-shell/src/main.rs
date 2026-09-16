@@ -23,7 +23,8 @@ mod gui;
     about = "Native-only Vector Engine browser (no Chromium)"
 )]
 struct Args {
-    /// URL or `data:` document.
+    /// URL or `data:` document. Defaults to a blank native page.
+    #[arg(default_value = "about:blank")]
     url: String,
     /// Write PNG here.
     #[arg(long)]
@@ -85,7 +86,10 @@ fn main() -> Result<()> {
 fn run_gui(args: &Args) -> Result<()> {
     let mut browser = NativeBrowser::with_config(EngineConfig {
         viewport: Size::new(1280.0, 720.0),
-        offline: args.url.starts_with("data:") || args.html.is_some(),
+        offline: args.url.starts_with("data:")
+            || args.url.starts_with("file:")
+            || args.html.is_some(),
+        scripting: cfg!(feature = "v8"),
         policy: ve_api::NetworkPolicy::permissive(),
         ..EngineConfig::default()
     });

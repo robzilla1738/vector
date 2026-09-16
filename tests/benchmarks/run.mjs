@@ -72,6 +72,33 @@ const sha = (dir) => {
     return "unknown";
   }
 };
+
+async function measureHeldOutAdvantage(results) {
+  const chrome = results.chrome;
+  const engine = results["vector-engine"];
+  if (!chrome || chrome.skipped || !engine || engine.skipped) {
+    return { measured: false, reason: "need both chrome and vector-engine" };
+  }
+  const metric = chrome.metrics["act+observe.ms"] && engine.metrics["act+observe.ms"] ? "act+observe.ms" : "observe.full.ms";
+  const p95 = (r) => r.metrics[metric]?.p95 ?? 0;
+  const baseline = {
+    success: chrome.failures?.length ? 0 : 1,
+    p95Ms: p95(chrome),
+    tokensPerSuccess: 0,
+  };
+  const candidate = {
+    success: engine.failures?.length ? 0 : 1,
+    p95Ms: p95(engine),
+    tokensPerSuccess: 0,
+  };
+  try {
+    const mod = await import(pathToFileURL(join(root, "apps/runtime/dist/index.js")).href);
+    const gate = mod.evaluateHeldOutAdvantage(baseline, candidate);
+    return { measured: true, metric, baseline, candidate, ...gate };
+  } catch (e) {
+    return { measured: false, reason: String(e?.message ?? e), metric, baseline, candidate };
+  }
+}
 const runtimeRoot = resolve(dirname(runtimeEntry), "../../..");
 
 // the standalone driver reads the real process env for the browser path
@@ -261,6 +288,7 @@ try {
 
 // ---- report ----
 const first = results[BACKENDS[0]];
+const heldOut = await measureHeldOutAdvantage(results);
 const report = {
   at: new Date().toISOString(),
   label: label || undefined,
@@ -276,6 +304,7 @@ const report = {
   requireIdentity,
   chromium: process.env.VECTOR_BROWSER_PATH ?? "(system Chrome via playwright channels)",
   backends: results,
+  heldOut,
   // single-backend compatibility with earlier reports
   metrics: first?.metrics ?? {},
   unsupported: first?.unsupported ?? [],
@@ -321,6 +350,14 @@ for (const bk of BACKENDS) {
   if (r.failures?.length) console.log(`${bk} failures (${r.failures.length}): ${[...new Set(r.failures)].slice(0, 5).join(" | ")}`);
 }
 console.log(`\nreport: ${reportPath}`);
+if (heldOut?.measured) {
+  writeFileSync(join(outDir, "held-out-latest.json"), JSON.stringify(heldOut, null, 2));
+  console.log(
+    `held-out ${heldOut.metric}: chromium p95 ${heldOut.baseline.p95Ms} ms, engine p95 ${heldOut.candidate.p95Ms} ms, p95Ratio ${heldOut.p95Ratio?.toFixed?.(2) ?? heldOut.p95Ratio}, meetsStretch ${heldOut.meetsStretch}`,
+  );
+} else if (heldOut?.reason) {
+  console.log(`held-out: not measured — ${heldOut.reason}`);
+}
 const identityFail = BACKENDS.some((bk) => {
   const r = results[bk];
   return (r.failures?.length ?? 0) > 0 || (requireIdentity && r.skipped);

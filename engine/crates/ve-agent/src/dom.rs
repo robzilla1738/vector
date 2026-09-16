@@ -56,6 +56,13 @@ fn scope_root(page: &Page, args: &[JsValue]) -> NodeId {
         .filter(|id| page.doc.contains(*id))
         .unwrap_or_else(|| page.doc.root())
 }
+fn doc_arg(page: &Page, args: &[JsValue]) -> NodeId {
+    unpack(args.first().unwrap_or(&JsValue::Null))
+        .filter(|&id| {
+            page.doc.contains(id) && page.doc.get(id).is_some_and(ve_dom::Node::is_document)
+        })
+        .unwrap_or_else(|| page.doc.root())
+}
 fn query(page: &Page, root: NodeId, selector: &str, all: bool) -> Vec<NodeId> {
     if selector.trim().is_empty() {
         return Vec::new();
@@ -110,8 +117,13 @@ fn prev_el(page: &Page, id: NodeId) -> Option<NodeId> {
     None
 }
 fn inner_html(page: &Page, id: NodeId) -> String {
+    let root = if page.doc.element(id).is_some_and(|e| e.is_html("template")) {
+        page.doc.template_contents(id).unwrap_or(id)
+    } else {
+        id
+    };
     page.doc
-        .children(id)
+        .children(root)
         .map(|c| outer_html(&page.doc, c))
         .collect()
 }
@@ -148,6 +160,15 @@ fn json_key_path(json: &str, path: &str) -> Option<String> {
         other => Some(other.to_string()),
     }
 }
+fn split_qname(qname: &str) -> (Option<String>, &str) {
+    match qname.rsplit_once(':') {
+        Some((prefix, local)) if !prefix.is_empty() && !local.is_empty() => {
+            (Some(prefix.to_owned()), local)
+        }
+        _ => (None, qname),
+    }
+}
+
 fn loc(url: &str, part: &str) -> String {
     let Ok(u) = url::Url::parse(url) else {
         return String::new();
@@ -197,6 +218,7 @@ pub(crate) fn host_call(
             map.insert("t".into(), JsValue::Number(f64::from(node.node_type())));
             if let Some(e) = node.as_element() {
                 map.insert("name".into(), JsValue::from(e.name.as_str()));
+                map.insert("ns".into(), JsValue::from(e.namespace.uri()));
             }
             if let NodeKind::ShadowRoot { mode } = node.kind {
                 map.insert("shadow".into(), JsValue::Bool(true));
@@ -218,7 +240,7 @@ pub(crate) fn host_call(
         "nodeName" => {
             let id = live(page, args, 0)?;
             let name = match page.doc.get(id).map(|n| &n.kind) {
-                Some(NodeKind::Element(e)) => e.name.to_ascii_uppercase(),
+                Some(NodeKind::Element(e)) => e.tag_name(),
                 Some(NodeKind::Text(_)) => "#text".into(),
                 Some(NodeKind::Comment(_)) => "#comment".into(),
                 Some(NodeKind::Document) => "#document".into(),
@@ -234,35 +256,50 @@ pub(crate) fn host_call(
         "nodeValue" => Ok(page
             .doc
             .get(live(page, args, 0)?)
-            .and_then(ve_dom::Node::as_text)
+            .and_then(ve_dom::Node::as_character_data)
             .map_or(JsValue::Null, JsValue::from)),
         "setNodeValue" => {
             let id = live(page, args, 0)?;
             page.doc.set_text(id, arg_str(args, 1)).ok();
             Ok(JsValue::Undefined)
         }
-        "textContent" => Ok(JsValue::from(
-            page.doc.text_content(live(page, args, 0)?).as_str(),
-        )),
+        "textContent" => {
+            let id = live(page, args, 0)?;
+            match page.doc.get(id).map(|n| &n.kind) {
+                Some(NodeKind::Document | NodeKind::Doctype { .. }) => Ok(JsValue::Null),
+                Some(NodeKind::ProcessingInstruction { data, .. }) => {
+                    Ok(JsValue::from(data.as_str()))
+                }
+                _ => Ok(JsValue::from(page.doc.text_content(id).as_str())),
+            }
+        }
         "setTextContent" => {
             let id = live(page, args, 0)?;
             let text = arg_str(args, 1);
-            let is_parent = page.doc.get(id).is_some_and(|n| {
-                n.is_element()
-                    || matches!(
-                        n.kind,
-                        NodeKind::DocumentFragment | NodeKind::ShadowRoot { .. }
-                    )
-            });
-            if is_parent {
-                page.doc.clear_children(id).ok();
-                if !text.is_empty() {
-                    page.doc.append_text(id, &text).ok();
+            let kind = page.doc.get(id).map(|n| match &n.kind {
+                NodeKind::Document | NodeKind::Doctype { .. } => 0u8,
+                NodeKind::Text(_)
+                | NodeKind::Comment(_)
+                | NodeKind::ProcessingInstruction { .. } => 1,
+                NodeKind::Element(_) | NodeKind::DocumentFragment | NodeKind::ShadowRoot { .. } => {
+                    2
                 }
-            } else {
-                page.doc.set_text(id, text).ok();
+            });
+            match kind {
+                Some(0) => Ok(JsValue::Undefined),
+                Some(1) => {
+                    page.doc.set_text(id, text).ok();
+                    Ok(JsValue::Undefined)
+                }
+                Some(2) => {
+                    page.doc.clear_children(id).ok();
+                    if !text.is_empty() {
+                        page.doc.append_text(id, &text).ok();
+                    }
+                    Ok(JsValue::Undefined)
+                }
+                _ => Ok(JsValue::Undefined),
             }
-            Ok(JsValue::Undefined)
         }
         "parentNode" => Ok(live(page, args, 0)
             .ok()
@@ -285,18 +322,13 @@ pub(crate) fn host_call(
             .and_then(|id| page.doc.prev_sibling(id))
             .map_or(JsValue::Null, pack)),
         "childNodes" => Ok(arr(page.doc.children(live(page, args, 0)?))),
-        "isConnected" => {
-            let id = live(page, args, 0)?;
-            let root = page.doc.root();
-            Ok(JsValue::Bool(
-                id == root || page.doc.is_ancestor_of(root, id),
-            ))
-        }
+        "isConnected" => Ok(JsValue::Bool(page.doc.is_connected(live(page, args, 0)?))),
         "appendChild" => {
             let (p, c) = (live(page, args, 0)?, live(page, args, 1)?);
             page.doc
                 .append_child(p, c)
                 .map_err(|e| fail(e.to_string()))?;
+            page.maybe_attach_blank_iframe(c);
             Ok(pack(c))
         }
         "insertBefore" => {
@@ -312,6 +344,7 @@ pub(crate) fn host_call(
                     .append_child(p, c)
                     .map_err(|e| fail(e.to_string()))?,
             }
+            page.maybe_attach_blank_iframe(c);
             Ok(pack(c))
         }
         "removeChild" => {
@@ -330,6 +363,7 @@ pub(crate) fn host_call(
                 .or_else(|_| page.doc.append_child(p, new))
                 .map_err(|e| fail(e.to_string()))?;
             page.doc.remove(old).ok();
+            page.maybe_attach_blank_iframe(new);
             Ok(pack(old))
         }
         "cloneNode" => Ok(pack(
@@ -368,13 +402,16 @@ pub(crate) fn host_call(
         "tagName" => Ok(page
             .doc
             .element(live(page, args, 0)?)
-            .map_or(JsValue::Null, |e| {
-                JsValue::from(e.name.to_ascii_uppercase().as_str())
-            })),
+            .map_or(JsValue::Null, |e| JsValue::from(e.tag_name().as_str()))),
         "localName" => Ok(page
             .doc
             .element(live(page, args, 0)?)
             .map_or(JsValue::Null, |e| JsValue::from(e.name.as_str()))),
+        "prefix" => Ok(page
+            .doc
+            .element(live(page, args, 0)?)
+            .and_then(|e| e.prefix.as_deref())
+            .map_or(JsValue::Null, JsValue::from)),
         "namespaceURI" => Ok(page
             .doc
             .element(live(page, args, 0)?)
@@ -420,17 +457,34 @@ pub(crate) fn host_call(
             let id = live(page, args, 0)?;
             let html = arg_str(args, 1);
             let name = context_name(page, id);
-            page.doc.clear_children(id).ok();
+            let target = if name == "template" {
+                page.doc.template_contents(id).unwrap_or_else(|| {
+                    let frag = page.doc.create_fragment();
+                    let _ = page.doc.set_template_contents(id, frag);
+                    frag
+                })
+            } else {
+                id
+            };
+            page.doc.clear_children(target).ok();
             if matches!(name.as_str(), "script" | "style" | "textarea" | "title") {
                 if !html.is_empty() {
-                    page.doc.append_text(id, &html).ok();
+                    page.doc.append_text(target, &html).ok();
                 }
             } else {
-                for kid in insert_fragment(page, &name, &html)? {
-                    page.doc.append_child(id, kid).ok();
+                let ctx = if name == "template" { "body" } else { name.as_str() };
+                for kid in insert_fragment(page, ctx, &html)? {
+                    page.doc.append_child(target, kid).ok();
                 }
             }
             Ok(JsValue::Undefined)
+        }
+        "templateContent" => {
+            let id = live(page, args, 0)?;
+            Ok(page
+                .doc
+                .template_contents(id)
+                .map_or(JsValue::Null, pack))
         }
         "outerHTML" => Ok(JsValue::from(
             outer_html(&page.doc, live(page, args, 0)?).as_str(),
@@ -479,7 +533,7 @@ pub(crate) fn host_call(
         }
         "getElementById" => Ok(page
             .doc
-            .element_by_id(&arg_str(args, 0))
+            .element_by_id_in(page.doc.root(), &arg_str(args, 0))
             .map_or(JsValue::Null, pack)),
         "getElementByIdScoped" => {
             let root = live(page, args, 0)?;
@@ -531,7 +585,43 @@ pub(crate) fn host_call(
             .ok()
             .and_then(|id| prev_el(page, id))
             .map_or(JsValue::Null, pack)),
-        "documentElement" => Ok(page.doc.document_element().map_or(JsValue::Null, pack)),
+        "documentElement" => Ok(page
+            .doc
+            .document_element_of(doc_arg(page, args))
+            .map_or(JsValue::Null, pack)),
+        "ownerDocument" => {
+            let id = live(page, args, 0)?;
+            if page.doc.get(id).is_some_and(ve_dom::Node::is_document) {
+                return Ok(JsValue::Null);
+            }
+            let mut cur = page.doc.parent(id);
+            while let Some(c) = cur {
+                if page.doc.get(c).is_some_and(ve_dom::Node::is_document) {
+                    return Ok(pack(c));
+                }
+                cur = page.doc.parent(c);
+            }
+            Ok(pack(page.doc.root()))
+        }
+        "documentLinks" => {
+            let root = scope_root(page, args);
+            Ok(arr(std::iter::once(root)
+                .chain(page.doc.descendants(root))
+                .filter(|&id| {
+                    page.doc.element(id).is_some_and(|e| {
+                        e.namespace == Namespace::Html
+                            && (e.name == "a" || e.name == "area")
+                            && e.has_attr("href")
+                    })
+                })))
+        }
+        "createHTMLDocument" => {
+            let title = match args.first() {
+                Some(JsValue::String(s)) => Some(s.as_str()),
+                _ => None,
+            };
+            Ok(pack(page.doc.create_html_document(title)))
+        }
         "frameDocument" => {
             let id = live(page, args, 0)?;
             Ok(page.frame_document(id).map_or(JsValue::Null, pack))
@@ -606,19 +696,41 @@ pub(crate) fn host_call(
                     .collect(),
             ))
         }
-        "head" => Ok(page.doc.head().map_or(JsValue::Null, pack)),
-        "body" => Ok(page.doc.body().map_or(JsValue::Null, pack)),
-        "title" => Ok(JsValue::from(page.title().as_str())),
+        "head" => Ok(page
+            .doc
+            .head_of(doc_arg(page, args))
+            .map_or(JsValue::Null, pack)),
+        "body" => Ok(page
+            .doc
+            .body_of(doc_arg(page, args))
+            .map_or(JsValue::Null, pack)),
+        "title" => Ok(JsValue::from(
+            page.doc
+                .title_of(doc_arg(page, args))
+                .unwrap_or_default()
+                .as_str(),
+        )),
         "setTitle" => {
-            let text = arg_str(args, 0);
-            let title = page
-                .doc
-                .elements()
+            let doc = doc_arg(page, args);
+            let text = arg_str(args, 1);
+            let title = std::iter::once(doc)
+                .chain(page.doc.descendants(doc))
                 .find(|&e| page.doc.element(e).is_some_and(|el| el.is_html("title")));
-            if let Some(t) = title {
-                page.doc.clear_children(t).ok();
-                page.doc.append_text(t, &text).ok();
-            }
+            let title = match title {
+                Some(t) => t,
+                None => {
+                    let Some(head) = page.doc.head_of(doc) else {
+                        return Ok(JsValue::Undefined);
+                    };
+                    let t = page.doc.create_element("title", Namespace::Html);
+                    page.doc
+                        .append_child(head, t)
+                        .map_err(|e| fail(e.to_string()))?;
+                    t
+                }
+            };
+            page.doc.clear_children(title).ok();
+            page.doc.append_text(title, &text).ok();
             Ok(JsValue::Undefined)
         }
         "url" => Ok(JsValue::from(page.url.as_str())),
@@ -642,10 +754,78 @@ pub(crate) fn host_call(
             } else {
                 Namespace::from_uri(&ns)
             };
-            Ok(pack(page.doc.create_element(arg_str(args, 1), namespace)))
+            let qname = arg_str(args, 1);
+            let (prefix, local) = split_qname(&qname);
+            let name = if namespace == Namespace::Html {
+                local.to_ascii_lowercase()
+            } else {
+                local.to_owned()
+            };
+            Ok(pack(page.doc.create_element_qname(name, namespace, prefix)))
         }
         "createTextNode" => Ok(pack(page.doc.create_text(arg_str(args, 0)))),
         "createComment" => Ok(pack(page.doc.create_comment(arg_str(args, 0)))),
+        "createProcessingInstruction" => {
+            let target = arg_str(args, 0);
+            let data = arg_str(args, 1);
+            if data.contains("?>") || target.is_empty() {
+                return Err(fail("InvalidCharacterError"));
+            }
+            Ok(pack(page.doc.create_processing_instruction(target, data)))
+        }
+        "createDocumentType" => {
+            let name = arg_str(args, 0);
+            if name.is_empty() || name.chars().any(char::is_whitespace) {
+                return Err(fail("InvalidCharacterError"));
+            }
+            Ok(pack(page.doc.create_doctype(
+                name,
+                arg_str(args, 1),
+                arg_str(args, 2),
+            )))
+        }
+        "createDocument" => {
+            let ns = arg_str(args, 0);
+            let qname = arg_str(args, 1);
+            let doc = page.doc.create_document();
+            if let Some(dt) =
+                unpack(args.get(2).unwrap_or(&JsValue::Null)).filter(|id| page.doc.contains(*id))
+            {
+                page.doc.append_child(doc, dt).ok();
+            }
+            if !qname.is_empty() {
+                let namespace = if ns.is_empty() {
+                    Namespace::Other(String::new())
+                } else {
+                    Namespace::from_uri(&ns)
+                };
+                let (prefix, local) = split_qname(&qname);
+                let name = if namespace == Namespace::Html {
+                    local.to_ascii_lowercase()
+                } else {
+                    local.to_owned()
+                };
+                let el = page.doc.create_element_qname(name, namespace, prefix);
+                page.doc.append_child(doc, el).ok();
+            }
+            Ok(pack(doc))
+        }
+        "doctype" => Ok(page
+            .doc
+            .doctype_of(doc_arg(page, args))
+            .map_or(JsValue::Null, pack)),
+        "doctypeName" => Ok(match page.doc.get(live(page, args, 0)?).map(|n| &n.kind) {
+            Some(NodeKind::Doctype { name, .. }) => JsValue::from(name.as_str()),
+            _ => JsValue::Null,
+        }),
+        "doctypePublicId" => Ok(match page.doc.get(live(page, args, 0)?).map(|n| &n.kind) {
+            Some(NodeKind::Doctype { public_id, .. }) => JsValue::from(public_id.as_str()),
+            _ => JsValue::Null,
+        }),
+        "doctypeSystemId" => Ok(match page.doc.get(live(page, args, 0)?).map(|n| &n.kind) {
+            Some(NodeKind::Doctype { system_id, .. }) => JsValue::from(system_id.as_str()),
+            _ => JsValue::Null,
+        }),
         "createFragment" => Ok(pack(page.doc.create_fragment())),
         "attachShadow" => {
             let mode = if arg_str(args, 1) == "closed" {
@@ -1241,6 +1421,13 @@ pub(crate) fn host_call(
             let id = page.create_worker(arg_str(args, 0));
             Ok(JsValue::Number(id as f64))
         }
+        "workerSource" => {
+            let id = arg_f64(args, 0) as u64;
+            Ok(page
+                .workers
+                .get(&id)
+                .map_or(JsValue::Null, |w| JsValue::from(w.source.as_str())))
+        }
         "workerPost" => {
             let id = arg_f64(args, 0) as u64;
             let msg = arg_str(args, 1);
@@ -1256,8 +1443,48 @@ pub(crate) fn host_call(
             }
         }
         "workerTerminate" => {
-            page.workers.remove(&(arg_f64(args, 0) as u64));
+            page.terminate_worker(arg_f64(args, 0) as u64);
             Ok(JsValue::Undefined)
+        }
+        "canvasWidth" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(f64::from(page.canvas_size(id).0)))
+        }
+        "canvasHeight" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(f64::from(page.canvas_size(id).1)))
+        }
+        "canvasResize" => {
+            let id = live(page, args, 0)?;
+            page.canvas_resize(id, arg_f64(args, 1) as u32, arg_f64(args, 2) as u32);
+            Ok(JsValue::Undefined)
+        }
+        "canvasFillRect" => {
+            let id = live(page, args, 0)?;
+            let ops = page.canvas_fill_rect(
+                id,
+                arg_f64(args, 1) as i32,
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+                arg_f64(args, 4) as i32,
+                &arg_str(args, 5),
+            );
+            Ok(JsValue::Number(ops as f64))
+        }
+        "canvasClearRect" => {
+            let id = live(page, args, 0)?;
+            let ops = page.canvas_clear_rect(
+                id,
+                arg_f64(args, 1) as i32,
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+                arg_f64(args, 4) as i32,
+            );
+            Ok(JsValue::Number(ops as f64))
+        }
+        "canvasOps" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(page.canvas_ops(id) as f64))
         }
         "mutationsSince" => {
             let since = ve_core::Revision(arg_f64(args, 0) as u64);
@@ -1468,20 +1695,25 @@ fn decode_data_url(url: &str) -> Option<(String, Vec<u8>)> {
 
 fn fetch(page: &mut Page, url: &str, method: &str, body: &str) -> Result<JsValue, ScriptError> {
     let resolved = page.resolve_url(url).unwrap_or_else(|| url.to_owned());
-    if let Some(sw) = page.service_workers.iter().rev().find(|s| {
-        resolved.starts_with(&s.scope) || resolved.starts_with(s.scope.trim_end_matches('/'))
-    }) && let Some(canned) = sw.script.strip_prefix("respond:")
-    {
+    if let Some((script_url, canned)) = page.service_workers.iter().rev().find_map(|s| {
+        let in_scope =
+            resolved.starts_with(&s.scope) || resolved.starts_with(s.scope.trim_end_matches('/'));
+        if !in_scope {
+            return None;
+        }
+        crate::page::service_worker_response_body(&s.script)
+            .map(|body| (s.script_url.clone(), body))
+    }) {
         let mut headers = BTreeMap::new();
         headers.insert(
             "x-service-worker".into(),
-            JsValue::from(sw.script_url.as_str()),
+            JsValue::from(script_url.as_str()),
         );
         return Ok(obj(&[
             ("status", JsValue::Number(200.0)),
             ("statusText", JsValue::from("OK")),
             ("url", JsValue::from(resolved.as_str())),
-            ("body", JsValue::from(canned.trim())),
+            ("body", JsValue::from(canned.as_str())),
             ("headers", JsValue::Object(headers)),
             ("pending", JsValue::Bool(false)),
         ]));

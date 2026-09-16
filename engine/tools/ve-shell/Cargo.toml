@@ -16,6 +16,14 @@ workspace = true
 default = []
 ## OS window through winit + softbuffer.
 window = ["dep:winit", "dep:softbuffer"]
+## Page scripts through V8.
+v8 = ["ve-api/v8"]
+## Fetch `http:` / `https:` documents.
+http = ["ve-api/http"]
+## GPU present path (optional).
+gpu = ["ve-api/gpu"]
+## Packaged native product: window + V8 + HTTP.
+product = ["window", "v8", "http"]
 
 [dependencies]
 ve-api.workspace = true

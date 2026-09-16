@@ -426,7 +426,7 @@ impl VectorEngine {
     /// parent broker, or an IPC callback in a context process).
     #[must_use]
     pub fn with_transport(config: EngineConfig, transport: Box<dyn ve_net::Transport>) -> Self {
-        let broker = ve_net::NetworkBroker::new(transport);
+        let broker = ve_net::NetworkBroker::with_policy(transport, config.policy.clone(), 0);
         let mut engine = Self {
             config,
             contexts: HashMap::new(),
@@ -926,6 +926,49 @@ mod tests {
         let link = &obs.observation.content.links[0];
         assert!(link.href.ends_with("/next.html"), "{}", link.href);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn allowlisted_loopback_reaches_the_broker() {
+        let mock = ve_net::MockTransport::new();
+        mock.respond(
+            "http://127.0.0.1:4810/records",
+            200,
+            &[("content-type", "text/html;charset=utf-8")],
+            "<title>Records</title><h1>ok</h1>",
+        );
+        let mut engine = VectorEngine::with_transport(
+            EngineConfig {
+                policy: NetworkPolicy {
+                    allowlist: vec!["127.0.0.1:4810".into()],
+                    ..NetworkPolicy::default()
+                },
+                ..EngineConfig::default()
+            },
+            Box::new(mock),
+        );
+        let opened = engine
+            .open(OpenRequest::url("http://127.0.0.1:4810/records"))
+            .unwrap();
+        assert_eq!(opened.title, "Records");
+        assert_eq!(opened.status, 200);
+    }
+
+    #[test]
+    fn default_broker_policy_blocks_loopback() {
+        let mock = ve_net::MockTransport::new();
+        mock.respond(
+            "http://127.0.0.1:4810/records",
+            200,
+            &[("content-type", "text/html;charset=utf-8")],
+            "<title>Records</title>",
+        );
+        let mut engine = VectorEngine::with_transport(EngineConfig::default(), Box::new(mock));
+        let err = engine
+            .open(OpenRequest::url("http://127.0.0.1:4810/records"))
+            .unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("loopback"), "{msg}");
     }
 
     #[test]

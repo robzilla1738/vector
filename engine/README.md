@@ -30,9 +30,10 @@ implemented.
 | `ve-replay` | Hermetic replay: missing archive is nondeterminism; speculative writes denied (VEC-024) |
 | `ve-vm` | Research JS expression interpreter; Test262 subset; dedicated-worker `postMessage` eval (VEC-025). V8 stays production |
 | `tools/wpt-runner` | WPT reftest runner comparing fragment *geometry* (not pixels) against `rel=match` references; per-milestone manifest |
-| `tools/wpt-harness` | Testharness + pixel runner; inlines pinned `testharness.js`; VEC-006 |
-| `tools/ve-shell` | CLI + optional `window` GUI (`winit`/`softbuffer`) over `NativeBrowser` |
+| `tools/wpt-harness` | Testharness + pixel runner; inlines pinned testharness + idlharness; `--http` whole-tree server; VEC-006 |
+| `tools/ve-shell` | Native product CLI + `--gui` (`--features product`: window + V8 + HTTP). No Chromium |
 | `tools/perf` | Agent-path harness over `fixtures/static/` (`--gate m1`: observe, open-to-observe, click/fill step, 10-step program, diff after edit; p50/p95 → JSON) |
+| `tools/browserbench` | Official Speedometer 3.0 / JetStream / MotionMark GPU identity lab (VEC-021) |
 
 Fixtures: `fixtures/static/*.html` (8 static pages: login, blog post, docs
 guide, government form, FAQ, news index, product catalog, wiki article) each
@@ -75,7 +76,7 @@ cargo test  -p ve-script --features quickjs
 cargo build -p ve-napi --features napi --release      # → target/release/libve_napi.{so,dylib,dll}
 # or, from the repo root:
 pnpm --filter @vector/engine-native build             # napi-rs CLI → crates/ve-napi/vector-engine.<platform>-<arch>.node
-node crates/ve-napi/scripts/build.mjs                 # cargo build + copy next to index.js
+node crates/ve-napi/scripts/build.mjs                 # cargo build + copy .node and ve-host --features v8
 node crates/ve-napi/scripts/smoke.mjs                 # load, open a data: URL, observe, execute
 ```
 
@@ -86,7 +87,9 @@ error listing every path tried. The runtime (`apps/runtime`) loads it at
 startup and routes pages to it per `settings.engineMode`.
 
 `.github/workflows/engine.yml` runs fmt, clippy `-D warnings`, tests, V8
-SPA goldens, the perf gate and WPT. Run the same locally before merging:
+SPA goldens, product `ve-shell` clippy, the perf gate, WPT geometry, WPT
+testharness + tree HTTP, Speedometer/JetStream/MotionMark GPU, and the
+native addon + `ve-host`. Run the same locally before merging:
 
 ```sh
 cargo fmt --all --check

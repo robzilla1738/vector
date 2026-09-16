@@ -131,11 +131,13 @@ impl TreeSink for DomSink {
     fn create_element(&self, name: QualName, attrs: Vec<Attribute>, flags: ElementFlags) -> NodeId {
         let mut doc = self.doc.borrow_mut();
         let namespace = Namespace::from_uri(&name.ns);
+        let prefix = name.prefix.as_ref().map(ToString::to_string);
         let id = doc.create_element_with_attrs(
             name.local.to_string(),
             namespace,
             Self::convert_attrs(attrs),
         );
+        doc.set_element_prefix(id, prefix);
         if flags.template {
             let fragment = doc.create_fragment();
             doc.set_template_contents(id, fragment)

@@ -40,7 +40,7 @@ export { WorkerPool } from "./scheduler/pool.js";
 export { runMemberAgent } from "./agent/member-agent.js";
 export { SetRunner } from "./scheduler/set-runner.js";
 export { EarlyDispatcher } from "./agent/early-dispatch.js";
-export { compileSkill, tryReuseSkill, guardsHold, type CompiledSkill, type SkillGuard } from "./agent/skills.js";
+export { compileSkill, tryReuseSkill, guardsHold, evaluateHeldOutAdvantage, type CompiledSkill, type SkillGuard, type HeldOutMetrics, type HeldOutAdvantage } from "./agent/skills.js";
 export { redactForModel, agentMayEgress, promptCannotGrant } from "./agent/policy.js";
 export { negotiate as negotiateBidi, dispatch as dispatchBidi, authorizePageTool, type BidiCommand, type BidiSession } from "./services/bidi.js";
 export { recoverAfterCrash, reconcileFallback, COORDINATOR_TRANSITIONS, type CrashRecovery } from "./agent/recovery.js";

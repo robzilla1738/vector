@@ -1,11 +1,16 @@
 # Architecture
 
+The product GUI is native `ve-shell` (no Electron). The Node **runtime** is
+still the coordinator for MCP, CLI, loopback API, and the labeled Electron
+hybrid.
+
 Vector is a pnpm monorepo with one authoritative process — the **runtime** —
 and several thin surfaces that talk to it.
 
 ```
             ┌─────────────────────────────────────────────┐
-            │              Electron shell                  │
+            │  Product: ve-shell (native, no Chromium)     │
+            │  Hybrid (labeled): Electron shell            │
             │  BaseWindow ── WebContentsView (per page)    │
             │  React renderer (sidebar, command bar,       │
             │   stage card + engine badge, agent rail)     │

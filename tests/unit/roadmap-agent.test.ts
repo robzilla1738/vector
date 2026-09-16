@@ -6,6 +6,7 @@ import {
 import {
   compileSkill,
   tryReuseSkill,
+  evaluateHeldOutAdvantage,
   redactForModel,
   agentMayEgress,
   promptCannotGrant,
@@ -64,6 +65,26 @@ describe("VEC-018 skills", () => {
     expect("skill" in ok && ok.skill.id === "inc").toBe(true);
     const skip = tryReuseSkill([skill], "increment the counter", obs("Save"), "https://app.test/");
     expect("skipped" in skip).toBe(true);
+  });
+
+  it("does not claim the 2x p95 stretch without measured metrics", () => {
+    const miss = evaluateHeldOutAdvantage(
+      { success: 6, p95Ms: 2000, tokensPerSuccess: 10000 },
+      { success: 6, p95Ms: 1500, tokensPerSuccess: 8000 },
+    );
+    expect(miss.meetsStretch).toBe(false);
+    const hit = evaluateHeldOutAdvantage(
+      { success: 6, p95Ms: 2000, tokensPerSuccess: 10000 },
+      { success: 6, p95Ms: 900, tokensPerSuccess: 4000 },
+    );
+    expect(hit.meetsStretch).toBe(true);
+    expect(hit.p95Ratio).toBeGreaterThanOrEqual(2);
+    const unmeasuredTokens = evaluateHeldOutAdvantage(
+      { success: 1, p95Ms: 14.9, tokensPerSuccess: 0 },
+      { success: 1, p95Ms: 2.8, tokensPerSuccess: 0 },
+    );
+    expect(unmeasuredTokens.p95Ratio).toBeGreaterThanOrEqual(2);
+    expect(unmeasuredTokens.meetsStretch).toBe(false);
   });
 });
 

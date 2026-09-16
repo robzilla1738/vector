@@ -1,4 +1,7 @@
-# Vector desktop shell
+# Vector desktop shell (Electron hybrid)
+
+The product GUI is `ve-shell` (`pnpm dev`). This document is the **hybrid**
+Electron chrome (`pnpm dev:electron`).
 
 The renderer in `apps/desktop/renderer/src` is the browser chrome around the
 runtime's pages: an Arc-style sidebar, a command bar in that sidebar, an inset

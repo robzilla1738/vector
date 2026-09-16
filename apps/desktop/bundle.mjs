@@ -32,4 +32,15 @@ buildSync({
   sourcemap: false,
 });
 
+buildSync({
+  entryPoints: [join(here, "dist/preload/engine-paint.cjs")],
+  outfile: join(here, "dist/preload/engine-paint.cjs"),
+  bundle: true,
+  platform: "node",
+  format: "cjs",
+  external: ["electron"],
+  allowOverwrite: true,
+  sourcemap: false,
+});
+
 console.log("bundled main + preload");

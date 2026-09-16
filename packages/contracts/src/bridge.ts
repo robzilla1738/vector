@@ -14,6 +14,7 @@ export const NativeCreatePageParams = z.object({
   marker: z.string().describe("target marker injected into every document"),
   url: z.string(),
   background: z.boolean().default(false),
+  kind: z.enum(["chromium", "engine"]).default("chromium"),
 });
 export const NativeSetBoundsParams = z.object({
   pageId: z.string(),
@@ -46,6 +47,7 @@ export const NativeMethods = {
   "native.hidePage": NativePageIdParams,
   "native.focusPage": NativePageIdParams,
   "native.capturePage": NativeCaptureParams,
+  "native.setEngineFrame": z.object({ pageId: z.string(), dataUrl: z.string() }),
   "native.openExternal": z.object({ url: z.string() }),
   "native.findInPage": NativeFindParams,
   "native.stopFind": z.object({ pageId: z.string(), action: z.enum(["clear", "keep"]).default("clear") }),
@@ -64,6 +66,7 @@ export const RuntimeNotifications = [
   "view.removed",
   "view.popup",
   "view.takeover",
+  "view.engineInput",
   "view.downloadStarted",
   "view.downloadFinished",
   "view.targetReplaced",

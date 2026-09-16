@@ -107,6 +107,7 @@ function shellNative(): NativeBridge {
     acquireStage: ok,
     releaseStage: ok,
     capturePage: async () => ({ dataUrl: "" }),
+    setEngineFrame: async () => ({ ok: true as const }),
     openExternal: ok,
     findInPage: async () => ({ matches: 0 }),
     stopFind: ok,
@@ -149,20 +150,20 @@ describe("pages.open routing", () => {
     const page = await h.pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     expect(page.backend).toBe("vector-engine");
     expect(page.routeReason).toBe("hybrid:engine-first");
-    expect(page.viewStatus).toBe("hidden");
+    expect(page.viewStatus).toBe("background");
     // the engine gets the real URL (it parses on open), no about:blank detour
     expect(h.engine.calls).toEqual(["vector-engine:createTarget:https://a.test/"]);
     expect(h.vector.calls).toEqual([]);
     expect(h.repo.getPage(page.pageId)?.routeReason).toBe("hybrid:engine-first");
   });
 
-  it("auto: a visible tab in the desktop shell opens on Chromium", async () => {
-    const h = harness("auto", {}, shellNative());
+  it("auto: a visible tab in the desktop shell opens on the engine paint view", async () => {
+    const h = harness("auto", { execute: okResult }, shellNative());
     const page = await h.pages.open({ url: "https://cnn.test/", background: false, ownedByRuntime: false });
-    expect(page.backend).toBe("vector");
-    expect(page.routeReason).toBe("hybrid:engine-first:native-view");
-    expect(h.engine.calls).toEqual([]);
-    expect(h.vector.calls).toEqual(["vector:navigate:https://cnn.test/"]);
+    expect(page.backend).toBe("vector-engine");
+    expect(page.routeReason).toBe("hybrid:engine-first");
+    expect(h.engine.calls).toEqual(["vector-engine:createTarget:https://cnn.test/"]);
+    expect(h.vector.calls).toEqual([]);
   });
 
   it("auto: a requiresScript classification reopens on Chromium and records the origin", async () => {

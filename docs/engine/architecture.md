@@ -7,7 +7,7 @@ path disagree, the engine is the target and the Chromium path is the fallback.
 Sections 1–13 are the design; the section below records what of it is
 implemented on the integration branch.
 
-## 0. Status (M1 landed; A14–A23 on top)
+## 0. Status (VEC-001–025 in tree; A14–A23 underneath)
 
 **M0** (PR #2) merged the twelve-crate workspace with real initial
 implementations and 68 tests. **M1** (PRs #3–#6: core, style/layout,
@@ -157,17 +157,18 @@ acceptance text.
 
 | Area | In tree | Not yet |
 |---|---|---|
-| M0 identity / containment / broker / CI | `engineMode: always` never selects Chromium; `ve-host` sandbox (file, exec, sockets); `NetworkBroker`; rustc 1.88 CI | packaged native-only desktop that replaces Electron |
-| M1 web execution | V8 DOM, async fetch, frames, IDB unique/compound/versionchange, event loop | full upstream WPT/IDL/server; workers are `ve-vm` not a second V8 isolate; SW `respond:` only |
-| M2 visual | GPU glyph *outlines*, clips/opacity/`<img>`, `NativeBrowser` + `ve-shell --gui` | Electron still paints visible hybrid tabs; `signedUpdates: false` |
-| M3 agent | receipts, crash recovery, skills, policy, BiDi unit tests | held-out task 2× p95 / 50% tokens |
-| M4 perf | `perf --gate m1`, RSS, host RAPL | official Speedometer/JetStream/MotionMark |
-| M5 research | `ve-replay`, `ve-vm` Test262 subset (12 files) | replacing V8 (forbidden without evidence) |
+| M0 identity / containment / broker / CI | `engineMode: always` never selects Chromium; `ve-host` sandbox; `NetworkBroker` honors config allowlists; rustc 1.88 CI including product clippy, wpt-harness tree HTTP, browserbench | — |
+| M1 web execution | V8 DOM, async fetch, frames, IDB unique/compound/versionchange, event loop; testharness + IDL harness + `--http --tree`; Ahem reftest fonts | whole-tree WPT passing; generated IDL for every interface; workers are `ve-vm` not a second V8 isolate; SW `respond:` only |
+| M2 visual | GPU glyph *outlines*, clips/opacity/`<img>`, `present_list`, `NativeBrowser` + packaged `ve-shell` as the product | Electron hybrid still exists as a labeled extra; `signedUpdates: false` |
+| M3 agent | receipts, crash recovery, skills, policy, BiDi; held-out p95 vs Chromium measured (5.32× `act+observe`) | token-measured 50% stretch; `meetsStretch` stays false until tokens are collected |
+| M4 perf | `perf --gate m1`, RSS, host RAPL, official Speedometer 3.0 / JetStream / MotionMark GPU lab | every Speedometer suite passing (many FAIL honestly) |
+| M5 research | `ve-replay`, `ve-vm` Test262 subset | replacing V8 (forbidden without evidence) |
 
 Conformance: `wpt-runner` geometry (`m1.txt`) plus `wpt-harness` testharness
-(pinned `testharness.js`, local fixtures, one passing upstream
-`document.title-01.html`). Pixel fixtures cover opacity, text, clip, paint,
-and images.
+(pinned `testharness.js` / `idlharness.js`, HTTP origin, 50-file supported
+subset, `--tree` sample). Pixel fixtures cover opacity, text, clip, paint,
+and images. `--use-reftest-fonts` loads Ahem through Parley; metric shaper
+remains the m1 scorer.
 
 ### Deferred — reports `capability_unsupported`
 

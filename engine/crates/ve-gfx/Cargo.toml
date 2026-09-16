@@ -17,7 +17,7 @@ default = []
 ## Raster image decoding (PNG, JPEG, GIF, WebP) through the `image` crate.
 images = ["dep:image"]
 ## GPU rendering through vello + wgpu (implies `images`).
-gpu = ["images", "dep:vello", "dep:wgpu", "dep:peniko", "dep:kurbo"]
+gpu = ["images", "dep:vello", "dep:wgpu", "dep:peniko", "dep:kurbo", "dep:pollster"]
 
 [dependencies]
 ve-core.workspace = true
@@ -32,6 +32,7 @@ wgpu = { workspace = true, optional = true }
 peniko = { workspace = true, optional = true }
 kurbo = { workspace = true, optional = true }
 image = { workspace = true, optional = true }
+pollster = { workspace = true, optional = true }
 
 [dev-dependencies]
 ve-html.workspace = true

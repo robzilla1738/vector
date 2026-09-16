@@ -294,6 +294,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "browserbench"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "serde_json",
+ "ve-api",
+ "ve-core",
+ "ve-gfx",
+ "ve-style",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2743,6 +2757,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "pollster"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f3a9f18d041e6d0e102a0a46750538147e5e8992d3b4873aaafee2520b00ce3"
+
+[[package]]
 name = "polycool"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4029,6 +4049,7 @@ dependencies = [
  "image",
  "kurbo",
  "peniko",
+ "pollster",
  "swash",
  "thiserror 2.0.20",
  "tracing",

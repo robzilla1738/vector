@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * `pnpm package:local` — build the workspace, stage the runtime with its
+ * `pnpm package:electron` — hybrid Electron desktop (not the product).
+ * Native product: `pnpm package:local`.
  * production deps (pnpm deploy), build the renderer, and run electron-builder
  * for the current platform (unsigned dir target).
  */

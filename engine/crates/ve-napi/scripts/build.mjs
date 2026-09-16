@@ -22,7 +22,7 @@ if (!debug) args.push("--release");
 console.log(`[engine-native] cargo ${args.join(" ")} (target dir ${targetDir})`);
 const r = spawnSync("cargo", args, { cwd: engineRoot, stdio: "inherit", env: { ...process.env, CARGO_TARGET_DIR: targetDir } });
 if (r.status !== 0) process.exit(r.status ?? 1);
-const hostArgs = ["build", "-p", "ve-host"];
+const hostArgs = ["build", "-p", "ve-host", "--features", "v8"];
 if (!debug) hostArgs.push("--release");
 console.log(`[engine-native] cargo ${hostArgs.join(" ")}`);
 const hr = spawnSync("cargo", hostArgs, { cwd: engineRoot, stdio: "inherit", env: { ...process.env, CARGO_TARGET_DIR: targetDir } });

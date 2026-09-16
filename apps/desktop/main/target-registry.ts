@@ -5,6 +5,7 @@ export interface ViewEntry {
   marker: string;
   view: WebContentsView;
   owned: boolean;
+  kind?: "chromium" | "engine";
   lastPreview?: string;
   visibleBounds?: { x: number; y: number; width: number; height: number };
 }

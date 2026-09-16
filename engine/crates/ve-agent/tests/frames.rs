@@ -197,6 +197,39 @@ fn service_worker_respond_prefix_intercepts_fetch() {
 
 #[cfg(feature = "v8")]
 #[test]
+fn service_worker_respond_with_response_intercepts_fetch() {
+    use ve_script::{JsVm, V8Vm};
+    let rec = Recorder::default()
+        .serve(
+            "https://t.test/",
+            r#"<script>
+                 navigator.serviceWorker.register('/sw.js').then(() =>
+                   fetch('/data.json').then(r => r.text()).then(t => { window.__sw = t; })
+                 );
+               </script>"#,
+        )
+        .serve(
+            "https://t.test/sw.js",
+            "self.addEventListener('fetch', event => { event.respondWith(new Response('from-sw-script')); });",
+        )
+        .serve("https://t.test/data.json", "from-network");
+    let mut page = Page::open_with(
+        1,
+        Box::new(rec),
+        "https://t.test/",
+        DEFAULT_VIEWPORT,
+        Some((Box::new(V8Vm::new().unwrap()) as Box<dyn JsVm>, true)),
+    )
+    .unwrap();
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__sw").unwrap(),
+        serde_json::json!("from-sw-script")
+    );
+}
+
+#[cfg(feature = "v8")]
+#[test]
 fn service_worker_without_respond_prefix_does_not_steal_fetch() {
     use ve_script::{JsVm, V8Vm};
     let rec = Recorder::default()

@@ -45,6 +45,8 @@ type CustomElementRegistry = JsValue;
 type CSSStyleDeclaration = JsValue;
 type Response = JsValue;
 type DOMRect = JsValue;
+type HTMLCollection = JsValue;
+type DOMImplementation = JsValue;
 
 "#,
     );

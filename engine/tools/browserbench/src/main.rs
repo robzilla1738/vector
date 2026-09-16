@@ -1,0 +1,356 @@
+//! Official-suite identity laboratory (VEC-021).
+//!
+//! Runs pinned `JetStream` 3 `SunSpider/n-body` and `crypto-sha1` on V8, every
+//! official `Speedometer` 3.0 suite name (vendored workloads execute; others
+//! `NOTRUN`), a TodoMVC-class DOM mutation, a canvas `fillRect` loop, and
+//! `MotionMark` GPU presentation through vello (`present_list`, no CPU
+//! readback). Scores are never fabricated. Identity is always written.
+
+mod esm;
+mod motionmark;
+mod speedometer;
+
+use std::path::PathBuf;
+use std::time::Instant;
+
+use anyhow::{Context, Result};
+use clap::Parser;
+use serde::Serialize;
+use serde_json::json;
+use ve_api::{EngineConfig, OpenRequest, VectorEngine};
+use ve_core::Size;
+
+const JETSTREAM_N_BODY: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/vendor/jetstream/n-body.js"
+));
+const JETSTREAM_SHA1: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/vendor/jetstream/crypto-sha1.js"
+));
+const PINS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/pins.json"));
+
+/// Official suite identity lab.
+#[derive(Parser, Debug)]
+#[command(
+    name = "browserbench",
+    about = "`Speedometer` / `JetStream` / `MotionMark` identity lab"
+)]
+struct Args {
+    /// Write JSON here (stdout if omitted).
+    #[arg(long)]
+    out: Option<PathBuf>,
+    /// Timed iterations per runnable suite.
+    #[arg(long, default_value_t = 3)]
+    iterations: u32,
+}
+
+#[derive(Serialize)]
+struct SuiteResult {
+    name: String,
+    status: &'static str,
+    revision: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    samples_ms: Option<Vec<u64>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    p50_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    p95_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    detail: Option<String>,
+}
+
+pub(crate) fn percentile(samples: &[u64], p: f64) -> u64 {
+    if samples.is_empty() {
+        return 0;
+    }
+    let mut v = samples.to_vec();
+    v.sort_unstable();
+    let idx = ((p * v.len() as f64).ceil() as usize).clamp(1, v.len()) - 1;
+    v[idx]
+}
+
+pub(crate) fn pin(suite: &str, field: &str) -> String {
+    let v: serde_json::Value = serde_json::from_str(PINS).unwrap_or(json!({}));
+    v.get(suite)
+        .and_then(|s| s.get(field))
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("unknown")
+        .to_owned()
+}
+
+fn jetstream(
+    engine: &mut VectorEngine,
+    iterations: u32,
+    name: &'static str,
+    source: &str,
+    path: &str,
+) -> SuiteResult {
+    let revision = pin("jetstream", "revision");
+    if !cfg!(feature = "v8") {
+        return SuiteResult {
+            name: name.to_owned(),
+            status: "NOTRUN",
+            revision,
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: Some("built without v8".into()),
+        };
+    }
+    let html = format!("<!doctype html><title>{name}</title><script>\n{source}\n</script>");
+    let mut samples = Vec::new();
+    let mut last_err = None;
+    for _ in 0..iterations.max(1) {
+        let opened = match engine.open(OpenRequest {
+            url: Some(format!("https://browserbench.org/JetStream/{path}")),
+            html: Some(html.clone()),
+            allow_evaluate: true,
+            ..OpenRequest::default()
+        }) {
+            Ok(o) => o,
+            Err(e) => {
+                last_err = Some(e.to_string());
+                break;
+            }
+        };
+        if let Ok(page) = engine.page_mut(opened.page) {
+            page.settle(2_000);
+        }
+        let started = Instant::now();
+        match engine.page_mut(opened.page).and_then(|p| {
+            p.evaluate("(function(){ new Benchmark().runIteration(); return true; })()")
+        }) {
+            Ok(_) => samples.push(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)),
+            Err(e) => last_err = Some(e.to_string()),
+        }
+        engine.close(opened.page);
+    }
+    if samples.is_empty() {
+        return SuiteResult {
+            name: name.to_owned(),
+            status: "FAIL",
+            revision,
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: last_err,
+        };
+    }
+    SuiteResult {
+        name: name.to_owned(),
+        status: "PASS",
+        revision,
+        p50_ms: Some(percentile(&samples, 0.50)),
+        p95_ms: Some(percentile(&samples, 0.95)),
+        samples_ms: Some(samples),
+        detail: last_err,
+    }
+}
+
+fn speedometer_class(engine: &mut VectorEngine, iterations: u32) -> SuiteResult {
+    let revision = pin("speedometer", "revision");
+    if !cfg!(feature = "v8") {
+        return SuiteResult {
+            name: "speedometer.todomvc-class".into(),
+            status: "NOTRUN",
+            revision,
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: Some("built without v8".into()),
+        };
+    }
+    let html = "<!doctype html><title>todo</title><ul id=list></ul>";
+    let expr = r#"(function () {
+      var list = document.getElementById("list");
+      for (var i = 0; i < 100; i++) {
+        var li = document.createElement("li");
+        li.textContent = "item " + i;
+        li.className = "todo";
+        list.appendChild(li);
+      }
+      var items = list.getElementsByTagName("li");
+      for (var i = 0; i < items.length; i++) items[i].className = "completed";
+      while (list.firstChild) list.removeChild(list.firstChild);
+      return list.childNodes.length;
+    })()"#;
+    let mut samples = Vec::new();
+    let mut last_err = None;
+    for _ in 0..iterations.max(1) {
+        let opened = match engine.open(OpenRequest {
+            url: Some("https://browserbench.org/Speedometer/todo".into()),
+            html: Some(html.into()),
+            allow_evaluate: true,
+            ..OpenRequest::default()
+        }) {
+            Ok(o) => o,
+            Err(e) => {
+                last_err = Some(e.to_string());
+                break;
+            }
+        };
+        if let Ok(page) = engine.page_mut(opened.page) {
+            page.settle(500);
+        }
+        let started = Instant::now();
+        match engine.page_mut(opened.page).and_then(|p| p.evaluate(expr)) {
+            Ok(_) => samples.push(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)),
+            Err(e) => last_err = Some(e.to_string()),
+        }
+        engine.close(opened.page);
+    }
+    if samples.is_empty() {
+        return SuiteResult {
+            name: "speedometer.todomvc-class".into(),
+            status: "FAIL",
+            revision,
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: last_err.or(Some(pin("speedometer", "note"))),
+        };
+    }
+    SuiteResult {
+        name: "speedometer.todomvc-class".into(),
+        status: "PARTIAL",
+        revision,
+        p50_ms: Some(percentile(&samples, 0.50)),
+        p95_ms: Some(percentile(&samples, 0.95)),
+        samples_ms: Some(samples),
+        detail: Some(pin("speedometer", "note")),
+    }
+}
+
+fn motionmark_class(engine: &mut VectorEngine, iterations: u32) -> SuiteResult {
+    let revision = pin("motionmark", "revision");
+    if !cfg!(feature = "v8") {
+        return SuiteResult {
+            name: "motionmark.canvas-class".into(),
+            status: "NOTRUN",
+            revision,
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: Some("built without v8".into()),
+        };
+    }
+    let html = "<!doctype html><title>mm</title><canvas id=c width=400 height=300></canvas>";
+    let expr = r##"(function () {
+      var c = document.getElementById("c");
+      var ctx = c.getContext("2d");
+      for (var i = 0; i < 2000; i++) {
+        ctx.fillStyle = i % 2 ? "#f00" : "#00f";
+        ctx.fillRect(i % 400, (i * 7) % 300, 12, 12);
+      }
+      return c.width;
+    })()"##;
+    let mut samples = Vec::new();
+    let mut last_err = None;
+    for _ in 0..iterations.max(1) {
+        let opened = match engine.open(OpenRequest {
+            url: Some("https://browserbench.org/MotionMark/canvas-class".into()),
+            html: Some(html.into()),
+            allow_evaluate: true,
+            ..OpenRequest::default()
+        }) {
+            Ok(o) => o,
+            Err(e) => {
+                last_err = Some(e.to_string());
+                break;
+            }
+        };
+        if let Ok(page) = engine.page_mut(opened.page) {
+            page.settle(500);
+        }
+        let started = Instant::now();
+        match engine.page_mut(opened.page).and_then(|p| p.evaluate(expr)) {
+            Ok(_) => samples.push(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)),
+            Err(e) => last_err = Some(e.to_string()),
+        }
+        engine.close(opened.page);
+    }
+    if samples.is_empty() {
+        return SuiteResult {
+            name: "motionmark.canvas-class".into(),
+            status: "FAIL",
+            revision,
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: last_err.or(Some(pin("motionmark", "note"))),
+        };
+    }
+    SuiteResult {
+        name: "motionmark.canvas-class".into(),
+        status: "PARTIAL",
+        revision,
+        p50_ms: Some(percentile(&samples, 0.50)),
+        p95_ms: Some(percentile(&samples, 0.95)),
+        samples_ms: Some(samples),
+        detail: Some(pin("motionmark", "note")),
+    }
+}
+
+fn main() -> Result<()> {
+    let args = Args::parse();
+    let mut engine = VectorEngine::new(EngineConfig {
+        viewport: Size::new(1280.0, 720.0),
+        offline: true,
+        scripting: cfg!(feature = "v8"),
+        policy: ve_api::NetworkPolicy::permissive(),
+        ..EngineConfig::default()
+    });
+    let mut suites = vec![
+        jetstream(
+            &mut engine,
+            args.iterations,
+            "jetstream.n-body",
+            JETSTREAM_N_BODY,
+            "n-body",
+        ),
+        jetstream(
+            &mut engine,
+            args.iterations,
+            "jetstream.crypto-sha1",
+            JETSTREAM_SHA1,
+            "crypto-sha1",
+        ),
+    ];
+    suites.extend(speedometer::run_official(&mut engine, args.iterations));
+    suites.push(speedometer_class(&mut engine, args.iterations));
+    suites.push(motionmark_class(&mut engine, args.iterations));
+    suites.push(motionmark::run_gpu(args.iterations));
+    let report = json!({
+        "backend": "vector-engine",
+        "chromium": false,
+        "security_mode": "developer-offline",
+        "os": std::env::consts::OS,
+        "arch": std::env::consts::ARCH,
+        "rss_bytes": ve_core::process_rss_bytes(),
+        "engine_version": ve_api::VERSION,
+        "pins": serde_json::from_str::<serde_json::Value>(PINS).unwrap_or(json!({})),
+        "suites": suites,
+    });
+    let json = serde_json::to_string_pretty(&report)?;
+    if let Some(path) = &args.out {
+        std::fs::write(path, &json).with_context(|| path.display().to_string())?;
+    } else {
+        println!("{json}");
+    }
+    for s in &suites {
+        eprintln!(
+            "browserbench: {} {} rev {} {:?}",
+            s.name, s.status, s.revision, s.p95_ms
+        );
+    }
+    if suites.iter().any(|s| {
+        s.status == "FAIL"
+            && (s.name.starts_with("jetstream.")
+                || s.name == "speedometer.3.0.TodoMVC-JavaScript-ES5"
+                || s.name == "motionmark.gpu.multiply")
+    }) {
+        anyhow::bail!("browserbench recorded a FAIL on a gated suite");
+    }
+    Ok(())
+}

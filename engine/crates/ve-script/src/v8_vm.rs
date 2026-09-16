@@ -144,6 +144,8 @@ pub struct V8Vm {
     maybe_pending: bool,
     deadline: Option<Duration>,
     host_names: Vec<String>,
+    /// `true` after [`JsVm::park`] until [`JsVm::unpark`].
+    parked: bool,
 }
 
 impl std::fmt::Debug for V8Vm {
@@ -185,6 +187,7 @@ impl V8Vm {
             maybe_pending: false,
             deadline: None,
             host_names: Vec::new(),
+            parked: false,
         })
     }
 
@@ -290,6 +293,13 @@ impl V8Vm {
 
 impl Drop for V8Vm {
     fn drop(&mut self) {
+        if self.parked {
+            // rusty_v8 requires isolates be entered at drop (LIFO with creation).
+            unsafe {
+                self.isolate.enter();
+            }
+            self.parked = false;
+        }
         LIVE.with(|l| l.borrow_mut().retain(|s| s.ord != self.ord));
         // SAFETY: Drop runs once; the isolate and context are not used after.
         let retired = RetiredIsolate {
@@ -489,6 +499,28 @@ impl JsVm for V8Vm {
         // `get_heap_statistics` needs `&mut`; the trait method is `&self`,
         // so report the last known figure only when cheaply available
         None
+    }
+
+    fn park(&mut self) {
+        if self.parked {
+            return;
+        }
+        // SAFETY: this isolate was entered on this thread at creation or unpark.
+        unsafe {
+            self.isolate.exit();
+        }
+        self.parked = true;
+    }
+
+    fn unpark(&mut self) {
+        if !self.parked {
+            return;
+        }
+        // SAFETY: paired with [`Self::park`]; isolate is still allocated.
+        unsafe {
+            self.isolate.enter();
+        }
+        self.parked = false;
     }
 }
 

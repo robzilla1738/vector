@@ -16,6 +16,11 @@ workspace = true
 name = "ve-host"
 path = "src/main.rs"
 
+[features]
+default = []
+## Scripting inside the isolated host (same V8 as the N-API addon).
+v8 = ["ve-napi/v8"]
+
 [dependencies]
 ve-napi = { path = "../ve-napi" }
 libc = "0.2"

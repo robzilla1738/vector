@@ -2,6 +2,10 @@
 //!
 //! Geometry reftests stay in `wpt-runner`. This tool runs scripted
 //! testharness fixtures (V8) and software-pixel comparisons for paint.
+//! `--http` serves fixtures / a WPT checkout over HTTP; `--wpt-dir --tree`
+//! walks testharness files in that tree.
+
+mod http_serve;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
@@ -38,6 +42,25 @@ struct Args {
     /// Per-test timeout seconds.
     #[arg(long, default_value_t = 20)]
     timeout_secs: u64,
+    /// Serve fixtures (and optional WPT checkout) over HTTP/1.1.
+    #[arg(long)]
+    http: bool,
+    /// Whole-tree WPT checkout. Combined with `--http` this is the production
+    /// testharness path (`/resources/testharness.js`, `/fonts/Ahem.ttf`).
+    #[arg(long)]
+    wpt_dir: Option<PathBuf>,
+    /// Walk testharness HTML under `--wpt-dir` in addition to the supported subset.
+    #[arg(long)]
+    tree: bool,
+    /// Cap on `--tree` tests (0 = no extra tree tests).
+    #[arg(long, default_value_t = 0)]
+    tree_limit: usize,
+    /// Reftest fonts directory (`Ahem.ttf`).
+    #[arg(long, default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/fonts"))]
+    fonts_dir: PathBuf,
+    /// Tree failures do not fail the process (supported subset still does).
+    #[arg(long, default_value_t = true)]
+    allow_tree_fail: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -58,6 +81,8 @@ struct TestResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     detail: Option<String>,
     duration_ms: u64,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    tree: bool,
 }
 
 #[derive(Serialize, Default)]
@@ -90,6 +115,10 @@ struct Report {
     fixtures: String,
     tested_subset: usize,
     overall_manifest: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    http_origin: Option<String>,
+    fonts_dir: String,
+    idlharness: bool,
     totals: Counts,
     results: Vec<TestResult>,
 }
@@ -104,8 +133,112 @@ fn load_manifest(path: &Path) -> Result<Vec<String>> {
         .collect())
 }
 
+const TREE_SKIP: &[&str] = &[
+    "resources",
+    "support",
+    "tools",
+    "common",
+    "fonts",
+    "images",
+    "interfaces",
+    "reference",
+    ".git",
+    "conformance-checkers",
+];
+
+fn collect_testharness_tree(root: &Path, limit: usize) -> Result<Vec<(String, PathBuf)>> {
+    let mut out = Vec::new();
+    fn walk(dir: &Path, root: &Path, out: &mut Vec<(String, PathBuf)>, limit: usize) -> Result<()> {
+        if limit > 0 && out.len() >= limit {
+            return Ok(());
+        }
+        let mut entries: Vec<_> = std::fs::read_dir(dir)
+            .with_context(|| dir.display().to_string())?
+            .collect::<std::io::Result<_>>()?;
+        entries.sort_by_key(std::fs::DirEntry::path);
+        for entry in entries {
+            if limit > 0 && out.len() >= limit {
+                break;
+            }
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if path.is_dir() {
+                if TREE_SKIP.iter().any(|s| *s == name) {
+                    continue;
+                }
+                walk(&path, root, out, limit)?;
+            } else {
+                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                if ext.eq_ignore_ascii_case("html") || ext.eq_ignore_ascii_case("htm") {
+                    let Ok(html) = std::fs::read_to_string(&path) else {
+                        continue;
+                    };
+                    if html.contains("testharness.js") {
+                        let rel = path
+                            .strip_prefix(root)
+                            .unwrap_or(&path)
+                            .to_string_lossy()
+                            .replace('\\', "/");
+                        out.push((rel, path));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+    walk(root, root, &mut out, limit)?;
+    Ok(out)
+}
+
 fn testharness_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../conformance/resources/testharness.js")
+    resource_path("testharness.js")
+}
+
+fn resource_path(name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../conformance/resources")
+        .join(name)
+}
+
+fn inject_relative_scripts(html: &str, dir: &Path) -> String {
+    let mut out = String::new();
+    let mut rest = html;
+    let open = "<script src=\"";
+    while let Some(i) = rest.find(open) {
+        out.push_str(&rest[..i]);
+        rest = &rest[i + open.len()..];
+        let Some(end) = rest.find('"') else {
+            out.push_str(open);
+            out.push_str(rest);
+            return out;
+        };
+        let src = &rest[..end];
+        rest = &rest[end + 1..];
+        if let Some(close) = rest.find("</script>") {
+            rest = &rest[close + "</script>".len()..];
+        }
+        if src.starts_with('/') || src.starts_with("http://") || src.starts_with("https://") {
+            out.push_str(open);
+            out.push_str(src);
+            out.push_str("\"></script>");
+            continue;
+        }
+        let path = dir.join(src);
+        match std::fs::read_to_string(&path) {
+            Ok(js) => {
+                out.push_str("<script>\n");
+                out.push_str(&js);
+                out.push_str("\n</script>");
+            }
+            Err(_) => {
+                out.push_str(open);
+                out.push_str(src);
+                out.push_str("\"></script>");
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 fn inject_upstream_testharness(html: &str) -> String {
@@ -121,6 +254,12 @@ fn inject_upstream_testharness(html: &str) -> String {
         r#"<script src=/resources/testharness.js></script>"#,
         r#"<script src="/resources/testharnessreport.js"></script>"#,
         r#"<script src=/resources/testharnessreport.js></script>"#,
+        r#"<script src="/resources/WebIDLParser.js"></script>"#,
+        r#"<script src=/resources/WebIDLParser.js></script>"#,
+        r#"<script src="/resources/webidl2.js"></script>"#,
+        r#"<script src=/resources/webidl2.js></script>"#,
+        r#"<script src="/resources/idlharness.js"></script>"#,
+        r#"<script src=/resources/idlharness.js></script>"#,
     ] {
         body = body.replace(needle, "");
     }
@@ -140,18 +279,46 @@ fn inject_upstream_testharness(html: &str) -> String {
 })();
 </script>
 "#;
-    format!("<script>\n{th}\n</script>\n{report}\n{body}")
+    let (doctype, rest) = split_leading_doctype(&body);
+    let idl = if html.contains("idlharness.js") || html.contains("WebIDLParser.js") {
+        let parser = std::fs::read_to_string(resource_path("WebIDLParser.js")).unwrap_or_default();
+        let harness = std::fs::read_to_string(resource_path("idlharness.js")).unwrap_or_default();
+        format!("<script>\n{parser}\n</script>\n<script>\n{harness}\n</script>\n")
+    } else {
+        String::new()
+    };
+    format!(
+        "{doctype}<script>\ntry {{\n{th}\n}} catch (e) {{ window.__th_load_error = String((e && e.stack) || e); }}\n</script>\n{report}\n{idl}{rest}"
+    )
+}
+
+fn split_leading_doctype(html: &str) -> (&str, &str) {
+    let start = html
+        .char_indices()
+        .find(|(_, c)| !c.is_ascii_whitespace())
+        .map_or(html.len(), |(i, _)| i);
+    let rest = html.get(start..).unwrap_or("");
+    if rest.len() >= 9 && rest[..9].eq_ignore_ascii_case("<!doctype") {
+        if let Some(gt) = rest.find('>') {
+            let end = start + gt + 1;
+            return (&html[..end], &html[end..]);
+        }
+    }
+    ("", html)
 }
 
 fn run_script_test(
     engine: &mut VectorEngine,
     html: &str,
     url: &str,
+    fixture: &Path,
 ) -> Result<(Status, Option<String>)> {
     if !cfg!(feature = "v8") {
         return Ok((Status::NotRun, Some("built without v8".into())));
     }
-    let html = inject_upstream_testharness(html);
+    let dir = fixture.parent().unwrap_or(fixture);
+    let html = inject_relative_scripts(html, dir);
+    let html = inject_upstream_testharness(&html);
     let opened = engine.open(OpenRequest {
         url: Some(url.into()),
         html: Some(html),
@@ -162,9 +329,12 @@ fn run_script_test(
     let eval = r#"(function () {
         try { window.dispatchEvent(new Event("load")); } catch (e) {}
         try { if (typeof done === "function") done(); } catch (e) {}
+        if (window.__th_load_error) {
+          return JSON.stringify([["testharness.js", false, String(window.__th_load_error)]]);
+        }
         if (typeof tests !== "undefined" && tests.tests && tests.tests.length) {
           return JSON.stringify(tests.tests.map(function (t) {
-            return [String(t.name), t.status === 0, String(t.message || "")];
+            return [String(t.name), t.status === 0, String(t.status) + ":" + String(t.message || "")];
           }));
         }
         if (Array.isArray(window.__tests) && window.__tests.length) {
@@ -350,23 +520,56 @@ fn main() -> Result<()> {
         policy: ve_api::NetworkPolicy::permissive(),
         ..EngineConfig::default()
     });
+    let mut roots = vec![
+        (
+            "resources".into(),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../conformance/resources"),
+        ),
+        ("fonts".into(), args.fonts_dir.clone()),
+        (String::new(), args.fixtures.clone()),
+    ];
+    if let Some(wpt) = &args.wpt_dir {
+        roots.push((String::new(), wpt.clone()));
+    }
+    let http = if args.http || args.wpt_dir.is_some() {
+        Some(http_serve::DirServer::start(roots)?)
+    } else {
+        None
+    };
+    let origin = http.as_ref().map(|s| s.origin.clone());
     let timeout = Duration::from_secs(args.timeout_secs);
     let mut results = Vec::new();
     let mut totals = Counts::default();
-    for rel in &manifest {
-        let path = args.fixtures.join(rel);
+    let mut work: Vec<(String, PathBuf, bool)> = manifest
+        .iter()
+        .map(|rel| (rel.clone(), args.fixtures.join(rel), false))
+        .collect();
+    if args.tree {
+        if let Some(wpt) = &args.wpt_dir {
+            let extra = collect_testharness_tree(wpt, args.tree_limit)?;
+            for (rel, path) in extra {
+                if work.iter().any(|(r, _, _)| r == &rel) {
+                    continue;
+                }
+                work.push((rel, path, true));
+            }
+        }
+    }
+    for (rel, path, tree) in &work {
         let started = Instant::now();
         let (status, detail) = if !path.exists() {
             (Status::NotRun, Some("missing fixture".into()))
         } else {
-            let html = std::fs::read_to_string(&path)?;
-            let url = format!("file:///{rel}");
+            let html = std::fs::read_to_string(path)?;
+            let url = origin
+                .as_ref()
+                .map_or_else(|| format!("file:///{rel}"), |o| format!("{o}/{rel}"));
             let pixel = rel.contains("pixel") || html.contains("data-pixel");
             let run = || {
                 if pixel {
                     run_pixel_test(&mut engine, &html, &url)
                 } else {
-                    run_script_test(&mut engine, &html, &url)
+                    run_script_test(&mut engine, &html, &url, path)
                 }
             };
             match catch_unwind(AssertUnwindSafe(run)) {
@@ -392,12 +595,19 @@ fn main() -> Result<()> {
             status,
             detail,
             duration_ms: started.elapsed().as_millis() as u64,
+            tree: *tree,
         });
+    }
+    if let Some(s) = http {
+        s.stop();
     }
     let report = Report {
         fixtures: args.fixtures.display().to_string(),
         tested_subset: totals.pass + totals.fail + totals.timeout + totals.crash,
         overall_manifest: geometry + manifest.len(),
+        http_origin: origin,
+        fonts_dir: args.fonts_dir.display().to_string(),
+        idlharness: resource_path("idlharness.js").exists(),
         totals,
         results,
     };
@@ -411,6 +621,7 @@ fn main() -> Result<()> {
         .results
         .iter()
         .filter(|r| r.status != Status::Pass && r.status != Status::Skip)
+        .filter(|r| !r.tree || !args.allow_tree_fail)
         .map(|r| r.path.as_str())
         .collect();
     eprintln!(
@@ -473,5 +684,150 @@ mod tests {
         stream.read_to_string(&mut body).unwrap();
         assert!(body.contains("hello-wpt"), "{body}");
         handle.join().unwrap();
+    }
+
+    /// Serves files from `root` until the listener is dropped (VEC-006 WPT HTTP).
+    fn spawn_dir_server(
+        root: &'static str,
+    ) -> anyhow::Result<(thread::JoinHandle<()>, String, std::sync::mpsc::Sender<()>)> {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        listener.set_nonblocking(true)?;
+        let addr = listener.local_addr()?;
+        let url = format!("http://{addr}");
+        let (tx, rx) = std::sync::mpsc::channel();
+        let handle = thread::spawn(move || {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while rx.try_recv().is_err() && std::time::Instant::now() < deadline {
+                match listener.accept() {
+                    Ok((mut stream, _)) => {
+                        let mut buf = [0u8; 2048];
+                        let n = stream.read(&mut buf).unwrap_or(0);
+                        let req = String::from_utf8_lossy(&buf[..n]);
+                        let path = req
+                            .lines()
+                            .next()
+                            .and_then(|l| l.split_whitespace().nth(1))
+                            .unwrap_or("/");
+                        let rel = path.trim_start_matches('/');
+                        let file = std::path::Path::new(root).join(rel);
+                        if let Ok(bytes) = std::fs::read(&file) {
+                            let header = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                                bytes.len()
+                            );
+                            let _ = stream.write_all(header.as_bytes());
+                            let _ = stream.write_all(&bytes);
+                        } else {
+                            let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                        }
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        thread::sleep(std::time::Duration::from_millis(10));
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+        Ok((handle, url, tx))
+    }
+
+    #[test]
+    fn fixture_http_server_serves_testharness_from_dir() {
+        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/resources");
+        let (handle, url, stop) = spawn_dir_server(root).unwrap();
+        let addr = url.trim_start_matches("http://").to_owned();
+        let mut stream = std::net::TcpStream::connect(&addr).unwrap();
+        stream
+            .write_all(
+                b"GET /testharness.js HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n",
+            )
+            .unwrap();
+        let mut body = String::new();
+        stream.read_to_string(&mut body).unwrap();
+        let _ = stop.send(());
+        handle.join().unwrap();
+        assert!(
+            body.contains("add_completion_callback") || body.contains("testharness"),
+            "{body}"
+        );
+    }
+
+    #[test]
+    fn injects_relative_script_from_fixture_dir() {
+        let dir = std::env::temp_dir().join("vector-wpt-rel-scripts");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("ChildNode-remove.js"), "function testRemove(){}").unwrap();
+        let html = r#"<script src="ChildNode-remove.js"></script><body>"#;
+        let out = super::inject_relative_scripts(html, &dir);
+        assert!(out.contains("function testRemove"), "{out}");
+        assert!(!out.contains(r#"src="ChildNode-remove.js""#), "{out}");
+    }
+
+    #[test]
+    fn inject_preserves_leading_doctype() {
+        let html = concat!(
+            "<!DOCTYPE html>\n",
+            r#"<script src="/resources/testharness.js"></script>"#,
+            "<body>"
+        );
+        let out = super::inject_upstream_testharness(html);
+        assert!(out.trim_start().starts_with("<!DOCTYPE html>"), "{out}");
+    }
+
+    #[test]
+    fn inject_inlines_idlharness_and_webidl2() {
+        let html = concat!(
+            "<!DOCTYPE html>",
+            r#"<script src="/resources/testharness.js"></script>"#,
+            r#"<script src="/resources/WebIDLParser.js"></script>"#,
+            r#"<script src="/resources/idlharness.js"></script>"#,
+            "<body>"
+        );
+        let out = super::inject_upstream_testharness(html);
+        assert!(
+            out.contains("IdlArray") || out.contains("function IdlArray"),
+            "{out:.200}"
+        );
+        assert!(
+            out.contains("WebIDL2") || out.contains("root[\"WebIDL2\"]"),
+            "{out:.200}"
+        );
+    }
+
+    #[test]
+    fn http_server_serves_ahem_and_idlharness() {
+        let fonts = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/fonts");
+        let res = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/resources");
+        let server = super::http_serve::DirServer::start(vec![
+            ("fonts".into(), fonts.into()),
+            ("resources".into(), res.into()),
+        ])
+        .unwrap();
+        let origin = server.origin.clone();
+        let get = |path: &str| {
+            let addr = origin.trim_start_matches("http://").to_owned();
+            let mut stream = std::net::TcpStream::connect(&addr).unwrap();
+            stream
+                .write_all(
+                    format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                        .as_bytes(),
+                )
+                .unwrap();
+            let mut body = Vec::new();
+            stream.read_to_end(&mut body).unwrap();
+            body
+        };
+        let ahem = get("/fonts/Ahem.ttf");
+        assert!(
+            ahem.windows(4)
+                .any(|w| w == b"\x00\x01\x00\x00" || w == b"true"),
+            "ttf {:?}",
+            &ahem[..ahem.len().min(32)]
+        );
+        assert!(ahem.len() > 1000, "{}", ahem.len());
+        let idl_bytes = get("/resources/idlharness.js");
+        let idl = String::from_utf8_lossy(&idl_bytes);
+        assert!(idl.contains("IdlArray"), "{idl:.200}");
+        server.stop();
     }
 }

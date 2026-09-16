@@ -1,38 +1,32 @@
 # Vector
 
-A local agent-first browser. One durable execution runtime is shared by a
-native human interface (Electron) and structured agent interfaces (loopback
-API, MCP, CLI). Pages run on one of two backends:
+A local agent-first browser. The product UI is the native `ve-shell` (no
+Electron, no Chromium). Structured agent interfaces (loopback API, MCP, CLI)
+share the Vector Engine. Chromium remains a labeled hybrid for comparison
+(`pnpm dev:electron`, `pnpm package:electron`).
 
 - **Vector Engine** — Vector's own browser engine in Rust (`engine/`), built
   for agents: the semantic observation, stable refs, batched step execution
-  and readiness come from the engine's own trees, with no injected scripts
-  and no per-step IPC. V8 runs page scripts; the router falls back to
-  Chromium when a document is classified as script-dependent beyond what
-  the engine can settle. Auto-mode tabs the desktop will show open on
-  Chromium (`engine-first:native-view`) so the stage has a real view.
-- **Chromium** — the Electron `WebContentsView` (or headless Chromium in
-  standalone mode), plus the user's own Chrome over CDP. Chromium is the
-  fallback for pages the engine classifies as script-dependent, and the
-  default for visible desktop tabs.
+  and readiness come from the engine's own trees. V8 runs page scripts.
+- **Chromium (hybrid only)** — Electron `WebContentsView` or headless Chrome,
+  used for M3 comparison and `engineMode: auto` fallback in the hybrid shell.
 
-A router (`apps/runtime/src/services/router.ts`) decides per `pages.open`;
-the decision is returned as `routeReason` and a persisted needs-chromium
-table (24 h TTL) keeps script-dependent origins off the engine. Routing is
-controlled by the `engineMode` setting: `off` (Chromium only),
-`auto` (default — engine first, Chromium fallback), `always` (engine only).
+A router (`apps/runtime/src/services/router.ts`) decides per `pages.open` in
+the hybrid runtime. `engineMode`: `off` (Chromium only), `auto` (engine first,
+Chromium fallback), `always` (engine only). Native `ve-shell` is always engine.
 
 ## Quickstart
 
 ```bash
 pnpm install
 pnpm build
-pnpm dev          # fixtures + Electron shell + runtime
-pnpm fixtures     # fixture sites only (http://127.0.0.1:4810–4812)
-pnpm test         # unit + integration suites (engine tests skip without the addon)
-pnpm test:e2e     # Electron end-to-end
-pnpm bench        # benchmark harness, --backend chrome|vector-engine|both
-pnpm package:local  # build Vector.app into release/
+pnpm dev            # fixtures + ve-shell --gui (native product)
+pnpm dev:electron   # hybrid Electron desktop
+pnpm fixtures       # fixture sites only (http://127.0.0.1:4810–4812)
+pnpm test           # unit + integration suites (engine tests skip without the addon)
+pnpm test:e2e       # Electron hybrid end-to-end
+pnpm bench          # writes held-out p95 vs Chromium when --backend both
+pnpm package:local  # native ve-shell into release/
 ```
 
 The engine addon (`@vector/engine-native`, `engine/crates/ve-napi`) is not
@@ -43,14 +37,11 @@ cd engine && cargo build -p ve-napi --features napi --release
 # or: pnpm --filter @vector/engine-native build   (napi-rs CLI)
 ```
 
-Native-only GUI (no Electron) is `cargo run -p ve-shell --features window -- --gui`.
-CI clippy-checks that feature on macOS; it does not run the windowed app.
-
-Evidence for the engine roadmap tickets is
-[docs/engine/evidence](docs/engine/evidence/README.md). The desktop product is
-still Electron. `engineMode: always` never opens Chromium. Harness:
-`cargo run --release -p wpt-harness --features v8` (testharness + pixels) and
-`cargo run --release -p wpt-runner` (geometry).
+The product GUI is `pnpm dev` / `cargo run -p ve-shell --features product -- --gui`.
+Electron is `pnpm dev:electron`. Evidence:
+[docs/engine/evidence](docs/engine/evidence/README.md). Harness:
+`cargo run --release -p wpt-harness --features v8 -- --http` and
+`cargo run --release -p wpt-runner` (geometry; `--use-reftest-fonts` loads Ahem).
 
 The runtime loads the addon at startup whenever it is present (set
 `VECTOR_ENGINE=0` to skip it) and reports it in `runtime.describe` →
@@ -72,33 +63,36 @@ runtime over [MCP](docs/mcp.md) or the [loopback API](docs/api.md).
 ## Benchmark
 
 `pnpm bench --backend both`, records fixture (`http://127.0.0.1:4810/records`),
-same harness (`tests/benchmarks/run.mjs`), 10 repeats, p50. Chromium is the
-headless standalone driver with `engineMode: off`; Vector Engine is
-`engineMode: always`.
+same harness (`tests/benchmarks/run.mjs`), 5 repeats after 1 warmup, p50 on
+darwin arm64 (2026-09-16). Chromium is the headless standalone driver with
+`engineMode: off`; Vector Engine is `engineMode: always` (process isolation).
+Held-out p95 of `act+observe`: Chromium 14.9 ms, engine 2.8 ms (5.32×).
+Tokens were not collected, so the 2× p95 / 50% token stretch is not claimed.
+Snapshot: `docs/engine/evidence/held-out-latest.json`.
 
 | Metric | Chromium | Vector Engine |
 |---|---:|---:|
-| `pages.open` | 72.8 ms | 2.1 ms |
-| `pages.observe` (full) | 13.7 ms | 1.2 ms |
-| `pages.observe` (compact) | 10.8 ms | 1.5 ms |
-| click by ref (`pages.execute`) | 71.9 ms | 2.3 ms |
-| fill by ref (`pages.execute`) | 23.7 ms | 0.8 ms |
-| navigate + observe | 56.5 ms | 2.4 ms |
-| act + observe (`returnObservation`) | 13.1 ms | 2.0 ms |
-| full observation size | 9,499 bytes | 13,148 bytes |
+| `pages.open` | 103.9 ms | 7.8 ms |
+| `pages.observe` (full) | 14.3 ms | 1.5 ms |
+| `pages.observe` (compact) | 2.0 ms | 1.3 ms |
+| click by ref (`pages.execute`) | 76.0 ms | 2.0 ms |
+| fill by ref (`pages.execute`) | 25.0 ms | 1.2 ms |
+| navigate + observe | 60.4 ms | 3.8 ms |
+| act + observe (`returnObservation`) | 11.9 ms | 2.0 ms |
+| full observation size | 9,580 bytes | 5,917 bytes |
 
-The engine observation is larger because it surfaces more of the page
-(elements the Chromium observe script skips). Engine-side numbers for the
-static corpus (`cargo run --release -p perf -- --gate m1`) are in
-`docs/engine/architecture.md` → Status.
+Engine-side numbers for the static corpus (`cargo run --release -p perf --
+--gate m1`) are in `docs/engine/architecture.md` → Status. Official
+Speedometer 3.0 / JetStream / MotionMark GPU: `cargo run --release -p
+browserbench --features v8,gpu`.
 
 Same fixtures, published competitor numbers (Sep 2026) plus Vector's own
 `pnpm bench` / `pnpm bench:tasks` (same model `alibaba/qwen3.8-27b`):
 
 | System | Navigate+snapshot (warm) | Memory vs Chrome | Task success |
 |---|---|---|---|
-| Vector Engine | 2.4 ms open+observe | in-process, no Chrome | local suite 6/8 (`vector-engine`) |
-| Vector Chromium | 56.5 ms navigate+observe | Electron/headless Chrome | local suite 6/8 (`vector`) |
+| Vector Engine | 3.8 ms navigate+observe | in-process / `ve-host`, no Chrome | local suite 6/8 (`vector-engine`) |
+| Vector Chromium | 60.4 ms navigate+observe | Electron/headless Chrome | local suite 6/8 (`vector`) |
 | agent-browser (raw CDP) | 8 ms warm navigate+snapshot | one Chrome per daemon | not measured here; adapter `agent-browser` |
 | Lightpanda (Zig+V8) | 9–11× Chrome (their claim) | 16× less memory (their claim) | 69.7% AssistantBench / 83% GAIA-L1 (published) |
 
@@ -162,7 +156,7 @@ scripts/                dev, fixtures, Chromium discovery, packaging
 ## Docs
 
 - [Architecture](docs/architecture.md) · [Engine architecture](docs/engine/architecture.md) · [Engine README](engine/README.md)
-- [Engine evidence VEC-001–025](docs/engine/evidence/README.md) · [Containment](docs/engine/containment.md)
+- [Engine roadmap](Vector_Engine_Roadmap.md) · [Engine evidence VEC-001–025](docs/engine/evidence/README.md) · [Containment](docs/engine/containment.md)
 - [Local testing](docs/local-testing.md) · [Desktop shell](docs/ui/shell.md)
 - [Loopback API](docs/api.md) · [CLI](docs/cli.md) · [MCP](docs/mcp.md)
 - [Packaging](docs/packaging.md) · [Troubleshooting](docs/troubleshooting.md)

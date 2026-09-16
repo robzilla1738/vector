@@ -382,6 +382,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       case "view.loading": return pages.onNativeLoading(str(pl.pageId)!, truthy(pl.loading));
       case "view.crashed": return pages.onNativeCrashed(str(pl.pageId)!);
       case "view.takeover": return pages.onNativeTakeover(str(pl.pageId)!);
+      case "view.engineInput":
+        void pages.onEngineInput(str(pl.pageId)!, {
+          type: str(pl.type) ?? "",
+          x: Number(pl.x ?? 0),
+          y: Number(pl.y ?? 0),
+          button: Number(pl.button ?? 0),
+          key: str(pl.key),
+        });
+        return;
       case "view.downloadStarted":
         return pages.onNativeDownloadStarted(str(pl.pageId), {
           id: str(pl.id) ?? `dl_${Date.now()}`,

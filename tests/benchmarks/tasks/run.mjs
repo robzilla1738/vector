@@ -147,13 +147,34 @@ for (const name of adapterNames) {
     passed,
     accuracy: rows.length ? +(passed / rows.length).toFixed(3) : 0,
     wallMsP50: walls[Math.floor(walls.length / 2)] ?? null,
+    wallMsP95: walls.length ? walls[Math.min(walls.length - 1, Math.floor(walls.length * 0.95))] : null,
     wallMsMean: walls.length ? Math.round(walls.reduce((a, b) => a + b, 0) / walls.length) : null,
     modelCallsMean: mean(rows.map((r) => r.modelCalls)),
     tokensMean: mean(rows.map((r) => r.tokens)),
     errors: rows.filter((r) => r.error).length,
   };
   report.adapters[name] = { summary, rows };
-  console.log(`-- ${name}: ${passed}/${rows.length} (${(summary.accuracy * 100).toFixed(1)}%), p50 ${summary.wallMsP50} ms, mean ${summary.modelCallsMean} model calls, ${summary.tokensMean} tokens`);
+  console.log(`-- ${name}: ${passed}/${rows.length} (${(summary.accuracy * 100).toFixed(1)}%), p50 ${summary.wallMsP50} ms, p95 ${summary.wallMsP95} ms, mean ${summary.modelCallsMean} model calls, ${summary.tokensMean} tokens`);
+}
+
+const vector = report.adapters.vector;
+const engine = report.adapters["vector-engine"];
+if (vector?.summary && engine?.summary) {
+  try {
+    const { evaluateHeldOutAdvantage } = await import(pathToFileURL(join(repoRoot, "apps/runtime/dist/index.js")).href);
+    const tokens = (s) => (s.tokensMean && s.passed ? s.tokensMean / s.passed : 0);
+    report.heldOut = {
+      measured: true,
+      metric: "wallMsP95",
+      ...evaluateHeldOutAdvantage(
+        { success: vector.summary.accuracy, p95Ms: vector.summary.wallMsP95 ?? 0, tokensPerSuccess: tokens(vector.summary) },
+        { success: engine.summary.accuracy, p95Ms: engine.summary.wallMsP95 ?? 0, tokensPerSuccess: tokens(engine.summary) },
+      ),
+    };
+    console.log(`held-out: p95Ratio ${report.heldOut.p95Ratio}, tokenRatio ${report.heldOut.tokenRatio}, meetsStretch ${report.heldOut.meetsStretch}`);
+  } catch (e) {
+    report.heldOut = { measured: false, reason: String(e?.message ?? e) };
+  }
 }
 
 mkdirSync(reportsDir, { recursive: true });

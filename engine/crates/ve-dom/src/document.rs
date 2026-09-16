@@ -37,6 +37,27 @@ pub struct Document {
     journal: MutationJournal,
 }
 
+/// Strip and collapse ASCII whitespace per HTML `document.title`.
+#[must_use]
+pub fn collapse_ascii_whitespace(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut pending_space = false;
+    let mut started = false;
+    for c in s.chars() {
+        if matches!(c, '\t' | '\n' | '\u{000C}' | '\r' | ' ') {
+            pending_space = true;
+            continue;
+        }
+        if started && pending_space {
+            out.push(' ');
+        }
+        out.push(c);
+        started = true;
+        pending_space = false;
+    }
+    out
+}
+
 impl Default for Document {
     fn default() -> Self {
         Self::new()
@@ -192,7 +213,34 @@ impl Document {
 
     /// Creates a detached element.
     pub fn create_element(&mut self, name: impl Into<String>, namespace: Namespace) -> NodeId {
-        self.alloc(NodeKind::Element(ElementData::new(name, namespace)))
+        self.create_element_qname(name, namespace, None)
+    }
+
+    /// Creates a detached element with an optional namespace prefix.
+    pub fn create_element_qname(
+        &mut self,
+        name: impl Into<String>,
+        namespace: Namespace,
+        prefix: Option<String>,
+    ) -> NodeId {
+        let name = name.into();
+        let is_template = namespace == Namespace::Html && name.eq_ignore_ascii_case("template");
+        let mut data = ElementData::new(name, namespace);
+        data.prefix = prefix.filter(|p| !p.is_empty());
+        let id = self.alloc(NodeKind::Element(data));
+        if is_template {
+            self.ensure_template_contents(id);
+        }
+        id
+    }
+
+    /// Sets the namespace prefix on an element (parser / `createElementNS`).
+    pub fn set_element_prefix(&mut self, id: NodeId, prefix: Option<String>) {
+        if let Ok(node) = self.try_get_mut(id)
+            && let NodeKind::Element(e) = &mut node.kind
+        {
+            e.prefix = prefix.filter(|p| !p.is_empty());
+        }
     }
 
     /// Creates a detached element with attributes.
@@ -202,9 +250,23 @@ impl Document {
         namespace: Namespace,
         attributes: Vec<Attribute>,
     ) -> NodeId {
+        let name = name.into();
+        let is_template = namespace == Namespace::Html && name.eq_ignore_ascii_case("template");
         let mut data = ElementData::new(name, namespace);
         data.attributes = attributes;
-        self.alloc(NodeKind::Element(data))
+        let id = self.alloc(NodeKind::Element(data));
+        if is_template {
+            self.ensure_template_contents(id);
+        }
+        id
+    }
+
+    fn ensure_template_contents(&mut self, id: NodeId) {
+        if self.template_contents(id).is_some() {
+            return;
+        }
+        let frag = self.create_fragment();
+        let _ = self.set_template_contents(id, frag);
     }
 
     /// Creates a detached text node.
@@ -232,6 +294,33 @@ impl Document {
     /// Creates a detached document fragment.
     pub fn create_fragment(&mut self) -> NodeId {
         self.alloc(NodeKind::DocumentFragment)
+    }
+
+    /// Creates a detached document node (HTML `createHTMLDocument`).
+    pub fn create_document(&mut self) -> NodeId {
+        self.alloc(NodeKind::Document)
+    }
+
+    /// HTML `DOMImplementation.createHTMLDocument`.
+    ///
+    /// `title: Some` always creates a `<title>` (including `Some("")`).
+    /// `title: None` omits the title element.
+    pub fn create_html_document(&mut self, title: Option<&str>) -> NodeId {
+        let doc = self.create_document();
+        let doctype = self.create_doctype("html", "", "");
+        let html = self.create_element("html", Namespace::Html);
+        let head = self.create_element("head", Namespace::Html);
+        let body = self.create_element("body", Namespace::Html);
+        let _ = self.append_child(doc, doctype);
+        let _ = self.append_child(doc, html);
+        let _ = self.append_child(html, head);
+        if let Some(text) = title {
+            let title_el = self.create_element("title", Namespace::Html);
+            let _ = self.append_child(head, title_el);
+            let _ = self.append_text(title_el, text);
+        }
+        let _ = self.append_child(html, body);
+        doc
     }
 
     /// Creates a detached doctype node.
@@ -526,6 +615,17 @@ impl Document {
             }
         };
         let clone = self.alloc(kind);
+        if let Some(src) = self.template_contents(id) {
+            let frag = self.create_fragment();
+            self.set_template_contents(clone, frag)?;
+            if deep {
+                let kids: Vec<NodeId> = self.children(src).collect();
+                for kid in kids {
+                    let child = self.clone_node(kid, true)?;
+                    self.append_child(frag, child)?;
+                }
+            }
+        }
         if deep {
             let kids: Vec<NodeId> = self.children(id).collect();
             for kid in kids {
@@ -587,11 +687,12 @@ impl Document {
         Ok(node)
     }
 
-    /// Replaces the data of a text or comment node.
+    /// Replaces the data of a text, comment, or processing-instruction node.
     pub fn set_text(&mut self, id: NodeId, text: impl Into<String>) -> Result<()> {
         let node = self.try_get_mut(id)?;
         match &mut node.kind {
             NodeKind::Text(t) | NodeKind::Comment(t) => *t = text.into(),
+            NodeKind::ProcessingInstruction { data, .. } => *data = text.into(),
             _ => return Err(Error::InvalidState(format!("{id} is not character data"))),
         }
         self.journal.record(Mutation::TextChanged { node: id });
@@ -599,19 +700,25 @@ impl Document {
         Ok(())
     }
 
-    /// Concatenated text of all descendant text nodes (light tree only).
+    /// Concatenated text of descendant text nodes, or this node's data for
+    /// `Text`/`Comment`/`ProcessingInstruction`. `Document` and `DocumentType`
+    /// return the empty string (DOM `textContent` is `null` at the binding).
     #[must_use]
     pub fn text_content(&self, id: NodeId) -> String {
-        let mut out = String::new();
-        if let Some(t) = self.get(id).and_then(Node::as_text) {
-            out.push_str(t);
-        }
-        for d in self.descendants(id) {
-            if let Some(t) = self.get(d).and_then(Node::as_text) {
-                out.push_str(t);
+        match self.get(id).map(|n| &n.kind) {
+            Some(NodeKind::Text(t) | NodeKind::Comment(t)) => t.clone(),
+            Some(NodeKind::ProcessingInstruction { data, .. }) => data.clone(),
+            Some(NodeKind::Document | NodeKind::Doctype { .. }) => String::new(),
+            _ => {
+                let mut out = String::new();
+                for d in self.descendants(id) {
+                    if let Some(t) = self.get(d).and_then(Node::as_text) {
+                        out.push_str(t);
+                    }
+                }
+                out
             }
         }
-        out
     }
 
     // ----------------------------------------------------------------------
@@ -749,55 +856,114 @@ impl Document {
         self.element(frame).and_then(|e| e.content_document)
     }
 
-    /// The root element (`<html>` for HTML documents).
+    /// `true` when `id`'s parent chain reaches a document node.
     #[must_use]
-    pub fn document_element(&self) -> Option<NodeId> {
-        self.children(self.root)
+    pub fn is_connected(&self, id: NodeId) -> bool {
+        let mut cur = id;
+        loop {
+            if self.get(cur).is_some_and(Node::is_document) {
+                return true;
+            }
+            match self.parent(cur) {
+                Some(p) => cur = p,
+                None => return false,
+            }
+        }
+    }
+
+    /// The root element of `doc` (`<html>` for HTML documents).
+    #[must_use]
+    pub fn document_element_of(&self, doc: NodeId) -> Option<NodeId> {
+        self.children(doc)
             .find(|&c| self.get(c).is_some_and(Node::is_element))
     }
 
-    /// The first HTML element with the given local name that is a child of the
-    /// document element (`head`, `body`).
-    fn html_child(&self, name: &str) -> Option<NodeId> {
-        let html = self.document_element()?;
+    /// The document type node of `doc`, if any.
+    #[must_use]
+    pub fn doctype_of(&self, doc: NodeId) -> Option<NodeId> {
+        self.children(doc)
+            .find(|&c| matches!(self.get(c).map(|n| &n.kind), Some(NodeKind::Doctype { .. })))
+    }
+
+    /// The root element of this arena's browsing document.
+    #[must_use]
+    pub fn document_element(&self) -> Option<NodeId> {
+        self.document_element_of(self.root)
+    }
+
+    /// The first HTML element with the given local name that is a child of
+    /// `doc`'s document element (`head`).
+    fn html_child_of(&self, doc: NodeId, name: &str) -> Option<NodeId> {
+        let html = self.document_element_of(doc)?;
         self.children(html)
             .find(|&c| self.element(c).is_some_and(|e| e.is_html(name)))
     }
 
-    /// The `<head>` element.
+    /// The `<head>` element of `doc`.
+    #[must_use]
+    pub fn head_of(&self, doc: NodeId) -> Option<NodeId> {
+        self.html_child_of(doc, "head")
+    }
+
+    /// The `<head>` element of the browsing document.
     #[must_use]
     pub fn head(&self) -> Option<NodeId> {
-        self.html_child("head")
+        self.head_of(self.root)
     }
 
-    /// The `<body>` element.
+    /// First HTML `body` or `frameset` child of an HTML `html` document element.
+    #[must_use]
+    pub fn body_of(&self, doc: NodeId) -> Option<NodeId> {
+        let html = self.document_element_of(doc)?;
+        if !self.element(html).is_some_and(|e| e.is_html("html")) {
+            return None;
+        }
+        self.children(html).find(|&c| {
+            self.element(c).is_some_and(|e| {
+                e.namespace == Namespace::Html && (e.name == "body" || e.name == "frameset")
+            })
+        })
+    }
+
+    /// The `<body>` / `<frameset>` of the browsing document.
     #[must_use]
     pub fn body(&self) -> Option<NodeId> {
-        self.html_child("body")
+        self.body_of(self.root)
     }
 
-    /// The document title (text of the first `<title>`), whitespace collapsed.
+    /// Title of `doc` (first `<title>` in that subtree).
+    ///
+    /// HTML collapsing uses ASCII whitespace only (U+0009, U+000A, U+000C,
+    /// U+000D, U+0020). Other Unicode `White_Space` characters are kept.
+    #[must_use]
+    pub fn title_of(&self, doc: NodeId) -> Option<String> {
+        let title = std::iter::once(doc)
+            .chain(self.descendants(doc))
+            .find(|&e| self.element(e).is_some_and(|el| el.is_html("title")))?;
+        Some(collapse_ascii_whitespace(&self.text_content(title)))
+    }
+
+    /// Title of the browsing document.
     #[must_use]
     pub fn title(&self) -> Option<String> {
-        let title = self
-            .elements()
-            .find(|&e| self.element(e).is_some_and(|el| el.is_html("title")))?;
-        Some(
-            self.text_content(title)
-                .split_whitespace()
-                .collect::<Vec<_>>()
-                .join(" "),
-        )
+        self.title_of(self.root)
+    }
+
+    /// First element with `id` under `root` (inclusive).
+    #[must_use]
+    pub fn element_by_id_in(&self, root: NodeId, id: &str) -> Option<NodeId> {
+        if id.is_empty() {
+            return None;
+        }
+        std::iter::once(root)
+            .chain(self.descendants(root))
+            .find(|&e| self.attribute(e, "id") == Some(id))
     }
 
     /// The first element whose `id` attribute equals `id`.
     #[must_use]
     pub fn element_by_id(&self, id: &str) -> Option<NodeId> {
-        if id.is_empty() {
-            return None;
-        }
-        self.elements()
-            .find(|&e| self.attribute(e, "id") == Some(id))
+        self.element_by_id_in(self.root, id)
     }
 
     // ----------------------------------------------------------------------
@@ -1210,5 +1376,79 @@ mod tests {
         assert_ne!(b.generation(), gen0, "generation bumped so stale ids miss");
         assert!(doc.get(a).is_none());
         assert!(doc.get(b).is_some());
+    }
+
+    #[test]
+    fn title_collapses_ascii_whitespace_only() {
+        assert_eq!(collapse_ascii_whitespace("  a\t\nb  "), "a b");
+        assert_eq!(
+            collapse_ascii_whitespace("\u{00A0}a\u{00A0}\u{00A0}b\u{00A0}"),
+            "\u{00A0}a\u{00A0}\u{00A0}b\u{00A0}"
+        );
+        let mut doc = Document::new();
+        let html_el = html(&mut doc, "html");
+        let head = html(&mut doc, "head");
+        let title = html(&mut doc, "title");
+        doc.append_child(doc.root(), html_el).unwrap();
+        doc.append_child(html_el, head).unwrap();
+        doc.append_child(head, title).unwrap();
+        doc.append_text(title, "  one\ttwo  ").unwrap();
+        assert_eq!(doc.title().as_deref(), Some("one two"));
+    }
+
+    #[test]
+    fn create_html_document_body_and_frameset() {
+        let mut doc = Document::new();
+        let created = doc.create_html_document(Some("Hello"));
+        assert!(doc.get(created).is_some_and(Node::is_document));
+        let html_el = doc.document_element_of(created).unwrap();
+        assert!(doc.element(html_el).is_some_and(|e| e.is_html("html")));
+        assert!(doc.head_of(created).is_some());
+        let body = doc.body_of(created).unwrap();
+        assert!(doc.element(body).is_some_and(|e| e.is_html("body")));
+        assert_eq!(doc.title_of(created).as_deref(), Some("Hello"));
+        assert_eq!(
+            doc.title().as_deref(),
+            None,
+            "created document title must not leak into the browsing document"
+        );
+
+        doc.remove(html_el).unwrap();
+        assert_eq!(doc.body_of(created), None);
+
+        let html_el = html(&mut doc, "html");
+        doc.append_child(created, html_el).unwrap();
+        let frameset = html(&mut doc, "frameset");
+        let later_body = html(&mut doc, "body");
+        doc.append_child(html_el, frameset).unwrap();
+        doc.append_child(html_el, later_body).unwrap();
+        assert_eq!(doc.body_of(created), Some(frameset));
+    }
+
+    #[test]
+    fn is_connected_walks_to_any_document() {
+        let mut doc = Document::new();
+        let detached = html(&mut doc, "div");
+        assert!(!doc.is_connected(detached));
+        doc.append_child(doc.root(), detached).unwrap();
+        assert!(doc.is_connected(detached));
+        let nested = doc.create_html_document(None);
+        let body = doc.body_of(nested).unwrap();
+        assert!(doc.is_connected(nested));
+        assert!(doc.is_connected(body));
+        assert!(!doc.is_ancestor_of(doc.root(), body));
+    }
+
+    #[test]
+    fn create_element_template_has_contents_fragment() {
+        let mut doc = Document::new();
+        let t = doc.create_element("template", Namespace::Html);
+        let frag = doc.template_contents(t).expect("template contents");
+        assert!(matches!(
+            doc.get(frag).map(|n| &n.kind),
+            Some(NodeKind::DocumentFragment)
+        ));
+        let clone = doc.clone_node(t, true).unwrap();
+        assert!(doc.template_contents(clone).is_some());
     }
 }

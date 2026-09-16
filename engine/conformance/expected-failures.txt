@@ -1,5 +1,2 @@
 # Tests that may fail without blocking the supported testharness suite.
-# Upstream Document.getElementById(null|undefined) still fails under testharness
-# (the same lookups pass in ve-agent bindings without testharness.js).
-wpt-getelementbyid.html
-
+# Currently empty: listed files still run and are reported, but do not fail CI.

@@ -65,10 +65,21 @@ node packages/cli/dist/main.js pages
 node packages/cli/dist/main.js observe <pageId>
 ```
 
-Or run the whole shell: `pnpm dev` (fixtures + Electron + runtime) and drive
-it with the CLI or MCP. Chrome-only UI work: `pnpm -C apps/desktop dev:mock`
-serves the renderer at `http://127.0.0.1:5197` (see `docs/ui/shell.md` → Mock
-mode).
+Or run the native product: `pnpm dev` (fixtures + `ve-shell --gui`). Hybrid
+Electron: `pnpm dev:electron`. Drive either with the CLI or MCP. Chrome-only
+UI work: `pnpm -C apps/desktop dev:mock` serves the renderer at
+`http://127.0.0.1:5197` (see `docs/ui/shell.md` → Mock mode).
+
+Engine lab (from `engine/`):
+
+```bash
+cargo run --release -p wpt-harness --features v8 -- --http --tree --tree-limit 40
+cargo run --release -p wpt-runner -- --use-reftest-fonts --limit 8 --manifest conformance/reftest-fonts.txt
+cargo run --release -p browserbench --features v8,gpu
+```
+
+`pnpm bench --backend both` writes p50/p95 plus held-out comparison. The
+committed snapshot is `docs/engine/evidence/held-out-latest.json`.
 
 ## Benchmarks
 
