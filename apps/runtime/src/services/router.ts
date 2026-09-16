@@ -173,11 +173,13 @@ export class Router {
     const mode = this.mode();
     if (mode === "off") return done({ backend: "vector", reason: "engine-mode-off", fallbackAllowed: false });
     if (mode === "always") {
-      if (!this.engineAvailable()) return done({ backend: "vector", reason: "engine-unavailable", fallbackAllowed: false });
+      if (!this.engineAvailable()) {
+        return done({ backend: "vector-engine", reason: "engine-unavailable", fallbackAllowed: false });
+      }
       return done({ backend: "vector-engine", reason: "engine-always", fallbackAllowed: false });
     }
-    // auto
-    if (!this.engineAvailable()) return done({ backend: "vector", reason: "engine-unavailable", fallbackAllowed: false });
+    // auto = hybrid: engine first, Chromium fallback, separately labeled
+    if (!this.engineAvailable()) return done({ backend: "vector", reason: "hybrid:engine-unavailable", fallbackAllowed: false });
     let scheme = "";
     try {
       scheme = new URL(url).protocol;
@@ -187,7 +189,7 @@ export class Router {
     if (!ENGINE_SCHEMES.has(scheme)) return done({ backend: "vector", reason: `unsupported-scheme:${scheme}`, fallbackAllowed: false });
     const hit = this.needsChromium(url);
     if (hit) return done({ backend: "vector", reason: `needs-chromium-table:${hit.reason}`, fallbackAllowed: false });
-    return done({ backend: "vector-engine", reason: "engine-first", fallbackAllowed: true });
+    return done({ backend: "vector-engine", reason: "hybrid:engine-first", fallbackAllowed: true });
   }
 
   /**

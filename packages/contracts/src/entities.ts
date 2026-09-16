@@ -10,6 +10,12 @@ export const BrowserSessionSchema = z.object({
   label: z.string(),
   status: z.enum(["connected", "disconnected", "degraded"]),
   detail: z.string().optional(),
+  abiVersion: z.number().int().optional(),
+  protocolVersion: z.number().int().optional(),
+  engineVersion: z.string().optional(),
+  isolation: z.enum(["process", "in-process"]).optional(),
+  securityProfile: z.enum(["production", "developer"]).optional(),
+  routingMode: z.enum(["chromium-only", "hybrid", "native-only"]).optional(),
 });
 export type BrowserSession = z.infer<typeof BrowserSessionSchema>;
 
@@ -41,7 +47,8 @@ export const PageTargetSchema = z.object({
   /**
    * Why the router placed this page on its backend (architecture §11):
    * `engine-mode-off`, `explicit-backend:<b>`, `needs-chromium-table`,
-   * `engine-first`, `engine-always`, `engine-unavailable`,
+   * `hybrid:engine-first`, `engine-always`, `engine-unavailable`,
+   * `hybrid:engine-unavailable`, `hybrid:engine-first:native-view`,
    * `fallback:<reason>` (engine classified/failed → reopened on Chromium).
    */
   routeReason: z.string().optional(),
@@ -84,6 +91,16 @@ export const RunSchema = z.object({
       modelCalls: z.number().optional(),
       /** chat thread id — runs started from the same conversation share it */
       chatId: z.string().optional(),
+      /** VEC-017 durable coordinator snapshot. */
+      checkpoint: z
+        .object({
+          planBoundary: z.string().optional(),
+          unresolvedEffects: z.array(z.string()).optional(),
+          pageIdentity: z.record(z.string(), z.unknown()).optional(),
+          authorizationScope: z.array(z.string()).optional(),
+          recoveryStatus: z.string().optional(),
+        })
+        .optional(),
     })
     .optional(),
   statusMessage: z.string().optional(),

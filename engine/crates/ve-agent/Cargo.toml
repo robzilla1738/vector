@@ -28,6 +28,7 @@ ve-script.workspace = true
 ve-html.workspace = true
 ve-net.workspace = true
 ve-gfx.workspace = true
+ve-vm.workspace = true
 png.workspace = true
 url.workspace = true
 serde.workspace = true

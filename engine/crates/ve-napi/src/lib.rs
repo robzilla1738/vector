@@ -67,11 +67,13 @@ pub fn describe() -> String {
             "dialogs": true,
             "downloads": true,
             "typedFerry": true,
-            "http3": true,
+            "http3": false,
             "websocket": true,
-            "serviceWorkers": true,
-            "isolatedProcesses": true,
+            "serviceWorkers": false,
+            "streams": false,
+            "isolatedProcesses": crate::isolate::host_binary().is_some(),
         },
+        "protocolVersion": crate::isolate::HOST_PROTOCOL,
     })
     .to_string()
 }
@@ -244,8 +246,8 @@ pub mod bindings {
     impl Engine {
         /// Creates an engine. `config_json` is an `EngineConfig`
         /// (`viewport`, `scale`, `userAgent`, `offline`, `maxPages`,
-        /// `policy`); unknown keys (e.g. `dataDir`) are ignored. Without a
-        /// `policy` the engine runs permissively (loopback and `file:` allowed).
+        /// `policy`, `securityProfile`, `isolation`). Unknown keys
+        /// (e.g. `dataDir`) are ignored. Default policy is fail-closed.
         #[napi(constructor)]
         pub fn new(config_json: Option<String>) -> Result<Self> {
             let hub = Hub::from_json(config_json.as_deref().unwrap_or("{}"))
@@ -253,6 +255,12 @@ pub mod bindings {
             Ok(Self {
                 hub: Arc::new(Mutex::new(hub)),
             })
+        }
+
+        /// Backend/build/security identity JSON.
+        #[napi]
+        pub fn identity(&self) -> String {
+            lock(&self.hub).identity().to_string()
         }
 
         /// Creates an isolated browsing context (own cookie jar, own engine
@@ -420,6 +428,10 @@ mod tests {
         assert_eq!(info["engine"], ve_api::VERSION);
         assert_eq!(info["enabled"], cfg!(feature = "napi"));
         assert_eq!(info["http"], cfg!(feature = "http"));
+        assert_eq!(info["capabilities"]["http3"], false);
+        assert_eq!(info["capabilities"]["websocket"], true);
+        assert_eq!(info["capabilities"]["serviceWorkers"], false);
+        assert_eq!(info["protocolVersion"], crate::isolate::HOST_PROTOCOL);
         assert_eq!(is_enabled(), cfg!(feature = "napi"));
     }
 }

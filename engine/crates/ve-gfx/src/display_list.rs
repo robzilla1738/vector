@@ -1,6 +1,8 @@
 //! Retained drawing commands.
 
-use ve_core::{Edges, Point, Rect, Size};
+use std::collections::HashMap;
+
+use ve_core::{Edges, NodeId, Point, Rect, Size};
 use ve_layout::LayoutTree;
 use ve_style::{FontFamily, FontStyle, FontWeight, Rgba, StyleTree};
 
@@ -171,9 +173,19 @@ impl DisplayList {
     }
 
     /// Builds the display list for a laid-out page: canvas background, then
-    /// for every box in paint order its background, borders and text.
+    /// for every box in paint order its background, borders, images and text.
     #[must_use]
     pub fn from_layout(layout: &LayoutTree, styles: &StyleTree) -> Self {
+        Self::from_layout_with(layout, styles, &HashMap::new())
+    }
+
+    /// [`from_layout`] with decoded `<img>` pixels keyed by node.
+    #[must_use]
+    pub fn from_layout_with(
+        layout: &LayoutTree,
+        styles: &StyleTree,
+        images: &HashMap<NodeId, ImageHandle>,
+    ) -> Self {
         let span = ve_core::Stage::Paint.span();
         let _guard = span.enter();
         let mut list = Self::new(layout.viewport);
@@ -192,49 +204,65 @@ impl DisplayList {
         for item in layout.paint_order() {
             let Some(node) = item.node else { continue };
             let style = styles.style(node);
+            let clip = layout.clip_of(node);
+            let faded = style.opacity < 1.0 - f32::EPSILON;
+            if let Some(c) = clip {
+                list.push(DisplayItem::PushClip(c));
+            }
+            if faded {
+                list.push(DisplayItem::PushOpacity(style.opacity.clamp(0.0, 1.0)));
+            }
             if let Some(text) = &item.text {
-                if style.visibility != ve_style::Visibility::Visible {
-                    continue;
+                if style.visibility == ve_style::Visibility::Visible {
+                    list.push(DisplayItem::Text(TextRun {
+                        origin: Point::new(item.rect.x(), item.rect.y() + item.baseline),
+                        text: text.clone(),
+                        size: style.font_size,
+                        color: style.color,
+                        weight: style.font_weight,
+                        style: style.font_style,
+                        family: style.font_family.clone(),
+                    }));
                 }
-                list.push(DisplayItem::Text(TextRun {
-                    origin: Point::new(item.rect.x(), item.rect.y() + item.baseline),
-                    text: text.clone(),
-                    size: style.font_size,
-                    color: style.color,
-                    weight: style.font_weight,
-                    style: style.font_style,
-                    family: style.font_family.clone(),
-                }));
-                continue;
-            }
-            if item.rect.is_empty() || style.visibility != ve_style::Visibility::Visible {
-                continue;
-            }
-            // Skip the root box background: it was promoted to the canvas.
-            if Some(node) != layout.root.node {
-                let bg = style.background_color.resolve(style.color);
-                if !bg.is_transparent() {
-                    list.push(DisplayItem::Rect {
+            } else if !item.rect.is_empty() && style.visibility == ve_style::Visibility::Visible {
+                if let Some(handle) = images.get(&node) {
+                    list.push(DisplayItem::Image {
                         rect: item.rect,
-                        color: bg,
+                        handle: *handle,
                     });
                 }
-            }
-            let widths = Edges::new(
-                style.border_top_width,
-                style.border_right_width,
-                style.border_bottom_width,
-                style.border_left_width,
-            );
-            if widths.horizontal() > 0.0 || widths.vertical() > 0.0 {
-                let color = style.border_top_color.resolve(style.color);
-                if !color.is_transparent() {
-                    list.push(DisplayItem::Border {
-                        rect: item.rect,
-                        widths,
-                        color,
-                    });
+                // Skip the root box background: it was promoted to the canvas.
+                if Some(node) != layout.root.node {
+                    let bg = style.background_color.resolve(style.color);
+                    if !bg.is_transparent() {
+                        list.push(DisplayItem::Rect {
+                            rect: item.rect,
+                            color: bg,
+                        });
+                    }
                 }
+                let widths = Edges::new(
+                    style.border_top_width,
+                    style.border_right_width,
+                    style.border_bottom_width,
+                    style.border_left_width,
+                );
+                if widths.horizontal() > 0.0 || widths.vertical() > 0.0 {
+                    let color = style.border_top_color.resolve(style.color);
+                    if !color.is_transparent() {
+                        list.push(DisplayItem::Border {
+                            rect: item.rect,
+                            widths,
+                            color,
+                        });
+                    }
+                }
+            }
+            if faded {
+                list.push(DisplayItem::PopOpacity);
+            }
+            if clip.is_some() {
+                list.push(DisplayItem::PopClip);
             }
         }
         list
@@ -304,6 +332,31 @@ mod tests {
                 .unwrap()
                 .origin,
             Point::new(5.0, 5.0)
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_opacity_and_overflow_clips() {
+        let html = "<style>body{margin:0} .clip{width:50px;height:50px;overflow:hidden;opacity:0.5} .clip div{width:200px;height:200px;background:red}</style>\
+                    <div class=clip><div></div></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::PushOpacity(a) if (*a - 0.5).abs() < 0.01)),
+            "opacity group missing: {:?}",
+            list.items()
+        );
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::PushClip(_))),
+            "overflow clip missing"
         );
     }
 }

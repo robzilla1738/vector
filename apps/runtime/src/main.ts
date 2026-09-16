@@ -143,11 +143,40 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // can report it; whether pages are *routed* to it is the `engineMode`
   // setting (default "auto" — engine first, Chromium fallback).
   let engineInfo: EngineAvailability = { available: false, error: "not loaded" };
+  const engineMode = () => settings.engineMode();
+  const routingMode = () =>
+    engineMode() === "off" ? "chromium-only" : engineMode() === "always" ? "native-only" : "hybrid";
+  const production =
+    env.VECTOR_ENGINE_PROFILE === "production" ||
+    env.VECTOR_ENGINE_PROFILE === "prod" ||
+    env.VECTOR_ENGINE_STRICT === "1";
   if (env.VECTOR_ENGINE !== "0") {
-    // VECTOR_ENGINE_SCRIPTING=1 runs page scripts in the engine's V8 (A13);
-    // default off until the DOM bindings (A14) give scripts something to act on
+    const extraAllow = (env.VECTOR_ENGINE_ALLOWLIST ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     const d = new VectorEngineDriver({
-      config: { dataDir: config.dataDir, scripting: env.VECTOR_ENGINE_SCRIPTING !== "0" },
+      config: {
+        dataDir: config.dataDir,
+        scripting: env.VECTOR_ENGINE_SCRIPTING !== "0",
+        securityProfile: production ? "production" : "developer",
+        isolation: production ? "requireProcess" : "auto",
+        policy: {
+          blockLoopback: true,
+          allowFile: env.VECTOR_ENGINE_ALLOW_FILE === "1",
+          allowPrivateNetwork: false,
+          allowAgentEgress: env.VECTOR_ENGINE_AGENT_EGRESS === "1",
+          allowlist: [
+            "127.0.0.1:4810",
+            "127.0.0.1:4811",
+            "127.0.0.1:4812",
+            "localhost:4810",
+            "localhost:4811",
+            "localhost:4812",
+            ...extraAllow,
+          ],
+        },
+      },
     });
     watchDriver(d, "vector-engine", "Vector Engine");
     try {
@@ -159,7 +188,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         backend: "vector-engine",
         label: "Vector Engine",
         status: "connected",
-        detail: `v${engineInfo.version ?? "?"} — routing ${settings.engineMode()}`,
+        detail: `v${engineInfo.version ?? "?"} abi=${engineInfo.abiVersion ?? "?"} ${engineInfo.isolation ?? "in-process"} ${routingMode()}`,
+        abiVersion: engineInfo.abiVersion,
+        protocolVersion: engineInfo.protocolVersion,
+        engineVersion: engineInfo.version,
+        isolation: engineInfo.isolation,
+        securityProfile: engineInfo.securityProfile,
+        routingMode: routingMode(),
       });
     } catch (e) {
       engineInfo = { available: false, error: e instanceof Error ? e.message : String(e) };
@@ -169,6 +204,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         label: "Vector Engine",
         status: "disconnected",
         detail: engineInfo.error,
+        routingMode: routingMode(),
+        securityProfile: production ? "production" : "developer",
       });
     }
   }

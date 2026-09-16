@@ -22,6 +22,11 @@ if (!debug) args.push("--release");
 console.log(`[engine-native] cargo ${args.join(" ")} (target dir ${targetDir})`);
 const r = spawnSync("cargo", args, { cwd: engineRoot, stdio: "inherit", env: { ...process.env, CARGO_TARGET_DIR: targetDir } });
 if (r.status !== 0) process.exit(r.status ?? 1);
+const hostArgs = ["build", "-p", "ve-host"];
+if (!debug) hostArgs.push("--release");
+console.log(`[engine-native] cargo ${hostArgs.join(" ")}`);
+const hr = spawnSync("cargo", hostArgs, { cwd: engineRoot, stdio: "inherit", env: { ...process.env, CARGO_TARGET_DIR: targetDir } });
+if (hr.status !== 0) process.exit(hr.status ?? 1);
 
 const ext = process.platform === "win32" ? "dll" : process.platform === "darwin" ? "dylib" : "so";
 const libName = process.platform === "win32" ? "ve_napi" : "libve_napi";
@@ -33,3 +38,12 @@ if (!existsSync(built)) {
 const out = join(pkg, `vector-engine.${process.platform}-${process.arch}.node`);
 copyFileSync(built, out);
 console.log(`[engine-native] wrote ${out}`);
+const hostName = process.platform === "win32" ? "ve-host.exe" : "ve-host";
+const hostBuilt = join(targetDir, debug ? "debug" : "release", hostName);
+if (existsSync(hostBuilt)) {
+  const hostOut = join(pkg, hostName);
+  copyFileSync(hostBuilt, hostOut);
+  console.log(`[engine-native] wrote ${hostOut}`);
+} else {
+  console.warn(`[engine-native] ve-host not found at ${hostBuilt} (build -p ve-host to ship process isolation)`);
+}

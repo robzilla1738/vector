@@ -1,0 +1,78 @@
+{
+  "engine": "0.0.1",
+  "features": [
+    {
+      "id": "css.supports",
+      "status": "implemented",
+      "behavior": "CSS.supports(property, value) and CSS.supports('(prop: value)') parse through ve-style. Compound not/and/or queries are evaluated. Unknown, invalid, and deferred properties return false.",
+      "gaps": "selector() function, font-tech(), font-format().",
+      "tests": ["engine/fixtures/harness/capabilities.html", "engine/tools/wpt-harness"],
+      "owner": "ve-style",
+      "diagnostic": "capability_unsupported is not used; feature detection is false."
+    },
+    {
+      "id": "matchMedia",
+      "status": "partial",
+      "behavior": "min-width/max-width in px against innerWidth.",
+      "gaps": "orientation, prefers-*, resolution; change events are dispatched only when listeners are invoked.",
+      "tests": ["engine/tools/wpt-harness"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "fetch.body",
+      "status": "implemented",
+      "behavior": "Async fetchStart/fetchPoll completed during settle. text/json/arrayBuffer/blob, bodyUsed, clone of unused body, AbortController, ReadableStream body view, bytes via bodyB64.",
+      "gaps": "CORS modes, streaming backpressure against a slow consumer, HTTP/2 push.",
+      "tests": ["engine/crates/ve-agent/src/dom.rs", "engine/crates/ve-agent/src/dom_prelude.js"],
+      "owner": "ve-net"
+    },
+    {
+      "id": "customElements.whenDefined",
+      "status": "implemented",
+      "behavior": "Resolves when define() runs; does not resolve early for missing names.",
+      "gaps": "autonomous/customized builtin full upgrade lifecycle.",
+      "tests": ["engine/tools/wpt-harness"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "MutationObserver",
+      "status": "partial",
+      "behavior": "observe/disconnect/takeRecords via the mutation journal.",
+      "gaps": "attributeFilter, subtree edge cases, characterData oldValue.",
+      "tests": ["engine/crates/ve-agent/src/dom_prelude.js"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "WebSocket",
+      "status": "partial",
+      "behavior": "RFC 6455 handshake, masked send, close, open/message/error/close listeners. readyState 0/1/3.",
+      "gaps": "extensions, ping/pong, fragmented frames, TLS frame poll.",
+      "tests": ["engine/crates/ve-net/src/websocket.rs"],
+      "owner": "ve-net"
+    },
+    {
+      "id": "indexedDB",
+      "status": "partial",
+      "behavior": "open/put/get/delete origin-partitioned stores, createIndex (unique + compound key paths), index.get, IDBCursor, versionchange only when the version increases. Dedicated Worker postMessage evaluates in an isolated ve-vm realm (`typeof document` is undefined).",
+      "gaps": "full worker JS evaluation in a second V8 isolate, Worker importScripts/fetch, quota, IDB transactions abort semantics.",
+      "tests": ["engine/crates/ve-agent/tests/bindings.rs"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "serviceWorker",
+      "status": "stub-honest",
+      "behavior": "register() records a registration with active=null. describe() reports serviceWorkers:false.",
+      "gaps": "install/activate/fetch control.",
+      "tests": ["engine/crates/ve-napi/src/lib.rs describe()"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "http3",
+      "status": "not-implemented",
+      "behavior": "Alt-Svc parser only. describe() reports http3:false.",
+      "gaps": "QUIC transport.",
+      "tests": ["engine/crates/ve-napi/src/lib.rs"],
+      "owner": "ve-net"
+    }
+  ]
+}

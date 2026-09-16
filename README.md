@@ -36,12 +36,21 @@ pnpm package:local  # build Vector.app into release/
 ```
 
 The engine addon (`@vector/engine-native`, `engine/crates/ve-napi`) is not
-built by `pnpm build`. Build it once with a stable Rust toolchain:
+built by `pnpm build`. Build it once with Rust 1.88:
 
 ```bash
 cd engine && cargo build -p ve-napi --features napi --release
 # or: pnpm --filter @vector/engine-native build   (napi-rs CLI)
 ```
+
+Native-only GUI (no Electron) is `cargo run -p ve-shell --features window -- --gui`.
+CI clippy-checks that feature on macOS; it does not run the windowed app.
+
+Evidence for the engine roadmap tickets is
+[docs/engine/evidence](docs/engine/evidence/README.md). The desktop product is
+still Electron. `engineMode: always` never opens Chromium. Harness:
+`cargo run --release -p wpt-harness --features v8` (testharness + pixels) and
+`cargo run --release -p wpt-runner` (geometry).
 
 The runtime loads the addon at startup whenever it is present (set
 `VECTOR_ENGINE=0` to skip it) and reports it in `runtime.describe` →
@@ -153,6 +162,7 @@ scripts/                dev, fixtures, Chromium discovery, packaging
 ## Docs
 
 - [Architecture](docs/architecture.md) · [Engine architecture](docs/engine/architecture.md) · [Engine README](engine/README.md)
+- [Engine evidence VEC-001–025](docs/engine/evidence/README.md) · [Containment](docs/engine/containment.md)
 - [Local testing](docs/local-testing.md) · [Desktop shell](docs/ui/shell.md)
 - [Loopback API](docs/api.md) · [CLI](docs/cli.md) · [MCP](docs/mcp.md)
 - [Packaging](docs/packaging.md) · [Troubleshooting](docs/troubleshooting.md)

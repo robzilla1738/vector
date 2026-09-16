@@ -46,6 +46,10 @@ impl Layer {
 pub struct Compositor {
     layers: Vec<Layer>,
     next_id: u32,
+    /// True when a layer was added, scrolled, or had its content replaced
+    /// since the last [`Self::take_damage`]. Direct presentation skips a
+    /// full scene rebuild when this is false.
+    damaged: bool,
 }
 
 impl Compositor {
@@ -66,7 +70,19 @@ impl Compositor {
             opacity: 1.0,
             content,
         });
+        self.damaged = true;
         id
+    }
+
+    /// Whether layers changed since the last present.
+    #[must_use]
+    pub fn is_damaged(&self) -> bool {
+        self.damaged
+    }
+
+    /// Clears the damage bit (after a successful present).
+    pub fn take_damage(&mut self) -> bool {
+        std::mem::take(&mut self.damaged)
     }
 
     /// Looks up a layer.
@@ -84,29 +100,40 @@ impl Compositor {
     pub fn remove_layer(&mut self, id: LayerId) -> bool {
         let before = self.layers.len();
         self.layers.retain(|l| l.id != id);
-        self.layers.len() != before
+        let removed = self.layers.len() != before;
+        if removed {
+            self.damaged = true;
+        }
+        removed
     }
 
     /// Scrolls a layer by `(dx, dy)`, clamped to its content. Returns the new offset.
     pub fn scroll_by(&mut self, id: LayerId, dx: f32, dy: f32) -> Option<Point> {
-        let layer = self.layer_mut(id)?;
-        let max = layer.max_scroll();
-        layer.scroll = Point::new(
-            (layer.scroll.x + dx).clamp(0.0, max.x),
-            (layer.scroll.y + dy).clamp(0.0, max.y),
-        );
-        Some(layer.scroll)
+        let scroll = {
+            let layer = self.layer_mut(id)?;
+            let max = layer.max_scroll();
+            layer.scroll = Point::new(
+                (layer.scroll.x + dx).clamp(0.0, max.x),
+                (layer.scroll.y + dy).clamp(0.0, max.y),
+            );
+            layer.scroll
+        };
+        self.damaged = true;
+        Some(scroll)
     }
 
     /// Replaces a layer's content (e.g. after relayout), keeping its scroll
     /// offset clamped to the new content.
     pub fn set_content(&mut self, id: LayerId, content: DisplayList) -> bool {
-        let Some(layer) = self.layer_mut(id) else {
-            return false;
-        };
-        layer.content = content;
-        let max = layer.max_scroll();
-        layer.scroll = Point::new(layer.scroll.x.min(max.x), layer.scroll.y.min(max.y));
+        {
+            let Some(layer) = self.layer_mut(id) else {
+                return false;
+            };
+            layer.content = content;
+            let max = layer.max_scroll();
+            layer.scroll = Point::new(layer.scroll.x.min(max.x), layer.scroll.y.min(max.y));
+        }
+        self.damaged = true;
         true
     }
 
@@ -164,6 +191,8 @@ mod tests {
             Some(Point::new(0.0, 410.0)),
             "clamped to content"
         );
+        assert!(comp.take_damage(), "scroll marks damage");
+        assert!(!comp.take_damage(), "damage is consumed");
         let out = comp.composite(Size::new(200.0, 200.0));
         let items = out.items();
         assert!(matches!(items[0], DisplayItem::PushOpacity(o) if (o - 0.5).abs() < f32::EPSILON));

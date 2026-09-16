@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Event.isTrusted</title>
+<body>
+<script>
+test(function () {
+  const ev = new Event("click", { isTrusted: true });
+  assert_false(ev.isTrusted);
+}, "author events are untrusted");
+</script>

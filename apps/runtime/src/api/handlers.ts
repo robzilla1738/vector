@@ -361,6 +361,12 @@ export function makeInvoker(s: Services) {
           engine: {
             ...engineInfo,
             mode: s.router?.mode() ?? s.settings.engineMode?.() ?? "auto",
+            routingMode:
+              (s.router?.mode() ?? s.settings.engineMode?.() ?? "auto") === "off"
+                ? "chromium-only"
+                : (s.router?.mode() ?? "auto") === "always"
+                  ? "native-only"
+                  : "hybrid",
             connected: !!s.drivers().engine?.isConnected(),
             needsChromiumOrigins: s.router?.entries().length ?? 0,
           },

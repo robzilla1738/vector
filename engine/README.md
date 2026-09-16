@@ -27,17 +27,22 @@ implemented.
 | `ve-api` | `VectorEngine` facade (contexts, `open` / `observe` / `execute` / `screenshot` / `close` / cookies, `*_json` twins) and the C ABI in `ve_api::ffi` (below) |
 | `ve-napi` | `@vector/engine-native`: napi-rs 3 addon behind `napi` (`ABI_VERSION` 4) — async `Engine` class, JSON plus UTF-8 JSON/PNG Buffers; optional `ve-host` child per context |
 | `ve-host` | Isolated engine process: JSON control pipe, sandbox (macOS `sandbox_init` / Linux seccomp), fetches through the parent broker |
+| `ve-replay` | Hermetic replay: missing archive is nondeterminism; speculative writes denied (VEC-024) |
+| `ve-vm` | Research JS expression interpreter; Test262 subset; dedicated-worker `postMessage` eval (VEC-025). V8 stays production |
 | `tools/wpt-runner` | WPT reftest runner comparing fragment *geometry* (not pixels) against `rel=match` references; per-milestone manifest |
+| `tools/wpt-harness` | Testharness + pixel runner; inlines pinned `testharness.js`; VEC-006 |
+| `tools/ve-shell` | CLI + optional `window` GUI (`winit`/`softbuffer`) over `NativeBrowser` |
 | `tools/perf` | Agent-path harness over `fixtures/static/` (`--gate m1`: observe, open-to-observe, click/fill step, 10-step program, diff after edit; p50/p95 → JSON) |
 
 Fixtures: `fixtures/static/*.html` (8 static pages: login, blog post, docs
 guide, government form, FAQ, news index, product catalog, wiki article) each
-with a `*.golden.json` Compact observation. Conformance manifest:
-`conformance/m1.txt`.
+with a `*.golden.json` Compact observation. Conformance: `conformance/m1.txt`
+(geometry), `conformance/testharness.txt` (script/pixel),
+`docs/engine/evidence/` (VEC-001–025).
 
 ## Building
 
-Requires stable Rust (edition 2024; `rust-version = 1.85`). The default build
+Requires Rust 1.88 (`engine/rust-toolchain.toml`). The default build
 is pure Rust and needs no C compiler, system libraries or GPU:
 
 ```sh

@@ -3,6 +3,8 @@
   const nodes = new Map();
   const registry = new Map();
   const listeners = new WeakMap();
+  const trustedEvents = new WeakSet();
+  const waiters = new Map();
   const store = (o) => {
     let m = listeners.get(o);
     if (!m) { m = new Map(); listeners.set(o, m); }
@@ -21,13 +23,13 @@
       this.target = null;
       this.currentTarget = null;
       this.eventPhase = 0;
-      this.isTrusted = !!init.isTrusted;
       this.timeStamp = __ve.now();
       this.clientX = init.clientX || 0;
       this.clientY = init.clientY || 0;
       this.button = init.button || 0;
       this.key = init.key || "";
       this.code = init.code || "";
+      Object.defineProperty(this, "isTrusted", { get: () => trustedEvents.has(this), enumerable: true });
     }
     preventDefault() { if (this.cancelable) this.defaultPrevented = true; }
     stopPropagation() { this.cancelBubble = true; }
@@ -299,6 +301,26 @@
     setAttribute(n, v) { D("setAttr", this.__h, String(n), String(v)); }
     removeAttribute(n) { D("removeAttr", this.__h, String(n)); }
     hasAttribute(n) { return !!D("hasAttr", this.__h, String(n)); }
+    get attributes() {
+      const h = this.__h;
+      const names = D("attrNames", h) || [];
+      const map = [];
+      for (let i = 0; i < names.length; i++) {
+        const name = names[i];
+        const attr = {
+          name,
+          ownerElement: this,
+          get value() { return D("getAttr", h, name) || ""; },
+          set value(v) { D("setAttr", h, name, String(v)); },
+        };
+        map.push(attr);
+        map[name] = attr;
+      }
+      map.item = (i) => map[i] || null;
+      map.getNamedItem = (n) => map[n] || null;
+      map.length = names.length;
+      return map;
+    }
     getAttributeNS(ns, n) { return this.getAttribute(n); }
     setAttributeNS(ns, n, v) { this.setAttribute(n, v); }
     querySelector(s) { return wrap(D("querySelector", this.__h, String(s))); }
@@ -417,10 +439,21 @@
     }
     toDataURL() { return "data:image/png;base64,"; }
   }
+  class HTMLDivElement extends HTMLElement {}
+  class HTMLParagraphElement extends HTMLElement {}
+  class HTMLSpanElement extends HTMLElement {}
+  class HTMLHeadElement extends HTMLElement {}
+  class HTMLBodyElement extends HTMLElement {}
+  class HTMLHtmlElement extends HTMLElement {}
+  class HTMLTitleElement extends HTMLElement {}
+  class HTMLScriptElement extends HTMLElement {}
   const HTML = {
     input: HTMLInputElement, textarea: HTMLTextAreaElement, select: HTMLSelectElement,
     option: HTMLOptionElement, button: HTMLButtonElement, form: HTMLFormElement,
     a: HTMLAnchorElement, img: HTMLImageElement, iframe: HTMLIFrameElement, canvas: HTMLCanvasElement,
+    div: HTMLDivElement, p: HTMLParagraphElement, span: HTMLSpanElement,
+    head: HTMLHeadElement, body: HTMLBodyElement, html: HTMLHtmlElement,
+    title: HTMLTitleElement, script: HTMLScriptElement,
   };
 
   class Document extends Node {
@@ -446,7 +479,11 @@
     createComment(data) { return wrap(D("createComment", String(data))); }
     createDocumentFragment() { return wrap(D("createFragment")); }
     createEvent(t) { return new Event(t); }
-    getElementById(id) { return wrap(D("getElementById", String(id))); }
+    getElementById(id) {
+      const s = id === null ? "null" : id === undefined ? "undefined" : String(id);
+      if (s === "") return null;
+      return wrap(D("getElementById", s));
+    }
     querySelector(s) { return wrap(D("querySelector", "", String(s))); }
     querySelectorAll(s) { return list(D("querySelectorAll", "", String(s))); }
     getElementsByTagName(n) { return list(D("getElementsByTagName", "", String(n))); }
@@ -502,6 +539,8 @@
     define(name, ctor) {
       name = String(name).toLowerCase();
       registry.set(name, ctor);
+      const w = waiters.get(name);
+      if (w) { w.res(ctor); waiters.delete(name); }
       const found = D("querySelectorAll", "", name) || [];
       for (const h of found) {
         const existing = nodes.get(h);
@@ -511,7 +550,18 @@
       }
     }
     get(name) { return registry.get(String(name).toLowerCase()); }
-    whenDefined(name) { return Promise.resolve(this.get(name)); }
+    whenDefined(name) {
+      name = String(name).toLowerCase();
+      const c = registry.get(name);
+      if (c) return Promise.resolve(c);
+      let w = waiters.get(name);
+      if (!w) {
+        w = {};
+        w.p = new Promise((res) => { w.res = res; });
+        waiters.set(name, w);
+      }
+      return w.p;
+    }
     upgrade() {}
   }
 
@@ -519,7 +569,12 @@
     constructor(cb) { this._cb = cb; this._rev = D("revision"); this._on = false; observers.push(this); }
     observe() { this._on = true; this._rev = D("revision"); }
     disconnect() { this._on = false; }
-    takeRecords() { return []; }
+    takeRecords() {
+      if (!this._on) return [];
+      const recs = D("mutationsSince", this._rev) || [];
+      this._rev = D("revision");
+      return recs.map((r) => ({ type: r.type, target: wrap(r.target), addedNodes: list(r.added || []), removedNodes: list(r.removed || []), attributeName: r.attr || null }));
+    }
   }
   const observers = [];
   class IntersectionObserver {
@@ -588,26 +643,90 @@
   }
   XMLHttpRequest.UNSENT = 0; XMLHttpRequest.OPENED = 1; XMLHttpRequest.HEADERS_RECEIVED = 2; XMLHttpRequest.LOADING = 3; XMLHttpRequest.DONE = 4;
 
+  function responseFrom(r) {
+    let bodyUsed = false;
+    const textBody = r.body;
+    const b64 = r.bodyB64 || "";
+    const consume = () => {
+      if (bodyUsed) throw new TypeError("body already used");
+      bodyUsed = true;
+    };
+    const bytes = () => {
+      if (b64) {
+        const bin = atob(b64);
+        const out = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+        return out;
+      }
+      const enc = unescape(encodeURIComponent(textBody || ""));
+      const out = new Uint8Array(enc.length);
+      for (let i = 0; i < enc.length; i++) out[i] = enc.charCodeAt(i);
+      return out;
+    };
+    const stream = {
+      getReader() {
+        let i = 0;
+        const buf = bytes();
+        return {
+          read() {
+            if (i >= buf.length) return Promise.resolve({ done: true, value: undefined });
+            const end = Math.min(i + 16384, buf.length);
+            const value = buf.slice(i, end);
+            i = end;
+            return Promise.resolve({ done: false, value });
+          },
+          cancel() { i = buf.length; return Promise.resolve(); },
+        };
+      },
+    };
+    return {
+      ok: r.status >= 200 && r.status < 300,
+      status: r.status,
+      statusText: r.statusText || "",
+      url: r.url,
+      redirected: !!r.redirected,
+      get bodyUsed() { return bodyUsed; },
+      get body() { return stream; },
+      headers: { get(n) { n = String(n).toLowerCase(); return (r.headers && r.headers[n]) || null; }, has(n) { return this.get(n) != null; } },
+      text() { consume(); return Promise.resolve(textBody); },
+      json() { consume(); return Promise.resolve(JSON.parse(textBody || "null")); },
+      arrayBuffer() { consume(); return Promise.resolve(bytes().buffer); },
+      blob() { consume(); const b = bytes(); return Promise.resolve({ size: b.length, type: "" }); },
+      clone() {
+        if (bodyUsed) throw new TypeError("body already used");
+        return responseFrom(r);
+      },
+    };
+  }
+  class AbortController {
+    constructor() {
+      this.signal = { aborted: false, reason: undefined, addEventListener(t, fn) { this._fn = fn; }, dispatch() { this.aborted = true; if (this._fn) this._fn(); } };
+    }
+    abort(reason) { this.signal.reason = reason; this.signal.dispatch(); }
+  }
   function fetchImpl(url, init) {
     init = init || {};
+    if (init.signal && init.signal.aborted) {
+      return Promise.reject(new DOMException("The operation was aborted.", "AbortError"));
+    }
     return new Promise((resolve, reject) => {
       try {
         const headers = JSON.stringify(init.headers || {});
-        const r = D("fetch", String(url && url.url ? url.url : url), init.method || "GET", headers, init.body == null ? "" : String(init.body));
-        const body = r.body;
-        resolve({
-          ok: r.status >= 200 && r.status < 300,
-          status: r.status,
-          statusText: r.statusText || "",
-          url: r.url,
-          redirected: !!r.redirected,
-          headers: { get(n) { n = String(n).toLowerCase(); return (r.headers && r.headers[n]) || null; }, has(n) { return this.get(n) != null; } },
-          text() { return Promise.resolve(body); },
-          json() { return Promise.resolve(JSON.parse(body || "null")); },
-          arrayBuffer() { return Promise.resolve(new ArrayBuffer(0)); },
-          blob() { return Promise.resolve({ size: body.length, type: "" }); },
-          clone() { return this; },
-        });
+        const body = init.body == null ? "" : String(init.body);
+        const id = D("fetchStart", String(url && url.url ? url.url : url), init.method || "GET", headers, body);
+        if (init.signal) {
+          init.signal.addEventListener("abort", () => {
+            D("fetchAbort", id);
+            reject(new DOMException("The operation was aborted.", "AbortError"));
+          });
+        }
+        const tick = () => {
+          const r = D("fetchPoll", id);
+          if (!r || r.pending) { queueMicrotask(tick); return; }
+          if (r.error) reject(new TypeError(r.error));
+          else resolve(responseFrom(r));
+        };
+        queueMicrotask(tick);
       } catch (e) { reject(e); }
     });
   }
@@ -657,17 +776,26 @@
     Node, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment,
     HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLOptionElement,
     HTMLButtonElement, HTMLFormElement, HTMLAnchorElement, HTMLImageElement,
-    HTMLIFrameElement, HTMLCanvasElement, MutationObserver, IntersectionObserver, ResizeObserver,
+    HTMLIFrameElement, HTMLCanvasElement, HTMLDivElement, HTMLParagraphElement,
+    HTMLSpanElement, HTMLHeadElement, HTMLBodyElement, HTMLHtmlElement,
+    HTMLTitleElement, HTMLScriptElement,
+    MutationObserver, IntersectionObserver, ResizeObserver,
     FormData, XMLHttpRequest, DOMTokenList, URL,
+    DOMException: class DOMException extends Error {
+      constructor(message, name) {
+        super(message);
+        this.name = name || "Error";
+      }
+    },
     navigator: {
       userAgent: "Vector/0.0.1", language: "en-US", languages: ["en-US"], onLine: true, platform: "vector",
       serviceWorker: {
         register(url, opts) {
           const scope = (opts && opts.scope) || "";
           D("serviceWorkerRegister", String(url), String(scope), "");
-          return Promise.resolve({ scope, installing: null, waiting: null, active: { scriptURL: String(url), state: "activated" } });
+          return Promise.resolve({ scope, installing: null, waiting: null, active: null });
         },
-        get ready() { return Promise.resolve({ active: { state: "activated" } }); },
+        get ready() { return Promise.resolve({ active: null }); },
         addEventListener() {},
         removeEventListener() {},
       },
@@ -688,7 +816,27 @@
         },
       });
     },
-    matchMedia(q) { return { matches: false, media: String(q), addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} }; },
+    matchMedia(q) {
+      q = String(q);
+      const evalQ = () => {
+        const width = D("innerWidth") || 0;
+        const min = q.match(/min-width:\s*(\d+)px/);
+        const max = q.match(/max-width:\s*(\d+)px/);
+        if (min) return width >= Number(min[1]);
+        if (max) return width <= Number(max[1]);
+        return false;
+      };
+      const ls = [];
+      return {
+        media: q,
+        get matches() { return evalQ(); },
+        addListener(fn) { if (typeof fn === "function") ls.push(fn); },
+        removeListener(fn) { const i = ls.indexOf(fn); if (i >= 0) ls.splice(i, 1); },
+        addEventListener(t, fn) { if (t === "change") this.addListener(fn); },
+        removeEventListener(t, fn) { if (t === "change") this.removeListener(fn); },
+        dispatchEvent(ev) { ls.forEach((fn) => fn(ev || this)); return true; },
+      };
+    },
     getSelection() { return { rangeCount: 0, toString() { return ""; }, removeAllRanges() {}, addRange() {} }; },
     alert(m) { __ve.dom("scriptDialog", "alert", String(m), ""); },
     confirm(m) { return !!__ve.dom("scriptDialog", "confirm", String(m), ""); },
@@ -700,20 +848,162 @@
     scrollTo(x, y) { if (typeof x === "object") { y = x.top; x = x.left; } document.documentElement.scrollTop = y || 0; document.documentElement.scrollLeft = x || 0; },
     scrollBy(x, y) { window.scrollTo((document.documentElement.scrollLeft || 0) + (x || 0), (document.documentElement.scrollTop || 0) + (y || 0)); },
     fetch: fetchImpl,
+    AbortController,
+    AbortSignal: function AbortSignal() {},
+    indexedDB: {
+      open(name, version) {
+        const dbName = String(name);
+        const meta = D("idbOpen", dbName, version == null ? 0 : Number(version)) || { version: 1, upgrade: true, oldVersion: 0 };
+        const req = { result: null, error: null, onsuccess: null, onupgradeneeded: null, onerror: null };
+        const storeApi = (storeName) => ({
+          name: storeName,
+          createIndex(name, keyPath, options) {
+            const kp = Array.isArray(keyPath) ? JSON.stringify(keyPath) : String(keyPath);
+            D("idbCreateIndex", dbName, String(storeName), String(name), kp, options && options.unique ? "1" : "0");
+            return { name: String(name), keyPath, unique: !!(options && options.unique) };
+          },
+          put(value, key) {
+            const res = D("idbPut", dbName, String(storeName), String(key), JSON.stringify(value));
+            const r = { result: key, error: null, onsuccess: null, onerror: null };
+            if (res && res.error) {
+              r.error = { name: res.error };
+              queueMicrotask(() => { if (r.onerror) r.onerror({ target: r }); });
+            } else {
+              queueMicrotask(() => { if (r.onsuccess) r.onsuccess({ target: r }); });
+            }
+            return r;
+          },
+          get(key) {
+            const raw = D("idbGet", dbName, String(storeName), String(key));
+            const r = { result: raw == null ? undefined : JSON.parse(raw), onsuccess: null };
+            queueMicrotask(() => { if (r.onsuccess) r.onsuccess({ target: r }); });
+            return r;
+          },
+          delete(key) {
+            D("idbDelete", dbName, String(storeName), String(key));
+            const r = { result: undefined, onsuccess: null };
+            queueMicrotask(() => { if (r.onsuccess) r.onsuccess({ target: r }); });
+            return r;
+          },
+          index(name) {
+            const indexName = String(name);
+            return {
+              get(value) {
+                const raw = D("idbIndexGet", dbName, String(storeName), indexName, String(value));
+                const r = { result: raw == null ? undefined : JSON.parse(raw), onsuccess: null };
+                queueMicrotask(() => { if (r.onsuccess) r.onsuccess({ target: r }); });
+                return r;
+              },
+            };
+          },
+          openCursor() {
+            let after = "";
+            const req = { result: null, onsuccess: null };
+            const advance = () => {
+              const raw = D("idbCursorNext", dbName, String(storeName), after);
+              if (raw == null) {
+                req.result = null;
+                if (req.onsuccess) req.onsuccess({ target: req });
+                return;
+              }
+              const row = JSON.parse(raw);
+              after = String(row.key);
+              req.result = {
+                key: row.key,
+                value: JSON.parse(row.value),
+                continue() { queueMicrotask(advance); },
+              };
+              if (req.onsuccess) req.onsuccess({ target: req });
+            };
+            queueMicrotask(advance);
+            return req;
+          },
+        });
+        const db = {
+          name: dbName,
+          version: meta.version,
+          objectStoreNames: { contains() { return true; }, length: 1 },
+          createObjectStore(store) { return storeApi(store); },
+          transaction(store) {
+            const storeName = Array.isArray(store) ? store[0] : store;
+            return { objectStore() { return storeApi(storeName); } };
+          },
+          close() { D("idbClear", dbName); },
+        };
+        queueMicrotask(() => {
+          req.result = db;
+          if (meta.upgrade && req.onupgradeneeded) {
+            req.onupgradeneeded({ target: req, oldVersion: meta.oldVersion, newVersion: meta.version });
+          }
+          if (req.onsuccess) req.onsuccess({ target: req });
+        });
+        return req;
+      },
+      deleteDatabase(name) { D("idbClear", String(name)); return { onsuccess: null }; },
+    },
+    Worker: function Worker(src) {
+      this._id = D("workerCreate", String(src));
+      this.onmessage = null;
+      this.postMessage = (m) => {
+        const echoed = D("workerPost", this._id, JSON.stringify(m));
+        const data = echoed == null ? m : JSON.parse(echoed);
+        if (this.onmessage) this.onmessage({ data });
+      };
+      this.terminate = () => { D("workerTerminate", this._id); };
+    },
     WebSocket: function WebSocket(url) {
-      const r = D("wsConnect", String(url));
+      const raw = D("wsConnect", String(url));
+      const parts = String(raw || "").split(":");
+      this._id = Number(parts[1]) || 0;
       this.url = String(url);
-      this.readyState = typeof r === "string" && r.startsWith("ws:1") ? 1 : 0;
+      this.readyState = Number(parts[2] || parts[1] || 3);
       this.protocol = "";
       this.bufferedAmount = 0;
       this.extensions = "";
       this.binaryType = "blob";
-      this.send = function () {};
-      this.close = function () { this.readyState = 3; };
-      this.addEventListener = function () {};
-      this.removeEventListener = function () {};
+      this.onopen = null;
+      this.onmessage = null;
+      this.onerror = null;
+      this.onclose = null;
+      const ls = { open: [], message: [], error: [], close: [] };
+      const fire = (type, ev) => {
+        (ls[type] || []).forEach((fn) => fn(ev));
+        const h = this["on" + type];
+        if (typeof h === "function") h.call(this, ev);
+      };
+      this.addEventListener = function (type, fn) {
+        if (typeof fn === "function" && ls[type]) ls[type].push(fn);
+      };
+      this.removeEventListener = function (type, fn) {
+        if (!ls[type]) return;
+        ls[type] = ls[type].filter((f) => f !== fn);
+      };
+      this.send = function (data) {
+        if (this.readyState !== 1) throw new DOMException("WebSocket is not open", "InvalidStateError");
+        try { D("wsSend", this._id, String(data)); }
+        catch (e) { throw new DOMException(String(e && e.message || e), "NotSupportedError"); }
+      };
+      this.close = function () {
+        D("wsClose", this._id);
+        this.readyState = 3;
+        fire("close", { type: "close", code: 1000, wasClean: true });
+      };
+      this._poll = function () {
+        const msgs = D("wsPoll", this._id) || [];
+        for (const m of msgs) fire("message", { type: "message", data: m });
+      };
+      queueMicrotask(() => {
+        if (this.readyState === 1) fire("open", { type: "open" });
+        else if (this.readyState === 3) fire("error", { type: "error" });
+      });
     },
-    CSS: { escape(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, (c) => "\\" + c); }, supports() { return true; } },
+    CSS: {
+      escape(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, (c) => "\\" + c); },
+      supports(a, b) {
+        const q = b == null ? String(a) : "(" + a + ": " + b + ")";
+        return D("cssSupports", q) === true;
+      },
+    },
     Image: HTMLImageElement,
     NodeFilter: { SHOW_ELEMENT: 1, SHOW_TEXT: 4, SHOW_ALL: 0xFFFFFFFF },
     MutationRecord: function () {},
@@ -735,11 +1025,11 @@
     const node = wrap(handle);
     if (!node) return false;
     init = init || {};
-    init.isTrusted = true;
     const ev = type.indexOf("drag") === 0
       ? new DragEvent(type, init)
       : (type === "click" || type === "mousedown" || type === "mouseup" || type === "mousemove"
         ? new MouseEvent(type, init) : new Event(type, init));
+    trustedEvents.add(ev);
     node.dispatchEvent(ev);
     return ev.defaultPrevented;
   };
@@ -760,4 +1050,23 @@
     globalThis.document = d;
     try { globalThis.window.document = d; } catch {}
   };
+
+  if (typeof globalThis.test !== "function") {
+    globalThis.test = function (fn, name) {
+      try {
+        fn({ step_func: (f) => f, done() {}, add_cleanup() {} });
+        (window.__tests = window.__tests || []).push([String(name || "test"), true]);
+      } catch (e) {
+        (window.__tests = window.__tests || []).push([String(name || "test"), false]);
+      }
+    };
+    globalThis.async_test = globalThis.test;
+    globalThis.assert_true = function (c, m) { if (!c) throw new Error(m || "assert_true"); };
+    globalThis.assert_false = function (c, m) { if (c) throw new Error(m || "assert_false"); };
+    globalThis.assert_equals = function (a, b, m) { if (a !== b) throw new Error(m || "assert_equals"); };
+    globalThis.assert_not_equals = function (a, b, m) { if (a === b) throw new Error(m || "assert_not_equals"); };
+    globalThis.assert_idl_attribute = function (obj, name, m) {
+      if (obj == null || !(name in obj)) throw new Error(m || ("missing idl " + name));
+    };
+  }
 })();

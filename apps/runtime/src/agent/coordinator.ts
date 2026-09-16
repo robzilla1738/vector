@@ -208,8 +208,22 @@ export class RunCoordinator {
     run.status = status;
     if (message !== undefined) run.statusMessage = message;
     this.deps.repo.saveRun(run);
+    this.persistCheckpoint(run);
     this.deps.events.emit(EventTypes.RunStatus, { runId, status, message }, runId);
     this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+  }
+
+  private persistCheckpoint(run: Run) {
+    const checkpoint = {
+      planBoundary: run.status,
+      unresolvedEffects: [] as string[],
+      pageIdentity: { pageIds: run.pageIds },
+      authorizationScope: run.pageIds,
+      recoveryStatus: run.status,
+    };
+    run.config = { ...(run.config ?? {}), checkpoint };
+    this.deps.repo.saveRun(run);
+    this.deps.repo.saveCheckpoint(`run:${run.runId}`, "coordinator", checkpoint);
   }
 
   private finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string) {

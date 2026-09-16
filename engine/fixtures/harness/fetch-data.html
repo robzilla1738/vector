@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>fetch data URL</title>
+<body>
+<script>
+window.__tests = [];
+fetch("data:text/plain,hello").then((r) => r.text()).then((t) => {
+  window.__tests.push(["fetch.data-url", t.indexOf("hello") !== -1]);
+}).catch(() => {
+  window.__tests.push(["fetch.data-url", false]);
+});
+</script>

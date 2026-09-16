@@ -39,8 +39,8 @@ impl Screenshot {
     }
 }
 
-/// Renders `layout` at `scroll` into a PNG.
-pub fn capture(
+/// Paints `layout` at `scroll` into an RGBA frame (no PNG).
+pub fn capture_frame(
     renderer: &mut SoftwareRenderer,
     layout: &LayoutTree,
     styles: &StyleTree,
@@ -48,7 +48,7 @@ pub fn capture(
     scroll: ve_core::Point,
     scale: f32,
     full_page: bool,
-) -> Result<Screenshot> {
+) -> Result<ve_gfx::Frame> {
     let span = ve_core::Stage::Paint.span();
     let _guard = span.enter();
     let scale = if scale.is_finite() && scale > 0.0 {
@@ -56,7 +56,7 @@ pub fn capture(
     } else {
         1.0
     };
-    let list = DisplayList::from_layout(layout, styles);
+    let list = DisplayList::from_layout_with(layout, styles, &renderer.node_images);
     let (css_width, css_height, dx, dy) = if full_page {
         (
             viewport.width.max(layout.root.rect.right()),
@@ -81,7 +81,20 @@ pub fn capture(
     }
     let width = (css_width * scale).round().max(1.0) as u32;
     let height = (css_height * scale).round().max(1.0) as u32;
-    let frame = renderer.render(&translated, width, height, scale)?;
+    Ok(renderer.render(&translated, width, height, scale)?)
+}
+
+/// Renders `layout` at `scroll` into a PNG.
+pub fn capture(
+    renderer: &mut SoftwareRenderer,
+    layout: &LayoutTree,
+    styles: &StyleTree,
+    viewport: Size,
+    scroll: ve_core::Point,
+    scale: f32,
+    full_page: bool,
+) -> Result<Screenshot> {
+    let frame = capture_frame(renderer, layout, styles, viewport, scroll, scale, full_page)?;
     let png = encode_png(frame.width, frame.height, &frame.rgba)?;
     Ok(Screenshot {
         width: frame.width,

@@ -41,6 +41,20 @@ loader's diagnostic until the addon is built:
 unit tests are `cargo test` in `engine/` (see `engine/README.md`). SPA
 goldens: `cargo test -p ve-api --features v8 --test spa`.
 
+Engine conformance and containment:
+
+```bash
+cd engine
+cargo test --workspace
+cargo test -p ve-host --tests
+cargo run --release -p wpt-harness --features v8
+cargo run --release -p wpt-runner -- --wpt-dir <pinned-wpt-checkout>
+cargo test -p ve-agent --features v8 --test bindings
+```
+
+Ticket evidence: `docs/engine/evidence/README.md`. Rust 1.88
+(`engine/rust-toolchain.toml`).
+
 ## Manual smoke
 
 ```bash

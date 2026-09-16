@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>IndexedDB unique and compound</title>
+<body>
+<script>
+window.__tests = [];
+const req = indexedDB.open("uniq", 1);
+req.onupgradeneeded = () => {
+  const store = req.result.createObjectStore("people");
+  store.createIndex("name", "name", { unique: true });
+  store.createIndex("full", ["last", "first"]);
+};
+req.onsuccess = () => {
+  const store = req.result.transaction("people").objectStore();
+  store.put({ name: "Ada", last: "Lovelace", first: "Ada" }, "1");
+  const dup = store.put({ name: "Ada", last: "X", first: "Y" }, "2");
+  dup.onerror = () => { window.__tests.push(["idb.unique", true]); };
+  dup.onsuccess = () => { window.__tests.push(["idb.unique", false]); };
+  const g = store.index("full").get("Lovelace\u0000Ada");
+  g.onsuccess = () => {
+    window.__tests.push(["idb.compound", !!(g.result && g.result.name === "Ada")]);
+  };
+};
+</script>

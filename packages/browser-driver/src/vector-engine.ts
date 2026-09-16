@@ -39,6 +39,7 @@ import type {
 /** The subset of the native `Engine` class the driver uses (JSON in/out). */
 export interface NativeEngine {
   newContext(optionsJson?: string | null): number;
+  identity?(): string;
   open(contextId: number, url: string, optionsJson?: string | null): Promise<string>;
   observe(page: number, optionsJson?: string | null): Promise<string>;
   observeBuf?(page: number, options?: Buffer | null): Promise<Buffer>;
@@ -68,6 +69,17 @@ export interface EngineNativeConfig {
   dataDir?: string;
   /** attach a V8 VM to every page and run document scripts (plan A13); needs an addon built with the `v8` feature */
   scripting?: boolean;
+  securityProfile?: "developer" | "production";
+  isolation?: "auto" | "requireProcess" | "inProcess";
+  policy?: {
+    blockLoopback?: boolean;
+    allowlist?: string[];
+    allowFile?: boolean;
+    httpsOnly?: boolean;
+    allowPrivateNetwork?: boolean;
+    allowAgentEgress?: boolean;
+    agentAllowlist?: string[];
+  };
 }
 
 /** Loads the addon; rejects with the loader's diagnostic when no binary exists. */
@@ -80,7 +92,11 @@ export interface EngineAvailability {
   available: boolean;
   version?: string;
   abiVersion?: number;
+  protocolVersion?: number;
   binaryPath?: string;
+  hostPath?: string;
+  isolation?: "process" | "in-process";
+  securityProfile?: "production" | "developer";
   capabilities?: Record<string, boolean>;
   error?: string;
 }
@@ -89,11 +105,17 @@ export interface EngineAvailability {
 export async function probeEngineNative(load: () => Promise<NativeModule> = loadEngineNative): Promise<EngineAvailability> {
   try {
     const mod = await load();
-    const info = JSON.parse(mod.describe()) as { abiVersion?: number; engine?: string; capabilities?: Record<string, boolean> };
+    const info = JSON.parse(mod.describe()) as {
+      abiVersion?: number;
+      engine?: string;
+      protocolVersion?: number;
+      capabilities?: Record<string, boolean>;
+    };
     return {
       available: true,
       version: info.engine ?? mod.version(),
       abiVersion: info.abiVersion,
+      protocolVersion: info.protocolVersion,
       binaryPath: mod.binaryPath,
       capabilities: info.capabilities,
     };
@@ -527,6 +549,30 @@ export class VectorEngineDriver implements BrowserDriver {
     }
     this.mod = await this.load();
     this.native = new this.mod.Engine(JSON.stringify(this.config));
+    const identRaw = this.native.identity?.();
+    if (identRaw) {
+      try {
+        const ident = JSON.parse(identRaw) as {
+          abiVersion?: number;
+          protocolVersion?: number;
+          engine?: string;
+          isolation?: "process" | "in-process";
+          securityProfile?: "production" | "developer";
+          host?: string | null;
+        };
+        this.availability = {
+          ...this.availability,
+          abiVersion: ident.abiVersion ?? this.availability.abiVersion,
+          protocolVersion: ident.protocolVersion,
+          version: ident.engine ?? this.availability.version,
+          isolation: ident.isolation,
+          securityProfile: ident.securityProfile,
+          hostPath: ident.host ?? undefined,
+        };
+      } catch {
+        /* describe() already populated version/abi */
+      }
+    }
   }
 
   async reconnect(): Promise<void> {

@@ -14,16 +14,19 @@
 //!   errors but convert into this at crate boundaries.
 //! * [`Stage`] / [`StageTimer`] — named pipeline stages used for tracing spans
 //!   and for the `perf` tool's per-stage measurements.
+//! * [`process_rss_bytes`] — live process RSS when the OS exposes it.
 //!
 //! Nothing in this crate allocates on hot paths or depends on a runtime.
 
 #![forbid(unsafe_code)]
 
+pub mod account;
 pub mod error;
 pub mod geometry;
 pub mod id;
 pub mod trace;
 
+pub use account::{host_package_energy_uj, process_rss_bytes};
 pub use error::{Error, ErrorCode, ErrorPayload, Result};
 pub use geometry::{Edges, Point, Rect, Size};
 pub use id::{NodeId, Revision};

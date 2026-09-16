@@ -19,9 +19,9 @@
 //! * [`image`] — format sniffing always; decoding through the `image` crate
 //!   behind the `images` feature (implied by `gpu`).
 //!
-//! Deliberate M0 stubs: no overflow clipping or opacity groups in
-//! [`DisplayList::from_layout`], no text in the vello backend, no image
-//! painting from layout (there are no replaced elements yet).
+//! GPU text is encoded as glyph outlines from [`FontSystem`] when fonts are
+//! registered, otherwise as filled glyph cells. Images use [`ImageCache`].
+//! Capture still readbacks; [`VelloRenderer::present_scene`] paints without a CPU copy.
 
 #![forbid(unsafe_code)]
 
@@ -35,11 +35,11 @@ pub mod vello_backend;
 
 pub use compositor::{Compositor, Layer, LayerId};
 pub use display_list::{DisplayItem, DisplayList, TextRun};
-pub use fonts::{FontSystem, GlyphBitmap};
+pub use fonts::{FontSystem, GlyphBitmap, GlyphOutline, GlyphVerb};
 pub use image::{DecodedImage, ImageCache, ImageFormat, ImageHandle, sniff_format};
 pub use renderer::{Frame, Renderer, SoftwareRenderer};
 #[cfg(feature = "gpu")]
-pub use vello_backend::VelloRenderer;
+pub use vello_backend::{VelloRenderer, build_scene, build_scene_fonts, build_scene_with};
 
 /// Errors from the graphics layer.
 #[derive(Debug, thiserror::Error)]

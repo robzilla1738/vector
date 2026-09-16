@@ -15,12 +15,17 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ve_api::{EngineConfig, VectorEngine};
 use ve_net::{
-    FnTransport, NetworkBroker, NullTransport, Request, Response, Transport, WireRequest,
-    WireResponse,
+    FnTransport, NetworkBroker, NullTransport, Request, Response, WireRequest, WireResponse,
 };
 
 use crate::errors::ApiError;
 use crate::host::{ExecuteOptions, HostState};
+
+/// Isolate control-pipe protocol. Bump when `Channel` changes incompatibly.
+pub const HOST_PROTOCOL: u32 = 1;
+
+/// Largest JSON line accepted on the control pipe (VEC-002 oversized IPC).
+const MAX_MESSAGE_BYTES: usize = 16 * 1024 * 1024;
 
 /// JSON line on the control pipe.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -28,6 +33,9 @@ use crate::host::{ExecuteOptions, HostState};
 enum Channel {
     /// Parent → child: engine config for this context.
     Init {
+        /// Protocol version. Missing/0 is a mismatch.
+        #[serde(default)]
+        protocol: u32,
         /// Engine config for the child.
         config: EngineConfig,
         /// Context id (camelCase `contextId` on the wire).
@@ -35,7 +43,21 @@ enum Channel {
         context_id: u32,
     },
     /// Child → parent: sandbox applied, ready for commands.
-    Ready,
+    Ready {
+        /// Protocol the child will speak.
+        #[serde(default)]
+        protocol: u32,
+        /// Whether the OS sandbox was applied.
+        #[serde(default)]
+        sandbox: bool,
+    },
+    /// Handshake or policy failure. The peer must exit.
+    Fatal {
+        /// `backend_unavailable` / `invalid_params`.
+        code: String,
+        /// Human message.
+        message: String,
+    },
     /// Parent → child: one host method.
     Cmd { op: Op },
     /// Child → parent: method result.
@@ -122,18 +144,78 @@ impl ProcessClient {
         Self::spawn(&bin, config, context_id).ok()
     }
 
+    /// Require a host binary and a successful protocol/sandbox handshake.
+    pub fn spawn_required(config: EngineConfig, context_id: u32) -> Result<Self, String> {
+        let bin = host_binary().ok_or_else(|| "ve-host binary missing".to_owned())?;
+        Self::spawn(&bin, config, context_id)
+    }
+
     fn spawn(bin: &Path, config: EngineConfig, context_id: u32) -> Result<Self, String> {
-        let child = Command::new(bin)
+        let production = config.security_profile == ve_api::SecurityProfile::Production;
+        let mut child = Command::new(bin)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
-            .env("VECTOR_ENGINE_SANDBOX", "1")
+            .env("VECTOR_ENGINE_SANDBOX", if production { "1" } else { "0" })
+            .env(
+                "VECTOR_ENGINE_PROFILE",
+                if production {
+                    "production"
+                } else {
+                    "developer"
+                },
+            )
             .spawn()
             .map_err(|e| format!("spawn ve-host: {e}"))?;
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| "ve-host stdin missing".to_owned())?;
+        let mut stdout = BufReader::new(
+            child
+                .stdout
+                .take()
+                .ok_or_else(|| "ve-host stdout missing".to_owned())?,
+        );
+        write_msg(
+            &mut stdin,
+            &Channel::Init {
+                protocol: HOST_PROTOCOL,
+                config: config.clone(),
+                context_id,
+            },
+        )
+        .map_err(|e| format!("ve-host init write: {e}"))?;
+        match read_msg(&mut stdout) {
+            Ok(Channel::Ready { protocol, sandbox }) if protocol == HOST_PROTOCOL => {
+                if production && !sandbox {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err("ve-host did not apply a production sandbox".into());
+                }
+            }
+            Ok(Channel::Ready { protocol, .. }) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!(
+                    "ve-host protocol mismatch: child={protocol} parent={HOST_PROTOCOL}"
+                ));
+            }
+            Ok(Channel::Fatal { message, .. }) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(message);
+            }
+            other => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("ve-host handshake failed: {other:?}"));
+            }
+        }
         let (tx, rx) = mpsc::channel::<ProcessJob>();
         thread::Builder::new()
             .name(format!("ve-host-io-{context_id}"))
-            .spawn(move || parent_loop(child, config, context_id, rx))
+            .spawn(move || parent_loop(child, stdin, stdout, config, context_id, rx))
             .map_err(|e| format!("spawn ve-host io: {e}"))?;
         Ok(Self { tx })
     }
@@ -153,30 +235,13 @@ impl ProcessClient {
 
 fn parent_loop(
     mut child: Child,
+    mut stdin: impl Write,
+    mut stdout: BufReader<std::process::ChildStdout>,
     config: EngineConfig,
     context_id: u32,
     jobs: Receiver<ProcessJob>,
 ) {
-    let Some(mut stdin) = child.stdin.take() else {
-        return;
-    };
-    let Some(stdout) = child.stdout.take() else {
-        return;
-    };
-    let mut stdout = BufReader::new(stdout);
-    let broker = parent_broker(&config);
-    if write_msg(&mut stdin, &Channel::Init { config, context_id }).is_err() {
-        return;
-    }
-    match read_msg(&mut stdout) {
-        Ok(Channel::Ready) => {}
-        other => {
-            let _ = other;
-            let _ = child.kill();
-            let _ = child.wait();
-            return;
-        }
-    }
+    let broker = parent_broker(&config, context_id);
     while let Ok(job) = jobs.recv() {
         if write_msg(&mut stdin, &Channel::Cmd { op: job.op }).is_err() {
             let _ = job.reply.send(ApiError::thread_stopped().to_reply());
@@ -186,7 +251,10 @@ fn parent_loop(
             match read_msg(&mut stdout) {
                 Ok(Channel::Fetch { id, request }) => {
                     let result = match Request::try_from(request) {
-                        Ok(req) => match broker.send(&req) {
+                        Ok(req) => match broker.fetch(ve_net::FetchJob {
+                            context: context_id,
+                            request: req,
+                        }) {
                             Ok(resp) => Channel::FetchResult {
                                 id,
                                 error: None,
@@ -220,17 +288,18 @@ fn parent_loop(
     let _ = child.wait();
 }
 
-fn parent_broker(config: &EngineConfig) -> NetworkBroker {
+fn parent_broker(config: &EngineConfig, context_id: u32) -> NetworkBroker {
+    let policy = config.policy.clone();
     if config.offline {
-        return NetworkBroker::new(Box::new(NullTransport));
+        return NetworkBroker::with_policy(Box::new(NullTransport), policy, context_id);
     }
     #[cfg(feature = "http")]
     {
         if let Ok(t) = ve_net::HyperTransport::new() {
-            return NetworkBroker::new(Box::new(t));
+            return NetworkBroker::with_policy(Box::new(t), policy, context_id);
         }
     }
-    NetworkBroker::new(Box::new(NullTransport))
+    NetworkBroker::with_policy(Box::new(NullTransport), policy, context_id)
 }
 
 fn write_msg(w: &mut impl Write, msg: &Channel) -> std::io::Result<()> {
@@ -246,6 +315,12 @@ fn read_msg(r: &mut impl BufRead) -> std::io::Result<Channel> {
         return Err(std::io::Error::new(
             std::io::ErrorKind::UnexpectedEof,
             "ve-host closed",
+        ));
+    }
+    if line.len() > MAX_MESSAGE_BYTES {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "ve-host message exceeds 16MiB",
         ));
     }
     serde_json::from_str(line.trim()).map_err(std::io::Error::other)
@@ -331,19 +406,42 @@ pub fn serve_stdio() {
             stdout: std::io::stdout(),
         });
     });
-    let Channel::Init { config, context_id } = (match child_read() {
+    let Channel::Init {
+        protocol,
+        config,
+        context_id,
+    } = (match child_read() {
         Ok(msg) => msg,
         Err(e) => {
             eprintln!("ve-host init: {e}");
             return;
         }
-    }) else {
+    })
+    else {
         eprintln!("ve-host expected init");
         return;
     };
+    if protocol != HOST_PROTOCOL {
+        let _ = child_write(&Channel::Fatal {
+            code: "backend_unavailable".into(),
+            message: format!("protocol mismatch: got {protocol}, want {HOST_PROTOCOL}"),
+        });
+        return;
+    }
+    let sandbox = std::env::var_os("VECTOR_ENGINE_SANDBOX_APPLIED").is_some_and(|v| v == "1");
+    if config.security_profile == ve_api::SecurityProfile::Production && !sandbox {
+        let _ = child_write(&Channel::Fatal {
+            code: "backend_unavailable".into(),
+            message: "production profile requires sandbox".into(),
+        });
+        return;
+    }
     let engine = VectorEngine::with_transport(config, Box::new(FnTransport::new(child_fetch)));
     let mut state = HostState::with_engine(engine, context_id);
-    let _ = child_write(&Channel::Ready);
+    let _ = child_write(&Channel::Ready {
+        protocol: HOST_PROTOCOL,
+        sandbox,
+    });
     loop {
         match child_read() {
             Ok(Channel::Cmd { op }) => {

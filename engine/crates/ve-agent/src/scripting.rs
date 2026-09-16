@@ -139,6 +139,8 @@ pub struct Scripting {
     /// Scripts run so far for the current document (diagnostics).
     pub(crate) scripts_run: usize,
     pub(crate) script_errors: usize,
+    /// HTML task sources for this page (VEC-007).
+    pub(crate) event_loop: ve_script::EventLoop,
 }
 
 impl std::fmt::Debug for Scripting {
@@ -164,6 +166,7 @@ impl Scripting {
             console: Vec::new(),
             scripts_run: 0,
             script_errors: 0,
+            event_loop: ve_script::EventLoop::new(),
         })
     }
 
@@ -201,6 +204,7 @@ impl Scripting {
         self.console.clear();
         self.scripts_run = 0;
         self.script_errors = 0;
+        self.event_loop = ve_script::EventLoop::new();
     }
 }
 
@@ -314,6 +318,17 @@ impl Page {
         result.map_err(Error::from)
     }
 
+    /// Drains pending V8 jobs (microtasks, promises) without evaluating new source.
+    pub(crate) fn drain_js_jobs(&mut self) {
+        let Some(mut vm) = self.scripting.as_mut().and_then(|s| s.vm.take()) else {
+            return;
+        };
+        let _ = vm.run_pending_jobs_with_host(&mut PageHost { page: self });
+        if let Some(s) = self.scripting.as_mut() {
+            s.vm = Some(vm);
+        }
+    }
+
     /// Calls a global (dotted) function with the page as host.
     pub(crate) fn call_script(&mut self, function: &str, args: &[JsValue]) -> Result<JsValue> {
         let Some(mut vm) = self.scripting.as_mut().and_then(|s| s.vm.take()) else {
@@ -391,6 +406,7 @@ impl Page {
             return 0;
         };
         if scripting.live.is_empty() {
+            self.drain_js_jobs();
             return 0;
         }
         let horizon = self.virtual_time_ms().saturating_add(window_ms);

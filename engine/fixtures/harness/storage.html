@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>localStorage</title>
+<body>
+<script>
+test(function () {
+  localStorage.setItem("k", "v");
+  assert_equals(localStorage.getItem("k"), "v");
+  sessionStorage.setItem("s", "1");
+  assert_equals(sessionStorage.getItem("s"), "1");
+}, "origin storage");
+</script>

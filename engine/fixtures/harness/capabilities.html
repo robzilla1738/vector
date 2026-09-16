@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>VEC-005 capability honesty</title>
+<body>
+<script>
+window.__tests = [];
+window.__tests.push(["css.supports-display-block", typeof CSS !== "undefined" && CSS.supports("display", "block") === true]);
+window.__tests.push(["css.supports-not-bogus", typeof CSS !== "undefined" && CSS.supports("not-a-property", "nope") === false]);
+window.__tests.push(["event.isTrusted-not-forgeable", new Event("click", { isTrusted: true }).isTrusted === false]);
+window.__tests.push(["matchMedia.min-width", window.matchMedia && window.matchMedia("(min-width: 1px)").matches === true]);
+window.__tests.push(["customElements.whenDefined-pending", typeof customElements.whenDefined("x-foo").then === "function"]);
+window.__tests.push(["indexedDB.open", typeof indexedDB.open === "function"]);
+window.__tests.push(["Worker", typeof Worker === "function"]);
+</script>

@@ -103,6 +103,7 @@ enum Status {
     Skip,
     Error,
     Timeout,
+    Crash,
 }
 
 #[derive(Serialize)]
@@ -126,6 +127,7 @@ struct Counts {
     skip: usize,
     error: usize,
     timeout: usize,
+    crash: usize,
 }
 
 impl Counts {
@@ -138,6 +140,7 @@ impl Counts {
             Status::Skip => self.skip += 1,
             Status::Error => self.error += 1,
             Status::Timeout => self.timeout += 1,
+            Status::Crash => self.crash += 1,
         }
     }
 }
@@ -491,7 +494,7 @@ impl Runner {
         }
         let test = match self.render_file(path) {
             Ok(r) => r,
-            Err(e) => return finish(Status::Error, Vec::new(), Some(e)),
+            Err(e) => return finish(Status::Crash, Vec::new(), Some(e)),
         };
         let (matches, mismatches) = references(&test);
         if matches.is_empty() {
@@ -509,7 +512,7 @@ impl Runner {
         }
         let test_sig = match catch_unwind(AssertUnwindSafe(|| signature(&test))) {
             Ok(s) => s,
-            Err(_) => return finish(Status::Error, matches, Some("panic in signature".into())),
+            Err(_) => return finish(Status::Crash, matches, Some("panic in signature".into())),
         };
         let mut last_detail = None;
         let mut had_error = false;
@@ -709,14 +712,15 @@ fn main() -> Result<()> {
         None => println!("{json}"),
     }
     eprintln!(
-        "{} tests: {} pass, {} fail, {} notrun, {} skip, {} error, {} timeout",
+        "{} tests: {} pass, {} fail, {} notrun, {} skip, {} error, {} timeout, {} crash",
         report.totals.total,
         report.totals.pass,
         report.totals.fail,
         report.totals.notrun,
         report.totals.skip,
         report.totals.error,
-        report.totals.timeout
+        report.totals.timeout,
+        report.totals.crash,
     );
     for (dir, c) in &report.per_dir {
         eprintln!(

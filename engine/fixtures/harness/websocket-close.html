@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>WebSocket close</title>
+<body>
+<script>
+test(function () {
+  const ws = new WebSocket("ws://127.0.0.1:1/echo");
+  let closed = false;
+  ws.addEventListener("close", function () { closed = true; });
+  ws.close();
+  assert_equals(ws.readyState, 3);
+  assert_true(closed);
+}, "close event and readyState");
+</script>

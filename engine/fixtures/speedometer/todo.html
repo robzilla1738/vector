@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<title>Speedometer-class todo list</title>
+<style>
+body { font: 16px sans-serif; margin: 16px; }
+#list { padding: 0; }
+li { list-style: none; padding: 4px 0; border-bottom: 1px solid #eee; }
+li.done { text-decoration: line-through; color: #888; }
+</style>
+<input id="new" placeholder="What needs to be done?">
+<ul id="list">
+<li>item 0</li>
+</ul>
+<script>
+(function () {
+  var list = document.getElementById("list");
+  window.addTodo = function (title) {
+    var li = document.createElement("li");
+    li.textContent = title;
+    li.onclick = function () { li.className = li.className ? "" : "done"; };
+    list.appendChild(li);
+  };
+  for (var i = 1; i < 100; i++) window.addTodo("item " + i);
+})();
+</script>

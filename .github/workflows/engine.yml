@@ -3,9 +3,21 @@ name: engine
 on:
   push:
     branches: [main]
-    paths: ["engine/**", ".github/workflows/engine.yml"]
+    paths:
+      - "engine/**"
+      - "packages/contracts/**"
+      - "packages/browser-driver/**"
+      - "apps/runtime/**"
+      - "scripts/**"
+      - ".github/workflows/engine.yml"
   pull_request:
-    paths: ["engine/**", ".github/workflows/engine.yml"]
+    paths:
+      - "engine/**"
+      - "packages/contracts/**"
+      - "packages/browser-driver/**"
+      - "apps/runtime/**"
+      - "scripts/**"
+      - ".github/workflows/engine.yml"
 
 concurrency:
   group: engine-${{ github.ref }}
@@ -20,8 +32,8 @@ defaults:
     working-directory: engine
 
 jobs:
-  check:
-    name: fmt + clippy + test (${{ matrix.os }})
+  fmt:
+    name: fmt (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -29,18 +41,51 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.88.0
         with:
-          components: rustfmt, clippy
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: clippy (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
-      - run: cargo fmt --all --check
+          key: clippy
       - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: test
       - run: cargo build --workspace
       - run: cargo test --workspace
       - name: Golden snapshots are current
         run: cargo test -p ve-api --test golden
+      - name: Negative containment (ve-host)
+        run: cargo test -p ve-host --tests
+      - name: ve-net broker policy
+        run: cargo test -p ve-net --lib broker
 
   features:
     name: optional features build (${{ matrix.os }})
@@ -51,7 +96,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.88.0
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -60,6 +105,9 @@ jobs:
           key: features
       - name: http + quickjs + v8 + images
         run: cargo clippy -p ve-api --all-targets --features http,quickjs,v8 -- -D warnings
+      - name: native shell window feature
+        if: runner.os == 'macOS'
+        run: cargo clippy -p ve-shell --all-targets --features window -- -D warnings
       - run: cargo test -p ve-net --features http
       - run: cargo test -p ve-script --features quickjs
       - name: V8 backend (prebuilt static lib download)
@@ -75,7 +123,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.88.0
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
@@ -93,22 +141,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.88.0
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
           key: wpt
-      - name: Sparse WPT checkout (M1 subsets + references)
+      - name: Pinned WPT checkout
         working-directory: ${{ runner.temp }}
         run: |
-          git clone --depth 1 --filter=blob:none --sparse https://github.com/web-platform-tests/wpt.git wpt
+          REV=$(cat "${{ github.workspace }}/engine/conformance/wpt-revision.txt")
+          git clone --filter=blob:none --sparse https://github.com/web-platform-tests/wpt.git wpt
           cd wpt
+          git fetch --depth 1 origin "$REV"
+          git checkout "$REV"
           git sparse-checkout set \
             css/CSS2/normal-flow css/CSS2/box-display css/CSS2/positioning css/CSS2/reference css/CSS2/support \
             css/css-flexbox css/css-flexbox/reference css/css-flexbox/support \
             css/css-grid/alignment css/css-grid/reference \
             css/selectors css/mediaqueries css/reference css/support \
-            accname html-aam common resources
+            accname html-aam common resources testharness.js testharnessreport.js
       - name: Every manifest test must still pass
         run: cargo run --release -p wpt-runner -- --wpt-dir "${{ runner.temp }}/wpt" --out wpt-report.json
       - uses: actions/upload-artifact@v4
@@ -116,6 +167,24 @@ jobs:
         with:
           name: wpt-report
           path: engine/wpt-report.json
+
+  wpt-harness:
+    name: WPT testharness (supported subset)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: wpt-harness
+      - name: Supported testharness + pixel fixtures
+        run: cargo run --release -p wpt-harness --features v8 -- --out wpt-harness-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wpt-harness-report
+          path: engine/wpt-harness-report.json
 
   addon:
     name: "@vector/engine-native (${{ matrix.os }})"
@@ -126,7 +195,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.88.0
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
@@ -140,13 +209,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: .
       - run: cargo test -p ve-napi --features napi
-      - name: Build the .node binary next to index.js
+      - name: Build the .node binary and ve-host next to index.js
         run: pnpm --filter @vector/engine-native build:cargo
         working-directory: .
       - name: Addon smoke test
         run: pnpm --filter @vector/engine-native test
         working-directory: .
+      - name: Host binary is packaged
+        run: test -x engine/crates/ve-napi/ve-host || test -x engine/crates/ve-napi/ve-host.exe
+        working-directory: .
       - uses: actions/upload-artifact@v4
         with:
           name: engine-native-${{ matrix.os }}
-          path: engine/crates/ve-napi/vector-engine.*.node
+          path: |
+            engine/crates/ve-napi/vector-engine.*.node
+            engine/crates/ve-napi/ve-host
+            engine/crates/ve-napi/ve-host.exe

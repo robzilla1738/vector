@@ -54,9 +54,9 @@ export function engineOf(page: Pick<PageTarget, "backend"> & { route?: EngineRou
 export function engineModeLabel(mode: EngineMode | undefined): string {
   switch (mode) {
     case "always":
-      return "Vector Engine for every page. Chromium is used if the native addon is missing.";
+      return "Vector Engine only. Missing addon or host is an error — Chromium is never substituted.";
     case "auto":
-      return "Vector Engine where it helps, Chromium elsewhere";
+      return "Hybrid: Vector Engine where it helps, Chromium elsewhere";
     default:
       return "Chromium for every page";
   }

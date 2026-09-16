@@ -63,9 +63,11 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
 - **Conformance** — `engine/tools/wpt-runner` runs WPT *reftests* through
   parse/cascade/layout and compares the geometry signature (painted boxes and
   text fragments in paint order, 1 px tolerance) of test vs `rel=match`
-  reference; `testharness.js` tests are `NOTRUN`. Manifest
-  `engine/conformance/m1.txt` (770 tests) only grows; a listed test that
-  stops passing exits non-zero.
+  reference. `engine/tools/wpt-harness` runs testharness + pixel fixtures
+  (upstream `testharness.js` at the pinned WPT revision). Manifest
+  `engine/conformance/m1.txt` only grows; a listed geometry test that
+  stops passing exits non-zero. Harness regressions of the supported
+  testharness subset also exit non-zero (`expected-failures.txt` → skip).
 - **Performance** — `engine/tools/perf --gate m1` times `observe`,
   `open_to_observe`, `click_step`, `fill_step`, `program_10` and
   `diff_after_edit` over the static corpus against the §12 M1 gates.
@@ -143,7 +145,29 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   `persist:vector-agent`, `gateway.key` + `safeStorage`, 7-day event prune.
 - **H3 / WS / SW (A23)** — `Alt-Svc` h3 advertisement (hyper speaks
   HTTP/1.1 and HTTP/2); RFC 6455 `ws`/`wss`; SW `register` with `respond:`
-  intercept only.
+  intercept only. `describe()` reports `websocket:true`, `http3:false`,
+  `serviceWorkers:false`.
+
+### VEC-001–025 (M0–M5) — current tree
+
+Ticket evidence lives in `docs/engine/evidence/`. Identity is the native
+engine (`vector-engine`), not Chromium. What is **not** done is listed
+there as remaining work; do not read “implemented (subset)” as the full
+acceptance text.
+
+| Area | In tree | Not yet |
+|---|---|---|
+| M0 identity / containment / broker / CI | `engineMode: always` never selects Chromium; `ve-host` sandbox (file, exec, sockets); `NetworkBroker`; rustc 1.88 CI | packaged native-only desktop that replaces Electron |
+| M1 web execution | V8 DOM, async fetch, frames, IDB unique/compound/versionchange, event loop | full upstream WPT/IDL/server; workers are `ve-vm` not a second V8 isolate; SW `respond:` only |
+| M2 visual | GPU glyph *outlines*, clips/opacity/`<img>`, `NativeBrowser` + `ve-shell --gui` | Electron still paints visible hybrid tabs; `signedUpdates: false` |
+| M3 agent | receipts, crash recovery, skills, policy, BiDi unit tests | held-out task 2× p95 / 50% tokens |
+| M4 perf | `perf --gate m1`, RSS, host RAPL | official Speedometer/JetStream/MotionMark |
+| M5 research | `ve-replay`, `ve-vm` Test262 subset (12 files) | replacing V8 (forbidden without evidence) |
+
+Conformance: `wpt-runner` geometry (`m1.txt`) plus `wpt-harness` testharness
+(pinned `testharness.js`, local fixtures, one passing upstream
+`document.title-01.html`). Pixel fixtures cover opacity, text, clip, paint,
+and images.
 
 ### Deferred — reports `capability_unsupported`
 
@@ -170,13 +194,12 @@ Supported through the addon and therefore on the runtime's engine backend:
 `navigationSettled`, `settled`, `response`), `extract`, `collectScroll`,
 `screenshot` (software renderer, system fonts via `fontdb`).
 
-Also remaining: `position: sticky` (laid out as
-`relative`), parent/child margin collapsing, collapsed table borders, writing
+Also remaining: parent/child margin collapsing, collapsed table borders, writing
 modes, `@keyframes`, Canvas/WebGL, speaking HTTP/3 (QUIC) rather than
-recording `Alt-Svc`, a second V8 isolate per cross-origin iframe, slot
-assignment in the accessibility tree, live regions. Replaced elements are
-sized from natural size / `width`/`height` attributes / the 300×150
-default but not painted.
+recording `Alt-Svc`, a second V8 isolate per worker or cross-origin iframe, slot
+assignment in the accessibility tree, live regions. `position: sticky` is
+applied (`LayoutTree::apply_sticky`). Replaced `<img>` pixels paint when
+decoded; Canvas/WebGL do not.
 
 ### Measured
 
@@ -264,7 +287,7 @@ WebAssembly-heavy apps before M5.
 ## 2. Crate map, dependency DAG, build-vs-take
 
 Cargo workspace at `engine/`, crates under `engine/crates/`, harnesses under
-`engine/tools/` (`wpt-runner`, `perf`). Heavy deps sit behind features
+`engine/tools/` (`wpt-runner`, `wpt-harness`, `perf`, `ve-shell`). Heavy deps sit behind features
 (`net`, `quickjs`, `gpu`) so the default build is pure Rust.
 
 | Crate | Owns | Takes from ecosystem |

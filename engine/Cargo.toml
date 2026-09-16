@@ -21,16 +21,20 @@ members = [
     "crates/ve-api",
     "crates/ve-napi",
     "crates/ve-host",
+    "crates/ve-replay",
+    "crates/ve-vm",
     "tools/wpt-runner",
+    "tools/wpt-harness",
     "tools/perf",
+    "tools/ve-shell",
 ]
 
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.88"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/vector-browser/vector"
+repository = "https://github.com/robzilla1738/vector"
 authors = ["Vector Engine contributors"]
 publish = false
 
@@ -47,6 +51,8 @@ ve-script = { path = "crates/ve-script" }
 ve-gfx = { path = "crates/ve-gfx" }
 ve-agent = { path = "crates/ve-agent" }
 ve-api = { path = "crates/ve-api" }
+ve-replay = { path = "crates/ve-replay" }
+ve-vm = { path = "crates/ve-vm" }
 
 # ---- parsing (pure Rust, default) -----------------------------------------
 html5ever = "0.40.1"
@@ -107,6 +113,8 @@ url = "2.5.8"
 imagesize = "0.14"
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
+winit = "0.30.12"
+softbuffer = "0.4.6"
 
 [workspace.lints.rust]
 missing_docs = "warn"

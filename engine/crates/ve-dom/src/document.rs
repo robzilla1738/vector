@@ -793,6 +793,9 @@ impl Document {
     /// The first element whose `id` attribute equals `id`.
     #[must_use]
     pub fn element_by_id(&self, id: &str) -> Option<NodeId> {
+        if id.is_empty() {
+            return None;
+        }
         self.elements()
             .find(|&e| self.attribute(e, "id") == Some(id))
     }

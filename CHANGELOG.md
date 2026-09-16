@@ -3,6 +3,34 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
+## VEC-001–025 engine roadmap (unreleased on `main`)
+
+Independent Vector Engine work after A14–A23. Ticket reports:
+`docs/engine/evidence/`. This is not a claim that every acceptance line in
+the roadmap is met.
+
+- **M0.** `engineMode: always` returns `vector-engine` with `fallbackAllowed:
+  false`. Production `ve-host` sandbox (forbidden file, exec, sockets,
+  malformed/oversized IPC). Authoritative `NetworkBroker` (forged context,
+  DNS rebinding, credential strip). CI: rustc 1.88, clippy `-D warnings`,
+  v8/http features, wpt + wpt-harness, addon. Capability ledger
+  (`capabilities.json`); `describe()` `websocket:true`, `http3:false`,
+  `serviceWorkers:false`.
+- **M1.** Event loop task sources; async `fetchStart`/`fetchPoll`; RFC 6455
+  WebSocket; frames; IndexedDB unique/compound/versionchange; workers in
+  `ve-vm` (not a second V8 isolate). `wpt-harness` with pinned
+  `testharness.js`, pixel PNG sampling, expected-failures, one upstream
+  `document.title` testharness file.
+- **M2.** GPU glyph outlines (vello paths), overflow clips, opacity, `<img>`
+  pixels, `present_scene` without readback. `NativeBrowser` + `ve-shell --gui`
+  (winit/softbuffer). Visible hybrid desktop tabs still Chromium
+  (`engine-first:native-view`). `signedUpdates: false`.
+- **M3.** Action receipts, coordinator crash recovery, guarded skills, agent
+  policy, BiDi adapter — unit-tested, not held-out 2× p95.
+- **M4.** `perf --gate m1`, process RSS, optional host RAPL. No official
+  Speedometer/JetStream/MotionMark.
+- **M5.** `ve-replay`; `ve-vm` Test262 subset. V8 stays production.
+
 ## Native view, V8 isolates, takeover (PR #8)
 
 Visible tabs, engine thread survival, and human takeover matching the UI.

@@ -150,6 +150,18 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         status: "ok",
         startedAt,
         durationMs: Date.now() - startedAt,
+        effect: step.expect?.length ? "confirmed" : "observed",
+        receipt: {
+          observed: undefined,
+          remoteConfirmed: Boolean(step.expect?.length),
+          uncertain: !step.expect?.length && ["click", "fill", "type", "select", "check", "uncheck"].includes(step.op),
+          dispatchedBeforeTakeover: false,
+          identity: {
+            pageId: page.identity.pageId,
+            documentEpoch: 0,
+            target: "target" in step ? String(step.target) : undefined,
+          },
+        },
       };
       if (detail) {
         const d = detail as Record<string, unknown>;

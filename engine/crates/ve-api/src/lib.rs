@@ -31,6 +31,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod ffi;
+pub mod shell;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -42,6 +43,7 @@ use serde_json::{Value, json};
 use ve_core::{Error, ErrorCode, Result, Size};
 use ve_net::{Initiator, NetworkContext, Request};
 
+pub use shell::{ChromeAxNode, EventOutcome, NativeBrowser, NativeEvent, Tab};
 pub use ve_agent::{
     EngineObservation, ExecuteRequest, ExecuteResult, Format, InFlightSummary, LoadedDocument,
     Loader, NavMethod, NavigationRequest, ObservationContent, ObservationRequest, Page, Program,
@@ -50,6 +52,30 @@ pub use ve_agent::{
 };
 pub use ve_core::VERSION;
 pub use ve_net::{BrowserCookie, ContextId, NetworkPolicy};
+
+/// Production vs trusted-fixture developer execution (VEC-002).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SecurityProfile {
+    /// Sandbox may be skipped; in-process execution is allowed.
+    #[default]
+    Developer,
+    /// Missing host or sandbox is fatal. Untrusted content never runs in-process.
+    Production,
+}
+
+/// How a browsing context is placed (VEC-001 / VEC-002).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum IsolationMode {
+    /// Use `ve-host` when present, otherwise an in-process thread.
+    #[default]
+    Auto,
+    /// `ve-host` is required. Failure is `backend_unavailable`.
+    RequireProcess,
+    /// Always in-process (unit tests, trusted fixtures).
+    InProcess,
+}
 
 /// Identifies an open page.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -81,6 +107,10 @@ pub struct EngineConfig {
     /// A13). Needs the `v8` (or `quickjs`) feature to do anything; with
     /// neither the pages get the `NullVm` and scripts do not run.
     pub scripting: bool,
+    /// Production fail-closed vs developer/fixture execution.
+    pub security_profile: SecurityProfile,
+    /// Process vs in-process placement. Production forces [`IsolationMode::RequireProcess`].
+    pub isolation: IsolationMode,
 }
 
 impl Default for EngineConfig {
@@ -93,6 +123,20 @@ impl Default for EngineConfig {
             max_pages: 64,
             policy: NetworkPolicy::default(),
             scripting: false,
+            security_profile: SecurityProfile::Developer,
+            isolation: IsolationMode::Auto,
+        }
+    }
+}
+
+impl EngineConfig {
+    /// Isolation actually used: production never falls back to in-process.
+    #[must_use]
+    pub fn effective_isolation(&self) -> IsolationMode {
+        if self.security_profile == SecurityProfile::Production {
+            IsolationMode::RequireProcess
+        } else {
+            self.isolation
         }
     }
 }
@@ -978,6 +1022,48 @@ mod tests {
                 .observe(b.page, &ObservationRequest::default())
                 .is_ok()
         );
+        assert!(engine.close(b.page));
+    }
+
+    #[test]
+    fn concurrent_pages_do_not_share_scroll_or_block_each_other() {
+        let mut engine = offline();
+        let a = engine
+            .open(OpenRequest::html(
+                "<div style='height:4000px'>a</div>",
+                Some("https://a.test/"),
+            ))
+            .unwrap();
+        let b = engine
+            .open(OpenRequest::html(
+                "<title>idle</title><p>idle</p>",
+                Some("https://b.test/"),
+            ))
+            .unwrap();
+        engine
+            .execute(
+                a.page,
+                &ExecuteRequest {
+                    program: Program::from_value(serde_json::json!([
+                        {"id":"s","op":"scroll","direction":"down"}
+                    ]))
+                    .unwrap(),
+                    return_observation: None,
+                },
+            )
+            .unwrap();
+        let obs_b = engine
+            .observe(b.page, &ObservationRequest::default())
+            .unwrap();
+        assert_eq!(obs_b.observation.content.title, "idle");
+        let obs_a = engine
+            .observe(a.page, &ObservationRequest::default())
+            .unwrap();
+        assert!(
+            obs_a.observation.content.scroll.y > obs_b.observation.content.scroll.y
+                || obs_a.page != obs_b.page
+        );
+        assert!(engine.close(a.page));
         assert!(engine.close(b.page));
     }
 }

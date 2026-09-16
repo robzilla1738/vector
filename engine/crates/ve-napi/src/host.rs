@@ -56,14 +56,52 @@ impl Host {
     /// Spawns the engine thread for one browsing context. When
     /// `VECTOR_ENGINE_HOST` names a `ve-host` binary, the context runs in
     /// that process and fetches through the parent broker.
+    ///
+    /// Production ([`ve_api::IsolationMode::RequireProcess`]) never falls
+    /// back to in-process execution.
     #[must_use]
     pub fn spawn(config: EngineConfig, context_id: u32) -> Self {
-        if let Some(client) = crate::isolate::ProcessClient::try_spawn(config.clone(), context_id) {
-            return Self {
-                inner: HostInner::Process(client),
-                context_id,
-            };
+        Self::try_spawn(config, context_id).expect("engine host")
+    }
+
+    /// Like [`Self::spawn`] but fails closed when process isolation is required
+    /// and the host is missing, the protocol mismatches, or the sandbox failed.
+    pub fn try_spawn(config: EngineConfig, context_id: u32) -> Result<Self, ApiError> {
+        match config.effective_isolation() {
+            ve_api::IsolationMode::RequireProcess => {
+                let client = crate::isolate::ProcessClient::spawn_required(config, context_id)
+                    .map_err(|e| ApiError::new("backend_unavailable", e))?;
+                Ok(Self {
+                    inner: HostInner::Process(client),
+                    context_id,
+                })
+            }
+            ve_api::IsolationMode::InProcess => Ok(Self::spawn_thread(config, context_id)),
+            ve_api::IsolationMode::Auto => {
+                if let Some(client) =
+                    crate::isolate::ProcessClient::try_spawn(config.clone(), context_id)
+                {
+                    Ok(Self {
+                        inner: HostInner::Process(client),
+                        context_id,
+                    })
+                } else {
+                    Ok(Self::spawn_thread(config, context_id))
+                }
+            }
         }
+    }
+
+    /// `"process"` or `"in-process"`.
+    #[must_use]
+    pub fn isolation(&self) -> &'static str {
+        match self.inner {
+            HostInner::Process(_) => "process",
+            HostInner::Thread { .. } => "in-process",
+        }
+    }
+
+    fn spawn_thread(config: EngineConfig, context_id: u32) -> Self {
         let (tx, rx) = mpsc::channel::<Job>();
         thread::Builder::new()
             .name(format!("ve-context-{context_id}"))
@@ -1031,5 +1069,25 @@ mod tests {
         );
         let opened = host.call_blocking(|s| s.open(1, PAGE, &json!({})));
         assert_eq!(opened["ok"], true, "{opened}");
+    }
+
+    #[test]
+    fn production_without_host_fails_closed() {
+        let cfg = EngineConfig {
+            security_profile: ve_api::SecurityProfile::Production,
+            isolation: ve_api::IsolationMode::RequireProcess,
+            offline: true,
+            policy: NetworkPolicy::permissive(),
+            ..EngineConfig::default()
+        };
+        if crate::isolate::host_binary().is_none() {
+            let err = Host::try_spawn(cfg, 1).unwrap_err();
+            assert_eq!(err.code, "backend_unavailable");
+            assert!(
+                err.message.contains("ve-host") || err.message.contains("missing"),
+                "{}",
+                err.message
+            );
+        }
     }
 }

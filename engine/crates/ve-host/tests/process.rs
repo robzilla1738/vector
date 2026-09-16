@@ -33,12 +33,14 @@ fn context_process_opens_inline_html() {
         &mut stdin,
         &json!({
             "ch": "init",
+            "protocol": 1,
             "config": { "offline": true },
             "contextId": 1
         }),
     );
     let ready = read_line(&mut stdout);
     assert_eq!(ready["ch"], "ready", "{ready}");
+    assert_eq!(ready["protocol"], 1, "{ready}");
     write_line(
         &mut stdin,
         &json!({

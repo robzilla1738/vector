@@ -371,4 +371,18 @@ mod tests {
         assert!(report.budget_exhausted && !report.quiescent);
         assert_eq!(lp.pending_tasks(), 3);
     }
+
+    #[test]
+    fn independent_loops_do_not_block_each_other() {
+        let mut busy = EventLoop::new();
+        let mut idle = EventLoop::new();
+        for _ in 0..1000 {
+            busy.queue_task(TaskSource::Networking, |_| {});
+        }
+        idle.queue_task(TaskSource::UserInteraction, |_| {});
+        let idle_report = idle.run_until_quiescent(10);
+        assert!(idle_report.quiescent);
+        assert_eq!(idle_report.tasks_run, 1);
+        assert_eq!(busy.pending_tasks(), 1000);
+    }
 }

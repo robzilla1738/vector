@@ -127,6 +127,27 @@ pub(crate) fn origin_of(url: &str) -> String {
         },
     )
 }
+
+fn json_key_path(json: &str, path: &str) -> Option<String> {
+    let path = path.trim();
+    if path.starts_with('[') {
+        let parts: Vec<String> = serde_json::from_str(path).ok()?;
+        let keys: Vec<String> = parts
+            .iter()
+            .map(|p| json_key_path(json, p))
+            .collect::<Option<Vec<_>>>()?;
+        return Some(keys.join("\u{0000}"));
+    }
+    let mut v: serde_json::Value = serde_json::from_str(json).ok()?;
+    for part in path.split('.') {
+        v = v.get(part)?.clone();
+    }
+    match v {
+        serde_json::Value::Null => None,
+        serde_json::Value::String(s) => Some(s),
+        other => Some(other.to_string()),
+    }
+}
 fn loc(url: &str, part: &str) -> String {
     let Ok(u) = url::Url::parse(url) else {
         return String::new();
@@ -379,6 +400,19 @@ pub(crate) fn host_call(
                 .element(live(page, args, 0)?)
                 .is_some_and(|e| e.has_attr(&arg_str(args, 1))),
         )),
+        "attrNames" => {
+            let names: Vec<JsValue> = page
+                .doc
+                .element(live(page, args, 0)?)
+                .map(|e| {
+                    e.attributes
+                        .iter()
+                        .map(|a| JsValue::from(a.name.as_str()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            Ok(JsValue::Array(names))
+        }
         "innerHTML" => Ok(JsValue::from(
             inner_html(page, live(page, args, 0)?).as_str(),
         )),
@@ -450,6 +484,9 @@ pub(crate) fn host_call(
         "getElementByIdScoped" => {
             let root = live(page, args, 0)?;
             let want = arg_str(args, 1);
+            if want.is_empty() {
+                return Ok(JsValue::Null);
+            }
             Ok(std::iter::once(root)
                 .chain(page.doc.descendants(root))
                 .find(|&id| page.doc.element(id).and_then(|e| e.id()) == Some(want.as_str()))
@@ -530,10 +567,44 @@ pub(crate) fn host_call(
         "wsConnect" => {
             let url = arg_str(args, 0);
             let resolved = page.resolve_url(&url).unwrap_or(url);
-            match ve_net::WebSocketClient::connect(&resolved) {
-                Ok(ws) => Ok(JsValue::from(format!("ws:{}", ws.ready_state).as_str())),
-                Err(e) => Err(fail(e.to_string())),
+            match page.open_websocket(&resolved) {
+                Ok(id) => {
+                    let state = page.websockets.get(&id).map_or(3, |w| w.ready_state);
+                    Ok(JsValue::from(format!("ws:{id}:{state}").as_str()))
+                }
+                Err(e) => Err(fail(e)),
             }
+        }
+        "wsSend" => {
+            let id = arg_f64(args, 0) as u64;
+            let data = arg_str(args, 1);
+            match page.websockets.get_mut(&id) {
+                Some(ws) => ws
+                    .send(data.as_bytes())
+                    .map(|()| JsValue::Undefined)
+                    .map_err(|e| fail(e.to_string())),
+                None => Err(fail("no such WebSocket")),
+            }
+        }
+        "wsClose" => {
+            let id = arg_f64(args, 0) as u64;
+            if let Some(ws) = page.websockets.get_mut(&id) {
+                let _ = ws.close();
+            }
+            Ok(JsValue::Undefined)
+        }
+        "wsPoll" => {
+            let id = arg_f64(args, 0) as u64;
+            let Some(ws) = page.websockets.get_mut(&id) else {
+                return Ok(JsValue::Array(Vec::new()));
+            };
+            ws.poll();
+            let msgs = ws.take_incoming();
+            Ok(JsValue::Array(
+                msgs.into_iter()
+                    .map(|b| JsValue::from(String::from_utf8_lossy(&b).as_ref()))
+                    .collect(),
+            ))
         }
         "head" => Ok(page.doc.head().map_or(JsValue::Null, pack)),
         "body" => Ok(page.doc.body().map_or(JsValue::Null, pack)),
@@ -910,14 +981,18 @@ pub(crate) fn host_call(
         )),
         "historyGo" => {
             let d = arg_f64(args, 0) as i32;
-            if d < 0 {
-                for _ in 0..(-d) {
-                    let _ = page.back();
+            match d.cmp(&0) {
+                std::cmp::Ordering::Less => {
+                    for _ in 0..(-d) {
+                        let _ = page.back();
+                    }
                 }
-            } else if d > 0 {
-                for _ in 0..d {
-                    let _ = page.forward();
+                std::cmp::Ordering::Greater => {
+                    for _ in 0..d {
+                        let _ = page.forward();
+                    }
                 }
+                std::cmp::Ordering::Equal => {}
             }
             Ok(JsValue::Undefined)
         }
@@ -983,6 +1058,47 @@ pub(crate) fn host_call(
             &arg_str(args, 1),
             &arg_str(args, 3),
         ),
+        "fetchStart" => {
+            let id =
+                page.start_script_fetch(&arg_str(args, 0), &arg_str(args, 1), &arg_str(args, 3));
+            Ok(JsValue::Number(id as f64))
+        }
+        "fetchPoll" => {
+            let id = arg_f64(args, 0) as u64;
+            if page
+                .script_fetches
+                .iter()
+                .any(|j| j.id == id && j.result.is_none() && j.error.is_none() && !j.aborted)
+            {
+                page.complete_script_fetches();
+            }
+            match page.poll_script_fetch(id) {
+                None => Ok(obj(&[
+                    ("pending", JsValue::Bool(false)),
+                    ("error", JsValue::from("unknown fetch")),
+                ])),
+                Some(job) if job.aborted => Ok(obj(&[
+                    ("pending", JsValue::Bool(false)),
+                    ("error", JsValue::from("aborted")),
+                ])),
+                Some(job) if job.result.is_some() => {
+                    Ok(job.result.clone().unwrap_or(JsValue::Null))
+                }
+                Some(job) if job.error.is_some() => Ok(obj(&[
+                    ("pending", JsValue::Bool(false)),
+                    (
+                        "error",
+                        JsValue::from(job.error.clone().unwrap_or_default().as_str()),
+                    ),
+                ])),
+                Some(_) => Ok(obj(&[("pending", JsValue::Bool(true))])),
+            }
+        }
+        "fetchAbort" => {
+            page.abort_script_fetch(arg_f64(args, 0) as u64);
+            Ok(JsValue::Undefined)
+        }
+        "cssSupports" => Ok(JsValue::Bool(css_supports(&arg_str(args, 0)))),
         "revision" => Ok(JsValue::Number(page.doc.revision().0 as f64)),
         "scriptDialog" => {
             let kind = arg_str(args, 0);
@@ -1007,6 +1123,141 @@ pub(crate) fn host_call(
                 "prompt" => JsValue::from(default.as_str()),
                 _ => JsValue::Undefined,
             })
+        }
+        "idbOpen" => {
+            let origin = origin_of(&page.url);
+            let name = arg_str(args, 0);
+            let requested = arg_f64(args, 1) as u32;
+            let current = page
+                .indexed_db_versions
+                .get(&(origin.clone(), name.clone()))
+                .copied()
+                .unwrap_or(0);
+            let version = if requested == 0 {
+                current.max(1)
+            } else {
+                requested
+            };
+            let upgrade = version > current;
+            if upgrade {
+                page.indexed_db_versions.insert((origin, name), version);
+            }
+            Ok(obj(&[
+                ("version", JsValue::Number(f64::from(version))),
+                ("upgrade", JsValue::Bool(upgrade)),
+                ("oldVersion", JsValue::Number(f64::from(current))),
+            ]))
+        }
+        "idbPut" => {
+            let origin = origin_of(&page.url);
+            let db = arg_str(args, 0);
+            let store = arg_str(args, 1);
+            let key = arg_str(args, 2);
+            let value = arg_str(args, 3);
+            let entry = page.indexed_db.entry((origin, db, store)).or_default();
+            if idb_unique_violation(entry, &key, &value) {
+                return Ok(obj(&[("error", JsValue::from("ConstraintError"))]));
+            }
+            entry.records.insert(key, value);
+            Ok(obj(&[("ok", JsValue::Bool(true))]))
+        }
+        "idbGet" => {
+            let origin = origin_of(&page.url);
+            let db = arg_str(args, 0);
+            let store = arg_str(args, 1);
+            let key = arg_str(args, 2);
+            Ok(page
+                .indexed_db
+                .get(&(origin, db, store))
+                .and_then(|m| m.records.get(&key))
+                .map_or(JsValue::Null, |v| JsValue::from(v.as_str())))
+        }
+        "idbDelete" => {
+            let origin = origin_of(&page.url);
+            let db = arg_str(args, 0);
+            let store = arg_str(args, 1);
+            let key = arg_str(args, 2);
+            if let Some(m) = page.indexed_db.get_mut(&(origin, db, store)) {
+                m.records.remove(&key);
+            }
+            Ok(JsValue::Undefined)
+        }
+        "idbClear" => {
+            let origin = origin_of(&page.url);
+            page.indexed_db.retain(|(o, _, _), _| o != &origin);
+            Ok(JsValue::Undefined)
+        }
+        "idbCreateIndex" => {
+            let origin = origin_of(&page.url);
+            let db = arg_str(args, 0);
+            let store = arg_str(args, 1);
+            let name = arg_str(args, 2);
+            let key_path = arg_str(args, 3);
+            let unique = arg_str(args, 4) == "1";
+            page.indexed_db
+                .entry((origin, db, store))
+                .or_default()
+                .indexes
+                .insert(name, crate::page::IdbIndex { key_path, unique });
+            Ok(JsValue::Undefined)
+        }
+        "idbIndexGet" => {
+            let origin = origin_of(&page.url);
+            let db = arg_str(args, 0);
+            let store = arg_str(args, 1);
+            let name = arg_str(args, 2);
+            let want = arg_str(args, 3);
+            let found = page.indexed_db.get(&(origin, db, store)).and_then(|m| {
+                let idx = m.indexes.get(&name)?;
+                m.records.values().find(|json| {
+                    json_key_path(json, &idx.key_path).as_deref() == Some(want.as_str())
+                })
+            });
+            Ok(found.map_or(JsValue::Null, |v| JsValue::from(v.as_str())))
+        }
+        "idbCursorNext" => {
+            let origin = origin_of(&page.url);
+            let db = arg_str(args, 0);
+            let store = arg_str(args, 1);
+            let after = arg_str(args, 2);
+            let next = page.indexed_db.get(&(origin, db, store)).and_then(|m| {
+                let mut keys: Vec<&String> = m.records.keys().collect();
+                keys.sort();
+                let key = if after.is_empty() {
+                    keys.first().copied()
+                } else {
+                    keys.iter().copied().find(|k| *k > &after)
+                }?;
+                let value = m.records.get(key)?;
+                Some(format!(
+                    "{{\"key\":{},\"value\":{}}}",
+                    serde_json::to_string(key).unwrap_or_else(|_| "\"\"".into()),
+                    serde_json::to_string(value).unwrap_or_else(|_| "\"null\"".into())
+                ))
+            });
+            Ok(next.map_or(JsValue::Null, |s| JsValue::from(s.as_str())))
+        }
+        "workerCreate" => {
+            let id = page.create_worker(arg_str(args, 0));
+            Ok(JsValue::Number(id as f64))
+        }
+        "workerPost" => {
+            let id = arg_f64(args, 0) as u64;
+            let msg = arg_str(args, 1);
+            match page.workers.get_mut(&id) {
+                None => Err(fail("no such worker")),
+                Some(w) => {
+                    w.last_message = Some(msg.clone());
+                    if let Some(reply) = crate::page::dispatch_worker(&w.source, &msg) {
+                        return Ok(JsValue::String(reply));
+                    }
+                    Ok(JsValue::from(msg.as_str()))
+                }
+            }
+        }
+        "workerTerminate" => {
+            page.workers.remove(&(arg_f64(args, 0) as u64));
+            Ok(JsValue::Undefined)
         }
         "mutationsSince" => {
             let since = ve_core::Revision(arg_f64(args, 0) as u64);
@@ -1089,6 +1340,132 @@ fn storage_mut<'a>(
     }
 }
 
+fn css_supports(query: &str) -> bool {
+    eval_supports(query)
+}
+
+fn eval_supports(query: &str) -> bool {
+    let q = strip_wrapping_parens(query.trim());
+    if q.is_empty() {
+        return false;
+    }
+    if let Some(rest) = strip_keyword_prefix(q, "not") {
+        return !eval_supports(rest);
+    }
+    if let Some((l, r)) = split_keyword(q, "and") {
+        return eval_supports(l) && eval_supports(r);
+    }
+    if let Some((l, r)) = split_keyword(q, "or") {
+        return eval_supports(l) || eval_supports(r);
+    }
+    let Some((name, value)) = q.split_once(':') else {
+        return false;
+    };
+    let block = format!("{}: {};", name.trim(), value.trim());
+    let (decl, cov) = ve_style::parse_declaration_block_counted(&block);
+    !decl.is_empty()
+        && cov.declarations_unknown == 0
+        && cov.declarations_invalid == 0
+        && cov.declarations_deferred == 0
+}
+
+fn strip_wrapping_parens(q: &str) -> &str {
+    let q = q.trim();
+    if q.len() < 2 || !q.starts_with('(') || !q.ends_with(')') {
+        return q;
+    }
+    let bytes = q.as_bytes();
+    let mut depth = 0i32;
+    for (i, &c) in bytes.iter().enumerate() {
+        match c {
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    if i + 1 == bytes.len() {
+                        return strip_wrapping_parens(q[1..q.len() - 1].trim());
+                    }
+                    return q;
+                }
+            }
+            _ => {}
+        }
+    }
+    q
+}
+
+fn strip_keyword_prefix<'a>(q: &'a str, kw: &str) -> Option<&'a str> {
+    let q = q.trim();
+    if q.len() > kw.len()
+        && q[..kw.len()].eq_ignore_ascii_case(kw)
+        && q.as_bytes()
+            .get(kw.len())
+            .is_some_and(|c| c.is_ascii_whitespace() || *c == b'(')
+    {
+        return Some(q[kw.len()..].trim());
+    }
+    None
+}
+
+fn split_keyword<'a>(q: &'a str, kw: &str) -> Option<(&'a str, &'a str)> {
+    let bytes = q.as_bytes();
+    let kwb = kw.as_bytes();
+    let mut depth = 0i32;
+    let mut i = 0usize;
+    while i + kwb.len() <= bytes.len() {
+        match bytes[i] {
+            b'(' => depth += 1,
+            b')' => depth -= 1,
+            _ => {}
+        }
+        if depth == 0
+            && bytes[i..].len() >= kwb.len()
+            && bytes[i..i + kwb.len()].eq_ignore_ascii_case(kwb)
+        {
+            let before = i > 0 && (bytes[i - 1].is_ascii_whitespace() || bytes[i - 1] == b')');
+            let after_i = i + kwb.len();
+            let after = after_i < bytes.len()
+                && (bytes[after_i].is_ascii_whitespace() || bytes[after_i] == b'(');
+            if before && after {
+                return Some((q[..i].trim(), q[after_i..].trim()));
+            }
+        }
+        i += 1;
+    }
+    None
+}
+
+fn idb_unique_violation(store: &crate::page::IdbObjectStore, skip_key: &str, value: &str) -> bool {
+    store.indexes.values().any(|idx| {
+        if !idx.unique {
+            return false;
+        }
+        let Some(want) = json_key_path(value, &idx.key_path) else {
+            return false;
+        };
+        store.records.iter().any(|(k, v)| {
+            k != skip_key && json_key_path(v, &idx.key_path).as_deref() == Some(want.as_str())
+        })
+    })
+}
+
+fn decode_data_url(url: &str) -> Option<(String, Vec<u8>)> {
+    let rest = url.strip_prefix("data:")?;
+    let (meta, payload) = rest.split_once(',')?;
+    let bytes = if meta.split(';').any(|p| p.eq_ignore_ascii_case("base64")) {
+        ve_net::base64_decode(payload.as_bytes())?
+    } else {
+        payload.as_bytes().to_vec()
+    };
+    let ct = meta
+        .split(';')
+        .next()
+        .filter(|s| !s.is_empty())
+        .unwrap_or("text/plain")
+        .to_owned();
+    Some((ct, bytes))
+}
+
 fn fetch(page: &mut Page, url: &str, method: &str, body: &str) -> Result<JsValue, ScriptError> {
     let resolved = page.resolve_url(url).unwrap_or_else(|| url.to_owned());
     if let Some(sw) = page.service_workers.iter().rev().find(|s| {
@@ -1106,6 +1483,22 @@ fn fetch(page: &mut Page, url: &str, method: &str, body: &str) -> Result<JsValue
             ("url", JsValue::from(resolved.as_str())),
             ("body", JsValue::from(canned.trim())),
             ("headers", JsValue::Object(headers)),
+            ("pending", JsValue::Bool(false)),
+        ]));
+    }
+    if let Some((ct, bytes)) = decode_data_url(&resolved) {
+        let body = String::from_utf8_lossy(&bytes).into_owned();
+        let body_b64 = ve_net::base64_encode(&bytes);
+        let mut headers = BTreeMap::new();
+        headers.insert("content-type".into(), JsValue::from(ct.as_str()));
+        return Ok(obj(&[
+            ("status", JsValue::Number(200.0)),
+            ("statusText", JsValue::from("OK")),
+            ("url", JsValue::from(resolved.as_str())),
+            ("body", JsValue::from(body.as_str())),
+            ("bodyB64", JsValue::from(body_b64.as_str())),
+            ("headers", JsValue::Object(headers)),
+            ("pending", JsValue::Bool(false)),
         ]));
     }
     let method = if method.is_empty() { "GET" } else { method };
@@ -1118,6 +1511,7 @@ fn fetch(page: &mut Page, url: &str, method: &str, body: &str) -> Result<JsValue
         .script_fetch(&resolved, method, body.as_bytes(), id)
         .map_err(|e| fail(e.to_string()))?;
     let body = String::from_utf8_lossy(&res.bytes).into_owned();
+    let body_b64 = ve_net::base64_encode(&res.bytes);
     let mut headers = BTreeMap::new();
     if let Some(ct) = &res.content_type {
         headers.insert("content-type".into(), JsValue::from(ct.as_str()));
@@ -1141,8 +1535,19 @@ fn fetch(page: &mut Page, url: &str, method: &str, body: &str) -> Result<JsValue
         ),
         ("url", JsValue::from(res.url.as_str())),
         ("body", JsValue::from(body.as_str())),
+        ("bodyB64", JsValue::from(body_b64.as_str())),
         ("headers", JsValue::Object(headers)),
+        ("pending", JsValue::Bool(false)),
     ]))
+}
+
+pub(crate) fn script_fetch_now(
+    page: &mut Page,
+    url: &str,
+    method: &str,
+    body: &str,
+) -> Result<JsValue, ScriptError> {
+    fetch(page, url, method, body)
 }
 
 impl Page {

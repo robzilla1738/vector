@@ -37,9 +37,8 @@
 //!   under the nearest **layout boundaries** of the dirty nodes (architecture
 //!   §4) and appends `Geometry` journal records for nodes whose document-space
 //!   rectangle changed.
-//! * Not yet implemented (M2+): `position: sticky` (as `relative`),
-//!   parent/child margin collapsing, collapsed table borders, writing modes,
-//!   fragmentation, `vertical-align` other than baseline in inline layout.
+//! * Sticky positioning (`position: sticky`) is applied by
+//!   [`LayoutTree::apply_sticky`] against the current scroll offset.
 
 #![forbid(unsafe_code)]
 
@@ -208,6 +207,12 @@ impl LayoutTree {
         collect_geometry(&self.root, &mut self.geometry, &mut self.clips);
         self.stacking = StackingContext::build(&self.root);
         self.paint = self.stacking.paint_order();
+    }
+
+    /// Applies `position: sticky` against `scroll` (VEC-012).
+    pub fn apply_sticky(&mut self, scroll: Point) {
+        apply_sticky_box(&mut self.root, scroll, self.viewport, None);
+        self.rebuild_indexes();
     }
 }
 
@@ -698,6 +703,40 @@ fn collect_geometry(
     }
 }
 
+fn apply_sticky_box(bx: &mut LayoutBox, scroll: Point, viewport: Size, containing: Option<Rect>) {
+    let cb = containing.unwrap_or(Rect::new(0.0, 0.0, viewport.width, viewport.height));
+    if bx.style.position == ve_style::Position::Sticky {
+        let view = Rect::new(scroll.x, scroll.y, viewport.width, viewport.height);
+        let mut dx = 0.0_f32;
+        let mut dy = 0.0_f32;
+        if let Some(top) = bx.style.top.maybe_resolve(Some(viewport.height)) {
+            let limit = view.y() + top;
+            if bx.rect.y() < limit {
+                let room = (cb.bottom() - bx.rect.height() - bx.rect.y()).max(0.0);
+                dy = (limit - bx.rect.y()).min(room);
+            }
+        }
+        if let Some(left) = bx.style.left.resolve(viewport.width) {
+            let limit = view.x() + left;
+            if bx.rect.x() < limit {
+                let room = (cb.right() - bx.rect.width() - bx.rect.x()).max(0.0);
+                dx = (limit - bx.rect.x()).min(room);
+            }
+        }
+        if dx != 0.0 || dy != 0.0 {
+            crate::block::translate_subtree(bx, dx, dy);
+        }
+    }
+    let next_cb = if bx.has_own_edges() {
+        Some(bx.rect)
+    } else {
+        containing
+    };
+    for child in &mut bx.children {
+        apply_sticky_box(child, scroll, viewport, next_cb);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1131,5 +1170,52 @@ mod tests {
         let (tree, stats) = layout_engine.relayout_incremental(&mut doc, &styles, viewport, tree);
         assert!(stats.full);
         assert_eq!(tree.rect_of(c).unwrap().height(), 10.0);
+    }
+
+    #[test]
+    fn sticky_holds_top_inside_the_viewport() {
+        let html = "<style>body{margin:0} #cb{height:400px} #s{position:sticky;top:10px;height:20px;width:100px}</style>\
+                    <div id=cb><div id=s>sticky</div></div>";
+        let (doc, engine, mut tree) = layout(html, 200.0);
+        let before = rect(&tree, &engine, &doc, "#s");
+        tree.apply_sticky(Point::new(0.0, 40.0));
+        let after = rect(&tree, &engine, &doc, "#s");
+        assert!(
+            after.y() >= 50.0 - 0.5,
+            "sticky top:10 with scroll 40 should sit at >= 50, got {} (was {})",
+            after.y(),
+            before.y()
+        );
+    }
+
+    #[test]
+    fn incremental_layout_matches_full_on_a_large_tree() {
+        let mut html = String::from("<style>body{margin:0}div{height:8px;width:100px}</style>");
+        for i in 0..200 {
+            html.push_str(&format!("<div id=n{i}></div>"));
+        }
+        let mut doc = ve_html::parse_document(&html).document;
+        let mut style_engine = StyleEngine::new();
+        style_engine.media = ve_style::MediaEnv::screen(200.0, 600.0);
+        style_engine.add_document_styles(&doc);
+        let mut styles = style_engine.compute(&doc);
+        let mut layout_engine = LayoutEngine::new();
+        let viewport = Size::new(200.0, 600.0);
+        let (full, _) = layout_engine.layout_recording(&mut doc, &styles, viewport, None);
+        let n0 = style_engine.select_one(&doc, "#n0").unwrap();
+        let since = doc.revision();
+        doc.set_attribute(n0, "style", "height:24px").unwrap();
+        style_engine.restyle_incremental(&mut doc, &mut styles, since);
+        let (incr, stats) = layout_engine.relayout_incremental(&mut doc, &styles, viewport, full);
+        let fresh = layout_engine.layout(&doc, &styles, viewport);
+        assert_eq!(
+            incr.rect_of(n0).unwrap().height(),
+            fresh.rect_of(n0).unwrap().height()
+        );
+        assert_eq!(incr.root.rect.height(), fresh.root.rect.height());
+        assert!(
+            stats.boxes_laid_out > 0,
+            "scaling: incremental must actually layout something"
+        );
     }
 }

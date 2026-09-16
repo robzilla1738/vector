@@ -55,23 +55,25 @@ fn parse_options(options_json: &str) -> Result<Value, ApiError> {
     }
 }
 
-/// Parses an `EngineConfig` from JSON. The addon serves a trusted local
-/// embedder (the runtime enforces its own URL policy), so when the config
-/// names no `policy` the engine's default `NetworkPolicy` — loopback
-/// blocked, `file:` refused — is replaced by [`NetworkPolicy::permissive`]
-/// so fixture servers on `127.0.0.1` and local `file:` pages open.
+/// Parses an `EngineConfig` from JSON. Unspecified policy stays strict
+/// (loopback blocked, `file:` refused, no private-network). Fixtures must
+/// pass an explicit allowlist. `securityProfile` / `VECTOR_ENGINE_PROFILE`
+/// select production fail-closed isolation.
 pub fn parse_config(config_json: &str) -> Result<EngineConfig, ApiError> {
-    if config_json.trim().is_empty() {
-        return Ok(EngineConfig {
-            policy: NetworkPolicy::permissive(),
-            ..EngineConfig::default()
-        });
-    }
-    let value: Value = serde_json::from_str(config_json)?;
-    let has_policy = value.get("policy").is_some_and(|p| !p.is_null());
-    let mut config: EngineConfig = serde_json::from_value(value)?;
-    if !has_policy {
-        config.policy = NetworkPolicy::permissive();
+    let mut config = if config_json.trim().is_empty() {
+        EngineConfig::default()
+    } else {
+        let value: Value = serde_json::from_str(config_json)?;
+        serde_json::from_value(value)?
+    };
+    if matches!(
+        std::env::var("VECTOR_ENGINE_PROFILE").as_deref(),
+        Ok("production" | "prod")
+    ) || matches!(
+        std::env::var("VECTOR_ENGINE_STRICT").as_deref(),
+        Ok("1" | "true")
+    ) {
+        config.security_profile = ve_api::SecurityProfile::Production;
     }
     Ok(config)
 }
@@ -80,6 +82,11 @@ impl Hub {
     /// Creates a hub with the default context started.
     #[must_use]
     pub fn new(config: EngineConfig) -> Self {
+        Self::try_new(config).expect("engine hub")
+    }
+
+    /// Creates a hub; production isolation failures are `backend_unavailable`.
+    pub fn try_new(config: EngineConfig) -> Result<Self, ApiError> {
         let mut hub = Self {
             config,
             contexts: HashMap::new(),
@@ -87,24 +94,43 @@ impl Hub {
             next_context: DEFAULT_CONTEXT,
             next_page: 0,
         };
-        hub.spawn_context(None);
-        hub
+        hub.spawn_context(None)?;
+        Ok(hub)
     }
 
     /// Creates a hub from an `EngineConfig` JSON object (see [`parse_config`]).
     pub fn from_json(config_json: &str) -> Result<Self, ApiError> {
-        Ok(Self::new(parse_config(config_json)?))
+        Self::try_new(parse_config(config_json)?)
     }
 
-    fn spawn_context(&mut self, policy: Option<NetworkPolicy>) -> u32 {
+    /// Backend/build/security identity for sessions and traces.
+    #[must_use]
+    pub fn identity(&self) -> Value {
+        let isolation = self
+            .contexts
+            .get(&DEFAULT_CONTEXT)
+            .map_or("none", Host::isolation);
+        json!({
+            "abiVersion": crate::ABI_VERSION,
+            "protocolVersion": crate::isolate::HOST_PROTOCOL,
+            "engine": crate::version(),
+            "isolation": isolation,
+            "sandbox": isolation == "process",
+            "securityProfile": self.config.security_profile,
+            "host": crate::isolate::host_binary().map(|p| p.to_string_lossy().into_owned()),
+        })
+    }
+
+    fn spawn_context(&mut self, policy: Option<NetworkPolicy>) -> Result<u32, ApiError> {
         let id = self.next_context;
         self.next_context += 1;
         let mut config = self.config.clone();
         if let Some(policy) = policy {
             config.policy = policy;
         }
-        self.contexts.insert(id, Host::spawn(config, id));
-        id
+        let host = Host::try_spawn(config, id)?;
+        self.contexts.insert(id, host);
+        Ok(id)
     }
 
     /// Creates an isolated context (own cookie jar, own thread).
@@ -121,7 +147,7 @@ impl Hub {
                     .map_err(|e| ApiError::invalid(format!("network policy: {e}")))?,
             ),
         };
-        Ok(self.spawn_context(policy))
+        self.spawn_context(policy)
     }
 
     fn context(&self, id: u32) -> Result<&Host, ApiError> {
@@ -250,11 +276,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn config_defaults_to_a_permissive_policy_unless_given() {
+    fn config_defaults_to_a_strict_policy_unless_given() {
         let c = parse_config("").unwrap();
-        assert!(!c.policy.block_loopback && c.policy.allow_file);
+        assert!(c.policy.block_loopback && !c.policy.allow_file);
         let c = parse_config(r#"{"offline": true, "dataDir": "/tmp/x"}"#).unwrap();
-        assert!(c.offline && c.policy.allow_file);
+        assert!(c.offline && c.policy.block_loopback);
         let c = parse_config(r#"{"policy": {"blockLoopback": true}}"#).unwrap();
         assert!(c.policy.block_loopback && !c.policy.allow_file);
         assert_eq!(parse_config("nope").unwrap_err().code, "invalid_params");

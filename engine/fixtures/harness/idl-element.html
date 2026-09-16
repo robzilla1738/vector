@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>IDL attributes</title>
+<body>
+<p id="p">x</p>
+<script>
+test(function () {
+  assert_idl_attribute(document.body, "tagName");
+  assert_idl_attribute(document.getElementById("p"), "id");
+  assert_equals(document.body.tagName, "BODY");
+}, "Element IDL");
+</script>

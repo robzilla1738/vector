@@ -24,10 +24,14 @@ export interface EngineConfig {
   maxPages?: number;
   /**
    * Network policy for contexts (`ve_net::NetworkPolicy`). When omitted the
-   * addon uses a permissive policy (loopback and `file:` allowed) because the
-   * runtime enforces its own URL policy before reaching the engine.
+   * addon uses a strict default (loopback and `file:` blocked). Fixture
+   * servers must be allowlisted explicitly.
    */
   policy?: NetworkPolicy;
+  /** `developer` (default) or `production`. Production requires `ve-host` + sandbox. */
+  securityProfile?: "developer" | "production";
+  /** `auto` | `requireProcess` | `inProcess`. Production forces `requireProcess`. */
+  isolation?: "auto" | "requireProcess" | "inProcess";
   /** Accepted and ignored by the engine today; reserved for cookie/cache persistence. */
   dataDir?: string;
 }
@@ -37,6 +41,10 @@ export interface NetworkPolicy {
   allowlist?: string[];
   allowFile?: boolean;
   httpsOnly?: boolean;
+  blockPrivateNetworks?: boolean;
+  allowAgentEgress?: boolean;
+  agentAllowlist?: string[];
+  deniedSchemes?: string[];
 }
 
 /** Post-parse routing classification (architecture §11 step 2), from the engine's `RoutingInfo`. */
@@ -170,9 +178,21 @@ export interface ScreenshotPng {
   png: Buffer;
 }
 
+export interface EngineIdentity {
+  engine: string;
+  abiVersion: number;
+  protocolVersion: number;
+  isolation: "process" | "in-process";
+  sandbox: boolean;
+  securityProfile: "developer" | "production";
+  hostPath: string | null;
+}
+
 export declare class Engine {
   /** `configJson` is a JSON-encoded `EngineConfig`. */
   constructor(configJson?: string | null);
+  /** Process vs in-process identity JSON (`EngineIdentity`). */
+  identity(): string;
   /** Creates an isolated context (own cookie jar, own thread). Context 1 always exists. `optionsJson` may carry `{ policy }`. */
   newContext(optionsJson?: string | null): number;
   /** Resolves to JSON `NativeResult<OpenResult>`; `optionsJson` is an `OpenOptions`. */
@@ -201,7 +221,7 @@ export declare class Engine {
   shutdown(): void;
 }
 
-/** JSON: `{ abiVersion, engine, enabled, http, capabilities }`. */
+/** JSON: `{ abiVersion, engine, enabled, http, protocolVersion, capabilities }`. */
 export declare function describe(): string;
 export declare function version(): string;
 

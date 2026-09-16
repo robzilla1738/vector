@@ -1,12 +1,14 @@
 //! The [`Renderer`] trait and the CPU [`SoftwareRenderer`].
 
-use ve_core::Rect;
+use std::collections::HashMap;
+
+use ve_core::{NodeId, Rect};
 use ve_style::Rgba;
 
 use crate::GfxError;
 use crate::display_list::{DisplayItem, DisplayList, TextRun};
 use crate::fonts::FontSystem;
-use crate::image::ImageCache;
+use crate::image::{ImageCache, ImageHandle};
 
 /// A rendered RGBA8 frame.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -76,6 +78,8 @@ pub struct SoftwareRenderer {
     pub fonts: FontSystem,
     /// Images referenced by display lists.
     pub images: ImageCache,
+    /// Layout node → decoded `<img>` for [`DisplayList::from_layout_with`].
+    pub node_images: HashMap<NodeId, ImageHandle>,
 }
 
 impl std::fmt::Debug for SoftwareRenderer {
@@ -203,6 +207,7 @@ impl SoftwareRenderer {
         Self {
             fonts: FontSystem::new(),
             images: ImageCache::new(),
+            node_images: HashMap::new(),
         }
     }
 
@@ -214,7 +219,26 @@ impl SoftwareRenderer {
         Self {
             fonts,
             images: ImageCache::new(),
+            node_images: HashMap::new(),
         }
+    }
+
+    /// Direct presentation into a retained `frame`. Skips PNG encoding. The
+    /// GPU backend's [`crate::vello_backend::VelloRenderer::present_scene`]
+    /// is the no-readback path; this is the CPU analogue.
+    pub fn present_into(
+        &mut self,
+        list: &DisplayList,
+        frame: &mut Frame,
+        scale: f32,
+    ) -> Result<(), GfxError> {
+        let painted = self.render(list, frame.width, frame.height, scale)?;
+        if frame.rgba.len() == painted.rgba.len() {
+            frame.rgba.copy_from_slice(&painted.rgba);
+        } else {
+            *frame = painted;
+        }
+        Ok(())
     }
 
     fn draw_text(&mut self, canvas: &mut Canvas, run: &TextRun) {

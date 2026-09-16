@@ -34,7 +34,7 @@
  * commit's worktree) for before/after comparisons.
  */
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { tmpdir, totalmem } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { execSync } from "node:child_process";
@@ -56,6 +56,7 @@ const runtimeEntry = resolve(opt("runtime", join(root, "apps/runtime/dist/index.
 const outDir = resolve(opt("out", join(root, "tests/benchmarks/reports")));
 const label = opt("label", "");
 const backendArg = opt("backend", "both");
+const requireIdentity = argv.includes("--require-identity") || process.env.VECTOR_REQUIRE_IDENTITY === "1";
 const BACKENDS = backendArg === "both" ? ["chrome", "vector-engine"] : [backendArg];
 for (const b of BACKENDS) {
   if (!["chrome", "vector-engine"].includes(b)) {
@@ -128,10 +129,17 @@ async function runBackend(backend) {
     const wanted = engine ? "vector-engine" : "vector";
     const session = info.sessions.find((s) => s.backend === wanted);
     if (engine && !(describe.engine?.available && describe.engine?.connected)) {
-      return { ...info, skipped: `vector-engine unavailable: ${describe.engine?.error ?? "runtime has no engine support"}`, metrics: {}, failures, unsupported: [] };
+      const skipped = `vector-engine unavailable: ${describe.engine?.error ?? "runtime has no engine support"}`;
+      if (requireIdentity) failures.push(skipped);
+      return { ...info, skipped, metrics: {}, failures, unsupported: [] };
+    }
+    if (engine && describe.engine?.routingMode && describe.engine.routingMode !== "native-only") {
+      failures.push(`routingMode ${describe.engine.routingMode} != native-only`);
     }
     if (!engine && session && session.status !== "connected") {
-      return { ...info, skipped: `Chromium backend not connected: ${session.detail ?? session.status}`, metrics: {}, failures, unsupported: [] };
+      const skipped = `Chromium backend not connected: ${session.detail ?? session.status}`;
+      if (requireIdentity) failures.push(skipped);
+      return { ...info, skipped, metrics: {}, failures, unsupported: [] };
     }
 
     async function iteration(measure) {
@@ -262,6 +270,10 @@ const report = {
   warmup,
   fixture: `${RECORDS}/records`,
   node: process.version,
+  os: `${process.platform} ${process.arch}`,
+  hardware: { arch: process.arch, memoryMb: Math.round(totalmem() / 1048576) },
+  securityMode: process.env.VECTOR_ENGINE_PROFILE ?? "developer",
+  requireIdentity,
   chromium: process.env.VECTOR_BROWSER_PATH ?? "(system Chrome via playwright channels)",
   backends: results,
   // single-backend compatibility with earlier reports
@@ -309,4 +321,8 @@ for (const bk of BACKENDS) {
   if (r.failures?.length) console.log(`${bk} failures (${r.failures.length}): ${[...new Set(r.failures)].slice(0, 5).join(" | ")}`);
 }
 console.log(`\nreport: ${reportPath}`);
-process.exit(0);
+const identityFail = BACKENDS.some((bk) => {
+  const r = results[bk];
+  return (r.failures?.length ?? 0) > 0 || (requireIdentity && r.skipped);
+});
+process.exit(identityFail ? 1 : 0);

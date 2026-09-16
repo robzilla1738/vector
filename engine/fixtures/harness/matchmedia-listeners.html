@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>matchMedia listeners</title>
+<body>
+<script>
+test(function () {
+  const m = matchMedia("(min-width: 1px)");
+  assert_true(m.matches);
+  assert_equals(typeof m.addListener, "function");
+  let n = 0;
+  m.addListener(function () { n += 1; });
+  m.dispatchEvent({ type: "change" });
+  assert_equals(n, 1);
+}, "matchMedia addListener");
+</script>

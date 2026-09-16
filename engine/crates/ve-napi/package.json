@@ -16,7 +16,9 @@
   "files": [
     "index.js",
     "index.d.ts",
-    "*.node"
+    "*.node",
+    "ve-host",
+    "ve-host.exe"
   ],
   "napi": {
     "binaryName": "vector-engine",

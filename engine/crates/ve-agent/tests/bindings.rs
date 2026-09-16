@@ -342,3 +342,138 @@ fn generation_checked_refs_reject_recycled_slots() {
         "stale ref after recycle must fail: {result:?}"
     );
 }
+
+#[test]
+fn indexeddb_and_worker_round_trip() {
+    let mut page = open(
+        r#"<script>
+             window.__idb = 'pending';
+             const req = indexedDB.open('app');
+             req.onsuccess = () => {
+               const db = req.result;
+               db.createObjectStore('kv');
+               db.transaction('kv').objectStore().put({v:1}, 'k');
+               const g = db.transaction('kv').objectStore().get('k');
+               g.onsuccess = () => {
+                 window.__idb = (g.result && g.result.v === 1) ? 'ok' : 'bad';
+               };
+             };
+             const w = new Worker('echo.js');
+             w.onmessage = (e) => { window.__w = e.data; };
+             w.postMessage('ping');
+           </script>"#,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__idb").unwrap(),
+        serde_json::json!("ok")
+    );
+    assert_eq!(
+        page.evaluate("window.__w").unwrap(),
+        serde_json::json!("ping")
+    );
+}
+
+#[test]
+fn indexeddb_index_cursor_and_isolated_worker() {
+    let mut page = open(
+        r#"<script>
+             window.__idx = 'pending';
+             window.__iso = 'pending';
+             const req = indexedDB.open('app2');
+             req.onsuccess = () => {
+               const db = req.result;
+               const store = db.transaction('kv').objectStore();
+               store.createIndex('name', 'name');
+               store.put({name:'Ada'}, '1');
+               const g = store.index('name').get('Ada');
+               g.onsuccess = () => {
+                 window.__idx = (g.result && g.result.name === 'Ada') ? 'ok' : 'bad';
+               };
+             };
+             const w = new Worker("onmessage=function(e){postMessage({iso: typeof document, echo: e.data})}");
+             w.onmessage = (e) => { window.__iso = e.data; };
+             w.postMessage('ping');
+           </script>"#,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__idx").unwrap(),
+        serde_json::json!("ok")
+    );
+    assert_eq!(
+        page.evaluate("window.__iso.iso").unwrap(),
+        serde_json::json!("undefined")
+    );
+    assert_eq!(
+        page.evaluate("window.__iso.echo").unwrap(),
+        serde_json::json!("ping")
+    );
+}
+
+#[test]
+fn indexeddb_unique_compound_and_versionchange() {
+    let mut page = open(
+        r#"<script>
+             window.__u = 'pending';
+             window.__c = 'pending';
+             window.__v = 'pending';
+             const r1 = indexedDB.open('people', 1);
+             r1.onupgradeneeded = () => {
+               const store = r1.result.createObjectStore('p');
+               store.createIndex('name', 'name', { unique: true });
+               store.createIndex('full', ['last','first']);
+             };
+             r1.onsuccess = () => {
+               const store = r1.result.transaction('p').objectStore();
+               store.put({name:'Ada', last:'Lovelace', first:'Ada'}, '1');
+               const dup = store.put({name:'Ada', last:'X', first:'Y'}, '2');
+               dup.onerror = () => { window.__u = 'ok'; };
+               dup.onsuccess = () => { window.__u = 'dup-allowed'; };
+               const g = store.index('full').get('Lovelace\u0000Ada');
+               g.onsuccess = () => { window.__c = (g.result && g.result.first === 'Ada') ? 'ok' : 'bad'; };
+               const r2 = indexedDB.open('people', 1);
+               r2.onupgradeneeded = () => { window.__v = 'upgraded-again'; };
+               r2.onsuccess = () => { if (window.__v === 'pending') window.__v = 'ok'; };
+             };
+           </script>"#,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__u").unwrap(),
+        serde_json::json!("ok")
+    );
+    assert_eq!(
+        page.evaluate("window.__c").unwrap(),
+        serde_json::json!("ok")
+    );
+    assert_eq!(
+        page.evaluate("window.__v").unwrap(),
+        serde_json::json!("ok")
+    );
+}
+
+#[test]
+fn get_element_by_id_stringifies_null_and_undefined() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var a = document.createElement("div");
+              a.setAttribute("id", "null");
+              document.body.appendChild(a);
+              var b = document.createElement("div");
+              b.setAttribute("id", "undefined");
+              document.body.appendChild(b);
+              return {
+                byNull: document.getElementById(null) === a,
+                byUndef: document.getElementById(undefined) === b,
+                byStr: document.getElementById("null") === a
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["byNull"], true, "{v}");
+    assert_eq!(v["byUndef"], true, "{v}");
+    assert_eq!(v["byStr"], true, "{v}");
+}

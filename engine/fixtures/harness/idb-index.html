@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>IndexedDB index and cursor</title>
+<body>
+<script>
+window.__tests = [];
+const req = indexedDB.open("idx");
+req.onsuccess = () => {
+  const db = req.result;
+  const store = db.transaction("kv").objectStore();
+  store.createIndex("name", "name");
+  store.put({ name: "Ada" }, "1");
+  const g = store.index("name").get("Ada");
+  g.onsuccess = () => {
+    window.__tests.push(["idb.index.get", g.result && g.result.name === "Ada"]);
+    const cur = store.openCursor();
+    let n = 0;
+    cur.onsuccess = () => {
+      if (cur.result) {
+        n += 1;
+        window.__tests.push(["idb.cursor.row", cur.result.value.name === "Ada"]);
+        cur.result.continue();
+      } else {
+        window.__tests.push(["idb.cursor.count", n === 1]);
+      }
+    };
+  };
+};
+</script>

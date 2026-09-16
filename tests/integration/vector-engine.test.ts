@@ -139,7 +139,7 @@ describeIfEngine("vector-engine backend", () => {
     await invoke("settings.set", { engineMode: "auto" });
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
     expect(page.backend).toBe("vector-engine");
-    expect(page.routeReason).toBe("engine-first");
+    expect(page.routeReason).toBe("hybrid:engine-first");
 
     const res = await invoke<ProgramResult>("pages.execute", {
       program: {

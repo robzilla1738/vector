@@ -136,10 +136,17 @@ struct GateResult {
 struct Report {
     engine_version: &'static str,
     profile: &'static str,
+    backend: &'static str,
+    security_mode: &'static str,
+    os: String,
+    arch: &'static str,
+    rss_bytes: Option<u64>,
+    host_package_energy_uj: Option<u64>,
     iterations: u32,
     viewport: Size,
     fixtures: Vec<FixtureReport>,
     pooled: std::collections::BTreeMap<String, Summary>,
+    layout_100: Option<Summary>,
     gate: Option<String>,
     gates: Vec<GateResult>,
     all_gates_pass: bool,
@@ -406,6 +413,27 @@ fn default_fixtures_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/static")
 }
 
+fn measure_layout_list(
+    engine: &mut VectorEngine,
+    n: usize,
+    iterations: u32,
+    warmup: u32,
+) -> Result<Summary> {
+    let items: String = (0..n).map(|i| format!("<li>item {i}</li>")).collect();
+    let html = format!("<!doctype html><title>todo</title><ul id=list>{items}</ul>");
+    let mut samples = Vec::new();
+    for i in 0..(warmup + iterations) {
+        let started = Instant::now();
+        let opened = engine.open(OpenRequest::html(&html, Some("https://speedometer.test/")))?;
+        let _ = engine.observe(opened.page, &ObservationRequest::default())?;
+        engine.close(opened.page);
+        if i >= warmup {
+            samples.push(u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX));
+        }
+    }
+    Ok(summarize(&samples))
+}
+
 fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
@@ -481,6 +509,13 @@ fn main() -> Result<()> {
         })
         .collect();
 
+    let layout_iters = args.iterations.clamp(1, 30);
+    let layout_100 = measure_layout_list(&mut engine, 100, layout_iters, args.warmup.min(5))?;
+    eprintln!(
+        "layout_100            p50 {:>8} us  p95 {:>8} us  max {:>8} us",
+        layout_100.p50_us, layout_100.p95_us, layout_100.max_us
+    );
+
     let mut gates = Vec::new();
     if let Some(gate) = &args.gate {
         if gate != "m1" {
@@ -507,10 +542,17 @@ fn main() -> Result<()> {
         } else {
             "release"
         },
+        backend: "vector-engine",
+        security_mode: "developer-offline",
+        os: std::env::consts::OS.to_owned(),
+        arch: std::env::consts::ARCH,
+        rss_bytes: ve_core::process_rss_bytes(),
+        host_package_energy_uj: ve_core::host_package_energy_uj(),
         iterations: args.iterations,
         viewport,
         fixtures,
         pooled,
+        layout_100: Some(layout_100),
         gate: args.gate.clone(),
         gates,
         all_gates_pass,

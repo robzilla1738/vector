@@ -1,0 +1,27 @@
+[package]
+name = "ve-shell"
+description = "Native-only Vector Engine shell (VEC-014). No Chromium."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+## OS window through winit + softbuffer.
+window = ["dep:winit", "dep:softbuffer"]
+
+[dependencies]
+ve-api.workspace = true
+ve-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+winit = { workspace = true, optional = true }
+softbuffer = { workspace = true, optional = true }

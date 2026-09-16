@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>CSS.supports compound</title>
+<body>
+<script>
+test(function () {
+  assert_true(CSS.supports("display", "block"));
+  assert_true(CSS.supports("(display: block) and (color: red)"));
+  assert_false(CSS.supports("(display: block) and (not-a-prop: x)"));
+  assert_true(CSS.supports("not (not-a-prop: x)"));
+}, "compound CSS.supports");
+</script>

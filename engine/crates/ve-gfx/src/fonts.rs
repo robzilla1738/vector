@@ -5,6 +5,28 @@ use swash::zeno::Format;
 use swash::{FontRef, GlyphId};
 use ve_style::{FontFamily, FontStyle, FontWeight};
 
+/// One verb in a scaled glyph outline (y-up, origin at the glyph origin).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum GlyphVerb {
+    /// Move the pen.
+    MoveTo(f32, f32),
+    /// Straight line.
+    LineTo(f32, f32),
+    /// Quadratic Bézier.
+    QuadTo(f32, f32, f32, f32),
+    /// Cubic Bézier.
+    CurveTo(f32, f32, f32, f32, f32, f32),
+    /// Close the current contour.
+    Close,
+}
+
+/// Scaled glyph outline for GPU path filling.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GlyphOutline {
+    /// Path verbs in font-space pixels (y-up).
+    pub verbs: Vec<GlyphVerb>,
+}
+
 /// An alpha-mask glyph image.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GlyphBitmap {
@@ -160,6 +182,31 @@ impl FontSystem {
         })
     }
 
+    /// Scaled outline for `glyph` (empty if the face has no outline).
+    pub fn outline(&mut self, id: fontdb::ID, glyph: GlyphId, size: f32) -> Option<GlyphOutline> {
+        use swash::zeno::{Command, PathData};
+        let FontSystem { db, scaler } = self;
+        db.with_face_data(id, |bytes, index| {
+            let font = FontRef::from_index(bytes, index as usize)?;
+            let mut built = scaler.builder(font).size(size).hint(false).build();
+            let outline = built.scale_outline(glyph)?;
+            let mut verbs = Vec::new();
+            for cmd in outline.path().commands() {
+                match cmd {
+                    Command::MoveTo(p) => verbs.push(GlyphVerb::MoveTo(p.x, p.y)),
+                    Command::LineTo(p) => verbs.push(GlyphVerb::LineTo(p.x, p.y)),
+                    Command::QuadTo(c, p) => verbs.push(GlyphVerb::QuadTo(c.x, c.y, p.x, p.y)),
+                    Command::CurveTo(c1, c2, p) => {
+                        verbs.push(GlyphVerb::CurveTo(c1.x, c1.y, c2.x, c2.y, p.x, p.y));
+                    }
+                    Command::Close => verbs.push(GlyphVerb::Close),
+                }
+            }
+            (!verbs.is_empty()).then_some(GlyphOutline { verbs })
+        })
+        .flatten()
+    }
+
     /// Rasterises a glyph to an alpha mask.
     pub fn rasterize(&mut self, id: fontdb::ID, glyph: GlyphId, size: f32) -> Option<GlyphBitmap> {
         let FontSystem { db, scaler } = self;
@@ -237,6 +284,13 @@ mod tests {
         assert!(
             bitmap.width > 0 && bitmap.height > 0 && !bitmap.data.is_empty(),
             "empty glyph mask {bitmap:?}"
+        );
+        let outline = fs
+            .outline(id, glyph, 16.0)
+            .expect("system fonts must yield outlines");
+        assert!(
+            !outline.verbs.is_empty(),
+            "glyph outline must contain path verbs"
         );
     }
 }

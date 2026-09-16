@@ -148,19 +148,19 @@ describe("pages.open routing", () => {
     const h = harness("auto", { execute: okResult });
     const page = await h.pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     expect(page.backend).toBe("vector-engine");
-    expect(page.routeReason).toBe("engine-first");
+    expect(page.routeReason).toBe("hybrid:engine-first");
     expect(page.viewStatus).toBe("hidden");
     // the engine gets the real URL (it parses on open), no about:blank detour
     expect(h.engine.calls).toEqual(["vector-engine:createTarget:https://a.test/"]);
     expect(h.vector.calls).toEqual([]);
-    expect(h.repo.getPage(page.pageId)?.routeReason).toBe("engine-first");
+    expect(h.repo.getPage(page.pageId)?.routeReason).toBe("hybrid:engine-first");
   });
 
   it("auto: a visible tab in the desktop shell opens on Chromium", async () => {
     const h = harness("auto", {}, shellNative());
     const page = await h.pages.open({ url: "https://cnn.test/", background: false, ownedByRuntime: false });
     expect(page.backend).toBe("vector");
-    expect(page.routeReason).toBe("engine-first:native-view");
+    expect(page.routeReason).toBe("hybrid:engine-first:native-view");
     expect(h.engine.calls).toEqual([]);
     expect(h.vector.calls).toEqual(["vector:navigate:https://cnn.test/"]);
   });

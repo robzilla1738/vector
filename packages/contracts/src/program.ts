@@ -342,6 +342,23 @@ export const ProgramSchema = z.object({
 });
 export type Program = z.infer<typeof ProgramSchema>;
 
+export const ActionReceiptSchema = z.object({
+  /** What the executor observed after dispatch. Never claims remote business success alone. */
+  observed: z.string().optional(),
+  remoteConfirmed: z.boolean().default(false),
+  uncertain: z.boolean().default(false),
+  dispatchedBeforeTakeover: z.boolean().default(false),
+  identity: z
+    .object({
+      pageId: z.string(),
+      documentEpoch: z.number().int().nonnegative(),
+      generation: z.number().int().nonnegative().optional(),
+      target: z.string().optional(),
+    })
+    .optional(),
+});
+export type ActionReceipt = z.infer<typeof ActionReceiptSchema>;
+
 export const StepOutcomeSchema = z.object({
   stepId: z.string(),
   op: z.string(),
@@ -354,6 +371,11 @@ export const StepOutcomeSchema = z.object({
     .optional(),
   extracted: z.record(z.string(), z.unknown()).optional(),
   artifactIds: z.array(z.string()).optional(),
+  /** VEC-016 lifecycle. */
+  effect: z
+    .enum(["planned", "authorized", "dispatched", "observed", "confirmed", "uncertain", "failed"])
+    .optional(),
+  receipt: ActionReceiptSchema.optional(),
 });
 export type StepOutcome = z.infer<typeof StepOutcomeSchema>;
 

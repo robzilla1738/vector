@@ -34,14 +34,14 @@ describe("Router.decide", () => {
     setMode("always");
     expect(router.decide("https://a.test/", undefined)).toMatchObject({ backend: "vector-engine", reason: "engine-always", fallbackAllowed: false });
     setEngine(false);
-    expect(router.decide("https://a.test/", undefined)).toMatchObject({ backend: "vector", reason: "engine-unavailable", fallbackAllowed: false });
+    expect(router.decide("https://a.test/", undefined)).toMatchObject({ backend: "vector-engine", reason: "engine-unavailable", fallbackAllowed: false });
     setEngine(true);
 
     setMode("auto");
-    expect(router.decide("https://a.test/", undefined)).toEqual({ backend: "vector-engine", reason: "engine-first", fallbackAllowed: true });
-    expect(router.decide("https://a.test/", "vector")).toMatchObject({ backend: "vector-engine", reason: "engine-first" });
+    expect(router.decide("https://a.test/", undefined)).toEqual({ backend: "vector-engine", reason: "hybrid:engine-first", fallbackAllowed: true });
+    expect(router.decide("https://a.test/", "vector")).toMatchObject({ backend: "vector-engine", reason: "hybrid:engine-first" });
     setEngine(false);
-    expect(router.decide("https://a.test/", undefined)).toMatchObject({ backend: "vector", reason: "engine-unavailable" });
+    expect(router.decide("https://a.test/", undefined)).toMatchObject({ backend: "vector", reason: "hybrid:engine-unavailable" });
   });
 
   it("keeps unsupported schemes and unparseable urls on Chromium in auto mode", () => {
@@ -55,7 +55,7 @@ describe("Router.decide", () => {
   it("logs every decision with its reason", () => {
     const { router, logs } = make();
     router.decide("https://a.test/", undefined);
-    expect(logs).toEqual([{ message: "router.decide", attrs: expect.objectContaining({ url: "https://a.test/", reason: "engine-first" }) }]);
+    expect(logs).toEqual([{ message: "router.decide", attrs: expect.objectContaining({ url: "https://a.test/", reason: "hybrid:engine-first" }) }]);
   });
 });
 

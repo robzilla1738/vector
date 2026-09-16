@@ -799,6 +799,22 @@ export class PageService {
           },
         };
         result = await executeProgram(lp.driver, program, execCtx);
+        if (
+          result.status === "failed" &&
+          result.steps.some((s) => s.error?.code === "conflict" && (s.error.message.includes("takeover") || s.error.message.includes("controller")))
+        ) {
+          for (const s of result.steps) {
+            if (s.status === "ok") {
+              s.effect = "uncertain";
+              s.receipt = {
+                observed: s.detail,
+                remoteConfirmed: false,
+                uncertain: true,
+                dispatchedBeforeTakeover: true,
+              };
+            }
+          }
+        }
         // §11 step 4 — the engine hit a capability gap mid-program
         const fallbackAt = lp.target.backend === "vector-engine" ? Router.fallbackIndex(result.steps) : -1;
         if (fallbackAt >= 0 && this.deps.router && this.deps.router.mode() === "auto") {

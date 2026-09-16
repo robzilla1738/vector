@@ -606,7 +606,8 @@ impl NetworkContext {
             "http" | "https" => {}
             other => return Err(NetError::UnsupportedScheme(other.to_owned())),
         }
-        self.policy.check(&request.url)?;
+        crate::policy::strip_userinfo(&mut request.url);
+        self.policy.check_request(&request)?;
 
         // Cache: a fresh entry is served directly; a stale one with
         // validators is revalidated conditionally and a 304 refreshes it
