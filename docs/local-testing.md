@@ -38,7 +38,8 @@ backend (`engineMode: always` open/observe/execute in one native call, and
 the `auto` mid-program fallback to Chromium). It is skipped with the
 loader's diagnostic until the addon is built:
 `cd engine && cargo build -p ve-napi --features napi --release`. Engine
-unit tests are `cargo test` in `engine/` (see `engine/README.md`).
+unit tests are `cargo test` in `engine/` (see `engine/README.md`). SPA
+goldens: `cargo test -p ve-api --features v8 --test spa`.
 
 ## Manual smoke
 

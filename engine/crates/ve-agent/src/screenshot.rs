@@ -125,4 +125,18 @@ mod tests {
         assert_eq!((info.width, info.height), (2, 1));
         assert_eq!(&buf[..8], &pixels[..]);
     }
+
+    #[test]
+    fn page_screenshot_is_a_png_with_system_fonts() {
+        let mut page = crate::Page::from_html(
+            1,
+            "<p style=\"color:#000;font-size:24px\">Hello Vector</p>",
+            Some("https://t.test/"),
+            crate::DEFAULT_VIEWPORT,
+        );
+        let shot = page.screenshot(false).expect("software renderer");
+        assert_eq!(&shot.png[..8], b"\x89PNG\r\n\x1a\n");
+        assert!(shot.width >= 1 && shot.height >= 1);
+        assert!(!shot.png.is_empty());
+    }
 }

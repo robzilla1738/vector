@@ -1,5 +1,7 @@
 # Vector — Architecture / Correctness / Security / Test Audit
 
+> **Historical (Sep 2026, pre-M1).** Written against a single early commit. Security items (planner `evaluate`, token modes, sandboxed renderer, body caps) were fixed in PR #1; dev scripts and build debris named below were removed. For current status use [`docs/engine/architecture.md` §0](../engine/architecture.md) and the code.
+
 Scope: read-only review of `/agent/workspace/vector` (~18.3k LOC TS; runtime 7.1k, renderer 2.9k, tests 2.5k, driver 1.9k, contracts 1.6k). No build/test run. Every finding cites `file:line` against the checked-in source. Single commit in history (`917371b`), so no churn analysis was possible.
 
 ## Scorecard

@@ -15,23 +15,33 @@
 //!   in-flight async counter. Its [`EventLoop::is_quiescent`] answer is one
 //!   half of the agent-facing readiness signal (the other half is clean
 //!   style/layout, owned by `ve-agent`).
-//! * [`webidl`] — a minimal WebIDL parser and Rust binding-stub generator. It
-//!   is the seed of the bindings pipeline: DOM interfaces will be described in
-//!   WebIDL and the generated traits implemented against `ve-dom`.
+//! * [`webidl`] — WebIDL parser and Rust binding-stub generator. `build.rs`
+//!   reads `idl/*.webidl` and emits [`generated`] traits; `ve-agent` implements
+//!   them over `ve-dom` through the host-function table.
 //!
-//! Deliberate M0 stubs: no DOM bindings are registered in any VM yet; scripts
-//! see a bare JavaScript global. `document.write` is unsupported.
+//! `document.write` is unsupported.
 
-#![forbid(unsafe_code)]
+// `unsafe` is confined to the V8 FFI module (architecture §10).
+#![deny(unsafe_code)]
 
 pub mod event_loop;
 #[cfg(feature = "quickjs")]
 pub mod quickjs;
+#[cfg(feature = "v8")]
+pub mod v8_vm;
 pub mod vm;
 pub mod webidl;
 
 pub use event_loop::{EventLoop, RunReport, TaskId, TaskSource};
 #[cfg(feature = "quickjs")]
 pub use quickjs::QuickJsVm;
-pub use vm::{JsValue, JsVm, NullVm, ScriptError, default_vm};
+#[cfg(feature = "v8")]
+pub use v8_vm::V8Vm;
+pub use vm::{HostApi, JsValue, JsVm, NoHost, NullVm, ScriptError, default_vm};
 pub use webidl::{Argument, Interface, Member, generate_rust_stub, parse_webidl};
+
+/// Traits generated from `idl/*.webidl` (plan A14).
+#[allow(missing_docs, dead_code, unused_imports, clippy::all)]
+pub mod generated {
+    include!(concat!(env!("OUT_DIR"), "/dom_bindings.rs"));
+}

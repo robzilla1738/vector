@@ -1,0 +1,31 @@
+- generic [active] [ref=f12e1]:
+  - banner [ref=f12e2]:
+    - heading "Records" [level=1] [ref=f12e3]
+    - link "All records" [ref=f12e4] [cursor=pointer]:
+      - /url: /records
+    - link "New record" [ref=f12e5] [cursor=pointer]:
+      - /url: /new
+    - link "Pop-up info" [ref=f12e6] [cursor=pointer]:
+      - /url: /popup-info
+    - link "State JSON" [ref=f12e7] [cursor=pointer]:
+      - /url: /api/state
+    - generic [ref=f12e8]: fixture :4810
+  - main [ref=f12e9]:
+    - generic [ref=f12e10]:
+      - heading "Record 04 — Echo project" [level=2] [ref=f12e11]
+      - paragraph [ref=f12e12]:
+        - strong [ref=f12e13]: "Owner:"
+        - text: Morgan Diaz
+      - paragraph [ref=f12e14]:
+        - strong [ref=f12e15]: "Status:"
+        - generic [ref=f12e16]: archived
+      - paragraph [ref=f12e18]: "Deterministic fixture record #4. Owned by Morgan Diaz; status \"archived\"."
+      - paragraph [ref=f12e19]: id=rec-04 · updated 2026-09-05T10:00:00Z
+      - button "Edit record" [ref=f12e20] [cursor=pointer]
+      - button "Details…" [ref=f12e21] [cursor=pointer]
+      - link "Slow info (delayed)" [ref=f12e22] [cursor=pointer]:
+        - /url: /records/rec-04/slow-info
+    - generic [ref=f12e23]:
+      - heading "Attachments" [level=3] [ref=f12e24]
+      - list [ref=f12e25]:
+        - listitem [ref=f12e26]: none

@@ -20,6 +20,7 @@ export class Tracer {
   private dir?: string;
   private pendingCounters = new Map<string, number>();
   private flushTimer: NodeJS.Timeout | null = null;
+  private closed = false;
   private readonly flushDelayMs: number;
 
   constructor(
@@ -114,13 +115,15 @@ export class Tracer {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
     }
-    if (!this.pendingCounters.size) return;
+    if (!this.pendingCounters.size || this.closed) return;
     const batch = this.pendingCounters;
     this.pendingCounters = new Map();
-    const stmt = this.db.prepare(
-      `INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=CAST(value AS INTEGER)+?`,
-    );
     try {
+      // prepare() throws once the database is closed; keep it inside the
+      // guard so a late timer never becomes an uncaught exception
+      const stmt = this.db.prepare(
+        `INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=CAST(value AS INTEGER)+?`,
+      );
       this.db.exec("BEGIN");
       for (const [name, by] of batch) stmt.run(`counter:${name}`, String(by), by);
       this.db.exec("COMMIT");
@@ -132,6 +135,16 @@ export class Tracer {
       }
       // keep the increments for the next flush rather than lose them
       for (const [name, by] of batch) this.pendingCounters.set(name, (this.pendingCounters.get(name) ?? 0) + by);
+    }
+  }
+
+  /** Flush what is pending and stop the timer; the database is about to close. */
+  close(): void {
+    this.flushCounters();
+    this.closed = true;
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
     }
   }
 

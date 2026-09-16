@@ -9,3 +9,4 @@ tests/benchmarks/reports/
 .env.local
 *.tsbuildinfo
 /index.js
+fixtures/dist-types/

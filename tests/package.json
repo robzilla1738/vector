@@ -10,6 +10,8 @@
     "zod": "4.5.4"
   },
   "devDependencies": {
+    "@ai-sdk/gateway": "4.0.75",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@types/node": "^24.10.1",
     "ai": "7.0.93",
     "typescript": "5.9.3",

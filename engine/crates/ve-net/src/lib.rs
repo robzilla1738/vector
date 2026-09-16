@@ -24,12 +24,16 @@
 
 #![forbid(unsafe_code)]
 
+pub mod broker;
 pub mod cache;
 pub mod cookie;
+pub mod http3;
 #[cfg(feature = "http")]
 pub mod hyper_transport;
 pub mod policy;
 pub mod transport;
+pub mod websocket;
+pub mod wire;
 
 use std::collections::VecDeque;
 use std::time::{Instant, SystemTime};
@@ -41,12 +45,16 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use ve_core::Stage;
 
+pub use broker::{FetchJob, NetworkBroker};
 pub use cache::{CacheLookup, HttpCache};
 pub use cookie::{BrowserCookie, Cookie, CookieJar, SameSite};
+pub use http3::{ProtocolSupport, advertises_http3};
 #[cfg(feature = "http")]
 pub use hyper_transport::HyperTransport;
 pub use policy::NetworkPolicy;
-pub use transport::{MockTransport, NullTransport, Transport};
+pub use transport::{FnTransport, MockTransport, NullTransport, Transport};
+pub use websocket::WebSocketClient;
+pub use wire::{WireRequest, WireResponse};
 
 /// Errors from the network layer.
 #[derive(Debug, thiserror::Error)]
@@ -327,6 +335,8 @@ pub struct NetworkContext {
     /// Maximum retained [`CompletedResponse`] records.
     pub completed_capacity: usize,
     transport: Box<dyn Transport>,
+    /// Protocols observed on this context (plan A23).
+    pub protocols: crate::http3::ProtocolSupport,
     in_flight: Vec<InFlight>,
     completed: VecDeque<CompletedResponse>,
     next_request_id: u64,
@@ -344,11 +354,12 @@ impl std::fmt::Debug for NetworkContext {
     }
 }
 
-/// Default `User-Agent`.
+/// Default `User-Agent`. Wikimedia and others refuse tokens without a
+/// contact URL, so the product token carries one (their UA policy).
 pub const DEFAULT_USER_AGENT: &str = concat!(
     "Mozilla/5.0 (compatible; VectorEngine/",
     env!("CARGO_PKG_VERSION"),
-    ")"
+    "; +https://github.com/vector-browser/vector)"
 );
 
 fn unix_millis(t: SystemTime) -> u64 {
@@ -369,6 +380,7 @@ impl NetworkContext {
             max_redirects: 20,
             completed_capacity: 256,
             transport,
+            protocols: crate::http3::ProtocolSupport::default(),
             in_flight: Vec::new(),
             completed: VecDeque::new(),
             next_request_id: 0,
@@ -451,94 +463,267 @@ impl NetworkContext {
     fn fetch_inner(&mut self, mut request: Request, now: SystemTime) -> Result<Response, NetError> {
         let mut redirects = 0u8;
         loop {
-            match request.url.scheme() {
-                "data" => return data_url(&request.url),
-                "about" => {
-                    let mut headers = HeaderMap::new();
-                    headers.insert(
-                        http::header::CONTENT_TYPE,
-                        HeaderValue::from_static("text/html;charset=utf-8"),
-                    );
-                    return Ok(Response::new(
-                        request.url.clone(),
-                        StatusCode::OK,
-                        headers,
-                        Bytes::new(),
-                    ));
-                }
-                "file" => {
-                    self.policy.check(&request.url)?;
-                    return file_url(&request.url);
-                }
-                "http" | "https" => {}
-                other => return Err(NetError::UnsupportedScheme(other.to_owned())),
+            let prepared = match self.prepare(request, now)? {
+                Prepared::Done(response) => return Ok(*response),
+                Prepared::Send(p) => *p,
+            };
+            let response = self.transport.send(&prepared.request)?;
+            if crate::http3::advertises_http3(&response.headers) {
+                self.protocols.http3 = true;
             }
-            self.policy.check(&request.url)?;
-
-            if request.method == Method::GET
-                && let CacheLookup::Fresh(mut cached) = self.cache.lookup(&request.cache_key(), now)
-            {
-                tracing::debug!(url = %request.url, "cache hit");
-                cached.from_cache = true;
-                return Ok(cached);
+            match prepared.request.url.scheme() {
+                "http" | "https" => self.protocols.http1 = true,
+                "ws" | "wss" => self.protocols.websocket = true,
+                _ => {}
             }
-
-            request
-                .headers
-                .entry(http::header::USER_AGENT)
-                .or_insert_with(|| HeaderValue::from_str(&self.user_agent).expect("valid ua"));
-            request
-                .headers
-                .entry(http::header::ACCEPT)
-                .or_insert(HeaderValue::from_static(
-                    "text/html,application/xhtml+xml,*/*;q=0.8",
-                ));
-            if let Some(cookie) = self.cookies.header_for(&request.url, now) {
-                if let Ok(v) = HeaderValue::from_str(&cookie) {
-                    request.headers.insert(http::header::COOKIE, v);
-                }
-            } else {
-                request.headers.remove(http::header::COOKIE);
+            match self.finish(prepared, response, now, &mut redirects)? {
+                Finished::Done(response) => return Ok(response),
+                Finished::Redirect(next) => request = next,
             }
-
-            let response = self.transport.send(&request)?;
-            for set_cookie in response.headers.get_all(http::header::SET_COOKIE) {
-                if let Ok(text) = set_cookie.to_str()
-                    && let Some(cookie) = Cookie::parse(text, &request.url, now)
-                {
-                    self.cookies.store(cookie);
-                }
-            }
-
-            if response.status.is_redirection()
-                && let Some(location) = response
-                    .headers
-                    .get(http::header::LOCATION)
-                    .and_then(|v| v.to_str().ok())
-                && let Ok(target) = request.url.join(location)
-            {
-                redirects += 1;
-                if redirects > self.max_redirects {
-                    return Err(NetError::TooManyRedirects(self.max_redirects));
-                }
-                tracing::debug!(from = %request.url, to = %target, status = %response.status, "redirect");
-                let keep_method = matches!(response.status.as_u16(), 307 | 308);
-                if !keep_method {
-                    request.method = Method::GET;
-                    request.body = None;
-                    request.headers.remove(http::header::CONTENT_TYPE);
-                    request.headers.remove(http::header::CONTENT_LENGTH);
-                }
-                request.url = target;
-                continue;
-            }
-
-            if request.method == Method::GET {
-                self.cache
-                    .store(request.cache_key(), &request.headers, &response, now);
-            }
-            return Ok(response);
         }
+    }
+
+    /// Fetches several requests in one batch: cache hits are answered
+    /// immediately, the misses go to the transport together
+    /// ([`Transport::send_many`]) and redirects are followed individually.
+    /// Results are in request order. Every request is logged as
+    /// in-flight/completed exactly like [`Self::fetch`], so `settle()` sees
+    /// the batch.
+    pub fn fetch_many(&mut self, requests: Vec<Request>) -> Vec<Result<Response, NetError>> {
+        self.fetch_many_at(requests, SystemTime::now())
+    }
+
+    /// Like [`Self::fetch_many`] with an explicit clock.
+    pub fn fetch_many_at(
+        &mut self,
+        requests: Vec<Request>,
+        now: SystemTime,
+    ) -> Vec<Result<Response, NetError>> {
+        let span = Stage::Fetch.span();
+        let _guard = span.enter();
+        let started = Instant::now();
+        let started_at = unix_millis(now);
+        let mut results: Vec<Option<Result<Response, NetError>>> =
+            (0..requests.len()).map(|_| None).collect();
+        let mut meta = Vec::with_capacity(requests.len());
+        let mut pending: Vec<(usize, PreparedRequest)> = Vec::new();
+        for (i, request) in requests.into_iter().enumerate() {
+            self.next_request_id += 1;
+            meta.push((
+                self.next_request_id,
+                request.page,
+                request.method.to_string(),
+            ));
+            self.in_flight.push(InFlight {
+                request_id: self.next_request_id,
+                page: request.page,
+                url: request.url.clone(),
+                initiator: request.initiator,
+                background: request.background,
+                issued_at: started,
+            });
+            match self.prepare(request, now) {
+                Ok(Prepared::Done(r)) => results[i] = Some(Ok(*r)),
+                Ok(Prepared::Send(p)) => pending.push((i, *p)),
+                Err(e) => results[i] = Some(Err(e)),
+            }
+        }
+        let wire: Vec<Request> = pending.iter().map(|(_, p)| p.request.clone()).collect();
+        let responses = self.transport.send_many(&wire);
+        for ((i, prepared), response) in pending.into_iter().zip(responses) {
+            let mut redirects = 0u8;
+            results[i] = Some(match response {
+                Err(e) => Err(e),
+                Ok(response) => match self.finish(prepared, response, now, &mut redirects) {
+                    Ok(Finished::Done(r)) => Ok(r),
+                    Ok(Finished::Redirect(next)) => self.fetch_inner(next, now),
+                    Err(e) => Err(e),
+                },
+            });
+        }
+        let ended_at = started_at + u64::try_from(started.elapsed().as_millis()).unwrap_or(0);
+        for ((request_id, page, method), result) in meta.into_iter().zip(results.iter()) {
+            self.in_flight.retain(|r| r.request_id != request_id);
+            let record = match result.as_ref().expect("every slot filled") {
+                Ok(response) => CompletedResponse {
+                    request_id,
+                    page,
+                    url: response.url.to_string(),
+                    method,
+                    status: response.status.as_u16(),
+                    content_type: response.content_type().map(str::to_owned),
+                    body_bytes: response.body.len(),
+                    started_at,
+                    ended_at,
+                    from_cache: response.from_cache,
+                },
+                Err(e) => CompletedResponse {
+                    request_id,
+                    page,
+                    url: e.to_string(),
+                    method,
+                    status: 0,
+                    content_type: None,
+                    body_bytes: 0,
+                    started_at,
+                    ended_at,
+                    from_cache: false,
+                },
+            };
+            if self.completed.len() >= self.completed_capacity.max(1) {
+                self.completed.pop_front();
+            }
+            self.completed.push_back(record);
+        }
+        results
+            .into_iter()
+            .map(|r| r.expect("every slot filled"))
+            .collect()
+    }
+
+    /// Everything before the wire: scheme dispatch, policy, cache lookup
+    /// (fresh hit answers here), conditional headers, UA/Accept/Cookie.
+    fn prepare(&mut self, mut request: Request, now: SystemTime) -> Result<Prepared, NetError> {
+        match request.url.scheme() {
+            "data" => return data_url(&request.url).map(|r| Prepared::Done(Box::new(r))),
+            "about" => {
+                let mut headers = HeaderMap::new();
+                headers.insert(
+                    http::header::CONTENT_TYPE,
+                    HeaderValue::from_static("text/html;charset=utf-8"),
+                );
+                return Ok(Prepared::Done(Box::new(Response::new(
+                    request.url.clone(),
+                    StatusCode::OK,
+                    headers,
+                    Bytes::new(),
+                ))));
+            }
+            "file" => {
+                self.policy.check(&request.url)?;
+                return file_url(&request.url).map(|r| Prepared::Done(Box::new(r)));
+            }
+            "http" | "https" => {}
+            other => return Err(NetError::UnsupportedScheme(other.to_owned())),
+        }
+        self.policy.check(&request.url)?;
+
+        // Cache: a fresh entry is served directly; a stale one with
+        // validators is revalidated conditionally and a 304 refreshes it
+        // (RFC 9111 §4.3) — one round trip with no body instead of a
+        // full transfer.
+        let mut stale: Option<Response> = None;
+        if request.method == Method::GET {
+            match self.cache.lookup(&request.cache_key(), now) {
+                CacheLookup::Fresh(mut cached) => {
+                    tracing::debug!(url = %request.url, "cache hit");
+                    cached.from_cache = true;
+                    return Ok(Prepared::Done(Box::new(cached)));
+                }
+                CacheLookup::Stale {
+                    response,
+                    etag,
+                    last_modified,
+                } if etag.is_some() || last_modified.is_some() => {
+                    if let Some(v) = etag.as_deref().and_then(|v| HeaderValue::from_str(v).ok()) {
+                        request.headers.insert(http::header::IF_NONE_MATCH, v);
+                    }
+                    if let Some(v) = last_modified
+                        .as_deref()
+                        .and_then(|v| HeaderValue::from_str(v).ok())
+                    {
+                        request.headers.insert(http::header::IF_MODIFIED_SINCE, v);
+                    }
+                    stale = Some(response);
+                }
+                CacheLookup::Stale { .. } | CacheLookup::Miss => {}
+            }
+        }
+
+        request
+            .headers
+            .entry(http::header::USER_AGENT)
+            .or_insert_with(|| HeaderValue::from_str(&self.user_agent).expect("valid ua"));
+        request
+            .headers
+            .entry(http::header::ACCEPT)
+            .or_insert(HeaderValue::from_static(
+                "text/html,application/xhtml+xml,*/*;q=0.8",
+            ));
+        if let Some(cookie) = self.cookies.header_for(&request.url, now) {
+            if let Ok(v) = HeaderValue::from_str(&cookie) {
+                request.headers.insert(http::header::COOKIE, v);
+            }
+        } else {
+            request.headers.remove(http::header::COOKIE);
+        }
+        Ok(Prepared::Send(Box::new(PreparedRequest { request, stale })))
+    }
+
+    /// Everything after the wire: 304 → cached body, Set-Cookie, redirect
+    /// decision, cache store.
+    fn finish(
+        &mut self,
+        prepared: PreparedRequest,
+        mut response: Response,
+        now: SystemTime,
+        redirects: &mut u8,
+    ) -> Result<Finished, NetError> {
+        let PreparedRequest {
+            mut request,
+            mut stale,
+        } = prepared;
+        if response.status == StatusCode::NOT_MODIFIED
+            && let Some(mut cached) = stale.take()
+        {
+            tracing::debug!(url = %request.url, "revalidated (304)");
+            // the 304 carries fresh metadata (Date, Cache-Control, ETag…)
+            for (name, value) in &response.headers {
+                cached.headers.insert(name.clone(), value.clone());
+            }
+            cached.from_cache = true;
+            self.cache
+                .store(request.cache_key(), &request.headers, &cached, now);
+            response = cached;
+        }
+        request.headers.remove(http::header::IF_NONE_MATCH);
+        request.headers.remove(http::header::IF_MODIFIED_SINCE);
+        for set_cookie in response.headers.get_all(http::header::SET_COOKIE) {
+            if let Ok(text) = set_cookie.to_str()
+                && let Some(cookie) = Cookie::parse(text, &request.url, now)
+            {
+                self.cookies.store(cookie);
+            }
+        }
+
+        if response.status.is_redirection()
+            && let Some(location) = response
+                .headers
+                .get(http::header::LOCATION)
+                .and_then(|v| v.to_str().ok())
+            && let Ok(target) = request.url.join(location)
+        {
+            *redirects += 1;
+            if *redirects > self.max_redirects {
+                return Err(NetError::TooManyRedirects(self.max_redirects));
+            }
+            tracing::debug!(from = %request.url, to = %target, status = %response.status, "redirect");
+            let keep_method = matches!(response.status.as_u16(), 307 | 308);
+            if !keep_method {
+                request.method = Method::GET;
+                request.body = None;
+                request.headers.remove(http::header::CONTENT_TYPE);
+                request.headers.remove(http::header::CONTENT_LENGTH);
+            }
+            request.url = target;
+            return Ok(Finished::Redirect(request));
+        }
+
+        if request.method == Method::GET && !response.from_cache {
+            self.cache
+                .store(request.cache_key(), &request.headers, &response, now);
+        }
+        Ok(Finished::Done(response))
     }
 
     /// The transport's name.
@@ -597,6 +782,66 @@ fn mime_for_path(path: &std::path::Path) -> &'static str {
 }
 
 /// Reads a `file:` URL from disk.
+/// A request that must go to the wire, with the stale cache entry it may
+/// revalidate.
+struct PreparedRequest {
+    request: Request,
+    stale: Option<Response>,
+}
+
+enum Prepared {
+    /// Answered without the network (`data:` / `about:` / `file:` / fresh cache).
+    Done(Box<Response>),
+    Send(Box<PreparedRequest>),
+}
+
+enum Finished {
+    Done(Response),
+    /// Follow this request next.
+    Redirect(Request),
+}
+
+/// Decodes a `Content-Encoding` body (`gzip`, `deflate`, `br`, possibly
+/// comma-chained) into identity bytes. Pure Rust; used by the transport and
+/// by anything replaying a stored encoded body.
+pub fn decode_body(encoding: &str, raw: &[u8]) -> Result<Bytes, NetError> {
+    use std::io::Read;
+    // codings are listed in application order; undo them last-first
+    let mut data: Vec<u8> = raw.to_vec();
+    for coding in encoding.split(',').map(str::trim).rev() {
+        let mut out = Vec::with_capacity(data.len() * 3);
+        match coding.to_ascii_lowercase().as_str() {
+            "" | "identity" => continue,
+            "gzip" | "x-gzip" => flate2::read::MultiGzDecoder::new(&data[..])
+                .read_to_end(&mut out)
+                .map_err(|e| NetError::Http(format!("gzip: {e}")))?,
+            "deflate" => {
+                // RFC 9110 deflate is zlib-wrapped, but raw deflate is common
+                if flate2::read::ZlibDecoder::new(&data[..])
+                    .read_to_end(&mut out)
+                    .is_err()
+                {
+                    out.clear();
+                    flate2::read::DeflateDecoder::new(&data[..])
+                        .read_to_end(&mut out)
+                        .map_err(|e| NetError::Http(format!("deflate: {e}")))?;
+                }
+                out.len()
+            }
+            "br" => brotli::Decompressor::new(&data[..], 8 * 1024)
+                .read_to_end(&mut out)
+                .map_err(|e| NetError::Http(format!("brotli: {e}")))?,
+            other => {
+                return Err(NetError::Http(format!(
+                    "unsupported content-encoding `{other}`"
+                )));
+            }
+        };
+        data = out;
+    }
+    Ok(Bytes::from(data))
+}
+
 fn file_url(url: &Url) -> Result<Response, NetError> {
     let path = url
         .to_file_path()
@@ -678,7 +923,7 @@ fn percent_decode(input: &str) -> Vec<u8> {
 }
 
 /// Standard (and URL-safe) base64 decoding with optional padding.
-fn base64_decode(input: &[u8]) -> Option<Vec<u8>> {
+pub fn base64_decode(input: &[u8]) -> Option<Vec<u8>> {
     fn val(c: u8) -> Option<u32> {
         Some(match c {
             b'A'..=b'Z' => u32::from(c - b'A'),
@@ -768,6 +1013,113 @@ mod tests {
             0,
             "failures logged with status 0"
         );
+    }
+
+    #[test]
+    fn stale_entries_are_revalidated_and_a_304_refreshes_them() {
+        let mock = MockTransport::new();
+        let log = mock.log();
+        let hits = std::rc::Rc::new(std::cell::Cell::new(0u32));
+        let h = hits.clone();
+        mock.respond_with("https://example.com/doc", move |req| {
+            h.set(h.get() + 1);
+            if req
+                .headers
+                .get("if-none-match")
+                .is_some_and(|v| v == "\"v1\"")
+            {
+                MockTransport::response(
+                    req,
+                    304,
+                    &[("ETag", "\"v1\""), ("Cache-Control", "max-age=60")],
+                    "",
+                )
+            } else {
+                MockTransport::response(
+                    req,
+                    200,
+                    &[
+                        ("ETag", "\"v1\""),
+                        ("Cache-Control", "max-age=10"),
+                        ("Content-Type", "text/html"),
+                    ],
+                    "<p>v1</p>",
+                )
+            }
+        });
+        let mut ctx = NetworkContext::new(ContextId(1), Box::new(mock));
+        let t0 = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let first = ctx
+            .fetch_at(Request::get("https://example.com/doc").unwrap(), t0)
+            .unwrap();
+        assert_eq!(first.text(), "<p>v1</p>");
+        assert!(!first.from_cache);
+        // still fresh: served from cache, origin not contacted
+        let hit = ctx
+            .fetch_at(
+                Request::get("https://example.com/doc").unwrap(),
+                t0 + Duration::from_secs(5),
+            )
+            .unwrap();
+        assert!(hit.from_cache);
+        assert_eq!(hits.get(), 1);
+        // stale: conditional request, 304, body comes from the cache
+        let reval = ctx
+            .fetch_at(
+                Request::get("https://example.com/doc").unwrap(),
+                t0 + Duration::from_secs(20),
+            )
+            .unwrap();
+        assert_eq!(hits.get(), 2);
+        assert_eq!(reval.status, 200, "the caller never sees the 304");
+        assert_eq!(reval.text(), "<p>v1</p>");
+        assert!(reval.from_cache);
+        assert_eq!(
+            log.borrow()
+                .last()
+                .unwrap()
+                .headers
+                .get("if-none-match")
+                .unwrap(),
+            "\"v1\""
+        );
+        // the 304's Cache-Control (max-age=60) extended the freshness
+        let again = ctx
+            .fetch_at(
+                Request::get("https://example.com/doc").unwrap(),
+                t0 + Duration::from_secs(60),
+            )
+            .unwrap();
+        assert!(again.from_cache);
+        assert_eq!(
+            hits.get(),
+            2,
+            "no round trip while the refreshed entry is fresh"
+        );
+    }
+
+    #[test]
+    fn content_encodings_decode_to_identity() {
+        use std::io::Write;
+        let text = "<html>".repeat(500);
+        let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        gz.write_all(text.as_bytes()).unwrap();
+        let gz = gz.finish().unwrap();
+        assert_eq!(decode_body("gzip", &gz).unwrap(), text.as_bytes());
+        let mut zl = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::fast());
+        zl.write_all(text.as_bytes()).unwrap();
+        assert_eq!(
+            decode_body("deflate", &zl.finish().unwrap()).unwrap(),
+            text.as_bytes()
+        );
+        let mut br = Vec::new();
+        {
+            let mut w = brotli::CompressorWriter::new(&mut br, 4096, 5, 22);
+            w.write_all(text.as_bytes()).unwrap();
+        }
+        assert_eq!(decode_body("br", &br).unwrap(), text.as_bytes());
+        assert_eq!(decode_body("identity", b"x").unwrap(), &b"x"[..]);
+        assert!(decode_body("zstd", b"x").is_err());
     }
 
     #[test]

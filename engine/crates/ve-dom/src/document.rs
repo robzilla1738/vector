@@ -65,11 +65,17 @@ impl Document {
 
     fn alloc(&mut self, kind: NodeKind) -> NodeId {
         self.live += 1;
-        // Slot indices are never recycled within a document (architecture §3):
-        // the agent ref `r<index>` must keep failing with `target_detached`
-        // after the node is destroyed instead of silently pointing at a new
-        // element. Freed slots are kept on `free` only for accounting; they are
-        // reused when the whole document is torn down (i.e. never here).
+        // Recycle a freed slot (plan A17). Destroy already bumped
+        // `generation`, so a stale `r<index>` that still carries the old
+        // generation fails `slot()` instead of resolving to the new node.
+        if let Some(index) = self.free.pop() {
+            let slot = &mut self.slots[index as usize];
+            let generation = slot.generation;
+            slot.node = Some(Node::new(kind));
+            let id = NodeId::new(index, generation);
+            self.journal.record(Mutation::NodeCreated { node: id });
+            return id;
+        }
         let index = u32::try_from(self.slots.len()).expect("arena exceeds u32::MAX nodes");
         self.slots.push(Slot {
             generation: 0,
@@ -467,6 +473,7 @@ impl Document {
             if let NodeKind::Element(e) = &node.kind {
                 stack.extend(e.shadow_root);
                 stack.extend(e.template_contents);
+                stack.extend(e.content_document);
             }
             let slot = &mut self.slots[cur.index() as usize];
             slot.node = None;
@@ -476,6 +483,57 @@ impl Document {
             self.journal.record(Mutation::NodeDestroyed { node: cur });
         }
         Ok(())
+    }
+
+    /// Destroys every child of `parent`.
+    pub fn clear_children(&mut self, parent: NodeId) -> Result<()> {
+        let kids: Vec<NodeId> = self.children(parent).collect();
+        for kid in kids {
+            self.destroy(kid)?;
+        }
+        Ok(())
+    }
+
+    /// Clones `id`. When `deep`, clones the light-tree descendants too.
+    /// Shadow roots are not cloned.
+    pub fn clone_node(&mut self, id: NodeId, deep: bool) -> Result<NodeId> {
+        let kind = match &self.try_get(id)?.kind {
+            NodeKind::Element(e) => {
+                let mut data = e.clone();
+                data.shadow_root = None;
+                data.template_contents = None;
+                data.content_document = None;
+                NodeKind::Element(data)
+            }
+            NodeKind::Text(t) => NodeKind::Text(t.clone()),
+            NodeKind::Comment(t) => NodeKind::Comment(t.clone()),
+            NodeKind::DocumentFragment => NodeKind::DocumentFragment,
+            NodeKind::ProcessingInstruction { target, data } => NodeKind::ProcessingInstruction {
+                target: target.clone(),
+                data: data.clone(),
+            },
+            NodeKind::Doctype {
+                name,
+                public_id,
+                system_id,
+            } => NodeKind::Doctype {
+                name: name.clone(),
+                public_id: public_id.clone(),
+                system_id: system_id.clone(),
+            },
+            NodeKind::Document | NodeKind::ShadowRoot { .. } => {
+                return Err(Error::InvalidState("cannot clone this node".into()));
+            }
+        };
+        let clone = self.alloc(kind);
+        if deep {
+            let kids: Vec<NodeId> = self.children(id).collect();
+            for kid in kids {
+                let child = self.clone_node(kid, true)?;
+                self.append_child(clone, child)?;
+            }
+        }
+        Ok(clone)
     }
 
     /// Moves every child of `from` to the end of `to`, preserving order.
@@ -615,6 +673,16 @@ impl Document {
         Ok(old)
     }
 
+    /// Records the fetched intrinsic size of a replaced element (an image's
+    /// natural dimensions). Marks layout dirty; no journal record, because
+    /// this is not a DOM mutation a script could observe as one.
+    pub fn set_natural_size(&mut self, id: NodeId, width: u32, height: u32) -> Result<()> {
+        let element = self.try_element_mut(id)?;
+        element.natural_size = Some((width, height));
+        self.mark_dirty(id, DirtyFlags::ALL);
+        Ok(())
+    }
+
     /// Adds attributes that are not already present (parser semantics for a
     /// duplicate `<html>`/`<body>` start tag).
     pub fn add_attributes_if_missing(&mut self, id: NodeId, attrs: Vec<Attribute>) -> Result<()> {
@@ -666,6 +734,19 @@ impl Document {
     #[must_use]
     pub fn template_contents(&self, template: NodeId) -> Option<NodeId> {
         self.element(template).and_then(|e| e.template_contents)
+    }
+
+    /// Associates a nested document fragment with an `<iframe>` / `<frame>`.
+    pub fn set_content_document(&mut self, frame: NodeId, fragment: NodeId) -> Result<()> {
+        self.try_get(fragment)?;
+        self.try_element_mut(frame)?.content_document = Some(fragment);
+        Ok(())
+    }
+
+    /// The nested document fragment of an `<iframe>` / `<frame>`.
+    #[must_use]
+    pub fn content_document(&self, frame: NodeId) -> Option<NodeId> {
+        self.element(frame).and_then(|e| e.content_document)
     }
 
     /// The root element (`<html>` for HTML documents).
@@ -1023,7 +1104,7 @@ mod tests {
     }
 
     #[test]
-    fn destroy_invalidates_ids_and_never_recycles_slots() {
+    fn destroy_invalidates_ids_and_recycles_slots() {
         let mut doc = Document::new();
         let root = doc.root();
         let div = html(&mut doc, "div");
@@ -1031,6 +1112,8 @@ mod tests {
         doc.append_child(root, div).unwrap();
         doc.append_child(div, span).unwrap();
         let before = doc.node_count();
+        let span_index = span.index();
+        let span_gen = span.generation();
         doc.destroy(div).unwrap();
         assert_eq!(doc.node_count(), before - 2);
         assert!(!doc.contains(div));
@@ -1038,20 +1121,12 @@ mod tests {
         assert!(matches!(doc.try_get(span), Err(Error::InvalidNodeId(_))));
 
         let fresh = html(&mut doc, "em");
-        assert_ne!(
-            fresh.index(),
-            span.index(),
-            "slot indices are never recycled"
-        );
+        assert_eq!(fresh.index(), span_index, "free list reused the slot");
+        assert_ne!(fresh.generation(), span_gen, "generation bumped");
         assert!(doc.contains(fresh));
-        assert_eq!(
-            doc.node_at_index(span.index()),
-            Ok(None),
-            "destroyed slot is a tombstone"
-        );
+        assert!(doc.get(span).is_none());
         assert_eq!(doc.node_at_index(fresh.index()), Ok(Some(fresh)));
         assert_eq!(doc.node_at_index(9_999), Err(()), "never allocated");
-        assert_eq!(doc.slot_count(), before + 1);
     }
 
     #[test]
@@ -1116,5 +1191,21 @@ mod tests {
         assert!(!doc.is_checked(input));
         doc.set_checked(input, true).unwrap();
         assert!(doc.is_checked(input));
+    }
+
+    #[test]
+    fn destroyed_slots_are_recycled_with_a_new_generation() {
+        let mut doc = Document::new();
+        let a = html(&mut doc, "div");
+        let index = a.index();
+        let gen0 = a.generation();
+        doc.append_child(doc.root(), a).unwrap();
+        doc.destroy(a).unwrap();
+        assert!(doc.get(a).is_none());
+        let b = html(&mut doc, "span");
+        assert_eq!(b.index(), index, "free list reused the slot");
+        assert_ne!(b.generation(), gen0, "generation bumped so stale ids miss");
+        assert!(doc.get(a).is_none());
+        assert!(doc.get(b).is_some());
     }
 }

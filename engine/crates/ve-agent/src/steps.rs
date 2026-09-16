@@ -109,7 +109,7 @@ pub enum Condition {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         timeout_ms: Option<u64>,
     },
-    /// Page JavaScript (needs `ve-script`; `capability_unsupported` in M1).
+    /// Page JavaScript (`evaluate` / `waitFor expression` when a VM is attached).
     Expression {
         /// JS expression.
         expression: String,
@@ -484,7 +484,7 @@ pub enum Step {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         prompt_text: Option<String>,
     },
-    /// Evaluate JS (`capability_unsupported` in M1).
+    /// Evaluate JS (supported when the page was opened with a VM).
     Evaluate {
         /// Base fields.
         #[serde(flatten)]

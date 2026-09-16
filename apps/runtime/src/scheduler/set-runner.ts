@@ -42,6 +42,15 @@ export interface SetRunnerDeps {
   nativeAvailable?: () => boolean;
 }
 
+/** A replayable program and where it applies (`*` = every member). */
+interface Learned {
+  siteKey: string;
+  steps?: Step[];
+  nodes?: Program["nodes"];
+  /** authored by the API caller or saved by a user — model-learned programs never get eval rights */
+  trusted: boolean;
+}
+
 const siteKeyOf = (url: string) => {
   try {
     const u = new URL(url);
@@ -105,7 +114,10 @@ export class SetRunner {
     // `trusted` marks programs authored by the API caller or saved by a user;
     // programs learned from a member agent's plan mid-map are model output
     // and never get eval rights.
-    let learned: { siteKey: string; steps?: Step[]; nodes?: Program["nodes"]; trusted: boolean } | undefined;
+    let learned: Learned | undefined;
+    // programs learned by pilot members, keyed by site (plan A9)
+    const learnedBySite = new Map<string, Learned>();
+    const learnedFor = (url: string): Learned | undefined => learned ?? learnedBySite.get(siteKeyOf(url));
     if (opts.programId) {
       const p = this.deps.getProgram(opts.programId);
       if (p) learned = { siteKey: p.siteKey, ...parseSaved(p.stepsJson), trusted: true };
@@ -153,7 +165,7 @@ export class SetRunner {
         }
         m.status = "running";
         this.deps.sets.updateMember(m);
-        const outcome = await this.processMember(m, url!, opts, learned, (id) => (workerPageId = id));
+        const outcome = await this.processMember(m, url!, opts, learnedFor(url!), (id) => (workerPageId = id));
         if (opts.signal.aborted) {
           this.skip(m, opts.runId);
           return;
@@ -169,13 +181,14 @@ export class SetRunner {
 
         // M5 speed path: a successful agent member becomes a replayable
         // program for same-site siblings — no more model calls for them.
-        if (!learned && opts.goal && result.status === "ok" && outcome.executedSteps?.length) {
+        const site = siteKeyOf(result.sourceUrl);
+        if (!learned && !learnedBySite.has(site) && opts.goal && result.status === "ok" && outcome.executedSteps?.length) {
           const portable = this.deps.translateSteps(workerPageId ?? m.pageId ?? "", outcome.executedSteps);
           if (portable.length) {
-            learned = { siteKey: siteKeyOf(result.sourceUrl), steps: portable, trusted: false };
+            learnedBySite.set(site, { siteKey: site, steps: portable, trusted: false });
             this.deps.saveProgram({
               name: `learned:${opts.setId}:${opts.goal.slice(0, 40)}`,
-              siteKey: learned.siteKey,
+              siteKey: site,
               steps: portable,
               parameters: [],
             });
@@ -195,7 +208,39 @@ export class SetRunner {
       }
     });
 
-    await Promise.all(jobs.map((j) => j()));
+    // Pilot-then-fan-out (plan A9): with a goal and no program yet, every
+    // member of the first wave would otherwise run the model. Run one member
+    // per site first; if it yields a replayable program, its siblings replay
+    // it with zero model calls (agent only on divergence). Members whose
+    // site has no pilot result still run as agents, as before.
+    if (opts.goal && !learned && target.length > 1) {
+      const bySite = new Map<string, number[]>();
+      target.forEach((m, i) => {
+        const key = siteKeyOf(m.url ?? this.deps.pages.get(m.pageId ?? "")?.url ?? "");
+        const list = bySite.get(key) ?? [];
+        list.push(i);
+        bySite.set(key, list);
+      });
+      const pilots: number[] = [];
+      const rest: number[] = [];
+      for (const idx of bySite.values()) {
+        pilots.push(idx[0]!);
+        rest.push(...idx.slice(1));
+      }
+      this.deps.events.emit(
+        EventTypes.SetUpdated,
+        { setId: opts.setId, pilot: pilots.map((i) => target[i]!.memberId), sites: bySite.size },
+        opts.runId,
+      );
+      await Promise.all(pilots.map((i) => jobs[i]!()));
+      if (opts.signal.aborted) {
+        for (const i of rest) this.skip(target[i]!, opts.runId);
+      } else {
+        await Promise.all(rest.map((i) => jobs[i]!()));
+      }
+    } else {
+      await Promise.all(jobs.map((j) => j()));
+    }
     this.deps.events.emit(EventTypes.SetUpdated, { setId: opts.setId, done: true }, opts.runId);
   }
 
@@ -203,7 +248,7 @@ export class SetRunner {
     m: SetMember,
     url: string,
     opts: { goal?: string; runId: string; signal: AbortSignal },
-    learned: { siteKey: string; steps?: Step[]; nodes?: Program["nodes"]; trusted: boolean } | undefined,
+    learned: Learned | undefined,
     setWorker: (id: string) => void,
   ): Promise<{ result: ResultRecord; executedSteps?: Step[] }> {
     // existing human-owned page: use it directly

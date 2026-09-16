@@ -3,26 +3,43 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
-## Shell + planner defaults (main)
+## Engine M2 / A14–A23 (PR #7)
 
-**Desktop** (`apps/desktop/renderer`, `docs/ui/shell.md`)
+V8 DOM bindings, engine-as-default, isolation. Details in
+`docs/engine/architecture.md` §0.
 
-- Arc-style sidebar: spaces, five pin tiles, 📁 tab folders (indent, group
-  hover, animated open/close), unfiled tabs under New Tab.
-- Command bar lives in the sidebar when expanded; the top toolbar shows only
-  when the sidebar is hidden. Start page has search/chat plus weather.
-- Inter Variable + Lucide; charcoal surfaces (dark chrome `#1f1f1f`); no
-  purple agent tint. Favicons try the page icon, then DuckDuckGo, then
-  Google s2, then a letter.
-
-**Runtime** (`apps/runtime`)
-
-- Planner default `alibaba/qwen3.8-27b` via Vercel AI Gateway, provider pin
-  Cerebras (`VECTOR_GATEWAY_ONLY`, default `cerebras`).
-- Vision fallback runs only when `visionModel` / `VECTOR_VISION_MODEL` is set
-  (Cerebras cannot take image parts).
-- Agent loop still observe → compact refs → typed program; MCP/CLI share the
-  same runtime.
+- **A14.** WebIDL-generated DOM/Web API bindings (`engine/crates/ve-script/idl`,
+  `ve-agent` prelude): `window`/`document`, Node/Element/HTMLElement, events,
+  `querySelector*`, `innerHTML`, `getComputedStyle`/`getBoundingClientRect`,
+  timers, `fetch`/XHR, `history`/`location`, storage, observers,
+  `customElements`, `attachShadow`, `FormData`, `URL`, `console`.
+  `scripting_enabled` in `ve-html`. 22 SPA fixtures settle with goldens
+  (`cargo test -p ve-api --features v8 --test spa`); interaction-lab runs
+  on the engine. rustfmt + clippy `-D warnings` in CI.
+- **A15.** `Page::update` uses `restyle_incremental` / `relayout_incremental`.
+  `CssCoverage` into `RoutingInfo` (requires-script only at 50% miss +
+  geometry). `evaluate`, `dialog`, `waitFor expression`, `javascript:` URLs.
+- **A16.** Same-origin/`srcdoc` iframes; cross-origin iframes load as a
+  separate document (`contentDocument` is null). Downloads write to a
+  caller directory. `dragTo` dispatches HTML5 drag events when scripting.
+- **A17.** napi ABI 4: `observeBuf` / `executeBuf` / `screenshotPng`.
+  Generation-checked `r<index>` refs; arena slot recycling.
+- **A18.** Corpus FP 0 / FN 0 (`engine/conformance/corpus-results.json`).
+  SPA hit rate 100% (`spa-results.json`). `engineMode` default `auto`.
+  Chromium integration tests pin `VECTOR_ENGINE_MODE=off`.
+- **A19.** `pages.capture` paints a software PNG with system fonts;
+  `pages.activate` marks engine pages active (headless, no Chromium view).
+- **A20.** README benchmark tables vs Chromium, agent-browser, Lightpanda
+  and local task-success (`pnpm bench` / `pnpm bench:tasks`).
+- **A21.** `ve-host` child process, parent `NetworkBroker`, macOS
+  `sandbox_init` / Linux seccomp deny-socket.
+- **A22.** CDP bound to `127.0.0.1`, `DevToolsActivePort` and
+  `devtools-port` mode `0600`. Agent workers use `persist:vector-agent`.
+  Gateway key in `gateway.key` mode `0600` and Electron `safeStorage`.
+  Events older than 7 days are pruned (`idx_events_ts`).
+- **A23.** `Alt-Svc: h3=` recorded (hyper still speaks HTTP/1.1 and HTTP/2).
+  RFC 6455 WebSocket including `wss`. Service Worker `register`; scripts
+  whose body starts with `respond:` intercept matching `fetch`.
 
 ## M1 — Vector Engine agent path (PRs #3–#6, merged into `m1/integrate`)
 

@@ -1,8 +1,10 @@
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { EngineMode } from "@vector/contracts";
 import { FALLBACK_MODELS, DEFAULT_PLANNER_MODEL, type ModelClient } from "../agent/model-client.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
 import type { Repo } from "../store/repo.js";
+import type { NativeBridge } from "../native.js";
 
 export interface Settings {
   gatewayApiKey?: string;
@@ -17,10 +19,10 @@ export interface Settings {
   zoomFactor?: number;
   dataDir?: string;
   /**
-   * Vector Engine routing (architecture §11): "off" — Chromium only, the
-   * default so nothing changes for existing users; "auto" — the router
-   * tries the engine first and falls back; "always" — engine only
-   * (benchmarks/tests). Env override: VECTOR_ENGINE_MODE.
+   * Vector Engine routing (architecture §11): "off" — Chromium only;
+   * "auto" — the router tries the engine first and falls back (the default
+   * after A18); "always" — engine only (benchmarks/tests). Env override:
+   * VECTOR_ENGINE_MODE.
    */
   engineMode?: EngineMode;
 }
@@ -32,6 +34,7 @@ export class SettingsService {
   modelOverride: ModelClient | null = null;
   private gatewayClient: ModelClient | null = null;
   private fileSettings: Settings = {};
+  private native: NativeBridge | null = null;
 
   constructor(
     private repo: Repo,
@@ -45,6 +48,10 @@ export class SettingsService {
         this.fileSettings = {};
       }
     }
+  }
+
+  attachNative(native: NativeBridge): void {
+    this.native = native;
   }
 
   get(key: keyof Settings): unknown {
@@ -68,15 +75,19 @@ export class SettingsService {
     };
   }
 
-  /** Setting wins over the env override; anything unrecognised is "off". */
+  /** Setting wins over the env override; anything unrecognised is "auto". */
   engineMode(): EngineMode {
     const v = (this.get("engineMode") as string | undefined) ?? this.env.VECTOR_ENGINE_MODE;
-    return ENGINE_MODES.includes(v as EngineMode) ? (v as EngineMode) : "off";
+    return ENGINE_MODES.includes(v as EngineMode) ? (v as EngineMode) : "auto";
   }
 
   set(patch: Settings): { ok: true } {
     for (const [k, v] of Object.entries(patch)) {
       if (v === undefined) continue;
+      if (k === "gatewayApiKey") {
+        this.writeGatewayKey(typeof v === "string" ? v : "");
+        continue;
+      }
       this.repo.setSetting(k, v);
     }
     // persist non-secret prefs to settings.json for transparency
@@ -94,6 +105,8 @@ export class SettingsService {
   }
 
   gatewayKey(): string | undefined {
+    const fromFile = this.readGatewayKey();
+    if (fromFile) return fromFile;
     return (this.get("gatewayApiKey") as string) ?? this.env.AI_GATEWAY_API_KEY;
   }
 
@@ -177,6 +190,42 @@ export class SettingsService {
       return { ok, modelId: target, latencyMs: res.durationMs, vision };
     } catch (e) {
       return { ok: false, modelId: target, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  private gatewayKeyPath(): string {
+    return join(dirname(this.settingsPath), "gateway.key");
+  }
+
+  private readGatewayKey(): string | undefined {
+    const path = this.gatewayKeyPath();
+    if (!existsSync(path)) return undefined;
+    try {
+      const v = readFileSync(path, "utf8").trim();
+      return v || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private writeGatewayKey(key: string): void {
+    const path = this.gatewayKeyPath();
+    if (!key) {
+      try {
+        unlinkSync(path);
+      } catch {
+        /* absent */
+      }
+      return;
+    }
+    writeFileSync(path, key, { mode: 0o600 });
+    try {
+      chmodSync(path, 0o600);
+    } catch {
+      /* non-POSIX fs */
+    }
+    if (this.native?.available()) {
+      void this.native.storeSecret("gatewayApiKey", key).catch(() => {});
     }
   }
 }

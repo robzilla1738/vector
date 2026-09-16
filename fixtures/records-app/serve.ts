@@ -33,25 +33,31 @@ const state = {
   faults: { delayMs: 0, renameEditButton: false, timeoutAfterSave: false, removeRecord: "" },
 };
 
-// deterministic seed — same data on every launch
-for (let i = 1; i <= 30; i++) {
-  const id = `rec-${String(i).padStart(2, "0")}`;
-  const status = STATUSES[i % STATUSES.length]!;
-  const attachments: Attachment[] = [];
-  if (i % 3 === 0)
-    attachments.push({ name: `${id}-notes.txt`, content: `Notes for ${id}\nGenerated deterministically.\n` });
-  if (i % 5 === 0)
-    attachments.push({ name: `${id}-data.csv`, content: `id,metric\n${id},${(i * 37) % 100}\n` });
-  state.records.set(id, {
-    id,
-    title: `Record ${String(i).padStart(2, "0")} — ${["Alpha", "Bravo", "Charlie", "Delta", "Echo"][i % 5]} project`,
-    owner: OWNERS[i % OWNERS.length]!,
-    status,
-    summary: `Deterministic fixture record #${i}. Owned by ${OWNERS[i % OWNERS.length]}; status "${status}".`,
-    updatedAt: `2026-09-${String((i % 28) + 1).padStart(2, "0")}T10:00:00Z`,
-    attachments,
-  });
+// deterministic seed — same data on every launch (and on POST /api/reset)
+function seed() {
+  state.records.clear();
+  state.edits.length = 0;
+  state.downloads.length = 0;
+  for (let i = 1; i <= 30; i++) {
+    const id = `rec-${String(i).padStart(2, "0")}`;
+    const status = STATUSES[i % STATUSES.length]!;
+    const attachments: Attachment[] = [];
+    if (i % 3 === 0)
+      attachments.push({ name: `${id}-notes.txt`, content: `Notes for ${id}\nGenerated deterministically.\n` });
+    if (i % 5 === 0)
+      attachments.push({ name: `${id}-data.csv`, content: `id,metric\n${id},${(i * 37) % 100}\n` });
+    state.records.set(id, {
+      id,
+      title: `Record ${String(i).padStart(2, "0")} — ${["Alpha", "Bravo", "Charlie", "Delta", "Echo"][i % 5]} project`,
+      owner: OWNERS[i % OWNERS.length]!,
+      status,
+      summary: `Deterministic fixture record #${i}. Owned by ${OWNERS[i % OWNERS.length]}; status "${status}".`,
+      updatedAt: `2026-09-${String((i % 28) + 1).padStart(2, "0")}T10:00:00Z`,
+      attachments,
+    });
+  }
 }
+seed();
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const pill = (s: string) => `<span class="pill ${s.replace(" ", "")}">${esc(s)}</span>`;
@@ -251,6 +257,7 @@ async function handle(req: any, res: any, url: URL, body: Buffer) {
   }
   if (path === "/api/reset" && req.method === "POST") {
     state.faults = { delayMs: 0, renameEditButton: false, timeoutAfterSave: false, removeRecord: "" };
+    seed();
     return json(res, { ok: true });
   }
   return notFound(res);

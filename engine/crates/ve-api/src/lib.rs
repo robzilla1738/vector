@@ -77,6 +77,10 @@ pub struct EngineConfig {
     /// Policy for the default context and for contexts created without one
     /// (`block_loopback` on, no allowlist, `file:` off).
     pub policy: NetworkPolicy,
+    /// Attach a JavaScript VM to every page and run document scripts (plan
+    /// A13). Needs the `v8` (or `quickjs`) feature to do anything; with
+    /// neither the pages get the `NullVm` and scripts do not run.
+    pub scripting: bool,
 }
 
 impl Default for EngineConfig {
@@ -88,6 +92,7 @@ impl Default for EngineConfig {
             offline: false,
             max_pages: 64,
             policy: NetworkPolicy::default(),
+            scripting: false,
         }
     }
 }
@@ -110,6 +115,10 @@ pub struct OpenRequest {
     /// Viewport override.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub viewport: Option<Size>,
+    /// Allow `evaluate` steps on this page (capability gating, §10). Only
+    /// meaningful when the engine runs with `scripting`.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub allow_evaluate: bool,
 }
 
 impl OpenRequest {
@@ -213,6 +222,66 @@ impl Loader for NetLoader {
         })
     }
 
+    /// One concurrent batch through `NetworkContext::fetch_many`
+    /// (`Initiator::Parser`, kind-specific `Accept`), so a page's stylesheets,
+    /// images and scripts share the transport's pooled connections.
+    fn fetch_subresources(
+        &mut self,
+        requests: &[ve_agent::SubresourceRequest],
+    ) -> Vec<Result<ve_agent::LoadedResource>> {
+        let mut wire = Vec::with_capacity(requests.len());
+        let mut failed: Vec<(usize, Error)> = Vec::new();
+        for (i, r) in requests.iter().enumerate() {
+            match Request::get(&r.url) {
+                Ok(req) => {
+                    let accept = match r.kind {
+                        ve_agent::SubresourceKind::Stylesheet => "text/css,*/*;q=0.1",
+                        ve_agent::SubresourceKind::Image => {
+                            "image/avif,image/webp,image/apng,image/*,*/*;q=0.8"
+                        }
+                        ve_agent::SubresourceKind::Script => "*/*",
+                        ve_agent::SubresourceKind::Font => "font/woff2,font/woff,*/*;q=0.1",
+                        ve_agent::SubresourceKind::Document => "text/html,*/*;q=0.1",
+                    };
+                    let mut req = req
+                        .for_page(r.page)
+                        .with_initiator(Initiator::Parser)
+                        .header("accept", accept);
+                    if let Some(referrer) = r.referrer.as_deref().filter(|u| u.starts_with("http"))
+                    {
+                        req = req.header("referer", referrer);
+                    }
+                    wire.push((i, req));
+                }
+                Err(e) => failed.push((i, e.into())),
+            }
+        }
+        let responses = self
+            .net
+            .borrow_mut()
+            .fetch_many(wire.iter().map(|(_, r)| r.clone()).collect());
+        let mut out: Vec<Option<Result<ve_agent::LoadedResource>>> =
+            (0..requests.len()).map(|_| None).collect();
+        for ((i, _), response) in wire.into_iter().zip(responses) {
+            out[i] = Some(
+                response
+                    .map_err(Error::from)
+                    .map(|response| ve_agent::LoadedResource {
+                        url: response.url.to_string(),
+                        bytes: response.body.to_vec(),
+                        content_type: response.content_type().map(str::to_owned),
+                        status: response.status.as_u16(),
+                    }),
+            );
+        }
+        for (i, e) in failed {
+            out[i] = Some(Err(e));
+        }
+        out.into_iter()
+            .map(|r| r.unwrap_or_else(|| Err(Error::internal("subresource result missing"))))
+            .collect()
+    }
+
     fn in_flight(&self, page: u64) -> Vec<InFlightSummary> {
         self.net
             .borrow()
@@ -248,6 +317,8 @@ pub struct VectorEngine {
     pages: HashMap<PageId, PageEntry>,
     next_context: u64,
     next_page: u64,
+    /// Shared wire owner (plan A21): contexts never hold a socket.
+    broker: ve_net::NetworkBroker,
 }
 
 impl std::fmt::Debug for VectorEngine {
@@ -292,12 +363,22 @@ impl VectorEngine {
     /// Creates an engine with one default context.
     #[must_use]
     pub fn new(config: EngineConfig) -> Self {
+        let transport = make_transport(&config);
+        Self::with_transport(config, transport)
+    }
+
+    /// Creates an engine whose contexts share `transport` (plan A21: the
+    /// parent broker, or an IPC callback in a context process).
+    #[must_use]
+    pub fn with_transport(config: EngineConfig, transport: Box<dyn ve_net::Transport>) -> Self {
+        let broker = ve_net::NetworkBroker::new(transport);
         let mut engine = Self {
             config,
             contexts: HashMap::new(),
             pages: HashMap::new(),
             next_context: 0,
             next_page: 0,
+            broker,
         };
         engine.new_context(None);
         engine
@@ -318,7 +399,7 @@ impl VectorEngine {
     // ---- contexts -----------------------------------------------------------
 
     fn build_context(&self, id: ContextId, policy: Option<NetworkPolicy>) -> NetworkContext {
-        let mut net = NetworkContext::new(id, make_transport(&self.config))
+        let mut net = NetworkContext::new(id, Box::new(self.broker.clone()))
             .with_policy(policy.unwrap_or_else(|| self.config.policy.clone()));
         self.config.user_agent.clone_into(&mut net.user_agent);
         net
@@ -412,11 +493,17 @@ impl VectorEngine {
         let viewport = request.viewport.unwrap_or(self.config.viewport);
         let id = self.next_page + 1;
         let loader: Box<dyn Loader> = Box::new(NetLoader { net });
+        let scripting = self
+            .config
+            .scripting
+            .then(|| (ve_script::default_vm(), request.allow_evaluate))
+            .filter(|(vm, _)| vm.name() != "null");
         let mut page = match (&request.html, &request.url) {
             (Some(html), url) => {
-                Page::from_html(id, html, url.as_deref(), viewport).with_loader(loader)
+                Page::from_html_with(id, html, url.as_deref(), viewport, scripting)?
+                    .with_loader(loader)
             }
-            (None, Some(url)) => Page::open(id, loader, url, viewport)?,
+            (None, Some(url)) => Page::open_with(id, loader, url, viewport, scripting)?,
             (None, None) => {
                 return Err(Error::invalid_params("open needs `url` or `html`"));
             }

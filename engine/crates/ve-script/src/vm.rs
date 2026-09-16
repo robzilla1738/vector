@@ -92,6 +92,11 @@ impl From<JsValue> for serde_json::Value {
         match v {
             JsValue::Undefined | JsValue::Null => Self::Null,
             JsValue::Bool(b) => Self::Bool(b),
+            // integral values serialise as integers (`5`, not `5.0`) so
+            // extracted data reads naturally; NaN/∞ have no JSON form → null
+            JsValue::Number(n) if n.fract() == 0.0 && n.abs() < 9.007_199_254_740_992e15 => {
+                Self::Number(serde_json::Number::from(n as i64))
+            }
             JsValue::Number(n) => serde_json::Number::from_f64(n).map_or(Self::Null, Self::Number),
             JsValue::String(s) => Self::String(s),
             JsValue::Array(a) => Self::Array(a.into_iter().map(Self::from).collect()),
@@ -148,13 +153,36 @@ impl From<ScriptError> for ve_core::Error {
     }
 }
 
+/// The embedder's side of a host call. While a script runs, the VM hands
+/// every `globalThis.<namespace>.<name>(...)` invocation to
+/// [`HostApi::call`] with the function's index in the registration order.
+/// The page implements this over its DOM; the VM never sees the DOM.
+pub trait HostApi {
+    /// Perform host function `index` with JSON-shaped `args`. An `Err`
+    /// becomes a thrown `Error` in the script.
+    fn call(&mut self, index: usize, args: &[JsValue]) -> Result<JsValue, ScriptError>;
+}
+
+/// A host that answers nothing (scripts see the host functions but every
+/// call throws).
+pub struct NoHost;
+
+impl HostApi for NoHost {
+    fn call(&mut self, index: usize, _args: &[JsValue]) -> Result<JsValue, ScriptError> {
+        Err(ScriptError::Unsupported(format!(
+            "host function #{index} has no host"
+        )))
+    }
+}
+
 /// A JavaScript virtual machine.
 ///
 /// Implementations own a realm with a global object. Values cross the
-/// boundary as [`JsValue`] (JSON-shaped) — rich DOM bindings will be added on
-/// the VM side via the WebIDL pipeline rather than by widening this trait.
+/// boundary as [`JsValue`] (JSON-shaped). DOM bindings are built on
+/// [`JsVm::register_host_functions`] + [`HostApi`]: a JS prelude defines the
+/// Web API classes and forwards to native primitives keyed by node id.
 pub trait JsVm {
-    /// Backend name (`"quickjs-ng"`, `"null"`).
+    /// Backend name (`"v8"`, `"quickjs-ng"`, `"null"`).
     fn name(&self) -> &'static str;
 
     /// Evaluates `source` as a classic script. `origin` is used for error
@@ -163,6 +191,53 @@ pub trait JsVm {
 
     /// Calls a global function by name.
     fn call(&mut self, function: &str, args: &[JsValue]) -> Result<JsValue, ScriptError>;
+
+    /// Installs `globalThis.<namespace>` with one native function per name;
+    /// each forwards to [`HostApi::call`] with its index. Backends without
+    /// host support return `Unsupported`.
+    fn register_host_functions(
+        &mut self,
+        namespace: &str,
+        names: &[&str],
+    ) -> Result<(), ScriptError> {
+        let _ = (namespace, names);
+        Err(ScriptError::Unsupported("host functions".into()))
+    }
+
+    /// [`JsVm::eval`] with `host` answering host-function calls made by the
+    /// script. Backends without host support ignore `host`.
+    fn eval_with_host(
+        &mut self,
+        host: &mut dyn HostApi,
+        source: &str,
+        origin: &str,
+    ) -> Result<JsValue, ScriptError> {
+        let _ = host;
+        self.eval(source, origin)
+    }
+
+    /// [`JsVm::call`] with a host.
+    fn call_with_host(
+        &mut self,
+        host: &mut dyn HostApi,
+        function: &str,
+        args: &[JsValue],
+    ) -> Result<JsValue, ScriptError> {
+        let _ = host;
+        self.call(function, args)
+    }
+
+    /// [`JsVm::run_pending_jobs`] with a host (promise reactions may call host functions).
+    fn run_pending_jobs_with_host(&mut self, host: &mut dyn HostApi) -> Result<usize, ScriptError> {
+        let _ = host;
+        self.run_pending_jobs()
+    }
+
+    /// Terminates a script that runs longer than `deadline` (per call).
+    /// `None` removes the limit. Backends without the ability ignore it.
+    fn set_call_deadline(&mut self, deadline: Option<std::time::Duration>) {
+        let _ = deadline;
+    }
 
     /// Whether promise jobs are waiting.
     fn has_pending_jobs(&self) -> bool;
@@ -227,6 +302,12 @@ impl JsVm for NullVm {
 /// enabled, otherwise [`NullVm`].
 #[must_use]
 pub fn default_vm() -> Box<dyn JsVm> {
+    #[cfg(feature = "v8")]
+    {
+        if let Ok(vm) = crate::v8_vm::V8Vm::new() {
+            return Box::new(vm);
+        }
+    }
     #[cfg(feature = "quickjs")]
     {
         if let Ok(vm) = crate::quickjs::QuickJsVm::new() {
@@ -280,7 +361,9 @@ mod tests {
         assert_eq!(vm.run_pending_jobs().unwrap(), 0);
         assert_eq!(
             default_vm().name(),
-            if cfg!(feature = "quickjs") {
+            if cfg!(feature = "v8") {
+                "v8"
+            } else if cfg!(feature = "quickjs") {
                 "quickjs-ng"
             } else {
                 "null"

@@ -179,6 +179,22 @@ pub fn layout_box_at(
                 }
                 content
             }
+            // A replaced element with `width: auto` takes its intrinsic width,
+            // or the specified height scaled by the intrinsic ratio.
+            None if bx.replaced.is_some() => {
+                let intrinsic = bx.replaced.unwrap_or_default();
+                let from_height = style
+                    .height
+                    .maybe_resolve(cb.height)
+                    .filter(|_| !style.height.is_auto() && intrinsic.height > 0.0)
+                    .map(|h| h * intrinsic.width / intrinsic.height);
+                clamp_width(
+                    &style,
+                    from_height.unwrap_or(intrinsic.width),
+                    cb.width,
+                    bp_h,
+                )
+            }
             None if !shrink_to_fit => clamp_width(
                 &style,
                 (cb.width - margin.horizontal() - bp_h).max(0.0),
@@ -244,7 +260,19 @@ pub fn layout_box_at(
         (h - bp_v).max(0.0)
     } else {
         let specified = child_cb_height.filter(|_| !style.height.is_auto());
-        let h = specified.unwrap_or(content_height);
+        let replaced_auto = bx
+            .replaced
+            .filter(|_| specified.is_none())
+            .map(|intrinsic| {
+                // auto height of a replaced element: intrinsic, or the used width
+                // scaled by the intrinsic ratio when the width was specified
+                if intrinsic.width > 0.0 && (content_width - intrinsic.width).abs() > 0.5 {
+                    content_width * intrinsic.height / intrinsic.width
+                } else {
+                    intrinsic.height
+                }
+            });
+        let h = specified.or(replaced_auto).unwrap_or(content_height);
         clamp_height(&style, h, cb.height, bp_v)
     };
 
@@ -513,6 +541,11 @@ pub fn intrinsic_min_width(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
 
 fn intrinsic_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
     let style = bx.style.clone();
+    if let Some(intrinsic) = bx.replaced
+        && style.width.is_auto()
+    {
+        return intrinsic.width + own_horizontal_edges(bx);
+    }
     if bx.kind == BoxKind::Table {
         let (_, max) = table::intrinsic_widths(bx, ctx);
         return max + resolve_margins(&style, 0.0).horizontal();
@@ -558,8 +591,24 @@ fn intrinsic_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 
     inner + own_horizontal_edges(bx)
 }
 
+/// Fit-content border-box width of a flex/grid item measured by its
+/// container: max-content clamped to the available space and floored at
+/// min-content (CSS Sizing §5.2.1). `available` is the container's
+/// available main size (`f32::INFINITY` for a max-content probe).
+pub fn fit_content_width(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, available: f32) -> f32 {
+    let margins = resolve_margins(&bx.style, available.min(f32::MAX)).horizontal();
+    let max = intrinsic_width(bx, ctx) - margins;
+    let min = intrinsic_min_width(bx, ctx) - margins;
+    max.min((available - margins).max(0.0)).max(min).max(0.0)
+}
+
 fn intrinsic_min_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> f32 {
     let style = bx.style.clone();
+    if let Some(intrinsic) = bx.replaced
+        && style.width.is_auto()
+    {
+        return intrinsic.width + own_horizontal_edges(bx);
+    }
     if bx.kind == BoxKind::Table {
         let (min, _) = table::intrinsic_widths(bx, ctx);
         return min + resolve_margins(&style, 0.0).horizontal();

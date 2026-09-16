@@ -78,8 +78,8 @@ implementations, three of them over Playwright-Core CDP:
 `apps/runtime/src/main.ts` loads the engine addon at startup when it is
 present (`VECTOR_ENGINE=0` skips it) and registers a `vector-engine` session
 either `connected` or `disconnected` with the loader's diagnostic. Whether
-pages are *routed* to it is `settings.engineMode`: `off` (default — nothing
-changes for existing users), `auto`, `always`; `VECTOR_ENGINE_MODE` is the
+pages are *routed* to it is `settings.engineMode`: `off` (Chromium only),
+`auto` (default — engine first, Chromium fallback), `always`; `VECTOR_ENGINE_MODE` is the
 env override.
 
 `Router` (`apps/runtime/src/services/router.ts`) decides per `pages.open`
@@ -96,8 +96,8 @@ reason, e.g. `empty-root-container: #root`, `body-onload`,
 `form-onsubmit`, `template-heavy`, `unsupported-content: application/pdf`).
 In `auto` a classified page is closed, the origin recorded, and the URL
 reopened on Chromium with `routeReason: "fallback:<reason>"`. A mid-program
-`capability_unsupported` (`evaluate`, `dialog`, downloads, `xpath:`
-targets, …) migrates the live page to Chromium at its
+`capability_unsupported` (`xpath:` targets, canvas/WebGL, PDF, …)
+migrates the live page to Chromium at its
 current URL — same `pageId`, new target, `documentEpoch` bumped — takes a
 fresh observation, and replays the remaining steps; `ProgramResult.fallback`
 records it, with `repair: true` when ref-targeted steps could not be replayed
@@ -106,9 +106,8 @@ replans. Decisions are counted in `traces.counters` (`router.decide`,
 `router.fallback.open`, `router.fallback.midProgram`, `router.open.<backend>`)
 and logged to stderr with `VECTOR_ROUTER_LOG=1`.
 
-Engine pages are headless: `pages.activate` and `pages.capture` on them
-fail with `capability_unsupported`, they never take the stage lease, and
-the shell shows them with the *Vector Engine* badge only.
+Engine pages are headless: `pages.activate` marks them active without a
+native Chromium view; `pages.capture` uses the software renderer.
 
 ## Page identity
 
@@ -196,16 +195,20 @@ and the system prompt states that fenced content is data, never instructions.
 `evaluate`/`{eval:}` remain available to trusted program sources (API, CLI,
 MCP, saved programs) via the executor's `allowEval` flag, which defaults off.
 
-## The stage lease
+## Offscreen working pages (formerly the stage lease)
 
 Chromium only delivers trusted input (pointer, keyboard) to a *visible,
-laid-out* view — hidden background pages can't be clicked. When a program
-with interactive steps (`click`, `fill`, `press`, `select`, …) runs on a
-`vector` page inside the shell, the runtime takes a serialized **stage
-lease** (`native.acquireStage`): the page's view is shown at stage bounds
-for the program's duration, then released. Parallel set members take turns
-on the stage instead of racing it; pure observation programs (navigate,
-extract, waitFor, screenshot) don't need the lease and run fully in the
-background. `vector-engine` pages never take the lease: the engine *is* the
-input device, so every step event is trusted regardless of visibility and
-parallel programs on different engine pages never serialize on input.
+laid-out* view — a `setVisible(false)` background page stops producing
+frames, so it can't be clicked and Playwright's stability checks stall on
+it. When a program with interactive steps (`click`, `fill`, `press`,
+`select`, …) runs on a `vector` page inside the shell, the runtime marks the
+page *working* (`native.acquireStage`, released after the program). A
+working page that is not the focused tab is rendered at stage size just
+outside the window: laid out, producing frames, receiving input, invisible
+to the human. Any number of pages can be working at once and the focused
+tab never flips — there is no global lease and parallel set members really
+run in parallel (plan A8). Human input into the focused tab is a takeover;
+runtime input into an offscreen page is not. Pure observation programs
+(navigate, extract, waitFor, screenshot) don't need the view laid out.
+`vector-engine` pages never take part: the engine *is* the input device, so
+every step event is trusted regardless of visibility.

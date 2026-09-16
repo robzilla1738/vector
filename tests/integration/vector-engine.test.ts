@@ -4,8 +4,8 @@
  *   1. engineMode "always" — a static fixture page opens on `vector-engine`,
  *      the observation is a real ObservationContent with `r<n>` refs, and a
  *      select/click/fill program runs as ONE native call (act-and-observe).
- *   2. engineMode "auto" — a mid-program `capability_unsupported` (`evaluate`
- *      needs page script, which the engine has no VM for in M1) migrates the page to Chromium,
+ *   2. engineMode "auto" — a mid-program `capability_unsupported` (`xpath:`
+ *      targets) migrates the page to Chromium,
  *      replays the selector-targeted remainder, records the origin in the
  *      needs-chromium table, and the next open of that origin skips the
  *      engine. Skipped with a reason when no Chromium can be launched.
@@ -30,6 +30,10 @@ const engine = await probeEngineNative();
 const chromium = findChromium();
 // the standalone driver reads the real process env for the browser path
 if (chromium) process.env.VECTOR_BROWSER_PATH = chromium;
+// CI sets VECTOR_REQUIRE_ENGINE=1 so a missing addon fails the job instead of
+// silently skipping every engine assertion.
+if (!engine.available && process.env.VECTOR_REQUIRE_ENGINE === "1")
+  throw new Error(`[vector-engine.test] VECTOR_REQUIRE_ENGINE=1 but the addon did not load: ${engine.error}`);
 if (!engine.available) console.warn(`[vector-engine.test] skipped: ${engine.error}`);
 if (!chromium) console.warn("[vector-engine.test] fallback test skipped: no Chromium (set VECTOR_BROWSER_PATH or `pnpm exec playwright install chromium-headless-shell`)");
 
@@ -124,8 +128,10 @@ describeIfEngine("vector-engine backend", () => {
     expect(filled.status, JSON.stringify(filled.steps)).toBe("completed");
     expect((filled.extracted?.out as { v?: string })?.v).toBe("Engine title");
 
-    // unsupported on the engine in M1 — explicit, not a timeout
-    await expect(invoke("pages.capture", { pageId: page.pageId })).rejects.toMatchObject({ code: "capability_unsupported" });
+    const shot = await invoke<{ width: number; height: number; dataUrl?: string }>("pages.capture", { pageId: page.pageId });
+    expect(shot.width).toBeGreaterThan(0);
+    expect(shot.height).toBeGreaterThan(0);
+    expect(shot.dataUrl?.startsWith("data:image/png")).toBe(true);
     await invoke("pages.close", { pageId: page.pageId });
   }, 60_000);
 
@@ -140,7 +146,7 @@ describeIfEngine("vector-engine backend", () => {
         pageId: page.pageId,
         steps: [
           { id: "s1", op: "select", target: "css:#status", value: "approved" },
-          { id: "s2", op: "evaluate", expression: "document.title" }, // no script VM in the engine in M1
+          { id: "s2", op: "click", target: "xpath://button" },
           { id: "s3", op: "click", target: "css:#apply-filter" },
           { id: "s4", op: "waitFor", condition: { kind: "urlMatches", pattern: "/records\\?" } },
         ],

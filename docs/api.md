@@ -41,10 +41,10 @@ The socket also accepts RPC frames `{ "id", "method", "params" }` and answers
 | `pages.list` | `backend?, includeDetached?` | all pages, optionally one backend |
 | `pages.open` | `url, backend?, background?, activate?, targetId?` | `backend: "vector"` (default) `\| "chrome" \| "vector-engine"`. `vector` is *routable*: with `settings.engineMode: "auto"` the router may place the page on the Vector Engine and fall back to Chromium; `vector-engine` forces the engine (no fallback); `chrome` requires `targetId` of an existing attached tab. The result (`PageTarget`) carries `routeReason` — see [Backends and routing](#backends-and-routing) |
 | `pages.close` | `pageId` | borrowed chrome tabs are detached, not closed |
-| `pages.activate` / `pages.navigate` / `pages.back` / `pages.forward` / `pages.reload` / `pages.stop` | `pageId` (+`url`) | navigation bumps `documentEpoch`. `pages.activate` on a `vector-engine` page fails with `capability_unsupported` (headless, no native view) |
+| `pages.activate` / `pages.navigate` / `pages.back` / `pages.forward` / `pages.reload` / `pages.stop` | `pageId` (+`url`) | navigation bumps `documentEpoch`. `pages.activate` on a `vector-engine` page marks it active (no native Chromium view) |
 | `pages.observe` | `pageId, scope?, subtreeRef?, maxElements?, maxTextChars?, format?, sinceRevision?` | structured observation: elements+refs, forms, links, tables, frames, text, headings. `format: "compact"` returns `{ observation: { pageId, url, title, documentEpoch, revision, text, refs: [{ ref, role?, name? }] } }` — the rendered text the planner reads plus a minimal ref list, no selectors/rects (5–10× smaller). Every observe is a full snapshot with a `changesSince` diff computed by the runtime against the previous observation. On Chromium `sinceRevision` is accepted and ignored; on `vector-engine` it is forwarded and the engine's own journal-derived `changesSince` lines come back appended as one extra `refs changed: …` entry |
 | `pages.execute` | `program, returnObservation?` | run a typed program on one page. `returnObservation: { scope?, subtreeRef?, format?, maxElements?, maxTextChars? }` observes the page after the program and returns it as `observation` alongside the result (act-and-observe in one round trip; best-effort if the page detached). On `vector-engine` a flat `steps` program plus its observation is a single native call. The result is a `ProgramResult`; `fallback` is set when the engine hit `capability_unsupported` mid-program and the page moved to Chromium (below) |
-| `pages.capture` | `pageId, fullPage?, format?` | screenshot; `format:"artifact"` stores it. `capability_unsupported` on a `vector-engine` page — the runtime refuses it in M1 even though the addon's `screenshot` renders a software PNG |
+| `pages.capture` | `pageId, fullPage?, format?` | screenshot; `format:"artifact"` stores it. On `vector-engine` this is a software PNG (system fonts via `fontdb`) |
 | `pages.find` / `pages.stopFind` | `pageId, text, forward, findNext` | native find-in-page; hidden pages fall back to a DOM count |
 | `pages.zoom` | `pageId, level?, delta?, reset?` | per-origin persistent zoom |
 | `pages.takeover` / `pages.resume` | `pageId` | human/agent control handoff |
@@ -59,10 +59,10 @@ The socket also accepts RPC frames `{ "id", "method", "params" }` and answers
 |---|---|
 | `vector` | Vector's own Chromium — the Electron `WebContentsView` in the shell, headless Chromium in standalone mode |
 | `chrome` | the user's Chrome attached over CDP (`chrome.attach`); tabs are borrowed |
-| `vector-engine` | the in-process Vector Engine (`@vector/engine-native`, `engine/`); headless, no native view, no screenshots in M1 |
+| `vector-engine` | the in-process Vector Engine (`@vector/engine-native`, `engine/`); headless, software screenshots |
 
 `settings.engineMode` (`EngineModeSchema`: `"off" | "auto" | "always"`,
-default `off`; env override `VECTOR_ENGINE_MODE`, the stored setting wins)
+default `auto`; env override `VECTOR_ENGINE_MODE`, the stored setting wins)
 decides where a `backend: "vector"` open lands. The router
 (`apps/runtime/src/services/router.ts`) is deterministic and returns the
 decision as `PageTarget.routeReason`:
@@ -227,11 +227,11 @@ Ops: `navigate` `back` `forward` `reload` `stop` `click` `dblclick` `hover`
 `upload` `waitFor` `extract` `screenshot` `expectDownload` `dialog`
 `collectScroll` `evaluate`.
 
-On `vector-engine` (M1, no JavaScript) `evaluate`, `dialog`,
-`expectDownload`, `xpath:` targets, `javascript:` URLs and the
-`downloadCompleted` / `expression` conditions fail with
-`capability_unsupported` (`detail` names the gap); `dragTo` runs the
-pointer sequence without HTML5 drag events. With `engineMode: "auto"` a
+On `vector-engine` (V8 scripting on by default) `evaluate`, `dialog`,
+`expectDownload`, `javascript:` URLs, HTML5 `dragTo`, and
+`waitFor` `{ downloadCompleted | expression }` run in-engine.
+`xpath:` targets still fail with `capability_unsupported` (the auto-mode
+fallback probe). With `engineMode: "auto"` a remaining
 `capability_unsupported` triggers the Chromium fallback described above.
 Everything else in the op list — including `back`/`forward`, `hover`,
 `dblclick`, `clickPoint`, `upload`, multi-value `select`, POST forms and

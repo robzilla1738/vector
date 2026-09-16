@@ -1,4 +1,4 @@
-import type { BrowserContext, Dialog, Frame, Locator, Page, Response } from "playwright-core";
+import type { BrowserContext, Dialog, ElementHandle, Frame, Locator, Page, Response } from "playwright-core";
 import {
   VectorError,
   type Condition,
@@ -17,6 +17,7 @@ import {
   READINESS_INIT_SCRIPT,
   SETTLED_CONDITION_MS,
   SETTLED_QUIET_MS,
+  observationFingerprint,
   settledProbe,
 } from "./readiness.js";
 import type { DriverPage, DriverPageEvents, PageIdentity, ScreenshotResult, WaitOutcome } from "./types.js";
@@ -29,6 +30,10 @@ const FRAME_OBSERVE_MS = 10_000;
 /** Race a promise against a timeout — resolves undefined on timeout.
  * The underlying promise keeps running (frame evaluates can't be cancelled)
  * so rejections are swallowed to avoid unhandled rejections later. */
+/** A resolved step target: a live handle from the ref map, or a searched locator. */
+type Actionable = Locator | ElementHandle<HTMLElement | SVGElement>;
+const isHandle = (a: Actionable): a is ElementHandle<HTMLElement | SVGElement> => typeof (a as Locator).count !== "function";
+
 export function bounded<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
   return Promise.race([
     p.catch(() => undefined),
@@ -280,7 +285,7 @@ export class PlaywrightDriverPage implements DriverPage {
     return map;
   }
 
-  /** Resolve a step target to a Locator in the right frame. */
+  /** Resolve a step target to a Locator in the right frame (search path). */
   private async resolveLocator(target: string): Promise<Locator> {
     const parsed = parseTarget(target);
     let strategy: SelectorStrategy;
@@ -302,52 +307,84 @@ export class PlaywrightDriverPage implements DriverPage {
     return selectUniqueLocator(locatorAttempts(frame, strategy), target);
   }
 
+  /**
+   * One-hop ref resolution (speed P0-3 / plan A7): the observe script keeps
+   * the live `ref → Element` map in the page, so a ref becomes an
+   * ElementHandle with a single `evaluateHandle` — no css/xpath/role search
+   * and no accessible-name computation. Playwright's actionability checks
+   * apply to handles exactly as to locators. Falls back to the selector
+   * search when the node is gone (removed, re-rendered, or the document
+   * changed), which is also what produces `target_detached`.
+   */
+  private async resolveActionable(target: string): Promise<Actionable> {
+    const parsed = parseTarget(target);
+    if (parsed.kind === "ref") {
+      const entry = this.refs.resolve(this.identity.pageId, parsed.ref);
+      if (entry) {
+        const frame = this.frameForKey(entry.frame);
+        const handle = await bounded(
+          frame.evaluateHandle((ref) => {
+            const m = (globalThis as unknown as { __vectorRefs?: Map<string, Element> }).__vectorRefs;
+            const el = m instanceof Map ? m.get(ref) : undefined;
+            return el && el.isConnected ? el : null;
+          }, parsed.ref),
+          FRAME_PROBE_MS,
+        ).catch(() => undefined);
+        const el = handle?.asElement();
+        if (el) return el as ElementHandle<HTMLElement | SVGElement>;
+        await handle?.dispose().catch(() => {});
+      }
+    }
+    return this.resolveLocator(target);
+  }
+
   // ---------- actions ----------
 
   async click(target: string, button: "left" | "right" | "middle" = "left", timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    const loc = await this.resolveLocator(target);
+    const loc = await this.resolveActionable(target);
     await loc.click({ button, timeout: timeoutMs });
   }
   async dblclick(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    const loc = await this.resolveLocator(target);
+    const loc = await this.resolveActionable(target);
     await loc.dblclick({ timeout: timeoutMs });
   }
   async hover(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    const loc = await this.resolveLocator(target);
+    const loc = await this.resolveActionable(target);
     await loc.hover({ timeout: timeoutMs });
   }
   async fill(target: string, value: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    const loc = await this.resolveLocator(target);
+    const loc = await this.resolveActionable(target);
     await loc.fill(value, { timeout: timeoutMs });
   }
   async typeText(target: string, value: string, delayMs = 20, timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    const loc = await this.resolveLocator(target);
-    await loc.pressSequentially(value, { delay: delayMs, timeout: timeoutMs });
+    const loc = await this.resolveActionable(target);
+    if (isHandle(loc)) await loc.type(value, { delay: delayMs, timeout: timeoutMs });
+    else await loc.pressSequentially(value, { delay: delayMs, timeout: timeoutMs });
   }
   async press(key: string, target?: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
     if (target) {
-      const loc = await this.resolveLocator(target);
+      const loc = await this.resolveActionable(target);
       await loc.press(key, { timeout: timeoutMs });
     } else {
       await this.page.keyboard.press(key);
     }
   }
   async check(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    const loc = await this.resolveLocator(target);
+    const loc = await this.resolveActionable(target);
     await loc.check({ timeout: timeoutMs });
   }
   async uncheck(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    const loc = await this.resolveLocator(target);
+    const loc = await this.resolveActionable(target);
     await loc.uncheck({ timeout: timeoutMs });
   }
   async select(target: string, value: string | string[], timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    const loc = await this.resolveLocator(target);
+    const loc = await this.resolveActionable(target);
     await loc.selectOption(Array.isArray(value) ? value.map((v) => ({ label: v })) : { label: value }, { timeout: timeoutMs });
   }
   async scroll(opts: { target?: string; direction: "up" | "down" | "top" | "bottom"; amount?: number }) {
     const amount = opts.amount ?? 700;
     if (opts.target) {
-      const loc = await this.resolveLocator(opts.target);
+      const loc = await this.resolveActionable(opts.target);
       await loc.scrollIntoViewIfNeeded({ timeout: DEFAULT_STEP_TIMEOUT });
       return;
     }
@@ -371,7 +408,7 @@ export class PlaywrightDriverPage implements DriverPage {
     await this.page.mouse.click(x, y, { button });
   }
   async uploadFiles(target: string, files: string[], timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    const loc = await this.resolveLocator(target);
+    const loc = await this.resolveActionable(target);
     await loc.setInputFiles(files, { timeout: timeoutMs });
   }
 
@@ -580,6 +617,18 @@ export class PlaywrightDriverPage implements DriverPage {
     return { buffer, width: meta.w, height: meta.h, scale: meta.s };
   }
 
+  /** One small evaluate on the main frame; frames are folded in by URL so a child navigation invalidates too. */
+  async observeFingerprint(): Promise<string> {
+    const main = await bounded(this.page.evaluate(observationFingerprint), FRAME_PROBE_MS);
+    if (typeof main !== "string") throw new VectorError("backend_unavailable", "fingerprint probe timed out");
+    const frames = this.page
+      .frames()
+      .filter((f) => f !== this.page.mainFrame())
+      .map((f) => f.url())
+      .join("\u0002");
+    return frames ? `${main}\u0001frames:${frames}` : main;
+  }
+
   async observe(req?: Partial<ObservationRequest>): Promise<ObservationContent> {
     const maxElements = req?.maxElements ?? 120;
     const maxTextChars = req?.maxTextChars ?? 6000;
@@ -622,17 +671,42 @@ export class PlaywrightDriverPage implements DriverPage {
         )) === true
       );
     };
+    // Subtree scope (plan A10): `subtreeRef` is an `rN` from the last
+    // observation or a css selector. A ref resolves through the registry to
+    // its css path *and* frame; a ref to an <iframe> scopes the observation
+    // to that frame's document instead.
+    let subtree: { css?: string; frameKey?: string; onlyFrame?: Frame } | undefined;
+    if (req?.scope === "subtree" && req.subtreeRef) {
+      const parsed = parseTarget(req.subtreeRef);
+      if (parsed.kind === "ref") {
+        const entry = this.refs.resolve(this.identity.pageId, parsed.ref);
+        if (!entry) throw new VectorError("target_detached", `subtreeRef ${parsed.ref} is unknown or stale — re-observe the page`);
+        subtree = { css: entry.selector.css, frameKey: entry.frame };
+        if (entry.tag === "iframe" && entry.selector.css) {
+          const owner = this.frameForKey(entry.frame);
+          const child = await bounded(
+            owner.$(entry.selector.css).then((h) => h?.contentFrame() ?? null),
+            FRAME_PROBE_MS,
+          ).catch(() => null);
+          if (child) subtree = { onlyFrame: child };
+        }
+      } else {
+        subtree = { css: parsed.strategy.css ?? req.subtreeRef, frameKey: "main" };
+      }
+    }
     for (const [key, frame] of frameMap) {
       const sameOrigin = await sameOriginOf(frame);
       frames.push({ frame: key, url: frame.url(), name: frame.name() || undefined, sameOrigin });
       if (!sameOrigin) continue;
+      if (subtree?.onlyFrame && frame !== subtree.onlyFrame) continue;
+      if (subtree?.frameKey && key !== subtree.frameKey && key !== "main") continue;
       let part: ObserveScriptResult | undefined;
       try {
         part = await bounded(
           frame.evaluate(collectObservation, {
             maxElements: Math.max(10, maxElements - allElements.length),
             maxTextChars,
-            subtreeCss: req?.scope === "subtree" ? req.subtreeRef : undefined,
+            subtreeCss: subtree && !subtree.onlyFrame && key === subtree.frameKey ? subtree.css : undefined,
             frameKey: key,
             refStart,
           }),
@@ -699,6 +773,7 @@ export class PlaywrightDriverPage implements DriverPage {
       subtreeCss: entry.selector.css,
       frameKey: entry.frame,
       refStart: 10_000 + Math.floor(Math.random() * 1000),
+      mergeRefs: true,
     });
     const els = part.elements as ElementRef[];
     this.refs.register(this.identity.pageId, els);

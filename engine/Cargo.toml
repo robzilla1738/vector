@@ -20,6 +20,7 @@ members = [
     "crates/ve-agent",
     "crates/ve-api",
     "crates/ve-napi",
+    "crates/ve-host",
     "tools/wpt-runner",
     "tools/perf",
 ]
@@ -59,7 +60,7 @@ precomputed-hash = "0.1.1"
 # ---- layout & text (pure Rust, default) -----------------------------------
 taffy = { version = "0.14.0", default-features = false, features = ["std", "flexbox", "grid", "block_layout", "taffy_tree"] }
 parley = { version = "0.11.1", default-features = false, features = ["std"] }
-fontdb = { version = "0.24.0", default-features = false, features = ["std"] }
+fontdb = { version = "0.24.0", default-features = false, features = ["std", "fs"] }
 swash = "0.2.10"
 
 # ---- networking (optional; feature `net`) ---------------------------------
@@ -69,12 +70,18 @@ http = "1.5.0"
 http-body-util = "0.1.5"
 bytes = "1.12.1"
 rustls = { version = "0.23.45", default-features = false, features = ["std", "tls12", "ring"] }
+hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "ring", "tls12", "webpki-roots"] }
+tower-service = "0.3"
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+brotli = { version = "8", default-features = false, features = ["std"] }
 tokio-rustls = { version = "0.26.5", default-features = false, features = ["tls12", "ring"] }
 webpki-roots = "1.0.9"
 tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "net", "time", "sync", "macros"] }
 
 # ---- scripting (optional; feature `quickjs`) -------------------------------
 rquickjs = { version = "0.13.0", features = ["futures", "macro", "classes", "properties"] }
+# ---- scripting (optional; feature `v8`, decision D1) — prebuilt static lib ----
+v8 = "152.2.0"
 
 # ---- graphics (optional; feature `gpu`) -----------------------------------
 # `vello 0.10` requires `wgpu ^29`; do not bump one without the other.
@@ -97,6 +104,7 @@ thiserror = "2.0.20"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 url = "2.5.8"
+imagesize = "0.14"
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
 

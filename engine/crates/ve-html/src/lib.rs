@@ -17,9 +17,10 @@
 //!   [`DocumentFragment`](ve_dom::NodeKind::DocumentFragment) reachable via
 //!   [`Document::template_contents`](ve_dom::Document::template_contents).
 //! * Quirks mode is propagated to the document.
-//! * Scripting is reported as **disabled** to the tree builder (so `<noscript>`
-//!   content is parsed). Script execution is `ve-script`'s job and happens
-//!   after parsing in M0; document.write is not supported yet.
+//! * Scripting is reported as **disabled** by default (so `<noscript>` content
+//!   is parsed as HTML). A page with a VM attached sets
+//!   [`ParseOptions::scripting_enabled`] so `<noscript>` is raw text. Script
+//!   execution happens after parsing; `document.write` is not supported.
 
 #![forbid(unsafe_code)]
 
@@ -29,8 +30,8 @@ pub mod sink;
 
 use html5ever::tendril::{StrTendril, TendrilSink};
 use html5ever::tree_builder::TreeBuilderOpts;
-use html5ever::{ParseOpts, Parser, parse_document as h5_parse_document};
-use ve_core::Stage;
+use html5ever::{ParseOpts, Parser, QualName, parse_document as h5_parse_document, parse_fragment};
+use ve_core::{NodeId, Stage};
 use ve_dom::Document;
 
 pub use decode::{
@@ -46,6 +47,26 @@ pub struct ParseOutcome {
     pub document: Document,
     /// Recoverable parse errors, in the order they were reported.
     pub errors: Vec<String>,
+    /// First element the tree builder created (fragment context, or `<html>`).
+    pub context_element: Option<NodeId>,
+}
+
+/// Options for document and fragment parsing.
+#[derive(Clone, Copy, Debug)]
+pub struct ParseOptions {
+    /// Tree-builder scripting flag (`<noscript>` handling).
+    pub scripting_enabled: bool,
+    /// Streaming chunk size in bytes (character-aligned).
+    pub chunk_size: usize,
+}
+
+impl Default for ParseOptions {
+    fn default() -> Self {
+        Self {
+            scripting_enabled: false,
+            chunk_size: 16 * 1024,
+        }
+    }
 }
 
 /// Parses a complete HTML document from a string.
@@ -56,13 +77,7 @@ pub struct ParseOutcome {
 pub fn parse_document(html: &str) -> ParseOutcome {
     let span = Stage::Parse.span();
     let _guard = span.enter();
-    let opts = ParseOpts {
-        tree_builder: TreeBuilderOpts {
-            scripting_enabled: false,
-            ..TreeBuilderOpts::default()
-        },
-        ..ParseOpts::default()
-    };
+    let opts = parse_opts(false);
     let sink = DomSink::new(Document::new());
     let outcome = h5_parse_document(sink, opts).one(html);
     tracing::debug!(
@@ -73,10 +88,10 @@ pub fn parse_document(html: &str) -> ParseOutcome {
     outcome
 }
 
-fn parse_opts() -> ParseOpts {
+fn parse_opts(scripting_enabled: bool) -> ParseOpts {
     ParseOpts {
         tree_builder: TreeBuilderOpts {
-            scripting_enabled: false,
+            scripting_enabled,
             ..TreeBuilderOpts::default()
         },
         ..ParseOpts::default()
@@ -113,8 +128,17 @@ impl DocumentParser {
     /// Creates a parser for a fresh document.
     #[must_use]
     pub fn new() -> Self {
+        Self::with_options(ParseOptions::default())
+    }
+
+    /// Creates a parser with `options`.
+    #[must_use]
+    pub fn with_options(options: ParseOptions) -> Self {
         Self {
-            inner: h5_parse_document(DomSink::new(Document::new()), parse_opts()),
+            inner: h5_parse_document(
+                DomSink::new(Document::new()),
+                parse_opts(options.scripting_enabled),
+            ),
             chunks: 0,
             bytes: 0,
         }
@@ -166,6 +190,90 @@ pub fn parse_document_chunks<'a>(chunks: impl IntoIterator<Item = &'a str>) -> P
     parser.finish()
 }
 
+/// Parses `html` as a fragment of `context_local` (an HTML element local name)
+/// into `doc`. Returns the document and the parsed nodes, in tree order.
+/// Used by `innerHTML` (plan A14).
+///
+/// html5ever's fragment algorithm creates a temporary `<html>` root under the
+/// document and inserts into an implied `<body>` (or `<head>` / the root,
+/// depending on `context_local`). This function detaches those inserted
+/// nodes and destroys the temporary tree so the caller can reparent them.
+#[must_use]
+pub fn parse_fragment_into(
+    doc: Document,
+    context_local: &str,
+    html: &str,
+    scripting_enabled: bool,
+) -> (Document, Vec<NodeId>) {
+    let span = Stage::Parse.span();
+    let _guard = span.enter();
+    let root = doc.root();
+    let before: Vec<NodeId> = doc.children(root).collect();
+    let context_name = QualName::new(
+        None,
+        html5ever::ns!(html),
+        html5ever::LocalName::from(context_local),
+    );
+    let sink = DomSink::for_existing(doc);
+    let outcome = parse_fragment(
+        sink,
+        parse_opts(scripting_enabled),
+        context_name,
+        Vec::new(),
+        scripting_enabled,
+    )
+    .one(html);
+    let mut doc = outcome.document;
+    let after: Vec<NodeId> = doc.children(doc.root()).collect();
+    let Some(fragment_html) = after
+        .into_iter()
+        .find(|&id| !before.contains(&id) && doc.element(id).is_some_and(|e| e.is_html("html")))
+    else {
+        if let Some(context) = outcome.context_element {
+            let _ = doc.destroy(context);
+        }
+        return (doc, Vec::new());
+    };
+    let container = fragment_container(&doc, fragment_html, context_local);
+    let kids: Vec<NodeId> = doc.children(container).collect();
+    for &kid in &kids {
+        let _ = doc.remove(kid);
+    }
+    let _ = doc.destroy(fragment_html);
+    if let Some(context) = outcome.context_element {
+        let _ = doc.destroy(context);
+    }
+    (doc, kids)
+}
+
+fn fragment_container(doc: &Document, fragment_html: NodeId, context_local: &str) -> NodeId {
+    let ctx = context_local.to_ascii_lowercase();
+    if ctx == "html" {
+        return fragment_html;
+    }
+    let want = if matches!(
+        ctx.as_str(),
+        "head"
+            | "title"
+            | "base"
+            | "basefont"
+            | "bgsound"
+            | "link"
+            | "meta"
+            | "noframes"
+            | "noscript"
+            | "style"
+            | "template"
+    ) {
+        "head"
+    } else {
+        "body"
+    };
+    doc.children(fragment_html)
+        .find(|&c| doc.element(c).is_some_and(|e| e.is_html(want)))
+        .unwrap_or(fragment_html)
+}
+
 /// Decodes raw bytes (BOM / transport charset / `<meta charset>` / UTF-8) and
 /// parses them in chunks of at most `chunk_size` bytes (split on character
 /// boundaries). Returns the outcome together with the charset decision.
@@ -175,10 +283,27 @@ pub fn parse_document_bytes(
     transport_charset: Option<&str>,
     chunk_size: usize,
 ) -> (ParseOutcome, Decoded) {
+    parse_document_bytes_with(
+        bytes,
+        transport_charset,
+        ParseOptions {
+            scripting_enabled: false,
+            chunk_size,
+        },
+    )
+}
+
+/// [`parse_document_bytes`] with full [`ParseOptions`].
+#[must_use]
+pub fn parse_document_bytes_with(
+    bytes: &[u8],
+    transport_charset: Option<&str>,
+    options: ParseOptions,
+) -> (ParseOutcome, Decoded) {
     let decoded = decode_html_bytes(bytes, transport_charset);
-    let mut parser = DocumentParser::new();
+    let mut parser = DocumentParser::with_options(options);
     let text = decoded.text.as_str();
-    let chunk_size = chunk_size.max(1);
+    let chunk_size = options.chunk_size.max(1);
     let mut start = 0;
     while start < text.len() {
         let mut end = (start + chunk_size).min(text.len());
@@ -280,6 +405,7 @@ mod tests {
         let ParseOutcome {
             document: doc,
             errors,
+            ..
         } = parse_document("<p>lonely<p>second");
         assert_eq!(doc.quirks_mode(), QuirksMode::Quirks);
         assert!(doc.head().is_some());
@@ -291,5 +417,31 @@ mod tests {
         assert_eq!(ps.len(), 2);
         assert_eq!(doc.text_content(ps[1]), "second");
         assert!(!errors.is_empty(), "missing doctype is reported");
+    }
+
+    #[test]
+    fn fragment_parse_inserts_into_an_existing_document() {
+        let doc = parse_document("<div id=host>keep</div>").document;
+        let host = doc.element_by_id("host").unwrap();
+        let (mut doc, kids) = parse_fragment_into(doc, "div", "<span>a</span>b", false);
+        assert_eq!(kids.len(), 2);
+        for k in kids {
+            doc.append_child(host, k).unwrap();
+        }
+        assert_eq!(doc.text_content(host), "keepab");
+    }
+
+    #[test]
+    fn scripting_enabled_leaves_noscript_unparsed() {
+        let html = "<noscript><p id=x>hidden</p></noscript>";
+        let off = parse_document(html).document;
+        assert!(off.element_by_id("x").is_some());
+        let mut parser = DocumentParser::with_options(ParseOptions {
+            scripting_enabled: true,
+            chunk_size: 1024,
+        });
+        parser.feed(html);
+        let on = parser.finish().document;
+        assert!(on.element_by_id("x").is_none());
     }
 }

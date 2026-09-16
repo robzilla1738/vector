@@ -12,11 +12,9 @@ use ve_dom::{Document, NodeKind};
 
 /// CSS coverage counters from `ve-style`.
 ///
-/// **Hook:** the layout track is adding `declarations_total` / `unknown` /
-/// `deferred` counters to the style engine. Until they land this is always
-/// `None`; once present, [`classify`] should also set `requires_script` when
-/// `(unknown + deferred) / declarations_total > 5 %` for declarations that
-/// affect `display` / `position` / `visibility`.
+/// Always populated after parse. `requires_script` flips only when the miss
+/// ratio exceeds 50% *and* missed declarations affect display / position /
+/// visibility. A 5% threshold false-positives real stylesheets.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CssCoverage {
@@ -105,6 +103,66 @@ fn is_json_like_script(ty: Option<&str>) -> bool {
             || t == "speculationrules"
             || t.ends_with("+json")
     })
+}
+
+fn looks_like_js_url(s: &str) -> bool {
+    let path = s.split(['?', '#']).next().unwrap_or(s).trim();
+    path.len() > 3 && path.to_ascii_lowercase().ends_with(".js")
+}
+
+fn is_relative_js_url(s: &str) -> bool {
+    looks_like_js_url(s) && !s.contains("://") && !s.starts_with("//")
+}
+
+/// Unique relative `.js` URLs quoted in `text` (app bundles, not `https://…/analytics.js`).
+fn quoted_js_urls(text: &str) -> usize {
+    let mut urls = std::collections::BTreeSet::new();
+    let bytes = text.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let q = bytes[i];
+        if q == b'"' || q == b'\'' {
+            let rest = &text[i + 1..];
+            if let Some(end) = rest.find(q as char) {
+                let inner = &rest[..end];
+                if is_relative_js_url(inner) {
+                    urls.insert(inner.to_ascii_lowercase());
+                }
+                i += end + 2;
+                continue;
+            }
+        }
+        i += 1;
+    }
+    urls.len()
+}
+
+fn creates_script_element(text: &str) -> bool {
+    let t = text.to_ascii_lowercase();
+    t.contains("createelement")
+        && (t.contains("createelement('script'")
+            || t.contains("createelement(\"script\")")
+            || t.contains("createelement(`script`")
+            || t.contains("createelement(isjs")
+            || t.contains("createelement(is_js"))
+}
+
+/// Inline scripts that inject two or more distinct `.js` files in one
+/// tag (Photopea's app loader). A page of one-file analytics snippets does
+/// not match: we take the max per script, not the sum.
+fn dynamic_script_loads(doc: &Document) -> usize {
+    let mut max = 0usize;
+    for id in doc.elements() {
+        let Some(e) = doc.element(id) else { continue };
+        if e.name != "script" || e.has_attr("src") || is_json_like_script(e.attr("type")) {
+            continue;
+        }
+        let text = doc.text_content(id);
+        if creates_script_element(&text) {
+            max = max.max(quoted_js_urls(&text));
+        }
+    }
+    max
 }
 
 /// Classifies a parsed document. `content_type` is the response MIME type.
@@ -229,7 +287,13 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
         }
     }
 
-    let reason = if text_len < 200 && external_scripts >= 1 {
+    // Thresholds are set from the public corpus (`engine/conformance/
+    // corpus-results.json`, `cargo test -p ve-api --test corpus`): the
+    // shortest server-rendered page there has ~1,500 chars of body text, and
+    // the ones carrying five or more external scripts have ~2,700+; the
+    // client-rendered shells top out around 1,450 chars of loading /
+    // marketing / ad-blocker copy.
+    let reason = if text_len < 500 && external_scripts >= 1 {
         Some(format!(
             "empty-shell: body text {text_len} chars with {external_scripts} external script(s)"
         ))
@@ -237,9 +301,13 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
         Some(format!(
             "empty-root-container: {root} has no element children"
         ))
-    } else if noscript_mentions_js && text_len < 1000 {
+    } else if noscript_mentions_js && text_len < 3000 {
         Some(format!(
             "noscript-requires-js: <noscript> mentions JavaScript and body text is {text_len} chars"
+        ))
+    } else if external_scripts >= 5 && text_len < 2000 {
+        Some(format!(
+            "script-heavy: {external_scripts} external scripts with only {text_len} chars of body text"
         ))
     } else if meta_refresh_js {
         Some("meta-refresh-javascript: <meta http-equiv=refresh> targets a javascript: URL".into())
@@ -249,7 +317,10 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
         ))
     } else if has_onsubmit_form {
         Some("form-onsubmit: a <form> has an onsubmit handler".into())
-    } else if form_without_submit {
+    } else if form_without_submit && text_len < 1000 {
+        // A script-only search box on an otherwise full page (docs sites,
+        // rust-book, postgresql.org) is not a reason to give up the whole
+        // page; submitting that one form fails at step time instead.
         Some(
             "form-without-action-or-submit: a <form> lacks both action and a submit control".into(),
         )
@@ -262,7 +333,14 @@ pub fn classify(doc: &Document, content_type: Option<&str>) -> RoutingInfo {
     } else if body_media_only {
         Some("unsupported-content: media-only body".into())
     } else {
-        None
+        let injected = dynamic_script_loads(doc);
+        if injected >= 2 {
+            Some(format!(
+                "dynamic-script-loader: inline script injects {injected} .js resources"
+            ))
+        } else {
+            None
+        }
     };
 
     match reason {
@@ -372,6 +450,19 @@ mod tests {
             "<template><p>a</p></template><template><p>b</p></template><slot></slot><p>x</p>",
         );
         assert!(templates.route_reason.starts_with("template-heavy"));
+
+        let loader = classify_html(
+            r#"<p>marketing copy that is long enough not to look like a shell. extra words here.</p>
+               <script>
+                 var fls = ["code/a.js", "code/b.js", "code/c.js"];
+                 document.createElement(isJS ? "script" : "link");
+               </script>"#,
+        );
+        assert!(
+            loader.route_reason.starts_with("dynamic-script-loader"),
+            "{}",
+            loader.route_reason
+        );
 
         let canvas = classify_html("<body><canvas></canvas></body>");
         assert!(canvas.route_reason.contains("canvas"));

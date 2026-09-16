@@ -53,6 +53,7 @@ pub mod table;
 pub mod text;
 
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use ve_core::{Edges, NodeId, Point, Rect, Revision, Size, Stage};
 use ve_dom::{DirtyFlags, Document, Node};
@@ -86,6 +87,22 @@ pub struct LayoutTree {
 }
 
 impl LayoutTree {
+    /// An empty tree used as a stand-in when taking ownership of a previous
+    /// layout for [`LayoutEngine::relayout_incremental`].
+    #[must_use]
+    pub fn blank(viewport: Size) -> Self {
+        Self {
+            root: LayoutBox::new(None, BoxKind::Block, Rc::new(ComputedStyle::initial())),
+            viewport,
+            stacking: StackingContext::default(),
+            geometry: HashMap::new(),
+            clips: HashMap::new(),
+            paint: Vec::new(),
+            revision: Revision(0),
+            boxes_laid_out: 0,
+        }
+    }
+
     /// Border-box rectangle of `node` (first fragment; union for inlines).
     #[must_use]
     pub fn rect_of(&self, node: NodeId) -> Option<Rect> {
@@ -698,6 +715,40 @@ mod tests {
 
     fn rect(tree: &LayoutTree, engine: &StyleEngine, doc: &Document, sel: &str) -> Rect {
         tree.rect_of(engine.select_one(doc, sel).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn replaced_elements_take_intrinsic_attribute_and_natural_sizes() {
+        // attributes → size; one attribute + natural ratio → scaled; iframe
+        // default 300×150; CSS width with auto height keeps the ratio
+        let html = "<style>body{margin:0} img,iframe{display:block} #css{width:100px}</style>\
+             <img id=attrs width=40 height=20>\
+             <img id=nat>\
+             <img id=half width=50>\
+             <iframe id=frame></iframe>\
+             <img id=css>\
+             <img id=none>";
+        let mut doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.media = ve_style::MediaEnv::screen(400.0, 600.0);
+        engine.add_document_styles(&doc);
+        for sel in ["#nat", "#half", "#css"] {
+            let id = engine.select_one(&doc, sel).unwrap();
+            doc.set_natural_size(id, 200, 100).unwrap();
+        }
+        let styles = engine.compute(&doc);
+        let tree = LayoutEngine::new().layout(&doc, &styles, Size::new(400.0, 600.0));
+        let r = |sel: &str| rect(&tree, &engine, &doc, sel);
+        assert_eq!(r("#attrs").size, Size::new(40.0, 20.0));
+        assert_eq!(r("#nat").size, Size::new(200.0, 100.0));
+        assert_eq!(r("#half").size, Size::new(50.0, 25.0));
+        assert_eq!(
+            r("#frame").size,
+            Size::new(304.0, 154.0),
+            "300×150 content plus the UA 2px border"
+        );
+        assert_eq!(r("#css").size, Size::new(100.0, 50.0));
+        assert_eq!(r("#none").size, Size::new(0.0, 0.0));
     }
 
     #[test]

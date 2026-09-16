@@ -100,11 +100,10 @@ export function makeInvoker(s: Services) {
           await chrome.activateTarget(page.targetId);
           return { ok: true };
         }
-        if (page.backend === "vector") {
+        if (page.backend === "vector" || page.backend === "vector-engine") {
           await s.pages.activate(page.pageId);
           return { ok: true };
         }
-        // vector-engine pages have no native surface to show (headless engine)
         throw new VectorError("capability_unsupported", `cannot focus a ${page.backend} page's native surface`);
       }
 
@@ -361,7 +360,7 @@ export function makeInvoker(s: Services) {
           // its version, the routing mode and the needs-chromium table size
           engine: {
             ...engineInfo,
-            mode: s.router?.mode() ?? s.settings.engineMode?.() ?? "off",
+            mode: s.router?.mode() ?? s.settings.engineMode?.() ?? "auto",
             connected: !!s.drivers().engine?.isConnected(),
             needsChromiumOrigins: s.router?.entries().length ?? 0,
           },

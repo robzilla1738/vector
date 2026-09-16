@@ -1580,6 +1580,20 @@ impl FontFamily {
     pub fn is_generic(&self) -> bool {
         !matches!(self, Self::Named(_))
     }
+
+    /// CSS serialisation.
+    #[must_use]
+    pub fn to_css(&self) -> String {
+        match self {
+            Self::Named(n) => format!("\"{n}\""),
+            Self::Serif => "serif".into(),
+            Self::SansSerif => "sans-serif".into(),
+            Self::Monospace => "monospace".into(),
+            Self::Cursive => "cursive".into(),
+            Self::Fantasy => "fantasy".into(),
+            Self::SystemUi => "system-ui".into(),
+        }
+    }
 }
 
 /// A grid track size (subset of `<track-size>`).

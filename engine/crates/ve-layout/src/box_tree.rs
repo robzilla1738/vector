@@ -7,7 +7,7 @@
 
 use std::rc::Rc;
 
-use ve_core::{NodeId, Point, Rect};
+use ve_core::{NodeId, Point, Rect, Size};
 use ve_dom::{Document, NodeKind};
 
 use crate::block::{ContainingBlock, Forced};
@@ -144,6 +144,12 @@ pub struct LayoutBox {
     /// context's geometry. Same lifetime as [`Self::intrinsic_cache`]. See
     /// `flex::layout_item`.
     pub layout_cache: Vec<LayoutMemo>,
+    /// Intrinsic content size of a replaced element (`<img>`, `<iframe>`,
+    /// `<video>`, `<canvas>`, …) in CSS px: the fetched natural size, the
+    /// `width`/`height` attributes, or the 300×150 default. Used when CSS
+    /// leaves the corresponding dimension `auto`; one specified dimension
+    /// scales the other by the intrinsic ratio.
+    pub replaced: Option<Size>,
 }
 
 /// One memoised layout of a flex/grid item: the inputs it was laid out
@@ -183,6 +189,7 @@ impl LayoutBox {
             cb_width: 0.0,
             intrinsic_cache: None,
             layout_cache: Vec::new(),
+            replaced: None,
         }
     }
 
@@ -192,6 +199,25 @@ impl LayoutBox {
         for child in &mut self.children {
             child.clear_layout_caches();
         }
+    }
+
+    /// Clones the laid-out subtree without any `layout_cache` entries. Unlike
+    /// `clone()` + [`Self::clear_layout_caches`], this never copies the
+    /// descendants' memos (each of which holds its own subtree snapshot), so
+    /// the cost is one pass over the live boxes.
+    #[must_use]
+    pub fn snapshot_without_caches(&mut self) -> LayoutBox {
+        let cache = std::mem::take(&mut self.layout_cache);
+        let children = std::mem::take(&mut self.children);
+        let mut snap = self.clone();
+        let mut children = children;
+        snap.children = children
+            .iter_mut()
+            .map(LayoutBox::snapshot_without_caches)
+            .collect();
+        self.children = children;
+        self.layout_cache = cache;
+        snap
     }
 
     /// Returns `true` if the box is block-level in its parent's flow.
@@ -326,6 +352,7 @@ pub fn build_element_box(doc: &Document, styles: &StyleTree, id: NodeId) -> Opti
                 bx.col_span = span_attr(doc, id, "colspan", 1);
                 bx.row_span = span_attr(doc, id, "rowspan", 1);
             }
+            bx.replaced = replaced_size(doc, id);
             if display == Display::ListItem {
                 bx.marker = marker_for(doc, styles, id, &style);
             }
@@ -340,6 +367,47 @@ pub fn build_element_box(doc: &Document, styles: &StyleTree, id: NodeId) -> Opti
             Some(bx)
         }
     }
+}
+
+/// Intrinsic size for replaced elements. Fetched natural size wins; then
+/// the `width`/`height` presentational attributes (one of them scales the
+/// other by the natural ratio when known); embedded content defaults to
+/// 300×150 (CSS 2 §10.3.2); an image with nothing known is 0×0.
+fn replaced_size(doc: &Document, id: NodeId) -> Option<Size> {
+    let e = doc.element(id)?;
+    let is_img = e.is_html("img")
+        || (e.is_html("input")
+            && doc
+                .attribute(id, "type")
+                .is_some_and(|t| t.eq_ignore_ascii_case("image")));
+    let embedded = e.is_html("iframe")
+        || e.is_html("video")
+        || e.is_html("canvas")
+        || e.is_html("embed")
+        || e.is_html("object");
+    if !is_img && !embedded {
+        return None;
+    }
+    let attr_px = |name: &str| -> Option<f32> {
+        let v = doc.attribute(id, name)?.trim();
+        let v = v.strip_suffix("px").unwrap_or(v);
+        v.parse::<f32>().ok().filter(|n| n.is_finite() && *n >= 0.0)
+    };
+    let (aw, ah) = (attr_px("width"), attr_px("height"));
+    let natural = e
+        .natural_size
+        .map(|(w, h)| Size::new(w as f32, h as f32))
+        .or_else(|| embedded.then(|| Size::new(300.0, 150.0)));
+    let size = match (aw, ah, natural) {
+        (Some(w), Some(h), _) => Size::new(w, h),
+        (Some(w), None, Some(n)) if n.width > 0.0 => Size::new(w, w * n.height / n.width),
+        (None, Some(h), Some(n)) if n.height > 0.0 => Size::new(h * n.width / n.height, h),
+        (Some(w), None, _) => Size::new(w, 0.0),
+        (None, Some(h), _) => Size::new(0.0, h),
+        (None, None, Some(n)) => n,
+        (None, None, None) => Size::new(0.0, 0.0),
+    };
+    Some(size)
 }
 
 fn span_attr(doc: &Document, id: NodeId, name: &str, default: u32) -> u32 {

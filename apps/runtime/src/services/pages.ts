@@ -52,10 +52,17 @@ interface LivePage {
   driver: DriverPage | null;
   /** serialization chain — commands to one page never overlap */
   queue: Promise<unknown>;
-  lastText?: string;
-  lastFields?: Map<string, string>;
   lastObservationId?: string;
+  /** observation cache (plan A6): the last observation with the page fingerprint and request it answered */
+  lastObs?: { fingerprint: string; reqKey: string; obs: Observation };
+  /** recent observations by revision so `sinceRevision` can diff against the one the caller last saw */
+  history: { revision: number; text: string; fields: Map<string, string> }[];
 }
+
+const OBSERVATION_HISTORY = 8;
+
+const observeReqKey = (req: ObserveReq) =>
+  `${req.scope ?? "full"}|${req.subtreeRef ?? ""}|${req.maxElements ?? 120}|${req.maxTextChars ?? 6000}`;
 
 export interface PageServiceDeps {
   repo: Repo;
@@ -309,7 +316,7 @@ export class PageService {
       lastActiveAt: Date.now(),
       routeReason,
     };
-    const lp: LivePage = { target, driver: dp, queue: Promise.resolve() };
+    const lp: LivePage = { target, driver: dp, queue: Promise.resolve(), history: [] };
     this.live.set(pageId, lp);
     this.wireDriverEvents(lp);
     this.persist(lp);
@@ -346,8 +353,8 @@ export class PageService {
     lp.target.viewStatus = "background";
     lp.target.routeReason = `fallback:${reason}`;
     lp.target.documentEpoch++;
-    lp.lastText = undefined;
-    lp.lastFields = undefined;
+    lp.history = [];
+    lp.lastObs = undefined;
     this.wireDriverEvents(lp);
     await dp.navigate(url).catch(() => {});
     this.persist(lp);
@@ -382,7 +389,7 @@ export class PageService {
       createdAt: Date.now(),
       lastActiveAt: Date.now(),
     };
-    const lp: LivePage = { target, driver: dp, queue: Promise.resolve() };
+    const lp: LivePage = { target, driver: dp, queue: Promise.resolve(), history: [] };
     this.live.set(pageId, lp);
     if (dp) this.wireDriverEvents(lp);
     this.persist(lp);
@@ -580,8 +587,28 @@ export class PageService {
   async observe(pageId: string, req: ObserveReq): Promise<Observation> {
     return this.enqueue(pageId, async () => {
       const dp = this.driverPageLenient(pageId);
+      const lp = this.live.get(pageId);
+      // Observation cache (plan A6): one small probe decides whether the
+      // last observation is still exact. Same epoch, same request shape,
+      // same fingerprint — nothing the walk could see has changed, so the
+      // renderer is not re-walked and nothing is re-persisted.
+      let fingerprint: string | undefined;
+      if (dp.observeFingerprint && lp) {
+        fingerprint = await dp.observeFingerprint().catch(() => undefined);
+        const hit = lp.lastObs;
+        if (
+          fingerprint &&
+          hit &&
+          hit.fingerprint === fingerprint &&
+          hit.reqKey === observeReqKey(req) &&
+          hit.obs.documentEpoch === lp.target.documentEpoch
+        ) {
+          this.deps.tracer?.incr("observe.cache_hit");
+          return { ...hit.obs, observedAt: Date.now(), cached: true, changesSince: undefined, deltaFrom: undefined };
+        }
+      }
       const content = await dp.observe(req);
-      return this.recordObservation(pageId, content, req);
+      return this.recordObservation(pageId, content, req, fingerprint);
     });
   }
 
@@ -590,7 +617,7 @@ export class PageService {
    * act-and-observe call) with ids/revision/epoch, diff it against the
    * previous one, persist and announce it.
    */
-  private recordObservation(pageId: string, content: ObservationContent, req: ObserveReq): Observation {
+  private recordObservation(pageId: string, content: ObservationContent, req: ObserveReq, fingerprint?: string): Observation {
     const lp = this.live.get(pageId);
     if (!lp) throw new VectorError("target_detached", `page ${pageId} detached during observation`);
     // the engine reports its own document revision/generation with the content
@@ -604,11 +631,16 @@ export class PageService {
     lp.target.lastRevision = revision;
     lp.target.url = content.url;
     lp.target.title = content.title;
-    const changesSince = this.diffObservations(lp, content);
+    // `sinceRevision` picks the observation the caller last saw as the diff
+    // base (falls back to the most recent one when it has aged out)
+    const base =
+      req.sinceRevision !== undefined ? (lp.history.find((h) => h.revision === req.sinceRevision) ?? lp.history.at(-1)) : lp.history.at(-1);
+    const changesSince = this.diffObservations(base, content);
     if (engineMeta?.changed?.length) changesSince.push(`refs changed: ${engineMeta.changed.slice(0, 20).join(" ")}`);
     const deltaFrom = lp.lastObservationId;
-    lp.lastText = content.text;
-    lp.lastFields = new Map(content.formFields.map((f) => [f.label ?? f.name ?? f.ref ?? "?", f.value ?? ""]));
+    const fields = new Map(content.formFields.map((f) => [f.label ?? f.name ?? f.ref ?? "?", f.value ?? ""]));
+    lp.history.push({ revision, text: content.text, fields });
+    if (lp.history.length > OBSERVATION_HISTORY) lp.history.splice(0, lp.history.length - OBSERVATION_HISTORY);
     const obs: Observation = {
       observationId: newObservationId(),
       pageId,
@@ -621,6 +653,7 @@ export class PageService {
       deltaFrom: changesSince.length ? deltaFrom : undefined,
     };
     lp.lastObservationId = obs.observationId;
+    lp.lastObs = fingerprint ? { fingerprint, reqKey: observeReqKey(req), obs } : undefined;
     this.deps.repo.saveObservation({
       observationId: obs.observationId,
       pageId,
@@ -640,10 +673,11 @@ export class PageService {
     return obs;
   }
 
-  private diffObservations(lp: LivePage, next: ObservationContent): string[] {
+  private diffObservations(base: { text: string; fields: Map<string, string> } | undefined, next: ObservationContent): string[] {
     const changes: string[] = [];
-    if (lp.lastText !== undefined && lp.lastText !== next.text) {
-      const a = lp.lastText.split("\n").filter(Boolean);
+    if (!base) return changes;
+    if (base.text !== next.text) {
+      const a = base.text.split("\n").filter(Boolean);
       const b = next.text.split("\n").filter(Boolean);
       const added = b.filter((l) => !a.includes(l)).slice(0, 5);
       const removed = a.filter((l) => !b.includes(l)).slice(0, 5);
@@ -651,10 +685,10 @@ export class PageService {
       for (const l of removed) changes.push(`- ${l.slice(0, 120)}`);
       if (!added.length && !removed.length) changes.push("page text changed");
     }
-    if (lp.lastFields) {
+    {
       for (const f of next.formFields) {
         const key = f.label ?? f.name ?? f.ref ?? "?";
-        const prev = lp.lastFields.get(key);
+        const prev = base.fields.get(key);
         const cur = f.value ?? "";
         if (prev !== undefined && prev !== cur) changes.push(`${key}: "${prev}" -> "${cur}"`);
       }
@@ -682,7 +716,8 @@ export class PageService {
       lp.target.controller = ctx.runId ? "agent" : lp.target.controller === "none" ? "external" : lp.target.controller;
       // controller/epoch changes are persisted once, after the program (speed P2-1)
       // pointer/keyboard input only lands on a visible, laid-out native view —
-      // hold the stage lease while a program with interactive steps runs
+      // mark the page working (rendered offscreen unless focused) while a
+      // program with interactive steps runs; no global lease (plan A8)
       const allSteps = collectSteps(program);
       const needsStage =
         lp.target.backend === "vector" &&
@@ -866,10 +901,6 @@ export class PageService {
   }
   async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact" }) {
     const dp = this.driverPageLenient(pageId);
-    if (this.live.get(pageId)?.target.backend === "vector-engine") {
-      // rendering lands with ve-gfx (M2+); be explicit rather than time out
-      throw new VectorError("capability_unsupported", "screenshots are not available on the vector-engine backend yet");
-    }
     const shot = await dp.screenshot({ fullPage: opts?.fullPage });
     if (opts?.format === "artifact") {
       const a = this.deps.artifacts?.save({ pageId, label: "capture", buffer: shot.buffer, mediaType: "image/png" });

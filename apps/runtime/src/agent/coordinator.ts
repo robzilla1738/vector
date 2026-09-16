@@ -19,6 +19,8 @@ import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
 import type { ModelClient } from "./model-client.js";
 import { normalizePlannerObject } from "./gateway-client.js";
+import { EarlyDispatcher } from "./early-dispatch.js";
+import { PlanStreamParser } from "./plan-stream.js";
 import { buildFinalAnswerPrompt, buildPlannerPrompt, buildVisionPrompt, extractJson, FINAL_ANSWER_SYSTEM, PLANNER_SYSTEM, VISION_SYSTEM } from "./planner.js";
 
 interface RunControl {
@@ -299,6 +301,7 @@ export class RunCoordinator {
     let lastActionFailed = false;
     let doneChallenged = false;
     let pendingObs: { scope?: "full" | "forms" | "links" | "tables" | "subtree"; subtreeRef?: string } | undefined;
+    let carriedObs: Observation | undefined;
 
     /**
      * Every structured call goes through here so the budget counts attempts
@@ -308,11 +311,17 @@ export class RunCoordinator {
     const structuredCall = async <T>(
       role: "planner" | "repair" | "final",
       args: { modelId: string; system: string; prompt: string; schema: z.ZodType<T>; maxOutputTokens: number },
+      /** when given and the client can stream, text deltas arrive here while the call is in flight (plan A5) */
+      stream?: { onText: (delta: string) => void; firstDispatchAt: () => number | undefined },
     ) => {
       modelCalls++;
       const started = Date.now();
       try {
-        const call = await model.generateStructured<T>({ ...args, signal: c.abort.signal });
+        const call =
+          stream && model.streamStructured
+            ? await model.streamStructured<T>({ ...args, signal: c.abort.signal, onText: stream.onText })
+            : await model.generateStructured<T>({ ...args, signal: c.abort.signal });
+        const firstDispatchAt = stream?.firstDispatchAt();
         this.deps.recordModelCall({
           runId,
           role,
@@ -320,7 +329,10 @@ export class RunCoordinator {
           durationMs: call.durationMs,
           inputTokens: call.inputTokens,
           outputTokens: call.outputTokens,
-          providerMetadata: call.providerMetadata,
+          providerMetadata:
+            firstDispatchAt === undefined
+              ? call.providerMetadata
+              : { ...(call.providerMetadata ?? {}), stream: { firstDispatchMs: firstDispatchAt - started, totalMs: call.durationMs } },
         });
         return call;
       } catch (e) {
@@ -406,7 +418,15 @@ export class RunCoordinator {
         pendingObs = undefined;
         let obs: Observation;
         try {
-          obs = await this.deps.pages.observe(activePageId, obsReq);
+          // an observation that rode along with the last program (plan A6)
+          // is exactly what a fresh observe would return — skip the trip
+          if (carriedObs && carriedObs.pageId === activePageId) {
+            obs = carriedObs;
+            carriedObs = undefined;
+          } else {
+            carriedObs = undefined;
+            obs = await this.deps.pages.observe(activePageId, obsReq);
+          }
         } catch (e) {
           // The tab closed/crashed out from under the run — retarget to
           // another live page in scope instead of dying on the dead one.
@@ -451,6 +471,29 @@ export class RunCoordinator {
         }
 
         this.setStatus(runId, "planning", "Thinking…");
+        // Streamed planning (plan A5): steps are executed as the model
+        // finishes writing each one. Only for single-page runs — a pageId
+        // retarget can arrive after the steps in the stream — and only when
+        // the client can stream at all.
+        const onStepRecorded = (outcome: StepOutcome, step: Step) => {
+          outcomes.push(outcome);
+          this.deps.onStepRecorded?.(runId, outcome, step, obsArtifactId);
+          this.deps.events.emit(
+            EventTypes.StepFinished,
+            { runId, stepId: outcome.stepId, op: outcome.op, status: outcome.status, durationMs: outcome.durationMs, error: outcome.error },
+            runId,
+          );
+        };
+        let early: EarlyDispatcher | undefined;
+        let repeatNudge: string | undefined;
+        // the observation request the next iteration would make; consumed by
+        // the program's trailing observe so the loop top can reuse it
+        const nextObserveReq = () => {
+          const r = pendingObs ?? {};
+          pendingObs = undefined;
+          return r;
+        };
+        const canStream = typeof model.streamStructured === "function" && run.pageIds.length <= 1;
         const plannerCall = async (): Promise<PlanChunk> => {
           const prompt = buildPlannerPrompt({
             goal: run.goal,
@@ -460,12 +503,30 @@ export class RunCoordinator {
             repairNote: lastError,
             context: run.config?.context,
           });
-          const call = await structuredCall<PlanChunk>("planner", {
-            modelId,
-            system: PLANNER_SYSTEM,
-            prompt,
-            schema: PlanChunkSchema,
-            maxOutputTokens: 8192,
+          const args = { modelId, system: PLANNER_SYSTEM, prompt, schema: PlanChunkSchema, maxOutputTokens: 8192 };
+          if (!canStream) return (await structuredCall<PlanChunk>("planner", args)).object;
+          const parser = new PlanStreamParser();
+          const epoch = obs.documentEpoch;
+          const dispatcher = new EarlyDispatcher(
+            (steps, { first, last }) =>
+              this.deps.pages.execute(
+                { pageId: activePageId!, ...(first ? { documentEpoch: epoch } : {}), steps },
+                { runId, signal: c.abort.signal, onStep: onStepRecorded },
+                last ? { returnObservation: nextObserveReq() } : {},
+              ),
+            24,
+          );
+          early = dispatcher;
+          const call = await structuredCall<PlanChunk>("planner", args, {
+            onText: (delta) => {
+              for (const step of parser.push(delta)) {
+                // a step is only safe to run once the plan is known to be a
+                // `continue` for this page; anything else waits for the full parse
+                if (parser.status === "continue" && (parser.pageId === undefined || parser.pageId === activePageId)) dispatcher.offer(step);
+                else dispatcher.halt();
+              }
+            },
+            firstDispatchAt: () => dispatcher.firstDispatchAt,
           });
           return call.object;
         };
@@ -508,6 +569,14 @@ export class RunCoordinator {
         } catch (e) {
           // A malformed/truncated model response is transient — re-observe and
           // try again rather than ending the run on a single bad completion.
+          // Steps that streamed in cleanly before the failure have already run
+          // (their outcomes are recorded); wait for the in-flight batch so the
+          // next observation sees their effect.
+          if (early) {
+            early.halt();
+            const partial = await early.finish([]);
+            if (partial.steps.length) stepsRun += partial.steps.length;
+          }
           if (c.abort.signal.aborted) throw e;
           modelErrorCount++;
           if (modelErrorCount >= MODEL_ERROR_LIMIT) {
@@ -522,6 +591,15 @@ export class RunCoordinator {
           if (modelErrorCount === 2 && !visionUsed) visionPending = true;
           lastError = `model call failed (${e instanceof Error ? e.message : String(e)}) — respond with a valid PlanChunk`;
           continue;
+        }
+
+        // Nothing streamed may run once the plan is not a `continue` for
+        // this page; whatever did start is allowed to finish and recorded.
+        if (early && (plan.status !== "continue" || (plan.pageId && plan.pageId !== activePageId) || !plan.steps?.length)) {
+          early.halt();
+          const partial = await early.finish([]);
+          stepsRun += partial.steps.length;
+          early = undefined;
         }
 
         if (plan.status === "done") {
@@ -599,6 +677,7 @@ export class RunCoordinator {
           if (planSig === lastPlanSig) {
             repeatCount++;
             if (repeatCount >= PLAN_REPEAT_LIMIT) {
+              if (early) await early.finish([]);
               const verdict = await tryFinalDecision("planner repeated the same steps without finishing", obs);
               if (verdict === "done") return;
               if (verdict === "input") {
@@ -608,28 +687,28 @@ export class RunCoordinator {
               throw new VectorError("step_failed", "planner repeated the same steps without finishing");
             }
             lastError = `You already ran this exact step sequence and it did not complete the goal. If the goal is met return status="done" with the result; if blocked, ask for input or request a different observation scope — do NOT repeat the same actions.`;
-            continue;
+            // with streaming the repeated steps may already be running; let
+            // them finish (they are recorded) and still deliver the nudge
+            if (!early || early.dispatchedCount === 0) {
+              if (early) await early.finish([]);
+              continue;
+            }
+            repeatNudge = lastError;
+          } else {
+            repeatCount = 0;
+            lastPlanSig = planSig;
           }
-          repeatCount = 0;
-          lastPlanSig = planSig;
         }
 
         const program = { pageId: activePageId, documentEpoch: obs.documentEpoch, steps: plan.steps };
-        const result = await this.deps.pages.execute(program, {
-          runId,
-          signal: c.abort.signal,
-          onStep: (outcome, step) => {
-            outcomes.push(outcome);
-            this.deps.onStepRecorded?.(runId, outcome, step, obsArtifactId);
-            this.deps.events.emit(
-              EventTypes.StepFinished,
-              { runId, stepId: outcome.stepId, op: outcome.op, status: outcome.status, durationMs: outcome.durationMs, error: outcome.error },
-              runId,
-            );
-          },
-        });
+        const result = early
+          ? await early.finish(plan.steps)
+          : await this.deps.pages.execute(program, { runId, signal: c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
+        const carried = early ? early.observation : (result as { observation?: Observation }).observation;
+        if (carried && carried.pageId === activePageId) carriedObs = carried;
         stepsRun += plan.steps.length;
-        lastError = undefined;
+        lastError = repeatNudge;
+        repeatNudge = undefined;
         lastActionFailed = false;
         repairCount = 0;
 

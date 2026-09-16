@@ -1,5 +1,7 @@
 # Vector desktop — UI/UX audit against the Dia / macOS bar
 
+> **Historical (Sep 2026, pre-M1).** Written against the first desktop shell, which was replaced by the Arc-style sidebar shell described in [`docs/ui/shell.md`](../ui/shell.md). Kept for the reasoning; the specific bugs and line references no longer apply.
+
 Scope: `apps/desktop/{main,preload,renderer}` read-only. ~4.7k LOC total; renderer is 14 components + one 692-line `styles.css`. All line refs are to files under `/agent/workspace/vector/apps/desktop/`.
 
 **Verdict in one line:** the bones are right (system font, token layer, hiddenInset + vibrancy, native menus/context menus, keyboard-first) but the surface is a competent developer tool, not a Dia-grade consumer browser: no system theme/accent tracking, an opaque "inspector" instead of a chat surface, a permanently visible activity bar, several outright bugs (toasts hidden behind the native page, address field that can't be cleared, six components referencing an undefined `.fade-in` class, unfocusable tabs), and hard cuts everywhere the page hides.

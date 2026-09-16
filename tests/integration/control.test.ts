@@ -22,7 +22,7 @@ beforeAll(async () => {
   procs = await startFixturesIfNeeded();
   await waitForFixtures();
   dataDir = mkdtempSync(join(tmpdir(), "vector-ctrl-"));
-  rt = await startRuntime({ ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_ELECTRON_CDP: "" });
+  rt = await startRuntime({ ...process.env, VECTOR_DATA_DIR: dataDir, VECTOR_ELECTRON_CDP: "", VECTOR_ENGINE_MODE: "off" });
 }, 60_000);
 
 afterAll(async () => {

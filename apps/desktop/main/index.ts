@@ -7,8 +7,8 @@
  * exposes native.* methods to it over fork IPC and forwards its event
  * stream to the renderer.
  */
-import { app, BaseWindow, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell, WebContentsView } from "electron";
-import { mkdirSync, readFileSync, existsSync, writeFileSync } from "node:fs";
+import { app, BaseWindow, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, safeStorage, shell, WebContentsView } from "electron";
+import { mkdirSync, readFileSync, existsSync, writeFileSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { RpcChannel, type Transport } from "@vector/contracts";
@@ -44,7 +44,8 @@ function applyAppearance(theme: "dark" | "light") {
 }
 
 // CDP must be enabled before app ready. Port 0 → OS picks; the real port is
-// written to <userData>/DevToolsActivePort.
+// written to <userData>/DevToolsActivePort. Bind loopback only (plan A22).
+app.commandLine.appendSwitch("remote-debugging-address", "127.0.0.1");
 app.commandLine.appendSwitch("remote-debugging-port", "0");
 
 let win: BaseWindow | null = null;
@@ -54,18 +55,19 @@ let channel: RpcChannel | null = null;
 let overlayOpen = false;
 let stageBounds: { x: number; y: number; width: number; height: number } | null = null;
 let focusedPageId: string | null = null;
-// pointer input only lands on a visible, laid-out view — a runtime-held
-// lease temporarily shows a hidden page while a program executes pointer
-// steps, serialized so parallel members can't steal the stage mid-step
-let leasePageId: string | null = null;
+// Pointer input only lands on a visible, laid-out view. Pages a program is
+// driving are kept visible *offscreen* (stage-sized, just outside the window)
+// instead of hidden, so Chromium keeps them laid out and rendering while the
+// human's focused tab stays on the stage. Any number of pages can be active
+// at once — there is no global lease (plan A8). A `setVisible(false)` view
+// stops producing frames and Playwright's stability checks stall on it.
+const offscreenActive = new Set<string>();
 let splitPageId: string | null = null;
 // corner radius of the stage card — page views are clipped to match it
 let stageRadius = 0;
-let stageLease: Promise<void> = Promise.resolve();
 // pages whose find session has emitted found-in-page at least once —
 // cold sessions need a re-issue, warm ones must not be reset
 const warmFind = new Set<string>();
-let leaseRelease: (() => void) | null = null;
 
 function log(...args: unknown[]) {
   process.stdout.write(`[main] ${args.join(" ")}\n`);
@@ -94,7 +96,14 @@ function readCdpPort(): number {
     if (existsSync(f)) {
       const [port] = readFileSync(f, "utf8").split("\n");
       const n = Number(port);
-      if (n > 0) return n;
+      if (n > 0) {
+        try {
+          chmodSync(f, 0o600);
+        } catch {
+          /* non-POSIX fs */
+        }
+        return n;
+      }
     }
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
   }
@@ -121,9 +130,9 @@ const viewHooks = {
   onDestroyed: (pageId: string) => notifyRuntime("view.removed", { pageId }),
   onPopup: (entry: ViewEntry) => notifyRuntime("view.popup", { pageId: entry.pageId, marker: entry.marker, url: entry.view.webContents.getURL() }),
   onTakeover: (pageId: string) => {
-    // A stage lease means the runtime is dispatching trusted pointer input —
-    // those synthetic events must not hand the page to the human mid-program.
-    if (pageId === leasePageId) return;
+    // Trusted input the runtime dispatches into an offscreen working page is
+    // not a human taking over; input into the page on the stage is.
+    if (offscreenActive.has(pageId) && pageId !== focusedPageId) return;
     notifyRuntime("view.takeover", { pageId });
   },
   openAsTab: (url: string) => {
@@ -157,11 +166,7 @@ function registerNativeHandlers(ch: RpcChannel) {
     // stale pointers would leave every other view hidden
     if (focusedPageId === pageId) focusedPageId = null;
     if (splitPageId === pageId) splitPageId = null;
-    if (leasePageId === pageId) {
-      leasePageId = null;
-      leaseRelease?.();
-      leaseRelease = null;
-    }
+    offscreenActive.delete(pageId);
     applyStage();
     return { ok: true };
   });
@@ -178,7 +183,7 @@ function registerNativeHandlers(ch: RpcChannel) {
   });
   ch.onMethod("native.hidePage", (p) => {
     const { pageId } = p as { pageId: string };
-    if (pageId !== leasePageId) registry.get(pageId)?.view.setVisible(false);
+    if (!offscreenActive.has(pageId)) registry.get(pageId)?.view.setVisible(false);
     return { ok: true };
   });
   ch.onMethod("native.stopPage", (p) => {
@@ -200,28 +205,20 @@ function registerNativeHandlers(ch: RpcChannel) {
     notifyRuntime("view.navState", { pageId, canGoBack: wc.navigationHistory.canGoBack(), canGoForward: wc.navigationHistory.canGoForward() });
     return { ok: true };
   });
-  ch.onMethod("native.acquireStage", async (p) => {
+  // A program with pointer/keyboard steps is starting on this page: keep the
+  // view laid out (offscreen if it is not the focused tab). Returns at once —
+  // parallel programs on different pages never wait on each other.
+  ch.onMethod("native.acquireStage", (p) => {
     const { pageId } = p as { pageId: string };
     const entry = registry.get(pageId);
     if (!entry || !win) return { ok: false };
-    const prev = stageLease;
-    let release!: () => void;
-    stageLease = new Promise<void>((r) => (release = r));
-    await prev;
-    leasePageId = pageId;
-    leaseRelease = release;
-    win.contentView.addChildView(entry.view);
+    offscreenActive.add(pageId);
     applyStage();
     return { ok: true };
   });
   ch.onMethod("native.releaseStage", (p) => {
     const { pageId } = p as { pageId: string };
-    if (leasePageId === pageId) {
-      leasePageId = null;
-      applyStage();
-      leaseRelease?.();
-      leaseRelease = null;
-    }
+    if (offscreenActive.delete(pageId)) applyStage();
     return { ok: true };
   });
   ch.onMethod("native.capturePage", async (p) => {
@@ -354,6 +351,36 @@ function registerNativeHandlers(ch: RpcChannel) {
     }
     return { ok: true, count };
   });
+  ch.onMethod("native.storeSecret", (p) => {
+    const { name, value } = p as { name: string; value: string };
+    const dir = join(DATA_DIR, "secrets");
+    mkdirSync(dir, { recursive: true });
+    const path = join(dir, name.replace(/[^a-zA-Z0-9._-]/g, "_"));
+    const payload = safeStorage.isEncryptionAvailable()
+      ? safeStorage.encryptString(value)
+      : Buffer.from(value, "utf8");
+    writeFileSync(path, payload, { mode: 0o600 });
+    try {
+      chmodSync(path, 0o600);
+    } catch {
+      /* non-POSIX fs */
+    }
+    return { ok: true };
+  });
+  ch.onMethod("native.readSecret", (p) => {
+    const { name } = p as { name: string };
+    const path = join(DATA_DIR, "secrets", name.replace(/[^a-zA-Z0-9._-]/g, "_"));
+    if (!existsSync(path)) return { value: undefined };
+    const raw = readFileSync(path);
+    try {
+      const value = safeStorage.isEncryptionAvailable()
+        ? safeStorage.decryptString(raw)
+        : raw.toString("utf8");
+      return { value };
+    } catch {
+      return { value: undefined };
+    }
+  });
 }
 
 // ---------- stage layout ----------
@@ -361,10 +388,14 @@ function registerNativeHandlers(ch: RpcChannel) {
 function applyStage() {
   if (!win) return;
   const bounds = stageBounds ?? win.getContentBounds();
-  const shown = leasePageId ?? focusedPageId;
+  const shown = focusedPageId;
   // Deliberate two-page inspection: a split companion shares the stage beside
-  // the focused page. A stage lease (agent pointer work) takes the whole stage.
-  const split = !leasePageId && !overlayOpen && splitPageId && splitPageId !== shown ? splitPageId : null;
+  // the focused page.
+  const split = !overlayOpen && splitPageId && splitPageId !== shown ? splitPageId : null;
+  // Working pages that are not on the stage render at stage bounds *beneath*
+  // the shell view (child index 0): laid out, producing frames, receiving
+  // trusted input, covered by the opaque shell. A view outside the window
+  // would get an empty visible rect and Chromium collapses its viewport.
   for (const entry of registry.all()) {
     // WebContentsView.setBorderRadius exists in current Electron; guard for the popup pseudo-views
     const rounded = entry.view as { setBorderRadius?: (r: number) => void };
@@ -375,7 +406,7 @@ function applyStage() {
         /* unsupported on this platform */
       }
     }
-    if (entry.pageId === shown && (!overlayOpen || entry.pageId === leasePageId)) {
+    if (entry.pageId === shown && !overlayOpen) {
       if (split) {
         const w = Math.floor(bounds.width / 2);
         entry.view.setBounds({ x: bounds.x, y: bounds.y, width: w, height: bounds.height });
@@ -386,6 +417,10 @@ function applyStage() {
     } else if (split && entry.pageId === split) {
       const w = bounds.width - Math.floor(bounds.width / 2);
       entry.view.setBounds({ x: bounds.x + bounds.width - w, y: bounds.y, width: w, height: bounds.height });
+      entry.view.setVisible(true);
+    } else if (offscreenActive.has(entry.pageId)) {
+      win.contentView.addChildView(entry.view, 0);
+      entry.view.setBounds(bounds);
       entry.view.setVisible(true);
     } else {
       entry.view.setVisible(false);
@@ -560,6 +595,12 @@ function wirePopupAdoption() {
 async function boot() {
   const cdpPort = readCdpPort();
   log("cdp port", cdpPort);
+  try {
+    writeFileSync(join(DATA_DIR, CDP_PORT_FILE), String(cdpPort), { mode: 0o600 });
+    chmodSync(join(DATA_DIR, CDP_PORT_FILE), 0o600);
+  } catch {
+    /* non-POSIX fs */
+  }
 
   // spawn the runtime — forked under ELECTRON_RUN_AS_NODE
   const runtime = spawnRuntime({

@@ -1,0 +1,282 @@
+{
+  "url": "https://www.photopea.com/",
+  "title": "Photopea | Online Photo Editor",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 2175.7002
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://www.photopea.com/",
+      "sameOrigin": true
+    }
+  ],
+  "text": "[img: Photopea logo] Photopea Learn Tutorials Templates API\n# Free Online Photo Editor\n## Unlock your creativity with the best free photo editor.\nTransform your photos with professional-grade tools in a free online photo editor that works right in your browser. No downloads, no hassle.\n[Start using Photopea]\n[img: Photo editor on a laptop]\n## Fully Local\nThere are no uploads. Photopea runs on your device, using your CPU and your GPU. All files open instantly, and never leave your device.\n## Cost-Effective\nEnjoy all the premium features without spending a dime.\n## Convenient Editor\nNo need to install heavy software on your device. Just open your browser and start editing.\n## Runs Everywhere\nOur photo editor runs on any device. The better hardware you have, the better it runs.\n[Start using Photopea]\n## Professional Editor\nPhotopea offers a full suite of editing tools, from basic features like cropping and resizing to advanced features such as layering, masking, and blending.\n## Full PSD support\nPhotopea fully supports a popular PSD format, both opening and saving files. It is the main format of Photopea.\n## Swiss knife for graphics\nOpen and edit PNG, JPG, GIF, BMP, WEBP, SVG, PDF, AI, AVIF, DDS, HEIC, TIFF, MP4, TGA, CDR, PDN, EPS, INDD, Figma and 40 other formats .\n## Perfect RAW support\nPhotopea opens DNG, CR2, CR3, NEF, ARW, RW2, RAF, ORF and FFF files. Set the Exposure, Color Balance, Contrast, Highlights and Shadows, etc.\n[Start using Photopea]\n[img: Photo editor on a phone]\n## State-of-the-art AI\nRemove background with one click , or replace any part of an image with a new content through a text description.\n## All Essential Features\nWe have Layers, Masks, Layer Styles, Smart Objects, Adjustment Layers, Channels, Paths and more!\n## Adjustments and Filters\nDo you need Levels and Curves? A Gaussian Blur? Or advanced stuff such as Liquify or Puppet Warp? We have it all!\n## Vector Graphics\nCreate and edit vector graphics directly within the editor. Perfect for designers working on logos, icons, or illustrations.\n[Start using Photopea]\n## Who Can Benefit from our Free Photo Editor?\n## Social Media Enthusiasts\nEnhance your photos before sharing them on platforms like Instagram, Facebook, or Twitter. Make every post stand out with unique edits.\n## Students and Educators\nCreate stunning visuals for presentations, assignments, and more. Our free online photo editor is a great tool for educational projects.\n## Small Business Owners\nDesign promotional materials, edit product photos, and create engaging content for your website or online store, all without spending on expensive software.\n## Graphic Designers\nWhether you’re a freelancer or part of a design team, Photopea’s free photo editor offers all the features you need to produce professional-quality work.\n[Start using Photopea]\n[img: Freelancer using a photo editor]\nsupport@photopea.com | Privacy Policy | Twitter | Facebook | Reddit",
+  "headings": [
+    "Free Online Photo Editor",
+    "Unlock your creativity with the best free photo editor.",
+    "Fully Local",
+    "Cost-Effective",
+    "Convenient Editor",
+    "Runs Everywhere",
+    "Professional Editor",
+    "Full PSD support",
+    "Swiss knife for graphics",
+    "Perfect RAW support",
+    "State-of-the-art AI",
+    "All Essential Features",
+    "Adjustments and Filters",
+    "Vector Graphics",
+    "Who Can Benefit from our Free Photo Editor?",
+    "Social Media Enthusiasts",
+    "Students and Educators",
+    "Small Business Owners",
+    "Graphic Designers"
+  ],
+  "elements": [
+    {
+      "ref": "r207",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Start using Photopea",
+      "type": "submit",
+      "selector": {}
+    },
+    {
+      "ref": "r183",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Learn",
+      "href": "https://www.photopea.com/learn",
+      "selector": {}
+    },
+    {
+      "ref": "r186",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Tutorials",
+      "href": "https://www.photopea.com/tuts",
+      "selector": {}
+    },
+    {
+      "ref": "r189",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Templates",
+      "href": "https://www.photopea.com/templates",
+      "selector": {}
+    },
+    {
+      "ref": "r192",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "API",
+      "href": "https://www.photopea.com/api",
+      "selector": {}
+    },
+    {
+      "ref": "r245",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Start using Photopea",
+      "type": "submit",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r271",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "40 other formats",
+      "href": "https://github.com/photopea/photopea?tab=readme-ov-file#supported-formats",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r281",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Start using Photopea",
+      "type": "submit",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r309",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Remove background with one click",
+      "href": "https://x.com/photopeacom/status/1735723561950539852/video/1",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r312",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "replace any part of an image",
+      "href": "https://x.com/photopeacom/status/1661425407944425494/video/1",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r334",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Start using Photopea",
+      "type": "submit",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r370",
+      "frame": "main",
+      "tag": "button",
+      "role": "button",
+      "name": "Start using Photopea",
+      "type": "submit",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r382",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "support@photopea.com",
+      "href": "mailto:support@photopea.com",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r385",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Privacy Policy",
+      "href": "https://www.photopea.com/privacy.html",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r388",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Twitter",
+      "href": "https://x.com/photopeacom",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r391",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Facebook",
+      "href": "https://facebook.com/photopea/",
+      "selector": {},
+      "offscreen": true
+    },
+    {
+      "ref": "r394",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "Reddit",
+      "href": "https://reddit.com/r/photopea/",
+      "selector": {},
+      "offscreen": true
+    }
+  ],
+  "formFields": [],
+  "tables": [],
+  "links": [
+    {
+      "ref": "r183",
+      "text": "Learn",
+      "href": "https://www.photopea.com/learn"
+    },
+    {
+      "ref": "r186",
+      "text": "Tutorials",
+      "href": "https://www.photopea.com/tuts"
+    },
+    {
+      "ref": "r189",
+      "text": "Templates",
+      "href": "https://www.photopea.com/templates"
+    },
+    {
+      "ref": "r192",
+      "text": "API",
+      "href": "https://www.photopea.com/api"
+    },
+    {
+      "ref": "r271",
+      "text": "40 other formats",
+      "href": "https://github.com/photopea/photopea?tab=readme-ov-file#supported-formats"
+    },
+    {
+      "ref": "r309",
+      "text": "Remove background with one click",
+      "href": "https://x.com/photopeacom/status/1735723561950539852/video/1"
+    },
+    {
+      "ref": "r312",
+      "text": "replace any part of an image",
+      "href": "https://x.com/photopeacom/status/1661425407944425494/video/1"
+    },
+    {
+      "ref": "r382",
+      "text": "support@photopea.com",
+      "href": "mailto:support@photopea.com"
+    },
+    {
+      "ref": "r385",
+      "text": "Privacy Policy",
+      "href": "https://www.photopea.com/privacy.html"
+    },
+    {
+      "ref": "r388",
+      "text": "Twitter",
+      "href": "https://x.com/photopeacom"
+    },
+    {
+      "ref": "r391",
+      "text": "Facebook",
+      "href": "https://facebook.com/photopea/"
+    },
+    {
+      "ref": "r394",
+      "text": "Reddit",
+      "href": "https://reddit.com/r/photopea/"
+    }
+  ],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 17,
+    "elementsShown": 17,
+    "textChars": 2931,
+    "approxTokens": 1150
+  }
+}

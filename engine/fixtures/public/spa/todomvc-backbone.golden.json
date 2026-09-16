@@ -1,0 +1,72 @@
+{
+  "url": "https://todomvc.com/examples/backbone/dist/",
+  "title": "TodoMVC: Backbone",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 0.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://todomvc.com/examples/backbone/dist/",
+      "sameOrigin": true
+    }
+  ],
+  "text": "# todos\n[footer]\nDouble-click to edit a todo\nCreated by the TodoMVC Team\nPart of TodoMVC",
+  "headings": [
+    "todos"
+  ],
+  "elements": [
+    {
+      "ref": "r34",
+      "frame": "main",
+      "tag": "input",
+      "role": "textbox",
+      "name": "What needs to be done?",
+      "type": "text",
+      "value": "",
+      "placeholder": "What needs to be done?",
+      "selector": {}
+    },
+    {
+      "ref": "r63",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "TodoMVC",
+      "href": "http://todomvc.com/",
+      "selector": {}
+    }
+  ],
+  "formFields": [
+    {
+      "ref": "r34",
+      "label": "What needs to be done?",
+      "type": "text",
+      "value": "",
+      "valid": true
+    }
+  ],
+  "tables": [],
+  "links": [
+    {
+      "ref": "r63",
+      "text": "TodoMVC",
+      "href": "http://todomvc.com/"
+    }
+  ],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 2,
+    "elementsShown": 2,
+    "textChars": 88,
+    "approxTokens": 93
+  }
+}

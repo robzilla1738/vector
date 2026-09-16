@@ -240,6 +240,10 @@ impl Cursor {
     /// `unsigned long long` and nullable suffixes.
     fn parse_type(&mut self) -> Result<String, WebIdlError> {
         let mut ty = self.ident()?;
+        if ty == "unrestricted" {
+            ty.push(' ');
+            ty.push_str(&self.ident()?);
+        }
         if ty == "unsigned" || ty == "long" {
             while matches!(self.peek(), Some("long" | "short")) {
                 ty.push(' ');

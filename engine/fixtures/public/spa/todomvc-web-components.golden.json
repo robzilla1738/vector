@@ -1,0 +1,67 @@
+{
+  "url": "https://todomvc.com/examples/web-components/dist/",
+  "title": "TodoMVC: JavaScript Web Components",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 0.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://todomvc.com/examples/web-components/dist/",
+      "sameOrigin": true
+    }
+  ],
+  "text": "[header]\n# todos\n[footer]\nDouble-click to edit a todo\nCreated by the TodoMVC Team\nPart of TodoMVC",
+  "headings": [
+    "todos"
+  ],
+  "elements": [
+    {
+      "ref": "r43",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "todos",
+      "href": "https://todomvc.com/examples/web-components/dist/#",
+      "selector": {}
+    },
+    {
+      "ref": "r60",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "TodoMVC",
+      "href": "http://todomvc.com/",
+      "selector": {}
+    }
+  ],
+  "formFields": [],
+  "tables": [],
+  "links": [
+    {
+      "ref": "r43",
+      "text": "todos",
+      "href": "https://todomvc.com/examples/web-components/dist/#"
+    },
+    {
+      "ref": "r60",
+      "text": "TodoMVC",
+      "href": "http://todomvc.com/"
+    }
+  ],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 2,
+    "elementsShown": 2,
+    "textChars": 97,
+    "approxTokens": 98
+  }
+}

@@ -1,0 +1,121 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - heading "Records" [level=1] [ref=e3]
+    - link "All records" [ref=e4] [cursor=pointer]:
+      - /url: /records
+    - link "New record" [ref=e5] [cursor=pointer]:
+      - /url: /new
+    - link "Pop-up info" [ref=e6] [cursor=pointer]:
+      - /url: /popup-info
+    - link "State JSON" [ref=e7] [cursor=pointer]:
+      - /url: /api/state
+    - generic [ref=e8]: fixture :4810
+  - main [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]: Filter by status
+        - combobox "Filter by status" [ref=e13]:
+          - option "All statuses" [selected]
+          - option "draft"
+          - option "in progress"
+          - option "in review"
+          - option "approved"
+          - option "archived"
+      - button "Apply filter" [ref=e14] [cursor=pointer]
+    - table [ref=e15]:
+      - rowgroup [ref=e16]:
+        - row [ref=e17]:
+          - columnheader "Title" [ref=e18]
+          - columnheader "Owner" [ref=e19]
+          - columnheader "Status" [ref=e20]
+          - columnheader "Updated" [ref=e21]
+          - columnheader "Files" [ref=e22]
+      - rowgroup [ref=e23]:
+        - row [ref=e24]:
+          - cell [ref=e25]:
+            - link "Record 01 — Bravo project" [ref=e26] [cursor=pointer]:
+              - /url: /records/rec-01
+          - cell "Sam Chen" [ref=e27]
+          - cell "in progress" [ref=e28]
+          - cell "2026-09-02" [ref=e30]
+          - cell "0 files" [ref=e31]
+        - row [ref=e32]:
+          - cell [ref=e33]:
+            - link "Record 02 — Charlie project" [ref=e34] [cursor=pointer]:
+              - /url: /records/rec-02
+          - cell "Jordan Lee" [ref=e35]
+          - cell "in review" [ref=e36]
+          - cell "2026-09-03" [ref=e38]
+          - cell "0 files" [ref=e39]
+        - row [ref=e40]:
+          - cell [ref=e41]:
+            - link "Record 03 — Delta project" [ref=e42] [cursor=pointer]:
+              - /url: /records/rec-03
+          - cell "Priya Patel" [ref=e43]
+          - cell "approved" [ref=e44]
+          - cell "2026-09-04" [ref=e46]
+          - cell "1 file" [ref=e47]
+        - row [ref=e48]:
+          - cell [ref=e49]:
+            - link "Record 04 — Echo project" [ref=e50] [cursor=pointer]:
+              - /url: /records/rec-04
+          - cell "Morgan Diaz" [ref=e51]
+          - cell "archived" [ref=e52]
+          - cell "2026-09-05" [ref=e54]
+          - cell "0 files" [ref=e55]
+        - row [ref=e56]:
+          - cell [ref=e57]:
+            - link "Record 05 — Alpha project" [ref=e58] [cursor=pointer]:
+              - /url: /records/rec-05
+          - cell "Alex Rivera" [ref=e59]
+          - cell "draft" [ref=e60]
+          - cell "2026-09-06" [ref=e62]
+          - cell "1 file" [ref=e63]
+        - row [ref=e64]:
+          - cell [ref=e65]:
+            - link "Record 06 — Bravo project" [ref=e66] [cursor=pointer]:
+              - /url: /records/rec-06
+          - cell "Sam Chen" [ref=e67]
+          - cell "in progress" [ref=e68]
+          - cell "2026-09-07" [ref=e70]
+          - cell "1 file" [ref=e71]
+        - row [ref=e72]:
+          - cell [ref=e73]:
+            - link "Record 07 — Charlie project" [ref=e74] [cursor=pointer]:
+              - /url: /records/rec-07
+          - cell "Jordan Lee" [ref=e75]
+          - cell "in review" [ref=e76]
+          - cell "2026-09-08" [ref=e78]
+          - cell "0 files" [ref=e79]
+        - row [ref=e80]:
+          - cell [ref=e81]:
+            - link "Record 08 — Delta project" [ref=e82] [cursor=pointer]:
+              - /url: /records/rec-08
+          - cell "Priya Patel" [ref=e83]
+          - cell "approved" [ref=e84]
+          - cell "2026-09-09" [ref=e86]
+          - cell "0 files" [ref=e87]
+        - row [ref=e88]:
+          - cell [ref=e89]:
+            - link "Record 09 — Echo project" [ref=e90] [cursor=pointer]:
+              - /url: /records/rec-09
+          - cell "Morgan Diaz" [ref=e91]
+          - cell "archived" [ref=e92]
+          - cell "2026-09-10" [ref=e94]
+          - cell "1 file" [ref=e95]
+        - row [ref=e96]:
+          - cell [ref=e97]:
+            - link "Record 10 — Alpha project" [ref=e98] [cursor=pointer]:
+              - /url: /records/rec-10
+          - cell "Alex Rivera" [ref=e99]
+          - cell "draft" [ref=e100]
+          - cell "2026-09-11" [ref=e102]
+          - cell "1 file" [ref=e103]
+    - navigation "pages" [ref=e104]:
+      - link "1" [ref=e105] [cursor=pointer]:
+        - /url: "?page=1"
+      - link "2" [ref=e106] [cursor=pointer]:
+        - /url: "?page=2"
+      - link "3" [ref=e107] [cursor=pointer]:
+        - /url: "?page=3"
+    - paragraph [ref=e108]: 30 records

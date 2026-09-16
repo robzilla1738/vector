@@ -11,6 +11,8 @@ export interface ObserveScriptArgs {
   subtreeCss?: string;
   frameKey: string;
   refStart: number;
+  /** add to this frame's live ref map instead of replacing it (expandRef) */
+  mergeRefs?: boolean;
 }
 
 export interface ObserveScriptResult {
@@ -283,6 +285,13 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   }
   const ordered = inView.concat(offView);
 
+  // Live ref map (speed P0-3 / plan A7): the driver resolves `rN` with one
+  // map lookup (`evaluateHandle`) instead of a css/xpath/role search, and
+  // falls back to the selectors only when the node is gone. A fresh map per
+  // observe: refs from an older observation are stale by contract.
+  const g: any = globalThis as any;
+  const refMap: Map<string, any> = args.mergeRefs && g.__vectorRefs instanceof Map ? g.__vectorRefs : new Map();
+  g.__vectorRefs = refMap;
   let refNum = args.refStart;
   for (const el of ordered) {
     if (result.elements.length >= args.maxElements) {
@@ -316,9 +325,46 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     const ph = el.getAttribute?.("placeholder");
     if (ph) entry.placeholder = ph.slice(0, 100);
     if (isDisabled(el)) entry.disabled = true;
+    // Action-reliability state (plan A10): choices, toggles, focus, and
+    // whether a click would actually land (viewport + occlusion).
+    if (tag === "select" && el.options) {
+      const opts = Array.from(el.options as any[]).map((o: any) => (o.label || o.text || "").trim()).filter(Boolean);
+      if (opts.length) entry.options = opts.slice(0, 20);
+    } else if (role === "listbox" || role === "menu" || role === "radiogroup") {
+      const opts = Array.from(el.querySelectorAll('[role="option"],[role="menuitem"],[role="radio"]') as any[])
+        .map((o: any) => (o.getAttribute("aria-label") || o.textContent || "").replace(/\s+/g, " ").trim())
+        .filter(Boolean);
+      if (opts.length) entry.options = opts.slice(0, 20);
+    }
+    const ariaExpanded = el.getAttribute?.("aria-expanded");
+    if (ariaExpanded === "true" || ariaExpanded === "false") entry.expanded = ariaExpanded === "true";
+    else if (tag === "summary" && el.parentElement?.tagName === "DETAILS") entry.expanded = !!el.parentElement.open;
+    const ariaPressed = el.getAttribute?.("aria-pressed");
+    if (ariaPressed === "true" || ariaPressed === "false") entry.pressed = ariaPressed === "true";
+    if (doc.activeElement === el) entry.focused = true;
+    if (el.required || el.getAttribute?.("aria-required") === "true") entry.required = true;
+    const inViewport = r.bottom > 0 && r.right > 0 && r.top < vh && r.left < vw;
+    if (!inViewport) entry.offscreen = true;
+    else if (r.width > 0 && r.height > 0 && typeof doc.elementFromPoint === "function") {
+      const cx = Math.min(vw - 1, Math.max(0, r.left + r.width / 2));
+      const cy = Math.min(vh - 1, Math.max(0, r.top + r.height / 2));
+      let hit: any = doc.elementFromPoint(cx, cy);
+      // descend through open shadow roots to the real target
+      while (hit && hit.shadowRoot && typeof hit.shadowRoot.elementFromPoint === "function") {
+        const inner = hit.shadowRoot.elementFromPoint(cx, cy);
+        if (!inner || inner === hit) break;
+        hit = inner;
+      }
+      if (hit && hit !== el && !el.contains(hit) && !hit.contains(el)) {
+        // labels and inline wrappers forward clicks to their control; anything else covers it
+        const forwards = hit.tagName === "LABEL" && (hit.control === el || hit.contains(el));
+        if (!forwards) entry.occluded = true;
+      }
+    }
     const txt = (el.innerText || "").replace(/\s+/g, " ").trim();
     if (txt && txt !== name) entry.text = txt.slice(0, 140);
     result.elements.push(entry);
+    refMap.set(entry.ref, el);
     if (tag === "a" && entry.href) result.links.push({ ref: entry.ref, text: name || txt || entry.href, href: entry.href });
   }
   result.nextRef = refNum;

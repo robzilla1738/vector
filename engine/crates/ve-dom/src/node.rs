@@ -98,8 +98,16 @@ pub struct ElementData {
     pub form: Option<FormState>,
     /// For `<template>`: the id of the associated document fragment.
     pub template_contents: Option<NodeId>,
+    /// For `<iframe>` / `<frame>`: the nested document's fragment (same
+    /// arena, plan A16). Cross-origin frames leave this `None`.
+    pub content_document: Option<NodeId>,
     /// The element's shadow root, if one has been attached.
     pub shadow_root: Option<NodeId>,
+    /// Intrinsic size of a replaced element's content in CSS pixels
+    /// (`naturalWidth`/`naturalHeight` for `<img>`), set once the resource
+    /// has been fetched and its header decoded. Layout uses it when the
+    /// element has no `width`/`height` from CSS or attributes.
+    pub natural_size: Option<(u32, u32)>,
 }
 
 impl ElementData {
@@ -112,7 +120,9 @@ impl ElementData {
             attributes: Vec::new(),
             form: None,
             template_contents: None,
+            content_document: None,
             shadow_root: None,
+            natural_size: None,
         }
     }
 
@@ -291,5 +301,19 @@ impl Node {
     #[must_use]
     pub fn is_text(&self) -> bool {
         matches!(self.kind, NodeKind::Text(_))
+    }
+
+    /// DOM `nodeType` constant.
+    #[must_use]
+    pub fn node_type(&self) -> u16 {
+        match self.kind {
+            NodeKind::Element(_) => 1,
+            NodeKind::Text(_) => 3,
+            NodeKind::ProcessingInstruction { .. } => 7,
+            NodeKind::Comment(_) => 8,
+            NodeKind::Document => 9,
+            NodeKind::Doctype { .. } => 10,
+            NodeKind::DocumentFragment | NodeKind::ShadowRoot { .. } => 11,
+        }
     }
 }

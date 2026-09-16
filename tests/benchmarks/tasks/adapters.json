@@ -1,0 +1,38 @@
+{
+  "$comment": "Browser tool surfaces the task harness can drive. `vector` and `vector-engine` use the runtime's own agent loop (runs.start). Every `mcp` adapter is driven by the SAME generic tool-calling loop and the SAME model (tests/benchmarks/tasks/run.mjs), so differences between rows come from the browser and its tool surface, not from the agent. `command` is spawned as an MCP stdio server; `env` is merged over process.env; `requires` lists binaries that must be on PATH or the adapter reports not-installed.",
+  "adapters": {
+    "vector": { "kind": "runtime", "engineMode": "off" },
+    "vector-engine": { "kind": "runtime", "engineMode": "always" },
+    "vector-auto": { "kind": "runtime", "engineMode": "auto" },
+    "vector-mcp": {
+      "kind": "mcp",
+      "command": ["node", "packages/mcp/dist/main.js"],
+      "needsRuntime": true,
+      "note": "Vector's MCP server over the loopback API; the harness starts a runtime first."
+    },
+    "playwright-mcp": {
+      "kind": "mcp",
+      "command": ["npx", "-y", "@playwright/mcp@latest", "--headless"],
+      "requires": ["npx"],
+      "note": "Microsoft Playwright MCP (aria snapshot + refs) on headless Chromium."
+    },
+    "agent-browser": {
+      "kind": "mcp",
+      "command": ["agent-browser", "mcp"],
+      "requires": ["agent-browser"],
+      "note": "Vercel agent-browser MCP mode, if the binary exposes one in your version; otherwise adjust the command."
+    },
+    "browser-use-mcp": {
+      "kind": "mcp",
+      "command": ["uvx", "browser-use[cli]", "--mcp"],
+      "requires": ["uvx"],
+      "note": "browser-use's MCP server; the installed browser-use harness CLI itself is a scripting tool, not a task agent."
+    },
+    "lightpanda-mcp": {
+      "kind": "mcp",
+      "command": ["lightpanda", "mcp"],
+      "requires": ["lightpanda"],
+      "note": "Lightpanda's native MCP server."
+    }
+  }
+}

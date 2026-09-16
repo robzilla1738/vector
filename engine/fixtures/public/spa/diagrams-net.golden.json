@@ -1,0 +1,38 @@
+{
+  "url": "https://app.diagrams.net/",
+  "title": "Flowchart Maker & Online Diagram Software",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 0.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://app.diagrams.net/",
+      "sameOrigin": true
+    }
+  ],
+  "text": "# Flowchart Maker and Online Diagram Software\ndraw.io is free online diagram software. You can use it as a flowchart maker, network diagram software, to create UML online, as an ER diagram tool, to design database schema, to build BPMN online, as a circuit diagram maker, and more. draw.io can import .vsdx, Gliffy™ and Lucidchart™ files .\n## Loading...\nPlease ensure JavaScript is enabled.",
+  "headings": [
+    "Flowchart Maker and Online Diagram Software",
+    "Loading..."
+  ],
+  "elements": [],
+  "formFields": [],
+  "tables": [],
+  "links": [],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 0,
+    "elementsShown": 0,
+    "textChars": 390,
+    "approxTokens": 149
+  }
+}

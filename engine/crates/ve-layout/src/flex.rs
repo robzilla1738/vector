@@ -21,15 +21,20 @@ use ve_style::{
 };
 
 use crate::block::{
-    ContainingBlock, Forced, LayoutCtx, layout_box_at, resolve_margins, translate_subtree,
+    ContainingBlock, Forced, LayoutCtx, fit_content_width, layout_box_at, resolve_margins,
+    translate_subtree,
 };
 use crate::box_tree::{LayoutBox, LayoutMemo};
 
 /// Memos kept per item. Taffy probes an item at min-content, max-content
 /// and one or two definite sizes (with and without a known cross size)
-/// before the final pass; the bound must exceed the number of distinct
-/// inputs or the FIFO thrashes and the layout is exponential again.
-const ITEM_MEMOS: usize = 8;
+/// before the final pass, and every *ancestor* container's probe reaches a
+/// nested item with its own available width, so an item nested `d` levels
+/// deep sees about `3 d` distinct inputs. The bound must exceed that or the
+/// FIFO thrashes and the layout is exponential again (the 8-entry bound hung
+/// `nested_flex_containers_lay_out_in_linear_time` for minutes). Memos are
+/// cleared with the layout pass, so the memory cost is transient.
+const ITEM_MEMOS: usize = 256;
 
 /// Lays out a flex/grid item at `origin`, reusing a memoised layout when the
 /// item was already laid out with the same containing block and forced
@@ -68,8 +73,7 @@ fn layout_item(
         return;
     }
     layout_box_at(child, ctx, cb, origin, forced);
-    let mut snapshot = child.clone();
-    snapshot.clear_layout_caches();
+    let snapshot = child.snapshot_without_caches();
     if child.layout_cache.len() >= ITEM_MEMOS {
         child.layout_cache.remove(0);
     }
@@ -377,13 +381,34 @@ pub fn layout_flex(
             };
             let known = input.known_dimensions;
             let child = &mut items[index];
-            let cb_width = known.width.unwrap_or(match input.available_space.width {
+            // A nested flex/grid container measured without a known width is
+            // content-sized (flex-basis: auto → max-content clamped to the
+            // available space), never stretched to fill the outer container
+            // the way `layout_box_at` sizes a block. Forcing the fit-content
+            // width also keys the memo on the item's own size rather than on
+            // whichever ancestor is probing, which keeps nested containers
+            // linear. Text-bearing items keep the block path: their
+            // pre-layout intrinsic widths do not collapse whitespace yet.
+            let available = match input.available_space.width {
                 AvailableSpace::Definite(w) => w,
                 AvailableSpace::MinContent => 0.0,
-                AvailableSpace::MaxContent => viewport_width,
-            });
+                AvailableSpace::MaxContent => f32::INFINITY,
+            };
+            // Anonymous items share the container's style (and so its
+            // `display`); only element-generated boxes are real containers.
+            let nested_container = child.node.is_some()
+                && !style.display.is_grid()
+                && (child.style.display.is_flex() || child.style.display.is_grid());
+            let width = known
+                .width
+                .or_else(|| nested_container.then(|| fit_content_width(child, ctx, available)));
+            let cb_width = if available.is_finite() {
+                available
+            } else {
+                viewport_width
+            };
             let forced = Forced {
-                width: known.width,
+                width,
                 height: known.height,
             };
             layout_item(

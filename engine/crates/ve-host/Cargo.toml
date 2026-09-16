@@ -1,0 +1,25 @@
+[package]
+name = "ve-host"
+description = "Per-context Vector Engine process (plan A21): no sockets, JSON control pipe."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "ve-host"
+path = "src/main.rs"
+
+[dependencies]
+ve-napi = { path = "../ve-napi" }
+libc = "0.2"
+
+[dev-dependencies]
+ve-napi = { path = "../ve-napi" }
+serde_json.workspace = true

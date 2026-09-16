@@ -16,6 +16,11 @@ workspace = true
 default = []
 ## Enable the QuickJS-NG backend (requires a C compiler).
 quickjs = ["dep:rquickjs"]
+## Enable the V8 backend (downloads a prebuilt static library; ~50 MB).
+v8 = ["dep:v8"]
+
+[build-dependencies]
+thiserror.workspace = true
 
 [dependencies]
 ve-core.workspace = true
@@ -25,3 +30,4 @@ serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 rquickjs = { workspace = true, optional = true }
+v8 = { workspace = true, optional = true }

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use ve_a11y::{
     DialogEntry, Format, LabelIndex, ObservationContent, ObservationDelta, ObservationRequest,
     ObserveInput, Role, Scope, Visibility5, changes_between, compute_name_with, observe, parse_ref,
-    ref_for,
+    parse_ref_parts, ref_for,
 };
 use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
 use ve_dom::{DirtyFlags, Document, NodeKind};
@@ -20,7 +20,7 @@ use ve_style::{StyleEngine, StyleTree};
 
 use crate::forms::{self, Enctype, FormMethod};
 use crate::keys::{Chord, Key};
-use crate::routing::{RoutingInfo, classify};
+use crate::routing::{CssCoverage, RoutingInfo, classify};
 use crate::screenshot::{self, Screenshot};
 use crate::steps::{MouseButton, ScrollDirection, Settled};
 use crate::target::TargetSpec;
@@ -103,11 +103,100 @@ pub struct InFlightSummary {
     pub background: bool,
 }
 
+/// What kind of subresource the parser found (drives `Accept` and priority).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SubresourceKind {
+    /// `<link rel=stylesheet>` or `@import`.
+    Stylesheet,
+    /// `<img src>`.
+    Image,
+    /// `<script src>`.
+    Script,
+    /// `@font-face src` (reserved; fonts are registered by the embedder).
+    Font,
+    /// `<iframe>` / `<frame>` document (same-origin, plan A16).
+    Document,
+}
+
+/// A subresource fetch the page asks its [`Loader`] for.
+#[derive(Clone, Debug)]
+pub struct SubresourceRequest {
+    /// Absolute URL.
+    pub url: String,
+    /// Kind.
+    pub kind: SubresourceKind,
+    /// Page id for attribution (feeds `settle()`'s in-flight table).
+    pub page: u64,
+    /// The document URL.
+    pub referrer: Option<String>,
+}
+
+/// A fetched subresource.
+#[derive(Clone, Debug)]
+pub struct LoadedResource {
+    /// Final URL.
+    pub url: String,
+    /// Raw bytes (already content-decoded).
+    pub bytes: Vec<u8>,
+    /// `Content-Type`.
+    pub content_type: Option<String>,
+    /// HTTP status.
+    pub status: u16,
+}
+
+/// A script the parser found, external (fetched) or inline. Kept on the page
+/// in document order for the script layer.
+#[derive(Clone, Debug)]
+pub struct FetchedScript {
+    /// The `<script>` element.
+    pub node: NodeId,
+    /// `src` after resolution (None for inline).
+    pub url: Option<String>,
+    /// Source text (empty when the fetch failed).
+    pub source: String,
+    /// `type=module`.
+    pub module: bool,
+    /// `defer` attribute.
+    pub defer: bool,
+    /// `async` attribute.
+    pub async_: bool,
+    /// The fetch failed (status or transport); `source` is empty.
+    pub failed: bool,
+}
+
+/// Counters for one document load (subresource pipeline, plan A11).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct LoadStats {
+    /// Stylesheets fetched (`<link>` and `@import`).
+    pub stylesheets: usize,
+    /// Images whose natural size was decoded.
+    pub images: usize,
+    /// External scripts fetched.
+    pub scripts: usize,
+    /// Iframes whose document was parsed (same-origin attached, cross-origin isolated).
+    pub frames: usize,
+    /// Subresource fetches that failed.
+    pub failed: usize,
+    /// Wall time of the subresource batches in milliseconds.
+    pub fetch_ms: u64,
+}
+
 /// Fetches documents for navigations and answers network questions for the
 /// page. Supplied by the embedder (`ve-api` backs it with `ve-net`).
 pub trait Loader {
     /// Performs a navigation fetch.
     fn load(&mut self, request: &NavigationRequest) -> Result<LoadedDocument>;
+    /// Fetches the parser's subresources, concurrently when the transport
+    /// can. Results are in request order. Default: no subresource support.
+    fn fetch_subresources(
+        &mut self,
+        requests: &[SubresourceRequest],
+    ) -> Vec<Result<LoadedResource>> {
+        requests
+            .iter()
+            .map(|r| self.script_fetch(&r.url, "GET", &[], r.page))
+            .collect()
+    }
     /// Requests currently in flight for `page`.
     fn in_flight(&self, _page: u64) -> Vec<InFlightSummary> {
         Vec::new()
@@ -115,6 +204,36 @@ pub trait Loader {
     /// Completed responses for `page`, oldest first.
     fn completed(&self, _page: u64) -> Vec<ve_net::CompletedResponse> {
         Vec::new()
+    }
+    /// A script-initiated `fetch` / XHR. Default: GET through [`Self::load`].
+    fn script_fetch(
+        &mut self,
+        url: &str,
+        method: &str,
+        body: &[u8],
+        page: u64,
+    ) -> Result<LoadedResource> {
+        let method = method.to_ascii_uppercase();
+        if method != "GET" && method != "HEAD" {
+            let mut req = NavigationRequest::get(url, page);
+            req.method = NavMethod::Post;
+            req.body = Some(body.to_vec());
+            req.content_type = Some("text/plain;charset=UTF-8".into());
+            let loaded = self.load(&req)?;
+            return Ok(LoadedResource {
+                url: loaded.url,
+                bytes: loaded.bytes,
+                content_type: loaded.content_type,
+                status: loaded.status,
+            });
+        }
+        let loaded = self.load(&NavigationRequest::get(url, page))?;
+        Ok(LoadedResource {
+            url: loaded.url,
+            bytes: loaded.bytes,
+            content_type: loaded.content_type,
+            status: loaded.status,
+        })
     }
 }
 
@@ -128,9 +247,10 @@ impl<F: FnMut(&NavigationRequest) -> Result<LoadedDocument>> Loader for FnLoader
 }
 
 #[derive(Clone, Debug)]
-struct HistoryEntry {
-    document: LoadedDocument,
-    scroll: Point,
+pub(crate) struct HistoryEntry {
+    pub(crate) document: LoadedDocument,
+    pub(crate) scroll: Point,
+    pub(crate) state: String,
 }
 
 #[derive(Clone, Debug)]
@@ -183,26 +303,26 @@ pub const DEFAULT_TIMEOUT_MS: u64 = 5000;
 pub struct Page {
     id: u64,
     generation: u32,
-    doc: Document,
-    url: String,
+    pub(crate) doc: Document,
+    pub(crate) url: String,
     base_url: Option<url::Url>,
     meta: DocumentMeta,
     routing: RoutingInfo,
     content_type: Option<String>,
     status: u16,
-    history: Vec<HistoryEntry>,
-    history_index: usize,
-    style_engine: StyleEngine,
-    style_tree: StyleTree,
+    pub(crate) history: Vec<HistoryEntry>,
+    pub(crate) history_index: usize,
+    pub(crate) style_engine: StyleEngine,
+    pub(crate) style_tree: StyleTree,
     layout_engine: LayoutEngine,
     layout: LayoutTree,
-    viewport: Size,
+    pub(crate) viewport: Size,
     scale: f32,
-    scroll: Point,
-    element_scroll: HashMap<NodeId, Point>,
+    pub(crate) scroll: Point,
+    pub(crate) element_scroll: HashMap<NodeId, Point>,
     files: HashMap<NodeId, Vec<String>>,
     focused: Option<NodeId>,
-    loader: Option<Box<dyn Loader>>,
+    pub(crate) loader: Option<Box<dyn Loader>>,
     pending_navigation: Option<NavigationRequest>,
     refreshes_followed: u8,
     observations: VecDeque<CachedObservation>,
@@ -211,6 +331,56 @@ pub struct Page {
     last_navigation_error: Option<String>,
     virtual_time_ms: u64,
     cancelled: bool,
+    /// Scripts in document order (external ones fetched at load).
+    scripts: Vec<FetchedScript>,
+    /// Subresource counters for the current document.
+    load_stats: LoadStats,
+    /// The script layer, when a VM is attached (plan A13).
+    pub(crate) scripting: Option<crate::scripting::Scripting>,
+    /// Origin-keyed `localStorage`.
+    pub(crate) local_storage: HashMap<String, HashMap<String, String>>,
+    /// Per-page `sessionStorage`.
+    pub(crate) session_storage: HashMap<String, String>,
+    /// Pending `alert`/`confirm`/`prompt` from script (plan A15).
+    pub(crate) pending_dialogs: Vec<DialogEntry>,
+    /// Return value for the next `confirm`/`prompt` (`dialog` step).
+    pub(crate) dialog_reply: Option<String>,
+    /// Generations of refs handed out in the last observation (plan A17).
+    issued_refs: HashMap<u32, u32>,
+    /// Completed downloads for this page (plan A16).
+    downloads: Vec<CompletedDownload>,
+    /// Directory downloads are written into (`None` → temp dir).
+    download_dir: Option<std::path::PathBuf>,
+    /// Iframe node ids that are cross-origin (contentDocument is null).
+    cross_origin_frames: std::collections::HashSet<NodeId>,
+    /// Cross-origin iframes as separate browsing contexts with their own realm (plan A16).
+    isolated_frames: HashMap<NodeId, Box<Page>>,
+    /// Registered service workers (plan A23).
+    pub(crate) service_workers: Vec<ServiceWorkerRegistration>,
+}
+
+/// A finished download (plan A16).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CompletedDownload {
+    /// Source URL.
+    pub url: String,
+    /// Absolute path written.
+    pub path: std::path::PathBuf,
+    /// Suggested file name.
+    pub filename: String,
+    /// Byte length.
+    pub bytes: usize,
+}
+
+/// `navigator.serviceWorker.register` record (plan A23).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ServiceWorkerRegistration {
+    /// Scope URL prefix.
+    pub scope: String,
+    /// Script URL.
+    pub script_url: String,
+    /// Script source (inline or fetched).
+    pub script: String,
 }
 
 impl std::fmt::Debug for Page {
@@ -261,13 +431,48 @@ impl Page {
 
     /// Opens `url` through `loader` (the real pipeline: fetch → decode →
     /// streaming parse → cascade → layout).
-    pub fn open(id: u64, mut loader: Box<dyn Loader>, url: &str, viewport: Size) -> Result<Self> {
+    pub fn open(id: u64, loader: Box<dyn Loader>, url: &str, viewport: Size) -> Result<Self> {
+        Self::open_with(id, loader, url, viewport, None)
+    }
+
+    /// [`Self::open`] with an optional script VM attached *before* the
+    /// document loads, so its scripts run (plan A13). `allow_evaluate` gates
+    /// the `evaluate` step.
+    pub fn open_with(
+        id: u64,
+        mut loader: Box<dyn Loader>,
+        url: &str,
+        viewport: Size,
+        scripting: Option<(Box<dyn ve_script::JsVm>, bool)>,
+    ) -> Result<Self> {
         let parsed =
             url::Url::parse(url).map_err(|e| Error::invalid_params(format!("url {url:?}: {e}")))?;
         let loaded = loader.load(&NavigationRequest::get(parsed.to_string(), id))?;
         let mut page = Self::empty(id, viewport);
         page.loader = Some(loader);
+        if let Some((vm, allow_evaluate)) = scripting {
+            page.enable_scripting(vm, allow_evaluate)?;
+        }
         page.load(loaded, HistoryMode::Push);
+        Ok(page)
+    }
+
+    /// [`Self::from_html`] with a script VM attached before the load.
+    pub fn from_html_with(
+        id: u64,
+        html: &str,
+        url: Option<&str>,
+        viewport: Size,
+        scripting: Option<(Box<dyn ve_script::JsVm>, bool)>,
+    ) -> Result<Self> {
+        let mut page = Self::empty(id, viewport);
+        if let Some((vm, allow_evaluate)) = scripting {
+            page.enable_scripting(vm, allow_evaluate)?;
+        }
+        page.load(
+            LoadedDocument::html(url.unwrap_or("about:blank"), html),
+            HistoryMode::Push,
+        );
         Ok(page)
     }
 
@@ -308,6 +513,19 @@ impl Page {
             last_navigation_error: None,
             virtual_time_ms: 0,
             cancelled: false,
+            scripts: Vec::new(),
+            load_stats: LoadStats::default(),
+            scripting: None,
+            local_storage: HashMap::new(),
+            session_storage: HashMap::new(),
+            pending_dialogs: Vec::new(),
+            dialog_reply: None,
+            issued_refs: HashMap::new(),
+            downloads: Vec::new(),
+            download_dir: None,
+            cross_origin_frames: std::collections::HashSet::new(),
+            isolated_frames: HashMap::new(),
+            service_workers: Vec::new(),
         }
     }
 
@@ -339,8 +557,14 @@ impl Page {
                     .then(|| v.trim().trim_matches('"').to_owned())
             })
         });
-        let (outcome, _decoded) =
-            ve_html::parse_document_bytes(&loaded.bytes, charset.as_deref(), 16 * 1024);
+        let (outcome, _decoded) = ve_html::parse_document_bytes_with(
+            &loaded.bytes,
+            charset.as_deref(),
+            ve_html::ParseOptions {
+                scripting_enabled: self.scripting.is_some(),
+                chunk_size: 16 * 1024,
+            },
+        );
         if self.doc.node_count() > 1 || !self.history.is_empty() {
             self.generation = self.generation.wrapping_add(1);
         }
@@ -366,6 +590,13 @@ impl Page {
         self.element_scroll.clear();
         self.files.clear();
         self.focused = None;
+        self.pending_dialogs.clear();
+        self.dialog_reply = None;
+        self.issued_refs.clear();
+        self.downloads.clear();
+        self.cross_origin_frames.clear();
+        self.isolated_frames.clear();
+        self.service_workers.clear();
         self.refreshes_followed = if matches!(mode, HistoryMode::Refresh) {
             self.refreshes_followed + 1
         } else {
@@ -374,11 +605,22 @@ impl Page {
         self.style_engine.interaction = ve_style::InteractionState::new();
         self.style_tree = StyleTree::default();
         self.style_engine.clear_author_styles();
-        self.style_engine.add_document_styles(&self.doc);
+        let sheets = self.fetch_subresources();
+        self.add_styles(&sheets);
         self.update();
+        if let Some(s) = self.scripting.as_mut() {
+            s.reset();
+        }
+        if self.scripting.is_some() {
+            let _ = self.call_script("__veResetDocument", &[]);
+        }
+        self.run_document_scripts();
+        self.update();
+        self.apply_css_coverage();
         let entry = HistoryEntry {
             document: loaded,
             scroll: Point::ZERO,
+            state: "null".into(),
         };
         match mode {
             HistoryMode::Push => {
@@ -402,6 +644,355 @@ impl Page {
             }
         }
         tracing::info!(page = self.id, url = %self.url, generation = self.generation, routing = %self.routing.route_reason, "loaded");
+    }
+
+    // ---------------------------------------------------------------------
+    // Subresources (plan A11)
+    // ---------------------------------------------------------------------
+
+    /// Discovers the parser's subresources and fetches them in one
+    /// concurrent batch (plus one more for `@import`s): external
+    /// stylesheets, images (for their natural size) and external scripts.
+    /// Returns the stylesheet texts keyed by `<link>` node so
+    /// [`Self::add_styles`] can keep cascade order. Without a loader (inline
+    /// HTML, tests) nothing is fetched.
+    fn fetch_subresources(&mut self) -> HashMap<NodeId, String> {
+        self.scripts.clear();
+        self.load_stats = LoadStats::default();
+        let mut sheets = HashMap::new();
+        let Some(base) = self.base_url.clone() else {
+            self.collect_scripts(&HashMap::new());
+            return sheets;
+        };
+        let has_loader = self.loader.is_some();
+        let page = self.id;
+        let referrer = Some(self.url.clone());
+        let resolve = |href: &str| base.join(href.trim()).ok().map(|u| u.to_string());
+
+        let mut requests: Vec<(NodeId, SubresourceRequest)> = Vec::new();
+        let mut data_images: Vec<(NodeId, u32, u32)> = Vec::new();
+        let ids: Vec<NodeId> = self.doc.elements().collect();
+        for id in ids {
+            let Some(e) = self.doc.element(id) else {
+                continue;
+            };
+            if e.is_html("link") {
+                let rel = self.doc.attribute(id, "rel").unwrap_or("");
+                let is_sheet = rel
+                    .split_ascii_whitespace()
+                    .any(|r| r.eq_ignore_ascii_case("stylesheet"));
+                let alternate = rel
+                    .split_ascii_whitespace()
+                    .any(|r| r.eq_ignore_ascii_case("alternate"));
+                if !is_sheet || alternate || self.doc.attribute(id, "disabled").is_some() {
+                    continue;
+                }
+                if let Some(m) = self.doc.attribute(id, "media")
+                    && !ve_style::MediaQueryList::parse_str(m).evaluate(&self.style_engine.media)
+                {
+                    continue;
+                }
+                if let Some(url) = self.doc.attribute(id, "href").and_then(resolve) {
+                    requests.push((
+                        id,
+                        SubresourceRequest {
+                            url,
+                            kind: SubresourceKind::Stylesheet,
+                            page,
+                            referrer: referrer.clone(),
+                        },
+                    ));
+                }
+            } else if e.is_html("img") {
+                // srcset: take the first candidate when src is missing
+                let src = self
+                    .doc
+                    .attribute(id, "src")
+                    .map(str::to_owned)
+                    .or_else(|| {
+                        self.doc
+                            .attribute(id, "srcset")
+                            .and_then(|ss| ss.split(',').next())
+                            .and_then(|c| c.split_ascii_whitespace().next())
+                            .map(str::to_owned)
+                    });
+                if let Some(url) = src.as_deref().and_then(resolve)
+                    && !url.starts_with("data:")
+                    && (self.doc.attribute(id, "width").is_none()
+                        || self.doc.attribute(id, "height").is_none())
+                {
+                    requests.push((
+                        id,
+                        SubresourceRequest {
+                            url,
+                            kind: SubresourceKind::Image,
+                            page,
+                            referrer: referrer.clone(),
+                        },
+                    ));
+                } else if let Some(data) = src.as_deref().filter(|s| s.starts_with("data:"))
+                    && let Some((w, h)) = decode_data_url_image_size(data)
+                {
+                    data_images.push((id, w, h));
+                }
+            } else if e.is_html("script") && script_is_classic_or_module(&self.doc, id) {
+                if let Some(url) = self.doc.attribute(id, "src").and_then(resolve) {
+                    requests.push((
+                        id,
+                        SubresourceRequest {
+                            url,
+                            kind: SubresourceKind::Script,
+                            page,
+                            referrer: referrer.clone(),
+                        },
+                    ));
+                }
+            } else if e.is_html("iframe") || e.is_html("frame") {
+                if let Some(srcdoc) = self.doc.attribute(id, "srcdoc").map(str::to_owned) {
+                    self.attach_iframe_html(id, &srcdoc);
+                } else if let Some(url) = self.doc.attribute(id, "src").and_then(resolve) {
+                    if url.starts_with("javascript:") {
+                        continue;
+                    }
+                    if !same_origin_url(&self.url, &url) {
+                        self.cross_origin_frames.insert(id);
+                    }
+                    requests.push((
+                        id,
+                        SubresourceRequest {
+                            url,
+                            kind: SubresourceKind::Document,
+                            page,
+                            referrer: referrer.clone(),
+                        },
+                    ));
+                }
+            }
+        }
+        for (id, w, h) in data_images {
+            let _ = self.doc.set_natural_size(id, w, h);
+            self.load_stats.images += 1;
+        }
+        if !has_loader || requests.is_empty() {
+            self.collect_scripts(&HashMap::new());
+            return sheets;
+        }
+        let started = Instant::now();
+        let batch: Vec<SubresourceRequest> = requests.iter().map(|(_, r)| r.clone()).collect();
+        let results = self
+            .loader
+            .as_mut()
+            .expect("loader")
+            .fetch_subresources(&batch);
+        let mut script_sources: HashMap<NodeId, Option<String>> = HashMap::new();
+        let mut imports: Vec<(NodeId, usize, SubresourceRequest)> = Vec::new();
+        for ((id, req), result) in requests.into_iter().zip(results) {
+            match (req.kind, result) {
+                (SubresourceKind::Stylesheet, Ok(res)) if res.status < 400 => {
+                    let css = decode_text(&res.bytes, res.content_type.as_deref());
+                    // nested @imports (one level) resolve against the sheet's URL
+                    if let Ok(sheet_url) = url::Url::parse(&res.url) {
+                        for (i, href) in collect_imports(&css).into_iter().enumerate() {
+                            if let Ok(u) = sheet_url.join(&href) {
+                                imports.push((
+                                    id,
+                                    i,
+                                    SubresourceRequest {
+                                        url: u.to_string(),
+                                        kind: SubresourceKind::Stylesheet,
+                                        page,
+                                        referrer: referrer.clone(),
+                                    },
+                                ));
+                            }
+                        }
+                    }
+                    sheets.insert(id, css);
+                    self.load_stats.stylesheets += 1;
+                }
+                (SubresourceKind::Image, Ok(res)) if res.status < 400 => {
+                    if let Ok(size) = imagesize::blob_size(&res.bytes) {
+                        let w = u32::try_from(size.width).unwrap_or(u32::MAX);
+                        let h = u32::try_from(size.height).unwrap_or(u32::MAX);
+                        let _ = self.doc.set_natural_size(id, w, h);
+                        self.load_stats.images += 1;
+                    } else {
+                        self.load_stats.failed += 1;
+                    }
+                }
+                (SubresourceKind::Script, Ok(res)) if res.status < 400 => {
+                    script_sources.insert(
+                        id,
+                        Some(decode_text(&res.bytes, res.content_type.as_deref())),
+                    );
+                    self.load_stats.scripts += 1;
+                }
+                (SubresourceKind::Document, Ok(res)) if res.status < 400 => {
+                    let html = decode_text(&res.bytes, res.content_type.as_deref());
+                    if self.cross_origin_frames.contains(&id) {
+                        self.attach_isolated_iframe(id, &res.url, &html);
+                    } else {
+                        self.attach_iframe_html(id, &html);
+                    }
+                }
+                (SubresourceKind::Document, Ok(_) | Err(_)) => {
+                    self.load_stats.failed += 1;
+                }
+                (_, Ok(res)) => {
+                    tracing::debug!(url = %res.url, status = res.status, "subresource failed");
+                    self.load_stats.failed += 1;
+                    if req.kind == SubresourceKind::Script {
+                        script_sources.insert(id, None);
+                    }
+                }
+                (_, Err(e)) => {
+                    tracing::debug!(url = %req.url, error = %e, "subresource failed");
+                    self.load_stats.failed += 1;
+                    if req.kind == SubresourceKind::Script {
+                        script_sources.insert(id, None);
+                    }
+                }
+            }
+        }
+        if !imports.is_empty() {
+            let batch: Vec<SubresourceRequest> =
+                imports.iter().map(|(_, _, r)| r.clone()).collect();
+            let results = self
+                .loader
+                .as_mut()
+                .expect("loader")
+                .fetch_subresources(&batch);
+            // imported sheets precede the importing sheet in cascade order
+            let mut prefix: HashMap<NodeId, Vec<(usize, String)>> = HashMap::new();
+            for ((id, i, _), result) in imports.into_iter().zip(results) {
+                match result {
+                    Ok(res) if res.status < 400 => {
+                        prefix
+                            .entry(id)
+                            .or_default()
+                            .push((i, decode_text(&res.bytes, res.content_type.as_deref())));
+                        self.load_stats.stylesheets += 1;
+                    }
+                    _ => self.load_stats.failed += 1,
+                }
+            }
+            for (id, mut parts) in prefix {
+                parts.sort_by_key(|(i, _)| *i);
+                let mut text: String = parts.into_iter().map(|(_, t)| t + "\n").collect();
+                if let Some(own) = sheets.get(&id) {
+                    text.push_str(own);
+                }
+                sheets.insert(id, text);
+            }
+        }
+        self.load_stats.fetch_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+        self.collect_scripts(&script_sources);
+        tracing::info!(
+            page = self.id,
+            stylesheets = self.load_stats.stylesheets,
+            images = self.load_stats.images,
+            scripts = self.load_stats.scripts,
+            failed = self.load_stats.failed,
+            fetch_ms = self.load_stats.fetch_ms,
+            "subresources"
+        );
+        sheets
+    }
+
+    fn attach_iframe_html(&mut self, iframe: NodeId, html: &str) {
+        let scripting = self.scripting.is_some();
+        let taken = std::mem::replace(&mut self.doc, Document::new());
+        let (mut doc, kids) = ve_html::parse_fragment_into(taken, "body", html, scripting);
+        let fragment = doc.create_fragment();
+        for kid in kids {
+            let _ = doc.append_child(fragment, kid);
+        }
+        let _ = doc.set_content_document(iframe, fragment);
+        self.doc = doc;
+        self.load_stats.frames += 1;
+    }
+
+    /// Cross-origin iframe: own document, not parent `contentDocument` (plan A16).
+    /// Scripts do not share the parent realm; a second V8 isolate cannot be
+    /// entered while the parent's isolate is entered, so the nested page is
+    /// a separate document context without its own VM.
+    fn attach_isolated_iframe(&mut self, iframe: NodeId, url: &str, html: &str) {
+        let nested = Page::from_html(self.id, html, Some(url), self.viewport);
+        self.isolated_frames.insert(iframe, Box::new(nested));
+        self.cross_origin_frames.insert(iframe);
+        self.load_stats.frames += 1;
+    }
+
+    /// Author styles in cascade order: `<style>` text inline, `<link
+    /// rel=stylesheet>` from the fetched map, both in tree order.
+    fn add_styles(&mut self, sheets: &HashMap<NodeId, String>) {
+        let mut ordered: Vec<(NodeId, String)> = Vec::new();
+        for id in self.doc.elements() {
+            let Some(e) = self.doc.element(id) else {
+                continue;
+            };
+            if e.is_html("style") {
+                let media_ok = self.doc.attribute(id, "media").is_none_or(|m| {
+                    ve_style::MediaQueryList::parse_str(m).evaluate(&self.style_engine.media)
+                });
+                if media_ok {
+                    ordered.push((id, ve_style::strip_cdata(&self.doc.text_content(id))));
+                }
+            } else if let Some(css) = sheets.get(&id) {
+                ordered.push((id, css.clone()));
+            }
+        }
+        for (_, css) in ordered {
+            self.style_engine.add_stylesheet(&css);
+        }
+    }
+
+    /// Records every `<script>` in document order with its source.
+    fn collect_scripts(&mut self, external: &HashMap<NodeId, Option<String>>) {
+        let mut scripts = Vec::new();
+        for id in self.doc.elements() {
+            if !self.doc.element(id).is_some_and(|e| e.is_html("script"))
+                || !script_is_classic_or_module(&self.doc, id)
+            {
+                continue;
+            }
+            let module = self
+                .doc
+                .attribute(id, "type")
+                .is_some_and(|t| t.trim().eq_ignore_ascii_case("module"));
+            let url = self
+                .doc
+                .attribute(id, "src")
+                .and_then(|s| self.base_url.as_ref()?.join(s.trim()).ok())
+                .map(|u| u.to_string());
+            let (source, failed) = match (&url, external.get(&id)) {
+                (Some(_), Some(Some(src))) => (src.clone(), false),
+                (Some(_), _) => (String::new(), true),
+                (None, _) => (self.doc.text_content(id), false),
+            };
+            scripts.push(FetchedScript {
+                node: id,
+                url,
+                source,
+                module,
+                defer: self.doc.attribute(id, "defer").is_some(),
+                async_: self.doc.attribute(id, "async").is_some(),
+                failed,
+            });
+        }
+        self.scripts = scripts;
+    }
+
+    /// Scripts of the current document in order (external ones fetched at load).
+    #[must_use]
+    pub fn scripts(&self) -> &[FetchedScript] {
+        &self.scripts
+    }
+
+    /// Subresource counters for the current document.
+    #[must_use]
+    pub fn load_stats(&self) -> &LoadStats {
+        &self.load_stats
     }
 
     // ---------------------------------------------------------------------
@@ -567,23 +1158,56 @@ impl Page {
     }
 
     fn layout_clean(&self) -> bool {
-        self.layout.revision() == self.style_tree.revision()
-            && !self.doc.any_dirty(DirtyFlags::LAYOUT | DirtyFlags::TEXT)
+        // Geometry journal records bump `doc.revision()` (and therefore
+        // `LayoutTree::revision`) after restyle has already stamped
+        // `StyleTree::revision`, so the two must not be compared. Restyle
+        // marks `LAYOUT` when geometry-affecting properties change.
+        !self.doc.any_dirty(DirtyFlags::LAYOUT | DirtyFlags::TEXT)
     }
 
-    /// Recomputes styles and layout if anything is dirty.
+    /// Recomputes styles and layout if anything is dirty. Uses the
+    /// incremental restyle/relayout paths (plan A15); they fall back to a
+    /// full pass when the journal cannot cover `since`.
     pub fn update(&mut self) {
         if self.style_clean() && self.layout_clean() {
             return;
         }
         self.style_engine.interaction.set_focus(self.focused, true);
-        self.style_tree = self.style_engine.compute(&self.doc);
-        self.layout = self
-            .layout_engine
-            .layout(&self.doc, &self.style_tree, self.viewport);
+        if !self.style_clean() {
+            let since = self.style_tree.revision();
+            let _ =
+                self.style_engine
+                    .restyle_incremental(&mut self.doc, &mut self.style_tree, since);
+        }
+        if !self.layout_clean() {
+            let previous = std::mem::replace(&mut self.layout, LayoutTree::blank(self.viewport));
+            let (tree, _stats) = self.layout_engine.relayout_incremental(
+                &mut self.doc,
+                &self.style_tree,
+                self.viewport,
+                previous,
+            );
+            self.layout = tree;
+        }
         self.doc.clear_dirty_all(
             DirtyFlags::STYLE | DirtyFlags::LAYOUT | DirtyFlags::TEXT | DirtyFlags::PAINT,
         );
+    }
+
+    fn apply_css_coverage(&mut self) {
+        let c = self.style_engine.coverage();
+        self.routing.css_coverage = Some(CssCoverage {
+            declarations_total: c.declarations_total,
+            unknown: c.declarations_unknown,
+            deferred: c.declarations_deferred,
+        });
+        if !self.routing.requires_script && c.exceeds(0.50) {
+            self.routing.requires_script = true;
+            self.routing.route_reason = format!(
+                "css-coverage: {:.0}% unknown/deferred declarations affect geometry",
+                f64::from(c.miss_ratio()) * 100.0
+            );
+        }
     }
 
     /// Whether a navigation is pending.
@@ -637,9 +1261,14 @@ impl Page {
                 && refresh.seconds == 0
                 && self.refreshes_followed < 3
                 && let Some(target) = refresh.url.as_deref().and_then(|u| self.resolve_url(u))
-                && !target.starts_with("javascript:")
                 && target != self.url
             {
+                if target.starts_with("javascript:") {
+                    if self.scripting.is_some() {
+                        let _ = self.run_javascript_url(&target);
+                    }
+                    break;
+                }
                 let mut request = NavigationRequest::get(target, self.id);
                 request.referrer = Some(self.url.clone());
                 self.pending_navigation = Some(request);
@@ -652,7 +1281,29 @@ impl Page {
             }
             break;
         }
+        // Script readiness (architecture §6 conditions 1, 2, 7): fire timers
+        // due within the window, drain microtasks, then report what remains.
+        if self.scripting.is_some() {
+            self.pump_timers(crate::scripting::TIMER_WINDOW_MS);
+            self.update();
+            let (soon, later, microtasks) = self.script_readiness();
+            if soon > 0 {
+                reasons.push(format!("timers({soon})"));
+            }
+            if later > 0 {
+                reasons.push(format!("timers-later({later})"));
+            }
+            if microtasks {
+                reasons.push("microtasks".into());
+            }
+        }
         let mut settled = self.pending_navigation.is_none();
+        if self.scripting.is_some() {
+            let (soon, _, microtasks) = self.script_readiness();
+            if soon > 0 || microtasks {
+                settled = false;
+            }
+        }
         if let Some(loader) = &self.loader {
             let in_flight = loader.in_flight(self.id);
             let blocking = in_flight
@@ -713,14 +1364,37 @@ impl Page {
         let parsed = url::Url::parse(&resolved)
             .map_err(|e| Error::invalid_params(format!("invalid url {url:?}: {e}")))?;
         if parsed.scheme() == "javascript" {
-            return Err(Error::capability_unsupported(
-                "javascript: URLs need the script layer",
-            ));
+            self.run_javascript_url(&resolved)?;
+            return Ok(());
         }
         let mut request = NavigationRequest::get(parsed.to_string(), self.id);
         request.referrer = Some(self.url.clone());
         self.pending_navigation = Some(request);
         Ok(())
+    }
+
+    /// Runs a `javascript:` URL against the page VM (plan A15).
+    pub(crate) fn run_javascript_url(&mut self, url: &str) -> Result<String> {
+        if self.scripting.is_none() {
+            return Err(Error::capability_unsupported(
+                "javascript: URLs need the script layer",
+            ));
+        }
+        let raw = url.split_once("javascript:").map_or(url, |(_, rest)| rest);
+        let source = percent_decode(raw);
+        if source.trim().is_empty() {
+            return Ok("javascript: (empty)".into());
+        }
+        match self.run_script(&source, "javascript:") {
+            Ok(_) => Ok(format!(
+                "ran javascript: {}",
+                source.chars().take(80).collect::<String>()
+            )),
+            Err(e) => {
+                tracing::debug!(error = %e, "javascript: URL failed");
+                Ok(format!("javascript: error: {e}"))
+            }
+        }
     }
 
     /// Requests a submission navigation.
@@ -801,7 +1475,7 @@ impl Page {
             focused: self.focused,
             url: &self.url,
             base_url: self.base_url.as_ref().map(url::Url::as_str),
-            pending_dialogs: &[],
+            pending_dialogs: &self.pending_dialogs,
         }
     }
 
@@ -915,6 +1589,21 @@ impl Page {
         while self.observations.len() > 8 {
             self.observations.pop_front();
         }
+        self.issued_refs.clear();
+        for e in &content.elements {
+            if let Some((idx, generation)) = parse_ref_parts(&e.reference) {
+                let g = generation.or_else(|| {
+                    self.doc
+                        .node_at_index(idx)
+                        .ok()
+                        .flatten()
+                        .map(NodeId::generation)
+                });
+                if let Some(g) = g {
+                    self.issued_refs.insert(idx, g);
+                }
+            }
+        }
         EngineObservation {
             content,
             revision,
@@ -932,7 +1621,7 @@ impl Page {
     /// Resolves an `r<index>` ref: `target_detached` for tombstones (and
     /// epoch mismatches), `not_found` for never-allocated indices.
     pub fn resolve_ref(&self, reference: &str, epoch: Option<u64>) -> Result<NodeId> {
-        let index = parse_ref(reference)
+        let (index, generation) = parse_ref_parts(reference)
             .ok_or_else(|| Error::invalid_params(format!("malformed ref {reference:?}")))?;
         if let Some(epoch) = epoch
             && epoch != u64::from(self.generation)
@@ -946,8 +1635,26 @@ impl Page {
                 serde_json::json!({ "ref": reference, "epoch": epoch, "currentEpoch": self.generation }),
             ));
         }
+        let expected_gen = generation.or_else(|| self.issued_refs.get(&index).copied());
         match self.doc.node_at_index(index) {
             Ok(Some(id)) => {
+                if let Some(g) = expected_gen
+                    && id.generation() != g
+                {
+                    return Err(Error::coded_with(
+                        ErrorCode::TargetDetached,
+                        format!(
+                            "ref {reference} generation {g} does not match live generation {}",
+                            id.generation()
+                        ),
+                        serde_json::json!({
+                            "ref": reference,
+                            "generation": g,
+                            "liveGeneration": id.generation(),
+                            "epoch": self.generation
+                        }),
+                    ));
+                }
                 if self.doc.element(id).is_some() {
                     Ok(id)
                 } else {
@@ -1475,11 +2182,14 @@ impl Page {
                 button
             ));
         }
+        if self.dispatch_js_event(id, "click", true, true, Some(point)) {
+            return Ok(format!("{} click default prevented", ref_for(id)));
+        }
         self.activate(id)
     }
 
     /// Runs the activation behaviour for a click on `id`.
-    fn activate(&mut self, id: NodeId) -> Result<String> {
+    pub(crate) fn activate(&mut self, id: NodeId) -> Result<String> {
         let chain: Vec<NodeId> = std::iter::once(id).chain(self.doc.ancestors(id)).collect();
         for node in chain {
             let Some(e) = self.doc.element(node).cloned() else {
@@ -1592,9 +2302,7 @@ impl Page {
             .trim()
             .to_owned();
         if self.doc.attribute(link, "download").is_some() {
-            return Err(Error::capability_unsupported(
-                "downloads are not supported in this milestone",
-            ));
+            return self.download_from_link(link, &href);
         }
         if let Some(fragment) = href.strip_prefix('#') {
             return self.jump_to_fragment(fragment);
@@ -1608,9 +2316,7 @@ impl Page {
             .map_err(|e| Error::invalid_params(format!("link href {href:?}: {e}")))?;
         match parsed.scheme() {
             "javascript" => {
-                return Err(Error::capability_unsupported(
-                    "javascript: links need the script layer",
-                ));
+                return self.run_javascript_url(&resolved);
             }
             "http" | "https" | "file" | "data" | "about" => {}
             other => {
@@ -1703,7 +2409,7 @@ impl Page {
         self.doc.set_checked(radio, true)
     }
 
-    fn reset_form_of(&mut self, control: NodeId) -> Result<String> {
+    pub(crate) fn reset_form_of(&mut self, control: NodeId) -> Result<String> {
         let Some(form) = forms::form_owner(&self.doc, control) else {
             return Ok(format!("reset button {} has no form", ref_for(control)));
         };
@@ -1797,9 +2503,7 @@ impl Page {
             url::Url::parse(&resolved).map_err(|e| Error::invalid_params(e.to_string()))?
         };
         if action.scheme() == "javascript" {
-            return Err(Error::capability_unsupported(
-                "javascript: form actions need the script layer",
-            ));
+            return self.run_javascript_url(action.as_str());
         }
         let mut request = NavigationRequest::get(String::new(), self.id);
         request.referrer = Some(self.url.clone());
@@ -2504,7 +3208,9 @@ impl Page {
     /// `screenshot` through the software renderer.
     pub fn screenshot(&mut self, full_page: bool) -> Result<Screenshot> {
         self.update();
-        let renderer = self.renderer.get_or_insert_with(SoftwareRenderer::new);
+        let renderer = self
+            .renderer
+            .get_or_insert_with(SoftwareRenderer::with_system_fonts);
         let shot = screenshot::capture(
             renderer,
             &self.layout,
@@ -2516,6 +3222,90 @@ impl Page {
         )?;
         self.last_screenshot = Some(shot.clone());
         Ok(shot)
+    }
+
+    /// Directory downloads are written into.
+    pub fn set_download_dir(&mut self, dir: impl Into<std::path::PathBuf>) {
+        self.download_dir = Some(dir.into());
+    }
+
+    /// Completed downloads (plan A16).
+    #[must_use]
+    pub fn downloads(&self) -> &[CompletedDownload] {
+        &self.downloads
+    }
+
+    /// Nested document fragment of an iframe, if same-origin and loaded.
+    #[must_use]
+    pub fn frame_document(&self, iframe: NodeId) -> Option<NodeId> {
+        if self.cross_origin_frames.contains(&iframe) {
+            return None;
+        }
+        self.doc.content_document(iframe)
+    }
+
+    /// Number of cross-origin iframe browsing contexts (plan A16).
+    #[must_use]
+    pub fn isolated_frame_count(&self) -> usize {
+        self.isolated_frames.len()
+    }
+
+    pub(crate) fn download_dir(&self) -> std::path::PathBuf {
+        self.download_dir
+            .clone()
+            .unwrap_or_else(|| std::env::temp_dir().join("vector-downloads"))
+    }
+
+    fn download_from_link(&mut self, link: NodeId, href: &str) -> Result<String> {
+        let resolved = self.resolve_url(href).ok_or_else(|| {
+            Error::invalid_params(format!("download href {href:?} is not a valid URL"))
+        })?;
+        let suggested = self
+            .doc
+            .attribute(link, "download")
+            .filter(|s| !s.is_empty())
+            .map_or_else(|| filename_from_url(&resolved), str::to_owned);
+        self.save_download(&resolved, &suggested)
+    }
+
+    fn save_download(&mut self, url: &str, filename: &str) -> Result<String> {
+        let page = self.id;
+        let loaded = if let Some(loader) = self.loader.as_mut() {
+            loader
+                .script_fetch(url, "GET", &[], page)
+                .map_err(|e| Error::step_failed(format!("download of {url} failed: {e}")))?
+        } else {
+            return Err(Error::capability_unsupported(
+                "downloads need a loader to fetch the resource",
+            ));
+        };
+        if loaded.status >= 400 {
+            return Err(Error::step_failed(format!(
+                "download of {url} returned HTTP {}",
+                loaded.status
+            )));
+        }
+        let dir = self.download_dir();
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| Error::step_failed(format!("download dir: {e}")))?;
+        let safe = sanitize_filename(filename);
+        let path = dir.join(&safe);
+        std::fs::write(&path, &loaded.bytes)
+            .map_err(|e| Error::step_failed(format!("writing download: {e}")))?;
+        let record = CompletedDownload {
+            url: loaded.url,
+            path: path.clone(),
+            filename: safe,
+            bytes: loaded.bytes.len(),
+        };
+        let detail = format!(
+            "downloaded {} → {} ({} bytes)",
+            record.url,
+            record.path.display(),
+            record.bytes
+        );
+        self.downloads.push(record);
+        Ok(detail)
     }
 
     /// Completed responses for this page (through the loader).
@@ -2530,13 +3320,207 @@ impl Page {
     /// Open dialogs (for the `dialog` op and observations).
     #[must_use]
     pub fn open_dialogs(&self) -> Vec<DialogEntry> {
-        self.observe_now(&ObservationRequest {
-            max_elements: 1,
-            max_text_chars: 16,
-            ..ObservationRequest::default()
-        })
-        .dialogs
+        let mut dialogs = self.pending_dialogs.clone();
+        for id in self.doc.elements() {
+            if self
+                .doc
+                .element(id)
+                .is_some_and(|e| e.is_html("dialog") && e.has_attr("open"))
+            {
+                dialogs.push(DialogEntry {
+                    type_: "dialog".into(),
+                    message: self.doc.text_content(id),
+                });
+            }
+        }
+        dialogs
     }
+
+    /// Accepts or dismisses a pending script dialog or an open `<dialog>`.
+    pub(crate) fn resolve_dialog(
+        &mut self,
+        action: crate::steps::DialogAction,
+        prompt_text: Option<&str>,
+    ) -> Result<String> {
+        if !self.pending_dialogs.is_empty() {
+            let pending = self.pending_dialogs.remove(0);
+            self.dialog_reply = match action {
+                crate::steps::DialogAction::Accept => {
+                    Some(prompt_text.unwrap_or("true").to_owned())
+                }
+                crate::steps::DialogAction::Dismiss => Some(String::new()),
+            };
+            return Ok(format!("{:?} script {} dialog", action, pending.type_));
+        }
+        let open = self.doc.elements().find(|&id| {
+            self.doc
+                .element(id)
+                .is_some_and(|e| e.is_html("dialog") && e.has_attr("open"))
+        });
+        if let Some(id) = open {
+            let _ = self.doc.remove_attribute(id, "open");
+            return Ok(format!("{:?} <dialog> {}", action, ref_for(id)));
+        }
+        Err(Error::step_failed("no dialog is pending"))
+    }
+}
+
+/// Decodes a text subresource (CSS, JS) using the transport charset, the
+/// same way the document decoder does (UTF-8 with BOM/meta sniffing).
+fn decode_text(bytes: &[u8], content_type: Option<&str>) -> String {
+    let charset = content_type.and_then(|ct| {
+        ct.split(';').skip(1).find_map(|p| {
+            let (k, v) = p.trim().split_once('=')?;
+            k.trim()
+                .eq_ignore_ascii_case("charset")
+                .then(|| v.trim().trim_matches('"').to_owned())
+        })
+    });
+    ve_html::decode_html_bytes(bytes, charset.as_deref()).text
+}
+
+/// `true` for a `<script>` the engine should treat as JavaScript: no type,
+/// a JavaScript MIME type, or `module`. Data blocks (JSON, importmap,
+/// templates) are skipped.
+fn script_is_classic_or_module(doc: &Document, id: NodeId) -> bool {
+    match doc.attribute(id, "type").map(str::trim) {
+        None | Some("") => true,
+        Some(t) => {
+            let t = t.to_ascii_lowercase();
+            t == "module"
+                || t == "text/javascript"
+                || t == "application/javascript"
+                || t == "text/ecmascript"
+                || t == "application/ecmascript"
+                || t == "text/jscript"
+                || t == "text/x-javascript"
+        }
+    }
+}
+
+/// The `@import` targets at the head of a stylesheet (after any `@charset`
+/// and `@layer` statements), in order. Media-conditioned imports are taken
+/// regardless of the condition; the cascade evaluates `@media` inside.
+fn same_origin_url(page: &str, other: &str) -> bool {
+    match (url::Url::parse(page), url::Url::parse(other)) {
+        (Ok(a), Ok(b)) => a.origin() == b.origin(),
+        _ => false,
+    }
+}
+
+pub(crate) fn filename_from_url(url: &str) -> String {
+    url::Url::parse(url)
+        .ok()
+        .and_then(|u| {
+            u.path_segments()
+                .and_then(std::iter::Iterator::last)
+                .map(str::to_owned)
+        })
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "download".into())
+}
+
+pub(crate) fn sanitize_filename(name: &str) -> String {
+    let trimmed = name.rsplit(['/', '\\']).next().unwrap_or(name);
+    let safe: String = trimmed
+        .chars()
+        .map(|c| {
+            if matches!(c, '/' | '\\' | '\0') {
+                '_'
+            } else {
+                c
+            }
+        })
+        .collect();
+    if safe.is_empty() || safe == "." || safe == ".." {
+        "download".into()
+    } else {
+        safe
+    }
+}
+
+fn collect_imports(css: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = css.trim_start();
+    loop {
+        // skip comments
+        while let Some(after) = rest.strip_prefix("/*") {
+            match after.find("*/") {
+                Some(end) => rest = after[end + 2..].trim_start(),
+                None => return out,
+            }
+        }
+        if let Some(after) = rest.strip_prefix("@charset") {
+            match after.find(';') {
+                Some(end) => rest = after[end + 1..].trim_start(),
+                None => return out,
+            }
+            continue;
+        }
+        if let Some(after) = rest.strip_prefix("@layer")
+            && let Some(end) = after.find(';')
+            && !after[..end].contains('{')
+        {
+            rest = after[end + 1..].trim_start();
+            continue;
+        }
+        let Some(after) = rest.strip_prefix("@import") else {
+            return out;
+        };
+        let Some(end) = after.find(';') else {
+            return out;
+        };
+        let stmt = after[..end].trim();
+        let target = stmt
+            .strip_prefix("url(")
+            .and_then(|u| u.find(')').map(|e| u[..e].trim().trim_matches(['"', '\''])))
+            .or_else(|| {
+                let q = stmt.chars().next()?;
+                (q == '"' || q == '\'').then(|| stmt[1..].split(q).next().unwrap_or(""))
+            });
+        if let Some(t) = target.filter(|t| !t.is_empty()) {
+            out.push(t.to_owned());
+        }
+        rest = after[end + 1..].trim_start();
+    }
+}
+
+/// Natural size of a `data:` image without fetching anything.
+fn decode_data_url_image_size(data_url: &str) -> Option<(u32, u32)> {
+    let (meta, payload) = data_url.strip_prefix("data:")?.split_once(',')?;
+    let bytes: Vec<u8> = if meta.ends_with(";base64") {
+        base64_decode(payload)?
+    } else {
+        percent_decode(payload).into_bytes()
+    };
+    let size = imagesize::blob_size(&bytes).ok()?;
+    Some((
+        u32::try_from(size.width).ok()?,
+        u32::try_from(size.height).ok()?,
+    ))
+}
+
+fn base64_decode(input: &str) -> Option<Vec<u8>> {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = Vec::with_capacity(input.len() * 3 / 4);
+    let mut buf = 0u32;
+    let mut bits = 0u8;
+    for c in input.bytes() {
+        let v = match c {
+            b'=' => break,
+            b'-' => 62,
+            b'_' => 63,
+            b if b.is_ascii_whitespace() => continue,
+            b => u32::try_from(TABLE.iter().position(|&t| t == b)?).ok()?,
+        };
+        buf = (buf << 6) | v;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push(u8::try_from((buf >> bits) & 0xff).ok()?);
+        }
+    }
+    Some(out)
 }
 
 fn percent_decode(input: &str) -> String {
@@ -2556,6 +3540,18 @@ fn percent_decode(input: &str) -> String {
         i += 1;
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+impl Page {
+    pub(crate) fn set_element_scroll_axis(&mut self, id: NodeId, axis: &str, value: f32) {
+        let cur = self.element_scroll.entry(id).or_default();
+        if axis == "x" {
+            cur.x = value.max(0.0);
+        } else {
+            cur.y = value.max(0.0);
+        }
+        self.doc.record_scrolled(Some(id));
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

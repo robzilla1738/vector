@@ -128,12 +128,28 @@ server.registerTool(
 server.registerTool(
   "vector_page_capture",
   {
-    description: "Screenshot a page. Returns a data URL (or artifact id with format=artifact).",
-    inputSchema: { pageId: z.string(), format: z.enum(["dataUrl", "artifact"]).optional() },
+    description:
+      "Screenshot a page. Default returns the PNG as MCP image content (so a vision-capable model sees it) plus its size and scale; format=artifact stores it and returns the artifact id; format=dataUrl returns the base64 data URL as text. Coordinates for clickPoint are screenshot pixels divided by `scale`.",
+    inputSchema: { pageId: z.string(), fullPage: z.boolean().optional(), format: z.enum(["image", "dataUrl", "artifact"]).optional() },
   },
-  async ({ pageId, format }) => {
+  async ({ pageId, fullPage, format }) => {
     try {
-      return text(await rpc("pages.capture", { pageId, format: format ?? "artifact" }));
+      if (format === "artifact") return text(await rpc("pages.capture", { pageId, fullPage, format: "artifact" }));
+      const shot = (await rpc("pages.capture", { pageId, fullPage, format: "dataUrl" })) as {
+        dataUrl: string;
+        width: number;
+        height: number;
+        scale: number;
+      };
+      if (format === "dataUrl") return text(shot);
+      const m = /^data:([^;]+);base64,(.*)$/s.exec(shot.dataUrl);
+      if (!m) return text(shot);
+      return {
+        content: [
+          { type: "image" as const, data: m[2]!, mimeType: m[1]! },
+          { type: "text" as const, text: JSON.stringify({ width: shot.width, height: shot.height, scale: shot.scale }) },
+        ],
+      };
     } catch (e) {
       return err(e);
     }

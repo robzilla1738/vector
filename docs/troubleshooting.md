@@ -153,7 +153,8 @@ stored setting wins over the env). Then read `routeReason` on the
   `body-onload`, `form-onsubmit`, `template-heavy`,
   `unsupported-content: …`) or failed mid-program
   (`mid-program:<op>:…`), and the page was reopened on Chromium. Expected
-  for SPAs in M1 (no JavaScript).
+  for documents the engine classifies as script-dependent (empty SPA
+  shells, `body-onload`, unsupported content types).
 
 `VECTOR_ROUTER_LOG=1` prints every decision to the runtime's stderr;
 `traces.counters` has `router.decide`, `router.fallback.open`,
@@ -170,9 +171,8 @@ same for every open (what `pnpm bench --backend vector-engine` uses).
 
 ## A program on an engine page came back with `fallback` / `REPAIR:`
 
-A step hit `capability_unsupported` on the engine (in M1: `evaluate`,
-`dialog`, `expectDownload`, `xpath:` targets, `javascript:` URLs, `waitFor
-expression | downloadCompleted`). With `engineMode:
+A step hit `capability_unsupported` on the engine (today: `xpath:`
+targets, canvas/WebGL, PDF, control-flow `nodes`). With `engineMode:
 auto` the runtime moved the page to Chromium (same `pageId`, new
 `documentEpoch`, `routeReason: fallback:mid-program:<op>:…`) and replayed the
 remaining steps — `ProgramResult.fallback.replayedFrom` is the first index
@@ -181,11 +181,8 @@ remaining steps named engine refs (`r<n>`), which do not exist on Chromium:
 re-observe and issue fresh refs. `fallback unavailable` in `error` means no
 Chromium backend was connected to fall back to.
 
-## `pages.capture` / `pages.activate` fail with `capability_unsupported` on an engine page
+## `pages.capture` / `pages.activate` on an engine page
 
-Engine pages are headless in M1: no native view to focus, and
-`PageService.capture` refuses `vector-engine` pages (the addon's own
-`screenshot` renders a software PNG, but the runtime does not use it yet).
-Open the page on Chromium (`backend: "vector"`) when
-you need a screenshot or a visible tab (the agent loop's vision fallback
-also goes through `pages.capture`, so it cannot capture an engine page).
+Engine pages are headless: there is no Chromium view to focus. `pages.activate`
+marks the page active; `pages.capture` uses the software renderer (system
+fonts). `pages.openLive` on an engine page likewise marks it active.

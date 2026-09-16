@@ -33,6 +33,7 @@ beforeAll(async () => {
     VECTOR_DATA_DIR: dataDir,
     VECTOR_ELECTRON_CDP: "",
     VECTOR_API_TOKEN: "test-token",
+    VECTOR_ENGINE_MODE: "off",
   });
 }, 60_000);
 
@@ -149,7 +150,9 @@ describe("pages", () => {
     const o = compact.observation;
     expect(o.pageId).toBe(page.pageId);
     expect(o.url).toContain("/records");
-    expect(o.revision).toBe(full.revision + 1);
+    // the page did not change between the two calls, so the compact form is
+    // rendered from the cached observation (A6): same revision, no re-walk
+    expect(o.revision).toBe(full.revision);
     expect(o.refs.length).toBe(full.content.elements.length);
     expect(o.text).toContain("elements:");
     expect(JSON.stringify(o)).not.toContain("nth-of-type"); // selectors stay server-side
@@ -191,6 +194,136 @@ describe("pages", () => {
       program: { pageId: page.pageId, steps: [{ id: "r1", op: "reload" }] },
     });
     expect(plain).not.toHaveProperty("observation");
+  }, 60_000);
+
+  it("refs resolve to the exact observed node even after the DOM shifts, and fall back when it is gone (A7)", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
+    const obs = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
+    const title = obs.content.elements.find((e) => e.selector?.css?.includes("n-title") || e.name === "Title")!;
+    expect(title).toBeTruthy();
+    // insert a decoy input before the target: a positional css path now points
+    // at the decoy, the live ref map still points at the real field
+    await invoke("pages.execute", {
+      program: {
+        pageId: page.pageId,
+        steps: [
+          {
+            id: "e",
+            op: "evaluate",
+            // strip the id too, so every stored selector (css #id, xpath position,
+            // label-derived role name) now misses or points at the decoy
+            expression: `(() => { const t = document.getElementById("n-title"); const d = document.createElement("input"); d.name = "decoy"; t.parentElement.insertBefore(d, t); t.removeAttribute("id"); return 1; })()`,
+          },
+          { id: "f", op: "fill", target: title.ref, value: "exact node" },
+        ],
+      },
+      allowEval: true,
+    });
+    const after = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
+    expect(after.content.formFields.find((f) => f.name === "title")?.value).toBe("exact node");
+    expect(after.content.formFields.find((f) => f.name === "decoy")?.value ?? "").toBe("");
+    // restore the id for the second scenario
+    await invoke("pages.execute", {
+      program: { pageId: page.pageId, steps: [{ id: "e2", op: "evaluate", expression: `(() => { document.querySelector('input[name=title]').id = "n-title"; return 1; })()` }] },
+      allowEval: true,
+    });
+    // the node is replaced (framework re-render): the handle is gone, the
+    // selector fallback finds the replacement by its path/role instead
+    const obs2 = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
+    const title2 = obs2.content.elements.find((e) => e.selector?.css?.includes("n-title"))!;
+    await invoke("pages.execute", {
+      program: {
+        pageId: page.pageId,
+        steps: [
+          {
+            id: "e",
+            op: "evaluate",
+            expression: `(() => { const t = document.getElementById("n-title"); const c = t.cloneNode(true); t.replaceWith(c); return 1; })()`,
+          },
+          { id: "f", op: "fill", target: title2.ref, value: "fallback node" },
+        ],
+      },
+      allowEval: true,
+    });
+    const after2 = await invoke<{ content: ObservationContent }>("pages.observe", { pageId: page.pageId });
+    expect(after2.content.formFields.find((f) => f.name === "title" || f.label === "Title")?.value).toBe("fallback node");
+  }, 60_000);
+
+  it("observation carries select options, focus, offscreen and occlusion; subtree scope accepts a ref (A10)", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
+    type Obs = { content: ObservationContent };
+    // make the page tall and cover the submit button with an overlay
+    await invoke("pages.execute", {
+      program: {
+        pageId: page.pageId,
+        steps: [
+          {
+            id: "e",
+            op: "evaluate",
+            expression: `(() => {
+              const far = document.createElement("button"); far.id = "far"; far.textContent = "Far away";
+              far.style.cssText = "position:absolute;top:5000px;left:10px"; document.body.appendChild(far);
+              const btn = document.querySelector('button[type=submit],#create-record,form button') || document.querySelector("button");
+              const r = btn.getBoundingClientRect();
+              const cover = document.createElement("div"); cover.id = "cover";
+              cover.style.cssText = "position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;background:rgba(0,0,0,.4);z-index:9999";
+              document.body.appendChild(cover);
+              document.getElementById("n-title").focus();
+              return 1; })()`,
+          },
+        ],
+      },
+      allowEval: true,
+    });
+    const obs = await invoke<Obs>("pages.observe", { pageId: page.pageId });
+    const status = obs.content.elements.find((e) => e.selector?.css?.includes("n-status"))!;
+    expect(status.options).toEqual(expect.arrayContaining(["draft", "in progress", "approved"]));
+    expect(obs.content.elements.find((e) => e.selector?.css?.includes("n-title"))?.focused).toBe(true);
+    expect(obs.content.elements.find((e) => e.name === "Far away")?.offscreen).toBe(true);
+    const covered = obs.content.elements.find((e) => e.tag === "button" && e.name !== "Far away" && e.occluded);
+    expect(covered, "the covered submit button is marked occluded").toBeTruthy();
+    // the compact rendering carries the same signals for the model
+    const compact = await invoke<{ observation: { text: string } }>("pages.observe", { pageId: page.pageId, format: "compact" });
+    expect(compact.observation.text).toMatch(/options=\[.*"approved".*\]/);
+    expect(compact.observation.text).toContain(" occluded");
+    expect(compact.observation.text).toContain(" offscreen");
+    // subtree scope: a css target, and a ref (which used to go straight into querySelector)
+    const sub = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "subtree", subtreeRef: "css:form" });
+    expect(sub.content.elements.length).toBeGreaterThan(0);
+    expect(sub.content.elements.every((e) => e.name !== "Far away")).toBe(true);
+    const byRef = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "subtree", subtreeRef: status.ref });
+    expect(byRef.content.elements.every((e) => e.name !== "Far away")).toBe(true);
+    await expect(invoke("pages.observe", { pageId: page.pageId, scope: "subtree", subtreeRef: "r99999" })).rejects.toThrow(/stale|unknown/);
+  }, 60_000);
+
+  it("observation cache: an unchanged page is served from cache; typing or navigating invalidates it (A6)", async () => {
+    const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/new`, background: true });
+    type Obs = { observationId: string; revision: number; cached?: boolean; changesSince?: string[]; content: ObservationContent };
+    const first = await invoke<Obs>("pages.observe", { pageId: page.pageId });
+    expect(first.cached).toBeUndefined();
+    const second = await invoke<Obs>("pages.observe", { pageId: page.pageId });
+    expect(second.cached).toBe(true);
+    expect(second.observationId).toBe(first.observationId);
+    expect(second.revision).toBe(first.revision);
+    // a different request shape is a different observation
+    const forms = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "forms" });
+    expect(forms.cached).toBeUndefined();
+    // a form value change is invisible to a MutationObserver but must miss the cache
+    await invoke("pages.execute", {
+      program: { pageId: page.pageId, steps: [{ id: "f", op: "fill", target: "css:#n-title", value: "Cache probe" }] },
+    });
+    const third = await invoke<Obs>("pages.observe", { pageId: page.pageId });
+    expect(third.cached).toBeUndefined();
+    expect(third.revision).toBeGreaterThan(first.revision);
+    expect(third.content.formFields.some((f) => f.value === "Cache probe")).toBe(true);
+    // sinceRevision diffs against the revision the caller last saw, not just the previous one
+    const since = await invoke<Obs>("pages.observe", { pageId: page.pageId, scope: "full", sinceRevision: first.revision, maxElements: 119 });
+    expect(since.changesSince?.some((c) => c.includes("Cache probe"))).toBe(true);
+    // navigation changes the epoch: no stale hit
+    await invoke("pages.navigate", { pageId: page.pageId, url: `${RECORDS}/records` });
+    const afterNav = await invoke<Obs>("pages.observe", { pageId: page.pageId });
+    expect(afterNav.cached).toBeUndefined();
+    expect(afterNav.content.url).toContain("/records");
   }, 60_000);
 
   it("waitFor settled resolves once an in-flight fetch and its DOM update land", async () => {

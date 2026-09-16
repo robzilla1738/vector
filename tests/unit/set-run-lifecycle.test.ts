@@ -154,6 +154,38 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     expect(calls).toBeGreaterThan(0);
   });
 
+  it("pilot-then-fan-out: one agent member per site, siblings replay with zero model calls (A9)", async () => {
+    let calls = 0;
+    let concurrentAgents = 0;
+    let peakAgents = 0;
+    const model: ModelClient = {
+      generateStructured: async (o) => {
+        calls++;
+        concurrentAgents++;
+        peakAgents = Math.max(peakAgents, concurrentAgents);
+        await sleep(40, o.signal);
+        concurrentAgents--;
+        // first call per member: act; second: done
+        return calls % 2 === 1
+          ? { object: { status: "continue", message: "act", steps: [{ id: "s1", op: "reload" }] } as never, durationMs: 40 }
+          : { object: { status: "done", message: "ok", result: { v: 1 } } as never, durationMs: 40 };
+      },
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    const h = harness({ model, maxWorkers: 8 });
+    // 6 members on ONE site: the pilot is the only agent, five replay
+    const set = await h.sets.create({ name: "s", source: "urls", urls: Array.from({ length: 6 }, (_, i) => `http://one.test/items/${String(100000 + i)}`) });
+    const run = await h.runs.start({ goal: "collect", setId: set.setId });
+    const done = await untilTerminal(h.repo, run.runId, 10_000);
+    expect(done.status).toBe("completed");
+    expect(h.repo.listResults({ runId: run.runId }).length).toBe(6);
+    // exactly one member ran the model (2 calls: act, done); everyone else replayed
+    expect(calls).toBe(2);
+    expect(peakAgents).toBe(1);
+    expect(h.repo.listPrograms().some((p) => p.name.startsWith("learned:"))).toBe(true);
+  });
+
   it("cancel aborts the signal member agents are blocked on", async () => {
     let seenSignal: AbortSignal | undefined;
     const model: ModelClient = {

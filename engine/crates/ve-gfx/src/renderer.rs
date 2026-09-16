@@ -206,6 +206,17 @@ impl SoftwareRenderer {
         }
     }
 
+    /// Creates a renderer that paints with host-installed fonts (plan A19).
+    #[must_use]
+    pub fn with_system_fonts() -> Self {
+        let mut fonts = FontSystem::new();
+        fonts.load_system_fonts();
+        Self {
+            fonts,
+            images: ImageCache::new(),
+        }
+    }
+
     fn draw_text(&mut self, canvas: &mut Canvas, run: &TextRun) {
         let Some(face) = self.fonts.query(&run.family, run.weight, run.style) else {
             return;

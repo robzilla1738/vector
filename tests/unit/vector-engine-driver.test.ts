@@ -50,7 +50,7 @@ function fakeNative(script: { routing?: { requiresScript: boolean; reason?: stri
       return JSON.stringify({ ok: true, content: content(), revision: 5, generation: 0, settled: true, blockers: [], changed: null });
     },
     execute: async (page, stepsJson, optionsJson) => {
-      const steps = JSON.parse(stepsJson) as { id: string; op: string; url?: string; target?: string }[];
+      const steps = JSON.parse(stepsJson) as { id: string; op: string; url?: string; target?: string; condition?: { kind?: string } }[];
       const opts = JSON.parse(optionsJson ?? "{}");
       calls.push({ method: "execute", args: [page, steps, opts] });
       if (script.execute) return JSON.stringify(script.execute(steps, opts));
@@ -60,6 +60,7 @@ function fakeNative(script: { routing?: { requiresScript: boolean; reason?: stri
         if (s.op === "hover" || s.op === "evaluate") return { ...base, status: "failed", error: { code: "capability_unsupported", message: `unsupported: ${s.op}` } };
         if (s.target === "css:#missing") return { ...base, status: "failed", error: { code: "not_found", message: "no element matches" } };
         if (s.op === "extract") return { ...base, status: "ok", extracted: { t: "Title" } };
+        if (s.op === "waitFor" && s.condition?.kind === "downloadCompleted") return { ...base, status: "ok", detail: "report.pdf" };
         if (s.op === "waitFor") return { ...base, status: "ok", detail: "settled=true" };
         return { ...base, status: "ok" };
       });
@@ -173,7 +174,7 @@ describe("VectorEngineDriver", () => {
     await expect(page.hover("r4")).rejects.toMatchObject({ code: "capability_unsupported" });
     await expect(page.evaluate("1+1")).rejects.toMatchObject({ code: "capability_unsupported" });
     await expect(page.screenshot()).rejects.toMatchObject({ code: "capability_unsupported" });
-    await expect(page.waitForDownload()).rejects.toMatchObject({ code: "capability_unsupported" });
+    await expect(page.waitForDownload()).resolves.toEqual({ suggestedFilename: "report.pdf" });
 
     // navigation is derived from the result: epoch bump + events, refs wiped
     await page.observe();
@@ -184,6 +185,38 @@ describe("VectorEngineDriver", () => {
     expect(events.onTitleChanged).toHaveBeenCalledWith("Second");
     expect(page.url()).toBe("https://x.test/two");
     expect(driver.refEntry("p1", "r4")).toBeUndefined();
+  });
+
+  it("prefers observeBuf/executeBuf/screenshotPng when the native module exposes them", async () => {
+    const { mod, calls, engine } = fakeNative();
+    engine.observeBuf = async (page, options) => {
+      calls.push({ method: "observeBuf", args: [page, options] });
+      return Buffer.from(JSON.stringify({ ok: true, content: content(), revision: 5, generation: 0, settled: true, blockers: [], changed: null }));
+    };
+    engine.executeBuf = async (page, steps, options) => {
+      calls.push({ method: "executeBuf", args: [page, steps, options] });
+      return Buffer.from(JSON.stringify({
+        ok: true, status: "completed",
+        steps: [{ stepId: "ve1", op: "click", startedAt: 1, durationMs: 1, status: "ok" }],
+        extracted: null, error: null, url: "https://x.test/", title: "X", titleChanged: false,
+        generation: 0, navigated: false, revision: 9, responses: [],
+      }));
+    };
+    engine.screenshotPng = async (page, fullPage) => {
+      calls.push({ method: "screenshotPng", args: [page, fullPage] });
+      return { width: 2, height: 1, scale: 1, fullPage: !!fullPage, png: Buffer.from([137, 80, 78, 71]) };
+    };
+    const driver = new VectorEngineDriver({ load: async () => mod });
+    await driver.connect();
+    const page = await driver.attach(await driver.createTarget("https://x.test/"), "p1");
+    await page.observe();
+    expect(calls.some((c) => c.method === "observeBuf")).toBe(true);
+    await page.click("r4");
+    expect(calls.some((c) => c.method === "executeBuf")).toBe(true);
+    const shot = await page.screenshot();
+    expect(shot.width).toBe(2);
+    expect(shot.buffer[0]).toBe(137);
+    expect(calls.some((c) => c.method === "screenshotPng")).toBe(true);
   });
 
   it("executeProgram sends the whole step list once and returns the inline observation", async () => {

@@ -190,7 +190,7 @@ runtime now emits what the shell reads:
 - `Backend` / `PageTarget.backend` is `"vector" | "chrome" | "vector-engine"`
   (`contracts/ids.ts`, `BackendSchema`) — the badge shows *Chromium*, *Your
   Chrome* or *Vector Engine* from it.
-- `settings.engineMode: "off" | "auto" | "always"` is in `SettingsSetParams`
+- `settings.engineMode: "off" | "auto" | "always"` (default `auto`) is in `SettingsSetParams`
   and returned by `settings.get`; the Settings radio writes it through
   `settings.set` and the runtime applies it on the next `pages.open`.
 - `PageTarget.routeReason` is set on every page (`pages.open` result,

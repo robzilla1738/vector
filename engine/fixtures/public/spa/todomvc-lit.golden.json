@@ -1,0 +1,65 @@
+{
+  "url": "https://todomvc.com/examples/lit/dist/",
+  "title": "TodoMVC: Lit",
+  "viewport": {
+    "width": 1280.0,
+    "height": 720.0,
+    "scale": 1.0
+  },
+  "scroll": {
+    "x": 0.0,
+    "y": 0.0,
+    "maxY": 0.0
+  },
+  "frames": [
+    {
+      "frame": "main",
+      "url": "https://todomvc.com/examples/lit/dist/",
+      "sameOrigin": true
+    }
+  ],
+  "text": "[footer]\nDouble-click to edit a todo\nWritten by the lit team\nPart of TodoMVC",
+  "headings": [],
+  "elements": [
+    {
+      "ref": "r32",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "the lit team",
+      "href": "https://github.com/lit",
+      "selector": {}
+    },
+    {
+      "ref": "r37",
+      "frame": "main",
+      "tag": "a",
+      "role": "link",
+      "name": "TodoMVC",
+      "href": "http://todomvc.com/",
+      "selector": {}
+    }
+  ],
+  "formFields": [],
+  "tables": [],
+  "links": [
+    {
+      "ref": "r32",
+      "text": "the lit team",
+      "href": "https://github.com/lit"
+    },
+    {
+      "ref": "r37",
+      "text": "TodoMVC",
+      "href": "http://todomvc.com/"
+    }
+  ],
+  "dialogs": [],
+  "truncated": false,
+  "stats": {
+    "elementsTotal": 2,
+    "elementsShown": 2,
+    "textChars": 76,
+    "approxTokens": 77
+  }
+}

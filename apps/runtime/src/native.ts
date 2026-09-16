@@ -23,6 +23,9 @@ export interface NativeBridge {
   setZoom(pageId: string, level?: number, delta?: number, reset?: boolean): Promise<{ level: number }>;
   /** Write cookies into the shared profile partition. Returns count set. */
   setCookies(cookies: unknown[]): Promise<{ ok: boolean; count: number }>;
+  /** Persist a secret via Electron safeStorage (plan A22). */
+  storeSecret(name: string, value: string): Promise<{ ok: true }>;
+  readSecret(name: string): Promise<{ value?: string }>;
   available(): boolean;
 }
 
@@ -73,6 +76,12 @@ export class ChannelNativeBridge implements NativeBridge {
   setCookies(cookies: unknown[]) {
     return this.channel.call<{ ok: boolean; count: number }>("native.setCookies", { cookies });
   }
+  storeSecret(name: string, value: string) {
+    return this.channel.call<{ ok: true }>("native.storeSecret", { name, value });
+  }
+  readSecret(name: string) {
+    return this.channel.call<{ value?: string }>("native.readSecret", { name });
+  }
 }
 
 export class NullNativeBridge implements NativeBridge {
@@ -99,4 +108,6 @@ export class NullNativeBridge implements NativeBridge {
   stopFind(): never { this.fail(); }
   setZoom(): never { this.fail(); }
   setCookies(): never { this.fail(); }
+  async storeSecret() { return { ok: true as const }; }
+  async readSecret() { return { value: undefined as string | undefined }; }
 }

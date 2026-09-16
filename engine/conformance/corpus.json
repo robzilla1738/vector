@@ -1,0 +1,239 @@
+{
+  "$comment": "Public-page corpus for the router and layout gates (plan A2). `static` pages render their content server-side and must classify as `static`; `spa` pages are client-rendered shells and must classify as requiresScript. Fetch with `node engine/tools/corpus/fetch.mjs`; snapshots land in engine/fixtures/public/{static,spa}/ with external CSS inlined and a <base href> so relative URLs resolve. Content belongs to the respective sites and is checked in only as a test fixture.",
+  "static": [
+    {
+      "name": "wikipedia-web-browser",
+      "url": "https://en.wikipedia.org/wiki/Web_browser"
+    },
+    {
+      "name": "wiktionary-browser",
+      "url": "https://en.wiktionary.org/wiki/browser"
+    },
+    {
+      "name": "wikibooks-main",
+      "url": "https://en.wikibooks.org/wiki/Main_Page"
+    },
+    {
+      "name": "mdn-input",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input"
+    },
+    {
+      "name": "mdn-css-flex",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/flex"
+    },
+    {
+      "name": "rust-book-install",
+      "url": "https://doc.rust-lang.org/book/ch01-01-installation.html"
+    },
+    {
+      "name": "python-tutorial",
+      "url": "https://docs.python.org/3/tutorial/introduction.html"
+    },
+    {
+      "name": "python-os",
+      "url": "https://docs.python.org/3/library/os.path.html"
+    },
+    {
+      "name": "go-getting-started",
+      "url": "https://go.dev/doc/tutorial/getting-started"
+    },
+    {
+      "name": "php-array-map",
+      "url": "https://www.php.net/manual/en/function.array-map.php"
+    },
+    {
+      "name": "postgres-select",
+      "url": "https://www.postgresql.org/docs/current/sql-select.html"
+    },
+    {
+      "name": "nginx-docs",
+      "url": "https://nginx.org/en/docs/"
+    },
+    {
+      "name": "gov-uk-benefits",
+      "url": "https://www.gov.uk/browse/benefits"
+    },
+    {
+      "name": "gov-uk-universal-credit",
+      "url": "https://www.gov.uk/apply-universal-credit"
+    },
+    {
+      "name": "usa-gov-benefits",
+      "url": "https://www.usa.gov/benefits"
+    },
+    {
+      "name": "irs-form-1040",
+      "url": "https://www.irs.gov/forms-pubs/about-form-1040"
+    },
+    {
+      "name": "ssa-retirement",
+      "url": "https://www.ssa.gov/retirement"
+    },
+    {
+      "name": "canada-benefits",
+      "url": "https://www.canada.ca/en/services/benefits.html"
+    },
+    {
+      "name": "nhs-conditions",
+      "url": "https://www.nhs.uk/conditions/"
+    },
+    {
+      "name": "hn-front",
+      "url": "https://news.ycombinator.com/"
+    },
+    {
+      "name": "hn-newest",
+      "url": "https://news.ycombinator.com/newest"
+    },
+    {
+      "name": "lobsters",
+      "url": "https://lobste.rs/"
+    },
+    {
+      "name": "npr-text",
+      "url": "https://text.npr.org/"
+    },
+    {
+      "name": "cnn-lite",
+      "url": "https://lite.cnn.com/"
+    },
+    {
+      "name": "debian",
+      "url": "https://www.debian.org/"
+    },
+    {
+      "name": "kernel",
+      "url": "https://www.kernel.org/"
+    },
+    {
+      "name": "apache",
+      "url": "https://www.apache.org/"
+    },
+    {
+      "name": "gutenberg-book",
+      "url": "https://www.gutenberg.org/ebooks/1342"
+    },
+    {
+      "name": "arch-install",
+      "url": "https://wiki.archlinux.org/title/Installation_guide"
+    },
+    {
+      "name": "osm-copyright",
+      "url": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "name": "craigslist-sf-apa",
+      "url": "https://sfbay.craigslist.org/search/apa"
+    },
+    {
+      "name": "ddg-html",
+      "url": "https://html.duckduckgo.com/html/?q=rust+browser+engine"
+    },
+    {
+      "name": "pypi-requests",
+      "url": "https://pypi.org/project/requests/"
+    },
+    {
+      "name": "crates-io-serde-docs",
+      "url": "https://docs.rs/serde/latest/serde/"
+    },
+    {
+      "name": "sqlite-lang-expr",
+      "url": "https://sqlite.org/lang_expr.html"
+    },
+    {
+      "name": "mdn-aria-button",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/button_role"
+    }
+  ],
+  "spa": [
+    {
+      "name": "todomvc-react",
+      "url": "https://todomvc.com/examples/react/dist/"
+    },
+    {
+      "name": "todomvc-vue",
+      "url": "https://todomvc.com/examples/vue/dist/"
+    },
+    {
+      "name": "todomvc-svelte",
+      "url": "https://todomvc.com/examples/svelte/dist/"
+    },
+    {
+      "name": "todomvc-angular",
+      "url": "https://todomvc.com/examples/angular/dist/browser/"
+    },
+    {
+      "name": "todomvc-lit",
+      "url": "https://todomvc.com/examples/lit/dist/"
+    },
+    {
+      "name": "todomvc-preact",
+      "url": "https://todomvc.com/examples/preact/dist/"
+    },
+    {
+      "name": "todomvc-backbone",
+      "url": "https://todomvc.com/examples/backbone/dist/"
+    },
+    {
+      "name": "todomvc-jquery",
+      "url": "https://todomvc.com/examples/jquery/dist/"
+    },
+    {
+      "name": "todomvc-react-redux",
+      "url": "https://todomvc.com/examples/react-redux/dist/"
+    },
+    {
+      "name": "todomvc-emberjs",
+      "url": "https://todomvc.com/examples/emberjs/todomvc/dist/"
+    },
+    {
+      "name": "todomvc-web-components",
+      "url": "https://todomvc.com/examples/web-components/dist/"
+    },
+    {
+      "name": "todomvc-javascript-es6",
+      "url": "https://todomvc.com/examples/javascript-es6/dist/"
+    },
+    {
+      "name": "excalidraw",
+      "url": "https://excalidraw.com/"
+    },
+    {
+      "name": "squoosh",
+      "url": "https://squoosh.app/"
+    },
+    {
+      "name": "element-web",
+      "url": "https://app.element.io/"
+    },
+    {
+      "name": "photopea",
+      "url": "https://www.photopea.com/"
+    },
+    {
+      "name": "regex101",
+      "url": "https://regex101.com/"
+    },
+    {
+      "name": "rust-playground",
+      "url": "https://play.rust-lang.org/"
+    },
+    {
+      "name": "proton-mail",
+      "url": "https://mail.proton.me/"
+    },
+    {
+      "name": "jsfiddle",
+      "url": "https://jsfiddle.net/"
+    },
+    {
+      "name": "diagrams-net",
+      "url": "https://app.diagrams.net/"
+    },
+    {
+      "name": "vscode-dev",
+      "url": "https://vscode.dev/"
+    }
+  ]
+}
