@@ -3,7 +3,7 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
-## Engine M2 / A14–A23 (unreleased)
+## Engine M2 / A14–A23 (PR #7)
 
 V8 DOM bindings, engine-as-default, isolation. Details in
 `docs/engine/architecture.md` §0.

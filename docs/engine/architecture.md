@@ -42,7 +42,8 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   label forwarding, GET and POST form submission), `fill`, `type`, `press`
   (chords, Enter implicit submission, Tab order), `check`/`uncheck`,
   `select`, `scroll`, `waitFor` (`textVisible`, `selector`, `refReady`,
-  `urlMatches`, `navigationSettled`, `settled`, `response`), `extract`,
+  `urlMatches`, `navigationSettled`, `settled`, `response`, `expression`,
+  `downloadCompleted`), `extract`,
   `collectScroll`, `upload` (file list from caller paths), `settle()` over
   the in-flight table and dirty bits, `<meta http-equiv=refresh>`, and the
   routing classification `RoutingInfo { requiresScript, routeReason,
@@ -722,7 +723,8 @@ Default budgets: **500 ms** after ordinary steps, **2 s** after `navigate`
 and `navigationSettled`, configurable per step via `timeoutMs`. An unsettled
 page is *not* an error: the step succeeds, the outcome's `detail` carries
 `settled=false: timers(1) fetch(2)`, and the subsequent observation is taken
-anyway. In M1 (no scripting) conditions 1, 2, 4, 7 are trivially true.
+anyway. With scripting on, settle pumps timers (50 ms window), microtasks,
+and observer delivery; conditions 1, 2, 4, 7 are no longer trivial.
 
 ### Error taxonomy
 
