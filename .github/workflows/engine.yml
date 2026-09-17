@@ -84,6 +84,10 @@ jobs:
         run: cargo test -p ve-api --test golden
       - name: Negative containment (ve-host)
         run: cargo test -p ve-host --tests
+      - name: Production profile fails closed without host
+        env:
+          VECTOR_ENGINE_PROFILE: production
+        run: cargo test -p ve-napi -- production_without_host_fails_closed --nocapture
       - name: ve-net broker policy
         run: cargo test -p ve-net --lib broker
 
@@ -198,13 +202,17 @@ jobs:
             html/dom resources testharness.js testharnessreport.js fonts interfaces
       - name: Vendored Ahem reftest font
         run: test -f conformance/fonts/Ahem.ttf
-      - name: Supported testharness + whole-tree HTTP sample
-        run: cargo run --release -p wpt-harness --features v8 -- --http --wpt-dir "${{ runner.temp }}/wpt" --tree --tree-limit 40 --out wpt-harness-report.json
+      - name: Supported testharness (blocking)
+        run: cargo run --release -p wpt-harness --features v8 -- --http --wpt-dir "${{ runner.temp }}/wpt" --out wpt-supported-report.json
+      - name: Supported testharness + html/dom tree (pass/fail/timeout/crash/skip)
+        run: cargo run --release -p wpt-harness --features v8 -- --http --wpt-dir "${{ runner.temp }}/wpt" --tree --tree-family html/dom --timeout-secs 10 --out wpt-harness-report.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: wpt-harness-report
-          path: engine/wpt-harness-report.json
+          path: |
+            engine/wpt-harness-report.json
+            engine/wpt-supported-report.json
 
   browserbench:
     name: Speedometer/JetStream/MotionMark identity lab

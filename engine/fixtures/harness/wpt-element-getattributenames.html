@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>Element.getAttributeNames</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  assert_array_equals(el.getAttributeNames(), [])
+  el.setAttribute("id", "a")
+  el.setAttribute("DATA-X", "1")
+  var names = el.getAttributeNames()
+  assert_true(names.indexOf("id") !== -1)
+  assert_true(names.indexOf("data-x") !== -1)
+}, "getAttributeNames lists HTML-lowercased attributes")
+</script>

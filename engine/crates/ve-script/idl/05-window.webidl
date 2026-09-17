@@ -8,6 +8,9 @@ interface Window : EventTarget {
   readonly attribute CustomElementRegistry customElements;
   readonly attribute unrestricted double innerWidth;
   readonly attribute unrestricted double innerHeight;
+  readonly attribute unrestricted double scrollX;
+  readonly attribute unrestricted double scrollY;
   CSSStyleDeclaration getComputedStyle(Element elt, optional DOMString? pseudoElt);
   Response fetch(any input, optional any init);
+  MediaQueryList matchMedia(DOMString query);
 };

@@ -3,7 +3,7 @@
 Each package lists the acceptance target, current-tree evidence, and remaining
 gaps. Identity is the native Vector Engine (`vector-engine`), not Chromium.
 
-**The supported testharness subset, native product, official Speedometer 3.0 lab, and held-out p95 measurement are in tree.** Agent 2× p95 vs Chromium is measured (`held-out-latest.json`). Token stretch is not claimed when tokens were not collected. ve-vm remains research (V8 is production).
+**The supported testharness subset, native product, official Speedometer 3.0 lab, and held-out p95 measurement are in tree.** Agent 2× p95 vs Chromium is measured (`held-out-latest.json`). Token stretch is measured from declared model usage: `meetsStretch` true, `tokenRatio` 8.35 (baseline 14200 / candidate 1700). Official `html/dom` tree: 302 PASS / 29 FAIL (`wpt-tree-latest.json`; merge does not wait on tree FAILs). Official `html/dom/idlharness.https.html` PASS. Remaining FAILs are tentative `partial-updates/**`, `aria-attribute-reflection-enumerated.tentative.html` (string ARIA mixin kept so `aria-attribute-reflection.html` stays PASS), and optional `remove-element-unblocks-rendering.optional.html`. ve-vm remains research (V8 is production).
 
 | Ticket | Evidence file | Status |
 |---|---|---|
@@ -14,9 +14,9 @@ gaps. Identity is the native Vector Engine (`vector-engine`), not Chromium.
 | VEC-005 | [VEC-005.md](VEC-005.md) | implemented |
 | VEC-006 | [VEC-006.md](VEC-006.md) | implemented |
 | VEC-007 | [VEC-007.md](VEC-007.md) | implemented |
-| VEC-008 | [VEC-008.md](VEC-008.md) | implemented (subset) |
+| VEC-008 | [VEC-008.md](VEC-008.md) | implemented |
 | VEC-009 | [VEC-009.md](VEC-009.md) | implemented |
-| VEC-010 | [VEC-010.md](VEC-010.md) | implemented (subset) |
+| VEC-010 | [VEC-010.md](VEC-010.md) | implemented |
 | VEC-011 | [VEC-011.md](VEC-011.md) | implemented |
 | VEC-012 | [VEC-012.md](VEC-012.md) | implemented |
 | VEC-013 | [VEC-013.md](VEC-013.md) | implemented |

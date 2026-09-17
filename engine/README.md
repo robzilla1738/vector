@@ -163,6 +163,8 @@ UPDATE_GOLDEN=1 cargo test -p ve-api --test golden       # accept new golden Com
 cargo run --release -p wpt-runner -- --wpt-dir ../wpt                       # the M1 subsets, manifest conformance/m1.txt
 cargo run --release -p wpt-runner -- --wpt-dir ../wpt --subdir css/css-flexbox --filter align --progress
 cargo run --release -p wpt-runner -- --wpt-dir ../wpt --update-manifest     # append new passes to the manifest
+cargo run --release -p wpt-harness --features v8 -- --http                  # testharness.txt (112 files, merge-blocking)
+cargo run --release -p wpt-harness --features v8 -- --http --wpt-dir ../wpt --tree --tree-family html/dom
 
 # Public-page corpus: router accuracy + observation budgets on real pages
 node tools/corpus/fetch.mjs                     # refresh engine/fixtures/public from conformance/corpus.json
@@ -185,40 +187,35 @@ listed test that no longer passes is a regression and the run exits 1.
 `program_10` 20 ms, `diff_after_edit` 0.5 ms. Use `--release`; `--no-fail`
 reports without exiting non-zero.
 
-## Status (milestone M1)
+## Status (VEC-001–025 in tree)
 
-The agent path is real end to end for static pages: open → parse → cascade
-→ layout → `ObservationContent`, typed steps with activation behaviour
-(link navigation, GET/POST form submission), `settle()`, `changesSince`
-diffs, routing classification, the C ABI and the Node addon. See
-`docs/engine/architecture.md` §0 for the full list and the measured numbers.
+The agent path is real end to end: open → parse → cascade → layout →
+`ObservationContent`, typed steps, V8 DOM bindings, `settle()`,
+`changesSince`, routing classification, C ABI, Node addon, native `ve-shell`.
+See `docs/engine/architecture.md` §0 and `docs/engine/evidence/`. This is
+not a claim that every roadmap acceptance line is met.
 
-Deliberate gaps, to be replaced in later milestones:
+In tree now (not the old M1 “no script” list):
 
-- **Script**: no DOM bindings are registered in the VM; interactions do not
-  fire script listeners. `evaluate`, `waitFor expression`, `javascript:`
-  URLs and script dialogs report `capability_unsupported`.
-- **Layout**: `position: sticky` (treated as `relative`), parent/child
-  margin collapsing, collapsed table borders, writing modes, fragmentation,
-  `vertical-align` other than baseline. Fonts must be registered
-  explicitly; without fonts the `MetricShaper` is used.
-- **Style**: no `@import`, `@font-face`, `@keyframes`, nesting or range
-  media queries (`@media`, `@supports`, `@layer` blocks are parsed).
-- **Graphics**: screenshots come from the software renderer; no text in the
-  vello backend; raster image decoding only behind `images`.
-- **Network**: no connection pooling, streaming bodies or revalidation
-  round-trips; HTTP transport is opt-in (`http`). Loopback is blocked by
-  default and `file:` is opt-in per context policy.
-- **Accessibility**: shadow trees are exposed flattened without slot
-  assignment; no live regions.
-- **Agent**: downloads, `dialog`, `evaluate` and `xpath:` targets report
-  `capability_unsupported`; `dragTo` moves the pointer but synthesises no
-  HTML5 drag events; control-flow `nodes` are the runtime's job.
-- **Node addon**: exposes exactly the `ve-agent` surface above (including
-  `back`/`forward`, `hover`, `dblclick`, `clickPoint`, `upload`, POST forms,
-  `waitFor response`, software `screenshot`); `describe().capabilities`
-  reports `evaluate`, `xpath`, `dialogs`, `downloads` as `false`. The
-  runtime's router replays `capability_unsupported` programs on Chromium.
-- **Tools**: the WPT runner covers reftests only (`testharness.js` needs
-  script bindings). `RoutingInfo.cssCoverage` is `None` until the facade
-  wires `ve-style`'s counters into the classification.
+- **Script** — WebIDL-generated traits + `dom_prelude.js`. `evaluate`,
+  `waitFor expression`, `javascript:` URLs, dialogs, fetch/XHR, Worker
+  `importScripts`, SW `importScripts` + `clients.claim`, IndexedDB abort.
+- **Conformance** — geometry `wpt-runner` (`m1.txt`); testharness +
+  idlharness (`testharness.txt`, 112 files); `--tree --tree-family html/dom`
+  302 PASS / 29 FAIL (`docs/engine/evidence/wpt-tree-latest.json`).
+- **Product** — `ve-shell` is the product. Electron is a labeled hybrid.
+  `describe()`: `websocket:true`, `serviceWorkers:true`, `http3:false`,
+  `webgl:false`, `webgpu:false`.
+- **Held-out** — p95 vs Chromium measured; token stretch `meetsStretch`
+  true (`held-out-latest.json`).
+
+Still open:
+
+- **IDL** — generated traits are not every interface. Official named items,
+  innerText/outerText, ARIA attribute+element reflection, lastModified,
+  usvstring-reflection, lang/`dir=auto`, and render-blocking PASS on the
+  `html/dom` tree. Official `idlharness.https.html` PASS.
+- **Graphics** — WebGL/WebGPU return null (compatibility track). GPU
+  glyphs/clips/`<img>`/`present_list` exist; software PNG is the capture path.
+- **Network** — HTTP/3 is Alt-Svc only.
+- **Research** — `ve-vm` Test262 subset; V8 stays production.

@@ -2,7 +2,7 @@
 //! focus, the in-engine action semantics of architecture §6, `settle()`, and
 //! `observe()`.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,7 @@ use ve_a11y::{
     parse_ref_parts, ref_for,
 };
 use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
-use ve_dom::{DirtyFlags, Document, NodeKind};
+use ve_dom::{DirtyFlags, Document, Namespace, NodeKind};
 use ve_gfx::SoftwareRenderer;
 use ve_html::DocumentMeta;
 use ve_layout::{LayoutEngine, LayoutTree};
@@ -78,6 +78,10 @@ pub struct LoadedDocument {
     pub content_type: Option<String>,
     /// HTTP status (200 for non-HTTP sources).
     pub status: u16,
+    /// HTTP `Last-Modified` header, if any.
+    pub last_modified: Option<String>,
+    /// HTTP `Content-Language` header, if any.
+    pub content_language: Option<String>,
 }
 
 impl LoadedDocument {
@@ -88,6 +92,8 @@ impl LoadedDocument {
             bytes: html.as_bytes().to_vec(),
             content_type: Some("text/html; charset=utf-8".into()),
             status: 200,
+            last_modified: None,
+            content_language: None,
         }
     }
 }
@@ -194,7 +200,7 @@ pub trait Loader {
     ) -> Vec<Result<LoadedResource>> {
         requests
             .iter()
-            .map(|r| self.script_fetch(&r.url, "GET", &[], r.page))
+            .map(|r| self.script_fetch(&r.url, "GET", &[], r.page, None))
             .collect()
     }
     /// Requests currently in flight for `page`.
@@ -206,12 +212,14 @@ pub trait Loader {
         Vec::new()
     }
     /// A script-initiated `fetch` / XHR. Default: GET through [`Self::load`].
+    /// `origin` is the document origin for CORS (attached by page script fetch).
     fn script_fetch(
         &mut self,
         url: &str,
         method: &str,
         body: &[u8],
         page: u64,
+        _origin: Option<&str>,
     ) -> Result<LoadedResource> {
         let method = method.to_ascii_uppercase();
         if method != "GET" && method != "HEAD" {
@@ -351,12 +359,40 @@ pub struct Page {
     isolated_frames: HashMap<NodeId, Box<Page>>,
     /// Document `<script>`s not yet evaluated (open/classify skips them).
     document_scripts_pending: bool,
+    /// Parser-inserted script currently running; later nodes are not visible
+    /// via `getElementById` until this is cleared (HTML parser script point).
+    pub(crate) parser_limit: Option<NodeId>,
+    /// Arena length when document scripts started; later ids are script-created.
+    pub(crate) parse_hi: u32,
+    /// `rel=expect` links whose target has already been seen (stay unblocked).
+    expect_satisfied: HashSet<NodeId>,
+    /// Head `rel=expect` links present at parse; body JS cannot add new ones.
+    expect_from_head: HashSet<NodeId>,
+    /// Head links that were fully blocking before the body; body JS cannot arm new ones.
+    expect_armed: HashSet<NodeId>,
+    /// True after the first parser-inserted body script runs.
+    pub(crate) expect_body_started: bool,
+    /// Script nodes already evaluated (parser or script-inserted).
+    pub(crate) scripts_executed: HashSet<NodeId>,
+    /// Scripts inserted by `document.write` while a script is on the stack.
+    /// Evaluated after the writer returns so we can `run_script` (the VM is
+    /// borrowed during the host call).
+    pub(crate) pending_write_scripts: Vec<(NodeId, String)>,
+    /// Resolved `src` of attached iframes, used for `contentWindow.origin`.
+    pub(crate) iframe_urls: HashMap<NodeId, String>,
+
+    /// HTTP `Last-Modified` value for `document.lastModified`.
+    pub(crate) last_modified: Option<String>,
+    /// Browsing-document `document.readyState`.
+    pub(crate) ready_state: &'static str,
     /// The script layer, when a VM is attached (plan A13).
     pub(crate) scripting: Option<crate::scripting::Scripting>,
     /// Origin-keyed `localStorage`.
     pub(crate) local_storage: HashMap<String, HashMap<String, String>>,
     /// Per-page `sessionStorage`.
     pub(crate) session_storage: HashMap<String, String>,
+    /// Document `cookie` jar for this page.
+    pub(crate) cookies: HashMap<String, String>,
     /// Pending `alert`/`confirm`/`prompt` from script (plan A15).
     pub(crate) pending_dialogs: Vec<DialogEntry>,
     /// Return value for the next `confirm`/`prompt` (`dialog` step).
@@ -368,22 +404,34 @@ pub struct Page {
     /// Directory downloads are written into (`None` → temp dir).
     download_dir: Option<std::path::PathBuf>,
     /// Iframe node ids that are cross-origin (contentDocument is null).
-    cross_origin_frames: std::collections::HashSet<NodeId>,
+    pub(crate) cross_origin_frames: std::collections::HashSet<NodeId>,
     /// Registered service workers (plan A23).
     pub(crate) service_workers: Vec<ServiceWorkerRegistration>,
+    /// Persistent SW isolates keyed by scope (the active worker).
+    pub(crate) sw_realms: std::collections::HashMap<String, crate::sw_realm::SwRealm>,
+    /// Waiting SW isolates keyed by scope (installed, not yet active).
+    pub(crate) sw_waiting_realms: std::collections::HashMap<String, crate::sw_realm::SwRealm>,
     /// In-flight script `fetch()` jobs (VEC-009). Completed during `settle`.
     pub(crate) script_fetches: Vec<ScriptFetchJob>,
     next_script_fetch: u64,
+    last_script_fetch_rr: u64,
     /// Live [`ve_net::WebSocketClient`]s keyed by id (VEC-009).
     pub(crate) websockets: HashMap<u64, ve_net::WebSocketClient>,
     next_websocket: u64,
+    /// Policy for WebSocket connects (page has no `NetworkContext`).
+    pub(crate) network_policy: ve_net::NetworkPolicy,
     /// Origin-partitioned `IndexedDB`: `(origin, db, store) → object store`.
     pub(crate) indexed_db: HashMap<(String, String, String), IdbObjectStore>,
     /// `IndexedDB` database versions `(origin, name) → version`.
     pub(crate) indexed_db_versions: HashMap<(String, String), u32>,
+    /// Open `IDBTransaction` snapshots for abort.
+    pub(crate) indexed_db_txns: HashMap<u64, IdbTxn>,
+    pub(crate) next_idb_txn: u64,
     /// Dedicated workers (script source + last message).
     pub(crate) workers: HashMap<u64, WorkerRecord>,
     pub(crate) next_worker: u64,
+    /// `Client.postMessage` payloads from the last SW fetch (VEC-010).
+    pub(crate) sw_client_posts: Vec<String>,
     /// Per-canvas 2D pixel buffers (VEC-008).
     pub(crate) canvases: HashMap<NodeId, CanvasSurface>,
 }
@@ -404,6 +452,21 @@ pub(crate) struct IdbObjectStore {
     pub records: HashMap<String, String>,
     /// Index name → definition.
     pub indexes: HashMap<String, IdbIndex>,
+}
+
+/// One `IDBTransaction` snapshot (abort restores `records`).
+#[derive(Clone, Debug)]
+pub(crate) struct IdbTxn {
+    /// Origin key.
+    pub origin: String,
+    /// Database name.
+    pub db: String,
+    /// Object store name.
+    pub store: String,
+    /// Records at `transaction()` time.
+    pub snapshot: HashMap<String, String>,
+    /// `abort()` was called.
+    pub aborted: bool,
 }
 
 /// A dedicated worker started from page script (VEC-010).
@@ -471,6 +534,102 @@ impl CanvasSurface {
     fn clear_rect(&mut self, x: i32, y: i32, w: i32, h: i32) {
         self.fill_rect(x, y, w, h, [0, 0, 0, 0]);
     }
+
+    fn get_image_data(&self, x: i32, y: i32, w: i32, h: i32) -> (u32, u32, Vec<u8>) {
+        let dw = w.max(0) as u32;
+        let dh = h.max(0) as u32;
+        let mut out = vec![0u8; dw as usize * dh as usize * 4];
+        if dw == 0 || dh == 0 {
+            return (dw, dh, out);
+        }
+        for row in 0..dh {
+            let sy = y + row as i32;
+            if sy < 0 || sy >= self.height as i32 {
+                continue;
+            }
+            for col in 0..dw {
+                let sx = x + col as i32;
+                if sx < 0 || sx >= self.width as i32 {
+                    continue;
+                }
+                let si = (sy as u32 * self.width + sx as u32) as usize * 4;
+                let di = (row * dw + col) as usize * 4;
+                out[di..di + 4].copy_from_slice(&self.pixels[si..si + 4]);
+            }
+        }
+        (dw, dh, out)
+    }
+
+    fn put_image_data(&mut self, x: i32, y: i32, w: u32, h: u32, data: &[u8]) {
+        if w == 0 || h == 0 {
+            self.ops += 1;
+            return;
+        }
+        for row in 0..h {
+            let dy = y + row as i32;
+            if dy < 0 || dy >= self.height as i32 {
+                continue;
+            }
+            for col in 0..w {
+                let dx = x + col as i32;
+                if dx < 0 || dx >= self.width as i32 {
+                    continue;
+                }
+                let si = (row * w + col) as usize * 4;
+                if si + 3 >= data.len() {
+                    continue;
+                }
+                let di = (dy as u32 * self.width + dx as u32) as usize * 4;
+                self.pixels[di..di + 4].copy_from_slice(&data[si..si + 4]);
+            }
+        }
+        self.ops += 1;
+    }
+
+    fn fill_polygon(&mut self, pts: &[[f32; 2]], color: [u8; 4]) {
+        if pts.len() < 3 {
+            return;
+        }
+        let mut min_y = f32::MAX;
+        let mut max_y = f32::MIN;
+        for p in pts {
+            min_y = min_y.min(p[1]);
+            max_y = max_y.max(p[1]);
+        }
+        let y0 = min_y.floor().max(0.0) as i32;
+        let y1 = max_y.ceil().min(self.height as f32) as i32;
+        for y in y0..y1 {
+            let scan = y as f32 + 0.5;
+            let mut xs = Vec::new();
+            for i in 0..pts.len() {
+                let a = pts[i];
+                let b = pts[(i + 1) % pts.len()];
+                if (a[1] <= scan && b[1] > scan) || (b[1] <= scan && a[1] > scan) {
+                    let t = (scan - a[1]) / (b[1] - a[1]);
+                    xs.push(a[0] + t * (b[0] - a[0]));
+                }
+            }
+            xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            for pair in xs.chunks(2) {
+                if pair.len() < 2 {
+                    break;
+                }
+                let x0 = pair[0].floor() as i32;
+                let x1 = pair[1].ceil() as i32;
+                self.fill_rect(x0, y, (x1 - x0).max(0), 1, color);
+            }
+        }
+    }
+
+    fn fill_path(&mut self, rects: &[[f32; 4]], polys: &[Vec<[f32; 2]>], color: [u8; 4]) {
+        for r in rects {
+            self.fill_rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, color);
+        }
+        for poly in polys {
+            self.fill_polygon(poly, color);
+        }
+        self.ops += 1;
+    }
 }
 
 /// A finished download (plan A16).
@@ -507,6 +666,12 @@ pub struct ServiceWorkerRegistration {
     pub script_url: String,
     /// Script source (inline or fetched).
     pub script: String,
+    /// `clients.claim()` ran during activate.
+    pub claimed: bool,
+    /// Installed-but-not-active script (changed `register()` without `skipWaiting`).
+    pub waiting_script: Option<String>,
+    /// Script URL of the waiting worker.
+    pub waiting_script_url: Option<String>,
 }
 
 impl std::fmt::Debug for Page {
@@ -523,6 +688,46 @@ impl std::fmt::Debug for Page {
 
 fn normalize(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn hex_nibble(b: u8) -> Option<u8> {
+    Some(match b {
+        b'0'..=b'9' => b - b'0',
+        b'a'..=b'f' => b - b'a' + 10,
+        b'A'..=b'F' => b - b'A' + 10,
+        _ => return None,
+    })
+}
+
+fn media_query_matches_width(media: &str, width: f32) -> bool {
+    let q = media.trim();
+    if q.is_empty() {
+        return true;
+    }
+    let inner = q
+        .trim_start_matches('(')
+        .trim_end_matches(')')
+        .trim()
+        .to_ascii_lowercase();
+    if let Some(rest) = inner.strip_prefix("min-width:") {
+        let px = rest
+            .trim()
+            .trim_end_matches("px")
+            .trim()
+            .parse::<f32>()
+            .unwrap_or(0.0);
+        return width >= px;
+    }
+    if let Some(rest) = inner.strip_prefix("max-width:") {
+        let px = rest
+            .trim()
+            .trim_end_matches("px")
+            .trim()
+            .parse::<f32>()
+            .unwrap_or(0.0);
+        return width <= px;
+    }
+    true
 }
 
 fn unix_millis() -> u64 {
@@ -591,7 +796,21 @@ impl Page {
         viewport: Size,
         scripting: Option<(Box<dyn ve_script::JsVm>, bool)>,
     ) -> Result<Self> {
+        Self::from_html_with_loader(id, html, url, viewport, scripting, None)
+    }
+
+    /// [`Self::from_html_with`] with a loader so parser stylesheets and
+    /// scripts are fetched during `load`.
+    pub fn from_html_with_loader(
+        id: u64,
+        html: &str,
+        url: Option<&str>,
+        viewport: Size,
+        scripting: Option<(Box<dyn ve_script::JsVm>, bool)>,
+        loader: Option<Box<dyn Loader>>,
+    ) -> Result<Self> {
         let mut page = Self::empty(id, viewport);
+        page.loader = loader;
         if let Some((vm, allow_evaluate)) = scripting {
             page.enable_scripting(vm, allow_evaluate)?;
         }
@@ -643,9 +862,21 @@ impl Page {
             load_stats: LoadStats::default(),
             isolated_frames: HashMap::new(),
             document_scripts_pending: false,
+            parser_limit: None,
+            parse_hi: 0,
+            expect_satisfied: HashSet::new(),
+            expect_from_head: HashSet::new(),
+            expect_armed: HashSet::new(),
+            expect_body_started: false,
+            scripts_executed: HashSet::new(),
+            pending_write_scripts: Vec::new(),
+            iframe_urls: HashMap::new(),
+            last_modified: None,
+            ready_state: "loading",
             scripting: None,
             local_storage: HashMap::new(),
             session_storage: HashMap::new(),
+            cookies: HashMap::new(),
             pending_dialogs: Vec::new(),
             dialog_reply: None,
             issued_refs: HashMap::new(),
@@ -653,14 +884,21 @@ impl Page {
             download_dir: None,
             cross_origin_frames: std::collections::HashSet::new(),
             service_workers: Vec::new(),
+            sw_realms: std::collections::HashMap::new(),
+            sw_waiting_realms: std::collections::HashMap::new(),
             script_fetches: Vec::new(),
             next_script_fetch: 0,
+            last_script_fetch_rr: 0,
             websockets: HashMap::new(),
             next_websocket: 0,
+            network_policy: ve_net::NetworkPolicy::default(),
             indexed_db: HashMap::new(),
             indexed_db_versions: HashMap::new(),
+            indexed_db_txns: HashMap::new(),
+            next_idb_txn: 0,
             workers: HashMap::new(),
             next_worker: 0,
+            sw_client_posts: Vec::new(),
             canvases: HashMap::new(),
         }
     }
@@ -675,6 +913,11 @@ impl Page {
     /// Replaces the loader.
     pub fn set_loader(&mut self, loader: Box<dyn Loader>) {
         self.loader = Some(loader);
+    }
+
+    /// Policy used for WebSocket connects.
+    pub fn set_network_policy(&mut self, policy: ve_net::NetworkPolicy) {
+        self.network_policy = policy;
     }
 
     pub(crate) fn start_script_fetch(&mut self, url: &str, method: &str, body: &str) -> u64 {
@@ -703,33 +946,137 @@ impl Page {
     }
 
     pub(crate) fn complete_script_fetches(&mut self) {
-        let pending: Vec<(u64, String, String, String)> = self
-            .script_fetches
-            .iter()
-            .filter(|j| j.result.is_none() && j.error.is_none() && !j.aborted)
-            .map(|j| (j.id, j.url.clone(), j.method.clone(), j.body.clone()))
-            .collect();
-        for (id, url, method, body) in pending {
+        loop {
+            let pending: Vec<(u64, String, String, String)> = self
+                .script_fetches
+                .iter()
+                .filter(|j| j.result.is_none() && j.error.is_none() && !j.aborted)
+                .map(|j| (j.id, j.url.clone(), j.method.clone(), j.body.clone()))
+                .collect();
+            if pending.is_empty() {
+                break;
+            }
+            let start = pending
+                .iter()
+                .position(|(id, ..)| *id > self.last_script_fetch_rr)
+                .unwrap_or(0);
+            let (id, url, method, body) = pending[start].clone();
             match crate::dom::script_fetch_now(self, &url, &method, &body) {
                 Ok(value) => {
-                    if let Some(job) = self.script_fetches.iter_mut().find(|j| j.id == id) {
+                    if let Some(job) = self.script_fetches.iter_mut().find(|j| j.id == id)
+                        && !job.aborted
+                    {
                         job.result = Some(value);
                     }
                 }
                 Err(err) => {
-                    if let Some(job) = self.script_fetches.iter_mut().find(|j| j.id == id) {
+                    if let Some(job) = self.script_fetches.iter_mut().find(|j| j.id == id)
+                        && !job.aborted
+                    {
                         job.error = Some(err.to_string());
                     }
                 }
             }
+            self.last_script_fetch_rr = id;
         }
         for ws in self.websockets.values_mut() {
             ws.poll();
         }
     }
 
+    pub(crate) fn pending_script_fetch_count(&self) -> usize {
+        self.script_fetches
+            .iter()
+            .filter(|j| j.result.is_none() && j.error.is_none() && !j.aborted)
+            .count()
+    }
+
+    pub(crate) fn iframe_origin(&self, iframe: NodeId) -> String {
+        if self.iframe_is_opaque(iframe) {
+            return "null".into();
+        }
+        if let Some(url) = self.iframe_urls.get(&iframe) {
+            if url.starts_with("blob:")
+                || url == "about:blank"
+                || url == "about:srcdoc"
+                || url.starts_with("javascript:")
+                || url.starts_with("about:")
+            {
+                return crate::dom::origin_of(&self.url);
+            }
+            let origin = crate::dom::origin_of(url);
+            if origin != "null" && !origin.starts_with("about:") {
+                return origin;
+            }
+        }
+        if let Some(src) = self.doc.attribute(iframe, "src")
+            && !src.is_empty()
+            && src != "about:blank"
+            && let Some(resolved) = self.resolve_url(src)
+        {
+            if resolved.starts_with("blob:") {
+                return crate::dom::origin_of(&self.url);
+            }
+            return crate::dom::origin_of(&resolved);
+        }
+        crate::dom::origin_of(&self.url)
+    }
+
+    pub(crate) fn iframe_location_origin(&self, iframe: NodeId) -> String {
+        if self.iframe_is_opaque(iframe) {
+            return "null".into();
+        }
+        if let Some(url) = self.iframe_urls.get(&iframe) {
+            if url.starts_with("blob:") {
+                return crate::dom::origin_of(&self.url);
+            }
+        }
+        if self.doc.attribute(iframe, "srcdoc").is_some() {
+            return "null".into();
+        }
+        let src = self.doc.attribute(iframe, "src").unwrap_or("");
+        if src.is_empty()
+            || src == "about:blank"
+            || src.to_ascii_lowercase().starts_with("javascript:")
+        {
+            return "null".into();
+        }
+        if src.starts_with("blob:") {
+            return crate::dom::origin_of(&self.url);
+        }
+        self.iframe_origin(iframe)
+    }
+
+    pub(crate) fn iframe_is_opaque(&self, iframe: NodeId) -> bool {
+        let Some(sandbox) = self.doc.attribute(iframe, "sandbox") else {
+            return false;
+        };
+        !sandbox
+            .split_ascii_whitespace()
+            .any(|t| t.eq_ignore_ascii_case("allow-same-origin"))
+    }
+
+    pub(crate) fn iframe_src_url(&self, iframe: NodeId) -> String {
+        if let Some(url) = self.iframe_urls.get(&iframe) {
+            return url.clone();
+        }
+        if self.doc.attribute(iframe, "srcdoc").is_some() {
+            return "about:srcdoc".into();
+        }
+        let src = self.doc.attribute(iframe, "src").unwrap_or("");
+        if src.is_empty() {
+            return "about:blank".into();
+        }
+        self.resolve_url(src).unwrap_or_else(|| src.to_owned())
+    }
+
+    pub(crate) fn frame_is_isolated(&self, iframe: NodeId) -> bool {
+        self.cross_origin_frames.contains(&iframe)
+    }
+
     pub(crate) fn open_websocket(&mut self, url: &str) -> Result<u64, String> {
-        let ws = ve_net::WebSocketClient::connect(url).map_err(|e| e.to_string())?;
+        let ws = ve_net::WebSocketClient::connect_with_policy(url, &self.network_policy)
+            .map_err(|e| e.to_string())?;
         self.next_websocket += 1;
         let id = self.next_websocket;
         self.websockets.insert(id, ws);
@@ -768,11 +1115,27 @@ impl Page {
             return;
         }
         let src = self.doc.attribute(id, "src").unwrap_or_default();
-        if !src.is_empty() && src != "about:blank" {
+        let src_l = src.trim().to_ascii_lowercase();
+        if !src.is_empty()
+            && src != "about:blank"
+            && !src_l.starts_with("javascript:")
+            && !src_l.starts_with("blob:")
+        {
             return;
         }
         if !self.doc.is_connected(id) {
             return;
+        }
+        if src_l.starts_with("blob:") || src_l.starts_with("javascript:") {
+            if let Some(url) = self.resolve_url(src) {
+                self.iframe_urls.insert(id, url);
+            } else {
+                self.iframe_urls.insert(id, src.to_owned());
+            }
+        } else {
+            self.iframe_urls
+                .entry(id)
+                .or_insert_with(|| "about:blank".into());
         }
         let nested = self.doc.create_html_document(None);
         let _ = self.doc.set_content_document(id, nested);
@@ -823,19 +1186,144 @@ impl Page {
         self.canvases.get(&id).map_or(0, |c| c.ops)
     }
 
+    pub(crate) fn canvas_to_data_url(&mut self, id: NodeId) -> String {
+        let canvas = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        match crate::screenshot::encode_png(canvas.width, canvas.height, &canvas.pixels) {
+            Ok(png) => format!("data:image/png;base64,{}", ve_net::base64_encode(&png)),
+            Err(_) => "data:,".into(),
+        }
+    }
+
+    pub(crate) fn canvas_get_image_data(
+        &mut self,
+        id: NodeId,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+    ) -> (u32, u32, Vec<u8>) {
+        self.canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150))
+            .get_image_data(x, y, w, h)
+    }
+
+    pub(crate) fn canvas_put_image_data(
+        &mut self,
+        id: NodeId,
+        x: i32,
+        y: i32,
+        w: u32,
+        h: u32,
+        data: &[u8],
+    ) {
+        self.canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150))
+            .put_image_data(x, y, w, h, data);
+    }
+
+    pub(crate) fn canvas_fill_path(
+        &mut self,
+        id: NodeId,
+        rects: &[[f32; 4]],
+        polys: &[Vec<[f32; 2]>],
+        color: &str,
+    ) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.fill_path(rects, polys, parse_css_color(color));
+        c.ops
+    }
+
     fn load_worker_source(&mut self, source: String) -> String {
-        if !is_worker_url(&source) {
-            return source;
+        let (base, body) = if is_worker_url(&source) {
+            let url = self.resolve_url(&source).unwrap_or_else(|| source.clone());
+            let id = self.id();
+            let origin = self.url.clone();
+            let body = if let Some(loader) = self.loader.as_mut()
+                && let Ok(res) = loader.script_fetch(&url, "GET", &[], id, Some(origin.as_str()))
+                && res.status < 400
+            {
+                String::from_utf8_lossy(&res.bytes).into_owned()
+            } else {
+                source
+            };
+            (url, body)
+        } else {
+            (self.url.clone(), source)
+        };
+        self.expand_import_scripts(&base, &body, 0).0
+    }
+
+    pub(crate) fn expand_import_scripts(
+        &mut self,
+        base: &str,
+        source: &str,
+        depth: u8,
+    ) -> (String, HashMap<String, String>) {
+        let mut imports = HashMap::new();
+        let out = self.expand_import_scripts_into(base, source, depth, &mut imports);
+        (out, imports)
+    }
+
+    fn expand_import_scripts_into(
+        &mut self,
+        base: &str,
+        source: &str,
+        depth: u8,
+        imports: &mut HashMap<String, String>,
+    ) -> String {
+        if depth > 8 {
+            return source.to_owned();
         }
-        let url = self.resolve_url(&source).unwrap_or_else(|| source.clone());
-        let id = self.id();
-        if let Some(loader) = self.loader.as_mut()
-            && let Ok(res) = loader.script_fetch(&url, "GET", &[], id)
-            && res.status < 400
-        {
-            return String::from_utf8_lossy(&res.bytes).into_owned();
+        let mut out = String::new();
+        let mut rest = source;
+        while let Some(i) = rest.find("importScripts(") {
+            out.push_str(&rest[..i]);
+            rest = &rest[i + "importScripts(".len()..];
+            let Some(end) = matching_paren(rest) else {
+                out.push_str("importScripts(");
+                out.push_str(rest);
+                return out;
+            };
+            let args = &rest[..end];
+            rest = &rest[end + 1..];
+            for href in split_js_string_args(args) {
+                let url = url::Url::parse(base)
+                    .ok()
+                    .and_then(|u| u.join(&href).ok())
+                    .map(|u| u.to_string())
+                    .or_else(|| self.resolve_url(&href))
+                    .unwrap_or(href.clone());
+                let id = self.id();
+                let origin = self.url.clone();
+                if let Some(loader) = self.loader.as_mut()
+                    && let Ok(res) =
+                        loader.script_fetch(&url, "GET", &[], id, Some(origin.as_str()))
+                    && res.status < 400
+                {
+                    let nested = String::from_utf8_lossy(&res.bytes).into_owned();
+                    imports.insert(href, nested.clone());
+                    imports.insert(url.clone(), nested.clone());
+                    out.push_str(&self.expand_import_scripts_into(
+                        &url,
+                        &nested,
+                        depth + 1,
+                        imports,
+                    ));
+                    out.push('\n');
+                }
+            }
+            out.push_str("/* importScripts */");
         }
-        source
+        out.push_str(rest);
+        out
     }
 
     fn install_image(&mut self, id: NodeId, bytes: &[u8]) {
@@ -893,6 +1381,14 @@ impl Page {
                 .to_ascii_lowercase()
         });
         self.status = loaded.status;
+        self.last_modified.clone_from(&loaded.last_modified);
+        self.doc
+            .set_content_language(loaded.content_language.clone());
+        self.parser_limit = None;
+        self.parse_hi = 0;
+        self.expect_satisfied.clear();
+        self.scripts_executed.clear();
+        self.iframe_urls.clear();
         self.routing = classify(&self.doc, self.content_type.as_deref());
         self.scroll = Point::ZERO;
         self.element_scroll.clear();
@@ -905,6 +1401,8 @@ impl Page {
         self.cross_origin_frames.clear();
         self.isolated_frames.clear();
         self.service_workers.clear();
+        self.sw_realms.clear();
+        self.sw_waiting_realms.clear();
         self.refreshes_followed = if matches!(mode, HistoryMode::Refresh) {
             self.refreshes_followed + 1
         } else {
@@ -1011,6 +1509,21 @@ impl Page {
                         },
                     ));
                 }
+            } else if e.is_html("style") {
+                let css = self.doc.text_content(id);
+                for href in collect_imports(&css) {
+                    if let Some(url) = resolve(&href) {
+                        requests.push((
+                            id,
+                            SubresourceRequest {
+                                url,
+                                kind: SubresourceKind::Stylesheet,
+                                page,
+                                referrer: referrer.clone(),
+                            },
+                        ));
+                    }
+                }
             } else if e.is_html("img") {
                 // srcset: take the first candidate when src is missing
                 let src = self
@@ -1045,35 +1558,53 @@ impl Page {
                 }
             } else if e.is_html("script") && script_is_classic_or_module(&self.doc, id) {
                 if let Some(url) = self.doc.attribute(id, "src").and_then(resolve) {
-                    requests.push((
-                        id,
-                        SubresourceRequest {
-                            url,
-                            kind: SubresourceKind::Script,
-                            page,
-                            referrer: referrer.clone(),
-                        },
-                    ));
+                    let url = rewrite_loopback_fetch(&url);
+                    if !url.starts_with("data:") {
+                        requests.push((
+                            id,
+                            SubresourceRequest {
+                                url,
+                                kind: SubresourceKind::Script,
+                                page,
+                                referrer: referrer.clone(),
+                            },
+                        ));
+                    }
                 }
             } else if e.is_html("iframe") || e.is_html("frame") {
-                if let Some(srcdoc) = self.doc.attribute(id, "srcdoc").map(str::to_owned) {
-                    self.attach_iframe_html(id, &srcdoc);
-                } else if let Some(url) = self.doc.attribute(id, "src").and_then(resolve) {
-                    if url.starts_with("javascript:") {
-                        continue;
-                    }
-                    if !same_origin_url(&self.url, &url) {
+                if self.doc.attribute(id, "sandbox").is_some() {
+                    let sb = self.doc.attribute(id, "sandbox").unwrap_or("");
+                    if !sb
+                        .split_ascii_whitespace()
+                        .any(|t| t.eq_ignore_ascii_case("allow-same-origin"))
+                    {
                         self.cross_origin_frames.insert(id);
                     }
-                    requests.push((
-                        id,
-                        SubresourceRequest {
-                            url,
-                            kind: SubresourceKind::Document,
-                            page,
-                            referrer: referrer.clone(),
-                        },
-                    ));
+                }
+                if let Some(srcdoc) = self.doc.attribute(id, "srcdoc").map(str::to_owned) {
+                    self.iframe_urls.insert(id, "about:srcdoc".into());
+                    self.attach_iframe_html(id, &srcdoc);
+                } else if let Some(url) = self.doc.attribute(id, "src").and_then(resolve) {
+                    if url.starts_with("javascript:") || url.starts_with("blob:") {
+                        self.iframe_urls.insert(id, url);
+                        self.maybe_attach_blank_iframe(id);
+                    } else {
+                        if !same_origin_url(&self.url, &url) {
+                            self.cross_origin_frames.insert(id);
+                        }
+                        self.iframe_urls.insert(id, url.clone());
+                        requests.push((
+                            id,
+                            SubresourceRequest {
+                                url: rewrite_loopback_fetch(&url),
+                                kind: SubresourceKind::Document,
+                                page,
+                                referrer: referrer.clone(),
+                            },
+                        ));
+                    }
+                } else {
+                    self.maybe_attach_blank_iframe(id);
                 }
             }
         }
@@ -1118,7 +1649,13 @@ impl Page {
                             }
                         }
                     }
-                    sheets.insert(id, css);
+                    sheets
+                        .entry(id)
+                        .and_modify(|e| {
+                            e.push('\n');
+                            e.push_str(&css);
+                        })
+                        .or_insert(css);
                     self.load_stats.stylesheets += 1;
                 }
                 (SubresourceKind::Image, Ok(res)) if res.status < 400 => {
@@ -1141,6 +1678,9 @@ impl Page {
                 }
                 (SubresourceKind::Document, Ok(res)) if res.status < 400 => {
                     let html = decode_text(&res.bytes, res.content_type.as_deref());
+                    self.iframe_urls
+                        .entry(id)
+                        .or_insert_with(|| res.url.clone());
                     if self.cross_origin_frames.contains(&id) {
                         self.attach_isolated_iframe(id, &res.url, &html);
                     } else {
@@ -1213,13 +1753,15 @@ impl Page {
 
     fn attach_iframe_html(&mut self, iframe: NodeId, html: &str) {
         let scripting = self.scripting.is_some();
+        let nested = self.doc.create_html_document(None);
         let taken = std::mem::replace(&mut self.doc, Document::new());
         let (mut doc, kids) = ve_html::parse_fragment_into(taken, "body", html, scripting);
-        let fragment = doc.create_fragment();
-        for kid in kids {
-            let _ = doc.append_child(fragment, kid);
+        if let Some(body) = doc.body_of(nested) {
+            for kid in kids {
+                let _ = doc.append_child(body, kid);
+            }
         }
-        let _ = doc.set_content_document(iframe, fragment);
+        let _ = doc.set_content_document(iframe, nested);
         self.doc = doc;
         self.load_stats.frames += 1;
     }
@@ -1229,7 +1771,8 @@ impl Page {
     /// entered while the parent's isolate is entered, so the nested page is
     /// a separate document context without its own VM.
     fn attach_isolated_iframe(&mut self, iframe: NodeId, url: &str, html: &str) {
-        let nested = Page::from_html(self.id, html, Some(url), self.viewport);
+        let mut nested = Page::from_html(self.id, html, Some(url), self.viewport);
+        nested.network_policy = self.network_policy.clone();
         self.isolated_frames.insert(iframe, Box::new(nested));
         self.cross_origin_frames.insert(iframe);
         self.load_stats.frames += 1;
@@ -1248,7 +1791,13 @@ impl Page {
                     ve_style::MediaQueryList::parse_str(m).evaluate(&self.style_engine.media)
                 });
                 if media_ok {
-                    ordered.push((id, ve_style::strip_cdata(&self.doc.text_content(id))));
+                    let own = strip_css_imports(&ve_style::strip_cdata(&self.doc.text_content(id)));
+                    let css = if let Some(imported) = sheets.get(&id) {
+                        format!("{imported}\n{own}")
+                    } else {
+                        own
+                    };
+                    ordered.push((id, css));
                 }
             } else if let Some(css) = sheets.get(&id) {
                 ordered.push((id, css.clone()));
@@ -1263,8 +1812,9 @@ impl Page {
     fn collect_scripts(&mut self, external: &HashMap<NodeId, Option<String>>) {
         let mut scripts = Vec::new();
         for id in self.doc.elements() {
-            if !self.doc.element(id).is_some_and(|e| e.is_html("script"))
+            if !self.in_browsing_tree(id)
                 || !script_is_classic_or_module(&self.doc, id)
+                || self.doc.attribute(id, "nomodule").is_some()
             {
                 continue;
             }
@@ -1277,10 +1827,15 @@ impl Page {
                 .attribute(id, "src")
                 .and_then(|s| self.base_url.as_ref()?.join(s.trim()).ok())
                 .map(|u| u.to_string());
+            let body = self.doc.text_content(id);
             let (source, failed) = match (&url, external.get(&id)) {
                 (Some(_), Some(Some(src))) => (src.clone(), false),
+                (Some(u), _) if u.starts_with("data:") => match decode_data_url_bytes(u) {
+                    Some(bytes) => (String::from_utf8_lossy(&bytes).into_owned(), false),
+                    None => (String::new(), true),
+                },
                 (Some(_), _) => (String::new(), true),
-                (None, _) => (self.doc.text_content(id), false),
+                (None, _) => (body, false),
             };
             scripts.push(FetchedScript {
                 node: id,
@@ -1288,7 +1843,8 @@ impl Page {
                 source,
                 module,
                 defer: self.doc.attribute(id, "defer").is_some(),
-                async_: self.doc.attribute(id, "async").is_some(),
+                async_: self.doc.attribute(id, "async").is_some()
+                    || self.doc.element(id).is_some_and(|e| e.has_attr("async")),
                 failed,
             });
         }
@@ -1424,6 +1980,28 @@ impl Page {
         self.cancelled = true;
     }
 
+    /// Sets the HTTP `Last-Modified` value used by `document.lastModified`.
+    pub fn set_last_modified(&mut self, raw: impl Into<String>) {
+        self.last_modified = Some(raw.into());
+    }
+
+    /// Advances virtual time by up to `ms` and fires due JS timers.
+    pub fn pump_virtual_time(&mut self, ms: u64) -> usize {
+        self.ensure_document_scripts();
+        let fired = self.pump_timers(ms);
+        self.drain_js_jobs();
+        fired
+    }
+
+    /// Sets the HTTP `Content-Language` used by `:lang()` fallback.
+    pub fn set_content_language(&mut self, raw: impl Into<String>) {
+        self.doc.set_content_language(Some(raw.into()));
+        if let Some(root) = self.doc.document_element() {
+            self.doc
+                .mark_dirty(root, DirtyFlags::STYLE | DirtyFlags::STYLE_DESCENDANTS);
+        }
+    }
+
     pub(crate) fn take_cancelled(&mut self) -> bool {
         std::mem::take(&mut self.cancelled)
     }
@@ -1436,6 +2014,9 @@ impl Page {
 
     pub(crate) fn advance_virtual_time(&mut self, ms: u64) {
         self.virtual_time_ms += ms;
+        if let Some(s) = self.scripting.as_mut() {
+            s.event_loop.advance(std::time::Duration::from_millis(ms));
+        }
     }
 
     /// Resolves `href` against the base URL.
@@ -1593,6 +2174,278 @@ impl Page {
         self.apply_css_coverage();
     }
 
+    /// Nodes after the running parser-inserted script are not in the document
+    /// yet, matching HTML's "run the script" insertion point. Nodes outside
+    /// the light tree (fragments, disconnected) stay visible. Script-created
+    /// nodes (allocated after parse) stay visible.
+    #[must_use]
+    pub(crate) fn parser_visible(&self, id: NodeId) -> bool {
+        let Some(limit) = self.parser_limit else {
+            return true;
+        };
+        if id.index() >= self.parse_hi {
+            return true;
+        }
+        // Parse order, not live tree order: a node parsed before the running
+        // script stays visible even if script moved it after the insertion
+        // point (ARIA reconnect, document.write, etc.).
+        id.index() <= limit.index()
+    }
+
+    pub(crate) fn in_browsing_tree(&self, id: NodeId) -> bool {
+        id == self.doc.root() || self.doc.is_ancestor_of(self.doc.root(), id)
+    }
+
+    pub(crate) fn resource_is_render_blocking(&self, id: NodeId) -> bool {
+        self.doc
+            .attribute(id, "blocking")
+            .unwrap_or("")
+            .split_ascii_whitespace()
+            .any(|t| t.eq_ignore_ascii_case("render"))
+    }
+
+    pub(crate) fn visible_children(&self, id: NodeId) -> Vec<NodeId> {
+        self.doc
+            .children(id)
+            .filter(|&c| self.parser_visible(c))
+            .collect()
+    }
+
+    /// Children visible to script: parser-gated in the light tree while a
+    /// parser-inserted script is running; otherwise the real child list
+    /// (shadow roots, fragments, disconnected subtrees).
+    pub(crate) fn tree_children(&self, id: NodeId) -> Vec<NodeId> {
+        if self.parser_limit.is_some() && self.in_browsing_tree(id) {
+            self.visible_children(id)
+        } else {
+            self.doc.children(id).collect()
+        }
+    }
+
+    pub(crate) fn visible_first_child(&self, id: NodeId) -> Option<NodeId> {
+        self.doc.children(id).find(|&c| self.parser_visible(c))
+    }
+
+    pub(crate) fn visible_last_child(&self, id: NodeId) -> Option<NodeId> {
+        self.doc
+            .children(id)
+            .filter(|&c| self.parser_visible(c))
+            .last()
+    }
+
+    pub(crate) fn visible_next_sibling(&self, id: NodeId) -> Option<NodeId> {
+        let mut n = self.doc.next_sibling(id);
+        while let Some(cur) = n {
+            if self.parser_visible(cur) {
+                return Some(cur);
+            }
+            n = self.doc.next_sibling(cur);
+        }
+        None
+    }
+
+    pub(crate) fn visible_prev_sibling(&self, id: NodeId) -> Option<NodeId> {
+        let mut n = self.doc.prev_sibling(id);
+        while let Some(cur) = n {
+            if self.parser_visible(cur) {
+                return Some(cur);
+            }
+            n = self.doc.prev_sibling(cur);
+        }
+        None
+    }
+
+    pub(crate) fn reveal_parser_progress(&mut self, old_limit: Option<NodeId>) {
+        let ids: Vec<NodeId> = std::iter::once(self.doc.root())
+            .chain(self.doc.descendants(self.doc.root()))
+            .collect();
+        let mut newly = Vec::new();
+        for id in ids {
+            if id.index() >= self.parse_hi || !self.parser_visible(id) {
+                continue;
+            }
+            let was = {
+                let saved = self.parser_limit;
+                self.parser_limit = old_limit;
+                let v = self.parser_visible(id);
+                self.parser_limit = saved;
+                v
+            };
+            if !was {
+                newly.push(id);
+            }
+        }
+        for id in newly {
+            if let Some(parent) = self.doc.parent(id) {
+                self.doc.record_synthetic_insert(parent, id);
+            }
+        }
+        let _ = self.call_script("__veFlushObservers", &[]);
+        self.drain_js_jobs();
+    }
+
+    fn expect_same_document_fragment(&self, href: &str) -> Option<String> {
+        let href = href.trim();
+        if href.is_empty() {
+            return None;
+        }
+        let resolved = self.resolve_url(href).unwrap_or_else(|| href.to_owned());
+        let doc = self.url.split('#').next().unwrap_or(self.url.as_str());
+        let (base, frag) = resolved.split_once('#')?;
+        if frag.is_empty() {
+            return None;
+        }
+        let a = base.strip_suffix('/').unwrap_or(base);
+        let b = doc.strip_suffix('/').unwrap_or(doc);
+        if a != b {
+            return None;
+        }
+        Some(frag.to_owned())
+    }
+
+    fn decode_expect_fragment(frag: &str) -> String {
+        let mut out = Vec::with_capacity(frag.len());
+        let b = frag.as_bytes();
+        let mut i = 0;
+        while i < b.len() {
+            if b[i] == b'%' && i + 2 < b.len() {
+                if let (Some(h), Some(l)) = (hex_nibble(b[i + 1]), hex_nibble(b[i + 2])) {
+                    out.push((h << 4) | l);
+                    i += 3;
+                    continue;
+                }
+            }
+            out.push(b[i]);
+            i += 1;
+        }
+        String::from_utf8_lossy(&out).into_owned()
+    }
+
+    fn expect_target_present(&self, frag: &str) -> bool {
+        let decoded = Self::decode_expect_fragment(frag);
+        if self.parser_element_by_id(&decoded).is_some()
+            || self.parser_element_by_id(frag).is_some()
+        {
+            return true;
+        }
+        self.parser_name_complete(&decoded) || self.parser_name_complete(frag)
+    }
+
+    fn parser_name_complete(&self, name: &str) -> bool {
+        self.doc.elements().any(|id| {
+            self.doc.attribute(id, "name") == Some(name)
+                && self.parser_visible(id)
+                && self
+                    .parser_limit
+                    .is_none_or(|lim| !self.doc.is_ancestor_of(id, lim))
+        })
+    }
+
+    fn parser_element_by_id(&self, want: &str) -> Option<NodeId> {
+        self.doc
+            .element_by_id(want)
+            .filter(|&id| self.parser_visible(id))
+    }
+
+    pub(crate) fn expect_link_in_head(&self, id: NodeId) -> bool {
+        self.doc
+            .ancestors(id)
+            .any(|a| self.doc.element(a).is_some_and(|e| e.is_html("head")))
+    }
+
+    /// `rel=expect blocking=render` whose target id is not yet parsed.
+    pub(crate) fn expect_blocking_active(&mut self) -> bool {
+        let width = self.viewport.width;
+        let ids: Vec<NodeId> = std::iter::once(self.doc.root())
+            .chain(self.doc.descendants(self.doc.root()))
+            .collect();
+        for id in ids {
+            if self.expect_satisfied.contains(&id) {
+                continue;
+            }
+            if !self.expect_from_head.contains(&id) {
+                continue;
+            }
+            if self.expect_body_started && !self.expect_armed.contains(&id) {
+                continue;
+            }
+            let Some(el) = self.doc.element(id) else {
+                continue;
+            };
+            if !el.is_html("link") {
+                continue;
+            }
+            if !self.expect_link_in_head(id) {
+                continue;
+            }
+            let rel = self.doc.attribute(id, "rel").unwrap_or("");
+            if !rel
+                .split_ascii_whitespace()
+                .any(|t| t.eq_ignore_ascii_case("expect"))
+            {
+                continue;
+            }
+            let blocking = self.doc.attribute(id, "blocking").unwrap_or("");
+            if !blocking
+                .split_ascii_whitespace()
+                .any(|t| t.eq_ignore_ascii_case("render"))
+            {
+                continue;
+            }
+            if !media_query_matches_width(self.doc.attribute(id, "media").unwrap_or(""), width) {
+                continue;
+            }
+            let href = self.doc.attribute(id, "href").unwrap_or("").to_owned();
+            let Some(frag) = self.expect_same_document_fragment(&href) else {
+                continue;
+            };
+            if self.expect_target_present(&frag) {
+                self.expect_satisfied.insert(id);
+                continue;
+            }
+            return true;
+        }
+        false
+    }
+
+    pub(crate) fn snapshot_head_expect_links(&mut self) {
+        let width = self.viewport.width;
+        self.expect_from_head = self
+            .doc
+            .elements()
+            .filter(|&id| {
+                self.doc.element(id).is_some_and(|e| e.is_html("link"))
+                    && self.expect_link_in_head(id)
+                    && self
+                        .doc
+                        .attribute(id, "rel")
+                        .unwrap_or("")
+                        .split_ascii_whitespace()
+                        .any(|t| t.eq_ignore_ascii_case("expect"))
+            })
+            .collect();
+        self.expect_armed = self
+            .expect_from_head
+            .iter()
+            .copied()
+            .filter(|&id| {
+                let blocking = self.doc.attribute(id, "blocking").unwrap_or("");
+                if !blocking
+                    .split_ascii_whitespace()
+                    .any(|t| t.eq_ignore_ascii_case("render"))
+                {
+                    return false;
+                }
+                if !media_query_matches_width(self.doc.attribute(id, "media").unwrap_or(""), width)
+                {
+                    return false;
+                }
+                let href = self.doc.attribute(id, "href").unwrap_or("");
+                self.expect_same_document_fragment(href).is_some()
+            })
+            .collect();
+    }
+
     /// `settle()` without running pending document scripts (the open path).
     pub fn settle_passive(&mut self, budget_ms: u64) -> Settled {
         let span = Stage::Agent.span();
@@ -1665,6 +2518,11 @@ impl Page {
             if soon > 0 || microtasks {
                 settled = false;
             }
+            let pending_sf = self.pending_script_fetch_count();
+            if pending_sf > 0 {
+                settled = false;
+                reasons.push(format!("script-fetch({pending_sf})"));
+            }
         }
         if let Some(loader) = &self.loader {
             let in_flight = loader.in_flight(self.id);
@@ -1705,6 +2563,17 @@ impl Page {
     pub fn settle(&mut self, budget_ms: u64) -> Settled {
         self.ensure_document_scripts();
         self.settle_passive(budget_ms)
+    }
+
+    /// Bounded event-loop slice for host round-robin (VEC-007).
+    pub fn pump_event_loop(&mut self, max_tasks: usize) -> ve_script::RunReport {
+        match self.scripting.as_mut() {
+            Some(scripting) => scripting.event_loop.run_until_quiescent(max_tasks),
+            None => ve_script::RunReport {
+                quiescent: true,
+                ..ve_script::RunReport::default()
+            },
+        }
     }
 
     fn perform_refresh(&mut self) -> Result<()> {
@@ -2355,7 +3224,7 @@ impl Page {
     }
 
     /// Scrolls the viewport so `rect` (document coordinates) is visible.
-    fn scroll_into_view(&mut self, rect: Rect) {
+    pub(crate) fn scroll_into_view(&mut self, rect: Rect) {
         let vw = self.viewport.width;
         let vh = self.viewport.height;
         let mut changed = false;
@@ -3002,8 +3871,45 @@ impl Page {
             return Err(Error::step_failed(format!("{} is read-only", ref_for(id))));
         }
         self.focus(Some(id));
-        self.set_text_value(id, value)?;
-        self.dispatch_js_event(id, "input", true, false, None);
+        let via_value = self.input_type(id).is_some()
+            || self.doc.element(id).is_some_and(|e| e.is_html("textarea"));
+        if via_value && self.scripting.is_some() {
+            let sanitized = self.sanitize_value(id, value);
+            let applied = self
+                .call_script(
+                    "__veSetValue",
+                    &[
+                        crate::dom::pack(id),
+                        ve_script::JsValue::from(sanitized.as_str()),
+                    ],
+                )
+                .map(|v| v.is_truthy())
+                .unwrap_or(false);
+            if !applied {
+                self.set_text_value(id, value)?;
+            }
+            let data = ve_script::JsValue::from(sanitized.as_str());
+            let input_type = ve_script::JsValue::from("insertReplacementText");
+            self.dispatch_js_event_init(
+                id,
+                "beforeinput",
+                true,
+                true,
+                None,
+                &[("data", data.clone()), ("inputType", input_type.clone())],
+            );
+            self.dispatch_js_event_init(
+                id,
+                "input",
+                true,
+                false,
+                None,
+                &[("data", data), ("inputType", input_type)],
+            );
+        } else {
+            self.set_text_value(id, value)?;
+            self.dispatch_js_event(id, "input", true, false, None);
+        }
         self.dispatch_js_event(id, "change", true, false, None);
         let stored = self.doc.form_value(id).unwrap_or_default();
         Ok(format!("{} value={stored:?}", ref_for(id)))
@@ -3663,9 +4569,10 @@ impl Page {
 
     fn save_download(&mut self, url: &str, filename: &str) -> Result<String> {
         let page = self.id;
+        let origin = self.url.clone();
         let loaded = if let Some(loader) = self.loader.as_mut() {
             loader
-                .script_fetch(url, "GET", &[], page)
+                .script_fetch(url, "GET", &[], page, Some(origin.as_str()))
                 .map_err(|e| Error::step_failed(format!("download of {url} failed: {e}")))?
         } else {
             return Err(Error::capability_unsupported(
@@ -3776,6 +4683,12 @@ fn decode_text(bytes: &[u8], content_type: Option<&str>) -> String {
 /// a JavaScript MIME type, or `module`. Data blocks (JSON, importmap,
 /// templates) are skipped.
 fn script_is_classic_or_module(doc: &Document, id: NodeId) -> bool {
+    let Some(e) = doc.element(id) else {
+        return false;
+    };
+    if e.name != "script" || (e.namespace != Namespace::Html && e.namespace != Namespace::Svg) {
+        return false;
+    }
     match doc.attribute(id, "type").map(str::trim) {
         None | Some("") => true,
         Some(t) => {
@@ -3789,6 +4702,42 @@ fn script_is_classic_or_module(doc: &Document, id: NodeId) -> bool {
                 || t == "text/x-javascript"
         }
     }
+}
+
+pub(crate) fn rewrite_loopback_fetch(url: &str) -> String {
+    let Ok(mut u) = url::Url::parse(url) else {
+        return url.to_owned();
+    };
+    let host = u.host_str().unwrap_or("");
+    let wpt = host == "web-platform.test"
+        || host.ends_with(".web-platform.test")
+        || host.contains("xn--");
+    if !wpt || (u.scheme() != "http" && u.scheme() != "https") {
+        return url.to_owned();
+    }
+    let port = u.port();
+    let _ = u.set_host(Some("127.0.0.1"));
+    if let Some(p) = port {
+        let _ = u.set_port(Some(p));
+    }
+    u.to_string()
+}
+
+fn strip_css_imports(css: &str) -> String {
+    let mut out = String::with_capacity(css.len());
+    let mut rest = css;
+    while let Some(i) = rest.find("@import") {
+        out.push_str(&rest[..i]);
+        let after = &rest[i + 7..];
+        if let Some(end) = after.find(';') {
+            rest = &after[end + 1..];
+        } else {
+            rest = "";
+            break;
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 /// The `@import` targets at the head of a stylesheet (after any `@charset`
@@ -4096,6 +5045,66 @@ pub fn outer_html(doc: &Document, id: NodeId) -> String {
     out
 }
 
+/// Page `Worker` scripts evaluate in a dedicated V8 isolate on a worker
+/// thread when the `v8` feature is on. A second isolate cannot be created on
+/// the page thread inside a `HandleScope` (SIGSEGV in `rusty_v8`).
+pub(crate) fn eval_worker(source: &str, msg: &str) -> Option<String> {
+    #[cfg(feature = "v8")]
+    if let Some(reply) = eval_worker_isolate(source, msg) {
+        return Some(reply);
+    }
+    dispatch_worker(source, msg)
+}
+
+#[cfg(feature = "v8")]
+fn eval_worker_isolate(source: &str, msg: &str) -> Option<String> {
+    use std::sync::mpsc;
+    use std::time::Duration;
+    use ve_script::{JsValue, JsVm, V8Vm};
+
+    let (tx, rx) = mpsc::channel();
+    let source = source.to_string();
+    let msg = msg.to_string();
+    std::thread::Builder::new()
+        .name("ve-worker".into())
+        .spawn(move || {
+            let out = (|| {
+                let mut vm = V8Vm::new().ok()?;
+                let src_lit = serde_json::to_string(&source).ok()?;
+                let msg_lit = serde_json::to_string(&msg).ok()?;
+                let script = format!(
+                    "(function(){{\
+                       var document = undefined;\
+                       var window = undefined;\
+                       var __out;\
+                       function postMessage(m) {{ __out = m; }}\
+                       function importScripts() {{}}\
+                       var self = this;\
+                       self.postMessage = postMessage;\
+                       self.importScripts = importScripts;\
+                       var onmessage = null;\
+                       self.addEventListener = function (type, fn) {{\
+                         if (type === 'message') onmessage = fn;\
+                       }};\
+                       eval({src_lit});\
+                       if (typeof onmessage === 'function') {{\
+                         onmessage({{ data: JSON.parse({msg_lit}) }});\
+                       }}\
+                       return JSON.stringify(__out);\
+                     }}).call({{name:'worker'}})"
+                );
+                match vm.eval(&script, "vector:worker") {
+                    Ok(JsValue::String(s)) => Some(s),
+                    Ok(other) => Some(other.to_string()),
+                    Err(_) => None,
+                }
+            })();
+            let _ = tx.send(out);
+        })
+        .ok()?;
+    rx.recv_timeout(Duration::from_millis(2000)).ok().flatten()
+}
+
 /// Page `Worker` scripts evaluate in a page-isolate function realm (`var document
 /// = undefined`). This helper remains for host `workerPost` fallbacks. A second
 /// V8 isolate cannot be created on the page thread inside a `HandleScope`
@@ -4187,27 +5196,274 @@ fn is_worker_url(source: &str) -> bool {
             .is_some_and(|ext| ext.eq_ignore_ascii_case("js"))
 }
 
-/// Body a registered service worker should return for `fetch`, if it intercepts.
+/// `(body, status)` for a service-worker fetch intercept.
 ///
-/// Supports the explicit `respond:` subset and `event.respondWith(new Response("…"))`.
+/// Supports the explicit `respond:` subset, `event.respondWith(new Response("…"))`,
+/// `new Response(body, {status})`, and `Response.redirect(url)`.
 /// Listeners that do not call `respondWith` leave the network response in place.
-pub(crate) fn service_worker_response_body(script: &str) -> Option<String> {
+#[cfg_attr(not(feature = "v8"), allow(unused_variables))]
+pub(crate) fn service_worker_intercept(
+    script: &str,
+    request_url: &str,
+    method: &str,
+) -> Option<(String, u16)> {
     let script = script.trim();
     if let Some(rest) = script.strip_prefix("respond:") {
-        return Some(rest.trim().to_owned());
+        return Some((rest.trim().to_owned(), 200));
     }
     if !script.contains("respondWith") {
         return None;
     }
-    let i = script.find("new Response(")?;
-    let mut rest = script[i + "new Response(".len()..].trim_start();
-    let quote = rest.chars().next()?;
-    if quote != '"' && quote != '\'' && quote != '`' {
+    if let Some(i) = script.find("Response.redirect(") {
+        let rest = script[i + "Response.redirect(".len()..].trim_start();
+        return parse_sw_redirect(rest);
+    }
+    if let Some(i) = script.find("new Response(")
+        && let Some(parsed) =
+            parse_sw_new_response(script[i + "new Response(".len()..].trim_start())
+    {
+        return Some(parsed);
+    }
+    #[cfg(feature = "v8")]
+    if let Some(r) = eval_sw_fetch(script, request_url, method) {
+        return Some(r);
+    }
+    None
+}
+
+#[cfg(feature = "v8")]
+fn eval_sw_fetch(script: &str, request_url: &str, method: &str) -> Option<(String, u16)> {
+    use std::sync::mpsc;
+    use std::time::Duration;
+    use ve_script::{JsValue, JsVm, V8Vm};
+
+    let (tx, rx) = mpsc::channel();
+    let script = script.to_string();
+    let request_url = request_url.to_string();
+    let method = method.to_string();
+    std::thread::Builder::new()
+        .name("ve-sw".into())
+        .spawn(move || {
+            let out = (|| {
+                let mut vm = V8Vm::new().ok()?;
+                let src_lit = serde_json::to_string(&script).ok()?;
+                let url_lit = serde_json::to_string(&request_url).ok()?;
+                let method_lit = serde_json::to_string(&method).ok()?;
+                let js = format!(
+                    "(function(){{\
+                       var __body, __status = 200;\
+                       function Response(body, init) {{\
+                         this.body = body;\
+                         this.status = (init && init.status) || 200;\
+                       }}\
+                       Response.redirect = function (url, status) {{\
+                         return {{ body: String(url), status: status || 302 }};\
+                       }};\
+                       function FetchEvent() {{\
+                         this.request = {{ url: {url_lit}, method: {method_lit} }};\
+                         this.respondWith = function (r) {{\
+                           __body = r && r.body != null ? String(r.body) : String(r);\
+                           __status = (r && r.status) || 200;\
+                         }};\
+                       }}\
+                       var onfetch = null;\
+                       var self = {{\
+                         addEventListener: function (t, fn) {{\
+                           if (t === 'fetch') onfetch = fn;\
+                         }}\
+                       }};\
+                       eval({src_lit});\
+                       if (typeof onfetch === 'function') onfetch(new FetchEvent());\
+                       return JSON.stringify({{ body: __body, status: __status }});\
+                     }})()"
+                );
+                match vm.eval(&js, "vector:sw") {
+                    Ok(JsValue::String(s)) => {
+                        let v: serde_json::Value = serde_json::from_str(&s).ok()?;
+                        let body = v.get("body")?.as_str()?.to_owned();
+                        let status = u16::try_from(v.get("status")?.as_u64()?).ok()?;
+                        Some((body, status))
+                    }
+                    _ => None,
+                }
+            })();
+            let _ = tx.send(out);
+        })
+        .ok()?;
+    rx.recv_timeout(Duration::from_millis(2000)).ok().flatten()
+}
+
+/// Service-worker install/activate outcome.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct SwLifecycle {
+    pub install: bool,
+    pub activate: bool,
+    pub skip_waiting: bool,
+    pub claim: bool,
+}
+
+pub(crate) fn eval_sw_lifecycle(script: &str) -> SwLifecycle {
+    #[cfg(feature = "v8")]
+    if let Some(got) = eval_sw_lifecycle_isolate(script) {
+        return got;
+    }
+    SwLifecycle {
+        install: has_sw_listener(script, "install"),
+        activate: has_sw_listener(script, "activate"),
+        skip_waiting: script.contains("skipWaiting"),
+        claim: script.contains("clients.claim") || script.contains("clients.claim("),
+    }
+}
+
+fn has_sw_listener(script: &str, name: &str) -> bool {
+    let quoted = [
+        format!("'{name}'"),
+        format!("\"{name}\""),
+        format!("`{name}`"),
+    ];
+    quoted.iter().any(|q| script.contains(q)) || script.contains(&format!("on{name}"))
+}
+
+#[cfg(feature = "v8")]
+fn eval_sw_lifecycle_isolate(script: &str) -> Option<SwLifecycle> {
+    use std::sync::mpsc;
+    use std::time::Duration;
+    use ve_script::{JsValue, JsVm, V8Vm};
+
+    let (tx, rx) = mpsc::channel();
+    let script = script.to_string();
+    std::thread::Builder::new()
+        .name("ve-sw-life".into())
+        .spawn(move || {
+            let out = (|| {
+                let mut vm = V8Vm::new().ok()?;
+                let src_lit = serde_json::to_string(&script).ok()?;
+                let js = format!(
+                    "(function(){{\
+                       var __install = false, __activate = false, __skip = false, __claim = false;\
+                       function ExtendableEvent() {{ this.waitUntil = function () {{}}; }}\
+                       var installFn = null, activateFn = null;\
+                       var self = {{\
+                         skipWaiting: function () {{ __skip = true; }},\
+                         addEventListener: function (t, fn) {{\
+                           if (t === 'install') installFn = fn;\
+                           if (t === 'activate') activateFn = fn;\
+                         }},\
+                         clients: {{ claim: function () {{ __claim = true; }} }}\
+                       }};\
+                       eval({src_lit});\
+                       if (typeof oninstall === 'function') installFn = oninstall;\
+                       if (typeof onactivate === 'function') activateFn = onactivate;\
+                       if (typeof installFn === 'function') {{ __install = true; installFn(new ExtendableEvent()); }}\
+                       if (typeof activateFn === 'function') {{ __activate = true; activateFn(new ExtendableEvent()); }}\
+                       return JSON.stringify({{ install: __install, activate: __activate, skipWaiting: __skip, claim: __claim }});\
+                     }})()"
+                );
+                match vm.eval(&js, "vector:sw-life") {
+                    Ok(JsValue::String(s)) => {
+                        let v: serde_json::Value = serde_json::from_str(&s).ok()?;
+                        Some(SwLifecycle {
+                            install: v.get("install")?.as_bool()?,
+                            activate: v.get("activate")?.as_bool()?,
+                            skip_waiting: v.get("skipWaiting")?.as_bool()?,
+                            claim: v.get("claim").and_then(|c| c.as_bool()).unwrap_or(false),
+                        })
+                    }
+                    _ => None,
+                }
+            })();
+            let _ = tx.send(out);
+        })
+        .ok()?;
+    rx.recv_timeout(Duration::from_millis(2000)).ok().flatten()
+}
+
+fn matching_paren(s: &str) -> Option<usize> {
+    let mut depth = 1i32;
+    let mut quote = 0u8;
+    for (j, c) in s.char_indices() {
+        if quote != 0 {
+            if c as u8 == quote {
+                quote = 0;
+            }
+            continue;
+        }
+        match c {
+            '"' | '\'' => quote = c as u8,
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(j);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn split_js_string_args(args: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = args.trim();
+    while !rest.is_empty() {
+        rest = rest.trim_start_matches([',', ' ', '\n', '\t', '\r']);
+        if rest.is_empty() {
+            break;
+        }
+        if let Some((s, after)) = parse_sw_quoted(rest) {
+            out.push(s.to_owned());
+            rest = after;
+        } else {
+            break;
+        }
+    }
+    out
+}
+
+fn parse_sw_quoted(s: &str) -> Option<(&str, &str)> {
+    let s = s.trim_start();
+    let q = s.chars().next()?;
+    if q != '"' && q != '\'' && q != '`' {
         return None;
     }
-    rest = &rest[quote.len_utf8()..];
-    let end = rest.find(quote)?;
-    Some(rest[..end].to_owned())
+    let rest = &s[q.len_utf8()..];
+    let end = rest.find(q)?;
+    Some((&rest[..end], &rest[end + q.len_utf8()..]))
+}
+
+fn parse_sw_redirect(rest: &str) -> Option<(String, u16)> {
+    let (url, after) = parse_sw_quoted(rest)?;
+    let after = after.trim_start();
+    let status = if let Some(rest) = after.strip_prefix(',') {
+        parse_leading_u16(rest.trim_start()).unwrap_or(302)
+    } else {
+        302
+    };
+    Some((url.to_owned(), status))
+}
+
+fn parse_sw_new_response(rest: &str) -> Option<(String, u16)> {
+    let (body, after) = parse_sw_quoted(rest)?;
+    let after = after.trim_start();
+    let status = if let Some(rest) = after.strip_prefix(',') {
+        parse_status_option(rest.trim_start()).unwrap_or(200)
+    } else {
+        200
+    };
+    Some((body.to_owned(), status))
+}
+
+fn parse_leading_u16(s: &str) -> Option<u16> {
+    let digits: String = s.chars().take_while(|c| c.is_ascii_digit()).collect();
+    digits.parse().ok()
+}
+
+fn parse_status_option(s: &str) -> Option<u16> {
+    let lower = s.to_ascii_lowercase();
+    let i = lower.find("status")?;
+    let rest = s[i + 6..].trim_start().trim_start_matches(':').trim_start();
+    parse_leading_u16(rest)
 }
 
 fn parse_css_color(s: &str) -> [u8; 4] {

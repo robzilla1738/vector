@@ -22,34 +22,30 @@
   "headings": [],
   "elements": [
     {
-      "ref": "r32",
-      "frame": "main",
+      "ref": "r25",
       "tag": "a",
       "role": "link",
       "name": "the lit team",
-      "href": "https://github.com/lit",
-      "selector": {}
+      "href": "https://github.com/lit"
     },
     {
-      "ref": "r37",
-      "frame": "main",
+      "ref": "r30",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [],
   "tables": [],
   "links": [
     {
-      "ref": "r32",
+      "ref": "r25",
       "text": "the lit team",
       "href": "https://github.com/lit"
     },
     {
-      "ref": "r37",
+      "ref": "r30",
       "text": "TodoMVC",
       "href": "http://todomvc.com/"
     }

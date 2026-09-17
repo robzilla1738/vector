@@ -22,20 +22,18 @@
   "headings": [],
   "elements": [
     {
-      "ref": "r39",
-      "frame": "main",
+      "ref": "r30",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [],
   "tables": [],
   "links": [
     {
-      "ref": "r39",
+      "ref": "r30",
       "text": "TodoMVC",
       "href": "http://todomvc.com/"
     }

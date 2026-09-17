@@ -102,3 +102,29 @@ fn run_gpu_inner(iterations: u32, revision: String) -> SuiteResult {
         detail: Some(format!("adapter={adapter}; init_ms={init_ms}")),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::run_gpu;
+
+    #[test]
+    fn gpu_multiply_is_honest_without_feature() {
+        let r = run_gpu(1);
+        #[cfg(not(feature = "gpu"))]
+        {
+            assert_eq!(r.status, "NOTRUN");
+        }
+        #[cfg(feature = "gpu")]
+        {
+            assert!(
+                r.status == "PASS" || r.status == "NOTRUN",
+                "{} {:?}",
+                r.status,
+                r.detail
+            );
+            if r.status == "PASS" {
+                assert!(r.p95_ms.is_some());
+            }
+        }
+    }
+}

@@ -7,6 +7,12 @@ interface Node : EventTarget {
   const unsigned short DOCUMENT_NODE = 9;
   const unsigned short DOCUMENT_TYPE_NODE = 10;
   const unsigned short DOCUMENT_FRAGMENT_NODE = 11;
+  const unsigned short DOCUMENT_POSITION_DISCONNECTED = 1;
+  const unsigned short DOCUMENT_POSITION_PRECEDING = 2;
+  const unsigned short DOCUMENT_POSITION_FOLLOWING = 4;
+  const unsigned short DOCUMENT_POSITION_CONTAINS = 8;
+  const unsigned short DOCUMENT_POSITION_CONTAINED_BY = 16;
+  const unsigned short DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 32;
   readonly attribute unsigned short nodeType;
   readonly attribute DOMString nodeName;
   attribute DOMString? nodeValue;
@@ -18,6 +24,7 @@ interface Node : EventTarget {
   readonly attribute Node? previousSibling;
   readonly attribute Node? nextSibling;
   readonly attribute boolean isConnected;
+  readonly attribute USVString baseURI;
   Node appendChild(Node node);
   Node insertBefore(Node node, Node? child);
   Node removeChild(Node child);
@@ -26,4 +33,8 @@ interface Node : EventTarget {
   boolean contains(Node? other);
   boolean isEqualNode(Node? other);
   boolean hasChildNodes();
+  unsigned short compareDocumentPosition(Node other);
+  undefined normalize();
+  DOMString? lookupPrefix(DOMString? namespace);
+  DOMString? lookupNamespaceURI(DOMString? prefix);
 };

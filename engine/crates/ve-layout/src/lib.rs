@@ -1218,4 +1218,100 @@ mod tests {
             "scaling: incremental must actually layout something"
         );
     }
+
+    #[test]
+    fn parent_child_margins_collapse_when_parent_has_no_edges() {
+        let (doc, engine, tree) = layout(
+            "<style>html,body{margin:0} #outer{margin-top:10px} #inner{margin-top:20px;height:10px}</style>\
+             <div id=outer><div id=inner></div></div>",
+            400.0,
+        );
+        let outer = rect(&tree, &engine, &doc, "#outer");
+        let inner = rect(&tree, &engine, &doc, "#inner");
+        assert!(
+            (inner.y() - 20.0).abs() < 0.5,
+            "collapsed margin is 20px from the outer margin edge, got inner.y={}",
+            inner.y()
+        );
+        assert!(
+            (inner.y() - outer.y()).abs() < 0.5,
+            "child top margin must not add space inside the parent (inner {} vs outer {})",
+            inner.y(),
+            outer.y()
+        );
+        assert!((inner.height() - 10.0).abs() < 0.5);
+    }
+
+    #[test]
+    fn collapsed_table_borders_share_an_edge() {
+        let (doc, engine, tree) = layout(
+            "<style>html,body{margin:0} table{border-collapse:collapse}\
+             td{border:1px solid;padding:0;width:40px;height:20px}</style>\
+             <table><tr><td id=a></td><td id=b></td></tr>\
+             <tr><td id=c></td><td id=d></td></tr></table>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        let c = rect(&tree, &engine, &doc, "#c");
+        let shared_x = a.right() - b.x();
+        assert!(
+            (shared_x - 1.0).abs() <= 1.0 && shared_x > 0.5,
+            "horizontal shared edge should be ~1px, not doubled; got {shared_x} (a.right={} b.x={})",
+            a.right(),
+            b.x()
+        );
+        let shared_y = a.bottom() - c.y();
+        assert!(
+            (shared_y - 1.0).abs() <= 1.0 && shared_y > 0.5,
+            "vertical shared edge should be ~1px, not doubled; got {shared_y} (a.bottom={} c.y={})",
+            a.bottom(),
+            c.y()
+        );
+    }
+
+    #[test]
+    fn vertical_rl_stacks_children_leftward() {
+        let (doc, engine, tree) = layout(
+            "<style>html,body{margin:0}\
+             #outer{writing-mode:vertical-rl;width:200px;height:100px}\
+             #a,#b{width:40px;height:50px}</style>\
+             <div id=outer><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.x() - 160.0).abs() < 1.0,
+            "first child sits on the right, got a.x={}",
+            a.x()
+        );
+        assert!(
+            (b.x() - 120.0).abs() < 1.0,
+            "second child is to the left of the first, got b.x={}",
+            b.x()
+        );
+        assert!(b.x() < a.x(), "vertical-rl stacks leftward");
+        assert!((a.y() - b.y()).abs() < 1.0);
+    }
+
+    #[test]
+    fn rtl_block_places_inline_at_inline_end() {
+        let (doc, engine, tree) = layout(
+            "<style>html,body{margin:0}\
+             #b{direction:rtl;width:200px;height:20px}\
+             #i{display:inline-block;width:40px;height:10px}</style>\
+             <div id=b><span id=i></span></div>",
+            400.0,
+        );
+        let block = rect(&tree, &engine, &doc, "#b");
+        let inline = rect(&tree, &engine, &doc, "#i");
+        let expected = block.right() - inline.width();
+        assert!(
+            (inline.x() - expected).abs() < 1.0,
+            "inline-start is the right edge under direction:rtl; got x={} want {}",
+            inline.x(),
+            expected
+        );
+    }
 }

@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use html5ever::tendril::StrTendril;
 use html5ever::tree_builder::{ElementFlags, NodeOrText, QuirksMode, TreeSink};
 use html5ever::{Attribute, QualName};
-use ve_dom::{Document, Namespace, NodeId, ShadowRootMode};
+use ve_dom::{Document, Namespace, NodeId};
 
 use crate::ParseOutcome;
 
@@ -67,6 +67,7 @@ impl DomSink {
             .map(|a| ve_dom::Attribute {
                 name: qualified_attr_name(&a.name),
                 value: a.value.to_string(),
+                namespace: None,
             })
             .collect()
     }
@@ -75,7 +76,17 @@ impl DomSink {
         let mut doc = self.doc.borrow_mut();
         let result = match child {
             NodeOrText::AppendNode(node) => doc.append_child(parent, node),
-            NodeOrText::AppendText(text) => doc.append_text(parent, &text).map(|_| ()),
+            NodeOrText::AppendText(text) => {
+                let skip = text.chars().all(|c| matches!(c, ' ' | '\t' | '\n' | '\r'))
+                    && doc
+                        .element(parent)
+                        .is_some_and(|e| e.is_html("head") || e.is_html("html"));
+                if skip {
+                    Ok(())
+                } else {
+                    doc.append_text(parent, &text).map(|_| ())
+                }
+            }
         };
         if let Err(e) = result {
             self.errors.borrow_mut().push(format!("append failed: {e}"));
@@ -105,9 +116,11 @@ impl TreeSink for DomSink {
     type ElemName<'a> = Ref<'a, QualName>;
 
     fn finish(self) -> ParseOutcome {
+        let mut document = self.doc.into_inner();
+        document.promote_declarative_shadows();
         ParseOutcome {
             context_element: self.first_element.get(),
-            document: self.doc.into_inner(),
+            document,
             errors: self.errors.into_inner(),
         }
     }
@@ -265,26 +278,13 @@ impl TreeSink for DomSink {
 
     fn attach_declarative_shadow(
         &self,
-        location: &NodeId,
-        template: &NodeId,
-        attrs: &[Attribute],
+        _location: &NodeId,
+        _template: &NodeId,
+        _attrs: &[Attribute],
     ) -> bool {
-        let mode = attrs
-            .iter()
-            .find(|a| &*a.name.local == "shadowrootmode")
-            .and_then(|a| match a.value.to_ascii_lowercase().as_str() {
-                "open" => Some(ShadowRootMode::Open),
-                "closed" => Some(ShadowRootMode::Closed),
-                _ => None,
-            });
-        let Some(mode) = mode else { return false };
-        let mut doc = self.doc.borrow_mut();
-        let Ok(root) = doc.attach_shadow(*location, mode) else {
-            return false;
-        };
-        if let Some(contents) = doc.template_contents(*template) {
-            let _ = doc.reparent_children(contents, root);
-        }
-        true
+        // html5ever may call this before template children are parsed. Returning
+        // false keeps the `<template>` in-tree so `promote_declarative_shadows`
+        // can move the finished contents after parsing.
+        false
     }
 }

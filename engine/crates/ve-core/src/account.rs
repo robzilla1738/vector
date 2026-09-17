@@ -39,6 +39,71 @@ pub fn process_rss_bytes() -> Option<u64> {
     }
 }
 
+/// RSS of this process plus children (`pgrep -P`), when the OS exposes it.
+#[must_use]
+pub fn process_tree_rss_bytes() -> Option<u64> {
+    let root = std::process::id();
+    let mut total = 0u64;
+    let mut stack = vec![root];
+    let mut seen = std::collections::BTreeSet::new();
+    while let Some(pid) = stack.pop() {
+        if !seen.insert(pid) {
+            continue;
+        }
+        total = total.saturating_add(rss_of(pid).unwrap_or(0));
+        stack.extend(child_pids(pid));
+    }
+    (total > 0).then_some(total)
+}
+
+fn rss_of(pid: u32) -> Option<u64> {
+    #[cfg(target_os = "linux")]
+    {
+        let status = std::fs::read_to_string(format!("/proc/{pid}/status")).ok()?;
+        for line in status.lines() {
+            let Some(rest) = line.strip_prefix("VmRSS:") else {
+                continue;
+            };
+            let kb: u64 = rest
+                .split_whitespace()
+                .next()
+                .and_then(|t| t.parse().ok())?;
+            return Some(kb.saturating_mul(1024));
+        }
+        None
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let out = std::process::Command::new("ps")
+            .args(["-o", "rss=", "-p", &pid.to_string()])
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        let kb: u64 = String::from_utf8_lossy(&out.stdout).trim().parse().ok()?;
+        Some(kb.saturating_mul(1024))
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        let _ = pid;
+        None
+    }
+}
+
+fn child_pids(pid: u32) -> Vec<u32> {
+    let out = std::process::Command::new("pgrep")
+        .args(["-P", &pid.to_string()])
+        .output();
+    let Ok(out) = out else {
+        return Vec::new();
+    };
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .filter_map(|l| l.trim().parse().ok())
+        .collect()
+}
+
 /// Package-level RAPL energy in microjoules (Linux intel-rapl), if present.
 ///
 /// This is the host package counter, not a per-process attribution. Callers
@@ -73,6 +138,8 @@ mod tests {
                 bytes > 1024,
                 "RSS should be more than 1 KiB for a live test process, got {bytes}"
             );
+            let tree = process_tree_rss_bytes().expect("process-tree RSS");
+            assert!(tree >= bytes, "tree {tree} self {bytes}");
         }
         #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         {

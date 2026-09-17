@@ -234,7 +234,13 @@ impl V8Vm {
                         return;
                     }
                 }
-                watchdog_handle.terminate_execution();
+                // Tight `for(;;)` loops sometimes ignore a single terminate.
+                let mut extra = Duration::ZERO;
+                while !flag.load(Ordering::Acquire) && extra < Duration::from_secs(2) {
+                    watchdog_handle.terminate_execution();
+                    std::thread::sleep(step);
+                    extra += step;
+                }
             });
             done
         });
@@ -490,7 +496,9 @@ impl JsVm for V8Vm {
         if !self.maybe_pending {
             return Ok(0);
         }
-        self.isolate.perform_microtask_checkpoint();
+        for _ in 0..16 {
+            self.isolate.perform_microtask_checkpoint();
+        }
         self.maybe_pending = false;
         Ok(1)
     }

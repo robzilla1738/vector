@@ -85,6 +85,8 @@ export interface PageServiceDeps {
   };
   /** fallback `call` node dispatch when the caller didn't supply one */
   callOperation?: (name: string, args: Record<string, unknown>, pageId: string) => Promise<unknown>;
+  /** Electron hybrid paint for engine pages. Off unless the hybrid desktop opts in. */
+  electronEngineView?: () => boolean;
 }
 
 /**
@@ -210,6 +212,11 @@ export class PageService {
     const decision = router
       ? router.decide(opts.url, opts.backend)
       : { backend: opts.backend ?? "vector", reason: opts.backend ? `explicit-backend:${opts.backend}` : "engine-mode-off", fallbackAllowed: false };
+    if (decision.backendUnavailable) {
+      throw new VectorError("backend_unavailable", "vector-engine backend is not connected", {
+        reason: decision.reason,
+      });
+    }
     if (decision.backend !== "vector-engine") return this.openOn(decision.backend, opts, decision.reason);
     try {
       return await this.openOn("vector-engine", opts, decision.reason, decision.fallbackAllowed);
@@ -301,7 +308,13 @@ export class PageService {
       if (nativeCreated) await this.deps.native.closePage(pageId).catch(() => {});
       throw e;
     }
-    if (backend === "vector-engine" && this.deps.native.available() && !opts.background) {
+    if (
+      backend === "vector-engine" &&
+      this.deps.native.available() &&
+      !opts.background &&
+      this.deps.electronEngineView?.() === true &&
+      !this.deps.router?.isNativeOnly()
+    ) {
       await this.deps.native.createPage({
         pageId,
         marker: `vetab-${pageId}`,

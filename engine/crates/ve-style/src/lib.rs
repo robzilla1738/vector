@@ -57,7 +57,8 @@ pub use selector_impl::{
     CssString, PseudoClass, PseudoElement, SelectorParser, VeSelectorImpl, parse_selector_list,
 };
 pub use stylesheet::{
-    CssRule, DeclarationBlock, Origin, PropertyDeclaration, StyleRule, Stylesheet,
-    parse_declaration_block, parse_declaration_block_counted, parse_stylesheet, strip_cdata,
+    CssRule, DeclarationBlock, Keyframe, KeyframesRule, Origin, PropertyDeclaration, StyleRule,
+    Stylesheet, parse_declaration_block, parse_declaration_block_counted, parse_stylesheet,
+    strip_cdata,
 };
 pub use values::*;

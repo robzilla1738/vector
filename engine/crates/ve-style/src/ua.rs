@@ -79,6 +79,7 @@ bdi, output { unicode-bidi: isolate; }
 bdo { unicode-bidi: bidi-override; }
 [dir=ltr i] { direction: ltr; unicode-bidi: isolate; }
 [dir=rtl i] { direction: rtl; unicode-bidi: isolate; }
+[dir=auto i] { unicode-bidi: isolate; }
 q::before { content: open-quote; }
 q::after { content: close-quote; }
 nobr { white-space: nowrap; }

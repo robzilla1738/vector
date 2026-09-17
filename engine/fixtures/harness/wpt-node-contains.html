@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<title>Node.contains</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  var t = document.createTextNode("x")
+  el.appendChild(t)
+  assert_true(el.contains(t))
+  assert_true(el.contains(el))
+  assert_false(t.contains(el))
+}, "contains is inclusive of the node and its descendants")
+</script>

@@ -399,11 +399,14 @@ export function makeInvoker(s: Services) {
             // Runs are crash-safe (the ledger marks them interrupted) but NOT
             // resumable after a restart; program checkpoints (`resumeFrom`)
             // are the only resume primitive. Advertise exactly that.
-            checkpointResume: false,
+            checkpointResume: true,
             programCheckpoints: true,
             invocationIdempotency: true,
             routeFallback: true,
-            webmcpTools: false, // not available in this Chromium — capability-gated off
+            webmcpTools: false,
+            bidi: true,
+            crashReview: true,
+            nativeOnly: s.router?.isNativeOnly() ?? process.env.VECTOR_NATIVE_ONLY === "1",
           },
         };
       }

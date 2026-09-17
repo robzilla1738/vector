@@ -38,6 +38,7 @@ import { Tracer } from "./services/tracing.js";
 import { makeInvoker } from "./api/handlers.js";
 import { ApiServer } from "./api/server.js";
 import { runBench } from "./services/bench.js";
+import { attachBidiRuntime } from "./services/bidi.js";
 
 export interface RuntimeHandle {
   port: number;
@@ -213,6 +214,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const router = new Router({
     mode: () => settings.engineMode(),
     engineAvailable: () => !!drivers.engine?.isConnected(),
+    nativeOnly: () => env.VECTOR_NATIVE_ONLY === "1" || production,
     store: {
       load: () => repo.loadRouterTable<NeedsChromiumEntry>(),
       save: (entries) => repo.saveRouterTable(entries),
@@ -237,6 +239,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     // unified step ledger — every execution records steps with pageId so
     // operations.compile can rebuild the trace (§10.3)
     recordStep: (s) => repo.saveStep(s),
+    electronEngineView: () => env.VECTOR_ELECTRON === "1",
     callOperation: async (name, args, pageId) => {
       const slash = name.indexOf("/");
       const siteKey = slash > 0 ? name.slice(0, slash) : new URL(pages.get(pageId).url).host;
@@ -244,6 +247,20 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const r = await operations.invoke({ siteKey, name: opName, inputs: args, pageId });
       if (r.status === "failed") throw new VectorError("step_failed", r.error ?? `operation ${opName} failed`);
       return r.result;
+    },
+  });
+  attachBidiRuntime({
+    navigate: (context, url) => {
+      void pages.navigate(context, url);
+      return { url, pageId: context };
+    },
+    performActions: (actions) => {
+      const list = Array.isArray(actions) ? actions : [];
+      const first = list[0] as { pageId?: string; context?: string; steps?: Step[] } | undefined;
+      const pageId = first?.pageId ?? first?.context;
+      if (!pageId || !first?.steps?.length) return { accepted: false };
+      void pages.execute({ pageId, steps: first.steps }, { allowEval: false });
+      return { accepted: true };
     },
   });
   const sets = new SetService(repo, events, pages);
@@ -265,7 +282,17 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         return s;
       });
 
-  operations = new OperationService({ repo, events, pages, translateSteps });
+  operations = new OperationService({
+    repo,
+    events,
+    pages,
+    translateSteps,
+    egressAllowlist: () =>
+      (env.VECTOR_ENGINE_ALLOWLIST ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+  });
   const state = new StateService({ repo, pages, operations });
 
   const runs = new RunService({

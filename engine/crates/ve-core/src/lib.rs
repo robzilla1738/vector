@@ -26,7 +26,7 @@ pub mod geometry;
 pub mod id;
 pub mod trace;
 
-pub use account::{host_package_energy_uj, process_rss_bytes};
+pub use account::{host_package_energy_uj, process_rss_bytes, process_tree_rss_bytes};
 pub use error::{Error, ErrorCode, ErrorPayload, Result};
 pub use geometry::{Edges, Point, Rect, Size};
 pub use id::{NodeId, Revision};

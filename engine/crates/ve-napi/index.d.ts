@@ -32,6 +32,8 @@ export interface EngineConfig {
   securityProfile?: "developer" | "production";
   /** `auto` | `requireProcess` | `inProcess`. Production forces `requireProcess`. */
   isolation?: "auto" | "requireProcess" | "inProcess";
+  /** When true, live sockets never open; missing archive entries are blocked (VEC-024). */
+  hermetic?: boolean;
   /** Accepted and ignored by the engine today; reserved for cookie/cache persistence. */
   dataDir?: string;
 }

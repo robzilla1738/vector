@@ -15,15 +15,15 @@ workspace = true
 [features]
 default = []
 ## OS window through winit + softbuffer.
-window = ["dep:winit", "dep:softbuffer"]
+window = ["dep:winit", "dep:softbuffer", "dep:accesskit", "dep:accesskit_winit"]
 ## Page scripts through V8.
 v8 = ["ve-api/v8"]
 ## Fetch `http:` / `https:` documents.
 http = ["ve-api/http"]
 ## GPU present path (optional).
-gpu = ["ve-api/gpu"]
-## Packaged native product: window + V8 + HTTP.
-product = ["window", "v8", "http"]
+gpu = ["ve-api/gpu", "dep:ve-gfx", "dep:wgpu", "dep:pollster"]
+## Packaged native product: window + V8 + HTTP + GPU present.
+product = ["window", "v8", "http", "gpu"]
 
 [dependencies]
 ve-api.workspace = true
@@ -33,3 +33,8 @@ clap.workspace = true
 serde_json.workspace = true
 winit = { workspace = true, optional = true }
 softbuffer = { workspace = true, optional = true }
+ve-gfx = { workspace = true, optional = true }
+wgpu = { workspace = true, optional = true }
+pollster = { workspace = true, optional = true }
+accesskit = { workspace = true, optional = true }
+accesskit_winit = { workspace = true, optional = true }

@@ -126,10 +126,10 @@ mod tests {
         let c = sheet.coverage;
         assert_eq!(c.declarations_total, 6);
         assert_eq!(c.declarations_unknown, 1, "frobnicate");
-        assert_eq!(c.declarations_deferred, 2, "box-shadow, writing-mode");
+        assert_eq!(c.declarations_deferred, 1, "box-shadow");
         assert_eq!(c.declarations_invalid, 1, "display: ruby");
-        assert!(c.affects_geometry, "writing-mode / display");
-        assert!((c.miss_ratio() - 0.5).abs() < 1e-6);
+        assert!(c.affects_geometry, "display: ruby");
+        assert!((c.miss_ratio() - 2.0 / 6.0).abs() < 1e-6);
         assert!(c.exceeds(0.05));
 
         let clean = parse_stylesheet("p { color: red; box-shadow: none }", Origin::Author);

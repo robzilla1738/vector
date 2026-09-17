@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>Element.querySelector</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  el.innerHTML = '<p class="x"><span id="s">t</span></p>'
+  document.body.appendChild(el)
+  assert_equals(el.querySelector("span").id, "s")
+  assert_equals(el.querySelector("p.x").tagName, "P")
+  assert_equals(el.querySelectorAll("span").length, 1)
+  assert_equals(el.querySelector("section"), null)
+}, "querySelector and querySelectorAll search descendants")
+</script>

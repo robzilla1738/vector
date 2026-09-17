@@ -215,6 +215,18 @@ keyword_enum! {
 }
 
 keyword_enum! {
+    /// The `writing-mode` property.
+    WritingMode {
+        /// Horizontal lines, stacked top to bottom.
+        HorizontalTb = "horizontal-tb",
+        /// Vertical lines, stacked right to left.
+        VerticalRl = "vertical-rl",
+        /// Vertical lines, stacked left to right.
+        VerticalLr = "vertical-lr",
+    }
+}
+
+keyword_enum! {
     /// The `unicode-bidi` property.
     UnicodeBidi {
         /// No additional embedding.

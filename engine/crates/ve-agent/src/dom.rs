@@ -3,7 +3,11 @@
 use std::collections::BTreeMap;
 
 use ve_core::NodeId;
-use ve_dom::{Mutation, Namespace, NodeKind, ShadowRootMode};
+use ve_dom::{Document, Mutation, Namespace, NodeKind, ShadowRootMode};
+use ve_script::generated::{
+    DOMImplementationInterface, DocumentInterface, ElementInterface, HTMLFormElementInterface,
+    HTMLInputElementInterface, NodeInterface, WindowInterface,
+};
 use ve_script::{JsValue, ScriptError};
 
 use crate::page::{LoadedDocument, Page, outer_html};
@@ -63,19 +67,21 @@ fn doc_arg(page: &Page, args: &[JsValue]) -> NodeId {
         })
         .unwrap_or_else(|| page.doc.root())
 }
-fn query(page: &Page, root: NodeId, selector: &str, all: bool) -> Vec<NodeId> {
+fn query(page: &Page, root: NodeId, selector: &str, all: bool) -> Result<Vec<NodeId>, ScriptError> {
+    parse_sel(selector)?;
     if selector.trim().is_empty() {
-        return Vec::new();
+        return Err(fail("The provided selector is empty."));
     }
     let mut out = Vec::new();
-    for id in std::iter::once(root).chain(page.doc.descendants(root)) {
+    for id in page.doc.descendants(root) {
         if !page.doc.get(id).is_some_and(|n| n.is_element()) {
             continue;
         }
-        if page
-            .style_engine
-            .matches(&page.doc, id, selector)
-            .unwrap_or(false)
+        if page.parser_visible(id)
+            && page
+                .style_engine
+                .matches(&page.doc, id, selector)
+                .unwrap_or(false)
         {
             out.push(id);
             if !all {
@@ -83,31 +89,25 @@ fn query(page: &Page, root: NodeId, selector: &str, all: bool) -> Vec<NodeId> {
             }
         }
     }
-    out
+    Ok(out)
 }
-fn first_el(page: &Page, id: NodeId) -> Option<NodeId> {
-    page.doc
-        .children(id)
-        .find(|&c| page.doc.get(c).is_some_and(|n| n.is_element()))
-}
-fn last_el(page: &Page, id: NodeId) -> Option<NodeId> {
-    page.doc
-        .children(id)
-        .filter(|&c| page.doc.get(c).is_some_and(|n| n.is_element()))
-        .last()
+fn parse_sel(selector: &str) -> Result<(), ScriptError> {
+    ve_style::parse_selector_list(selector)
+        .map(|_| ())
+        .map_err(|_| fail("An invalid or illegal string was specified"))
 }
 fn next_el(page: &Page, id: NodeId) -> Option<NodeId> {
-    let mut n = page.doc.next_sibling(id);
+    let mut n = page.visible_next_sibling(id);
     while let Some(cur) = n {
         if page.doc.get(cur).is_some_and(|x| x.is_element()) {
             return Some(cur);
         }
-        n = page.doc.next_sibling(cur);
+        n = page.visible_next_sibling(cur);
     }
     None
 }
 fn prev_el(page: &Page, id: NodeId) -> Option<NodeId> {
-    let mut n = page.doc.prev_sibling(id);
+    let mut n = page.visible_prev_sibling(id);
     while let Some(cur) = n {
         if page.doc.get(cur).is_some_and(|x| x.is_element()) {
             return Some(cur);
@@ -117,6 +117,13 @@ fn prev_el(page: &Page, id: NodeId) -> Option<NodeId> {
     None
 }
 fn inner_html(page: &Page, id: NodeId) -> String {
+    if page
+        .doc
+        .element(id)
+        .is_some_and(|e| e.is_html("script") || e.is_html("style") || e.is_html("title"))
+    {
+        return page.doc.text_content(id);
+    }
     let root = if page.doc.element(id).is_some_and(|e| e.is_html("template")) {
         page.doc.template_contents(id).unwrap_or(id)
     } else {
@@ -127,6 +134,18 @@ fn inner_html(page: &Page, id: NodeId) -> String {
         .map(|c| outer_html(&page.doc, c))
         .collect()
 }
+fn target_origin_matches(target: &str, dest: &str) -> bool {
+    if target.is_empty() || target == "*" {
+        return true;
+    }
+    let t = if target.contains("://") {
+        origin_of(target)
+    } else {
+        target.to_string()
+    };
+    t == dest
+}
+
 pub(crate) fn origin_of(url: &str) -> String {
     url::Url::parse(url).map_or_else(
         |_| "null".into(),
@@ -169,12 +188,22 @@ fn split_qname(qname: &str) -> (Option<String>, &str) {
     }
 }
 
+fn percent_href(href: &str) -> String {
+    href.replace('\u{FFFD}', "%EF%BF%BD")
+}
+
+fn percent_fragment(href: &str) -> String {
+    href.find('#')
+        .map(|i| percent_href(&href[i..]))
+        .unwrap_or_default()
+}
+
 fn loc(url: &str, part: &str) -> String {
     let Ok(u) = url::Url::parse(url) else {
         return String::new();
     };
     match part {
-        "href" => u.to_string(),
+        "href" => percent_href(u.as_str()),
         "protocol" => format!("{}:", u.scheme()),
         "host" => match u.port() {
             Some(p) => format!("{}:{p}", u.host_str().unwrap_or("")),
@@ -184,10 +213,105 @@ fn loc(url: &str, part: &str) -> String {
         "port" => u.port().map(|p| p.to_string()).unwrap_or_default(),
         "pathname" => u.path().to_owned(),
         "search" => u.query().map(|q| format!("?{q}")).unwrap_or_default(),
-        "hash" => u.fragment().map(|f| format!("#{f}")).unwrap_or_default(),
+        "hash" => percent_fragment(u.as_str()),
         "origin" => origin_of(url),
         _ => u.to_string(),
     }
+}
+
+fn same_document(a: &url::Url, b: &url::Url) -> bool {
+    a.scheme() == b.scheme()
+        && a.host() == b.host()
+        && a.port() == b.port()
+        && a.path() == b.path()
+        && a.query() == b.query()
+}
+
+fn write_page_url(page: &mut Page, next: String) {
+    page.url.clone_from(&next);
+    if let Some(e) = page.history.get_mut(page.history_index) {
+        e.document.url.clone_from(&next);
+    }
+}
+
+fn apply_location_part(page: &mut Page, field: &str, val: &str) -> Result<JsValue, ScriptError> {
+    let Ok(mut u) = url::Url::parse(&page.url) else {
+        return Ok(JsValue::Undefined);
+    };
+    match field {
+        "replace" => {
+            if let Some(resolved) = page.resolve_url(val) {
+                write_page_url(page, resolved);
+            }
+            return Ok(JsValue::Undefined);
+        }
+        "href" => {
+            let Some(resolved) = page.resolve_url(val) else {
+                return Ok(JsValue::Undefined);
+            };
+            let Ok(new_u) = url::Url::parse(&resolved) else {
+                return Ok(JsValue::Undefined);
+            };
+            if same_document(&u, &new_u) {
+                u.set_fragment(new_u.fragment());
+                write_page_url(page, u.to_string());
+                return Ok(JsValue::from("hashchange"));
+            }
+            let _ = page.navigate(&resolved);
+            return Ok(JsValue::Undefined);
+        }
+        "hash" => {
+            let f = val.trim_start_matches('#');
+            if f.is_empty() {
+                u.set_fragment(None);
+            } else {
+                u.set_fragment(Some(f));
+            }
+        }
+        "pathname" => u.set_path(val),
+        "search" => {
+            let q = val.trim_start_matches('?');
+            if q.is_empty() {
+                u.set_query(None);
+            } else {
+                u.set_query(Some(q));
+            }
+        }
+        "hostname" => {
+            let _ = u.set_host(Some(val));
+        }
+        "host" => {
+            if let Some((host, port)) = val.rsplit_once(':')
+                && let Ok(p) = port.parse::<u16>()
+            {
+                let _ = u.set_host(Some(host));
+                let _ = u.set_port(Some(p));
+            } else {
+                let _ = u.set_host(Some(val));
+                let _ = u.set_port(None);
+            }
+        }
+        "protocol" => {
+            let _ = u.set_scheme(val.trim_end_matches(':'));
+        }
+        "port" => {
+            if val.is_empty() {
+                let _ = u.set_port(None);
+            } else if let Ok(p) = val.parse::<u16>() {
+                let _ = u.set_port(Some(p));
+            }
+        }
+        _ => {
+            let _ = page.navigate(val);
+            return Ok(JsValue::Undefined);
+        }
+    }
+    write_page_url(page, u.to_string());
+    Ok(if field == "hash" {
+        JsValue::from("hashchange")
+    } else {
+        JsValue::Undefined
+    })
 }
 fn insert_fragment(page: &mut Page, context: &str, html: &str) -> Result<Vec<NodeId>, ScriptError> {
     let scripting = page.scripting.is_some();
@@ -232,125 +356,81 @@ pub(crate) fn host_call(
             }
             Ok(JsValue::Object(map))
         }
-        "nodeType" => Ok(JsValue::Number(f64::from(
-            page.doc
-                .get(live(page, args, 0)?)
-                .map_or(0, ve_dom::Node::node_type),
-        ))),
-        "nodeName" => {
-            let id = live(page, args, 0)?;
-            let name = match page.doc.get(id).map(|n| &n.kind) {
-                Some(NodeKind::Element(e)) => e.tag_name(),
-                Some(NodeKind::Text(_)) => "#text".into(),
-                Some(NodeKind::Comment(_)) => "#comment".into(),
-                Some(NodeKind::Document) => "#document".into(),
-                Some(NodeKind::DocumentFragment | NodeKind::ShadowRoot { .. }) => {
-                    "#document-fragment".into()
-                }
-                Some(NodeKind::Doctype { name, .. }) => name.clone(),
-                Some(NodeKind::ProcessingInstruction { target, .. }) => target.clone(),
-                None => String::new(),
-            };
-            Ok(JsValue::from(name.as_str()))
-        }
-        "nodeValue" => Ok(page
-            .doc
-            .get(live(page, args, 0)?)
-            .and_then(ve_dom::Node::as_character_data)
-            .map_or(JsValue::Null, JsValue::from)),
+        "nodeType" => Ok(live(page, args, 0).ok().map_or(JsValue::Number(0.0), |id| {
+            JsValue::Number(f64::from(
+                crate::idl::LiveNode::new(&mut page.doc, id).node_type(),
+            ))
+        })),
+        "nodeName" => Ok(live(page, args, 0).ok().map_or_else(
+            || JsValue::from(""),
+            |id| {
+                JsValue::from(
+                    crate::idl::LiveNode::new(&mut page.doc, id)
+                        .node_name()
+                        .as_str(),
+                )
+            },
+        )),
+        "nodeValue" => Ok(live(page, args, 0)
+            .ok()
+            .and_then(|id| crate::idl::LiveNode::new(&mut page.doc, id).node_value())
+            .map_or(JsValue::Null, |s| JsValue::from(s.as_str()))),
         "setNodeValue" => {
             let id = live(page, args, 0)?;
-            page.doc.set_text(id, arg_str(args, 1)).ok();
+            crate::idl::LiveNode::new(&mut page.doc, id).set_node_value(Some(arg_str(args, 1)));
             Ok(JsValue::Undefined)
         }
-        "textContent" => {
-            let id = live(page, args, 0)?;
-            match page.doc.get(id).map(|n| &n.kind) {
-                Some(NodeKind::Document | NodeKind::Doctype { .. }) => Ok(JsValue::Null),
-                Some(NodeKind::ProcessingInstruction { data, .. }) => {
-                    Ok(JsValue::from(data.as_str()))
-                }
-                _ => Ok(JsValue::from(page.doc.text_content(id).as_str())),
-            }
-        }
+        "textContent" => Ok(live(page, args, 0)
+            .ok()
+            .and_then(|id| crate::idl::LiveNode::new(&mut page.doc, id).text_content())
+            .map_or(JsValue::Null, |s| JsValue::from(s.as_str()))),
         "setTextContent" => {
             let id = live(page, args, 0)?;
-            let text = arg_str(args, 1);
-            let kind = page.doc.get(id).map(|n| match &n.kind {
-                NodeKind::Document | NodeKind::Doctype { .. } => 0u8,
-                NodeKind::Text(_)
-                | NodeKind::Comment(_)
-                | NodeKind::ProcessingInstruction { .. } => 1,
-                NodeKind::Element(_) | NodeKind::DocumentFragment | NodeKind::ShadowRoot { .. } => {
-                    2
-                }
-            });
-            match kind {
-                Some(0) => Ok(JsValue::Undefined),
-                Some(1) => {
-                    page.doc.set_text(id, text).ok();
-                    Ok(JsValue::Undefined)
-                }
-                Some(2) => {
-                    page.doc.clear_children(id).ok();
-                    if !text.is_empty() {
-                        page.doc.append_text(id, &text).ok();
-                    }
-                    Ok(JsValue::Undefined)
-                }
-                _ => Ok(JsValue::Undefined),
-            }
+            crate::idl::LiveNode::new(&mut page.doc, id).set_text_content(Some(arg_str(args, 1)));
+            Ok(JsValue::Undefined)
         }
         "parentNode" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| page.doc.parent(id))
+            .and_then(|id| crate::idl::LiveNode::new(&mut page.doc, id).parent_node())
             .map_or(JsValue::Null, pack)),
         "firstChild" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| page.doc.first_child(id))
+            .and_then(|id| page.visible_first_child(id))
             .map_or(JsValue::Null, pack)),
         "lastChild" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| page.doc.last_child(id))
+            .and_then(|id| page.visible_last_child(id))
             .map_or(JsValue::Null, pack)),
         "nextSibling" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| page.doc.next_sibling(id))
+            .and_then(|id| page.visible_next_sibling(id))
             .map_or(JsValue::Null, pack)),
         "prevSibling" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| page.doc.prev_sibling(id))
+            .and_then(|id| page.visible_prev_sibling(id))
             .map_or(JsValue::Null, pack)),
-        "childNodes" => Ok(arr(page.doc.children(live(page, args, 0)?))),
+        "childNodes" => Ok(live(page, args, 0).ok().map_or_else(
+            || JsValue::Array(Vec::new()),
+            |id| arr(page.tree_children(id)),
+        )),
         "isConnected" => Ok(JsValue::Bool(page.doc.is_connected(live(page, args, 0)?))),
         "appendChild" => {
             let (p, c) = (live(page, args, 0)?, live(page, args, 1)?);
-            page.doc
-                .append_child(p, c)
-                .map_err(|e| fail(e.to_string()))?;
-            page.maybe_attach_blank_iframe(c);
-            Ok(pack(c))
+            let ret = crate::idl::LiveDom::new(page, p).append_child(c);
+            Ok(pack(ret))
         }
         "insertBefore" => {
             let (p, c) = (live(page, args, 0)?, live(page, args, 1)?);
-            match unpack(args.get(2).unwrap_or(&JsValue::Null)).filter(|id| page.doc.contains(*id))
-            {
-                Some(r) => page
-                    .doc
-                    .insert_before(r, c)
-                    .map_err(|e| fail(e.to_string()))?,
-                None => page
-                    .doc
-                    .append_child(p, c)
-                    .map_err(|e| fail(e.to_string()))?,
-            }
-            page.maybe_attach_blank_iframe(c);
-            Ok(pack(c))
+            let before =
+                unpack(args.get(2).unwrap_or(&JsValue::Null)).filter(|id| page.doc.contains(*id));
+            Ok(pack(
+                crate::idl::LiveDom::new(page, p).insert_before(c, before),
+            ))
         }
         "removeChild" => {
+            let p = live(page, args, 0)?;
             let c = live(page, args, 1)?;
-            page.doc.remove(c).map_err(|e| fail(e.to_string()))?;
-            Ok(pack(c))
+            Ok(pack(crate::idl::LiveDom::new(page, p).remove_child(c)))
         }
         "replaceChild" => {
             let (p, new, old) = (
@@ -358,32 +438,74 @@ pub(crate) fn host_call(
                 live(page, args, 1)?,
                 live(page, args, 2)?,
             );
-            page.doc
-                .insert_before(old, new)
-                .or_else(|_| page.doc.append_child(p, new))
-                .map_err(|e| fail(e.to_string()))?;
-            page.doc.remove(old).ok();
-            page.maybe_attach_blank_iframe(new);
-            Ok(pack(old))
-        }
-        "cloneNode" => Ok(pack(
-            page.doc
-                .clone_node(live(page, args, 0)?, arg_bool(args, 1))
-                .map_err(|e| fail(e.to_string()))?,
-        )),
-        "contains" => {
-            let id = live(page, args, 0)?;
-            let Ok(other) = live(page, args, 1) else {
-                return Ok(JsValue::Bool(false));
-            };
-            Ok(JsValue::Bool(
-                id == other || page.doc.is_ancestor_of(id, other),
+            Ok(pack(
+                crate::idl::LiveDom::new(page, p).replace_child(new, old),
             ))
         }
-        "isEqualNode" => Ok(JsValue::Bool(
-            outer_html(&page.doc, live(page, args, 0)?)
-                == outer_html(&page.doc, live(page, args, 1)?),
-        )),
+        "cloneNode" => {
+            let id = live(page, args, 0)?;
+            let deep = arg_bool(args, 1);
+            Ok(pack(
+                crate::idl::LiveNode::new(&mut page.doc, id).clone_node(Some(deep)),
+            ))
+        }
+        "contains" => {
+            let id = live(page, args, 0)?;
+            let other = live(page, args, 1).ok();
+            Ok(JsValue::Bool(
+                crate::idl::LiveNode::new(&mut page.doc, id).contains(other),
+            ))
+        }
+        "isEqualNode" => {
+            let id = live(page, args, 0)?;
+            let other = live(page, args, 1).ok();
+            Ok(JsValue::Bool(
+                crate::idl::LiveNode::new(&mut page.doc, id).is_equal_node(other),
+            ))
+        }
+        "compareDocumentPosition" => {
+            let id = live(page, args, 0)?;
+            let other = live(page, args, 1)?;
+            Ok(JsValue::Number(f64::from(
+                crate::idl::LiveNode::new(&mut page.doc, id).compare_document_position(other),
+            )))
+        }
+        "normalize" => {
+            let id = live(page, args, 0)?;
+            crate::idl::LiveNode::new(&mut page.doc, id).normalize();
+            Ok(JsValue::Undefined)
+        }
+        "lookupPrefix" => {
+            let id = live(page, args, 0)?;
+            let ns = match args.get(1) {
+                None | Some(JsValue::Null | JsValue::Undefined) => None,
+                Some(v) => Some(v.to_string()),
+            };
+            Ok(crate::idl::LiveNode::new(&mut page.doc, id)
+                .lookup_prefix(ns)
+                .map_or(JsValue::Null, |s| JsValue::from(s.as_str())))
+        }
+        "lookupNamespaceURI" => {
+            let id = live(page, args, 0)?;
+            let prefix = match args.get(1) {
+                None | Some(JsValue::Null | JsValue::Undefined) => None,
+                Some(v) => Some(v.to_string()),
+            };
+            Ok(crate::idl::LiveNode::new(&mut page.doc, id)
+                .lookup_namespace_u_r_i(prefix)
+                .map_or(JsValue::Null, |s| JsValue::from(s.as_str())))
+        }
+        "importNode" => {
+            let node = live(page, args, 0)?;
+            let deep = arg_bool(args, 1);
+            Ok(pack(
+                crate::idl::LiveDom::document(page).import_node(node, Some(deep)),
+            ))
+        }
+        "adoptNode" => {
+            let node = live(page, args, 0)?;
+            Ok(pack(crate::idl::LiveDom::document(page).adopt_node(node)))
+        }
         "getRootNode" => {
             let mut cur = live(page, args, 0)?;
             let composed = arg_bool(args, 1);
@@ -399,10 +521,15 @@ pub(crate) fn host_call(
             }
             Ok(pack(cur))
         }
-        "tagName" => Ok(page
-            .doc
-            .element(live(page, args, 0)?)
-            .map_or(JsValue::Null, |e| JsValue::from(e.tag_name().as_str()))),
+        "tagName" => {
+            let id = live(page, args, 0)?;
+            let name = crate::idl::LiveDom::new(page, id).tag_name();
+            if name.is_empty() {
+                Ok(JsValue::Null)
+            } else {
+                Ok(JsValue::from(name.as_str()))
+            }
+        }
         "localName" => Ok(page
             .doc
             .element(live(page, args, 0)?)
@@ -416,27 +543,38 @@ pub(crate) fn host_call(
             .doc
             .element(live(page, args, 0)?)
             .map_or(JsValue::Null, |e| JsValue::from(e.namespace.uri()))),
-        "getAttr" => Ok(page
-            .doc
-            .attribute(live(page, args, 0)?, &arg_str(args, 1))
-            .map_or(JsValue::Null, JsValue::from)),
+        "getAttr" => {
+            let id = live(page, args, 0)?;
+            Ok(crate::idl::LiveDom::new(page, id)
+                .get_attribute(arg_str(args, 1))
+                .map_or(JsValue::Null, |v| JsValue::from(v.as_str())))
+        }
         "setAttr" => {
-            page.doc
-                .set_attribute(live(page, args, 0)?, arg_str(args, 1), arg_str(args, 2))
-                .map_err(|e| fail(e.to_string()))?;
+            let id = live(page, args, 0)?;
+            crate::idl::LiveDom::new(page, id).set_attribute(arg_str(args, 1), arg_str(args, 2));
             Ok(JsValue::Undefined)
         }
         "removeAttr" => {
-            page.doc
-                .remove_attribute(live(page, args, 0)?, &arg_str(args, 1))
-                .ok();
+            let id = live(page, args, 0)?;
+            crate::idl::LiveDom::new(page, id).remove_attribute(arg_str(args, 1));
             Ok(JsValue::Undefined)
         }
-        "hasAttr" => Ok(JsValue::Bool(
-            page.doc
-                .element(live(page, args, 0)?)
-                .is_some_and(|e| e.has_attr(&arg_str(args, 1))),
-        )),
+        "hasAttr" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Bool(
+                crate::idl::LiveDom::new(page, id).has_attribute(arg_str(args, 1)),
+            ))
+        }
+        "toggleAttribute" => {
+            let id = live(page, args, 0)?;
+            let force = match args.get(2) {
+                None | Some(JsValue::Null | JsValue::Undefined) => None,
+                Some(v) => Some(v.is_truthy()),
+            };
+            Ok(JsValue::Bool(
+                crate::idl::LiveDom::new(page, id).toggle_attribute(arg_str(args, 1), force),
+            ))
+        }
         "attrNames" => {
             let names: Vec<JsValue> = page
                 .doc
@@ -450,41 +588,63 @@ pub(crate) fn host_call(
                 .unwrap_or_default();
             Ok(JsValue::Array(names))
         }
+        "attrs" => {
+            let recs: Vec<JsValue> = page
+                .doc
+                .element(live(page, args, 0)?)
+                .map(|e| {
+                    e.attributes
+                        .iter()
+                        .map(|a| {
+                            obj(&[
+                                ("name", JsValue::from(a.name.as_str())),
+                                ("value", JsValue::from(a.value.as_str())),
+                                (
+                                    "ns",
+                                    a.namespace.as_deref().map_or(JsValue::Null, JsValue::from),
+                                ),
+                            ])
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            Ok(JsValue::Array(recs))
+        }
+        "getAttrNS" => {
+            let id = live(page, args, 0)?;
+            let ns = arg_str(args, 1);
+            let local = arg_str(args, 2);
+            Ok(page
+                .doc
+                .attribute_ns(id, Some(ns.as_str()).filter(|s| !s.is_empty()), &local)
+                .map_or(JsValue::Null, JsValue::from))
+        }
+        "setAttrNS" => {
+            let id = live(page, args, 0)?;
+            let ns = arg_str(args, 1);
+            let qname = arg_str(args, 2);
+            let value = arg_str(args, 3);
+            page.doc
+                .set_attribute_ns(
+                    id,
+                    Some(ns.as_str()).filter(|s| !s.is_empty()),
+                    qname,
+                    value,
+                )
+                .map_err(|e| fail(e.to_string()))?;
+            Ok(JsValue::Undefined)
+        }
         "innerHTML" => Ok(JsValue::from(
             inner_html(page, live(page, args, 0)?).as_str(),
         )),
         "setInnerHTML" => {
             let id = live(page, args, 0)?;
-            let html = arg_str(args, 1);
-            let name = context_name(page, id);
-            let target = if name == "template" {
-                page.doc.template_contents(id).unwrap_or_else(|| {
-                    let frag = page.doc.create_fragment();
-                    let _ = page.doc.set_template_contents(id, frag);
-                    frag
-                })
-            } else {
-                id
-            };
-            page.doc.clear_children(target).ok();
-            if matches!(name.as_str(), "script" | "style" | "textarea" | "title") {
-                if !html.is_empty() {
-                    page.doc.append_text(target, &html).ok();
-                }
-            } else {
-                let ctx = if name == "template" { "body" } else { name.as_str() };
-                for kid in insert_fragment(page, ctx, &html)? {
-                    page.doc.append_child(target, kid).ok();
-                }
-            }
+            crate::idl::LiveDom::new(page, id).set_inner_h_t_m_l(arg_str(args, 1));
             Ok(JsValue::Undefined)
         }
         "templateContent" => {
             let id = live(page, args, 0)?;
-            Ok(page
-                .doc
-                .template_contents(id)
-                .map_or(JsValue::Null, pack))
+            Ok(page.doc.template_contents(id).map_or(JsValue::Null, pack))
         }
         "outerHTML" => Ok(JsValue::from(
             outer_html(&page.doc, live(page, args, 0)?).as_str(),
@@ -500,7 +660,7 @@ pub(crate) fn host_call(
             Ok(JsValue::Undefined)
         }
         "querySelector" => Ok(
-            query(page, scope_root(page, args), &arg_str(args, 1), false)
+            query(page, scope_root(page, args), &arg_str(args, 1), false)?
                 .into_iter()
                 .next()
                 .map_or(JsValue::Null, pack),
@@ -510,72 +670,93 @@ pub(crate) fn host_call(
             scope_root(page, args),
             &arg_str(args, 1),
             true,
-        ))),
-        "matches" => Ok(JsValue::Bool(
-            page.style_engine
-                .matches(&page.doc, live(page, args, 0)?, &arg_str(args, 1))
-                .unwrap_or(false),
-        )),
-        "closest" => {
+        )?)),
+        "matches" => {
+            let id = live(page, args, 0)?;
             let sel = arg_str(args, 1);
-            let mut cur = Some(live(page, args, 0)?);
-            while let Some(n) = cur {
-                if page
-                    .style_engine
-                    .matches(&page.doc, n, &sel)
-                    .unwrap_or(false)
-                {
-                    return Ok(pack(n));
-                }
-                cur = page.doc.parent(n);
-            }
-            Ok(JsValue::Null)
+            parse_sel(&sel)?;
+            Ok(JsValue::Bool(
+                crate::idl::LiveDom::new(page, id).matches(sel),
+            ))
         }
-        "getElementById" => Ok(page
-            .doc
-            .element_by_id_in(page.doc.root(), &arg_str(args, 0))
-            .map_or(JsValue::Null, pack)),
+        "closest" => {
+            let id = live(page, args, 0)?;
+            let sel = arg_str(args, 1);
+            parse_sel(&sel)?;
+            Ok(crate::idl::LiveDom::new(page, id)
+                .closest(sel)
+                .map_or(JsValue::Null, pack))
+        }
+        "checkValidity" => {
+            let id = live(page, args, 0)?;
+            let form = page.doc.element(id).is_some_and(|e| e.name == "form");
+            let mut node = crate::idl::LiveDom::new(page, id);
+            Ok(JsValue::Bool(if form {
+                HTMLFormElementInterface::check_validity(&mut node)
+            } else {
+                HTMLInputElementInterface::check_validity(&mut node)
+            }))
+        }
+        "getElementById" => {
+            let want = arg_str(args, 0);
+            Ok(
+                DocumentInterface::get_element_by_id(
+                    &mut crate::idl::LiveDom::document(page),
+                    want,
+                )
+                .map_or(JsValue::Null, pack),
+            )
+        }
         "getElementByIdScoped" => {
             let root = live(page, args, 0)?;
             let want = arg_str(args, 1);
             if want.is_empty() {
                 return Ok(JsValue::Null);
             }
+            // Disconnected trees and shadow roots are not gated by the
+            // parser insertion point — ARIA idrefs must still resolve.
+            let gate = page.in_browsing_tree(root);
             Ok(std::iter::once(root)
                 .chain(page.doc.descendants(root))
-                .find(|&id| page.doc.element(id).and_then(|e| e.id()) == Some(want.as_str()))
+                .find(|&id| {
+                    (!gate || page.parser_visible(id))
+                        && page.doc.element(id).and_then(|e| e.id()) == Some(want.as_str())
+                })
                 .map_or(JsValue::Null, pack))
         }
         "getElementsByTagName" => {
             let root = scope_root(page, args);
-            let name = arg_str(args, 1).to_ascii_lowercase();
-            let star = name == "*";
-            Ok(arr(std::iter::once(root)
-                .chain(page.doc.descendants(root))
-                .filter(|&id| {
-                    page.doc.element(id).is_some_and(|e| star || e.name == name)
-                })))
+            // Descendants only: including `root` made `ul.getElementsByTagName("*")`
+            // return the ul itself and stripped delegated listeners on `.html()`.
+            Ok(crate::idl::LiveDom::new(page, root).get_elements_by_tag_name(arg_str(args, 1)))
         }
         "getElementsByClassName" => {
             let root = scope_root(page, args);
             let class = arg_str(args, 1);
-            Ok(arr(std::iter::once(root)
-                .chain(page.doc.descendants(root))
-                .filter(|&id| {
-                    page.doc.element(id).is_some_and(|e| e.has_class(&class))
-                })))
+            Ok(arr(page.doc.descendants(root).filter(|&id| {
+                page.doc.element(id).is_some_and(|e| e.has_class(&class))
+            })))
         }
         "children" => Ok(arr(page
-            .doc
-            .children(live(page, args, 0)?)
+            .tree_children(live(page, args, 0)?)
+            .into_iter()
             .filter(|&c| page.doc.get(c).is_some_and(|n| n.is_element())))),
         "firstElementChild" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| first_el(page, id))
+            .and_then(|id| {
+                page.tree_children(id)
+                    .into_iter()
+                    .find(|&c| page.doc.get(c).is_some_and(|n| n.is_element()))
+            })
             .map_or(JsValue::Null, pack)),
         "lastElementChild" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| last_el(page, id))
+            .and_then(|id| {
+                page.visible_children(id)
+                    .into_iter()
+                    .rev()
+                    .find(|&c| page.doc.get(c).is_some_and(|n| n.is_element()))
+            })
             .map_or(JsValue::Null, pack)),
         "nextElementSibling" => Ok(live(page, args, 0)
             .ok()
@@ -585,10 +766,12 @@ pub(crate) fn host_call(
             .ok()
             .and_then(|id| prev_el(page, id))
             .map_or(JsValue::Null, pack)),
-        "documentElement" => Ok(page
-            .doc
-            .document_element_of(doc_arg(page, args))
-            .map_or(JsValue::Null, pack)),
+        "documentElement" => {
+            let id = doc_arg(page, args);
+            Ok(crate::idl::LiveDom::new(page, id)
+                .document_element()
+                .map_or(JsValue::Null, pack))
+        }
         "ownerDocument" => {
             let id = live(page, args, 0)?;
             if page.doc.get(id).is_some_and(ve_dom::Node::is_document) {
@@ -617,15 +800,47 @@ pub(crate) fn host_call(
         }
         "createHTMLDocument" => {
             let title = match args.first() {
-                Some(JsValue::String(s)) => Some(s.as_str()),
+                Some(JsValue::String(s)) => Some(s.clone()),
                 _ => None,
             };
-            Ok(pack(page.doc.create_html_document(title)))
+            Ok(pack(
+                crate::idl::LiveImpl::new(page).create_h_t_m_l_document(title),
+            ))
         }
         "frameDocument" => {
             let id = live(page, args, 0)?;
             Ok(page.frame_document(id).map_or(JsValue::Null, pack))
         }
+        "frameDocumentRaw" => {
+            let id = live(page, args, 0)?;
+            Ok(page.doc.content_document(id).map_or(JsValue::Null, pack))
+        }
+        "frameScriptHandles" => {
+            let id = live(page, args, 0)?;
+            let Some(root) = page.doc.content_document(id) else {
+                return Ok(JsValue::Array(Vec::new()));
+            };
+            Ok(arr(std::iter::once(root)
+                .chain(page.doc.descendants(root))
+                .filter(|&n| {
+                    page.doc.element(n).is_some_and(|e| e.name == "script")
+                })))
+        }
+        "frameUrl" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::from(page.iframe_src_url(id).as_str()))
+        }
+        "frameLocationOrigin" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::from(page.iframe_location_origin(id).as_str()))
+        }
+        "addAuthorSheet" => {
+            let css = arg_str(args, 0);
+            page.style_engine.add_stylesheet(&css);
+            page.update();
+            Ok(JsValue::Undefined)
+        }
+        "documentWrite" => document_write(page, &arg_str(args, 1)),
         "serviceWorkerRegister" => {
             let script_url = arg_str(args, 0);
             let scope = arg_str(args, 1);
@@ -638,21 +853,165 @@ pub(crate) fn host_call(
             let script_url = page.resolve_url(&script_url).unwrap_or(script_url);
             if script.is_empty() {
                 let id = page.id();
+                let origin = page.url.clone();
                 if let Some(loader) = page.loader.as_mut()
-                    && let Ok(res) = loader.script_fetch(&script_url, "GET", &[], id)
+                    && let Ok(res) =
+                        loader.script_fetch(&script_url, "GET", &[], id, Some(origin.as_str()))
                     && res.status < 400
                 {
                     script = String::from_utf8_lossy(&res.bytes).into_owned();
                 }
             }
-            page.service_workers.retain(|s| s.scope != scope);
-            page.service_workers
-                .push(crate::page::ServiceWorkerRegistration {
-                    scope,
-                    script_url,
-                    script,
-                });
-            Ok(JsValue::from("registered"))
+            let (script, imports) = page.expand_import_scripts(&script_url, &script, 0);
+            let lifecycle = crate::page::eval_sw_lifecycle(&script);
+            let existing = page.service_workers.iter().position(|s| s.scope == scope);
+            let mut waiting = false;
+            let mut waiting_url = String::new();
+            let mut claimed = lifecycle.claim;
+            let mut activate_fired = lifecycle.activate;
+            let state = "activated";
+            if let Some(idx) = existing {
+                let same = page.service_workers[idx].script == script;
+                if same {
+                    let _ = imports;
+                    claimed = page.service_workers[idx].claimed;
+                    waiting = page.service_workers[idx].waiting_script.is_some();
+                    waiting_url = page.service_workers[idx]
+                        .waiting_script_url
+                        .clone()
+                        .unwrap_or_default();
+                } else if lifecycle.skip_waiting || page.service_workers[idx].script.is_empty() {
+                    page.sw_waiting_realms.remove(&scope);
+                    page.sw_realms.remove(&scope);
+                    if let Some(realm) =
+                        crate::sw_realm::SwRealm::spawn(script.clone(), imports, true)
+                    {
+                        claimed = claimed || realm.claimed;
+                        page.sw_realms.insert(scope.clone(), realm);
+                    }
+                    page.service_workers[idx].script.clone_from(&script);
+                    page.service_workers[idx].script_url.clone_from(&script_url);
+                    page.service_workers[idx].claimed = claimed;
+                    page.service_workers[idx].waiting_script = None;
+                    page.service_workers[idx].waiting_script_url = None;
+                } else {
+                    page.sw_waiting_realms.remove(&scope);
+                    if let Some(realm) =
+                        crate::sw_realm::SwRealm::spawn(script.clone(), imports, false)
+                    {
+                        page.sw_waiting_realms.insert(scope.clone(), realm);
+                    }
+                    page.service_workers[idx].waiting_script = Some(script.clone());
+                    page.service_workers[idx].waiting_script_url = Some(script_url.clone());
+                    waiting = true;
+                    waiting_url.clone_from(&script_url);
+                    claimed = page.service_workers[idx].claimed;
+                    activate_fired = false;
+                }
+            } else {
+                page.sw_realms.remove(&scope);
+                if let Some(realm) = crate::sw_realm::SwRealm::spawn(script.clone(), imports, true)
+                {
+                    claimed = claimed || realm.claimed;
+                    page.sw_realms.insert(scope.clone(), realm);
+                }
+                page.service_workers
+                    .push(crate::page::ServiceWorkerRegistration {
+                        scope: scope.clone(),
+                        script_url: script_url.clone(),
+                        script,
+                        claimed,
+                        waiting_script: None,
+                        waiting_script_url: None,
+                    });
+            }
+            let active = page
+                .service_workers
+                .iter()
+                .any(|s| s.scope == scope && !s.script.is_empty());
+            Ok(obj(&[
+                ("scope", JsValue::from(scope.as_str())),
+                ("scriptURL", JsValue::from(script_url.as_str())),
+                ("active", JsValue::Bool(active)),
+                ("state", JsValue::from(state)),
+                ("installing", JsValue::Bool(false)),
+                ("waiting", JsValue::Bool(waiting)),
+                ("waitingURL", JsValue::from(waiting_url.as_str())),
+                ("installFired", JsValue::Bool(lifecycle.install)),
+                ("activateFired", JsValue::Bool(activate_fired)),
+                ("skipWaiting", JsValue::Bool(lifecycle.skip_waiting)),
+                ("claimed", JsValue::Bool(claimed)),
+            ]))
+        }
+        "serviceWorkerPostMessage" => {
+            let scope = arg_str(args, 0);
+            let target = arg_str(args, 1);
+            let data = arg_str(args, 2);
+            let skipped = if target == "installed" {
+                page.sw_waiting_realms
+                    .get(&scope)
+                    .is_some_and(|r| r.post_message(&data))
+            } else {
+                page.sw_realms
+                    .get(&scope)
+                    .is_some_and(|r| r.post_message(&data))
+            };
+            if skipped {
+                promote_waiting_worker(page, &scope);
+            }
+            Ok(JsValue::Bool(skipped))
+        }
+        "serviceWorkerSkipWaiting" => {
+            let scope = arg_str(args, 0);
+            promote_waiting_worker(page, &scope);
+            Ok(JsValue::Bool(true))
+        }
+        "swTakeClientPosts" => {
+            let posts = std::mem::take(&mut page.sw_client_posts);
+            Ok(JsValue::Array(
+                posts
+                    .into_iter()
+                    .map(|s| JsValue::from(s.as_str()))
+                    .collect(),
+            ))
+        }
+        "origin" => Ok(JsValue::from(origin_of(&page.url).as_str())),
+        "frameOrigin" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::from(page.iframe_origin(id).as_str()))
+        }
+        "frameIsolated" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Bool(page.frame_is_isolated(id)))
+        }
+        "framePostMessage" => {
+            let handle = arg_str(args, 0);
+            let data = arg_str(args, 1);
+            let target_origin = arg_str(args, 2);
+            let source_origin = {
+                let s = arg_str(args, 3);
+                if s.is_empty() {
+                    origin_of(&page.url)
+                } else {
+                    s
+                }
+            };
+            let dest_origin = if handle.is_empty() {
+                origin_of(&page.url)
+            } else {
+                match unpack(&JsValue::from(handle.as_str())).filter(|id| page.doc.contains(*id)) {
+                    Some(id) => page.iframe_origin(id),
+                    None => {
+                        return Ok(obj(&[("ok", JsValue::Bool(false))]));
+                    }
+                }
+            };
+            let ok = target_origin_matches(&target_origin, &dest_origin);
+            Ok(obj(&[
+                ("ok", JsValue::Bool(ok)),
+                ("origin", JsValue::from(source_origin.as_str())),
+                ("data", JsValue::from(data.as_str())),
+            ]))
         }
         "wsConnect" => {
             let url = arg_str(args, 0);
@@ -713,40 +1072,50 @@ pub(crate) fn host_call(
         "setTitle" => {
             let doc = doc_arg(page, args);
             let text = arg_str(args, 1);
-            let title = std::iter::once(doc)
-                .chain(page.doc.descendants(doc))
-                .find(|&e| page.doc.element(e).is_some_and(|el| el.is_html("title")));
-            let title = match title {
-                Some(t) => t,
-                None => {
-                    let Some(head) = page.doc.head_of(doc) else {
-                        return Ok(JsValue::Undefined);
-                    };
-                    let t = page.doc.create_element("title", Namespace::Html);
-                    page.doc
-                        .append_child(head, t)
-                        .map_err(|e| fail(e.to_string()))?;
-                    t
-                }
-            };
-            page.doc.clear_children(title).ok();
-            page.doc.append_text(title, &text).ok();
+            page.doc
+                .set_title_of(doc, &text)
+                .map_err(|e| fail(e.to_string()))?;
             Ok(JsValue::Undefined)
         }
-        "url" => Ok(JsValue::from(page.url.as_str())),
+        "url" => Ok(JsValue::from(
+            crate::idl::LiveDom::document(page).u_r_l().as_str(),
+        )),
         "compatMode" => Ok(JsValue::from(
-            if matches!(page.doc.quirks_mode(), ve_dom::QuirksMode::NoQuirks) {
-                "CSS1Compat"
-            } else {
+            if matches!(page.doc.quirks_mode(), ve_dom::QuirksMode::Quirks) {
                 "BackCompat"
+            } else {
+                "CSS1Compat"
             },
         )),
-        "cookie" => Ok(JsValue::from("")),
-        "setCookie" => Ok(JsValue::Undefined),
-        "createElement" => Ok(pack(
-            page.doc
-                .create_element(arg_str(args, 0).to_ascii_lowercase(), Namespace::Html),
+        "cookie" => Ok(JsValue::from(
+            crate::idl::LiveDom::document(page).cookie().as_str(),
         )),
+        "setCookie" => {
+            crate::idl::LiveDom::document(page).set_cookie(arg_str(args, 0));
+            Ok(JsValue::Undefined)
+        }
+        "lastModified" => Ok(JsValue::from(page.last_modified.as_deref().unwrap_or(""))),
+        "readyState" => Ok(JsValue::from(page.ready_state)),
+        "setReadyState" => {
+            let next = arg_str(args, 0);
+            page.ready_state = match next.as_str() {
+                "interactive" => "interactive",
+                "complete" => "complete",
+                _ => "loading",
+            };
+            Ok(JsValue::Undefined)
+        }
+        "elementFromPoint" => Ok(crate::idl::LiveDom::document(page)
+            .element_from_point(arg_f64(args, 0), arg_f64(args, 1))
+            .map_or(JsValue::Null, pack)),
+        "elementsFromPoint" => Ok(arr(crate::idl::LiveDom::document(page)
+            .elements_from_point(arg_f64(args, 0), arg_f64(args, 1)))),
+        "createElement" => {
+            let name = arg_str(args, 0);
+            Ok(pack(
+                crate::idl::LiveDom::document(page).create_element(name),
+            ))
+        }
         "createElementNS" => {
             let ns = arg_str(args, 0);
             let namespace = if ns.is_empty() {
@@ -833,11 +1202,25 @@ pub(crate) fn host_call(
             } else {
                 ShadowRootMode::Open
             };
-            Ok(pack(
-                page.doc
-                    .attach_shadow(live(page, args, 0)?, mode)
-                    .map_err(|e| fail(e.to_string()))?,
-            ))
+            let root = page
+                .doc
+                .attach_shadow(live(page, args, 0)?, mode)
+                .map_err(|e| fail(e.to_string()))?;
+            if arg_str(args, 2) == "manual" {
+                page.doc.set_shadow_manual_slots(root);
+            }
+            Ok(pack(root))
+        }
+        "slotAssign" => {
+            let slot = live(page, args, 0)?;
+            let raw = arg_str(args, 1);
+            let nodes = serde_json::from_str::<Vec<String>>(&raw)
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(|s| unpack(&JsValue::String(s)))
+                .collect();
+            page.doc.assign_slot(slot, nodes);
+            Ok(JsValue::Undefined)
         }
         "shadowRoot" => {
             let Some(root) = page.doc.shadow_root(live(page, args, 0)?) else {
@@ -869,23 +1252,8 @@ pub(crate) fn host_call(
         }
         "insertAdjacentHTML" => {
             let id = live(page, args, 0)?;
-            let pos = arg_str(args, 1).to_ascii_lowercase();
-            let (context, before) = match pos.as_str() {
-                "beforebegin" => (page.doc.parent(id), Some(id)),
-                "afterbegin" => (Some(id), page.doc.first_child(id)),
-                "beforeend" => (Some(id), None),
-                "afterend" => (page.doc.parent(id), page.doc.next_sibling(id)),
-                _ => return Err(fail(format!("invalid position {pos}"))),
-            };
-            let parent = context.ok_or_else(|| fail("no parent"))?;
-            let kids = insert_fragment(page, &context_name(page, parent), &arg_str(args, 2))?;
-            for kid in kids {
-                if let Some(b) = before {
-                    page.doc.insert_before(b, kid).ok();
-                } else {
-                    page.doc.append_child(parent, kid).ok();
-                }
-            }
+            crate::idl::LiveDom::new(page, id)
+                .insert_adjacent_h_t_m_l(arg_str(args, 1), arg_str(args, 2));
             Ok(JsValue::Undefined)
         }
         "computed" => {
@@ -1088,21 +1456,28 @@ pub(crate) fn host_call(
                 .ok();
             Ok(JsValue::Undefined)
         }
-        "formValue" => Ok(page
-            .doc
-            .form_value(live(page, args, 0)?)
-            .map_or(JsValue::Null, |v| JsValue::from(v.as_str()))),
+        "formValue" => {
+            let id = live(page, args, 0)?;
+            if page.doc.form_value(id).is_none() {
+                Ok(JsValue::Null)
+            } else {
+                Ok(JsValue::from(
+                    crate::idl::LiveDom::new(page, id).value().as_str(),
+                ))
+            }
+        }
         "setFormValue" => {
-            page.doc
-                .set_form_value(live(page, args, 0)?, arg_str(args, 1))
-                .ok();
+            let id = live(page, args, 0)?;
+            crate::idl::LiveDom::new(page, id).set_value(arg_str(args, 1));
             Ok(JsValue::Undefined)
         }
-        "checked" => Ok(JsValue::Bool(page.doc.is_checked(live(page, args, 0)?))),
+        "checked" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Bool(crate::idl::LiveDom::new(page, id).checked()))
+        }
         "setChecked" => {
-            page.doc
-                .set_checked(live(page, args, 0)?, arg_bool(args, 1))
-                .ok();
+            let id = live(page, args, 0)?;
+            crate::idl::LiveDom::new(page, id).set_checked(arg_bool(args, 1));
             Ok(JsValue::Undefined)
         }
         "selected" => Ok(JsValue::Bool(page.doc.is_selected(live(page, args, 0)?))),
@@ -1116,39 +1491,47 @@ pub(crate) fn host_call(
             page.focus(Some(live(page, args, 0)?));
             Ok(JsValue::Undefined)
         }
+        "activeElement" => Ok(page.focused().map_or(JsValue::Null, pack)),
         "blur" => {
             page.focus(None);
             Ok(JsValue::Undefined)
         }
         "activate" => {
-            let _ = page.activate(live(page, args, 0)?);
-            Ok(JsValue::Undefined)
-        }
-        "submit" => {
-            let _ = page.submit_from(live(page, args, 0)?);
-            Ok(JsValue::Undefined)
-        }
-        "reset" => {
-            let _ = page.reset_form_of(live(page, args, 0)?);
-            Ok(JsValue::Undefined)
-        }
-        "innerWidth" => Ok(JsValue::Number(f64::from(page.viewport.width))),
-        "innerHeight" => Ok(JsValue::Number(f64::from(page.viewport.height))),
-        "locationGet" => Ok(JsValue::from(loc(&page.url, &arg_str(args, 0)).as_str())),
-        "locationSet" => {
-            let href = arg_str(args, 1);
-            if arg_str(args, 0) == "replace" {
-                if let Some(resolved) = page.resolve_url(&href) {
-                    page.url.clone_from(&resolved);
-                    if let Some(e) = page.history.get_mut(page.history_index) {
-                        e.document.url.clone_from(&resolved);
-                    }
-                }
-            } else {
-                let _ = page.navigate(&href);
+            if let Ok(id) = live(page, args, 0) {
+                let _ = page.activate(id);
             }
             Ok(JsValue::Undefined)
         }
+        "submit" => {
+            crate::idl::LiveDom::new(page, live(page, args, 0)?).submit();
+            Ok(JsValue::Undefined)
+        }
+        "reset" => {
+            crate::idl::LiveDom::new(page, live(page, args, 0)?).reset();
+            Ok(JsValue::Undefined)
+        }
+        "innerWidth" => Ok(JsValue::Number(
+            crate::idl::LiveDom::document(page).inner_width(),
+        )),
+        "innerHeight" => Ok(JsValue::Number(
+            crate::idl::LiveDom::document(page).inner_height(),
+        )),
+        "scrollX" => Ok(JsValue::Number(
+            crate::idl::LiveDom::document(page).scroll_x(),
+        )),
+        "scrollY" => Ok(JsValue::Number(
+            crate::idl::LiveDom::document(page).scroll_y(),
+        )),
+        "scrollIntoView" => {
+            let id = live(page, args, 0)?;
+            page.update();
+            if let Some(rect) = page.layout_tree().rect_of(id) {
+                page.scroll_into_view(rect);
+            }
+            Ok(JsValue::Undefined)
+        }
+        "locationGet" => Ok(JsValue::from(loc(&page.url, &arg_str(args, 0)).as_str())),
+        "locationSet" => apply_location_part(page, &arg_str(args, 0), &arg_str(args, 1)),
         "reload" => {
             page.reload().ok();
             Ok(JsValue::Undefined)
@@ -1245,13 +1628,6 @@ pub(crate) fn host_call(
         }
         "fetchPoll" => {
             let id = arg_f64(args, 0) as u64;
-            if page
-                .script_fetches
-                .iter()
-                .any(|j| j.id == id && j.result.is_none() && j.error.is_none() && !j.aborted)
-            {
-                page.complete_script_fetches();
-            }
             match page.poll_script_fetch(id) {
                 None => Ok(obj(&[
                     ("pending", JsValue::Bool(false)),
@@ -1273,6 +1649,10 @@ pub(crate) fn host_call(
                 ])),
                 Some(_) => Ok(obj(&[("pending", JsValue::Bool(true))])),
             }
+        }
+        "fetchPump" => {
+            page.complete_script_fetches();
+            Ok(JsValue::Undefined)
         }
         "fetchAbort" => {
             page.abort_script_fetch(arg_f64(args, 0) as u64);
@@ -1328,12 +1708,74 @@ pub(crate) fn host_call(
                 ("oldVersion", JsValue::Number(f64::from(current))),
             ]))
         }
+        "idbCreateStore" => {
+            let origin = origin_of(&page.url);
+            let db = arg_str(args, 0);
+            let store = arg_str(args, 1);
+            page.indexed_db.entry((origin, db, store)).or_default();
+            Ok(JsValue::Undefined)
+        }
+        "idbStoreNames" => {
+            let origin = origin_of(&page.url);
+            let db = arg_str(args, 0);
+            let names: Vec<JsValue> = page
+                .indexed_db
+                .keys()
+                .filter(|(o, d, _)| o == &origin && d == &db)
+                .map(|(_, _, s)| JsValue::from(s.as_str()))
+                .collect();
+            Ok(JsValue::Array(names))
+        }
+        "idbBegin" => {
+            let origin = origin_of(&page.url);
+            let db = arg_str(args, 0);
+            let store = arg_str(args, 1);
+            let snapshot = page
+                .indexed_db
+                .get(&(origin.clone(), db.clone(), store.clone()))
+                .map(|s| s.records.clone())
+                .unwrap_or_default();
+            page.next_idb_txn += 1;
+            let id = page.next_idb_txn;
+            page.indexed_db_txns.insert(
+                id,
+                crate::page::IdbTxn {
+                    origin,
+                    db,
+                    store,
+                    snapshot,
+                    aborted: false,
+                },
+            );
+            Ok(JsValue::Number(id as f64))
+        }
+        "idbAbort" => {
+            let id = arg_f64(args, 0) as u64;
+            if let Some(txn) = page.indexed_db_txns.get_mut(&id) {
+                txn.aborted = true;
+                let key = (txn.origin.clone(), txn.db.clone(), txn.store.clone());
+                let snap = txn.snapshot.clone();
+                if let Some(store) = page.indexed_db.get_mut(&key) {
+                    store.records = snap;
+                }
+            }
+            Ok(JsValue::Undefined)
+        }
+        "idbCommit" => {
+            let id = arg_f64(args, 0) as u64;
+            page.indexed_db_txns.remove(&id);
+            Ok(JsValue::Undefined)
+        }
         "idbPut" => {
             let origin = origin_of(&page.url);
             let db = arg_str(args, 0);
             let store = arg_str(args, 1);
             let key = arg_str(args, 2);
             let value = arg_str(args, 3);
+            let tx_id = arg_f64(args, 4) as u64;
+            if tx_id != 0 && page.indexed_db_txns.get(&tx_id).is_some_and(|t| t.aborted) {
+                return Ok(obj(&[("error", JsValue::from("AbortError"))]));
+            }
             let entry = page.indexed_db.entry((origin, db, store)).or_default();
             if idb_unique_violation(entry, &key, &value) {
                 return Ok(obj(&[("error", JsValue::from("ConstraintError"))]));
@@ -1346,6 +1788,10 @@ pub(crate) fn host_call(
             let db = arg_str(args, 0);
             let store = arg_str(args, 1);
             let key = arg_str(args, 2);
+            let tx_id = arg_f64(args, 3) as u64;
+            if tx_id != 0 && page.indexed_db_txns.get(&tx_id).is_some_and(|t| t.aborted) {
+                return Ok(JsValue::Null);
+            }
             Ok(page
                 .indexed_db
                 .get(&(origin, db, store))
@@ -1357,6 +1803,10 @@ pub(crate) fn host_call(
             let db = arg_str(args, 0);
             let store = arg_str(args, 1);
             let key = arg_str(args, 2);
+            let tx_id = arg_f64(args, 3) as u64;
+            if tx_id != 0 && page.indexed_db_txns.get(&tx_id).is_some_and(|t| t.aborted) {
+                return Ok(JsValue::Undefined);
+            }
             if let Some(m) = page.indexed_db.get_mut(&(origin, db, store)) {
                 m.records.remove(&key);
             }
@@ -1435,7 +1885,7 @@ pub(crate) fn host_call(
                 None => Err(fail("no such worker")),
                 Some(w) => {
                     w.last_message = Some(msg.clone());
-                    if let Some(reply) = crate::page::dispatch_worker(&w.source, &msg) {
+                    if let Some(reply) = crate::page::eval_worker(&w.source, &msg) {
                         return Ok(JsValue::String(reply));
                     }
                     Ok(JsValue::from(msg.as_str()))
@@ -1486,6 +1936,80 @@ pub(crate) fn host_call(
             let id = live(page, args, 0)?;
             Ok(JsValue::Number(page.canvas_ops(id) as f64))
         }
+        "canvasToDataURL" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::from(page.canvas_to_data_url(id).as_str()))
+        }
+        "canvasGetImageData" => {
+            let id = live(page, args, 0)?;
+            let (w, h, bytes) = page.canvas_get_image_data(
+                id,
+                arg_f64(args, 1) as i32,
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+                arg_f64(args, 4) as i32,
+            );
+            let mut map = BTreeMap::new();
+            map.insert("w".into(), JsValue::Number(f64::from(w)));
+            map.insert("h".into(), JsValue::Number(f64::from(h)));
+            let b64 = ve_net::base64_encode(&bytes);
+            map.insert("b64".into(), JsValue::from(b64.as_str()));
+            Ok(JsValue::Object(map))
+        }
+        "canvasPutImageData" => {
+            let id = live(page, args, 0)?;
+            let w = arg_f64(args, 1) as u32;
+            let h = arg_f64(args, 2) as u32;
+            let bytes = ve_net::base64_decode(arg_str(args, 3).as_bytes()).unwrap_or_default();
+            page.canvas_put_image_data(
+                id,
+                arg_f64(args, 4) as i32,
+                arg_f64(args, 5) as i32,
+                w,
+                h,
+                &bytes,
+            );
+            Ok(JsValue::Undefined)
+        }
+        "canvasFillPath" => {
+            let id = live(page, args, 0)?;
+            let spec: serde_json::Value =
+                serde_json::from_str(&arg_str(args, 1)).unwrap_or(serde_json::Value::Null);
+            let mut rects = Vec::new();
+            if let Some(arr) = spec.get("r").and_then(serde_json::Value::as_array) {
+                for r in arr {
+                    if let Some(v) = r.as_array() {
+                        rects.push([
+                            v.first().and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                            v.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                            v.get(2).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                            v.get(3).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                        ]);
+                    }
+                }
+            }
+            let mut polys = Vec::new();
+            if let Some(arr) = spec.get("p").and_then(serde_json::Value::as_array) {
+                for poly in arr {
+                    let Some(pts) = poly.as_array() else { continue };
+                    let mut out = Vec::new();
+                    for pt in pts {
+                        let Some(xy) = pt.as_array() else { continue };
+                        out.push([
+                            xy.first()
+                                .and_then(serde_json::Value::as_f64)
+                                .unwrap_or(0.0) as f32,
+                            xy.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                        ]);
+                    }
+                    if out.len() >= 3 {
+                        polys.push(out);
+                    }
+                }
+            }
+            let ops = page.canvas_fill_path(id, &rects, &polys, &arg_str(args, 2));
+            Ok(JsValue::Number(ops as f64))
+        }
         "mutationsSince" => {
             let since = ve_core::Revision(arg_f64(args, 0) as u64);
             let Some(entries) = page.doc.journal().entries_since(since) else {
@@ -1493,27 +2017,65 @@ pub(crate) fn host_call(
             };
             Ok(JsValue::Array(
                 entries
-                    .map(|e| {
-                        let (ty, target, attr) = match &e.mutation {
-                            Mutation::NodeInserted { node, .. }
-                            | Mutation::NodeRemoved { node, .. } => {
-                                ("childList", Some(*node), None)
-                            }
-                            Mutation::AttributeChanged { node, name, .. } => {
-                                ("attributes", Some(*node), Some(name.as_str()))
-                            }
-                            Mutation::TextChanged { node } => ("characterData", Some(*node), None),
-                            _ => ("childList", e.mutation.target(), None),
-                        };
+                    .filter_map(|e| {
                         let mut map = BTreeMap::new();
-                        map.insert("type".into(), JsValue::from(ty));
-                        if let Some(t) = target {
-                            map.insert("target".into(), pack(t));
+                        match &e.mutation {
+                            Mutation::NodeInserted {
+                                node,
+                                parent,
+                                previous_sibling,
+                                next_sibling,
+                            } => {
+                                map.insert("type".into(), JsValue::from("childList"));
+                                map.insert("target".into(), pack(*parent));
+                                map.insert("added".into(), arr(std::iter::once(*node)));
+                                map.insert("removed".into(), JsValue::Array(Vec::new()));
+                                map.insert(
+                                    "prev".into(),
+                                    previous_sibling.map_or(JsValue::Null, pack),
+                                );
+                                map.insert("next".into(), next_sibling.map_or(JsValue::Null, pack));
+                            }
+                            Mutation::NodeRemoved {
+                                node,
+                                parent,
+                                previous_sibling,
+                                next_sibling,
+                            } => {
+                                map.insert("type".into(), JsValue::from("childList"));
+                                map.insert("target".into(), pack(*parent));
+                                map.insert("added".into(), JsValue::Array(Vec::new()));
+                                map.insert("removed".into(), arr(std::iter::once(*node)));
+                                map.insert(
+                                    "prev".into(),
+                                    previous_sibling.map_or(JsValue::Null, pack),
+                                );
+                                map.insert("next".into(), next_sibling.map_or(JsValue::Null, pack));
+                            }
+                            Mutation::AttributeChanged {
+                                node,
+                                name,
+                                old_value,
+                            } => {
+                                map.insert("type".into(), JsValue::from("attributes"));
+                                map.insert("target".into(), pack(*node));
+                                map.insert("attr".into(), JsValue::from(name.as_str()));
+                                map.insert(
+                                    "oldValue".into(),
+                                    old_value.as_deref().map_or(JsValue::Null, JsValue::from),
+                                );
+                            }
+                            Mutation::TextChanged { node, old_value } => {
+                                map.insert("type".into(), JsValue::from("characterData"));
+                                map.insert("target".into(), pack(*node));
+                                map.insert(
+                                    "oldValue".into(),
+                                    old_value.as_deref().map_or(JsValue::Null, JsValue::from),
+                                );
+                            }
+                            _ => return None,
                         }
-                        if let Some(a) = attr {
-                            map.insert("attr".into(), JsValue::from(a));
-                        }
-                        JsValue::Object(map)
+                        Some(JsValue::Object(map))
                     })
                     .collect(),
             ))
@@ -1676,6 +2238,48 @@ fn idb_unique_violation(store: &crate::page::IdbObjectStore, skip_key: &str, val
     })
 }
 
+fn document_write(page: &mut Page, html: &str) -> Result<JsValue, ScriptError> {
+    if html.is_empty() {
+        return Ok(JsValue::Array(Vec::new()));
+    }
+    let scripting = page.scripting.is_some();
+    let taken = std::mem::replace(&mut page.doc, Document::new());
+    let (doc, kids) = ve_html::parse_fragment_into(taken, "body", html, scripting);
+    page.doc = doc;
+    let parent = page
+        .parser_limit
+        .and_then(|id| page.doc.parent(id))
+        .or_else(|| page.doc.body())
+        .or_else(|| page.doc.document_element())
+        .unwrap_or_else(|| page.doc.root());
+    let before = page.parser_limit.and_then(|id| page.doc.next_sibling(id));
+    let mut scripts = Vec::new();
+    for kid in kids {
+        if let Some(b) = before {
+            let _ = page.doc.insert_before(b, kid);
+        } else {
+            let _ = page.doc.append_child(parent, kid);
+        }
+        collect_script_ids(&page.doc, kid, &mut scripts);
+    }
+    for &id in &scripts {
+        let source = page.doc.text_content(id);
+        page.pending_write_scripts.push((id, source));
+    }
+    Ok(arr(scripts))
+}
+
+fn collect_script_ids(doc: &Document, root: NodeId, out: &mut Vec<NodeId>) {
+    if doc.element(root).is_some_and(|e| e.name == "script") {
+        out.push(root);
+    }
+    for c in doc.descendants(root) {
+        if doc.element(c).is_some_and(|e| e.name == "script") {
+            out.push(c);
+        }
+    }
+}
+
 fn decode_data_url(url: &str) -> Option<(String, Vec<u8>)> {
     let rest = url.strip_prefix("data:")?;
     let (meta, payload) = rest.split_once(',')?;
@@ -1693,25 +2297,99 @@ fn decode_data_url(url: &str) -> Option<(String, Vec<u8>)> {
     Some((ct, bytes))
 }
 
+fn promote_waiting_worker(page: &mut Page, scope: &str) {
+    let Some(idx) = page.service_workers.iter().position(|s| s.scope == scope) else {
+        return;
+    };
+    let Some(waiting_script) = page.service_workers[idx].waiting_script.take() else {
+        return;
+    };
+    let waiting_url = page.service_workers[idx]
+        .waiting_script_url
+        .take()
+        .unwrap_or_default();
+    if let Some(realm) = page.sw_waiting_realms.remove(scope) {
+        let claimed = realm.activate() || realm.claimed;
+        page.sw_realms.insert(scope.to_owned(), realm);
+        page.service_workers[idx].claimed |= claimed;
+    }
+    page.service_workers[idx].script = waiting_script;
+    if !waiting_url.is_empty() {
+        page.service_workers[idx].script_url = waiting_url;
+    }
+}
+
+fn intercept_service_worker(
+    page: &mut Page,
+    resolved: &str,
+    method: &str,
+) -> Option<(String, String, u16)> {
+    let matched_idx = page.service_workers.iter().rev().position(|s| {
+        resolved.starts_with(&s.scope) || resolved.starts_with(s.scope.trim_end_matches('/'))
+    })?;
+    let matched_idx = page.service_workers.len() - 1 - matched_idx;
+    let claimed = page.service_workers[matched_idx].claimed;
+    let scope = page.service_workers[matched_idx].scope.clone();
+    let script_url = page.service_workers[matched_idx].script_url.clone();
+    let script = page.service_workers[matched_idx].script.clone();
+    let mut clients = format!(
+        r#"[{{"url":"{}","type":"window","id":"1","controlled":{}}}]"#,
+        page.url,
+        if claimed { "true" } else { "false" }
+    );
+    if !page.workers.is_empty() {
+        let extra: Vec<String> = page
+            .workers
+            .iter()
+            .map(|(id, w)| {
+                format!(
+                    r#"{{"url":"{}","type":"worker","id":"w{id}","controlled":{}}}"#,
+                    w.source.lines().next().unwrap_or("blob:worker"),
+                    if claimed { "true" } else { "false" }
+                )
+            })
+            .collect();
+        let window = format!(
+            r#"{{"url":"{}","type":"window","id":"1","controlled":{}}}"#,
+            page.url,
+            if claimed { "true" } else { "false" }
+        );
+        clients = format!("[{window},{}]", extra.join(","));
+    }
+    if let Some(realm) = page.sw_realms.get(&scope)
+        && let Some((body, status)) = realm.fetch(resolved, method, &clients)
+    {
+        let posts = realm.take_client_posts();
+        page.sw_client_posts.extend(posts);
+        return Some((script_url, body, status));
+    }
+    crate::page::service_worker_intercept(&script, resolved, method)
+        .map(|(body, status)| (script_url, body, status))
+}
+
 fn fetch(page: &mut Page, url: &str, method: &str, body: &str) -> Result<JsValue, ScriptError> {
-    let resolved = page.resolve_url(url).unwrap_or_else(|| url.to_owned());
-    if let Some((script_url, canned)) = page.service_workers.iter().rev().find_map(|s| {
-        let in_scope =
-            resolved.starts_with(&s.scope) || resolved.starts_with(s.scope.trim_end_matches('/'));
-        if !in_scope {
-            return None;
-        }
-        crate::page::service_worker_response_body(&s.script)
-            .map(|body| (s.script_url.clone(), body))
-    }) {
+    let resolved = crate::page::rewrite_loopback_fetch(
+        &page.resolve_url(url).unwrap_or_else(|| url.to_owned()),
+    );
+    if let Some((script_url, canned, status)) = intercept_service_worker(page, &resolved, method) {
         let mut headers = BTreeMap::new();
         headers.insert(
             "x-service-worker".into(),
             JsValue::from(script_url.as_str()),
         );
+        if (300..400).contains(&status) {
+            headers.insert("location".into(), JsValue::from(canned.as_str()));
+        }
+        let status_text = if status < 300 {
+            "OK"
+        } else if status < 400 {
+            "Redirect"
+        } else {
+            "Error"
+        };
         return Ok(obj(&[
-            ("status", JsValue::Number(200.0)),
-            ("statusText", JsValue::from("OK")),
+            ("status", JsValue::Number(f64::from(status))),
+            ("statusText", JsValue::from(status_text)),
             ("url", JsValue::from(resolved.as_str())),
             ("body", JsValue::from(canned.as_str())),
             ("headers", JsValue::Object(headers)),
@@ -1735,12 +2413,19 @@ fn fetch(page: &mut Page, url: &str, method: &str, body: &str) -> Result<JsValue
     }
     let method = if method.is_empty() { "GET" } else { method };
     let id = page.id();
+    let origin = page.url.clone();
     let loader = page
         .loader
         .as_mut()
         .ok_or_else(|| fail("fetch needs a loader"))?;
     let res = loader
-        .script_fetch(&resolved, method, body.as_bytes(), id)
+        .script_fetch(
+            &resolved,
+            method,
+            body.as_bytes(),
+            id,
+            Some(origin.as_str()),
+        )
         .map_err(|e| fail(e.to_string()))?;
     let body = String::from_utf8_lossy(&res.bytes).into_owned();
     let body_b64 = ve_net::base64_encode(&res.bytes);
@@ -1791,6 +2476,18 @@ impl Page {
         cancelable: bool,
         client: Option<ve_core::Point>,
     ) -> bool {
+        self.dispatch_js_event_init(id, r#type, bubbles, cancelable, client, &[])
+    }
+
+    pub(crate) fn dispatch_js_event_init(
+        &mut self,
+        id: NodeId,
+        r#type: &str,
+        bubbles: bool,
+        cancelable: bool,
+        client: Option<ve_core::Point>,
+        extra: &[(&str, JsValue)],
+    ) -> bool {
         if self.scripting.is_none() {
             return false;
         }
@@ -1801,6 +2498,9 @@ impl Page {
         if let Some(p) = client {
             init.insert("clientX".into(), JsValue::Number(f64::from(p.x)));
             init.insert("clientY".into(), JsValue::Number(f64::from(p.y)));
+        }
+        for (k, v) in extra {
+            init.insert((*k).to_owned(), v.clone());
         }
         match self.call_script(
             "__veDispatch",

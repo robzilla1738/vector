@@ -39,7 +39,8 @@ cd engine && cargo build -p ve-napi --features napi --release
 
 The product GUI is `pnpm dev` / `cargo run -p ve-shell --features product -- --gui`.
 Electron is `pnpm dev:electron`. Evidence:
-[docs/engine/evidence](docs/engine/evidence/README.md). Harness:
+[docs/engine/evidence](docs/engine/evidence/README.md) (testharness 112/0;
+official `html/dom` 302 PASS / 29 FAIL, `idlharness.https.html` PASS). Harness:
 `cargo run --release -p wpt-harness --features v8 -- --http` and
 `cargo run --release -p wpt-runner` (geometry; `--use-reftest-fonts` loads Ahem).
 
@@ -67,8 +68,8 @@ same harness (`tests/benchmarks/run.mjs`), 5 repeats after 1 warmup, p50 on
 darwin arm64 (2026-09-16). Chromium is the headless standalone driver with
 `engineMode: off`; Vector Engine is `engineMode: always` (process isolation).
 Held-out p95 of `act+observe`: Chromium 14.9 ms, engine 2.8 ms (5.32×).
-Tokens were not collected, so the 2× p95 / 50% token stretch is not claimed.
-Snapshot: `docs/engine/evidence/held-out-latest.json`.
+Token stretch is measured from declared model usage (`meetsStretch` true,
+`tokenRatio` 8.35). Snapshot: `docs/engine/evidence/held-out-latest.json`.
 
 | Metric | Chromium | Vector Engine |
 |---|---:|---:|

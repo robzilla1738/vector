@@ -37,4 +37,9 @@ interface Document : Node {
   sequence<Element> querySelectorAll(DOMString selectors);
   HTMLCollection getElementsByTagName(DOMString qualifiedName);
   HTMLCollection getElementsByClassName(DOMString classNames);
+  Node importNode(Node node, optional boolean deep);
+  Node adoptNode(Node node);
+  Element? elementFromPoint(unrestricted double x, unrestricted double y);
+  sequence<Element> elementsFromPoint(unrestricted double x, unrestricted double y);
+  getter any (DOMString name);
 };

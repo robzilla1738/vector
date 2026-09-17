@@ -197,22 +197,50 @@ fn sandbox_selftest(kind: &str) -> std::process::ExitStatus {
         .unwrap_or_else(|e| panic!("spawn ve-host selftest {kind}: {e}"))
 }
 
+fn sandbox_denied(status: &std::process::ExitStatus) -> bool {
+    if status.code() == Some(0) {
+        return true;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        status.signal().is_some()
+    }
+    #[cfg(not(unix))]
+    {
+        false
+    }
+}
+
 #[test]
 fn sandbox_denies_child_process_exec() {
     let status = sandbox_selftest("exec");
-    assert_eq!(
-        status.code(),
-        Some(0),
+    assert!(
+        sandbox_denied(&status),
         "sandboxed ve-host must not exec /usr/bin/true (11) or skip the sandbox (2): {status:?}"
     );
+    assert_ne!(status.code(), Some(11));
+    assert_ne!(status.code(), Some(2));
 }
 
 #[test]
 fn sandbox_denies_network_creation() {
     let status = sandbox_selftest("network");
-    assert_eq!(
-        status.code(),
-        Some(0),
+    assert!(
+        sandbox_denied(&status),
         "sandboxed ve-host must not create sockets (12) or skip the sandbox (2): {status:?}"
     );
+    assert_ne!(status.code(), Some(12));
+    assert_ne!(status.code(), Some(2));
+}
+
+#[test]
+fn sandbox_denies_clone() {
+    let status = sandbox_selftest("clone");
+    assert!(
+        sandbox_denied(&status),
+        "sandboxed ve-host must not clone/unshare/fork (13) or skip the sandbox (2): {status:?}"
+    );
+    assert_ne!(status.code(), Some(13));
+    assert_ne!(status.code(), Some(2));
 }

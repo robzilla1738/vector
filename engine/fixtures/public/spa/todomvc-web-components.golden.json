@@ -24,34 +24,30 @@
   ],
   "elements": [
     {
-      "ref": "r43",
-      "frame": "main",
+      "ref": "r28",
       "tag": "a",
       "role": "link",
       "name": "todos",
-      "href": "https://todomvc.com/examples/web-components/dist/#",
-      "selector": {}
+      "href": "https://todomvc.com/examples/web-components/dist/#"
     },
     {
-      "ref": "r60",
-      "frame": "main",
+      "ref": "r45",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [],
   "tables": [],
   "links": [
     {
-      "ref": "r43",
+      "ref": "r28",
       "text": "todos",
       "href": "https://todomvc.com/examples/web-components/dist/#"
     },
     {
-      "ref": "r60",
+      "ref": "r45",
       "text": "TodoMVC",
       "href": "http://todomvc.com/"
     }

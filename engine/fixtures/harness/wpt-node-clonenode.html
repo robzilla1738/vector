@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<title>Node.cloneNode</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  el.id = "src"
+  el.appendChild(document.createTextNode("hi"))
+  var shallow = el.cloneNode(false)
+  assert_equals(shallow.id, "src")
+  assert_false(shallow.hasChildNodes())
+  var deep = el.cloneNode(true)
+  assert_equals(deep.id, "src")
+  assert_true(deep.hasChildNodes())
+  assert_equals(deep.textContent, "hi")
+}, "cloneNode copies attributes; deep copies descendants")
+</script>

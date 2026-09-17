@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<title>Node.replaceChild</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var parent = document.createElement("div")
+  var oldn = document.createElement("span")
+  var neu = document.createElement("i")
+  parent.appendChild(oldn)
+  var ret = parent.replaceChild(neu, oldn)
+  assert_equals(ret, oldn)
+  assert_equals(parent.firstChild, neu)
+  assert_equals(oldn.parentNode, null)
+  assert_equals(neu.parentNode, parent)
+}, "replaceChild swaps the child and returns the old node")
+</script>

@@ -66,6 +66,24 @@ pub struct MediaRule {
     pub rules: Vec<CssRule>,
 }
 
+/// One keyframe (`from` / `to` / `%`) inside `@keyframes`.
+#[derive(Clone, Debug)]
+pub struct Keyframe {
+    /// Offsets in `0.0..=1.0` (`from` = 0, `to` = 1).
+    pub offsets: Vec<f32>,
+    /// Declarations at those offsets.
+    pub block: DeclarationBlock,
+}
+
+/// A `@keyframes` / `@-webkit-keyframes` rule.
+#[derive(Clone, Debug)]
+pub struct KeyframesRule {
+    /// Animation name.
+    pub name: String,
+    /// Keyframes in source order.
+    pub frames: Vec<Keyframe>,
+}
+
 /// A top-level or nested rule.
 #[derive(Clone, Debug)]
 pub enum CssRule {
@@ -73,6 +91,8 @@ pub enum CssRule {
     Style(StyleRule),
     /// A `@media` rule.
     Media(MediaRule),
+    /// A `@keyframes` rule. Does not participate in the cascade.
+    Keyframes(KeyframesRule),
 }
 
 /// A parsed stylesheet.
@@ -106,10 +126,28 @@ impl Stylesheet {
                 .map(|r| match r {
                     CssRule::Style(_) => 1,
                     CssRule::Media(m) => count(&m.rules),
+                    CssRule::Keyframes(_) => 0,
                 })
                 .sum()
         }
         count(&self.rules)
+    }
+
+    /// `@keyframes` rules in source order, including nested sheets.
+    #[must_use]
+    pub fn keyframes(&self) -> Vec<&KeyframesRule> {
+        fn walk<'a>(rules: &'a [CssRule], out: &mut Vec<&'a KeyframesRule>) {
+            for rule in rules {
+                match rule {
+                    CssRule::Keyframes(k) => out.push(k),
+                    CssRule::Media(m) => walk(&m.rules, out),
+                    CssRule::Style(_) => {}
+                }
+            }
+        }
+        let mut out = Vec::new();
+        walk(&self.rules, &mut out);
+        out
     }
 }
 
@@ -320,6 +358,8 @@ enum AtPrelude {
     /// condition is treated as true (`@supports not (...)` is rare in static
     /// pages and errs on the side of applying styles).
     Transparent,
+    /// `@keyframes name`.
+    Keyframes(String),
 }
 
 impl<'i> QualifiedRuleParser<'i> for RuleParser {
@@ -357,6 +397,11 @@ impl<'i> AtRuleParser<'i> for RuleParser {
     ) -> Result<Self::Prelude, ParseError<'i, Self::Error>> {
         if name.eq_ignore_ascii_case("media") {
             Ok(AtPrelude::Media(MediaQueryList::parse(input)))
+        } else if name.eq_ignore_ascii_case("keyframes")
+            || name.eq_ignore_ascii_case("-webkit-keyframes")
+        {
+            let ident = input.expect_ident()?;
+            Ok(AtPrelude::Keyframes(ident.as_ref().to_owned()))
         } else if name.eq_ignore_ascii_case("supports")
             || name.eq_ignore_ascii_case("layer")
             || name.eq_ignore_ascii_case("scope")
@@ -374,22 +419,105 @@ impl<'i> AtRuleParser<'i> for RuleParser {
         _start: &ParserState,
         input: &mut Parser<'i, 't>,
     ) -> Result<CssRule, ParseError<'i, Self::Error>> {
-        let rules = RuleBodyParser::new(input, self)
-            .filter_map(|r| match r {
-                Ok(rule) => Some(rule),
-                Err((err, slice)) => {
-                    tracing::debug!(?err.kind, slice, "skipping invalid nested rule");
-                    None
-                }
-            })
-            .collect();
         match prelude {
-            AtPrelude::Media(query) => Ok(CssRule::Media(MediaRule { query, rules })),
-            AtPrelude::Transparent => Ok(CssRule::Media(MediaRule {
-                query: MediaQueryList::default(),
-                rules,
-            })),
+            AtPrelude::Keyframes(name) => {
+                let mut body = KeyframeBodyParser {
+                    coverage: &mut self.coverage,
+                };
+                let frames = RuleBodyParser::new(input, &mut body)
+                    .filter_map(|r| match r {
+                        Ok(frame) => Some(frame),
+                        Err((err, slice)) => {
+                            tracing::debug!(?err.kind, slice, "skipping invalid keyframe");
+                            None
+                        }
+                    })
+                    .collect();
+                Ok(CssRule::Keyframes(KeyframesRule { name, frames }))
+            }
+            prelude => {
+                let rules = RuleBodyParser::new(input, self)
+                    .filter_map(|r| match r {
+                        Ok(rule) => Some(rule),
+                        Err((err, slice)) => {
+                            tracing::debug!(?err.kind, slice, "skipping invalid nested rule");
+                            None
+                        }
+                    })
+                    .collect();
+                match prelude {
+                    AtPrelude::Media(query) => Ok(CssRule::Media(MediaRule { query, rules })),
+                    AtPrelude::Transparent => Ok(CssRule::Media(MediaRule {
+                        query: MediaQueryList::default(),
+                        rules,
+                    })),
+                    AtPrelude::Keyframes(_) => unreachable!("handled above"),
+                }
+            }
         }
+    }
+}
+
+struct KeyframeBodyParser<'c> {
+    coverage: &'c mut CssCoverage,
+}
+
+impl<'i> AtRuleParser<'i> for KeyframeBodyParser<'_> {
+    type Prelude = ();
+    type AtRule = Keyframe;
+    type Error = StyleParseErrorKind<'i>;
+}
+
+impl<'i> QualifiedRuleParser<'i> for KeyframeBodyParser<'_> {
+    type Prelude = Vec<f32>;
+    type QualifiedRule = Keyframe;
+    type Error = StyleParseErrorKind<'i>;
+
+    fn parse_prelude<'t>(
+        &mut self,
+        input: &mut Parser<'i, 't>,
+    ) -> Result<Self::Prelude, ParseError<'i, Self::Error>> {
+        let mut offsets = Vec::new();
+        loop {
+            if input.try_parse(|i| i.expect_ident_matching("from")).is_ok() {
+                offsets.push(0.0);
+            } else if input.try_parse(|i| i.expect_ident_matching("to")).is_ok() {
+                offsets.push(1.0);
+            } else if let Ok(p) = input.try_parse(Parser::expect_percentage) {
+                offsets.push(p);
+            } else {
+                return Err(input.new_error(cssparser::BasicParseErrorKind::QualifiedRuleInvalid));
+            }
+            if input.try_parse(Parser::expect_comma).is_err() {
+                break;
+            }
+        }
+        Ok(offsets)
+    }
+
+    fn parse_block<'t>(
+        &mut self,
+        offsets: Self::Prelude,
+        _start: &ParserState,
+        input: &mut Parser<'i, 't>,
+    ) -> Result<Keyframe, ParseError<'i, Self::Error>> {
+        let block = parse_declarations(input, self.coverage);
+        Ok(Keyframe { offsets, block })
+    }
+}
+
+impl<'i> DeclarationParser<'i> for KeyframeBodyParser<'_> {
+    type Declaration = Keyframe;
+    type Error = StyleParseErrorKind<'i>;
+}
+
+impl<'i> RuleBodyItemParser<'i, Keyframe, StyleParseErrorKind<'i>> for KeyframeBodyParser<'_> {
+    fn parse_declarations(&self) -> bool {
+        false
+    }
+
+    fn parse_qualified(&self) -> bool {
+        true
     }
 }
 
@@ -462,5 +590,34 @@ mod tests {
         assert_eq!(block.declarations[2].value, SpecifiedValue::Raw("1".into()));
         assert!(block.declarations[2].important);
         assert_eq!(strip_cdata("<![CDATA[ a{} ]]>"), " a{} ");
+    }
+
+    #[test]
+    fn parses_keyframes_and_ignores_them_in_style_count() {
+        let sheet = parse_stylesheet(
+            r"
+            @keyframes fade {
+                from { opacity: 0 }
+                50% { opacity: 0.5 }
+                to { opacity: 1 }
+            }
+            @-webkit-keyframes slide {
+                0%, 100% { margin-left: 0 }
+            }
+            .box { animation-name: fade }
+            ",
+            Origin::Author,
+        );
+        assert_eq!(sheet.style_rule_count(), 1);
+        let names: Vec<_> = sheet.keyframes().iter().map(|k| k.name.as_str()).collect();
+        assert_eq!(names, ["fade", "slide"]);
+        let fade = &sheet.keyframes()[0];
+        assert_eq!(fade.frames.len(), 3);
+        assert_eq!(fade.frames[0].offsets, [0.0]);
+        assert_eq!(fade.frames[1].offsets, [0.5]);
+        assert_eq!(fade.frames[2].offsets, [1.0]);
+        assert!(!fade.frames[0].block.is_empty());
+        let slide = &sheet.keyframes()[1];
+        assert_eq!(slide.frames[0].offsets, [0.0, 1.0]);
     }
 }

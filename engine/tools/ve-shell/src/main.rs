@@ -13,6 +13,8 @@ use ve_api::{
 };
 use ve_core::Size;
 
+#[cfg(all(feature = "window", feature = "gpu"))]
+mod gpu_window;
 #[cfg(feature = "window")]
 mod gui;
 
@@ -93,6 +95,7 @@ fn run_gui(args: &Args) -> Result<()> {
         policy: ve_api::NetworkPolicy::permissive(),
         ..EngineConfig::default()
     });
+    browser.enable_os_clipboard();
     let html = args.html.clone();
     if let Some(html) = html {
         browser.handle_event(NativeEvent::NewTab {

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { VectorError, type Predicate, type Program, type ProgramResult, type Step } from "@vector/contracts";
+import { agentMayEgress } from "../agent/policy.js";
 import { evalPredicate } from "../execution/interpreter.js";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
@@ -77,6 +78,7 @@ export class OperationService {
       /** converts ephemeral rN refs into stable role/css selectors for replay */
       translateSteps?: (pageId: string, steps: Step[]) => Step[];
       fetchJson?: (url: string, init?: RequestInit) => Promise<unknown>;
+      egressAllowlist?: () => string[];
     },
   ) {}
 
@@ -570,6 +572,20 @@ export class OperationService {
         if (e instanceof VectorError) throw e;
         // page gone or not readable — fall through to runtime fetch
       }
+    }
+
+    let pageHost: string | undefined;
+    if (pageId) {
+      try {
+        pageHost = new URL(this.deps.pages.get(pageId).url).host;
+      } catch {
+        pageHost = undefined;
+      }
+    }
+    const allow = this.deps.egressAllowlist?.() ?? [];
+    const hosts = allow.length > 0 ? allow : pageHost ? [pageHost] : [];
+    if (!agentMayEgress(url, hosts)) {
+      throw new VectorError("permission_denied", `agent egress denied for ${url}`);
     }
 
     const res = await fetch(url, {

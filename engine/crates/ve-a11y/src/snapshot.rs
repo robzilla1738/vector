@@ -8,7 +8,7 @@ use ve_core::{NodeId, Rect, Revision};
 use ve_dom::Document;
 
 use crate::roles::Role;
-use crate::tree::{AccessibilityNode, AccessibilityTree};
+use crate::tree::{AccessibilityNode, AccessibilityTree, Live};
 
 /// How much detail a snapshot carries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
@@ -231,7 +231,10 @@ fn flatten(
 fn should_prune(node: &AccessibilityNode, parent_name: Option<&str>) -> bool {
     match node.role {
         Role::Generic | Role::Presentation => {
-            node.name.is_empty() && node.value.is_none() && node.states.active().is_empty()
+            node.live == Live::Off
+                && node.name.is_empty()
+                && node.value.is_none()
+                && node.states.active().is_empty()
         }
         Role::StaticText => parent_name.is_some_and(|p| p == node.name),
         _ => false,

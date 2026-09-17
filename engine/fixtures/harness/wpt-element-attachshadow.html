@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<title>Element.attachShadow</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  document.body.appendChild(el)
+  var root = el.attachShadow({mode: "open"})
+  assert_equals(root.mode, "open")
+  assert_equals(el.shadowRoot, root)
+  var span = document.createElement("span")
+  root.appendChild(span)
+  assert_equals(root.firstChild, span)
+  assert_true(root.contains(span))
+}, "attachShadow creates an open shadow root")
+</script>

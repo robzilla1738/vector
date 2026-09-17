@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<title>Document.activeElement</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var i = document.createElement("input")
+  document.body.appendChild(i)
+  i.focus()
+  assert_equals(document.activeElement, i)
+  i.blur()
+  assert_true(document.activeElement === document.body || document.activeElement === document.documentElement)
+}, "focus and blur update activeElement")
+</script>

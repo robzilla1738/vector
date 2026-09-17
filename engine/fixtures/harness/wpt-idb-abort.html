@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>IDBTransaction.abort</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script>
+async_test(function (t) {
+  var req = indexedDB.open("wpt-abort");
+  req.onsuccess = t.step_func(function () {
+    var db = req.result;
+    db.createObjectStore("kv");
+    var keep = db.transaction("kv");
+    keep.objectStore().put({v: 1}, "keep");
+    keep.oncomplete = t.step_func(function () {
+      var tx = db.transaction("kv");
+      tx.objectStore().put({v: 2}, "gone");
+      tx.abort();
+      var g1 = db.transaction("kv").objectStore().get("keep");
+      g1.onsuccess = t.step_func(function () {
+        var g2 = db.transaction("kv").objectStore().get("gone");
+        g2.onsuccess = t.step_func_done(function () {
+          assert_equals(g1.result.v, 1);
+          assert_equals(g2.result, undefined);
+        });
+      });
+    });
+  });
+}, "abort restores the pre-transaction store snapshot");
+</script>

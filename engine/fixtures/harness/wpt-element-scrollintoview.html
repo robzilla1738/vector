@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>Element.scrollIntoView</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<div id="pad" style="height:3000px;width:100px">pad</div>
+<div id="t" style="height:40px">target</div>
+<script>
+test(function() {
+  var t = document.getElementById("t")
+  assert_true(t.offsetTop > 720, "target is below the viewport before scrolling")
+  t.scrollIntoView()
+  assert_true(window.scrollY > 0, "scrollY advances")
+  assert_true(t.getBoundingClientRect().top < 720, "target is in the viewport after scrollIntoView")
+}, "scrollIntoView moves the viewport to the target")
+</script>

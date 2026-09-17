@@ -15,15 +15,16 @@
 //! 5. vertically aligns cell content (`top` / `middle` / `bottom`);
 //! 6. places captions above or below per `caption-side`.
 //!
-//! `border-collapse: collapse` zeroes the spacing (done by the cascade) but
-//! borders are not yet merged; column elements contribute no widths.
+//! `border-collapse: collapse` zeroes the spacing (done by the cascade) and
+//! adjacent cells share an edge of `max(left, right)` / `max(top, bottom)`
+//! so the shared border is not doubled. Column elements contribute no widths.
 
 use ve_core::{Point, Rect, Size};
-use ve_style::{BoxSizing, CaptionSide, LengthPercentageAuto, VerticalAlign};
+use ve_style::{BorderCollapse, BoxSizing, CaptionSide, LengthPercentageAuto, VerticalAlign};
 
 use crate::block::{
-    ContainingBlock, Forced, LayoutCtx, box_edges, intrinsic_min_width, intrinsic_width,
-    layout_box_at, resolve_margins, translate_subtree,
+    ContainingBlock, Forced, LayoutCtx, border_edges, box_edges, intrinsic_min_width,
+    intrinsic_width, layout_box_at, resolve_margins, translate_subtree,
 };
 use crate::box_tree::{BoxKind, LayoutBox};
 
@@ -138,8 +139,48 @@ struct Columns {
     spec: Vec<ColSpec>,
 }
 
+fn cell<'a>(bx: &'a LayoutBox, gc: &GridCell) -> &'a LayoutBox {
+    &bx.children[gc.group].children[gc.row].children[gc.cell]
+}
+
 fn cell_mut<'a>(bx: &'a mut LayoutBox, gc: &GridCell) -> &'a mut LayoutBox {
     &mut bx.children[gc.group].children[gc.row].children[gc.cell]
+}
+
+/// Overlap on the grid line after column/row `i` (shared collapsed border).
+fn collapsed_overlaps(bx: &LayoutBox, grid: &Grid) -> (Vec<f32>, Vec<f32>) {
+    let n = grid.n_cols;
+    let nr = grid.rows.len();
+    let mut col_left = vec![0.0_f32; n];
+    let mut col_right = vec![0.0_f32; n];
+    let mut row_top = vec![0.0_f32; nr];
+    let mut row_bottom = vec![0.0_f32; nr];
+    for gc in &grid.cells {
+        let b = border_edges(&cell(bx, gc).style);
+        if n > 0 {
+            col_left[gc.col] = col_left[gc.col].max(b.left);
+            let last_c = gc.col + gc.col_span - 1;
+            col_right[last_c] = col_right[last_c].max(b.right);
+        }
+        if nr > 0 {
+            row_top[gc.grid_row] = row_top[gc.grid_row].max(b.top);
+            let last_r = (gc.grid_row + gc.row_span - 1).min(nr.saturating_sub(1));
+            row_bottom[last_r] = row_bottom[last_r].max(b.bottom);
+        }
+    }
+    let mut col_ov = vec![0.0; n];
+    for i in 0..n.saturating_sub(1) {
+        col_ov[i] = col_right[i].max(col_left[i + 1]);
+    }
+    let mut row_ov = vec![0.0; nr];
+    for i in 0..nr.saturating_sub(1) {
+        row_ov[i] = row_bottom[i].max(row_top[i + 1]);
+    }
+    (col_ov, row_ov)
+}
+
+fn overlap_sum(ov: &[f32], start: usize, end: usize) -> f32 {
+    ov.get(start..end).map_or(0.0, |s| s.iter().copied().sum())
 }
 
 fn column_widths(
@@ -486,16 +527,23 @@ fn layout_rows(
     if grid.rows.is_empty() {
         return top;
     }
-    // Column x positions.
+    let collapsed = bx.style.border_collapse == BorderCollapse::Collapse;
+    let (col_ov, row_ov) = if collapsed {
+        collapsed_overlaps(bx, grid)
+    } else {
+        (vec![0.0; widths.len()], vec![0.0; grid.rows.len()])
+    };
+    // Column x positions. Collapsed adjacent borders occupy one shared edge.
     let mut col_x = Vec::with_capacity(widths.len());
     let mut x = content_x + spacing.width;
-    for w in widths {
+    for (i, w) in widths.iter().enumerate() {
         col_x.push(x);
-        x += w + spacing.width;
+        x += w + spacing.width - col_ov.get(i).copied().unwrap_or(0.0);
     }
     let cell_width = |gc: &GridCell| -> f32 {
         widths[gc.col..gc.col + gc.col_span].iter().sum::<f32>()
             + spacing.width * (gc.col_span - 1) as f32
+            - overlap_sum(&col_ov, gc.col, gc.col + gc.col_span.saturating_sub(1))
     };
 
     // ---- measure: row heights ---------------------------------------------
@@ -537,7 +585,8 @@ fn layout_rows(
         let h = cell.rect.height();
         let last = (gc.grid_row + gc.row_span - 1).min(n_rows - 1);
         let spanned: f32 = row_heights[gc.grid_row..=last].iter().sum::<f32>()
-            + spacing.height * (last - gc.grid_row) as f32;
+            + spacing.height * (last - gc.grid_row) as f32
+            - overlap_sum(&row_ov, gc.grid_row, last);
         if h > spanned {
             row_heights[last] += h - spanned;
         }
@@ -546,16 +595,17 @@ fn layout_rows(
     // ---- place: rows, groups, cells ----------------------------------------
     let mut row_y = Vec::with_capacity(n_rows);
     let mut y = top + spacing.height;
-    for h in &row_heights {
+    for (i, h) in row_heights.iter().enumerate() {
         row_y.push(y);
-        y += h + spacing.height;
+        y += h + spacing.height - row_ov.get(i).copied().unwrap_or(0.0);
     }
     let bottom = y;
     for (i, gc) in grid.cells.iter().enumerate() {
         let w = cell_width(gc);
         let last = (gc.grid_row + gc.row_span - 1).min(n_rows - 1);
         let h: f32 = row_heights[gc.grid_row..=last].iter().sum::<f32>()
-            + spacing.height * (last - gc.grid_row) as f32;
+            + spacing.height * (last - gc.grid_row) as f32
+            - overlap_sum(&row_ov, gc.grid_row, last);
         let cell = cell_mut(bx, gc);
         let valign = cell.style.vertical_align;
         layout_box_at(

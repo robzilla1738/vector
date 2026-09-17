@@ -228,6 +228,31 @@ fn generated_webidl_traits_compile_in_the_vm_crate() {
 }
 
 #[test]
+fn match_media_orientation_and_compound_queries() {
+    let mut page = open("<title>mq</title>");
+    assert_eq!(
+        page.evaluate("matchMedia('(min-width: 1px)').matches")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    let land = page
+        .evaluate("matchMedia('(orientation: landscape)').matches")
+        .unwrap();
+    let expected = page.evaluate("innerWidth >= innerHeight").unwrap();
+    assert_eq!(land, expected);
+    assert_eq!(
+        page.evaluate("matchMedia('(prefers-reduced-motion: no-preference)').matches")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("matchMedia('(min-width: 1px) and (max-width: 10000px)').matches")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+}
+
+#[test]
 fn javascript_url_dialog_and_wait_for_expression() {
     let mut page = open(
         r#"<p id="p">no</p>
@@ -375,6 +400,26 @@ fn indexeddb_and_worker_round_trip() {
 }
 
 #[test]
+fn indexeddb_object_store_names_are_real() {
+    let mut page = open(
+        r#"<script>
+             window.__names = 'pending';
+             const req = indexedDB.open('stores');
+             req.onsuccess = () => {
+               const db = req.result;
+               db.createObjectStore('kv');
+               window.__names = db.objectStoreNames.contains('kv') && !db.objectStoreNames.contains('missing') ? 'ok' : 'bad';
+             };
+           </script>"#,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__names").unwrap(),
+        serde_json::json!("ok")
+    );
+}
+
+#[test]
 fn indexeddb_index_cursor_and_isolated_worker() {
     let mut page = open(
         r#"<script>
@@ -491,6 +536,39 @@ fn indexeddb_unique_compound_and_versionchange() {
 }
 
 #[test]
+fn indexeddb_abort_restores_snapshot() {
+    let mut page = open(
+        r#"<script>
+             window.__aborted = 'pending';
+             const req = indexedDB.open('abort-db');
+             req.onsuccess = () => {
+               const db = req.result;
+               db.createObjectStore('kv');
+               const keep = db.transaction('kv');
+               keep.objectStore().put({v:1}, 'keep');
+               keep.oncomplete = () => {
+                 const tx = db.transaction('kv');
+                 tx.objectStore().put({v:2}, 'gone');
+                 tx.abort();
+                 const g1 = db.transaction('kv').objectStore().get('keep');
+                 g1.onsuccess = () => {
+                   const g2 = db.transaction('kv').objectStore().get('gone');
+                   g2.onsuccess = () => {
+                     window.__aborted = (g1.result && g1.result.v === 1 && g2.result == null) ? 'ok' : 'bad';
+                   };
+                 };
+               };
+             };
+           </script>"#,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__aborted").unwrap(),
+        serde_json::json!("ok")
+    );
+}
+
+#[test]
 fn get_element_by_id_stringifies_null_and_undefined() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -581,6 +659,79 @@ fn canvas_fillrect_records_ops() {
 }
 
 #[test]
+fn canvas_todataurl_is_a_png() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 4;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 4, 4);
+              var url = c.toDataURL();
+              return { ok: url.indexOf("data:image/png;base64,") === 0, n: url.length };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+    assert!(v["n"].as_f64().unwrap_or(0.0) > 32.0, "{v}");
+}
+
+#[test]
+fn imagedata_and_path2d_paint_pixels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 4, 4);
+              var got = ctx.getImageData(0, 0, 4, 4);
+              var red = got.data[0] === 255 && got.data[1] === 0 && got.data[2] === 0;
+              var put = ctx.createImageData(2, 2);
+              for (var i = 0; i < put.data.length; i += 4) {
+                put.data[i] = 0; put.data[i+1] = 255; put.data[i+2] = 0; put.data[i+3] = 255;
+              }
+              ctx.putImageData(put, 4, 0);
+              var g2 = ctx.getImageData(4, 0, 2, 2);
+              var path = new Path2D();
+              path.rect(0, 4, 3, 3);
+              ctx.fillStyle = "#0000ff";
+              ctx.fill(path);
+              var g3 = ctx.getImageData(1, 5, 1, 1);
+              var tri = new Path2D("M4,4 L8,4 L6,8 Z");
+              ctx.fillStyle = "#ffffff";
+              ctx.fill(tri);
+              var g4 = ctx.getImageData(6, 5, 1, 1);
+              return {
+                imageData: got instanceof ImageData,
+                path2d: path instanceof Path2D,
+                w: got.width,
+                red: red,
+                green: g2.data[1] === 255 && g2.data[0] === 0,
+                blue: g3.data[2] === 255 && g3.data[0] === 0,
+                white: g4.data[0] === 255 && g4.data[1] === 255,
+                walkPrev: typeof document.createTreeWalker(document, 1).previousNode
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["imageData"], true, "{v}");
+    assert_eq!(v["path2d"], true, "{v}");
+    assert_eq!(v["w"], 4, "{v}");
+    assert_eq!(v["red"], true, "{v}");
+    assert_eq!(v["green"], true, "{v}");
+    assert_eq!(v["blue"], true, "{v}");
+    assert_eq!(v["white"], true, "{v}");
+    assert_eq!(v["walkPrev"], "function", "{v}");
+}
+
+#[test]
 fn iframe_about_blank_isconnected() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -657,4 +808,2110 @@ fn template_content_cssstylesheet_and_import_node() {
     assert_eq!(v["text"], "ok", "{v}");
     assert_eq!(v["sheet"], true, "{v}");
     assert_eq!(v["adopted"], 1, "{v}");
+}
+
+#[test]
+fn custom_elements_upgrade_runs_connected_callback() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              window.__n = 0;
+              class XFoo extends HTMLElement {
+                connectedCallback() { window.__n++; this.mark = true; }
+              }
+              const host = document.createElement('div');
+              host.innerHTML = '<x-foo></x-foo>';
+              customElements.define('x-foo', XFoo);
+              const before = window.__n;
+              customElements.upgrade(host);
+              const el = host.querySelector('x-foo');
+              return { before, after: window.__n, mark: !!(el && el.mark) };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["before"], 0, "{v}");
+    assert_eq!(v["after"], 1, "{v}");
+    assert_eq!(v["mark"], true, "{v}");
+}
+
+#[test]
+fn fill_updates_react_style_value_tracker() {
+    let mut page = open(r#"<input id="n" value="old">"#);
+    page.evaluate(
+        r#"(function () {
+          const el = document.getElementById('n');
+          const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+          window.__tracked = desc.get.call(el);
+          Object.defineProperty(el, 'value', {
+            configurable: true,
+            enumerable: true,
+            get() { return window.__tracked; },
+            set(v) { window.__tracked = String(v); desc.set.call(this, v); }
+          });
+          el.addEventListener('beforeinput', (e) => {
+            window.__bi = (e.inputType || '') + ':' + (e.data || '');
+          });
+          el.addEventListener('input', (e) => {
+            window.__in = (e instanceof InputEvent) && e.inputType;
+          });
+        })()"#,
+    )
+    .unwrap();
+    let program = Program {
+        steps: vec![Step::Fill {
+            base: StepBase {
+                id: "f".into(),
+                ..StepBase::default()
+            },
+            target: "css:#n".into(),
+            value: "Ada".into(),
+        }],
+        ..Program::default()
+    };
+    let result = page.execute(&program);
+    assert_eq!(result.status, ProgramStatus::Completed, "{result:?}");
+    assert_eq!(
+        page.evaluate("window.__tracked").unwrap(),
+        serde_json::json!("Ada")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('n').value").unwrap(),
+        serde_json::json!("Ada")
+    );
+    assert_eq!(
+        page.evaluate("window.__bi").unwrap(),
+        serde_json::json!("insertReplacementText:Ada")
+    );
+    assert_eq!(
+        page.evaluate("window.__in").unwrap(),
+        serde_json::json!("insertReplacementText")
+    );
+}
+
+#[test]
+fn html_element_click_is_untrusted_program_click_is_trusted() {
+    let mut page = open(
+        r#"<button id="b">Go</button>
+           <script>
+             window.__trust = [];
+             document.getElementById('b').addEventListener('click', (e) => {
+               window.__trust.push(e.isTrusted);
+             });
+           </script>"#,
+    );
+    page.evaluate("document.getElementById('b').click()")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("window.__trust").unwrap(),
+        serde_json::json!([false])
+    );
+    let program = Program {
+        steps: vec![Step::Click {
+            base: StepBase {
+                id: "c".into(),
+                ..StepBase::default()
+            },
+            target: "css:#b".into(),
+            button: None,
+        }],
+        ..Program::default()
+    };
+    let result = page.execute(&program);
+    assert_eq!(result.status, ProgramStatus::Completed, "{result:?}");
+    assert_eq!(
+        page.evaluate("window.__trust").unwrap(),
+        serde_json::json!([false, true])
+    );
+}
+
+#[test]
+fn node_list_location_hash_and_load_event_match_the_platform() {
+    let mut page = open(
+        r#"<body>
+           <script>
+             window.__loads = 0;
+             window.addEventListener("load", () => { window.__loads++; });
+             window.addEventListener("hashchange", () => { window.__hash = location.hash; });
+             NodeList.prototype.forEach = Array.prototype.forEach;
+             window.__nl = document.querySelectorAll("script") instanceof NodeList;
+           </script>
+           </body>"#,
+    );
+    assert!(page.settle(200).settled);
+    assert_eq!(
+        page.evaluate("window.__loads").unwrap(),
+        serde_json::json!(1)
+    );
+    assert_eq!(
+        page.evaluate("window.__nl").unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.defaultView === window").unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.defaultView && !!document.defaultView.history")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    let loc = page
+        .evaluate(
+            r#"(function () {
+              location.hash = '#/home';
+              return { href: location.href, hash: location.hash, fired: window.__hash };
+            })()"#,
+        )
+        .unwrap();
+    assert!(
+        loc["href"].as_str().unwrap_or("").contains("#/home"),
+        "{loc}"
+    );
+    assert_eq!(loc["hash"], "#/home", "{loc}");
+    assert_eq!(loc["fired"], "#/home", "{loc}");
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const input = document.createElement("input");
+              document.body.appendChild(input);
+              let key = "";
+              input.addEventListener("keydown", (e) => { key = e.key; });
+              input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 13, bubbles: true }));
+              return { key: key, path: typeof new Event("x").composedPath };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["key"], "Enter", "{v}");
+    assert_eq!(v["path"], "function", "{v}");
+    let focusin = page
+        .evaluate(
+            r#"(function () {
+              const input = document.createElement("input");
+              document.body.appendChild(input);
+              let types = [];
+              document.body.addEventListener("focusin", (e) => types.push(e.type));
+              input.focus();
+              return { types: types.join(","), active: document.activeElement === input };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(focusin["types"], "focusin", "{focusin}");
+    assert_eq!(focusin["active"], true, "{focusin}");
+    let svg = page
+        .evaluate(
+            r#"(function () {
+              const el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+              return {
+                ctor: typeof SVGElement,
+                inst: el instanceof SVGElement,
+                hash: "onhashchange" in window,
+                walk: typeof document.createTreeWalker,
+                which: new KeyboardEvent("keyup", { key: "Enter", keyCode: 13, which: 13 }).which
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(svg["ctor"], "function", "{svg}");
+    assert_eq!(svg["inst"], true, "{svg}");
+    assert_eq!(svg["hash"], true, "{svg}");
+    assert_eq!(svg["walk"], "function", "{svg}");
+    assert_eq!(svg["which"], 13, "{svg}");
+    let iframe = page
+        .evaluate(
+            r#"(function () {
+              const f = document.createElement("iframe");
+              f.src = "javascript:0";
+              document.body.appendChild(f);
+              const doc = f.contentWindow && f.contentWindow.document;
+              if (!doc) return { open: "no-doc" };
+              doc.open();
+              doc.write("<p>x</p>");
+              doc.close();
+              return { open: "ok" };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(iframe["open"], "ok", "{iframe}");
+    let template = page
+        .evaluate(
+            r#"(function () {
+              const t = document.createElement("template");
+              t.innerHTML = "<!--?--><div class='todo'></div>";
+              const w = document.createTreeWalker(document, 129);
+              w.currentNode = t.content;
+              const a = w.nextNode();
+              const b = w.nextNode();
+              return {
+                frag: t.content && t.content.nodeType,
+                kids: t.content.childNodes.length,
+                a: a && a.nodeType,
+                b: b && b.tagName,
+                which: new KeyboardEvent("keyup", { key: "Enter", keyCode: 13, which: 13 }).which
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(template["frag"], 11, "{template}");
+    assert!(template["kids"].as_i64().unwrap_or(0) >= 1, "{template}");
+    assert_eq!(template["a"], 8, "{template}");
+    assert_eq!(template["b"], "DIV", "{template}");
+    let script_html = page
+        .evaluate(
+            r#"(function () {
+              const s = document.createElement("script");
+              s.type = "text/x-handlebars-template";
+              s.textContent = "<li>{{title}}</li>";
+              document.body.appendChild(s);
+              return {
+                html: s.innerHTML,
+                onkey: "onkeydown" in document.createElement("input"),
+                rand: typeof crypto.getRandomValues
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(script_html["html"], "<li>{{title}}</li>", "{script_html}");
+    assert_eq!(script_html["onkey"], true, "{script_html}");
+    assert_eq!(script_html["rand"], "function", "{script_html}");
+    assert_eq!(
+        page.evaluate("typeof document.createElement('div').scrollTo")
+            .unwrap(),
+        serde_json::json!("function")
+    );
+    let lit = page
+        .evaluate(
+            r#"(function () {
+              const t = document.createElement("template");
+              t.innerHTML = '<section class="x"><todo-form></todo-form></section>';
+              const names = t.content.firstChild && t.content.firstChild.getAttributeNames();
+              const w = document.createTreeWalker(document, 129);
+              w.currentNode = t.content;
+              const tags = [];
+              let n;
+              while ((n = w.nextNode())) if (n.tagName) tags.push(n.tagName);
+              return { names: names && names.join(","), tags: tags.join(",") };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(lit["names"], "class", "{lit}");
+    assert!(
+        lit["tags"].as_str().unwrap_or("").contains("SECTION"),
+        "{lit}"
+    );
+    assert!(
+        lit["tags"].as_str().unwrap_or("").contains("TODO-FORM"),
+        "{lit}"
+    );
+    let handle = page
+        .evaluate(
+            r#"(function () {
+              const el = document.createElement("input");
+              document.body.appendChild(el);
+              let n = 0;
+              el.addEventListener("keydown", { handleEvent() { n++; } });
+              el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+              return n;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(handle, 1, "{handle}");
+    let invalid = page
+        .evaluate(
+            r#"(function () {
+              try { document.querySelector("*,:x"); return "no-throw"; }
+              catch (e) { return "throw"; }
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(invalid, "throw", "{invalid}");
+}
+
+#[test]
+fn es5_todomvc_delegate_remove_after_domparser_replace() {
+    let mut page = open(r#"<ul class="todo-list"></ul>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function qsa(sel, scope) { return (scope || document).querySelectorAll(sel); }
+              function delegate(target, selector, type, handler) {
+                target.addEventListener(type, function (event) {
+                  var potential = qsa(selector, target);
+                  if (Array.prototype.indexOf.call(potential, event.target) >= 0)
+                    handler.call(event.target, event);
+                });
+              }
+              var ul = document.querySelector(".todo-list");
+              delegate(ul, ".destroy", "click", function () {
+                var li = this.parentNode.parentNode;
+                li.parentNode.removeChild(li);
+              });
+              var html = "<li data-id=1><div class=view><button class=destroy></button></div></li>";
+              var parsed = new DOMParser().parseFromString(html, "text/html");
+              ul.replaceChildren.apply(ul, Array.prototype.slice.call(parsed.body.childNodes));
+              var before = qsa(".todo-list li").length;
+              var li = qsa(".todo-list li")[0];
+              var ds = li.dataset.id;
+              var btn = qsa(".destroy")[0];
+              var idx = Array.prototype.indexOf.call(qsa(".destroy", ul), btn);
+              btn.click();
+              return { before: before, after: qsa(".todo-list li").length, idx: idx, ds: ds };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], 1, "{v}");
+    assert_eq!(v["idx"], 0, "{v}");
+    assert_eq!(v["ds"], "1", "{v}");
+    assert_eq!(v["after"], 0, "{v}");
+}
+
+#[test]
+fn element_collections_are_descendants_only_so_html_keeps_delegated_listeners() {
+    let mut page = open(r#"<ul id="todo-list"></ul><input type="checkbox" class="toggle">"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var ul = document.getElementById("todo-list");
+              var emptyStar = ul.getElementsByTagName("*").length;
+              var hits = 0;
+              ul.addEventListener("click", function (e) {
+                if (e.target && e.target.className === "destroy") hits++;
+              });
+              ul.innerHTML = "<li data-id=1><div class=view><button class=destroy></button></div></li>";
+              var afterStar = ul.getElementsByTagName("*");
+              var includesSelf = false;
+              for (var i = 0; i < afterStar.length; i++) if (afterStar[i] === ul) includesSelf = true;
+              document.querySelector(".destroy").click();
+              var box = document.querySelector(".toggle");
+              var changes = 0;
+              box.addEventListener("change", function () { changes++; });
+              box.click();
+              return {
+                emptyStar: emptyStar,
+                includesSelf: includesSelf,
+                hits: hits,
+                changes: changes,
+                checked: box.checked
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["emptyStar"], 0, "{v}");
+    assert_eq!(v["includesSelf"], false, "{v}");
+    assert_eq!(v["hits"], 1, "{v}");
+    assert_eq!(v["changes"], 1, "{v}");
+    assert_eq!(v["checked"], true, "{v}");
+}
+
+#[test]
+fn delegated_click_survives_inner_html_replace_inside_handler() {
+    let mut page = open(r#"<ul id="todo-list"></ul>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var ul = document.getElementById("todo-list");
+              var hits = 0;
+              ul.addEventListener("click", function (e) {
+                if (!e.target || e.target.className !== "destroy") return;
+                hits++;
+                var n = ul.querySelectorAll("li").length;
+                var html = "";
+                for (var i = 0; i < n - 1; i++) html += "<li><button class=destroy></button></li>";
+                ul.innerHTML = html;
+              });
+              ul.innerHTML = "<li><button class=destroy></button></li><li><button class=destroy></button></li><li><button class=destroy></button></li>";
+              var guard = 0;
+              while (ul.querySelector(".destroy") && guard++ < 10) ul.querySelector(".destroy").click();
+              return { hits: hits, left: ul.querySelectorAll("li").length };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hits"], 3, "{v}");
+    assert_eq!(v["left"], 0, "{v}");
+}
+
+#[test]
+fn comment_and_text_implement_child_node_remove() {
+    let mut page = open(r#"<ul id="list"></ul>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var ul = document.getElementById("list");
+              var start = document.createComment("start");
+              var item = document.createElement("li");
+              var end = document.createComment("end");
+              var tail = document.createComment("tail");
+              ul.append(start, item, end, tail);
+              var kinds = [];
+              for (var n = ul.firstChild; n; n = n.nextSibling) kinds.push(n.nodeType);
+              var e = start;
+              var stop = tail;
+              while (e && e !== stop) {
+                var next = e.nextSibling;
+                e.remove();
+                e = next;
+              }
+              return {
+                commentRemove: typeof start.remove,
+                textRemove: typeof document.createTextNode("x").remove,
+                before: kinds.join(","),
+                after: ul.childNodes.length,
+                leftType: ul.firstChild && ul.firstChild.nodeType,
+                leftData: ul.firstChild && ul.firstChild.data
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["commentRemove"], "function", "{v}");
+    assert_eq!(v["textRemove"], "function", "{v}");
+    assert_eq!(v["before"], "8,1,8,8", "{v}");
+    assert_eq!(v["after"], 1, "{v}");
+    assert_eq!(v["leftType"], 8, "{v}");
+    assert_eq!(v["leftData"], "tail", "{v}");
+}
+
+#[test]
+fn live_element_satisfies_idl_brand_checks() {
+    let mut page = open(r#"<p id="p">x</p>"#);
+    let v = page
+        .evaluate(
+            r#"(function(){
+              var el = document.getElementById("p");
+              var proto = Object.getPrototypeOf(el);
+              return {
+                inst: el instanceof Element,
+                protoName: proto && proto.constructor && proto.constructor.name,
+                isP: proto === HTMLParagraphElement.prototype,
+                isHTML: proto === HTMLElement.prototype,
+                isEl: proto === Element.prototype,
+                tag: el.tagName,
+                id: el.getAttribute("id"),
+                hasTag: "tagName" in el
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["isP"], true, "{v}");
+    assert_eq!(v["tag"], "P", "{v}");
+    assert_eq!(v["id"], "p", "{v}");
+    assert_eq!(v["hasTag"], true, "{v}");
+}
+
+#[test]
+fn generated_idl_includes_aria_clients_and_skip_waiting() {
+    use ve_script::generated::INTERFACE_NAMES;
+    assert!(
+        INTERFACE_NAMES.contains(&"ARIAMixin"),
+        "{INTERFACE_NAMES:?}"
+    );
+    assert!(INTERFACE_NAMES.contains(&"Clients"), "{INTERFACE_NAMES:?}");
+    assert!(INTERFACE_NAMES.contains(&"Client"), "{INTERFACE_NAMES:?}");
+    assert!(
+        INTERFACE_NAMES.contains(&"ServiceWorkerGlobalScope"),
+        "{INTERFACE_NAMES:?}"
+    );
+    assert!(
+        INTERFACE_NAMES.contains(&"HTMLElement"),
+        "{INTERFACE_NAMES:?}"
+    );
+}
+
+#[test]
+fn document_named_properties_are_live() {
+    let mut page = open(
+        r#"<img id="a" name="b"><form name="pair"></form><form name="pair"></form><embed name="only">"#,
+    );
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var img = document.getElementsByTagName("img")[0];
+              var forms = document.getElementsByTagName("form");
+              var embed = document.getElementsByTagName("embed")[0];
+              var single = document.only === embed && document["b"] === img && document.a === img;
+              var col = document.pair;
+              var multi = col && col.length === 2 && col[0] === forms[0] && col[1] === forms[1]
+                && col.toString() === "[object HTMLCollection]";
+              embed.remove();
+              var liveRemove = document.only === undefined && !("only" in document);
+              var extra = document.createElement("embed");
+              extra.setAttribute("name", "only");
+              document.body.appendChild(extra);
+              var liveAdd = document.only === extra;
+              return { single: single, multi: multi, liveRemove: liveRemove, liveAdd: liveAdd };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["single"], true, "{v}");
+    assert_eq!(v["multi"], true, "{v}");
+    assert_eq!(v["liveRemove"], true, "{v}");
+    assert_eq!(v["liveAdd"], true, "{v}");
+}
+
+#[test]
+fn tabindex_minus_zero_is_positive_zero() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var d = document.createElement("div");
+              d.setAttribute("tabindex", "-0");
+              return { v: d.tabIndex, neg: Object.is(d.tabIndex, -0) };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["v"], 0, "{v}");
+    assert_eq!(v["neg"], false, "{v}");
+}
+
+#[test]
+fn inner_text_collapses_cr_to_space() {
+    let mut page = open(r#"<body><div id="d"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var d = document.getElementById("d");
+              d.style.whiteSpace = "normal";
+              d.innerHTML = "abc\rdef";
+              return d.innerText;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!("abc def"), "{v}");
+}
+
+#[test]
+fn inner_text_skips_hidden_and_outer_text_replaces_node() {
+    let mut page = open(
+        r#"<div id="t">vis<span style="display:none">hid</span><br>next<div>block</div></div><p id="p">keep <span id="s">me</span> please</p>"#,
+    );
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var t = document.getElementById("t");
+              var rendered = t.innerText;
+              var hidden = t.querySelector("span").textContent;
+              var detached = document.createElement("div");
+              detached.innerHTML = "a<script>no</script>b";
+              var fallback = detached.innerText;
+              var tc = detached.textContent;
+              t.innerText = "x\ny";
+              var setHtml = t.innerHTML;
+              var s = document.getElementById("s");
+              var parent = s.parentNode;
+              s.outerText = "replaced";
+              var after = parent.innerHTML;
+              var threw = false;
+              try { document.createElement("span").outerText = "z"; } catch (e) {
+                threw = e.name === "NoModificationAllowedError";
+              }
+              return {
+                rendered: rendered,
+                hidden: hidden,
+                fallback: fallback,
+                tc: tc,
+                setHtml: setHtml,
+                after: after,
+                threw: threw,
+                outerEq: t.outerText === t.innerText
+              };
+            })()"#,
+        )
+        .unwrap();
+    let rendered = v["rendered"].as_str().unwrap_or("");
+    assert!(rendered.contains("vis"), "{v}");
+    assert!(!rendered.contains("hid"), "{v}");
+    assert!(rendered.contains("next"), "{v}");
+    assert!(rendered.contains("block"), "{v}");
+    assert_eq!(v["hidden"], "hid", "{v}");
+    assert_eq!(v["fallback"], v["tc"], "{v}");
+    assert_eq!(v["setHtml"], "x<br>y", "{v}");
+    let mut ta = open(r#"<textarea id="ta"></textarea>"#);
+    let ta_html = ta
+        .evaluate(
+            r#"(function () {
+              var e = document.getElementById("ta");
+              e.innerText = "abc\ndef";
+              return e.innerHTML;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(ta_html, "abc<br>def", "{ta_html}");
+    let ta_empty = ta
+        .evaluate(r#"document.getElementById("ta").innerText = "abc"; document.getElementById("ta").innerText"#)
+        .unwrap();
+    assert_eq!(ta_empty, "", "{ta_empty}");
+    assert!(
+        v["after"].as_str().unwrap_or("").contains("replaced"),
+        "{v}"
+    );
+    assert_eq!(v["threw"], true, "{v}");
+    let mut pre = open(
+        r#"<div id="a" style="white-space: pre-line">one&#10;two&#10;three&#10;four</div>
+           <div id="b" style="white-space: pre">one&#10;two&#10;three&#10;four</div>
+           <div id="c" style="white-space: pre-line">
+ one
+  two
+    <!-- comment -->
+   three
+    four
+</div>
+<div id="d" style="white-space: pre">
+ one
+  two
+    <!-- comment -->
+   three
+    four
+</div>"#,
+    );
+    let pre_v = pre
+        .evaluate(
+            r#"(function () {
+              var a = document.getElementById("a");
+              var b = document.getElementById("b");
+              function collapseWhitespace(s) {
+                return s.replace(/  +/g, ' ').replace(/ $/mg, '').replace(/^ /mg, '');
+              }
+              var c = document.getElementById("c");
+              var d = document.getElementById("d");
+              return {
+                a: a.innerText,
+                b: b.innerText,
+                c: c.innerText,
+                d: d.innerText,
+                collapsed: collapseWhitespace(d.innerText),
+                aw: getComputedStyle(a).getPropertyValue("white-space"),
+                bw: getComputedStyle(b).getPropertyValue("white-space"),
+                atc: JSON.stringify(a.textContent),
+                btc: JSON.stringify(b.textContent),
+                ctc: JSON.stringify(c.textContent),
+                dtc: JSON.stringify(d.textContent)
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(pre_v["a"], pre_v["b"], "{pre_v}");
+    assert_eq!(pre_v["c"], pre_v["collapsed"], "{pre_v}");
+    let mut sel = open(
+        r#"<div id="c"><select><option>one</option><div><optgroup label=optgroup><div><option><span>two"#,
+    );
+    let sel_v = sel
+        .evaluate(
+            r#"(function () {
+              var e = document.getElementById("c").firstChild;
+              return { t: e.tagName, html: e.innerHTML, text: e.innerText, tc: e.textContent };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(sel_v["text"], "one\ntwo", "{sel_v}");
+    let mut sh = open(
+        r#"<div id="h"><template shadowrootmode="open"><span id="s">Label for input4</span></template></div>"#,
+    );
+    let sh_v = sh
+        .evaluate(
+            r#"(function () {
+              var h = document.getElementById("h");
+              var sr = h.shadowRoot;
+              return {
+                has: !!sr,
+                text: sr && sr.firstElementChild && sr.firstElementChild.textContent
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(sh_v["has"], true, "{sh_v}");
+    assert_eq!(sh_v["text"], "Label for input4", "{sh_v}");
+}
+
+#[test]
+fn aria_string_and_element_reflection() {
+    let mut page = open(
+        r#"<div id="host" role="button" aria-label="x" aria-labelledby="a missing"><span id="a">A</span></div>"#,
+    );
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var host = document.getElementById("host");
+              var a = document.getElementById("a");
+              var role = host.role;
+              host.role = "checkbox";
+              var roleSet = host.getAttribute("role");
+              host.role = null;
+              var roleNull = host.role === null && !host.hasAttribute("role");
+              var label = host.ariaLabel;
+              var labelled = host.ariaLabelledByElements;
+              var fromAttr = labelled && labelled.length === 1 && labelled[0] === a;
+              var ghost = document.createElement("span");
+              ghost.id = "ghost";
+              host.ariaLabelledByElements = [ghost];
+              var disconnected = host.ariaLabelledByElements.length === 0
+                || host.ariaLabelledByElements[0] === ghost;
+              host.setAttribute("aria-labelledby", "missing");
+              var missing = host.ariaLabelledByElements;
+              var missingEmpty = !missing || missing.length === 0;
+              host.ariaLabelledByElements = [a];
+              var cached = host.ariaLabelledByElements === host.ariaLabelledByElements;
+              var typeErr = false;
+              try { host.ariaActiveDescendantElement = "nope"; } catch (e) { typeErr = e instanceof TypeError; }
+              var noSingular = !("ariaErrorMessageElement" in host);
+              host.ariaErrorMessageElements = [a];
+              var errMsg = host.ariaErrorMessageElements && host.ariaErrorMessageElements[0] === a
+                && host.getAttribute("aria-errormessage") === "";
+              return {
+                role: role,
+                roleSet: roleSet,
+                roleNull: roleNull,
+                label: label,
+                fromAttr: fromAttr,
+                disconnectedOk: disconnected,
+                missingEmpty: missingEmpty,
+                cached: cached,
+                typeErr: typeErr,
+                noSingular: noSingular,
+                errMsg: errMsg
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["role"], "button", "{v}");
+    assert_eq!(v["roleSet"], "checkbox", "{v}");
+    assert_eq!(v["roleNull"], true, "{v}");
+    assert_eq!(v["label"], "x", "{v}");
+    assert_eq!(v["fromAttr"], true, "{v}");
+    assert_eq!(v["missingEmpty"], true, "{v}");
+    assert_eq!(v["cached"], true, "{v}");
+    assert_eq!(v["typeErr"], true, "{v}");
+    assert_eq!(v["noSingular"], true, "{v}");
+    assert_eq!(v["errMsg"], true, "{v}");
+}
+
+#[test]
+fn expect_link_unblocks_raf_before_later_ids() {
+    let mut page = open(
+        r##"<link id="link" rel="expect" href="#last" blocking="render">
+           <script>
+             window.__tag = link && link.localName;
+             link.remove();
+             window.__gone = document.getElementById("link") === null;
+             requestAnimationFrame(function () {
+               window.__unblocked = document.getElementById("last") === null;
+               window.__lastAtRaf = document.getElementById("last") && document.getElementById("last").id;
+             });
+           </script>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page.evaluate(
+        r#"(function () { return { unblocked: window.__unblocked, gone: window.__gone, tag: window.__tag, lastAtRaf: window.__lastAtRaf }; })()"#,
+    )
+    .unwrap();
+    assert_eq!(v["unblocked"], true, "{v}");
+}
+
+#[test]
+fn official_001_shape_raf_sees_last() {
+    let mut page = open(
+        r##"<!DOCTYPE html>
+<meta name="timeout" content="long">
+<head>
+<script></script>
+<script></script>
+<script>function generateParserDelay() {}</script>
+<title>t</title>
+<link rel=expect href="#last" blocking="render">
+<script>
+requestAnimationFrame(function () {
+  window.__last = document.getElementById("last") !== null;
+});
+</script>
+</head>
+<body>
+  <div id="first">x</div>
+  <script>generateParserDelay();</script>
+  <div id="second">x</div>
+  <script>generateParserDelay();</script>
+  <div id="last">x</div>
+</body>"##,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__last").unwrap(),
+        serde_json::json!(true)
+    );
+}
+
+#[test]
+fn expect_link_blocks_raf_with_prepended_harness_script() {
+    let mut page = open(
+        r##"<!DOCTYPE html><script>window.__harness=1;</script>
+           <meta name="timeout" content="long">
+           <head>
+           <link rel="expect" href="#last" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__last = document.getElementById("last") !== null;
+               var link = document.querySelector("link[rel=expect]");
+               window.__linkParent = link && link.parentNode && link.parentNode.localName;
+             });
+           </script>
+           </head>
+           <body>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function(){return {last: window.__last, parent: window.__linkParent};})()"#)
+        .unwrap();
+    assert_eq!(v["last"], true, "{v}");
+}
+
+#[test]
+fn expect_link_blocks_raf_until_target_id_with_head_scripts() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <script>window.__n = 1;</script>
+           <link rel="expect" href="#last" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           </head><body>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__last").unwrap(),
+        serde_json::json!(true),
+        "rAF should run after #last is parsed"
+    );
+}
+
+#[test]
+fn expect_link_blocks_raf_until_target_id() {
+    let mut page = open(
+        r##"<link id="link" rel="expect" href="#last" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__blocked = document.getElementById("last") !== null;
+             });
+           </script>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>"##,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__blocked").unwrap(),
+        serde_json::json!(true)
+    );
+}
+
+fn expect_unblocked_after(html: &str) {
+    let mut page = open(html);
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function () { return window.__unblocked; })()"#)
+        .unwrap();
+    assert_eq!(v, serde_json::json!(true), "{html}");
+}
+
+#[test]
+fn expect_link_unblocks_when_blocking_cleared() {
+    expect_unblocked_after(
+        r##"<link id="link" rel="expect" href="#last" blocking="render">
+           <script>
+             link.blocking = "";
+             requestAnimationFrame(function () {
+               window.__unblocked = document.getElementById("last") === null;
+             });
+           </script>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>"##,
+    );
+}
+
+#[test]
+fn expect_link_unblocks_when_rel_not_expect() {
+    expect_unblocked_after(
+        r##"<link id="link" rel="expect" href="#last" blocking="render">
+           <script>
+             link.rel = "stylesheet";
+             requestAnimationFrame(function () {
+               window.__unblocked = document.getElementById("last") === null;
+             });
+           </script>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>"##,
+    );
+}
+
+#[test]
+fn expect_link_unblocks_when_media_nonmatching() {
+    expect_unblocked_after(
+        r##"<link id="link" rel="expect" href="#last" blocking="render" media="(min-width: 10px)">
+           <script>
+             link.media = "(max-width: 10px)";
+             requestAnimationFrame(function () {
+               window.__unblocked = document.getElementById("last") === null;
+             });
+           </script>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>"##,
+    );
+}
+
+#[test]
+fn expect_link_unblocks_when_href_cleared() {
+    expect_unblocked_after(
+        r##"<link id="link" rel="expect" href="#last" blocking="render">
+           <script>
+             link.href = "";
+             requestAnimationFrame(function () {
+               window.__unblocked = document.getElementById("last") === null;
+             });
+           </script>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>"##,
+    );
+}
+
+#[test]
+fn canvas_webgl_and_webgpu_are_null() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var c = document.createElement("canvas");
+              return {
+                webgl: c.getContext("webgl") === null,
+                webgpu: c.getContext("webgpu") === null,
+                two: c.getContext("2d") !== null
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["webgl"], true, "{v}");
+    assert_eq!(v["webgpu"], true, "{v}");
+    assert_eq!(v["two"], true, "{v}");
+}
+
+#[test]
+fn historical_unknown_elements_and_applets() {
+    let mut page = open(r#"<applet name="war" align="left"></applet><layer></layer>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var ap = document.getElementsByTagName("applet")[0];
+              return {
+                unknown: ap instanceof HTMLUnknownElement,
+                layer: document.getElementsByTagName("layer")[0] instanceof HTMLUnknownElement,
+                applets: document.applets.length,
+                noCtor: self.HTMLAppletElement === undefined,
+                noNamed: document.war === undefined && self.war === undefined,
+                noAll: document.all.war === undefined,
+                cssFloat: window.getComputedStyle(ap).cssFloat,
+                noInit: !("initHashChangeEvent" in HashChangeEvent.prototype),
+                noTd: !("HTMLTableDataCellElement" in window)
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["unknown"], true, "{v}");
+    assert_eq!(v["layer"], true, "{v}");
+    assert_eq!(v["applets"], 0, "{v}");
+    assert_eq!(v["noCtor"], true, "{v}");
+    assert_eq!(v["noNamed"], true, "{v}");
+    assert_eq!(v["noAll"], true, "{v}");
+    assert_eq!(v["cssFloat"], "none", "{v}");
+    assert_eq!(v["noInit"], true, "{v}");
+    assert_eq!(v["noTd"], true, "{v}");
+}
+
+#[test]
+fn cookie_null_averse_and_expires() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              document.cookie = "a=b";
+              var simple = document.cookie;
+              document.cookie = "b=A\0Z";
+              var afterNull = document.cookie;
+              document.cookie = "a=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+              var afterExp = document.cookie;
+              var doc = document.implementation.createHTMLDocument("doc");
+              doc.cookie = "test=foobar";
+              return { simple: simple, afterNull: afterNull, afterExp: afterExp, averse: doc.cookie };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["simple"], "a=b", "{v}");
+    assert_eq!(v["afterNull"], "a=b", "{v}");
+    assert_eq!(v["afterExp"], "", "{v}");
+    assert_eq!(v["averse"], "", "{v}");
+}
+
+#[test]
+fn blocking_is_a_dom_token_list() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var link = document.createElement("link");
+              var script = document.createElement("script");
+              var style = document.createElement("style");
+              link.blocking = "asdf";
+              return {
+                linkSup: link.blocking.supports("render"),
+                linkNo: !link.blocking.supports("asdf"),
+                linkVal: link.blocking.value,
+                scriptSup: script.blocking.supports("render"),
+                styleSup: style.blocking.supports("render"),
+                same: link.blocking === link.blocking
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["linkSup"], true, "{v}");
+    assert_eq!(v["linkNo"], true, "{v}");
+    assert_eq!(v["linkVal"], "asdf", "{v}");
+    assert_eq!(v["scriptSup"], true, "{v}");
+    assert_eq!(v["styleSup"], true, "{v}");
+    assert_eq!(v["same"], true, "{v}");
+}
+
+#[test]
+fn last_modified_is_mm_dd_yyyy() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(r#"/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(document.lastModified)"#)
+        .unwrap();
+    assert_eq!(v, serde_json::json!(true), "{v}");
+}
+
+#[test]
+fn last_modified_uses_http_date() {
+    let mut page = open(r#"<body></body>"#);
+    page.set_last_modified("Thu, 01 Jan 1970 01:23:45 GMT");
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var date = new Date("Thu, 01 Jan 1970 01:23:45 GMT");
+              var p = function (n) { return ("0" + n).slice(-2); };
+              var result = p(date.getMonth() + 1) + "/" + p(date.getDate()) + "/" + date.getFullYear()
+                + " " + [date.getHours(), date.getMinutes(), date.getSeconds()].map(p).join(":");
+              return document.lastModified === result;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!(true), "{v}");
+}
+
+#[test]
+fn last_modified_after_virtual_timeout_is_still_current() {
+    let mut page = open(
+        r#"<body><script>
+          window.__first = document.lastModified;
+          setTimeout(function () { window.__later = document.lastModified; }, 4000);
+        </script></body>"#,
+    );
+    page.settle(50);
+    page.pump_virtual_time(5000);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var re = /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/;
+              return { first: re.test(window.__first), later: re.test(window.__later) };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["first"], true, "{v}");
+    assert_eq!(v["later"], true, "{v}");
+}
+
+#[test]
+fn document_dispatch_event_reaches_listeners() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var n = 0;
+              document.addEventListener("foo", function () { n++; });
+              document.dispatchEvent(new Event("foo"));
+              document.onbar = function () { n += 10; };
+              document.dispatchEvent(new Event("bar"));
+              return n;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!(11), "{v}");
+}
+
+#[test]
+fn document_ready_state_loading_interactive_complete() {
+    let mut page = open(
+        r#"<body><script>
+          window.__states = [document.readyState];
+          document.onreadystatechange = function () {
+            window.__states.push(document.readyState);
+          };
+          document.addEventListener("DOMContentLoaded", function () {
+            window.__dcl = document.readyState;
+          });
+          window.addEventListener("load", function () {
+            window.__load = document.readyState;
+          });
+        </script></body>"#,
+    );
+    page.settle(500);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                states: window.__states,
+                dcl: window.__dcl,
+                load: window.__load,
+                now: document.readyState,
+                created: document.implementation.createHTMLDocument().readyState
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(
+        v["states"],
+        serde_json::json!(["loading", "interactive", "complete"]),
+        "{v}"
+    );
+    assert_eq!(v["dcl"], "interactive", "{v}");
+    assert_eq!(v["load"], "complete", "{v}");
+    assert_eq!(v["now"], "complete", "{v}");
+    assert_eq!(v["created"], "complete", "{v}");
+}
+
+#[test]
+fn title_empty_string_creates_title_without_text_node() {
+    let mut page = open(r#"<!doctype html><title>x</title><body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var head = document.documentElement.firstChild;
+              head.removeChild(head.firstChild);
+              document.title = "";
+              return {
+                title: document.title,
+                isTitle: head.lastChild instanceof HTMLTitleElement,
+                child: head.lastChild.firstChild
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["title"], "", "{v}");
+    assert_eq!(v["isTitle"], true, "{v}");
+    assert_eq!(v["child"], serde_json::Value::Null, "{v}");
+}
+
+#[test]
+fn lang_from_http_content_language() {
+    let mut page = open(
+        r#"<head><style>
+          #box:lang(ko) { width: 100px; }
+          .test div { width: 50px; }
+        </style></head><body>
+          <div class="test"><div id="box">&nbsp;</div></div>
+        </body>"#,
+    );
+    page.set_content_language("ko");
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate("document.getElementById('box').offsetWidth")
+        .unwrap();
+    assert_eq!(v, serde_json::json!(100), "{v}");
+}
+
+#[test]
+fn usvstring_replaces_unpaired_surrogates() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              location.hash = "\uD999";
+              var w = window.open("about:blank#\uD800");
+              var a = document.createElement("a");
+              a.ping = "\uD989";
+              var src = new EventSource("\uD899");
+              var ev = new StorageEvent("storage", { url: location.href + "\uD999" });
+              return {
+                hash: location.hash,
+                href: w.location.href,
+                openHash: w.location.hash,
+                ping: a.ping,
+                es: src.url.endsWith("%EF%BF%BD"),
+                docUrl: w.document.URL,
+                storage: ev.url.endsWith("\uFFFD")
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["hash"], "#%EF%BF%BD", "{v}");
+    assert_eq!(v["href"], "about:blank#%EF%BF%BD", "{v}");
+    assert_eq!(v["openHash"], "#%EF%BF%BD", "{v}");
+    assert_eq!(v["ping"], "\u{FFFD}", "{v}");
+    assert_eq!(v["es"], true, "{v}");
+    assert_eq!(v["docUrl"], "about:blank#%EF%BF%BD", "{v}");
+    assert_eq!(v["storage"], true, "{v}");
+}
+
+#[test]
+fn access_key_label_valid_and_invalid() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var ok = document.createElement("button");
+              ok.setAttribute("accesskey", "b");
+              var bad = document.createElement("button");
+              bad.setAttribute("accesskey", "s 0");
+              return { ok: ok.accessKeyLabel, bad: bad.accessKeyLabel };
+            })()"#,
+        )
+        .unwrap();
+    assert_ne!(v["ok"], "", "{v}");
+    assert_eq!(v["bad"], "", "{v}");
+}
+
+#[test]
+fn click_in_progress_flag_blocks_recursion() {
+    let mut page = open(r#"<body><div id="d"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var div = document.getElementById("d");
+              var events = [];
+              var depth = 0;
+              div.addEventListener("click", function (e) {
+                events.push("click");
+                if (depth++ === 0) e.target.click();
+              });
+              div.click();
+              return events;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!(["click"]), "{v}");
+}
+
+#[test]
+fn title_idl_undefined_sets_attribute_string() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var d = document.createElement("div");
+              d.title = undefined;
+              var u = d.getAttribute("title");
+              d.title = null;
+              return { undef: u, n: d.getAttribute("title") };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["undef"], "undefined", "{v}");
+    assert_eq!(v["n"], "null", "{v}");
+}
+
+#[test]
+fn aria_element_reflection_survives_disconnect() {
+    let mut page = open(
+        r#"<div id="single_element">
+             <input aria-activedescendant="foo">
+             <p id="foo"></p>
+           </div>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var container = document.getElementById("single_element");
+              var el = container.querySelector("input");
+              var target = container.querySelector("#foo");
+              var before = el.ariaActiveDescendantElement === target;
+              container.remove();
+              var after = el.ariaActiveDescendantElement === target;
+              return { before: before, after: after };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], true, "{v}");
+    assert_eq!(v["after"], true, "{v}");
+}
+
+#[test]
+fn title_reflection_ignores_overridden_get_set_attribute() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var div = document.createElement("div");
+              var calls = [];
+              div.getAttribute = function () { calls.push("getAttribute"); };
+              div.getAttributeNS = function () { calls.push("getAttributeNS"); };
+              div.setAttribute = function () { calls.push("setAttribute"); };
+              div.setAttributeNS = function () { calls.push("setAttributeNS"); };
+              div.title;
+              div.title = "foo";
+              return calls;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!([]), "{v}");
+}
+
+#[test]
+fn limited_quirks_compat_mode_is_css1compat() {
+    let mut page = open(
+        r#"<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+        <title>t</title><body></body>"#,
+    );
+    let v = page.evaluate("document.compatMode").unwrap();
+    assert_eq!(v, serde_json::json!("CSS1Compat"), "{v}");
+}
+
+#[test]
+fn empty_document_title_does_not_create_text_node() {
+    let mut page = open(
+        r#"<!doctype html>
+<title>document.title and the empty string</title>
+<link rel="author" title="Ms2ger" href="mailto:ms2ger@gmail.com">
+<meta name="assert" content="On setting document.title to the empty string, no text node must be created.">
+<body></body>"#,
+    );
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var head = document.documentElement.firstChild;
+              head.removeChild(head.firstChild);
+              document.title = "";
+              var t = head.lastChild;
+              return { isTitle: t instanceof HTMLTitleElement, first: t.firstChild };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["isTitle"], true, "{v}");
+    assert_eq!(v["first"], serde_json::Value::Null, "{v}");
+}
+
+#[test]
+fn svg_document_title_uses_child_svg_title() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var SVG = "http://www.w3.org/2000/svg";
+              var doc = document.implementation.createDocument(SVG, "svg", null);
+              doc.title = "foo";
+              var child = doc.documentElement.firstChild;
+              return {
+                ns: child.namespaceURI,
+                name: child.localName,
+                text: child.textContent,
+                title: doc.title
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["ns"], "http://www.w3.org/2000/svg", "{v}");
+    assert_eq!(v["name"], "title", "{v}");
+    assert_eq!(v["text"], "foo", "{v}");
+    assert_eq!(v["title"], "foo", "{v}");
+}
+
+#[test]
+fn xml_document_title_setter_is_noop() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var doc = document.implementation.createDocument(null, "foo", null);
+              doc.title = "fail";
+              return doc.title;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!(""), "{v}");
+}
+
+#[test]
+fn dataset_does_not_overwrite_namespaced_attrs() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var div = document.createElement("div");
+              div.setAttributeNS("foo", "data-my-custom-attr", "first");
+              div.setAttributeNS("bar", "data-my-custom-attr", "second");
+              div.dataset.myCustomAttr = "third";
+              var recs = [];
+              for (var i = 0; i < div.attributes.length; i++) {
+                recs.push([div.attributes[i].name, div.attributes[i].value, div.attributes[i].namespaceURI]);
+              }
+              return recs;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(
+        v,
+        serde_json::json!([
+            ["data-my-custom-attr", "first", "foo"],
+            ["data-my-custom-attr", "second", "bar"],
+            ["data-my-custom-attr", "third", null]
+        ]),
+        "{v}"
+    );
+}
+
+#[test]
+fn lang_pseudo_class_matches_html_lang() {
+    let mut page = open(
+        r#"<html lang="ko"><head><style>
+          #box:lang(ko) { width: 100px; }
+          .test div { width: 50px; }
+        </style></head><body>
+          <div class="test"><div id="box">&nbsp;</div></div>
+        </body></html>"#,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate("document.getElementById('box').offsetWidth")
+        .unwrap();
+    assert_eq!(v, serde_json::json!(100), "{v}");
+}
+
+#[test]
+fn dir_auto_slot_uses_host_direction() {
+    let mut page = open(r#"<body><div id="root" dir="rtl"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var host = document.getElementById("root");
+              var shadow = host.attachShadow({mode:"open"});
+              shadow.innerHTML = "<section dir=\"ltr\"><div dir=\"auto\"><slot></slot>A</div></section>";
+              return getComputedStyle(shadow.querySelector("div")).direction;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!("rtl"), "{v}");
+}
+
+#[test]
+fn dir_auto_slot_ignores_bdi_assigned_nodes() {
+    let mut page = open(r#"<body><div id="root"><bdi>اختبر</bdi></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var host = document.getElementById("root");
+              var shadow = host.attachShadow({mode:"open"});
+              shadow.innerHTML = "<slot dir=\"auto\"></slot>";
+              return getComputedStyle(shadow.querySelector("slot")).direction;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!("ltr"), "{v}");
+}
+
+#[test]
+fn dir_auto_manual_slot_assign_clears() {
+    let mut page = open(r#"<body><div id="root"><div id="c">اختبر</div></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var host = document.getElementById("root");
+              var shadow = host.attachShadow({mode:"open", slotAssignment:"manual"});
+              shadow.innerHTML = "<slot dir=\"auto\"></slot>";
+              var slot = shadow.querySelector("slot");
+              var empty = getComputedStyle(slot).direction;
+              slot.assign(document.getElementById("c"));
+              var assigned = getComputedStyle(slot).direction;
+              slot.assign();
+              var cleared = getComputedStyle(slot).direction;
+              return { empty: empty, assigned: assigned, cleared: cleared };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["empty"], "ltr", "{v}");
+    assert_eq!(v["assigned"], "rtl", "{v}");
+    assert_eq!(v["cleared"], "ltr", "{v}");
+}
+
+#[test]
+fn dir_auto_slot_fallback_does_not_affect_ancestor() {
+    let mut page = open(r#"<body><div id="root"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var host = document.getElementById("root");
+              var shadow = host.attachShadow({mode:"open"});
+              shadow.innerHTML = "<span dir=\"auto\"><slot>اختبر</slot></span>";
+              var span = shadow.querySelector("span");
+              return getComputedStyle(span).direction;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!("ltr"), "{v}");
+}
+
+#[test]
+fn dir_auto_uses_first_strong_character() {
+    let mut page = open(r#"<body><div id="d" dir="auto"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var d = document.getElementById("d");
+              var empty = getComputedStyle(d).direction;
+              d.appendChild(document.createTextNode("اختبر SomeText"));
+              var rtl = getComputedStyle(d).direction;
+              return { empty: empty, rtl: rtl };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["empty"], "ltr", "{v}");
+    assert_eq!(v["rtl"], "rtl", "{v}");
+}
+
+#[test]
+fn expect_blocking_added_in_body_does_not_block() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <link id="link" rel="expect" href="#last">
+           <script>
+             requestAnimationFrame(function () {
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           </head><body>
+           <script>link.blocking = "render";</script>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__last").unwrap(),
+        serde_json::json!(false)
+    );
+}
+
+#[test]
+fn expect_rel_stylesheet_in_head_does_not_wait_for_last() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <link id="link" rel="stylesheet" href="#last" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           </head><body>
+           <script>link.rel = "expect";</script>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__last").unwrap(),
+        serde_json::json!(false),
+        "changing rel to expect in the body must not block"
+    );
+}
+
+#[test]
+fn expect_id_removed_stays_satisfied() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <link rel="expect" href="#first" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__was = document.getElementById("wasfirst") !== null;
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           </head><body>
+           <div id="first"></div>
+           <script>first.id = "wasfirst";</script>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function(){return {was: window.__was, last: window.__last};})()"#)
+        .unwrap();
+    assert_eq!(v["was"], true, "{v}");
+    assert_eq!(v["last"], false, "{v}");
+}
+
+#[test]
+fn expect_percent_encoded_fragment_unblocks() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <link rel="expect" href="#se%F0%9F%98%8Fcond" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__mid = document.getElementById("se😏cond") !== null;
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           </head><body>
+           <div id="first"></div>
+           <script></script>
+           <div id="se😏cond"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function(){return {mid: window.__mid, last: window.__last};})()"#)
+        .unwrap();
+    assert_eq!(v["mid"], true, "{v}");
+    assert_eq!(v["last"], false, "{v}");
+}
+
+#[test]
+fn expect_base_mismatch_does_not_block_until_second() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <base href="dummy.html">
+           <link rel="expect" href="#second" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__first = document.getElementById("first") !== null;
+               window.__second = document.getElementById("second") !== null;
+             });
+           </script>
+           </head><body>
+           <div id="first"></div>
+           <script></script>
+           <div id="second"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function(){return {first: window.__first, second: window.__second};})()"#)
+        .unwrap();
+    assert_eq!(v["first"], true, "{v}");
+    assert_eq!(v["second"], false, "{v}");
+}
+
+#[test]
+fn expect_dynamic_anchor_name_unblocks() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <link rel="expect" href="#target" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__n = document.getElementsByName("target").length;
+               window.__last = document.getElementById("last");
+             });
+           </script>
+           </head><body>
+           <div id="first"></div>
+           <script></script>
+           <script>
+             var a = document.createElement("a");
+             a.name = "target";
+             document.body.append(a);
+           </script>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function(){return {n: window.__n, last: window.__last};})()"#)
+        .unwrap();
+    assert_eq!(v["n"], 1, "{v}");
+    assert_eq!(v["last"], serde_json::Value::Null, "{v}");
+}
+
+#[test]
+fn expect_name_target_unblocks_before_later_ids() {
+    let mut page = open(
+        r##"<link rel="expect" href="#second" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__name = document.getElementsByName("second").length;
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           <div id="first"></div>
+           <a name="second"></a>
+           <script></script>
+           <div id="last"></div>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function () { return { name: window.__name, last: window.__last }; })()"#)
+        .unwrap();
+    assert_eq!(v["name"], 1, "{v}");
+    assert_eq!(v["last"], false, "{v}");
+}
+
+#[test]
+fn current_script_parser_and_dom_inserted() {
+    let mut page = open(
+        r#"<script id="p">window.__p = document.currentScript && document.currentScript.id;</script>
+           <script>
+             var s = document.createElement("script");
+             s.id = "d";
+             s.textContent = "window.__d = document.currentScript && document.currentScript.id;";
+             document.body.appendChild(s);
+             window.__after = document.currentScript && document.currentScript.tagName;
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function(){return {p: window.__p, d: window.__d, after: window.__after};})()"#,
+        )
+        .unwrap();
+    assert_eq!(v["p"], "p", "{v}");
+    assert_eq!(v["d"], "d", "{v}");
+    assert_eq!(v["after"], "SCRIPT", "{v}");
+}
+
+#[test]
+fn img_alt_and_input_type_reflect() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function(){
+              var img = document.createElement("img");
+              img.alt = "x";
+              var inp = document.createElement("input");
+              return { alt: img.alt, attr: img.getAttribute("alt"), type: inp.type };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["alt"], "x", "{v}");
+    assert_eq!(v["attr"], "x", "{v}");
+    assert_eq!(v["type"], "text", "{v}");
+}
+
+#[test]
+fn moved_async_script_does_not_run() {
+    let mut page = open(
+        r#"<script id="target" async src="data:text/javascript,window.dummy=1"></script>
+           <script>
+             const t = document.getElementById("target");
+             const d = document.implementation.createHTMLDocument("n");
+             d.documentElement.appendChild(t);
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.dummy").unwrap();
+    assert_eq!(v, serde_json::Value::Null, "{v}");
+}
+
+#[test]
+fn script_inserted_blocking_does_not_throw() {
+    let mut page = open(
+        r#"<script>
+             try {
+               const s = document.createElement("script");
+               s.src = "data:text/javascript,window.dummy=1";
+               s.blocking = "render";
+               document.head.appendChild(s);
+               window.__ok = 1;
+             } catch (e) {
+               window.__ok = String(e);
+             }
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(r#"(function(){return {ok: window.__ok, dummy: window.dummy};})()"#)
+        .unwrap();
+    assert_eq!(v["ok"], 1, "{v}");
+}
+
+#[test]
+fn window_origin_matches_location() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(r#"(function(){ return { o: self.origin, l: location.origin }; })()"#)
+        .unwrap();
+    assert_eq!(v["o"], v["l"], "{v}");
+    assert!(v["o"].as_str().unwrap_or("").starts_with("https://"), "{v}");
+}
+
+#[test]
+fn aria_idrefs_survive_disconnect() {
+    let mut page = open(
+        r#"<div id="single_element">
+             <input aria-activedescendant="foo">
+             <p id="foo"></p>
+           </div>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const container = document.getElementById("single_element");
+              const el = container.querySelector("input");
+              const target = container.querySelector("#foo");
+              const before = el.ariaActiveDescendantElement === target;
+              container.remove();
+              const after = el.ariaActiveDescendantElement === target;
+              document.body.appendChild(container);
+              const recon = el.ariaActiveDescendantElement === target;
+              return { before: before, after: after, recon: recon };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], true, "{v}");
+    assert_eq!(v["after"], true, "{v}");
+    assert_eq!(v["recon"], true, "{v}");
+}
+
+#[test]
+fn aria_idrefs_work_after_reconnect_during_parser_script() {
+    let mut page = open(
+        r#"<div id="single_element">
+             <input aria-activedescendant="foo">
+             <p id="foo"></p>
+           </div>
+           <script>
+             const container = document.getElementById("single_element");
+             const el = container.querySelector("input");
+             const target = document.getElementById("foo");
+             window.__before = el.ariaActiveDescendantElement === target;
+             container.remove();
+             window.__after = el.ariaActiveDescendantElement === target;
+             document.body.appendChild(container);
+             window.__recon = el.ariaActiveDescendantElement === target;
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(r#"(function(){return {before: window.__before, after: window.__after, recon: window.__recon};})()"#)
+        .unwrap();
+    assert_eq!(v["before"], true, "{v}");
+    assert_eq!(v["after"], true, "{v}");
+    assert_eq!(v["recon"], true, "{v}");
+}
+
+#[test]
+fn labelledby_declarative_shadow_first_element() {
+    let mut page = open(
+        r#"<input id="input4">
+           <div id="shadow_host4">
+             <template shadowrootmode="open"><span>Label for input4</span></template>
+           </div>
+           <script>
+             const sr = shadow_host4.shadowRoot;
+             const label4 = sr && sr.firstElementChild;
+             window.__has = !!sr;
+             window.__tag = label4 && label4.localName;
+             window.__text = label4 && label4.textContent;
+             try {
+               input4.ariaLabelledByElements = [label4];
+               window.__setOk = true;
+               window.__len = input4.ariaLabelledByElements.length;
+             } catch (e) {
+               window.__setOk = false;
+               window.__err = String(e && e.message || e);
+             }
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function(){return {has: window.__has, tag: window.__tag, text: window.__text, setOk: window.__setOk, len: window.__len, err: window.__err};})()"#,
+        )
+        .unwrap();
+    assert_eq!(v["has"], true, "{v}");
+    assert_eq!(v["tag"], "span", "{v}");
+    assert_eq!(v["text"], "Label for input4", "{v}");
+    assert_eq!(v["setOk"], true, "{v}");
+    assert_eq!(v["len"], 0, "{v}");
+}
+
+#[test]
+fn option_label_value_and_video_default_muted() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const o = document.createElement("option");
+              o.textContent = "Hello";
+              const noLabel = o.label;
+              o.label = "L";
+              const withLabel = o.label;
+              const attr = o.getAttribute("label");
+              o.value = "v";
+              const val = o.value;
+              const video = document.createElement("video");
+              const dmType = typeof video.defaultMuted;
+              const dm = video.defaultMuted;
+              video.defaultMuted = true;
+              const mutedAttr = video.hasAttribute("muted");
+              const link = document.createElement("link");
+              link.setAttribute("nonce", "abc");
+              const n1 = link.nonce;
+              link.nonce = "xyz";
+              const n2 = link.nonce;
+              const nAttr = link.getAttribute("nonce");
+              return {
+                noLabel: noLabel, withLabel: withLabel, attr: attr, val: val,
+                dmType: dmType, dm: dm, mutedAttr: mutedAttr,
+                n1: n1, n2: n2, nAttr: nAttr
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["noLabel"], "Hello", "{v}");
+    assert_eq!(v["withLabel"], "L", "{v}");
+    assert_eq!(v["attr"], "L", "{v}");
+    assert_eq!(v["val"], "v", "{v}");
+    assert_eq!(v["dmType"], "boolean", "{v}");
+    assert_eq!(v["dm"], false, "{v}");
+    assert_eq!(v["mutedAttr"], true, "{v}");
+    assert_eq!(v["n1"], "abc", "{v}");
+    assert_eq!(v["n2"], "xyz", "{v}");
+    assert_eq!(v["nAttr"], "abc", "{v}");
+}
+
+#[test]
+fn document_write_runs_inserted_script() {
+    let mut page = open(
+        r#"<script>
+             function mark() { window.__dw = document.currentScript && document.currentScript.id; }
+             document.write('<script id="document-write">mark();</' + 'script>');
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__dw").unwrap();
+    assert_eq!(v, "document-write", "{v}");
+}
+
+#[test]
+fn failed_parser_script_src_fires_onerror() {
+    let mut page = open(
+        r#"<script>
+             function boom() { window.__err = document.currentScript; window.__fired = 1; }
+           </script>
+           <script src="http://some.nonexistant.test/fail" id="script-load-error" onerror="boom()"></script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(r#"(function(){return {fired: window.__fired, cs: window.__err};})()"#)
+        .unwrap();
+    assert_eq!(v["fired"], 1, "{v}");
+    assert_eq!(v["cs"], serde_json::Value::Null, "{v}");
+}
+
+#[test]
+fn iframe_post_then_listen_cdata_dir_auto() {
+    let mut page = open(
+        r#"<iframe id="f" srcdoc="<div id=container></div><script>
+            window.addEventListener('message', function (e) {
+              var id = e.data;
+              if (id === 'subframe-loaded') return;
+              var div = document.createElement('div');
+              div.dir = 'auto';
+              div.id = id;
+              div.appendChild(document.createCDATASection('foo'));
+              div.appendChild(document.createTextNode('اختبر'));
+              document.getElementById('container').appendChild(div);
+              window.top.postMessage(id, '*');
+            });
+            window.top.postMessage('subframe-loaded', '*');
+          </script>"></iframe>
+           <script>
+             function awaitMessage(msg) {
+               return new Promise(function (res) {
+                 function waitAndRemove(e) {
+                   if (e.data != msg) return;
+                   window.removeEventListener('message', waitAndRemove);
+                   res();
+                 }
+                 window.addEventListener('message', waitAndRemove);
+               });
+             }
+             window.__p = (async function () {
+               await awaitMessage('subframe-loaded');
+               var iframe = document.getElementById('f');
+               iframe.contentWindow.postMessage('1', '*');
+               await awaitMessage('1');
+               var div = iframe.contentDocument.getElementById('1');
+               window.__has = !!div;
+               window.__ltr = !!(div && div.matches(':dir(ltr)'));
+               window.__nt = div && div.firstChild && div.firstChild.nodeType;
+             })();
+           </script>"#,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(
+            r#"(function(){return {has: window.__has, ltr: window.__ltr, nt: window.__nt};})()"#,
+        )
+        .unwrap();
+    assert_eq!(v["has"], true, "{v}");
+    assert_eq!(v["ltr"], true, "{v}");
+    assert_eq!(v["nt"], 4, "{v}");
+}
+
+#[test]
+fn srcdoc_iframe_postmessage_reaches_parent() {
+    let mut page = open(
+        r#"<script>
+             window.__got = false;
+             window.addEventListener("message", function (e) {
+               if (e.data === "subframe-loaded") window.__got = true;
+             });
+           </script>
+           <iframe srcdoc="<script>window.top.postMessage('subframe-loaded','*');</script>"></iframe>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__got").unwrap();
+    assert_eq!(v, true, "{v}");
+}
+
+#[test]
+fn create_cdata_section_counts_for_dir_auto() {
+    let mut page = open(r#"<div id="d" dir="auto"></div>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const div = document.getElementById("d");
+              const cdata = document.createCDATASection("foo");
+              const text = document.createTextNode("اختبر");
+              div.appendChild(cdata);
+              div.appendChild(text);
+              const ltr = div.matches(":dir(ltr)");
+              cdata.remove();
+              const rtl = div.matches(":dir(rtl)");
+              return { type: cdata.nodeType, ltr: ltr, rtl: rtl };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["type"], 4, "{v}");
+    assert_eq!(v["ltr"], true, "{v}");
+    assert_eq!(v["rtl"], true, "{v}");
 }

@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 1840.0
+    "maxY": 1816.0
   },
   "frames": [
     {
@@ -29,896 +29,716 @@
   ],
   "elements": [
     {
-      "ref": "r41",
-      "frame": "main",
+      "ref": "r35",
       "tag": "input",
       "role": "searchbox",
       "name": "Search",
       "type": "search",
       "value": "",
-      "placeholder": "Search…",
-      "selector": {}
+      "placeholder": "Search…"
     },
     {
-      "ref": "r42",
-      "frame": "main",
+      "ref": "r36",
       "tag": "button",
       "role": "button",
       "name": "Search",
-      "type": "submit",
-      "selector": {}
+      "type": "submit"
     },
     {
-      "ref": "r384",
-      "frame": "main",
+      "ref": "r378",
       "tag": "input",
       "role": "textbox",
       "name": "Email address",
       "type": "email",
       "value": "",
       "placeholder": "you@example.com",
-      "required": true,
-      "selector": {}
+      "required": true
     },
     {
-      "ref": "r386",
-      "frame": "main",
+      "ref": "r380",
       "tag": "input",
       "role": "checkbox",
       "name": "I agree to the privacy policy",
       "type": "checkbox",
       "checked": false,
-      "required": true,
-      "selector": {}
+      "required": true
     },
     {
-      "ref": "r390",
-      "frame": "main",
+      "ref": "r384",
       "tag": "button",
       "role": "button",
       "name": "Sign up",
-      "type": "submit",
-      "selector": {}
+      "type": "submit"
     },
     {
-      "ref": "r22",
-      "frame": "main",
+      "ref": "r16",
       "tag": "a",
       "role": "link",
       "name": "The Daily Fixture",
-      "href": "https://fixtures.vector.test/",
-      "selector": {}
+      "href": "https://fixtures.vector.test/"
     },
     {
-      "ref": "r25",
-      "frame": "main",
+      "ref": "r19",
       "tag": "a",
       "role": "link",
       "name": "Local",
-      "href": "https://fixtures.vector.test/section/local",
-      "selector": {}
+      "href": "https://fixtures.vector.test/section/local"
     },
     {
-      "ref": "r27",
-      "frame": "main",
+      "ref": "r21",
       "tag": "a",
       "role": "link",
       "name": "Politics",
-      "href": "https://fixtures.vector.test/section/politics",
-      "selector": {}
+      "href": "https://fixtures.vector.test/section/politics"
     },
     {
-      "ref": "r29",
-      "frame": "main",
+      "ref": "r23",
       "tag": "a",
       "role": "link",
       "name": "Business",
-      "href": "https://fixtures.vector.test/section/business",
-      "selector": {}
+      "href": "https://fixtures.vector.test/section/business"
     },
     {
-      "ref": "r31",
-      "frame": "main",
+      "ref": "r25",
       "tag": "a",
       "role": "link",
       "name": "Sports",
-      "href": "https://fixtures.vector.test/section/sports",
-      "selector": {}
+      "href": "https://fixtures.vector.test/section/sports"
     },
     {
-      "ref": "r33",
-      "frame": "main",
+      "ref": "r27",
       "tag": "a",
       "role": "link",
       "name": "Culture",
-      "href": "https://fixtures.vector.test/section/culture",
-      "selector": {}
+      "href": "https://fixtures.vector.test/section/culture"
     },
     {
-      "ref": "r35",
-      "frame": "main",
+      "ref": "r29",
       "tag": "a",
       "role": "link",
       "name": "Opinion",
-      "href": "https://fixtures.vector.test/section/opinion",
-      "selector": {}
+      "href": "https://fixtures.vector.test/section/opinion"
     },
     {
-      "ref": "r52",
-      "frame": "main",
+      "ref": "r46",
       "tag": "a",
       "role": "link",
       "name": "Council approves riverfront plan after marathon session",
-      "href": "https://fixtures.vector.test/2026/09/15/riverfront",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/09/15/riverfront"
     },
     {
-      "ref": "r388",
-      "frame": "main",
+      "ref": "r382",
       "tag": "a",
       "role": "link",
       "name": "privacy policy",
-      "href": "https://fixtures.vector.test/privacy",
-      "selector": {}
+      "href": "https://fixtures.vector.test/privacy"
     },
     {
-      "ref": "r397",
-      "frame": "main",
+      "ref": "r391",
       "tag": "a",
       "role": "link",
       "name": "Local team clinches title in final-minute thriller",
-      "href": "https://fixtures.vector.test/2026/09/02/story-2",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/09/02/story-2"
     },
     {
-      "ref": "r400",
-      "frame": "main",
+      "ref": "r394",
       "tag": "a",
       "role": "link",
       "name": "Tech firm announces 400 jobs at downtown campus",
-      "href": "https://fixtures.vector.test/2026/09/10/story-10",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/09/10/story-10"
     },
     {
-      "ref": "r403",
-      "frame": "main",
+      "ref": "r397",
       "tag": "a",
       "role": "link",
       "name": "Weather: heat advisory extended through Thursday",
-      "href": "https://fixtures.vector.test/2026/09/04/story-4",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/09/04/story-4"
     },
     {
-      "ref": "r406",
-      "frame": "main",
+      "ref": "r400",
       "tag": "a",
       "role": "link",
       "name": "Housing report shows rents flat for third month",
-      "href": "https://fixtures.vector.test/2026/09/07/story-7",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/09/07/story-7"
     },
     {
-      "ref": "r409",
-      "frame": "main",
+      "ref": "r403",
       "tag": "a",
       "role": "link",
       "name": "Opinion: what the budget vote gets right",
-      "href": "https://fixtures.vector.test/2026/09/13/story-13",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/09/13/story-13"
     },
     {
-      "ref": "r418",
-      "frame": "main",
+      "ref": "r412",
       "tag": "a",
       "role": "link",
       "name": "Full forecast",
-      "href": "https://fixtures.vector.test/weather",
-      "selector": {}
+      "href": "https://fixtures.vector.test/weather"
     },
     {
-      "ref": "r18",
-      "frame": "main",
+      "ref": "r12",
       "tag": "a",
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/news-index.html#main",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r60",
-      "frame": "main",
+      "ref": "r54",
       "tag": "a",
       "role": "link",
       "name": "Continue reading →",
       "href": "https://fixtures.vector.test/2026/09/15/riverfront",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r63",
-      "frame": "main",
+      "ref": "r57",
       "tag": "a",
       "role": "link",
       "name": "142 comments",
       "href": "https://fixtures.vector.test/2026/09/15/riverfront#comments",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r70",
-      "frame": "main",
+      "ref": "r64",
       "tag": "a",
       "role": "link",
       "name": "Council approves riverfront plan after marathon session",
       "href": "https://fixtures.vector.test/2026/09/01/story-1",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r75",
-      "frame": "main",
+      "ref": "r69",
       "tag": "a",
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r82",
-      "frame": "main",
+      "ref": "r76",
       "tag": "a",
       "role": "link",
       "name": "Local team clinches title in final-minute thriller",
       "href": "https://fixtures.vector.test/2026/09/02/story-2",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r87",
-      "frame": "main",
+      "ref": "r81",
       "tag": "a",
       "role": "link",
       "name": "Transit",
       "href": "https://fixtures.vector.test/section/transit",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r94",
-      "frame": "main",
+      "ref": "r88",
       "tag": "a",
       "role": "link",
       "name": "New transit line opens to record ridership",
       "href": "https://fixtures.vector.test/2026/09/03/story-3",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r99",
-      "frame": "main",
+      "ref": "r93",
       "tag": "a",
       "role": "link",
       "name": "Weather",
       "href": "https://fixtures.vector.test/section/weather",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r106",
-      "frame": "main",
+      "ref": "r100",
       "tag": "a",
       "role": "link",
       "name": "Weather: heat advisory extended through Thursday",
       "href": "https://fixtures.vector.test/2026/09/04/story-4",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r111",
-      "frame": "main",
+      "ref": "r105",
       "tag": "a",
       "role": "link",
       "name": "Education",
       "href": "https://fixtures.vector.test/section/education",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r118",
-      "frame": "main",
+      "ref": "r112",
       "tag": "a",
       "role": "link",
       "name": "Schools adopt later start times from January",
       "href": "https://fixtures.vector.test/2026/09/05/story-5",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r123",
-      "frame": "main",
+      "ref": "r117",
       "tag": "a",
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r130",
-      "frame": "main",
+      "ref": "r124",
       "tag": "a",
       "role": "link",
       "name": "Museum unveils restored 17th-century tapestry",
       "href": "https://fixtures.vector.test/2026/09/06/story-6",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r135",
-      "frame": "main",
+      "ref": "r129",
       "tag": "a",
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r142",
-      "frame": "main",
+      "ref": "r136",
       "tag": "a",
       "role": "link",
       "name": "Housing report shows rents flat for third month",
       "href": "https://fixtures.vector.test/2026/09/07/story-7",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r147",
-      "frame": "main",
+      "ref": "r141",
       "tag": "a",
       "role": "link",
       "name": "Transit",
       "href": "https://fixtures.vector.test/section/transit",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r154",
-      "frame": "main",
+      "ref": "r148",
       "tag": "a",
       "role": "link",
       "name": "Farmers' market moves indoors for winter season",
       "href": "https://fixtures.vector.test/2026/09/08/story-8",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r159",
-      "frame": "main",
+      "ref": "r153",
       "tag": "a",
       "role": "link",
       "name": "Weather",
       "href": "https://fixtures.vector.test/section/weather",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r166",
-      "frame": "main",
+      "ref": "r160",
       "tag": "a",
       "role": "link",
       "name": "Library expands weekend hours at four branches",
       "href": "https://fixtures.vector.test/2026/09/09/story-9",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r171",
-      "frame": "main",
+      "ref": "r165",
       "tag": "a",
       "role": "link",
       "name": "Education",
       "href": "https://fixtures.vector.test/section/education",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r178",
-      "frame": "main",
+      "ref": "r172",
       "tag": "a",
       "role": "link",
       "name": "Tech firm announces 400 jobs at downtown campus",
       "href": "https://fixtures.vector.test/2026/09/10/story-10",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r183",
-      "frame": "main",
+      "ref": "r177",
       "tag": "a",
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r190",
-      "frame": "main",
+      "ref": "r184",
       "tag": "a",
       "role": "link",
       "name": "Bridge repairs to close two lanes overnight",
       "href": "https://fixtures.vector.test/2026/09/11/story-11",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r195",
-      "frame": "main",
+      "ref": "r189",
       "tag": "a",
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r202",
-      "frame": "main",
+      "ref": "r196",
       "tag": "a",
       "role": "link",
       "name": "Interview: the chef bringing regional cuisine downtown",
       "href": "https://fixtures.vector.test/2026/09/12/story-12",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r207",
-      "frame": "main",
+      "ref": "r201",
       "tag": "a",
       "role": "link",
       "name": "Transit",
       "href": "https://fixtures.vector.test/section/transit",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r214",
-      "frame": "main",
+      "ref": "r208",
       "tag": "a",
       "role": "link",
       "name": "Opinion: what the budget vote gets right",
       "href": "https://fixtures.vector.test/2026/09/13/story-13",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r219",
-      "frame": "main",
+      "ref": "r213",
       "tag": "a",
       "role": "link",
       "name": "Weather",
       "href": "https://fixtures.vector.test/section/weather",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r226",
-      "frame": "main",
+      "ref": "r220",
       "tag": "a",
       "role": "link",
       "name": "Photos: harvest festival draws thousands",
       "href": "https://fixtures.vector.test/2026/09/14/story-14",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r231",
-      "frame": "main",
+      "ref": "r225",
       "tag": "a",
       "role": "link",
       "name": "Education",
       "href": "https://fixtures.vector.test/section/education",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r238",
-      "frame": "main",
+      "ref": "r232",
       "tag": "a",
       "role": "link",
       "name": "Explainer: how the new recycling rules work",
       "href": "https://fixtures.vector.test/2026/09/15/story-15",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r243",
-      "frame": "main",
+      "ref": "r237",
       "tag": "a",
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r250",
-      "frame": "main",
+      "ref": "r244",
       "tag": "a",
       "role": "link",
       "name": "University breaks ground on research centre",
       "href": "https://fixtures.vector.test/2026/09/16/story-16",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r255",
-      "frame": "main",
+      "ref": "r249",
       "tag": "a",
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r262",
-      "frame": "main",
+      "ref": "r256",
       "tag": "a",
       "role": "link",
       "name": "Police report drop in vehicle thefts",
       "href": "https://fixtures.vector.test/2026/09/17/story-17",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r267",
-      "frame": "main",
+      "ref": "r261",
       "tag": "a",
       "role": "link",
       "name": "Transit",
       "href": "https://fixtures.vector.test/section/transit",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r274",
-      "frame": "main",
+      "ref": "r268",
       "tag": "a",
       "role": "link",
       "name": "Theatre season opens with a bold revival",
       "href": "https://fixtures.vector.test/2026/09/18/story-18",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r279",
-      "frame": "main",
+      "ref": "r273",
       "tag": "a",
       "role": "link",
       "name": "Weather",
       "href": "https://fixtures.vector.test/section/weather",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r286",
-      "frame": "main",
+      "ref": "r280",
       "tag": "a",
       "role": "link",
       "name": "Startup raises funding for battery recycling",
       "href": "https://fixtures.vector.test/2026/09/19/story-19",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r291",
-      "frame": "main",
+      "ref": "r285",
       "tag": "a",
       "role": "link",
       "name": "Education",
       "href": "https://fixtures.vector.test/section/education",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r298",
-      "frame": "main",
+      "ref": "r292",
       "tag": "a",
       "role": "link",
       "name": "Hikers rescued after overnight ordeal",
       "href": "https://fixtures.vector.test/2026/09/20/story-20",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r303",
-      "frame": "main",
+      "ref": "r297",
       "tag": "a",
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r310",
-      "frame": "main",
+      "ref": "r304",
       "tag": "a",
       "role": "link",
       "name": "Historic diner reopens under new owners",
       "href": "https://fixtures.vector.test/2026/09/21/story-21",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r315",
-      "frame": "main",
+      "ref": "r309",
       "tag": "a",
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r322",
-      "frame": "main",
+      "ref": "r316",
       "tag": "a",
       "role": "link",
       "name": "City hall to livestream all committee meetings",
       "href": "https://fixtures.vector.test/2026/09/22/story-22",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r327",
-      "frame": "main",
+      "ref": "r321",
       "tag": "a",
       "role": "link",
       "name": "Transit",
       "href": "https://fixtures.vector.test/section/transit",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r334",
-      "frame": "main",
+      "ref": "r328",
       "tag": "a",
       "role": "link",
       "name": "Youth orchestra to tour three countries",
       "href": "https://fixtures.vector.test/2026/09/23/story-23",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r339",
-      "frame": "main",
+      "ref": "r333",
       "tag": "a",
       "role": "link",
       "name": "Weather",
       "href": "https://fixtures.vector.test/section/weather",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r346",
-      "frame": "main",
+      "ref": "r340",
       "tag": "a",
       "role": "link",
       "name": "Analysis: the numbers behind the transit boom",
       "href": "https://fixtures.vector.test/2026/09/24/story-24",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r351",
-      "frame": "main",
+      "ref": "r345",
       "tag": "a",
       "role": "link",
       "name": "Education",
       "href": "https://fixtures.vector.test/section/education",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r358",
-      "frame": "main",
+      "ref": "r352",
       "tag": "a",
       "role": "link",
       "name": "Volunteers plant 2,000 trees in a single weekend",
       "href": "https://fixtures.vector.test/2026/09/25/story-25",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r363",
-      "frame": "main",
+      "ref": "r357",
       "tag": "a",
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r371",
-      "frame": "main",
+      "ref": "r365",
       "tag": "a",
       "role": "link",
       "name": "Older stories ›",
       "href": "https://fixtures.vector.test/latest?page=2",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r425",
-      "frame": "main",
+      "ref": "r419",
       "tag": "a",
       "role": "link",
       "name": "Local",
       "href": "https://fixtures.vector.test/section/local",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r428",
-      "frame": "main",
+      "ref": "r422",
       "tag": "a",
       "role": "link",
       "name": "Politics",
       "href": "https://fixtures.vector.test/section/politics",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r431",
-      "frame": "main",
+      "ref": "r425",
       "tag": "a",
       "role": "link",
       "name": "Business",
       "href": "https://fixtures.vector.test/section/business",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r434",
-      "frame": "main",
+      "ref": "r428",
       "tag": "a",
       "role": "link",
       "name": "Sports",
       "href": "https://fixtures.vector.test/section/sports",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r437",
-      "frame": "main",
+      "ref": "r431",
       "tag": "a",
       "role": "link",
       "name": "Culture",
       "href": "https://fixtures.vector.test/section/culture",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r440",
-      "frame": "main",
+      "ref": "r434",
       "tag": "a",
       "role": "link",
       "name": "Opinion",
       "href": "https://fixtures.vector.test/section/opinion",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r443",
-      "frame": "main",
+      "ref": "r437",
       "tag": "a",
       "role": "link",
       "name": "Obituaries",
       "href": "https://fixtures.vector.test/section/obituaries",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r446",
-      "frame": "main",
+      "ref": "r440",
       "tag": "a",
       "role": "link",
       "name": "Classifieds",
       "href": "https://fixtures.vector.test/section/classifieds",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r449",
-      "frame": "main",
+      "ref": "r443",
       "tag": "a",
       "role": "link",
       "name": "Puzzles",
       "href": "https://fixtures.vector.test/section/puzzles",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r453",
-      "frame": "main",
+      "ref": "r447",
       "tag": "a",
       "role": "link",
       "name": "About us",
       "href": "https://fixtures.vector.test/about",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r455",
-      "frame": "main",
+      "ref": "r449",
       "tag": "a",
       "role": "link",
       "name": "Contact",
       "href": "https://fixtures.vector.test/contact",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r457",
-      "frame": "main",
+      "ref": "r451",
       "tag": "a",
       "role": "link",
       "name": "Advertise",
       "href": "https://fixtures.vector.test/advertise",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r459",
-      "frame": "main",
+      "ref": "r453",
       "tag": "a",
       "role": "link",
       "name": "Subscribe",
       "href": "https://fixtures.vector.test/subscribe",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r461",
-      "frame": "main",
+      "ref": "r455",
       "tag": "a",
       "role": "link",
       "name": "Privacy",
       "href": "https://fixtures.vector.test/privacy",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r463",
-      "frame": "main",
+      "ref": "r457",
       "tag": "a",
       "role": "link",
       "name": "Terms",
       "href": "https://fixtures.vector.test/terms",
-      "selector": {},
       "offscreen": true
     },
     {
-      "ref": "r465",
-      "frame": "main",
+      "ref": "r459",
       "tag": "a",
       "role": "link",
       "name": "Sitemap",
       "href": "https://fixtures.vector.test/sitemap",
-      "selector": {},
       "offscreen": true
     }
   ],
   "formFields": [
     {
-      "ref": "r41",
+      "ref": "r35",
       "label": "Search",
       "name": "q",
       "type": "search",
@@ -926,7 +746,7 @@
       "valid": true
     },
     {
-      "ref": "r384",
+      "ref": "r378",
       "label": "Email address",
       "name": "email",
       "type": "email",
@@ -936,7 +756,7 @@
       "validationMessage": "Please fill out this field."
     },
     {
-      "ref": "r386",
+      "ref": "r380",
       "label": "I agree to the privacy policy",
       "name": "consent",
       "type": "checkbox",
@@ -949,427 +769,427 @@
   "tables": [],
   "links": [
     {
-      "ref": "r22",
+      "ref": "r16",
       "text": "The Daily Fixture",
       "href": "https://fixtures.vector.test/"
     },
     {
-      "ref": "r25",
+      "ref": "r19",
       "text": "Local",
       "href": "https://fixtures.vector.test/section/local"
     },
     {
-      "ref": "r27",
+      "ref": "r21",
       "text": "Politics",
       "href": "https://fixtures.vector.test/section/politics"
     },
     {
-      "ref": "r29",
+      "ref": "r23",
       "text": "Business",
       "href": "https://fixtures.vector.test/section/business"
     },
     {
-      "ref": "r31",
+      "ref": "r25",
       "text": "Sports",
       "href": "https://fixtures.vector.test/section/sports"
     },
     {
-      "ref": "r33",
+      "ref": "r27",
       "text": "Culture",
       "href": "https://fixtures.vector.test/section/culture"
     },
     {
-      "ref": "r35",
+      "ref": "r29",
       "text": "Opinion",
       "href": "https://fixtures.vector.test/section/opinion"
     },
     {
-      "ref": "r52",
+      "ref": "r46",
       "text": "Council approves riverfront plan after marathon session",
       "href": "https://fixtures.vector.test/2026/09/15/riverfront"
     },
     {
-      "ref": "r388",
+      "ref": "r382",
       "text": "privacy policy",
       "href": "https://fixtures.vector.test/privacy"
     },
     {
-      "ref": "r397",
+      "ref": "r391",
       "text": "Local team clinches title in final-minute thriller",
       "href": "https://fixtures.vector.test/2026/09/02/story-2"
     },
     {
-      "ref": "r400",
+      "ref": "r394",
       "text": "Tech firm announces 400 jobs at downtown campus",
       "href": "https://fixtures.vector.test/2026/09/10/story-10"
     },
     {
-      "ref": "r403",
+      "ref": "r397",
       "text": "Weather: heat advisory extended through Thursday",
       "href": "https://fixtures.vector.test/2026/09/04/story-4"
     },
     {
-      "ref": "r406",
+      "ref": "r400",
       "text": "Housing report shows rents flat for third month",
       "href": "https://fixtures.vector.test/2026/09/07/story-7"
     },
     {
-      "ref": "r409",
+      "ref": "r403",
       "text": "Opinion: what the budget vote gets right",
       "href": "https://fixtures.vector.test/2026/09/13/story-13"
     },
     {
-      "ref": "r418",
+      "ref": "r412",
       "text": "Full forecast",
       "href": "https://fixtures.vector.test/weather"
     },
     {
-      "ref": "r18",
+      "ref": "r12",
       "text": "Skip to main content",
       "href": "https://fixtures.vector.test/news-index.html#main"
     },
     {
-      "ref": "r60",
+      "ref": "r54",
       "text": "Continue reading →",
       "href": "https://fixtures.vector.test/2026/09/15/riverfront"
     },
     {
-      "ref": "r63",
+      "ref": "r57",
       "text": "142 comments",
       "href": "https://fixtures.vector.test/2026/09/15/riverfront#comments"
     },
     {
-      "ref": "r70",
+      "ref": "r64",
       "text": "Council approves riverfront plan after marathon session",
       "href": "https://fixtures.vector.test/2026/09/01/story-1"
     },
     {
-      "ref": "r75",
+      "ref": "r69",
       "text": "Sports",
       "href": "https://fixtures.vector.test/section/sports"
     },
     {
-      "ref": "r82",
+      "ref": "r76",
       "text": "Local team clinches title in final-minute thriller",
       "href": "https://fixtures.vector.test/2026/09/02/story-2"
     },
     {
-      "ref": "r87",
+      "ref": "r81",
       "text": "Transit",
       "href": "https://fixtures.vector.test/section/transit"
     },
     {
-      "ref": "r94",
+      "ref": "r88",
       "text": "New transit line opens to record ridership",
       "href": "https://fixtures.vector.test/2026/09/03/story-3"
     },
     {
-      "ref": "r99",
+      "ref": "r93",
       "text": "Weather",
       "href": "https://fixtures.vector.test/section/weather"
     },
     {
-      "ref": "r106",
+      "ref": "r100",
       "text": "Weather: heat advisory extended through Thursday",
       "href": "https://fixtures.vector.test/2026/09/04/story-4"
     },
     {
-      "ref": "r111",
+      "ref": "r105",
       "text": "Education",
       "href": "https://fixtures.vector.test/section/education"
     },
     {
-      "ref": "r118",
+      "ref": "r112",
       "text": "Schools adopt later start times from January",
       "href": "https://fixtures.vector.test/2026/09/05/story-5"
     },
     {
-      "ref": "r123",
+      "ref": "r117",
       "text": "Local",
       "href": "https://fixtures.vector.test/section/local"
     },
     {
-      "ref": "r130",
+      "ref": "r124",
       "text": "Museum unveils restored 17th-century tapestry",
       "href": "https://fixtures.vector.test/2026/09/06/story-6"
     },
     {
-      "ref": "r135",
+      "ref": "r129",
       "text": "Sports",
       "href": "https://fixtures.vector.test/section/sports"
     },
     {
-      "ref": "r142",
+      "ref": "r136",
       "text": "Housing report shows rents flat for third month",
       "href": "https://fixtures.vector.test/2026/09/07/story-7"
     },
     {
-      "ref": "r147",
+      "ref": "r141",
       "text": "Transit",
       "href": "https://fixtures.vector.test/section/transit"
     },
     {
-      "ref": "r154",
+      "ref": "r148",
       "text": "Farmers' market moves indoors for winter season",
       "href": "https://fixtures.vector.test/2026/09/08/story-8"
     },
     {
-      "ref": "r159",
+      "ref": "r153",
       "text": "Weather",
       "href": "https://fixtures.vector.test/section/weather"
     },
     {
-      "ref": "r166",
+      "ref": "r160",
       "text": "Library expands weekend hours at four branches",
       "href": "https://fixtures.vector.test/2026/09/09/story-9"
     },
     {
-      "ref": "r171",
+      "ref": "r165",
       "text": "Education",
       "href": "https://fixtures.vector.test/section/education"
     },
     {
-      "ref": "r178",
+      "ref": "r172",
       "text": "Tech firm announces 400 jobs at downtown campus",
       "href": "https://fixtures.vector.test/2026/09/10/story-10"
     },
     {
-      "ref": "r183",
+      "ref": "r177",
       "text": "Local",
       "href": "https://fixtures.vector.test/section/local"
     },
     {
-      "ref": "r190",
+      "ref": "r184",
       "text": "Bridge repairs to close two lanes overnight",
       "href": "https://fixtures.vector.test/2026/09/11/story-11"
     },
     {
-      "ref": "r195",
+      "ref": "r189",
       "text": "Sports",
       "href": "https://fixtures.vector.test/section/sports"
     },
     {
-      "ref": "r202",
+      "ref": "r196",
       "text": "Interview: the chef bringing regional cuisine downtown",
       "href": "https://fixtures.vector.test/2026/09/12/story-12"
     },
     {
-      "ref": "r207",
+      "ref": "r201",
       "text": "Transit",
       "href": "https://fixtures.vector.test/section/transit"
     },
     {
-      "ref": "r214",
+      "ref": "r208",
       "text": "Opinion: what the budget vote gets right",
       "href": "https://fixtures.vector.test/2026/09/13/story-13"
     },
     {
-      "ref": "r219",
+      "ref": "r213",
       "text": "Weather",
       "href": "https://fixtures.vector.test/section/weather"
     },
     {
-      "ref": "r226",
+      "ref": "r220",
       "text": "Photos: harvest festival draws thousands",
       "href": "https://fixtures.vector.test/2026/09/14/story-14"
     },
     {
-      "ref": "r231",
+      "ref": "r225",
       "text": "Education",
       "href": "https://fixtures.vector.test/section/education"
     },
     {
-      "ref": "r238",
+      "ref": "r232",
       "text": "Explainer: how the new recycling rules work",
       "href": "https://fixtures.vector.test/2026/09/15/story-15"
     },
     {
-      "ref": "r243",
+      "ref": "r237",
       "text": "Local",
       "href": "https://fixtures.vector.test/section/local"
     },
     {
-      "ref": "r250",
+      "ref": "r244",
       "text": "University breaks ground on research centre",
       "href": "https://fixtures.vector.test/2026/09/16/story-16"
     },
     {
-      "ref": "r255",
+      "ref": "r249",
       "text": "Sports",
       "href": "https://fixtures.vector.test/section/sports"
     },
     {
-      "ref": "r262",
+      "ref": "r256",
       "text": "Police report drop in vehicle thefts",
       "href": "https://fixtures.vector.test/2026/09/17/story-17"
     },
     {
-      "ref": "r267",
+      "ref": "r261",
       "text": "Transit",
       "href": "https://fixtures.vector.test/section/transit"
     },
     {
-      "ref": "r274",
+      "ref": "r268",
       "text": "Theatre season opens with a bold revival",
       "href": "https://fixtures.vector.test/2026/09/18/story-18"
     },
     {
-      "ref": "r279",
+      "ref": "r273",
       "text": "Weather",
       "href": "https://fixtures.vector.test/section/weather"
     },
     {
-      "ref": "r286",
+      "ref": "r280",
       "text": "Startup raises funding for battery recycling",
       "href": "https://fixtures.vector.test/2026/09/19/story-19"
     },
     {
-      "ref": "r291",
+      "ref": "r285",
       "text": "Education",
       "href": "https://fixtures.vector.test/section/education"
     },
     {
-      "ref": "r298",
+      "ref": "r292",
       "text": "Hikers rescued after overnight ordeal",
       "href": "https://fixtures.vector.test/2026/09/20/story-20"
     },
     {
-      "ref": "r303",
+      "ref": "r297",
       "text": "Local",
       "href": "https://fixtures.vector.test/section/local"
     },
     {
-      "ref": "r310",
+      "ref": "r304",
       "text": "Historic diner reopens under new owners",
       "href": "https://fixtures.vector.test/2026/09/21/story-21"
     },
     {
-      "ref": "r315",
+      "ref": "r309",
       "text": "Sports",
       "href": "https://fixtures.vector.test/section/sports"
     },
     {
-      "ref": "r322",
+      "ref": "r316",
       "text": "City hall to livestream all committee meetings",
       "href": "https://fixtures.vector.test/2026/09/22/story-22"
     },
     {
-      "ref": "r327",
+      "ref": "r321",
       "text": "Transit",
       "href": "https://fixtures.vector.test/section/transit"
     },
     {
-      "ref": "r334",
+      "ref": "r328",
       "text": "Youth orchestra to tour three countries",
       "href": "https://fixtures.vector.test/2026/09/23/story-23"
     },
     {
-      "ref": "r339",
+      "ref": "r333",
       "text": "Weather",
       "href": "https://fixtures.vector.test/section/weather"
     },
     {
-      "ref": "r346",
+      "ref": "r340",
       "text": "Analysis: the numbers behind the transit boom",
       "href": "https://fixtures.vector.test/2026/09/24/story-24"
     },
     {
-      "ref": "r351",
+      "ref": "r345",
       "text": "Education",
       "href": "https://fixtures.vector.test/section/education"
     },
     {
-      "ref": "r358",
+      "ref": "r352",
       "text": "Volunteers plant 2,000 trees in a single weekend",
       "href": "https://fixtures.vector.test/2026/09/25/story-25"
     },
     {
-      "ref": "r363",
+      "ref": "r357",
       "text": "Local",
       "href": "https://fixtures.vector.test/section/local"
     },
     {
-      "ref": "r371",
+      "ref": "r365",
       "text": "Older stories ›",
       "href": "https://fixtures.vector.test/latest?page=2"
     },
     {
-      "ref": "r425",
+      "ref": "r419",
       "text": "Local",
       "href": "https://fixtures.vector.test/section/local"
     },
     {
-      "ref": "r428",
+      "ref": "r422",
       "text": "Politics",
       "href": "https://fixtures.vector.test/section/politics"
     },
     {
-      "ref": "r431",
+      "ref": "r425",
       "text": "Business",
       "href": "https://fixtures.vector.test/section/business"
     },
     {
-      "ref": "r434",
+      "ref": "r428",
       "text": "Sports",
       "href": "https://fixtures.vector.test/section/sports"
     },
     {
-      "ref": "r437",
+      "ref": "r431",
       "text": "Culture",
       "href": "https://fixtures.vector.test/section/culture"
     },
     {
-      "ref": "r440",
+      "ref": "r434",
       "text": "Opinion",
       "href": "https://fixtures.vector.test/section/opinion"
     },
     {
-      "ref": "r443",
+      "ref": "r437",
       "text": "Obituaries",
       "href": "https://fixtures.vector.test/section/obituaries"
     },
     {
-      "ref": "r446",
+      "ref": "r440",
       "text": "Classifieds",
       "href": "https://fixtures.vector.test/section/classifieds"
     },
     {
-      "ref": "r449",
+      "ref": "r443",
       "text": "Puzzles",
       "href": "https://fixtures.vector.test/section/puzzles"
     },
     {
-      "ref": "r453",
+      "ref": "r447",
       "text": "About us",
       "href": "https://fixtures.vector.test/about"
     },
     {
-      "ref": "r455",
+      "ref": "r449",
       "text": "Contact",
       "href": "https://fixtures.vector.test/contact"
     },
     {
-      "ref": "r457",
+      "ref": "r451",
       "text": "Advertise",
       "href": "https://fixtures.vector.test/advertise"
     },
     {
-      "ref": "r459",
+      "ref": "r453",
       "text": "Subscribe",
       "href": "https://fixtures.vector.test/subscribe"
     },
     {
-      "ref": "r461",
+      "ref": "r455",
       "text": "Privacy",
       "href": "https://fixtures.vector.test/privacy"
     },
     {
-      "ref": "r463",
+      "ref": "r457",
       "text": "Terms",
       "href": "https://fixtures.vector.test/terms"
     },
     {
-      "ref": "r465",
+      "ref": "r459",
       "text": "Sitemap",
       "href": "https://fixtures.vector.test/sitemap"
     }

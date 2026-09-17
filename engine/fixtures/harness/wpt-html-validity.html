@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<title>HTMLInputElement.checkValidity</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<form id="f"><input id="req" required><input id="ok" value="x"></form>
+<script>
+test(function() {
+  var req = document.getElementById("req")
+  var ok = document.getElementById("ok")
+  var form = document.getElementById("f")
+  assert_false(req.checkValidity())
+  assert_true(ok.checkValidity())
+  req.value = "filled"
+  assert_true(req.checkValidity())
+  assert_true(form.checkValidity())
+}, "required empty control is invalid")
+</script>

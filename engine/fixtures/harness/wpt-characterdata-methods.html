@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<title>CharacterData mutation methods</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var t = document.createTextNode("abcd")
+  assert_equals(t.substringData(1, 2), "bc")
+  t.appendData("e")
+  assert_equals(t.data, "abcde")
+  t.insertData(1, "X")
+  assert_equals(t.data, "aXbcde")
+  t.deleteData(1, 1)
+  assert_equals(t.data, "abcde")
+  t.replaceData(1, 3, "YZ")
+  assert_equals(t.data, "aYZe")
+}, "substringData, appendData, insertData, deleteData, replaceData")
+</script>

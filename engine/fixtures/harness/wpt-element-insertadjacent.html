@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<title>Element.insertAdjacentElement and insertAdjacentText</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var p = document.createElement("p")
+  var a = document.createElement("a")
+  var b = document.createElement("b")
+  var i = document.createElement("i")
+  document.body.appendChild(p)
+  p.insertAdjacentElement("beforebegin", a)
+  p.insertAdjacentElement("afterend", b)
+  p.insertAdjacentElement("afterbegin", i)
+  p.insertAdjacentText("beforeend", "x")
+  assert_equals(a.nextSibling, p)
+  assert_equals(p.nextSibling, b)
+  assert_equals(p.firstChild, i)
+  assert_equals(p.lastChild.nodeValue, "x")
+}, "insertAdjacentElement and insertAdjacentText place nodes around the target")
+</script>

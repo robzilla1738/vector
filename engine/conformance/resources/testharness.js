@@ -5043,6 +5043,7 @@
      */
 
     var tests = new Tests();
+    expose(tests, 'tests');
 
     if (global_scope.addEventListener) {
         var error_handler = function(error, message, stack) {

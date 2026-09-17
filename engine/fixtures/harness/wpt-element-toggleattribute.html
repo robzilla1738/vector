@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<title>Element.toggleAttribute</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  assert_true(el.toggleAttribute("hidden"))
+  assert_true(el.hasAttribute("hidden"))
+  assert_false(el.toggleAttribute("hidden"))
+  assert_false(el.hasAttribute("hidden"))
+  assert_true(el.toggleAttribute("HIDDEN"))
+  assert_true(el.hasAttribute("hidden"))
+  assert_true(el.toggleAttribute("hidden", true))
+  assert_true(el.hasAttribute("hidden"))
+  assert_false(el.toggleAttribute("hidden", false))
+  assert_false(el.hasAttribute("hidden"))
+}, "toggleAttribute adds, removes, and lowercases HTML names")
+</script>

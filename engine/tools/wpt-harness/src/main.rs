@@ -7,6 +7,7 @@
 
 mod http_serve;
 
+use std::collections::HashSet;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -52,9 +53,12 @@ struct Args {
     /// Walk testharness HTML under `--wpt-dir` in addition to the supported subset.
     #[arg(long)]
     tree: bool,
-    /// Cap on `--tree` tests (0 = no extra tree tests).
+    /// Cap on `--tree` tests (0 = unlimited).
     #[arg(long, default_value_t = 0)]
     tree_limit: usize,
+    /// Walk only this subdirectory of `--wpt-dir` (e.g. `html/dom`).
+    #[arg(long)]
+    tree_family: Option<String>,
     /// Reftest fonts directory (`Ahem.ttf`).
     #[arg(long, default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/fonts"))]
     fonts_dir: PathBuf,
@@ -117,6 +121,9 @@ struct Report {
     overall_manifest: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     http_origin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tree_family: Option<String>,
+    tree_complete: bool,
     fonts_dir: String,
     idlharness: bool,
     totals: Counts,
@@ -146,9 +153,20 @@ const TREE_SKIP: &[&str] = &[
     "conformance-checkers",
 ];
 
-fn collect_testharness_tree(root: &Path, limit: usize) -> Result<Vec<(String, PathBuf)>> {
+fn collect_testharness_tree(
+    root: &Path,
+    limit: usize,
+    family: Option<&str>,
+) -> Result<Vec<(String, PathBuf)>> {
     let mut out = Vec::new();
-    fn walk(dir: &Path, root: &Path, out: &mut Vec<(String, PathBuf)>, limit: usize) -> Result<()> {
+    let mut seen = HashSet::new();
+    fn walk(
+        dir: &Path,
+        root: &Path,
+        out: &mut Vec<(String, PathBuf)>,
+        seen: &mut HashSet<String>,
+        limit: usize,
+    ) -> Result<()> {
         if limit > 0 && out.len() >= limit {
             return Ok(());
         }
@@ -166,7 +184,7 @@ fn collect_testharness_tree(root: &Path, limit: usize) -> Result<Vec<(String, Pa
                 if TREE_SKIP.iter().any(|s| *s == name) {
                     continue;
                 }
-                walk(&path, root, out, limit)?;
+                walk(&path, root, out, seen, limit)?;
             } else {
                 let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
                 if ext.eq_ignore_ascii_case("html") || ext.eq_ignore_ascii_case("htm") {
@@ -179,14 +197,28 @@ fn collect_testharness_tree(root: &Path, limit: usize) -> Result<Vec<(String, Pa
                             .unwrap_or(&path)
                             .to_string_lossy()
                             .replace('\\', "/");
-                        out.push((rel, path));
+                        if seen.insert(rel.clone()) {
+                            out.push((rel, path));
+                        }
                     }
                 }
             }
         }
         Ok(())
     }
-    walk(root, root, &mut out, limit)?;
+    if let Some(fam) = family {
+        let dir = root.join(fam);
+        if dir.is_dir() {
+            walk(&dir, root, &mut out, &mut seen, limit)?;
+        }
+        return Ok(out);
+    }
+    // Official `html/dom` first so an uncapped walk still prefers that family.
+    let preferred = root.join("html").join("dom");
+    if preferred.is_dir() {
+        walk(&preferred, root, &mut out, &mut seen, limit)?;
+    }
+    walk(root, root, &mut out, &mut seen, limit)?;
     Ok(out)
 }
 
@@ -198,6 +230,37 @@ fn resource_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../conformance/resources")
         .join(name)
+}
+
+/// HTML `<script>` text must not contain a literal `</script` (helpers such
+/// as render-blocking `utils.js` embed that sequence in `document.write`).
+fn escape_inline_script(js: &str) -> String {
+    let lower = js.to_ascii_lowercase();
+    let mut out = String::with_capacity(js.len());
+    let mut last = 0;
+    let mut search = 0;
+    while let Some(rel) = lower[search..].find("</script") {
+        let at = search + rel;
+        out.push_str(&js[last..at]);
+        out.push_str("<\\/script");
+        last = at + 8;
+        search = last;
+    }
+    out.push_str(&js[last..]);
+    out
+}
+
+fn replace_first(hay: &str, needles: &[&str], with: &str) -> (String, bool) {
+    for needle in needles {
+        if let Some(i) = hay.find(needle) {
+            let mut out = String::with_capacity(hay.len() + with.len());
+            out.push_str(&hay[..i]);
+            out.push_str(with);
+            out.push_str(&hay[i + needle.len()..]);
+            return (out, true);
+        }
+    }
+    (hay.to_string(), false)
 }
 
 fn inject_relative_scripts(html: &str, dir: &Path) -> String {
@@ -212,27 +275,108 @@ fn inject_relative_scripts(html: &str, dir: &Path) -> String {
             out.push_str(rest);
             return out;
         };
-        let src = &rest[..end];
+        let src = rest[..end].to_string();
         rest = &rest[end + 1..];
-        if let Some(close) = rest.find("</script>") {
-            rest = &rest[close + "</script>".len()..];
-        }
-        if src.starts_with('/') || src.starts_with("http://") || src.starts_with("https://") {
+        let close_at = rest.find("</script>");
+        let tag_rest = close_at.map_or(rest, |c| &rest[..c]);
+        if src.starts_with("http://") || src.starts_with("https://") || is_harness_script(&src) {
             out.push_str(open);
-            out.push_str(src);
-            out.push_str("\"></script>");
+            out.push_str(&src);
+            out.push('"');
+            out.push_str(tag_rest);
+            out.push_str("</script>");
+            if let Some(c) = close_at {
+                rest = &rest[c + "</script>".len()..];
+            } else {
+                rest = "";
+            }
             continue;
         }
-        let path = dir.join(src);
+        if let Some(c) = close_at {
+            rest = &rest[c + "</script>".len()..];
+        }
+        let path = if src.starts_with('/') {
+            let rel = src.trim_start_matches('/');
+            let mut found = None;
+            let mut cur = Some(dir);
+            while let Some(d) = cur {
+                let cand = d.join(rel);
+                if cand.is_file() {
+                    found = Some(cand);
+                    break;
+                }
+                cur = d.parent();
+            }
+            match found {
+                Some(p) => p,
+                None => {
+                    out.push_str(open);
+                    out.push_str(&src);
+                    out.push_str("\"></script>");
+                    continue;
+                }
+            }
+        } else {
+            dir.join(&src)
+        };
         match std::fs::read_to_string(&path) {
             Ok(js) => {
                 out.push_str("<script>\n");
-                out.push_str(&js);
+                out.push_str(&escape_inline_script(&js));
                 out.push_str("\n</script>");
             }
             Err(_) => {
                 out.push_str(open);
-                out.push_str(src);
+                out.push_str(&src);
+                out.push_str("\"></script>");
+            }
+        }
+    }
+    out.push_str(rest);
+    inject_unquoted_relative_scripts(&out, dir)
+}
+
+fn inject_unquoted_relative_scripts(html: &str, dir: &Path) -> String {
+    let mut out = String::new();
+    let mut rest = html;
+    while let Some(i) = rest.find("<script src=") {
+        out.push_str(&rest[..i]);
+        rest = &rest[i + "<script src=".len()..];
+        if rest.starts_with('"') || rest.starts_with('\'') {
+            out.push_str("<script src=");
+            if let Some(close) = rest.find("</script>") {
+                out.push_str(&rest[..close + "</script>".len()]);
+                rest = &rest[close + "</script>".len()..];
+            } else {
+                out.push_str(rest);
+                rest = "";
+            }
+            continue;
+        }
+        let end = rest
+            .find(|c: char| c == '>' || c.is_ascii_whitespace())
+            .unwrap_or(rest.len());
+        let src = rest[..end].trim_end_matches('/').to_string();
+        rest = &rest[end..];
+        if let Some(close) = rest.find("</script>") {
+            rest = &rest[close + "</script>".len()..];
+        }
+        if src.starts_with("http://") || src.starts_with("https://") || is_harness_script(&src) {
+            out.push_str("<script src=\"");
+            out.push_str(&src);
+            out.push_str("\"></script>");
+            continue;
+        }
+        let path = dir.join(&src);
+        match std::fs::read_to_string(&path) {
+            Ok(js) => {
+                out.push_str("<script>\n");
+                out.push_str(&escape_inline_script(&js));
+                out.push_str("\n</script>");
+            }
+            Err(_) => {
+                out.push_str("<script src=\"");
+                out.push_str(&src);
                 out.push_str("\"></script>");
             }
         }
@@ -241,6 +385,65 @@ fn inject_relative_scripts(html: &str, dir: &Path) -> String {
     out
 }
 
+fn first_wpt_variant(html: &str) -> Option<&str> {
+    let lower = html.to_ascii_lowercase();
+    let mut search = 0;
+    while let Some(rel) = lower[search..].find("name=\"variant\"") {
+        let at = search + rel;
+        if let Some(c) = lower[at..].find("content=\"") {
+            let start = at + c + 9;
+            if let Some(len) = html.get(start..).and_then(|s| s.find('"')) {
+                let val = html.get(start..start + len)?;
+                if val.starts_with('?') {
+                    return Some(val);
+                }
+            }
+        }
+        search = at + 1;
+    }
+    None
+}
+
+fn is_harness_script(src: &str) -> bool {
+    matches!(
+        src.rsplit('/').next().unwrap_or(src),
+        "testharness.js"
+            | "testharnessreport.js"
+            | "idlharness.js"
+            | "WebIDLParser.js"
+            | "webidl2.js"
+            | "testdriver.js"
+            | "testdriver-vendor.js"
+    )
+}
+
+const TESTHARNESS_SRC: &[&str] = &[
+    r#"<script src="/resources/testharness.js"></script>"#,
+    r#"<script src=/resources/testharness.js></script>"#,
+];
+const TESTHARNESSREPORT_SRC: &[&str] = &[
+    r#"<script src="/resources/testharnessreport.js"></script>"#,
+    r#"<script src=/resources/testharnessreport.js></script>"#,
+];
+const WEBIDL_PARSER_SRC: &[&str] = &[
+    r#"<script src="/resources/WebIDLParser.js"></script>"#,
+    r#"<script src=/resources/WebIDLParser.js></script>"#,
+    r#"<script src="/resources/webidl2.js"></script>"#,
+    r#"<script src=/resources/webidl2.js></script>"#,
+];
+const IDLHARNESS_SRC: &[&str] = &[
+    r#"<script src="/resources/idlharness.js"></script>"#,
+    r#"<script src=/resources/idlharness.js></script>"#,
+];
+const TESTDRIVER_SRC: &[&str] = &[
+    r#"<script src="/resources/testdriver.js"></script>"#,
+    r#"<script src=/resources/testdriver.js></script>"#,
+];
+const TESTDRIVER_VENDOR_SRC: &[&str] = &[
+    r#"<script src="/resources/testdriver-vendor.js"></script>"#,
+    r#"<script src=/resources/testdriver-vendor.js></script>"#,
+];
+
 fn inject_upstream_testharness(html: &str) -> String {
     if !html.contains("testharness.js") {
         return html.to_string();
@@ -248,24 +451,16 @@ fn inject_upstream_testharness(html: &str) -> String {
     let Ok(th) = std::fs::read_to_string(testharness_path()) else {
         return html.to_string();
     };
-    let mut body = html.to_string();
-    for needle in [
-        r#"<script src="/resources/testharness.js"></script>"#,
-        r#"<script src=/resources/testharness.js></script>"#,
-        r#"<script src="/resources/testharnessreport.js"></script>"#,
-        r#"<script src=/resources/testharnessreport.js></script>"#,
-        r#"<script src="/resources/WebIDLParser.js"></script>"#,
-        r#"<script src=/resources/WebIDLParser.js></script>"#,
-        r#"<script src="/resources/webidl2.js"></script>"#,
-        r#"<script src=/resources/webidl2.js></script>"#,
-        r#"<script src="/resources/idlharness.js"></script>"#,
-        r#"<script src=/resources/idlharness.js></script>"#,
-    ] {
-        body = body.replace(needle, "");
-    }
+    let th_tag = format!(
+        "<script>\ntry {{\n{}\n}} catch (e) {{ window.__th_load_error = String((e && e.stack) || e); }}\n</script>",
+        escape_inline_script(&th)
+    );
     let report = r#"
 <script>
 (function () {
+  if (typeof tests !== "undefined") {
+    window.__veHarnessTests = tests;
+  }
   if (typeof setup === "function") {
     try { setup({ output: false, explicit_timeout: true }); } catch (e) {}
   }
@@ -279,17 +474,81 @@ fn inject_upstream_testharness(html: &str) -> String {
 })();
 </script>
 "#;
-    let (doctype, rest) = split_leading_doctype(&body);
-    let idl = if html.contains("idlharness.js") || html.contains("WebIDLParser.js") {
+    let testdriver = r#"
+<script>
+(function () {
+  window.test_driver_internal = window.test_driver_internal || {};
+  window.test_driver_internal.get_computed_label = function (el) {
+    try { return Promise.resolve((window.__veComputedLabel && window.__veComputedLabel(el)) || ""); }
+    catch (e) { return Promise.resolve(""); }
+  };
+  window.test_driver_internal.get_computed_role = function (el) {
+    try { return Promise.resolve((el && el.getAttribute && el.getAttribute("role")) || ""); }
+    catch (e) { return Promise.resolve(""); }
+  };
+  window.test_driver_internal.send_keys = function (el, keys) {
+    return Promise.resolve().then(function () {
+      if (!el) return;
+      try { el.focus(); } catch (e) {}
+      var s = String(keys);
+      try { el.value = (el.value || "") + s; } catch (e) {}
+      try { el.dispatchEvent(new InputEvent("input", { bubbles: true, data: s })); } catch (e) {}
+    });
+  };
+  window.test_driver = window.test_driver || {};
+  window.test_driver.get_computed_label = window.test_driver_internal.get_computed_label;
+  window.test_driver.get_computed_role = window.test_driver_internal.get_computed_role;
+  window.test_driver.send_keys = window.test_driver_internal.send_keys;
+})();
+</script>
+"#;
+    let mut body = html.to_string();
+    let (next, replaced_th) = replace_first(&body, TESTHARNESS_SRC, &th_tag);
+    body = next;
+    if !replaced_th {
+        let (doctype, rest) = split_leading_doctype(&body);
+        body = format!("{doctype}{th_tag}\n{report}\n{rest}");
+    } else {
+        let (next, replaced_report) = replace_first(&body, TESTHARNESSREPORT_SRC, report);
+        body = next;
+        if !replaced_report {
+            if let Some(i) = body.find(&th_tag) {
+                let at = i + th_tag.len();
+                body.insert_str(at, report);
+            }
+        }
+    }
+    if html.contains("testdriver.js") {
+        let (next, replaced) = replace_first(&body, TESTDRIVER_SRC, testdriver);
+        body = next;
+        if !replaced {
+            if let Some(i) = body.find(&th_tag) {
+                let at = i + th_tag.len();
+                body.insert_str(at, testdriver);
+            }
+        }
+    }
+    if html.contains("idlharness.js") || html.contains("WebIDLParser.js") {
         let parser = std::fs::read_to_string(resource_path("WebIDLParser.js")).unwrap_or_default();
         let harness = std::fs::read_to_string(resource_path("idlharness.js")).unwrap_or_default();
-        format!("<script>\n{parser}\n</script>\n<script>\n{harness}\n</script>\n")
-    } else {
-        String::new()
-    };
-    format!(
-        "{doctype}<script>\ntry {{\n{th}\n}} catch (e) {{ window.__th_load_error = String((e && e.stack) || e); }}\n</script>\n{report}\n{idl}{rest}"
-    )
+        let parser_tag = format!("<script>\n{}\n</script>", escape_inline_script(&parser));
+        let harness_tag = format!("<script>\n{}\n</script>", escape_inline_script(&harness));
+        let (next, _) = replace_first(&body, WEBIDL_PARSER_SRC, &parser_tag);
+        body = next;
+        let (next, _) = replace_first(&body, IDLHARNESS_SRC, &harness_tag);
+        body = next;
+    }
+    for needle in TESTHARNESS_SRC
+        .iter()
+        .chain(TESTHARNESSREPORT_SRC)
+        .chain(WEBIDL_PARSER_SRC)
+        .chain(IDLHARNESS_SRC)
+        .chain(TESTDRIVER_SRC)
+        .chain(TESTDRIVER_VENDOR_SRC)
+    {
+        body = body.replace(needle, "");
+    }
+    body
 }
 
 fn split_leading_doctype(html: &str) -> (&str, &str) {
@@ -307,6 +566,19 @@ fn split_leading_doctype(html: &str) -> (&str, &str) {
     ("", html)
 }
 
+fn wpt_origin_rel(url: &str) -> Option<(String, String)> {
+    let rest = url
+        .strip_prefix("http://")
+        .or_else(|| url.strip_prefix("https://"))?;
+    let (host, path) = rest.split_once('/')?;
+    let scheme = if url.starts_with("https://") {
+        "https"
+    } else {
+        "http"
+    };
+    Some((format!("{scheme}://{host}"), path.to_owned()))
+}
+
 fn run_script_test(
     engine: &mut VectorEngine,
     html: &str,
@@ -317,48 +589,61 @@ fn run_script_test(
         return Ok((Status::NotRun, Some("built without v8".into())));
     }
     let dir = fixture.parent().unwrap_or(fixture);
+    let expect_testharness = html.contains("testharness.js");
+    let variant = first_wpt_variant(html).map(str::to_owned);
     let html = inject_relative_scripts(html, dir);
     let html = inject_upstream_testharness(&html);
+    let html = if let Some((origin, rel)) = wpt_origin_rel(url) {
+        http_serve::substitute_wpt_text(&html, &origin, &rel)
+    } else {
+        html
+    };
+    let url = match variant {
+        Some(q) if !url.contains('?') => format!("{url}{q}"),
+        _ => url.to_string(),
+    };
     let opened = engine.open(OpenRequest {
-        url: Some(url.into()),
+        url: Some(url),
         html: Some(html),
         allow_evaluate: true,
+        last_modified: http_serve::last_modified_for(fixture),
+        content_language: http_serve::content_language_for(fixture),
         ..OpenRequest::default()
     })?;
-    engine.page_mut(opened.page)?.settle(2_000);
+    let page = opened.page;
+    engine.page_mut(page)?.settle(2_000);
+    // Fire `load` before the long virtual-time pump so iframe postMessage
+    // listeners registered on load can run (cdata-dir_auto).
+    let _ = engine.page_mut(page)?.evaluate(
+        r#"(function () { try { window.dispatchEvent(new Event("load")); } catch (e) {} })()"#,
+    );
+    for _ in 0..16 {
+        engine.page_mut(page)?.settle(50);
+        engine.page_mut(page)?.pump_virtual_time(50);
+    }
+    // Testharness async_test/step_timeout (e.g. lastModified-01's 4s wait)
+    // use virtual time; settle() only pumps the 50ms timer window.
+    engine.page_mut(page)?.pump_virtual_time(10_000);
     let eval = r#"(function () {
         try { window.dispatchEvent(new Event("load")); } catch (e) {}
         try { if (typeof done === "function") done(); } catch (e) {}
         if (window.__th_load_error) {
           return JSON.stringify([["testharness.js", false, String(window.__th_load_error)]]);
         }
-        if (typeof tests !== "undefined" && tests.tests && tests.tests.length) {
-          return JSON.stringify(tests.tests.map(function (t) {
+        var T = (typeof tests !== "undefined" && tests && tests.tests && tests.tests.length)
+          ? tests
+          : window.__veHarnessTests;
+        if (T && T.tests && T.tests.length) {
+          return JSON.stringify(T.tests.map(function (t) {
             return [String(t.name), t.status === 0, String(t.status) + ":" + String(t.message || "")];
           }));
         }
         if (Array.isArray(window.__tests) && window.__tests.length) {
           return JSON.stringify(window.__tests);
         }
-        const out = [];
-        if (typeof CSS !== "undefined" && CSS.supports) {
-          out.push(["css.supports-display-block", CSS.supports("display", "block") === true]);
-          out.push(["css.supports-not-bogus", CSS.supports("not-a-property", "nope") === false]);
-        }
-        const ev = new Event("click", { isTrusted: true });
-        out.push(["event.isTrusted-not-forgeable", ev.isTrusted === false]);
-        if (window.matchMedia) {
-          const m = window.matchMedia("(min-width: 1px)");
-          out.push(["matchMedia.min-width", m.matches === true]);
-        }
-        if (window.customElements) {
-          out.push(["customElements.whenDefined-pending", typeof customElements.whenDefined("x-foo").then === "function"]);
-        }
-        out.push(["indexedDB.open", typeof indexedDB.open === "function"]);
-        out.push(["Worker", typeof Worker === "function"]);
-        return JSON.stringify(out);
+        return JSON.stringify([]);
       })()"#;
-    match engine.page_mut(opened.page)?.evaluate(eval) {
+    let result = match engine.page_mut(page)?.evaluate(eval) {
         Ok(raw) => {
             let text = match &raw {
                 serde_json::Value::String(s) => s.clone(),
@@ -375,7 +660,12 @@ fn run_script_test(
                     .collect();
             }
             if tests.is_empty() {
-                return Ok((Status::Fail, Some(format!("no assertions: {raw}"))));
+                let msg = if expect_testharness {
+                    "no testharness results".into()
+                } else {
+                    format!("no assertions: {raw}")
+                };
+                return Ok((Status::Fail, Some(msg)));
             }
             let failed: Vec<_> = tests
                 .iter()
@@ -395,7 +685,9 @@ fn run_script_test(
             }
         }
         Err(e) => Ok((Status::Fail, Some(e.to_string()))),
-    }
+    };
+    engine.close(page);
+    result
 }
 
 fn run_pixel_test(
@@ -408,18 +700,22 @@ fn run_pixel_test(
         html: Some(html.into()),
         ..OpenRequest::default()
     })?;
-    let shot = engine.screenshot(opened.page, &ScreenshotOptions::default())?;
-    if shot.width == 0 || shot.height == 0 || shot.png.is_empty() {
-        return Ok((Status::Fail, Some("empty screenshot".into())));
-    }
-    if !shot.png.starts_with(&[0x89, b'P', b'N', b'G']) {
-        return Ok((Status::Fail, Some("not a PNG".into())));
-    }
-    let (w, h, rgba) = decode_png_rgba(&shot.png)?;
-    if let Some(err) = check_pixel_expectations(html, w, h, &rgba) {
-        return Ok((Status::Fail, Some(err)));
-    }
-    Ok((Status::Pass, Some(format!("{w}x{h}"))))
+    let page = opened.page;
+    let shot = engine.screenshot(page, &ScreenshotOptions::default())?;
+    let result = if shot.width == 0 || shot.height == 0 || shot.png.is_empty() {
+        Ok((Status::Fail, Some("empty screenshot".into())))
+    } else if !shot.png.starts_with(&[0x89, b'P', b'N', b'G']) {
+        Ok((Status::Fail, Some("not a PNG".into())))
+    } else {
+        let (w, h, rgba) = decode_png_rgba(&shot.png)?;
+        if let Some(err) = check_pixel_expectations(html, w, h, &rgba) {
+            Ok((Status::Fail, Some(err)))
+        } else {
+            Ok((Status::Pass, Some(format!("{w}x{h}"))))
+        }
+    };
+    engine.close(page);
+    result
 }
 
 fn decode_png_rgba(png: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
@@ -515,7 +811,7 @@ fn main() -> Result<()> {
     };
     let mut engine = VectorEngine::new(EngineConfig {
         viewport: Size::new(800.0, 600.0),
-        offline: true,
+        offline: !args.http,
         scripting: cfg!(feature = "v8"),
         policy: ve_api::NetworkPolicy::permissive(),
         ..EngineConfig::default()
@@ -546,7 +842,8 @@ fn main() -> Result<()> {
         .collect();
     if args.tree {
         if let Some(wpt) = &args.wpt_dir {
-            let extra = collect_testharness_tree(wpt, args.tree_limit)?;
+            let extra =
+                collect_testharness_tree(wpt, args.tree_limit, args.tree_family.as_deref())?;
             for (rel, path) in extra {
                 if work.iter().any(|(r, _, _)| r == &rel) {
                     continue;
@@ -560,10 +857,13 @@ fn main() -> Result<()> {
         let (status, detail) = if !path.exists() {
             (Status::NotRun, Some("missing fixture".into()))
         } else {
-            let html = std::fs::read_to_string(path)?;
+            let mut html = std::fs::read_to_string(path)?;
             let url = origin
                 .as_ref()
                 .map_or_else(|| format!("file:///{rel}"), |o| format!("{o}/{rel}"));
+            if let Some(o) = origin.as_ref() {
+                html = http_serve::substitute_wpt_text(&html, o, rel);
+            }
             let pixel = rel.contains("pixel") || html.contains("data-pixel");
             let run = || {
                 if pixel {
@@ -606,6 +906,8 @@ fn main() -> Result<()> {
         tested_subset: totals.pass + totals.fail + totals.timeout + totals.crash,
         overall_manifest: geometry + manifest.len(),
         http_origin: origin,
+        tree_family: args.tree_family.clone(),
+        tree_complete: args.tree && args.tree_limit == 0,
         fonts_dir: args.fonts_dir.display().to_string(),
         idlharness: resource_path("idlharness.js").exists(),
         totals,
@@ -720,6 +1022,7 @@ mod tests {
                         } else {
                             let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
                         }
+                        let _ = stream.shutdown(std::net::Shutdown::Write);
                     }
                     Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(std::time::Duration::from_millis(10));
@@ -738,17 +1041,33 @@ mod tests {
         let addr = url.trim_start_matches("http://").to_owned();
         let mut stream = std::net::TcpStream::connect(&addr).unwrap();
         stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+            .unwrap();
+        stream
             .write_all(
                 b"GET /testharness.js HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n",
             )
             .unwrap();
-        let mut body = String::new();
-        stream.read_to_string(&mut body).unwrap();
+        // macOS may RST after Connection: close; keep any bytes already read.
+        let mut raw = Vec::new();
+        match stream.read_to_end(&mut raw) {
+            Ok(_) => {}
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::ConnectionReset
+                        | std::io::ErrorKind::UnexpectedEof
+                        | std::io::ErrorKind::WouldBlock
+                        | std::io::ErrorKind::TimedOut
+                ) => {}
+            Err(e) => panic!("{e}"),
+        }
+        let body = String::from_utf8_lossy(&raw);
         let _ = stop.send(());
         handle.join().unwrap();
         assert!(
             body.contains("add_completion_callback") || body.contains("testharness"),
-            "{body}"
+            "{body:.200}"
         );
     }
 
@@ -761,6 +1080,90 @@ mod tests {
         let out = super::inject_relative_scripts(html, &dir);
         assert!(out.contains("function testRemove"), "{out}");
         assert!(!out.contains(r#"src="ChildNode-remove.js""#), "{out}");
+    }
+
+    #[test]
+    fn pinned_testharness_exposes_tests() {
+        let th = std::fs::read_to_string(super::testharness_path()).unwrap();
+        assert!(
+            th.contains("expose(tests, 'tests')"),
+            "evaluate reads tests.tests for incomplete async files"
+        );
+    }
+
+    #[test]
+    fn inject_does_not_inline_testharness_from_parent_walk() {
+        let root = std::env::temp_dir().join("vector-wpt-th-skip");
+        let nested = root.join("html").join("dom");
+        std::fs::create_dir_all(nested.join("resources")).unwrap();
+        std::fs::create_dir_all(root.join("resources")).unwrap();
+        std::fs::write(
+            root.join("resources").join("testharness.js"),
+            "window.__wrong_testharness = 1;",
+        )
+        .unwrap();
+        std::fs::create_dir_all(root.join("dom").join("nodes")).unwrap();
+        std::fs::write(
+            root.join("dom").join("nodes").join("attributes.js"),
+            "function attributes_are(){}",
+        )
+        .unwrap();
+        let html = concat!(
+            r#"<script src="/resources/testharness.js"></script>"#,
+            r#"<script src="/dom/nodes/attributes.js"></script>"#,
+        );
+        let out = super::inject_relative_scripts(html, &nested);
+        assert!(
+            out.contains(r#"src="/resources/testharness.js""#),
+            "harness src must stay so inject_upstream_testharness is the only copy: {out}"
+        );
+        assert!(
+            !out.contains("__wrong_testharness"),
+            "must not inline checkout testharness.js: {out}"
+        );
+        assert!(
+            out.contains("function attributes_are"),
+            "helper scripts still inline: {out}"
+        );
+    }
+
+    #[test]
+    fn inject_escapes_script_close_in_inlined_helpers() {
+        let dir = std::env::temp_dir().join("vector-wpt-script-close");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("utils.js"),
+            "function generateParserDelay(){ document.write(`<script src=\"x\"></script>`); }",
+        )
+        .unwrap();
+        let html = r##"<script src="utils.js"></script><link rel=expect href="#last"><div id="last">x</div>"##;
+        let out = super::inject_relative_scripts(html, &dir);
+        assert!(
+            out.contains("<\\/script>"),
+            "inlined helper must escape script close: {out}"
+        );
+        let after_inline = out.split_once("</script>").map_or("", |(_, rest)| rest);
+        assert!(
+            after_inline.contains("rel=expect") && after_inline.contains("id=\"last\""),
+            "HTML after the helper script must stay intact: {out}"
+        );
+    }
+
+    #[test]
+    fn inject_keeps_title_before_inlined_testharness() {
+        let html = concat!(
+            "<!doctype html>",
+            "<title>document.title and the empty string</title>",
+            r#"<script src="/resources/testharness.js"></script>"#,
+        );
+        let out = super::inject_upstream_testharness(html);
+        let title_at = out.find("<title>").expect("title");
+        let th_at = out.find("add_completion_callback").expect("testharness");
+        assert!(
+            title_at < th_at,
+            "title must stay first in head so title-06 can remove it: {title_at} vs {th_at}"
+        );
+        assert!(out.trim_start().starts_with("<!doctype html>"), "{out:.80}");
     }
 
     #[test]
@@ -808,13 +1211,27 @@ mod tests {
             let addr = origin.trim_start_matches("http://").to_owned();
             let mut stream = std::net::TcpStream::connect(&addr).unwrap();
             stream
+                .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                .unwrap();
+            stream
                 .write_all(
                     format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
                         .as_bytes(),
                 )
                 .unwrap();
             let mut body = Vec::new();
-            stream.read_to_end(&mut body).unwrap();
+            match stream.read_to_end(&mut body) {
+                Ok(_) => {}
+                Err(e)
+                    if matches!(
+                        e.kind(),
+                        std::io::ErrorKind::ConnectionReset
+                            | std::io::ErrorKind::UnexpectedEof
+                            | std::io::ErrorKind::WouldBlock
+                            | std::io::ErrorKind::TimedOut
+                    ) => {}
+                Err(e) => panic!("{e}"),
+            }
             body
         };
         let ahem = get("/fonts/Ahem.ttf");
@@ -829,5 +1246,41 @@ mod tests {
         let idl = String::from_utf8_lossy(&idl_bytes);
         assert!(idl.contains("IdlArray"), "{idl:.200}");
         server.stop();
+    }
+
+    #[test]
+    fn http_server_serves_wpt_interfaces_idl() {
+        let tmp = std::env::temp_dir().join(format!(
+            "ve-wpt-idl-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(tmp.join("interfaces")).unwrap();
+        std::fs::write(
+            tmp.join("interfaces/mathml-core.idl"),
+            "[Exposed=Window]\ninterface MathMLElement : Element { };\n",
+        )
+        .unwrap();
+        let server =
+            super::http_serve::DirServer::start(vec![(String::new(), tmp.clone())]).unwrap();
+        let origin = server.origin.clone();
+        let addr = origin.trim_start_matches("http://").to_owned();
+        let mut stream = std::net::TcpStream::connect(&addr).unwrap();
+        stream
+            .write_all(
+                b"GET /interfaces/mathml-core.idl HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n",
+            )
+            .unwrap();
+        let mut body = Vec::new();
+        stream.read_to_end(&mut body).unwrap();
+        server.stop();
+        let text = String::from_utf8_lossy(&body);
+        assert!(
+            text.contains("HTTP/1.1 200") && text.contains("MathMLElement"),
+            "{text:.400}"
+        );
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 }

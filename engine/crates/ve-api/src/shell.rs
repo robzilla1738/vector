@@ -6,14 +6,18 @@
 //! Input from a human OS window and from an agent share [`NativeBrowser::handle_event`].
 
 use std::collections::HashMap;
+#[cfg(target_os = "macos")]
+use std::io::Write;
+#[cfg(target_os = "macos")]
+use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
 use ve_core::{Error, Point, Result, process_rss_bytes};
-use ve_gfx::Frame;
+use ve_gfx::{Compositor, Frame};
 
 use crate::{
     EngineConfig, ExecuteRequest, ExecuteResult, Observation, ObservationRequest, OpenRequest,
-    PageId, Program, VectorEngine,
+    PageId, Program, UpdateKeyPair, VectorEngine, verify_update_manifest,
 };
 
 /// A tab in the native shell.
@@ -38,6 +42,11 @@ pub enum NativeEvent {
     /// IME committed text.
     Ime {
         /// Committed string.
+        text: String,
+    },
+    /// IME preedit (composition). Not committed into the DOM.
+    ImePreedit {
+        /// Composition string.
         text: String,
     },
     /// Pointer moved in chrome/page CSS pixels.
@@ -83,7 +92,7 @@ pub enum NativeEvent {
     Quit,
     /// Paste clipboard into the page as IME text.
     Paste,
-    /// Copy: no-op on chrome besides keeping clipboard (page cannot steal).
+    /// Copy selected or last-typed text into the chrome clipboard.
     Copy,
     /// Activate the next tab (chrome, wrap-around).
     NextTab,
@@ -135,6 +144,16 @@ pub struct NativeBrowser {
     pointer: Point,
     urlbar: String,
     urlbar_focused: bool,
+    compositor: Compositor,
+    presented: bool,
+    ime_preedit: String,
+    last_typed: String,
+    os_clipboard: bool,
+    update_pubkey: Option<[u8; 32]>,
+    #[cfg(feature = "gpu")]
+    gpu: Option<ve_gfx::VelloRenderer>,
+    #[cfg(feature = "gpu")]
+    gpu_unavailable: bool,
 }
 
 impl NativeBrowser {
@@ -165,6 +184,16 @@ impl NativeBrowser {
             pointer: Point::ZERO,
             urlbar: String::new(),
             urlbar_focused: false,
+            compositor: Compositor::new(),
+            presented: false,
+            ime_preedit: String::new(),
+            last_typed: String::new(),
+            os_clipboard: false,
+            update_pubkey: None,
+            #[cfg(feature = "gpu")]
+            gpu: None,
+            #[cfg(feature = "gpu")]
+            gpu_unavailable: false,
         }
     }
 
@@ -179,6 +208,8 @@ impl NativeBrowser {
             "chromeTitle": Self::CHROME_TITLE,
             "tabs": self.tabs.len(),
             "rssBytes": process_rss_bytes(),
+            "signedUpdates": self.update_pubkey.is_some(),
+            "accessKit": true,
         })
     }
 
@@ -191,6 +222,7 @@ impl NativeBrowser {
             page_title: opened.title,
         });
         self.active = self.tabs.len() - 1;
+        self.compositor.mark_damaged();
         Ok(self.tabs.last().unwrap())
     }
 
@@ -206,6 +238,7 @@ impl NativeBrowser {
             page_title: opened.title,
         });
         self.active = self.tabs.len() - 1;
+        self.compositor.mark_damaged();
         Ok(self.tabs.last().unwrap())
     }
 
@@ -273,24 +306,126 @@ impl NativeBrowser {
         nodes
     }
 
-    /// Chrome names joined for a screen-reader summary. Page content is omitted.
+    /// Chrome names plus page accessible names (chrome first, unspoofable).
     #[must_use]
     pub fn screen_reader_text(&self) -> String {
-        self.chrome_ax()
+        self.reader_ax()
             .into_iter()
             .map(|n| n.name)
+            .filter(|n| !n.is_empty())
             .collect::<Vec<_>>()
             .join(" ")
     }
 
-    /// Signed-update channel. Not implemented; reported honestly.
+    /// Chrome AX followed by page AX. Page nodes are marked `from_page`.
+    #[must_use]
+    pub fn reader_ax(&self) -> Vec<ChromeAxNode> {
+        let mut nodes = self.chrome_ax();
+        nodes.extend(self.page_ax());
+        nodes
+    }
+
+    /// AccessKit tree for the native window (chrome first, then page).
+    #[must_use]
+    pub fn accesskit_update(&self) -> accesskit::TreeUpdate {
+        let tabs: Vec<(String, bool)> = self
+            .tabs
+            .iter()
+            .enumerate()
+            .map(|(i, t)| {
+                let name = if t.page_title.is_empty() {
+                    t.url.clone()
+                } else {
+                    t.page_title.clone()
+                };
+                (name, i == self.active)
+            })
+            .collect();
+        let urlbar = self.active_tab().map_or_else(String::new, |t| {
+            if self.urlbar_focused {
+                self.urlbar.clone()
+            } else {
+                t.url.clone()
+            }
+        });
+        let page_tree = self.active_tab().and_then(|tab| {
+            self.engine.page(tab.page).ok().map(|page| {
+                ve_a11y::AccessibilityTree::build(
+                    page.document(),
+                    &ve_a11y::BuildOptions {
+                        styles: Some(page.style_tree()),
+                        focused: page.focused(),
+                        ..ve_a11y::BuildOptions::default()
+                    },
+                )
+            })
+        });
+        let focus = self
+            .active_tab()
+            .and_then(|tab| self.engine.page(tab.page).ok().and_then(|p| p.focused()));
+        ve_a11y::shell_tree_update(
+            Self::CHROME_TITLE,
+            &tabs,
+            &urlbar,
+            page_tree.as_ref(),
+            focus,
+        )
+    }
+
+    /// Page accessibility names/roles. Never mixed into [`Self::chrome_ax`].
+    #[must_use]
+    pub fn page_ax(&self) -> Vec<ChromeAxNode> {
+        let Some(tab) = self.active_tab() else {
+            return Vec::new();
+        };
+        let Ok(page) = self.engine.page(tab.page) else {
+            return Vec::new();
+        };
+        let tree = ve_a11y::AccessibilityTree::build(
+            page.document(),
+            &ve_a11y::BuildOptions {
+                styles: Some(page.style_tree()),
+                ..ve_a11y::BuildOptions::default()
+            },
+        );
+        tree.root
+            .iter()
+            .filter(|n| !n.name.is_empty())
+            .map(|n| ChromeAxNode {
+                role: n.role.name().to_owned(),
+                name: n.name.clone(),
+                from_page: true,
+            })
+            .collect()
+    }
+
+    /// Signed-update channel. Enabled once a verifying key is installed.
     #[must_use]
     pub fn update_status(&self) -> serde_json::Value {
         serde_json::json!({
-            "signedUpdates": false,
-            "channel": "dev",
+            "signedUpdates": self.update_pubkey.is_some(),
+            "channel": if self.update_pubkey.is_some() { "signed" } else { "dev" },
             "current": env!("CARGO_PKG_VERSION"),
         })
+    }
+
+    /// Installs the Ed25519 verifying key for the update channel.
+    pub fn install_update_key(&mut self, public: [u8; 32]) {
+        self.update_pubkey = Some(public);
+    }
+
+    /// Verifies a signed update manifest. Unsigned or unknown keys fail.
+    #[must_use]
+    pub fn verify_update(&self, manifest: &[u8], signature: &[u8]) -> bool {
+        self.update_pubkey
+            .as_ref()
+            .is_some_and(|pk| verify_update_manifest(pk, manifest, signature))
+    }
+
+    /// Bundled development key used by tests and unsigned local builds.
+    #[must_use]
+    pub fn development_update_keys() -> UpdateKeyPair {
+        UpdateKeyPair::from_seed([b'V'; 32])
     }
 
     /// Agent and human observe the same page.
@@ -330,8 +465,107 @@ impl NativeBrowser {
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?
             .page;
+        if self.presented && !self.compositor.is_damaged() {
+            return Ok(&self.surface);
+        }
+        #[cfg(feature = "gpu")]
+        if let Some(frame) = self.try_gpu_present(page) {
+            self.surface = frame;
+            let _ = self.compositor.take_damage();
+            self.presented = true;
+            return Ok(&self.surface);
+        }
         self.surface = self.engine.page_mut(page)?.present_frame(false)?;
+        let _ = self.compositor.take_damage();
+        self.presented = true;
         Ok(&self.surface)
+    }
+
+    /// GPU present of the live page with no CPU readback. Capture still uses
+    /// [`Self::present`].
+    #[cfg(feature = "gpu")]
+    pub fn present_direct(&mut self) -> Result<bool> {
+        let page = self
+            .active_tab()
+            .ok_or_else(|| Error::not_found("no tab"))?
+            .page;
+        if self.try_gpu_present_direct(page) {
+            let _ = self.compositor.take_damage();
+            self.presented = true;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn present_dirty(&mut self) {
+        self.compositor.mark_damaged();
+        let _ = self.present();
+    }
+
+    #[cfg(feature = "gpu")]
+    fn try_gpu_present(&mut self, page: PageId) -> Option<Frame> {
+        if self.gpu_unavailable && self.gpu.is_none() {
+            return None;
+        }
+        let list = {
+            let p = self.engine.page_mut(page).ok()?;
+            p.update();
+            paint_page(p)
+        };
+        if self.gpu.is_none() {
+            match ve_gfx::VelloRenderer::headless() {
+                Ok((renderer, _)) => self.gpu = Some(renderer),
+                Err(_) => {
+                    self.gpu_unavailable = true;
+                    return None;
+                }
+            }
+        }
+        let gpu = self.gpu.as_mut()?;
+        let width = self.surface.width;
+        let height = self.surface.height;
+        gpu.present_list(&list, width, height, 1.0).ok()?;
+        gpu.readback_present_target().ok()
+    }
+
+    #[cfg(feature = "gpu")]
+    fn try_gpu_present_direct(&mut self, page: PageId) -> bool {
+        if self.gpu_unavailable && self.gpu.is_none() {
+            return false;
+        }
+        let list = {
+            let Ok(p) = self.engine.page_mut(page) else {
+                return false;
+            };
+            p.update();
+            paint_page(p)
+        };
+        if self.gpu.is_none() {
+            match ve_gfx::VelloRenderer::headless() {
+                Ok((renderer, _)) => self.gpu = Some(renderer),
+                Err(_) => {
+                    self.gpu_unavailable = true;
+                    return false;
+                }
+            }
+        }
+        let Some(gpu) = self.gpu.as_mut() else {
+            return false;
+        };
+        gpu.present_list(&list, self.surface.width, self.surface.height, 1.0)
+            .is_ok()
+    }
+
+    /// Display list for the active tab (GPU window present without CPU readback).
+    #[cfg(feature = "gpu")]
+    pub fn display_list_active(&mut self) -> Result<ve_gfx::DisplayList> {
+        let page = self
+            .active_tab()
+            .ok_or_else(|| Error::not_found("no tab"))?
+            .page;
+        let p = self.engine.page_mut(page)?;
+        p.update();
+        Ok(paint_page(p))
     }
 
     /// Current framebuffer (after [`Self::present`]).
@@ -351,7 +585,7 @@ impl NativeBrowser {
             }
             NativeEvent::NewTab { html, url } => {
                 self.new_tab(&html, &url)?;
-                let _ = self.present();
+                self.present_dirty();
             }
             NativeEvent::CloseTab => {
                 if !self.tabs.is_empty() {
@@ -361,20 +595,21 @@ impl NativeBrowser {
                         self.active = self.tabs.len().saturating_sub(1);
                     }
                     self.urlbar_focused = false;
+                    self.compositor.mark_damaged();
                 }
             }
             NativeEvent::NextTab => {
                 if !self.tabs.is_empty() {
                     self.active = (self.active + 1) % self.tabs.len();
                     self.urlbar_focused = false;
-                    let _ = self.present();
+                    self.present_dirty();
                 }
             }
             NativeEvent::PrevTab => {
                 if !self.tabs.is_empty() {
                     self.active = (self.active + self.tabs.len() - 1) % self.tabs.len();
                     self.urlbar_focused = false;
-                    let _ = self.present();
+                    self.present_dirty();
                 }
             }
             NativeEvent::FocusUrlbar => {
@@ -408,7 +643,7 @@ impl NativeBrowser {
                     let _ = self.execute_active(Program::from_value(serde_json::json!([
                         {"id":"n","op":"navigate","url":url}
                     ]))?);
-                    let _ = self.present();
+                    self.present_dirty();
                 }
             }
             NativeEvent::Key { key } => {
@@ -423,15 +658,23 @@ impl NativeBrowser {
                         self.urlbar.push_str(&key);
                     }
                 } else {
+                    if key.len() == 1 {
+                        self.last_typed.push_str(&key);
+                    }
                     let _ = self.press_key(&key);
-                    let _ = self.present();
+                    self.present_dirty();
                 }
             }
             NativeEvent::Ime { text } => {
+                self.ime_preedit.clear();
+                self.last_typed.clone_from(&text);
                 let _ = self.execute_active(Program::from_value(serde_json::json!([
                     {"id":"t","op":"type","target":"css:input,textarea,[contenteditable]","value":text}
                 ]))?);
-                let _ = self.present();
+                self.present_dirty();
+            }
+            NativeEvent::ImePreedit { text } => {
+                self.ime_preedit = text;
             }
             NativeEvent::PointerMove { x, y } => {
                 self.pointer = Point::new(x, y);
@@ -441,14 +684,23 @@ impl NativeBrowser {
                 let _ = self.execute_active(Program::from_value(serde_json::json!([
                     {"id":"c","op":"clickPoint","x":x,"y":y,"button": if button == 0 { "left" } else { "right" }}
                 ]))?);
-                let _ = self.present();
+                self.present_dirty();
             }
             NativeEvent::PointerUp { x, y, .. } => {
                 self.pointer = Point::new(x, y);
             }
-            NativeEvent::Copy => {}
+            NativeEvent::Copy => {
+                let text = self.selection_or_typed();
+                self.copy(&text);
+            }
             NativeEvent::Paste => {
-                let text = self.clipboard.clone();
+                let mut text = self.clipboard.clone();
+                if text.is_empty() {
+                    if let Some(os) = read_os_clipboard(self.os_clipboard) {
+                        os.clone_into(&mut self.clipboard);
+                        text = os;
+                    }
+                }
                 if !text.is_empty() {
                     let _ = self.handle_event(NativeEvent::Ime { text })?;
                 }
@@ -460,15 +712,54 @@ impl NativeBrowser {
         })
     }
 
+    /// Enable writing the chrome clipboard to the OS pasteboard (GUI product).
+    pub fn enable_os_clipboard(&mut self) {
+        self.os_clipboard = true;
+    }
+
     /// Clipboard (chrome-owned).
     pub fn copy(&mut self, text: &str) {
         text.clone_into(&mut self.clipboard);
+        write_os_clipboard(self.os_clipboard, text);
     }
 
     /// Clipboard contents.
     #[must_use]
     pub fn clipboard(&self) -> &str {
         &self.clipboard
+    }
+
+    /// IME composition string (not yet committed).
+    #[must_use]
+    pub fn ime_preedit(&self) -> &str {
+        &self.ime_preedit
+    }
+
+    fn selection_or_typed(&mut self) -> String {
+        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+            return self.last_typed.clone();
+        };
+        let Ok(page) = self.engine.page(page_id) else {
+            return self.last_typed.clone();
+        };
+        if let Some(id) = page.focused() {
+            if let Some(v) = page.document().form_value(id)
+                && !v.is_empty()
+            {
+                return v;
+            }
+            let t = page.document().text_content(id);
+            if !t.is_empty() {
+                return t;
+            }
+        }
+        if let Some(body) = page.document().body() {
+            let t = page.document().text_content(body);
+            if !t.is_empty() {
+                return t;
+            }
+        }
+        self.last_typed.clone()
     }
 
     /// Permission prompt recorded in chrome, never granted by page script.
@@ -518,6 +809,77 @@ impl NativeBrowser {
     }
 }
 
+fn write_os_clipboard(enabled: bool, text: &str) {
+    if !enabled {
+        return;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(mut child) = Command::new("pbcopy")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            if let Some(mut stdin) = child.stdin.take() {
+                let _ = stdin.write_all(text.as_bytes());
+            }
+            let _ = child.wait();
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (enabled, text);
+    }
+}
+
+fn read_os_clipboard(enabled: bool) -> Option<String> {
+    if !enabled {
+        return None;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let output = Command::new("pbpaste")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let s = String::from_utf8(output.stdout).ok()?;
+        (!s.is_empty()).then_some(s)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        None
+    }
+}
+
+#[cfg(feature = "gpu")]
+fn paint_page(page: &crate::Page) -> ve_gfx::DisplayList {
+    use ve_core::{Rect, Size};
+    use ve_gfx::{DisplayItem, DisplayList};
+
+    let layout = page.layout_tree();
+    let styles = page.style_tree();
+    let viewport = page.viewport();
+    let scroll = page.scroll_offset();
+    let list = DisplayList::from_layout(layout, styles);
+    let mut translated = DisplayList::new(Size::new(viewport.width, viewport.height));
+    translated.push(DisplayItem::Rect {
+        rect: Rect::new(0.0, 0.0, viewport.width, viewport.height),
+        color: match list.items().first() {
+            Some(DisplayItem::Rect { color, .. }) => *color,
+            _ => ve_style::Rgba::WHITE,
+        },
+    });
+    for item in list.items().iter().skip(1) {
+        translated.push(item.translated(-scroll.x, -scroll.y));
+    }
+    translated
+}
+
 impl Default for NativeBrowser {
     fn default() -> Self {
         Self::new()
@@ -545,6 +907,21 @@ mod tests {
         assert_eq!(id["electron"], false);
         assert_eq!(id["product"], "ve-shell");
         assert_eq!(id["backend"], "vector-engine");
+        assert_eq!(id["accessKit"], true);
+        let ak = browser.accesskit_update();
+        assert!(ak.tree.is_some());
+        assert!(
+            ak.nodes
+                .iter()
+                .any(|(id, n)| *id == ve_a11y::WINDOW_ID && n.role() == accesskit::Role::Window)
+        );
+        assert!(
+            ak.nodes
+                .iter()
+                .any(|(_, n)| n.label() == Some("Vector Security Update")
+                    || n.label() == Some("install")),
+            "page names must appear in the AccessKit tree"
+        );
         assert!(browser.screen_reader_text().contains("Vector"));
         assert_eq!(browser.update_status()["signedUpdates"], false);
         let ax = browser.chrome_ax();
@@ -555,6 +932,31 @@ mod tests {
             ax.iter().all(|n| !n.from_page && n.role != "document"),
             "chrome AX must not include page roles"
         );
+        let keys = NativeBrowser::development_update_keys();
+        browser.install_update_key(keys.public);
+        assert_eq!(browser.update_status()["signedUpdates"], true);
+        let manifest = br#"{"version":"0.0.2"}"#;
+        let sig = keys.sign(manifest);
+        assert!(browser.verify_update(manifest, &sig));
+        assert!(!browser.verify_update(br#"{"version":"evil"}"#, &sig));
+        let reader = browser.reader_ax();
+        assert!(
+            reader
+                .iter()
+                .any(|n| n.from_page && n.name.contains("install")),
+            "{reader:?}"
+        );
+        assert!(browser.screen_reader_text().contains("install"));
+    }
+
+    #[cfg(feature = "gpu")]
+    #[test]
+    fn present_direct_skips_cpu_readback_when_gpu_is_available() {
+        let mut browser = NativeBrowser::new();
+        browser.new_tab("<p>hi</p>", "https://t.test/").unwrap();
+        let _ = browser.present_direct();
+        let frame = browser.present().unwrap();
+        assert!(frame.width > 0 && frame.height > 0);
     }
 
     #[test]
@@ -661,5 +1063,76 @@ mod tests {
         assert!(!browser.urlbar_focused());
         let ax = browser.chrome_ax();
         assert!(ax.iter().any(|n| n.role == "urlbar" && !n.from_page));
+    }
+
+    #[test]
+    fn copy_puts_typed_text_on_clipboard() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<input id=t>".into(),
+                url: "https://c.test/".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::Ime {
+                text: "hello".into(),
+            })
+            .unwrap();
+        browser.handle_event(NativeEvent::Copy).unwrap();
+        assert_eq!(browser.clipboard(), "hello");
+    }
+
+    #[test]
+    fn ime_preedit_does_not_commit_until_ime() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<input id=t>".into(),
+                url: "https://ime.test/".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::ImePreedit { text: "ni".into() })
+            .unwrap();
+        assert_eq!(browser.ime_preedit(), "ni");
+        let obs = browser.observe_active().unwrap();
+        let value = obs
+            .observation
+            .content
+            .form_fields
+            .iter()
+            .find_map(|f| f.value.as_deref())
+            .or_else(|| {
+                obs.observation
+                    .content
+                    .elements
+                    .iter()
+                    .find(|e| e.tag == "input")
+                    .and_then(|e| e.value.as_deref())
+            })
+            .unwrap_or("");
+        assert_eq!(value, "", "preedit must not change the input");
+        browser
+            .handle_event(NativeEvent::Ime { text: "你".into() })
+            .unwrap();
+        assert_eq!(browser.ime_preedit(), "");
+        let obs = browser.observe_active().unwrap();
+        let value = obs
+            .observation
+            .content
+            .form_fields
+            .iter()
+            .find_map(|f| f.value.as_deref())
+            .or_else(|| {
+                obs.observation
+                    .content
+                    .elements
+                    .iter()
+                    .find(|e| e.tag == "input")
+                    .and_then(|e| e.value.as_deref())
+            })
+            .unwrap_or("");
+        assert_eq!(value, "你");
     }
 }

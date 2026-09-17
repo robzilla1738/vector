@@ -18,6 +18,10 @@ pub struct ArchivedResponse {
     pub status: u16,
     /// Body bytes.
     pub body: Vec<u8>,
+    /// When true, a speculative session may read this entry. Live revalidation
+    /// is still required before a winning plan executes.
+    #[serde(default)]
+    pub safe_for_speculation: bool,
 }
 
 /// Replay archive.
@@ -72,18 +76,57 @@ impl<'a> ReplaySession<'a> {
         }
     }
 
-    /// Fetch from the archive only.
+    /// Fetch from the archive only. Speculative sessions deny every method
+    /// unless the archived entry is marked [`ArchivedResponse::safe_for_speculation`].
     pub fn fetch(&self, method: &str, url: &str) -> Result<&'a ArchivedResponse, ReplayError> {
-        if self.speculative && !method.eq_ignore_ascii_case("GET") {
+        let entry = self.archive.lookup(method, url)?;
+        if self.speculative && !entry.safe_for_speculation {
             return Err(ReplayError::SpeculativeEffect(format!("{method} {url}")));
         }
-        self.archive.lookup(method, url)
+        Ok(entry)
     }
 
     /// Winning plans must revalidate live preconditions before execution.
     #[must_use]
     pub fn requires_live_revalidation(&self) -> bool {
         true
+    }
+
+    /// Recorded virtual-time tick at `index`, if the archive stored a schedule.
+    #[must_use]
+    pub fn scheduled_tick(&self, index: usize) -> Option<u64> {
+        self.archive.schedule.get(index).copied()
+    }
+
+    /// Compare an archived entry to a live status. Missing live I/O is
+    /// unsupported nondeterminism; a status mismatch means the plan must not
+    /// execute from the archive alone.
+    pub fn revalidate_live(
+        &self,
+        method: &str,
+        url: &str,
+        live_status: Option<u16>,
+    ) -> Result<bool, ReplayError> {
+        let archived = self.archive.lookup(method, url)?;
+        let Some(status) = live_status else {
+            return Err(ReplayError::UnsupportedNondeterminism(format!(
+                "live revalidation missing for {method} {url}"
+            )));
+        };
+        Ok(status == archived.status)
+    }
+}
+
+impl ReplayError {
+    /// Maps this error to a `ve_net::NetError::Blocked` message without depending on ve-net.
+    #[must_use]
+    pub fn to_net_error(&self) -> String {
+        match self {
+            Self::UnsupportedNondeterminism(what) => {
+                format!("replay nondeterminism: {what}")
+            }
+            Self::SpeculativeEffect(what) => format!("speculative effect: {what}"),
+        }
     }
 }
 
@@ -109,12 +152,21 @@ mod tests {
             method: "POST".into(),
             status: 200,
             body: vec![],
+            safe_for_speculation: false,
         });
         archive.record(ArchivedResponse {
             url: "https://example.test/".into(),
             method: "GET".into(),
             status: 200,
             body: vec![],
+            safe_for_speculation: false,
+        });
+        archive.record(ArchivedResponse {
+            url: "https://example.test/safe".into(),
+            method: "GET".into(),
+            status: 200,
+            body: vec![],
+            safe_for_speculation: true,
         });
         let mut session = ReplaySession::new(&archive);
         session.speculative = true;
@@ -122,16 +174,54 @@ mod tests {
             session.fetch("POST", "https://example.test/save"),
             Err(ReplayError::SpeculativeEffect(_))
         ));
-        session.speculative = false;
-        assert!(session.fetch("POST", "https://example.test/save").is_ok());
-        session.speculative = true;
+        assert!(matches!(
+            session.fetch("GET", "https://example.test/"),
+            Err(ReplayError::SpeculativeEffect(_))
+        ));
         assert!(
-            session.fetch("GET", "https://example.test/").is_ok(),
-            "archived GET may be read in speculation"
+            session.fetch("GET", "https://example.test/safe").is_ok(),
+            "opt-in archive reads are allowed"
         );
         assert!(
             session.requires_live_revalidation(),
             "GET is not assumed harmless"
         );
+        session.speculative = false;
+        assert!(session.fetch("POST", "https://example.test/save").is_ok());
+        assert!(session.fetch("GET", "https://example.test/").is_ok());
+        assert!(
+            session
+                .revalidate_live("GET", "https://example.test/", Some(200))
+                .unwrap()
+        );
+        assert!(
+            !session
+                .revalidate_live("GET", "https://example.test/", Some(503))
+                .unwrap()
+        );
+        assert!(matches!(
+            session.revalidate_live("GET", "https://example.test/", None),
+            Err(ReplayError::UnsupportedNondeterminism(_))
+        ));
+    }
+
+    #[test]
+    fn recorded_schedule_is_used_for_replay_ticks() {
+        let archive = ReplayArchive {
+            schedule: vec![0, 16, 32],
+            ..ReplayArchive::default()
+        };
+        let session = ReplaySession::new(&archive);
+        assert_eq!(session.scheduled_tick(1), Some(16));
+        assert_eq!(session.scheduled_tick(9), None);
+    }
+
+    #[test]
+    fn missing_archive_maps_to_a_net_error_label() {
+        let archive = ReplayArchive::default();
+        let session = ReplaySession::new(&archive);
+        let err = session.fetch("GET", "https://example.test/").unwrap_err();
+        assert!(matches!(err, ReplayError::UnsupportedNondeterminism(_)));
+        assert!(err.to_net_error().contains("replay nondeterminism"));
     }
 }

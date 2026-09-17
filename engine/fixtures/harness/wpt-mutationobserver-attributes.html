@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<title>MutationObserver attributeFilter and oldValue</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  document.body.appendChild(el)
+  var mo = new MutationObserver(function() {})
+  mo.observe(el, { attributes: true, attributeFilter: ["id"], attributeOldValue: true })
+  el.setAttribute("id", "a")
+  el.setAttribute("class", "x")
+  var recs = mo.takeRecords()
+  assert_equals(recs.length, 1)
+  assert_equals(recs[0].type, "attributes")
+  assert_equals(recs[0].attributeName, "id")
+  assert_equals(recs[0].oldValue, null)
+  el.setAttribute("id", "b")
+  recs = mo.takeRecords()
+  assert_equals(recs.length, 1)
+  assert_equals(recs[0].oldValue, "a")
+}, "attributeFilter and attributeOldValue")
+
+test(function() {
+  var el = document.createElement("div")
+  document.body.appendChild(el)
+  var mo = new MutationObserver(function() {})
+  mo.observe(el, { childList: true })
+  var t = document.createTextNode("x")
+  el.appendChild(t)
+  var recs = mo.takeRecords()
+  assert_equals(recs.length, 1)
+  assert_equals(recs[0].type, "childList")
+  assert_equals(recs[0].target, el)
+  assert_equals(recs[0].addedNodes.length, 1)
+  assert_equals(recs[0].addedNodes[0], t)
+}, "childList records the parent as target")
+</script>

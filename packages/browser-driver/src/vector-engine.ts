@@ -175,7 +175,7 @@ interface ResponseMeta {
 const CODES: ReadonlySet<string> = new Set<VectorErrorCode>([
   "not_found", "invalid_params", "target_detached", "target_ambiguous", "backend_unavailable",
   "capability_unsupported", "step_failed", "condition_timeout", "cancelled", "model_error",
-  "model_output_invalid", "needs_input", "conflict", "assertion_failed", "operation_not_found", "internal",
+  "model_output_invalid", "needs_input", "conflict", "permission_denied", "assertion_failed", "operation_not_found", "internal",
 ]);
 
 function toVectorError(e: NativeError): VectorError {
@@ -195,8 +195,29 @@ export function unwrapNative<T>(json: string): T {
   return parsed as T;
 }
 
+const FERRY_MAGIC = Buffer.from("VEJ1", "ascii");
+
+/** Length-prefixed JSON Buffer (`VEJ1` + u32le + UTF-8). Raw UTF-8 JSON is still accepted. */
+export function encodeFerry(json: string): Buffer {
+  const body = Buffer.from(json, "utf8");
+  const out = Buffer.allocUnsafe(8 + body.length);
+  FERRY_MAGIC.copy(out, 0);
+  out.writeUInt32LE(body.length, 4);
+  body.copy(out, 8);
+  return out;
+}
+
+/** Decodes a ferry Buffer or falls back to UTF-8 JSON. */
+export function decodeFerry(buf: Buffer): string {
+  if (buf.length >= 8 && buf.subarray(0, 4).equals(FERRY_MAGIC)) {
+    const len = buf.readUInt32LE(4);
+    return buf.subarray(8, 8 + len).toString("utf8");
+  }
+  return buf.toString("utf8");
+}
+
 function unwrapNativeFromBuf<T>(buf: Buffer): T {
-  return unwrapNative<T>(buf.toString("utf8"));
+  return unwrapNative<T>(decodeFerry(buf));
 }
 
 /** `Omit` that distributes over the Step union so each op keeps its own fields. */
@@ -283,7 +304,7 @@ export class VectorEnginePage implements DriverPage {
       const optionsJson = JSON.stringify({ returnObservation: opts.returnObservation ? JSON.parse(observeOptions(opts.returnObservation)) : undefined });
       if (this.native.executeBuf) {
         res = unwrapNativeFromBuf<ExecuteResult>(
-          await this.native.executeBuf(this.pageNum, Buffer.from(JSON.stringify(steps), "utf8"), Buffer.from(optionsJson, "utf8")),
+          await this.native.executeBuf(this.pageNum, encodeFerry(JSON.stringify(steps)), encodeFerry(optionsJson)),
         );
       } else {
         res = unwrapNative<ExecuteResult>(
@@ -462,7 +483,7 @@ export class VectorEnginePage implements DriverPage {
   async observe(req?: Partial<ObservationRequest>): Promise<ObservationContent> {
     this.ensureAttached();
     const res = this.native.observeBuf
-      ? unwrapNativeFromBuf<ObserveResult>(await this.native.observeBuf(this.pageNum, Buffer.from(observeOptions(req), "utf8")))
+      ? unwrapNativeFromBuf<ObserveResult>(await this.native.observeBuf(this.pageNum, encodeFerry(observeOptions(req))))
       : unwrapNative<ObserveResult>(await this.native.observe(this.pageNum, observeOptions(req)));
     this.generation = res.generation;
     this.urlValue = res.content.url;

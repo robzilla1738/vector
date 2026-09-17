@@ -23,22 +23,24 @@
 pub mod accname;
 pub mod diff;
 pub mod observation;
+pub mod os;
 pub mod roles;
 pub mod snapshot;
 pub mod tree;
 
 pub use accname::{LabelIndex, compute_description, compute_name, compute_name_with};
-pub use diff::{FieldChange, ObservationDelta, TextOp, changes_between};
+pub use diff::{FieldChange, ObservationDelta, ObservationSubscription, TextOp, changes_between};
 pub use observation::{
     DialogEntry, ElementRef, FormField, Format, FrameInfo, LinkEntry, ObservationContent,
     ObservationRequest, ObserveInput, RectJson, RoleSelector, Scope, ScrollInfo, SelectorStrategy,
     Stats, TableBlock, ViewportInfo, Visibility5, classify, observe, parse_ref, parse_ref_parts,
     ref_for,
 };
+pub use os::{WEB_ID, WINDOW_ID, page_node_id, page_tree_update, shell_tree_update};
 pub use roles::Role;
 pub use snapshot::{
     SemanticSnapshot, SnapshotDiff, SnapshotFormat, SnapshotNode, changed_refs_since,
 };
-pub use tree::{AccessibilityNode, AccessibilityTree, BuildOptions, States};
+pub use tree::{AccessibilityNode, AccessibilityTree, BuildOptions, Live, States};
 pub use ve_core::NodeId;
 pub use ve_dom::Document;

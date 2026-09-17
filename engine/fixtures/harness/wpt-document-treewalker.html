@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<title>Document.createTreeWalker</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var root = document.createElement("div")
+  root.appendChild(document.createElement("a"))
+  root.appendChild(document.createTextNode("t"))
+  root.appendChild(document.createElement("b"))
+  document.body.appendChild(root)
+  var tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
+  assert_equals(tw.nextNode().nodeName, "A")
+  assert_equals(tw.nextNode().nodeName, "B")
+  assert_equals(tw.nextNode(), null)
+  var it = document.createNodeIterator(root, NodeFilter.SHOW_TEXT)
+  var n = it.nextNode()
+  if (n && n.nodeType !== 3) n = it.nextNode()
+  assert_equals(n && n.nodeType, 3)
+  assert_equals(n.data, "t")
+}, "TreeWalker and NodeIterator walk filtered descendants")
+</script>

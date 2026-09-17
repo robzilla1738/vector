@@ -17,7 +17,11 @@ pub fn apply() -> Result<(), String> {
     {
         linux()
     }
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    #[cfg(windows)]
+    {
+        windows_job()
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
     {
         Err(format!(
             "unsupported platform {} — production isolation is not available",
@@ -153,22 +157,33 @@ fn deny_syscalls() -> Result<(), String> {
         SockFilter { code, jt, jf, k }
     }
 
-    let denied: &[libc::c_long] = &[
-        libc::SYS_socket,
-        libc::SYS_connect,
-        libc::SYS_bind,
-        libc::SYS_listen,
-        libc::SYS_accept,
-        libc::SYS_accept4,
-        libc::SYS_execve,
-        libc::SYS_execveat,
-        libc::SYS_fork,
-        libc::SYS_vfork,
-        libc::SYS_ptrace,
-    ];
+    let denied: Vec<libc::c_long> = {
+        // mmap/mprotect stay allowed: V8 JIT needs executable memory because
+        // the JS VM lives in-process. Process creation is the denied primitive.
+        let mut nrs = vec![
+            libc::SYS_socket,
+            libc::SYS_connect,
+            libc::SYS_bind,
+            libc::SYS_listen,
+            libc::SYS_accept,
+            libc::SYS_accept4,
+            libc::SYS_execve,
+            libc::SYS_execveat,
+            libc::SYS_fork,
+            libc::SYS_vfork,
+            libc::SYS_ptrace,
+            libc::SYS_clone,
+            libc::SYS_unshare,
+        ];
+        #[cfg(target_os = "linux")]
+        {
+            nrs.push(libc::SYS_clone3);
+        }
+        nrs
+    };
     let mut filter = Vec::with_capacity(denied.len() + 2);
     filter.push(stmt(BPF_LD | BPF_W | BPF_ABS, 0));
-    for &nr in denied {
+    for nr in denied {
         filter.push(jump(
             BPF_JMP | BPF_JEQ | BPF_K,
             u32::try_from(nr).unwrap_or(u32::MAX),
@@ -199,12 +214,131 @@ fn deny_syscalls() -> Result<(), String> {
     Ok(())
 }
 
+/// Job Object + child-process mitigation. The job handle is left open so
+/// `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` does not kill this process.
+#[cfg(windows)]
+fn windows_job() -> Result<(), String> {
+    #[repr(C)]
+    struct JobBasic {
+        per_process_user_time_limit: i64,
+        per_job_user_time_limit: i64,
+        limit_flags: u32,
+        minimum_working_set_size: usize,
+        maximum_working_set_size: usize,
+        active_process_limit: u32,
+        affinity: usize,
+        priority_class: u32,
+        scheduling_class: u32,
+    }
+    #[repr(C)]
+    struct IoCounters {
+        read_op: u64,
+        write_op: u64,
+        other_op: u64,
+        read_tx: u64,
+        write_tx: u64,
+        other_tx: u64,
+    }
+    #[repr(C)]
+    struct JobExtended {
+        basic: JobBasic,
+        io: IoCounters,
+        process_memory_limit: usize,
+        job_memory_limit: usize,
+        peak_process_memory_used: usize,
+        peak_job_memory_used: usize,
+    }
+
+    const JOB_OBJECT_EXTENDED_LIMIT_INFORMATION: i32 = 9;
+    const JOB_OBJECT_LIMIT_ACTIVE_PROCESS: u32 = 0x0000_0008;
+    const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: u32 = 0x0000_2000;
+    const PROCESS_MITIGATION_CHILD_PROCESS_POLICY: u32 = 13;
+    const NO_CHILD_PROCESS_CREATION: u32 = 0x1;
+
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn CreateJobObjectW(attr: *const core::ffi::c_void, name: *const u16) -> isize;
+        fn SetInformationJobObject(
+            job: isize,
+            class: i32,
+            info: *const core::ffi::c_void,
+            len: u32,
+        ) -> i32;
+        fn AssignProcessToJobObject(job: isize, process: isize) -> i32;
+        fn GetCurrentProcess() -> isize;
+        fn SetProcessMitigationPolicy(
+            policy: u32,
+            buffer: *const core::ffi::c_void,
+            length: usize,
+        ) -> i32;
+    }
+
+    // Safety: process start, no other threads, kernel32 Job Object APIs.
+    unsafe {
+        let job = CreateJobObjectW(core::ptr::null(), core::ptr::null());
+        if job == 0 {
+            return Err("CreateJobObjectW failed".into());
+        }
+        let info = JobExtended {
+            basic: JobBasic {
+                per_process_user_time_limit: 0,
+                per_job_user_time_limit: 0,
+                limit_flags: JOB_OBJECT_LIMIT_ACTIVE_PROCESS | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+                minimum_working_set_size: 0,
+                maximum_working_set_size: 0,
+                active_process_limit: 1,
+                affinity: 0,
+                priority_class: 0,
+                scheduling_class: 0,
+            },
+            io: IoCounters {
+                read_op: 0,
+                write_op: 0,
+                other_op: 0,
+                read_tx: 0,
+                write_tx: 0,
+                other_tx: 0,
+            },
+            process_memory_limit: 0,
+            job_memory_limit: 0,
+            peak_process_memory_used: 0,
+            peak_job_memory_used: 0,
+        };
+        let ok = SetInformationJobObject(
+            job,
+            JOB_OBJECT_EXTENDED_LIMIT_INFORMATION,
+            (&raw const info).cast(),
+            u32::try_from(std::mem::size_of::<JobExtended>()).unwrap_or(0),
+        );
+        if ok == 0 {
+            return Err("SetInformationJobObject failed".into());
+        }
+        let flags = NO_CHILD_PROCESS_CREATION;
+        let _ = SetProcessMitigationPolicy(
+            PROCESS_MITIGATION_CHILD_PROCESS_POLICY,
+            (&raw const flags).cast(),
+            std::mem::size_of::<u32>(),
+        );
+        if AssignProcessToJobObject(job, GetCurrentProcess()) == 0 {
+            return Err("AssignProcessToJobObject failed".into());
+        }
+        let _job_keep_open = job;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
-    fn unsupported_platform_is_not_ok_in_apply_signature() {
-        // apply() is platform-specific; this crate's unit tests run on macOS/Linux
-        // in CI. The non-unix branch returns Err rather than Ok(()).
-        assert!(cfg!(any(target_os = "macos", target_os = "linux")));
+    fn apply_is_defined_on_production_hosts() {
+        assert!(cfg!(any(target_os = "macos", target_os = "linux", windows)));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_job_object_limit_flags_are_the_production_set() {
+        const ACTIVE: u32 = 0x0000_0008;
+        const KILL: u32 = 0x0000_2000;
+        assert_eq!(ACTIVE | KILL, 0x0000_2008);
     }
 }

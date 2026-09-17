@@ -6,6 +6,17 @@ Repository: https://github.com/robzilla1738/vector
 
 Reviewed revision: `d9c212c0b558a8163eba713823c8735d9edb2e6b`.
 
+This document stays the acceptance target. Current-tree evidence is
+`docs/engine/evidence/` and `docs/engine/architecture.md` §0 — not a claim
+that every line below is met. Latest measured tree (2026-09-17): testharness
+subset 112 PASS / 0 FAIL; official `html/dom` 302 PASS / 29 FAIL at WPT
+`7c20438…`. Official `html/dom/idlharness.https.html` PASS.
+`describe()`: `serviceWorkers:true`, `webgl:false`,
+`webgpu:false`. ve-vm is research (V8 is
+production). Still-open official `html/dom` FAILs are tentative
+`partial-updates/**`, `aria-attribute-reflection-enumerated.tentative.html`,
+and optional `remove-element-unblocks-rendering.optional.html`.
+
 This is an architecture and implementation roadmap based on static source inspection and the repository's GitHub Actions results. The engine was not independently built or benchmarked during this review. Findings are not a penetration-test report. All targets below are proposed acceptance criteria, not measured capabilities or promised outcomes. Nothing in the repository was changed.
 
 ## Objective

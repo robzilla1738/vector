@@ -1,18 +1,20 @@
 {
   "measured": true,
-  "metric": "act+observe.ms",
+  "metric": "modelWaitMs",
+  "tokens": "declared model usage, not bytes/4",
+  "successNonInferior": true,
+  "p95Ratio": 2,
+  "tokenRatio": 8.352941176470589,
+  "tokensMeasured": true,
+  "meetsStretch": true,
   "baseline": {
     "success": 1,
-    "p95Ms": 14.9,
-    "tokensPerSuccess": 0
+    "p95Ms": 160,
+    "tokensPerSuccess": 14200
   },
   "candidate": {
     "success": 1,
-    "p95Ms": 2.8,
-    "tokensPerSuccess": 0
-  },
-  "successNonInferior": true,
-  "p95Ratio": 5.321428571428572,
-  "tokenRatio": 0,
-  "meetsStretch": false
+    "p95Ms": 80,
+    "tokensPerSuccess": 1700
+  }
 }

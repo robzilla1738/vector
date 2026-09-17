@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Document.getElementsByName</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<input name="q" id="a">
+<input name="q" id="b">
+<input name="other" id="c">
+<script>
+test(function () {
+  var found = document.getElementsByName("q");
+  assert_equals(found.length, 2);
+  assert_equals(found[0].id, "a");
+  assert_equals(found[1].id, "b");
+  assert_equals(document.getElementsByName("missing").length, 0);
+}, "getElementsByName returns named elements");
+</script>

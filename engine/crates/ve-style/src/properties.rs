@@ -9,8 +9,8 @@
 //! The table covers the phase-1 (M1) property set of the architecture
 //! document: everything needed to decide visibility, geometry and reading
 //! order on static pages. Logical properties (`margin-inline-start`, …) are
-//! aliased to their physical longhands assuming `horizontal-tb` / `ltr`,
-//! which is the only writing mode the engine lays out.
+//! aliased to their physical longhands assuming `horizontal-tb` / `ltr`.
+//! `writing-mode` is parsed; `vertical-rl` stacking is applied in layout.
 
 use std::collections::BTreeMap;
 
@@ -24,7 +24,7 @@ use crate::values::{
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
     Overflow, OverflowWrap, PointerEvents, Position, Rgba, SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
-    VerticalAlign, Visibility, WhiteSpace, WordBreak, ZIndex,
+    VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
 };
 
 /// Custom property store: raw token text keyed by `--name`.
@@ -971,6 +971,8 @@ property_table! {
     OverflowWrap: "overflow-wrap" => overflow_wrap: OverflowWrap = OverflowWrap::Normal, inherited = true, syntax = Single, convert = conv::kw::<OverflowWrap>;
     /// `direction`
     Direction: "direction" => direction: Direction = Direction::Ltr, inherited = true, syntax = Single, convert = conv::kw::<Direction>;
+    /// `writing-mode`
+    WritingMode: "writing-mode" => writing_mode: WritingMode = WritingMode::HorizontalTb, inherited = true, syntax = Single, convert = conv::kw::<WritingMode>;
     /// `unicode-bidi`
     UnicodeBidi: "unicode-bidi" => unicode_bidi: UnicodeBidi = UnicodeBidi::Normal, inherited = false, syntax = Single, convert = conv::kw::<UnicodeBidi>;
     /// `vertical-align`
@@ -1098,7 +1100,6 @@ impl ComputedStyle {
 /// displayed, where, or whether it is visible. Used by the coverage counter
 /// (see [`crate::coverage`]).
 pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
-    "writing-mode",
     "aspect-ratio",
     "contain",
     "content-visibility",
@@ -1223,7 +1224,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "speak",
     "src",
     "unicode-range",
-    "writing-mode",
     "aspect-ratio",
     "contain",
     "content-visibility",
@@ -2529,6 +2529,8 @@ mod tests {
         ok("grid-column-end", "-1");
         ok("text-overflow", "ellipsis");
         ok("white-space", "pre-wrap");
+        ok("white-space", "pre-line");
+        ok("white-space", "pre");
         ok("word-break", "break-all");
         ok("overflow-wrap", "anywhere");
         ok("letter-spacing", "normal");
@@ -2563,7 +2565,11 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 92);
+        assert_eq!(PropertyId::ALL.len(), 93);
+        assert_eq!(
+            parse("writing-mode", "vertical-rl"),
+            Some(SpecifiedValue::Keyword("vertical-rl".into()))
+        );
     }
 
     #[test]

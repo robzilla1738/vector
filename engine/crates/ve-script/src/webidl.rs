@@ -449,6 +449,12 @@ pub fn rust_type(webidl: &str) -> String {
         return format!("Vec<{}>", rust_type(inner));
     }
     if let Some(inner) = webidl
+        .strip_prefix("FrozenArray<")
+        .and_then(|s| s.strip_suffix('>'))
+    {
+        return format!("Vec<{}>", rust_type(inner));
+    }
+    if let Some(inner) = webidl
         .strip_prefix("Promise<")
         .and_then(|s| s.strip_suffix('>'))
     {
@@ -487,7 +493,7 @@ fn snake_case(name: &str) -> String {
     }
     match out.as_str() {
         "type" | "match" | "ref" | "self" | "mod" | "impl" | "loop" | "move" | "use" => {
-            format!("r#{out}")
+            format!("{out}_")
         }
         _ => out,
     }

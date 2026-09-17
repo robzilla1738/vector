@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>Node.ownerDocument</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  assert_equals(el.ownerDocument, document)
+  document.body.appendChild(el)
+  assert_equals(el.ownerDocument, document)
+  assert_equals(document.ownerDocument, null)
+  var t = document.createTextNode("x")
+  assert_equals(t.ownerDocument, document)
+}, "ownerDocument is the document for nodes and null on Document")
+</script>

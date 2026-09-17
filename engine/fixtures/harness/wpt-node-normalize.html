@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>Node.normalize</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  el.appendChild(document.createTextNode("a"))
+  el.appendChild(document.createTextNode("b"))
+  el.appendChild(document.createTextNode(""))
+  el.normalize()
+  assert_equals(el.childNodes.length, 1)
+  assert_equals(el.firstChild.nodeValue, "ab")
+}, "normalize merges adjacent text and drops empty text nodes")
+</script>

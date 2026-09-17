@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Node.baseURI</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script>
+test(function () {
+  assert_equals(document.baseURI, document.URL);
+  var el = document.createElement("div");
+  document.body.appendChild(el);
+  assert_equals(el.baseURI, document.URL);
+  assert_true(el.baseURI.indexOf("http") === 0 || el.baseURI.indexOf("file") === 0);
+}, "baseURI is the document URL");
+</script>

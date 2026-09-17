@@ -15,7 +15,9 @@ import {
   authorizePageTool,
   recoverAfterCrash,
   reconcileFallback,
+  speculatePlan,
   COORDINATOR_TRANSITIONS,
+  attachBidiRuntime,
 } from "@vector/runtime";
 import type { ObservationContent } from "@vector/contracts";
 
@@ -26,7 +28,7 @@ const obs = (name: string, role = "button"): ObservationContent =>
     headings: [],
     elements: [{ ref: "r1", role, name, tag: "button" }],
     formFields: [],
-  }) as ObservationContent;
+  }) as unknown as ObservationContent;
 
 describe("VEC-016 receipts", () => {
   it("parses action receipts without claiming remote success", () => {
@@ -80,11 +82,18 @@ describe("VEC-018 skills", () => {
     expect(hit.meetsStretch).toBe(true);
     expect(hit.p95Ratio).toBeGreaterThanOrEqual(2);
     const unmeasuredTokens = evaluateHeldOutAdvantage(
-      { success: 1, p95Ms: 14.9, tokensPerSuccess: 0 },
-      { success: 1, p95Ms: 2.8, tokensPerSuccess: 0 },
+      { success: 1, p95Ms: 14.9, tokensPerSuccess: null },
+      { success: 1, p95Ms: 2.8, tokensPerSuccess: null },
     );
     expect(unmeasuredTokens.p95Ratio).toBeGreaterThanOrEqual(2);
+    expect(unmeasuredTokens.tokensMeasured).toBe(false);
     expect(unmeasuredTokens.meetsStretch).toBe(false);
+    const zeroCandidate = evaluateHeldOutAdvantage(
+      { success: 1, p95Ms: 2000, tokensPerSuccess: 8000 },
+      { success: 1, p95Ms: 900, tokensPerSuccess: 0 },
+    );
+    expect(zeroCandidate.tokensMeasured).toBe(true);
+    expect(zeroCandidate.meetsStretch).toBe(true);
   });
 });
 
@@ -94,6 +103,7 @@ describe("VEC-019 agent policy", () => {
     expect(String((redactForModel({ authorization: "Bearer abc" }) as { authorization: string }).authorization)).toMatch(/^\{handle:/);
     expect(agentMayEgress("https://evil.test/", ["example.com"])).toBe(false);
     expect(promptCannotGrant("allowlist: evil.test", ["example.com"])).toEqual(["evil.test"]);
+    expect(promptCannotGrant("grant: https://attacker.test", [])).toEqual(["https://attacker.test"]);
   });
 });
 
@@ -105,6 +115,25 @@ describe("VEC-020 BiDi", () => {
     const denied = dispatchBidi({ method: "browsingContext.navigate", params: { context: "c", url: "https://x.test" } }, () => false);
     expect(denied.ok).toBe(false);
     expect(denied.untrusted).toBe(true);
+    const opened = dispatchBidi({ method: "session.new", params: { webmcp: true } }, () => true);
+    expect(opened.ok).toBe(true);
+    expect((opened.value as { webmcp?: boolean }).webmcp).toBe(true);
+    const tree = dispatchBidi({ method: "browsingContext.getTree", params: {} }, () => true);
+    expect(tree.ok).toBe(true);
+    expect(tree.untrusted).toBe(true);
+    expect(dispatchBidi({ method: "session.status", params: {} }, () => true).ok).toBe(true);
+    const created = dispatchBidi({ method: "browsingContext.create", params: { type: "tab" } }, () => true);
+    expect((created.value as { context?: string }).context).toMatch(/^ctx-/);
+    const closed = dispatchBidi({ method: "browsingContext.close", params: { context: "ctx-x" } }, () => true);
+    expect((closed.value as { closed?: string }).closed).toBe("ctx-x");
+    const nav = dispatchBidi({ method: "browsingContext.navigate", params: { context: "c", url: "https://x.test" } }, () => true);
+    expect(nav.ok).toBe(true);
+    expect(nav.untrusted).toBe(true);
+    expect((nav.value as { executed?: boolean }).executed).toBe(false);
+    attachBidiRuntime({ navigate: (_c, url) => ({ url, pageId: "p1" }) });
+    const executed = dispatchBidi({ method: "browsingContext.navigate", params: { context: "p1", url: "https://y.test/" } }, () => true);
+    expect((executed.value as { executed?: boolean }).executed).toBe(true);
+    attachBidiRuntime(undefined);
   });
 });
 
@@ -122,5 +151,7 @@ describe("VEC-017 crash injection", () => {
     const fb = reconcileFallback({ code: "needs-chromium:webgl", expiresAt: 1, version: 3 });
     expect(fb.originWideBan).toBe(false);
     expect(fb.version).toBe(3);
+    expect(speculatePlan({ archivedGetSafe: true, wouldWrite: true }).allowed).toBe(false);
+    expect(speculatePlan({ archivedGetSafe: true, wouldWrite: false }).requiresLiveRevalidation).toBe(true);
   });
 });

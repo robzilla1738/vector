@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<title>Node.insertBefore</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var parent = document.createElement("div")
+  var a = document.createElement("span")
+  var b = document.createElement("i")
+  parent.appendChild(b)
+  var ret = parent.insertBefore(a, b)
+  assert_equals(ret, a)
+  assert_equals(parent.firstChild, a)
+  assert_equals(a.nextSibling, b)
+  assert_equals(b.previousSibling, a)
+}, "insertBefore places the node before the reference child")
+</script>

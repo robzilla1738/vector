@@ -3,8 +3,8 @@
 
 use ve_core::{Edges, Point, Rect, Size};
 use ve_style::{
-    BoxSizing, ComputedStyle, Float, LengthPercentageAuto, ListStylePosition, Position,
-    PseudoElement,
+    BoxSizing, ComputedStyle, Float, LengthPercentage, LengthPercentageAuto, ListStylePosition,
+    Position, PseudoElement, WritingMode,
 };
 
 use crate::box_tree::{BoxKind, Fragment, LayoutBox};
@@ -142,6 +142,9 @@ pub fn layout_box_at(
     }
     let style = bx.style.clone();
     let (margin, padding, border) = box_edges(bx, cb.width);
+    // Parent/child adjoining top margins collapse into this used top margin
+    // (CSS 2.1 §8.3.1); the first child's top is then not added again inside.
+    let used_margin_top = peek_collapsing_top(bx, cb.width);
     let bp_h = padding.horizontal() + border.horizontal();
     let bp_v = padding.vertical() + border.vertical();
     let shrink_to_fit = !bx.is_block_level()
@@ -212,7 +215,7 @@ pub fn layout_box_at(
         }
     };
 
-    let border_origin = Point::new(origin.x + margin_left, origin.y + margin.top);
+    let border_origin = Point::new(origin.x + margin_left, origin.y + used_margin_top);
     let content_origin = Point::new(
         border_origin.x + border.left + padding.left,
         border_origin.y + border.top + padding.top,
@@ -244,6 +247,9 @@ pub fn layout_box_at(
             .any(|c| !c.is_block_level() && c.is_in_flow()) =>
         {
             inline::layout_inline(bx, ctx, content_rect)
+        }
+        _ if bx.style.writing_mode == WritingMode::VerticalRl => {
+            layout_block_flow_vertical_rl(bx, ctx, content_rect, child_cb_height)
         }
         _ => layout_block_flow(bx, ctx, content_rect, child_cb_height),
     };
@@ -343,6 +349,82 @@ fn clamp_height(style: &ComputedStyle, content: f32, cb_height: Option<f32>, bp_
     h.max(0.0)
 }
 
+fn adjoins_children_top(bx: &LayoutBox) -> bool {
+    if bx.establishes_bfc() {
+        return false;
+    }
+    if !bx.has_own_edges() {
+        return true;
+    }
+    bx.style.padding_top == LengthPercentage::ZERO && bx.style.border_top() <= 0.0
+}
+
+fn style_may_collapse_through(bx: &LayoutBox) -> bool {
+    if bx.replaced.is_some() || bx.establishes_bfc() {
+        return false;
+    }
+    if bx.has_own_edges() {
+        let s = &bx.style;
+        if s.padding_top != LengthPercentage::ZERO || s.padding_bottom != LengthPercentage::ZERO {
+            return false;
+        }
+        if s.border_top() > 0.0 || s.border_bottom() > 0.0 {
+            return false;
+        }
+        if !s.height.is_auto() {
+            return false;
+        }
+        if s.min_height != LengthPercentage::ZERO {
+            return false;
+        }
+    }
+    bx.children
+        .iter()
+        .all(|c| !c.is_in_flow() || (c.is_block_level() && style_may_collapse_through(c)))
+}
+
+/// Adjoining top margin of `bx` as seen by its parent (own top plus
+/// descendants that collapse through, CSS 2.1 §8.3.1).
+fn peek_collapsing_top(bx: &LayoutBox, cb_width: f32) -> f32 {
+    let own = if bx.has_own_edges() {
+        resolve_margins(&bx.style, cb_width)
+    } else {
+        Edges::ZERO
+    };
+    let mut m = own.top;
+    if !adjoins_children_top(bx) {
+        return m;
+    }
+    let inner_cb = (cb_width
+        - own.horizontal()
+        - if bx.has_own_edges() {
+            border_edges(&bx.style).horizontal() + resolve_padding(&bx.style, cb_width).horizontal()
+        } else {
+            0.0
+        })
+    .max(0.0);
+    let mut saw = false;
+    let mut all_through = true;
+    for child in &bx.children {
+        if !child.is_in_flow() {
+            continue;
+        }
+        if !child.is_block_level() {
+            return m;
+        }
+        saw = true;
+        m = m.max(peek_collapsing_top(child, inner_cb));
+        if !style_may_collapse_through(child) {
+            all_through = false;
+            break;
+        }
+    }
+    if (!saw || all_through) && style_may_collapse_through(bx) {
+        m = m.max(own.bottom);
+    }
+    m
+}
+
 /// Stacks block-level children vertically. Returns the content height.
 fn layout_block_flow(
     bx: &mut LayoutBox,
@@ -357,10 +439,12 @@ fn layout_block_flow(
     let mut cursor = content.y();
     let mut prev_margin_bottom = 0.0_f32;
     let mut last_margin_bottom = 0.0_f32;
+    let parent_adjoins_top = adjoins_children_top(bx);
     let parent_has_bottom_edge = bx.has_own_edges()
-        && (bx.style.padding_bottom != ve_style::LengthPercentage::ZERO
+        && (bx.style.padding_bottom != LengthPercentage::ZERO
             || bx.style.border_bottom() > 0.0
             || bx.establishes_bfc());
+    let mut first_inflow = true;
 
     for child in &mut bx.children {
         if child.is_out_of_flow() {
@@ -376,18 +460,26 @@ fn layout_block_flow(
         } else {
             Edges::ZERO
         };
+        let used_top = peek_collapsing_top(child, cb.width);
+        let mut absorb_top = first_inflow && parent_adjoins_top;
+        first_inflow = false;
         // `clear` moves the box below the relevant floats (its own margin
         // then no longer collapses through).
         if child.has_own_edges()
             && let Some(clearance) = ctx.floats().clearance(child.style.clear)
-            && clearance > cursor + margins.top.max(prev_margin_bottom) - prev_margin_bottom
+            && clearance > cursor + used_top.max(prev_margin_bottom) - prev_margin_bottom
         {
             cursor = clearance;
-            prev_margin_bottom = margins.top;
+            prev_margin_bottom = used_top;
+            absorb_top = false;
         }
-        // Adjoining sibling margins collapse to the larger of the two.
-        let gap = margins.top.max(prev_margin_bottom) - prev_margin_bottom;
-        let mut margin_origin = Point::new(content.x(), cursor + gap - margins.top);
+        // Adjoining sibling (and parent/child) margins collapse to the max.
+        let gap = if absorb_top {
+            0.0
+        } else {
+            used_top.max(prev_margin_bottom) - prev_margin_bottom
+        };
+        let mut margin_origin = Point::new(content.x(), cursor + gap - used_top);
         let mut child_cb = cb;
         if child.establishes_bfc() && !ctx.floats().is_empty() {
             // A new formatting context must not overlap floats: narrow it to
@@ -403,7 +495,7 @@ fn layout_block_flow(
                 if needed.is_some_and(|w| w > r - l + 0.01) {
                     if let Some(next) = ctx.floats().next_bottom_after(top) {
                         cursor = next;
-                        margin_origin = Point::new(content.x(), cursor - margins.top);
+                        margin_origin = Point::new(content.x(), cursor - used_top);
                     }
                 } else {
                     margin_origin.x = l;
@@ -415,9 +507,16 @@ fn layout_block_flow(
         if child.style.position == Position::Relative || child.style.position == Position::Sticky {
             apply_relative_offset(child, cb);
         }
-        cursor = child.rect.bottom() + margins.bottom;
-        prev_margin_bottom = margins.bottom;
-        last_margin_bottom = margins.bottom;
+        if style_may_collapse_through(child) && child.rect.height() < 0.01 {
+            let adjoining = used_top.max(margins.bottom).max(prev_margin_bottom);
+            cursor = child.rect.bottom();
+            prev_margin_bottom = adjoining;
+            last_margin_bottom = adjoining;
+        } else {
+            cursor = child.rect.bottom() + margins.bottom;
+            prev_margin_bottom = margins.bottom;
+            last_margin_bottom = margins.bottom;
+        }
     }
     let mut height = cursor - content.y();
     if !parent_has_bottom_edge {
@@ -425,6 +524,59 @@ fn layout_block_flow(
         height -= last_margin_bottom;
     }
     height.max(0.0)
+}
+
+/// Stacks block-level children right-to-left (`writing-mode: vertical-rl`).
+/// Physical width is the stacking size; a definite containing-block height
+/// stretches `height: auto` children.
+fn layout_block_flow_vertical_rl(
+    bx: &mut LayoutBox,
+    ctx: &mut LayoutCtx<'_>,
+    content: Rect,
+    cb_height: Option<f32>,
+) -> f32 {
+    let cb = ContainingBlock {
+        width: content.width(),
+        height: cb_height,
+    };
+    let mut cursor = content.right();
+    let mut max_height = cb_height.unwrap_or(0.0);
+    for child in &mut bx.children {
+        if child.is_out_of_flow() {
+            child.rect = Rect::new(cursor, content.y(), 0.0, 0.0);
+            continue;
+        }
+        if child.is_float() {
+            layout_float(child, ctx, content, content.y());
+            continue;
+        }
+        let margins = if child.has_own_edges() {
+            resolve_margins(&child.style, cb.width)
+        } else {
+            Edges::ZERO
+        };
+        let forced = Forced {
+            width: None,
+            height: if child.style.height.is_auto() {
+                cb_height
+            } else {
+                None
+            },
+        };
+        layout_box_at(child, ctx, cb, Point::ZERO, forced);
+        if child.style.position == Position::Relative || child.style.position == Position::Sticky {
+            apply_relative_offset(child, cb);
+        }
+        let margin_box_w = child.rect.width() + margins.horizontal();
+        cursor -= margin_box_w;
+        translate_subtree(
+            child,
+            cursor + margins.left - child.rect.x(),
+            content.y() + margins.top - child.rect.y(),
+        );
+        max_height = max_height.max(child.rect.height() + margins.vertical());
+    }
+    max_height.max(0.0)
 }
 
 /// Lays out a float (shrink-to-fit) and places it against the current

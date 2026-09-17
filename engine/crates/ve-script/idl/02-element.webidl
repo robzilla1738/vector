@@ -11,6 +11,7 @@ interface Element : Node {
   undefined setAttribute(DOMString qualifiedName, DOMString value);
   undefined removeAttribute(DOMString qualifiedName);
   boolean hasAttribute(DOMString qualifiedName);
+  boolean toggleAttribute(DOMString qualifiedName, optional boolean force);
   Element? querySelector(DOMString selectors);
   sequence<Element> querySelectorAll(DOMString selectors);
   boolean matches(DOMString selectors);

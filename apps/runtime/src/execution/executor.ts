@@ -154,11 +154,16 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         receipt: {
           observed: undefined,
           remoteConfirmed: Boolean(step.expect?.length),
-          uncertain: !step.expect?.length && ["click", "fill", "type", "select", "check", "uncheck"].includes(step.op),
+          uncertain: !step.expect?.length && ["click", "fill", "type", "select", "check", "uncheck", "press"].includes(step.op),
           dispatchedBeforeTakeover: false,
           identity: {
             pageId: page.identity.pageId,
-            documentEpoch: 0,
+            documentEpoch: (() => {
+              const p = page as unknown as { documentEpoch?: () => number; epoch?: () => number };
+              if (typeof p.documentEpoch === "function") return p.documentEpoch();
+              if (typeof p.epoch === "function") return p.epoch();
+              return 0;
+            })(),
             target: "target" in step ? String(step.target) : undefined,
           },
         },
@@ -177,6 +182,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         if (d["downloaded"]) outcome.detail = `downloaded ${d["downloaded"]}`;
         if (d["value"] !== undefined) outcome.detail = JSON.stringify(d["value"])?.slice(0, 300);
         if (d["detail"]) outcome.detail = String(d["detail"]);
+        if (outcome.receipt) outcome.receipt.observed = outcome.detail;
       }
       return outcome;
     } catch (e) {

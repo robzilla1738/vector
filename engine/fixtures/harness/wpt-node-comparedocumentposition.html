@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<title>Node.compareDocumentPosition</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var a = document.createElement("div")
+  var b = document.createElement("span")
+  a.appendChild(b)
+  assert_equals(a.compareDocumentPosition(a), 0)
+  assert_equals(a.compareDocumentPosition(b), Node.DOCUMENT_POSITION_CONTAINED_BY | Node.DOCUMENT_POSITION_FOLLOWING)
+  assert_equals(b.compareDocumentPosition(a), Node.DOCUMENT_POSITION_CONTAINS | Node.DOCUMENT_POSITION_PRECEDING)
+  var c = document.createElement("i")
+  a.appendChild(c)
+  assert_equals(b.compareDocumentPosition(c), Node.DOCUMENT_POSITION_FOLLOWING)
+  assert_equals(c.compareDocumentPosition(b), Node.DOCUMENT_POSITION_PRECEDING)
+}, "compareDocumentPosition reports contains, preceding, and following")
+</script>

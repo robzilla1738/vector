@@ -24,29 +24,25 @@
   ],
   "elements": [
     {
-      "ref": "r34",
-      "frame": "main",
+      "ref": "r25",
       "tag": "input",
       "role": "textbox",
       "name": "What needs to be done?",
       "type": "text",
       "value": "",
-      "placeholder": "What needs to be done?",
-      "selector": {}
+      "placeholder": "What needs to be done?"
     },
     {
-      "ref": "r63",
-      "frame": "main",
+      "ref": "r54",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [
     {
-      "ref": "r34",
+      "ref": "r25",
       "label": "What needs to be done?",
       "type": "text",
       "value": "",
@@ -56,7 +52,7 @@
   "tables": [],
   "links": [
     {
-      "ref": "r63",
+      "ref": "r54",
       "text": "TodoMVC",
       "href": "http://todomvc.com/"
     }

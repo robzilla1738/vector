@@ -33,7 +33,74 @@ use crate::stylesheet::{
     parse_stylesheet, strip_cdata,
 };
 use crate::ua::UA_STYLESHEET;
-use crate::values::Content;
+use crate::values::{Content, Direction};
+
+fn uses_auto_direction(doc: &Document, id: NodeId) -> bool {
+    let Some(el) = doc.element(id) else {
+        return false;
+    };
+    match el.attr("dir").map(str::to_ascii_lowercase).as_deref() {
+        Some("auto") => true,
+        Some("ltr" | "rtl") => false,
+        _ => el.is_html("bdi"),
+    }
+}
+
+fn first_strong_direction(doc: &Document, id: NodeId) -> Direction {
+    first_strong_from_text(&crate::element::auto_dir_text(doc, id)).unwrap_or(Direction::Ltr)
+}
+
+fn first_strong_from_text(text: &str) -> Option<Direction> {
+    for ch in text.chars() {
+        if is_rtl_char(ch) {
+            return Some(Direction::Rtl);
+        }
+        if is_ltr_char(ch) {
+            return Some(Direction::Ltr);
+        }
+    }
+    None
+}
+
+fn is_rtl_char(c: char) -> bool {
+    matches!(
+        c,
+        '\u{0590}'..='\u{08FF}' | '\u{FB1D}'..='\u{FDFF}' | '\u{FE70}'..='\u{FEFF}'
+    )
+}
+
+fn is_ltr_char(c: char) -> bool {
+    c.is_ascii_alphabetic()
+}
+
+fn slot_parent_style(
+    doc: &Document,
+    tree: &StyleTree,
+    id: NodeId,
+    fallback: &Rc<ComputedStyle>,
+) -> Rc<ComputedStyle> {
+    doc.assigned_slot(id)
+        .and_then(|slot| tree.styles.get(&slot).cloned())
+        .unwrap_or_else(|| fallback.clone())
+}
+
+fn push_style_children(
+    doc: &Document,
+    id: NodeId,
+    host_style: &Rc<ComputedStyle>,
+    mut push: impl FnMut(NodeId, Rc<ComputedStyle>),
+) {
+    let light: Vec<NodeId> = doc.children(id).collect();
+    for child in light.into_iter().rev() {
+        push(child, host_style.clone());
+    }
+    if let Some(shadow) = doc.shadow_root(id) {
+        let kids: Vec<NodeId> = doc.children(shadow).collect();
+        for child in kids.into_iter().rev() {
+            push(child, host_style.clone());
+        }
+    }
+}
 
 /// Computed styles for every node of a document at a given revision.
 #[derive(Clone, Debug, Default)]
@@ -250,7 +317,7 @@ impl RuleSet {
                 match rule {
                     CssRule::Style(s) => out.push((origin, s)),
                     CssRule::Media(m) if m.query.evaluate(env) => walk(&m.rules, origin, env, out),
-                    CssRule::Media(_) => {}
+                    CssRule::Media(_) | CssRule::Keyframes(_) => {}
                 }
             }
         }
@@ -518,7 +585,11 @@ impl StyleEngine {
             is_root,
         };
         let refs: Vec<&PropertyDeclaration> = ordered.iter().collect();
-        let style = Rc::new(ComputedStyle::cascade(&refs, &ctx));
+        let mut style = ComputedStyle::cascade(&refs, &ctx);
+        if uses_auto_direction(doc, id) {
+            style.direction = first_strong_direction(doc, id);
+        }
+        let style = Rc::new(style);
 
         // Generated content.
         let mut pseudos = Vec::new();
@@ -652,6 +723,7 @@ impl StyleEngine {
         // Explicit stack: (node, parent style).
         let mut stack: Vec<(NodeId, Rc<ComputedStyle>)> = vec![(root_element, initial)];
         while let Some((id, parent_style)) = stack.pop() {
+            let parent_style = slot_parent_style(doc, &tree, id, &parent_style);
             let Some(node) = doc.get(id) else { continue };
             if !node.is_element() {
                 // Text, comments, etc. share the parent's style.
@@ -672,13 +744,11 @@ impl StyleEngine {
                 root_font_size = style.font_size;
                 tree.root_font_size = root_font_size;
             }
-            // Push children in reverse so they pop in tree order.
-            let children: Vec<NodeId> = doc.children(id).collect();
-            for child in children.into_iter().rev() {
-                stack.push((child, style.clone()));
-            }
             tree.set_pseudos(id, pseudos);
-            tree.styles.insert(id, style);
+            tree.styles.insert(id, style.clone());
+            push_style_children(doc, id, &style, |child, parent| {
+                stack.push((child, parent));
+            });
         }
         tree
     }
@@ -805,6 +875,7 @@ impl StyleEngine {
         let mut stack: Vec<(NodeId, Rc<ComputedStyle>, bool)> =
             vec![(root_element, initial, false)];
         while let Some((id, parent_style, force)) = stack.pop() {
+            let parent_style = slot_parent_style(doc, tree, id, &parent_style);
             let Some(node) = doc.get(id) else { continue };
             let dirty = node.dirty();
             if !node.is_element() {
@@ -853,10 +924,9 @@ impl StyleEngine {
             };
 
             if child_force || dirty.contains(DirtyFlags::DESCENDANTS) {
-                let children: Vec<NodeId> = doc.children(id).collect();
-                for child in children.into_iter().rev() {
-                    stack.push((child, style.clone(), child_force));
-                }
+                push_style_children(doc, id, &style, |child, parent| {
+                    stack.push((child, parent, child_force));
+                });
             } else {
                 stats.skipped_subtrees += 1;
             }
@@ -961,6 +1031,7 @@ mod tests {
             .map(|(n, v)| Attribute {
                 name: (*n).into(),
                 value: (*v).into(),
+                namespace: None,
             })
             .collect();
         let id = doc.create_element_with_attrs(name, Namespace::Html, attrs);
@@ -1269,6 +1340,7 @@ mod tests {
             vec![Attribute {
                 name: "class".into(),
                 value: "n".into(),
+                namespace: None,
             }],
         );
         doc.append_child(sections[0], fresh).unwrap();

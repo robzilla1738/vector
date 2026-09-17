@@ -436,6 +436,10 @@ pub struct PageMeta {
 }
 
 /// State owned by the engine thread.
+///
+/// All pages of a context share this thread. Each job is still one page, but
+/// observe/execute start with [`VectorEngine::pump_round_robin`] so leftover
+/// event-loop work on a busy page cannot starve a sibling forever.
 pub struct HostState {
     engine: VectorEngine,
     /// Global page id → (engine page id, bookkeeping).
@@ -490,6 +494,10 @@ impl HostState {
             .get(&global)
             .map(|(id, _)| *id)
             .ok_or_else(|| ApiError::no_such_page(global))
+    }
+
+    fn pump_pages(&mut self) {
+        self.engine.pump_round_robin(8);
     }
 
     /// Responses completed for `global` since the last report.
@@ -595,6 +603,7 @@ impl HostState {
     }
 
     fn observe_inner(&mut self, global: u64, options: &Value) -> Result<Value, ApiError> {
+        self.pump_pages();
         let id = self.engine_page(global)?;
         let obs = engine_reply(&self.engine.observe_json(id.0, &options_json(options)))?;
         if let Some((_, meta)) = self.pages.get_mut(&global)
@@ -623,6 +632,7 @@ impl HostState {
         steps: &Value,
         opts: &ExecuteOptions,
     ) -> Result<Value, ApiError> {
+        self.pump_pages();
         let id = self.engine_page(global)?;
         let generation_before = self.engine.page(id)?.generation();
         let mut request = json!({ "program": steps });
@@ -1069,6 +1079,35 @@ mod tests {
         );
         let opened = host.call_blocking(|s| s.open(1, PAGE, &json!({})));
         assert_eq!(opened["ok"], true, "{opened}");
+    }
+
+    #[test]
+    fn sibling_page_observe_is_not_blocked_by_other_page() {
+        let host = offline_host();
+        assert_eq!(
+            host.call_blocking(|s| s.open(1, PAGE, &json!({})))["ok"],
+            true
+        );
+        assert_eq!(
+            host.call_blocking(|s| s.open(
+                2,
+                "data:text/html,<title>idle</title><p>idle</p>",
+                &json!({})
+            ))["ok"],
+            true
+        );
+        for _ in 0..4 {
+            let _ = host.call_blocking(|s| {
+                s.execute(
+                    1,
+                    &json!([{ "id": "s", "op": "scroll", "direction": "down" }]),
+                    &opts(None),
+                )
+            });
+        }
+        let obs = host.call_blocking(|s| s.observe(2, &json!({})));
+        assert_eq!(obs["ok"], true, "{obs}");
+        assert_eq!(obs["content"]["title"], "idle");
     }
 
     #[test]

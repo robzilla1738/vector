@@ -51,6 +51,8 @@ export interface RouteDecision {
   reason: string;
   /** an engine `capability_unsupported` on open may reopen the page on Chromium */
   fallbackAllowed: boolean;
+  /** Strict native mode cannot start the engine; never substitute Chromium. */
+  backendUnavailable?: boolean;
 }
 
 export interface ReplayPlan {
@@ -69,6 +71,8 @@ export interface RouterOptions {
   now?: () => number;
   ttlMs?: number;
   log?: (message: string, attrs: Record<string, unknown>) => void;
+  /** Independent product: never start or substitute Chromium. */
+  nativeOnly?: () => boolean;
 }
 
 /** Schemes the engine can open in M1 (`http(s)` needs the `http` feature, always on in the addon). */
@@ -114,6 +118,11 @@ export class Router {
 
   engineAvailable(): boolean {
     return this.opts.engineAvailable();
+  }
+
+  /** Independent product: never start or substitute Chromium. */
+  isNativeOnly(): boolean {
+    return this.opts.nativeOnly?.() ?? false;
   }
 
   // ---- needs-chromium table ----
@@ -167,6 +176,17 @@ export class Router {
       this.log("router.decide", { url, requested, ...d });
       return d;
     };
+    if (this.opts.nativeOnly?.()) {
+      if (!this.engineAvailable()) {
+        return done({
+          backend: "vector-engine",
+          reason: "native-only:engine-unavailable",
+          fallbackAllowed: false,
+          backendUnavailable: true,
+        });
+      }
+      return done({ backend: "vector-engine", reason: "native-only", fallbackAllowed: false });
+    }
     if (requested === "chrome") return done({ backend: "chrome", reason: "explicit-backend:chrome", fallbackAllowed: false });
     if (requested === "vector-engine")
       return done({ backend: "vector-engine", reason: "explicit-backend:vector-engine", fallbackAllowed: false });
@@ -174,7 +194,12 @@ export class Router {
     if (mode === "off") return done({ backend: "vector", reason: "engine-mode-off", fallbackAllowed: false });
     if (mode === "always") {
       if (!this.engineAvailable()) {
-        return done({ backend: "vector-engine", reason: "engine-unavailable", fallbackAllowed: false });
+        return done({
+          backend: "vector-engine",
+          reason: "engine-unavailable",
+          fallbackAllowed: false,
+          backendUnavailable: true,
+        });
       }
       return done({ backend: "vector-engine", reason: "engine-always", fallbackAllowed: false });
     }

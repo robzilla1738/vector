@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<title>Node.removeChild</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var parent = document.createElement("div")
+  var child = document.createElement("span")
+  parent.appendChild(child)
+  var ret = parent.removeChild(child)
+  assert_equals(ret, child)
+  assert_equals(child.parentNode, null)
+  assert_equals(parent.firstChild, null)
+  assert_equals(parent.childNodes.length, 0)
+}, "removeChild detaches and returns the child")
+</script>

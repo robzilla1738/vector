@@ -80,6 +80,27 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
                 Err(_) => std::process::exit(0),
             }
         }
+        "clone" => {
+            #[cfg(target_os = "linux")]
+            unsafe {
+                if libc::unshare(0) == 0 {
+                    std::process::exit(13);
+                }
+                std::process::exit(0);
+            }
+            #[cfg(not(target_os = "linux"))]
+            unsafe {
+                let pid = libc::fork();
+                if pid == 0 {
+                    libc::_exit(0);
+                }
+                if pid > 0 {
+                    libc::waitpid(pid, std::ptr::null_mut(), 0);
+                    std::process::exit(13);
+                }
+                std::process::exit(0);
+            }
+        }
         other => {
             eprintln!("ve-host unknown selftest {other}");
             std::process::exit(2);

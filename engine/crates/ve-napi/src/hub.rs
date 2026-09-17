@@ -75,6 +75,12 @@ pub fn parse_config(config_json: &str) -> Result<EngineConfig, ApiError> {
     ) {
         config.security_profile = ve_api::SecurityProfile::Production;
     }
+    if matches!(
+        std::env::var("VECTOR_HERMETIC").as_deref(),
+        Ok("1" | "true")
+    ) {
+        config.hermetic = true;
+    }
     Ok(config)
 }
 

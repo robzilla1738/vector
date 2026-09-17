@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<title>Document.cookie</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  document.cookie = "k=v"
+  document.cookie = "n=1; Path=/"
+  assert_true(document.cookie.indexOf("k=v") !== -1)
+  assert_true(document.cookie.indexOf("n=1") !== -1)
+}, "cookie stores name/value pairs and ignores attributes")
+</script>

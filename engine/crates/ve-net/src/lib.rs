@@ -17,7 +17,7 @@
 //!   answered without callbacks.
 //! * The default build has **no** real transport (pure Rust, no TLS): use
 //!   [`MockTransport`] for tests or enable the `http` feature for
-//!   [`HyperTransport`] (hyper 1 + rustls + HTTP/1.1 and HTTP/2).
+//!   [`HyperTransport`] (hyper 1 + rustls + HTTP/1.1, HTTP/2, and HTTP/3 over QUIC).
 //! * Everything is synchronous from the caller's point of view; the hyper
 //!   transport runs its own single-threaded tokio runtime. Streaming bodies
 //!   and progress events are a follow-up.
@@ -27,15 +27,17 @@
 pub mod broker;
 pub mod cache;
 pub mod cookie;
+pub mod cors;
 pub mod http3;
 #[cfg(feature = "http")]
 pub mod hyper_transport;
 pub mod policy;
+pub mod replay;
 pub mod transport;
 pub mod websocket;
 pub mod wire;
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::time::{Instant, SystemTime};
 
 use bytes::Bytes;
@@ -48,10 +50,12 @@ use ve_core::Stage;
 pub use broker::{FetchJob, NetworkBroker};
 pub use cache::{CacheLookup, HttpCache};
 pub use cookie::{BrowserCookie, Cookie, CookieJar, SameSite};
-pub use http3::{ProtocolSupport, advertises_http3};
+pub use cors::{check_cors, check_preflight, needs_preflight};
+pub use http3::{H3Endpoint, ProtocolSupport, advertises_http3, parse_h3_alt_svc};
 #[cfg(feature = "http")]
 pub use hyper_transport::HyperTransport;
 pub use policy::NetworkPolicy;
+pub use replay::ReplayTransport;
 pub use transport::{FnTransport, MockTransport, NullTransport, Transport};
 pub use websocket::WebSocketClient;
 pub use wire::{WireRequest, WireResponse};
@@ -129,6 +133,8 @@ pub struct Request {
     pub page: Option<u64>,
     /// What issued the request.
     pub initiator: Initiator,
+    /// Document origin for CORS (script `fetch`). Falls back to the `Origin` header.
+    pub origin: Option<Url>,
     /// Background requests (streams, beacons) never block `settle()`.
     pub background: bool,
 }
@@ -143,6 +149,7 @@ impl Request {
             body: None,
             page: None,
             initiator: Initiator::Navigation,
+            origin: None,
             background: false,
         })
     }
@@ -176,6 +183,13 @@ impl Request {
     #[must_use]
     pub fn with_initiator(mut self, initiator: Initiator) -> Self {
         self.initiator = initiator;
+        self
+    }
+
+    /// Sets the document origin used for CORS.
+    #[must_use]
+    pub fn with_origin(mut self, origin: Url) -> Self {
+        self.origin = Some(origin);
         self
     }
 
@@ -225,6 +239,24 @@ impl Response {
         self.headers
             .get(http::header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
+    }
+
+    /// The `Last-Modified` header.
+    #[must_use]
+    pub fn last_modified(&self) -> Option<&str> {
+        self.headers
+            .get(http::header::LAST_MODIFIED)
+            .and_then(|v| v.to_str().ok())
+    }
+
+    /// The first `Content-Language` header value.
+    #[must_use]
+    pub fn content_language(&self) -> Option<&str> {
+        self.headers
+            .get(http::header::CONTENT_LANGUAGE)
+            .and_then(|v| v.to_str().ok())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
     }
 
     /// The MIME essence (`text/html`) without parameters.
@@ -337,6 +369,8 @@ pub struct NetworkContext {
     transport: Box<dyn Transport>,
     /// Protocols observed on this context (plan A23).
     pub protocols: crate::http3::ProtocolSupport,
+    /// HTTP/3 alternatives advertised via `Alt-Svc`, keyed by origin.
+    h3_endpoints: HashMap<String, crate::http3::H3Endpoint>,
     in_flight: Vec<InFlight>,
     completed: VecDeque<CompletedResponse>,
     next_request_id: u64,
@@ -367,6 +401,12 @@ fn unix_millis(t: SystemTime) -> u64 {
         .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
 }
 
+fn origin_key(url: &Url) -> String {
+    let host = url.host_str().unwrap_or("");
+    let port = url.port_or_known_default().unwrap_or(0);
+    format!("{}://{host}:{port}", url.scheme())
+}
+
 impl NetworkContext {
     /// Creates a context over `transport` with the default (secure) policy.
     #[must_use]
@@ -381,6 +421,7 @@ impl NetworkContext {
             completed_capacity: 256,
             transport,
             protocols: crate::http3::ProtocolSupport::default(),
+            h3_endpoints: HashMap::new(),
             in_flight: Vec::new(),
             completed: VecDeque::new(),
             next_request_id: 0,
@@ -467,9 +508,29 @@ impl NetworkContext {
                 Prepared::Done(response) => return Ok(*response),
                 Prepared::Send(p) => *p,
             };
-            let response = self.transport.send(&prepared.request)?;
-            if crate::http3::advertises_http3(&response.headers) {
+            if crate::cors::needs_preflight(&prepared.request) {
+                let mut opt = Request::get(prepared.request.url.as_str())?;
+                opt.method = Method::OPTIONS;
+                opt.initiator = prepared.request.initiator;
+                opt.origin.clone_from(&prepared.request.origin);
+                opt.page = prepared.request.page;
+                if let Ok(v) = HeaderValue::from_str(prepared.request.method.as_str()) {
+                    opt.headers
+                        .insert(http::header::ACCESS_CONTROL_REQUEST_METHOD, v);
+                }
+                if let Some(origin) = prepared.request.origin.as_ref() {
+                    if let Ok(v) = HeaderValue::from_str(origin.as_str()) {
+                        opt.headers.insert(http::header::ORIGIN, v);
+                    }
+                }
+                let pre = self.send_prepared(&opt)?;
+                crate::cors::check_preflight(&prepared.request, &pre)?;
+            }
+            let response = self.send_prepared(&prepared.request)?;
+            if let Some(ep) = crate::http3::parse_h3_alt_svc(&response.headers) {
                 self.protocols.http3 = true;
+                self.h3_endpoints
+                    .insert(origin_key(&prepared.request.url), ep);
             }
             match prepared.request.url.scheme() {
                 "http" | "https" => self.protocols.http1 = true,
@@ -481,6 +542,25 @@ impl NetworkContext {
                 Finished::Redirect(next) => request = next,
             }
         }
+    }
+
+    fn send_prepared(&mut self, request: &Request) -> Result<Response, NetError> {
+        #[cfg(feature = "http")]
+        if let Some(response) = self.try_http3(request) {
+            self.protocols.http3_spoken = true;
+            return Ok(response);
+        }
+        self.transport.send(request)
+    }
+
+    #[cfg(feature = "http")]
+    fn try_http3(&self, request: &Request) -> Option<Response> {
+        use std::net::ToSocketAddrs;
+        let origin = origin_key(&request.url);
+        let ep = self.h3_endpoints.get(&origin)?;
+        let host = ep.host.as_deref().or_else(|| request.url.host_str())?;
+        let addr = (host, ep.port).to_socket_addrs().ok()?.next()?;
+        crate::http3::get(request.url.as_str(), host, addr).ok()
     }
 
     /// Fetches several requests in one batch: cache hits are answered
@@ -619,6 +699,7 @@ impl NetworkContext {
                 CacheLookup::Fresh(mut cached) => {
                     tracing::debug!(url = %request.url, "cache hit");
                     cached.from_cache = true;
+                    crate::cors::check_cors(&request, &cached)?;
                     return Ok(Prepared::Done(Box::new(cached)));
                 }
                 CacheLookup::Stale {
@@ -696,6 +777,7 @@ impl NetworkContext {
                 self.cookies.store(cookie);
             }
         }
+        crate::cors::check_cors(&request, &response)?;
 
         if response.status.is_redirection()
             && let Some(location) = response
@@ -802,42 +884,68 @@ enum Finished {
     Redirect(Request),
 }
 
+/// Maximum decompressed body size (VEC-009).
+pub const MAX_DECODED_BODY: usize = 32 * 1024 * 1024;
+
+fn read_decoded(reader: impl std::io::Read, out: &mut Vec<u8>) -> Result<(), NetError> {
+    let n = std::io::copy(&mut reader.take(MAX_DECODED_BODY as u64 + 1), out)
+        .map_err(|e| NetError::Http(e.to_string()))?;
+    if n > MAX_DECODED_BODY as u64 {
+        return Err(NetError::Http(format!(
+            "decoded body exceeds {MAX_DECODED_BODY} bytes"
+        )));
+    }
+    Ok(())
+}
+
+fn prefix_decode(coding: &str, err: NetError) -> NetError {
+    match err {
+        NetError::Http(s) if s.contains("decoded body exceeds") => NetError::Http(s),
+        NetError::Http(s) => NetError::Http(format!("{coding}: {s}")),
+        other => other,
+    }
+}
+
 /// Decodes a `Content-Encoding` body (`gzip`, `deflate`, `br`, possibly
 /// comma-chained) into identity bytes. Pure Rust; used by the transport and
-/// by anything replaying a stored encoded body.
+/// by anything replaying a stored encoded body. Decompressed output is capped
+/// at [`MAX_DECODED_BODY`].
 pub fn decode_body(encoding: &str, raw: &[u8]) -> Result<Bytes, NetError> {
-    use std::io::Read;
     // codings are listed in application order; undo them last-first
     let mut data: Vec<u8> = raw.to_vec();
     for coding in encoding.split(',').map(str::trim).rev() {
-        let mut out = Vec::with_capacity(data.len() * 3);
+        let mut out = Vec::with_capacity(data.len().min(MAX_DECODED_BODY));
         match coding.to_ascii_lowercase().as_str() {
             "" | "identity" => continue,
-            "gzip" | "x-gzip" => flate2::read::MultiGzDecoder::new(&data[..])
-                .read_to_end(&mut out)
-                .map_err(|e| NetError::Http(format!("gzip: {e}")))?,
+            "gzip" | "x-gzip" => {
+                read_decoded(flate2::read::MultiGzDecoder::new(&data[..]), &mut out)
+                    .map_err(|e| prefix_decode("gzip", e))?;
+            }
             "deflate" => {
                 // RFC 9110 deflate is zlib-wrapped, but raw deflate is common
-                if flate2::read::ZlibDecoder::new(&data[..])
-                    .read_to_end(&mut out)
-                    .is_err()
-                {
-                    out.clear();
-                    flate2::read::DeflateDecoder::new(&data[..])
-                        .read_to_end(&mut out)
-                        .map_err(|e| NetError::Http(format!("deflate: {e}")))?;
+                if let Err(e) = read_decoded(flate2::read::ZlibDecoder::new(&data[..]), &mut out) {
+                    match e {
+                        NetError::Http(s) if s.contains("decoded body exceeds") => {
+                            return Err(NetError::Http(s));
+                        }
+                        _ => {
+                            out.clear();
+                            read_decoded(flate2::read::DeflateDecoder::new(&data[..]), &mut out)
+                                .map_err(|e| prefix_decode("deflate", e))?;
+                        }
+                    }
                 }
-                out.len()
             }
-            "br" => brotli::Decompressor::new(&data[..], 8 * 1024)
-                .read_to_end(&mut out)
-                .map_err(|e| NetError::Http(format!("brotli: {e}")))?,
+            "br" => {
+                read_decoded(brotli::Decompressor::new(&data[..], 8 * 1024), &mut out)
+                    .map_err(|e| prefix_decode("brotli", e))?;
+            }
             other => {
                 return Err(NetError::Http(format!(
                     "unsupported content-encoding `{other}`"
                 )));
             }
-        };
+        }
         data = out;
     }
     Ok(Bytes::from(data))
@@ -847,6 +955,12 @@ fn file_url(url: &Url) -> Result<Response, NetError> {
     let path = url
         .to_file_path()
         .map_err(|()| NetError::Io(format!("{url} is not a local file path")))?;
+    if std::env::var_os("VECTOR_ENGINE_SANDBOX").is_some_and(|v| v == "1") {
+        let cwd = std::env::current_dir().unwrap_or_default();
+        if !path.starts_with(&cwd) {
+            return Err(NetError::Blocked(format!("sandbox: {}", path.display())));
+        }
+    }
     let body =
         std::fs::read(&path).map_err(|e| NetError::Io(format!("{}: {e}", path.display())))?;
     let mut headers = HeaderMap::new();
@@ -1124,6 +1238,54 @@ mod tests {
     }
 
     #[test]
+    fn decode_body_caps_decompressed_size() {
+        use std::io::Read;
+        struct Zeros(usize);
+        impl Read for Zeros {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                let n = buf.len().min(self.0);
+                buf[..n].fill(0);
+                self.0 -= n;
+                Ok(n)
+            }
+        }
+        let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        std::io::copy(&mut Zeros(MAX_DECODED_BODY + 1), &mut gz).unwrap();
+        let gz = gz.finish().unwrap();
+        let err = decode_body("gzip", &gz).unwrap_err();
+        assert!(
+            matches!(err, NetError::Http(ref s) if s.contains("decoded body exceeds")),
+            "{err}"
+        );
+        assert!(
+            gz.len() < 256 * 1024,
+            "fixture must stay small ({})",
+            gz.len()
+        );
+    }
+
+    #[test]
+    fn redirect_into_link_local_is_blocked() {
+        let mock = MockTransport::new();
+        mock.respond(
+            "https://example.com/go",
+            302,
+            &[("Location", "http://169.254.169.254/")],
+            "",
+        );
+        let log = mock.log();
+        let mut ctx = NetworkContext::new(ContextId(1), Box::new(mock));
+        let err = ctx
+            .fetch(Request::get("https://example.com/go").unwrap())
+            .unwrap_err();
+        assert!(
+            matches!(err, NetError::Blocked(ref s) if s.contains("169.254") || s.contains("loopback") || s.contains("private")),
+            "{err}"
+        );
+        assert_eq!(log.borrow().len(), 1, "second hop must not hit the wire");
+    }
+
+    #[test]
     fn fetch_attaches_cookies_follows_redirects_and_caches() {
         let mock = MockTransport::new();
         mock.respond(
@@ -1207,6 +1369,30 @@ mod tests {
         assert!(!stale.from_cache);
         assert_eq!(log.borrow().len(), 3, "expired entry refetched");
         assert_eq!(ctx.cookies.len(), 1);
+    }
+
+    #[test]
+    fn profiles_do_not_share_cookies() {
+        let mock_a = MockTransport::new();
+        mock_a.respond(
+            "https://a.test/",
+            200,
+            &[("Set-Cookie", "sid=secret; Path=/")],
+            "ok",
+        );
+        let mock_b = MockTransport::new();
+        mock_b.respond("https://a.test/", 200, &[], "ok");
+        let log_b = mock_b.log();
+        let mut a = NetworkContext::new(ContextId(1), Box::new(mock_a));
+        let mut b = NetworkContext::new(ContextId(2), Box::new(mock_b));
+        a.fetch(Request::get("https://a.test/").unwrap()).unwrap();
+        assert_eq!(a.cookies.len(), 1);
+        b.fetch(Request::get("https://a.test/").unwrap()).unwrap();
+        assert!(
+            log_b.borrow()[0].headers.get("cookie").is_none(),
+            "profile B must not send profile A's cookie"
+        );
+        assert_eq!(b.cookies.len(), 0);
     }
 
     #[test]

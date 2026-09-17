@@ -24,38 +24,32 @@
   ],
   "elements": [
     {
-      "ref": "r37",
-      "frame": "main",
+      "ref": "r27",
       "tag": "input",
       "role": "textbox",
       "name": "What needs to be done?",
       "type": "text",
       "value": "",
-      "placeholder": "What needs to be done?",
-      "selector": {}
+      "placeholder": "What needs to be done?"
     },
     {
-      "ref": "r63",
-      "frame": "main",
+      "ref": "r53",
       "tag": "a",
       "role": "link",
       "name": "Sindre Sorhus",
-      "href": "http://sindresorhus.com/",
-      "selector": {}
+      "href": "http://sindresorhus.com/"
     },
     {
-      "ref": "r71",
-      "frame": "main",
+      "ref": "r61",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [
     {
-      "ref": "r37",
+      "ref": "r27",
       "label": "What needs to be done?",
       "type": "text",
       "value": "",
@@ -65,12 +59,12 @@
   "tables": [],
   "links": [
     {
-      "ref": "r63",
+      "ref": "r53",
       "text": "Sindre Sorhus",
       "href": "http://sindresorhus.com/"
     },
     {
-      "ref": "r71",
+      "ref": "r61",
       "text": "TodoMVC",
       "href": "http://todomvc.com/"
     }

@@ -2,22 +2,24 @@
 //!
 //! winit delivers keys, IME, and pointer events; softbuffer presents the
 //! engine framebuffer. Chrome title is always [`ve_api::NativeBrowser::CHROME_TITLE`].
+//! AccessKit publishes chrome-then-page to the platform accessibility API.
 
 use std::num::NonZeroU32;
-use std::rc::Rc;
+use std::sync::Arc;
 
+use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use anyhow::Result;
 use softbuffer::{Context, Surface};
 use ve_api::{NativeBrowser, NativeEvent};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
-use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 use winit::window::{Window, WindowId};
 
 /// Runs until the window is closed.
 pub fn run(browser: NativeBrowser) -> Result<()> {
-    let event_loop = EventLoop::new()?;
+    let event_loop = EventLoop::<AccessKitEvent>::with_user_event().build()?;
     event_loop.set_control_flow(ControlFlow::Wait);
     let mut app = App {
         browser,
@@ -25,6 +27,10 @@ pub fn run(browser: NativeBrowser) -> Result<()> {
         context: None,
         surface: None,
         mods: ModifiersState::default(),
+        adapter: None,
+        proxy: event_loop.create_proxy(),
+        #[cfg(feature = "gpu")]
+        gpu: None,
     };
     event_loop.run_app(&mut app)?;
     Ok(())
@@ -32,11 +38,15 @@ pub fn run(browser: NativeBrowser) -> Result<()> {
 
 struct App {
     browser: NativeBrowser,
-    window: Option<Rc<Window>>,
+    window: Option<Arc<Window>>,
     #[allow(dead_code)]
-    context: Option<Context<Rc<Window>>>,
-    surface: Option<Surface<Rc<Window>, Rc<Window>>>,
+    context: Option<Context<Arc<Window>>>,
+    surface: Option<Surface<Arc<Window>, Arc<Window>>>,
     mods: ModifiersState,
+    adapter: Option<Adapter>,
+    proxy: EventLoopProxy<AccessKitEvent>,
+    #[cfg(feature = "gpu")]
+    gpu: Option<crate::gpu_window::GpuWindow>,
 }
 
 impl App {
@@ -44,6 +54,17 @@ impl App {
         let Some(window) = &self.window else {
             return;
         };
+        let tree = self.browser.accesskit_update();
+        if let Some(adapter) = &mut self.adapter {
+            adapter.update_if_active(|| tree);
+        }
+        #[cfg(feature = "gpu")]
+        if let Some(gpu) = &mut self.gpu
+            && gpu.present(&mut self.browser).is_ok()
+        {
+            window.set_title(NativeBrowser::CHROME_TITLE);
+            return;
+        }
         let Some(surface) = &mut self.surface else {
             return;
         };
@@ -84,17 +105,25 @@ impl App {
     }
 }
 
-impl ApplicationHandler for App {
+impl ApplicationHandler<AccessKitEvent> for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let attrs = Window::default_attributes()
             .with_title(NativeBrowser::CHROME_TITLE)
+            .with_visible(false)
             .with_inner_size(winit::dpi::LogicalSize::new(1280.0, 720.0));
         let Ok(window) = event_loop.create_window(attrs) else {
             event_loop.exit();
             return;
         };
         window.set_ime_allowed(true);
-        let window = Rc::new(window);
+        let adapter = Adapter::with_event_loop_proxy(&window, self.proxy.clone());
+        window.set_visible(true);
+        let window = Arc::new(window);
+        self.adapter = Some(adapter);
+        #[cfg(feature = "gpu")]
+        {
+            self.gpu = crate::gpu_window::GpuWindow::attach(window.clone()).ok();
+        }
         let Ok(context) = Context::new(window.clone()) else {
             event_loop.exit();
             return;
@@ -109,10 +138,35 @@ impl ApplicationHandler for App {
         self.redraw();
     }
 
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: AccessKitEvent) {
+        match event.window_event {
+            AccessKitWindowEvent::InitialTreeRequested => {
+                let tree = self.browser.accesskit_update();
+                if let Some(adapter) = &mut self.adapter {
+                    adapter.update_if_active(|| tree);
+                }
+            }
+            AccessKitWindowEvent::ActionRequested(_)
+            | AccessKitWindowEvent::AccessibilityDeactivated => {}
+        }
+    }
+
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        if let (Some(window), Some(adapter)) = (&self.window, &mut self.adapter) {
+            adapter.process_event(window.as_ref(), &event);
+        }
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => self.redraw(),
+            WindowEvent::Resized(size) => {
+                #[cfg(feature = "gpu")]
+                if let Some(gpu) = &mut self.gpu {
+                    gpu.resize(size.width, size.height);
+                }
+                if let Some(w) = &self.window {
+                    w.request_redraw();
+                }
+            }
             WindowEvent::ModifiersChanged(m) => {
                 self.mods = m.state();
             }
@@ -149,12 +203,18 @@ impl ApplicationHandler for App {
                     w.request_redraw();
                 }
             }
-            WindowEvent::Ime(winit::event::Ime::Commit(text)) => {
-                let _ = self.browser.handle_event(NativeEvent::Ime { text });
-                if let Some(w) = &self.window {
-                    w.request_redraw();
+            WindowEvent::Ime(ime) => match ime {
+                winit::event::Ime::Preedit(text, _) => {
+                    let _ = self.browser.handle_event(NativeEvent::ImePreedit { text });
                 }
-            }
+                winit::event::Ime::Commit(text) => {
+                    let _ = self.browser.handle_event(NativeEvent::Ime { text });
+                    if let Some(w) = &self.window {
+                        w.request_redraw();
+                    }
+                }
+                _ => {}
+            },
             WindowEvent::CursorMoved { position, .. } => {
                 let _ = self.browser.handle_event(NativeEvent::PointerMove {
                     x: position.x as f32,

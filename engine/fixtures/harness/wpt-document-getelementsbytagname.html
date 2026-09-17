@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<title>Document.getElementsByTagName</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<body>
+<p class="x">one</p>
+<p>two</p>
+<span>s</span>
+<script>
+test(function() {
+  var ps = document.getElementsByTagName("p")
+  assert_equals(ps.length, 2)
+  assert_equals(ps[0].tagName, "P")
+  assert_equals(document.getElementsByTagName("span").length, 1)
+  assert_equals(document.getElementsByTagName("div").length, 1)
+  assert_true(document.getElementsByTagName("*").length >= 4)
+}, "getElementsByTagName returns descendant elements")
+</script>
+</body>

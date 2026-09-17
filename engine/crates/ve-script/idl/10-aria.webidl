@@ -1,0 +1,57 @@
+// ARIAMixin as a concrete interface so generated INTERFACE_NAMES includes it.
+// Element includes ARIAMixin in the platform IDL; mixins are skipped by the generator.
+[Exposed=Window]
+interface ARIAMixin {
+  attribute DOMString? role;
+  attribute DOMString? ariaAtomic;
+  attribute DOMString? ariaAutoComplete;
+  attribute DOMString? ariaBrailleLabel;
+  attribute DOMString? ariaBrailleRoleDescription;
+  attribute DOMString? ariaBusy;
+  attribute DOMString? ariaChecked;
+  attribute DOMString? ariaColCount;
+  attribute DOMString? ariaColIndex;
+  attribute DOMString? ariaColIndexText;
+  attribute DOMString? ariaColSpan;
+  attribute DOMString? ariaCurrent;
+  attribute DOMString? ariaDescription;
+  attribute DOMString? ariaDisabled;
+  attribute DOMString? ariaExpanded;
+  attribute DOMString? ariaHasPopup;
+  attribute DOMString? ariaHidden;
+  attribute DOMString? ariaInvalid;
+  attribute DOMString? ariaKeyShortcuts;
+  attribute DOMString? ariaLabel;
+  attribute DOMString? ariaLevel;
+  attribute DOMString? ariaLive;
+  attribute DOMString? ariaModal;
+  attribute DOMString? ariaMultiLine;
+  attribute DOMString? ariaMultiSelectable;
+  attribute DOMString? ariaOrientation;
+  attribute DOMString? ariaPlaceholder;
+  attribute DOMString? ariaPosInSet;
+  attribute DOMString? ariaPressed;
+  attribute DOMString? ariaReadOnly;
+  attribute DOMString? ariaRelevant;
+  attribute DOMString? ariaRequired;
+  attribute DOMString? ariaRoleDescription;
+  attribute DOMString? ariaRowCount;
+  attribute DOMString? ariaRowIndex;
+  attribute DOMString? ariaRowIndexText;
+  attribute DOMString? ariaRowSpan;
+  attribute DOMString? ariaSelected;
+  attribute DOMString? ariaSetSize;
+  attribute DOMString? ariaSort;
+  attribute DOMString? ariaValueMax;
+  attribute DOMString? ariaValueMin;
+  attribute DOMString? ariaValueNow;
+  attribute DOMString? ariaValueText;
+  attribute FrozenArray<Element>? ariaLabelledByElements;
+  attribute FrozenArray<Element>? ariaDescribedByElements;
+  attribute FrozenArray<Element>? ariaControlsElements;
+  attribute FrozenArray<Element>? ariaFlowToElements;
+  attribute FrozenArray<Element>? ariaOwnsElements;
+  attribute FrozenArray<Element>? ariaDetailsElements;
+  attribute FrozenArray<Element>? ariaErrorMessageElements;
+  attribute Element? ariaActiveDescendantElement;
+};

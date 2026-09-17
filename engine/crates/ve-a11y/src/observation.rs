@@ -145,6 +145,20 @@ pub struct SelectorStrategy {
     pub text: Option<String>,
 }
 
+impl SelectorStrategy {
+    fn is_empty(&self) -> bool {
+        self.role.is_none() && self.css.is_none() && self.xpath.is_none() && self.text.is_none()
+    }
+}
+
+fn default_frame() -> String {
+    "main".into()
+}
+
+fn is_main_frame(s: &str) -> bool {
+    s == "main"
+}
+
 /// `SelectorStrategy.role`.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct RoleSelector {
@@ -191,6 +205,7 @@ pub struct ElementRef {
     #[serde(rename = "ref")]
     pub reference: String,
     /// Frame key (`main`).
+    #[serde(default = "default_frame", skip_serializing_if = "is_main_frame")]
     pub frame: String,
     /// Local tag name.
     pub tag: String,
@@ -243,6 +258,7 @@ pub struct ElementRef {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rect: Option<RectJson>,
     /// Locator strategies (`{}` in Compact — the ref is the locator).
+    #[serde(default, skip_serializing_if = "SelectorStrategy::is_empty")]
     pub selector: SelectorStrategy,
     /// Outside the viewport (Full).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -555,6 +571,19 @@ fn is_block_display(style: &ComputedStyle) -> bool {
         style.display,
         Display::Inline | Display::InlineBlock | Display::None
     ) && !style.display.is_inline_level()
+}
+
+/// Password values are handles, never the secret, before model export (VEC-015/019).
+fn redact_secret_field(input_type: Option<&str>, value: Option<String>) -> Option<String> {
+    if input_type.is_some_and(|t| t.eq_ignore_ascii_case("password")) {
+        match value {
+            Some(v) if v.is_empty() => Some(String::new()),
+            Some(_) => Some("{handle}".into()),
+            None => Some(String::new()),
+        }
+    } else {
+        value
+    }
 }
 
 fn normalize(text: &str) -> String {
@@ -1040,13 +1069,18 @@ impl<'a> Builder<'a> {
             let e = doc.element(id).expect("live element");
             let is_link = role == Some(Role::Link);
             let form = is_form_control(e);
+            let form_field =
+                form || matches!(role, Some(Role::TextBox | Role::SearchBox | Role::Checkbox));
+            let in_view_action =
+                !vis.offscreen && (is_submit_control(e) || role == Some(Role::Button));
+            let decisive = form_field || in_view_action;
             let rank = if !vis.shown {
                 6
             } else if vis.occluded {
                 5
-            } else if !vis.offscreen && !is_link {
+            } else if decisive {
                 0
-            } else if form {
+            } else if !vis.offscreen && !is_link {
                 1
             } else if !vis.offscreen && is_link {
                 2
@@ -1218,7 +1252,8 @@ impl<'a> Builder<'a> {
         {
             (None, None)
         } else if e.is_html("input") || e.is_html("textarea") {
-            (doc.form_value(id).or_else(|| Some(String::new())), None)
+            let raw = doc.form_value(id).or_else(|| Some(String::new()));
+            (redact_secret_field(input_type.as_deref(), raw), None)
         } else if e.attr("contenteditable").is_some() {
             (Some(normalize(&doc.text_content(id))), None)
         } else {
@@ -1977,11 +2012,13 @@ mod tests {
         );
         let first = &json["elements"][0];
         assert!(first["ref"].as_str().unwrap().starts_with('r'));
-        assert_eq!(first["frame"], "main");
-        assert_eq!(
-            first["selector"],
-            serde_json::json!({}),
-            "compact: selector is empty"
+        assert!(
+            first.get("frame").is_none(),
+            "compact: default frame omitted"
+        );
+        assert!(
+            first.get("selector").is_none(),
+            "compact: empty selector omitted"
         );
         assert!(first.get("rect").is_none(), "compact: no rect");
         let field = &json["formFields"][0];
@@ -2148,6 +2185,25 @@ mod tests {
         );
         assert_eq!(small.tables[0].rows, vec![vec!["a", "b"]]);
         assert!(!small.tables[0].truncated);
+    }
+
+    #[test]
+    fn element_budget_keeps_form_fields_before_links() {
+        let mut html = String::from("<form><label>Q <input name=q value=held></label></form>");
+        for i in 0..40 {
+            html.push_str(&format!(r#"<a href="/n/{i}">link {i}</a>"#));
+        }
+        let p = page(&html);
+        let obs = p.observe(&ObservationRequest {
+            max_elements: 5,
+            ..ObservationRequest::default()
+        });
+        assert!(obs.truncated);
+        assert!(
+            !obs.form_fields.is_empty(),
+            "token budget must not drop the decisive form field: {obs:?}"
+        );
+        assert_eq!(obs.form_fields[0].name.as_deref(), Some("q"));
     }
 
     #[test]
@@ -2474,6 +2530,26 @@ mod tests {
         assert!(
             classify(&input, p.id("c")).shown,
             "zero-size focusable counts as shown"
+        );
+    }
+
+    #[test]
+    fn password_values_are_handles_not_secrets() {
+        let p = page(
+            r#"<html><body><form><input id="pw" type="password" value="s3cret-value"></form></body></html>"#,
+        );
+        let obs = p.compact();
+        let field = obs
+            .form_fields
+            .iter()
+            .find(|f| f.type_ == "password")
+            .expect("password field");
+        assert_eq!(field.value.as_deref(), Some("{handle}"));
+        assert!(
+            !serde_json::to_string(&obs)
+                .unwrap()
+                .contains("s3cret-value"),
+            "secret must not appear in the observation"
         );
     }
 }

@@ -247,4 +247,24 @@ describe("OperationService", () => {
     const saved = JSON.parse(op.implementations[0]!.executable) as { steps: { op: string }[] };
     expect(saved.steps.map((x) => x.op)).toEqual(["click", "fill"]);
   });
+
+  it("denies cross-host session-request fallback egress", async () => {
+    const r = repo();
+    const s = new OperationService({
+      repo: r,
+      events: new EventBus(r),
+      pages: fakePages(),
+      egressAllowlist: () => ["app.test"],
+    });
+    s.saveRequestImpl({
+      siteKey: "app.test",
+      name: "exfil",
+      url: "https://evil.test/x",
+      method: "GET",
+      validated: true,
+    });
+    const out = await s.invoke({ siteKey: "app.test", name: "exfil", pageId: "p1" });
+    expect(out.status).toBe("failed");
+    expect(out.error).toMatch(/egress denied/);
+  });
 });

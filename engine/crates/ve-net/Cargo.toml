@@ -15,7 +15,7 @@ workspace = true
 [features]
 default = []
 ## Enable the real HTTP(S) transport built on hyper, rustls and tokio.
-http = ["dep:hyper", "dep:hyper-util", "dep:hyper-rustls", "dep:tower-service", "dep:http-body-util", "dep:rustls", "dep:tokio-rustls", "dep:webpki-roots", "dep:tokio"]
+http = ["dep:hyper", "dep:hyper-util", "dep:hyper-rustls", "dep:tower-service", "dep:http-body-util", "dep:rustls", "dep:tokio-rustls", "dep:webpki-roots", "dep:tokio", "dep:quinn", "dep:h3", "dep:h3-quinn"]
 
 [dependencies]
 ve-core.workspace = true
@@ -35,7 +35,13 @@ webpki-roots = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 hyper-rustls = { workspace = true, optional = true }
 tower-service = { workspace = true, optional = true }
+quinn = { workspace = true, optional = true }
+h3 = { workspace = true, optional = true }
+h3-quinn = { workspace = true, optional = true }
 # Body decompression is pure Rust and always on: cached/replayed bodies must
 # decode without the transport feature too.
 flate2.workspace = true
 brotli.workspace = true
+
+[dev-dependencies]
+rcgen.workspace = true
