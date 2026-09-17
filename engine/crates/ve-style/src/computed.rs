@@ -345,6 +345,7 @@ impl ComputedStyle {
             PropertyId::TextDecorationLine => self.text_decoration_line.to_string(),
             PropertyId::TextTransform => self.text_transform.to_string(),
             PropertyId::Direction => self.direction.to_string(),
+            PropertyId::WritingMode => self.writing_mode.to_string(),
             PropertyId::Color => self.color.to_css_string(),
             PropertyId::BackgroundColor => match self.background_color {
                 crate::values::Color::Rgba(c) => c.to_css_string(),

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Observation } from "@vector/contracts";
 import { renderObservation } from "../services/observation-render.js";
+import { redactForModel } from "./policy.js";
 
 /**
  * Prompt-injection boundary. Page-derived text (observations, extracted
@@ -129,7 +130,7 @@ export function buildFinalAnswerPrompt(input: {
   const parts: string[] = [`GOAL: ${input.goal}`];
   if (input.context) parts.push(`EARLIER IN THIS SESSION: ${input.context}`);
   parts.push(`STOPPED BECAUSE: ${input.reason}`);
-  parts.push("", "=== FINAL OBSERVATION (untrusted page data, fenced) ===", fenceUntrusted(token, renderObservation(input.observation)));
+  parts.push("", "=== FINAL OBSERVATION (untrusted page data, fenced) ===", fenceUntrusted(token, renderObservation(redactObservation(input.observation))));
   if (input.recentOutcomes.length) {
     parts.push("", "=== COMPLETED STEPS (most recent last; untrusted page data, fenced) ===");
     parts.push(fenceUntrusted(token, input.recentOutcomes.slice(-24).map(renderOutcome).join("\n")));
@@ -186,6 +187,21 @@ export function extractJson(text: string): unknown {
   return undefined;
 }
 
+function redactObservation(obs: Observation): Observation {
+  return {
+    ...obs,
+    content: {
+      ...obs.content,
+      elements: obs.content.elements.map((e) =>
+        e.type === "password" && e.value ? { ...e, value: "{handle}" } : e,
+      ),
+      formFields: obs.content.formFields.map((f) =>
+        f.type === "password" && f.value ? { ...f, value: "{handle}" } : f,
+      ),
+    },
+  };
+}
+
 export function buildPlannerPrompt(input: {
   goal: string;
   observations: Observation[];
@@ -208,11 +224,21 @@ export function buildPlannerPrompt(input: {
       `REPAIR: the previous chunk failed — ${input.repairNote}. Do NOT retry the same mechanism — use a different one: press Enter inside the field instead of clicking a submit button, navigate directly to a URL you can construct, or target the element with css:/text:/role= instead of a stale ref.`,
     );
   for (const obs of input.observations) {
-    parts.push("", "=== OBSERVATION (untrusted page data, fenced) ===", fenceUntrusted(token, renderObservation(obs)));
+    parts.push("", "=== OBSERVATION (untrusted page data, fenced) ===", fenceUntrusted(token, renderObservation(redactObservation(obs))));
   }
   if (input.recentOutcomes.length) {
     parts.push("", "=== COMPLETED STEPS (most recent last; untrusted page data, fenced) ===");
-    parts.push(fenceUntrusted(token, input.recentOutcomes.slice(-24).map(renderOutcome).join("\n")));
+    parts.push(
+      fenceUntrusted(
+        token,
+        input.recentOutcomes.slice(-24).map((o) =>
+          renderOutcome({
+            ...o,
+            extracted: o.extracted ? (redactForModel(o.extracted) as Record<string, unknown>) : undefined,
+          }),
+        ).join("\n"),
+      ),
+    );
   }
   return parts.join("\n");
 }

@@ -6,6 +6,7 @@
 <script src="/resources/WebIDLParser.js"></script>
 <script src="/resources/idlharness.js"></script>
 <body>
+<p id="p">x</p>
 <script>
 test(function () {
   assert_equals(typeof IdlArray, "function");
@@ -13,8 +14,16 @@ test(function () {
   assert_equals(typeof WebIDL2.parse, "function");
   var ast = WebIDL2.parse("interface Element { readonly attribute DOMString tagName; };");
   assert_equals(ast[0].name, "Element");
+  var el = document.getElementById("p");
+  assert_true(el instanceof Element);
+  assert_true(el instanceof HTMLParagraphElement);
+  assert_equals(Object.getPrototypeOf(el), HTMLParagraphElement.prototype);
+  assert_idl_attribute(el, "tagName");
   var idl_array = new IdlArray();
-  idl_array.add_untested_idls("interface Element { readonly attribute DOMString tagName; };");
+  idl_array.add_idls("interface Element { readonly attribute DOMString tagName; DOMString? getAttribute(DOMString qualifiedName); };");
+  idl_array.add_objects({ Element: ["document.getElementById('p')"] });
   assert_equals(typeof idl_array.test, "function");
-}, "IdlArray and WebIDL2 from the pinned WPT IDL harness");
+  assert_equals(el.tagName, "P");
+  assert_equals(el.getAttribute("id"), "p");
+}, "pinned IDL harness operates on live Element objects");
 </script>

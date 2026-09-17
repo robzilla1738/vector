@@ -80,6 +80,11 @@ impl Compositor {
         self.damaged
     }
 
+    /// Marks the compositor dirty so the next present rebuilds the scene.
+    pub fn mark_damaged(&mut self) {
+        self.damaged = true;
+    }
+
     /// Clears the damage bit (after a successful present).
     pub fn take_damage(&mut self) -> bool {
         std::mem::take(&mut self.damaged)
@@ -193,6 +198,9 @@ mod tests {
         );
         assert!(comp.take_damage(), "scroll marks damage");
         assert!(!comp.take_damage(), "damage is consumed");
+        comp.mark_damaged();
+        assert!(comp.is_damaged());
+        assert!(comp.take_damage());
         let out = comp.composite(Size::new(200.0, 200.0));
         let items = out.items();
         assert!(matches!(items[0], DisplayItem::PushOpacity(o) if (o - 0.5).abs() < f32::EPSILON));

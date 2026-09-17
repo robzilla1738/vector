@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>Node.appendChild</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var parent = document.createElement("div")
+  var child = document.createElement("span")
+  var ret = parent.appendChild(child)
+  assert_equals(ret, child)
+  assert_equals(child.parentNode, parent)
+  assert_equals(parent.firstChild, child)
+  assert_equals(parent.childNodes.length, 1)
+}, "appendChild inserts and returns the child")
+</script>

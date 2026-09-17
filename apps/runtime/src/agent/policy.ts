@@ -42,6 +42,10 @@ export function agentMayEgress(url: string, allowlist: string[]): boolean {
 }
 
 export function promptCannotGrant(pageText: string, granted: readonly string[]): string[] {
-  const claimed = [...pageText.matchAll(/allowlist[:\s]+([^\n]+)/gi)].map((m) => m[1]!.trim());
-  return claimed.filter((c) => !granted.includes(c));
+  const claimed = [
+    ...pageText.matchAll(/allowlist[:\s]+([^\n]+)/gi),
+    ...pageText.matchAll(/\bgrant[:\s]+([^\n]+)/gi),
+    ...pageText.matchAll(/permission[:\s]+(https?:\/\/\S+)/gi),
+  ].map((m) => m[1]!.trim());
+  return [...new Set(claimed.filter((c) => c.length > 0 && !granted.includes(c)))];
 }

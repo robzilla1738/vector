@@ -9,7 +9,7 @@
 //! [`FloatContext`]: crate::floats::FloatContext
 
 use ve_core::{NodeId, Point, Rect};
-use ve_style::{ComputedStyle, TextAlign};
+use ve_style::{ComputedStyle, Direction, TextAlign};
 
 use crate::block::{
     ContainingBlock, Forced, LayoutCtx, layout_box_at, layout_float, resolve_margins,
@@ -154,10 +154,18 @@ impl InlineState<'_, '_> {
     }
 }
 
+fn used_text_align(style: &ComputedStyle) -> TextAlign {
+    match (style.text_align, style.direction) {
+        (TextAlign::Start, Direction::Rtl) => TextAlign::End,
+        (TextAlign::End, Direction::Rtl) => TextAlign::Start,
+        (align, _) => align,
+    }
+}
+
 /// Lays out the inline-level children of `bx` into `bx.lines`. Returns the
 /// height of the inline formatting context.
 pub fn layout_inline(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect) -> f32 {
-    let align = bx.style.text_align;
+    let align = used_text_align(&bx.style);
     let line_height = bx.style.line_height.to_px(bx.style.font_size);
     let indent = bx.style.text_indent.resolve(content.width());
     let mut state = InlineState {

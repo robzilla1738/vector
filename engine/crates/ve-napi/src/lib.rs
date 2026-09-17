@@ -46,6 +46,31 @@ pub fn version() -> &'static str {
     ve_api::VERSION
 }
 
+/// Magic for the typed observe/execute Buffer ferry (`VEJ1` + LE u32 length + UTF-8 JSON).
+pub const FERRY_MAGIC: &[u8; 4] = b"VEJ1";
+
+/// Encodes a JSON envelope as a length-prefixed Buffer.
+#[must_use]
+pub fn encode_ferry(json: &str) -> Vec<u8> {
+    let bytes = json.as_bytes();
+    let mut out = Vec::with_capacity(8 + bytes.len());
+    out.extend_from_slice(FERRY_MAGIC);
+    out.extend_from_slice(&(u32::try_from(bytes.len()).unwrap_or(u32::MAX)).to_le_bytes());
+    out.extend_from_slice(bytes);
+    out
+}
+
+/// Decodes a ferry Buffer, or falls back to raw UTF-8 JSON.
+#[must_use]
+pub fn decode_ferry(buf: &[u8]) -> String {
+    if buf.len() >= 8 && buf.starts_with(FERRY_MAGIC) {
+        let len = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]) as usize;
+        let end = 8usize.saturating_add(len).min(buf.len());
+        return String::from_utf8_lossy(&buf[8..end]).into_owned();
+    }
+    String::from_utf8_lossy(buf).into_owned()
+}
+
 /// Describes the binding as JSON
 /// (`{"abiVersion":4,"engine":"0.0.1","enabled":false,"http":false,"capabilities":{…}}`).
 #[must_use]
@@ -69,8 +94,10 @@ pub fn describe() -> String {
             "typedFerry": true,
             "http3": false,
             "websocket": true,
-            "serviceWorkers": false,
-            "streams": false,
+            "webgl": false,
+            "webgpu": false,
+            "serviceWorkers": true,
+            "streams": true,
             "isolatedProcesses": crate::isolate::host_binary().is_some(),
         },
         "protocolVersion": crate::isolate::HOST_PROTOCOL,
@@ -145,7 +172,7 @@ pub mod bindings {
                 .take()
                 .ok_or_else(|| Error::from_reason("engine call already consumed"))?;
             rx.recv()
-                .map(|v| v.to_string().into_bytes())
+                .map(|v| crate::encode_ferry(&v.to_string()))
                 .map_err(|_| Error::from_reason("engine thread stopped before replying"))
         }
 
@@ -336,11 +363,11 @@ pub mod bindings {
         pub fn observe_buf(&self, page: u32, options: Option<Buffer>) -> AsyncTask<PendingBuf> {
             let options_json = options
                 .as_ref()
-                .map_or_else(|| "{}".into(), |b| String::from_utf8_lossy(b).into_owned());
+                .map_or_else(|| "{}".into(), |b| crate::decode_ferry(b));
             PendingBuf::new(lock(&self.hub).observe(u64::from(page), &options_json))
         }
 
-        /// Runs contracts steps from a UTF-8 JSON Buffer; reply is a Buffer.
+        /// Runs contracts steps from a typed JSON Buffer; reply is a Buffer.
         #[napi]
         pub fn execute_buf(
             &self,
@@ -348,10 +375,10 @@ pub mod bindings {
             steps: Buffer,
             options: Option<Buffer>,
         ) -> AsyncTask<PendingBuf> {
-            let steps_json = String::from_utf8_lossy(&steps).into_owned();
+            let steps_json = crate::decode_ferry(&steps);
             let options_json = options
                 .as_ref()
-                .map_or_else(|| "{}".into(), |b| String::from_utf8_lossy(b).into_owned());
+                .map_or_else(|| "{}".into(), |b| crate::decode_ferry(b));
             PendingBuf::new(lock(&self.hub).execute(u64::from(page), &steps_json, &options_json))
         }
 
@@ -430,8 +457,20 @@ mod tests {
         assert_eq!(info["http"], cfg!(feature = "http"));
         assert_eq!(info["capabilities"]["http3"], false);
         assert_eq!(info["capabilities"]["websocket"], true);
-        assert_eq!(info["capabilities"]["serviceWorkers"], false);
+        assert_eq!(info["capabilities"]["webgl"], false);
+        assert_eq!(info["capabilities"]["webgpu"], false);
+        assert_eq!(info["capabilities"]["serviceWorkers"], true);
+        assert_eq!(info["capabilities"]["streams"], true);
         assert_eq!(info["protocolVersion"], crate::isolate::HOST_PROTOCOL);
         assert_eq!(is_enabled(), cfg!(feature = "napi"));
+    }
+
+    #[test]
+    fn typed_ferry_round_trips_and_accepts_raw_json() {
+        let json = "{\"ok\":true}";
+        let buf = encode_ferry(json);
+        assert_eq!(&buf[..4], FERRY_MAGIC);
+        assert_eq!(decode_ferry(&buf), json);
+        assert_eq!(decode_ferry(json.as_bytes()), json);
     }
 }

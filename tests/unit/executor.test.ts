@@ -71,6 +71,9 @@ describe("executeProgram", () => {
     expect(res.steps.map((s) => s.status)).toEqual(["ok", "ok", "ok"]);
     expect(res.extracted?.data).toEqual({ title: "v-title" });
     expect(calls).toEqual(["navigate:http://x.test/a", "click:r1", "extract:1"]);
+    expect(res.steps[1]?.receipt?.uncertain).toBe(true);
+    expect(res.steps[1]?.receipt?.remoteConfirmed).toBe(false);
+    expect(res.steps[0]?.receipt?.uncertain).toBe(false);
   });
 
   it("stops on failure unless step is optional", async () => {

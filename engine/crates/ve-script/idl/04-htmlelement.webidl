@@ -1,6 +1,7 @@
 [Exposed=Window]
 interface HTMLElement : Element {
   attribute DOMString innerText;
+  attribute DOMString outerText;
   attribute DOMString hidden;
   undefined click();
   undefined focus();

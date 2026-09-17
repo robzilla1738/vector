@@ -328,6 +328,8 @@ fn main() -> Result<()> {
         "os": std::env::consts::OS,
         "arch": std::env::consts::ARCH,
         "rss_bytes": ve_core::process_rss_bytes(),
+        "process_tree_rss_bytes": ve_core::process_tree_rss_bytes(),
+        "host_package_energy_uj": ve_core::host_package_energy_uj(),
         "engine_version": ve_api::VERSION,
         "pins": serde_json::from_str::<serde_json::Value>(PINS).unwrap_or(json!({})),
         "suites": suites,

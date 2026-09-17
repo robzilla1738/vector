@@ -21,7 +21,7 @@ export type SelectorStrategy = z.infer<typeof SelectorStrategySchema>;
 
 export const ElementRefSchema = z.object({
   ref: z.string(),
-  frame: z.string().describe("frame key within the page, 'main' for top frame"),
+  frame: z.string().default("main").describe("frame key within the page, 'main' for top frame"),
   tag: z.string(),
   role: z.string().optional(),
   name: z.string().optional(),
@@ -55,7 +55,7 @@ export const ElementRefSchema = z.object({
   rect: z
     .object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() })
     .optional(),
-  selector: SelectorStrategySchema,
+  selector: SelectorStrategySchema.default({}),
 });
 export type ElementRef = z.infer<typeof ElementRefSchema>;
 

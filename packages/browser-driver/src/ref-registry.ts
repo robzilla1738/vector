@@ -6,17 +6,22 @@ import type { ElementRef, SelectorStrategy } from "@vector/contracts";
  */
 export class RefRegistry {
   private byPage = new Map<string, Map<string, ElementRef>>();
+  private generation = new Map<string, number>();
 
   register(pageId: string, elements: ElementRef[]): void {
-    let map = this.byPage.get(pageId);
-    if (!map) {
-      map = new Map();
-      this.byPage.set(pageId, map);
-    }
+    const map = new Map<string, ElementRef>();
     for (const el of elements) map.set(el.ref, el);
+    this.byPage.set(pageId, map);
+    this.generation.set(pageId, (this.generation.get(pageId) ?? 0) + 1);
   }
 
-  resolve(pageId: string, ref: string): ElementRef | undefined {
+  /** Document/observation generation. Stale callers must not reuse old refs. */
+  epoch(pageId: string): number {
+    return this.generation.get(pageId) ?? 0;
+  }
+
+  resolve(pageId: string, ref: string, epoch?: number): ElementRef | undefined {
+    if (epoch !== undefined && this.generation.get(pageId) !== epoch) return undefined;
     return this.byPage.get(pageId)?.get(ref);
   }
 
@@ -26,6 +31,7 @@ export class RefRegistry {
 
   clear(pageId: string): void {
     this.byPage.delete(pageId);
+    this.generation.delete(pageId);
   }
 
   /** All registered refs for a page (used by expandRef fallbacks). */

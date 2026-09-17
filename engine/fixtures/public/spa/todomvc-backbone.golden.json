@@ -25,23 +25,19 @@
   "elements": [
     {
       "ref": "r34",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "What needs to be done?",
       "type": "text",
       "value": "",
-      "placeholder": "What needs to be done?",
-      "selector": {}
+      "placeholder": "What needs to be done?"
     },
     {
       "ref": "r63",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [

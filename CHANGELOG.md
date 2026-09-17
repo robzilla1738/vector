@@ -8,20 +8,30 @@ the integration tracks that were merged.
 Independent Vector Engine work after A14–A23. Ticket reports:
 `docs/engine/evidence/`. Roadmap text: `Vector_Engine_Roadmap.md`. This is
 not a claim that every acceptance line is met (IDL generation and storage
-remain subsets; ve-vm is research).
+remain subsets; official `html/dom` still has 59 FAIL; ve-vm is research).
 
 - **M0.** `engineMode: always` returns `vector-engine` with `fallbackAllowed:
   false`. Production `ve-host` sandbox (forbidden file, exec, sockets,
   malformed/oversized IPC). Authoritative `NetworkBroker` (forged context,
   DNS rebinding, credential strip, engine allowlist applied on the broker).
   CI: rustc 1.88, clippy `-D warnings`, product `ve-shell`, v8/http, wpt +
-  wpt-harness tree HTTP, browserbench, addon + `ve-host`. Capability ledger
-  (`capabilities.json`); `describe()` `websocket:true`, `http3:false`,
-  `serviceWorkers:false`.
+  wpt-harness `--tree --tree-family html/dom`, browserbench, addon + `ve-host`.
+  Capability ledger (`capabilities.json`); `describe()` `websocket:true`,
+  `http3:false`, `serviceWorkers:true`.
 - **M1.** Event loop task sources; async `fetchStart`/`fetchPoll`; RFC 6455
-  WebSocket; frames; IndexedDB unique/compound/versionchange; workers in
-  `ve-vm` (not a second V8 isolate). `wpt-harness` with pinned testharness +
-  idlharness, `--http --tree`, Ahem at `/fonts`. Geometry `wpt-runner`;
+  WebSocket (ping/pong, fragments, TLS poll); frames; IndexedDB
+  unique/compound/versionchange/`abort` snapshot restore; dedicated Worker
+  `postMessage` on a second V8 isolate plus `importScripts`. SW persistent
+  isolate, load-time `importScripts`, `clients.claim` → controller,
+  `clients.matchAll`, waiting-worker `skipWaiting`. Live document named
+  properties; ARIA string reflection; layout-aware `innerText` / node-replacing
+  `outerText`. `rel=expect blocking=render` hides later ids from parser-inserted
+  scripts and unblocking rAF (`element-render-blocking-004/005/009/010/013`).
+  `document.cookie`, `historical.html`, and `blocking` as a `DOMTokenList` PASS.
+  `rel=expect` also matches `<a name>` targets.
+  `wpt-harness` with pinned testharness + idlharness, `--http --tree
+  --tree-family html/dom` (272 PASS / 59 FAIL, `tree_complete`). Supported
+  subset `testharness.txt` (112 files). Geometry `wpt-runner`;
   `--use-reftest-fonts` is capability, not the m1 scorer.
 - **M2.** GPU glyph outlines, clips/opacity/`<img>`, `present_list` without
   readback. Product is `ve-shell` (`pnpm dev` / `pnpm package:local`).
@@ -30,11 +40,13 @@ remain subsets; ve-vm is research).
 - **M3.** Action receipts, coordinator crash recovery, guarded skills, agent
   policy, BiDi adapter. Held-out p95 vs Chromium is measured
   (`docs/engine/evidence/held-out-latest.json`): 5.32× on `act+observe`.
-  Token stretch is not claimed (tokens not collected).
+  Token stretch measured (`meetsStretch` true, `tokenRatio` 8.35, declared
+  model usage).
 - **M4.** `perf --gate m1`, process RSS, optional host RAPL. Official
   Speedometer 3.0 (32/32 executed), JetStream, MotionMark GPU
-  (`tools/browserbench`).
-- **M5.** `ve-replay`; `ve-vm` Test262 subset. V8 stays production.
+  (`tools/browserbench`). Class probes stay PARTIAL.
+- **M5.** `ve-replay`; `ve-vm` Test262 subset (22 files including `var`).
+  V8 stays production.
 
 ## Native view, V8 isolates, takeover (PR #8)
 

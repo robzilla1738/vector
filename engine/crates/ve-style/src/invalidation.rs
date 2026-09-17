@@ -311,7 +311,7 @@ impl InvalidationMap {
         for entry in entries {
             stats.entries += 1;
             match &entry.mutation {
-                Mutation::NodeInserted { node, parent } => {
+                Mutation::NodeInserted { node, parent, .. } => {
                     let e = effects.entry(*node).or_default();
                     e.self_ = true;
                     e.descendants = true;
@@ -348,7 +348,7 @@ impl InvalidationMap {
                         effects.entry(*node).or_default().ignorable = true;
                     }
                 }
-                Mutation::TextChanged { node } => {
+                Mutation::TextChanged { node, .. } => {
                     if self.structural
                         && let Some(parent) = doc.parent(*node)
                     {

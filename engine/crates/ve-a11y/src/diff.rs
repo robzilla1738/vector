@@ -283,6 +283,31 @@ pub fn changes_between(
     (lines, delta)
 }
 
+/// Incremental change subscription (VEC-015).
+#[derive(Clone, Debug, Default)]
+pub struct ObservationSubscription {
+    last: Option<ObservationContent>,
+}
+
+impl ObservationSubscription {
+    /// Empty subscription.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Records `current` and returns the delta from the previous snapshot.
+    pub fn push(&mut self, current: ObservationContent) -> ObservationDelta {
+        let delta = self
+            .last
+            .as_ref()
+            .map(|prev| changes_between(prev, &current).1)
+            .unwrap_or_default();
+        self.last = Some(current);
+        delta
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -296,6 +321,45 @@ mod tests {
             name: (!name.is_empty()).then(|| name.to_owned()),
             ..ElementRef::default()
         }
+    }
+
+    #[test]
+    fn unrelated_animation_does_not_invalidate_form_targets() {
+        let mut before = ObservationContent {
+            url: "https://app.test/form".into(),
+            ..ObservationContent::default()
+        };
+        before.elements = vec![
+            element("r1", "textbox", "Email"),
+            element("r99", "none", "spinner frame 1"),
+        ];
+        let mut after = before.clone();
+        after.elements[1].name = Some("spinner frame 2".into());
+        let delta = changes_between(&before, &after).1;
+        assert!(
+            !delta.changed.iter().any(|c| c.reference == "r1"),
+            "form field r1 must stay valid across unrelated animation"
+        );
+        assert!(delta.changed.iter().any(|c| c.reference == "r99"));
+        assert!(delta.added.is_empty());
+        assert!(delta.removed.is_empty());
+    }
+
+    #[test]
+    fn subscription_delta_matches_full_recompute() {
+        let mut before = ObservationContent {
+            url: "https://app.test/a".into(),
+            ..ObservationContent::default()
+        };
+        before.elements = vec![element("r1", "button", "Go")];
+        let mut after = before.clone();
+        after.elements[0].name = Some("Going".into());
+        after.elements.push(element("r2", "button", "Stop"));
+        let full = changes_between(&before, &after).1;
+        let mut sub = ObservationSubscription::new();
+        assert!(sub.push(before).is_empty());
+        let incremental = sub.push(after);
+        assert_eq!(incremental, full);
     }
 
     #[test]

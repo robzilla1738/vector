@@ -6,6 +6,8 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   VectorEngineDriver,
+  decodeFerry,
+  encodeFerry,
   parseEngineTargetId,
   probeEngineNative,
   unwrapNative,
@@ -217,6 +219,17 @@ describe("VectorEngineDriver", () => {
     expect(shot.width).toBe(2);
     expect(shot.buffer[0]).toBe(137);
     expect(calls.some((c) => c.method === "screenshotPng")).toBe(true);
+    const observeCall = calls.find((c) => c.method === "observeBuf");
+    expect(observeCall).toBeTruthy();
+    const sent = observeCall?.args[1] as Buffer;
+    expect(sent.subarray(0, 4).toString("ascii")).toBe("VEJ1");
+    expect(decodeFerry(sent)).toBeTruthy();
+  });
+
+  it("typed ferry round-trips JSON and still reads raw UTF-8", () => {
+    const json = JSON.stringify({ ok: true, n: 1 });
+    expect(decodeFerry(encodeFerry(json))).toBe(json);
+    expect(decodeFerry(Buffer.from(json, "utf8"))).toBe(json);
   });
 
   it("executeProgram sends the whole step list once and returns the inline observation", async () => {

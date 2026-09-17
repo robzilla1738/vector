@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<title>Node.parentNode</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  assert_equals(document.parentNode, null)
+}, "Document")
+test(function() {
+  assert_equals(document.documentElement.parentNode, document)
+}, "Root element")
+test(function() {
+  var el = document.createElement("div")
+  assert_equals(el.parentNode, null)
+  document.body.appendChild(el)
+  assert_equals(el.parentNode, document.body)
+}, "Element")
+test(function() {
+  var t = document.createTextNode("x")
+  assert_equals(t.parentNode, null)
+  document.body.appendChild(t)
+  assert_equals(t.parentNode, document.body)
+  t.remove()
+  assert_equals(t.parentNode, null)
+}, "Text")
+</script>

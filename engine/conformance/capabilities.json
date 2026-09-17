@@ -12,17 +12,17 @@
     },
     {
       "id": "matchMedia",
-      "status": "partial",
-      "behavior": "min-width/max-width in px against innerWidth.",
-      "gaps": "orientation, prefers-*, resolution; change events are dispatched only when listeners are invoked.",
-      "tests": ["engine/tools/wpt-harness"],
+      "status": "implemented",
+      "behavior": "min/max-width/height px, orientation, prefers-reduced-motion, prefers-color-scheme, compound `and` queries against innerWidth/innerHeight. addListener/change dispatch.",
+      "gaps": "resolution/DPR queries, live viewportchange without dispatchEvent.",
+      "tests": ["engine/fixtures/harness/matchmedia-listeners.html", "engine/fixtures/harness/matchmedia-orientation.html", "engine/crates/ve-agent/tests/bindings.rs"],
       "owner": "ve-agent"
     },
     {
       "id": "fetch.body",
       "status": "implemented",
-      "behavior": "Async fetchStart/fetchPoll completed during settle. text/json/arrayBuffer/blob, bodyUsed, clone of unused body, AbortController, ReadableStream body view, bytes via bodyB64.",
-      "gaps": "CORS modes, streaming backpressure against a slow consumer, HTTP/2 push.",
+      "behavior": "Async fetchStart/fetchPoll. Poll does not complete the body; settle completes one in-flight fetch per slice. text/json/arrayBuffer/blob, bodyUsed, clone of unused body, AbortController, ReadableStream view of a finished body, bytes via bodyB64. Script-initiated CORS is denied without Access-Control-Allow-Origin.",
+      "gaps": "Streaming backpressure against a slow consumer, HTTP/2 push.",
       "tests": ["engine/crates/ve-agent/src/dom.rs", "engine/crates/ve-agent/src/dom_prelude.js"],
       "owner": "ve-net"
     },
@@ -36,34 +36,50 @@
     },
     {
       "id": "MutationObserver",
-      "status": "partial",
-      "behavior": "observe/disconnect/takeRecords via the mutation journal.",
-      "gaps": "attributeFilter, subtree edge cases, characterData oldValue.",
+      "status": "implemented",
+      "behavior": "observe/disconnect/takeRecords via the mutation journal. childList target is the parent. attributes honor attributeFilter and attributeOldValue. characterData honors characterDataOldValue.",
+      "gaps": "attributeNamespace, MutationRecord.nextSibling across collapsed batches.",
       "tests": ["engine/crates/ve-agent/src/dom_prelude.js"],
       "owner": "ve-agent"
     },
     {
       "id": "WebSocket",
       "status": "partial",
-      "behavior": "RFC 6455 handshake, masked send, close, open/message/error/close listeners. readyState 0/1/3.",
-      "gaps": "extensions, ping/pong, fragmented frames, TLS frame poll.",
-      "tests": ["engine/crates/ve-net/src/websocket.rs"],
+      "behavior": "RFC 6455 handshake, masked send, close, ping/pong, fragmented data frames, TLS and plaintext poll. open/message/error/close listeners. readyState 0/1/3.",
+      "gaps": "extensions, permessage-deflate.",
+      "tests": ["engine/crates/ve-net/src/websocket.rs", "engine/fixtures/harness/websocket-close.html"],
       "owner": "ve-net"
     },
     {
       "id": "indexedDB",
       "status": "partial",
-      "behavior": "open/put/get/delete origin-partitioned stores, createIndex (unique + compound key paths), index.get, IDBCursor, versionchange only when the version increases. Dedicated Worker postMessage evaluates in an isolated ve-vm realm (`typeof document` is undefined).",
-      "gaps": "full worker JS evaluation in a second V8 isolate, Worker importScripts/fetch, quota, IDB transactions abort semantics.",
-      "tests": ["engine/crates/ve-agent/tests/bindings.rs"],
+      "behavior": "open/put/get/delete origin-partitioned stores, createIndex (unique + compound key paths), index.get, IDBCursor, versionchange only when the version increases, IDBTransaction.abort restores the store snapshot. Dedicated Worker postMessage evaluates in a second V8 isolate (`typeof document` is undefined).",
+      "gaps": "quota, Worker importScripts after the worker has started (startup importScripts and abort are implemented).",
+      "tests": ["engine/crates/ve-agent/tests/bindings.rs", "engine/fixtures/harness/wpt-idb-abort.html"],
       "owner": "ve-agent"
     },
     {
       "id": "serviceWorker",
-      "status": "stub-honest",
-      "behavior": "register() records a registration with active=null. describe() reports serviceWorkers:false.",
-      "gaps": "install/activate/fetch control.",
-      "tests": ["engine/crates/ve-napi/src/lib.rs describe()"],
+      "status": "partial",
+      "behavior": "register() yields an activated intercept. One V8 isolate per registration persists across fetches (self state is kept). install/activate and fetch run on that thread. Boot importScripts expand from a URL map. clients.claim() during activate sets navigator.serviceWorker.controller. A changed second register() sits in waiting until self.skipWaiting() promotes it. clients.matchAll() returns controlled window clients; {includeUncontrolled:true} includes same-origin clients. respondWith(new Response), Response.redirect, and event.request.url/method are visible to the fetch listener. describe() reports serviceWorkers:true.",
+      "gaps": "Client.postMessage beyond skipWaiting; dedicated/shared worker clients.",
+      "tests": ["engine/crates/ve-napi/src/lib.rs describe()", "engine/crates/ve-agent/tests/frames.rs service_worker_waiting_skip_waiting_promotes", "engine/crates/ve-agent/tests/frames.rs service_worker_clients_match_all"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "webgl",
+      "status": "not-implemented",
+      "behavior": "getContext('webgl'|'webgpu') returns null. describe() reports webgl:false and webgpu:false. Explicit compatibility track, not a hidden omission.",
+      "gaps": "WebGL/WebGPU implementation.",
+      "tests": ["engine/crates/ve-agent/tests/bindings.rs canvas_webgl_and_webgpu_are_null", "engine/crates/ve-napi/src/lib.rs describe()"],
+      "owner": "ve-gfx"
+    },
+    {
+      "id": "canvas.toDataURL",
+      "status": "implemented",
+      "behavior": "HTMLCanvasElement.toDataURL encodes the software backing store as a PNG data URL.",
+      "gaps": "image/jpeg type and encoder quality.",
+      "tests": ["engine/crates/ve-agent/tests/bindings.rs canvas_todataurl_is_a_png"],
       "owner": "ve-agent"
     },
     {
@@ -73,6 +89,62 @@
       "gaps": "QUIC transport.",
       "tests": ["engine/crates/ve-napi/src/lib.rs"],
       "owner": "ve-net"
+    },
+    {
+      "id": "document.getElementsByName",
+      "status": "implemented",
+      "behavior": "Returns a live NodeList (Symbol.toStringTag NodeList) of elements whose name attribute matches. Not an HTMLCollection.",
+      "gaps": "window named properties for every id beyond the document getter.",
+      "tests": ["engine/fixtures/harness/wpt-document-getelementsbyname.html", "engine/fixtures/harness/wpt-nameditem.html"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "document.embeds",
+      "status": "implemented",
+      "behavior": "document.embeds and document.plugins are the same cached HTMLCollection instance (embeds === embeds === plugins).",
+      "gaps": "named-item lookup on that collection for every embed/object shape.",
+      "tests": ["engine/tools/wpt-harness"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "html.dataset",
+      "status": "implemented",
+      "behavior": "DOMStringMap on HTMLElement/SVGElement/MathMLElement. Camel-case data-* mapping. Invalid names (leading hyphen-digit, constructor/toString fallthrough) are undefined; space-only set throws InvalidCharacterError.",
+      "gaps": "non-ASCII name edge cases beyond the official dataset tests already passing.",
+      "tests": ["engine/fixtures/harness/wpt-element-dataset.html"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "html.innerText",
+      "status": "implemented",
+      "behavior": "innerText getter is layout/style-aware (skips display:none, br→newline, block breaks; detached/not-rendered falls back to textContent). Setter replaces children, turning newlines into br (null→empty, undefined stringifies). outerText getter equals innerText; setter replaces the node and merges adjacent text; detached throws NoModificationAllowedError.",
+      "gaps": "dir=auto leftover is a global-attributes issue, not this family.",
+      "tests": ["engine/crates/ve-agent/tests/bindings.rs inner_text_skips_hidden_and_outer_text_replaces_node", "engine/fixtures/harness/wpt-innertext.html", "engine/fixtures/harness/wpt-outertext.html"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "document.namedItem",
+      "status": "implemented",
+      "behavior": "Live HTML named properties on Document: embed/form/iframe/img/object by name; object also by id; img by id only when it also has a name. Single iframe returns contentWindow; multiple matches return a cached live HTMLCollection. Not shadowed by prototype properties.",
+      "gaps": "none in the official nameditem-*.html family.",
+      "tests": ["engine/crates/ve-agent/tests/bindings.rs document_named_properties_are_live", "engine/fixtures/harness/wpt-nameditem.html"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "html.aria",
+      "status": "implemented",
+      "behavior": "ARIAMixin string reflection (role and aria* IDL ↔ aria-* content, null/undefined removes). ariaLabelledByElements and sibling FrozenArray element-reflection properties resolve in-scope elements; disconnected ids from the content attribute do not resolve; explicit references are kept when out of scope and reappear when reparented. testdriver get_computed_label joins in-scope labelledby innerText.",
+      "gaps": "none in the official aria-element-reflection*.html family.",
+      "tests": ["engine/crates/ve-agent/tests/bindings.rs aria_string_and_element_reflection", "engine/fixtures/harness/wpt-aria-reflection.html", "engine/fixtures/harness/wpt-aria-labelledby.html"],
+      "owner": "ve-agent"
+    },
+    {
+      "id": "node.prepend",
+      "status": "implemented",
+      "behavior": "Node.prepend inserts nodes/strings at the start of childNodes. Node.baseURI returns the document URL.",
+      "gaps": "DocumentFragment.prepend host-context cases not in the supported subset.",
+      "tests": ["engine/fixtures/harness/wpt-node-prepend.html", "engine/fixtures/harness/wpt-node-baseuri.html"],
+      "owner": "ve-agent"
     }
   ]
 }

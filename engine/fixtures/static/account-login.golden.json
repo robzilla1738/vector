@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 552.0
+    "maxY": 540.0
   },
   "frames": [
     {
@@ -27,316 +27,250 @@
   "elements": [
     {
       "ref": "r37",
-      "frame": "main",
       "tag": "input",
       "role": "searchbox",
       "name": "Search",
       "type": "search",
       "value": "",
-      "placeholder": "Search…",
-      "selector": {}
+      "placeholder": "Search…"
     },
     {
       "ref": "r38",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Search",
-      "type": "submit",
-      "selector": {}
+      "type": "submit"
     },
     {
       "ref": "r66",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Email or username",
       "type": "text",
       "value": "",
-      "required": true,
-      "selector": {}
+      "required": true
     },
     {
       "ref": "r70",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Password",
       "type": "password",
       "value": "",
-      "required": true,
-      "selector": {}
+      "required": true
     },
     {
       "ref": "r77",
-      "frame": "main",
       "tag": "input",
       "role": "checkbox",
       "name": "Keep me signed in on this device",
       "type": "checkbox",
-      "checked": false,
-      "selector": {}
+      "checked": false
     },
     {
       "ref": "r81",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Sign in",
-      "type": "submit",
-      "selector": {}
+      "type": "submit"
     },
     {
       "ref": "r84",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Continue with SSO",
       "type": "button",
-      "disabled": true,
-      "selector": {}
+      "disabled": true
     },
     {
       "ref": "r103",
-      "frame": "main",
       "tag": "details",
       "role": "group",
-      "name": "I forgot my password",
-      "selector": {}
+      "name": "I forgot my password"
     },
     {
       "ref": "r104",
-      "frame": "main",
       "tag": "summary",
       "role": "button",
       "name": "I forgot my password",
-      "expanded": true,
-      "selector": {}
+      "expanded": true
     },
     {
       "ref": "r22",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Acme Cloud",
-      "href": "https://fixtures.vector.test/",
-      "selector": {}
+      "href": "https://fixtures.vector.test/"
     },
     {
       "ref": "r25",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Products",
-      "href": "https://fixtures.vector.test/products",
-      "selector": {}
+      "href": "https://fixtures.vector.test/products"
     },
     {
       "ref": "r27",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Pricing",
-      "href": "https://fixtures.vector.test/pricing",
-      "selector": {}
+      "href": "https://fixtures.vector.test/pricing"
     },
     {
       "ref": "r29",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Docs",
-      "href": "https://fixtures.vector.test/docs",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs"
     },
     {
       "ref": "r31",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Support",
-      "href": "https://fixtures.vector.test/support",
-      "selector": {}
+      "href": "https://fixtures.vector.test/support"
     },
     {
       "ref": "r45",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Sign in",
-      "href": "https://fixtures.vector.test/login",
-      "selector": {}
+      "href": "https://fixtures.vector.test/login"
     },
     {
       "ref": "r49",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Create an account",
-      "href": "https://fixtures.vector.test/signup",
-      "selector": {}
+      "href": "https://fixtures.vector.test/signup"
     },
     {
       "ref": "r52",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Single sign-on",
-      "href": "https://fixtures.vector.test/sso",
-      "selector": {}
+      "href": "https://fixtures.vector.test/sso"
     },
     {
       "ref": "r73",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Forgot your password?",
-      "href": "https://fixtures.vector.test/reset",
-      "selector": {}
+      "href": "https://fixtures.vector.test/reset"
     },
     {
       "ref": "r89",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Terms of Service",
-      "href": "https://fixtures.vector.test/terms",
-      "selector": {}
+      "href": "https://fixtures.vector.test/terms"
     },
     {
       "ref": "r92",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Privacy Policy",
-      "href": "https://fixtures.vector.test/privacy",
-      "selector": {}
+      "href": "https://fixtures.vector.test/privacy"
     },
     {
       "ref": "r18",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/account-login.html#main",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r108",
-      "frame": "main",
       "tag": "details",
       "role": "group",
       "name": "I no longer have access to my email",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r109",
-      "frame": "main",
       "tag": "summary",
       "role": "button",
       "name": "I no longer have access to my email",
       "expanded": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r113",
-      "frame": "main",
       "tag": "details",
       "role": "group",
       "name": "Why am I asked for a verification code?",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r114",
-      "frame": "main",
       "tag": "summary",
       "role": "button",
       "name": "Why am I asked for a verification code?",
       "expanded": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r118",
-      "frame": "main",
       "tag": "details",
       "role": "group",
       "name": "How do I delete my account?",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r119",
-      "frame": "main",
       "tag": "summary",
       "role": "button",
       "name": "How do I delete my account?",
       "expanded": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r130",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Create a free account →",
       "href": "https://fixtures.vector.test/signup",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r136",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Status",
       "href": "https://status.acme.test/",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r138",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Security",
       "href": "https://fixtures.vector.test/security",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r140",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Privacy",
       "href": "https://fixtures.vector.test/privacy",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r142",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Terms",
       "href": "https://fixtures.vector.test/terms",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r144",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Contact",
       "href": "https://fixtures.vector.test/contact",
-      "selector": {},
       "offscreen": true
     }
   ],

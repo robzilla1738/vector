@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>Element.dataset</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  el.setAttribute("data-user-id", "7")
+  assert_equals(el.dataset.userId, "7")
+  el.dataset.userId = "8"
+  assert_equals(el.getAttribute("data-user-id"), "8")
+  el.setAttribute("data-x", "1")
+  assert_equals(el.dataset.x, "1")
+}, "dataset maps data-* attributes to camelCase keys")
+</script>

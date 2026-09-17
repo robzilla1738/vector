@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<meta charset=utf-8>
+<title>innerText getter and setter</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<div id="t">vis<span style="display:none">hid</span><br>next<div>block</div></div>
+<script>
+test(function() {
+  var t = document.getElementById("t");
+  assert_true(t.innerText.indexOf("vis") >= 0);
+  assert_equals(t.innerText.indexOf("hid"), -1);
+  assert_true(t.innerText.indexOf("next") >= 0);
+  assert_true(t.innerText.indexOf("\n") >= 0);
+  assert_equals(t.outerText, t.innerText);
+}, "rendered innerText skips display:none, maps br to newline, and breaks on blocks");
+
+test(function() {
+  var d = document.createElement("div");
+  d.appendChild(document.createTextNode("abc"));
+  var s = document.createElement("script");
+  s.textContent = "nope";
+  d.appendChild(s);
+  assert_equals(d.innerText, d.textContent);
+}, "detached innerText falls back to textContent");
+
+test(function() {
+  var e = document.createElement("div");
+  document.body.appendChild(e);
+  e.innerText = "x\ny";
+  assert_equals(e.innerHTML, "x<br>y");
+  e.innerText = null;
+  assert_equals(e.innerHTML, "");
+  e.innerText = undefined;
+  assert_equals(e.textContent, "undefined");
+}, "innerText setter turns newlines into br; null is empty; undefined stringifies");
+</script>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<meta charset=utf-8>
+<title>ariaLabelledByElements in-scope reflection</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<div id="host" aria-labelledby="a missing"><span id="a">A</span></div>
+<script>
+test(function() {
+  var host = document.getElementById("host");
+  var a = document.getElementById("a");
+  var els = host.ariaLabelledByElements;
+  assert_equals(els.length, 1);
+  assert_equals(els[0], a);
+}, "ariaLabelledByElements resolves in-scope ids");
+
+test(function() {
+  var host = document.getElementById("host");
+  host.setAttribute("aria-labelledby", "missing");
+  var els = host.ariaLabelledByElements;
+  assert_equals(els.length, 0);
+}, "disconnected ids do not resolve");
+
+test(function() {
+  var host = document.getElementById("host");
+  var a = document.getElementById("a");
+  host.ariaLabelledByElements = [a];
+  assert_equals(host.ariaLabelledByElements[0], a);
+  assert_equals(host.getAttribute("aria-labelledby"), "");
+}, "setting ariaLabelledByElements keeps an explicit in-scope reference");
+</script>

@@ -81,15 +81,21 @@ async function measureHeldOutAdvantage(results) {
   }
   const metric = chrome.metrics["act+observe.ms"] && engine.metrics["act+observe.ms"] ? "act+observe.ms" : "observe.full.ms";
   const p95 = (r) => r.metrics[metric]?.p95 ?? 0;
+  const tokens = (r) => {
+    const m = r.metrics["model.tokensPerSuccess"]?.p50;
+    if (typeof m === "number" && Number.isFinite(m)) return m;
+    if (typeof r.tokensPerSuccess === "number" && Number.isFinite(r.tokensPerSuccess)) return r.tokensPerSuccess;
+    return null;
+  };
   const baseline = {
     success: chrome.failures?.length ? 0 : 1,
     p95Ms: p95(chrome),
-    tokensPerSuccess: 0,
+    tokensPerSuccess: tokens(chrome),
   };
   const candidate = {
     success: engine.failures?.length ? 0 : 1,
     p95Ms: p95(engine),
-    tokensPerSuccess: 0,
+    tokensPerSuccess: tokens(engine),
   };
   try {
     const mod = await import(pathToFileURL(join(root, "apps/runtime/dist/index.js")).href);

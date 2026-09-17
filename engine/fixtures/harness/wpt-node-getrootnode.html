@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<title>Node.getRootNode</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var host = document.createElement("div")
+  document.body.appendChild(host)
+  assert_equals(host.getRootNode(), document)
+  var root = host.attachShadow({mode: "open"})
+  var el = document.createElement("span")
+  root.appendChild(el)
+  assert_equals(el.getRootNode(), root)
+  assert_equals(el.getRootNode({composed: true}), document)
+}, "getRootNode walks to the shadow root or composed document")
+</script>

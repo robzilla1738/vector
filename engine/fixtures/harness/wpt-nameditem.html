@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<meta charset=utf-8>
+<title>Document named properties</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<img id="a" name="b">
+<form name="pair"></form>
+<form name="pair"></form>
+<embed name="only">
+<iframe name="frame1"></iframe>
+<script>
+test(function() {
+  var img = document.getElementsByTagName("img")[0];
+  assert_equals(document.a, img);
+  assert_equals(document["b"], img);
+  assert_true("b" in document);
+}, "img with name and id is exposed by both");
+
+test(function() {
+  var embed = document.getElementsByTagName("embed")[0];
+  assert_equals(document.only, embed);
+  embed.remove();
+  assert_equals(document.only, undefined);
+  assert_false("only" in document);
+  var extra = document.createElement("embed");
+  extra.setAttribute("name", "only");
+  document.body.appendChild(extra);
+  assert_equals(document.only, extra);
+}, "named properties are live across add/remove");
+
+test(function() {
+  var forms = document.getElementsByTagName("form");
+  var col = document.pair;
+  assert_class_string(col, "HTMLCollection");
+  assert_equals(col.length, 2);
+  assert_equals(col[0], forms[0]);
+  assert_equals(col[1], forms[1]);
+}, "multiple matches return a live HTMLCollection");
+
+test(function() {
+  var iframe = document.getElementsByTagName("iframe")[0];
+  assert_equals(document.frame1, iframe.contentWindow);
+}, "a single iframe named item is the contentWindow");
+
+test(function() {
+  var form = document.createElement("form");
+  form.id = "byid";
+  document.body.appendChild(form);
+  assert_equals(document.byid, undefined);
+  form.setAttribute("name", "byid");
+  assert_equals(document.byid, form);
+}, "form is exposed by name, not by id");
+</script>

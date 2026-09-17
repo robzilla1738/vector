@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<title>Document.elementFromPoint</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<div id="box" style="position:absolute;left:10px;top:10px;width:80px;height:80px;background:#f00">x</div>
+<script>
+test(function() {
+  var el = document.elementFromPoint(40, 40)
+  assert_equals(el && el.id, "box")
+  var all = document.elementsFromPoint(40, 40)
+  assert_true(all.length >= 1)
+  assert_equals(all[0].id, "box")
+}, "elementFromPoint and elementsFromPoint hit a positioned box")
+</script>

@@ -147,6 +147,12 @@ pub enum Mutation {
         node: NodeId,
         /// New parent.
         parent: NodeId,
+        /// Sibling immediately before `node` after the insert.
+        #[serde(default)]
+        previous_sibling: Option<NodeId>,
+        /// Sibling immediately after `node` after the insert.
+        #[serde(default)]
+        next_sibling: Option<NodeId>,
     },
     /// A node was detached from `parent` (it may still exist).
     NodeRemoved {
@@ -154,6 +160,12 @@ pub enum Mutation {
         node: NodeId,
         /// Former parent.
         parent: NodeId,
+        /// Sibling immediately before `node` before the remove.
+        #[serde(default)]
+        previous_sibling: Option<NodeId>,
+        /// Sibling immediately after `node` before the remove.
+        #[serde(default)]
+        next_sibling: Option<NodeId>,
     },
     /// A node and its subtree were freed; the id is now stale.
     NodeDestroyed {
@@ -173,6 +185,9 @@ pub enum Mutation {
     TextChanged {
         /// The text node.
         node: NodeId,
+        /// Previous data (`None` if it was absent).
+        #[serde(default)]
+        old_value: Option<String>,
     },
     /// A form control's user-visible state changed.
     FormStateChanged {
@@ -211,7 +226,7 @@ impl Mutation {
             | Mutation::NodeRemoved { node, .. }
             | Mutation::NodeDestroyed { node }
             | Mutation::AttributeChanged { node, .. }
-            | Mutation::TextChanged { node }
+            | Mutation::TextChanged { node, .. }
             | Mutation::GeometryChanged { node }
             | Mutation::FormStateChanged { node } => Some(*node),
             Mutation::ShadowAttached { host, .. } => Some(*host),

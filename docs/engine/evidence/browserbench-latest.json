@@ -1,10 +1,9 @@
 {
+  "arch": "aarch64",
   "backend": "vector-engine",
   "chromium": false,
-  "arch": "aarch64",
-  "os": "macos",
-  "security_mode": "developer-offline",
   "engine_version": "0.0.1",
+  "os": "macos",
   "pins": {
     "jetstream": {
       "repo": "https://github.com/WebKit/JetStream",
@@ -27,196 +26,414 @@
       "status": "official-3.0"
     }
   },
+  "rss_bytes": 941588480,
+  "security_mode": "developer-offline",
   "suites": [
     {
       "name": "jetstream.n-body",
-      "status": "PASS",
-      "detail": null
+      "p50_ms": 6,
+      "p95_ms": 6,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        6
+      ],
+      "status": "PASS"
     },
     {
       "name": "jetstream.crypto-sha1",
-      "status": "PASS",
-      "detail": null
+      "p50_ms": 7,
+      "p95_ms": 7,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        7
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-JavaScript-ES5",
-      "status": "PASS",
-      "detail": "kind=todomvc added=100 remaining=0"
+      "p50_ms": 727,
+      "p95_ms": 727,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        727
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-JavaScript-ES5-Complex-DOM",
-      "status": "PASS",
-      "detail": "kind=todomvc added=100 remaining=0"
+      "p50_ms": 5681,
+      "p95_ms": 5681,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        5681
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 569,
+      "p95_ms": 569,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        569
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack-Complex-DOM",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 6446,
+      "p95_ms": 6446,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        6446
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-WebComponents",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 58,
+      "p95_ms": 58,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        58
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-WebComponents-Complex-DOM",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 594,
+      "p95_ms": 594,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        594
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-React",
-      "status": "FAIL",
-      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+      "p50_ms": 60,
+      "p95_ms": 60,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        60
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-React-Complex-DOM",
-      "status": "FAIL",
-      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+      "p50_ms": 675,
+      "p95_ms": 675,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        675
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-React-Redux",
-      "status": "PASS",
-      "detail": "kind=todomvc added=100 remaining=0"
+      "p50_ms": 65,
+      "p95_ms": 65,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        65
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-React-Redux-Complex-DOM",
-      "status": "PASS",
-      "detail": "kind=todomvc added=100 remaining=0"
+      "p50_ms": 672,
+      "p95_ms": 672,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        672
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Backbone",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 117,
+      "p95_ms": 117,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        117
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Backbone-Complex-DOM",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 1478,
+      "p95_ms": 1478,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1478
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Angular",
-      "status": "PASS",
-      "detail": "kind=todomvc added=100 remaining=0"
+      "p50_ms": 57,
+      "p95_ms": 57,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        57
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Angular-Complex-DOM",
-      "status": "PASS",
-      "detail": "kind=todomvc added=100 remaining=0"
+      "p50_ms": 664,
+      "p95_ms": 664,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        664
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Vue",
-      "status": "FAIL",
-      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+      "p50_ms": 75,
+      "p95_ms": 75,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        75
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Vue-Complex-DOM",
-      "status": "FAIL",
-      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+      "p50_ms": 1633,
+      "p95_ms": 1633,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1633
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-jQuery",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 11272,
+      "p95_ms": 11272,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        11272
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-jQuery-Complex-DOM",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 52329,
+      "p95_ms": 52329,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        52329
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Preact",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 54,
+      "p95_ms": 54,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        54
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Preact-Complex-DOM",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 1613,
+      "p95_ms": 1613,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1613
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Svelte",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 52,
+      "p95_ms": 52,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        52
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Svelte-Complex-DOM",
-      "status": "FAIL",
-      "detail": "kind=todomvc added=0 remaining=0"
+      "p50_ms": 1632,
+      "p95_ms": 1632,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1632
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Lit",
-      "status": "FAIL",
-      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+      "p50_ms": 101,
+      "p95_ms": 101,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        101
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=todomvc added=100 remaining=0",
       "name": "speedometer.3.0.TodoMVC-Lit-Complex-DOM",
-      "status": "FAIL",
-      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+      "p50_ms": 4065,
+      "p95_ms": 4065,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        4065
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=news added=1 remaining=0",
       "name": "speedometer.3.0.NewsSite-Next",
-      "status": "FAIL",
-      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+      "p50_ms": 516,
+      "p95_ms": 516,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        516
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=news added=1 remaining=0",
       "name": "speedometer.3.0.NewsSite-Nuxt",
-      "status": "FAIL",
-      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+      "p50_ms": 294,
+      "p95_ms": 294,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        294
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=editor added=1 remaining=0",
       "name": "speedometer.3.0.Editor-CodeMirror",
-      "status": "PASS",
-      "detail": "kind=editor added=1 remaining=0"
+      "p50_ms": 13,
+      "p95_ms": 13,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        13
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=editor added=1 remaining=0",
       "name": "speedometer.3.0.Editor-TipTap",
-      "status": "PASS",
-      "detail": "kind=editor added=1 remaining=0"
+      "p50_ms": 1132,
+      "p95_ms": 1132,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1132
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=chart added=1 remaining=0",
       "name": "speedometer.3.0.Charts-observable-plot",
-      "status": "PASS",
-      "detail": "kind=chart added=1 remaining=0"
+      "p50_ms": 107,
+      "p95_ms": 107,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        107
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=chart added=1 remaining=0",
       "name": "speedometer.3.0.Charts-chartjs",
-      "status": "PASS",
-      "detail": "kind=chart added=1 remaining=0"
+      "p50_ms": 1,
+      "p95_ms": 1,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=stock added=1 remaining=0",
       "name": "speedometer.3.0.React-Stockcharts-SVG",
-      "status": "PASS",
-      "detail": "kind=stock added=1 remaining=0"
+      "p50_ms": 66,
+      "p95_ms": 66,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        66
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "kind=perf added=1 remaining=0",
       "name": "speedometer.3.0.Perf-Dashboard",
-      "status": "FAIL",
-      "detail": "{\"ok\":false,\"kind\":\"unknown\",\"reason\":\"no workload hook\",\"added\":0,\"remaining\":0}"
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        0
+      ],
+      "status": "PASS"
     },
     {
+      "detail": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply.",
       "name": "speedometer.todomvc-class",
-      "status": "PARTIAL",
-      "detail": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply."
+      "p50_ms": 9,
+      "p95_ms": 9,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        9
+      ],
+      "status": "PARTIAL"
     },
     {
+      "detail": "Canvas fillRect class on the engine 2D buffer plus MotionMark Multiply-class GPU present through vello present_list (no CPU readback).",
       "name": "motionmark.canvas-class",
-      "status": "PARTIAL",
-      "detail": "Canvas fillRect class on the engine 2D buffer plus MotionMark Multiply-class GPU present through vello present_list (no CPU readback)."
+      "p50_ms": 5,
+      "p95_ms": 5,
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "samples_ms": [
+        5
+      ],
+      "status": "PARTIAL"
     },
     {
+      "detail": "adapter=Metal:Apple M5; init_ms=734",
       "name": "motionmark.gpu.multiply",
-      "status": "PASS",
-      "detail": "adapter=Metal:Apple M5; init_ms=608"
+      "p50_ms": 3,
+      "p95_ms": 3,
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "samples_ms": [
+        3
+      ],
+      "status": "PASS"
     }
   ],
-  "counts": {
-    "PASS": 14,
-    "FAIL": 21,
-    "PARTIAL": 2
-  }
+  "gpu_adapter": "adapter=Metal:Apple M5; init_ms=734"
 }

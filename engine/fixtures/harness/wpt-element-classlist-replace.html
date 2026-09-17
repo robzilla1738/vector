@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>DOMTokenList.replace</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  el.className = "a b"
+  assert_true(el.classList.replace("b", "c"))
+  assert_true(el.classList.contains("c"))
+  assert_false(el.classList.contains("b"))
+  assert_false(el.classList.replace("z", "q"))
+  assert_false(el.classList.contains("q"))
+}, "classList.replace swaps a token when present")
+</script>

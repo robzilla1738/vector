@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<title>Element.tagName</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  assert_equals(el.tagName, "DIV")
+  document.body.appendChild(document.createElement("p"))
+  assert_equals(document.body.lastElementChild.tagName, "P")
+}, "tagName is uppercase for HTML elements")
+</script>

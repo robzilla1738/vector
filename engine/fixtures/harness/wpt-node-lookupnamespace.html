@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<title>Node.lookupNamespaceURI and lookupPrefix</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  document.body.appendChild(el)
+  assert_equals(el.lookupNamespaceURI(null), "http://www.w3.org/1999/xhtml")
+  assert_equals(el.lookupNamespaceURI(""), "http://www.w3.org/1999/xhtml")
+  assert_equals(el.lookupPrefix("http://www.w3.org/1999/xhtml"), null)
+  assert_equals(el.lookupPrefix("http://www.w3.org/XML/1998/namespace"), "xml")
+}, "HTML elements resolve the default namespace and xml prefix")
+</script>

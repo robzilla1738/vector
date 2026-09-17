@@ -23,6 +23,8 @@ const run = (cmd, args, opts = {}) => {
 
 console.log("▸ cargo build -p ve-shell --release --features product");
 run("cargo", ["build", "-p", "ve-shell", "--release", "--features", "product"]);
+console.log("▸ cargo build -p ve-host --release");
+run("cargo", ["build", "-p", "ve-host", "--release"]);
 
 const src = join(engine, "target", "release", process.platform === "win32" ? "ve-shell.exe" : "ve-shell");
 const dest = join(release, process.platform === "win32" ? "ve-shell.exe" : "ve-shell");
@@ -32,8 +34,14 @@ if (!existsSync(src)) {
 }
 copyFileSync(src, dest);
 try { chmodSync(dest, 0o755); } catch { /* windows */ }
+const hostSrc = join(engine, "target", "release", process.platform === "win32" ? "ve-host.exe" : "ve-host");
+const hostDest = join(release, process.platform === "win32" ? "ve-host.exe" : "ve-host");
+if (existsSync(hostSrc)) {
+  copyFileSync(hostSrc, hostDest);
+  try { chmodSync(hostDest, 0o755); } catch { /* windows */ }
+}
 writeFileSync(
   join(release, "PRODUCT.txt"),
-  "Vector native product: ve-shell (no Electron, no Chromium).\nHybrid Electron desktop: pnpm package:electron\n",
+  "Vector native product: ve-shell + ve-host (no Electron, no Chromium).\nHybrid Electron desktop: pnpm package:electron\n",
 );
 console.log(`\n✓ native product ${dest}`);

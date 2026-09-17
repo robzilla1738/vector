@@ -71,11 +71,18 @@ export function tryReuseSkill(
   return { skill: match, reason: match.evidence };
 }
 
+/** After a reused skill runs, postconditions must still hold or the skill failed closed. */
+export function verifySkillPostconditions(skill: CompiledSkill, obs: ObservationContent, url: string): boolean {
+  if (skill.postconditions.length === 0) return true;
+  return guardsHold(obs, url, skill.postconditions);
+}
+
 /** Measured task metrics for VEC-021 / M3 stretch comparison. */
 export interface HeldOutMetrics {
   success: number;
   p95Ms: number;
-  tokensPerSuccess: number;
+  /** `null` = tokens were not collected. `0` = measured, no model tokens used. */
+  tokensPerSuccess: number | null;
 }
 
 /** Stretch gate: ≥2× lower p95 and ≥50% fewer tokens at non-inferior success. */
@@ -83,18 +90,25 @@ export interface HeldOutAdvantage {
   successNonInferior: boolean;
   p95Ratio: number;
   tokenRatio: number;
+  tokensMeasured: boolean;
   meetsStretch: boolean;
 }
 
 export function evaluateHeldOutAdvantage(baseline: HeldOutMetrics, candidate: HeldOutMetrics): HeldOutAdvantage {
   const successNonInferior = candidate.success >= baseline.success;
   const p95Ratio = candidate.p95Ms > 0 ? baseline.p95Ms / candidate.p95Ms : 0;
-  const tokensMeasured = baseline.tokensPerSuccess > 0 && candidate.tokensPerSuccess > 0;
-  const tokenRatio = tokensMeasured ? baseline.tokensPerSuccess / candidate.tokensPerSuccess : 0;
+  const tokensMeasured = baseline.tokensPerSuccess != null && candidate.tokensPerSuccess != null;
+  const tokenRatio =
+    tokensMeasured && baseline.tokensPerSuccess! > 0
+      ? candidate.tokensPerSuccess === 0
+        ? Number.POSITIVE_INFINITY
+        : baseline.tokensPerSuccess! / candidate.tokensPerSuccess!
+      : 0;
   return {
     successNonInferior,
     p95Ratio,
     tokenRatio,
+    tokensMeasured,
     meetsStretch: successNonInferior && p95Ratio >= 2 && tokensMeasured && tokenRatio >= 2,
   };
 }

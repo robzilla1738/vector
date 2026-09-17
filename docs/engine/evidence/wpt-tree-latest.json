@@ -1,0 +1,1959 @@
+{
+  "fixtures": "/Users/rcourson/Documents/Vibe/web/engine/tools/wpt-harness/../../fixtures/harness",
+  "tested_subset": 331,
+  "overall_manifest": 881,
+  "http_origin": "http://127.0.0.1:54268",
+  "tree_family": "html/dom",
+  "tree_complete": true,
+  "fonts_dir": "/Users/rcourson/Documents/Vibe/web/engine/tools/wpt-harness/../../conformance/fonts",
+  "idlharness": true,
+  "totals": {
+    "total": 331,
+    "pass": 272,
+    "fail": 59,
+    "timeout": 0,
+    "crash": 0,
+    "notrun": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "path": "capabilities.html",
+      "status": "PASS",
+      "duration_ms": 19
+    },
+    {
+      "path": "pixel-opacity.html",
+      "status": "PASS",
+      "detail": "800x600",
+      "duration_ms": 153
+    },
+    {
+      "path": "testharness-dom.html",
+      "status": "PASS",
+      "duration_ms": 3
+    },
+    {
+      "path": "idl-element.html",
+      "status": "PASS",
+      "duration_ms": 68
+    },
+    {
+      "path": "idb-index.html",
+      "status": "PASS",
+      "duration_ms": 3
+    },
+    {
+      "path": "worker-isolate.html",
+      "status": "PASS",
+      "duration_ms": 3
+    },
+    {
+      "path": "fetch-data.html",
+      "status": "PASS",
+      "duration_ms": 16
+    },
+    {
+      "path": "pixel-text.html",
+      "status": "PASS",
+      "detail": "800x600",
+      "duration_ms": 130
+    },
+    {
+      "path": "pixel-clip.html",
+      "status": "PASS",
+      "detail": "800x600",
+      "duration_ms": 116
+    },
+    {
+      "path": "pixel-paint.html",
+      "status": "PASS",
+      "detail": "800x600",
+      "duration_ms": 149
+    },
+    {
+      "path": "pixel-image.html",
+      "status": "PASS",
+      "detail": "800x600",
+      "duration_ms": 123
+    },
+    {
+      "path": "css-supports-compound.html",
+      "status": "PASS",
+      "duration_ms": 3
+    },
+    {
+      "path": "matchmedia-listeners.html",
+      "status": "PASS",
+      "duration_ms": 3
+    },
+    {
+      "path": "matchmedia-orientation.html",
+      "status": "PASS",
+      "duration_ms": 3
+    },
+    {
+      "path": "event-trusted.html",
+      "status": "PASS",
+      "duration_ms": 3
+    },
+    {
+      "path": "websocket-close.html",
+      "status": "PASS",
+      "duration_ms": 3
+    },
+    {
+      "path": "storage.html",
+      "status": "PASS",
+      "duration_ms": 3
+    },
+    {
+      "path": "idb-unique.html",
+      "status": "PASS",
+      "duration_ms": 3
+    },
+    {
+      "path": "wpt-document-title.html",
+      "status": "PASS",
+      "duration_ms": 35
+    },
+    {
+      "path": "wpt-document-title-03.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-document-title-05.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-document-head.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-head-ns.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-getelementbyid.html",
+      "status": "PASS",
+      "duration_ms": 23
+    },
+    {
+      "path": "wpt-getelementsbyclassname-null-undef.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-element-hasattribute.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-forms.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-document-images.html",
+      "status": "PASS",
+      "duration_ms": 22
+    },
+    {
+      "path": "wpt-document-links.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-scripts.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-body.html",
+      "status": "PASS",
+      "duration_ms": 22
+    },
+    {
+      "path": "wpt-element-remove.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-id-name.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-isconnected.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-hasattributes.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-createcomment.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-document-createtextnode.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-element-childelementcount.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-nodename.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-node-nodevalue.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-textcontent.html",
+      "status": "PASS",
+      "duration_ms": 22
+    },
+    {
+      "path": "wpt-element-firstelementchild.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-doctype-literal.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-createhtmldocument.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-document-createpi.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-element-lastelementchild.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-nextelementsibling.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-element-previouselementsibling.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-characterdata-data.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-documentfragment-constructor.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-parentnode.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-contains.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-haschildnodes.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-clonenode.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-createelement.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-id.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-appendchild.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-removechild.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-tagname.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-url.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-matches.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-getelementsbytagname.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-closest.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-classname.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-charset.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-html-validity.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-toggleattribute.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-insertbefore.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-replacechild.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-queryselector.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-classlist.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-hidden.html",
+      "status": "PASS",
+      "duration_ms": 22
+    },
+    {
+      "path": "wpt-node-comparedocumentposition.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-node-isequalnode.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-attachshadow.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-element-dataset.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-getattributenames.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-normalize.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-mutationobserver-attributes.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-scrollintoview.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-getrootnode.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-ownerdocument.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-issamenode.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-insertadjacent.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-document-readystate.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-characterdata-methods.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-queryselectorall.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-adoptnode.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-importnode.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-lookupnamespace.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-range-basic.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-text-splittext.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-mutationobserver-siblings.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-before-after.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-outerhtml.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-elementfrompoint.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-activeelement.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-document-cookie.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-treewalker.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-element-classlist-replace.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-selection-range.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-getelementsbyname.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-document-compatmode.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-idb-abort.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-node-prepend.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-node-baseuri.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "idlharness-load.html",
+      "status": "PASS",
+      "duration_ms": 99
+    },
+    {
+      "path": "wpt-nameditem.html",
+      "status": "PASS",
+      "duration_ms": 57
+    },
+    {
+      "path": "wpt-innertext.html",
+      "status": "PASS",
+      "duration_ms": 22
+    },
+    {
+      "path": "wpt-outertext.html",
+      "status": "PASS",
+      "duration_ms": 21
+    },
+    {
+      "path": "wpt-aria-reflection.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "wpt-aria-labelledby.html",
+      "status": "PASS",
+      "duration_ms": 20
+    },
+    {
+      "path": "html/dom/access-key-label.html",
+      "status": "FAIL",
+      "detail": "Returns empty string when accesskey is invalid",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/aria-attribute-reflection-enumerated.tentative.html",
+      "status": "PASS",
+      "duration_ms": 19,
+      "tree": true
+    },
+    {
+      "path": "html/dom/aria-attribute-reflection.html",
+      "status": "PASS",
+      "duration_ms": 30,
+      "tree": true
+    },
+    {
+      "path": "html/dom/aria-attribute-reflection.tentative.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/aria-element-reflection-disconnected.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/aria-element-reflection-labelledby.html",
+      "status": "PASS",
+      "duration_ms": 24,
+      "tree": true
+    },
+    {
+      "path": "html/dom/aria-element-reflection.html",
+      "status": "PASS",
+      "duration_ms": 91,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/Document.body.html",
+      "status": "PASS",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/Document.currentScript.html",
+      "status": "PASS",
+      "duration_ms": 24,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/Document.getElementsByClassName-null-undef.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/Element.getElementsByClassName-null-undef.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.embeds-document.plugins-01.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.forms.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.getElementsByClassName-same.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-case.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-id.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-interface.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-liveness.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-namespace.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-newelements.html",
+      "status": "PASS",
+      "duration_ms": 23,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-null-undef.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-param.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-same.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.head-01.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.head-02.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.images.html",
+      "status": "PASS",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.links.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.scripts.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.title-01.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.title-03.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.title-05.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.title-06.html",
+      "status": "FAIL",
+      "detail": "document.title and the empty string",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.title-07.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.title-08.html",
+      "status": "PASS",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.title-09.html",
+      "status": "FAIL",
+      "detail": "No title element in SVG document,Title element in SVG document,Title element not child of SVG root,Title element not in SVG namespace",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/document.title-not-in-html-svg.html",
+      "status": "FAIL",
+      "detail": "Should not be able to set document title in XML document with html:title element",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-01.html",
+      "status": "PASS",
+      "duration_ms": 28,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-02.html",
+      "status": "PASS",
+      "duration_ms": 44,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-03.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-04.html",
+      "status": "PASS",
+      "duration_ms": 36,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-05.html",
+      "status": "PASS",
+      "duration_ms": 36,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-06.html",
+      "status": "PASS",
+      "duration_ms": 31,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-07.html",
+      "status": "PASS",
+      "duration_ms": 90,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-08.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-adoption.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-img-name-added-cached-list.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-img-name-added.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-img-name-dynamic.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-img-name-removed.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-names.html",
+      "status": "PASS",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-no-shadowing.tentative.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-supported-property-names-order.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-tree-order.html",
+      "status": "PASS",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/dom-tree-accessors/nameditem-tree-transitions.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/resource-metadata-management/document-compatmode-01.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/resource-metadata-management/document-compatmode-02.html",
+      "status": "FAIL",
+      "detail": "document.compatMode: Almost standards",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/resource-metadata-management/document-compatmode-03.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/resource-metadata-management/document-cookie.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/resource-metadata-management/document-lastModified-01.html",
+      "status": "PASS",
+      "duration_ms": 24,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/resource-metadata-management/document-lastModified.html",
+      "status": "FAIL",
+      "detail": "lastModified should return the last modified date and time",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/resource-metadata-management/document-readyState.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/documents/resource-metadata-management/load-event-after-readystatechange-starts-load.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/elements-in-the-dom/click-in-progress-flag.html",
+      "status": "FAIL",
+      "detail": "elements respect 'click in progress' flag",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/elements-in-the-dom/historical.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/cdata-dir_auto.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/classlist-nonstring.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/custom-attrs.html",
+      "status": "FAIL",
+      "detail": "Setting an Element's dataset property should not interfere with namespaced attributes with same name",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/data_unicode_attr.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/dataset-delete.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/dataset-enumeration.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/dataset-get.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/dataset-prototype.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/dataset-set.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/dataset.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/dir-auto-div-append-child.html",
+      "status": "FAIL",
+      "detail": "dir auto: updates on appendChild",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/dir-bdi-script.html",
+      "status": "FAIL",
+      "detail": "BDI test: Directionality",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/dir-not-changed-text-input-typing.html",
+      "status": "FAIL",
+      "detail": "entering LTR text doesn't change directionality of a text input without dir=auto",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/dir-slots-directionality.html",
+      "status": "FAIL",
+      "detail": "Slots: Directionality: dir=rtl on slot,Slots: Directionality: dir=rtl on host,Slots: Directionality: dir=auto on host with Arabic shadow tree content,Slots: Directionality: dir=auto in shadow tree with Arabic light tree content,Slots: Directionality: dir=auto in shadow tree with Arabic shadow tree content,Slots: Directionality: dir=auto on slot with Arabic light tree content,slot provides its directionality (from host) to a dir=auto container,children with dir attribute are skipped by dir=auto,slot with dir attribute is skipped by dir=auto,dir=auto slot ignores assigned nodes with dir attribute,dir=auto slot ignores text in bdi assigned nodes,dir=auto slot ignores text in value of input element children,dir=auto slot is not affected by value of auto-directionality form associated elements,inner slot is given directionality from slotted content,dir=auto slot is not affected by content inside inner slot (version 1),dir=auto slot is not affected by content inside inner slot (version 2),Slot assigned node manual removal",
+      "duration_ms": 27,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/document-dir.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/id-attribute.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/id-name-specialcase.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/id-name.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/lang-attribute-document-element-replacement.html",
+      "status": "FAIL",
+      "detail": "Disconnected descendants of a replaced document element should resolve lang from their actual ancestor",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/mapped-attribute-adopt-001.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-001.html",
+      "status": "FAIL",
+      "detail": "The browser will recognize a language declared in a lang attribute on the html tag.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-002.html",
+      "status": "FAIL",
+      "detail": "The browser will NOT recognize a language declared in an xml:lang attribute on the html tag.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-003.html",
+      "status": "FAIL",
+      "detail": "The browser will recognize a language declared in the HTTP header, when there is no internal language declaration.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-004.html",
+      "status": "FAIL",
+      "detail": "The browser will recognize a language declared in a meta element in the head using http-equiv='Content-Language' content='..' (with a single language tag value), when there is no other language declaration inside the document.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-005.html",
+      "status": "FAIL",
+      "detail": "If there is a conflict between the language declarations in the HTTP header and the html element using lang, the browser will recognize the language declared in the html element.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-006.html",
+      "status": "FAIL",
+      "detail": "If there is a conflict between the language declarations in the HTTP header and the Content-Language meta element, the UA will recognize the language declared in the meta element.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-007.html",
+      "status": "FAIL",
+      "detail": "If there is a conflict between the language declared using lang in the html element and that in the meta element, the UA will recognize the language declared in the html element.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-008.html",
+      "status": "FAIL",
+      "detail": "If an element contains a lang attribute with an empty value, the value of a lang attribute higher up the document tree will no longer be applied to the content of that element.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-009.html",
+      "status": "FAIL",
+      "detail": "If the HTTP header contains a language declaration but the html element uses an empty lang value, the UA will not recognize the language declared in the HTTP header.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-010.html",
+      "status": "FAIL",
+      "detail": "If the meta Content-Language element contains a language declaration but the html element uses an empty lang value, the UA will not recognize the language declared in the meta Content-Language element.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-lang-attribute-011.html",
+      "status": "FAIL",
+      "detail": "If there are multiple Content-Language HTTP headers, the UA will recognize the language declared in the first header.",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-translate-attribute-007.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-translate-attribute-008.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-translate-attribute-009.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-translate-attribute-010.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-translate-attribute-011.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/the-translate-attribute-012.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/translate-enumerated-ascii-case-insensitive.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/translate-inherit-no-parent-element.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/global-attributes/translate-non-html-translation-mode.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/name-content-attribute-and-property.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/the-innertext-and-outertext-properties/dynamic-getter.html",
+      "status": "PASS",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/the-innertext-and-outertext-properties/getter-first-letter-marker-multicol.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/the-innertext-and-outertext-properties/getter.html",
+      "status": "PASS",
+      "duration_ms": 71,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/the-innertext-and-outertext-properties/innertext-setter.html",
+      "status": "PASS",
+      "duration_ms": 35,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/the-innertext-and-outertext-properties/innertext-whitespace-pre-line.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/the-innertext-and-outertext-properties/innertext-with-white-spaces.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/elements/the-innertext-and-outertext-properties/outertext-setter.html",
+      "status": "PASS",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/historical.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/idlharness.https.html",
+      "status": "FAIL",
+      "detail": "idl_test setup",
+      "duration_ms": 98,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/chained-streaming-templates-with-custom-element.html",
+      "status": "FAIL",
+      "detail": "Chained streaming templates and OwnerDocument",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-immutability.html",
+      "status": "FAIL",
+      "detail": "Modifying 'for' or 'buffer' attributes dynamically after start tag has no effect on the inclusion behavior",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-in-place.html",
+      "status": "FAIL",
+      "detail": "In-place template with buffer attribute buffers children and inserts them atomically at finalization",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-mutation-observer.html",
+      "status": "FAIL",
+      "detail": "Targeted template with buffer attribute triggers atomic MutationObserver records",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-reflection.html",
+      "status": "FAIL",
+      "detail": "HTMLTemplateElement.buffer IDL attribute reflects the buffer content attribute",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-streaming-reflection.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-targeted.html",
+      "status": "FAIL",
+      "detail": "Targeted template with buffer attribute buffers children and replaces target content atomically at finalization",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/empty-for-streaming.html",
+      "status": "FAIL",
+      "detail": "In-place template with empty for attribute is removed and its children are inserted before it,In-place template moving and removal during streaming",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-boolean.html",
+      "status": "FAIL",
+      "detail": "The sanitize attribute behaves like a boolean attribute",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-default.html",
+      "status": "FAIL",
+      "detail": "Template with empty sanitize attribute applies default safe sanitization and discards script tags",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-nested.html",
+      "status": "FAIL",
+      "detail": "Declarative Fragment: nested sanitization combinations,Safe template inside setHTML,Unsafe template inside setHTML,Safe template nested inside unsafe template under bespoke main sanitizer",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-regular.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-template-element.html",
+      "status": "FAIL",
+      "detail": "Template with sanitize attribute should not strip itself when nested",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-unsafe.html",
+      "status": "FAIL",
+      "detail": "Template with non-empty sanitize attribute values (unsafe or invalid) bypasses safe sanitization and allows script tags",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-buffered.sub.html",
+      "status": "FAIL",
+      "detail": "Buffered template src updates target atomically after fetch completes",
+      "duration_ms": 34,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-cancel.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-csp-cors.sub.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-csp.sub.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-nonce.sub.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-parser-blocking.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-referrerpolicy.sub.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-sri.sub.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-streaming.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/streaming-target-marker-removed.html",
+      "status": "FAIL",
+      "detail": "Streaming target end marker can be removed mid-stream safely, falling back to appending",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/stream-append-has-invalidation.html",
+      "status": "FAIL",
+      "detail": "HTML partial updates - :has invalidation with streaming",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/stream-append-positional-pseudo-class-invalidation.html",
+      "status": "FAIL",
+      "detail": "\n  HTML partial updates - positional pseudo class invalidation with streaming\n",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/stream-append-with-template-for.html",
+      "status": "FAIL",
+      "detail": "streamHTML methods can apply template with for",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/template-for-case-sensitive-dom-inserted.html",
+      "status": "FAIL",
+      "detail": "marker/end/start PI targets are parsed as lower case, but attributes are case-sensitive",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/template-for-case-sensitive.html",
+      "status": "FAIL",
+      "detail": "marker/end/start PI targets, attributes and their values are case-sensitive",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/template-for-empty.html",
+      "status": "FAIL",
+      "detail": "A template with an empty for attribute is ignored and attached to the DOM",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-embedded.html",
+      "status": "PASS",
+      "duration_ms": 19,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-forms-weekmonth.html",
+      "status": "PASS",
+      "duration_ms": 19,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-forms.html",
+      "status": "PASS",
+      "duration_ms": 19,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-grouping.html",
+      "status": "PASS",
+      "duration_ms": 19,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-metadata.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-misc.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-obsolete.html",
+      "status": "PASS",
+      "duration_ms": 19,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-overridden-methods.html",
+      "status": "FAIL",
+      "detail": "Reflection isn't impacted by overridden (get|set)Attribute(NS) methods",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-sections.html",
+      "status": "PASS",
+      "duration_ms": 19,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-tabular.html",
+      "status": "PASS",
+      "duration_ms": 19,
+      "tree": true
+    },
+    {
+      "path": "html/dom/reflection-text.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/blocking-idl-attr.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-001.html",
+      "status": "PASS",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-002.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-003.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-004.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-005.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-006.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-007.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-008.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-009.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-010.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-011.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-012.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-013.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-014.html",
+      "status": "FAIL",
+      "detail": "link in the body has no effect",
+      "duration_ms": 23,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-015.html",
+      "status": "PASS",
+      "duration_ms": 24,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-016.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-017.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-018.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-019.html",
+      "status": "PASS",
+      "duration_ms": 23,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-020.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-021.html",
+      "status": "FAIL",
+      "detail": "changing rel to expect in the body has no effect",
+      "duration_ms": 24,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-022.html",
+      "status": "PASS",
+      "duration_ms": 23,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-023.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-024.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-025.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-026.html",
+      "status": "FAIL",
+      "detail": "removing id after it was renderer keeps render block satisfied",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-027.html",
+      "status": "PASS",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-028.html",
+      "status": "PASS",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-029.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-030.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-031.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-032.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-033.html",
+      "status": "FAIL",
+      "detail": "blocking defers frames until full parsing",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-034.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-035.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-036.html",
+      "status": "FAIL",
+      "detail": "link URLs are relative to base URL, not to document URL",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-037.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-038.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-039.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-040.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/element-render-blocking-041.html",
+      "status": "FAIL",
+      "detail": "blocking defers frames until full parsing",
+      "duration_ms": 22,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/non-render-blocking-scripts.optional.html",
+      "status": "PASS",
+      "duration_ms": 38,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/parser-blocking-script.html",
+      "status": "FAIL",
+      "detail": "Rendering is blocked before render-blocking resources are loaded,Parser-blocking script is evaluated",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/parser-inserted-async-inline-module-with-import.html",
+      "status": "FAIL",
+      "detail": "Parser-inserted async inline module script elements with \"blocking=render\" are render-blocking",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/parser-inserted-async-script.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/parser-inserted-defer-script.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/parser-inserted-inline-module-with-import.html",
+      "status": "FAIL",
+      "detail": "Parser-inserted module script elements with \"blocking=render\" are render-blocking",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/parser-inserted-module-script.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/parser-inserted-style-element.html",
+      "status": "FAIL",
+      "detail": "Rendering is blocked before render-blocking resources are loaded,Render-blocking stylesheet is applied",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/parser-inserted-stylesheet-link.html",
+      "status": "FAIL",
+      "detail": "Rendering is blocked before render-blocking resources are loaded,Render-blocking stylesheet is applied",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/remove-attr-script-keeps-blocking.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/remove-attr-style-keeps-blocking.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/remove-attr-stylesheet-link-keeps-blocking.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/remove-attr-unblocks-rendering.optional.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/remove-element-unblocks-rendering.optional.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/remove-pending-async-render-blocking-script.html",
+      "status": "PASS",
+      "duration_ms": 20,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/script-inserted-inline-module-with-import.html",
+      "status": "FAIL",
+      "detail": "Script-inserted module script elements with \"blocking=render\" are render-blocking",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/script-inserted-module-script.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/script-inserted-script.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/script-inserted-style-element.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/render-blocking/script-inserted-stylesheet-link.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/self-origin.sub.html",
+      "status": "PASS",
+      "duration_ms": 21,
+      "tree": true
+    },
+    {
+      "path": "html/dom/usvstring-reflection.https.html",
+      "status": "FAIL",
+      "detail": "location.href : unpaired surrogate codepoint should be replaced with U+FFFD,window.open : unpaired surrogate codepoint should be replaced with U+FFFD,document.open : unpaired surrogate codepoint should be replaced with U+FFFD,area : unpaired surrogate codepoint should be replaced with U+FFFD,base : unpaired surrogate codepoint should be replaced with U+FFFD,EventSource : unpaired surrogate codepoint should be replaced with U+FFFD,frame : unpaired surrogate codepoint should be replaced with U+FFFD,iframe : unpaired surrogate codepoint should be replaced with U+FFFD,link : unpaired surrogate codepoint should be replaced with U+FFFD,source : unpaired surrogate codepoint should be replaced with U+FFFD,storage event : unpaired surrogate codepoint should be replaced with U+FFFD,websocket url : unpaired surrogate codepoint should be replaced with U+FFFD,sendBeacon URL: unpaired surrogate codepoint should not make any exceptions.,RegisterProtocolHandler URL: unpaired surrogate codepoint should not make any exceptions.,UnregisterProtocolHandler URL: unpaired surrogate codepoint should not make any exceptions.,Document URLs: unpaired surrogate codepoint should be replaced with U+FFFD,RTCDataChannel.send: unpaired surrogate codepoint should be replaced with U+FFFD.",
+      "duration_ms": 21,
+      "tree": true
+    }
+  ]
+}

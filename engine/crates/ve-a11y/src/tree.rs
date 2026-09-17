@@ -31,8 +31,35 @@ pub struct States {
     pub readonly: bool,
     /// `aria-invalid` is set.
     pub invalid: bool,
-    /// The element is the current item (`aria-current`).
+    /// The control is the current item (`aria-current`).
     pub current: bool,
+}
+
+/// ARIA live region politeness.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Live {
+    /// Not a live region.
+    #[default]
+    Off,
+    /// Announce when idle.
+    Polite,
+    /// Announce immediately.
+    Assertive,
+}
+
+impl Live {
+    fn is_off(&self) -> bool {
+        *self == Self::Off
+    }
+
+    fn from_aria(value: &str) -> Self {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "polite" => Self::Polite,
+            "assertive" => Self::Assertive,
+            _ => Self::Off,
+        }
+    }
 }
 
 impl States {
@@ -101,6 +128,9 @@ pub struct AccessibilityNode {
     pub tag: String,
     /// Border-box bounds if layout information was supplied.
     pub bounds: Option<Rect>,
+    /// Live region politeness (`aria-live` or implicit for `alert`/`status`).
+    #[serde(default, skip_serializing_if = "Live::is_off")]
+    pub live: Live,
     /// Children.
     pub children: Vec<AccessibilityNode>,
 }
@@ -215,63 +245,72 @@ impl Builder<'_> {
     }
 
     fn build_children(&self, parent: NodeId, out: &mut Vec<AccessibilityNode>) {
-        // A shadow host exposes its shadow tree instead of its light children
-        // (slot assignment is not modelled yet).
+        if self.doc.element(parent).is_some_and(|e| e.is_html("slot")) {
+            let assigned = self.doc.assigned_nodes(parent);
+            if !assigned.is_empty() {
+                for child in assigned {
+                    self.push_child(child, out);
+                }
+                return;
+            }
+        }
         let container = self.doc.shadow_root(parent).unwrap_or(parent);
         for child in self.doc.children(container) {
-            let Some(node) = self.doc.get(child) else {
-                continue;
-            };
-            match &node.kind {
-                NodeKind::Text(text) => {
-                    let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
-                    if !normalized.is_empty() {
-                        out.push(AccessibilityNode {
-                            id: child,
-                            role: Role::StaticText,
-                            name: normalized,
-                            description: String::new(),
-                            value: None,
-                            states: States::default(),
-                            level: None,
-                            href: None,
-                            tag: "text".into(),
-                            bounds: self.options.bounds.and_then(|f| f(child)),
-                            children: Vec::new(),
-                        });
-                    }
+            self.push_child(child, out);
+        }
+    }
+
+    fn push_child(&self, child: NodeId, out: &mut Vec<AccessibilityNode>) {
+        let Some(node) = self.doc.get(child) else {
+            return;
+        };
+        match &node.kind {
+            NodeKind::Text(text) => {
+                let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+                if !normalized.is_empty() {
+                    out.push(AccessibilityNode {
+                        id: child,
+                        role: Role::StaticText,
+                        name: normalized,
+                        description: String::new(),
+                        value: None,
+                        states: States::default(),
+                        level: None,
+                        href: None,
+                        tag: "text".into(),
+                        bounds: self.options.bounds.and_then(|f| f(child)),
+                        live: Live::Off,
+                        children: Vec::new(),
+                    });
                 }
-                NodeKind::Element(element) => {
-                    if self.is_excluded(child, element) {
-                        continue;
-                    }
-                    let Some(role) = Role::for_element(self.doc, child) else {
-                        continue;
-                    };
-                    let mut acc = self.node_for(child, role);
-                    // Leaf-like widgets (buttons, links, options…) whose name already
-                    // captures their content are exposed without children, unless
-                    // something interactive is nested inside them.
-                    let leaf_like = matches!(
-                        role,
-                        Role::Button
-                            | Role::Link
-                            | Role::Tab
-                            | Role::MenuItem
-                            | Role::Option
-                            | Role::Checkbox
-                            | Role::Radio
-                            | Role::Switch
-                            | Role::Tooltip
-                    ) && !acc.name.is_empty()
-                        && !self.has_interactive_descendant(child);
-                    if !leaf_like {
-                        self.build_children(child, &mut acc.children);
-                    }
-                    out.push(acc);
-                }
-                _ => {}
             }
+            NodeKind::Element(element) => {
+                if self.is_excluded(child, element) {
+                    return;
+                }
+                let Some(role) = Role::for_element(self.doc, child) else {
+                    return;
+                };
+                let mut acc = self.node_for(child, role);
+                let leaf_like = matches!(
+                    role,
+                    Role::Button
+                        | Role::Link
+                        | Role::Tab
+                        | Role::MenuItem
+                        | Role::Option
+                        | Role::Checkbox
+                        | Role::Radio
+                        | Role::Switch
+                        | Role::Tooltip
+                ) && !acc.name.is_empty()
+                    && !self.has_interactive_descendant(child);
+                if !leaf_like {
+                    self.build_children(child, &mut acc.children);
+                }
+                out.push(acc);
+            }
+            _ => {}
         }
     }
 
@@ -289,6 +328,7 @@ impl Builder<'_> {
                 href: None,
                 tag: String::new(),
                 bounds: None,
+                live: Live::Off,
                 children: Vec::new(),
             };
         };
@@ -386,6 +426,14 @@ impl Builder<'_> {
         let href = (role == Role::Link)
             .then(|| element.attr("href").map(str::to_owned))
             .flatten();
+        let live = element.attr("aria-live").map_or(
+            match role {
+                Role::Alert => Live::Assertive,
+                Role::Status => Live::Polite,
+                _ => Live::Off,
+            },
+            Live::from_aria,
+        );
         AccessibilityNode {
             id,
             role,
@@ -397,6 +445,7 @@ impl Builder<'_> {
             href,
             tag: element.name.clone(),
             bounds: self.options.bounds.and_then(|f| f(id)),
+            live,
             children: Vec::new(),
         }
     }
@@ -484,5 +533,53 @@ mod tests {
         let summary = tree.iter().find(|n| n.tag == "summary").unwrap();
         assert_eq!(summary.states.expanded, Some(true));
         assert!(tree.find(q).is_some());
+    }
+
+    #[test]
+    fn live_regions_and_slot_assignment() {
+        use ve_dom::{Document, Namespace, ShadowRootMode};
+
+        let live_doc = ve_html::parse_document(
+            r#"<div aria-live="polite">ping</div><div role="alert">boom</div><output>ok</output>"#,
+        )
+        .document;
+        let live_tree = AccessibilityTree::build(&live_doc, &BuildOptions::default());
+        let polite = live_tree
+            .iter()
+            .find(|n| n.live == Live::Polite && n.tag == "div")
+            .expect("aria-live polite");
+        assert_eq!(polite.live, Live::Polite);
+        assert!(
+            live_tree.iter().any(|n| n.name.contains("ping")),
+            "live region contents must be in the tree"
+        );
+        let alert = live_tree
+            .iter()
+            .find(|n| n.role == Role::Alert)
+            .expect("alert");
+        assert_eq!(alert.live, Live::Assertive);
+        let status = live_tree
+            .iter()
+            .find(|n| n.role == Role::Status)
+            .expect("output status");
+        assert_eq!(status.live, Live::Polite);
+
+        let mut doc = Document::new();
+        let host = doc.create_element("div", Namespace::Html);
+        doc.append_child(doc.root(), host).unwrap();
+        let named = doc.create_element("span", Namespace::Html);
+        doc.set_attribute(named, "slot", "title").unwrap();
+        doc.append_text(named, "Hello").unwrap();
+        doc.append_child(host, named).unwrap();
+        let shadow = doc.attach_shadow(host, ShadowRootMode::Open).unwrap();
+        let slot = doc.create_element("slot", Namespace::Html);
+        doc.set_attribute(slot, "name", "title").unwrap();
+        doc.append_child(shadow, slot).unwrap();
+        let tree = AccessibilityTree::build(&doc, &BuildOptions::default());
+        assert!(
+            tree.iter().any(|n| n.name == "Hello"),
+            "slotted light text must appear in the accessibility tree: {tree:#?}",
+            tree = tree.root
+        );
     }
 }

@@ -28,62 +28,50 @@
   "elements": [
     {
       "ref": "r65",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Large photo 2.8MB",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r72",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Artwork 2.9MB",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r79",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Device screen 1.6MB",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r86",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "SVG icon 13KB",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r134",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Privacy",
       "href": "https://github.com/GoogleChromeLabs/squoosh/blob/dev/README.md#privacy",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r136",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Source on Github",
       "href": "https://github.com/GoogleChromeLabs/squoosh",
-      "selector": {},
       "offscreen": true
     }
   ],

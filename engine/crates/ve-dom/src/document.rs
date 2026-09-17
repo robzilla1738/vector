@@ -175,6 +175,13 @@ impl Document {
         self.live
     }
 
+    /// Arena length (next index if no free slots). Used to tell parser
+    /// nodes from script-created nodes.
+    #[must_use]
+    pub fn arena_len(&self) -> u32 {
+        u32::try_from(self.slots.len()).unwrap_or(u32::MAX)
+    }
+
     /// The document node.
     #[must_use]
     pub fn root(&self) -> NodeId {
@@ -476,9 +483,14 @@ impl Document {
     }
 
     fn after_insert(&mut self, parent: NodeId, child: NodeId) {
+        let (previous_sibling, next_sibling) = self
+            .get(child)
+            .map_or((None, None), |n| (n.prev_sibling(), n.next_sibling()));
         self.journal.record(Mutation::NodeInserted {
             node: child,
             parent,
+            previous_sibling,
+            next_sibling,
         });
         self.mark_dirty(child, DirtyFlags::ALL);
         self.mark_dirty(
@@ -529,11 +541,16 @@ impl Document {
     /// re-inserted. Returns the former parent.
     pub fn remove(&mut self, child: NodeId) -> Result<Option<NodeId>> {
         self.try_get(child)?;
+        let (previous_sibling, next_sibling) = self
+            .get(child)
+            .map_or((None, None), |n| (n.prev_sibling(), n.next_sibling()));
         let parent = self.detach(child);
         if let Some(parent) = parent {
             self.journal.record(Mutation::NodeRemoved {
                 node: child,
                 parent,
+                previous_sibling,
+                next_sibling,
             });
             // STYLE: the remaining siblings' structural pseudo-classes
             // (`:nth-child`, `:empty`, sibling combinators) may change.
@@ -653,15 +670,24 @@ impl Document {
     /// Returns the text node that received the data.
     pub fn append_text(&mut self, parent: NodeId, text: &str) -> Result<NodeId> {
         if let Some(last) = self.last_child(parent)
-            && let Some(NodeKind::Text(existing)) = self.slot_mut(last).map(|n| &mut n.kind)
+            && matches!(self.get(last).map(|n| &n.kind), Some(NodeKind::Text(_)))
         {
-            existing.push_str(text);
-            self.journal.record(Mutation::TextChanged { node: last });
-            self.mark_dirty(
-                last,
-                DirtyFlags::TEXT | DirtyFlags::LAYOUT | DirtyFlags::A11Y,
-            );
-            return Ok(last);
+            let old = self
+                .get(last)
+                .and_then(Node::as_text)
+                .map(ToOwned::to_owned);
+            if let Some(NodeKind::Text(existing)) = self.slot_mut(last).map(|n| &mut n.kind) {
+                existing.push_str(text);
+                self.journal.record(Mutation::TextChanged {
+                    node: last,
+                    old_value: old,
+                });
+                self.mark_dirty(
+                    last,
+                    DirtyFlags::TEXT | DirtyFlags::LAYOUT | DirtyFlags::A11Y,
+                );
+                return Ok(last);
+            }
         }
         let node = self.create_text(text);
         self.append_child(parent, node)?;
@@ -672,15 +698,24 @@ impl Document {
     /// there is one. Returns the text node that received the data.
     pub fn insert_text_before(&mut self, sibling: NodeId, text: &str) -> Result<NodeId> {
         if let Some(prev) = self.prev_sibling(sibling)
-            && let Some(NodeKind::Text(existing)) = self.slot_mut(prev).map(|n| &mut n.kind)
+            && matches!(self.get(prev).map(|n| &n.kind), Some(NodeKind::Text(_)))
         {
-            existing.push_str(text);
-            self.journal.record(Mutation::TextChanged { node: prev });
-            self.mark_dirty(
-                prev,
-                DirtyFlags::TEXT | DirtyFlags::LAYOUT | DirtyFlags::A11Y,
-            );
-            return Ok(prev);
+            let old = self
+                .get(prev)
+                .and_then(Node::as_text)
+                .map(ToOwned::to_owned);
+            if let Some(NodeKind::Text(existing)) = self.slot_mut(prev).map(|n| &mut n.kind) {
+                existing.push_str(text);
+                self.journal.record(Mutation::TextChanged {
+                    node: prev,
+                    old_value: old,
+                });
+                self.mark_dirty(
+                    prev,
+                    DirtyFlags::TEXT | DirtyFlags::LAYOUT | DirtyFlags::A11Y,
+                );
+                return Ok(prev);
+            }
         }
         let node = self.create_text(text);
         self.insert_before(sibling, node)?;
@@ -689,13 +724,20 @@ impl Document {
 
     /// Replaces the data of a text, comment, or processing-instruction node.
     pub fn set_text(&mut self, id: NodeId, text: impl Into<String>) -> Result<()> {
+        let old = self
+            .get(id)
+            .and_then(Node::as_character_data)
+            .map(ToOwned::to_owned);
         let node = self.try_get_mut(id)?;
         match &mut node.kind {
             NodeKind::Text(t) | NodeKind::Comment(t) => *t = text.into(),
             NodeKind::ProcessingInstruction { data, .. } => *data = text.into(),
             _ => return Err(Error::InvalidState(format!("{id} is not character data"))),
         }
-        self.journal.record(Mutation::TextChanged { node: id });
+        self.journal.record(Mutation::TextChanged {
+            node: id,
+            old_value: old,
+        });
         self.mark_dirty(id, DirtyFlags::TEXT | DirtyFlags::LAYOUT | DirtyFlags::A11Y);
         Ok(())
     }
@@ -993,10 +1035,101 @@ impl Document {
         self.element(host).and_then(|e| e.shadow_root)
     }
 
+    /// Moves `<template shadowrootmode>` contents into the host's shadow root.
+    /// html5ever may attach the shadow before template children are parsed.
+    pub fn promote_declarative_shadows(&mut self) {
+        let mut templates = Vec::new();
+        let root = self.root;
+        for id in std::iter::once(root).chain(self.descendants(root)) {
+            if self.element(id).is_some_and(|e| e.is_html("template"))
+                && self.attribute(id, "shadowrootmode").is_some()
+            {
+                templates.push(id);
+            }
+        }
+        for template in templates {
+            let Some(host) = self.parent(template) else {
+                continue;
+            };
+            let mode = match self
+                .attribute(template, "shadowrootmode")
+                .unwrap_or("")
+                .to_ascii_lowercase()
+                .as_str()
+            {
+                "closed" => ShadowRootMode::Closed,
+                _ => ShadowRootMode::Open,
+            };
+            let shadow = match self.shadow_root(host) {
+                Some(s) => s,
+                None => match self.attach_shadow(host, mode) {
+                    Ok(s) => s,
+                    Err(_) => continue,
+                },
+            };
+            if let Some(contents) = self.template_contents(template) {
+                let _ = self.reparent_children(contents, shadow);
+            }
+            let _ = self.reparent_children(template, shadow);
+            let _ = self.remove(template);
+        }
+    }
+
     /// The host element of shadow root `root`.
     #[must_use]
     pub fn host(&self, root: NodeId) -> Option<NodeId> {
         self.get(root).and_then(Node::host)
+    }
+
+    /// Nearest ancestor shadow root of `id`, if the node is in a shadow tree.
+    #[must_use]
+    pub fn containing_shadow_root(&self, id: NodeId) -> Option<NodeId> {
+        let mut cur = id;
+        loop {
+            let parent = self.parent(cur)?;
+            if matches!(
+                self.get(parent).map(|n| &n.kind),
+                Some(NodeKind::ShadowRoot { .. })
+            ) {
+                return Some(parent);
+            }
+            cur = parent;
+        }
+    }
+
+    /// Nodes assigned to `slot` from its host's light children.
+    ///
+    /// Named slots match `slot="<name>"`. The default slot (no `name`, or
+    /// `name=""`) receives nodes with no `slot` attribute or `slot=""`.
+    /// Fallback children of the slot are not included.
+    #[must_use]
+    pub fn assigned_nodes(&self, slot: NodeId) -> Vec<NodeId> {
+        let Some(slot_el) = self.element(slot) else {
+            return Vec::new();
+        };
+        if !slot_el.is_html("slot") {
+            return Vec::new();
+        }
+        let Some(shadow) = self.containing_shadow_root(slot) else {
+            return Vec::new();
+        };
+        let Some(host) = self.host(shadow) else {
+            return Vec::new();
+        };
+        let slot_name = slot_el.attr("name").filter(|n| !n.is_empty());
+        self.children(host)
+            .filter(|&child| match self.element(child) {
+                Some(e) => {
+                    let named = e.attr("slot").filter(|n| !n.is_empty());
+                    match (slot_name, named) {
+                        (None, None) => true,
+                        (Some(want), Some(got)) => want == got,
+                        _ => false,
+                    }
+                }
+                None => slot_name.is_none(),
+            })
+            .collect()
     }
 
     // ----------------------------------------------------------------------
@@ -1450,5 +1583,29 @@ mod tests {
         ));
         let clone = doc.clone_node(t, true).unwrap();
         assert!(doc.template_contents(clone).is_some());
+    }
+
+    #[test]
+    fn assigned_nodes_match_named_and_default_slots() {
+        let mut doc = Document::new();
+        let host = html(&mut doc, "div");
+        doc.append_child(doc.root(), host).unwrap();
+        let named = html(&mut doc, "span");
+        doc.set_attribute(named, "slot", "title").unwrap();
+        doc.append_text(named, "Hello").unwrap();
+        let def = html(&mut doc, "span");
+        doc.append_text(def, "Body").unwrap();
+        doc.append_child(host, named).unwrap();
+        doc.append_child(host, def).unwrap();
+        let shadow = doc.attach_shadow(host, ShadowRootMode::Open).unwrap();
+        let slot_title = html(&mut doc, "slot");
+        doc.set_attribute(slot_title, "name", "title").unwrap();
+        let slot_default = html(&mut doc, "slot");
+        doc.append_child(shadow, slot_title).unwrap();
+        doc.append_child(shadow, slot_default).unwrap();
+        assert_eq!(doc.assigned_nodes(slot_title), vec![named]);
+        assert_eq!(doc.assigned_nodes(slot_default), vec![def]);
+        assert_eq!(doc.containing_shadow_root(slot_title), Some(shadow));
+        assert!(doc.assigned_nodes(host).is_empty());
     }
 }

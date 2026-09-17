@@ -5,7 +5,7 @@
 //! want wall-clock behaviour advance the loop from their own timer.
 
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, VecDeque};
+use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct TaskId(pub u64);
 
-/// HTML task sources. Each source is conceptually its own FIFO; the loop
-/// picks in FIFO order across sources in M0.
+/// HTML task sources. Each source is its own FIFO; [`EventLoop::run_one`]
+/// takes the oldest task from the highest-priority non-empty source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskSource {
@@ -31,6 +31,18 @@ pub enum TaskSource {
     PostedMessage,
     /// Rendering opportunities (`requestAnimationFrame`).
     Rendering,
+}
+
+impl TaskSource {
+    /// HTML-ish selection order: user input and network beat timers and rAF.
+    const PRIORITY: [Self; 6] = [
+        Self::UserInteraction,
+        Self::Networking,
+        Self::DomManipulation,
+        Self::PostedMessage,
+        Self::Timer,
+        Self::Rendering,
+    ];
 }
 
 /// A queued callback.
@@ -69,6 +81,41 @@ impl Ord for Timer {
     }
 }
 
+/// A page `setTimeout`/`setInterval` registered from the JS host table.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct JsTimer {
+    due_ms: u64,
+    seq: u64,
+    id: u64,
+    repeat_ms: Option<u64>,
+}
+
+impl PartialOrd for JsTimer {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for JsTimer {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other
+            .due_ms
+            .cmp(&self.due_ms)
+            .then_with(|| other.seq.cmp(&self.seq))
+    }
+}
+
+/// A JS timer that is due and should fire through `__veFireTimer`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DueJsTimer {
+    /// Prelude timer id.
+    pub id: u64,
+    /// Virtual due time in milliseconds.
+    pub due_ms: u64,
+    /// Interval period when this is a repeating timer.
+    pub repeat_ms: Option<u64>,
+}
+
 /// Summary of a [`EventLoop::run_until_quiescent`] call.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RunReport {
@@ -88,6 +135,9 @@ pub struct EventLoop {
     tasks: VecDeque<Task>,
     microtasks: VecDeque<TaskFn>,
     timers: BinaryHeap<Timer>,
+    js_timers: BinaryHeap<JsTimer>,
+    js_live: HashMap<u64, u64>,
+    js_seq: u64,
     cancelled: Vec<TaskId>,
     now: Duration,
     next_id: u64,
@@ -101,6 +151,7 @@ impl std::fmt::Debug for EventLoop {
             .field("tasks", &self.tasks.len())
             .field("microtasks", &self.microtasks.len())
             .field("timers", &self.timers.len())
+            .field("js_timers", &self.js_live.len())
             .field("in_flight", &self.in_flight)
             .field("now", &self.now)
             .finish()
@@ -219,6 +270,96 @@ impl EventLoop {
         self.microtasks.len()
     }
 
+    /// Arms a page JS timer (`setTimeout` / `setInterval`).
+    pub fn arm_js_timer(&mut self, id: u64, now_ms: u64, delay_ms: u64, repeat: bool) {
+        self.js_seq += 1;
+        self.js_live.insert(id, self.js_seq);
+        self.js_timers.push(JsTimer {
+            due_ms: now_ms.saturating_add(delay_ms),
+            seq: self.js_seq,
+            id,
+            repeat_ms: repeat.then_some(delay_ms.max(1)),
+        });
+    }
+
+    /// Cancels a page JS timer.
+    pub fn clear_js_timer(&mut self, id: u64) {
+        self.js_live.remove(&id);
+    }
+
+    /// Live page JS timer count.
+    #[must_use]
+    pub fn js_timer_count(&self) -> usize {
+        self.js_live.len()
+    }
+
+    /// Earliest live JS timer due time.
+    #[must_use]
+    pub fn next_js_timer_due_ms(&self) -> Option<u64> {
+        self.js_timers
+            .iter()
+            .filter(|t| self.js_live.get(&t.id) == Some(&t.seq))
+            .map(|t| t.due_ms)
+            .min()
+    }
+
+    /// `(due within horizon, armed later)` for settle readiness.
+    #[must_use]
+    pub fn js_timer_readiness(&self, horizon_ms: u64) -> (usize, usize) {
+        let mut soon = 0;
+        let mut later = 0;
+        for t in self
+            .js_timers
+            .iter()
+            .filter(|t| self.js_live.get(&t.id) == Some(&t.seq))
+        {
+            if t.due_ms <= horizon_ms {
+                soon += 1;
+            } else {
+                later += 1;
+            }
+        }
+        (soon, later)
+    }
+
+    /// Pops the next live JS timer due at or before `horizon_ms`.
+    pub fn pop_due_js_timer(&mut self, horizon_ms: u64) -> Option<DueJsTimer> {
+        loop {
+            match self.js_timers.peek() {
+                None => return None,
+                Some(t) if self.js_live.get(&t.id) != Some(&t.seq) => {
+                    self.js_timers.pop();
+                }
+                Some(t) if t.due_ms > horizon_ms => return None,
+                Some(_) => {
+                    let t = self.js_timers.pop().expect("peeked");
+                    return Some(DueJsTimer {
+                        id: t.id,
+                        due_ms: t.due_ms,
+                        repeat_ms: t.repeat_ms,
+                    });
+                }
+            }
+        }
+    }
+
+    /// Re-arms an interval after it fired.
+    pub fn rearm_js_interval(&mut self, id: u64, due_ms: u64, period: u64) {
+        self.js_seq += 1;
+        self.js_live.insert(id, self.js_seq);
+        self.js_timers.push(JsTimer {
+            due_ms: due_ms.saturating_add(period),
+            seq: self.js_seq,
+            id,
+            repeat_ms: Some(period),
+        });
+    }
+
+    /// Drops a one-shot JS timer after it fired.
+    pub fn drop_js_timer(&mut self, id: u64) {
+        self.js_live.remove(&id);
+    }
+
     /// Virtual time at which the next timer fires, if any.
     #[must_use]
     pub fn next_timer_due(&self) -> Option<Duration> {
@@ -270,11 +411,20 @@ impl EventLoop {
         }
     }
 
-    /// Runs one task (oldest first) followed by a microtask checkpoint.
-    /// Returns `(ran_task, microtasks_run)`.
+    fn pop_next_task(&mut self) -> Option<Task> {
+        for source in TaskSource::PRIORITY {
+            if let Some(i) = self.tasks.iter().position(|t| t.source == source) {
+                return self.tasks.remove(i);
+            }
+        }
+        None
+    }
+
+    /// Runs one task (highest-priority source, oldest in that source) followed
+    /// by a microtask checkpoint. Returns `(ran_task, microtasks_run)`.
     pub fn run_one(&mut self) -> (bool, usize) {
         self.promote_due_timers();
-        let Some(task) = self.tasks.pop_front() else {
+        let Some(task) = self.pop_next_task() else {
             return (false, self.perform_microtask_checkpoint());
         };
         tracing::trace!(id = task.id.0, source = ?task.source, "running task");
@@ -342,7 +492,7 @@ mod tests {
         let report = lp.run_until_quiescent(100);
         assert_eq!(
             *log.borrow(),
-            vec!["micro0", "task1", "micro-from-task1", "task2"]
+            vec!["micro0", "task2", "task1", "micro-from-task1"]
         );
         assert!(report.quiescent, "future timers do not block quiescence");
         assert_eq!(report.tasks_run, 2);
@@ -384,5 +534,38 @@ mod tests {
         assert!(idle_report.quiescent);
         assert_eq!(idle_report.tasks_run, 1);
         assert_eq!(busy.pending_tasks(), 1000);
+    }
+
+    #[test]
+    fn user_interaction_tasks_run_before_timer_tasks() {
+        let log = Rc::new(RefCell::new(Vec::new()));
+        let mut lp = EventLoop::new();
+        let l = log.clone();
+        lp.queue_task(TaskSource::Timer, move |_| {
+            l.borrow_mut().push("timer");
+        });
+        let l = log.clone();
+        lp.queue_task(TaskSource::UserInteraction, move |_| {
+            l.borrow_mut().push("ui");
+        });
+        lp.run_until_quiescent(10);
+        assert_eq!(*log.borrow(), vec!["ui", "timer"]);
+    }
+
+    #[test]
+    fn js_timers_live_on_the_same_loop() {
+        let mut lp = EventLoop::new();
+        lp.arm_js_timer(1, 0, 10, false);
+        lp.arm_js_timer(2, 0, 50, true);
+        assert_eq!(lp.js_timer_count(), 2);
+        assert_eq!(lp.next_js_timer_due_ms(), Some(10));
+        assert_eq!(lp.js_timer_readiness(20), (1, 1));
+        let due = lp.pop_due_js_timer(20).expect("timeout due");
+        assert_eq!(due.id, 1);
+        lp.drop_js_timer(due.id);
+        assert_eq!(lp.js_timer_count(), 1);
+        lp.clear_js_timer(2);
+        assert_eq!(lp.js_timer_count(), 0);
+        assert!(lp.pop_due_js_timer(100).is_none());
     }
 }

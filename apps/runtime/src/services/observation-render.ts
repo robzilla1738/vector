@@ -37,7 +37,7 @@ export function renderObservation(obs: Observation): string {
     lines.push("form fields:");
     for (const f of c.formFields)
       lines.push(
-        `  ${f.ref ?? "-"} ${f.type} ${f.label ?? f.name ?? ""}=${JSON.stringify(f.value ?? "")}${f.required ? " required" : ""}${f.valid === false ? ` INVALID(${f.validationMessage ?? ""})` : ""}`,
+        `  ${f.ref ?? "-"} ${f.type} ${f.label ?? f.name ?? ""}=${JSON.stringify(f.type === "password" ? "{handle}" : (f.value ?? ""))}${f.required ? " required" : ""}${f.valid === false ? ` INVALID(${f.validationMessage ?? ""})` : ""}`,
       );
   }
   if (want.elements && c.elements.length) {
@@ -45,7 +45,7 @@ export function renderObservation(obs: Observation): string {
     for (const e of c.elements) {
       const bits = [e.role ?? e.tag];
       if (e.name) bits.push(JSON.stringify(e.name));
-      if (e.value !== undefined) bits.push(`value=${JSON.stringify(e.value)}`);
+      if (e.value !== undefined) bits.push(`value=${e.type === "password" ? "{handle}" : JSON.stringify(e.value)}`);
       if (e.checked !== undefined) bits.push(`checked=${e.checked}`);
       if (e.selected !== undefined) bits.push(`selected=${JSON.stringify(e.selected)}`);
       if (e.href) bits.push(`href=${e.href}`);

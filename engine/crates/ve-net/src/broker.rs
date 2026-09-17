@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 use crate::policy::strip_userinfo;
 use crate::transport::Transport;
-use crate::{NetError, NetworkPolicy, Request, Response};
+use crate::{Initiator, NetError, NetworkPolicy, Request, Response};
 
 /// A fetch submitted by a browsing context.
 #[derive(Clone, Debug)]
@@ -70,6 +70,11 @@ impl NetworkBroker {
             )));
         }
         strip_userinfo(&mut job.request.url);
+        if job.request.initiator == Initiator::Prefetch {
+            return Err(NetError::Blocked(
+                "speculative fetch denied (VEC-024; GET is not assumed harmless)".into(),
+            ));
+        }
         self.policy.check_request(&job.request)?;
         self.check_resolved(&job.request)?;
         self.inner.send(&job.request)
@@ -159,6 +164,22 @@ mod tests {
             err.contains("agent egress") || err.contains("blocked"),
             "{err}"
         );
+    }
+
+    #[test]
+    fn speculative_prefetch_is_denied() {
+        let broker =
+            NetworkBroker::with_policy(Box::new(NullTransport), NetworkPolicy::permissive(), 1);
+        let mut request = Request::get("https://example.test/").unwrap();
+        request.initiator = Initiator::Prefetch;
+        let err = broker
+            .fetch(FetchJob {
+                context: 1,
+                request,
+            })
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("speculative"), "{err}");
     }
 
     #[test]

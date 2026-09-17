@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 2285.0
+    "maxY": 2271.0
   },
   "frames": [
     {
@@ -34,462 +34,368 @@
   "elements": [
     {
       "ref": "r37",
-      "frame": "main",
       "tag": "input",
       "role": "searchbox",
       "name": "Search",
       "type": "search",
       "value": "",
-      "placeholder": "Search…",
-      "selector": {}
+      "placeholder": "Search…"
     },
     {
       "ref": "r38",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Search",
-      "type": "submit",
-      "selector": {}
+      "type": "submit"
     },
     {
       "ref": "r252",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Name",
       "type": "text",
       "value": "",
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r256",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Email (not published)",
       "type": "email",
       "value": "",
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r260",
-      "frame": "main",
       "tag": "textarea",
       "role": "textbox",
       "name": "Comment",
       "type": "textarea",
       "value": "",
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r263",
-      "frame": "main",
       "tag": "input",
       "role": "checkbox",
       "name": "Notify me of follow-up comments",
       "type": "checkbox",
       "checked": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r327",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Email",
       "type": "email",
       "value": "",
       "placeholder": "you@example.com",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r22",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Notes from the Engine Room",
-      "href": "https://fixtures.vector.test/",
-      "selector": {}
+      "href": "https://fixtures.vector.test/"
     },
     {
       "ref": "r25",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Home",
-      "href": "https://fixtures.vector.test/",
-      "selector": {}
+      "href": "https://fixtures.vector.test/"
     },
     {
       "ref": "r27",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Archive",
-      "href": "https://fixtures.vector.test/archive",
-      "selector": {}
+      "href": "https://fixtures.vector.test/archive"
     },
     {
       "ref": "r29",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "About",
-      "href": "https://fixtures.vector.test/about",
-      "selector": {}
+      "href": "https://fixtures.vector.test/about"
     },
     {
       "ref": "r31",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "RSS",
-      "href": "https://fixtures.vector.test/feed.xml",
-      "selector": {}
+      "href": "https://fixtures.vector.test/feed.xml"
     },
     {
       "ref": "r51",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Ada Example",
-      "href": "https://fixtures.vector.test/authors/ada",
-      "selector": {}
+      "href": "https://fixtures.vector.test/authors/ada"
     },
     {
       "ref": "r57",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "rust",
-      "href": "https://fixtures.vector.test/tag/rust",
-      "selector": {}
+      "href": "https://fixtures.vector.test/tag/rust"
     },
     {
       "ref": "r60",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "browsers",
-      "href": "https://fixtures.vector.test/tag/browsers",
-      "selector": {}
+      "href": "https://fixtures.vector.test/tag/browsers"
     },
     {
       "ref": "r63",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "performance",
-      "href": "https://fixtures.vector.test/tag/performance",
-      "selector": {}
+      "href": "https://fixtures.vector.test/tag/performance"
     },
     {
       "ref": "r66",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "agents",
-      "href": "https://fixtures.vector.test/tag/agents",
-      "selector": {}
+      "href": "https://fixtures.vector.test/tag/agents"
     },
     {
       "ref": "r69",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "design",
-      "href": "https://fixtures.vector.test/tag/design",
-      "selector": {}
+      "href": "https://fixtures.vector.test/tag/design"
     },
     {
       "ref": "r77",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "earlier post on readiness",
-      "href": "https://fixtures.vector.test/2026/06/readiness",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/06/readiness"
     },
     {
       "ref": "r279",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "More →",
-      "href": "https://fixtures.vector.test/about",
-      "selector": {}
+      "href": "https://fixtures.vector.test/about"
     },
     {
       "ref": "r286",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Post title number 1: Ut enim ad minim veniam, quis nostrud …",
-      "href": "https://fixtures.vector.test/2026/09/post-1",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/09/post-1"
     },
     {
       "ref": "r292",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Post title number 2: Duis aute irure dolor in reprehenderit…",
-      "href": "https://fixtures.vector.test/2026/08/post-2",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/08/post-2"
     },
     {
       "ref": "r298",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Post title number 3: Excepteur sint occaecat cupidatat non …",
-      "href": "https://fixtures.vector.test/2026/08/post-3",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/08/post-3"
     },
     {
       "ref": "r304",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Post title number 4: Lorem ipsum dolor sit amet, consectetu…",
-      "href": "https://fixtures.vector.test/2026/07/post-4",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/07/post-4"
     },
     {
       "ref": "r310",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Post title number 5: Ut enim ad minim veniam, quis nostrud …",
-      "href": "https://fixtures.vector.test/2026/07/post-5",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/07/post-5"
     },
     {
       "ref": "r316",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Post title number 6: Duis aute irure dolor in reprehenderit…",
-      "href": "https://fixtures.vector.test/2026/06/post-6",
-      "selector": {}
+      "href": "https://fixtures.vector.test/2026/06/post-6"
     },
     {
       "ref": "r18",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/blog-post.html#main",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r94",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "benchmark repository",
       "href": "https://github.com/vector-browser/bench",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r167",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Grace",
       "href": "https://fixtures.vector.test/authors/grace",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r170",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Linus",
       "href": "https://fixtures.vector.test/authors/linus",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r175",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Share on Twitter",
       "href": "https://twitter.com/intent/tweet?url=https://blog.example/2026/09/settled",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r178",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Share on HN",
       "href": "https://news.ycombinator.com/submitlink?u=https://blog.example/2026/09/settled",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r183",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "← Refs that survive",
       "href": "https://fixtures.vector.test/2026/08/refs",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r185",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Routing, deterministically →",
       "href": "https://fixtures.vector.test/2026/09/routing",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r198",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c1",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r202",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Reply",
       "href": "https://fixtures.vector.test/reply?c=1",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r211",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c2",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r215",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Reply",
       "href": "https://fixtures.vector.test/reply?c=2",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r224",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c3",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r228",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Reply",
       "href": "https://fixtures.vector.test/reply?c=3",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r237",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c4",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r241",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Reply",
       "href": "https://fixtures.vector.test/reply?c=4",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r268",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Post comment",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r328",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Subscribe",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r332",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Archive",
       "href": "https://fixtures.vector.test/archive",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r334",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Colophon",
       "href": "https://fixtures.vector.test/colophon",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r336",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "RSS",
       "href": "https://fixtures.vector.test/feed.xml",
-      "selector": {},
       "offscreen": true
     }
   ],

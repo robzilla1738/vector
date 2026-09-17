@@ -7,6 +7,7 @@
 
 mod http_serve;
 
+use std::collections::HashSet;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -52,9 +53,12 @@ struct Args {
     /// Walk testharness HTML under `--wpt-dir` in addition to the supported subset.
     #[arg(long)]
     tree: bool,
-    /// Cap on `--tree` tests (0 = no extra tree tests).
+    /// Cap on `--tree` tests (0 = unlimited).
     #[arg(long, default_value_t = 0)]
     tree_limit: usize,
+    /// Walk only this subdirectory of `--wpt-dir` (e.g. `html/dom`).
+    #[arg(long)]
+    tree_family: Option<String>,
     /// Reftest fonts directory (`Ahem.ttf`).
     #[arg(long, default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/fonts"))]
     fonts_dir: PathBuf,
@@ -117,6 +121,9 @@ struct Report {
     overall_manifest: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     http_origin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tree_family: Option<String>,
+    tree_complete: bool,
     fonts_dir: String,
     idlharness: bool,
     totals: Counts,
@@ -146,9 +153,20 @@ const TREE_SKIP: &[&str] = &[
     "conformance-checkers",
 ];
 
-fn collect_testharness_tree(root: &Path, limit: usize) -> Result<Vec<(String, PathBuf)>> {
+fn collect_testharness_tree(
+    root: &Path,
+    limit: usize,
+    family: Option<&str>,
+) -> Result<Vec<(String, PathBuf)>> {
     let mut out = Vec::new();
-    fn walk(dir: &Path, root: &Path, out: &mut Vec<(String, PathBuf)>, limit: usize) -> Result<()> {
+    let mut seen = HashSet::new();
+    fn walk(
+        dir: &Path,
+        root: &Path,
+        out: &mut Vec<(String, PathBuf)>,
+        seen: &mut HashSet<String>,
+        limit: usize,
+    ) -> Result<()> {
         if limit > 0 && out.len() >= limit {
             return Ok(());
         }
@@ -166,7 +184,7 @@ fn collect_testharness_tree(root: &Path, limit: usize) -> Result<Vec<(String, Pa
                 if TREE_SKIP.iter().any(|s| *s == name) {
                     continue;
                 }
-                walk(&path, root, out, limit)?;
+                walk(&path, root, out, seen, limit)?;
             } else {
                 let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
                 if ext.eq_ignore_ascii_case("html") || ext.eq_ignore_ascii_case("htm") {
@@ -179,14 +197,28 @@ fn collect_testharness_tree(root: &Path, limit: usize) -> Result<Vec<(String, Pa
                             .unwrap_or(&path)
                             .to_string_lossy()
                             .replace('\\', "/");
-                        out.push((rel, path));
+                        if seen.insert(rel.clone()) {
+                            out.push((rel, path));
+                        }
                     }
                 }
             }
         }
         Ok(())
     }
-    walk(root, root, &mut out, limit)?;
+    if let Some(fam) = family {
+        let dir = root.join(fam);
+        if dir.is_dir() {
+            walk(&dir, root, &mut out, &mut seen, limit)?;
+        }
+        return Ok(out);
+    }
+    // Official `html/dom` first so an uncapped walk still prefers that family.
+    let preferred = root.join("html").join("dom");
+    if preferred.is_dir() {
+        walk(&preferred, root, &mut out, &mut seen, limit)?;
+    }
+    walk(root, root, &mut out, &mut seen, limit)?;
     Ok(out)
 }
 
@@ -260,9 +292,36 @@ fn inject_upstream_testharness(html: &str) -> String {
         r#"<script src=/resources/webidl2.js></script>"#,
         r#"<script src="/resources/idlharness.js"></script>"#,
         r#"<script src=/resources/idlharness.js></script>"#,
+        r#"<script src="/resources/testdriver.js"></script>"#,
+        r#"<script src=/resources/testdriver.js></script>"#,
+        r#"<script src="/resources/testdriver-vendor.js"></script>"#,
+        r#"<script src=/resources/testdriver-vendor.js></script>"#,
     ] {
         body = body.replace(needle, "");
     }
+    let testdriver = if html.contains("testdriver.js") {
+        r#"
+<script>
+(function () {
+  window.test_driver_internal = window.test_driver_internal || {};
+  window.test_driver_internal.get_computed_label = function (el) {
+    try { return Promise.resolve((window.__veComputedLabel && window.__veComputedLabel(el)) || ""); }
+    catch (e) { return Promise.resolve(""); }
+  };
+  window.test_driver_internal.get_computed_role = function (el) {
+    try { return Promise.resolve((el && el.getAttribute && el.getAttribute("role")) || ""); }
+    catch (e) { return Promise.resolve(""); }
+  };
+  window.test_driver = window.test_driver || {};
+  window.test_driver.get_computed_label = window.test_driver_internal.get_computed_label;
+  window.test_driver.get_computed_role = window.test_driver_internal.get_computed_role;
+})();
+</script>
+"#
+        .to_string()
+    } else {
+        String::new()
+    };
     let report = r#"
 <script>
 (function () {
@@ -288,7 +347,7 @@ fn inject_upstream_testharness(html: &str) -> String {
         String::new()
     };
     format!(
-        "{doctype}<script>\ntry {{\n{th}\n}} catch (e) {{ window.__th_load_error = String((e && e.stack) || e); }}\n</script>\n{report}\n{idl}{rest}"
+        "{doctype}<script>\ntry {{\n{th}\n}} catch (e) {{ window.__th_load_error = String((e && e.stack) || e); }}\n</script>\n{report}\n{testdriver}{idl}{rest}"
     )
 }
 
@@ -325,7 +384,8 @@ fn run_script_test(
         allow_evaluate: true,
         ..OpenRequest::default()
     })?;
-    engine.page_mut(opened.page)?.settle(2_000);
+    let page = opened.page;
+    engine.page_mut(page)?.settle(2_000);
     let eval = r#"(function () {
         try { window.dispatchEvent(new Event("load")); } catch (e) {}
         try { if (typeof done === "function") done(); } catch (e) {}
@@ -358,7 +418,7 @@ fn run_script_test(
         out.push(["Worker", typeof Worker === "function"]);
         return JSON.stringify(out);
       })()"#;
-    match engine.page_mut(opened.page)?.evaluate(eval) {
+    let result = match engine.page_mut(page)?.evaluate(eval) {
         Ok(raw) => {
             let text = match &raw {
                 serde_json::Value::String(s) => s.clone(),
@@ -395,7 +455,9 @@ fn run_script_test(
             }
         }
         Err(e) => Ok((Status::Fail, Some(e.to_string()))),
-    }
+    };
+    engine.close(page);
+    result
 }
 
 fn run_pixel_test(
@@ -408,18 +470,22 @@ fn run_pixel_test(
         html: Some(html.into()),
         ..OpenRequest::default()
     })?;
-    let shot = engine.screenshot(opened.page, &ScreenshotOptions::default())?;
-    if shot.width == 0 || shot.height == 0 || shot.png.is_empty() {
-        return Ok((Status::Fail, Some("empty screenshot".into())));
-    }
-    if !shot.png.starts_with(&[0x89, b'P', b'N', b'G']) {
-        return Ok((Status::Fail, Some("not a PNG".into())));
-    }
-    let (w, h, rgba) = decode_png_rgba(&shot.png)?;
-    if let Some(err) = check_pixel_expectations(html, w, h, &rgba) {
-        return Ok((Status::Fail, Some(err)));
-    }
-    Ok((Status::Pass, Some(format!("{w}x{h}"))))
+    let page = opened.page;
+    let shot = engine.screenshot(page, &ScreenshotOptions::default())?;
+    let result = if shot.width == 0 || shot.height == 0 || shot.png.is_empty() {
+        Ok((Status::Fail, Some("empty screenshot".into())))
+    } else if !shot.png.starts_with(&[0x89, b'P', b'N', b'G']) {
+        Ok((Status::Fail, Some("not a PNG".into())))
+    } else {
+        let (w, h, rgba) = decode_png_rgba(&shot.png)?;
+        if let Some(err) = check_pixel_expectations(html, w, h, &rgba) {
+            Ok((Status::Fail, Some(err)))
+        } else {
+            Ok((Status::Pass, Some(format!("{w}x{h}"))))
+        }
+    };
+    engine.close(page);
+    result
 }
 
 fn decode_png_rgba(png: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
@@ -546,7 +612,8 @@ fn main() -> Result<()> {
         .collect();
     if args.tree {
         if let Some(wpt) = &args.wpt_dir {
-            let extra = collect_testharness_tree(wpt, args.tree_limit)?;
+            let extra =
+                collect_testharness_tree(wpt, args.tree_limit, args.tree_family.as_deref())?;
             for (rel, path) in extra {
                 if work.iter().any(|(r, _, _)| r == &rel) {
                     continue;
@@ -606,6 +673,8 @@ fn main() -> Result<()> {
         tested_subset: totals.pass + totals.fail + totals.timeout + totals.crash,
         overall_manifest: geometry + manifest.len(),
         http_origin: origin,
+        tree_family: args.tree_family.clone(),
+        tree_complete: args.tree && args.tree_limit == 0,
         fonts_dir: args.fonts_dir.display().to_string(),
         idlharness: resource_path("idlharness.js").exists(),
         totals,

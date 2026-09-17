@@ -13,6 +13,16 @@ describe("RefRegistry", () => {
     r.clear("p1"); // navigation → new epoch wipes refs
     expect(r.has("p1", "r1")).toBe(false);
   });
+
+  it("replaces the live set so a recycled ref cannot resolve to a prior object", () => {
+    const r = new RefRegistry();
+    r.register("p1", [{ ...el("r1"), tag: "button" }]);
+    const epoch1 = r.epoch("p1");
+    r.register("p1", [{ ...el("r1"), tag: "input" }]);
+    expect(r.resolve("p1", "r1")?.tag).toBe("input");
+    expect(r.resolve("p1", "r1", epoch1)).toBeUndefined();
+    expect(r.has("p1", "r2")).toBe(false);
+  });
 });
 
 describe("parseTarget", () => {

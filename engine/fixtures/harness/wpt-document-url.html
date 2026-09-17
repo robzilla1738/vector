@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<title>Document.URL</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  assert_equals(typeof document.URL, "string")
+  assert_true(document.URL.length > 0)
+  assert_equals(document.URL, document.documentURI || document.URL)
+}, "document.URL is the document's address")
+</script>

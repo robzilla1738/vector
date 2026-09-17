@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>matchMedia orientation and prefers</title>
+<body>
+<script>
+test(function () {
+  const land = matchMedia("(orientation: landscape)");
+  const port = matchMedia("(orientation: portrait)");
+  assert_equals(land.matches, innerWidth >= innerHeight);
+  assert_equals(port.matches, innerHeight > innerWidth);
+  assert_true(matchMedia("(prefers-reduced-motion: no-preference)").matches);
+  assert_false(matchMedia("(prefers-reduced-motion: reduce)").matches);
+  assert_true(matchMedia("(prefers-color-scheme: light)").matches);
+  assert_true(matchMedia("(min-width: 1px) and (max-width: 10000px)").matches);
+}, "matchMedia orientation and prefers-*");
+</script>

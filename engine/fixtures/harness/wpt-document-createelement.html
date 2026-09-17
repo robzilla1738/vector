@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<title>Document.createElement</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  assert_equals(el.nodeType, 1)
+  assert_equals(el.nodeName, "DIV")
+  assert_equals(el.localName || el.tagName.toLowerCase(), "div")
+  document.body.appendChild(el)
+  assert_equals(el.parentNode, document.body)
+}, "createElement returns an HTML element")
+</script>

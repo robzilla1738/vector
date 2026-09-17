@@ -117,6 +117,13 @@ anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
 winit = "0.30.12"
 softbuffer = "0.4.6"
+ed25519-dalek = { version = "2.1.1", default-features = false, features = ["std", "alloc"] }
+accesskit = "0.17.1"
+accesskit_winit = { version = "0.23.1", default-features = false, features = ["rwh_06"] }
+quinn = { version = "0.11.8", default-features = false, features = ["rustls-ring", "runtime-tokio"] }
+h3 = "0.0.8"
+h3-quinn = "0.0.10"
+rcgen = { version = "0.13.2", default-features = false, features = ["ring", "pem"] }
 
 [workspace.lints.rust]
 missing_docs = "warn"

@@ -201,6 +201,25 @@ describe("pages.open routing", () => {
     expect(chromium).toMatchObject({ code: "backend_unavailable" }); // no chrome attached in the harness
   });
 
+  it("always mode fails immediately when the engine is disconnected", async () => {
+    const repo = new Repo(openDb(":memory:"));
+    const events = new EventBus(repo);
+    const vector = fakeDriver({ backend: "vector" });
+    const engine = fakeDriver({ backend: "vector-engine" });
+    const router = new Router({ mode: () => "always", engineAvailable: () => false, store: new MemoryRouterStore() });
+    const pages = new PageService({
+      repo,
+      events,
+      native: new NullNativeBridge(),
+      drivers: () => ({ vector: vector.driver, chrome: null, engine: engine.driver }),
+      router,
+    });
+    const err = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true }).catch((e) => e);
+    expect(err).toMatchObject({ code: "backend_unavailable" });
+    expect(vector.calls).toEqual([]);
+    expect(engine.calls).toEqual([]);
+  });
+
   it("the needs-chromium table persists in the repo kv", () => {
     const repo = new Repo(openDb(":memory:"));
     repo.saveRouterTable([{ origin: "https://x.test", reason: "r", recordedAt: 1, expiresAt: Date.now() + 10_000 }]);
@@ -340,6 +359,58 @@ describe("engine execution path", () => {
     await expect(
       h.pages.execute({ pageId: page.pageId, steps: [{ id: "e", op: "evaluate", expression: "1" }] }, { allowEval: false }),
     ).rejects.toMatchObject({ code: "invalid_params" });
+  });
+});
+
+describe("native-only product identity", () => {
+  it("refuses Chromium even when chrome is requested", () => {
+    const r = new Router({
+      mode: () => "auto",
+      engineAvailable: () => false,
+      nativeOnly: () => true,
+      store: new MemoryRouterStore(),
+    });
+    const d = r.decide("https://a.test/", "chrome");
+    expect(d.backend).toBe("vector-engine");
+    expect(d.backendUnavailable).toBe(true);
+    expect(d.fallbackAllowed).toBe(false);
+    expect(r.isNativeOnly()).toBe(true);
+  });
+
+  it("does not open an Electron paint view for engine pages unless the hybrid opts in", async () => {
+    const created: string[] = [];
+    const native = shellNative();
+    native.createPage = async (opts) => {
+      created.push(String(opts.kind ?? ""));
+      return { ok: true as const };
+    };
+    const h = harness("auto", { execute: okResult }, native);
+    await h.pages.open({ url: "https://cnn.test/", background: false, ownedByRuntime: false });
+    expect(created).toEqual([]);
+  });
+
+  it("opens the Electron paint view only when the hybrid desktop asks", async () => {
+    const created: string[] = [];
+    const native = shellNative();
+    native.createPage = async (opts) => {
+      created.push(String(opts.kind ?? ""));
+      return { ok: true as const };
+    };
+    const repo = new Repo(openDb(":memory:"));
+    const events = new EventBus(repo);
+    const vector = fakeDriver({ backend: "vector" });
+    const engine = fakeDriver({ backend: "vector-engine", execute: okResult });
+    const router = new Router({ mode: () => "auto", engineAvailable: () => true, store: new MemoryRouterStore() });
+    const pages = new PageService({
+      repo,
+      events,
+      native,
+      drivers: () => ({ vector: vector.driver, chrome: null, engine: engine.driver }),
+      router,
+      electronEngineView: () => true,
+    });
+    await pages.open({ url: "https://cnn.test/", background: false, ownedByRuntime: false });
+    expect(created).toEqual(["engine"]);
   });
 });
 

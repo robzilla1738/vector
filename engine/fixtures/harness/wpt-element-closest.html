@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>Element.closest</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<div id="outer" class="wrap"><p id="inner" class="x"><span id="leaf">t</span></p></div>
+<script>
+test(function() {
+  var leaf = document.getElementById("leaf")
+  assert_equals(leaf.closest("span"), leaf)
+  assert_equals(leaf.closest("p.x"), document.getElementById("inner"))
+  assert_equals(leaf.closest("#outer"), document.getElementById("outer"))
+  assert_equals(leaf.closest("html"), document.documentElement)
+  assert_equals(leaf.closest("section"), null)
+}, "closest walks ancestors including the element")
+</script>

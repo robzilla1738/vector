@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<title>Selection and Range.comparePoint</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var t = document.createTextNode("abcd")
+  document.body.appendChild(t)
+  var r = document.createRange()
+  r.setStart(t, 1)
+  r.setEnd(t, 3)
+  assert_equals(r.comparePoint(t, 0), -1)
+  assert_equals(r.comparePoint(t, 2), 0)
+  assert_equals(r.comparePoint(t, 4), 1)
+  assert_true(r.isPointInRange(t, 2))
+  assert_true(r.intersectsNode(t))
+  var sel = window.getSelection()
+  sel.removeAllRanges()
+  sel.addRange(r)
+  assert_equals(sel.rangeCount, 1)
+  assert_equals(sel.toString(), "bc")
+  assert_equals(sel.getRangeAt(0), r)
+}, "Range.comparePoint and Selection.addRange")
+</script>

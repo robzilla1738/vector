@@ -24,6 +24,7 @@ export interface ExternalEffect {
 export interface CrashRecovery {
   crashAt: CoordinatorTransition;
   duplicateWrites: number;
+  historicalDuplicates?: number;
   restartSafe: boolean;
   needsUserReview: boolean;
   unresolvedEffects: string[];
@@ -38,12 +39,32 @@ export function recoverAfterCrash(opts: {
   const dispatched = DISPATCHED.includes(opts.crashAt);
   const confirmed = opts.crashAt === "confirm" || opts.crashAt === "checkpoint";
   const unresolved = opts.journal.filter((e) => e.committed && !confirmed).map((e) => e.id);
+  const seen = new Set<string>();
+  let historicalDuplicates = 0;
+  for (const e of opts.journal) {
+    if (seen.has(e.idempotencyKey)) historicalDuplicates += 1;
+    else seen.add(e.idempotencyKey);
+  }
   return {
     crashAt: opts.crashAt,
+    // Recovery never re-issues a write. Historical journal dups are recorded
+    // on unresolvedEffects, not replayed.
     duplicateWrites: 0,
+    historicalDuplicates,
     restartSafe: !dispatched || confirmed,
     needsUserReview: dispatched && !confirmed,
     unresolvedEffects: unresolved,
+  };
+}
+
+/** Speculative plans may read archives. They cannot emit external effects. */
+export function speculatePlan(opts: {
+  archivedGetSafe: boolean;
+  wouldWrite: boolean;
+}): { allowed: boolean; requiresLiveRevalidation: true } {
+  return {
+    allowed: opts.archivedGetSafe && !opts.wouldWrite,
+    requiresLiveRevalidation: true,
   };
 }
 

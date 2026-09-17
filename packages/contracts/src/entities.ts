@@ -101,6 +101,10 @@ export const RunSchema = z.object({
           recoveryStatus: z.string().optional(),
         })
         .optional(),
+      /** VEC-019 page-claimed grants that were ignored. */
+      ignoredPageGrants: z.array(z.string()).optional(),
+      /** VEC-017 last crash-recovery decision. */
+      lastCrashRecovery: z.record(z.string(), z.unknown()).optional(),
     })
     .optional(),
   statusMessage: z.string().optional(),

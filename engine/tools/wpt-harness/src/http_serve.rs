@@ -43,9 +43,10 @@ impl DirServer {
                             .trim_start_matches('/');
                         match resolve(&roots, rel) {
                             Some((file, mime)) => {
-                                if let Ok(bytes) = std::fs::read(file) {
+                                if let Ok(bytes) = std::fs::read(&file) {
+                                    let extra = sidecar_headers(&file);
                                     let header = format!(
-                                        "HTTP/1.1 200 OK\r\nContent-Type: {mime}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                                        "HTTP/1.1 200 OK\r\nContent-Type: {mime}\r\nContent-Length: {}\r\n{extra}Connection: close\r\n\r\n",
                                         bytes.len()
                                     );
                                     let _ = stream.write_all(header.as_bytes());
@@ -85,28 +86,51 @@ impl DirServer {
 }
 
 fn resolve(roots: &[(String, PathBuf)], rel: &str) -> Option<(PathBuf, &'static str)> {
-    let mut best: Option<(usize, &PathBuf, &str)> = None;
+    let mut candidates: Vec<(usize, PathBuf)> = Vec::new();
     for (prefix, root) in roots {
         let prefix = prefix.trim_matches('/');
         if prefix.is_empty() {
-            if best.is_none() {
-                best = Some((0, root, rel));
-            }
+            candidates.push((0, root.join(rel)));
             continue;
         }
         if rel == prefix {
-            return Some((root.clone(), mime(root)));
+            candidates.push((prefix.len(), root.clone()));
+            continue;
         }
         let pfx = format!("{prefix}/");
         if let Some(rest) = rel.strip_prefix(&pfx) {
-            if prefix.len() >= best.map_or(0, |(n, _, _)| n) {
-                best = Some((prefix.len(), root, rest));
-            }
+            candidates.push((prefix.len(), root.join(rest)));
         }
     }
-    let (_, root, rest) = best?;
-    let file = root.join(rest);
-    Some((file.clone(), mime(&file)))
+    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+    for (_, file) in candidates {
+        if file.is_file() {
+            return Some((file.clone(), mime(&file)));
+        }
+    }
+    None
+}
+
+fn sidecar_headers(file: &Path) -> String {
+    let sidecar = file.with_extension(format!(
+        "{}.headers",
+        file.extension().and_then(|e| e.to_str()).unwrap_or("")
+    ));
+    let Ok(text) = std::fs::read_to_string(&sidecar) else {
+        return String::new();
+    };
+    let mut out = String::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line.contains(':') {
+            out.push_str(line);
+            out.push_str("\r\n");
+        }
+    }
+    out
 }
 
 fn mime(path: &Path) -> &'static str {

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<title>Element.outerHTML</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  el.setAttribute("id", "x")
+  el.textContent = "hi"
+  assert_true(el.outerHTML.indexOf("<div") === 0)
+  assert_true(el.outerHTML.indexOf("hi") !== -1)
+  var host = document.createElement("section")
+  document.body.appendChild(host)
+  host.innerHTML = "<p id=n>a</p>"
+  host.firstChild.outerHTML = "<span>b</span>"
+  assert_equals(host.firstChild.nodeName, "SPAN")
+  assert_equals(host.textContent, "b")
+}, "outerHTML serializes and replaces the element")
+</script>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<title>HTMLElement.hidden</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  document.body.appendChild(el)
+  assert_false(el.hidden)
+  el.hidden = true
+  assert_true(el.hasAttribute("hidden"))
+  assert_true(el.hidden)
+  el.hidden = false
+  assert_false(el.hasAttribute("hidden"))
+}, "hidden reflects the hidden content attribute")
+</script>

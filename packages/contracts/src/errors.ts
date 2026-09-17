@@ -12,6 +12,7 @@ export type VectorErrorCode =
   | "model_output_invalid"
   | "needs_input"
   | "conflict"
+  | "permission_denied"
   | "assertion_failed"
   | "operation_not_found"
   | "internal";

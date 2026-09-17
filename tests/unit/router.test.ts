@@ -34,7 +34,12 @@ describe("Router.decide", () => {
     setMode("always");
     expect(router.decide("https://a.test/", undefined)).toMatchObject({ backend: "vector-engine", reason: "engine-always", fallbackAllowed: false });
     setEngine(false);
-    expect(router.decide("https://a.test/", undefined)).toMatchObject({ backend: "vector-engine", reason: "engine-unavailable", fallbackAllowed: false });
+    expect(router.decide("https://a.test/", undefined)).toMatchObject({
+      backend: "vector-engine",
+      reason: "engine-unavailable",
+      fallbackAllowed: false,
+      backendUnavailable: true,
+    });
     setEngine(true);
 
     setMode("auto");

@@ -32,6 +32,9 @@ pub struct WireRequest {
     pub initiator: Initiator,
     /// Background flag.
     pub background: bool,
+    /// Document origin for CORS.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<String>,
 }
 
 impl From<&Request> for WireRequest {
@@ -48,6 +51,7 @@ impl From<&Request> for WireRequest {
             page: request.page,
             initiator: request.initiator,
             background: request.background,
+            origin: request.origin.as_ref().map(Url::to_string),
         }
     }
 }
@@ -79,6 +83,7 @@ impl TryFrom<WireRequest> for Request {
             body,
             page: wire.page,
             initiator: wire.initiator,
+            origin: wire.origin.as_deref().map(Url::parse).transpose()?,
             background: wire.background,
         })
     }

@@ -4,6 +4,7 @@
 //! requires Test262 + embedding evidence that this backend improves a
 //! measured objective.
 
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -27,6 +28,17 @@ pub const FEATURE_MANIFEST: &[&str] = &[
     "object literals",
     "array literals",
     "property access",
+    "index access",
+    "modulo",
+    "bitwise & | ^",
+    "void",
+    "if",
+    "else",
+    "while",
+    "for",
+    "assignment",
+    "comma",
+    "var",
     "identifiers (env)",
 ];
 
@@ -86,15 +98,113 @@ pub fn eval_with(source: &str, env: &BTreeMap<String, Value>) -> Result<Value, V
     if src.is_empty() {
         return Ok(Value::Undefined);
     }
-    Evaluator { env }.eval_expr(src)
+    Evaluator {
+        env,
+        locals: RefCell::new(BTreeMap::new()),
+    }
+    .eval_expr(src)
 }
 
 struct Evaluator<'a> {
     env: &'a BTreeMap<String, Value>,
+    locals: RefCell<BTreeMap<String, Value>>,
 }
 
 impl Evaluator<'_> {
     fn eval_expr(&self, src: &str) -> Result<Value, VmError> {
+        let src = src.trim();
+        if src.is_empty() {
+            return Ok(Value::Undefined);
+        }
+        if let Some(rest) = src.strip_prefix("var ") {
+            return self.eval_expr(rest);
+        }
+        if let Some(rest) = src.strip_prefix("if") {
+            let rest = rest.trim_start();
+            if rest.starts_with('(')
+                && let Some(end) = matching_paren(rest)
+            {
+                let cond = &rest[1..end];
+                let body = rest[end + 1..].trim();
+                let (then_src, else_src) =
+                    split_else(body).map_or((body, None), |(t, e)| (t, Some(e)));
+                return if is_truthy(&self.eval_expr(cond)?) {
+                    self.eval_expr(then_src)
+                } else if let Some(e) = else_src {
+                    self.eval_expr(e)
+                } else {
+                    Ok(Value::Undefined)
+                };
+            }
+        }
+        if let Some(rest) = src.strip_prefix("while") {
+            let rest = rest.trim_start();
+            if rest.starts_with('(')
+                && let Some(end) = matching_paren(rest)
+            {
+                let cond = &rest[1..end];
+                let body = rest[end + 1..].trim();
+                let mut last = Value::Undefined;
+                let mut n = 0u32;
+                while is_truthy(&self.eval_expr(cond)?) {
+                    last = self.eval_expr(body)?;
+                    n += 1;
+                    if n > 10_000 {
+                        return Err(VmError::Unsupported("while iteration limit".into()));
+                    }
+                }
+                return Ok(last);
+            }
+        }
+        if let Some(rest) = src.strip_prefix("for") {
+            let rest = rest.trim_start();
+            if rest.starts_with('(')
+                && let Some(end) = matching_paren(rest)
+            {
+                let head = &rest[1..end];
+                let body = rest[end + 1..].trim();
+                let parts = split_top_all(head, ';');
+                if parts.len() == 3 {
+                    let (init, cond, step) = (parts[0], parts[1], parts[2]);
+                    if !init.is_empty() {
+                        self.eval_expr(init)?;
+                    }
+                    let mut last = Value::Undefined;
+                    let mut n = 0u32;
+                    loop {
+                        if !cond.is_empty() && !is_truthy(&self.eval_expr(cond)?) {
+                            break;
+                        }
+                        last = self.eval_expr(body)?;
+                        if !step.is_empty() {
+                            self.eval_expr(step)?;
+                        }
+                        n += 1;
+                        if n > 10_000 {
+                            return Err(VmError::Unsupported("for iteration limit".into()));
+                        }
+                    }
+                    return Ok(last);
+                }
+            }
+        }
+        if src.starts_with('{') && src.ends_with('}') && wrapping_braces(src) {
+            return self.parse_object(&src[1..src.len() - 1]);
+        }
+        if src.starts_with('[') && src.ends_with(']') && wrapping_brackets(src) {
+            return self.parse_array(&src[1..src.len() - 1]);
+        }
+        if let Some((l, r)) = split_top(src, ',') {
+            let _ = self.eval_expr(l)?;
+            return self.eval_expr(r);
+        }
+        if let Some((name, val)) = split_assignment(src)
+            && is_ident(name)
+        {
+            let v = self.eval_expr(val)?;
+            self.locals.borrow_mut().insert(name.to_owned(), v.clone());
+            return Ok(v);
+        }
         self.parse_ternary(src)
     }
 
@@ -167,6 +277,29 @@ impl Evaluator<'_> {
         if let Some((l, r)) = split_top(src, '>') {
             return num_cmp(self.parse_rel(l)?, self.parse_add(r)?, |a, b| a > b);
         }
+        self.parse_bit(src)
+    }
+
+    fn parse_bit(&self, src: &str) -> Result<Value, VmError> {
+        if let Some((l, r)) = split_top(src, '|') {
+            if !l.is_empty() && !l.trim_end().ends_with('|') && !r.starts_with('|') {
+                return num_bin(self.parse_bit(l)?, self.parse_add(r)?, |a, b| {
+                    (a as i64 | b as i64) as f64
+                });
+            }
+        }
+        if let Some((l, r)) = split_top(src, '^') {
+            return num_bin(self.parse_bit(l)?, self.parse_add(r)?, |a, b| {
+                (a as i64 ^ b as i64) as f64
+            });
+        }
+        if let Some((l, r)) = split_top(src, '&') {
+            if !l.is_empty() && !l.trim_end().ends_with('&') && !r.starts_with('&') {
+                return num_bin(self.parse_bit(l)?, self.parse_add(r)?, |a, b| {
+                    (a as i64 & b as i64) as f64
+                });
+            }
+        }
         self.parse_add(src)
     }
 
@@ -189,6 +322,9 @@ impl Evaluator<'_> {
         if let Some((l, r)) = split_top(src, '/') {
             return num_bin(self.parse_mul(l)?, self.parse_unary(r)?, |a, b| a / b);
         }
+        if let Some((l, r)) = split_top(src, '%') {
+            return num_bin(self.parse_mul(l)?, self.parse_unary(r)?, |a, b| a % b);
+        }
         self.parse_unary(src)
     }
 
@@ -197,6 +333,10 @@ impl Evaluator<'_> {
         if let Some(rest) = src.strip_prefix("typeof") {
             let rest = rest.trim_start();
             return Ok(Value::String(typeof_name(&self.eval_expr(rest)?).into()));
+        }
+        if let Some(rest) = src.strip_prefix("void") {
+            let _ = self.eval_expr(rest.trim_start())?;
+            return Ok(Value::Undefined);
         }
         if let Some(rest) = src.strip_prefix('!') {
             return Ok(Value::Bool(!is_truthy(&self.eval_expr(rest)?)));
@@ -211,6 +351,18 @@ impl Evaluator<'_> {
     }
 
     fn parse_member(&self, src: &str) -> Result<Value, VmError> {
+        if src.ends_with(']') {
+            if let Some(open) = last_index_open(src) {
+                if open == 0 && wrapping_brackets(src) {
+                    return self.parse_array(&src[1..src.len() - 1]);
+                }
+                if open > 0 {
+                    let obj = self.parse_member(&src[..open])?;
+                    let key = self.eval_expr(&src[open + 1..src.len() - 1])?;
+                    return index_prop(&obj, &key);
+                }
+            }
+        }
         if let Some((l, r)) = split_top(src, '.') {
             let r = r.trim();
             if is_ident(r) {
@@ -248,6 +400,9 @@ impl Evaluator<'_> {
             return Ok(Value::String(s));
         }
         if is_ident(src) {
+            if let Some(v) = self.locals.borrow().get(src).cloned() {
+                return Ok(v);
+            }
             return Ok(self.env.get(src).cloned().unwrap_or(Value::Undefined));
         }
         src.parse::<f64>()
@@ -273,12 +428,16 @@ impl Evaluator<'_> {
     fn parse_array(&self, body: &str) -> Result<Value, VmError> {
         let body = body.trim();
         let mut map = BTreeMap::new();
-        if !body.is_empty() {
-            for (i, part) in split_top_all(body, ',').into_iter().enumerate() {
-                map.insert(i.to_string(), self.eval_expr(part)?);
-            }
+        let parts: Vec<&str> = if body.is_empty() {
+            Vec::new()
+        } else {
+            split_top_all(body, ',')
+        };
+        let n = parts.len();
+        for (i, part) in parts.into_iter().enumerate() {
+            map.insert(i.to_string(), self.eval_expr(part)?);
         }
-        map.insert("length".into(), Value::Number(map.len() as f64));
+        map.insert("length".into(), Value::Number(n as f64));
         Ok(Value::Object(map))
     }
 }
@@ -296,8 +455,62 @@ fn typeof_name(v: &Value) -> &'static str {
 fn prop(obj: &Value, name: &str) -> Result<Value, VmError> {
     match obj {
         Value::Object(m) => Ok(m.get(name).cloned().unwrap_or(Value::Undefined)),
+        Value::String(s) if name == "length" => Ok(Value::Number(s.chars().count() as f64)),
         _ => Err(VmError::Unsupported(format!("property {name} on {obj:?}"))),
     }
+}
+
+fn index_prop(obj: &Value, key: &Value) -> Result<Value, VmError> {
+    let name = match key {
+        Value::Number(n) => {
+            if n.fract() == 0.0 {
+                (*n as i64).to_string()
+            } else {
+                n.to_string()
+            }
+        }
+        Value::String(s) => s.clone(),
+        other => return Err(VmError::Unsupported(format!("index {other:?}"))),
+    };
+    match obj {
+        Value::String(s) => {
+            let i: usize = name.parse().unwrap_or(usize::MAX);
+            Ok(s.chars()
+                .nth(i)
+                .map_or(Value::Undefined, |c| Value::String(c.to_string())))
+        }
+        other => prop(other, &name),
+    }
+}
+
+fn last_index_open(src: &str) -> Option<usize> {
+    let b = src.as_bytes();
+    if b.last() != Some(&b']') {
+        return None;
+    }
+    let mut depth = 0i32;
+    let mut quote = 0u8;
+    for i in (0..b.len()).rev() {
+        let c = b[i];
+        if quote != 0 {
+            if c == quote {
+                quote = 0;
+            }
+            continue;
+        }
+        match c {
+            b'"' | b'\'' => quote = c,
+            b']' => depth += 1,
+            b'[' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn is_ident(s: &str) -> bool {
@@ -394,8 +607,12 @@ pub fn eval_test262(source: &str) -> Result<(), VmError> {
         let (actual_src, expected_src) = split_top(rest, ',').ok_or_else(|| {
             VmError::Unsupported(format!("line {}: expected two arguments", i + 1))
         })?;
-        let actual = eval(actual_src)?;
-        let expected = eval(expected_src)?;
+        let actual = eval(actual_src).map_err(|e| {
+            VmError::Unsupported(format!("line {} actual `{actual_src}`: {e}", i + 1))
+        })?;
+        let expected = eval(expected_src).map_err(|e| {
+            VmError::Unsupported(format!("line {} expected `{expected_src}`: {e}", i + 1))
+        })?;
         if actual != expected {
             return Err(VmError::Unsupported(format!(
                 "line {}: {actual:?} != {expected:?}",
@@ -404,6 +621,118 @@ pub fn eval_test262(source: &str) -> Result<(), VmError> {
         }
     }
     Ok(())
+}
+
+fn is_ident_byte(c: u8) -> bool {
+    c == b'_' || c == b'$' || c.is_ascii_alphanumeric()
+}
+
+fn split_else(src: &str) -> Option<(&str, &str)> {
+    let bytes = src.as_bytes();
+    let mut depth = 0i32;
+    let mut braces = 0i32;
+    let mut brackets = 0i32;
+    let mut quote = 0u8;
+    let mut i = 0usize;
+    while i + 4 <= bytes.len() {
+        let c = bytes[i];
+        if quote != 0 {
+            if c == quote {
+                quote = 0;
+            }
+            i += 1;
+            continue;
+        }
+        match c {
+            b'"' | b'\'' => {
+                quote = c;
+                i += 1;
+                continue;
+            }
+            b'(' => depth += 1,
+            b')' => depth -= 1,
+            b'{' => braces += 1,
+            b'}' => braces -= 1,
+            b'[' => brackets += 1,
+            b']' => brackets -= 1,
+            _ => {}
+        }
+        if depth == 0
+            && braces == 0
+            && brackets == 0
+            && &bytes[i..i + 4] == b"else"
+            && (i == 0 || !is_ident_byte(bytes[i - 1]))
+            && (i + 4 == bytes.len() || !is_ident_byte(bytes[i + 4]))
+        {
+            return Some((src[..i].trim(), src[i + 4..].trim()));
+        }
+        i += 1;
+    }
+    None
+}
+
+fn split_assignment(src: &str) -> Option<(&str, &str)> {
+    let bytes = src.as_bytes();
+    let mut depth = 0i32;
+    let mut braces = 0i32;
+    let mut brackets = 0i32;
+    let mut quote = 0u8;
+    let mut last = None;
+    let mut i = 0usize;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if quote != 0 {
+            if c == quote {
+                quote = 0;
+            }
+            i += 1;
+            continue;
+        }
+        match c {
+            b'"' | b'\'' => {
+                quote = c;
+                i += 1;
+                continue;
+            }
+            b'(' => depth += 1,
+            b')' => depth -= 1,
+            b'{' => braces += 1,
+            b'}' => braces -= 1,
+            b'[' => brackets += 1,
+            b']' => brackets -= 1,
+            b'=' if depth == 0 && braces == 0 && brackets == 0 => {
+                let prev = if i > 0 { bytes[i - 1] } else { 0 };
+                let next = bytes.get(i + 1).copied().unwrap_or(0);
+                if prev != b'=' && prev != b'!' && prev != b'<' && prev != b'>' && next != b'=' {
+                    last = Some(i);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    last.map(|i| (src[..i].trim(), src[i + 1..].trim()))
+}
+
+fn matching_paren(src: &str) -> Option<usize> {
+    let b = src.as_bytes();
+    if b.first() != Some(&b'(') {
+        return None;
+    }
+    let mut depth = 0i32;
+    for (i, &c) in b.iter().enumerate() {
+        match c {
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn wrapping_parens(src: &str) -> bool {
@@ -596,7 +925,25 @@ mod tests {
         let obj = eval("{a: 1}").unwrap();
         assert_eq!(eval("({a: 1}).a").unwrap(), Value::Number(1.0));
         assert_eq!(eval("[1, 2].length").unwrap(), Value::Number(2.0));
+        assert_eq!(eval("[1, 2][0]").unwrap(), Value::Number(1.0));
+        assert_eq!(eval("10 % 3").unwrap(), Value::Number(1.0));
+        assert_eq!(eval("1 | 2").unwrap(), Value::Number(3.0));
+        assert_eq!(eval("void 1").unwrap(), Value::Undefined);
         assert_eq!(eval("[].length").unwrap(), Value::Number(0.0));
+        assert_eq!(eval("if (1) 4").unwrap(), Value::Number(4.0));
+        assert_eq!(eval("if (0) 4").unwrap(), Value::Undefined);
+        assert_eq!(eval("if (0) 1 else 2").unwrap(), Value::Number(2.0));
+        assert_eq!(eval("if (1) 2 else 3").unwrap(), Value::Number(2.0));
+        assert_eq!(eval("while (0) 9").unwrap(), Value::Undefined);
+        assert_eq!(
+            eval("(i = 0, while (i < 3) i = i + 1)").unwrap(),
+            Value::Number(3.0)
+        );
+        assert_eq!(
+            eval("for (i = 0; i < 3; i = i + 1) i").unwrap(),
+            Value::Number(2.0)
+        );
+        assert_eq!(eval("false || 1").unwrap(), Value::Number(1.0));
         assert!(matches!(obj, Value::Object(_)));
         assert!(eval("function(){}").is_err());
         let mut env = BTreeMap::new();

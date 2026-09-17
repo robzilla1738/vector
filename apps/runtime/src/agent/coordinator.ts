@@ -22,6 +22,9 @@ import { normalizePlannerObject } from "./gateway-client.js";
 import { EarlyDispatcher } from "./early-dispatch.js";
 import { PlanStreamParser } from "./plan-stream.js";
 import { buildFinalAnswerPrompt, buildPlannerPrompt, buildVisionPrompt, extractJson, FINAL_ANSWER_SYSTEM, PLANNER_SYSTEM, VISION_SYSTEM } from "./planner.js";
+import { compileSkill, tryReuseSkill, verifySkillPostconditions, type CompiledSkill } from "./skills.js";
+import { promptCannotGrant } from "./policy.js";
+import { recoverAfterCrash } from "./recovery.js";
 
 interface RunControl {
   abort: AbortController;
@@ -98,6 +101,18 @@ const OBSERVATION_BLIND_OPS = new Set(["evaluate", "extract", "collectScroll", "
 export class RunCoordinator {
   private controls = new Map<string, RunControl>();
   private answers = new Map<string, string>();
+  private skills: CompiledSkill[] = [];
+
+  /** Seed compiled skills (held-out reuse / tests). */
+  seedSkills(skills: CompiledSkill[]) {
+    this.skills = [...skills];
+  }
+
+  /** Skills compiled from successful chunks. */
+  compiledSkills(): readonly CompiledSkill[] {
+    return this.skills;
+  }
+  private unresolvedByRun = new Map<string, string[]>();
 
   constructor(private deps: CoordinatorDeps) {}
 
@@ -214,9 +229,10 @@ export class RunCoordinator {
   }
 
   private persistCheckpoint(run: Run) {
+    const unresolvedEffects = this.unresolvedByRun.get(run.runId) ?? [];
     const checkpoint = {
       planBoundary: run.status,
-      unresolvedEffects: [] as string[],
+      unresolvedEffects,
       pageIdentity: { pageIds: run.pageIds },
       authorizationScope: run.pageIds,
       recoveryStatus: run.status,
@@ -294,6 +310,25 @@ export class RunCoordinator {
       );
     }
 
+    const prior = run.config?.checkpoint as { unresolvedEffects?: string[] } | undefined;
+    if (prior?.unresolvedEffects?.length) {
+      const recovery = recoverAfterCrash({
+        crashAt: "dispatch",
+        journal: prior.unresolvedEffects.map((id) => ({ id, idempotencyKey: id, committed: true })),
+      });
+      run.config = { ...(run.config ?? {}), lastCrashRecovery: recovery as unknown as Record<string, unknown> };
+      this.deps.repo.saveRun(run);
+      if (recovery.needsUserReview) {
+        this.finish(
+          runId,
+          "partially_completed",
+          undefined,
+          "Uncertain dispatched effects need review after crash",
+          "Needs review — already-dispatched writes were not retried",
+        );
+        return;
+      }
+    }
     this.setStatus(runId, "planning", "Planning");
     const startedAt = Date.now();
     this.deps.repo.saveRun({ ...this.get(runId), startedAt });
@@ -550,8 +585,19 @@ export class RunCoordinator {
         const thinObs = obs.content.elements.length === 0 && obs.content.text.trim().length < 80;
         let plan: PlanChunk;
         let visionPlanned = false;
+        const claimedGrants = promptCannotGrant(`${obs.content.title}\n${obs.content.text}`, []);
+        if (claimedGrants.length) {
+          run.config = { ...(run.config ?? {}), ignoredPageGrants: claimedGrants };
+        }
+        const reuse = tryReuseSkill(this.skills, run.goal, obs.content, obs.content.url);
         try {
-          if ((visionPending || thinObs) && !visionUsed) {
+          if ("skill" in reuse && !lastError && !visionPending && !thinObs) {
+            plan = {
+              status: "continue",
+              message: `reusing skill ${reuse.skill.id}`,
+              steps: reuse.skill.program.steps as PlanChunk["steps"],
+            };
+          } else if ((visionPending || thinObs) && !visionUsed) {
             visionUsed = true;
             visionPending = false;
             const visionId = this.deps.visionModel?.();
@@ -726,6 +772,50 @@ export class RunCoordinator {
         repeatNudge = undefined;
         lastActionFailed = false;
         repairCount = 0;
+        this.unresolvedByRun.set(
+          runId,
+          outcomes
+            .filter(
+              (o) =>
+                o.receipt?.uncertain === true ||
+                o.receipt?.dispatchedBeforeTakeover === true ||
+                o.effect === "uncertain" ||
+                o.effect === "dispatched",
+            )
+            .map((o) => o.stepId),
+        );
+        this.persistCheckpoint(this.get(runId));
+        if ("skill" in reuse && result.status !== "failed" && result.status !== "cancelled") {
+          const after = carriedObs ?? (await this.deps.pages.observe(activePageId!, {}));
+          if (!verifySkillPostconditions(reuse.skill, after.content, after.content.url)) {
+            lastError = `skill ${reuse.skill.id} postconditions failed`;
+            lastActionFailed = true;
+          }
+        }
+        if (result.status !== "failed" && result.status !== "cancelled" && plan.steps?.length && !("skill" in reuse)) {
+          try {
+            const origin = new URL(obs.content.url).origin;
+            const named = obs.content.elements
+              .filter((e) => e.role && e.name)
+              .slice(0, 2)
+              .map((e) => ({ role: e.role, nameIncludes: (e.name ?? "").slice(0, 40) }));
+            if (this.skills.length < 32 && named.length > 0) {
+              this.skills.push(
+                compileSkill({
+                  id: `${runId}:${this.skills.length}`,
+                  goalPattern: run.goal.slice(0, 64),
+                  pageId: activePageId!,
+                  steps: plan.steps,
+                  preconditions: [{ urlIncludes: origin }, ...named],
+                  postconditions: [{ urlIncludes: origin }],
+                  evidence: `compiled from a successful chunk on ${origin}`,
+                }),
+              );
+            }
+          } catch {
+            /* invalid page URL — skip skill compile */
+          }
+        }
 
         if (result.status === "cancelled") return;
         if (result.status === "failed") {

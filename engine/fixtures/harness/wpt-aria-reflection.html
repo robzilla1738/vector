@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<meta charset=utf-8>
+<title>ARIA string reflection</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<div id="role" role="button"></div>
+<div id="label" aria-label="x"></div>
+<script>
+function testNullable(element, jsAttr, contentAttr) {
+  var originalValue = element[jsAttr];
+  assert_false(originalValue === null);
+  element[jsAttr] = null;
+  assert_equals(element[jsAttr], null);
+  assert_false(element.hasAttribute(contentAttr));
+  element[jsAttr] = originalValue;
+  element[jsAttr] = undefined;
+  assert_equals(element[jsAttr], null);
+  assert_false(element.hasAttribute(contentAttr));
+}
+
+test(function() {
+  var element = document.getElementById("role");
+  assert_equals(element.role, "button");
+  element.role = "checkbox";
+  assert_equals(element.getAttribute("role"), "checkbox");
+  testNullable(element, "role", "role");
+}, "role attribute reflects.");
+
+test(function() {
+  var element = document.getElementById("label");
+  assert_equals(element.ariaLabel, "x");
+  element.ariaLabel = "y";
+  assert_equals(element.getAttribute("aria-label"), "y");
+  testNullable(element, "ariaLabel", "aria-label");
+}, "aria-label attribute reflects.");
+</script>

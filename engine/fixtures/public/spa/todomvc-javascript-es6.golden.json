@@ -25,59 +25,47 @@
   "elements": [
     {
       "ref": "r19",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "What needs to be done?",
       "type": "text",
       "value": "",
-      "placeholder": "What needs to be done?",
-      "selector": {}
+      "placeholder": "What needs to be done?"
     },
     {
       "ref": "r39",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Clear completed",
-      "type": "submit",
-      "selector": {}
+      "type": "submit"
     },
     {
       "ref": "r31",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "All",
-      "href": "https://todomvc.com/examples/javascript-es6/dist/#/",
-      "selector": {}
+      "href": "https://todomvc.com/examples/javascript-es6/dist/#/"
     },
     {
       "ref": "r34",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Active",
-      "href": "https://todomvc.com/examples/javascript-es6/dist/#/active",
-      "selector": {}
+      "href": "https://todomvc.com/examples/javascript-es6/dist/#/active"
     },
     {
       "ref": "r37",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Completed",
-      "href": "https://todomvc.com/examples/javascript-es6/dist/#/completed",
-      "selector": {}
+      "href": "https://todomvc.com/examples/javascript-es6/dist/#/completed"
     },
     {
       "ref": "r48",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [

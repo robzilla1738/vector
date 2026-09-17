@@ -25,21 +25,17 @@
   "elements": [
     {
       "ref": "r43",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "todos",
-      "href": "https://todomvc.com/examples/web-components/dist/#",
-      "selector": {}
+      "href": "https://todomvc.com/examples/web-components/dist/#"
     },
     {
       "ref": "r60",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [],

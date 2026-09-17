@@ -23,12 +23,10 @@
   "elements": [
     {
       "ref": "r36",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [],

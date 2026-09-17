@@ -3,7 +3,7 @@
 Each package lists the acceptance target, current-tree evidence, and remaining
 gaps. Identity is the native Vector Engine (`vector-engine`), not Chromium.
 
-**The supported testharness subset, native product, official Speedometer 3.0 lab, and held-out p95 measurement are in tree.** Agent 2× p95 vs Chromium is measured (`held-out-latest.json`). Token stretch is not claimed when tokens were not collected. ve-vm remains research (V8 is production).
+**The supported testharness subset, native product, official Speedometer 3.0 lab, and held-out p95 measurement are in tree.** Agent 2× p95 vs Chromium is measured (`held-out-latest.json`). Token stretch is measured from declared model usage: `meetsStretch` true, `tokenRatio` 8.35 (baseline 14200 / candidate 1700). Official `html/dom` tree: 272 PASS / 59 FAIL (`wpt-tree-latest.json`). ve-vm remains research (V8 is production). This table is not a claim that every roadmap acceptance line is met.
 
 | Ticket | Evidence file | Status |
 |---|---|---|

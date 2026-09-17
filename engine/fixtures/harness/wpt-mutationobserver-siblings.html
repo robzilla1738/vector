@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<title>MutationRecord previousSibling and nextSibling</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var p = document.createElement("div")
+  var a = document.createElement("a")
+  var b = document.createElement("b")
+  document.body.appendChild(p)
+  p.appendChild(a)
+  var mo = new MutationObserver(function() {})
+  mo.observe(p, { childList: true })
+  p.insertBefore(b, a)
+  var recs = mo.takeRecords()
+  assert_equals(recs.length, 1)
+  assert_equals(recs[0].previousSibling, null)
+  assert_equals(recs[0].nextSibling, a)
+}, "childList insert records the surrounding siblings")
+</script>

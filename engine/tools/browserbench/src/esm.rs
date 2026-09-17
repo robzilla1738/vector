@@ -239,7 +239,7 @@ fn parse_named(chars: &[char], start: usize) -> Option<(Vec<(String, String)>, u
 }
 
 fn rewrite_exports(body: &str) -> String {
-    let mut s = body.to_string();
+    let mut s = body.replace("export{", "export {");
     s = s.replace("export default ", "exports.default = ");
     let mut extras = String::new();
     for prefix in [
@@ -430,5 +430,6 @@ export default template;
         assert_eq!(imports[0].default.as_deref(), Some("template"));
         assert_eq!(imports[1].named[0].0, "useRouter");
         assert!(rewrite_exports(&body).contains("exports.default = template"));
+        assert!(rewrite_exports("export{Rt as TodoApp};").contains("exports.TodoApp = Rt"));
     }
 }

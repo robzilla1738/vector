@@ -26,6 +26,7 @@
 mod dom;
 pub mod executor;
 pub mod forms;
+mod idl;
 pub mod keys;
 pub mod page;
 pub mod regex_lite;
@@ -33,6 +34,7 @@ pub mod routing;
 pub mod screenshot;
 pub mod scripting;
 pub mod steps;
+mod sw_realm;
 pub mod target;
 
 pub use executor::{ExecuteRequest, ExecuteResult};

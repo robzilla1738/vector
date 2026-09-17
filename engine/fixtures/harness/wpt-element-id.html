@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>Element.id</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  el.id = "one"
+  document.body.appendChild(el)
+  assert_equals(document.getElementById("one"), el)
+  el.id = "two"
+  assert_equals(document.getElementById("two"), el)
+  assert_equals(document.getElementById("one"), null)
+}, "id attribute is reflected and indexed")
+</script>

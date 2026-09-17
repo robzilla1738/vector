@@ -25,32 +25,26 @@
   "elements": [
     {
       "ref": "r37",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "What needs to be done?",
       "type": "text",
       "value": "",
-      "placeholder": "What needs to be done?",
-      "selector": {}
+      "placeholder": "What needs to be done?"
     },
     {
       "ref": "r63",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Sindre Sorhus",
-      "href": "http://sindresorhus.com/",
-      "selector": {}
+      "href": "http://sindresorhus.com/"
     },
     {
       "ref": "r71",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [

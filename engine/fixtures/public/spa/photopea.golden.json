@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 2175.7002
+    "maxY": 2145.7002
   },
   "frames": [
     {
@@ -43,167 +43,133 @@
   "elements": [
     {
       "ref": "r207",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Start using Photopea",
-      "type": "submit",
-      "selector": {}
+      "type": "submit"
     },
     {
       "ref": "r183",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Learn",
-      "href": "https://www.photopea.com/learn",
-      "selector": {}
+      "href": "https://www.photopea.com/learn"
     },
     {
       "ref": "r186",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Tutorials",
-      "href": "https://www.photopea.com/tuts",
-      "selector": {}
+      "href": "https://www.photopea.com/tuts"
     },
     {
       "ref": "r189",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Templates",
-      "href": "https://www.photopea.com/templates",
-      "selector": {}
+      "href": "https://www.photopea.com/templates"
     },
     {
       "ref": "r192",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "API",
-      "href": "https://www.photopea.com/api",
-      "selector": {}
+      "href": "https://www.photopea.com/api"
     },
     {
       "ref": "r245",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Start using Photopea",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r271",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "40 other formats",
       "href": "https://github.com/photopea/photopea?tab=readme-ov-file#supported-formats",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r281",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Start using Photopea",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r309",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Remove background with one click",
       "href": "https://x.com/photopeacom/status/1735723561950539852/video/1",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r312",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "replace any part of an image",
       "href": "https://x.com/photopeacom/status/1661425407944425494/video/1",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r334",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Start using Photopea",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r370",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Start using Photopea",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r382",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "support@photopea.com",
       "href": "mailto:support@photopea.com",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r385",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Privacy Policy",
       "href": "https://www.photopea.com/privacy.html",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r388",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Twitter",
       "href": "https://x.com/photopeacom",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r391",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Facebook",
       "href": "https://facebook.com/photopea/",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r394",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Reddit",
       "href": "https://reddit.com/r/photopea/",
-      "selector": {},
       "offscreen": true
     }
   ],

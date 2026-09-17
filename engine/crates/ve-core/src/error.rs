@@ -216,7 +216,15 @@ impl Error {
 
     /// `capability_unsupported`.
     pub fn capability_unsupported(message: impl Into<String>) -> Self {
-        Self::coded(ErrorCode::CapabilityUnsupported, message)
+        let message = message.into();
+        Self::coded_with(
+            ErrorCode::CapabilityUnsupported,
+            message.clone(),
+            serde_json::json!({
+                "op": message,
+                "engine": crate::VERSION,
+            }),
+        )
     }
 
     /// `internal`.
@@ -331,5 +339,8 @@ mod tests {
         assert_eq!(json["error"]["detail"]["candidates"][1], "r2");
         let plain = Error::not_found("nope").to_json();
         assert!(plain["error"].get("detail").is_none());
+        let unsupported = Error::capability_unsupported("xpath").to_json();
+        assert_eq!(unsupported["error"]["detail"]["op"], "xpath");
+        assert_eq!(unsupported["error"]["detail"]["engine"], crate::VERSION);
     }
 }

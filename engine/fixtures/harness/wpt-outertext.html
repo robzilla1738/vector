@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<meta charset=utf-8>
+<title>outerText setter</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<p>keep <span id="s">me</span> please</p>
+<div id="container"></div>
+<script>
+test(function() {
+  var s = document.getElementById("s");
+  var parent = s.parentNode;
+  s.outerText = "replaced";
+  assert_true(parent.textContent.indexOf("replaced") >= 0);
+  assert_equals(document.getElementById("s"), null);
+}, "outerText setter replaces the node");
+
+test(function() {
+  var container = document.getElementById("container");
+  container.append("A", document.createElement("span"), "C");
+  container.childNodes[1].outerText = "B";
+  assert_equals(container.textContent, "ABC");
+  assert_equals(container.childNodes.length, 1);
+}, "outerText merges with adjacent text nodes");
+
+test(function() {
+  assert_throws_dom("NoModificationAllowedError", function() {
+    document.createElement("span").outerText = "";
+  });
+}, "detached outerText throws");
+</script>

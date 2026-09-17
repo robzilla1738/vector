@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 2801.0
+    "maxY": 2794.0
   },
   "frames": [
     {
@@ -37,902 +37,720 @@
   "elements": [
     {
       "ref": "r37",
-      "frame": "main",
       "tag": "input",
       "role": "searchbox",
       "name": "Search",
       "type": "search",
       "value": "",
-      "placeholder": "Search…",
-      "selector": {}
+      "placeholder": "Search…"
     },
     {
       "ref": "r38",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Search",
-      "type": "submit",
-      "selector": {}
+      "type": "submit"
     },
     {
       "ref": "r22",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Encyclopedia",
-      "href": "https://fixtures.vector.test/",
-      "selector": {}
+      "href": "https://fixtures.vector.test/"
     },
     {
       "ref": "r25",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Main page",
-      "href": "https://fixtures.vector.test/wiki/Main_Page",
-      "selector": {}
+      "href": "https://fixtures.vector.test/wiki/Main_Page"
     },
     {
       "ref": "r27",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Contents",
-      "href": "https://fixtures.vector.test/wiki/Contents",
-      "selector": {}
+      "href": "https://fixtures.vector.test/wiki/Contents"
     },
     {
       "ref": "r29",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Random",
-      "href": "https://fixtures.vector.test/wiki/Special:Random",
-      "selector": {}
+      "href": "https://fixtures.vector.test/wiki/Special:Random"
     },
     {
       "ref": "r31",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Donate",
-      "href": "https://fixtures.vector.test/donate",
-      "selector": {}
+      "href": "https://fixtures.vector.test/donate"
     },
     {
       "ref": "r49",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "View history",
-      "href": "https://fixtures.vector.test/wiki/Fixtureville?action=history",
-      "selector": {}
+      "href": "https://fixtures.vector.test/wiki/Fixtureville?action=history"
     },
     {
       "ref": "r52",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Talk",
-      "href": "https://fixtures.vector.test/wiki/Talk:Fixtureville",
-      "selector": {}
+      "href": "https://fixtures.vector.test/wiki/Talk:Fixtureville"
     },
     {
       "ref": "r103",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Exampleland",
-      "href": "https://fixtures.vector.test/wiki/Exampleland",
-      "selector": {}
+      "href": "https://fixtures.vector.test/wiki/Exampleland"
     },
     {
       "ref": "r106",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Northern Plateau",
-      "href": "https://fixtures.vector.test/wiki/Northern_Plateau",
-      "selector": {}
+      "href": "https://fixtures.vector.test/wiki/Northern_Plateau"
     },
     {
       "ref": "r417",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "What links here",
-      "href": "https://fixtures.vector.test/wiki/Special:WhatLinksHere/Fixtureville",
-      "selector": {}
+      "href": "https://fixtures.vector.test/wiki/Special:WhatLinksHere/Fixtureville"
     },
     {
       "ref": "r18",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/wiki-article.html#main",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r98",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "city.example",
       "href": "https://www.city.example/",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r115",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "1 Etymology",
       "href": "https://fixtures.vector.test/wiki-article.html#s0",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r118",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "2 History",
       "href": "https://fixtures.vector.test/wiki-article.html#s1",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r121",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "3 Geography",
       "href": "https://fixtures.vector.test/wiki-article.html#s2",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r124",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "4 Economy",
       "href": "https://fixtures.vector.test/wiki-article.html#s3",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r127",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "5 Culture",
       "href": "https://fixtures.vector.test/wiki-article.html#s4",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r130",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "6 Notable people",
       "href": "https://fixtures.vector.test/wiki-article.html#s5",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r133",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "7 See also",
       "href": "https://fixtures.vector.test/wiki-article.html#s6",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r136",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "8 References",
       "href": "https://fixtures.vector.test/wiki-article.html#s7",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r142",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=0",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r146",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 1",
       "href": "https://fixtures.vector.test/wiki/Topic_1",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r149",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 2",
       "href": "https://fixtures.vector.test/wiki/Topic_2",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r152",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 3",
       "href": "https://fixtures.vector.test/wiki/Topic_3",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r156",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[1]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref0",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r159",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[2]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref1",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r164",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=1",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r168",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 4",
       "href": "https://fixtures.vector.test/wiki/Topic_4",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r171",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 5",
       "href": "https://fixtures.vector.test/wiki/Topic_5",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r174",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 6",
       "href": "https://fixtures.vector.test/wiki/Topic_6",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r178",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[3]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref2",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r181",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[4]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref3",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r194",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=2",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r198",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 7",
       "href": "https://fixtures.vector.test/wiki/Topic_7",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r201",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 8",
       "href": "https://fixtures.vector.test/wiki/Topic_8",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r204",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 9",
       "href": "https://fixtures.vector.test/wiki/Topic_9",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r208",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[5]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref4",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r211",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[6]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref5",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r216",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=3",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r220",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 10",
       "href": "https://fixtures.vector.test/wiki/Topic_10",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r223",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 11",
       "href": "https://fixtures.vector.test/wiki/Topic_11",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r226",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 12",
       "href": "https://fixtures.vector.test/wiki/Topic_12",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r230",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[7]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref6",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r233",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[8]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref7",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r238",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=4",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r242",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 13",
       "href": "https://fixtures.vector.test/wiki/Topic_13",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r245",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 14",
       "href": "https://fixtures.vector.test/wiki/Topic_14",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r248",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 15",
       "href": "https://fixtures.vector.test/wiki/Topic_15",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r252",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[9]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref8",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r255",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[10]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref9",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r260",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[edit]",
       "href": "https://fixtures.vector.test/edit?section=5",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r264",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 16",
       "href": "https://fixtures.vector.test/wiki/Topic_16",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r267",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 17",
       "href": "https://fixtures.vector.test/wiki/Topic_17",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r270",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Topic 18",
       "href": "https://fixtures.vector.test/wiki/Topic_18",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r274",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[11]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref10",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r277",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "[12]",
       "href": "https://fixtures.vector.test/wiki-article.html#ref11",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r284",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Related article 1",
       "href": "https://fixtures.vector.test/wiki/Related_1",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r287",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Related article 2",
       "href": "https://fixtures.vector.test/wiki/Related_2",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r290",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Related article 3",
       "href": "https://fixtures.vector.test/wiki/Related_3",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r293",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Related article 4",
       "href": "https://fixtures.vector.test/wiki/Related_4",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r296",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Related article 5",
       "href": "https://fixtures.vector.test/wiki/Related_5",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r299",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Related article 6",
       "href": "https://fixtures.vector.test/wiki/Related_6",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r302",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Related article 7",
       "href": "https://fixtures.vector.test/wiki/Related_7",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r305",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Related article 8",
       "href": "https://fixtures.vector.test/wiki/Related_8",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r316",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/1",
       "href": "https://doi.example/10.1000/1",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r324",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/2",
       "href": "https://doi.example/10.1000/2",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r332",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/3",
       "href": "https://doi.example/10.1000/3",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r340",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/4",
       "href": "https://doi.example/10.1000/4",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r348",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/5",
       "href": "https://doi.example/10.1000/5",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r356",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/6",
       "href": "https://doi.example/10.1000/6",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r364",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/7",
       "href": "https://doi.example/10.1000/7",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r372",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/8",
       "href": "https://doi.example/10.1000/8",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r380",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/9",
       "href": "https://doi.example/10.1000/9",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r388",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/10",
       "href": "https://doi.example/10.1000/10",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r396",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/11",
       "href": "https://doi.example/10.1000/11",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r404",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "doi:10.1000/12",
       "href": "https://doi.example/10.1000/12",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r420",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Related changes",
       "href": "https://fixtures.vector.test/wiki/Special:RecentChangesLinked/Fixtureville",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r423",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Cite this page",
       "href": "https://fixtures.vector.test/wiki/Special:Cite?page=Fixtureville",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r426",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Printable version",
       "href": "https://fixtures.vector.test/w/index.php?title=Fixtureville&printable=yes",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r433",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Deutsch",
       "href": "https://de.encyclopedia.test/wiki/Fixtureville",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r436",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Español",
       "href": "https://es.encyclopedia.test/wiki/Fixtureville",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r439",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Français",
       "href": "https://fr.encyclopedia.test/wiki/Fixtureville",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r442",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Italiano",
       "href": "https://it.encyclopedia.test/wiki/Fixtureville",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r445",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "日本語",
       "href": "https://ja.encyclopedia.test/wiki/Fixtureville",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r448",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Português",
       "href": "https://pt.encyclopedia.test/wiki/Fixtureville",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r452",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "About",
       "href": "https://fixtures.vector.test/wiki/About",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r454",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Disclaimers",
       "href": "https://fixtures.vector.test/wiki/Disclaimers",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r456",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Mobile view",
       "href": "https://fixtures.vector.test/m/",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r458",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Privacy policy",
       "href": "https://fixtures.vector.test/wiki/Privacy",
-      "selector": {},
       "offscreen": true
     }
   ],

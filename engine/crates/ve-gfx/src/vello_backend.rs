@@ -32,6 +32,68 @@ fn color(c: ve_style::Rgba) -> Color {
     Color::from_rgba8(c.r, c.g, c.b, (c.a * 255.0).round() as u8)
 }
 
+fn is_lost_device(err: &GfxError) -> bool {
+    let GfxError::Gpu(s) = err else {
+        return false;
+    };
+    let s = s.to_ascii_lowercase();
+    s.contains("lost") || s.contains("destroyed")
+}
+
+fn readback_texture(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+) -> Result<Frame, GfxError> {
+    let size = wgpu::Extent3d {
+        width,
+        height,
+        depth_or_array_layers: 1,
+    };
+    let bytes_per_row = (width * 4).div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT)
+        * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("ve-gfx readback"),
+        size: u64::from(bytes_per_row) * u64::from(height),
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("ve-gfx readback"),
+    });
+    encoder.copy_texture_to_buffer(
+        texture.as_image_copy(),
+        wgpu::TexelCopyBufferInfo {
+            buffer: &buffer,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(bytes_per_row),
+                rows_per_image: None,
+            },
+        },
+        size,
+    );
+    queue.submit(Some(encoder.finish()));
+    buffer.map_async(wgpu::MapMode::Read, .., |_| {});
+    device
+        .poll(wgpu::PollType::wait_indefinitely())
+        .map_err(|e| GfxError::Gpu(e.to_string()))?;
+    let mapped = buffer.get_mapped_range(..);
+    let mut rgba = Vec::with_capacity((width as usize) * (height as usize) * 4);
+    for row in mapped.chunks(bytes_per_row as usize) {
+        rgba.extend_from_slice(&row[..(width * 4) as usize]);
+    }
+    drop(mapped);
+    buffer.unmap();
+    Ok(Frame {
+        width,
+        height,
+        rgba,
+    })
+}
+
 /// Converts a display list into a vello scene (no GPU needed).
 #[must_use]
 pub fn build_scene(list: &DisplayList, scale: f32) -> Scene {
@@ -241,6 +303,8 @@ pub struct VelloRenderer {
     renderer: vello::Renderer,
     /// Glyph rasteriser used when encoding text.
     pub fonts: FontSystem,
+    present_target: Option<(u32, u32, wgpu::Texture)>,
+    cached_scene: Option<Scene>,
 }
 
 impl std::fmt::Debug for VelloRenderer {
@@ -296,7 +360,15 @@ impl VelloRenderer {
             queue,
             renderer,
             fonts: FontSystem::new(),
+            present_target: None,
+            cached_scene: None,
         })
+    }
+
+    /// wgpu device used for surface configuration.
+    #[must_use]
+    pub fn device(&self) -> &wgpu::Device {
+        &self.device
     }
 
     /// Renders a scene to an RGBA8 texture and reads it back.
@@ -395,7 +467,57 @@ impl VelloRenderer {
             .map_err(|e| GfxError::Gpu(e.to_string()))
     }
 
+    fn create_present_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
+        device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ve-gfx present target"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        })
+    }
+
+    fn present_to_cached(
+        &mut self,
+        scene: &Scene,
+        width: u32,
+        height: u32,
+    ) -> Result<(), GfxError> {
+        let needs_new = self
+            .present_target
+            .as_ref()
+            .is_none_or(|(w, h, _)| *w != width || *h != height);
+        if needs_new {
+            self.present_target = Some((
+                width,
+                height,
+                Self::create_present_texture(&self.device, width, height),
+            ));
+        }
+        let view = self
+            .present_target
+            .as_ref()
+            .expect("present target")
+            .2
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        self.present_scene(scene, &view, width, height)
+    }
+
+    fn drop_present_target(&mut self) {
+        self.present_target = None;
+        self.cached_scene = None;
+    }
+
     /// GPU present of `list` with no CPU readback (`MotionMark` / VEC-013).
+    /// Reuses the offscreen target; on a device-lost error the target is
+    /// dropped and the present is retried once.
     pub fn present_list(
         &mut self,
         list: &DisplayList,
@@ -406,29 +528,127 @@ impl VelloRenderer {
         if width == 0 || height == 0 {
             return Err(GfxError::Gpu("zero-sized frame".into()));
         }
+        match self.present_list_once(list, width, height, scale) {
+            Ok(()) => Ok(()),
+            Err(e) if is_lost_device(&e) => {
+                self.drop_present_target();
+                self.present_list_once(list, width, height, scale)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn present_list_once(
+        &mut self,
+        list: &DisplayList,
+        width: u32,
+        height: u32,
+        scale: f32,
+    ) -> Result<(), GfxError> {
         let scene = build_scene_fonts(
             list,
             if scale > 0.0 { scale } else { 1.0 },
             None,
             Some(&mut self.fonts),
         );
-        let size = wgpu::Extent3d {
+        self.present_to_cached(&scene, width, height)
+    }
+
+    /// GPU present of a composited surface. Skips scene rebuild when the
+    /// compositor is not damaged and a scene is already cached.
+    pub fn present_composited(
+        &mut self,
+        compositor: &mut crate::Compositor,
+        width: u32,
+        height: u32,
+        scale: f32,
+    ) -> Result<(), GfxError> {
+        if width == 0 || height == 0 {
+            return Err(GfxError::Gpu("zero-sized frame".into()));
+        }
+        if compositor.is_damaged() || self.cached_scene.is_none() {
+            let list = compositor.composite(ve_core::Size::new(width as f32, height as f32));
+            self.cached_scene = Some(build_scene_fonts(
+                &list,
+                if scale > 0.0 { scale } else { 1.0 },
+                None,
+                Some(&mut self.fonts),
+            ));
+            let _ = compositor.take_damage();
+        }
+        let scene = self.cached_scene.take().expect("cached after rebuild");
+        let result = match self.present_to_cached(&scene, width, height) {
+            Ok(()) => Ok(()),
+            Err(e) if is_lost_device(&e) => {
+                self.drop_present_target();
+                self.present_to_cached(&scene, width, height)
+            }
+            Err(e) => Err(e),
+        };
+        self.cached_scene = Some(scene);
+        result
+    }
+
+    /// Copies the cached present target into a CPU frame (window / tests).
+    pub fn readback_present_target(&mut self) -> Result<Frame, GfxError> {
+        let (width, height) = self
+            .present_target
+            .as_ref()
+            .map(|(w, h, _)| (*w, *h))
+            .ok_or_else(|| GfxError::Gpu("no present target".into()))?;
+        readback_texture(
+            &self.device,
+            &self.queue,
+            &self.present_target.as_ref().expect("present target").2,
             width,
             height,
-            depth_or_array_layers: 1,
-        };
-        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("ve-gfx present target"),
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::STORAGE_BINDING,
-            view_formats: &[],
-        });
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        self.present_scene(&scene, &view, width, height)
+        )
+    }
+
+    /// GPU-GPU copy of the present target onto `dest` (window swapchain).
+    /// `dest` must be `Rgba8Unorm` and have `COPY_DST`.
+    pub fn blit_present_target(
+        &self,
+        dest: &wgpu::Texture,
+        dest_format: wgpu::TextureFormat,
+        width: u32,
+        height: u32,
+    ) -> Result<(), GfxError> {
+        let src = self
+            .present_target
+            .as_ref()
+            .ok_or_else(|| GfxError::Gpu("no present target".into()))?;
+        if dest_format != wgpu::TextureFormat::Rgba8Unorm {
+            return Err(GfxError::Gpu(format!(
+                "surface format {dest_format:?} is not Rgba8Unorm"
+            )));
+        }
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ve-gfx blit"),
+            });
+        encoder.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &src.2,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: dest,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        self.queue.submit(std::iter::once(encoder.finish()));
+        Ok(())
     }
 }
 
@@ -532,5 +752,38 @@ mod tests {
             glyphs.encoding().draw_tags.len() >= cells.encoding().draw_tags.len(),
             "outlined glyphs must encode at least as many draw tags as cell fallback"
         );
+    }
+
+    #[test]
+    fn cpu_and_gpu_frames_for_text_and_image() {
+        let mut list = DisplayList::new(Size::new(32.0, 16.0));
+        list.push(DisplayItem::Text(crate::TextRun {
+            origin: ve_core::Point::new(1.0, 12.0),
+            text: "Hi".into(),
+            size: 10.0,
+            color: ve_style::Rgba::BLACK,
+            weight: ve_style::FontWeight::NORMAL,
+            style: ve_style::FontStyle::Normal,
+            family: vec![],
+        }));
+        list.push(DisplayItem::Image {
+            rect: Rect::new(0.0, 0.0, 8.0, 8.0),
+            handle: crate::ImageHandle(1),
+        });
+        let mut cpu = crate::SoftwareRenderer::new();
+        let cpu_frame = cpu.render(&list, 32, 16, 1.0).unwrap();
+        assert!(!cpu_frame.rgba.is_empty());
+        let Ok((mut gpu, _)) = VelloRenderer::headless() else {
+            return;
+        };
+        let Ok(gpu_frame) = gpu.render(&list, 32, 16, 1.0) else {
+            return;
+        };
+        assert_eq!(gpu_frame.width, cpu_frame.width);
+        assert_eq!(gpu_frame.height, cpu_frame.height);
+        assert!(!gpu_frame.rgba.is_empty());
+        assert!(!build_scene(&list, 1.0).encoding().is_empty());
+        assert!(gpu.present_list(&list, 32, 16, 1.0).is_ok());
+        let _ = gpu.present_list(&list, 32, 16, 1.0);
     }
 }

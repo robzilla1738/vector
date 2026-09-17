@@ -64,10 +64,13 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   parse/cascade/layout and compares the geometry signature (painted boxes and
   text fragments in paint order, 1 px tolerance) of test vs `rel=match`
   reference. `engine/tools/wpt-harness` runs testharness + pixel fixtures
-  (upstream `testharness.js` at the pinned WPT revision). Manifest
-  `engine/conformance/m1.txt` only grows; a listed geometry test that
+  (upstream `testharness.js` at the pinned WPT revision) and, with
+  `--tree --tree-family html/dom`, every testharness HTML in that family.
+  Manifest `engine/conformance/m1.txt` only grows; a listed geometry test that
   stops passing exits non-zero. Harness regressions of the supported
-  testharness subset also exit non-zero (`expected-failures.txt` → skip).
+  testharness subset (`testharness.txt`) also exit non-zero
+  (`expected-failures.txt` → skip). Tree-family failures are reported, not
+  merge-blocking.
 - **Performance** — `engine/tools/perf --gate m1` times `observe`,
   `open_to_observe`, `click_step`, `fill_step`, `program_10` and
   `diff_after_edit` over the static corpus against the §12 M1 gates.
@@ -143,10 +146,13 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   App Sandbox / Linux seccomp deny-socket.
 - **Desktop hardening (A22)** — CDP `127.0.0.1`, port files `0600`,
   `persist:vector-agent`, `gateway.key` + `safeStorage`, 7-day event prune.
-- **H3 / WS / SW (A23)** — `Alt-Svc` h3 advertisement (hyper speaks
-  HTTP/1.1 and HTTP/2); RFC 6455 `ws`/`wss`; SW `register` with `respond:`
-  intercept only. `describe()` reports `websocket:true`, `http3:false`,
-  `serviceWorkers:false`.
+- **H3 / WS / SW (A23)** — HTTP/3 GET over QUIC (`quinn` + `h3`) after
+  `Alt-Svc`; RFC 6455 `ws`/`wss` (handshake, masked send, close, ping/pong,
+  fragmented data frames, TLS poll). SW install/activate then fetch intercept
+  on a persistent V8 isolate per registration (`SwRealm`). `importScripts`
+  expands at load; `clients.claim` during activate sets
+  `navigator.serviceWorker.controller`. `describe()` reports
+  `websocket:true`, `http3:false` (no JS HTTP/3 API), `serviceWorkers:true`.
 
 ### VEC-001–025 (M0–M5) — current tree
 
@@ -158,17 +164,20 @@ acceptance text.
 | Area | In tree | Not yet |
 |---|---|---|
 | M0 identity / containment / broker / CI | `engineMode: always` never selects Chromium; `ve-host` sandbox; `NetworkBroker` honors config allowlists; rustc 1.88 CI including product clippy, wpt-harness tree HTTP, browserbench | — |
-| M1 web execution | V8 DOM, async fetch, frames, IDB unique/compound/versionchange, event loop; testharness + IDL harness + `--http --tree`; Ahem reftest fonts | whole-tree WPT passing; generated IDL for every interface; workers are `ve-vm` not a second V8 isolate; SW `respond:` only |
-| M2 visual | GPU glyph *outlines*, clips/opacity/`<img>`, `present_list`, `NativeBrowser` + packaged `ve-shell` as the product | Electron hybrid still exists as a labeled extra; `signedUpdates: false` |
-| M3 agent | receipts, crash recovery, skills, policy, BiDi; held-out p95 vs Chromium measured (5.32× `act+observe`) | token-measured 50% stretch; `meetsStretch` stays false until tokens are collected |
+| M1 web execution | V8 DOM, async fetch, frames, IDB unique/compound/versionchange/abort, event loop; testharness + IDL harness + pinned `html/dom` tree (272 PASS / 59 FAIL, 0 timeout/crash); Ahem reftest fonts; Worker `postMessage` on a second V8 isolate thread; Worker `importScripts`; SW install/activate, `importScripts`, `clients.claim`, `clients.matchAll`, waiting-worker `skipWaiting`; live document named properties; layout-aware innerText/outerText; ARIA string and element reflection | generated IDL for every interface |
+| M2 visual | GPU glyph *outlines*, clips/opacity/`<img>`, `present_list`, `NativeBrowser` + packaged `ve-shell` as the product; GPU swapchain blit when `--features gpu,window`; Ed25519 signed updates; AccessKit winit adapter (`accesskit_winit` 0.23) publishing chrome-then-page | Electron hybrid still exists as a labeled extra; WebGL/WebGPU are an explicit compatibility track (`describe()` false) |
+| M3 agent | receipts, crash recovery, skills, policy, BiDi; held-out p95 vs Chromium measured (5.32× `act+observe`); token-measured stretch `meetsStretch` true (`tokenRatio` 8.35, declared model usage) | — |
 | M4 perf | `perf --gate m1`, RSS, host RAPL, official Speedometer 3.0 / JetStream / MotionMark GPU lab | every Speedometer suite passing (many FAIL honestly) |
-| M5 research | `ve-replay`, `ve-vm` Test262 subset | replacing V8 (forbidden without evidence) |
+| M5 research | `ve-replay`, `EngineConfig.hermetic`, prefetch denied at the broker, `ve-vm` Test262 subset | replacing V8 (forbidden without evidence) |
 
 Conformance: `wpt-runner` geometry (`m1.txt`) plus `wpt-harness` testharness
-(pinned `testharness.js` / `idlharness.js`, HTTP origin, 50-file supported
-subset, `--tree` sample). Pixel fixtures cover opacity, text, clip, paint,
-and images. `--use-reftest-fonts` loads Ahem through Parley; metric shaper
-remains the m1 scorer.
+(pinned `testharness.js` / `idlharness.js`, HTTP origin, 112-file supported
+subset in `engine/conformance/testharness.txt`, `--tree --tree-family html/dom`
+walks the pinned checkout). Latest full-family report:
+`docs/engine/evidence/wpt-tree-latest.json` — 272 PASS / 59 FAIL / 0
+timeout/crash, `tree_complete: true`. Pixel fixtures cover opacity, text,
+clip, paint, and images. `--use-reftest-fonts` loads Ahem through Parley;
+metric shaper remains the m1 scorer. Tree failures do not gate merge.
 
 ### Deferred — reports `capability_unsupported`
 
@@ -195,12 +204,14 @@ Supported through the addon and therefore on the runtime's engine backend:
 `navigationSettled`, `settled`, `response`), `extract`, `collectScroll`,
 `screenshot` (software renderer, system fonts via `fontdb`).
 
-Also remaining: parent/child margin collapsing, collapsed table borders, writing
-modes, `@keyframes`, Canvas/WebGL, speaking HTTP/3 (QUIC) rather than
-recording `Alt-Svc`, a second V8 isolate per worker or cross-origin iframe, slot
-assignment in the accessibility tree, live regions. `position: sticky` is
-applied (`LayoutTree::apply_sticky`). Replaced `<img>` pixels paint when
-decoded; Canvas/WebGL do not.
+Also remaining: WebGL. `@keyframes` parse in `ve-style`. Slot assignment and
+live regions are in `ve-a11y`. AccessKit OS adapter is `ve-shell --features window`
+(`accesskit_winit`). Parent/child margin collapsing, collapsed table borders,
+and `writing-mode`/`direction` are implemented in `ve-layout`. `position: sticky`
+is applied (`LayoutTree::apply_sticky`). Replaced `<img>` pixels paint when
+decoded; Canvas 2D records ops; WebGL does not. Dedicated workers use a second V8 isolate on a
+worker thread and `importScripts`. Service workers keep one isolate per
+registration; `clients.claim` sets the page controller.
 
 ### Measured
 
@@ -229,7 +240,7 @@ Chromium observe script.
 | `cargo test --workspace` | 161 tests: 160 pass, 1 unverified (see outstanding) |
 | `cargo clippy --workspace --all-targets -- -D warnings` | clean (pedantic on) |
 | `cargo fmt --all --check` | clean |
-| WPT geometry reftests (800×600, 1 px tolerance) | 770 / 2,845 pass; manifest `engine/conformance/m1.txt` = 770, 0 regressions. Per directory: normal-flow 294/746, flexbox 236/1010, selectors 134/224, positioning 28/520, grid/alignment 32/167, mediaqueries 25/58, box-display 21/120. accname / html-aam are testharness tests (not run: needs script bindings, M2). |
+| WPT geometry reftests (800×600, 1 px tolerance) | 770 / 2,845 pass; manifest `engine/conformance/m1.txt` = 770, 0 regressions. Per directory: normal-flow 294/746, flexbox 236/1010, selectors 134/224, positioning 28/520, grid/alignment 32/167, mediaqueries 25/58, box-display 21/120. accname / html-aam are testharness (run via `wpt-harness`, not the geometry scorer). |
 | `perf --gate m1` (p95, N=200 warm, 8 static fixtures) | observe **0.42 ms** (gate 5) ✔ · open-to-observe **3.5 ms** (gate 50) ✔ · fill step **0.01 ms** (gate 2) ✔ · 10-step program **13.0 ms** (gate 20) ✔ · diff after edit **0.02 ms** (gate 0.5) ✔ · click step **2.50 ms** (gate 2) ✘ |
 | TypeScript | `pnpm typecheck` / `pnpm build` clean · unit 227/227 (35 files) · engine integration 3/3 · desktop typecheck + build clean, 30/30 |
 | Native addon | `cargo test -p ve-napi --features napi` 10/10 · `smoke.mjs` ok · `pnpm bench --backend both` see table above |
@@ -240,10 +251,12 @@ Chromium observe script.
 2. ~~Click-step p95 2.50 ms vs the 2 ms gate.~~ 1.31 ms after the nested-flex fix; all six `perf --gate m1` gates pass.
 3. ~~Runtime refusals on engine pages.~~ `pages.capture` routes through the software renderer; `pages.activate` / `pages.openLive` mark the engine page active.
 4. ~~Engine gaps that forced Chromium in M1.~~ `evaluate` (when `allowEvaluate`), `waitFor expression`, `dialog`, downloads, HTML5 `dragTo` are implemented. `xpath:` remains the auto-mode fallback probe.
-5. ~~CI workflow not in the repo.~~ `.github/workflows/engine.yml` (fmt, clippy, test, optional features, V8 SPA goldens, perf gate, WPT manifest, addon build) and `runtime.yml` (typecheck, unit, integration with headless Chromium and with the engine addon, e2e).
-6. **UI screenshots are not committed.** `docs/ui/screenshots/*.png` (15 files) could not travel through the text-only API push; they are attached to the build thread as a zip and should be added from a machine with git credentials. `docs/ui/shell.md` references them by path.
+5. ~~CI workflow not in the repo.~~ `.github/workflows/engine.yml` (fmt, clippy, test, optional features, V8 SPA goldens, product `ve-shell` clippy, perf gate, WPT geometry, wpt-harness supported subset + `--tree --tree-family html/dom`, browserbench, addon + `ve-host`) and `runtime.yml` (typecheck, unit, integration with headless Chromium and with the engine addon, e2e).
+6. ~~UI screenshots are not committed.~~ `docs/ui/screenshots/*.png` (15 files) are in tree; `docs/ui/shell.md` references them by path.
 7. ~~Corpus size.~~ `engine/fixtures/public/` holds 36 server-rendered public pages and 22 client-rendered shells (manifest `engine/conformance/corpus.json`, fetcher `engine/tools/corpus/fetch.mjs`, external CSS inlined). The 8 hand-written fixtures keep their goldens; the public corpus is gated on routing and budgets, not goldens, because the pages change upstream.
 8. ~~Router false-positive rate not measured.~~ `cargo test -p ve-api --test corpus` (results in `engine/conformance/corpus-results.json`): **false positives 0/36**, **false negatives 0/22**, 0/36 static pages over the 10 k-token Compact budget (range 1.2–9.0 k; the 4 k design target holds only on the small fixtures, see plan A10). Thresholds were tuned from this data: empty-shell < 500 chars, noscript < 3000 chars, `script-heavy` (≥ 2 relative `.js` URLs injected from one inline script, or ≥ 5 external scripts and < 2000 chars), `form-without-action-or-submit` only on pages under 1000 chars. Open-to-observe on these pages is 3–350 ms with two MDN outliers at 1.2 s (670-element pages; full cascade + layout, see A15). SPA settle/hit-rate is gated by `cargo test -p ve-api --features v8 --test spa` (`engine/conformance/spa-results.json`, hit rate 1.0, 22/22 settled).
+
+**Still open after VEC work (do not treat evidence markdown as done):** official `html/dom` 59 FAIL (tentative partial-updates, leftover `lang`/`dir=auto` global-attributes, `document.lastModified`, `idlharness.https.html`, `usvstring-reflection`, remaining render-blocking); generated IDL is not every interface; Speedometer class probes PARTIAL; WebGL/WebGPU null; ve-vm must not replace V8. Official nameditem-*.html, innerText/outerText family, ARIA attribute+element reflection, `historical.html`, `document.cookie`, and `element-render-blocking-004/005/009/010/013.html` PASS. SW `clients.matchAll` and waiting-worker `skipWaiting` are implemented.
 
 
 ## 1. Thesis and non-goals
@@ -1114,10 +1127,8 @@ tables layout; `@font-face` / system fonts; software pixels; `evaluate`/
 `expression`; iframes; downloads; dialogs; HTTP/3 advertisement; persistent
 cache; process isolation (`ve-host`).
 
-**Not in this tree**: Canvas 2D, WebGL, WebAudio, WebRTC, Workers (beyond
-the SW `register` + `respond:` intercept), WebAssembly, Notifications,
+**Not in this tree**: WebGL, WebAudio, WebRTC, WebAssembly, Notifications,
 Clipboard, Payment, WebAuthn, `<video>/<audio>` playback (elements exist, do
-not play), CSS animations/transitions (end state only), IndexedDB
-(localStorage only), printing, extensions, speaking HTTP/3 (QUIC).
-WebSockets are RFC 6455 including `wss`. HTML5 `dragTo` is implemented
-when scripting is on.
+not play), CSS transitions (end state only), printing, extensions.
+HTTP/3 GET over QUIC is implemented (`ve-net` `http` feature). WebSockets are
+RFC 6455 including `wss`. HTML5 `dragTo` is implemented when scripting is on.

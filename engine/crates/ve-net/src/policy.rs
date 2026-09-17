@@ -165,8 +165,8 @@ impl NetworkPolicy {
                     Err(NetError::Blocked("file: URLs are disabled".into()))
                 }
             }
-            "http" | "https" => {
-                if self.https_only && url.scheme() == "http" {
+            "http" | "https" | "ws" | "wss" => {
+                if self.https_only && matches!(url.scheme(), "http" | "ws") {
                     return Err(NetError::Blocked(format!("plain http refused: {url}")));
                 }
                 let Some(host) = url.host() else {
@@ -220,7 +220,7 @@ impl NetworkPolicy {
             return Ok(());
         }
         match request.url.scheme() {
-            "http" | "https" => {}
+            "http" | "https" | "ws" | "wss" => {}
             _ => return Ok(()),
         }
         if self.allow_agent_egress {

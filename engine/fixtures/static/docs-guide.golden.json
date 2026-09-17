@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 1924.0
+    "maxY": 1914.0
   },
   "frames": [
     {
@@ -35,516 +35,408 @@
   "elements": [
     {
       "ref": "r37",
-      "frame": "main",
       "tag": "input",
       "role": "searchbox",
       "name": "Search",
       "type": "search",
       "value": "",
-      "placeholder": "Search…",
-      "selector": {}
+      "placeholder": "Search…"
     },
     {
       "ref": "r38",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Search",
-      "type": "submit",
-      "selector": {}
+      "type": "submit"
     },
     {
       "ref": "r346",
-      "frame": "main",
       "tag": "input",
       "role": "radio",
       "name": "Yes",
       "type": "radio",
       "checked": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r349",
-      "frame": "main",
       "tag": "input",
       "role": "radio",
       "name": "No",
       "type": "radio",
       "checked": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r354",
-      "frame": "main",
       "tag": "textarea",
       "role": "textbox",
       "name": "Tell us more",
       "type": "textarea",
       "value": "",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r357",
-      "frame": "main",
       "tag": "input",
       "role": "checkbox",
       "name": "You may contact me about this feedback",
       "type": "checkbox",
       "checked": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r22",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Vector Docs",
-      "href": "https://fixtures.vector.test/",
-      "selector": {}
+      "href": "https://fixtures.vector.test/"
     },
     {
       "ref": "r25",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Guide",
-      "href": "https://fixtures.vector.test/docs",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs"
     },
     {
       "ref": "r27",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "API",
-      "href": "https://fixtures.vector.test/api",
-      "selector": {}
+      "href": "https://fixtures.vector.test/api"
     },
     {
       "ref": "r29",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Blog",
-      "href": "https://fixtures.vector.test/blog",
-      "selector": {}
+      "href": "https://fixtures.vector.test/blog"
     },
     {
       "ref": "r31",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "GitHub",
-      "href": "https://github.com/vector-browser/vector",
-      "selector": {}
+      "href": "https://github.com/vector-browser/vector"
     },
     {
       "ref": "r48",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Getting started",
-      "href": "https://fixtures.vector.test/docs/getting-started",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/getting-started"
     },
     {
       "ref": "r51",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Installation",
-      "href": "https://fixtures.vector.test/docs/installation",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/installation"
     },
     {
       "ref": "r54",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Configuration",
-      "href": "https://fixtures.vector.test/docs/configuration",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/configuration"
     },
     {
       "ref": "r57",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "CLI reference",
-      "href": "https://fixtures.vector.test/docs/cli-reference",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/cli-reference"
     },
     {
       "ref": "r60",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Programs",
-      "href": "https://fixtures.vector.test/docs/programs",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/programs"
     },
     {
       "ref": "r63",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Observations",
-      "href": "https://fixtures.vector.test/docs/observations",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/observations"
     },
     {
       "ref": "r66",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Refs",
-      "href": "https://fixtures.vector.test/docs/refs",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/refs"
     },
     {
       "ref": "r69",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Settle semantics",
-      "href": "https://fixtures.vector.test/docs/settle-semantics",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/settle-semantics"
     },
     {
       "ref": "r72",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Routing",
-      "href": "https://fixtures.vector.test/docs/routing",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/routing"
     },
     {
       "ref": "r75",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Networking",
-      "href": "https://fixtures.vector.test/docs/networking",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/networking"
     },
     {
       "ref": "r78",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Cookies",
-      "href": "https://fixtures.vector.test/docs/cookies",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/cookies"
     },
     {
       "ref": "r81",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Screenshots",
-      "href": "https://fixtures.vector.test/docs/screenshots",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/screenshots"
     },
     {
       "ref": "r84",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Error codes",
-      "href": "https://fixtures.vector.test/docs/error-codes",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/error-codes"
     },
     {
       "ref": "r87",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "FAQ",
-      "href": "https://fixtures.vector.test/docs/faq",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/faq"
     },
     {
       "ref": "r90",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Changelog",
-      "href": "https://fixtures.vector.test/docs/changelog",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/changelog"
     },
     {
       "ref": "r93",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Contributing",
-      "href": "https://fixtures.vector.test/docs/contributing",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/contributing"
     },
     {
       "ref": "r99",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Overview",
-      "href": "https://fixtures.vector.test/docs-guide.html#overview",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs-guide.html#overview"
     },
     {
       "ref": "r120",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Docs",
-      "href": "https://fixtures.vector.test/docs",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs"
     },
     {
       "ref": "r123",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Configuration",
-      "href": "https://fixtures.vector.test/docs/configuration",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/configuration"
     },
     {
       "ref": "r134",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Edit this page",
-      "href": "https://github.com/vector-browser/vector/edit/main/docs/configuration.md",
-      "selector": {}
+      "href": "https://github.com/vector-browser/vector/edit/main/docs/configuration.md"
     },
     {
       "ref": "r142",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "engine handle",
-      "href": "https://fixtures.vector.test/docs/getting-started",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/getting-started"
     },
     {
       "ref": "r145",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "network contexts",
-      "href": "https://fixtures.vector.test/docs/networking",
-      "selector": {}
+      "href": "https://fixtures.vector.test/docs/networking"
     },
     {
       "ref": "r18",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/docs-guide.html#main",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r102",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Install",
       "href": "https://fixtures.vector.test/docs-guide.html#install",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r105",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Quick start",
       "href": "https://fixtures.vector.test/docs-guide.html#quickstart",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r108",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Options",
       "href": "https://fixtures.vector.test/docs-guide.html#options",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r111",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Examples",
       "href": "https://fixtures.vector.test/docs-guide.html#examples",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r114",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Troubleshooting",
       "href": "https://fixtures.vector.test/docs-guide.html#troubleshooting",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r171",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "the observation shape",
       "href": "https://fixtures.vector.test/docs/observations",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r309",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "cookie import and export",
       "href": "https://fixtures.vector.test/docs/cookies",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r316",
-      "frame": "main",
       "tag": "details",
       "role": "group",
       "name": "The engine reports backend_unavailable",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r317",
-      "frame": "main",
       "tag": "summary",
       "role": "button",
       "name": "The engine reports backend_unavailable",
       "expanded": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r324",
-      "frame": "main",
       "tag": "details",
       "role": "group",
       "name": "My page is routed to Chromium",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r325",
-      "frame": "main",
       "tag": "summary",
       "role": "button",
       "name": "My page is routed to Chromium",
       "expanded": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r333",
-      "frame": "main",
       "tag": "details",
       "role": "group",
       "name": "Screenshots are blank",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r334",
-      "frame": "main",
       "tag": "summary",
       "role": "button",
       "name": "Screenshots are blank",
       "expanded": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r360",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Send feedback",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r364",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "← Installation",
       "href": "https://fixtures.vector.test/docs/installation",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r366",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "CLI reference →",
       "href": "https://fixtures.vector.test/docs/cli-reference",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r371",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Privacy",
       "href": "https://fixtures.vector.test/privacy",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r373",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Terms",
       "href": "https://fixtures.vector.test/terms",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r375",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Status",
       "href": "https://status.vector.test/",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r377",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Twitter",
       "href": "https://twitter.com/vectorengine",
-      "selector": {},
       "offscreen": true
     }
   ],

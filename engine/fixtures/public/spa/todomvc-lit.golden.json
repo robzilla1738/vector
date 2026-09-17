@@ -23,21 +23,17 @@
   "elements": [
     {
       "ref": "r32",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "the lit team",
-      "href": "https://github.com/lit",
-      "selector": {}
+      "href": "https://github.com/lit"
     },
     {
       "ref": "r37",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
-      "href": "http://todomvc.com/",
-      "selector": {}
+      "href": "http://todomvc.com/"
     }
   ],
   "formFields": [],

@@ -32,6 +32,7 @@
 
 pub mod ffi;
 pub mod shell;
+pub mod updates;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -44,6 +45,7 @@ use ve_core::{Error, ErrorCode, Result, Size};
 use ve_net::{Initiator, NetworkContext, Request};
 
 pub use shell::{ChromeAxNode, EventOutcome, NativeBrowser, NativeEvent, Tab};
+pub use updates::{UpdateKeyPair, verify_update_manifest};
 pub use ve_agent::{
     EngineObservation, ExecuteRequest, ExecuteResult, Format, InFlightSummary, LoadedDocument,
     Loader, NavMethod, NavigationRequest, ObservationContent, ObservationRequest, Page, Program,
@@ -107,6 +109,9 @@ pub struct EngineConfig {
     /// A13). Needs the `v8` (or `quickjs`) feature to do anything; with
     /// neither the pages get the `NullVm` and scripts do not run.
     pub scripting: bool,
+    /// When true, the engine uses [`ve_net::ReplayTransport`] and live sockets
+    /// are never opened (VEC-024).
+    pub hermetic: bool,
     /// Production fail-closed vs developer/fixture execution.
     pub security_profile: SecurityProfile,
     /// Process vs in-process placement. Production forces [`IsolationMode::RequireProcess`].
@@ -120,9 +125,10 @@ impl Default for EngineConfig {
             scale: 1.0,
             user_agent: ve_net::DEFAULT_USER_AGENT.to_owned(),
             offline: false,
-            max_pages: 64,
+            max_pages: 256,
             policy: NetworkPolicy::default(),
             scripting: false,
+            hermetic: false,
             security_profile: SecurityProfile::Developer,
             isolation: IsolationMode::Auto,
         }
@@ -263,6 +269,7 @@ impl Loader for NetLoader {
             bytes: response.body.to_vec(),
             content_type: response.content_type().map(str::to_owned),
             status: response.status.as_u16(),
+            last_modified: response.last_modified().map(str::to_owned),
         })
     }
 
@@ -347,6 +354,35 @@ impl Loader for NetLoader {
             .cloned()
             .collect()
     }
+
+    fn script_fetch(
+        &mut self,
+        url: &str,
+        method: &str,
+        body: &[u8],
+        page: u64,
+        origin: Option<&str>,
+    ) -> Result<ve_agent::LoadedResource> {
+        let method = method.to_ascii_uppercase();
+        let mut req = if method == "GET" || method == "HEAD" {
+            Request::get(url)?
+        } else {
+            Request::post(url, body.to_vec(), "text/plain;charset=UTF-8")?
+        };
+        req = req.for_page(page).with_initiator(Initiator::Script);
+        if let Some(origin) = origin
+            && let Ok(parsed) = Request::get(origin)
+        {
+            req = req.with_origin(parsed.url);
+        }
+        let response = self.net.borrow_mut().fetch(req)?;
+        Ok(ve_agent::LoadedResource {
+            url: response.url.to_string(),
+            bytes: response.body.to_vec(),
+            content_type: response.content_type().map(str::to_owned),
+            status: response.status.as_u16(),
+        })
+    }
 }
 
 struct PageEntry {
@@ -361,6 +397,8 @@ pub struct VectorEngine {
     pages: HashMap<PageId, PageEntry>,
     /// Live pages in creation order; Drop and close walk this newest-first.
     page_order: Vec<PageId>,
+    /// Next page index for [`Self::pump_round_robin`].
+    pump_cursor: usize,
     next_context: u64,
     next_page: u64,
     /// Shared wire owner (plan A21): contexts never hold a socket.
@@ -393,6 +431,9 @@ impl Drop for VectorEngine {
 }
 
 fn make_transport(config: &EngineConfig) -> Box<dyn ve_net::Transport> {
+    if config.hermetic {
+        return Box::new(ve_net::ReplayTransport::new());
+    }
     if config.offline {
         return Box::new(ve_net::NullTransport);
     }
@@ -432,12 +473,21 @@ impl VectorEngine {
             contexts: HashMap::new(),
             pages: HashMap::new(),
             page_order: Vec::new(),
+            pump_cursor: 0,
             next_context: 0,
             next_page: 0,
             broker,
         };
         engine.new_context(None);
         engine
+    }
+
+    /// Hermetic engine: live sockets never open (VEC-024).
+    #[must_use]
+    pub fn with_replay(config: EngineConfig, replay: ve_net::ReplayTransport) -> Self {
+        let mut config = config;
+        config.hermetic = true;
+        Self::with_transport(config, Box::new(replay))
     }
 
     /// Engine version.
@@ -557,7 +607,8 @@ impl VectorEngine {
         let (context, net) = self.context(request.context)?;
         let viewport = request.viewport.unwrap_or(self.config.viewport);
         let id = self.next_page + 1;
-        let loader: Box<dyn Loader> = Box::new(NetLoader { net });
+        let policy = net.borrow().policy.clone();
+        let loader: Box<dyn Loader> = Box::new(NetLoader { net: net.clone() });
         let scripting = self
             .config
             .scripting
@@ -574,6 +625,7 @@ impl VectorEngine {
             }
         };
         page.set_scale(self.config.scale);
+        page.set_network_policy(policy);
         let settled = page.settle_passive(SETTLE_NAVIGATION_MS);
         if let Some(error) = page.take_navigation_error() {
             tracing::warn!(page = id, error, "post-load navigation failed");
@@ -626,6 +678,24 @@ impl VectorEngine {
             .get_mut(&page)
             .map(|e| &mut e.page)
             .ok_or_else(|| no_such_page(page))
+    }
+
+    /// One host tick of event-loop work: a bounded slice per page, starting
+    /// at `pump_cursor` and wrapping `page_order`, so a busy page cannot
+    /// starve a sibling forever.
+    pub fn pump_round_robin(&mut self, tasks_per_page: usize) {
+        let n = self.page_order.len();
+        if n == 0 || tasks_per_page == 0 {
+            return;
+        }
+        let start = self.pump_cursor % n;
+        for i in 0..n {
+            let id = self.page_order[(start + i) % n];
+            if let Some(entry) = self.pages.get_mut(&id) {
+                let _ = entry.page.pump_event_loop(tasks_per_page);
+            }
+        }
+        self.pump_cursor = start.wrapping_add(1);
     }
 
     /// The context a page belongs to.
@@ -1106,7 +1176,71 @@ mod tests {
             obs_a.observation.content.scroll.y > obs_b.observation.content.scroll.y
                 || obs_a.page != obs_b.page
         );
+        // A tight loop of work on A still lets B observe. Script timers are
+        // bounded by settle; without a JS VM this loop is the analogue.
+        engine.pump_round_robin(8);
+        for i in 0..4 {
+            engine
+                .execute(
+                    a.page,
+                    &ExecuteRequest {
+                        program: Program::from_value(serde_json::json!([
+                            {"id": format!("s{i}"), "op": "scroll", "direction": "down"}
+                        ]))
+                        .unwrap(),
+                        return_observation: None,
+                    },
+                )
+                .unwrap();
+            let idle = engine
+                .observe(b.page, &ObservationRequest::default())
+                .unwrap();
+            assert_eq!(idle.observation.content.title, "idle");
+        }
         assert!(engine.close(a.page));
         assert!(engine.close(b.page));
+    }
+
+    #[test]
+    fn hermetic_mode_blocks_unarchived_http() {
+        let mut engine = VectorEngine::new(EngineConfig {
+            hermetic: true,
+            ..EngineConfig::default()
+        });
+        let err = engine
+            .open(OpenRequest::url("https://example.test/secret"))
+            .unwrap_err();
+        assert_eq!(err.code(), ErrorCode::InvalidParams, "{err}");
+        assert!(
+            err.to_string().contains("replay") || err.to_string().contains("nondeterminism"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn hermetic_replay_serves_archived_get() {
+        let mut replay = ve_net::ReplayTransport::new();
+        replay.insert(
+            "GET",
+            "https://archive.test/",
+            ve_net::Response::new(
+                url::Url::parse("https://archive.test/").unwrap(),
+                http::StatusCode::OK,
+                http::header::HeaderMap::new(),
+                "<title>Archived</title><h1>ok</h1>",
+            ),
+        );
+        let mut engine = VectorEngine::with_replay(
+            EngineConfig {
+                policy: NetworkPolicy::permissive(),
+                ..EngineConfig::default()
+            },
+            replay,
+        );
+        let opened = engine
+            .open(OpenRequest::url("https://archive.test/"))
+            .unwrap();
+        assert_eq!(opened.title, "Archived");
+        assert_eq!(opened.status, 200);
     }
 }

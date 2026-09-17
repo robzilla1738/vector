@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<title>Element.querySelectorAll</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var root = document.createElement("div")
+  root.innerHTML = "<p class=\"x\">a</p><p class=\"x y\">b</p><span class=\"x\">c</span>"
+  document.body.appendChild(root)
+  var all = root.querySelectorAll("p.x")
+  assert_equals(all.length, 2)
+  assert_equals(all[0].textContent, "a")
+  assert_equals(all[1].textContent, "b")
+  assert_equals(root.querySelectorAll(".y").length, 1)
+  assert_equals(root.querySelectorAll("div").length, 0)
+}, "querySelectorAll returns matching descendants in tree order")
+</script>

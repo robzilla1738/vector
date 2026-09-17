@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<title>Document.adoptNode</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var other = document.implementation.createHTMLDocument("t")
+  var el = other.createElement("div")
+  other.body.appendChild(el)
+  assert_true(el.isConnected)
+  var adopted = document.adoptNode(el)
+  assert_equals(adopted, el)
+  assert_false(el.isConnected)
+  assert_equals(el.ownerDocument, document)
+  document.body.appendChild(el)
+  assert_true(el.isConnected)
+}, "adoptNode detaches from the source tree and transfers ownership")
+</script>

@@ -162,7 +162,11 @@ const engine = report.adapters["vector-engine"];
 if (vector?.summary && engine?.summary) {
   try {
     const { evaluateHeldOutAdvantage } = await import(pathToFileURL(join(repoRoot, "apps/runtime/dist/index.js")).href);
-    const tokens = (s) => (s.tokensMean && s.passed ? s.tokensMean / s.passed : 0);
+    const tokens = (s) => {
+      if (!s.passed) return null;
+      if (typeof s.tokensMean === "number" && Number.isFinite(s.tokensMean)) return s.tokensMean / s.passed;
+      return null;
+    };
     report.heldOut = {
       measured: true,
       metric: "wallMsP95",

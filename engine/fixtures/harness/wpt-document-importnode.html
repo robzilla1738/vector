@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<title>Document.importNode</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var other = document.implementation.createHTMLDocument("t")
+  var el = other.createElement("div")
+  el.textContent = "hi"
+  var imported = document.importNode(el, true)
+  assert_true(imported !== el)
+  assert_equals(imported.textContent, "hi")
+  assert_equals(imported.ownerDocument, document)
+  assert_true(el.isConnected === false || el.ownerDocument !== document)
+}, "importNode deep-clones into this document")
+</script>

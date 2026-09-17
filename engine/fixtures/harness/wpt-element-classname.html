@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<title>Element.className</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  assert_equals(el.className, "")
+  el.className = "a b"
+  document.body.appendChild(el)
+  assert_equals(el.className, "a b")
+  assert_true(el.matches(".a"))
+  assert_true(el.matches(".b"))
+  el.className = "c"
+  assert_true(el.matches(".c"))
+  assert_false(el.matches(".a"))
+}, "className reflects the class attribute")
+</script>

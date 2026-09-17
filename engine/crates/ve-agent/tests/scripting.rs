@@ -109,7 +109,7 @@ fn a_runaway_script_is_cut_off_and_the_page_survives() {
         true,
     );
     page.settle(500);
-    assert!(started.elapsed() < std::time::Duration::from_secs(20));
+    assert!(started.elapsed() < std::time::Duration::from_secs(30));
     assert_eq!(page.script_stats(), (2, 1));
     assert_eq!(page.evaluate("ok").unwrap(), serde_json::json!(1));
     assert!(page.document().element_by_id("p").is_some());

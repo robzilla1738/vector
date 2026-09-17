@@ -7,8 +7,6 @@
 //! reach lives under `globalThis.__ve`; the prelude wraps it in the Web API
 //! shapes scripts expect.
 
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap};
 use std::time::Duration;
 
 use ve_core::{Error, Result};
@@ -28,6 +26,8 @@ pub const HOST_FUNCTIONS: &[&str] = &[
 
 /// Longest a single script may run before the VM terminates it.
 pub const SCRIPT_DEADLINE: Duration = Duration::from_secs(20);
+/// `evaluate` can run a full Speedometer add/delete pass on a complex DOM.
+pub const EVALUATE_DEADLINE: Duration = Duration::from_secs(60);
 /// Timers due within this window block `settle()` (architecture §6 cond. 2).
 pub const TIMER_WINDOW_MS: u64 = 50;
 /// Console lines kept per page.
@@ -81,9 +81,33 @@ pub const PRELUDE: &str = r#"(() => {
   globalThis.performance = globalThis.performance || {};
   globalThis.performance.now = () => __ve.now();
   globalThis.performance.timeOrigin = 0;
-  globalThis.performance.mark = noop; globalThis.performance.measure = noop;
-  globalThis.performance.getEntriesByType = () => []; globalThis.performance.getEntriesByName = () => [];
+  globalThis.performance.mark = noop;
+  globalThis.performance.measure = noop;
+  globalThis.performance.clearMarks = noop;
+  globalThis.performance.clearMeasures = noop;
+  globalThis.performance.getEntriesByType = () => [];
+  globalThis.performance.getEntriesByName = () => [];
+  globalThis.performance.getEntries = () => [];
   globalThis.structuredClone = globalThis.structuredClone || ((v) => JSON.parse(JSON.stringify(v)));
+  const cryptoObj = globalThis.crypto || {};
+  if (typeof cryptoObj.getRandomValues !== "function") {
+    cryptoObj.getRandomValues = (arr) => {
+      if (!arr || arr.length == null) throw new TypeError("expected typed array");
+      for (let i = 0; i < arr.length; i++) arr[i] = (Math.random() * 256) | 0;
+      return arr;
+    };
+  }
+  if (typeof cryptoObj.randomUUID !== "function") {
+    cryptoObj.randomUUID = () => {
+      const b = new Uint8Array(16);
+      cryptoObj.getRandomValues(b);
+      b[6] = (b[6] & 0x0f) | 0x40;
+      b[8] = (b[8] & 0x3f) | 0x80;
+      const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+      return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+    };
+  }
+  globalThis.crypto = cryptoObj;
 })();"#;
 
 /// DOM/Web API prelude (plan A14).
@@ -100,30 +124,6 @@ pub struct ConsoleLine {
     pub at_ms: u64,
 }
 
-#[derive(Debug, Eq, PartialEq)]
-struct ArmedTimer {
-    due_ms: u64,
-    seq: u64,
-    id: u64,
-    repeat_ms: Option<u64>,
-}
-
-impl Ord for ArmedTimer {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // min-heap on (due, seq)
-        other
-            .due_ms
-            .cmp(&self.due_ms)
-            .then_with(|| other.seq.cmp(&self.seq))
-    }
-}
-
-impl PartialOrd for ArmedTimer {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 /// Per-page script state.
 pub struct Scripting {
     /// The VM (taken out of the page for the duration of a call so the page
@@ -131,15 +131,11 @@ pub struct Scripting {
     pub(crate) vm: Option<Box<dyn JsVm>>,
     /// `evaluate` steps allowed (context-level capability).
     pub(crate) allow_evaluate: bool,
-    timers: BinaryHeap<ArmedTimer>,
-    /// live timer ids → armed sequence (a cleared timer leaves a stale heap entry)
-    live: HashMap<u64, u64>,
-    seq: u64,
     pub(crate) console: Vec<ConsoleLine>,
     /// Scripts run so far for the current document (diagnostics).
     pub(crate) scripts_run: usize,
     pub(crate) script_errors: usize,
-    /// HTML task sources for this page (VEC-007).
+    /// HTML task sources and page JS timers for this page (VEC-007).
     pub(crate) event_loop: ve_script::EventLoop,
 }
 
@@ -147,7 +143,7 @@ impl std::fmt::Debug for Scripting {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Scripting")
             .field("vm", &self.vm.as_ref().map(|v| v.name()))
-            .field("timers", &self.live.len())
+            .field("timers", &self.event_loop.js_timer_count())
             .field("console", &self.console.len())
             .finish_non_exhaustive()
     }
@@ -160,9 +156,6 @@ impl Scripting {
         Ok(Self {
             vm: Some(vm),
             allow_evaluate,
-            timers: BinaryHeap::new(),
-            live: HashMap::new(),
-            seq: 0,
             console: Vec::new(),
             scripts_run: 0,
             script_errors: 0,
@@ -173,34 +166,17 @@ impl Scripting {
     /// Timers still armed.
     #[must_use]
     pub fn pending_timers(&self) -> usize {
-        self.live.len()
+        self.event_loop.js_timer_count()
     }
 
     /// Virtual due time of the earliest live timer.
     #[must_use]
     pub fn next_timer_due_ms(&self) -> Option<u64> {
-        self.timers
-            .iter()
-            .filter(|t| self.live.get(&t.id) == Some(&t.seq))
-            .map(|t| t.due_ms)
-            .min()
-    }
-
-    fn arm(&mut self, id: u64, now_ms: u64, delay_ms: u64, repeat: bool) {
-        self.seq += 1;
-        self.live.insert(id, self.seq);
-        self.timers.push(ArmedTimer {
-            due_ms: now_ms.saturating_add(delay_ms),
-            seq: self.seq,
-            id,
-            repeat_ms: repeat.then_some(delay_ms.max(1)),
-        });
+        self.event_loop.next_js_timer_due_ms()
     }
 
     /// Reset for a new document.
     pub(crate) fn reset(&mut self) {
-        self.timers.clear();
-        self.live.clear();
         self.console.clear();
         self.scripts_run = 0;
         self.script_errors = 0;
@@ -240,12 +216,15 @@ impl HostApi for PageHost<'_> {
                 let delay = arg_num(1).max(0.0) as u64;
                 let repeat = args.get(2).is_some_and(JsValue::is_truthy);
                 let now = self.page.virtual_time_ms();
-                self.page.scripting_mut().arm(id, now, delay, repeat);
+                self.page
+                    .scripting_mut()
+                    .event_loop
+                    .arm_js_timer(id, now, delay, repeat);
                 Ok(JsValue::Undefined)
             }
             Some("clearTimer") => {
                 let id = arg_num(0) as u64;
-                self.page.scripting_mut().live.remove(&id);
+                self.page.scripting_mut().event_loop.clear_js_timer(id);
                 Ok(JsValue::Undefined)
             }
             Some("now") => Ok(JsValue::Number(self.page.virtual_time_ms() as f64)),
@@ -352,8 +331,14 @@ impl Page {
             ));
         }
         self.ensure_document_scripts();
-        self.run_script(expression, "vector:evaluate")
-            .map(serde_json::Value::from)
+        if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
+            vm.set_call_deadline(Some(EVALUATE_DEADLINE));
+        }
+        let result = self.run_script(expression, "vector:evaluate");
+        if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
+            vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+        }
+        result.map(serde_json::Value::from)
     }
 
     /// Runs the document's scripts in order: classic scripts as parsed
@@ -365,36 +350,58 @@ impl Page {
         if self.scripting.is_none() {
             return;
         }
+        self.parse_hi = self.doc.arena_len();
+        let hide_unparsed = self.has_rel_expect_link();
         let scripts = self.scripts().to_vec();
         let (deferred, immediate): (Vec<_>, Vec<_>) =
             scripts.into_iter().partition(|s| s.defer || s.module);
-        for script in immediate.into_iter().chain(deferred) {
-            if script.failed || script.source.trim().is_empty() {
-                continue;
+        for script in immediate {
+            if hide_unparsed {
+                self.parser_limit = Some(script.node);
             }
-            let origin = script
-                .url
-                .clone()
-                .unwrap_or_else(|| format!("{}#inline", self.url()));
-            match self.run_script(&script.source, &origin) {
-                Ok(_) => self.scripting_mut().scripts_run += 1,
-                Err(e) => {
-                    let s = self.scripting_mut();
-                    s.scripts_run += 1;
-                    s.script_errors += 1;
-                    if s.console.len() >= CONSOLE_CAP {
-                        s.console.remove(0);
-                    }
-                    let at_ms = self.virtual_time_ms();
-                    self.scripting_mut().console.push(ConsoleLine {
-                        level: "error".into(),
-                        message: format!("{origin}: {e}"),
-                        at_ms,
-                    });
-                }
+            self.eval_document_script(&script);
+            if hide_unparsed && !self.expect_blocking_active() {
+                self.pump_timers(TIMER_WINDOW_MS);
             }
         }
+        self.parser_limit = None;
+        for script in deferred {
+            self.eval_document_script(&script);
+        }
+        self.parser_limit = None;
+        let _ = self.call_script("__veDocumentEvents", &[]);
         self.pump_timers(TIMER_WINDOW_MS);
+    }
+
+    fn eval_document_script(&mut self, script: &crate::page::FetchedScript) {
+        if script.failed || script.source.trim().is_empty() {
+            return;
+        }
+        let origin = script
+            .url
+            .clone()
+            .unwrap_or_else(|| format!("{}#inline", self.url()));
+        let _ = self.call_script("__veSetCurrentScript", &[crate::dom::pack(script.node)]);
+        let _ = self.call_script("__veExposeIds", &[]);
+        match self.run_script(&script.source, &origin) {
+            Ok(_) => self.scripting_mut().scripts_run += 1,
+            Err(e) => {
+                let s = self.scripting_mut();
+                s.scripts_run += 1;
+                s.script_errors += 1;
+                if s.console.len() >= CONSOLE_CAP {
+                    s.console.remove(0);
+                }
+                let at_ms = self.virtual_time_ms();
+                self.scripting_mut().console.push(ConsoleLine {
+                    level: "error".into(),
+                    message: format!("{origin}: {e}"),
+                    at_ms,
+                });
+            }
+        }
+        let _ = self.call_script("__veSetCurrentScript", &[JsValue::Null]);
+        self.drain_js_jobs();
     }
 
     /// Fires every live timer due within `window_ms` of virtual time,
@@ -405,7 +412,7 @@ impl Page {
         let Some(scripting) = self.scripting.as_ref() else {
             return 0;
         };
-        if scripting.live.is_empty() {
+        if scripting.event_loop.js_timer_count() == 0 {
             self.drain_js_jobs();
             return 0;
         }
@@ -413,19 +420,7 @@ impl Page {
         let max_fires = 1000;
         let mut fired = 0;
         while fired < max_fires {
-            let next = {
-                let s = self.scripting_mut();
-                loop {
-                    match s.timers.peek() {
-                        None => break None,
-                        Some(t) if s.live.get(&t.id) != Some(&t.seq) => {
-                            s.timers.pop();
-                        }
-                        Some(t) if t.due_ms > horizon => break None,
-                        Some(_) => break s.timers.pop(),
-                    }
-                }
-            };
+            let next = self.scripting_mut().event_loop.pop_due_js_timer(horizon);
             let Some(timer) = next else { break };
             let now = self.virtual_time_ms();
             if timer.due_ms > now {
@@ -433,20 +428,14 @@ impl Page {
             }
             match timer.repeat_ms {
                 Some(period) => {
-                    let due = timer.due_ms;
-                    let s = self.scripting_mut();
-                    s.seq += 1;
-                    let seq = s.seq;
-                    s.live.insert(timer.id, seq);
-                    s.timers.push(ArmedTimer {
-                        due_ms: due.saturating_add(period),
-                        seq,
-                        id: timer.id,
-                        repeat_ms: Some(period),
-                    });
+                    self.scripting_mut().event_loop.rearm_js_interval(
+                        timer.id,
+                        timer.due_ms,
+                        period,
+                    );
                 }
                 None => {
-                    self.scripting_mut().live.remove(&timer.id);
+                    self.scripting_mut().event_loop.drop_js_timer(timer.id);
                 }
             }
             fired += 1;
@@ -464,19 +453,7 @@ impl Page {
             return (0, 0, false);
         };
         let horizon = self.virtual_time_ms().saturating_add(TIMER_WINDOW_MS);
-        let mut soon = 0;
-        let mut later = 0;
-        for t in s
-            .timers
-            .iter()
-            .filter(|t| s.live.get(&t.id) == Some(&t.seq))
-        {
-            if t.due_ms <= horizon {
-                soon += 1;
-            } else {
-                later += 1;
-            }
-        }
+        let (soon, later) = s.event_loop.js_timer_readiness(horizon);
         (
             soon,
             later,

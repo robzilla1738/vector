@@ -250,7 +250,7 @@ impl RuleSet {
                 match rule {
                     CssRule::Style(s) => out.push((origin, s)),
                     CssRule::Media(m) if m.query.evaluate(env) => walk(&m.rules, origin, env, out),
-                    CssRule::Media(_) => {}
+                    CssRule::Media(_) | CssRule::Keyframes(_) => {}
                 }
             }
         }

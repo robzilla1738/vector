@@ -41,6 +41,9 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+ed25519-dalek.workspace = true
+accesskit.workspace = true
 
 [dev-dependencies]
 url.workspace = true
+http.workspace = true

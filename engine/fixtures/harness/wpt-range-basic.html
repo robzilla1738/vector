@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<title>Range create, select, extract</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var t = document.createTextNode("abcd")
+  document.body.appendChild(t)
+  var r = document.createRange()
+  assert_true(r.collapsed)
+  r.setStart(t, 1)
+  r.setEnd(t, 3)
+  assert_equals(r.toString(), "bc")
+  assert_false(r.collapsed)
+  var cloned = r.cloneContents()
+  assert_equals(cloned.textContent, "bc")
+  assert_equals(t.data, "abcd")
+  r.deleteContents()
+  assert_equals(t.data, "ad")
+  assert_true(r.collapsed)
+}, "Range text extract and deleteContents")
+
+test(function() {
+  var p = document.createElement("p")
+  p.appendChild(document.createTextNode("x"))
+  document.body.appendChild(p)
+  var r = document.createRange()
+  r.selectNode(p)
+  r.deleteContents()
+  assert_equals(p.parentNode, null)
+}, "Range.selectNode + deleteContents removes the node")
+</script>

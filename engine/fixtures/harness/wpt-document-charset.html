@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<title>Document.characterSet</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  assert_equals(document.characterSet, "UTF-8")
+  assert_equals(document.contentType, "text/html")
+  assert_equals(typeof document.compatMode, "string")
+  assert_true(document.compatMode === "CSS1Compat" || document.compatMode === "BackCompat")
+}, "characterSet, contentType, and compatMode")
+</script>

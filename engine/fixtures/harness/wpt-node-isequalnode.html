@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<title>Node.isEqualNode</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var a = document.createElement("div")
+  a.setAttribute("id", "x")
+  a.textContent = "hi"
+  var b = a.cloneNode(true)
+  assert_true(a.isEqualNode(b))
+  assert_true(a.isEqualNode(a))
+  b.setAttribute("id", "y")
+  assert_false(a.isEqualNode(b))
+  assert_false(a.isEqualNode(null))
+}, "isEqualNode compares structure and attributes")
+</script>

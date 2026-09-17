@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<title>Element.matches</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="log"></div>
+<script>
+test(function() {
+  var el = document.createElement("div")
+  el.id = "box"
+  el.className = "a b"
+  document.body.appendChild(el)
+  assert_true(el.matches("div"))
+  assert_true(el.matches("#box"))
+  assert_true(el.matches(".a"))
+  assert_true(el.matches("div.b"))
+  assert_false(el.matches("span"))
+  assert_false(el.matches(".z"))
+}, "matches returns whether the element matches the selector")
+</script>

@@ -9,7 +9,7 @@
   "scroll": {
     "x": 0.0,
     "y": 0.0,
-    "maxY": 2189.0
+    "maxY": 2157.0
   },
   "frames": [
     {
@@ -27,129 +27,105 @@
   "elements": [
     {
       "ref": "r37",
-      "frame": "main",
       "tag": "input",
       "role": "searchbox",
       "name": "Search",
       "type": "search",
       "value": "",
-      "placeholder": "Search…",
-      "selector": {}
+      "placeholder": "Search…"
     },
     {
       "ref": "r38",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Search",
-      "type": "submit",
-      "selector": {}
+      "type": "submit"
     },
     {
       "ref": "r78",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "First name *",
       "type": "text",
       "value": "",
-      "required": true,
-      "selector": {}
+      "required": true
     },
     {
       "ref": "r85",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Last name *",
       "type": "text",
       "value": "",
-      "required": true,
-      "selector": {}
+      "required": true
     },
     {
       "ref": "r91",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Date of birth *",
       "type": "date",
       "value": "",
-      "required": true,
-      "selector": {}
+      "required": true
     },
     {
       "ref": "r95",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Social Security number (last 4)",
       "type": "text",
-      "value": "",
-      "selector": {}
+      "value": ""
     },
     {
       "ref": "r103",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Email address *",
       "type": "email",
       "value": "",
-      "required": true,
-      "selector": {},
-      "offscreen": true
+      "required": true
     },
     {
       "ref": "r107",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Phone",
       "type": "tel",
       "value": "",
       "placeholder": "(555) 555-0100",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r118",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Street address *",
       "type": "text",
       "value": "",
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r122",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Apartment, suite, etc.",
       "type": "text",
       "value": "",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r130",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "City *",
       "type": "text",
       "value": "",
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r137",
-      "frame": "main",
       "tag": "select",
       "role": "combobox",
       "name": "State *",
@@ -171,125 +147,103 @@
         "Washington"
       ],
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r168",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "ZIP code *",
       "type": "text",
       "value": "",
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r171",
-      "frame": "main",
       "tag": "input",
       "role": "checkbox",
       "name": "Mailing address is the same as above",
       "type": "checkbox",
       "checked": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r183",
-      "frame": "main",
       "tag": "input",
       "role": "spinbutton",
       "name": "Number of people in household *",
       "type": "number",
       "value": "1",
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r190",
-      "frame": "main",
       "tag": "input",
       "role": "radio",
       "name": "Own",
       "type": "radio",
       "checked": false,
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r193",
-      "frame": "main",
       "tag": "input",
       "role": "radio",
       "name": "Rent",
       "type": "radio",
       "checked": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r196",
-      "frame": "main",
       "tag": "input",
       "role": "radio",
       "name": "Other",
       "type": "radio",
       "checked": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r204",
-      "frame": "main",
       "tag": "input",
       "role": "checkbox",
       "name": "Age 60 or older",
       "type": "checkbox",
       "checked": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r207",
-      "frame": "main",
       "tag": "input",
       "role": "checkbox",
       "name": "Living with a disability",
       "type": "checkbox",
       "checked": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r210",
-      "frame": "main",
       "tag": "input",
       "role": "checkbox",
       "name": "Under 6 years old",
       "type": "checkbox",
       "checked": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r213",
-      "frame": "main",
       "tag": "input",
       "role": "checkbox",
       "name": "A veteran",
       "type": "checkbox",
       "checked": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r218",
-      "frame": "main",
       "tag": "select",
       "role": "combobox",
       "name": "Primary heating source",
@@ -303,311 +257,248 @@
         "Propane",
         "Wood"
       ],
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r239",
-      "frame": "main",
       "tag": "input",
       "role": "spinbutton",
       "name": "Total gross monthly household income (USD) *",
       "type": "number",
       "value": "",
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r243",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Upload your most recent utility bill",
       "type": "file",
       "value": "",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r249",
-      "frame": "main",
       "tag": "textarea",
       "role": "textbox",
       "name": "Anything else we should know?",
       "type": "textarea",
       "value": "",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r269",
-      "frame": "main",
       "tag": "input",
       "role": "checkbox",
       "name": "I certify that the information provided is true and complete *",
       "type": "checkbox",
       "checked": false,
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r278",
-      "frame": "main",
       "tag": "input",
       "role": "textbox",
       "name": "Type your full name as signature *",
       "type": "text",
       "value": "",
       "required": true,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r22",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Benefits Portal",
-      "href": "https://fixtures.vector.test/",
-      "selector": {}
+      "href": "https://fixtures.vector.test/"
     },
     {
       "ref": "r25",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Home",
-      "href": "https://fixtures.vector.test/",
-      "selector": {}
+      "href": "https://fixtures.vector.test/"
     },
     {
       "ref": "r27",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Apply",
-      "href": "https://fixtures.vector.test/apply",
-      "selector": {}
+      "href": "https://fixtures.vector.test/apply"
     },
     {
       "ref": "r29",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Check status",
-      "href": "https://fixtures.vector.test/status",
-      "selector": {}
+      "href": "https://fixtures.vector.test/status"
     },
     {
       "ref": "r31",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Help",
-      "href": "https://fixtures.vector.test/help",
-      "selector": {}
+      "href": "https://fixtures.vector.test/help"
     },
     {
       "ref": "r307",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "About the program",
-      "href": "https://fixtures.vector.test/programs/energy",
-      "selector": {}
+      "href": "https://fixtures.vector.test/programs/energy"
     },
     {
       "ref": "r310",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Eligibility checker",
-      "href": "https://fixtures.vector.test/eligibility",
-      "selector": {}
+      "href": "https://fixtures.vector.test/eligibility"
     },
     {
       "ref": "r313",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Check application status",
-      "href": "https://fixtures.vector.test/status",
-      "selector": {}
+      "href": "https://fixtures.vector.test/status"
     },
     {
       "ref": "r316",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Appeals process",
-      "href": "https://fixtures.vector.test/appeals",
-      "selector": {}
+      "href": "https://fixtures.vector.test/appeals"
     },
     {
       "ref": "r323",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Español",
-      "href": "https://fixtures.vector.test/es/apply",
-      "selector": {}
+      "href": "https://fixtures.vector.test/es/apply"
     },
     {
       "ref": "r326",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "中文",
-      "href": "https://fixtures.vector.test/zh/apply",
-      "selector": {}
+      "href": "https://fixtures.vector.test/zh/apply"
     },
     {
       "ref": "r329",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Tiếng Việt",
-      "href": "https://fixtures.vector.test/vi/apply",
-      "selector": {}
+      "href": "https://fixtures.vector.test/vi/apply"
     },
     {
       "ref": "r18",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/gov-benefits-form.html#main",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r256",
-      "frame": "main",
       "tag": "details",
       "role": "group",
       "name": "Privacy Act statement",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r257",
-      "frame": "main",
       "tag": "summary",
       "role": "button",
       "name": "Privacy Act statement",
       "expanded": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r262",
-      "frame": "main",
       "tag": "details",
       "role": "group",
       "name": "Penalty for false statements",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r263",
-      "frame": "main",
       "tag": "summary",
       "role": "button",
       "name": "Penalty for false statements",
       "expanded": false,
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r282",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Submit application",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r285",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Save and finish later",
       "type": "submit",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r288",
-      "frame": "main",
       "tag": "button",
       "role": "button",
       "name": "Clear form",
       "type": "reset",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r293",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "1-800-555-0100",
       "href": "tel:+18005550100",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r333",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Accessibility",
       "href": "https://fixtures.vector.test/accessibility",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r335",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "Privacy",
       "href": "https://fixtures.vector.test/privacy",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r337",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "FOIA",
       "href": "https://fixtures.vector.test/foia",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r339",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "No FEAR Act",
       "href": "https://fixtures.vector.test/nofear",
-      "selector": {},
       "offscreen": true
     },
     {
       "ref": "r341",
-      "frame": "main",
       "tag": "a",
       "role": "link",
       "name": "USA.gov",
       "href": "https://www.usa.gov/",
-      "selector": {},
       "offscreen": true
     }
   ],

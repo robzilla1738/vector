@@ -19,6 +19,7 @@
     "test:e2e": "vitest run --config tests/e2e/vitest.config.ts",
     "smoke:packaged": "node tests/smoke/packaged.mjs",
     "bench": "node tests/benchmarks/run.mjs",
+    "package": "node scripts/package-native.mjs",
     "package:local": "node scripts/package-native.mjs",
     "package:electron": "node scripts/package-local.mjs",
     "cli": "node packages/cli/dist/main.js",
