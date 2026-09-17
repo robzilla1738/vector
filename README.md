@@ -40,7 +40,7 @@ cd engine && cargo build -p ve-napi --features napi --release
 The product GUI is `pnpm dev` / `cargo run -p ve-shell --features product -- --gui`.
 Electron is `pnpm dev:electron`. Evidence:
 [docs/engine/evidence](docs/engine/evidence/README.md) (testharness 112/0;
-official `html/dom` 272 PASS / 59 FAIL). Harness:
+official `html/dom` 302 PASS / 29 FAIL, `idlharness.https.html` PASS). Harness:
 `cargo run --release -p wpt-harness --features v8 -- --http` and
 `cargo run --release -p wpt-runner` (geometry; `--use-reftest-fonts` loads Ahem).
 

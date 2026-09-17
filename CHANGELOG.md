@@ -7,8 +7,9 @@ the integration tracks that were merged.
 
 Independent Vector Engine work after A14–A23. Ticket reports:
 `docs/engine/evidence/`. Roadmap text: `Vector_Engine_Roadmap.md`. This is
-not a claim that every acceptance line is met (IDL generation and storage
-remain subsets; official `html/dom` still has 59 FAIL; ve-vm is research).
+not a claim that every generated IDL trait exists (official
+`html/dom/idlharness.https.html` PASS; official `html/dom` is 302 PASS / 29 FAIL
+at WPT `7c20438…`; ve-vm is research).
 
 - **M0.** `engineMode: always` returns `vector-engine` with `fallbackAllowed:
   false`. Production `ve-host` sandbox (forbidden file, exec, sockets,
@@ -30,9 +31,13 @@ remain subsets; official `html/dom` still has 59 FAIL; ve-vm is research).
   `document.cookie`, `historical.html`, and `blocking` as a `DOMTokenList` PASS.
   `rel=expect` also matches `<a name>` targets.
   `wpt-harness` with pinned testharness + idlharness, `--http --tree
-  --tree-family html/dom` (272 PASS / 59 FAIL, `tree_complete`). Supported
-  subset `testharness.txt` (112 files). Geometry `wpt-runner`;
-  `--use-reftest-fonts` is capability, not the m1 scorer.
+  --tree-family html/dom` (302 PASS / 29 FAIL, `tree_complete`; official
+  `idlharness.https.html` PASS). SW `Client.postMessage` and dedicated/shared
+  worker clients. HTTP `Last-Modified` / `Content-Language` sidecars,
+  USVString unpaired-surrogate replacement, HTML/SVG/XML `document.title`,
+  namespaced attributes, `:lang()` / `:dir()` / `dir=auto`, and `rel=expect`
+  head gating. Supported subset `testharness.txt` (112 files). Geometry
+  `wpt-runner`; `--use-reftest-fonts` is capability, not the m1 scorer.
 - **M2.** GPU glyph outlines, clips/opacity/`<img>`, `present_list` without
   readback. Product is `ve-shell` (`pnpm dev` / `pnpm package:local`).
   Electron is labeled hybrid (`pnpm dev:electron` / `pnpm package:electron`).

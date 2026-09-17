@@ -249,6 +249,16 @@ impl Response {
             .and_then(|v| v.to_str().ok())
     }
 
+    /// The first `Content-Language` header value.
+    #[must_use]
+    pub fn content_language(&self) -> Option<&str> {
+        self.headers
+            .get(http::header::CONTENT_LANGUAGE)
+            .and_then(|v| v.to_str().ok())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+    }
+
     /// The MIME essence (`text/html`) without parameters.
     #[must_use]
     pub fn mime_type(&self) -> Option<String> {

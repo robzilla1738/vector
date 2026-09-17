@@ -9,7 +9,9 @@ export class RefRegistry {
   private generation = new Map<string, number>();
 
   register(pageId: string, elements: ElementRef[]): void {
-    const map = new Map<string, ElementRef>();
+    // Merge: compact/subtree observations must not wipe refs from a prior
+    // full pass. Navigation calls `clear`. DOM mutation does not invalidate refs.
+    const map = this.byPage.get(pageId) ?? new Map<string, ElementRef>();
     for (const el of elements) map.set(el.ref, el);
     this.byPage.set(pageId, map);
     this.generation.set(pageId, (this.generation.get(pageId) ?? 0) + 1);

@@ -1349,6 +1349,38 @@ fn document_named_properties_are_live() {
 }
 
 #[test]
+fn tabindex_minus_zero_is_positive_zero() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var d = document.createElement("div");
+              d.setAttribute("tabindex", "-0");
+              return { v: d.tabIndex, neg: Object.is(d.tabIndex, -0) };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["v"], 0, "{v}");
+    assert_eq!(v["neg"], false, "{v}");
+}
+
+#[test]
+fn inner_text_collapses_cr_to_space() {
+    let mut page = open(r#"<body><div id="d"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var d = document.getElementById("d");
+              d.style.whiteSpace = "normal";
+              d.innerHTML = "abc\rdef";
+              return d.innerText;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!("abc def"), "{v}");
+}
+
+#[test]
 fn inner_text_skips_hidden_and_outer_text_replaces_node() {
     let mut page = open(
         r#"<div id="t">vis<span style="display:none">hid</span><br>next<div>block</div></div><p id="p">keep <span id="s">me</span> please</p>"#,
@@ -1579,6 +1611,91 @@ fn expect_link_unblocks_raf_before_later_ids() {
 }
 
 #[test]
+fn official_001_shape_raf_sees_last() {
+    let mut page = open(
+        r##"<!DOCTYPE html>
+<meta name="timeout" content="long">
+<head>
+<script></script>
+<script></script>
+<script>function generateParserDelay() {}</script>
+<title>t</title>
+<link rel=expect href="#last" blocking="render">
+<script>
+requestAnimationFrame(function () {
+  window.__last = document.getElementById("last") !== null;
+});
+</script>
+</head>
+<body>
+  <div id="first">x</div>
+  <script>generateParserDelay();</script>
+  <div id="second">x</div>
+  <script>generateParserDelay();</script>
+  <div id="last">x</div>
+</body>"##,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__last").unwrap(),
+        serde_json::json!(true)
+    );
+}
+
+#[test]
+fn expect_link_blocks_raf_with_prepended_harness_script() {
+    let mut page = open(
+        r##"<!DOCTYPE html><script>window.__harness=1;</script>
+           <meta name="timeout" content="long">
+           <head>
+           <link rel="expect" href="#last" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__last = document.getElementById("last") !== null;
+               var link = document.querySelector("link[rel=expect]");
+               window.__linkParent = link && link.parentNode && link.parentNode.localName;
+             });
+           </script>
+           </head>
+           <body>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function(){return {last: window.__last, parent: window.__linkParent};})()"#)
+        .unwrap();
+    assert_eq!(v["last"], true, "{v}");
+}
+
+#[test]
+fn expect_link_blocks_raf_until_target_id_with_head_scripts() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <script>window.__n = 1;</script>
+           <link rel="expect" href="#last" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           </head><body>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__last").unwrap(),
+        serde_json::json!(true),
+        "rAF should run after #last is parsed"
+    );
+}
+
+#[test]
 fn expect_link_blocks_raf_until_target_id() {
     let mut page = open(
         r##"<link id="link" rel="expect" href="#last" blocking="render">
@@ -1786,6 +1903,654 @@ fn last_modified_is_mm_dd_yyyy() {
 }
 
 #[test]
+fn last_modified_uses_http_date() {
+    let mut page = open(r#"<body></body>"#);
+    page.set_last_modified("Thu, 01 Jan 1970 01:23:45 GMT");
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var date = new Date("Thu, 01 Jan 1970 01:23:45 GMT");
+              var p = function (n) { return ("0" + n).slice(-2); };
+              var result = p(date.getMonth() + 1) + "/" + p(date.getDate()) + "/" + date.getFullYear()
+                + " " + [date.getHours(), date.getMinutes(), date.getSeconds()].map(p).join(":");
+              return document.lastModified === result;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!(true), "{v}");
+}
+
+#[test]
+fn last_modified_after_virtual_timeout_is_still_current() {
+    let mut page = open(
+        r#"<body><script>
+          window.__first = document.lastModified;
+          setTimeout(function () { window.__later = document.lastModified; }, 4000);
+        </script></body>"#,
+    );
+    page.settle(50);
+    page.pump_virtual_time(5000);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var re = /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/;
+              return { first: re.test(window.__first), later: re.test(window.__later) };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["first"], true, "{v}");
+    assert_eq!(v["later"], true, "{v}");
+}
+
+#[test]
+fn document_dispatch_event_reaches_listeners() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var n = 0;
+              document.addEventListener("foo", function () { n++; });
+              document.dispatchEvent(new Event("foo"));
+              document.onbar = function () { n += 10; };
+              document.dispatchEvent(new Event("bar"));
+              return n;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!(11), "{v}");
+}
+
+#[test]
+fn document_ready_state_loading_interactive_complete() {
+    let mut page = open(
+        r#"<body><script>
+          window.__states = [document.readyState];
+          document.onreadystatechange = function () {
+            window.__states.push(document.readyState);
+          };
+          document.addEventListener("DOMContentLoaded", function () {
+            window.__dcl = document.readyState;
+          });
+          window.addEventListener("load", function () {
+            window.__load = document.readyState;
+          });
+        </script></body>"#,
+    );
+    page.settle(500);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                states: window.__states,
+                dcl: window.__dcl,
+                load: window.__load,
+                now: document.readyState,
+                created: document.implementation.createHTMLDocument().readyState
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(
+        v["states"],
+        serde_json::json!(["loading", "interactive", "complete"]),
+        "{v}"
+    );
+    assert_eq!(v["dcl"], "interactive", "{v}");
+    assert_eq!(v["load"], "complete", "{v}");
+    assert_eq!(v["now"], "complete", "{v}");
+    assert_eq!(v["created"], "complete", "{v}");
+}
+
+#[test]
+fn title_empty_string_creates_title_without_text_node() {
+    let mut page = open(r#"<!doctype html><title>x</title><body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var head = document.documentElement.firstChild;
+              head.removeChild(head.firstChild);
+              document.title = "";
+              return {
+                title: document.title,
+                isTitle: head.lastChild instanceof HTMLTitleElement,
+                child: head.lastChild.firstChild
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["title"], "", "{v}");
+    assert_eq!(v["isTitle"], true, "{v}");
+    assert_eq!(v["child"], serde_json::Value::Null, "{v}");
+}
+
+#[test]
+fn lang_from_http_content_language() {
+    let mut page = open(
+        r#"<head><style>
+          #box:lang(ko) { width: 100px; }
+          .test div { width: 50px; }
+        </style></head><body>
+          <div class="test"><div id="box">&nbsp;</div></div>
+        </body>"#,
+    );
+    page.set_content_language("ko");
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate("document.getElementById('box').offsetWidth")
+        .unwrap();
+    assert_eq!(v, serde_json::json!(100), "{v}");
+}
+
+#[test]
+fn usvstring_replaces_unpaired_surrogates() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              location.hash = "\uD999";
+              var w = window.open("about:blank#\uD800");
+              var a = document.createElement("a");
+              a.ping = "\uD989";
+              var src = new EventSource("\uD899");
+              var ev = new StorageEvent("storage", { url: location.href + "\uD999" });
+              return {
+                hash: location.hash,
+                href: w.location.href,
+                openHash: w.location.hash,
+                ping: a.ping,
+                es: src.url.endsWith("%EF%BF%BD"),
+                docUrl: w.document.URL,
+                storage: ev.url.endsWith("\uFFFD")
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["hash"], "#%EF%BF%BD", "{v}");
+    assert_eq!(v["href"], "about:blank#%EF%BF%BD", "{v}");
+    assert_eq!(v["openHash"], "#%EF%BF%BD", "{v}");
+    assert_eq!(v["ping"], "\u{FFFD}", "{v}");
+    assert_eq!(v["es"], true, "{v}");
+    assert_eq!(v["docUrl"], "about:blank#%EF%BF%BD", "{v}");
+    assert_eq!(v["storage"], true, "{v}");
+}
+
+#[test]
+fn access_key_label_valid_and_invalid() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var ok = document.createElement("button");
+              ok.setAttribute("accesskey", "b");
+              var bad = document.createElement("button");
+              bad.setAttribute("accesskey", "s 0");
+              return { ok: ok.accessKeyLabel, bad: bad.accessKeyLabel };
+            })()"#,
+        )
+        .unwrap();
+    assert_ne!(v["ok"], "", "{v}");
+    assert_eq!(v["bad"], "", "{v}");
+}
+
+#[test]
+fn click_in_progress_flag_blocks_recursion() {
+    let mut page = open(r#"<body><div id="d"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var div = document.getElementById("d");
+              var events = [];
+              var depth = 0;
+              div.addEventListener("click", function (e) {
+                events.push("click");
+                if (depth++ === 0) e.target.click();
+              });
+              div.click();
+              return events;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!(["click"]), "{v}");
+}
+
+#[test]
+fn title_idl_undefined_sets_attribute_string() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var d = document.createElement("div");
+              d.title = undefined;
+              var u = d.getAttribute("title");
+              d.title = null;
+              return { undef: u, n: d.getAttribute("title") };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["undef"], "undefined", "{v}");
+    assert_eq!(v["n"], "null", "{v}");
+}
+
+#[test]
+fn aria_element_reflection_survives_disconnect() {
+    let mut page = open(
+        r#"<div id="single_element">
+             <input aria-activedescendant="foo">
+             <p id="foo"></p>
+           </div>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var container = document.getElementById("single_element");
+              var el = container.querySelector("input");
+              var target = container.querySelector("#foo");
+              var before = el.ariaActiveDescendantElement === target;
+              container.remove();
+              var after = el.ariaActiveDescendantElement === target;
+              return { before: before, after: after };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], true, "{v}");
+    assert_eq!(v["after"], true, "{v}");
+}
+
+#[test]
+fn title_reflection_ignores_overridden_get_set_attribute() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var div = document.createElement("div");
+              var calls = [];
+              div.getAttribute = function () { calls.push("getAttribute"); };
+              div.getAttributeNS = function () { calls.push("getAttributeNS"); };
+              div.setAttribute = function () { calls.push("setAttribute"); };
+              div.setAttributeNS = function () { calls.push("setAttributeNS"); };
+              div.title;
+              div.title = "foo";
+              return calls;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!([]), "{v}");
+}
+
+#[test]
+fn limited_quirks_compat_mode_is_css1compat() {
+    let mut page = open(
+        r#"<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+        <title>t</title><body></body>"#,
+    );
+    let v = page.evaluate("document.compatMode").unwrap();
+    assert_eq!(v, serde_json::json!("CSS1Compat"), "{v}");
+}
+
+#[test]
+fn empty_document_title_does_not_create_text_node() {
+    let mut page = open(
+        r#"<!doctype html>
+<title>document.title and the empty string</title>
+<link rel="author" title="Ms2ger" href="mailto:ms2ger@gmail.com">
+<meta name="assert" content="On setting document.title to the empty string, no text node must be created.">
+<body></body>"#,
+    );
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var head = document.documentElement.firstChild;
+              head.removeChild(head.firstChild);
+              document.title = "";
+              var t = head.lastChild;
+              return { isTitle: t instanceof HTMLTitleElement, first: t.firstChild };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["isTitle"], true, "{v}");
+    assert_eq!(v["first"], serde_json::Value::Null, "{v}");
+}
+
+#[test]
+fn svg_document_title_uses_child_svg_title() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var SVG = "http://www.w3.org/2000/svg";
+              var doc = document.implementation.createDocument(SVG, "svg", null);
+              doc.title = "foo";
+              var child = doc.documentElement.firstChild;
+              return {
+                ns: child.namespaceURI,
+                name: child.localName,
+                text: child.textContent,
+                title: doc.title
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["ns"], "http://www.w3.org/2000/svg", "{v}");
+    assert_eq!(v["name"], "title", "{v}");
+    assert_eq!(v["text"], "foo", "{v}");
+    assert_eq!(v["title"], "foo", "{v}");
+}
+
+#[test]
+fn xml_document_title_setter_is_noop() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var doc = document.implementation.createDocument(null, "foo", null);
+              doc.title = "fail";
+              return doc.title;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!(""), "{v}");
+}
+
+#[test]
+fn dataset_does_not_overwrite_namespaced_attrs() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var div = document.createElement("div");
+              div.setAttributeNS("foo", "data-my-custom-attr", "first");
+              div.setAttributeNS("bar", "data-my-custom-attr", "second");
+              div.dataset.myCustomAttr = "third";
+              var recs = [];
+              for (var i = 0; i < div.attributes.length; i++) {
+                recs.push([div.attributes[i].name, div.attributes[i].value, div.attributes[i].namespaceURI]);
+              }
+              return recs;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(
+        v,
+        serde_json::json!([
+            ["data-my-custom-attr", "first", "foo"],
+            ["data-my-custom-attr", "second", "bar"],
+            ["data-my-custom-attr", "third", null]
+        ]),
+        "{v}"
+    );
+}
+
+#[test]
+fn lang_pseudo_class_matches_html_lang() {
+    let mut page = open(
+        r#"<html lang="ko"><head><style>
+          #box:lang(ko) { width: 100px; }
+          .test div { width: 50px; }
+        </style></head><body>
+          <div class="test"><div id="box">&nbsp;</div></div>
+        </body></html>"#,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate("document.getElementById('box').offsetWidth")
+        .unwrap();
+    assert_eq!(v, serde_json::json!(100), "{v}");
+}
+
+#[test]
+fn dir_auto_slot_uses_host_direction() {
+    let mut page = open(r#"<body><div id="root" dir="rtl"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var host = document.getElementById("root");
+              var shadow = host.attachShadow({mode:"open"});
+              shadow.innerHTML = "<section dir=\"ltr\"><div dir=\"auto\"><slot></slot>A</div></section>";
+              return getComputedStyle(shadow.querySelector("div")).direction;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!("rtl"), "{v}");
+}
+
+#[test]
+fn dir_auto_slot_ignores_bdi_assigned_nodes() {
+    let mut page = open(r#"<body><div id="root"><bdi>اختبر</bdi></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var host = document.getElementById("root");
+              var shadow = host.attachShadow({mode:"open"});
+              shadow.innerHTML = "<slot dir=\"auto\"></slot>";
+              return getComputedStyle(shadow.querySelector("slot")).direction;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!("ltr"), "{v}");
+}
+
+#[test]
+fn dir_auto_manual_slot_assign_clears() {
+    let mut page = open(r#"<body><div id="root"><div id="c">اختبر</div></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var host = document.getElementById("root");
+              var shadow = host.attachShadow({mode:"open", slotAssignment:"manual"});
+              shadow.innerHTML = "<slot dir=\"auto\"></slot>";
+              var slot = shadow.querySelector("slot");
+              var empty = getComputedStyle(slot).direction;
+              slot.assign(document.getElementById("c"));
+              var assigned = getComputedStyle(slot).direction;
+              slot.assign();
+              var cleared = getComputedStyle(slot).direction;
+              return { empty: empty, assigned: assigned, cleared: cleared };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["empty"], "ltr", "{v}");
+    assert_eq!(v["assigned"], "rtl", "{v}");
+    assert_eq!(v["cleared"], "ltr", "{v}");
+}
+
+#[test]
+fn dir_auto_slot_fallback_does_not_affect_ancestor() {
+    let mut page = open(r#"<body><div id="root"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var host = document.getElementById("root");
+              var shadow = host.attachShadow({mode:"open"});
+              shadow.innerHTML = "<span dir=\"auto\"><slot>اختبر</slot></span>";
+              var span = shadow.querySelector("span");
+              return getComputedStyle(span).direction;
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v, serde_json::json!("ltr"), "{v}");
+}
+
+#[test]
+fn dir_auto_uses_first_strong_character() {
+    let mut page = open(r#"<body><div id="d" dir="auto"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var d = document.getElementById("d");
+              var empty = getComputedStyle(d).direction;
+              d.appendChild(document.createTextNode("اختبر SomeText"));
+              var rtl = getComputedStyle(d).direction;
+              return { empty: empty, rtl: rtl };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["empty"], "ltr", "{v}");
+    assert_eq!(v["rtl"], "rtl", "{v}");
+}
+
+#[test]
+fn expect_blocking_added_in_body_does_not_block() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <link id="link" rel="expect" href="#last">
+           <script>
+             requestAnimationFrame(function () {
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           </head><body>
+           <script>link.blocking = "render";</script>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__last").unwrap(),
+        serde_json::json!(false)
+    );
+}
+
+#[test]
+fn expect_rel_stylesheet_in_head_does_not_wait_for_last() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <link id="link" rel="stylesheet" href="#last" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           </head><body>
+           <script>link.rel = "expect";</script>
+           <div id="first"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    assert_eq!(
+        page.evaluate("window.__last").unwrap(),
+        serde_json::json!(false),
+        "changing rel to expect in the body must not block"
+    );
+}
+
+#[test]
+fn expect_id_removed_stays_satisfied() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <link rel="expect" href="#first" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__was = document.getElementById("wasfirst") !== null;
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           </head><body>
+           <div id="first"></div>
+           <script>first.id = "wasfirst";</script>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function(){return {was: window.__was, last: window.__last};})()"#)
+        .unwrap();
+    assert_eq!(v["was"], true, "{v}");
+    assert_eq!(v["last"], false, "{v}");
+}
+
+#[test]
+fn expect_percent_encoded_fragment_unblocks() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <link rel="expect" href="#se%F0%9F%98%8Fcond" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__mid = document.getElementById("se😏cond") !== null;
+               window.__last = document.getElementById("last") !== null;
+             });
+           </script>
+           </head><body>
+           <div id="first"></div>
+           <script></script>
+           <div id="se😏cond"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function(){return {mid: window.__mid, last: window.__last};})()"#)
+        .unwrap();
+    assert_eq!(v["mid"], true, "{v}");
+    assert_eq!(v["last"], false, "{v}");
+}
+
+#[test]
+fn expect_base_mismatch_does_not_block_until_second() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <base href="dummy.html">
+           <link rel="expect" href="#second" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__first = document.getElementById("first") !== null;
+               window.__second = document.getElementById("second") !== null;
+             });
+           </script>
+           </head><body>
+           <div id="first"></div>
+           <script></script>
+           <div id="second"></div>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function(){return {first: window.__first, second: window.__second};})()"#)
+        .unwrap();
+    assert_eq!(v["first"], true, "{v}");
+    assert_eq!(v["second"], false, "{v}");
+}
+
+#[test]
+fn expect_dynamic_anchor_name_unblocks() {
+    let mut page = open(
+        r##"<!DOCTYPE html><head>
+           <link rel="expect" href="#target" blocking="render">
+           <script>
+             requestAnimationFrame(function () {
+               window.__n = document.getElementsByName("target").length;
+               window.__last = document.getElementById("last");
+             });
+           </script>
+           </head><body>
+           <div id="first"></div>
+           <script></script>
+           <script>
+             var a = document.createElement("a");
+             a.name = "target";
+             document.body.append(a);
+           </script>
+           <script></script>
+           <div id="last"></div>
+           </body>"##,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(r#"(function(){return {n: window.__n, last: window.__last};})()"#)
+        .unwrap();
+    assert_eq!(v["n"], 1, "{v}");
+    assert_eq!(v["last"], serde_json::Value::Null, "{v}");
+}
+
+#[test]
 fn expect_name_target_unblocks_before_later_ids() {
     let mut page = open(
         r##"<link rel="expect" href="#second" blocking="render">
@@ -1806,4 +2571,347 @@ fn expect_name_target_unblocks_before_later_ids() {
         .unwrap();
     assert_eq!(v["name"], 1, "{v}");
     assert_eq!(v["last"], false, "{v}");
+}
+
+#[test]
+fn current_script_parser_and_dom_inserted() {
+    let mut page = open(
+        r#"<script id="p">window.__p = document.currentScript && document.currentScript.id;</script>
+           <script>
+             var s = document.createElement("script");
+             s.id = "d";
+             s.textContent = "window.__d = document.currentScript && document.currentScript.id;";
+             document.body.appendChild(s);
+             window.__after = document.currentScript && document.currentScript.tagName;
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function(){return {p: window.__p, d: window.__d, after: window.__after};})()"#,
+        )
+        .unwrap();
+    assert_eq!(v["p"], "p", "{v}");
+    assert_eq!(v["d"], "d", "{v}");
+    assert_eq!(v["after"], "SCRIPT", "{v}");
+}
+
+#[test]
+fn img_alt_and_input_type_reflect() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function(){
+              var img = document.createElement("img");
+              img.alt = "x";
+              var inp = document.createElement("input");
+              return { alt: img.alt, attr: img.getAttribute("alt"), type: inp.type };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["alt"], "x", "{v}");
+    assert_eq!(v["attr"], "x", "{v}");
+    assert_eq!(v["type"], "text", "{v}");
+}
+
+#[test]
+fn moved_async_script_does_not_run() {
+    let mut page = open(
+        r#"<script id="target" async src="data:text/javascript,window.dummy=1"></script>
+           <script>
+             const t = document.getElementById("target");
+             const d = document.implementation.createHTMLDocument("n");
+             d.documentElement.appendChild(t);
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.dummy").unwrap();
+    assert_eq!(v, serde_json::Value::Null, "{v}");
+}
+
+#[test]
+fn script_inserted_blocking_does_not_throw() {
+    let mut page = open(
+        r#"<script>
+             try {
+               const s = document.createElement("script");
+               s.src = "data:text/javascript,window.dummy=1";
+               s.blocking = "render";
+               document.head.appendChild(s);
+               window.__ok = 1;
+             } catch (e) {
+               window.__ok = String(e);
+             }
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(r#"(function(){return {ok: window.__ok, dummy: window.dummy};})()"#)
+        .unwrap();
+    assert_eq!(v["ok"], 1, "{v}");
+}
+
+#[test]
+fn window_origin_matches_location() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(r#"(function(){ return { o: self.origin, l: location.origin }; })()"#)
+        .unwrap();
+    assert_eq!(v["o"], v["l"], "{v}");
+    assert!(v["o"].as_str().unwrap_or("").starts_with("https://"), "{v}");
+}
+
+#[test]
+fn aria_idrefs_survive_disconnect() {
+    let mut page = open(
+        r#"<div id="single_element">
+             <input aria-activedescendant="foo">
+             <p id="foo"></p>
+           </div>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const container = document.getElementById("single_element");
+              const el = container.querySelector("input");
+              const target = container.querySelector("#foo");
+              const before = el.ariaActiveDescendantElement === target;
+              container.remove();
+              const after = el.ariaActiveDescendantElement === target;
+              document.body.appendChild(container);
+              const recon = el.ariaActiveDescendantElement === target;
+              return { before: before, after: after, recon: recon };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], true, "{v}");
+    assert_eq!(v["after"], true, "{v}");
+    assert_eq!(v["recon"], true, "{v}");
+}
+
+#[test]
+fn aria_idrefs_work_after_reconnect_during_parser_script() {
+    let mut page = open(
+        r#"<div id="single_element">
+             <input aria-activedescendant="foo">
+             <p id="foo"></p>
+           </div>
+           <script>
+             const container = document.getElementById("single_element");
+             const el = container.querySelector("input");
+             const target = document.getElementById("foo");
+             window.__before = el.ariaActiveDescendantElement === target;
+             container.remove();
+             window.__after = el.ariaActiveDescendantElement === target;
+             document.body.appendChild(container);
+             window.__recon = el.ariaActiveDescendantElement === target;
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(r#"(function(){return {before: window.__before, after: window.__after, recon: window.__recon};})()"#)
+        .unwrap();
+    assert_eq!(v["before"], true, "{v}");
+    assert_eq!(v["after"], true, "{v}");
+    assert_eq!(v["recon"], true, "{v}");
+}
+
+#[test]
+fn labelledby_declarative_shadow_first_element() {
+    let mut page = open(
+        r#"<input id="input4">
+           <div id="shadow_host4">
+             <template shadowrootmode="open"><span>Label for input4</span></template>
+           </div>
+           <script>
+             const sr = shadow_host4.shadowRoot;
+             const label4 = sr && sr.firstElementChild;
+             window.__has = !!sr;
+             window.__tag = label4 && label4.localName;
+             window.__text = label4 && label4.textContent;
+             try {
+               input4.ariaLabelledByElements = [label4];
+               window.__setOk = true;
+               window.__len = input4.ariaLabelledByElements.length;
+             } catch (e) {
+               window.__setOk = false;
+               window.__err = String(e && e.message || e);
+             }
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function(){return {has: window.__has, tag: window.__tag, text: window.__text, setOk: window.__setOk, len: window.__len, err: window.__err};})()"#,
+        )
+        .unwrap();
+    assert_eq!(v["has"], true, "{v}");
+    assert_eq!(v["tag"], "span", "{v}");
+    assert_eq!(v["text"], "Label for input4", "{v}");
+    assert_eq!(v["setOk"], true, "{v}");
+    assert_eq!(v["len"], 0, "{v}");
+}
+
+#[test]
+fn option_label_value_and_video_default_muted() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const o = document.createElement("option");
+              o.textContent = "Hello";
+              const noLabel = o.label;
+              o.label = "L";
+              const withLabel = o.label;
+              const attr = o.getAttribute("label");
+              o.value = "v";
+              const val = o.value;
+              const video = document.createElement("video");
+              const dmType = typeof video.defaultMuted;
+              const dm = video.defaultMuted;
+              video.defaultMuted = true;
+              const mutedAttr = video.hasAttribute("muted");
+              const link = document.createElement("link");
+              link.setAttribute("nonce", "abc");
+              const n1 = link.nonce;
+              link.nonce = "xyz";
+              const n2 = link.nonce;
+              const nAttr = link.getAttribute("nonce");
+              return {
+                noLabel: noLabel, withLabel: withLabel, attr: attr, val: val,
+                dmType: dmType, dm: dm, mutedAttr: mutedAttr,
+                n1: n1, n2: n2, nAttr: nAttr
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["noLabel"], "Hello", "{v}");
+    assert_eq!(v["withLabel"], "L", "{v}");
+    assert_eq!(v["attr"], "L", "{v}");
+    assert_eq!(v["val"], "v", "{v}");
+    assert_eq!(v["dmType"], "boolean", "{v}");
+    assert_eq!(v["dm"], false, "{v}");
+    assert_eq!(v["mutedAttr"], true, "{v}");
+    assert_eq!(v["n1"], "abc", "{v}");
+    assert_eq!(v["n2"], "xyz", "{v}");
+    assert_eq!(v["nAttr"], "abc", "{v}");
+}
+
+#[test]
+fn document_write_runs_inserted_script() {
+    let mut page = open(
+        r#"<script>
+             function mark() { window.__dw = document.currentScript && document.currentScript.id; }
+             document.write('<script id="document-write">mark();</' + 'script>');
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__dw").unwrap();
+    assert_eq!(v, "document-write", "{v}");
+}
+
+#[test]
+fn failed_parser_script_src_fires_onerror() {
+    let mut page = open(
+        r#"<script>
+             function boom() { window.__err = document.currentScript; window.__fired = 1; }
+           </script>
+           <script src="http://some.nonexistant.test/fail" id="script-load-error" onerror="boom()"></script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(r#"(function(){return {fired: window.__fired, cs: window.__err};})()"#)
+        .unwrap();
+    assert_eq!(v["fired"], 1, "{v}");
+    assert_eq!(v["cs"], serde_json::Value::Null, "{v}");
+}
+
+#[test]
+fn iframe_post_then_listen_cdata_dir_auto() {
+    let mut page = open(
+        r#"<iframe id="f" srcdoc="<div id=container></div><script>
+            window.addEventListener('message', function (e) {
+              var id = e.data;
+              if (id === 'subframe-loaded') return;
+              var div = document.createElement('div');
+              div.dir = 'auto';
+              div.id = id;
+              div.appendChild(document.createCDATASection('foo'));
+              div.appendChild(document.createTextNode('اختبر'));
+              document.getElementById('container').appendChild(div);
+              window.top.postMessage(id, '*');
+            });
+            window.top.postMessage('subframe-loaded', '*');
+          </script>"></iframe>
+           <script>
+             function awaitMessage(msg) {
+               return new Promise(function (res) {
+                 function waitAndRemove(e) {
+                   if (e.data != msg) return;
+                   window.removeEventListener('message', waitAndRemove);
+                   res();
+                 }
+                 window.addEventListener('message', waitAndRemove);
+               });
+             }
+             window.__p = (async function () {
+               await awaitMessage('subframe-loaded');
+               var iframe = document.getElementById('f');
+               iframe.contentWindow.postMessage('1', '*');
+               await awaitMessage('1');
+               var div = iframe.contentDocument.getElementById('1');
+               window.__has = !!div;
+               window.__ltr = !!(div && div.matches(':dir(ltr)'));
+               window.__nt = div && div.firstChild && div.firstChild.nodeType;
+             })();
+           </script>"#,
+    );
+    assert!(page.settle(500).settled);
+    let v = page
+        .evaluate(
+            r#"(function(){return {has: window.__has, ltr: window.__ltr, nt: window.__nt};})()"#,
+        )
+        .unwrap();
+    assert_eq!(v["has"], true, "{v}");
+    assert_eq!(v["ltr"], true, "{v}");
+    assert_eq!(v["nt"], 4, "{v}");
+}
+
+#[test]
+fn srcdoc_iframe_postmessage_reaches_parent() {
+    let mut page = open(
+        r#"<script>
+             window.__got = false;
+             window.addEventListener("message", function (e) {
+               if (e.data === "subframe-loaded") window.__got = true;
+             });
+           </script>
+           <iframe srcdoc="<script>window.top.postMessage('subframe-loaded','*');</script>"></iframe>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__got").unwrap();
+    assert_eq!(v, true, "{v}");
+}
+
+#[test]
+fn create_cdata_section_counts_for_dir_auto() {
+    let mut page = open(r#"<div id="d" dir="auto"></div>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const div = document.getElementById("d");
+              const cdata = document.createCDATASection("foo");
+              const text = document.createTextNode("اختبر");
+              div.appendChild(cdata);
+              div.appendChild(text);
+              const ltr = div.matches(":dir(ltr)");
+              cdata.remove();
+              const rtl = div.matches(":dir(rtl)");
+              return { type: cdata.nodeType, ltr: ltr, rtl: rtl };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["type"], 4, "{v}");
+    assert_eq!(v["ltr"], true, "{v}");
+    assert_eq!(v["rtl"], true, "{v}");
 }

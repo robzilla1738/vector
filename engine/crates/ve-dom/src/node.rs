@@ -58,6 +58,9 @@ pub struct Attribute {
     pub name: String,
     /// Attribute value.
     pub value: String,
+    /// Attribute namespace URI; `None` is the null namespace.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub namespace: Option<String>,
 }
 
 /// Shadow root encapsulation mode.

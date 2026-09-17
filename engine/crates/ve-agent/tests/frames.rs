@@ -723,6 +723,99 @@ fn service_worker_clients_match_all() {
 
 #[cfg(feature = "v8")]
 #[test]
+fn service_worker_client_post_message_reaches_page() {
+    use ve_script::{JsVm, V8Vm};
+    let rec = Recorder::default()
+        .serve(
+            "https://t.test/",
+            r#"<script>
+                 navigator.serviceWorker.addEventListener('message', e => { window.__fromSw = e.data; });
+                 navigator.serviceWorker.register('/sw.js').then(() =>
+                   fetch('/ping').then(r => r.text()).then(t => { window.__body = t; })
+                 );
+               </script>"#,
+        )
+        .serve(
+            "https://t.test/sw.js",
+            "self.addEventListener('install', e => e.waitUntil(self.skipWaiting())); self.addEventListener('activate', e => e.waitUntil(self.clients.claim())); self.addEventListener('fetch', event => { event.respondWith(self.clients.matchAll().then(function (cs) { if (cs[0] && cs[0].postMessage) cs[0].postMessage('from-sw'); return new Response('ok'); })); });",
+        )
+        .serve("https://t.test/ping", "net");
+    let mut page = Page::open_with(
+        1,
+        Box::new(rec),
+        "https://t.test/",
+        DEFAULT_VIEWPORT,
+        Some((Box::new(V8Vm::new().unwrap()) as Box<dyn JsVm>, true)),
+    )
+    .unwrap();
+    assert!(page.settle(2000).settled);
+    let body = page.evaluate("window.__body").unwrap();
+    let msg = page.evaluate("window.__fromSw").unwrap();
+    assert_eq!(body.as_str(), Some("ok"), "{body}");
+    assert_eq!(msg.as_str(), Some("from-sw"), "{msg}");
+}
+
+#[cfg(feature = "v8")]
+#[test]
+fn service_worker_match_all_includes_dedicated_worker_clients() {
+    use ve_script::{JsVm, V8Vm};
+    let rec = Recorder::default()
+        .serve(
+            "https://t.test/",
+            r#"<script>
+                 const w = new Worker('onmessage=function(e){postMessage(e.data)}');
+                 navigator.serviceWorker.register('/sw.js').then(() =>
+                   fetch('/clients').then(r => r.text()).then(t => { window.__clients = t; })
+                 );
+               </script>"#,
+        )
+        .serve(
+            "https://t.test/sw.js",
+            "self.addEventListener('install', e => e.waitUntil(self.skipWaiting())); self.addEventListener('activate', e => e.waitUntil(self.clients.claim())); self.addEventListener('fetch', event => { event.respondWith(self.clients.matchAll({includeUncontrolled:true}).then(function (cs) { return new Response(cs.map(c => c.type).sort().join(',')); })); });",
+        )
+        .serve("https://t.test/clients", "net");
+    let mut page = Page::open_with(
+        1,
+        Box::new(rec),
+        "https://t.test/",
+        DEFAULT_VIEWPORT,
+        Some((Box::new(V8Vm::new().unwrap()) as Box<dyn JsVm>, true)),
+    )
+    .unwrap();
+    assert!(page.settle(2000).settled);
+    let types = page.evaluate("window.__clients").unwrap();
+    let s = types.as_str().unwrap_or("");
+    assert!(s.contains("window"), "{types}");
+    assert!(s.contains("worker"), "{types}");
+}
+
+#[cfg(feature = "v8")]
+#[test]
+fn shared_worker_port_round_trip() {
+    use ve_script::{JsVm, V8Vm};
+    let rec = Recorder::default().serve(
+        "https://t.test/",
+        r#"<script>
+             const w = new SharedWorker('onconnect=function(e){}');
+             w.port.onmessage = (e) => { window.__shared = e.data; };
+             w.port.postMessage('hi');
+           </script>"#,
+    );
+    let mut page = Page::open_with(
+        1,
+        Box::new(rec),
+        "https://t.test/",
+        DEFAULT_VIEWPORT,
+        Some((Box::new(V8Vm::new().unwrap()) as Box<dyn JsVm>, true)),
+    )
+    .unwrap();
+    assert!(page.settle(2000).settled);
+    let got = page.evaluate("window.__shared").unwrap();
+    assert!(got.as_str().is_some(), "{got}");
+}
+
+#[cfg(feature = "v8")]
+#[test]
 fn iframe_post_message_same_origin_and_origin_mismatch() {
     use ve_script::{JsVm, V8Vm};
     let rec = Recorder::default().serve(

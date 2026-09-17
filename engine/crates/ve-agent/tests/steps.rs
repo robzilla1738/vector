@@ -211,6 +211,7 @@ fn documents_are_decoded_with_the_declared_charset() {
             content_type: Some("text/html; charset=windows-1252".into()),
             status: 200,
             last_modified: None,
+            content_language: None,
         },
     );
     let page = Page::open(

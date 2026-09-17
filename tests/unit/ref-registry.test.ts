@@ -14,14 +14,18 @@ describe("RefRegistry", () => {
     expect(r.has("p1", "r1")).toBe(false);
   });
 
-  it("replaces the live set so a recycled ref cannot resolve to a prior object", () => {
+  it("overwrites a recycled ref and keeps siblings from a prior full pass", () => {
     const r = new RefRegistry();
-    r.register("p1", [{ ...el("r1"), tag: "button" }]);
+    r.register("p1", [
+      { ...el("r1"), tag: "button" },
+      { ...el("r2"), tag: "form" },
+    ]);
     const epoch1 = r.epoch("p1");
+    // compact/subtree re-register of r1 must not drop r2 (Chromium observe)
     r.register("p1", [{ ...el("r1"), tag: "input" }]);
     expect(r.resolve("p1", "r1")?.tag).toBe("input");
     expect(r.resolve("p1", "r1", epoch1)).toBeUndefined();
-    expect(r.has("p1", "r2")).toBe(false);
+    expect(r.has("p1", "r2")).toBe(true);
   });
 });
 

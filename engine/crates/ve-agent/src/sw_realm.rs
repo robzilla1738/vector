@@ -26,6 +26,7 @@ pub(crate) struct SwRealm {
     tx: Sender<SwCmd>,
     /// `clients.claim()` ran during install/activate.
     pub claimed: bool,
+    client_posts: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
 }
 
 impl SwRealm {
@@ -97,6 +98,14 @@ impl SwRealm {
             .ok()
             .unwrap_or(false)
     }
+
+    /// `Client.postMessage` payloads queued during the last fetch/message.
+    pub(crate) fn take_client_posts(&self) -> Vec<String> {
+        self.client_posts
+            .lock()
+            .map(|mut g| std::mem::take(&mut *g))
+            .unwrap_or_default()
+    }
 }
 
 #[cfg(feature = "v8")]
@@ -105,6 +114,8 @@ fn spawn_v8(script: String, imports: HashMap<String, String>, activate: bool) ->
 
     let (tx, rx) = mpsc::channel::<SwCmd>();
     let (ready_tx, ready_rx) = mpsc::channel::<bool>();
+    let client_posts = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let posts_thread = client_posts.clone();
     std::thread::Builder::new()
         .name("ve-sw-realm".into())
         .spawn(move || {
@@ -177,7 +188,11 @@ fn spawn_v8(script: String, imports: HashMap<String, String>, activate: bool) ->
                            url: all[i].url,\
                            type: all[i].type || 'window',\
                            id: all[i].id || String(i),\
-                           frameType: all[i].frameType || 'top-level'\
+                           frameType: all[i].frameType || 'top-level',\
+                           postMessage: function (msg) {{\
+                             globalThis.__veClientPosts = globalThis.__veClientPosts || [];\
+                             globalThis.__veClientPosts.push(JSON.stringify(msg == null ? null : msg));\
+                           }}\
                          }});\
                        }}\
                      }}\
@@ -289,9 +304,19 @@ fn spawn_v8(script: String, imports: HashMap<String, String>, activate: bool) ->
                         );
                         let used = matches!(
                             vm.eval(&js, "vector:sw-fetch"),
-                            Ok(JsValue::Bool(true)) | Ok(JsValue::Number(_))
+                            Ok(JsValue::Bool(true) | JsValue::Number(_))
                         );
                         let _ = vm.run_pending_jobs();
+                        if let Ok(JsValue::String(posts)) = vm.eval(
+                            "(function(){ var p = globalThis.__veClientPosts || []; globalThis.__veClientPosts = []; return JSON.stringify(p); })()",
+                            "vector:sw-client-posts",
+                        ) {
+                            if let Ok(list) = serde_json::from_str::<Vec<String>>(&posts)
+                                && let Ok(mut g) = posts_thread.lock()
+                            {
+                                g.extend(list);
+                            }
+                        }
                         let out = if !used {
                             None
                         } else {
@@ -351,5 +376,9 @@ fn spawn_v8(script: String, imports: HashMap<String, String>, activate: bool) ->
         })
         .ok()?;
     let claimed = ready_rx.recv_timeout(Duration::from_millis(2000)).ok()?;
-    Some(SwRealm { tx, claimed })
+    Some(SwRealm {
+        tx,
+        claimed,
+        client_posts,
+    })
 }

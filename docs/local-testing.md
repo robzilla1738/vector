@@ -76,7 +76,7 @@ Engine lab (from `engine/`):
 cargo run --release -p wpt-harness --features v8 -- --http
 # merge-blocking subset: engine/conformance/testharness.txt (112 files)
 cargo run --release -p wpt-harness --features v8 -- --http --wpt-dir <pinned-wpt-checkout> --tree --tree-family html/dom
-# official html/dom at wpt-revision.txt = 7c20438…; latest 272 PASS / 59 FAIL
+# official html/dom at wpt-revision.txt = 7c20438…; latest 302 PASS / 29 FAIL (idlharness.https.html PASS)
 cargo run --release -p wpt-runner -- --use-reftest-fonts --limit 8 --manifest conformance/reftest-fonts.txt
 cargo run --release -p browserbench --features v8,gpu
 ```

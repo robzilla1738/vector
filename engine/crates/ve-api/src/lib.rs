@@ -169,6 +169,12 @@ pub struct OpenRequest {
     /// meaningful when the engine runs with `scripting`.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub allow_evaluate: bool,
+    /// HTTP `Last-Modified` for inline HTML (WPT `.headers` sidecars).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_modified: Option<String>,
+    /// HTTP `Content-Language` for inline HTML (WPT `.headers` sidecars).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_language: Option<String>,
 }
 
 impl OpenRequest {
@@ -270,6 +276,7 @@ impl Loader for NetLoader {
             content_type: response.content_type().map(str::to_owned),
             status: response.status.as_u16(),
             last_modified: response.last_modified().map(str::to_owned),
+            content_language: response.content_language().map(str::to_owned),
         })
     }
 
@@ -616,8 +623,21 @@ impl VectorEngine {
             .filter(|(vm, _)| vm.name() != "null");
         let mut page = match (&request.html, &request.url) {
             (Some(html), url) => {
-                Page::from_html_with(id, html, url.as_deref(), viewport, scripting)?
-                    .with_loader(loader)
+                let mut page = Page::from_html_with_loader(
+                    id,
+                    html,
+                    url.as_deref(),
+                    viewport,
+                    scripting,
+                    Some(loader),
+                )?;
+                if let Some(lm) = request.last_modified.clone() {
+                    page.set_last_modified(lm);
+                }
+                if let Some(cl) = request.content_language.clone() {
+                    page.set_content_language(cl);
+                }
+                page
             }
             (None, Some(url)) => Page::open_with(id, loader, url, viewport, scripting)?,
             (None, None) => {

@@ -12,6 +12,178 @@ use ve_dom::{Document, ElementData, Namespace, NodeId, NodeKind};
 
 use crate::selector_impl::{CssString, PseudoClass, PseudoElement, VeSelectorImpl};
 
+fn lang_matches(have: &str, want: &str) -> bool {
+    if have.is_empty() || want.is_empty() {
+        return false;
+    }
+    let have = have.to_ascii_lowercase();
+    let want = want.to_ascii_lowercase();
+    have == want || have.starts_with(&format!("{want}-"))
+}
+
+fn pragma_language(doc: &Document) -> Option<String> {
+    for id in doc.elements() {
+        let Some(el) = doc.element(id) else {
+            continue;
+        };
+        if !el.is_html("meta") {
+            continue;
+        }
+        let Some(equiv) = doc.attribute(id, "http-equiv") else {
+            continue;
+        };
+        if !equiv.eq_ignore_ascii_case("content-language") {
+            continue;
+        }
+        let Some(content) = doc.attribute(id, "content") else {
+            continue;
+        };
+        let tag = content
+            .split(',')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .split_ascii_whitespace()
+            .next()
+            .unwrap_or("");
+        if !tag.is_empty() {
+            return Some(tag.to_owned());
+        }
+    }
+    None
+}
+
+fn first_strong_dir(text: &str) -> Option<&'static str> {
+    for ch in text.chars() {
+        if matches!(
+            ch,
+            '\u{0590}'..='\u{08FF}' | '\u{FB1D}'..='\u{FDFF}' | '\u{FE70}'..='\u{FEFF}'
+        ) {
+            return Some("rtl");
+        }
+        if ch.is_ascii_alphabetic() {
+            return Some("ltr");
+        }
+    }
+    None
+}
+
+pub(crate) fn auto_dir_text(doc: &Document, id: NodeId) -> String {
+    let el = doc.element(id);
+    if el.is_some_and(|e| e.is_html("input") || e.is_html("textarea")) {
+        return doc.form_value(id).unwrap_or_default();
+    }
+    let mut out = String::new();
+    collect_auto_dir_text(doc, id, true, &mut out);
+    out
+}
+
+fn collect_auto_dir_text(doc: &Document, id: NodeId, is_root: bool, out: &mut String) {
+    match doc.get(id).map(|n| &n.kind) {
+        Some(NodeKind::Text(t)) => {
+            out.push_str(t);
+            return;
+        }
+        Some(NodeKind::Element(_)) => {}
+        _ => return,
+    }
+    let Some(el) = doc.element(id) else {
+        return;
+    };
+    if !is_root && (el.attr("dir").is_some() || el.is_html("bdi")) {
+        return;
+    }
+    if el.is_html("script") || el.is_html("style") {
+        return;
+    }
+    if !is_root && (el.is_html("input") || el.is_html("textarea")) {
+        return;
+    }
+    if el.is_html("slot") {
+        if !is_root {
+            if let Some(host) = doc
+                .containing_shadow_root(id)
+                .and_then(|shadow| doc.host(shadow))
+            {
+                if html_direction(doc, host) == "rtl" {
+                    out.push('\u{05D0}');
+                } else {
+                    out.push('A');
+                }
+            }
+            return;
+        }
+        let assigned = doc.assigned_nodes(id);
+        if !assigned.is_empty() {
+            for n in assigned {
+                collect_auto_dir_text(doc, n, false, out);
+            }
+            return;
+        }
+    }
+    let mut child = doc.first_child(id);
+    while let Some(n) = child {
+        collect_auto_dir_text(doc, n, false, out);
+        child = doc.next_sibling(n);
+    }
+}
+
+fn html_parent(doc: &Document, id: NodeId) -> Option<NodeId> {
+    let p = doc.parent(id)?;
+    if doc
+        .get(p)
+        .is_some_and(|n| matches!(n.kind, NodeKind::ShadowRoot { .. }))
+    {
+        return doc.host(p);
+    }
+    Some(p)
+}
+
+fn html_direction(doc: &Document, id: NodeId) -> String {
+    let mut cur = Some(id);
+    while let Some(n) = cur {
+        if let Some(el) = doc.element(n) {
+            let dir = el.attr("dir").map(str::to_ascii_lowercase);
+            match dir.as_deref() {
+                Some("ltr") => return "ltr".into(),
+                Some("rtl") => return "rtl".into(),
+                Some("auto") => {
+                    return first_strong_dir(&auto_dir_text(doc, n))
+                        .unwrap_or("ltr")
+                        .into();
+                }
+                _ if el.is_html("bdi") => {
+                    return first_strong_dir(&auto_dir_text(doc, n))
+                        .unwrap_or("ltr")
+                        .into();
+                }
+                _ => {}
+            }
+        }
+        cur = html_parent(doc, n);
+    }
+    "ltr".into()
+}
+
+fn language_of(doc: &Document, id: NodeId) -> Option<String> {
+    let mut cur = Some(id);
+    while let Some(n) = cur {
+        if let Some(el) = doc.element(n)
+            && let Some(v) = el.attr("lang")
+        {
+            if v.is_empty() {
+                return None;
+            }
+            return Some(v.to_owned());
+        }
+        cur = doc.parent(n);
+    }
+    if let Some(p) = pragma_language(doc) {
+        return Some(p);
+    }
+    doc.content_language().map(str::to_owned)
+}
+
 /// Per-element user-interaction state that selectors can observe.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ElementState {
@@ -359,6 +531,12 @@ impl Element for DomElement<'_> {
                     && self.doc.form_value(self.id).unwrap_or_default().is_empty()
             }
             PseudoClass::Defined => true,
+            PseudoClass::Lang(tag) => {
+                language_of(self.doc, self.id).is_some_and(|have| lang_matches(&have, tag.as_str()))
+            }
+            PseudoClass::Dir(dir) => {
+                html_direction(self.doc, self.id) == dir.as_str().to_ascii_lowercase()
+            }
         }
     }
 

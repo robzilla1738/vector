@@ -432,6 +432,59 @@ mod tests {
     }
 
     #[test]
+    fn fragment_parse_script_with_scripting_enabled() {
+        let doc = parse_document("<body><p id=keep>keep</p></body>").document;
+        let keep = doc.element_by_id("keep");
+        let (doc, kids) = parse_fragment_into(
+            doc,
+            "body",
+            r#"<script id="document-write">mark();</script>"#,
+            true,
+        );
+        assert_eq!(kids.len(), 1, "kids={}", kids.len());
+        assert!(
+            doc.element(kids[0])
+                .is_some_and(|e| e.is_html("script") && e.id() == Some("document-write")),
+            "not a script"
+        );
+        assert_eq!(doc.text_content(kids[0]), "mark();");
+        assert!(
+            keep.is_some_and(|id| doc.contains(id) && doc.element_by_id("keep") == Some(id)),
+            "original tree was destroyed"
+        );
+    }
+
+    #[test]
+    fn fragment_parse_xhtml_iframe_keeps_script() {
+        let html = r#"<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <body>
+        <div id="container"></div>
+    </body>
+    <script>window.top.postMessage("subframe-loaded");</script>
+</html>"#;
+        let doc = parse_document("<body></body>").document;
+        let (doc, kids) = parse_fragment_into(doc, "body", html, true);
+        let scripts: Vec<_> = kids
+            .iter()
+            .copied()
+            .chain(kids.iter().flat_map(|&k| doc.descendants(k)))
+            .filter(|&id| doc.element(id).is_some_and(|e| e.is_html("script")))
+            .collect();
+        assert!(!scripts.is_empty(), "kids={} scripts=0", kids.len());
+        assert!(
+            scripts
+                .iter()
+                .any(|&id| doc.text_content(id).contains("subframe-loaded")),
+            "script text={:?}",
+            scripts
+                .iter()
+                .map(|&id| doc.text_content(id))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
     fn scripting_enabled_leaves_noscript_unparsed() {
         let html = "<noscript><p id=x>hidden</p></noscript>";
         let off = parse_document(html).document;

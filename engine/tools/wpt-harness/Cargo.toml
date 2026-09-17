@@ -14,7 +14,7 @@ workspace = true
 
 [features]
 default = []
-v8 = ["ve-api/v8"]
+v8 = ["ve-api/v8", "ve-api/http"]
 
 [dependencies]
 ve-api.workspace = true

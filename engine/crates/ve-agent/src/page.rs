@@ -2,7 +2,7 @@
 //! focus, the in-engine action semantics of architecture §6, `settle()`, and
 //! `observe()`.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,7 @@ use ve_a11y::{
     parse_ref_parts, ref_for,
 };
 use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
-use ve_dom::{DirtyFlags, Document, NodeKind};
+use ve_dom::{DirtyFlags, Document, Namespace, NodeKind};
 use ve_gfx::SoftwareRenderer;
 use ve_html::DocumentMeta;
 use ve_layout::{LayoutEngine, LayoutTree};
@@ -80,6 +80,8 @@ pub struct LoadedDocument {
     pub status: u16,
     /// HTTP `Last-Modified` header, if any.
     pub last_modified: Option<String>,
+    /// HTTP `Content-Language` header, if any.
+    pub content_language: Option<String>,
 }
 
 impl LoadedDocument {
@@ -91,6 +93,7 @@ impl LoadedDocument {
             content_type: Some("text/html; charset=utf-8".into()),
             status: 200,
             last_modified: None,
+            content_language: None,
         }
     }
 }
@@ -361,9 +364,27 @@ pub struct Page {
     pub(crate) parser_limit: Option<NodeId>,
     /// Arena length when document scripts started; later ids are script-created.
     pub(crate) parse_hi: u32,
+    /// `rel=expect` links whose target has already been seen (stay unblocked).
+    expect_satisfied: HashSet<NodeId>,
+    /// Head `rel=expect` links present at parse; body JS cannot add new ones.
+    expect_from_head: HashSet<NodeId>,
+    /// Head links that were fully blocking before the body; body JS cannot arm new ones.
+    expect_armed: HashSet<NodeId>,
+    /// True after the first parser-inserted body script runs.
+    pub(crate) expect_body_started: bool,
+    /// Script nodes already evaluated (parser or script-inserted).
+    pub(crate) scripts_executed: HashSet<NodeId>,
+    /// Scripts inserted by `document.write` while a script is on the stack.
+    /// Evaluated after the writer returns so we can `run_script` (the VM is
+    /// borrowed during the host call).
+    pub(crate) pending_write_scripts: Vec<(NodeId, String)>,
+    /// Resolved `src` of attached iframes, used for `contentWindow.origin`.
+    pub(crate) iframe_urls: HashMap<NodeId, String>,
 
     /// HTTP `Last-Modified` value for `document.lastModified`.
     pub(crate) last_modified: Option<String>,
+    /// Browsing-document `document.readyState`.
+    pub(crate) ready_state: &'static str,
     /// The script layer, when a VM is attached (plan A13).
     pub(crate) scripting: Option<crate::scripting::Scripting>,
     /// Origin-keyed `localStorage`.
@@ -409,6 +430,8 @@ pub struct Page {
     /// Dedicated workers (script source + last message).
     pub(crate) workers: HashMap<u64, WorkerRecord>,
     pub(crate) next_worker: u64,
+    /// `Client.postMessage` payloads from the last SW fetch (VEC-010).
+    pub(crate) sw_client_posts: Vec<String>,
     /// Per-canvas 2D pixel buffers (VEC-008).
     pub(crate) canvases: HashMap<NodeId, CanvasSurface>,
 }
@@ -667,6 +690,15 @@ fn normalize(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+fn hex_nibble(b: u8) -> Option<u8> {
+    Some(match b {
+        b'0'..=b'9' => b - b'0',
+        b'a'..=b'f' => b - b'a' + 10,
+        b'A'..=b'F' => b - b'A' + 10,
+        _ => return None,
+    })
+}
+
 fn media_query_matches_width(media: &str, width: f32) -> bool {
     let q = media.trim();
     if q.is_empty() {
@@ -764,7 +796,21 @@ impl Page {
         viewport: Size,
         scripting: Option<(Box<dyn ve_script::JsVm>, bool)>,
     ) -> Result<Self> {
+        Self::from_html_with_loader(id, html, url, viewport, scripting, None)
+    }
+
+    /// [`Self::from_html_with`] with a loader so parser stylesheets and
+    /// scripts are fetched during `load`.
+    pub fn from_html_with_loader(
+        id: u64,
+        html: &str,
+        url: Option<&str>,
+        viewport: Size,
+        scripting: Option<(Box<dyn ve_script::JsVm>, bool)>,
+        loader: Option<Box<dyn Loader>>,
+    ) -> Result<Self> {
         let mut page = Self::empty(id, viewport);
+        page.loader = loader;
         if let Some((vm, allow_evaluate)) = scripting {
             page.enable_scripting(vm, allow_evaluate)?;
         }
@@ -818,7 +864,15 @@ impl Page {
             document_scripts_pending: false,
             parser_limit: None,
             parse_hi: 0,
+            expect_satisfied: HashSet::new(),
+            expect_from_head: HashSet::new(),
+            expect_armed: HashSet::new(),
+            expect_body_started: false,
+            scripts_executed: HashSet::new(),
+            pending_write_scripts: Vec::new(),
+            iframe_urls: HashMap::new(),
             last_modified: None,
+            ready_state: "loading",
             scripting: None,
             local_storage: HashMap::new(),
             session_storage: HashMap::new(),
@@ -844,6 +898,7 @@ impl Page {
             next_idb_txn: 0,
             workers: HashMap::new(),
             next_worker: 0,
+            sw_client_posts: Vec::new(),
             canvases: HashMap::new(),
         }
     }
@@ -891,13 +946,16 @@ impl Page {
     }
 
     pub(crate) fn complete_script_fetches(&mut self) {
-        let pending: Vec<(u64, String, String, String)> = self
-            .script_fetches
-            .iter()
-            .filter(|j| j.result.is_none() && j.error.is_none() && !j.aborted)
-            .map(|j| (j.id, j.url.clone(), j.method.clone(), j.body.clone()))
-            .collect();
-        if !pending.is_empty() {
+        loop {
+            let pending: Vec<(u64, String, String, String)> = self
+                .script_fetches
+                .iter()
+                .filter(|j| j.result.is_none() && j.error.is_none() && !j.aborted)
+                .map(|j| (j.id, j.url.clone(), j.method.clone(), j.body.clone()))
+                .collect();
+            if pending.is_empty() {
+                break;
+            }
             let start = pending
                 .iter()
                 .position(|(id, ..)| *id > self.last_script_fetch_rr)
@@ -934,17 +992,82 @@ impl Page {
     }
 
     pub(crate) fn iframe_origin(&self, iframe: NodeId) -> String {
-        if let Some(nested) = self.isolated_frames.get(&iframe) {
-            return crate::dom::origin_of(&nested.url);
+        if self.iframe_is_opaque(iframe) {
+            return "null".into();
+        }
+        if let Some(url) = self.iframe_urls.get(&iframe) {
+            if url.starts_with("blob:")
+                || url == "about:blank"
+                || url == "about:srcdoc"
+                || url.starts_with("javascript:")
+                || url.starts_with("about:")
+            {
+                return crate::dom::origin_of(&self.url);
+            }
+            let origin = crate::dom::origin_of(url);
+            if origin != "null" && !origin.starts_with("about:") {
+                return origin;
+            }
         }
         if let Some(src) = self.doc.attribute(iframe, "src")
             && !src.is_empty()
             && src != "about:blank"
             && let Some(resolved) = self.resolve_url(src)
         {
+            if resolved.starts_with("blob:") {
+                return crate::dom::origin_of(&self.url);
+            }
             return crate::dom::origin_of(&resolved);
         }
         crate::dom::origin_of(&self.url)
+    }
+
+    pub(crate) fn iframe_location_origin(&self, iframe: NodeId) -> String {
+        if self.iframe_is_opaque(iframe) {
+            return "null".into();
+        }
+        if let Some(url) = self.iframe_urls.get(&iframe) {
+            if url.starts_with("blob:") {
+                return crate::dom::origin_of(&self.url);
+            }
+        }
+        if self.doc.attribute(iframe, "srcdoc").is_some() {
+            return "null".into();
+        }
+        let src = self.doc.attribute(iframe, "src").unwrap_or("");
+        if src.is_empty()
+            || src == "about:blank"
+            || src.to_ascii_lowercase().starts_with("javascript:")
+        {
+            return "null".into();
+        }
+        if src.starts_with("blob:") {
+            return crate::dom::origin_of(&self.url);
+        }
+        self.iframe_origin(iframe)
+    }
+
+    pub(crate) fn iframe_is_opaque(&self, iframe: NodeId) -> bool {
+        let Some(sandbox) = self.doc.attribute(iframe, "sandbox") else {
+            return false;
+        };
+        !sandbox
+            .split_ascii_whitespace()
+            .any(|t| t.eq_ignore_ascii_case("allow-same-origin"))
+    }
+
+    pub(crate) fn iframe_src_url(&self, iframe: NodeId) -> String {
+        if let Some(url) = self.iframe_urls.get(&iframe) {
+            return url.clone();
+        }
+        if self.doc.attribute(iframe, "srcdoc").is_some() {
+            return "about:srcdoc".into();
+        }
+        let src = self.doc.attribute(iframe, "src").unwrap_or("");
+        if src.is_empty() {
+            return "about:blank".into();
+        }
+        self.resolve_url(src).unwrap_or_else(|| src.to_owned())
     }
 
     pub(crate) fn frame_is_isolated(&self, iframe: NodeId) -> bool {
@@ -993,11 +1116,26 @@ impl Page {
         }
         let src = self.doc.attribute(id, "src").unwrap_or_default();
         let src_l = src.trim().to_ascii_lowercase();
-        if !src.is_empty() && src != "about:blank" && !src_l.starts_with("javascript:") {
+        if !src.is_empty()
+            && src != "about:blank"
+            && !src_l.starts_with("javascript:")
+            && !src_l.starts_with("blob:")
+        {
             return;
         }
         if !self.doc.is_connected(id) {
             return;
+        }
+        if src_l.starts_with("blob:") || src_l.starts_with("javascript:") {
+            if let Some(url) = self.resolve_url(src) {
+                self.iframe_urls.insert(id, url);
+            } else {
+                self.iframe_urls.insert(id, src.to_owned());
+            }
+        } else {
+            self.iframe_urls
+                .entry(id)
+                .or_insert_with(|| "about:blank".into());
         }
         let nested = self.doc.create_html_document(None);
         let _ = self.doc.set_content_document(id, nested);
@@ -1243,9 +1381,14 @@ impl Page {
                 .to_ascii_lowercase()
         });
         self.status = loaded.status;
-        self.last_modified = loaded.last_modified.clone();
+        self.last_modified.clone_from(&loaded.last_modified);
+        self.doc
+            .set_content_language(loaded.content_language.clone());
         self.parser_limit = None;
         self.parse_hi = 0;
+        self.expect_satisfied.clear();
+        self.scripts_executed.clear();
+        self.iframe_urls.clear();
         self.routing = classify(&self.doc, self.content_type.as_deref());
         self.scroll = Point::ZERO;
         self.element_scroll.clear();
@@ -1366,6 +1509,21 @@ impl Page {
                         },
                     ));
                 }
+            } else if e.is_html("style") {
+                let css = self.doc.text_content(id);
+                for href in collect_imports(&css) {
+                    if let Some(url) = resolve(&href) {
+                        requests.push((
+                            id,
+                            SubresourceRequest {
+                                url,
+                                kind: SubresourceKind::Stylesheet,
+                                page,
+                                referrer: referrer.clone(),
+                            },
+                        ));
+                    }
+                }
             } else if e.is_html("img") {
                 // srcset: take the first candidate when src is missing
                 let src = self
@@ -1400,35 +1558,56 @@ impl Page {
                 }
             } else if e.is_html("script") && script_is_classic_or_module(&self.doc, id) {
                 if let Some(url) = self.doc.attribute(id, "src").and_then(resolve) {
-                    requests.push((
-                        id,
-                        SubresourceRequest {
-                            url,
-                            kind: SubresourceKind::Script,
-                            page,
-                            referrer: referrer.clone(),
-                        },
-                    ));
+                    let url = rewrite_loopback_fetch(&url);
+                    // data: is decoded locally. Non-loopback hosts are not
+                    // served by the harness — fail them without a DNS wait
+                    // so parser-inserted `onerror` can run.
+                    if url_is_local_http(&url) {
+                        requests.push((
+                            id,
+                            SubresourceRequest {
+                                url,
+                                kind: SubresourceKind::Script,
+                                page,
+                                referrer: referrer.clone(),
+                            },
+                        ));
+                    }
                 }
             } else if e.is_html("iframe") || e.is_html("frame") {
-                if let Some(srcdoc) = self.doc.attribute(id, "srcdoc").map(str::to_owned) {
-                    self.attach_iframe_html(id, &srcdoc);
-                } else if let Some(url) = self.doc.attribute(id, "src").and_then(resolve) {
-                    if url.starts_with("javascript:") {
-                        continue;
-                    }
-                    if !same_origin_url(&self.url, &url) {
+                if self.doc.attribute(id, "sandbox").is_some() {
+                    let sb = self.doc.attribute(id, "sandbox").unwrap_or("");
+                    if !sb
+                        .split_ascii_whitespace()
+                        .any(|t| t.eq_ignore_ascii_case("allow-same-origin"))
+                    {
                         self.cross_origin_frames.insert(id);
                     }
-                    requests.push((
-                        id,
-                        SubresourceRequest {
-                            url,
-                            kind: SubresourceKind::Document,
-                            page,
-                            referrer: referrer.clone(),
-                        },
-                    ));
+                }
+                if let Some(srcdoc) = self.doc.attribute(id, "srcdoc").map(str::to_owned) {
+                    self.iframe_urls.insert(id, "about:srcdoc".into());
+                    self.attach_iframe_html(id, &srcdoc);
+                } else if let Some(url) = self.doc.attribute(id, "src").and_then(resolve) {
+                    if url.starts_with("javascript:") || url.starts_with("blob:") {
+                        self.iframe_urls.insert(id, url);
+                        self.maybe_attach_blank_iframe(id);
+                    } else {
+                        if !same_origin_url(&self.url, &url) {
+                            self.cross_origin_frames.insert(id);
+                        }
+                        self.iframe_urls.insert(id, url.clone());
+                        requests.push((
+                            id,
+                            SubresourceRequest {
+                                url: rewrite_loopback_fetch(&url),
+                                kind: SubresourceKind::Document,
+                                page,
+                                referrer: referrer.clone(),
+                            },
+                        ));
+                    }
+                } else {
+                    self.maybe_attach_blank_iframe(id);
                 }
             }
         }
@@ -1473,7 +1652,13 @@ impl Page {
                             }
                         }
                     }
-                    sheets.insert(id, css);
+                    sheets
+                        .entry(id)
+                        .and_modify(|e| {
+                            e.push('\n');
+                            e.push_str(&css);
+                        })
+                        .or_insert(css);
                     self.load_stats.stylesheets += 1;
                 }
                 (SubresourceKind::Image, Ok(res)) if res.status < 400 => {
@@ -1496,6 +1681,9 @@ impl Page {
                 }
                 (SubresourceKind::Document, Ok(res)) if res.status < 400 => {
                     let html = decode_text(&res.bytes, res.content_type.as_deref());
+                    self.iframe_urls
+                        .entry(id)
+                        .or_insert_with(|| res.url.clone());
                     if self.cross_origin_frames.contains(&id) {
                         self.attach_isolated_iframe(id, &res.url, &html);
                     } else {
@@ -1568,13 +1756,15 @@ impl Page {
 
     fn attach_iframe_html(&mut self, iframe: NodeId, html: &str) {
         let scripting = self.scripting.is_some();
+        let nested = self.doc.create_html_document(None);
         let taken = std::mem::replace(&mut self.doc, Document::new());
         let (mut doc, kids) = ve_html::parse_fragment_into(taken, "body", html, scripting);
-        let fragment = doc.create_fragment();
-        for kid in kids {
-            let _ = doc.append_child(fragment, kid);
+        if let Some(body) = doc.body_of(nested) {
+            for kid in kids {
+                let _ = doc.append_child(body, kid);
+            }
         }
-        let _ = doc.set_content_document(iframe, fragment);
+        let _ = doc.set_content_document(iframe, nested);
         self.doc = doc;
         self.load_stats.frames += 1;
     }
@@ -1604,7 +1794,13 @@ impl Page {
                     ve_style::MediaQueryList::parse_str(m).evaluate(&self.style_engine.media)
                 });
                 if media_ok {
-                    ordered.push((id, ve_style::strip_cdata(&self.doc.text_content(id))));
+                    let own = strip_css_imports(&ve_style::strip_cdata(&self.doc.text_content(id)));
+                    let css = if let Some(imported) = sheets.get(&id) {
+                        format!("{imported}\n{own}")
+                    } else {
+                        own
+                    };
+                    ordered.push((id, css));
                 }
             } else if let Some(css) = sheets.get(&id) {
                 ordered.push((id, css.clone()));
@@ -1619,7 +1815,7 @@ impl Page {
     fn collect_scripts(&mut self, external: &HashMap<NodeId, Option<String>>) {
         let mut scripts = Vec::new();
         for id in self.doc.elements() {
-            if !self.doc.element(id).is_some_and(|e| e.is_html("script"))
+            if !self.in_browsing_tree(id)
                 || !script_is_classic_or_module(&self.doc, id)
                 || self.doc.attribute(id, "nomodule").is_some()
             {
@@ -1637,7 +1833,10 @@ impl Page {
             let body = self.doc.text_content(id);
             let (source, failed) = match (&url, external.get(&id)) {
                 (Some(_), Some(Some(src))) => (src.clone(), false),
-                (Some(_), _) if !body.trim().is_empty() => (body, false),
+                (Some(u), _) if u.starts_with("data:") => match decode_data_url_bytes(u) {
+                    Some(bytes) => (String::from_utf8_lossy(&bytes).into_owned(), false),
+                    None => (String::new(), true),
+                },
                 (Some(_), _) => (String::new(), true),
                 (None, _) => (body, false),
             };
@@ -1647,7 +1846,8 @@ impl Page {
                 source,
                 module,
                 defer: self.doc.attribute(id, "defer").is_some(),
-                async_: self.doc.attribute(id, "async").is_some(),
+                async_: self.doc.attribute(id, "async").is_some()
+                    || self.doc.element(id).is_some_and(|e| e.has_attr("async")),
                 failed,
             });
         }
@@ -1781,6 +1981,28 @@ impl Page {
     /// Cancels the running program (next step fails with `cancelled`).
     pub fn cancel(&mut self) {
         self.cancelled = true;
+    }
+
+    /// Sets the HTTP `Last-Modified` value used by `document.lastModified`.
+    pub fn set_last_modified(&mut self, raw: impl Into<String>) {
+        self.last_modified = Some(raw.into());
+    }
+
+    /// Advances virtual time by up to `ms` and fires due JS timers.
+    pub fn pump_virtual_time(&mut self, ms: u64) -> usize {
+        self.ensure_document_scripts();
+        let fired = self.pump_timers(ms);
+        self.drain_js_jobs();
+        fired
+    }
+
+    /// Sets the HTTP `Content-Language` used by `:lang()` fallback.
+    pub fn set_content_language(&mut self, raw: impl Into<String>) {
+        self.doc.set_content_language(Some(raw.into()));
+        if let Some(root) = self.doc.document_element() {
+            self.doc
+                .mark_dirty(root, DirtyFlags::STYLE | DirtyFlags::STYLE_DESCENDANTS);
+        }
     }
 
     pub(crate) fn take_cancelled(&mut self) -> bool {
@@ -1967,26 +2189,139 @@ impl Page {
         if id.index() >= self.parse_hi {
             return true;
         }
-        if id == limit {
-            return true;
+        // Parse order, not live tree order: a node parsed before the running
+        // script stays visible even if script moved it after the insertion
+        // point (ARIA reconnect, document.write, etc.).
+        id.index() <= limit.index()
+    }
+
+    pub(crate) fn in_browsing_tree(&self, id: NodeId) -> bool {
+        id == self.doc.root() || self.doc.is_ancestor_of(self.doc.root(), id)
+    }
+
+    pub(crate) fn resource_is_render_blocking(&self, id: NodeId) -> bool {
+        self.doc
+            .attribute(id, "blocking")
+            .unwrap_or("")
+            .split_ascii_whitespace()
+            .any(|t| t.eq_ignore_ascii_case("render"))
+    }
+
+    pub(crate) fn visible_children(&self, id: NodeId) -> Vec<NodeId> {
+        self.doc
+            .children(id)
+            .filter(|&c| self.parser_visible(c))
+            .collect()
+    }
+
+    /// Children visible to script: parser-gated in the light tree while a
+    /// parser-inserted script is running; otherwise the real child list
+    /// (shadow roots, fragments, disconnected subtrees).
+    pub(crate) fn tree_children(&self, id: NodeId) -> Vec<NodeId> {
+        if self.parser_limit.is_some() && self.in_browsing_tree(id) {
+            self.visible_children(id)
+        } else {
+            self.doc.children(id).collect()
         }
-        for n in std::iter::once(self.doc.root()).chain(self.doc.descendants(self.doc.root())) {
-            if n == id {
-                return true;
+    }
+
+    pub(crate) fn visible_first_child(&self, id: NodeId) -> Option<NodeId> {
+        self.doc.children(id).find(|&c| self.parser_visible(c))
+    }
+
+    pub(crate) fn visible_last_child(&self, id: NodeId) -> Option<NodeId> {
+        self.doc
+            .children(id)
+            .filter(|&c| self.parser_visible(c))
+            .last()
+    }
+
+    pub(crate) fn visible_next_sibling(&self, id: NodeId) -> Option<NodeId> {
+        let mut n = self.doc.next_sibling(id);
+        while let Some(cur) = n {
+            if self.parser_visible(cur) {
+                return Some(cur);
             }
-            if n == limit {
-                return false;
+            n = self.doc.next_sibling(cur);
+        }
+        None
+    }
+
+    pub(crate) fn visible_prev_sibling(&self, id: NodeId) -> Option<NodeId> {
+        let mut n = self.doc.prev_sibling(id);
+        while let Some(cur) = n {
+            if self.parser_visible(cur) {
+                return Some(cur);
+            }
+            n = self.doc.prev_sibling(cur);
+        }
+        None
+    }
+
+    pub(crate) fn reveal_parser_progress(&mut self, old_limit: Option<NodeId>) {
+        let ids: Vec<NodeId> = std::iter::once(self.doc.root())
+            .chain(self.doc.descendants(self.doc.root()))
+            .collect();
+        let mut newly = Vec::new();
+        for id in ids {
+            if id.index() >= self.parse_hi || !self.parser_visible(id) {
+                continue;
+            }
+            let was = {
+                let saved = self.parser_limit;
+                self.parser_limit = old_limit;
+                let v = self.parser_visible(id);
+                self.parser_limit = saved;
+                v
+            };
+            if !was {
+                newly.push(id);
             }
         }
-        true
+        for id in newly {
+            if let Some(parent) = self.doc.parent(id) {
+                self.doc.record_synthetic_insert(parent, id);
+            }
+        }
+        let _ = self.call_script("__veFlushObservers", &[]);
+        self.drain_js_jobs();
+    }
+
+    fn expect_same_document_fragment(&self, href: &str) -> Option<String> {
+        let href = href.trim();
+        if href.is_empty() {
+            return None;
+        }
+        let resolved = self.resolve_url(href).unwrap_or_else(|| href.to_owned());
+        let doc = self.url.split('#').next().unwrap_or(self.url.as_str());
+        let (base, frag) = resolved.split_once('#')?;
+        if frag.is_empty() {
+            return None;
+        }
+        let a = base.strip_suffix('/').unwrap_or(base);
+        let b = doc.strip_suffix('/').unwrap_or(doc);
+        if a != b {
+            return None;
+        }
+        Some(frag.to_owned())
     }
 
     fn decode_expect_fragment(frag: &str) -> String {
-        let dummy = format!("https://t.invalid/#{frag}");
-        url::Url::parse(&dummy)
-            .ok()
-            .and_then(|u| u.fragment().map(str::to_owned))
-            .unwrap_or_else(|| frag.to_owned())
+        let mut out = Vec::with_capacity(frag.len());
+        let b = frag.as_bytes();
+        let mut i = 0;
+        while i < b.len() {
+            if b[i] == b'%' && i + 2 < b.len() {
+                if let (Some(h), Some(l)) = (hex_nibble(b[i + 1]), hex_nibble(b[i + 2])) {
+                    out.push((h << 4) | l);
+                    i += 3;
+                    continue;
+                }
+            }
+            out.push(b[i]);
+            i += 1;
+        }
+        String::from_utf8_lossy(&out).into_owned()
     }
 
     fn expect_target_present(&self, frag: &str) -> bool {
@@ -2015,14 +2350,35 @@ impl Page {
             .filter(|&id| self.parser_visible(id))
     }
 
+    pub(crate) fn expect_link_in_head(&self, id: NodeId) -> bool {
+        self.doc
+            .ancestors(id)
+            .any(|a| self.doc.element(a).is_some_and(|e| e.is_html("head")))
+    }
+
     /// `rel=expect blocking=render` whose target id is not yet parsed.
-    pub(crate) fn expect_blocking_active(&self) -> bool {
+    pub(crate) fn expect_blocking_active(&mut self) -> bool {
         let width = self.viewport.width;
-        for id in std::iter::once(self.doc.root()).chain(self.doc.descendants(self.doc.root())) {
+        let ids: Vec<NodeId> = std::iter::once(self.doc.root())
+            .chain(self.doc.descendants(self.doc.root()))
+            .collect();
+        for id in ids {
+            if self.expect_satisfied.contains(&id) {
+                continue;
+            }
+            if !self.expect_from_head.contains(&id) {
+                continue;
+            }
+            if self.expect_body_started && !self.expect_armed.contains(&id) {
+                continue;
+            }
             let Some(el) = self.doc.element(id) else {
                 continue;
             };
             if !el.is_html("link") {
+                continue;
+            }
+            if !self.expect_link_in_head(id) {
                 continue;
             }
             let rel = self.doc.attribute(id, "rel").unwrap_or("");
@@ -2042,30 +2398,55 @@ impl Page {
             if !media_query_matches_width(self.doc.attribute(id, "media").unwrap_or(""), width) {
                 continue;
             }
-            let href = self.doc.attribute(id, "href").unwrap_or("");
-            let Some((_, frag)) = href.split_once('#') else {
+            let href = self.doc.attribute(id, "href").unwrap_or("").to_owned();
+            let Some(frag) = self.expect_same_document_fragment(&href) else {
                 continue;
             };
-            if frag.is_empty() {
+            if self.expect_target_present(&frag) {
+                self.expect_satisfied.insert(id);
                 continue;
             }
-            if !self.expect_target_present(frag) {
-                return true;
-            }
+            return true;
         }
         false
     }
 
-    pub(crate) fn has_rel_expect_link(&self) -> bool {
-        self.doc.elements().any(|id| {
-            self.doc.element(id).is_some_and(|e| e.is_html("link"))
-                && self
-                    .doc
-                    .attribute(id, "rel")
-                    .unwrap_or("")
+    pub(crate) fn snapshot_head_expect_links(&mut self) {
+        let width = self.viewport.width;
+        self.expect_from_head = self
+            .doc
+            .elements()
+            .filter(|&id| {
+                self.doc.element(id).is_some_and(|e| e.is_html("link"))
+                    && self.expect_link_in_head(id)
+                    && self
+                        .doc
+                        .attribute(id, "rel")
+                        .unwrap_or("")
+                        .split_ascii_whitespace()
+                        .any(|t| t.eq_ignore_ascii_case("expect"))
+            })
+            .collect();
+        self.expect_armed = self
+            .expect_from_head
+            .iter()
+            .copied()
+            .filter(|&id| {
+                let blocking = self.doc.attribute(id, "blocking").unwrap_or("");
+                if !blocking
                     .split_ascii_whitespace()
-                    .any(|t| t.eq_ignore_ascii_case("expect"))
-        })
+                    .any(|t| t.eq_ignore_ascii_case("render"))
+                {
+                    return false;
+                }
+                if !media_query_matches_width(self.doc.attribute(id, "media").unwrap_or(""), width)
+                {
+                    return false;
+                }
+                let href = self.doc.attribute(id, "href").unwrap_or("");
+                self.expect_same_document_fragment(href).is_some()
+            })
+            .collect();
     }
 
     /// `settle()` without running pending document scripts (the open path).
@@ -4305,6 +4686,12 @@ fn decode_text(bytes: &[u8], content_type: Option<&str>) -> String {
 /// a JavaScript MIME type, or `module`. Data blocks (JSON, importmap,
 /// templates) are skipped.
 fn script_is_classic_or_module(doc: &Document, id: NodeId) -> bool {
+    let Some(e) = doc.element(id) else {
+        return false;
+    };
+    if e.name != "script" || (e.namespace != Namespace::Html && e.namespace != Namespace::Svg) {
+        return false;
+    }
     match doc.attribute(id, "type").map(str::trim) {
         None | Some("") => true,
         Some(t) => {
@@ -4318,6 +4705,52 @@ fn script_is_classic_or_module(doc: &Document, id: NodeId) -> bool {
                 || t == "text/x-javascript"
         }
     }
+}
+
+pub(crate) fn rewrite_loopback_fetch(url: &str) -> String {
+    let Ok(mut u) = url::Url::parse(url) else {
+        return url.to_owned();
+    };
+    let host = u.host_str().unwrap_or("");
+    let wpt = host == "web-platform.test"
+        || host.ends_with(".web-platform.test")
+        || host.contains("xn--");
+    if !wpt || (u.scheme() != "http" && u.scheme() != "https") {
+        return url.to_owned();
+    }
+    let port = u.port();
+    let _ = u.set_host(Some("127.0.0.1"));
+    if let Some(p) = port {
+        let _ = u.set_port(Some(p));
+    }
+    u.to_string()
+}
+
+fn url_is_local_http(url: &str) -> bool {
+    let Ok(u) = url::Url::parse(url) else {
+        return false;
+    };
+    matches!(
+        u.host_str(),
+        Some("127.0.0.1" | "localhost" | "::1" | "[::1]")
+    )
+}
+
+fn strip_css_imports(css: &str) -> String {
+    let mut out = String::with_capacity(css.len());
+    let mut rest = css;
+    while let Some(i) = rest.find("@import") {
+        out.push_str(&rest[..i]);
+        let after = &rest[i + 7..];
+        if let Some(end) = after.find(';') {
+            rest = &after[end + 1..];
+        } else {
+            rest = "";
+            break;
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 /// The `@import` targets at the head of a stylesheet (after any `@charset`

@@ -122,6 +122,10 @@ pub enum PseudoClass {
     PlaceholderShown,
     /// `:defined` (always matches: no custom element registry yet)
     Defined,
+    /// `:lang(tag)`
+    Lang(CssString),
+    /// `:dir(ltr)` / `:dir(rtl)`
+    Dir(CssString),
 }
 
 impl PseudoClass {
@@ -147,6 +151,7 @@ impl PseudoClass {
             "read-write" => Self::ReadWrite,
             "placeholder-shown" => Self::PlaceholderShown,
             "defined" => Self::Defined,
+            "lang" => return None,
             _ => return None,
         })
     }
@@ -173,13 +178,19 @@ impl PseudoClass {
             Self::ReadWrite => "read-write",
             Self::PlaceholderShown => "placeholder-shown",
             Self::Defined => "defined",
+            Self::Lang(_) => "lang",
+            Self::Dir(_) => "dir",
         }
     }
 }
 
 impl ToCss for PseudoClass {
     fn to_css<W: fmt::Write>(&self, dest: &mut W) -> fmt::Result {
-        write!(dest, ":{}", self.name())
+        match self {
+            Self::Lang(tag) => write!(dest, ":lang({})", tag.as_str()),
+            Self::Dir(dir) => write!(dest, ":dir({})", dir.as_str()),
+            other => write!(dest, ":{}", other.name()),
+        }
     }
 }
 
@@ -333,6 +344,27 @@ impl<'i> Parser<'i> for SelectorParser {
         })
     }
 
+    fn parse_non_ts_functional_pseudo_class<'t>(
+        &self,
+        name: CowRcStr<'i>,
+        parser: &mut CssParser<'i, 't>,
+        _after_part: bool,
+    ) -> Result<PseudoClass, ParseError<'i, Self::Error>> {
+        if name.eq_ignore_ascii_case("lang") {
+            let tag = parser.expect_ident_or_string()?.as_ref().to_owned();
+            return Ok(PseudoClass::Lang(CssString::from(tag)));
+        }
+        if name.eq_ignore_ascii_case("dir") {
+            let dir = parser.expect_ident()?.as_ref().to_owned();
+            return Ok(PseudoClass::Dir(CssString::from(dir)));
+        }
+        Err(
+            parser.new_custom_error(SelectorParseErrorKind::UnsupportedPseudoClassOrElement(
+                name,
+            )),
+        )
+    }
+
     fn parse_pseudo_element(
         &self,
         location: SourceLocation,
@@ -369,5 +401,9 @@ mod tests {
         assert_eq!(sels[0].to_css_string(), "div#main > p.intro:hover");
         assert!(parse_selector_list("p:unknown-pseudo").is_err());
         assert!(parse_selector_list(">> p").is_err());
+        let lang = parse_selector_list("div:lang(ko)").unwrap();
+        assert_eq!(lang.slice()[0].to_css_string(), "div:lang(ko)");
+        let dir = parse_selector_list("input:dir(rtl)").unwrap();
+        assert_eq!(dir.slice()[0].to_css_string(), "input:dir(rtl)");
     }
 }

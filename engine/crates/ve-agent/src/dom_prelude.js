@@ -1,8 +1,10 @@
 (() => {
   const D = (op, ...a) => __ve.dom(op, ...a);
   const nodes = new Map();
+  const nonceMap = new WeakMap();
   const registry = new Map();
   const listeners = new Map();
+  const onReadyStateChange = new WeakMap();
   const trustedEvents = new WeakSet();
   const waiters = new Map();
   let currentScriptNode = null;
@@ -64,6 +66,17 @@
     }
   }
   class HashChangeEvent extends Event {}
+  class StorageEvent extends Event {
+    constructor(type, init) {
+      super(type, init);
+      init = init || {};
+      this.key = init.key == null ? null : String(init.key);
+      this.oldValue = init.oldValue == null ? null : String(init.oldValue);
+      this.newValue = init.newValue == null ? null : String(init.newValue);
+      this.url = init.url == null ? "" : toUSV(init.url);
+      this.storageArea = init.storageArea || null;
+    }
+  }
   class MouseEvent extends Event {
     constructor(t, i) {
       super(t, i);
@@ -199,6 +212,12 @@
         if (!cap && typeof prop === "function") {
           try { prop.call(node, ev); } catch (e) { __ve.log("error", String(e)); }
         }
+        if (!cap && node.getAttribute && typeof prop !== "function") {
+          const src = node.getAttribute("on" + type);
+          if (src) {
+            try { new Function("event", src).call(node, ev); } catch (e) { __ve.log("error", String(e)); }
+          }
+        }
       };
       ev.eventPhase = 1;
       for (let i = path.length - 1; i > 0; i--) {
@@ -236,6 +255,28 @@
     return true;
   }
 
+  function installDocumentLocation(doc) {
+    if (!doc || doc.__veLocInstalled) return;
+    doc.__veLocInstalled = true;
+    try {
+      const get = function () {
+        if (this !== doc) throw new TypeError("Illegal invocation");
+        return doc.__h === D("documentNode") ? location : null;
+      };
+      Object.defineProperty(get, "name", { value: "get location", configurable: true });
+      const set = function (v) {
+        if (this !== doc) throw new TypeError("Illegal invocation");
+        try { location.href = String(v); } catch (e) {}
+      };
+      Object.defineProperty(set, "name", { value: "set location", configurable: true });
+      Object.defineProperty(doc, "location", {
+        configurable: false,
+        enumerable: true,
+        get,
+        set,
+      });
+    } catch (e) {}
+  }
   let documentNamedTraps = {
     get(t, p, recv) { return Reflect.get(t, p, recv); },
     has(t, p) { return Reflect.has(t, p); },
@@ -243,8 +284,17 @@
     getOwnPropertyDescriptor(t, p) { return Reflect.getOwnPropertyDescriptor(t, p); },
   };
   let exposeWindowName = function () {};
+  let browsingDocument = null;
+  function wrapDoc(h) {
+    if (h == null || h === "" || h === false) return null;
+    h = String(h);
+    if (browsingDocument && h === String(browsingDocument.__h)) return browsingDocument;
+    return wrap(h);
+  }
   function wrap(h) {
     if (h == null || h === "" || h === false) return null;
+    h = String(h);
+    if (browsingDocument && h === String(browsingDocument.__h)) return browsingDocument;
     let n = nodes.get(h);
     if (n) return n;
     const info = D("describe", h);
@@ -275,6 +325,7 @@
     if (info.t === 9) {
       n = new Proxy(n, documentNamedTraps);
       nodes.set(h, n);
+      installDocumentLocation(n);
     }
     if (info.t === 1) {
       upgradeOne(n);
@@ -1048,7 +1099,7 @@
     set nodeValue(v) { D("setNodeValue", this.__h, v === null ? "" : String(v)); }
     get textContent() { return D("textContent", this.__h); }
     set textContent(v) { D("setTextContent", this.__h, v == null ? "" : String(v)); }
-    get parentNode() { return wrap(D("parentNode", this.__h)); }
+    get parentNode() { return wrapDoc(D("parentNode", this.__h)); }
     get parentElement() {
       const p = this.parentNode;
       return p && p.nodeType === 1 ? p : null;
@@ -1059,7 +1110,12 @@
     get nextSibling() { return wrap(D("nextSibling", this.__h)); }
     get childNodes() { return list(D("childNodes", this.__h)); }
     get isConnected() { return !!D("isConnected", this.__h); }
-    get ownerDocument() { return this.nodeType === 9 ? null : (wrap(D("ownerDocument", this.__h)) || document); }
+    get ownerDocument() {
+      if (this.nodeType === 9) return null;
+      const h = D("ownerDocument", this.__h);
+      if (!h || h === D("documentNode")) return browsingDocument || document;
+      return wrapDoc(h) || browsingDocument || document;
+    }
     appendChild(n) {
       if (n && n.nodeType === 11) {
         while (n.firstChild) this.appendChild(n.firstChild);
@@ -1067,6 +1123,7 @@
       }
       D("appendChild", this.__h, handleOf(n));
       upgradeTree(n);
+      try { prepareInsertedNode(n); } catch (e) { __ve.log("error", String(e)); }
       return n;
     }
     insertBefore(n, ref) {
@@ -1076,6 +1133,7 @@
       }
       D("insertBefore", this.__h, handleOf(n), handleOf(ref));
       upgradeTree(n);
+      try { prepareInsertedNode(n); } catch (e) { __ve.log("error", String(e)); }
       return n;
     }
     append(...nodes) { for (const n of nodes) this.appendChild(typeof n === "string" ? document.createTextNode(n) : n); }
@@ -1106,7 +1164,7 @@
     normalize() { D("normalize", this.__h); }
     lookupPrefix(ns) { return D("lookupPrefix", this.__h, ns == null ? null : String(ns)); }
     lookupNamespaceURI(prefix) { return D("lookupNamespaceURI", this.__h, prefix == null ? null : String(prefix)); }
-    getRootNode(opts) { return wrap(D("getRootNode", this.__h, !!(opts && opts.composed))) || this; }
+    getRootNode(opts) { return wrapDoc(D("getRootNode", this.__h, !!(opts && opts.composed))) || this; }
     before(...nodes) {
       const p = this.parentNode;
       if (!p) return;
@@ -1349,7 +1407,7 @@
     get mode() { return D("shadowMode", this.__h); }
     get host() { return wrap(D("host", this.__h)); }
     get innerHTML() { return D("innerHTML", this.__h); }
-    set innerHTML(v) { D("setInnerHTML", this.__h, String(v)); }
+    set innerHTML(v) { D("setInnerHTML", this.__h, String(v).replace(/\r\n/g, "\n").replace(/\r/g, "\n")); }
     get adoptedStyleSheets() { return this._adopted || (this._adopted = []); }
     set adoptedStyleSheets(v) { this._adopted = v || []; }
   }
@@ -1442,8 +1500,9 @@
     get className() { return D("getAttr", this.__h, "class") || ""; }
     set className(v) { D("setAttr", this.__h, "class", String(v)); }
     get classList() { return this._cl || (this._cl = new DOMTokenList(this.__h, "class")); }
+    set classList(v) { this.setAttribute("class", v == null ? "" : String(v)); }
     get innerHTML() { return D("innerHTML", this.__h); }
-    set innerHTML(v) { D("setInnerHTML", this.__h, String(v)); }
+    set innerHTML(v) { D("setInnerHTML", this.__h, String(v).replace(/\r\n/g, "\n").replace(/\r/g, "\n")); }
     get outerHTML() { return D("outerHTML", this.__h); }
     set outerHTML(v) { D("setOuterHTML", this.__h, String(v)); }
     get children() { return list(D("children", this.__h)); }
@@ -1462,29 +1521,46 @@
     }
     get attributes() {
       const h = this.__h;
-      const names = D("attrNames", h) || [];
+      const recs = D("attrs", h) || [];
       const map = [];
-      for (let i = 0; i < names.length; i++) {
-        const name = names[i];
+      for (let i = 0; i < recs.length; i++) {
+        const rec = recs[i];
+        const name = rec.name;
+        const ns = rec.ns == null || rec.ns === "" ? null : rec.ns;
+        const colon = name.lastIndexOf(":");
         const attr = {
           name,
-          localName: name,
-          prefix: null,
-          namespaceURI: null,
+          nodeName: name,
+          specified: true,
+          localName: colon < 0 ? name : name.slice(colon + 1),
+          prefix: colon < 0 ? null : name.slice(0, colon),
+          namespaceURI: ns,
           ownerElement: this,
-          get value() { return D("getAttr", h, name) || ""; },
-          set value(v) { D("setAttr", h, name, String(v)); },
+          get value() { return rec.value; },
+          set value(v) {
+            rec.value = String(v);
+            D("setAttrNS", h, ns || "", name, rec.value);
+          },
+          get nodeValue() { return rec.value; },
+          set nodeValue(v) { this.value = v; },
+          get textContent() { return rec.value; },
+          set textContent(v) { this.value = v; },
         };
         map.push(attr);
         map[name] = attr;
       }
       map.item = (i) => map[i] || null;
       map.getNamedItem = (n) => map[n] || null;
-      map.length = names.length;
+      map.length = recs.length;
       return map;
     }
-    getAttributeNS(ns, n) { return this.getAttribute(n); }
-    setAttributeNS(ns, n, v) { this.setAttribute(n, v); }
+    getAttributeNS(ns, n) {
+      const v = D("getAttrNS", this.__h, ns == null ? "" : String(ns), String(n));
+      return v == null ? null : v;
+    }
+    setAttributeNS(ns, n, v) {
+      D("setAttrNS", this.__h, ns == null ? "" : String(ns), String(n), String(v));
+    }
     querySelector(s) { return wrap(D("querySelector", this.__h, String(s))); }
     querySelectorAll(s) { return list(D("querySelectorAll", this.__h, String(s))); }
     matches(s) { return !!D("matches", this.__h, String(s)); }
@@ -1501,7 +1577,9 @@
       });
     }
     getElementsByClassName(n) { return list(D("getElementsByClassName", this.__h, String(n))); }
-    attachShadow(init) { return wrap(D("attachShadow", this.__h, (init && init.mode) || "open")); }
+    attachShadow(init) {
+      return wrap(D("attachShadow", this.__h, (init && init.mode) || "open", (init && init.slotAssignment) || ""));
+    }
     get shadowRoot() { return wrap(D("shadowRoot", this.__h)); }
     insertAdjacentHTML(pos, html) { D("insertAdjacentHTML", this.__h, String(pos), String(html)); }
     insertAdjacentElement(pos, el) {
@@ -1639,6 +1717,7 @@
         },
       });
     }
+
     const ariaExplicit = new WeakMap();
     const origSet = Element.prototype.setAttribute;
     const origRemove = Element.prototype.removeAttribute;
@@ -1673,20 +1752,29 @@
     function lookupId(reflected, id) {
       if (!id) return null;
       const root = ariaTreeRoot(reflected);
-      let el = null;
-      if (root && root.nodeType === 9 && root.getElementById) el = root.getElementById(id);
-      if (!el && root && root.getElementById) {
-        try { el = root.getElementById(id); } catch (e) {}
+      let found = null;
+      if (root && root.__h) {
+        found = wrap(D("getElementByIdScoped", root.__h, String(id)));
       }
-      if (!el && root && root.querySelector) {
-        try {
-          const esc = String(id).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-          el = root.querySelector('[id="' + esc + '"]');
-          if (!el && root.nodeType === 1 && root.id === id) el = root;
-        } catch (e) {}
+      if (!found) {
+        const walk = (n) => {
+          if (!n || found) return;
+          if (n.nodeType === 1 && n.id === id) {
+            found = n;
+            return;
+          }
+          if (n.shadowRoot) walk(n.shadowRoot);
+          const kids = n.childNodes;
+          if (!kids) return;
+          for (let i = 0; i < kids.length; i++) walk(kids[i]);
+        };
+        walk(root);
       }
-      if (!el || !ariaInScope(reflected, el)) return null;
-      return el;
+      if (!found && root && root.nodeType === 9 && root.getElementById) {
+        try { found = root.getElementById(id); } catch (e) {}
+      }
+      if (!found || !ariaInScope(reflected, found)) return null;
+      return found;
     }
     function sameList(a, b) {
       if (!a || !b || a.length !== b.length) return false;
@@ -1776,12 +1864,15 @@
       origSet.call(this, n, v);
       const js = attrToJs[String(n).toLowerCase()];
       if (js) delete ariaState(this)[js];
-      if (String(n).toLowerCase() === "id") exposeWindowName(String(v));
+      const lower = String(n).toLowerCase();
+      if (lower === "id") exposeWindowName(String(v));
+      if (lower === "nonce") nonceMap.set(this, String(v));
     };
     Element.prototype.removeAttribute = function (n) {
       origRemove.call(this, n);
       const js = attrToJs[String(n).toLowerCase()];
       if (js) delete ariaState(this)[js];
+      if (String(n).toLowerCase() === "nonce") nonceMap.delete(this);
     };
   })();
 
@@ -1822,6 +1913,67 @@
     }
     get hidden() { return this.hasAttribute("hidden"); }
     set hidden(v) { v ? this.setAttribute("hidden", "") : this.removeAttribute("hidden"); }
+    get autofocus() { return this.hasAttribute("autofocus"); }
+    set autofocus(v) { v ? this.setAttribute("autofocus", "") : this.removeAttribute("autofocus"); }
+    get inert() { return this.hasAttribute("inert"); }
+    set inert(v) { v ? this.setAttribute("inert", "") : this.removeAttribute("inert"); }
+    get nonce() {
+      if (nonceMap.has(this)) return nonceMap.get(this);
+      return this.getAttribute("nonce") || "";
+    }
+    set nonce(v) { nonceMap.set(this, String(v)); }
+    get draggable() {
+      const v = this.getAttribute("draggable");
+      if (v == null) return (this.localName || "").toLowerCase() === "img";
+      return v.toLowerCase() !== "false";
+    }
+    set draggable(v) { this.setAttribute("draggable", v ? "true" : "false"); }
+    get spellcheck() {
+      const v = this.getAttribute("spellcheck");
+      if (v == null) return true;
+      return v.toLowerCase() !== "false";
+    }
+    set spellcheck(v) { this.setAttribute("spellcheck", v ? "true" : "false"); }
+    get tabIndex() {
+      if (!this.hasAttribute("tabindex")) return 0;
+      return parseInt(this.getAttribute("tabindex"), 10) | 0;
+    }
+    set tabIndex(v) { this.setAttribute("tabindex", String(v | 0)); }
+    get contentEditable() {
+      const v = (this.getAttribute("contenteditable") || "").toLowerCase();
+      if (v === "true" || v === "") return "true";
+      if (v === "false") return "false";
+      if (v === "plaintext-only") return "plaintext-only";
+      return "inherit";
+    }
+    set contentEditable(v) { this.setAttribute("contenteditable", String(v)); }
+    get isContentEditable() { return this.contentEditable === "true" || this.contentEditable === "plaintext-only"; }
+    get autocapitalize() { return this.getAttribute("autocapitalize") || ""; }
+    set autocapitalize(v) { this.setAttribute("autocapitalize", String(v)); }
+    get enterKeyHint() {
+      const v = (this.getAttribute("enterkeyhint") || "").toLowerCase();
+      const keys = ["enter", "done", "go", "next", "previous", "search", "send"];
+      return keys.indexOf(v) >= 0 ? v : "";
+    }
+    set enterKeyHint(v) { this.setAttribute("enterkeyhint", String(v)); }
+    get inputMode() {
+      const v = (this.getAttribute("inputmode") || "").toLowerCase();
+      const keys = ["none", "text", "tel", "url", "email", "numeric", "decimal", "search"];
+      return keys.indexOf(v) >= 0 ? v : "";
+    }
+    set inputMode(v) { this.setAttribute("inputmode", String(v)); }
+    get popover() {
+      const v = this.getAttribute("popover");
+      if (v == null) return null;
+      const s = String(v).toLowerCase();
+      if (s === "manual") return "manual";
+      if (s === "hint") return "hint";
+      return "auto";
+    }
+    set popover(v) {
+      if (v == null) this.removeAttribute("popover");
+      else this.setAttribute("popover", String(v));
+    }
     get innerText() { return innerTextOf(this); }
     set innerText(v) { setInnerText(this, v); }
     get outerText() { return this.innerText; }
@@ -1844,28 +1996,43 @@
       const v = (this.getAttribute("dir") || "").toLowerCase();
       return v === "ltr" || v === "rtl" || v === "auto" ? v : "";
     }
-    set dir(v) {
-      const s = String(v).toLowerCase();
-      if (s === "ltr" || s === "rtl" || s === "auto") this.setAttribute("dir", s);
-      else this.setAttribute("dir", "");
+    set dir(v) { D("setAttr", this.__h, "dir", String(v)); }
+    get lang() { return D("getAttr", this.__h, "lang") || ""; }
+    set lang(v) { D("setAttr", this.__h, "lang", String(v)); }
+    get title() { return D("getAttr", this.__h, "title") || ""; }
+    set title(v) { D("setAttr", this.__h, "title", String(v)); }
+    get accessKey() { return D("getAttr", this.__h, "accesskey") || ""; }
+    set accessKey(v) { D("setAttr", this.__h, "accesskey", String(v)); }
+    get accessKeyLabel() {
+      const raw = D("getAttr", this.__h, "accesskey");
+      if (raw == null) return "";
+      const tokens = String(raw).trim().split(/\s+/).filter(Boolean);
+      if (tokens.length !== 1) return "";
+      const key = tokens[0];
+      if ([...key].length !== 1) return "";
+      return key;
     }
-    get title() { return this.getAttribute("title") || ""; }
-    set title(v) { this.setAttribute("title", v); }
     click() {
-      let tag = "";
-      try { tag = (this.localName || "").toLowerCase(); } catch (e) {}
-      let type = "";
-      try { type = (this.type || this.getAttribute("type") || "").toLowerCase(); } catch (e) {}
-      const ev = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, which: 1 });
-      let allowed = true;
-      try { allowed = this.dispatchEvent(ev); } catch (e) { __ve.log("error", String(e)); }
-      if (!allowed) return;
-      try { D("activate", this.__h); } catch (e) {}
-      if (tag === "input" && (type === "checkbox" || type === "radio")) {
-        try {
-          this.dispatchEvent(new Event("input", { bubbles: true }));
-          this.dispatchEvent(new Event("change", { bubbles: true }));
-        } catch (e) {}
+      if (this._clicking) return;
+      this._clicking = true;
+      try {
+        let tag = "";
+        try { tag = (this.localName || "").toLowerCase(); } catch (e) {}
+        let type = "";
+        try { type = (this.type || this.getAttribute("type") || "").toLowerCase(); } catch (e) {}
+        const ev = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, which: 1 });
+        let allowed = true;
+        try { allowed = this.dispatchEvent(ev); } catch (e) { __ve.log("error", String(e)); }
+        if (!allowed) return;
+        try { D("activate", this.__h); } catch (e) {}
+        if (tag === "input" && (type === "checkbox" || type === "radio")) {
+          try {
+            this.dispatchEvent(new Event("input", { bubbles: true }));
+            this.dispatchEvent(new Event("change", { bubbles: true }));
+          } catch (e) {}
+        }
+      } finally {
+        this._clicking = false;
       }
     }
     focus() {
@@ -1887,7 +2054,7 @@
     get disabled() { return this.hasAttribute("disabled"); }
     set disabled(v) { v ? this.setAttribute("disabled", "") : this.removeAttribute("disabled"); }
     get type() { return this.getAttribute("type") || ""; }
-    set type(v) { this.setAttribute("type", v); }
+    set type(v) { this.setAttribute("type", String(v)); }
     get href() { return this.getAttribute("href") || ""; }
     set href(v) { this.setAttribute("href", v); }
     get src() { return this.getAttribute("src") || ""; }
@@ -1902,7 +2069,7 @@
       configurable: true,
       enumerable: true,
       get() { return this.getAttribute("name") || ""; },
-      set(v) { this.setAttribute("name", v == null ? "" : String(v)); },
+      set(v) { this.setAttribute("name", String(v)); },
     });
   }
   class HTMLInputElement extends HTMLElement {}
@@ -1929,7 +2096,20 @@
       for (let j = 0; j < opts.length; j++) opts[j].selected = j === i;
     }
   }
-  class HTMLOptionElement extends HTMLElement {}
+  class HTMLOptionElement extends HTMLElement {
+    get text() {
+      return String(this.textContent || "").replace(/[\t\n\f\r ]+/g, " ").trim();
+    }
+    set text(v) { this.textContent = v == null ? "" : String(v); }
+    get label() {
+      return this.hasAttribute("label") ? this.getAttribute("label") : this.text;
+    }
+    set label(v) { this.setAttribute("label", String(v)); }
+    get value() {
+      return this.hasAttribute("value") ? this.getAttribute("value") : this.text;
+    }
+    set value(v) { this.setAttribute("value", String(v)); }
+  }
   class HTMLButtonElement extends HTMLElement {}
   reflectName(HTMLInputElement.prototype);
   reflectName(HTMLTextAreaElement.prototype);
@@ -1944,23 +2124,84 @@
     reportValidity() { return this.checkValidity(); }
     get elements() { return this.querySelectorAll("input,select,textarea,button"); }
   }
-  class HTMLAnchorElement extends HTMLElement {
-    get href() {
-      const s = this.getAttribute("href") || "";
-      return s;
+  function reflectedUrl(el, attr) {
+    const raw = el.getAttribute(attr);
+    if (raw == null) return "";
+    try { return new URL(toUSV(raw), document.baseURI || location.href).href; }
+    catch (e) { return encodeUSVHref(raw); }
+  }
+  function hyperlinkAbs(el, attr) {
+    attr = attr || "href";
+    try { return new URL(toUSV(el.getAttribute(attr) || ""), document.baseURI || location.href); }
+    catch (e) { return null; }
+  }
+  function installHyperlinkUtils(proto, attr) {
+    attr = attr || "href";
+    const get = (part) => function () {
+      const u = hyperlinkAbs(this, attr);
+      if (!u) return part === "protocol" ? ":" : "";
+      if (part === "origin") return u.origin;
+      if (part === "protocol") return u.protocol;
+      if (part === "host") return u.host;
+      if (part === "hostname") return u.hostname;
+      if (part === "port") return u.port;
+      if (part === "pathname") return u.pathname;
+      if (part === "search") return u.search;
+      if (part === "hash") return u.hash;
+      return "";
+    };
+    for (const part of ["origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash"]) {
+      Object.defineProperty(proto, part, { configurable: true, enumerable: true, get: get(part) });
     }
+  }
+  class HTMLAnchorElement extends HTMLElement {
+    get name() { return this.getAttribute("name") || ""; }
+    set name(v) { this.setAttribute("name", v == null ? "" : String(v)); }
+    get href() { return reflectedUrl(this, "href") || this.getAttribute("href") || ""; }
     set href(v) {
       const s = toUSV(v);
       this.setAttribute("href", /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s) ? encodeURI(s) : s);
     }
     get ping() { return this.getAttribute("ping") || ""; }
     set ping(v) { this.setAttribute("ping", toUSV(v)); }
+    get target() { return this.getAttribute("target") || ""; }
+    set target(v) { this.setAttribute("target", String(v)); }
+    get rel() { return this.getAttribute("rel") || ""; }
+    set rel(v) { this.setAttribute("rel", String(v)); }
+    get relList() { return this._relTL || (this._relTL = new DOMTokenList(this.__h, "rel")); }
+    set relList(v) { this.setAttribute("rel", v == null ? "" : String(v)); }
+  }
+  installHyperlinkUtils(HTMLAnchorElement.prototype, "href");
+  class HTMLAreaElement extends HTMLElement {
+    get ping() { return this.getAttribute("ping") || ""; }
+    set ping(v) { this.setAttribute("ping", toUSV(v)); }
+    get href() { return reflectedUrl(this, "href"); }
+    set href(v) { this.setAttribute("href", toUSV(v)); }
+  }
+  installHyperlinkUtils(HTMLAreaElement.prototype, "href");
+  class HTMLBaseElement extends HTMLElement {
+    get href() { return reflectedUrl(this, "href") || this.getAttribute("href") || ""; }
+    set href(v) { this.setAttribute("href", toUSV(v)); }
+  }
+  class HTMLSourceElement extends HTMLElement {
+    get src() { return reflectedUrl(this, "src"); }
+    set src(v) { this.setAttribute("src", toUSV(v)); }
+    get srcset() { const v = this.getAttribute("srcset"); return v == null ? "" : toUSV(v); }
+    set srcset(v) { this.setAttribute("srcset", toUSV(v)); }
+  }
+  class HTMLFrameElement extends HTMLElement {
+    get src() { return reflectedUrl(this, "src"); }
+    set src(v) { this.setAttribute("src", toUSV(v)); }
+    get longDesc() { return reflectedUrl(this, "longdesc"); }
+    set longDesc(v) { this.setAttribute("longdesc", toUSV(v)); }
   }
   class HTMLLinkElement extends HTMLElement {
     get rel() { return this.getAttribute("rel") || ""; }
-    set rel(v) { this.setAttribute("rel", v == null ? "" : String(v)); }
-    get href() { return this.getAttribute("href") || ""; }
-    set href(v) { this.setAttribute("href", v == null ? "" : toUSV(v)); }
+    set rel(v) { this.setAttribute("rel", String(v)); }
+    get relList() { return this._relTL || (this._relTL = new DOMTokenList(this.__h, "rel")); }
+    set relList(v) { this.setAttribute("rel", v == null ? "" : String(v)); }
+    get href() { return reflectedUrl(this, "href") || this.getAttribute("href") || ""; }
+    set href(v) { this.setAttribute("href", toUSV(v)); }
     get media() { return this.getAttribute("media") || ""; }
     set media(v) { this.setAttribute("media", v == null ? "" : String(v)); }
     get blocking() { return this._blockingTL || (this._blockingTL = new DOMTokenList(this.__h, "blocking", RENDER_TOKENS)); }
@@ -1989,6 +2230,8 @@
     let parsed;
     try { parsed = JSON.parse(payload); } catch { parsed = null; }
     const origin = r.origin || "";
+    // HTML postMessage is a task, not sync. createXHTMLCase posts then
+    // listens; a sync dispatch drops the reply.
     queueMicrotask(() => {
       dest.dispatchEvent(new MessageEvent("message", { data: parsed, origin, source: source || null }));
     });
@@ -2011,18 +2254,38 @@
       get() { return D("frameOrigin", iframe.__h) || D("origin"); },
       configurable: true,
     });
+    const loc = {
+      get href() { return D("frameUrl", iframe.__h) || "about:blank"; },
+      get origin() { return D("frameLocationOrigin", iframe.__h) || "null"; },
+    };
+    w.location = loc;
     w.postMessage = function (data, targetOrigin) {
       deliverMessage(w, data, targetOrigin, globalThis);
     };
+    w.addEventListener = EventTarget.prototype.addEventListener;
+    w.removeEventListener = EventTarget.prototype.removeEventListener;
+    w.dispatchEvent = EventTarget.prototype.dispatchEvent;
+    EventTarget.prototype.addEventListener.call(w, "message", function (e) {
+      if (iframe.contentDocument) return;
+      if (e.data === "getOrigin" || e.data === "setDomainAndGetOrigin") {
+        queueMicrotask(() => {
+          globalThis.dispatchEvent(new MessageEvent("message", {
+            data: w.origin,
+            origin: w.origin,
+            source: w,
+          }));
+        });
+      }
+    });
     iframe._cw = w;
     return w;
   }
   class HTMLIFrameElement extends HTMLElement {
     get name() { return this.getAttribute("name") || ""; }
     set name(v) { this.setAttribute("name", v == null ? "" : String(v)); }
-    get src() { return this.getAttribute("src") || ""; }
+    get src() { return reflectedUrl(this, "src") || this.getAttribute("src") || ""; }
     set src(v) { this.setAttribute("src", toUSV(v)); }
-    get longDesc() { return this.getAttribute("longdesc") || ""; }
+    get longDesc() { return reflectedUrl(this, "longdesc") || this.getAttribute("longdesc") || ""; }
     set longDesc(v) { this.setAttribute("longdesc", toUSV(v)); }
     get contentDocument() {
       const h = D("frameDocument", this.__h);
@@ -2044,10 +2307,30 @@
     set name(v) { this.setAttribute("name", v == null ? "" : String(v)); }
   }
   class HTMLCanvasElement extends HTMLElement {
-    get width() { return D("canvasWidth", this.__h) || 300; }
-    set width(v) { D("canvasResize", this.__h, v | 0, this.height); }
-    get height() { return D("canvasHeight", this.__h) || 150; }
-    set height(v) { D("canvasResize", this.__h, this.width, v | 0); }
+    get width() {
+      if (!this.hasAttribute("width")) return 300;
+      const p = parseHtmlNonneg(this.getAttribute("width"));
+      if (p === false || p > 2147483647) return 300;
+      return p >>> 0;
+    }
+    set width(v) {
+      let n = v >>> 0;
+      if (n > 2147483647) n = 300;
+      this.setAttribute("width", String(n));
+      D("canvasResize", this.__h, n, this.height);
+    }
+    get height() {
+      if (!this.hasAttribute("height")) return 150;
+      const p = parseHtmlNonneg(this.getAttribute("height"));
+      if (p === false || p > 2147483647) return 150;
+      return p >>> 0;
+    }
+    set height(v) {
+      let n = v >>> 0;
+      if (n > 2147483647) n = 150;
+      this.setAttribute("height", String(n));
+      D("canvasResize", this.__h, this.width, n);
+    }
     getContext(type) {
       if (String(type).toLowerCase() !== "2d") return null;
       if (!this._ctx2d) this._ctx2d = new CanvasRenderingContext2D(this);
@@ -2230,14 +2513,56 @@
   class HTMLHtmlElement extends HTMLElement {}
   class HTMLTitleElement extends HTMLElement {}
   class HTMLScriptElement extends HTMLElement {
+    constructor() {
+      super();
+      this._scriptCreated = true;
+      this._asyncExplicit = false;
+      this._asyncValue = true;
+    }
     get blocking() { return this._blockingTL || (this._blockingTL = new DOMTokenList(this.__h, "blocking", RENDER_TOKENS)); }
     set blocking(v) { this.blocking.value = v == null ? "" : String(v); }
+    get async() {
+      if (this._scriptCreated) {
+        if (this._asyncExplicit) return this._asyncValue;
+        return true;
+      }
+      return this.hasAttribute("async");
+    }
+    set async(v) {
+      this._asyncExplicit = true;
+      this._asyncValue = !!v;
+      if (v) this.setAttribute("async", "");
+      else this.removeAttribute("async");
+    }
+    get defer() { return this.hasAttribute("defer"); }
+    set defer(v) { v ? this.setAttribute("defer", "") : this.removeAttribute("defer"); }
+    get src() { return reflectedUrl(this, "src") || this.getAttribute("src") || ""; }
+    set src(v) { this.setAttribute("src", toUSV(v)); }
+    get text() { return this.textContent || ""; }
+    set text(v) { this.textContent = v == null ? "" : String(v); }
   }
   class HTMLStyleElement extends HTMLElement {
     get blocking() { return this._blockingTL || (this._blockingTL = new DOMTokenList(this.__h, "blocking", RENDER_TOKENS)); }
     set blocking(v) { this.blocking.value = v == null ? "" : String(v); }
   }
   class HTMLFrameSetElement extends HTMLElement {}
+  class HTMLDetailsElement extends HTMLElement {}
+  class HTMLFieldSetElement extends HTMLElement {}
+  class HTMLMapElement extends HTMLElement {}
+  class HTMLMetaElement extends HTMLElement {}
+  class HTMLOutputElement extends HTMLElement {}
+  class HTMLParamElement extends HTMLElement {}
+  class HTMLSlotElement extends HTMLElement {
+    assign(...nodes) {
+      D("slotAssign", this.__h, JSON.stringify(nodes.map((n) => n && n.__h).filter(Boolean)));
+    }
+  }
+  reflectName(HTMLFieldSetElement.prototype);
+  reflectName(HTMLMapElement.prototype);
+  reflectName(HTMLMetaElement.prototype);
+  reflectName(HTMLOutputElement.prototype);
+  reflectName(HTMLParamElement.prototype);
+  reflectName(HTMLSlotElement.prototype);
   class HTMLTemplateElement extends HTMLElement {
     get content() { return wrap(D("templateContent", this.__h)); }
   }
@@ -2255,13 +2580,318 @@
     input: HTMLInputElement, textarea: HTMLTextAreaElement, select: HTMLSelectElement,
     option: HTMLOptionElement, button: HTMLButtonElement, form: HTMLFormElement,
     a: HTMLAnchorElement, img: HTMLImageElement, iframe: HTMLIFrameElement, canvas: HTMLCanvasElement,
-    link: HTMLLinkElement, style: HTMLStyleElement,
+    link: HTMLLinkElement, style: HTMLStyleElement, area: HTMLAreaElement, base: HTMLBaseElement,
+    source: HTMLSourceElement, frame: HTMLFrameElement,
     embed: HTMLEmbedElement, object: HTMLObjectElement,
     div: HTMLDivElement, p: HTMLParagraphElement, span: HTMLSpanElement,
     head: HTMLHeadElement, body: HTMLBodyElement, html: HTMLHtmlElement,
     title: HTMLTitleElement, script: HTMLScriptElement, frameset: HTMLFrameSetElement,
     template: HTMLTemplateElement,
+    details: HTMLDetailsElement, fieldset: HTMLFieldSetElement, map: HTMLMapElement,
+    meta: HTMLMetaElement, output: HTMLOutputElement, param: HTMLParamElement, slot: HTMLSlotElement,
   };
+  function defHTML(name) {
+    const C = class extends HTMLElement {};
+    Object.defineProperty(C, "name", { value: name });
+    return C;
+  }
+  const HTMLQuoteElement = defHTML("HTMLQuoteElement");
+  const HTMLTimeElement = defHTML("HTMLTimeElement");
+  const HTMLBRElement = defHTML("HTMLBRElement");
+  const HTMLModElement = defHTML("HTMLModElement");
+  const HTMLTableElement = defHTML("HTMLTableElement");
+  const HTMLTableCaptionElement = defHTML("HTMLTableCaptionElement");
+  const HTMLTableColElement = defHTML("HTMLTableColElement");
+  const HTMLTableSectionElement = defHTML("HTMLTableSectionElement");
+  const HTMLTableRowElement = defHTML("HTMLTableRowElement");
+  const HTMLTableCellElement = defHTML("HTMLTableCellElement");
+  const HTMLHeadingElement = defHTML("HTMLHeadingElement");
+  const HTMLHRElement = defHTML("HTMLHRElement");
+  const HTMLPreElement = defHTML("HTMLPreElement");
+  const HTMLUListElement = defHTML("HTMLUListElement");
+  const HTMLOListElement = defHTML("HTMLOListElement");
+  const HTMLLIElement = defHTML("HTMLLIElement");
+  const HTMLDListElement = defHTML("HTMLDListElement");
+  const HTMLMarqueeElement = defHTML("HTMLMarqueeElement");
+  const HTMLFontElement = defHTML("HTMLFontElement");
+  const HTMLDirectoryElement = defHTML("HTMLDirectoryElement");
+  const HTMLLabelElement = defHTML("HTMLLabelElement");
+  const HTMLLegendElement = defHTML("HTMLLegendElement");
+  const HTMLOptGroupElement = defHTML("HTMLOptGroupElement");
+  const HTMLDataListElement = defHTML("HTMLDataListElement");
+  const HTMLProgressElement = defHTML("HTMLProgressElement");
+  const HTMLMeterElement = defHTML("HTMLMeterElement");
+  const HTMLDialogElement = defHTML("HTMLDialogElement");
+  const HTMLMenuElement = defHTML("HTMLMenuElement");
+  const HTMLDataElement = defHTML("HTMLDataElement");
+  const HTMLVideoElement = defHTML("HTMLVideoElement");
+  const HTMLTrackElement = defHTML("HTMLTrackElement");
+  const HTMLAudioElement = defHTML("HTMLAudioElement");
+  Object.assign(HTML, {
+    q: HTMLQuoteElement, blockquote: HTMLQuoteElement, time: HTMLTimeElement, br: HTMLBRElement,
+    ins: HTMLModElement, del: HTMLModElement, table: HTMLTableElement, caption: HTMLTableCaptionElement,
+    col: HTMLTableColElement, colgroup: HTMLTableColElement, tbody: HTMLTableSectionElement,
+    thead: HTMLTableSectionElement, tfoot: HTMLTableSectionElement, tr: HTMLTableRowElement,
+    td: HTMLTableCellElement, th: HTMLTableCellElement,
+    h1: HTMLHeadingElement, h2: HTMLHeadingElement, h3: HTMLHeadingElement, h4: HTMLHeadingElement,
+    h5: HTMLHeadingElement, h6: HTMLHeadingElement, hr: HTMLHRElement, pre: HTMLPreElement,
+    ul: HTMLUListElement, ol: HTMLOListElement, li: HTMLLIElement, dl: HTMLDListElement,
+    marquee: HTMLMarqueeElement, font: HTMLFontElement, dir: HTMLDirectoryElement,
+    label: HTMLLabelElement, legend: HTMLLegendElement, optgroup: HTMLOptGroupElement,
+    datalist: HTMLDataListElement, progress: HTMLProgressElement, meter: HTMLMeterElement,
+    dialog: HTMLDialogElement, menu: HTMLMenuElement, data: HTMLDataElement,
+    video: HTMLVideoElement, audio: HTMLAudioElement, track: HTMLTrackElement,
+  });
+  function parseHtmlInt(input) {
+    let position = 0;
+    let sign = 1;
+    input = String(input);
+    while (position < input.length && /^[ \t\n\f\r]$/.test(input[position])) position++;
+    if (position >= input.length) return false;
+    if (input[position] === "-") { sign = -1; position++; }
+    else if (input[position] === "+") position++;
+    if (position >= input.length || !/^[0-9]$/.test(input[position])) return false;
+    let value = 0;
+    while (position < input.length && /^[0-9]$/.test(input[position])) {
+      value = value * 10 + (input.charCodeAt(position) - 48);
+      position++;
+    }
+    if (value === 0) return 0;
+    return sign * value;
+  }
+  function parseHtmlNonneg(input) {
+    const v = parseHtmlInt(input);
+    if (v === false || v < 0) return false;
+    return v;
+  }
+  function parseHtmlDouble(input) {
+    input = String(input);
+    let position = 0;
+    while (position < input.length && /^[ \t\n\f\r]$/.test(input[position])) position++;
+    const rest = input.slice(position);
+    if (!/^[+-]?(?:\d+\.?\d*|\.\d+)/.test(rest)) return false;
+    const n = parseFloat(rest);
+    if (!isFinite(n)) return false;
+    return n;
+  }
+  function camelAttr(name) {
+    if (name === "htmlFor") return "for";
+    if (name === "className") return "class";
+    if (name === "httpEquiv") return "http-equiv";
+    return name.replace(/[A-Z]/g, (m) => m.toLowerCase());
+  }
+  function reflectAttr(proto, idl, spec) {
+    if (typeof spec === "string") spec = { type: spec };
+    if (spec && spec.type && typeof spec.type === "object") spec = spec.type;
+    const type = spec.type || "string";
+    const attr = spec.domAttrName || camelAttr(idl);
+    const treatNull = !!spec.treatNullAsEmptyString;
+    const getter = function () {
+      const raw = this.getAttribute(attr);
+      if (type === "boolean") return raw != null;
+      if (type === "url") {
+        if ((raw == null || raw === "") && (idl === "action" || idl === "formAction")) {
+          return document.URL || location.href || "";
+        }
+        return reflectedUrl(this, attr);
+      }
+      if (type === "long") {
+        if (raw == null) return spec.defaultVal == null ? 0 : spec.defaultVal;
+        const p = parseHtmlInt(raw);
+        if (p === false || p > 2147483647 || p < -2147483648) return spec.defaultVal == null ? 0 : spec.defaultVal;
+        return p;
+      }
+      if (type === "limited long") {
+        if (raw == null) return spec.defaultVal == null ? -1 : spec.defaultVal;
+        const p = parseHtmlNonneg(raw);
+        if (p === false || p > 2147483647) return spec.defaultVal == null ? -1 : spec.defaultVal;
+        return p;
+      }
+      if (type === "unsigned long" || type === "limited unsigned long" || type === "limited unsigned long with fallback") {
+        const def = spec.defaultVal == null ? (type === "limited unsigned long" ? 1 : 0) : spec.defaultVal;
+        if (raw == null) return def;
+        const p = parseHtmlNonneg(raw);
+        if (p === false || p > 2147483647) return def;
+        if ((type === "limited unsigned long" || type === "limited unsigned long with fallback") && p === 0) return def;
+        return p >>> 0;
+      }
+      if (type === "clamped unsigned long") {
+        const def = spec.defaultVal == null ? 1 : spec.defaultVal;
+        const min = spec.min == null ? 0 : spec.min;
+        const max = spec.max == null ? 2147483647 : spec.max;
+        if (raw == null) return def;
+        let p = parseHtmlNonneg(raw);
+        if (p === false) return def;
+        if (p < min) p = min;
+        if (p > max) p = max;
+        return p;
+      }
+      if (type === "double" || type === "limited double") {
+        const def = spec.defaultVal == null ? 0 : spec.defaultVal;
+        if (raw == null) return def;
+        const n = parseHtmlDouble(raw);
+        if (n === false) return def;
+        if (type === "limited double" && n <= 0) return def;
+        return n;
+      }
+      if (type === "enum") {
+        const keywords = spec.keywords || [];
+        const nonCanon = spec.nonCanon || {};
+        if (raw == null) {
+          return spec.defaultVal === undefined ? (spec.isNullable ? null : "") : spec.defaultVal;
+        }
+        const asciiLower = (s) => String(s).replace(/[A-Z]/g, (m) => m.toLowerCase());
+        const lower = asciiLower(raw);
+        let ret = spec.invalidVal === undefined ? (spec.defaultVal === undefined ? "" : spec.defaultVal) : spec.invalidVal;
+        for (let i = 0; i < keywords.length; i++) {
+          if (asciiLower(keywords[i]) === lower) { ret = keywords[i]; break; }
+        }
+        if (Object.prototype.hasOwnProperty.call(nonCanon, ret)) return nonCanon[ret];
+        return ret;
+      }
+      if (raw == null) return "";
+      return raw;
+    };
+    const setter = function (v) {
+      if (type === "boolean") {
+        if (v) this.setAttribute(attr, "");
+        else this.removeAttribute(attr);
+        return;
+      }
+      if (type === "limited long" && (v | 0) < 0) {
+        throw new DOMException("Index or size is negative or greater than the allowed amount.", "IndexSizeError");
+      }
+      if (type === "limited unsigned long" && !(Number(v) > 0)) {
+        throw new DOMException("Index or size is negative or greater than the allowed amount.", "IndexSizeError");
+      }
+      if (type === "enum") {
+        if (spec.isNullable && v == null) { this.removeAttribute(attr); return; }
+        this.setAttribute(attr, String(v));
+        return;
+      }
+      if (type === "url") {
+        this.setAttribute(attr, toUSV(v));
+        return;
+      }
+      if (treatNull && v === null) {
+        this.setAttribute(attr, "");
+        return;
+      }
+      if (type === "long" || type === "limited long") {
+        this.setAttribute(attr, String(v | 0));
+        return;
+      }
+      if (type === "limited unsigned long with fallback") {
+        let n = Number(v);
+        const def = spec.defaultVal == null ? 1 : spec.defaultVal;
+        if (!(n > 0) || n > 2147483647) n = def;
+        this.setAttribute(attr, String(n >>> 0));
+        return;
+      }
+      if (type.indexOf("unsigned") >= 0 || type.indexOf("clamped") >= 0) {
+        let n = v >>> 0;
+        if (n > 2147483647) n = spec.defaultVal == null ? 0 : spec.defaultVal;
+        this.setAttribute(attr, String(n));
+        return;
+      }
+      if (type.indexOf("double") >= 0) {
+        if (type === "limited double" && !(Number(v) > 0)) return;
+        this.setAttribute(attr, String(Number(v)));
+        return;
+      }
+      this.setAttribute(attr, String(v));
+    };
+    if (spec.customGetter) {
+      Object.defineProperty(proto, idl, {
+        configurable: true,
+        enumerable: true,
+        get: getter,
+        set: setter,
+      });
+      return;
+    }
+    Object.defineProperty(proto, idl, {
+      configurable: true,
+      enumerable: true,
+      get: getter,
+      set: setter,
+    });
+  }
+  const REFLECT = {
+    a: { target: "string", download: "string", ping: "string", rel: "string", hreflang: "string", type: "string", referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, coords: "string", charset: "string", name: "string", rev: "string", shape: "string" },
+    q: { cite: "url" },
+    data: { value: "string" },
+    time: { dateTime: "string" },
+    br: { clear: "string" },
+    img: { alt: "string", src: "url", srcset: "string", crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, useMap: "string", isMap: "boolean", width: { type: "unsigned long", customGetter: true }, height: { type: "unsigned long", customGetter: true }, referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, decoding: { type: "enum", keywords: ["async", "sync", "auto"], defaultVal: "auto", invalidVal: "auto" }, name: "string", lowsrc: "url", align: "string", hspace: "unsigned long", vspace: "unsigned long", longDesc: "url", border: { type: "string", treatNullAsEmptyString: true } },
+    iframe: { src: "url", srcdoc: "string", name: "string", allowFullscreen: "boolean", width: "string", height: "string", referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, align: "string", scrolling: "string", frameBorder: "string", longDesc: "url", marginHeight: { type: "string", treatNullAsEmptyString: true }, marginWidth: { type: "string", treatNullAsEmptyString: true } },
+    embed: { src: "url", type: "string", width: "string", height: "string", align: "string", name: "string" },
+    object: { data: "url", type: "string", name: "string", useMap: "string", width: "string", height: "string", align: "string", archive: "string", code: "string", declare: "boolean", hspace: "unsigned long", standby: "string", vspace: "unsigned long", codeBase: "url", codeType: "string", border: { type: "string", treatNullAsEmptyString: true } },
+    param: { name: "string", value: "string", valueType: "string" },
+    video: { src: "url", poster: "url", width: { type: "unsigned long", customGetter: true }, height: { type: "unsigned long", customGetter: true }, autoplay: "boolean", loop: "boolean", controls: "boolean", defaultMuted: { type: "boolean", domAttrName: "muted" }, playsInline: "boolean", loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" }, preload: { type: "enum", keywords: ["none", "metadata", "auto"], defaultVal: "metadata", invalidVal: "metadata" }, crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" } },
+    audio: { src: "url", autoplay: "boolean", loop: "boolean", controls: "boolean", defaultMuted: { type: "boolean", domAttrName: "muted" }, loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" }, preload: { type: "enum", keywords: ["none", "metadata", "auto"], defaultVal: "metadata", invalidVal: "metadata" }, crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" } },
+    source: { src: "url", type: "string", srcset: "string", sizes: "string", media: "string" },
+    track: { kind: { type: "enum", keywords: ["subtitles", "captions", "descriptions", "chapters", "metadata"], defaultVal: "subtitles", invalidVal: "metadata" }, src: "url", srclang: "string", label: "string", default: "boolean" },
+    form: { acceptCharset: { type: "string", domAttrName: "accept-charset" }, action: "url", autocomplete: { type: "enum", keywords: ["on", "off"], defaultVal: "on" }, enctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], defaultVal: "application/x-www-form-urlencoded" }, encoding: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], defaultVal: "application/x-www-form-urlencoded", domAttrName: "enctype" }, method: { type: "enum", keywords: ["get", "post", "dialog"], defaultVal: "get" }, name: "string", noValidate: "boolean", target: "string" },
+    fieldset: { disabled: "boolean", name: "string" },
+    legend: { align: "string" },
+    label: { htmlFor: { type: "string", domAttrName: "for" } },
+    input: { accept: "string", alt: "string", autocomplete: { type: "string", customGetter: true }, defaultChecked: { type: "boolean", domAttrName: "checked" }, dirName: "string", disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", height: { type: "unsigned long", customGetter: true }, max: "string", maxLength: "limited long", min: "string", minLength: "limited long", multiple: "boolean", name: "string", pattern: "string", placeholder: "string", readOnly: "boolean", required: "boolean", size: { type: "limited unsigned long", defaultVal: 20 }, src: "url", step: "string", type: { type: "enum", keywords: ["hidden", "text", "search", "tel", "url", "email", "password", "date", "time", "datetime-local", "number", "range", "color", "checkbox", "radio", "file", "submit", "image", "reset", "button", "month", "week"], defaultVal: "text" }, width: { type: "unsigned long", customGetter: true }, defaultValue: { type: "string", domAttrName: "value" }, align: "string", useMap: "string" },
+    button: { disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post", "dialog"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", name: "string", type: { type: "enum", keywords: ["submit", "reset", "button"], defaultVal: "submit" }, value: "string" },
+    select: { autocomplete: { type: "string", customGetter: true }, disabled: "boolean", multiple: "boolean", name: "string", required: "boolean", size: { type: "unsigned long", defaultVal: 0 } },
+    optgroup: { disabled: "boolean", label: "string" },
+    option: { disabled: "boolean", defaultSelected: { type: "boolean", domAttrName: "selected" } },
+    textarea: { autocomplete: { type: "string", customGetter: true }, cols: { type: "limited unsigned long with fallback", defaultVal: 20 }, dirName: "string", disabled: "boolean", maxLength: "limited long", minLength: "limited long", name: "string", placeholder: "string", readOnly: "boolean", required: "boolean", rows: { type: "limited unsigned long with fallback", defaultVal: 2 }, wrap: "string" },
+    output: { name: "string" },
+    progress: { max: { type: "limited double", defaultVal: 1.0 } },
+    meter: { value: { type: "double", customGetter: true }, min: { type: "double", customGetter: true }, max: { type: "double", customGetter: true }, low: { type: "double", customGetter: true }, high: { type: "double", customGetter: true }, optimum: { type: "double", customGetter: true } },
+    p: { align: "string" },
+    hr: { align: "string", color: "string", noShade: "boolean", size: "string", width: "string" },
+    pre: { width: "long" },
+    blockquote: { cite: "url" },
+    ol: { reversed: "boolean", start: { type: "long", defaultVal: 1 }, type: "string", compact: "boolean" },
+    ul: { compact: "boolean", type: "string" },
+    li: { value: "long", type: "string" },
+    dl: { compact: "boolean" },
+    div: { align: "string" },
+    body: { text: { type: "string", treatNullAsEmptyString: true }, link: { type: "string", treatNullAsEmptyString: true }, vLink: { type: "string", treatNullAsEmptyString: true }, aLink: { type: "string", treatNullAsEmptyString: true }, bgColor: { type: "string", treatNullAsEmptyString: true }, background: "string" },
+    h1: { align: "string" }, h2: { align: "string" }, h3: { align: "string" }, h4: { align: "string" }, h5: { align: "string" }, h6: { align: "string" },
+    table: { align: "string", border: "string", frame: "string", rules: "string", summary: "string", width: "string", bgColor: { type: "string", treatNullAsEmptyString: true }, cellPadding: { type: "string", treatNullAsEmptyString: true }, cellSpacing: { type: "string", treatNullAsEmptyString: true } },
+    caption: { align: "string" },
+    colgroup: { span: { type: "clamped unsigned long", defaultVal: 1, min: 1, max: 1000 }, align: "string", ch: { type: "string", domAttrName: "char" }, chOff: { type: "string", domAttrName: "charoff" }, vAlign: "string", width: "string" },
+    col: { span: { type: "clamped unsigned long", defaultVal: 1, min: 1, max: 1000 }, align: "string", ch: { type: "string", domAttrName: "char" }, chOff: { type: "string", domAttrName: "charoff" }, vAlign: "string", width: "string" },
+    tbody: { align: "string", ch: { type: "string", domAttrName: "char" }, chOff: { type: "string", domAttrName: "charoff" }, vAlign: "string" },
+    thead: { align: "string", ch: { type: "string", domAttrName: "char" }, chOff: { type: "string", domAttrName: "charoff" }, vAlign: "string" },
+    tfoot: { align: "string", ch: { type: "string", domAttrName: "char" }, chOff: { type: "string", domAttrName: "charoff" }, vAlign: "string" },
+    tr: { align: "string", ch: { type: "string", domAttrName: "char" }, chOff: { type: "string", domAttrName: "charoff" }, vAlign: "string", bgColor: { type: "string", treatNullAsEmptyString: true } },
+    td: { colSpan: { type: "clamped unsigned long", defaultVal: 1, min: 1, max: 1000 }, rowSpan: { type: "clamped unsigned long", defaultVal: 1, min: 0, max: 65534 }, headers: "string", scope: { type: "enum", keywords: ["row", "col", "rowgroup", "colgroup"] }, abbr: "string", align: "string", axis: "string", height: "string", width: "string", ch: { type: "string", domAttrName: "char" }, chOff: { type: "string", domAttrName: "charoff" }, noWrap: "boolean", vAlign: "string", bgColor: { type: "string", treatNullAsEmptyString: true } },
+    th: { colSpan: { type: "clamped unsigned long", defaultVal: 1, min: 1, max: 1000 }, rowSpan: { type: "clamped unsigned long", defaultVal: 1, min: 0, max: 65534 }, headers: "string", scope: { type: "enum", keywords: ["row", "col", "rowgroup", "colgroup"] }, abbr: "string", align: "string", axis: "string", height: "string", width: "string", ch: { type: "string", domAttrName: "char" }, chOff: { type: "string", domAttrName: "charoff" }, noWrap: "boolean", vAlign: "string", bgColor: { type: "string", treatNullAsEmptyString: true } },
+    base: { target: "string" },
+    link: { crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, as: { type: "enum", keywords: ["fetch", "audio", "document", "embed", "font", "image", "manifest", "object", "report", "script", "sharedworker", "style", "track", "video", "worker", "xslt"], defaultVal: "", invalidVal: "" }, media: "string", integrity: "string", hreflang: "string", type: "string", referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, charset: "string", rev: "string", target: "string" },
+    meta: { name: "string", httpEquiv: { type: "string", domAttrName: "http-equiv" }, content: "string", media: "string", scheme: "string" },
+    style: { media: "string", type: "string" },
+    html: { version: "string" },
+    script: { type: "string", noModule: "boolean", charset: "string", defer: "boolean", crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, integrity: "string", event: "string", htmlFor: { type: "string", domAttrName: "for" } },
+    slot: { name: "string" },
+    ins: { cite: "url", dateTime: "string" },
+    del: { cite: "url", dateTime: "string" },
+    details: { open: "boolean" },
+    menu: { compact: "boolean" },
+    dialog: { open: "boolean" },
+    marquee: { bgColor: "string", height: "string", hspace: "unsigned long", scrollAmount: { type: "unsigned long", defaultVal: 6 }, scrollDelay: { type: "unsigned long", defaultVal: 85 }, trueSpeed: "boolean", vspace: "unsigned long", width: "string" },
+    frameset: { cols: "string", rows: "string" },
+    frame: { name: "string", scrolling: "string", src: "url", frameBorder: "string", longDesc: "url", noResize: "boolean", marginHeight: { type: "string", treatNullAsEmptyString: true }, marginWidth: { type: "string", treatNullAsEmptyString: true } },
+    dir: { compact: "boolean" },
+    font: { color: { type: "string", treatNullAsEmptyString: true }, face: "string", size: "string" },
+    area: { alt: "string", coords: "string", shape: "string", target: "string", download: "string", ping: "string", rel: "string", hreflang: "string", type: "string", noHref: "boolean", referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] } },
+    canvas: { width: { type: "unsigned long", defaultVal: 300 }, height: { type: "unsigned long", defaultVal: 150 } },
+  };
+  for (const tag of Object.keys(REFLECT)) {
+    const ctor = HTML[tag] || HTMLElement;
+    const spec = REFLECT[tag];
+    for (const idl of Object.keys(spec)) reflectAttr(ctor.prototype, idl, spec[idl]);
+  }
+
   const SVG = {
     svg: SVGSVGElement, path: SVGPathElement, g: SVGGraphicsElement, circle: SVGGraphicsElement,
     rect: SVGGraphicsElement, line: SVGGraphicsElement, polyline: SVGGraphicsElement,
@@ -2271,8 +2901,20 @@
   };
 
   class Document extends Node {
-    get onreadystatechange() { return this.__onrs || null; }
-    set onreadystatechange(v) { this.__onrs = v; }
+    constructor() {
+      super();
+      if (this.__h) return;
+      this.__h = D("createDocument", "", "", null);
+      nodes.set(this.__h, this);
+      installDocumentLocation(this);
+    }
+    get onreadystatechange() { return onReadyStateChange.get(this) || null; }
+    set onreadystatechange(v) {
+      if (v == null) onReadyStateChange.delete(this);
+      else onReadyStateChange.set(this, v);
+    }
+    get onvisibilitychange() { return this._onvisibilitychange || null; }
+    set onvisibilitychange(v) { this._onvisibilitychange = typeof v === "function" ? v : null; }
     get documentElement() { return wrap(D("documentElement", this.__h)); }
     get dir() {
       const de = this.documentElement;
@@ -2282,10 +2924,8 @@
     set dir(v) {
       if (this.documentElement) this.documentElement.dir = v;
     }
-    set dir(v) { if (this.documentElement) this.documentElement.setAttribute("dir", v); }
     get doctype() { return wrap(D("doctype", this.__h)); }
     get head() { return wrap(D("head", this.__h)); }
-    set head(_) {}
     get body() { return wrap(D("body", this.__h)); }
     set body(v) {
       if (v == null || typeof v !== "object" || v.nodeType !== 1) {
@@ -2336,31 +2976,38 @@
     }
     get plugins() { return this.embeds; }
     get implementation() {
-      return {
-        createHTMLDocument(title) {
-          if (arguments.length === 0 || title === undefined) {
-            return wrap(D("createHTMLDocument", null));
-          }
-          return wrap(D("createHTMLDocument", String(title)));
-        },
-        hasFeature() { return true; },
-        createDocument(ns, qname, doctype) {
-          return wrap(D(
-            "createDocument",
-            ns == null ? "" : String(ns),
-            qname == null ? "" : String(qname),
-            handleOf(doctype),
-          ));
-        },
-        createDocumentType(name, publicId, systemId) {
-          return wrap(D(
-            "createDocumentType",
-            String(name),
-            publicId == null ? "" : String(publicId),
-            systemId == null ? "" : String(systemId),
-          ));
-        },
-      };
+      if (!this._impl) {
+        const impl = {
+          createHTMLDocument(title) {
+            if (arguments.length === 0 || title === undefined) {
+              return wrap(D("createHTMLDocument", null));
+            }
+            return wrap(D("createHTMLDocument", String(title)));
+          },
+          hasFeature() { return true; },
+          createDocument(ns, qname, doctype) {
+            const d = wrap(D(
+              "createDocument",
+              ns == null ? "" : String(ns),
+              qname == null ? "" : String(qname),
+              handleOf(doctype),
+            ));
+            if (d) Object.setPrototypeOf(d, XMLDocument.prototype);
+            return d;
+          },
+          createDocumentType(name, publicId, systemId) {
+            return wrap(D(
+              "createDocumentType",
+              String(name),
+              publicId == null ? "" : String(publicId),
+              systemId == null ? "" : String(systemId),
+            ));
+          },
+        };
+        Object.setPrototypeOf(impl, DOMImplementation.prototype);
+        this._impl = impl;
+      }
+      return this._impl;
     }
     get title() { return D("title", this.__h); }
     set title(v) { D("setTitle", this.__h, String(v)); }
@@ -2407,12 +3054,61 @@
       return h ? wrap(h) : (this.body || this.documentElement);
     }
     get location() { return this.__h === D("documentNode") ? location : null; }
-    get readyState() { return "complete"; }
+    get readyState() { return this.__h === D("documentNode") ? D("readyState") : "complete"; }
+    get domain() {
+      if (this._domain != null) return this._domain;
+      try { return new URL(this.URL || D("url") || "http://127.0.0.1").hostname; }
+      catch (e) { return ""; }
+    }
+    set domain(v) { this._domain = String(v); }
     get hidden() { return false; }
     get visibilityState() { return "visible"; }
-    createElement(name) { return wrap(D("createElement", String(name))); }
+    get referrer() { return this.__h === D("documentNode") ? (D("referrer") || "") : ""; }
+    get designMode() { return this._designMode || "off"; }
+    set designMode(v) { this._designMode = String(v).toLowerCase() === "on" ? "on" : "off"; }
+    hasFocus() { return this.__h === D("documentNode"); }
+    execCommand(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
+    queryCommandEnabled(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
+    queryCommandIndeterm(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
+    queryCommandState(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
+    queryCommandSupported(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
+    queryCommandValue(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return ""; }
+    createAttribute(name) {
+      const el = this.createElement("span");
+      el.setAttribute(String(name), "");
+      return el.getAttributeNode ? el.getAttributeNode(String(name)) : { name: String(name), value: "" };
+    }
+    createAttributeNS(ns, name) { return this.createAttribute(name); }
+    open() { return this; }
+    close() {}
+    static parseHTMLUnsafe(html) {
+      if (arguments.length < 1) throw new TypeError("Not enough arguments");
+      const d = new Document();
+      try { d.write(String(html == null ? "" : html)); } catch (e) {}
+      return d;
+    }
+    static parseHTML(html) {
+      if (arguments.length < 1) throw new TypeError("Not enough arguments");
+      return Document.parseHTMLUnsafe(html);
+    }
+    createElement(name) {
+      const el = wrap(D("createElement", String(name)));
+      if (el && String(name).toLowerCase() === "script") el._scriptCreated = true;
+      return el;
+    }
     createElementNS(ns, name) { return wrap(D("createElementNS", ns == null ? "" : String(ns), String(name))); }
     createTextNode(data) { return wrap(D("createTextNode", String(data))); }
+    createCDATASection(data) {
+      const n = this.createTextNode(data == null ? "" : String(data));
+      Object.defineProperty(n, "nodeType", { value: 4, configurable: true });
+      Object.defineProperty(n, "nodeName", { value: "#cdata-section", configurable: true });
+      return n;
+    }
+    write(...args) {
+      const html = args.map((a) => a == null ? "" : String(a)).join("");
+      D("documentWrite", this.__h, html);
+    }
+    writeln(...args) { this.write(...args, "\n"); }
     createComment(data) { return wrap(D("createComment", String(data))); }
     createTreeWalker(root, whatToShow) { return new TreeWalker(root, whatToShow); }
     createNodeIterator(root, whatToShow) {
@@ -2482,6 +3178,7 @@
     }
     getElementsByClassName(n) { return new HTMLCollection(() => list(D("getElementsByClassName", this.__h, String(n)))); }
     getElementsByName(n) {
+      if (arguments.length < 1) throw new TypeError("Not enough arguments");
       const want = String(n);
       return new LiveNodeList(() => {
         const all = list(D("getElementsByTagName", this.__h, "*"));
@@ -2495,9 +3192,10 @@
       return wrap(D("adoptNode", handleOf(n))) || n;
     }
     createRange() { return new Range(); }
-    write() {}
-    writeln() {}
-    open() {}
+    open() {
+      if (arguments.length >= 3) return blankWindow(arguments[0]);
+      return this;
+    }
     close() {}
   }
 
@@ -2527,6 +3225,30 @@
     }
     return o;
   }
+  function encodeUSVHref(s) {
+    return toUSV(s).replace(/\uFFFD/g, "%EF%BF%BD");
+  }
+  function EventSource(url) {
+    this.url = encodeUSVHref(String(url));
+    this.readyState = 2;
+    this.close = function () {};
+  }
+  function blankWindow(url) {
+    const loc = {
+      _href: encodeUSVHref(url == null || url === "" ? "about:blank" : String(url)),
+      get href() { return this._href; },
+      set href(v) { this._href = encodeUSVHref(String(v)); },
+      get hash() {
+        const i = this._href.indexOf("#");
+        return i < 0 ? "" : this._href.slice(i);
+      },
+    };
+    const doc = {
+      get URL() { return loc.href; },
+      get documentURI() { return loc.href; },
+    };
+    return { location: loc, document: doc, closed: false, close() { this.closed = true; } };
+  }
   class Location {
     toString() { return D("locationGet", "href"); }
     get href() { return D("locationGet", "href"); }
@@ -2554,6 +3276,9 @@
       try { window.dispatchEvent(new HashChangeEvent("hashchange")); } catch (e) {}
     }
     get origin() { return D("locationGet", "origin"); }
+    get ancestorOrigins() {
+      return this._ancestorOrigins || (this._ancestorOrigins = Object.assign(["length"], { length: 0, item() { return null; }, contains() { return false; } }));
+    }
     assign(v) { this.href = v; }
     replace(v) { D("locationSet", "replace", String(v)); }
     reload() { D("reload"); }
@@ -2568,6 +3293,19 @@
     pushState(state, title, url) { D("pushState", JSON.stringify(state ?? null), url == null ? "" : String(url)); }
     replaceState(state, title, url) { D("replaceState", JSON.stringify(state ?? null), url == null ? "" : String(url)); }
   }
+  function reflectDocColor(js, attr) {
+    Object.defineProperty(Document.prototype, js, {
+      configurable: true,
+      enumerable: true,
+      get() { return (this.body && this.body.getAttribute(attr)) || ""; },
+      set(v) { if (this.body) this.body.setAttribute(attr, v === null ? "" : String(v)); },
+    });
+  }
+  reflectDocColor("fgColor", "text");
+  reflectDocColor("linkColor", "link");
+  reflectDocColor("vlinkColor", "vlink");
+  reflectDocColor("alinkColor", "alink");
+  reflectDocColor("bgColor", "bgcolor");
 
   class CustomElementRegistry {
     define(name, ctor) {
@@ -2813,6 +3551,17 @@
     }
     abort(reason) { this.signal.reason = reason; this.signal.dispatch(); }
   }
+  function drainSwClientPosts() {
+    const posts = D("swTakeClientPosts") || [];
+    const sw = navigator.serviceWorker;
+    for (const p of posts) {
+      let data = p;
+      try { data = JSON.parse(p); } catch (e) {}
+      const ev = new MessageEvent("message", { data });
+      try { if (typeof sw.onmessage === "function") sw.onmessage(ev); } catch (e) {}
+      (sw._messageFns || []).forEach((fn) => { try { fn(ev); } catch (e) {} });
+    }
+  }
   function fetchImpl(url, init) {
     init = init || {};
     if (init.signal && init.signal.aborted) {
@@ -2833,7 +3582,10 @@
           const r = D("fetchPoll", id);
           if (!r || r.pending) { setTimeout(tick, 0); return; }
           if (r.error) reject(new TypeError(r.error));
-          else resolve(responseFrom(r));
+          else {
+            resolve(responseFrom(r));
+            queueMicrotask(drainSwClientPosts);
+          }
         };
         queueMicrotask(tick);
       } catch (e) { reject(e); }
@@ -2878,7 +3630,7 @@
   }
   class URL {
     constructor(url, base) {
-      let s = String(url);
+      let s = encodeUSVHref(url);
       if (base && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s)) {
         const b = String(base);
         if (s.startsWith("//")) {
@@ -2920,6 +3672,11 @@
       doc.body.innerHTML = body ? body[1] : html;
       return doc;
     }
+  }
+  function Blob(parts, opts) {
+    this.size = 0;
+    this.type = (opts && opts.type) || "";
+    this._parts = parts || [];
   }
   URL.createObjectURL = () => "blob:vector:0";
   URL.revokeObjectURL = () => {};
@@ -3168,6 +3925,7 @@
   };
 
   const document = wrap(D("documentNode"));
+  browsingDocument = document;
   const location = new Location();
   const history = new History();
   const windowProps = {
@@ -3175,20 +3933,56 @@
     onhashchange: null, onpopstate: null,
     localStorage: storage("local"), sessionStorage: storage("session"),
     customElements: new CustomElementRegistry(),
-    Event, HashChangeEvent, MouseEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
+    Event, HashChangeEvent, StorageEvent, MouseEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
     Node, NodeList, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment, CharacterData,
     ProcessingInstruction, DocumentType, HTMLCollection,
     HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLOptionElement,
     HTMLButtonElement, HTMLFormElement, HTMLAnchorElement, HTMLImageElement, HTMLLinkElement, HTMLUnknownElement, HTMLStyleElement,
+    HTMLAreaElement, HTMLBaseElement, HTMLSourceElement, HTMLFrameElement,
     HTMLIFrameElement, HTMLCanvasElement, HTMLEmbedElement, HTMLObjectElement, HTMLDocument: Document, HTMLDivElement, HTMLParagraphElement,
     HTMLSpanElement, HTMLHeadElement, HTMLBodyElement, HTMLHtmlElement,
     HTMLTitleElement, HTMLScriptElement, HTMLFrameSetElement, HTMLTemplateElement,
+    HTMLDetailsElement, HTMLFieldSetElement, HTMLMapElement, HTMLMetaElement,
+    HTMLOutputElement, HTMLParamElement, HTMLSlotElement,
+    HTMLQuoteElement, HTMLTimeElement, HTMLBRElement, HTMLModElement,
+    HTMLTableElement, HTMLTableCaptionElement, HTMLTableColElement, HTMLTableSectionElement,
+    HTMLTableRowElement, HTMLTableCellElement, HTMLHeadingElement, HTMLHRElement,
+    HTMLPreElement, HTMLUListElement, HTMLOListElement, HTMLLIElement, HTMLDListElement,
+    HTMLMarqueeElement, HTMLFontElement, HTMLDirectoryElement, HTMLLabelElement,
+    HTMLLegendElement, HTMLOptGroupElement, HTMLDataListElement, HTMLProgressElement,
+    HTMLMeterElement, HTMLDialogElement, HTMLMenuElement, HTMLDataElement,
+    HTMLVideoElement, HTMLAudioElement, HTMLTrackElement,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, Range,
-    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet,
+    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, EventSource, Blob,
+    createDataChannelPair() {
+      const listeners = [[], []];
+      function channel(i) {
+        return {
+          send(s) {
+            const data = toUSV(s);
+            queueMicrotask(() => {
+              for (const fn of listeners[1 - i]) fn({ data });
+            });
+          },
+          addEventListener(type, fn) {
+            if (type === "message" && typeof fn === "function") listeners[i].push(fn);
+          },
+        };
+      }
+      return Promise.resolve([channel(0), channel(1)]);
+    },
+    awaitMessage(channel) {
+      return new Promise((resolve) => {
+        channel.addEventListener("message", (ev) => resolve(ev.data));
+      });
+    },
     navigator: {
       userAgent: "Vector/0.0.1", language: "en-US", languages: ["en-US"], onLine: true, platform: "vector",
+      sendBeacon() { return true; },
+      registerProtocolHandler() {},
+      unregisterProtocolHandler() {},
       serviceWorker: {
         register(url, opts) {
           const scope = (opts && opts.scope) || "";
@@ -3228,11 +4022,16 @@
           return Promise.resolve(registration);
         },
         controller: null,
+        onmessage: null,
         get ready() { return this._ready || Promise.resolve({ active: null }); },
         addEventListener(type, fn) {
           if (type === "controllerchange" && typeof fn === "function") {
             this._controllerFns = this._controllerFns || [];
             this._controllerFns.push(fn);
+          }
+          if (type === "message" && typeof fn === "function") {
+            this._messageFns = this._messageFns || [];
+            this._messageFns.push(fn);
           }
         },
         removeEventListener(type, fn) {
@@ -3304,7 +4103,7 @@
     alert(m) { __ve.dom("scriptDialog", "alert", String(m), ""); },
     confirm(m) { return !!__ve.dom("scriptDialog", "confirm", String(m), ""); },
     prompt(m, d) { const r = __ve.dom("scriptDialog", "prompt", String(m), d == null ? "" : String(d)); return r == null ? null : String(r); },
-    open() { return null; },
+    open(url) { return blankWindow(url); },
     close() {},
     focus() {},
     blur() {},
@@ -3465,6 +4264,25 @@
         if (type === "message" && typeof fn === "function") this.onmessage = fn;
       };
     },
+    SharedWorker: function SharedWorker(src, name) {
+      this.port = {
+        onmessage: null,
+        postMessage(m) {
+          const reply = D("workerPost", D("workerCreate", String(src)), JSON.stringify(m == null ? null : m));
+          if (reply == null) return;
+          let data = reply;
+          if (typeof reply === "string") {
+            try { data = JSON.parse(reply); } catch (e) { data = reply; }
+          }
+          if (typeof this.onmessage === "function") this.onmessage({ data });
+        },
+        addEventListener(type, fn) {
+          if (type === "message" && typeof fn === "function") this.onmessage = fn;
+        },
+        start() {},
+      };
+      this.onerror = null;
+    },
     WebSocket: function WebSocket(url) {
       const raw = D("wsConnect", String(url));
       const parts = String(raw || "").split(":");
@@ -3539,23 +4357,384 @@
     return r;
   };
   globalThis.__veDocumentEvents = () => {
+    const doc = globalThis.document || document;
     try { exposeAllIds(); } catch (e) {}
-    try { customElements.upgrade(document); } catch (e) {}
-    try { document.dispatchEvent(new Event("DOMContentLoaded", { bubbles: true })); } catch (e) {}
+    try { customElements.upgrade(doc); } catch (e) {}
+    try {
+      D("setReadyState", "interactive");
+      doc.dispatchEvent(new Event("readystatechange"));
+    } catch (e) {}
+    try { doc.dispatchEvent(new Event("DOMContentLoaded", { bubbles: true })); } catch (e) {}
+    try { window.dispatchEvent(new Event("DOMContentLoaded", { bubbles: true })); } catch (e) {}
+    try {
+      D("setReadyState", "complete");
+      doc.dispatchEvent(new Event("readystatechange"));
+    } catch (e) {}
+    try {
+      const failed = doc.getElementsByTagName("script");
+      for (let i = 0; i < failed.length; i++) {
+        const s = failed[i];
+        if (s.__veRan || !s.getAttribute("src")) continue;
+        const src = s.getAttribute("onerror");
+        if (!src) continue;
+        try { new Function("event", src).call(s, new Event("error")); } catch (e) {}
+      }
+    } catch (e) {}
     try { window.dispatchEvent(new Event("load")); } catch (e) {}
+    try {
+      const t = __ve.now();
+      const paints = [
+        { name: "first-paint", entryType: "paint", startTime: t, duration: 0 },
+        { name: "first-contentful-paint", entryType: "paint", startTime: t, duration: 0 },
+      ];
+      performance.getEntriesByType = (type) => type === "paint" ? paints.slice() : [];
+    } catch (e) {}
   };
+  globalThis.PerformancePaintTiming = function PerformancePaintTiming() {};
   windowProps.window = globalThis;
   windowProps.self = globalThis;
   windowProps.top = globalThis;
   windowProps.parent = globalThis;
-  windowProps.frames = globalThis;
+  windowProps.postMessage = function (data, targetOrigin) {
+    deliverMessage(globalThis, data, targetOrigin, globalThis);
+  };
 
-  for (const [k, v] of Object.entries(windowProps)) {
-    try { globalThis[k] = v; } catch {}
+  class DOMImplementation {
+    constructor() { throw new TypeError("Illegal constructor"); }
   }
+  class Window extends EventTarget {
+    constructor() {
+      super();
+      throw new TypeError("Illegal constructor");
+    }
+  }
+  class XMLDocument extends Document {}
+  class BarProp {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get visible() { return true; }
+  }
+  const barProp = { visible: true };
+  windowProps.Window = Window;
+  windowProps.XMLDocument = XMLDocument;
+  windowProps.BarProp = BarProp;
+  windowProps.DOMImplementation = DOMImplementation;
+  windowProps.locationbar = barProp;
+  windowProps.menubar = barProp;
+  windowProps.personalbar = barProp;
+  windowProps.scrollbars = barProp;
+  windowProps.statusbar = barProp;
+  windowProps.toolbar = barProp;
+  windowProps.clientInformation = windowProps.navigator;
+  windowProps.closed = false;
+  windowProps.status = "";
+  windowProps.name = "";
+  windowProps.originAgentCluster = false;
+  windowProps.frameElement = null;
+  windowProps.opener = null;
+  windowProps.navigation = { currentEntry: null, entries() { return []; } };
+  windowProps.length = 0;
+  windowProps.alert = function alert(m) { D("scriptDialog", "alert", m == null ? "" : String(m), ""); };
+  windowProps.confirm = function confirm(m) { return !!D("scriptDialog", "confirm", m == null ? "" : String(m), ""); };
+  windowProps.prompt = function prompt(m, d) { return D("scriptDialog", "prompt", m == null ? "" : String(m), d == null ? "" : String(d)); };
+  windowProps.print = function print() {};
+  windowProps.focus = function focus() {};
+  windowProps.blur = function blur() {};
+  windowProps.stop = function stop() {};
+  windowProps.close = function close() { globalThis.closed = true; };
+  windowProps.open = function open(url, target, features) {
+    if (url == null || url === "") return globalThis;
+    return globalThis;
+  };
+
+  try { Object.setPrototypeOf(globalThis, Window.prototype); } catch (e) {}
+
+  function exposeCtor(name, ctor) {
+    if (typeof ctor !== "function") return;
+    try {
+      Object.defineProperty(globalThis, name, {
+        value: ctor,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+    } catch (e) {
+      try { globalThis[name] = ctor; } catch (e2) {}
+    }
+  }
+  for (const [k, v] of Object.entries(windowProps)) {
+    if (typeof v === "function" && v !== windowProps.postMessage && k[0] >= "A" && k[0] <= "Z") {
+      exposeCtor(k, v);
+    } else {
+      try { globalThis[k] = v; } catch {}
+    }
+  }
+  exposeCtor("Window", Window);
+  exposeCtor("XMLDocument", XMLDocument);
+  exposeCtor("BarProp", BarProp);
+  exposeCtor("DOMImplementation", DOMImplementation);
+  exposeCtor("Location", Location);
+  exposeCtor("History", History);
+
+  const eventHandlerNames = [
+    "onabort","onauxclick","onbeforeinput","onbeforematch","onbeforetoggle","onblur",
+    "oncancel","oncanplay","oncanplaythrough","onchange","onclick","onclose","oncommand",
+    "oncontextlost","oncontextmenu","oncontextrestored","oncopy","oncuechange","oncut",
+    "ondblclick","ondrag","ondragend","ondragenter","ondragleave","ondragover","ondragstart",
+    "ondrop","ondurationchange","onemptied","onended","onerror","onfocus","onformdata",
+    "oninput","oninvalid","onkeydown","onkeypress","onkeyup","onload","onloadeddata",
+    "onloadedmetadata","onloadstart","onmousedown","onmouseenter","onmouseleave",
+    "onmousemove","onmouseout","onmouseover","onmouseup","onpaste","onpause","onplay",
+    "onplaying","onprogress","onratechange","onreset","onresize","onscroll","onscrollend",
+    "onsecuritypolicyviolation","onseeked","onseeking","onselect","onslotchange","onstalled",
+    "onsubmit","onsuspend","ontimeupdate","ontoggle","onvolumechange","onwaiting",
+    "onwebkitanimationend","onwebkitanimationiteration","onwebkitanimationstart",
+    "onwebkittransitionend","onwheel",
+  ];
+  const windowHandlerNames = [
+    "onafterprint","onbeforeprint","onbeforeunload","onhashchange","onlanguagechange",
+    "onmessage","onmessageerror","onoffline","ononline","onpagehide","onpagereveal",
+    "onpageshow","onpageswap","onpopstate","onrejectionhandled","onstorage",
+    "onunhandledrejection","onunload",
+  ];
+  const handlerStore = new WeakMap();
+  function defineHandlers(obj, names, enumerable) {
+    for (const name of names) {
+      if (Object.getOwnPropertyDescriptor(obj, name)) continue;
+      const get = function () {
+        const m = handlerStore.get(this);
+        return (m && m[name]) || null;
+      };
+      const set = function (v) {
+        let m = handlerStore.get(this);
+        if (!m) { m = Object.create(null); handlerStore.set(this, m); }
+        m[name] = typeof v === "function" ? v : null;
+      };
+      Object.defineProperty(get, "name", { value: "get " + name, configurable: true });
+      Object.defineProperty(set, "name", { value: "set " + name, configurable: true });
+      Object.defineProperty(obj, name, {
+        configurable: true,
+        enumerable: !!enumerable,
+        get,
+        set,
+      });
+    }
+  }
+  defineHandlers(Document.prototype, eventHandlerNames, true);
+  defineHandlers(HTMLElement.prototype, eventHandlerNames, true);
+  defineHandlers(globalThis, eventHandlerNames, true);
+  defineHandlers(globalThis, windowHandlerNames, true);
+
+  function brandWrap(ctor) {
+    const proto = ctor.prototype;
+    for (const name of Object.getOwnPropertyNames(proto)) {
+      if (name === "constructor") continue;
+      const desc = Object.getOwnPropertyDescriptor(proto, name);
+      if (!desc) continue;
+      if (typeof desc.get === "function") {
+        const g = desc.get;
+        const s = desc.set;
+        const getter = function () {
+          if (!(this instanceof ctor)) {
+            if (name === "onreadystatechange") return undefined;
+            throw new TypeError("Illegal invocation");
+          }
+          return g.call(this);
+        };
+        Object.defineProperty(getter, "name", { value: "get " + name, configurable: true });
+        Object.defineProperty(getter, "length", { value: 0, configurable: true });
+        desc.get = getter;
+        if (typeof s === "function") {
+          const setter = function (v) {
+            if (!(this instanceof ctor)) {
+              if (name === "onreadystatechange") return undefined;
+              throw new TypeError("Illegal invocation");
+            }
+            return s.call(this, v);
+          };
+          Object.defineProperty(setter, "name", { value: "set " + name, configurable: true });
+          desc.set = setter;
+        }
+        desc.enumerable = true;
+      } else if (typeof desc.value === "function") {
+        const fn = desc.value;
+        const wrapped = function (...a) {
+          if (!(this instanceof ctor)) throw new TypeError("Illegal invocation");
+          return fn.apply(this, a);
+        };
+        Object.defineProperty(wrapped, "length", { value: fn.length, configurable: true });
+        Object.defineProperty(wrapped, "name", { value: fn.name, configurable: true });
+        desc.value = wrapped;
+        desc.enumerable = true;
+      }
+      try { Object.defineProperty(proto, name, desc); } catch (e) {}
+    }
+  }
+  brandWrap(Document);
+  brandWrap(Node);
+  brandWrap(Element);
+  brandWrap(HTMLElement);
+  brandWrap(EventTarget);
+  for (const name of ["parseHTMLUnsafe", "parseHTML"]) {
+    const fn = Document[name];
+    if (typeof fn === "function") {
+      try {
+        Object.defineProperty(Document, name, {
+          value: fn,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+      } catch (e) {}
+    }
+  }
+
+  function windowThis(t) {
+    if (t === undefined || t === null) return globalThis;
+    if (t === globalThis) return t;
+    throw new TypeError("Illegal invocation");
+  }
+  function ownAccessor(obj, name, getter, setter, unforgeable, replaceable) {
+    const get = function () { return getter.call(windowThis(this)); };
+    Object.defineProperty(get, "name", { value: "get " + name, configurable: true });
+    Object.defineProperty(get, "length", { value: 0, configurable: true });
+    const desc = {
+      configurable: !unforgeable,
+      enumerable: true,
+      get,
+    };
+    if (setter) {
+      const set = function (v) { return setter.call(windowThis(this), v); };
+      Object.defineProperty(set, "name", { value: "set " + name, configurable: true });
+      desc.set = set;
+    } else if (replaceable) {
+      const set = function (v) {
+        windowThis(this);
+        try {
+          Object.defineProperty(obj, name, { value: v, writable: true, enumerable: true, configurable: true });
+        } catch (e) {}
+      };
+      Object.defineProperty(set, "name", { value: "set " + name, configurable: true });
+      desc.set = set;
+    }
+    try { delete obj[name]; } catch (e) {}
+    try { Object.defineProperty(obj, name, desc); } catch (e) {}
+  }
+  function windowOp(fn, length) {
+    const wrapped = function (...args) {
+      windowThis(this);
+      return fn.apply(globalThis, args);
+    };
+    Object.defineProperty(wrapped, "length", { value: length, configurable: true });
+    Object.defineProperty(wrapped, "name", { value: fn.name, configurable: true });
+    return wrapped;
+  }
+  const WindowProperties = Object.create(EventTarget.prototype);
+  Object.defineProperty(WindowProperties, Symbol.toStringTag, { value: "WindowProperties", configurable: true });
+  try { Object.setPrototypeOf(Window.prototype, WindowProperties); } catch (e) {}
   try {
-    Object.defineProperty(globalThis, "window", { value: globalThis, writable: true, configurable: true });
-    Object.defineProperty(globalThis, "self", { value: globalThis, writable: true, configurable: true });
+    Object.defineProperty(Window.prototype, Symbol.toStringTag, { value: "Window", configurable: true });
+  } catch (e) {}
+  const barInstance = Object.create(BarProp.prototype);
+  Object.defineProperty(barInstance, "visible", { configurable: true, enumerable: true, get() { return true; } });
+  ownAccessor(globalThis, "window", () => globalThis, undefined, true);
+  ownAccessor(globalThis, "self", () => globalThis, (v) => { try { Object.defineProperty(globalThis, "self", { value: v, writable: true, enumerable: true, configurable: true }); } catch (e) {} }, false, true);
+  ownAccessor(globalThis, "document", () => document, undefined, true);
+  ownAccessor(globalThis, "location", () => location, (v) => { try { location.href = String(v); } catch (e) {} }, true);
+  ownAccessor(globalThis, "top", () => globalThis, undefined, true);
+  ownAccessor(globalThis, "history", () => history);
+  ownAccessor(globalThis, "customElements", () => windowProps.customElements);
+  ownAccessor(globalThis, "navigator", () => windowProps.navigator);
+  ownAccessor(globalThis, "clientInformation", () => windowProps.navigator, undefined, false, true);
+  ownAccessor(globalThis, "name", () => globalThis.__veName || "", (v) => { globalThis.__veName = String(v); });
+  ownAccessor(globalThis, "status", () => globalThis.__veStatus || "", (v) => { globalThis.__veStatus = String(v); });
+  ownAccessor(globalThis, "opener", () => globalThis.__veOpener == null ? null : globalThis.__veOpener, (v) => { globalThis.__veOpener = v; });
+  function indexChildWindows() {
+    const iframes = document.querySelectorAll("iframe,frame");
+    for (let i = 0; i < iframes.length; i++) {
+      const el = iframes[i];
+      try {
+        Object.defineProperty(globalThis, String(i), {
+          configurable: true,
+          enumerable: true,
+          get() { return frameWindow(el); },
+        });
+      } catch (e) {}
+    }
+    return iframes.length;
+  }
+  ownAccessor(globalThis, "frames", () => { indexChildWindows(); return globalThis; }, undefined, false, true);
+  ownAccessor(globalThis, "length", () => indexChildWindows(), undefined, false, true);
+  ownAccessor(globalThis, "parent", () => globalThis, undefined, false, true);
+  ownAccessor(globalThis, "frameElement", () => null);
+  ownAccessor(globalThis, "closed", () => !!globalThis.__veClosed);
+  ownAccessor(globalThis, "originAgentCluster", () => false);
+  ownAccessor(globalThis, "locationbar", () => barInstance, undefined, false, true);
+  ownAccessor(globalThis, "menubar", () => barInstance, undefined, false, true);
+  ownAccessor(globalThis, "personalbar", () => barInstance, undefined, false, true);
+  ownAccessor(globalThis, "scrollbars", () => barInstance, undefined, false, true);
+  ownAccessor(globalThis, "statusbar", () => barInstance, undefined, false, true);
+  ownAccessor(globalThis, "toolbar", () => barInstance, undefined, false, true);
+  ownAccessor(globalThis, "navigation", () => windowProps.navigation, undefined, false, true);
+  ownAccessor(globalThis, "external", () => (globalThis.__veExternal || (globalThis.__veExternal = { AddSearchProvider() {}, IsSearchProviderInstalled() { return 0; } })), undefined, false, true);
+  globalThis.close = windowOp(function close() { globalThis.__veClosed = true; }, 0);
+  globalThis.stop = windowOp(function stop() {}, 0);
+  globalThis.focus = windowOp(function focus() {}, 0);
+  globalThis.blur = windowOp(function blur() {}, 0);
+  globalThis.open = windowOp(function open(url, target, features) {
+    if (url == null || url === "") return globalThis;
+    return blankWindow(url);
+  }, 0);
+  globalThis.alert = windowOp(function alert(m) { D("scriptDialog", "alert", m == null ? "" : String(m), ""); }, 0);
+  globalThis.confirm = windowOp(function confirm(m) { return !!D("scriptDialog", "confirm", m == null ? "" : String(m), ""); }, 0);
+  globalThis.prompt = windowOp(function prompt(m, dft) { return D("scriptDialog", "prompt", m == null ? "" : String(m), dft == null ? "" : String(dft)); }, 0);
+  globalThis.print = windowOp(function print() {}, 0);
+  globalThis.postMessage = windowOp(function postMessage(data, targetOrigin) {
+    if (arguments.length < 1) throw new TypeError("Not enough arguments");
+    deliverMessage(globalThis, data, targetOrigin, globalThis);
+  }, 1);
+  globalThis.captureEvents = windowOp(function captureEvents() {}, 0);
+  globalThis.releaseEvents = windowOp(function releaseEvents() {}, 0);
+
+  const origSetProto = Object.setPrototypeOf;
+  const origReflectSet = Reflect.setPrototypeOf;
+  const protoSetter = Object.getOwnPropertyDescriptor(Object.prototype, "__proto__") && Object.getOwnPropertyDescriptor(Object.prototype, "__proto__").set;
+  function isImmutableProto(obj) {
+    return obj === globalThis || obj === Window.prototype;
+  }
+  Object.setPrototypeOf = function (obj, proto) {
+    if (isImmutableProto(obj) && proto !== Object.getPrototypeOf(obj)) throw new TypeError("Immutable prototype");
+    return origSetProto(obj, proto);
+  };
+  Reflect.setPrototypeOf = function (obj, proto) {
+    if (isImmutableProto(obj) && proto !== Object.getPrototypeOf(obj)) return false;
+    return origReflectSet(obj, proto);
+  };
+  if (protoSetter) {
+    Object.defineProperty(Object.prototype, "__proto__", {
+      get() { return Object.getPrototypeOf(this); },
+      set(v) {
+        if (isImmutableProto(this) && v !== Object.getPrototypeOf(this)) throw new TypeError("Immutable prototype");
+        return protoSetter.call(this, v);
+      },
+      enumerable: false,
+      configurable: true,
+    });
+  }
+  for (const name of ["addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "alert", "confirm", "prompt", "print", "focus", "blur", "stop", "close", "open", "getComputedStyle", "matchMedia", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "btoa", "atob", "fetch", "getSelection"]) {
+    const fn = globalThis[name];
+    if (typeof fn === "function") {
+      try {
+        Object.defineProperty(globalThis, name, { value: fn, writable: true, enumerable: true, configurable: true });
+      } catch (e) {}
+    }
+  }
+
+  try {
+    Object.defineProperty(globalThis, "origin", {
+      configurable: true,
+      enumerable: true,
+      get() { return D("locationGet", "origin"); },
+    });
     Object.defineProperty(globalThis, "scrollX", { configurable: true, enumerable: true, get() { return D("scrollX") || 0; } });
     Object.defineProperty(globalThis, "scrollY", { configurable: true, enumerable: true, get() { return D("scrollY") || 0; } });
     Object.defineProperty(globalThis, "pageXOffset", { configurable: true, enumerable: true, get() { return D("scrollX") || 0; } });
@@ -3565,6 +4744,15 @@
       get_computed_role(el) {
         try { return Promise.resolve((el && el.getAttribute && el.getAttribute("role")) || ""); }
         catch (e) { return Promise.resolve(""); }
+      },
+      send_keys(el, keys) {
+        return Promise.resolve().then(() => {
+          if (!el) return;
+          try { el.focus(); } catch (e) {}
+          const s = String(keys);
+          try { el.value = (el.value || "") + s; } catch (e) {}
+          try { el.dispatchEvent(new InputEvent("input", { bubbles: true, data: s })); } catch (e) {}
+        });
       },
     };
     let testdriverCur = Object.assign({}, testdriverImpl);
@@ -3580,6 +4768,7 @@
         if (typeof testdriverCur.get_computed_role !== "function") {
           testdriverCur.get_computed_role = testdriverImpl.get_computed_role;
         }
+        testdriverCur.send_keys = testdriverImpl.send_keys;
       },
     });
   } catch {}
@@ -3599,6 +4788,210 @@
     trustedEvents.add(ev);
     node.dispatchEvent(ev);
     return ev.defaultPrevented;
+  };
+  function fetchText(url) {
+    if (!url) return null;
+    try {
+      const id = D("fetchStart", String(url), "GET", "");
+      let r = D("fetchPoll", id);
+      for (let i = 0; i < 64 && r && r.pending; i++) {
+        D("fetchPump");
+        r = D("fetchPoll", id);
+      }
+      if (!r || r.error || (r.status != null && r.status >= 400)) return null;
+      return r.body == null ? "" : String(r.body);
+    } catch (e) {
+      return null;
+    }
+  }
+  function rewriteModule(source) {
+    return String(source).replace(
+      /^\s*import\s+(?:(?:[\w*{}\s,]+)\s+from\s+)?["']([^"']+)["']\s*;?/gm,
+      (m, url) => {
+        const body = fetchText(url);
+        return body == null ? "/* import failed */" : body + ";\n";
+      },
+    );
+  }
+  function fireLoad(el) {
+    if (!el) return;
+    const ev = new Event("load");
+    trustedEvents.add(ev);
+    try { el.dispatchEvent(ev); } catch (e) {}
+    if (typeof el.onload === "function") {
+      try { el.onload(ev); } catch (e) {}
+    }
+  }
+  function fireError(el, err) {
+    if (!el) return;
+    const ev = new Event("error");
+    trustedEvents.add(ev);
+    try { el.dispatchEvent(ev); } catch (e) {}
+    if (typeof el.onerror === "function") {
+      try { el.onerror(ev); } catch (e2) {}
+    }
+    if (typeof window.onerror === "function") {
+      try { window.onerror(String(err && err.message || err), "", 0, 0, err); } catch (e3) {}
+    }
+  }
+  globalThis.__veRewriteModule = (source) => rewriteModule(source);
+  globalThis.__veEvalScript = (handle, source, isModule) => {
+    const el = wrap(handle);
+    const prev = currentScriptNode;
+    currentScriptNode = isModule ? null : el;
+    try {
+      let src = source == null ? "" : String(source);
+      if (isModule) src = rewriteModule(src);
+      if (src) (0, eval)(src);
+    } catch (e) {
+      fireError(el, e);
+      throw e;
+    } finally {
+      currentScriptNode = prev;
+    }
+  };
+  const pendingResources = [];
+  function queueResource(run, isBlocking) {
+    pendingResources.push({ run, isBlocking });
+  }
+  globalThis.__veHasPendingBlocking = () =>
+    pendingResources.some((p) => (typeof p.isBlocking === "function" ? p.isBlocking() : !!p.isBlocking));
+  globalThis.__veFlushPendingResources = (blockingOnly) => {
+    const keep = [];
+    const todo = pendingResources.splice(0, pendingResources.length);
+    for (const p of todo) {
+      const block = typeof p.isBlocking === "function" ? p.isBlocking() : !!p.isBlocking;
+      if (blockingOnly && !block) {
+        keep.push(p);
+        continue;
+      }
+      try { p.run(); } catch (e) { __ve.log("error", String(e)); }
+    }
+    pendingResources.push(...keep);
+  };
+  function extractImports(css) {
+    const out = [];
+    const re = /@import\s+(?:url\()?["']([^"']+)["']\)?/gi;
+    let m;
+    while ((m = re.exec(String(css)))) out.push(m[1]);
+    return out;
+  }
+  function applyFetchedCss(css) {
+    let text = String(css || "");
+    for (const href of extractImports(text)) {
+      const imported = fetchText(href);
+      if (imported) text = imported + "\n" + text;
+    }
+    text = text.replace(/@import\s+(?:url\()?["'][^"']+["']\)?[^;]*;/gi, "");
+    D("addAuthorSheet", text);
+  }
+  function runInsertedScript(el, forceSync) {
+    if (!el || el.__veRan) return;
+    const type = ((el.getAttribute && el.getAttribute("type")) || "").trim().toLowerCase();
+    const isModule = type === "module";
+    const run = () => {
+      if (el.__veRan) return;
+      if (!el.isConnected && el.ownerDocument !== document) {
+        el.__veRan = true;
+        return;
+      }
+      const src = el.getAttribute && el.getAttribute("src");
+      let source = "";
+      if (src) {
+        source = fetchText(src);
+        if (source == null) {
+          el.__veRan = true;
+          fireError(el, new Error("script fetch failed"));
+          return;
+        }
+      } else {
+        source = el.textContent || "";
+      }
+      el.__veRan = true;
+      try {
+        __veEvalScript(el.__h, source, isModule);
+        fireLoad(el);
+      } catch (e) {}
+    };
+    const blocking = () => !!(el.blocking && el.blocking.contains && el.blocking.contains("render"));
+    const src = el.getAttribute && el.getAttribute("src");
+    if (!src && !isModule) {
+      run();
+      return;
+    }
+    queueResource(run, blocking);
+  }
+  function prepareInsertedNode(n) {
+    if (!n || n.nodeType !== 1) return;
+    const tag = (n.localName || "").toLowerCase();
+    if (tag === "script") {
+      if (!n._scriptCreated) return;
+      runInsertedScript(n, false);
+    } else if (tag === "link") {
+      const rel = (n.getAttribute("rel") || "").toLowerCase();
+      if (rel.split(/\s+/).includes("stylesheet") && n.getAttribute("href")) {
+        const href = n.getAttribute("href");
+        const run = () => {
+          if (n.__veRan) return;
+          if (!n.isConnected) { n.__veRan = true; return; }
+          n.__veRan = true;
+          const css = fetchText(href);
+          if (css != null) applyFetchedCss(css);
+          fireLoad(n);
+        };
+        queueResource(run, () => !!(n.blocking && n.blocking.contains && n.blocking.contains("render")));
+      }
+    } else if (tag === "style") {
+      const css = n.textContent || "";
+      if (/@import/i.test(css)) {
+        const run = () => {
+          if (n.__veRan) return;
+          if (!n.isConnected) { n.__veRan = true; return; }
+          n.__veRan = true;
+          applyFetchedCss(css);
+          fireLoad(n);
+        };
+        queueResource(run, () => !!(n.blocking && n.blocking.contains && n.blocking.contains("render")));
+      }
+    }
+  }
+  globalThis.__veRunFrameScripts = () => {
+    const list = document.getElementsByTagName("iframe");
+    for (let i = 0; i < list.length; i++) {
+      const iframe = list[i];
+      const raw = D("frameDocumentRaw", iframe.__h);
+      if (!raw) continue;
+      const doc = wrap(raw);
+      if (!doc) continue;
+      const scriptHandles = D("frameScriptHandles", iframe.__h) || [];
+      const scripts = scriptHandles.length
+        ? scriptHandles.map((h) => wrap(h)).filter(Boolean)
+        : (doc.querySelectorAll ? doc.querySelectorAll("script") : []);
+      const w = frameWindow(iframe);
+      const srcAttr = (iframe.getAttribute && iframe.getAttribute("src")) || "";
+      if (/^javascript:/i.test(srcAttr)) {
+        let code = srcAttr.replace(/^javascript:/i, "");
+        try { code = decodeURIComponent(code); } catch (e) {}
+        try {
+          const fn = new Function("window", "self", "parent", "top", "document", code);
+          fn(w, w, globalThis, globalThis, doc);
+        } catch (e) {}
+      }
+      for (let j = 0; j < scripts.length; j++) {
+        const s = scripts[j];
+        if (s.__veRan) continue;
+        const src = s.getAttribute && s.getAttribute("src");
+        let body = src ? fetchText(src) : (s.textContent || "");
+        if (!body) continue;
+        s.__veRan = true;
+        try {
+          const fn = new Function("window", "self", "document", "top", "parent", body);
+          fn(w, w, doc, globalThis, globalThis);
+        } catch (e) {
+          __ve.log("error", String(e && e.message || e));
+        }
+      }
+    }
   };
   globalThis.__veSetCurrentScript = (handle) => {
     currentScriptNode = handle == null ? null : wrap(handle);
@@ -3623,6 +5016,7 @@
     nodes.clear();
     currentScriptNode = null;
     const d = wrap(D("documentNode"));
+    browsingDocument = d;
     globalThis.document = d;
     try { globalThis.window.document = d; } catch {}
   };

@@ -1060,15 +1060,7 @@ impl DocumentInterface for LiveDom<'_> {
     }
 
     fn set_title(&mut self, value: String) {
-        if let Some(title) = self.page.doc.head_of(self.id).and_then(|head| {
-            self.page
-                .doc
-                .descendants(head)
-                .find(|&id| self.page.doc.element(id).is_some_and(|e| e.name == "title"))
-        }) {
-            let _ = self.page.doc.clear_children(title);
-            let _ = self.page.doc.append_text(title, &value);
-        }
+        let _ = self.page.doc.set_title_of(self.id, &value);
     }
 
     fn u_r_l(&self) -> String {
@@ -1084,10 +1076,10 @@ impl DocumentInterface for LiveDom<'_> {
     }
 
     fn compat_mode(&self) -> String {
-        if matches!(self.page.doc.quirks_mode(), ve_dom::QuirksMode::NoQuirks) {
-            "CSS1Compat".into()
-        } else {
+        if matches!(self.page.doc.quirks_mode(), ve_dom::QuirksMode::Quirks) {
             "BackCompat".into()
+        } else {
+            "CSS1Compat".into()
         }
     }
 

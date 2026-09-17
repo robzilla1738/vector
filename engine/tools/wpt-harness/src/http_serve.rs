@@ -22,6 +22,7 @@ impl DirServer {
         listener.set_nonblocking(true)?;
         let addr = listener.local_addr()?;
         let origin = format!("http://{addr}");
+        let origin_thread = origin.clone();
         let (tx, rx) = mpsc::channel();
         let handle = thread::spawn(move || {
             let deadline = Instant::now() + Duration::from_secs(3600);
@@ -41,9 +42,20 @@ impl DirServer {
                             .next()
                             .unwrap_or("/")
                             .trim_start_matches('/');
+                        if rel.is_empty() {
+                            let body = b"<html></html>";
+                            let header = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                                body.len()
+                            );
+                            let _ = stream.write_all(header.as_bytes());
+                            let _ = stream.write_all(body);
+                            continue;
+                        }
                         match resolve(&roots, rel) {
                             Some((file, mime)) => {
                                 if let Ok(bytes) = std::fs::read(&file) {
+                                    let bytes = substitute_wpt(&file, &bytes, &origin_thread, rel);
                                     let extra = sidecar_headers(&file);
                                     let header = format!(
                                         "HTTP/1.1 200 OK\r\nContent-Type: {mime}\r\nContent-Length: {}\r\n{extra}Connection: close\r\n\r\n",
@@ -111,6 +123,27 @@ fn resolve(roots: &[(String, PathBuf)], rel: &str) -> Option<(PathBuf, &'static 
     None
 }
 
+/// `Last-Modified` from a WPT `.headers` sidecar next to `file`.
+pub fn last_modified_for(file: &Path) -> Option<String> {
+    sidecar_header(file, "last-modified")
+}
+
+/// First `Content-Language` from a WPT `.headers` sidecar next to `file`.
+pub fn content_language_for(file: &Path) -> Option<String> {
+    sidecar_header(file, "content-language")
+}
+
+fn sidecar_header(file: &Path, want: &str) -> Option<String> {
+    let extra = sidecar_headers(file);
+    extra.lines().find_map(|line| {
+        let (name, value) = line.split_once(':')?;
+        name.trim()
+            .eq_ignore_ascii_case(want)
+            .then(|| value.trim().to_owned())
+            .filter(|s| !s.is_empty())
+    })
+}
+
 fn sidecar_headers(file: &Path) -> String {
     let sidecar = file.with_extension(format!(
         "{}.headers",
@@ -133,6 +166,46 @@ fn sidecar_headers(file: &Path) -> String {
     out
 }
 
+/// Applies WPT `{{location[host]}}` / `{{domains[]}}` substitutions.
+pub fn substitute_wpt_text(text: &str, origin: &str, rel: &str) -> String {
+    if !text.contains("{{") {
+        return text.to_owned();
+    }
+    let host = origin
+        .trim_start_matches("http://")
+        .trim_start_matches("https://");
+    let port = host.rsplit_once(':').map_or("80", |(_, p)| p);
+    let path = format!("/{rel}");
+    let scheme = origin.split("://").next().unwrap_or("http");
+    let hostname = host.rsplit_once(':').map_or(host, |(h, _)| h);
+    text.replace("{{location[host]}}", host)
+        .replace("{{location[hostname]}}", hostname)
+        .replace("{{location[port]}}", port)
+        .replace("{{location[path]}}", &path)
+        .replace("{{location[scheme]}}", scheme)
+        .replace("{{host}}", "web-platform.test")
+        .replace("{{domains[]}}", "web-platform.test")
+        .replace("{{domains[www]}}", "www.web-platform.test")
+        .replace("{{domains[www1]}}", "www1.web-platform.test")
+        .replace("{{domains[www2]}}", "www2.web-platform.test")
+        .replace("{{hosts[alt][]}}", "www1.web-platform.test")
+        .replace("{{hosts[alt][www2]}}", "www2.web-platform.test")
+        .replace("{{ports[http][0]}}", port)
+        .replace("{{ports[http][1]}}", port)
+        .replace("{{ports[https][0]}}", port)
+}
+
+fn substitute_wpt(file: &Path, bytes: &[u8], origin: &str, rel: &str) -> Vec<u8> {
+    let name = file.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    if !name.contains(".sub.") && !bytes.windows(2).any(|w| w == b"{{") {
+        return bytes.to_vec();
+    }
+    let Ok(text) = std::str::from_utf8(bytes) else {
+        return bytes.to_vec();
+    };
+    substitute_wpt_text(text, origin, rel).into_bytes()
+}
+
 fn mime(path: &Path) -> &'static str {
     match path
         .extension()
@@ -142,6 +215,7 @@ fn mime(path: &Path) -> &'static str {
         .as_str()
     {
         "html" | "htm" => "text/html; charset=utf-8",
+        "xhtml" | "xml" => "application/xhtml+xml; charset=utf-8",
         "js" | "mjs" => "text/javascript; charset=utf-8",
         "css" => "text/css; charset=utf-8",
         "json" => "application/json",

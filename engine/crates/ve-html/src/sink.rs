@@ -67,6 +67,7 @@ impl DomSink {
             .map(|a| ve_dom::Attribute {
                 name: qualified_attr_name(&a.name),
                 value: a.value.to_string(),
+                namespace: None,
             })
             .collect()
     }
@@ -75,7 +76,17 @@ impl DomSink {
         let mut doc = self.doc.borrow_mut();
         let result = match child {
             NodeOrText::AppendNode(node) => doc.append_child(parent, node),
-            NodeOrText::AppendText(text) => doc.append_text(parent, &text).map(|_| ()),
+            NodeOrText::AppendText(text) => {
+                let skip = text.chars().all(|c| matches!(c, ' ' | '\t' | '\n' | '\r'))
+                    && doc
+                        .element(parent)
+                        .is_some_and(|e| e.is_html("head") || e.is_html("html"));
+                if skip {
+                    Ok(())
+                } else {
+                    doc.append_text(parent, &text).map(|_| ())
+                }
+            }
         };
         if let Err(e) = result {
             self.errors.borrow_mut().push(format!("append failed: {e}"));

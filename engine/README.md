@@ -202,7 +202,7 @@ In tree now (not the old M1 “no script” list):
   `importScripts`, SW `importScripts` + `clients.claim`, IndexedDB abort.
 - **Conformance** — geometry `wpt-runner` (`m1.txt`); testharness +
   idlharness (`testharness.txt`, 112 files); `--tree --tree-family html/dom`
-  272 PASS / 59 FAIL (`docs/engine/evidence/wpt-tree-latest.json`).
+  302 PASS / 29 FAIL (`docs/engine/evidence/wpt-tree-latest.json`).
 - **Product** — `ve-shell` is the product. Electron is a labeled hybrid.
   `describe()`: `websocket:true`, `serviceWorkers:true`, `http3:false`,
   `webgl:false`, `webgpu:false`.
@@ -212,10 +212,9 @@ In tree now (not the old M1 “no script” list):
 Still open:
 
 - **IDL** — generated traits are not every interface. Official named items,
-  innerText/outerText, and ARIA attribute+element reflection PASS on the
-  `html/dom` tree. Remaining tree FAILs are outside those families
-  (partial-updates, leftover `lang`/`dir=auto`, lastModified, idlharness,
-  remaining render-blocking).
+  innerText/outerText, ARIA attribute+element reflection, lastModified,
+  usvstring-reflection, lang/`dir=auto`, and render-blocking PASS on the
+  `html/dom` tree. Official `idlharness.https.html` PASS.
 - **Graphics** — WebGL/WebGPU return null (compatibility track). GPU
   glyphs/clips/`<img>`/`present_list` exist; software PNG is the capture path.
 - **Network** — HTTP/3 is Alt-Svc only.

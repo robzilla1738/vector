@@ -294,7 +294,37 @@ impl Page {
             s.vm = Some(vm);
         }
         self.flush_observers();
+        if !self.pending_write_scripts.is_empty() {
+            self.flush_document_write_scripts();
+        }
         result.map_err(Error::from)
+    }
+
+    fn flush_document_write_scripts(&mut self) {
+        loop {
+            let batch = std::mem::take(&mut self.pending_write_scripts);
+            if batch.is_empty() {
+                break;
+            }
+            for (id, source) in batch {
+                if self.scripts_executed.contains(&id) {
+                    continue;
+                }
+                self.scripts_executed.insert(id);
+                let _ = self.call_script("__veSetCurrentScript", &[crate::dom::pack(id)]);
+                let origin = format!("{}#document.write", self.url());
+                match self.run_script(&source, &origin) {
+                    Ok(_) => {
+                        let _ = self.call_script("__veSetCurrentScript", &[JsValue::Null]);
+                        self.dispatch_js_event(id, "load", false, false, None);
+                    }
+                    Err(_) => {
+                        let _ = self.call_script("__veSetCurrentScript", &[JsValue::Null]);
+                        self.dispatch_js_event(id, "error", false, false, None);
+                    }
+                }
+            }
+        }
     }
 
     /// Drains pending V8 jobs (microtasks, promises) without evaluating new source.
@@ -351,39 +381,106 @@ impl Page {
             return;
         }
         self.parse_hi = self.doc.arena_len();
-        let hide_unparsed = self.has_rel_expect_link();
+        self.expect_body_started = false;
+        self.snapshot_head_expect_links();
         let scripts = self.scripts().to_vec();
-        let (deferred, immediate): (Vec<_>, Vec<_>) =
-            scripts.into_iter().partition(|s| s.defer || s.module);
-        for script in immediate {
-            if hide_unparsed {
-                self.parser_limit = Some(script.node);
+        let mut delayed = Vec::new();
+        let mut prev_limit: Option<ve_core::NodeId> = None;
+        for script in scripts {
+            if script.defer || script.module || script.async_ {
+                delayed.push(script);
+                continue;
             }
+            self.parser_limit = Some(script.node);
+            self.reveal_parser_progress(prev_limit);
+            prev_limit = Some(script.node);
+            let in_head = self.expect_link_in_head(script.node);
+            let _ = self.expect_blocking_active();
             self.eval_document_script(&script);
-            if hide_unparsed && !self.expect_blocking_active() {
-                self.pump_timers(TIMER_WINDOW_MS);
+            if in_head {
+                self.snapshot_head_expect_links();
+            } else {
+                self.expect_body_started = true;
+            }
+            if !in_head {
+                self.drain_js_jobs();
+                let pending_blocking = delayed.iter().any(|s| {
+                    self.resource_is_render_blocking(s.node) && self.in_browsing_tree(s.node)
+                }) || self
+                    .call_script("__veHasPendingBlocking", &[])
+                    .ok()
+                    .is_some_and(|v| v.is_truthy());
+                if !self.expect_blocking_active() && !pending_blocking {
+                    self.pump_timers(TIMER_WINDOW_MS);
+                }
             }
         }
         self.parser_limit = None;
-        for script in deferred {
-            self.eval_document_script(&script);
+        self.reveal_parser_progress(prev_limit);
+        let mut later = Vec::new();
+        for script in delayed {
+            if !self.in_browsing_tree(script.node) {
+                self.scripts_executed.insert(script.node);
+                continue;
+            }
+            if self.resource_is_render_blocking(script.node) {
+                self.eval_document_script(&script);
+            } else {
+                later.push(script);
+            }
         }
-        self.parser_limit = None;
+        let _ = self.call_script("__veFlushPendingResources", &[JsValue::Bool(true)]);
+        let _ = self.call_script("__veRunFrameScripts", &[]);
+        self.drain_js_jobs();
         let _ = self.call_script("__veDocumentEvents", &[]);
+        self.pump_timers(TIMER_WINDOW_MS);
+        for script in later {
+            if self.in_browsing_tree(script.node) {
+                self.eval_document_script(&script);
+            } else {
+                self.scripts_executed.insert(script.node);
+            }
+        }
+        let _ = self.call_script("__veFlushPendingResources", &[JsValue::Bool(false)]);
         self.pump_timers(TIMER_WINDOW_MS);
     }
 
     fn eval_document_script(&mut self, script: &crate::page::FetchedScript) {
-        if script.failed || script.source.trim().is_empty() {
+        if self.scripts_executed.contains(&script.node) {
+            return;
+        }
+        self.scripts_executed.insert(script.node);
+        if script.failed {
+            self.dispatch_js_event(script.node, "error", false, false, None);
+            if let Some(onerror) = self
+                .doc
+                .attribute(script.node, "onerror")
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned)
+            {
+                let _ = self.call_script("__veSetCurrentScript", &[JsValue::Null]);
+                let _ = self.run_script(&onerror, "vector:onerror");
+            }
+            self.drain_js_jobs();
             return;
         }
         let origin = script
             .url
             .clone()
             .unwrap_or_else(|| format!("{}#inline", self.url()));
-        let _ = self.call_script("__veSetCurrentScript", &[crate::dom::pack(script.node)]);
+        let mut source = script.source.clone();
+        if script.module {
+            let rewritten =
+                self.call_script("__veRewriteModule", &[JsValue::from(source.as_str())]);
+            if let Ok(JsValue::String(s)) = rewritten {
+                source = s;
+            }
+        }
+        if !script.module {
+            let _ = self.call_script("__veSetCurrentScript", &[crate::dom::pack(script.node)]);
+        }
         let _ = self.call_script("__veExposeIds", &[]);
-        match self.run_script(&script.source, &origin) {
+        match self.run_script(&source, &origin) {
             Ok(_) => self.scripting_mut().scripts_run += 1,
             Err(e) => {
                 let s = self.scripting_mut();
@@ -398,9 +495,14 @@ impl Page {
                     message: format!("{origin}: {e}"),
                     at_ms,
                 });
+                let _ = self.call_script("__veSetCurrentScript", &[JsValue::Null]);
+                self.dispatch_js_event(script.node, "error", false, false, None);
+                self.drain_js_jobs();
+                return;
             }
         }
         let _ = self.call_script("__veSetCurrentScript", &[JsValue::Null]);
+        self.dispatch_js_event(script.node, "load", false, false, None);
         self.drain_js_jobs();
     }
 

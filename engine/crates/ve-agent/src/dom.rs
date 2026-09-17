@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use ve_core::NodeId;
-use ve_dom::{Mutation, Namespace, NodeKind, ShadowRootMode};
+use ve_dom::{Document, Mutation, Namespace, NodeKind, ShadowRootMode};
 use ve_script::generated::{
     DOMImplementationInterface, DocumentInterface, ElementInterface, HTMLFormElementInterface,
     HTMLInputElementInterface, NodeInterface, WindowInterface,
@@ -97,17 +97,17 @@ fn parse_sel(selector: &str) -> Result<(), ScriptError> {
         .map_err(|_| fail("An invalid or illegal string was specified"))
 }
 fn next_el(page: &Page, id: NodeId) -> Option<NodeId> {
-    let mut n = page.doc.next_sibling(id);
+    let mut n = page.visible_next_sibling(id);
     while let Some(cur) = n {
         if page.doc.get(cur).is_some_and(|x| x.is_element()) {
             return Some(cur);
         }
-        n = page.doc.next_sibling(cur);
+        n = page.visible_next_sibling(cur);
     }
     None
 }
 fn prev_el(page: &Page, id: NodeId) -> Option<NodeId> {
-    let mut n = page.doc.prev_sibling(id);
+    let mut n = page.visible_prev_sibling(id);
     while let Some(cur) = n {
         if page.doc.get(cur).is_some_and(|x| x.is_element()) {
             return Some(cur);
@@ -188,12 +188,22 @@ fn split_qname(qname: &str) -> (Option<String>, &str) {
     }
 }
 
+fn percent_href(href: &str) -> String {
+    href.replace('\u{FFFD}', "%EF%BF%BD")
+}
+
+fn percent_fragment(href: &str) -> String {
+    href.find('#')
+        .map(|i| percent_href(&href[i..]))
+        .unwrap_or_default()
+}
+
 fn loc(url: &str, part: &str) -> String {
     let Ok(u) = url::Url::parse(url) else {
         return String::new();
     };
     match part {
-        "href" => u.to_string(),
+        "href" => percent_href(u.as_str()),
         "protocol" => format!("{}:", u.scheme()),
         "host" => match u.port() {
             Some(p) => format!("{}:{p}", u.host_str().unwrap_or("")),
@@ -203,11 +213,7 @@ fn loc(url: &str, part: &str) -> String {
         "port" => u.port().map(|p| p.to_string()).unwrap_or_default(),
         "pathname" => u.path().to_owned(),
         "search" => u.query().map(|q| format!("?{q}")).unwrap_or_default(),
-        "hash" => u
-            .as_str()
-            .find('#')
-            .map(|i| u.as_str()[i..].to_owned())
-            .unwrap_or_default(),
+        "hash" => percent_fragment(u.as_str()),
         "origin" => origin_of(url),
         _ => u.to_string(),
     }
@@ -389,23 +395,23 @@ pub(crate) fn host_call(
             .map_or(JsValue::Null, pack)),
         "firstChild" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| crate::idl::LiveNode::new(&mut page.doc, id).first_child())
+            .and_then(|id| page.visible_first_child(id))
             .map_or(JsValue::Null, pack)),
         "lastChild" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| crate::idl::LiveNode::new(&mut page.doc, id).last_child())
+            .and_then(|id| page.visible_last_child(id))
             .map_or(JsValue::Null, pack)),
         "nextSibling" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| crate::idl::LiveNode::new(&mut page.doc, id).next_sibling())
+            .and_then(|id| page.visible_next_sibling(id))
             .map_or(JsValue::Null, pack)),
         "prevSibling" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| crate::idl::LiveNode::new(&mut page.doc, id).previous_sibling())
+            .and_then(|id| page.visible_prev_sibling(id))
             .map_or(JsValue::Null, pack)),
         "childNodes" => Ok(live(page, args, 0).ok().map_or_else(
             || JsValue::Array(Vec::new()),
-            |id| arr(page.doc.children(id)),
+            |id| arr(page.tree_children(id)),
         )),
         "isConnected" => Ok(JsValue::Bool(page.doc.is_connected(live(page, args, 0)?))),
         "appendChild" => {
@@ -582,6 +588,52 @@ pub(crate) fn host_call(
                 .unwrap_or_default();
             Ok(JsValue::Array(names))
         }
+        "attrs" => {
+            let recs: Vec<JsValue> = page
+                .doc
+                .element(live(page, args, 0)?)
+                .map(|e| {
+                    e.attributes
+                        .iter()
+                        .map(|a| {
+                            obj(&[
+                                ("name", JsValue::from(a.name.as_str())),
+                                ("value", JsValue::from(a.value.as_str())),
+                                (
+                                    "ns",
+                                    a.namespace.as_deref().map_or(JsValue::Null, JsValue::from),
+                                ),
+                            ])
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            Ok(JsValue::Array(recs))
+        }
+        "getAttrNS" => {
+            let id = live(page, args, 0)?;
+            let ns = arg_str(args, 1);
+            let local = arg_str(args, 2);
+            Ok(page
+                .doc
+                .attribute_ns(id, Some(ns.as_str()).filter(|s| !s.is_empty()), &local)
+                .map_or(JsValue::Null, JsValue::from))
+        }
+        "setAttrNS" => {
+            let id = live(page, args, 0)?;
+            let ns = arg_str(args, 1);
+            let qname = arg_str(args, 2);
+            let value = arg_str(args, 3);
+            page.doc
+                .set_attribute_ns(
+                    id,
+                    Some(ns.as_str()).filter(|s| !s.is_empty()),
+                    qname,
+                    value,
+                )
+                .map_err(|e| fail(e.to_string()))?;
+            Ok(JsValue::Undefined)
+        }
         "innerHTML" => Ok(JsValue::from(
             inner_html(page, live(page, args, 0)?).as_str(),
         )),
@@ -661,10 +713,13 @@ pub(crate) fn host_call(
             if want.is_empty() {
                 return Ok(JsValue::Null);
             }
+            // Disconnected trees and shadow roots are not gated by the
+            // parser insertion point — ARIA idrefs must still resolve.
+            let gate = page.in_browsing_tree(root);
             Ok(std::iter::once(root)
                 .chain(page.doc.descendants(root))
                 .find(|&id| {
-                    page.parser_visible(id)
+                    (!gate || page.parser_visible(id))
                         && page.doc.element(id).and_then(|e| e.id()) == Some(want.as_str())
                 })
                 .map_or(JsValue::Null, pack))
@@ -683,16 +738,25 @@ pub(crate) fn host_call(
             })))
         }
         "children" => Ok(arr(page
-            .doc
-            .children(live(page, args, 0)?)
+            .tree_children(live(page, args, 0)?)
+            .into_iter()
             .filter(|&c| page.doc.get(c).is_some_and(|n| n.is_element())))),
         "firstElementChild" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| crate::idl::LiveDom::new(page, id).first_element_child())
+            .and_then(|id| {
+                page.tree_children(id)
+                    .into_iter()
+                    .find(|&c| page.doc.get(c).is_some_and(|n| n.is_element()))
+            })
             .map_or(JsValue::Null, pack)),
         "lastElementChild" => Ok(live(page, args, 0)
             .ok()
-            .and_then(|id| crate::idl::LiveDom::new(page, id).last_element_child())
+            .and_then(|id| {
+                page.visible_children(id)
+                    .into_iter()
+                    .rev()
+                    .find(|&c| page.doc.get(c).is_some_and(|n| n.is_element()))
+            })
             .map_or(JsValue::Null, pack)),
         "nextElementSibling" => Ok(live(page, args, 0)
             .ok()
@@ -747,6 +811,36 @@ pub(crate) fn host_call(
             let id = live(page, args, 0)?;
             Ok(page.frame_document(id).map_or(JsValue::Null, pack))
         }
+        "frameDocumentRaw" => {
+            let id = live(page, args, 0)?;
+            Ok(page.doc.content_document(id).map_or(JsValue::Null, pack))
+        }
+        "frameScriptHandles" => {
+            let id = live(page, args, 0)?;
+            let Some(root) = page.doc.content_document(id) else {
+                return Ok(JsValue::Array(Vec::new()));
+            };
+            Ok(arr(std::iter::once(root)
+                .chain(page.doc.descendants(root))
+                .filter(|&n| {
+                    page.doc.element(n).is_some_and(|e| e.name == "script")
+                })))
+        }
+        "frameUrl" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::from(page.iframe_src_url(id).as_str()))
+        }
+        "frameLocationOrigin" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::from(page.iframe_location_origin(id).as_str()))
+        }
+        "addAuthorSheet" => {
+            let css = arg_str(args, 0);
+            page.style_engine.add_stylesheet(&css);
+            page.update();
+            Ok(JsValue::Undefined)
+        }
+        "documentWrite" => document_write(page, &arg_str(args, 1)),
         "serviceWorkerRegister" => {
             let script_url = arg_str(args, 0);
             let scope = arg_str(args, 1);
@@ -795,8 +889,8 @@ pub(crate) fn host_call(
                         claimed = claimed || realm.claimed;
                         page.sw_realms.insert(scope.clone(), realm);
                     }
-                    page.service_workers[idx].script = script.clone();
-                    page.service_workers[idx].script_url = script_url.clone();
+                    page.service_workers[idx].script.clone_from(&script);
+                    page.service_workers[idx].script_url.clone_from(&script_url);
                     page.service_workers[idx].claimed = claimed;
                     page.service_workers[idx].waiting_script = None;
                     page.service_workers[idx].waiting_script_url = None;
@@ -810,7 +904,7 @@ pub(crate) fn host_call(
                     page.service_workers[idx].waiting_script = Some(script.clone());
                     page.service_workers[idx].waiting_script_url = Some(script_url.clone());
                     waiting = true;
-                    waiting_url = script_url.clone();
+                    waiting_url.clone_from(&script_url);
                     claimed = page.service_workers[idx].claimed;
                     activate_fired = false;
                 }
@@ -871,6 +965,15 @@ pub(crate) fn host_call(
             let scope = arg_str(args, 0);
             promote_waiting_worker(page, &scope);
             Ok(JsValue::Bool(true))
+        }
+        "swTakeClientPosts" => {
+            let posts = std::mem::take(&mut page.sw_client_posts);
+            Ok(JsValue::Array(
+                posts
+                    .into_iter()
+                    .map(|s| JsValue::from(s.as_str()))
+                    .collect(),
+            ))
         }
         "origin" => Ok(JsValue::from(origin_of(&page.url).as_str())),
         "frameOrigin" => {
@@ -969,34 +1072,19 @@ pub(crate) fn host_call(
         "setTitle" => {
             let doc = doc_arg(page, args);
             let text = arg_str(args, 1);
-            let title = std::iter::once(doc)
-                .chain(page.doc.descendants(doc))
-                .find(|&e| page.doc.element(e).is_some_and(|el| el.is_html("title")));
-            let title = match title {
-                Some(t) => t,
-                None => {
-                    let Some(head) = page.doc.head_of(doc) else {
-                        return Ok(JsValue::Undefined);
-                    };
-                    let t = page.doc.create_element("title", Namespace::Html);
-                    page.doc
-                        .append_child(head, t)
-                        .map_err(|e| fail(e.to_string()))?;
-                    t
-                }
-            };
-            page.doc.clear_children(title).ok();
-            page.doc.append_text(title, &text).ok();
+            page.doc
+                .set_title_of(doc, &text)
+                .map_err(|e| fail(e.to_string()))?;
             Ok(JsValue::Undefined)
         }
         "url" => Ok(JsValue::from(
             crate::idl::LiveDom::document(page).u_r_l().as_str(),
         )),
         "compatMode" => Ok(JsValue::from(
-            if matches!(page.doc.quirks_mode(), ve_dom::QuirksMode::NoQuirks) {
-                "CSS1Compat"
-            } else {
+            if matches!(page.doc.quirks_mode(), ve_dom::QuirksMode::Quirks) {
                 "BackCompat"
+            } else {
+                "CSS1Compat"
             },
         )),
         "cookie" => Ok(JsValue::from(
@@ -1007,6 +1095,16 @@ pub(crate) fn host_call(
             Ok(JsValue::Undefined)
         }
         "lastModified" => Ok(JsValue::from(page.last_modified.as_deref().unwrap_or(""))),
+        "readyState" => Ok(JsValue::from(page.ready_state)),
+        "setReadyState" => {
+            let next = arg_str(args, 0);
+            page.ready_state = match next.as_str() {
+                "interactive" => "interactive",
+                "complete" => "complete",
+                _ => "loading",
+            };
+            Ok(JsValue::Undefined)
+        }
         "elementFromPoint" => Ok(crate::idl::LiveDom::document(page)
             .element_from_point(arg_f64(args, 0), arg_f64(args, 1))
             .map_or(JsValue::Null, pack)),
@@ -1104,11 +1202,25 @@ pub(crate) fn host_call(
             } else {
                 ShadowRootMode::Open
             };
-            Ok(pack(
-                page.doc
-                    .attach_shadow(live(page, args, 0)?, mode)
-                    .map_err(|e| fail(e.to_string()))?,
-            ))
+            let root = page
+                .doc
+                .attach_shadow(live(page, args, 0)?, mode)
+                .map_err(|e| fail(e.to_string()))?;
+            if arg_str(args, 2) == "manual" {
+                page.doc.set_shadow_manual_slots(root);
+            }
+            Ok(pack(root))
+        }
+        "slotAssign" => {
+            let slot = live(page, args, 0)?;
+            let raw = arg_str(args, 1);
+            let nodes = serde_json::from_str::<Vec<String>>(&raw)
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(|s| unpack(&JsValue::String(s)))
+                .collect();
+            page.doc.assign_slot(slot, nodes);
+            Ok(JsValue::Undefined)
         }
         "shadowRoot" => {
             let Some(root) = page.doc.shadow_root(live(page, args, 0)?) else {
@@ -2126,6 +2238,48 @@ fn idb_unique_violation(store: &crate::page::IdbObjectStore, skip_key: &str, val
     })
 }
 
+fn document_write(page: &mut Page, html: &str) -> Result<JsValue, ScriptError> {
+    if html.is_empty() {
+        return Ok(JsValue::Array(Vec::new()));
+    }
+    let scripting = page.scripting.is_some();
+    let taken = std::mem::replace(&mut page.doc, Document::new());
+    let (doc, kids) = ve_html::parse_fragment_into(taken, "body", html, scripting);
+    page.doc = doc;
+    let parent = page
+        .parser_limit
+        .and_then(|id| page.doc.parent(id))
+        .or_else(|| page.doc.body())
+        .or_else(|| page.doc.document_element())
+        .unwrap_or_else(|| page.doc.root());
+    let before = page.parser_limit.and_then(|id| page.doc.next_sibling(id));
+    let mut scripts = Vec::new();
+    for kid in kids {
+        if let Some(b) = before {
+            let _ = page.doc.insert_before(b, kid);
+        } else {
+            let _ = page.doc.append_child(parent, kid);
+        }
+        collect_script_ids(&page.doc, kid, &mut scripts);
+    }
+    for &id in &scripts {
+        let source = page.doc.text_content(id);
+        page.pending_write_scripts.push((id, source));
+    }
+    Ok(arr(scripts))
+}
+
+fn collect_script_ids(doc: &Document, root: NodeId, out: &mut Vec<NodeId>) {
+    if doc.element(root).is_some_and(|e| e.name == "script") {
+        out.push(root);
+    }
+    for c in doc.descendants(root) {
+        if doc.element(c).is_some_and(|e| e.name == "script") {
+            out.push(c);
+        }
+    }
+}
+
 fn decode_data_url(url: &str) -> Option<(String, Vec<u8>)> {
     let rest = url.strip_prefix("data:")?;
     let (meta, payload) = rest.split_once(',')?;
@@ -2166,29 +2320,57 @@ fn promote_waiting_worker(page: &mut Page, scope: &str) {
 }
 
 fn intercept_service_worker(
-    page: &Page,
+    page: &mut Page,
     resolved: &str,
     method: &str,
 ) -> Option<(String, String, u16)> {
-    let matched = page.service_workers.iter().rev().find(|s| {
+    let matched_idx = page.service_workers.iter().rev().position(|s| {
         resolved.starts_with(&s.scope) || resolved.starts_with(s.scope.trim_end_matches('/'))
     })?;
-    let clients = format!(
+    let matched_idx = page.service_workers.len() - 1 - matched_idx;
+    let claimed = page.service_workers[matched_idx].claimed;
+    let scope = page.service_workers[matched_idx].scope.clone();
+    let script_url = page.service_workers[matched_idx].script_url.clone();
+    let script = page.service_workers[matched_idx].script.clone();
+    let mut clients = format!(
         r#"[{{"url":"{}","type":"window","id":"1","controlled":{}}}]"#,
         page.url,
-        if matched.claimed { "true" } else { "false" }
+        if claimed { "true" } else { "false" }
     );
-    if let Some(realm) = page.sw_realms.get(&matched.scope)
+    if !page.workers.is_empty() {
+        let extra: Vec<String> = page
+            .workers
+            .iter()
+            .map(|(id, w)| {
+                format!(
+                    r#"{{"url":"{}","type":"worker","id":"w{id}","controlled":{}}}"#,
+                    w.source.lines().next().unwrap_or("blob:worker"),
+                    if claimed { "true" } else { "false" }
+                )
+            })
+            .collect();
+        let window = format!(
+            r#"{{"url":"{}","type":"window","id":"1","controlled":{}}}"#,
+            page.url,
+            if claimed { "true" } else { "false" }
+        );
+        clients = format!("[{window},{}]", extra.join(","));
+    }
+    if let Some(realm) = page.sw_realms.get(&scope)
         && let Some((body, status)) = realm.fetch(resolved, method, &clients)
     {
-        return Some((matched.script_url.clone(), body, status));
+        let posts = realm.take_client_posts();
+        page.sw_client_posts.extend(posts);
+        return Some((script_url, body, status));
     }
-    crate::page::service_worker_intercept(&matched.script, resolved, method)
-        .map(|(body, status)| (matched.script_url.clone(), body, status))
+    crate::page::service_worker_intercept(&script, resolved, method)
+        .map(|(body, status)| (script_url, body, status))
 }
 
 fn fetch(page: &mut Page, url: &str, method: &str, body: &str) -> Result<JsValue, ScriptError> {
-    let resolved = page.resolve_url(url).unwrap_or_else(|| url.to_owned());
+    let resolved = crate::page::rewrite_loopback_fetch(
+        &page.resolve_url(url).unwrap_or_else(|| url.to_owned()),
+    );
     if let Some((script_url, canned, status)) = intercept_service_worker(page, &resolved, method) {
         let mut headers = BTreeMap::new();
         headers.insert(
