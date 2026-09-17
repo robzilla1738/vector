@@ -433,7 +433,6 @@ impl Page {
         let _ = self.call_script("__veRunFrameScripts", &[]);
         self.drain_js_jobs();
         let _ = self.call_script("__veDocumentEvents", &[]);
-        self.pump_timers(TIMER_WINDOW_MS);
         for script in later {
             if self.in_browsing_tree(script.node) {
                 self.eval_document_script(&script);
@@ -442,6 +441,7 @@ impl Page {
             }
         }
         let _ = self.call_script("__veFlushPendingResources", &[JsValue::Bool(false)]);
+        self.drain_js_jobs();
         self.pump_timers(TIMER_WINDOW_MS);
     }
 

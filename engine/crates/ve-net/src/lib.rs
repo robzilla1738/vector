@@ -955,6 +955,12 @@ fn file_url(url: &Url) -> Result<Response, NetError> {
     let path = url
         .to_file_path()
         .map_err(|()| NetError::Io(format!("{url} is not a local file path")))?;
+    if std::env::var_os("VECTOR_ENGINE_SANDBOX").is_some_and(|v| v == "1") {
+        let cwd = std::env::current_dir().unwrap_or_default();
+        if !path.starts_with(&cwd) {
+            return Err(NetError::Blocked(format!("sandbox: {}", path.display())));
+        }
+    }
     let body =
         std::fs::read(&path).map_err(|e| NetError::Io(format!("{}: {e}", path.display())))?;
     let mut headers = HeaderMap::new();
