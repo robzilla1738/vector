@@ -553,13 +553,32 @@ fn attr(attrs: &str, name: &str) -> Option<String> {
 }
 
 /// Runs every official `Speedometer` 3.0 suite name. Vendored workloads execute;
-/// missing sources are `NOTRUN`.
-pub(crate) fn run_official(engine: &mut VectorEngine, iterations: u32) -> Vec<SuiteResult> {
+/// missing sources are `NOTRUN`. `gate` executes only `TodoMVC-JavaScript-ES5`
+/// (the merge-gated suite) and records the rest as `NOTRUN`.
+pub(crate) fn run_official(
+    engine: &mut VectorEngine,
+    iterations: u32,
+    gate: bool,
+) -> Vec<SuiteResult> {
     let revision = pin("speedometer", "revision");
     let root = vendor_root();
     official_suites()
         .into_iter()
-        .map(|(name, url)| run_one(engine, iterations, &revision, &root, name, url))
+        .map(|(name, url)| {
+            if gate && name != "TodoMVC-JavaScript-ES5" {
+                SuiteResult {
+                    name: format!("speedometer.3.0.{name}"),
+                    status: "NOTRUN",
+                    revision: revision.clone(),
+                    samples_ms: None,
+                    p50_ms: None,
+                    p95_ms: None,
+                    detail: Some("ci gate; not executed".into()),
+                }
+            } else {
+                run_one(engine, iterations, &revision, &root, name, url)
+            }
+        })
         .collect()
 }
 

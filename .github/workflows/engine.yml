@@ -225,7 +225,8 @@ jobs:
           workspaces: engine
           key: browserbench
       - name: Official Speedometer 3.0 / JetStream / MotionMark GPU identity
-        run: cargo run --release -p browserbench --features v8,gpu -- --iterations 2 --out browserbench-report.json
+        run: cargo run --release -p browserbench --features v8,gpu -- --gate --iterations 2 --out browserbench-report.json
+        timeout-minutes: 15
       - uses: actions/upload-artifact@v4
         if: always()
         with:

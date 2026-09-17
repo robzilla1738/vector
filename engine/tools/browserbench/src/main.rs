@@ -43,6 +43,10 @@ struct Args {
     /// Timed iterations per runnable suite.
     #[arg(long, default_value_t = 3)]
     iterations: u32,
+    /// Run only the merge-gated suites (`JetStream`, TodoMVC-JavaScript-ES5,
+    /// `MotionMark` GPU). Other official Speedometer names are recorded `NOTRUN`.
+    #[arg(long)]
+    gate: bool,
 }
 
 #[derive(Serialize)]
@@ -317,7 +321,11 @@ fn main() -> Result<()> {
             "crypto-sha1",
         ),
     ];
-    suites.extend(speedometer::run_official(&mut engine, args.iterations));
+    suites.extend(speedometer::run_official(
+        &mut engine,
+        args.iterations,
+        args.gate,
+    ));
     suites.push(speedometer_class(&mut engine, args.iterations));
     suites.push(motionmark_class(&mut engine, args.iterations));
     suites.push(motionmark::run_gpu(args.iterations));
