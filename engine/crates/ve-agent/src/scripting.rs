@@ -397,9 +397,9 @@ impl Page {
         let scripts = self.scripts().to_vec();
         let mut delayed = Vec::new();
         let mut prev_limit: Option<ve_core::NodeId> = None;
-        for script in scripts {
+        for script in &scripts {
             if script.defer || script.module || script.async_ {
-                delayed.push(script);
+                delayed.push(script.clone());
                 continue;
             }
             self.parser_limit = Some(script.node);
@@ -409,7 +409,7 @@ impl Page {
             let in_head = self.expect_link_in_head(script.node);
             let _ = self.expect_blocking_active();
             if self.in_browsing_tree(script.node) {
-                self.eval_document_script(&script);
+                self.eval_document_script(script);
             }
             let _ = self.call_script("__veApplyPartialUpdates", &[]);
             if in_head {
@@ -434,7 +434,10 @@ impl Page {
         self.reveal_parser_progress(prev_limit);
         let _ = self.call_script("__veApplyPartialUpdates", &[]);
         for script in &scripts {
-            if !script.defer && !script.module && !script.async_ && self.in_browsing_tree(script.node)
+            if !script.defer
+                && !script.module
+                && !script.async_
+                && self.in_browsing_tree(script.node)
             {
                 self.eval_document_script(script);
             }

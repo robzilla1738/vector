@@ -3154,16 +3154,18 @@ fn template_for_buffer_in_place_runs_scripts_atomically() {
     assert!(page.settle(200).settled);
     let v = page
         .evaluate(
-            r#"(function () {
+            r##"(function () {
               const c = document.getElementById("container");
               return {
                 t1: window.target1PresentDuringScript,
                 t2: window.target2PresentDuringScript,
                 tpl: c.querySelector("template") !== null,
                 before: c.querySelector("#target1") && c.querySelector("#target1").previousElementSibling.textContent,
-                after: c.querySelector("#target2") && c.querySelector("#target2").nextElementSibling.textContent
+                after: c.querySelector("#target2") && c.querySelector("#target2").nextElementSibling.textContent,
+                html: c.innerHTML,
+                scripts: c.querySelectorAll("script").length
               };
-            })()"#,
+            })()"##,
         )
         .unwrap();
     assert_eq!(v["t1"], true, "{v}");
@@ -3185,12 +3187,14 @@ fn template_for_sanitize_invalid_runs_script() {
     assert!(page.settle(200).settled);
     let v = page
         .evaluate(
-            r#"(function () {
+            r##"(function () {
               return {
                 ran: !!window.scriptInvalidVal,
-                text: document.querySelector("#t span") && document.querySelector("#t span").textContent
+                text: (document.getElementById("ok") && document.getElementById("ok").textContent) || (document.getElementById("t") && document.getElementById("t").textContent),
+                html: document.getElementById("t") && document.getElementById("t").innerHTML,
+                kids: document.getElementById("t") && document.getElementById("t").childNodes.length
               };
-            })()"#,
+            })()"##,
         )
         .unwrap();
     assert_eq!(v["ran"], true, "{v}");
@@ -3199,7 +3203,8 @@ fn template_for_sanitize_invalid_runs_script() {
 
 #[test]
 fn start_without_end_replaces_through_parent() {
-    let mut page = open(r#"<div id="c"><?start name="content"?><span class="red">Has red</span></div>"#);
+    let mut page =
+        open(r#"<div id="c"><?start name="content"?><span class="red">Has red</span></div>"#);
     assert!(page.settle(200).settled);
     let v = page
         .evaluate(
@@ -3277,10 +3282,12 @@ fn empty_for_streaming_mid_script_sees_prefix_only() {
     let v = page
         .evaluate(
             r#"(function () {
+              const c = document.getElementById("container2");
               return {
                 step1: window.step1,
                 step2: window.step2,
-                tpl: document.getElementById("container2").querySelector("template") !== null
+                tpl: c.querySelector("template") !== null,
+                html: c.innerHTML
               };
             })()"#,
         )

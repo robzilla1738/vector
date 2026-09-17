@@ -85,7 +85,7 @@ fn handle_conn(
         .unwrap_or("/")
         .trim_start_matches('/');
     if rel.is_empty() {
-        write_bytes(&mut stream, b"text/html; charset=utf-8", b"<html></html>");
+        write_bytes(&mut stream, "text/html; charset=utf-8", b"<html></html>");
         return;
     }
     if rel.ends_with("chunked-html.py") {

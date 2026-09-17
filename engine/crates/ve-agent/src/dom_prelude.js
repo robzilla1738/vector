@@ -226,14 +226,16 @@
         fire(path[i], true);
         if (ev.cancelBubble) break;
       }
-      ev.eventPhase = 2;
-      fire(path[0], true);
-      fire(path[0], false);
-      if (ev.bubbles && !ev.cancelBubble) {
-        ev.eventPhase = 3;
-        for (let i = 1; i < path.length; i++) {
-          fire(path[i], false);
-          if (ev.cancelBubble) break;
+      if (!ev.cancelBubble) {
+        ev.eventPhase = 2;
+        fire(path[0], true);
+        fire(path[0], false);
+        if (ev.bubbles && !ev.cancelBubble) {
+          ev.eventPhase = 3;
+          for (let i = 1; i < path.length; i++) {
+            fire(path[i], false);
+            if (ev.cancelBubble) break;
+          }
         }
       }
       ev.eventPhase = 0;
@@ -385,12 +387,19 @@
       this._fetch = fetch;
       return new Proxy(this, {
         get(t, p, recv) {
-          if (p === "length") return t._fetch().length;
-          if (p === "item") return (i) => t._fetch()[i | 0] || null;
-          if (p === "forEach") return (fn, self) => t._fetch().forEach(fn, self);
+          const cur = t._fetch();
+          if (p === "length") return cur.length;
+          if (p === "item") return (i) => cur[i | 0] || null;
+          if (p === "forEach") return (fn, self) => cur.forEach(fn, self);
+          if (p === Symbol.iterator) return cur[Symbol.iterator].bind(cur);
           if (typeof p === "symbol" || p === "_fetch") return Reflect.get(t, p, recv);
-          if (/^\d+$/.test(String(p))) return t._fetch()[Number(p)];
+          if (/^\d+$/.test(String(p))) return cur[Number(p)];
           return Reflect.get(t, p, recv);
+        },
+        has(t, p) {
+          if (p === "length" || p === "_fetch") return true;
+          if (/^\d+$/.test(String(p))) return Number(p) < t._fetch().length;
+          return Reflect.has(t, p);
         },
       });
     }
@@ -3733,6 +3742,24 @@
     forEach(fn, t) { for (const [k, v] of this._) fn.call(t, v, k, this); }
     [Symbol.iterator]() { return this.entries(); }
   }
+  function normalizeUrlPath(path) {
+    const parts = String(path || "/").split("/");
+    const out = [];
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      if (p === ".") continue;
+      if (p === "..") {
+        if (out.length && out[out.length - 1] !== "") out.pop();
+        continue;
+      }
+      if (p === "" && out.length) continue;
+      out.push(p);
+    }
+    let n = out.join("/");
+    if (!n.startsWith("/")) n = "/" + n;
+    if (path.endsWith("/") && n !== "/") n += "/";
+    return n;
+  }
   class URL {
     constructor(url, base) {
       let s = encodeUSVHref(url);
@@ -3753,11 +3780,12 @@
       this.protocol = m ? m[1] : "";
       this.hostname = m ? m[2] : "";
       this.port = m && m[3] ? m[3] : "";
-      this.pathname = m ? (m[4] || "/") : s;
+      this.pathname = normalizeUrlPath(m ? (m[4] || "/") : "/");
       this.search = m && m[5] ? m[5] : "";
       this.hash = m && m[6] ? m[6] : "";
       this.host = this.hostname + (this.port ? ":" + this.port : "");
       this.origin = this.protocol ? (this.protocol + "//" + this.host) : "null";
+      if (m) this.href = this.protocol + "//" + this.host + this.pathname + this.search + this.hash;
       this.username = "";
       this.password = "";
       this.searchParams = new URLSearchParams(this.search);
@@ -5185,28 +5213,51 @@
       return true;
     }
   }
-  function templateFinished(tpl) {
-    if (!tpl || tpl.__veStreamAborted) return false;
-    if (tpl.__veStreamEnd !== undefined && tpl.nextSibling !== tpl.__veStreamEnd) {
-      tpl.__veStreamAborted = true;
+  function hiddenTemplateContent(tpl) {
+    const frag = tpl && tpl.content;
+    if (!frag) return false;
+    try {
+      const real = Number(D("realChildCount", frag.__h) || 0);
+      let vis = 0;
+      let n = frag.firstChild;
+      while (n) { vis++; n = n.nextSibling; }
+      return real > vis;
+    } catch (e) {
       return false;
     }
+  }
+  function templateFinished(tpl) {
+    if (!tpl || tpl.__veStreamAborted) return false;
+    if (hiddenTemplateContent(tpl)) return false;
     const next = tpl.nextSibling;
     if (next) return nodeVisible(next);
-    const last = tpl.content && tpl.content.lastChild;
-    return !last || nodeVisible(last);
+    return true;
   }
   function takeVisibleTemplateChildren(tpl, all) {
-    const frag = tpl.content;
     const out = [];
-    if (!frag) return out;
-    let n = frag.firstChild;
-    while (n) {
-      const next = n.nextSibling;
-      if (!all && !nodeVisible(n)) break;
-      out.push(frag.removeChild(n));
-      n = next;
-    }
+    const takeFrom = (parent) => {
+      if (!parent) return;
+      if (all) {
+        const handles = D("realChildren", parent.__h) || [];
+        for (let i = 0; i < handles.length; i++) {
+          const n = wrap(handles[i]);
+          if (!n) continue;
+          if (n.parentNode) n.parentNode.removeChild(n);
+          else if (parent.removeChild) parent.removeChild(n);
+          out.push(n);
+        }
+        return;
+      }
+      let n = parent.firstChild;
+      while (n) {
+        const next = n.nextSibling;
+        if (!nodeVisible(n)) break;
+        out.push(parent.removeChild(n));
+        n = next;
+      }
+    };
+    takeFrom(tpl.content);
+    takeFrom(tpl);
     return out;
   }
   function takeTemplateChildren(tpl) {
@@ -5214,6 +5265,8 @@
   }
   function clearPatchRange(found) {
     if (!found || !found.parent) return;
+    const replaceThroughEnd = !!(found.end || (found.open.target || "").toLowerCase() === "start");
+    if (!replaceThroughEnd) return;
     let n = found.open.nextSibling;
     while (n && n !== found.end) {
       const next = n.nextSibling;
@@ -5246,7 +5299,9 @@
       }
       if (runScripts && !safe && node.nodeType === 1 && (node.localName || "").toLowerCase() === "script") {
         node._scriptCreated = true;
-        runInsertedScript(node, true);
+        const src = D("textContent", node.__h) || node.textContent || node.text || "";
+        node.__veRan = true;
+        try { __veEvalScript(node.__h, src, false); } catch (e) { try { (0, eval)(src); } catch (e2) {} }
       }
     };
     if (rec.buffer) {
@@ -5286,10 +5341,18 @@
     if (!rec.hasFor) return false;
     const name = rec.forValue;
     const inPlace = name == null || name === "";
-    if (tpl.__veStreamEnd === undefined) tpl.__veStreamEnd = tpl.nextSibling;
-    if (tpl.__veStreamEnd !== undefined && tpl.nextSibling !== tpl.__veStreamEnd) {
-      tpl.__veStreamAborted = true;
-      return false;
+    if (!rec.buffer) {
+      if (tpl.hasAttribute && tpl.getAttribute("data-ve-stream-aborted") != null) {
+        tpl.__veStreamAborted = true;
+        return false;
+      }
+      if (tpl.__veStreamEnd === undefined) tpl.__veStreamEnd = tpl.nextSibling;
+      if (tpl.__veStreamEnd !== undefined && tpl.nextSibling !== tpl.__veStreamEnd) {
+        tpl.__veStreamAborted = true;
+        try { tpl.setAttribute("data-ve-stream-aborted", ""); } catch (e) {}
+        tpl.__vePatched = true;
+        return false;
+      }
     }
     if (rec.src) {
       const href = rec.src;
@@ -5387,6 +5450,12 @@
         return false;
       }
       insertPatchNodes(parent, tpl, nodes, rec, true);
+      if (!rec.buffer && tpl.__veStreamEnd !== undefined && tpl.nextSibling !== tpl.__veStreamEnd) {
+        tpl.__veStreamAborted = true;
+        try { tpl.setAttribute("data-ve-stream-aborted", ""); } catch (e) {}
+        tpl.__vePatched = true;
+        return false;
+      }
       if (tpl.__veStreamAborted) return false;
       if (finished) {
         tpl.__vePatched = true;

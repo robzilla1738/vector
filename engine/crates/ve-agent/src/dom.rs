@@ -415,6 +415,14 @@ pub(crate) fn host_call(
         )),
         "isConnected" => Ok(JsValue::Bool(page.doc.is_connected(live(page, args, 0)?))),
         "parserVisible" => Ok(JsValue::Bool(page.parser_visible(live(page, args, 0)?))),
+        "realChildren" => {
+            let id = live(page, args, 0)?;
+            Ok(arr(page.doc.children(id)))
+        }
+        "realChildCount" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::from(page.doc.children(id).count() as f64))
+        }
         "appendChild" => {
             let (p, c) = (live(page, args, 0)?, live(page, args, 1)?);
             let ret = crate::idl::LiveDom::new(page, p).append_child(c);
