@@ -171,7 +171,7 @@ acceptance text.
 | M5 research | `ve-replay`, `EngineConfig.hermetic`, prefetch denied at the broker, `ve-vm` Test262 subset | replacing V8 (forbidden without evidence) |
 
 Conformance: `wpt-runner` geometry (`m1.txt`) plus `wpt-harness` testharness
-(pinned `testharness.js` / `idlharness.js`, HTTP origin, 112-file supported
+(pinned `testharness.js` / `idlharness.js`, HTTP origin, 114-file supported
 subset in `engine/conformance/testharness.txt`, `--tree --tree-family html/dom`
 walks the pinned checkout). Latest full-family report:
 `docs/engine/evidence/wpt-tree-latest.json` — 302 PASS / 29 FAIL / 0
