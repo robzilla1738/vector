@@ -341,6 +341,12 @@ fn main() -> Result<()> {
         "engine_version": ve_api::VERSION,
         "pins": serde_json::from_str::<serde_json::Value>(PINS).unwrap_or(json!({})),
         "suites": suites,
+        "attribution": {
+            "kind": "adapted-workload-phases",
+            "officialFullSuite": false,
+            "source": "speedometer.3.0.TodoMVC-JavaScript-ES5 detail.attribution when present",
+            "phases": ["parse/style/layout(openMs)", "js(jsMs)", "harnessSettle(settleMs)", "unaccounted"]
+        },
     });
     let json = serde_json::to_string_pretty(&report)?;
     if let Some(path) = &args.out {

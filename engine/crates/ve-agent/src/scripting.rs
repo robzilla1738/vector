@@ -394,7 +394,6 @@ impl Page {
         self.parse_hi = self.doc.arena_len();
         self.expect_body_started = false;
         self.snapshot_head_expect_links();
-        let _ = self.call_script("__veApplyPartialUpdates", &[]);
         let scripts = self.scripts().to_vec();
         let mut delayed = Vec::new();
         let mut prev_limit: Option<ve_core::NodeId> = None;
@@ -406,6 +405,7 @@ impl Page {
             self.parser_limit = Some(script.node);
             self.reveal_parser_progress(prev_limit);
             prev_limit = Some(script.node);
+            let _ = self.call_script("__veApplyPartialUpdates", &[]);
             let in_head = self.expect_link_in_head(script.node);
             let _ = self.expect_blocking_active();
             self.eval_document_script(&script);
@@ -430,6 +430,7 @@ impl Page {
         }
         self.parser_limit = None;
         self.reveal_parser_progress(prev_limit);
+        let _ = self.call_script("__veApplyPartialUpdates", &[]);
         let mut later = Vec::new();
         for script in delayed {
             if !self.in_browsing_tree(script.node) {

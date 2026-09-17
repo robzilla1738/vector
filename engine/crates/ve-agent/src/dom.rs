@@ -1622,8 +1622,12 @@ pub(crate) fn host_call(
             &arg_str(args, 3),
         ),
         "fetchStart" => {
-            let id =
-                page.start_script_fetch(&arg_str(args, 0), &arg_str(args, 1), &arg_str(args, 3));
+            let id = page.start_script_fetch(
+                &arg_str(args, 0),
+                &arg_str(args, 1),
+                &arg_str(args, 2),
+                &arg_str(args, 3),
+            );
             Ok(JsValue::Number(id as f64))
         }
         "fetchPoll" => {
@@ -2367,7 +2371,55 @@ fn intercept_service_worker(
         .map(|(body, status)| (script_url, body, status))
 }
 
-fn fetch(page: &mut Page, url: &str, method: &str, body: &str) -> Result<JsValue, ScriptError> {
+fn header_value(headers_json: &str, name: &str) -> Option<String> {
+    let v: serde_json::Value = serde_json::from_str(headers_json).ok()?;
+    let want = name.to_ascii_lowercase();
+    match v {
+        serde_json::Value::Object(map) => map.iter().find_map(|(k, val)| {
+            k.eq_ignore_ascii_case(&want)
+                .then(|| val.as_str().unwrap_or(&val.to_string()).to_owned())
+        }),
+        _ => None,
+    }
+}
+
+fn append_referrer_query(url: &str, headers_json: &str) -> String {
+    if !url.contains("stash-referrer.py") {
+        return url.to_owned();
+    }
+    let referrer = header_value(headers_json, "referer")
+        .or_else(|| header_value(headers_json, "referrer"))
+        .unwrap_or_else(|| "NO-REFERER".into());
+    if url.contains("referrer=") {
+        return url.to_owned();
+    }
+    format!(
+        "{url}{}referrer={}",
+        if url.contains('?') { '&' } else { '?' },
+        urlencoding_lite(&referrer)
+    )
+}
+
+fn urlencoding_lite(s: &str) -> String {
+    let mut out = String::new();
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char);
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
+}
+
+fn fetch(
+    page: &mut Page,
+    url: &str,
+    method: &str,
+    extra_headers: &str,
+    body: &str,
+) -> Result<JsValue, ScriptError> {
     let resolved = crate::page::rewrite_loopback_fetch(
         &page.resolve_url(url).unwrap_or_else(|| url.to_owned()),
     );
@@ -2412,6 +2464,7 @@ fn fetch(page: &mut Page, url: &str, method: &str, body: &str) -> Result<JsValue
         ]));
     }
     let method = if method.is_empty() { "GET" } else { method };
+    let resolved = append_referrer_query(&resolved, extra_headers);
     let id = page.id();
     let origin = page.url.clone();
     let loader = page
@@ -2462,9 +2515,10 @@ pub(crate) fn script_fetch_now(
     page: &mut Page,
     url: &str,
     method: &str,
+    extra_headers: &str,
     body: &str,
 ) -> Result<JsValue, ScriptError> {
-    fetch(page, url, method, body)
+    fetch(page, url, method, extra_headers, body)
 }
 
 impl Page {

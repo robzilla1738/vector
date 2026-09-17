@@ -44,7 +44,9 @@ use serde_json::{Value, json};
 use ve_core::{Error, ErrorCode, Result, Size};
 use ve_net::{Initiator, NetworkContext, Request};
 
-pub use shell::{ChromeAxNode, EventOutcome, NativeBrowser, NativeEvent, Tab};
+pub use shell::{
+    ChromeAxNode, EventOutcome, NativeBrowser, NativeController, NativeEvent, Tab,
+};
 pub use updates::{UpdateKeyPair, verify_update_manifest};
 pub use ve_agent::{
     EngineObservation, ExecuteRequest, ExecuteResult, Format, InFlightSummary, LoadedDocument,
@@ -54,6 +56,12 @@ pub use ve_agent::{
 };
 pub use ve_core::VERSION;
 pub use ve_net::{BrowserCookie, ContextId, NetworkPolicy};
+
+/// Start V8 before a production sandbox denies new threads.
+pub fn preload_scripting() {
+    #[cfg(feature = "v8")]
+    ve_script::V8Vm::preload();
+}
 
 /// Production vs trusted-fixture developer execution (VEC-002).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

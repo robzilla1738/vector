@@ -17,6 +17,8 @@ fn main() {
         Ok("1" | "true")
     );
     let opt_out = std::env::var_os("VECTOR_ENGINE_SANDBOX").is_some_and(|v| v == "0");
+    // V8 platform + watchdog threads must exist before seccomp denies clone.
+    ve_napi::preload_scripting();
     let sandbox_applied = if production || !opt_out {
         match sandbox::apply() {
             Ok(()) => true,
@@ -79,6 +81,15 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
                 }
                 Err(_) => std::process::exit(0),
             }
+        }
+        "thread" => {
+            let ok = std::thread::Builder::new()
+                .name("ve-host-selftest".into())
+                .spawn(|| 1 + 1)
+                .ok()
+                .and_then(|t| t.join().ok())
+                .is_some();
+            std::process::exit(if ok { 0 } else { 14 });
         }
         "clone" => {
             #[cfg(target_os = "linux")]

@@ -12,7 +12,7 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
-use ve_core::{Error, Point, Result, process_rss_bytes};
+use ve_core::{Error, ErrorCode, Point, Result, Size, process_rss_bytes};
 use ve_gfx::{Compositor, Frame};
 
 use crate::{
@@ -109,6 +109,25 @@ pub enum NativeEvent {
     },
     /// Navigate the active tab to the address-bar contents.
     UrlbarSubmit,
+    /// Window resized; values are CSS pixels.
+    Resize {
+        /// Width in CSS pixels.
+        width: f32,
+        /// Height in CSS pixels.
+        height: f32,
+    },
+    /// Wheel / scroll in CSS pixels.
+    Wheel {
+        /// Horizontal delta.
+        dx: f32,
+        /// Vertical delta.
+        dy: f32,
+    },
+    /// AccessKit action from the platform (click/focus).
+    AccessKitAction {
+        /// Target role or name hint.
+        name: String,
+    },
 }
 
 /// Result of handling one native event.
@@ -150,10 +169,23 @@ pub struct NativeBrowser {
     last_typed: String,
     os_clipboard: bool,
     update_pubkey: Option<[u8; 32]>,
+    controller: NativeController,
+    controller_epoch: u64,
     #[cfg(feature = "gpu")]
     gpu: Option<ve_gfx::VelloRenderer>,
     #[cfg(feature = "gpu")]
     gpu_unavailable: bool,
+}
+
+/// Who currently owns input on the live page.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NativeController {
+    /// No exclusive owner.
+    None,
+    /// Agent program is allowed to dispatch.
+    Agent,
+    /// Human takeover: agent dispatch is rejected until resume.
+    Human,
 }
 
 impl NativeBrowser {
@@ -190,6 +222,8 @@ impl NativeBrowser {
             last_typed: String::new(),
             os_clipboard: false,
             update_pubkey: None,
+            controller: NativeController::None,
+            controller_epoch: 0,
             #[cfg(feature = "gpu")]
             gpu: None,
             #[cfg(feature = "gpu")]
@@ -264,6 +298,18 @@ impl NativeBrowser {
     #[must_use]
     pub fn pointer(&self) -> Point {
         self.pointer
+    }
+
+    /// Updates the engine viewport and presentation surface in CSS pixels.
+    pub fn set_css_viewport(&mut self, width: f32, height: f32) {
+        let w = width.max(1.0);
+        let h = height.max(1.0);
+        self.surface = Frame::filled(w as u32, h as u32, [255, 255, 255, 255]);
+        if let Some(page) = self.active_tab().map(|t| t.page)
+            && let Ok(p) = self.engine.page_mut(page)
+        {
+            p.set_viewport(Size::new(w, h));
+        }
     }
 
     /// Chrome accessibility tree. Independent of page roles and names.
@@ -439,6 +485,17 @@ impl NativeBrowser {
 
     /// Agent program against the live native document.
     pub fn execute_active(&mut self, program: Program) -> Result<ExecuteResult> {
+        if self.controller == NativeController::Human {
+            return Err(Error::coded(
+                ErrorCode::Conflict,
+                "page is under human control — resume first",
+            ));
+        }
+        self.controller = NativeController::Agent;
+        self.dispatch_program(program)
+    }
+
+    fn dispatch_program(&mut self, program: Program) -> Result<ExecuteResult> {
         let page = self
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?
@@ -450,6 +507,42 @@ impl NativeBrowser {
                 ..ExecuteRequest::default()
             },
         )
+    }
+
+    /// Human takeover: later agent programs fail until [`Self::resume`].
+    pub fn takeover(&mut self) {
+        self.controller = NativeController::Human;
+        self.controller_epoch = self.controller_epoch.saturating_add(1);
+    }
+
+    /// Return the page to a shared/agent-eligible controller.
+    pub fn resume(&mut self) {
+        self.controller = NativeController::None;
+        self.controller_epoch = self.controller_epoch.saturating_add(1);
+    }
+
+    /// Current input owner.
+    #[must_use]
+    pub fn controller(&self) -> NativeController {
+        self.controller
+    }
+
+    /// Bumped on every takeover/resume.
+    #[must_use]
+    pub fn controller_epoch(&self) -> u64 {
+        self.controller_epoch
+    }
+
+    /// Engine viewport of a live tab, in CSS pixels.
+    #[must_use]
+    pub fn engine_viewport_for_test(&self, page: PageId) -> (f32, f32) {
+        self.engine
+            .page(page)
+            .map(|p| {
+                let v = p.viewport();
+                (v.width, v.height)
+            })
+            .unwrap_or((0.0, 0.0))
     }
 
     /// Keyboard input into the live document (same path the agent uses).
@@ -640,7 +733,7 @@ impl NativeBrowser {
             NativeEvent::Navigate { url } => {
                 if let Some(tab) = self.tabs.get_mut(self.active) {
                     tab.url.clone_from(&url);
-                    let _ = self.execute_active(Program::from_value(serde_json::json!([
+                    let _ = self.dispatch_program(Program::from_value(serde_json::json!([
                         {"id":"n","op":"navigate","url":url}
                     ]))?);
                     self.present_dirty();
@@ -661,14 +754,16 @@ impl NativeBrowser {
                     if key.len() == 1 {
                         self.last_typed.push_str(&key);
                     }
-                    let _ = self.press_key(&key);
+                    let _ = self.dispatch_program(Program::from_value(serde_json::json!([
+                        {"id":"k","op":"press","key":key}
+                    ]))?);
                     self.present_dirty();
                 }
             }
             NativeEvent::Ime { text } => {
                 self.ime_preedit.clear();
                 self.last_typed.clone_from(&text);
-                let _ = self.execute_active(Program::from_value(serde_json::json!([
+                let _ = self.dispatch_program(Program::from_value(serde_json::json!([
                     {"id":"t","op":"type","target":"css:input,textarea,[contenteditable]","value":text}
                 ]))?);
                 self.present_dirty();
@@ -681,7 +776,7 @@ impl NativeBrowser {
             }
             NativeEvent::PointerDown { x, y, button } => {
                 self.pointer = Point::new(x, y);
-                let _ = self.execute_active(Program::from_value(serde_json::json!([
+                let _ = self.dispatch_program(Program::from_value(serde_json::json!([
                     {"id":"c","op":"clickPoint","x":x,"y":y,"button": if button == 0 { "left" } else { "right" }}
                 ]))?);
                 self.present_dirty();
@@ -692,6 +787,27 @@ impl NativeBrowser {
             NativeEvent::Copy => {
                 let text = self.selection_or_typed();
                 self.copy(&text);
+            }
+            NativeEvent::Resize { width, height } => {
+                self.set_css_viewport(width, height);
+                self.present_dirty();
+            }
+            NativeEvent::Wheel { dx: _, dy } => {
+                let dir = if dy > 0.0 { "down" } else { "up" };
+                let _ = self.dispatch_program(Program::from_value(serde_json::json!([
+                    {"id":"w","op":"scroll","direction":dir,"amount": dy.abs()}
+                ]))?);
+                self.present_dirty();
+            }
+            NativeEvent::AccessKitAction { name } => {
+                if name.eq_ignore_ascii_case("urlbar") || name.contains("address") {
+                    let _ = self.handle_event(NativeEvent::FocusUrlbar)?;
+                } else {
+                    let _ = self.dispatch_program(Program::from_value(serde_json::json!([
+                        {"id":"ak","op":"click","target": format!("text:{name}")}
+                    ]))?);
+                    self.present_dirty();
+                }
             }
             NativeEvent::Paste => {
                 let mut text = self.clipboard.clone();
@@ -1024,7 +1140,83 @@ mod tests {
     }
 
     #[test]
-    fn urlbar_and_tab_switch_are_chrome_owned() {
+    fn resize_wheel_and_accesskit_share_the_live_page() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p style=\"height:2000px\">tall</p>".into(),
+                url: "https://geom.test/".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::Resize {
+                width: 800.0,
+                height: 600.0,
+            })
+            .unwrap();
+        let page = browser.active_tab().unwrap().page;
+        let vp = browser.engine_viewport_for_test(page);
+        assert_eq!(vp, (800.0, 600.0));
+        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        let _ = browser.handle_event(NativeEvent::AccessKitAction {
+            name: "urlbar".into(),
+        });
+        assert!(browser.urlbar_focused());
+    }
+
+    #[test]
+    fn human_edit_and_agent_observe_the_same_page() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<input id=t>".into(),
+                url: "https://share.test/".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::Ime {
+                text: "typed-by-human".into(),
+            })
+            .unwrap();
+        let obs = browser.observe_active().unwrap();
+        let value = obs
+            .observation
+            .content
+            .form_fields
+            .iter()
+            .find_map(|f| f.value.as_deref())
+            .or_else(|| {
+                obs.observation
+                    .content
+                    .elements
+                    .iter()
+                    .find(|e| e.tag == "input")
+                    .and_then(|e| e.value.as_deref())
+            })
+            .unwrap_or("");
+        assert_eq!(value, "typed-by-human");
+        browser.takeover();
+        assert_eq!(browser.controller(), NativeController::Human);
+        let blocked = browser.execute_active(
+            Program::from_value(serde_json::json!([
+                {"id":"x","op":"type","target":"css:input","value":"agent"}
+            ]))
+            .unwrap(),
+        );
+        assert!(blocked.is_err(), "agent dispatch must stop after takeover");
+        browser.resume();
+        assert_eq!(browser.controller(), NativeController::None);
+        let resumed = browser.execute_active(
+            Program::from_value(serde_json::json!([
+                {"id":"y","op":"type","target":"css:input","value":"-agent"}
+            ]))
+            .unwrap(),
+        );
+        assert!(resumed.is_ok());
+    }
+
+    #[test]
+    fn chrome_tabs_and_urlbar_are_not_page_owned() {
         let mut browser = NativeBrowser::new();
         browser
             .handle_event(NativeEvent::NewTab {

@@ -146,8 +146,14 @@ impl ApplicationHandler<AccessKitEvent> for App {
                     adapter.update_if_active(|| tree);
                 }
             }
-            AccessKitWindowEvent::ActionRequested(_)
-            | AccessKitWindowEvent::AccessibilityDeactivated => {}
+            AccessKitWindowEvent::ActionRequested(req) => {
+                let name = format!("{:?}", req);
+                let _ = self.browser.handle_event(NativeEvent::AccessKitAction { name });
+                if let Some(w) = &self.window {
+                    w.request_redraw();
+                }
+            }
+            AccessKitWindowEvent::AccessibilityDeactivated => {}
         }
     }
 
@@ -163,6 +169,11 @@ impl ApplicationHandler<AccessKitEvent> for App {
                 if let Some(gpu) = &mut self.gpu {
                     gpu.resize(size.width, size.height);
                 }
+                let scale = self.window.as_ref().map(|w| w.scale_factor()).unwrap_or(1.0) as f32;
+                let _ = self.browser.handle_event(NativeEvent::Resize {
+                    width: size.width as f32 / scale.max(0.01),
+                    height: size.height as f32 / scale.max(0.01),
+                });
                 if let Some(w) = &self.window {
                     w.request_redraw();
                 }
@@ -216,10 +227,24 @@ impl ApplicationHandler<AccessKitEvent> for App {
                 _ => {}
             },
             WindowEvent::CursorMoved { position, .. } => {
+                let scale = self.window.as_ref().map(|w| w.scale_factor()).unwrap_or(1.0) as f32;
                 let _ = self.browser.handle_event(NativeEvent::PointerMove {
-                    x: position.x as f32,
-                    y: position.y as f32,
+                    x: position.x as f32 / scale.max(0.01),
+                    y: position.y as f32 / scale.max(0.01),
                 });
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                let scale = self.window.as_ref().map(|w| w.scale_factor()).unwrap_or(1.0) as f32;
+                let (dx, dy) = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(x, y) => (x * 40.0, -y * 40.0),
+                    winit::event::MouseScrollDelta::PixelDelta(p) => {
+                        (p.x as f32 / scale.max(0.01), p.y as f32 / scale.max(0.01))
+                    }
+                };
+                let _ = self.browser.handle_event(NativeEvent::Wheel { dx, dy });
+                if let Some(w) = &self.window {
+                    w.request_redraw();
+                }
             }
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,

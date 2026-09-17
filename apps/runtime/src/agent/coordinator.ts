@@ -25,6 +25,9 @@ import { buildFinalAnswerPrompt, buildPlannerPrompt, buildVisionPrompt, extractJ
 import { compileSkill, tryReuseSkill, verifySkillPostconditions, type CompiledSkill } from "./skills.js";
 import { promptCannotGrant } from "./policy.js";
 import { recoverAfterCrash } from "./recovery.js";
+import { authorizeProgram, classifyStep, DEFAULT_GRANTS } from "./permissions.js";
+import { compileAction } from "./action-compiler.js";
+import { DurableWriteLedger, stepSignature } from "./durable.js";
 
 interface RunControl {
   abort: AbortController;
@@ -65,6 +68,10 @@ export interface CoordinatorDeps {
     ): { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void };
     incr(name: string, by?: number): void;
   };
+  /** Privilege-independent grants. Defaults allow read+write so existing tests run. */
+  grants?: readonly string[];
+  /** Durable write ledger shared across crash/retry. */
+  durableWrites?: DurableWriteLedger;
 }
 
 const TERMINAL_STATUSES: ReadonlySet<Run["status"]> = new Set(["completed", "partially_completed", "failed", "cancelled", "interrupted"]);
@@ -113,8 +120,11 @@ export class RunCoordinator {
     return this.skills;
   }
   private unresolvedByRun = new Map<string, string[]>();
+  private durable: DurableWriteLedger;
 
-  constructor(private deps: CoordinatorDeps) {}
+  constructor(private deps: CoordinatorDeps) {
+    this.durable = deps.durableWrites ?? new DurableWriteLedger();
+  }
 
   list(limit = 50): Run[] {
     return this.deps.repo.listRuns(limit);
@@ -591,7 +601,7 @@ export class RunCoordinator {
         if (claimedGrants.length) {
           run.config = { ...(run.config ?? {}), ignoredPageGrants: claimedGrants };
         }
-        const reuse = tryReuseSkill(this.skills, run.goal, obs.content, obs.content.url);
+        const reuse = tryReuseSkill(this.skills, run.goal, obs.content, obs.content.url, obs.documentEpoch);
         try {
           if ("skill" in reuse && !lastError && !visionPending && !thinObs) {
             plan = {
@@ -763,17 +773,65 @@ export class RunCoordinator {
           }
         }
 
-        const program = { pageId: activePageId, documentEpoch: obs.documentEpoch, steps: plan.steps };
-        const result = early
+        const compiled = compileAction({
+          pageId: activePageId,
+          documentEpoch: obs.documentEpoch,
+          steps: plan.steps ?? [],
+          observation: obs.content,
+          url: obs.content.url,
+          guards: "skill" in reuse ? reuse.skill.preconditions : undefined,
+        });
+        if ("rejected" in compiled) {
+          if (early) await early.finish([]);
+          lastError = compiled.rejected;
+          lastActionFailed = true;
+          repairCount++;
+          continue;
+        }
+        const auth = authorizeProgram(compiled.program.steps ?? [], this.deps.grants ?? DEFAULT_GRANTS);
+        if (!auth.ok) {
+          if (early) await early.finish([]);
+          lastError = auth.denied;
+          lastActionFailed = true;
+          repairCount++;
+          continue;
+        }
+        const signature = stepSignature(
+          (compiled.program.steps ?? []).map((s) => ({
+            op: s.op,
+            target: "target" in s ? String((s as { target?: string }).target ?? "") : "",
+            value: "value" in s ? String((s as { value?: string }).value ?? "") : "",
+          })),
+        );
+        const writes = (compiled.program.steps ?? []).some((s) => classifyStep(s.op) !== "read");
+        let skippedDuplicate = false;
+        let intentId: string | undefined;
+        if (writes) {
+          const began = this.durable.begin({
+            runId,
+            pageId: activePageId,
+            documentEpoch: obs.documentEpoch,
+            signature,
+          });
+          if (began.duplicate) skippedDuplicate = true;
+          else intentId = began.intent.id;
+        }
+        const program = compiled.program;
+        const result = skippedDuplicate
+          ? { status: "completed" as const, steps: [] }
+          : early
           ? await early.finish(plan.steps)
           : await this.deps.pages.execute(program, { runId, signal: c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
+        if (intentId) {
+          if (result.status === "completed") this.durable.confirm(intentId);
+          else this.durable.fail(intentId);
+        }
         const carried = early ? early.observation : (result as { observation?: Observation }).observation;
         if (carried && carried.pageId === activePageId) carriedObs = carried;
         stepsRun += plan.steps.length;
         lastError = repeatNudge;
         repeatNudge = undefined;
         lastActionFailed = false;
-        repairCount = 0;
         this.unresolvedByRun.set(
           runId,
           outcomes
@@ -789,7 +847,7 @@ export class RunCoordinator {
         this.persistCheckpoint(this.get(runId));
         if ("skill" in reuse && result.status !== "failed" && result.status !== "cancelled") {
           const after = carriedObs ?? (await this.deps.pages.observe(activePageId!, {}));
-          if (!verifySkillPostconditions(reuse.skill, after.content, after.content.url)) {
+          if (!verifySkillPostconditions(reuse.skill, after.content, after.content.url, after.documentEpoch)) {
             lastError = `skill ${reuse.skill.id} postconditions failed`;
             lastActionFailed = true;
           }
@@ -801,16 +859,22 @@ export class RunCoordinator {
               .filter((e) => e.role && e.name)
               .slice(0, 2)
               .map((e) => ({ role: e.role, nameIncludes: (e.name ?? "").slice(0, 40) }));
-            if (this.skills.length < 32 && named.length > 0) {
+            const writes = plan.steps.some((s) =>
+              ["click", "fill", "type", "press", "select", "check", "uncheck", "navigate", "submit"].includes(s.op),
+            );
+            if (this.skills.length < 32 && named.length > 0 && !writes) {
               this.skills.push(
                 compileSkill({
                   id: `${runId}:${this.skills.length}`,
                   goalPattern: run.goal.slice(0, 64),
                   pageId: activePageId!,
                   steps: plan.steps,
-                  preconditions: [{ urlIncludes: origin }, ...named],
-                  postconditions: [{ urlIncludes: origin }],
-                  evidence: `compiled from a successful chunk on ${origin}`,
+                  preconditions: [
+                    { exactOrigin: origin },
+                    ...named,
+                  ],
+                  postconditions: [{ exactOrigin: origin }],
+                  evidence: `compiled from a successful read-only chunk on ${origin}`,
                 }),
               );
             }
@@ -820,6 +884,9 @@ export class RunCoordinator {
         }
 
         if (result.status === "cancelled") return;
+        if (result.status !== "failed") {
+          repairCount = 0;
+        }
         if (result.status === "failed") {
           lastError = result.error;
           lastActionFailed = true;

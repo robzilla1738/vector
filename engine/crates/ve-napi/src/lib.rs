@@ -40,6 +40,11 @@ pub const fn has_http() -> bool {
     cfg!(feature = "http")
 }
 
+/// Start the JS VM (and its watchdog thread) before a production sandbox.
+pub fn preload_scripting() {
+    ve_api::preload_scripting();
+}
+
 /// Engine version reported to JavaScript.
 #[must_use]
 pub fn version() -> &'static str {

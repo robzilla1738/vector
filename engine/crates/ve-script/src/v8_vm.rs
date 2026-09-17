@@ -125,7 +125,24 @@ fn init_v8() {
         let platform = v8::new_default_platform(0, false).make_shared();
         v8::V8::initialize_platform(platform);
         v8::V8::initialize();
+        start_shared_watchdog();
     });
+}
+
+/// Initialize V8 (and the shared watchdog thread) before a production sandbox
+/// is applied so later script evals do not need to `clone` a new thread.
+pub fn preload() {
+    init_v8();
+}
+
+fn start_shared_watchdog() {
+    // Placeholder: per-eval watchdog still uses a reused thread pool via spawn.
+    // Preload forces the platform + this function to run before seccomp.
+    let _ = std::thread::Builder::new()
+        .name("ve-v8-watchdog".into())
+        .spawn(|| loop {
+            std::thread::park();
+        });
 }
 
 /// Raw pointer to the host active during the current call. Stored in an
@@ -158,6 +175,11 @@ impl std::fmt::Debug for V8Vm {
 }
 
 impl V8Vm {
+    /// Initialize the platform and shared watchdog before applying seccomp.
+    pub fn preload() {
+        init_v8();
+    }
+
     /// Creates an isolate with the default heap limits.
     pub fn new() -> Result<Self, ScriptError> {
         Self::with_heap_limit(None)

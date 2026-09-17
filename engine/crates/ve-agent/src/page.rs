@@ -651,6 +651,7 @@ pub(crate) struct ScriptFetchJob {
     pub id: u64,
     pub url: String,
     pub method: String,
+    pub headers: String,
     pub body: String,
     pub result: Option<ve_script::JsValue>,
     pub error: Option<String>,
@@ -920,13 +921,20 @@ impl Page {
         self.network_policy = policy;
     }
 
-    pub(crate) fn start_script_fetch(&mut self, url: &str, method: &str, body: &str) -> u64 {
+    pub(crate) fn start_script_fetch(
+        &mut self,
+        url: &str,
+        method: &str,
+        headers: &str,
+        body: &str,
+    ) -> u64 {
         self.next_script_fetch += 1;
         let id = self.next_script_fetch;
         self.script_fetches.push(ScriptFetchJob {
             id,
             url: url.to_owned(),
             method: method.to_owned(),
+            headers: headers.to_owned(),
             body: body.to_owned(),
             result: None,
             error: None,
@@ -947,11 +955,19 @@ impl Page {
 
     pub(crate) fn complete_script_fetches(&mut self) {
         loop {
-            let pending: Vec<(u64, String, String, String)> = self
+            let pending: Vec<(u64, String, String, String, String)> = self
                 .script_fetches
                 .iter()
                 .filter(|j| j.result.is_none() && j.error.is_none() && !j.aborted)
-                .map(|j| (j.id, j.url.clone(), j.method.clone(), j.body.clone()))
+                .map(|j| {
+                    (
+                        j.id,
+                        j.url.clone(),
+                        j.method.clone(),
+                        j.headers.clone(),
+                        j.body.clone(),
+                    )
+                })
                 .collect();
             if pending.is_empty() {
                 break;
@@ -960,8 +976,8 @@ impl Page {
                 .iter()
                 .position(|(id, ..)| *id > self.last_script_fetch_rr)
                 .unwrap_or(0);
-            let (id, url, method, body) = pending[start].clone();
-            match crate::dom::script_fetch_now(self, &url, &method, &body) {
+            let (id, url, method, headers, body) = pending[start].clone();
+            match crate::dom::script_fetch_now(self, &url, &method, &headers, &body) {
                 Ok(value) => {
                     if let Some(job) = self.script_fetches.iter_mut().find(|j| j.id == id)
                         && !job.aborted

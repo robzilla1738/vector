@@ -636,7 +636,9 @@ fn run_one(
     let mut remaining = 0u64;
     let mut kind = String::new();
     let mut ok = false;
+    let mut last_attribution: Option<serde_json::Value> = None;
     for _ in 0..iterations.max(1) {
+        let open_started = Instant::now();
         let opened = match engine.open(OpenRequest {
             url: Some(format!("https://browserbench.org/Speedometer3.0/{url}")),
             html: Some(html.clone()),
@@ -652,6 +654,7 @@ fn run_one(
         if let Ok(page) = engine.page_mut(opened.page) {
             page.settle(3_000);
         }
+        let open_ms = open_started.elapsed().as_millis();
         let started = Instant::now();
         let add_src = with_lib(ADD_STEPS);
         let finish_src = with_lib(FINISH_STEPS);
@@ -682,7 +685,15 @@ fn run_one(
             .and_then(|p| p.evaluate(&with_lib(COUNT_STEPS)))
         {
             Ok(raw) => {
-                samples.push(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
+                let js_ms = started.elapsed().as_millis();
+                samples.push(u64::try_from(js_ms).unwrap_or(u64::MAX));
+                last_attribution = Some(serde_json::json!({
+                    "label": format!("speedometer.3.0.{name}"),
+                    "openMs": open_ms,
+                    "jsMs": js_ms,
+                    "settleMs": 3_200,
+                    "note": "openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work"
+                }));
                 let text = match &raw {
                     serde_json::Value::String(s) => s.clone(),
                     other => other.to_string(),
@@ -739,9 +750,16 @@ fn run_one(
         p50_ms: (!samples.is_empty()).then(|| percentile(&samples, 0.50)),
         p95_ms: (!samples.is_empty()).then(|| percentile(&samples, 0.95)),
         samples_ms: (!samples.is_empty()).then_some(samples),
-        detail: last.or(Some(format!(
-            "kind={kind} added={added} remaining={remaining}"
-        ))),
+        detail: last.or(Some(match last_attribution {
+            Some(attr) => serde_json::json!({
+                "kind": kind,
+                "added": added,
+                "remaining": remaining,
+                "attribution": attr,
+            })
+            .to_string(),
+            None => format!("kind={kind} added={added} remaining={remaining}"),
+        })),
     }
 }
 

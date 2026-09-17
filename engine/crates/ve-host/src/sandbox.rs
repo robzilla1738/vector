@@ -30,25 +30,34 @@ pub fn apply() -> Result<(), String> {
     }
 }
 
-/// Drop inherited credentials from the parent. Vector engine vars stay.
+/// Construct a minimal inherited environment. Vector engine vars stay.
 fn scrub_secret_env() {
+    const KEEP: &[&str] = &[
+        "PATH",
+        "HOME",
+        "USER",
+        "LOGNAME",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "TZ",
+        "TMPDIR",
+        "TMP",
+        "TEMP",
+        "XDG_RUNTIME_DIR",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+    ];
     let keys: Vec<String> = std::env::vars().map(|(k, _)| k).collect();
     for k in keys {
-        let u = k.to_ascii_uppercase();
-        if u.starts_with("VECTOR_ENGINE_") {
+        if k.starts_with("VECTOR_ENGINE_") {
             continue;
         }
-        if u.contains("KEY")
-            || u.contains("TOKEN")
-            || u.contains("SECRET")
-            || u.contains("PASSWORD")
-            || u.contains("CREDENTIAL")
-            || u.starts_with("AWS_")
-            || u.starts_with("GH_")
-        {
-            // Safety: this runs once at process start before threads exist.
-            unsafe { std::env::remove_var(&k) };
+        if KEEP.iter().any(|keep| k.eq_ignore_ascii_case(keep)) {
+            continue;
         }
+        // Safety: this runs once at process start before threads exist.
+        unsafe { std::env::remove_var(&k) };
     }
 }
 
@@ -58,7 +67,7 @@ fn close_extra_fds() {
         // libc 0.2 does not always export `closefrom`. Close the inherited
         // range ourselves; stdin/stdout/stderr stay open for the control pipe.
         let max = libc::sysconf(libc::_SC_OPEN_MAX);
-        let max_fd = if max > 0 { max.min(4096) as i32 } else { 256 };
+        let max_fd = if max > 0 { max.min(65_536) as i32 } else { 256 };
         for fd in 3..max_fd {
             libc::close(fd);
         }
@@ -157,31 +166,38 @@ fn deny_syscalls() -> Result<(), String> {
         SockFilter { code, jt, jf, k }
     }
 
-    let denied: Vec<libc::c_long> = {
-        // mmap/mprotect stay allowed: V8 JIT needs executable memory because
-        // the JS VM lives in-process. Process creation is the denied primitive.
-        let mut nrs = vec![
-            libc::SYS_socket,
-            libc::SYS_connect,
-            libc::SYS_bind,
-            libc::SYS_listen,
-            libc::SYS_accept,
-            libc::SYS_accept4,
-            libc::SYS_execve,
-            libc::SYS_execveat,
-            libc::SYS_fork,
-            libc::SYS_vfork,
-            libc::SYS_ptrace,
-            libc::SYS_clone,
-            libc::SYS_unshare,
-        ];
-        #[cfg(target_os = "linux")]
-        {
-            nrs.push(libc::SYS_clone3);
-        }
-        nrs
-    };
-    let mut filter = Vec::with_capacity(denied.len() + 2);
+    // Architecture guard: a 32-bit syscall on a 64-bit kernel must not skip
+    // the filter. Thread creation (clone/clone3) stays allowed so a
+    // preloaded V8 platform can keep working; process spawn is denied via
+    // fork/exec/unshare.
+    #[cfg(target_arch = "x86_64")]
+    const AUDIT_ARCH: u32 = 0xC000_003E;
+    #[cfg(target_arch = "aarch64")]
+    const AUDIT_ARCH: u32 = 0xC000_00B7;
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    const AUDIT_ARCH: u32 = 0;
+
+    let denied: Vec<libc::c_long> = vec![
+        libc::SYS_socket,
+        libc::SYS_connect,
+        libc::SYS_bind,
+        libc::SYS_listen,
+        libc::SYS_accept,
+        libc::SYS_accept4,
+        libc::SYS_execve,
+        libc::SYS_execveat,
+        libc::SYS_fork,
+        libc::SYS_vfork,
+        libc::SYS_ptrace,
+        libc::SYS_unshare,
+    ];
+    let mut filter = Vec::with_capacity(denied.len() + 6);
+    if AUDIT_ARCH != 0 {
+        // seccomp_data.arch at offset 4
+        filter.push(stmt(BPF_LD | BPF_W | BPF_ABS, 4));
+        filter.push(jump(BPF_JMP | BPF_JEQ | BPF_K, AUDIT_ARCH, 1, 0));
+        filter.push(stmt(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS));
+    }
     filter.push(stmt(BPF_LD | BPF_W | BPF_ABS, 0));
     for nr in denied {
         filter.push(jump(
