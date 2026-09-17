@@ -164,7 +164,14 @@ impl TreeSink for DomSink {
     }
 
     fn create_comment(&self, text: StrTendril) -> NodeId {
-        self.doc.borrow_mut().create_comment(text.to_string())
+        let text = text.to_string();
+        if let Some((target, data)) = parse_html_pi_comment(&text) {
+            self.doc
+                .borrow_mut()
+                .create_processing_instruction(target, data)
+        } else {
+            self.doc.borrow_mut().create_comment(text)
+        }
     }
 
     fn create_pi(&self, target: StrTendril, data: StrTendril) -> NodeId {
@@ -286,5 +293,45 @@ impl TreeSink for DomSink {
         // false keeps the `<template>` in-tree so `promote_declarative_shadows`
         // can move the finished contents after parsing.
         false
+    }
+}
+
+/// HTML tokenizes `<?target data>` as a bogus comment whose data is
+/// `?target data` (and `?>` leaves a trailing `?`). Promote those comments
+/// to processing instructions so declarative partial-update markers exist.
+fn parse_html_pi_comment(text: &str) -> Option<(String, String)> {
+    let rest = text.strip_prefix('?')?;
+    let rest = rest.strip_suffix('?').unwrap_or(rest);
+    if rest.is_empty() {
+        return None;
+    }
+    match rest.split_once(|c: char| c.is_ascii_whitespace()) {
+        Some((target, data)) if !target.is_empty() => {
+            Some((target.to_string(), data.trim().to_string()))
+        }
+        None => Some((rest.to_string(), String::new())),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod pi_comment_tests {
+    use super::parse_html_pi_comment;
+
+    #[test]
+    fn html_bogus_comment_becomes_a_named_marker() {
+        assert_eq!(
+            parse_html_pi_comment(r#"?marker name="E""#),
+            Some(("marker".into(), r#"name="E""#.into()))
+        );
+        assert_eq!(
+            parse_html_pi_comment(r#"?Start name="a"?"#),
+            Some(("Start".into(), r#"name="a""#.into()))
+        );
+        assert_eq!(
+            parse_html_pi_comment("?ENd"),
+            Some(("ENd".into(), String::new()))
+        );
+        assert_eq!(parse_html_pi_comment("not a pi"), None);
     }
 }

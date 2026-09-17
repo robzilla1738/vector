@@ -2915,3 +2915,222 @@ fn create_cdata_section_counts_for_dir_auto() {
     assert_eq!(v["ltr"], true, "{v}");
     assert_eq!(v["rtl"], true, "{v}");
 }
+
+#[test]
+fn html_comment_pi_becomes_a_processing_instruction() {
+    let mut page = open(r#"<div id="p"><?marker name="x">keep</div>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const p = document.getElementById("p");
+              const n = p.firstChild;
+              return {
+                type: n && n.nodeType,
+                target: n && n.target,
+                data: n && n.data,
+                html: p.innerHTML
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["type"], 7, "{v}");
+    assert_eq!(v["target"], "marker", "{v}");
+    assert!(
+        v["data"].as_str().unwrap_or("").contains("name=\"x\""),
+        "{v}"
+    );
+}
+
+#[test]
+fn template_for_patches_named_marker() {
+    let mut page = open(
+        r#"<div id="placeholder"><?marker name="E"><?marker name="f"></div>
+           <template for="E">E</template>
+           <template for="f">f</template>
+           <template for="nope">x</template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                text: document.getElementById("placeholder").textContent,
+                leftover: document.querySelectorAll("template[for]").length,
+                bufferDefault: document.createElement("template").buffer
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["text"], "Ef", "{v}");
+    assert_eq!(v["leftover"], 1, "{v}");
+    assert_eq!(v["bufferDefault"], false, "{v}");
+}
+
+#[test]
+fn template_empty_for_is_in_place() {
+    let mut page = open(
+        r#"<div id="c"><span>Before</span><template for><span id="t">Inside</span></template><span>After</span></div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const c = document.getElementById("c");
+              return {
+                text: c.textContent.replace(/\s+/g, " ").trim(),
+                tpl: c.querySelector("template") !== null,
+                inside: !!document.getElementById("t")
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["text"], "BeforeInsideAfter", "{v}");
+    assert_eq!(v["tpl"], false, "{v}");
+    assert_eq!(v["inside"], true, "{v}");
+}
+
+#[test]
+fn render_blocking_remove_cancels_load() {
+    let mut page = open(
+        r#"<script>
+             window.__loads = 0;
+             const el = document.createElement("link");
+             el.rel = "stylesheet";
+             el.blocking = "render";
+             el.href = "/does-not-exist.css";
+             el.addEventListener("load", function () { window.__loads++; });
+             document.head.appendChild(el);
+             el.remove();
+             window.__cancelled = el.isConnected === false;
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate("({ loads: window.__loads, cancelled: window.__cancelled })")
+        .unwrap();
+    assert_eq!(v["loads"], 0, "{v}");
+    assert_eq!(v["cancelled"], true, "{v}");
+}
+
+#[test]
+fn stream_append_html_applies_template_for() {
+    let mut page = open(r#"<div id="placeholder"><?start name="p">Old<?end></div>"#);
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(async function () {
+              const writable = document.body.streamAppendHTMLUnsafe({ runScripts: true });
+              const writer = writable.getWriter();
+              await writer.write('<template for="p">');
+              await writer.write("New");
+              await writer.write("</template>");
+              await writer.close();
+              return document.getElementById("placeholder").textContent;
+            })()"#,
+        )
+        .unwrap();
+    page.settle(200);
+    let text = page
+        .evaluate("document.getElementById('placeholder').textContent")
+        .unwrap();
+    assert_eq!(text, "New", "async={v} settled={text}");
+}
+
+#[test]
+fn template_for_buffer_is_atomic_and_sanitize_strips_script() {
+    let mut page = open(
+        r#"<div id="t"><?start name="m">Old<?end></div>
+           <template for="m" buffer sanitize>
+             <span id="ok">Allowed</span>
+             <script>window.__bad = true;</script>
+           </template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const t = document.getElementById("t");
+              const ok = t.querySelector("[id='ok']");
+              return {
+                text: ok && ok.textContent,
+                script: t.querySelector("script") !== null,
+                bad: !!window.__bad,
+                tpl: document.querySelector("template") !== null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["text"], "Allowed", "{v}");
+    assert_eq!(v["script"], false, "{v}");
+    assert_eq!(v["bad"], false, "{v}");
+    assert_eq!(v["tpl"], false, "{v}");
+}
+
+#[test]
+fn chained_template_for_upgrades_custom_element() {
+    let mut page = open(
+        r#"<div id="target"><?marker name="target"?>Original<?end></div>
+           <script>
+             class CustomElement extends HTMLElement {
+               constructor() {
+                 super();
+                 window.customElementRun = true;
+                 window.ceOwnerDocument = this.ownerDocument;
+               }
+             }
+             customElements.define("custom-element", CustomElement);
+           </script>
+           <template for="target">
+             <div id="inner-div"><?marker name="inner"?></div>
+             <template for="inner">
+               <custom-element id="ce"></custom-element>
+               <span id="streamed">Streamed</span>
+             </template>
+           </template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                ran: !!window.customElementRun,
+                owner: window.ceOwnerDocument === document,
+                parent: document.getElementById("ce") && document.getElementById("ce").parentNode.id,
+                streamed: !!document.getElementById("streamed")
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["ran"], true, "{v}");
+    assert_eq!(v["owner"], true, "{v}");
+    assert_eq!(v["parent"], "inner-div", "{v}");
+    assert_eq!(v["streamed"], true, "{v}");
+}
+
+#[test]
+fn aria_enumerated_keywords_and_invalid_defaults() {
+    let mut page = open(r#"<div id="h"></div>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const el = document.getElementById("h");
+              el.setAttribute("aria-checked", "mixed");
+              const mixed = el.ariaChecked;
+              el.setAttribute("aria-checked", "TRUE");
+              const canon = el.ariaChecked;
+              el.setAttribute("aria-busy", "nope");
+              const invalidBusy = el.ariaBusy;
+              el.removeAttribute("aria-busy");
+              const missingBusy = el.ariaBusy;
+              el.setAttribute("aria-busy", "");
+              const emptyBusy = el.ariaBusy;
+              return { mixed, canon, invalidBusy, missingBusy, emptyBusy };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["mixed"], "mixed", "{v}");
+    assert_eq!(v["canon"], "true", "{v}");
+    assert_eq!(v["invalidBusy"], "false", "{v}");
+    assert_eq!(v["missingBusy"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["emptyBusy"], "false", "{v}");
+}

@@ -394,6 +394,7 @@ impl Page {
         self.parse_hi = self.doc.arena_len();
         self.expect_body_started = false;
         self.snapshot_head_expect_links();
+        let _ = self.call_script("__veApplyPartialUpdates", &[]);
         let scripts = self.scripts().to_vec();
         let mut delayed = Vec::new();
         let mut prev_limit: Option<ve_core::NodeId> = None;
@@ -408,6 +409,7 @@ impl Page {
             let in_head = self.expect_link_in_head(script.node);
             let _ = self.expect_blocking_active();
             self.eval_document_script(&script);
+            let _ = self.call_script("__veApplyPartialUpdates", &[]);
             if in_head {
                 self.snapshot_head_expect_links();
             } else {

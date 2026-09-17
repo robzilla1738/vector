@@ -1142,7 +1142,11 @@
       for (const n of nodes) this.insertBefore(typeof n === "string" ? document.createTextNode(n) : n, ref);
     }
     get baseURI() { return D("url") || ""; }
-    removeChild(n) { D("removeChild", this.__h, handleOf(n)); return n; }
+    removeChild(n) {
+      try { if (typeof globalThis.__veCancelPending === "function") globalThis.__veCancelPending(n); } catch (e) {}
+      D("removeChild", this.__h, handleOf(n));
+      return n;
+    }
     replaceChild(n, old) { D("replaceChild", this.__h, handleOf(n), handleOf(old)); upgradeTree(n); return old; }
     cloneNode(deep) { return wrap(D("cloneNode", this.__h, !!deep)); }
     contains(n) { return !!D("contains", this.__h, handleOf(n)); }
@@ -1194,7 +1198,10 @@
   Node.DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 32;
 
   function applyChildNode(proto) {
-    proto.remove = function () { D("remove", this.__h); };
+    proto.remove = function () {
+      try { if (typeof globalThis.__veCancelPending === "function") globalThis.__veCancelPending(this); } catch (e) {}
+      D("remove", this.__h);
+    };
     proto.before = function (...args) {
       const p = this.parentNode;
       if (!p) return;
@@ -1644,6 +1651,10 @@
     scrollIntoView() { D("scrollIntoView", this.__h); }
   }
   applyChildNode(Element.prototype);
+  Element.prototype.streamAppendHTMLUnsafe = function streamAppendHTMLUnsafe(opts) {
+    return streamHtmlInto(this, opts);
+  };
+  Element.prototype.streamHTMLUnsafe = Element.prototype.streamAppendHTMLUnsafe;
   (function defineOnHandlers() {
     const names = ("abort animationend animationiteration animationstart blur cancel canplay canplaythrough change click close contextmenu copy cuechange cut dblclick drag dragend dragenter dragleave dragover dragstart drop durationchange emptied ended error focus focusin focusout gotpointercapture input invalid keydown keypress keyup load loadeddata loadedmetadata loadstart lostpointercapture mousedown mouseenter mouseleave mousemove mouseout mouseover mouseup paste pause play playing pointercancel pointerdown pointerenter pointerleave pointermove pointerout pointerover pointerup progress ratechange reset resize scroll seeked seeking select stalled submit suspend timeupdate toggle touchcancel touchend touchmove touchstart transitionend volumechange waiting wheel").split(" ");
     for (const name of names) {
@@ -1660,45 +1671,25 @@
   (function defineAriaMixin() {
     const strings = [
       ["role", "role"],
-      ["ariaAtomic", "aria-atomic"],
-      ["ariaAutoComplete", "aria-autocomplete"],
       ["ariaBrailleLabel", "aria-braillelabel"],
       ["ariaBrailleRoleDescription", "aria-brailleroledescription"],
-      ["ariaBusy", "aria-busy"],
-      ["ariaChecked", "aria-checked"],
       ["ariaColCount", "aria-colcount"],
       ["ariaColIndex", "aria-colindex"],
       ["ariaColIndexText", "aria-colindextext"],
       ["ariaColSpan", "aria-colspan"],
-      ["ariaCurrent", "aria-current"],
       ["ariaDescription", "aria-description"],
-      ["ariaDisabled", "aria-disabled"],
-      ["ariaExpanded", "aria-expanded"],
-      ["ariaHasPopup", "aria-haspopup"],
-      ["ariaHidden", "aria-hidden"],
-      ["ariaInvalid", "aria-invalid"],
       ["ariaKeyShortcuts", "aria-keyshortcuts"],
       ["ariaLabel", "aria-label"],
       ["ariaLevel", "aria-level"],
-      ["ariaLive", "aria-live"],
-      ["ariaModal", "aria-modal"],
-      ["ariaMultiLine", "aria-multiline"],
-      ["ariaMultiSelectable", "aria-multiselectable"],
-      ["ariaOrientation", "aria-orientation"],
       ["ariaPlaceholder", "aria-placeholder"],
       ["ariaPosInSet", "aria-posinset"],
-      ["ariaPressed", "aria-pressed"],
-      ["ariaReadOnly", "aria-readonly"],
       ["ariaRelevant", "aria-relevant"],
-      ["ariaRequired", "aria-required"],
       ["ariaRoleDescription", "aria-roledescription"],
       ["ariaRowCount", "aria-rowcount"],
       ["ariaRowIndex", "aria-rowindex"],
       ["ariaRowIndexText", "aria-rowindextext"],
       ["ariaRowSpan", "aria-rowspan"],
-      ["ariaSelected", "aria-selected"],
       ["ariaSetSize", "aria-setsize"],
-      ["ariaSort", "aria-sort"],
       ["ariaValueMax", "aria-valuemax"],
       ["ariaValueMin", "aria-valuemin"],
       ["ariaValueNow", "aria-valuenow"],
@@ -1716,6 +1707,31 @@
           else this.setAttribute(attr, String(v));
         },
       });
+    }
+    const enums = {
+      ariaAtomic: { type: "enum", domAttrName: "aria-atomic", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaAutoComplete: { type: "enum", domAttrName: "aria-autocomplete", keywords: ["inline", "list", "both", "none"], isNullable: true, invalidVal: "none", defaultVal: null },
+      ariaBusy: { type: "enum", domAttrName: "aria-busy", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaChecked: { type: "enum", domAttrName: "aria-checked", keywords: ["true", "false", "mixed"], nonCanon: { "": null }, isNullable: true, invalidVal: null, defaultVal: null },
+      ariaCurrent: { type: "enum", domAttrName: "aria-current", keywords: ["page", "step", "location", "date", "time", "true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "true", defaultVal: null },
+      ariaDisabled: { type: "enum", domAttrName: "aria-disabled", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaExpanded: { type: "enum", domAttrName: "aria-expanded", keywords: ["true", "false"], nonCanon: { "": null }, isNullable: true, invalidVal: null, defaultVal: null },
+      ariaHasPopup: { type: "enum", domAttrName: "aria-haspopup", keywords: ["true", "false", "menu", "dialog", "listbox", "tree", "grid"], isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaHidden: { type: "enum", domAttrName: "aria-hidden", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaInvalid: { type: "enum", domAttrName: "aria-invalid", keywords: ["true", "false", "spelling", "grammar"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "true", defaultVal: null },
+      ariaLive: { type: "enum", domAttrName: "aria-live", keywords: ["polite", "assertive", "off"], isNullable: true, invalidVal: "off", defaultVal: null },
+      ariaModal: { type: "enum", domAttrName: "aria-modal", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaMultiLine: { type: "enum", domAttrName: "aria-multiline", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaMultiSelectable: { type: "enum", domAttrName: "aria-multiselectable", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaOrientation: { type: "enum", domAttrName: "aria-orientation", keywords: ["horizontal", "vertical"], nonCanon: { "": null }, isNullable: true, invalidVal: null, defaultVal: null },
+      ariaPressed: { type: "enum", domAttrName: "aria-pressed", keywords: ["true", "false", "mixed"], nonCanon: { "": null }, isNullable: true, invalidVal: null, defaultVal: null },
+      ariaReadOnly: { type: "enum", domAttrName: "aria-readonly", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaRequired: { type: "enum", domAttrName: "aria-required", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaSelected: { type: "enum", domAttrName: "aria-selected", keywords: ["true", "false"], nonCanon: { "": null }, isNullable: true, invalidVal: null, defaultVal: null },
+      ariaSort: { type: "enum", domAttrName: "aria-sort", keywords: ["ascending", "descending", "other", "none"], isNullable: true, invalidVal: "none", defaultVal: null },
+    };
+    for (const [js, spec] of Object.entries(enums)) {
+      reflectAttr(Element.prototype, js, spec);
     }
 
     const ariaExplicit = new WeakMap();
@@ -2565,6 +2581,16 @@
   reflectName(HTMLSlotElement.prototype);
   class HTMLTemplateElement extends HTMLElement {
     get content() { return wrap(D("templateContent", this.__h)); }
+    get buffer() { return this.hasAttribute("buffer"); }
+    set buffer(v) {
+      if (v) this.setAttribute("buffer", "");
+      else this.removeAttribute("buffer");
+    }
+    get src() {
+      if (!this.hasAttribute("src")) return "";
+      return reflectedUrl(this, "src");
+    }
+    set src(v) { this.setAttribute("src", toUSV(v)); }
   }
   class SVGElement extends Element {}
   class MathMLElement extends Element {}
@@ -2740,6 +2766,7 @@
         if (raw == null) {
           return spec.defaultVal === undefined ? (spec.isNullable ? null : "") : spec.defaultVal;
         }
+        if (Object.prototype.hasOwnProperty.call(nonCanon, raw)) return nonCanon[raw];
         const asciiLower = (s) => String(s).replace(/[A-Z]/g, (m) => m.toLowerCase());
         const lower = asciiLower(raw);
         let ret = spec.invalidVal === undefined ? (spec.defaultVal === undefined ? "" : spec.defaultVal) : spec.invalidVal;
@@ -4814,7 +4841,7 @@
     );
   }
   function fireLoad(el) {
-    if (!el) return;
+    if (!el || el.__veCancelled) return;
     const ev = new Event("load");
     trustedEvents.add(ev);
     try { el.dispatchEvent(ev); } catch (e) {}
@@ -4851,17 +4878,32 @@
     }
   };
   const pendingResources = [];
-  function queueResource(run, isBlocking) {
-    pendingResources.push({ run, isBlocking });
+  function queueResource(run, isBlocking, el) {
+    pendingResources.push({ run, isBlocking, el });
   }
+  function cancelPendingFor(el) {
+    if (!el) return;
+    el.__veCancelled = true;
+    for (let i = pendingResources.length - 1; i >= 0; i--) {
+      if (pendingResources[i].el === el) pendingResources.splice(i, 1);
+    }
+  }
+  globalThis.__veCancelPending = cancelPendingFor;
   globalThis.__veHasPendingBlocking = () =>
     pendingResources.some((p) => (typeof p.isBlocking === "function" ? p.isBlocking() : !!p.isBlocking));
   globalThis.__veFlushPendingResources = (blockingOnly) => {
     const keep = [];
     const todo = pendingResources.splice(0, pendingResources.length);
     for (const p of todo) {
+      if (p.el && (p.el.__veCancelled || (p.el.isConnected === false && p.el.ownerDocument))) {
+        continue;
+      }
       const block = typeof p.isBlocking === "function" ? p.isBlocking() : !!p.isBlocking;
       if (blockingOnly && !block) {
+        keep.push(p);
+        continue;
+      }
+      if (block && p.el && p.el.isConnected) {
         keep.push(p);
         continue;
       }
@@ -4890,8 +4932,8 @@
     const type = ((el.getAttribute && el.getAttribute("type")) || "").trim().toLowerCase();
     const isModule = type === "module";
     const run = () => {
-      if (el.__veRan) return;
-      if (!el.isConnected && el.ownerDocument !== document) {
+      if (el.__veRan || el.__veCancelled) return;
+      if (!el.isConnected) {
         el.__veRan = true;
         return;
       }
@@ -4915,11 +4957,11 @@
     };
     const blocking = () => !!(el.blocking && el.blocking.contains && el.blocking.contains("render"));
     const src = el.getAttribute && el.getAttribute("src");
-    if (!src && !isModule) {
+    if (forceSync || (!src && !isModule)) {
       run();
       return;
     }
-    queueResource(run, blocking);
+    queueResource(run, blocking, el);
   }
   function prepareInsertedNode(n) {
     if (!n || n.nodeType !== 1) return;
@@ -4932,29 +4974,297 @@
       if (rel.split(/\s+/).includes("stylesheet") && n.getAttribute("href")) {
         const href = n.getAttribute("href");
         const run = () => {
-          if (n.__veRan) return;
+          if (n.__veRan || n.__veCancelled) return;
           if (!n.isConnected) { n.__veRan = true; return; }
           n.__veRan = true;
           const css = fetchText(href);
           if (css != null) applyFetchedCss(css);
           fireLoad(n);
         };
-        queueResource(run, () => !!(n.blocking && n.blocking.contains && n.blocking.contains("render")));
+        queueResource(run, () => !!(n.blocking && n.blocking.contains && n.blocking.contains("render")), n);
       }
     } else if (tag === "style") {
       const css = n.textContent || "";
       if (/@import/i.test(css)) {
         const run = () => {
-          if (n.__veRan) return;
+          if (n.__veRan || n.__veCancelled) return;
           if (!n.isConnected) { n.__veRan = true; return; }
           n.__veRan = true;
           applyFetchedCss(css);
           fireLoad(n);
         };
-        queueResource(run, () => !!(n.blocking && n.blocking.contains && n.blocking.contains("render")));
+        queueResource(run, () => !!(n.blocking && n.blocking.contains && n.blocking.contains("render")), n);
       }
     }
   }
+  const patchFrozen = new WeakMap();
+  function freezePatch(tpl) {
+    let rec = patchFrozen.get(tpl);
+    if (!rec) {
+      rec = {
+        hasFor: tpl.hasAttribute("for"),
+        forValue: tpl.getAttribute("for"),
+        buffer: tpl.hasAttribute("buffer"),
+        sanitize: tpl.hasAttribute("sanitize") ? String(tpl.getAttribute("sanitize") || "") : null,
+        src: tpl.getAttribute("src"),
+      };
+      patchFrozen.set(tpl, rec);
+    }
+    return rec;
+  }
+  function piAttrs(data) {
+    const out = Object.create(null);
+    const re = /([^\s=]+)="([^"]*)"/g;
+    let m;
+    while ((m = re.exec(String(data || "")))) out[m[1]] = m[2];
+    return out;
+  }
+  function walkNodes(root, fn) {
+    if (!root) return;
+    fn(root);
+    const kids = root.childNodes;
+    if (kids) {
+      for (let i = 0; i < kids.length; i++) walkNodes(kids[i], fn);
+    }
+    if (root.nodeType === 1 && root.localName === "template" && root.content) {
+      walkNodes(root.content, fn);
+    }
+  }
+  function findNamedPatch(name, scope) {
+    let start = null;
+    let marker = null;
+    const roots = [];
+    if (scope) roots.push(scope);
+    if (document.documentElement) roots.push(document.documentElement);
+    if (document.body && roots.indexOf(document.body) < 0) roots.push(document.body);
+    for (const root of roots) {
+      walkNodes(root, (n) => {
+        if (start || (marker && n === marker)) return;
+        if (!n || n.nodeType !== 7) return;
+        const attrs = piAttrs(n.data);
+        if (n.target === "start" && attrs.name === name) start = n;
+        else if (n.target === "marker" && attrs.name === name && !marker) marker = n;
+      });
+      if (start || marker) break;
+    }
+    const open = start || marker;
+    if (!open) return null;
+    let end = null;
+    let n = open.nextSibling;
+    while (n) {
+      if (n.nodeType === 7 && n.target === "end") {
+        end = n;
+        break;
+      }
+      n = n.nextSibling;
+    }
+    return { open, end, parent: open.parentNode };
+  }
+  function sanitizeOn(rec) {
+    if (rec.sanitize == null) return false;
+    const v = String(rec.sanitize).trim();
+    return v === "" || v.toLowerCase() === "sanitize";
+  }
+  function isUnsafeNode(node) {
+    return !!(node && node.nodeType === 1 && (node.localName || "").toLowerCase() === "script");
+  }
+  function stripUnsafe(node) {
+    if (!node || node.nodeType !== 1) return;
+    const kids = node.childNodes ? Array.from(node.childNodes) : [];
+    for (const k of kids) {
+      if (isUnsafeNode(k)) {
+        if (k.parentNode) k.parentNode.removeChild(k);
+      } else {
+        stripUnsafe(k);
+      }
+    }
+  }
+  function takeTemplateChildren(tpl) {
+    const frag = tpl.content;
+    const out = [];
+    if (!frag) return out;
+    while (frag.firstChild) out.push(frag.removeChild(frag.firstChild));
+    return out;
+  }
+  function insertPatchNodes(parent, before, nodes, rec, runScripts) {
+    const safe = sanitizeOn(rec);
+    const staged = [];
+    for (const node of nodes) {
+      if (safe && isUnsafeNode(node)) continue;
+      if (safe) stripUnsafe(node);
+      staged.push(node);
+    }
+    const flushOne = (node) => {
+      if (before && before.parentNode === parent) parent.insertBefore(node, before);
+      else parent.appendChild(node);
+      if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "template" && node.hasAttribute("for")) {
+        applyTemplateFor(node);
+        return;
+      }
+      if (runScripts && !safe && node.nodeType === 1 && (node.localName || "").toLowerCase() === "script") {
+        node._scriptCreated = true;
+        runInsertedScript(node, true);
+      }
+    };
+    if (rec.buffer) {
+      for (const node of staged) {
+        if (before && before.parentNode === parent) parent.insertBefore(node, before);
+        else parent.appendChild(node);
+      }
+      if (runScripts && !safe) {
+        for (const node of staged) {
+          if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "script") {
+            node._scriptCreated = true;
+            runInsertedScript(node, true);
+          } else if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "template" && node.hasAttribute("for")) {
+            applyTemplateFor(node);
+          }
+        }
+      } else {
+        for (const node of staged) {
+          if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "template" && node.hasAttribute("for")) {
+            applyTemplateFor(node);
+          }
+        }
+      }
+      return;
+    }
+    for (const node of staged) flushOne(node);
+  }
+  function applyTemplateFor(tpl) {
+    if (!tpl || tpl.__vePatched) return false;
+    const rec = freezePatch(tpl);
+    if (!rec.hasFor) return false;
+    const name = rec.forValue;
+    const inPlace = name == null || name === "";
+    if (rec.src) {
+      const href = rec.src;
+      const run = () => {
+        if (tpl.__vePatched) return;
+        const html = fetchText(href);
+        if (html == null) return;
+        applyHtmlPatch(tpl, html, rec, inPlace);
+      };
+      queueResource(run, false, tpl);
+      return false;
+    }
+    return commitTemplateFor(tpl, rec, inPlace);
+  }
+  function applyHtmlPatch(tpl, html, rec, inPlace) {
+    const box = document.createElement("template");
+    box.innerHTML = html;
+    const nodes = takeTemplateChildren(box);
+    rec = rec || freezePatch(tpl);
+    if (inPlace) {
+      const parent = tpl.parentNode;
+      if (!parent) return false;
+      insertPatchNodes(parent, tpl, nodes, rec, true);
+      tpl.__vePatched = true;
+      if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+      return true;
+    }
+    const found = findNamedPatch(rec.forValue, tpl.parentNode);
+    if (!found || !found.parent) return false;
+    if (found.end) {
+      let n = found.open.nextSibling;
+      while (n && n !== found.end) {
+        const next = n.nextSibling;
+        if (n.parentNode) n.parentNode.removeChild(n);
+        n = next;
+      }
+    }
+    insertPatchNodes(found.parent, found.end || found.open.nextSibling, nodes, rec, true);
+    if (found.open.parentNode) found.open.parentNode.removeChild(found.open);
+    if (found.end && found.end.parentNode) found.end.parentNode.removeChild(found.end);
+    tpl.__vePatched = true;
+    if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+    return true;
+  }
+  function commitTemplateFor(tpl, rec, inPlace) {
+    const nodes = takeTemplateChildren(tpl);
+    if (inPlace) {
+      const parent = tpl.parentNode;
+      if (!parent) return false;
+      insertPatchNodes(parent, tpl, nodes, rec, true);
+      tpl.__vePatched = true;
+      if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+      return true;
+    }
+    const found = findNamedPatch(rec.forValue, document);
+    if (!found || !found.parent) {
+      for (const node of nodes) tpl.content.appendChild(node);
+      return false;
+    }
+    if (found.end) {
+      let n = found.open.nextSibling;
+      while (n && n !== found.end) {
+        const next = n.nextSibling;
+        if (n.parentNode) n.parentNode.removeChild(n);
+        n = next;
+      }
+    }
+    const before = found.end || found.open.nextSibling;
+    insertPatchNodes(found.parent, before, nodes, rec, true);
+    if (found.open.parentNode) found.open.parentNode.removeChild(found.open);
+    if (found.end && found.end.parentNode) found.end.parentNode.removeChild(found.end);
+    tpl.__vePatched = true;
+    if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+    return true;
+  }
+  function applyAllPartialUpdates() {
+    const seen = [];
+    walkNodes(document.documentElement || document, (n) => {
+      if (n && n.nodeType === 1 && (n.localName || "").toLowerCase() === "template" && n.hasAttribute("for") && !n.__vePatched) {
+        seen.push(n);
+      }
+    });
+    let applied = 0;
+    for (const tpl of seen) {
+      if (applyTemplateFor(tpl)) applied++;
+    }
+    return applied;
+  }
+  function streamHtmlInto(host) {
+    let acc = "";
+    function consume(final) {
+      if (!acc) return;
+      if (!final && acc.indexOf("</template>") < 0) return;
+      const html = acc;
+      acc = "";
+      const box = document.createElement("div");
+      box.innerHTML = html;
+      const tpls = [];
+      walkNodes(box, (n) => {
+        if (n && n.nodeType === 1 && (n.localName || "").toLowerCase() === "template") tpls.push(n);
+      });
+      if (tpls.length) {
+        for (const tpl of tpls) applyTemplateFor(tpl);
+        return;
+      }
+      const kids = Array.from(box.childNodes);
+      for (const k of kids) host.appendChild(k);
+    }
+    return {
+      getWriter() {
+        return {
+          write(chunk) {
+            acc += chunk == null ? "" : String(chunk);
+            consume(false);
+            return Promise.resolve();
+          },
+          close() {
+            consume(true);
+            return Promise.resolve();
+          },
+          abort() {
+            acc = "";
+            return Promise.resolve();
+          },
+        };
+      },
+    };
+  }
+  globalThis.__veApplyPartialUpdates = applyAllPartialUpdates;
   globalThis.__veRunFrameScripts = () => {
     const list = document.getElementsByTagName("iframe");
     for (let i = 0; i < list.length; i++) {

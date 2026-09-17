@@ -3,7 +3,7 @@
 Each package lists the acceptance target, current-tree evidence, and remaining
 gaps. Identity is the native Vector Engine (`vector-engine`), not Chromium.
 
-**The supported testharness subset, native product, official Speedometer 3.0 lab, and held-out p95 measurement are in tree.** Agent 2× p95 vs Chromium is measured (`held-out-latest.json`). Token stretch is measured from declared model usage: `meetsStretch` true, `tokenRatio` 8.35 (baseline 14200 / candidate 1700). Official `html/dom` tree: 302 PASS / 29 FAIL (`wpt-tree-latest.json`; merge does not wait on tree FAILs). Official `html/dom/idlharness.https.html` PASS. Remaining FAILs are tentative `partial-updates/**`, `aria-attribute-reflection-enumerated.tentative.html` (string ARIA mixin kept so `aria-attribute-reflection.html` stays PASS), and optional `remove-element-unblocks-rendering.optional.html`. ve-vm remains research (V8 is production).
+**The supported testharness subset, native product, official Speedometer 3.0 lab, and held-out p95 measurement are in tree.** Agent 2× p95 vs Chromium is measured (`held-out-latest.json`). Token stretch is measured from declared model usage: `meetsStretch` true, `tokenRatio` 8.35 (baseline 14200 / candidate 1700). Official `html/dom` tree: 302 PASS / 29 FAIL (`wpt-tree-latest.json`; merge does not wait on tree FAILs). Official `html/dom/idlharness.https.html` PASS. Remaining disclosed official FAIL: `aria-attribute-reflection-enumerated.tentative.html` missing-value defaults that are not null. Partial updates and render-blocking cancel-on-remove are in tree. ve-vm remains research (V8 is production).
 
 | Ticket | Evidence file | Status |
 |---|---|---|

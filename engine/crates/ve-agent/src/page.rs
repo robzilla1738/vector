@@ -5014,7 +5014,14 @@ pub fn outer_html(doc: &Document, id: NodeId) -> String {
                 }
                 let raw = e.namespace == ve_dom::Namespace::Html
                     && matches!(e.name.as_str(), "script" | "style");
-                for c in doc.children(id) {
+                let kids = if e.is_html("template") {
+                    doc.template_contents(id)
+                        .map(|frag| doc.children(frag))
+                        .unwrap_or_else(|| doc.children(id))
+                } else {
+                    doc.children(id)
+                };
+                for c in kids {
                     if raw && let Some(t) = doc.get(c).and_then(ve_dom::Node::as_text) {
                         out.push_str(t);
                     } else {
@@ -5036,7 +5043,7 @@ pub fn outer_html(doc: &Document, id: NodeId) -> String {
                 out.push_str(target);
                 out.push(' ');
                 out.push_str(data);
-                out.push('>');
+                out.push_str("?>");
             }
         }
     }
