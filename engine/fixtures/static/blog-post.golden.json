@@ -33,7 +33,7 @@
   ],
   "elements": [
     {
-      "ref": "r37",
+      "ref": "r31",
       "tag": "input",
       "role": "searchbox",
       "name": "Search",
@@ -42,14 +42,14 @@
       "placeholder": "Search…"
     },
     {
-      "ref": "r38",
+      "ref": "r32",
       "tag": "button",
       "role": "button",
       "name": "Search",
       "type": "submit"
     },
     {
-      "ref": "r252",
+      "ref": "r246",
       "tag": "input",
       "role": "textbox",
       "name": "Name",
@@ -59,7 +59,7 @@
       "offscreen": true
     },
     {
-      "ref": "r256",
+      "ref": "r250",
       "tag": "input",
       "role": "textbox",
       "name": "Email (not published)",
@@ -69,7 +69,7 @@
       "offscreen": true
     },
     {
-      "ref": "r260",
+      "ref": "r254",
       "tag": "textarea",
       "role": "textbox",
       "name": "Comment",
@@ -79,7 +79,7 @@
       "offscreen": true
     },
     {
-      "ref": "r263",
+      "ref": "r257",
       "tag": "input",
       "role": "checkbox",
       "name": "Notify me of follow-up comments",
@@ -88,7 +88,7 @@
       "offscreen": true
     },
     {
-      "ref": "r327",
+      "ref": "r321",
       "tag": "input",
       "role": "textbox",
       "name": "Email",
@@ -98,140 +98,140 @@
       "offscreen": true
     },
     {
-      "ref": "r22",
+      "ref": "r16",
       "tag": "a",
       "role": "link",
       "name": "Notes from the Engine Room",
       "href": "https://fixtures.vector.test/"
     },
     {
-      "ref": "r25",
+      "ref": "r19",
       "tag": "a",
       "role": "link",
       "name": "Home",
       "href": "https://fixtures.vector.test/"
     },
     {
-      "ref": "r27",
+      "ref": "r21",
       "tag": "a",
       "role": "link",
       "name": "Archive",
       "href": "https://fixtures.vector.test/archive"
     },
     {
-      "ref": "r29",
+      "ref": "r23",
       "tag": "a",
       "role": "link",
       "name": "About",
       "href": "https://fixtures.vector.test/about"
     },
     {
-      "ref": "r31",
+      "ref": "r25",
       "tag": "a",
       "role": "link",
       "name": "RSS",
       "href": "https://fixtures.vector.test/feed.xml"
     },
     {
-      "ref": "r51",
+      "ref": "r45",
       "tag": "a",
       "role": "link",
       "name": "Ada Example",
       "href": "https://fixtures.vector.test/authors/ada"
     },
     {
-      "ref": "r57",
+      "ref": "r51",
       "tag": "a",
       "role": "link",
       "name": "rust",
       "href": "https://fixtures.vector.test/tag/rust"
     },
     {
-      "ref": "r60",
+      "ref": "r54",
       "tag": "a",
       "role": "link",
       "name": "browsers",
       "href": "https://fixtures.vector.test/tag/browsers"
     },
     {
-      "ref": "r63",
+      "ref": "r57",
       "tag": "a",
       "role": "link",
       "name": "performance",
       "href": "https://fixtures.vector.test/tag/performance"
     },
     {
-      "ref": "r66",
+      "ref": "r60",
       "tag": "a",
       "role": "link",
       "name": "agents",
       "href": "https://fixtures.vector.test/tag/agents"
     },
     {
-      "ref": "r69",
+      "ref": "r63",
       "tag": "a",
       "role": "link",
       "name": "design",
       "href": "https://fixtures.vector.test/tag/design"
     },
     {
-      "ref": "r77",
+      "ref": "r71",
       "tag": "a",
       "role": "link",
       "name": "earlier post on readiness",
       "href": "https://fixtures.vector.test/2026/06/readiness"
     },
     {
-      "ref": "r279",
+      "ref": "r273",
       "tag": "a",
       "role": "link",
       "name": "More →",
       "href": "https://fixtures.vector.test/about"
     },
     {
-      "ref": "r286",
+      "ref": "r280",
       "tag": "a",
       "role": "link",
       "name": "Post title number 1: Ut enim ad minim veniam, quis nostrud …",
       "href": "https://fixtures.vector.test/2026/09/post-1"
     },
     {
-      "ref": "r292",
+      "ref": "r286",
       "tag": "a",
       "role": "link",
       "name": "Post title number 2: Duis aute irure dolor in reprehenderit…",
       "href": "https://fixtures.vector.test/2026/08/post-2"
     },
     {
-      "ref": "r298",
+      "ref": "r292",
       "tag": "a",
       "role": "link",
       "name": "Post title number 3: Excepteur sint occaecat cupidatat non …",
       "href": "https://fixtures.vector.test/2026/08/post-3"
     },
     {
-      "ref": "r304",
+      "ref": "r298",
       "tag": "a",
       "role": "link",
       "name": "Post title number 4: Lorem ipsum dolor sit amet, consectetu…",
       "href": "https://fixtures.vector.test/2026/07/post-4"
     },
     {
-      "ref": "r310",
+      "ref": "r304",
       "tag": "a",
       "role": "link",
       "name": "Post title number 5: Ut enim ad minim veniam, quis nostrud …",
       "href": "https://fixtures.vector.test/2026/07/post-5"
     },
     {
-      "ref": "r316",
+      "ref": "r310",
       "tag": "a",
       "role": "link",
       "name": "Post title number 6: Duis aute irure dolor in reprehenderit…",
       "href": "https://fixtures.vector.test/2026/06/post-6"
     },
     {
-      "ref": "r18",
+      "ref": "r12",
       "tag": "a",
       "role": "link",
       "name": "Skip to main content",
@@ -239,7 +239,7 @@
       "offscreen": true
     },
     {
-      "ref": "r94",
+      "ref": "r88",
       "tag": "a",
       "role": "link",
       "name": "benchmark repository",
@@ -247,7 +247,7 @@
       "offscreen": true
     },
     {
-      "ref": "r167",
+      "ref": "r161",
       "tag": "a",
       "role": "link",
       "name": "Grace",
@@ -255,7 +255,7 @@
       "offscreen": true
     },
     {
-      "ref": "r170",
+      "ref": "r164",
       "tag": "a",
       "role": "link",
       "name": "Linus",
@@ -263,7 +263,7 @@
       "offscreen": true
     },
     {
-      "ref": "r175",
+      "ref": "r169",
       "tag": "a",
       "role": "link",
       "name": "Share on Twitter",
@@ -271,7 +271,7 @@
       "offscreen": true
     },
     {
-      "ref": "r178",
+      "ref": "r172",
       "tag": "a",
       "role": "link",
       "name": "Share on HN",
@@ -279,7 +279,7 @@
       "offscreen": true
     },
     {
-      "ref": "r183",
+      "ref": "r177",
       "tag": "a",
       "role": "link",
       "name": "← Refs that survive",
@@ -287,7 +287,7 @@
       "offscreen": true
     },
     {
-      "ref": "r185",
+      "ref": "r179",
       "tag": "a",
       "role": "link",
       "name": "Routing, deterministically →",
@@ -295,7 +295,7 @@
       "offscreen": true
     },
     {
-      "ref": "r198",
+      "ref": "r192",
       "tag": "a",
       "role": "link",
       "name": "permalink",
@@ -303,7 +303,7 @@
       "offscreen": true
     },
     {
-      "ref": "r202",
+      "ref": "r196",
       "tag": "a",
       "role": "link",
       "name": "Reply",
@@ -311,7 +311,7 @@
       "offscreen": true
     },
     {
-      "ref": "r211",
+      "ref": "r205",
       "tag": "a",
       "role": "link",
       "name": "permalink",
@@ -319,7 +319,7 @@
       "offscreen": true
     },
     {
-      "ref": "r215",
+      "ref": "r209",
       "tag": "a",
       "role": "link",
       "name": "Reply",
@@ -327,7 +327,7 @@
       "offscreen": true
     },
     {
-      "ref": "r224",
+      "ref": "r218",
       "tag": "a",
       "role": "link",
       "name": "permalink",
@@ -335,7 +335,7 @@
       "offscreen": true
     },
     {
-      "ref": "r228",
+      "ref": "r222",
       "tag": "a",
       "role": "link",
       "name": "Reply",
@@ -343,7 +343,7 @@
       "offscreen": true
     },
     {
-      "ref": "r237",
+      "ref": "r231",
       "tag": "a",
       "role": "link",
       "name": "permalink",
@@ -351,7 +351,7 @@
       "offscreen": true
     },
     {
-      "ref": "r241",
+      "ref": "r235",
       "tag": "a",
       "role": "link",
       "name": "Reply",
@@ -359,7 +359,7 @@
       "offscreen": true
     },
     {
-      "ref": "r268",
+      "ref": "r262",
       "tag": "button",
       "role": "button",
       "name": "Post comment",
@@ -367,7 +367,7 @@
       "offscreen": true
     },
     {
-      "ref": "r328",
+      "ref": "r322",
       "tag": "button",
       "role": "button",
       "name": "Subscribe",
@@ -375,7 +375,7 @@
       "offscreen": true
     },
     {
-      "ref": "r332",
+      "ref": "r326",
       "tag": "a",
       "role": "link",
       "name": "Archive",
@@ -383,7 +383,7 @@
       "offscreen": true
     },
     {
-      "ref": "r334",
+      "ref": "r328",
       "tag": "a",
       "role": "link",
       "name": "Colophon",
@@ -391,7 +391,7 @@
       "offscreen": true
     },
     {
-      "ref": "r336",
+      "ref": "r330",
       "tag": "a",
       "role": "link",
       "name": "RSS",
@@ -401,7 +401,7 @@
   ],
   "formFields": [
     {
-      "ref": "r37",
+      "ref": "r31",
       "label": "Search",
       "name": "q",
       "type": "search",
@@ -409,7 +409,7 @@
       "valid": true
     },
     {
-      "ref": "r252",
+      "ref": "r246",
       "label": "Name",
       "name": "name",
       "type": "text",
@@ -419,7 +419,7 @@
       "validationMessage": "Please fill out this field."
     },
     {
-      "ref": "r256",
+      "ref": "r250",
       "label": "Email (not published)",
       "name": "email",
       "type": "email",
@@ -429,7 +429,7 @@
       "validationMessage": "Please fill out this field."
     },
     {
-      "ref": "r260",
+      "ref": "r254",
       "label": "Comment",
       "name": "body",
       "type": "textarea",
@@ -439,7 +439,7 @@
       "validationMessage": "Please fill out this field."
     },
     {
-      "ref": "r263",
+      "ref": "r257",
       "label": "Notify me of follow-up comments",
       "name": "subscribe",
       "type": "checkbox",
@@ -447,7 +447,7 @@
       "valid": true
     },
     {
-      "ref": "r327",
+      "ref": "r321",
       "label": "Email",
       "name": "email",
       "type": "email",
@@ -457,7 +457,7 @@
   ],
   "tables": [
     {
-      "ref": "r98",
+      "ref": "r92",
       "caption": "Median settle cost by fixture class",
       "columns": [
         "Class",
@@ -497,192 +497,192 @@
   ],
   "links": [
     {
-      "ref": "r22",
+      "ref": "r16",
       "text": "Notes from the Engine Room",
       "href": "https://fixtures.vector.test/"
     },
     {
-      "ref": "r25",
+      "ref": "r19",
       "text": "Home",
       "href": "https://fixtures.vector.test/"
     },
     {
-      "ref": "r27",
+      "ref": "r21",
       "text": "Archive",
       "href": "https://fixtures.vector.test/archive"
     },
     {
-      "ref": "r29",
+      "ref": "r23",
       "text": "About",
       "href": "https://fixtures.vector.test/about"
     },
     {
-      "ref": "r31",
+      "ref": "r25",
       "text": "RSS",
       "href": "https://fixtures.vector.test/feed.xml"
     },
     {
-      "ref": "r51",
+      "ref": "r45",
       "text": "Ada Example",
       "href": "https://fixtures.vector.test/authors/ada"
     },
     {
-      "ref": "r57",
+      "ref": "r51",
       "text": "rust",
       "href": "https://fixtures.vector.test/tag/rust"
     },
     {
-      "ref": "r60",
+      "ref": "r54",
       "text": "browsers",
       "href": "https://fixtures.vector.test/tag/browsers"
     },
     {
-      "ref": "r63",
+      "ref": "r57",
       "text": "performance",
       "href": "https://fixtures.vector.test/tag/performance"
     },
     {
-      "ref": "r66",
+      "ref": "r60",
       "text": "agents",
       "href": "https://fixtures.vector.test/tag/agents"
     },
     {
-      "ref": "r69",
+      "ref": "r63",
       "text": "design",
       "href": "https://fixtures.vector.test/tag/design"
     },
     {
-      "ref": "r77",
+      "ref": "r71",
       "text": "earlier post on readiness",
       "href": "https://fixtures.vector.test/2026/06/readiness"
     },
     {
-      "ref": "r279",
+      "ref": "r273",
       "text": "More →",
       "href": "https://fixtures.vector.test/about"
     },
     {
-      "ref": "r286",
+      "ref": "r280",
       "text": "Post title number 1: Ut enim ad minim veniam, quis nostrud …",
       "href": "https://fixtures.vector.test/2026/09/post-1"
     },
     {
-      "ref": "r292",
+      "ref": "r286",
       "text": "Post title number 2: Duis aute irure dolor in reprehenderit…",
       "href": "https://fixtures.vector.test/2026/08/post-2"
     },
     {
-      "ref": "r298",
+      "ref": "r292",
       "text": "Post title number 3: Excepteur sint occaecat cupidatat non …",
       "href": "https://fixtures.vector.test/2026/08/post-3"
     },
     {
-      "ref": "r304",
+      "ref": "r298",
       "text": "Post title number 4: Lorem ipsum dolor sit amet, consectetu…",
       "href": "https://fixtures.vector.test/2026/07/post-4"
     },
     {
-      "ref": "r310",
+      "ref": "r304",
       "text": "Post title number 5: Ut enim ad minim veniam, quis nostrud …",
       "href": "https://fixtures.vector.test/2026/07/post-5"
     },
     {
-      "ref": "r316",
+      "ref": "r310",
       "text": "Post title number 6: Duis aute irure dolor in reprehenderit…",
       "href": "https://fixtures.vector.test/2026/06/post-6"
     },
     {
-      "ref": "r18",
+      "ref": "r12",
       "text": "Skip to main content",
       "href": "https://fixtures.vector.test/blog-post.html#main"
     },
     {
-      "ref": "r94",
+      "ref": "r88",
       "text": "benchmark repository",
       "href": "https://github.com/vector-browser/bench"
     },
     {
-      "ref": "r167",
+      "ref": "r161",
       "text": "Grace",
       "href": "https://fixtures.vector.test/authors/grace"
     },
     {
-      "ref": "r170",
+      "ref": "r164",
       "text": "Linus",
       "href": "https://fixtures.vector.test/authors/linus"
     },
     {
-      "ref": "r175",
+      "ref": "r169",
       "text": "Share on Twitter",
       "href": "https://twitter.com/intent/tweet?url=https://blog.example/2026/09/settled"
     },
     {
-      "ref": "r178",
+      "ref": "r172",
       "text": "Share on HN",
       "href": "https://news.ycombinator.com/submitlink?u=https://blog.example/2026/09/settled"
     },
     {
-      "ref": "r183",
+      "ref": "r177",
       "text": "← Refs that survive",
       "href": "https://fixtures.vector.test/2026/08/refs"
     },
     {
-      "ref": "r185",
+      "ref": "r179",
       "text": "Routing, deterministically →",
       "href": "https://fixtures.vector.test/2026/09/routing"
     },
     {
-      "ref": "r198",
+      "ref": "r192",
       "text": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c1"
     },
     {
-      "ref": "r202",
+      "ref": "r196",
       "text": "Reply",
       "href": "https://fixtures.vector.test/reply?c=1"
     },
     {
-      "ref": "r211",
+      "ref": "r205",
       "text": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c2"
     },
     {
-      "ref": "r215",
+      "ref": "r209",
       "text": "Reply",
       "href": "https://fixtures.vector.test/reply?c=2"
     },
     {
-      "ref": "r224",
+      "ref": "r218",
       "text": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c3"
     },
     {
-      "ref": "r228",
+      "ref": "r222",
       "text": "Reply",
       "href": "https://fixtures.vector.test/reply?c=3"
     },
     {
-      "ref": "r237",
+      "ref": "r231",
       "text": "permalink",
       "href": "https://fixtures.vector.test/blog-post.html#c4"
     },
     {
-      "ref": "r241",
+      "ref": "r235",
       "text": "Reply",
       "href": "https://fixtures.vector.test/reply?c=4"
     },
     {
-      "ref": "r332",
+      "ref": "r326",
       "text": "Archive",
       "href": "https://fixtures.vector.test/archive"
     },
     {
-      "ref": "r334",
+      "ref": "r328",
       "text": "Colophon",
       "href": "https://fixtures.vector.test/colophon"
     },
     {
-      "ref": "r336",
+      "ref": "r330",
       "text": "RSS",
       "href": "https://fixtures.vector.test/feed.xml"
     }

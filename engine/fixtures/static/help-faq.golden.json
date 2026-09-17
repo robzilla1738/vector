@@ -28,7 +28,7 @@
   ],
   "elements": [
     {
-      "ref": "r39",
+      "ref": "r33",
       "tag": "input",
       "role": "searchbox",
       "name": "Search",
@@ -37,14 +37,14 @@
       "placeholder": "Search…"
     },
     {
-      "ref": "r40",
+      "ref": "r34",
       "tag": "button",
       "role": "button",
       "name": "Search",
       "type": "submit"
     },
     {
-      "ref": "r52",
+      "ref": "r46",
       "tag": "input",
       "role": "searchbox",
       "name": "Search help articles",
@@ -53,79 +53,49 @@
       "placeholder": "Search articles, e.g. “invoice”"
     },
     {
-      "ref": "r53",
+      "ref": "r47",
       "tag": "button",
       "role": "button",
       "name": "Search",
       "type": "submit"
     },
     {
-      "ref": "r58",
-      "tag": "details",
-      "role": "group",
-      "name": "How do I reset my password?"
-    },
-    {
-      "ref": "r59",
+      "ref": "r53",
       "tag": "summary",
       "role": "button",
       "name": "How do I reset my password?",
       "expanded": true
     },
     {
-      "ref": "r70",
-      "tag": "details",
-      "role": "group",
-      "name": "Where can I download my invoices?"
-    },
-    {
-      "ref": "r71",
+      "ref": "r65",
       "tag": "summary",
       "role": "button",
       "name": "Where can I download my invoices?",
       "expanded": false
     },
     {
-      "ref": "r82",
-      "tag": "details",
-      "role": "group",
-      "name": "Can I change my plan mid-cycle?"
-    },
-    {
-      "ref": "r83",
+      "ref": "r77",
       "tag": "summary",
       "role": "button",
       "name": "Can I change my plan mid-cycle?",
       "expanded": false
     },
     {
-      "ref": "r97",
-      "tag": "details",
-      "role": "group",
-      "name": "How do refunds work?"
-    },
-    {
-      "ref": "r98",
+      "ref": "r92",
       "tag": "summary",
       "role": "button",
       "name": "How do refunds work?",
       "expanded": false
     },
     {
-      "ref": "r109",
-      "tag": "details",
-      "role": "group",
-      "name": "Is two-factor authentication required?"
-    },
-    {
-      "ref": "r110",
+      "ref": "r104",
       "tag": "summary",
       "role": "button",
       "name": "Is two-factor authentication required?",
       "expanded": true
     },
     {
-      "ref": "r230",
+      "ref": "r224",
       "tag": "input",
       "role": "textbox",
       "name": "Your name",
@@ -135,7 +105,7 @@
       "offscreen": true
     },
     {
-      "ref": "r234",
+      "ref": "r228",
       "tag": "input",
       "role": "textbox",
       "name": "Email",
@@ -145,7 +115,7 @@
       "offscreen": true
     },
     {
-      "ref": "r238",
+      "ref": "r232",
       "tag": "select",
       "role": "combobox",
       "name": "Topic",
@@ -164,7 +134,7 @@
       "offscreen": true
     },
     {
-      "ref": "r254",
+      "ref": "r248",
       "tag": "select",
       "role": "combobox",
       "name": "Priority",
@@ -179,7 +149,7 @@
       "offscreen": true
     },
     {
-      "ref": "r264",
+      "ref": "r258",
       "tag": "input",
       "role": "textbox",
       "name": "Subject",
@@ -189,7 +159,7 @@
       "offscreen": true
     },
     {
-      "ref": "r268",
+      "ref": "r262",
       "tag": "textarea",
       "role": "textbox",
       "name": "Describe the problem",
@@ -200,7 +170,7 @@
       "offscreen": true
     },
     {
-      "ref": "r272",
+      "ref": "r266",
       "tag": "input",
       "role": "textbox",
       "name": "Attachments",
@@ -209,7 +179,7 @@
       "offscreen": true
     },
     {
-      "ref": "r275",
+      "ref": "r269",
       "tag": "input",
       "role": "checkbox",
       "name": "Send me a copy of this ticket",
@@ -218,7 +188,7 @@
       "offscreen": true
     },
     {
-      "ref": "r279",
+      "ref": "r273",
       "tag": "input",
       "role": "checkbox",
       "name": "Mark as outage (Enterprise plans only)",
@@ -228,168 +198,198 @@
       "offscreen": true
     },
     {
-      "ref": "r22",
+      "ref": "r52",
+      "tag": "details",
+      "role": "group",
+      "name": "How do I reset my password?"
+    },
+    {
+      "ref": "r64",
+      "tag": "details",
+      "role": "group",
+      "name": "Where can I download my invoices?"
+    },
+    {
+      "ref": "r76",
+      "tag": "details",
+      "role": "group",
+      "name": "Can I change my plan mid-cycle?"
+    },
+    {
+      "ref": "r91",
+      "tag": "details",
+      "role": "group",
+      "name": "How do refunds work?"
+    },
+    {
+      "ref": "r103",
+      "tag": "details",
+      "role": "group",
+      "name": "Is two-factor authentication required?"
+    },
+    {
+      "ref": "r16",
       "tag": "a",
       "role": "link",
       "name": "Help Center",
       "href": "https://fixtures.vector.test/"
     },
     {
-      "ref": "r25",
+      "ref": "r19",
       "tag": "a",
       "role": "link",
       "name": "Home",
       "href": "https://fixtures.vector.test/"
     },
     {
-      "ref": "r27",
+      "ref": "r21",
       "tag": "a",
       "role": "link",
       "name": "Guides",
       "href": "https://fixtures.vector.test/help/guides"
     },
     {
-      "ref": "r29",
+      "ref": "r23",
       "tag": "a",
       "role": "link",
       "name": "API",
       "href": "https://fixtures.vector.test/developers"
     },
     {
-      "ref": "r31",
+      "ref": "r25",
       "tag": "a",
       "role": "link",
       "name": "Status",
       "href": "https://status.example.test/"
     },
     {
-      "ref": "r33",
+      "ref": "r27",
       "tag": "a",
       "role": "link",
       "name": "Contact",
       "href": "https://fixtures.vector.test/help/contact"
     },
     {
-      "ref": "r65",
+      "ref": "r59",
       "tag": "a",
       "role": "link",
       "name": "Yes",
       "href": "https://fixtures.vector.test/help/vote?q=1&v=1"
     },
     {
-      "ref": "r68",
+      "ref": "r62",
       "tag": "a",
       "role": "link",
       "name": "No",
       "href": "https://fixtures.vector.test/help/vote?q=1&v=0"
     },
     {
-      "ref": "r116",
+      "ref": "r110",
       "tag": "a",
       "role": "link",
       "name": "Yes",
       "href": "https://fixtures.vector.test/help/vote?q=5&v=1"
     },
     {
-      "ref": "r119",
+      "ref": "r113",
       "tag": "a",
       "role": "link",
       "name": "No",
       "href": "https://fixtures.vector.test/help/vote?q=5&v=0"
     },
     {
-      "ref": "r291",
+      "ref": "r285",
       "tag": "a",
       "role": "link",
       "name": "Account",
       "href": "https://fixtures.vector.test/help/account"
     },
     {
-      "ref": "r297",
+      "ref": "r291",
       "tag": "a",
       "role": "link",
       "name": "Billing",
       "href": "https://fixtures.vector.test/help/billing"
     },
     {
-      "ref": "r303",
+      "ref": "r297",
       "tag": "a",
       "role": "link",
       "name": "Teams",
       "href": "https://fixtures.vector.test/help/teams"
     },
     {
-      "ref": "r309",
+      "ref": "r303",
       "tag": "a",
       "role": "link",
       "name": "Security",
       "href": "https://fixtures.vector.test/help/security"
     },
     {
-      "ref": "r315",
+      "ref": "r309",
       "tag": "a",
       "role": "link",
       "name": "Integrations",
       "href": "https://fixtures.vector.test/help/integrations"
     },
     {
-      "ref": "r321",
+      "ref": "r315",
       "tag": "a",
       "role": "link",
       "name": "API",
       "href": "https://fixtures.vector.test/help/api"
     },
     {
-      "ref": "r327",
+      "ref": "r321",
       "tag": "a",
       "role": "link",
       "name": "Mobile apps",
       "href": "https://fixtures.vector.test/help/mobile-apps"
     },
     {
-      "ref": "r337",
+      "ref": "r331",
       "tag": "a",
       "role": "link",
       "name": "How do I reset my password?",
       "href": "https://fixtures.vector.test/help/articles/1"
     },
     {
-      "ref": "r340",
+      "ref": "r334",
       "tag": "a",
       "role": "link",
       "name": "Where can I download my invoices?",
       "href": "https://fixtures.vector.test/help/articles/2"
     },
     {
-      "ref": "r343",
+      "ref": "r337",
       "tag": "a",
       "role": "link",
       "name": "How do I export my data?",
       "href": "https://fixtures.vector.test/help/articles/9"
     },
     {
-      "ref": "r346",
+      "ref": "r340",
       "tag": "a",
       "role": "link",
       "name": "How do refunds work?",
       "href": "https://fixtures.vector.test/help/articles/4"
     },
     {
-      "ref": "r349",
+      "ref": "r343",
       "tag": "a",
       "role": "link",
       "name": "Which browsers are supported?",
       "href": "https://fixtures.vector.test/help/articles/10"
     },
     {
-      "ref": "r357",
+      "ref": "r351",
       "tag": "a",
       "role": "link",
       "name": "Start a chat →",
       "href": "https://fixtures.vector.test/help/chat"
     },
     {
-      "ref": "r18",
+      "ref": "r12",
       "tag": "a",
       "role": "link",
       "name": "Skip to main content",
@@ -397,14 +397,14 @@
       "offscreen": true
     },
     {
-      "ref": "r121",
+      "ref": "r115",
       "tag": "details",
       "role": "group",
       "name": "How do I add team members?",
       "offscreen": true
     },
     {
-      "ref": "r122",
+      "ref": "r116",
       "tag": "summary",
       "role": "button",
       "name": "How do I add team members?",
@@ -412,14 +412,14 @@
       "offscreen": true
     },
     {
-      "ref": "r136",
+      "ref": "r130",
       "tag": "details",
       "role": "group",
       "name": "What happens when my trial ends?",
       "offscreen": true
     },
     {
-      "ref": "r137",
+      "ref": "r131",
       "tag": "summary",
       "role": "button",
       "name": "What happens when my trial ends?",
@@ -427,14 +427,14 @@
       "offscreen": true
     },
     {
-      "ref": "r148",
+      "ref": "r142",
       "tag": "details",
       "role": "group",
       "name": "Do you offer student discounts?",
       "offscreen": true
     },
     {
-      "ref": "r149",
+      "ref": "r143",
       "tag": "summary",
       "role": "button",
       "name": "Do you offer student discounts?",
@@ -442,14 +442,14 @@
       "offscreen": true
     },
     {
-      "ref": "r160",
+      "ref": "r154",
       "tag": "details",
       "role": "group",
       "name": "How do I export my data?",
       "offscreen": true
     },
     {
-      "ref": "r161",
+      "ref": "r155",
       "tag": "summary",
       "role": "button",
       "name": "How do I export my data?",
@@ -457,14 +457,14 @@
       "offscreen": true
     },
     {
-      "ref": "r175",
+      "ref": "r169",
       "tag": "details",
       "role": "group",
       "name": "Which browsers are supported?",
       "offscreen": true
     },
     {
-      "ref": "r176",
+      "ref": "r170",
       "tag": "summary",
       "role": "button",
       "name": "Which browsers are supported?",
@@ -472,14 +472,14 @@
       "offscreen": true
     },
     {
-      "ref": "r187",
+      "ref": "r181",
       "tag": "details",
       "role": "group",
       "name": "How do I close my account?",
       "offscreen": true
     },
     {
-      "ref": "r188",
+      "ref": "r182",
       "tag": "summary",
       "role": "button",
       "name": "How do I close my account?",
@@ -487,14 +487,14 @@
       "offscreen": true
     },
     {
-      "ref": "r199",
+      "ref": "r193",
       "tag": "details",
       "role": "group",
       "name": "Where is my data stored?",
       "offscreen": true
     },
     {
-      "ref": "r200",
+      "ref": "r194",
       "tag": "summary",
       "role": "button",
       "name": "Where is my data stored?",
@@ -502,7 +502,7 @@
       "offscreen": true
     },
     {
-      "ref": "r282",
+      "ref": "r276",
       "tag": "button",
       "role": "button",
       "name": "Submit ticket",
@@ -510,7 +510,7 @@
       "offscreen": true
     },
     {
-      "ref": "r361",
+      "ref": "r355",
       "tag": "a",
       "role": "link",
       "name": "Privacy",
@@ -518,7 +518,7 @@
       "offscreen": true
     },
     {
-      "ref": "r363",
+      "ref": "r357",
       "tag": "a",
       "role": "link",
       "name": "Terms",
@@ -526,7 +526,7 @@
       "offscreen": true
     },
     {
-      "ref": "r365",
+      "ref": "r359",
       "tag": "a",
       "role": "link",
       "name": "Cookie settings",
@@ -534,7 +534,7 @@
       "offscreen": true
     },
     {
-      "ref": "r367",
+      "ref": "r361",
       "tag": "a",
       "role": "link",
       "name": "System status",
@@ -544,7 +544,7 @@
   ],
   "formFields": [
     {
-      "ref": "r39",
+      "ref": "r33",
       "label": "Search",
       "name": "q",
       "type": "search",
@@ -552,7 +552,7 @@
       "valid": true
     },
     {
-      "ref": "r52",
+      "ref": "r46",
       "label": "Search help articles",
       "name": "q",
       "type": "search",
@@ -560,7 +560,7 @@
       "valid": true
     },
     {
-      "ref": "r230",
+      "ref": "r224",
       "label": "Your name",
       "name": "name",
       "type": "text",
@@ -570,7 +570,7 @@
       "validationMessage": "Please fill out this field."
     },
     {
-      "ref": "r234",
+      "ref": "r228",
       "label": "Email",
       "name": "email",
       "type": "email",
@@ -580,7 +580,7 @@
       "validationMessage": "Please fill out this field."
     },
     {
-      "ref": "r238",
+      "ref": "r232",
       "label": "Topic",
       "name": "topic",
       "type": "select",
@@ -590,7 +590,7 @@
       "validationMessage": "Please select an item in the list."
     },
     {
-      "ref": "r254",
+      "ref": "r248",
       "label": "Priority",
       "name": "priority",
       "type": "select",
@@ -598,7 +598,7 @@
       "valid": true
     },
     {
-      "ref": "r264",
+      "ref": "r258",
       "label": "Subject",
       "name": "subject",
       "type": "text",
@@ -608,7 +608,7 @@
       "validationMessage": "Please fill out this field."
     },
     {
-      "ref": "r268",
+      "ref": "r262",
       "label": "Describe the problem",
       "name": "description",
       "type": "textarea",
@@ -618,7 +618,7 @@
       "validationMessage": "Please fill out this field."
     },
     {
-      "ref": "r272",
+      "ref": "r266",
       "label": "Attachments",
       "name": "attachments",
       "type": "file",
@@ -626,7 +626,7 @@
       "valid": true
     },
     {
-      "ref": "r275",
+      "ref": "r269",
       "label": "Send me a copy of this ticket",
       "name": "cc",
       "type": "checkbox",
@@ -634,7 +634,7 @@
       "valid": true
     },
     {
-      "ref": "r279",
+      "ref": "r273",
       "label": "Mark as outage (Enterprise plans only)",
       "name": "urgent",
       "type": "checkbox",
@@ -645,142 +645,142 @@
   "tables": [],
   "links": [
     {
-      "ref": "r22",
+      "ref": "r16",
       "text": "Help Center",
       "href": "https://fixtures.vector.test/"
     },
     {
-      "ref": "r25",
+      "ref": "r19",
       "text": "Home",
       "href": "https://fixtures.vector.test/"
     },
     {
-      "ref": "r27",
+      "ref": "r21",
       "text": "Guides",
       "href": "https://fixtures.vector.test/help/guides"
     },
     {
-      "ref": "r29",
+      "ref": "r23",
       "text": "API",
       "href": "https://fixtures.vector.test/developers"
     },
     {
-      "ref": "r31",
+      "ref": "r25",
       "text": "Status",
       "href": "https://status.example.test/"
     },
     {
-      "ref": "r33",
+      "ref": "r27",
       "text": "Contact",
       "href": "https://fixtures.vector.test/help/contact"
     },
     {
-      "ref": "r65",
+      "ref": "r59",
       "text": "Yes",
       "href": "https://fixtures.vector.test/help/vote?q=1&v=1"
     },
     {
-      "ref": "r68",
+      "ref": "r62",
       "text": "No",
       "href": "https://fixtures.vector.test/help/vote?q=1&v=0"
     },
     {
-      "ref": "r116",
+      "ref": "r110",
       "text": "Yes",
       "href": "https://fixtures.vector.test/help/vote?q=5&v=1"
     },
     {
-      "ref": "r119",
+      "ref": "r113",
       "text": "No",
       "href": "https://fixtures.vector.test/help/vote?q=5&v=0"
     },
     {
-      "ref": "r291",
+      "ref": "r285",
       "text": "Account",
       "href": "https://fixtures.vector.test/help/account"
     },
     {
-      "ref": "r297",
+      "ref": "r291",
       "text": "Billing",
       "href": "https://fixtures.vector.test/help/billing"
     },
     {
-      "ref": "r303",
+      "ref": "r297",
       "text": "Teams",
       "href": "https://fixtures.vector.test/help/teams"
     },
     {
-      "ref": "r309",
+      "ref": "r303",
       "text": "Security",
       "href": "https://fixtures.vector.test/help/security"
     },
     {
-      "ref": "r315",
+      "ref": "r309",
       "text": "Integrations",
       "href": "https://fixtures.vector.test/help/integrations"
     },
     {
-      "ref": "r321",
+      "ref": "r315",
       "text": "API",
       "href": "https://fixtures.vector.test/help/api"
     },
     {
-      "ref": "r327",
+      "ref": "r321",
       "text": "Mobile apps",
       "href": "https://fixtures.vector.test/help/mobile-apps"
     },
     {
-      "ref": "r337",
+      "ref": "r331",
       "text": "How do I reset my password?",
       "href": "https://fixtures.vector.test/help/articles/1"
     },
     {
-      "ref": "r340",
+      "ref": "r334",
       "text": "Where can I download my invoices?",
       "href": "https://fixtures.vector.test/help/articles/2"
     },
     {
-      "ref": "r343",
+      "ref": "r337",
       "text": "How do I export my data?",
       "href": "https://fixtures.vector.test/help/articles/9"
     },
     {
-      "ref": "r346",
+      "ref": "r340",
       "text": "How do refunds work?",
       "href": "https://fixtures.vector.test/help/articles/4"
     },
     {
-      "ref": "r349",
+      "ref": "r343",
       "text": "Which browsers are supported?",
       "href": "https://fixtures.vector.test/help/articles/10"
     },
     {
-      "ref": "r357",
+      "ref": "r351",
       "text": "Start a chat →",
       "href": "https://fixtures.vector.test/help/chat"
     },
     {
-      "ref": "r18",
+      "ref": "r12",
       "text": "Skip to main content",
       "href": "https://fixtures.vector.test/help-faq.html#main"
     },
     {
-      "ref": "r361",
+      "ref": "r355",
       "text": "Privacy",
       "href": "https://fixtures.vector.test/privacy"
     },
     {
-      "ref": "r363",
+      "ref": "r357",
       "text": "Terms",
       "href": "https://fixtures.vector.test/terms"
     },
     {
-      "ref": "r365",
+      "ref": "r359",
       "text": "Cookie settings",
       "href": "https://fixtures.vector.test/cookies"
     },
     {
-      "ref": "r367",
+      "ref": "r361",
       "text": "System status",
       "href": "https://status.example.test/"
     }
