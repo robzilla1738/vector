@@ -60,6 +60,16 @@ export interface ModelClient {
 
 /** Static fallback list used until the Gateway catalog is reachable. */
 export const DEFAULT_PLANNER_MODEL = "alibaba/qwen3.8-27b";
+export const LUNA_FAST_MODEL = "openai/gpt-5.6-luna-fast";
 export const FALLBACK_MODELS = [
   { id: DEFAULT_PLANNER_MODEL, name: "Qwen 3.8 27B" },
+  { id: LUNA_FAST_MODEL, name: "GPT 5.6 Luna Fast" },
 ];
+
+/** `0` means no per-run model-call cap. */
+export function modelCallBudget(raw: unknown, fallback = 8): number {
+  const n = Number(raw);
+  if (n === 0) return 0;
+  if (!Number.isFinite(n) || n < 1) return fallback;
+  return Math.min(256, Math.floor(n));
+}

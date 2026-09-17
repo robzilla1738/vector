@@ -27,7 +27,7 @@ export { ArtifactStore } from "./services/artifacts.js";
 export { CookieService, decryptValue, chromeEpochToUnix, mapSameSite } from "./services/cookies.js";
 export { RunCoordinator } from "./agent/coordinator.js";
 export { MockModelClient } from "./agent/mock-client.js";
-export { DEFAULT_PLANNER_MODEL, type ModelClient } from "./agent/model-client.js";
+export { DEFAULT_PLANNER_MODEL, LUNA_FAST_MODEL, FALLBACK_MODELS, type ModelClient } from "./agent/model-client.js";
 export { GatewayModelClient } from "./agent/gateway-client.js";
 export { executeProgram } from "./execution/executor.js";
 export { OperationService } from "./services/operations.js";

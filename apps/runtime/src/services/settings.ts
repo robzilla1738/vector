@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { EngineMode } from "@vector/contracts";
-import { FALLBACK_MODELS, DEFAULT_PLANNER_MODEL, type ModelClient } from "../agent/model-client.js";
+import { FALLBACK_MODELS, DEFAULT_PLANNER_MODEL, modelCallBudget, type ModelClient } from "../agent/model-client.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
@@ -111,8 +111,11 @@ export class SettingsService {
   }
 
   plannerModel(): string {
-    // Pinned: ignore leftover catalog picks (Anthropic, etc.) from earlier builds.
-    return this.env.VECTOR_PLANNER_MODEL || DEFAULT_PLANNER_MODEL;
+    return (
+      (this.get("plannerModel") as string | undefined) ||
+      this.env.VECTOR_PLANNER_MODEL ||
+      DEFAULT_PLANNER_MODEL
+    );
   }
   recoveryModel(): string | undefined {
     return (this.get("recoveryModel") as string) ?? this.env.VECTOR_RECOVERY_MODEL;
@@ -130,7 +133,7 @@ export class SettingsService {
     return (this.get("perOrigin") as number) ?? 2;
   }
   maxModelCalls(): number {
-    return (this.get("maxModelCalls") as number) ?? 8;
+    return modelCallBudget(this.get("maxModelCalls"), 8);
   }
 
   model(): ModelClient | null {
@@ -142,23 +145,29 @@ export class SettingsService {
       const only = this.env.VECTOR_GATEWAY_ONLY?.split(",").map((s) => s.trim()).filter(Boolean);
       this.gatewayClient = new GatewayModelClient(key, {
         callTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined,
-        only: only?.length ? only : ["cerebras"],
+        only: only?.length ? only : undefined,
       });
     }
     return this.gatewayClient;
   }
 
   async listModels(): Promise<{ models: { id: string; name?: string }[]; source: "gateway" | "static" }> {
-    const only = this.env.VECTOR_GATEWAY_ONLY?.split(",").map((s) => s.trim()).filter(Boolean);
-    const cerebrasOnly = !only?.length || (only.length === 1 && only[0] === "cerebras");
-    if (cerebrasOnly) return { models: FALLBACK_MODELS, source: "static" };
     const m = this.model();
-    if (!m) return { models: FALLBACK_MODELS, source: "static" };
-    try {
-      return { models: await m.listModels(), source: "gateway" };
-    } catch {
-      return { models: FALLBACK_MODELS, source: "static" };
+    let extra: { id: string; name?: string }[] = [];
+    let source: "gateway" | "static" = "static";
+    if (m) {
+      try {
+        extra = await m.listModels();
+        source = "gateway";
+      } catch {
+        extra = [];
+      }
     }
+    const seen = new Set(FALLBACK_MODELS.map((x) => x.id));
+    return {
+      models: [...FALLBACK_MODELS, ...extra.filter((x) => !seen.has(x.id))],
+      source,
+    };
   }
 
   /** Tiny structured-output + optional screenshot-understanding probe. */

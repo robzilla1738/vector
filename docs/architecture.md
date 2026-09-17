@@ -143,8 +143,8 @@ structured fields.
 `runs.start` drives the agent loop: observe → plan (AI Gateway, structured
 output) → execute batch → verify → repeat, with human-takeover and pause/
 resume/answer control. The planner defaults to `alibaba/qwen3.8-27b`;
-Gateway routing is pinned to Cerebras unless `VECTOR_GATEWAY_ONLY` lists
-other providers. Models without native structured-output support fall
+Settings can switch to `openai/gpt-5.6-luna-fast`. `VECTOR_GATEWAY_ONLY`
+may pin a provider, but an OpenAI model still routes to OpenAI. Models without native structured-output support fall
 back to JSON-in-text (the response is extracted and schema-validated), and
 reasoning models get extra output-token headroom for thinking tokens.
 

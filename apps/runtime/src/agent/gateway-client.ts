@@ -151,12 +151,29 @@ function filePartFromDataUrl(dataUrl: string): { type: "file"; mediaType: string
   };
 }
 
-function gatewayProviderOptions(only?: string[]) {
+/**
+ * Keep `VECTOR_GATEWAY_ONLY` when it matches this model; drop it otherwise
+ * so `openai/gpt-5.6-luna-fast` still routes when the env pins Cerebras.
+ */
+export function gatewayOnlyForModel(modelId: string, only?: string[]): string[] | undefined {
+  if (!only?.length) return undefined;
+  const creator = modelId.split("/")[0] ?? "";
+  const allowed = only.some((p) => {
+    if (p === creator) return true;
+    if (p === "cerebras" && (creator === "alibaba" || modelId.includes("qwen"))) return true;
+    return false;
+  });
+  return allowed ? only : undefined;
+}
+
+export function gatewayProviderOptions(only?: string[], modelId?: string) {
+  const effective = modelId ? gatewayOnlyForModel(modelId, only) : only;
   return {
     gateway: {
       sort: "ttft" as const,
       caching: "auto" as const,
-      ...(only?.length ? { only } : {}),
+      ...(effective?.length ? { only: effective } : {}),
+      ...(modelId?.endsWith("-fast") ? { speed: "fast" as const } : {}),
     },
     openai: { reasoningEffort: "minimal" as const },
   };
@@ -196,7 +213,7 @@ export class GatewayModelClient implements ModelClient {
           abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
           maxRetries: 0,
           maxOutputTokens: opts.maxOutputTokens ?? 2000,
-          providerOptions: gatewayProviderOptions(this.only),
+          providerOptions: gatewayProviderOptions(this.only, opts.modelId),
         });
         return {
           object: res.object,
@@ -243,7 +260,7 @@ export class GatewayModelClient implements ModelClient {
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0,
       maxOutputTokens: opts.maxOutputTokens ?? 2000,
-      providerOptions: gatewayProviderOptions(this.only),
+      providerOptions: gatewayProviderOptions(this.only, opts.modelId),
     });
     let text = "";
     for await (const delta of stream.textStream) {
@@ -332,7 +349,7 @@ export class GatewayModelClient implements ModelClient {
     maxOutputTokens?: number;
   }): Promise<TextCallResult> {
     const started = Date.now();
-    if (opts.imageDataUrl && this.only?.includes("cerebras")) {
+    if (opts.imageDataUrl && gatewayOnlyForModel(opts.modelId, this.only)?.includes("cerebras")) {
       throw new VectorError("capability_unsupported", "vision is not available on the Cerebras planner");
     }
     const res = await generateText({
@@ -352,7 +369,7 @@ export class GatewayModelClient implements ModelClient {
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
       maxRetries: 0,
       maxOutputTokens: opts.maxOutputTokens ?? 1200,
-      providerOptions: gatewayProviderOptions(this.only),
+      providerOptions: gatewayProviderOptions(this.only, opts.modelId),
     });
     return {
       text: res.text,

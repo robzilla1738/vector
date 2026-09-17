@@ -155,7 +155,13 @@ export function installMockBridge(q: URLSearchParams) {
         return HISTORY.filter((h) => !query || h.title.toLowerCase().includes(query) || h.url.includes(query));
       }
       case "models.list":
-        return { models: [{ id: "alibaba/qwen3.8-27b", name: "Qwen 3.8 27B" }], source: "static" };
+        return {
+          models: [
+            { id: "alibaba/qwen3.8-27b", name: "Qwen 3.8 27B" },
+            { id: "openai/gpt-5.6-luna-fast", name: "GPT 5.6 Luna Fast" },
+          ],
+          source: "static",
+        };
       case "models.probe":
         return { ok: true, modelId: (p.modelId as string) || "alibaba/qwen3.8-27b", latencyMs: 42, vision: false };
       case "chrome.importCookies":

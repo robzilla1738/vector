@@ -124,7 +124,8 @@ export const RunsStartParams = z.object({
   setId: z.string().optional(),
   modelId: z.string().optional(),
   maxSteps: z.number().int().positive().optional(),
-  maxModelCalls: z.number().int().positive().optional(),
+  /** `0` = no per-run cap. */
+  maxModelCalls: z.number().int().min(0).optional(),
   deadlineMs: z.number().int().positive().optional(),
   /** prior turns / notes the planner should see ("EARLIER IN THIS SESSION") */
   context: z.string().max(20_000).optional(),
@@ -179,7 +180,8 @@ export const SettingsSetParams = z.object({
   searchEngine: z.string().optional(),
   maxWorkers: z.number().int().min(1).max(16).optional(),
   perOrigin: z.number().int().min(1).max(8).optional(),
-  maxModelCalls: z.number().int().min(1).max(8).optional(),
+  /** `0` = no per-run cap. */
+  maxModelCalls: z.number().int().min(0).max(256).optional(),
   theme: z.enum(["dark", "light"]).optional(),
   zoomFactor: z.number().optional(),
   /** Vector Engine routing: off (default, Chromium only) | auto (router) | always (engine only). */

@@ -3,6 +3,13 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
+## Settings: GPT Luna Fast + uncapped model turns
+
+Planner model is selectable: `alibaba/qwen3.8-27b` (default) or
+`openai/gpt-5.6-luna-fast` through AI Gateway. Max model turns per run
+can be 8–128 or **No limit** (`maxModelCalls: 0`). A leftover
+`VECTOR_GATEWAY_ONLY=cerebras` no longer blocks OpenAI models.
+
 ## VEC-001–025 engine roadmap (PR #9, `main`)
 
 Independent Vector Engine work after A14–A23. Ticket reports:

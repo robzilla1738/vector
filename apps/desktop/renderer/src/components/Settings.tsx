@@ -8,6 +8,24 @@ import { I } from "./icons";
 const KEY_MASK = "••••••••";
 
 interface ModelEntry { id: string; name?: string }
+
+const KNOWN_PLANNER_MODELS: ModelEntry[] = [
+  { id: "alibaba/qwen3.8-27b", name: "Qwen 3.8 27B" },
+  { id: "openai/gpt-5.6-luna-fast", name: "GPT 5.6 Luna Fast" },
+];
+
+const TURN_OPTIONS = [8, 16, 32, 64, 128, 0];
+
+function mergeModelOptions(models: ModelEntry[], current?: string): ModelEntry[] {
+  const out: ModelEntry[] = [];
+  const seen = new Set<string>();
+  for (const m of [...KNOWN_PLANNER_MODELS, ...models, ...(current ? [{ id: current }] : [])]) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    out.push(m);
+  }
+  return out;
+}
 interface ProbeResult { ok: boolean; modelId: string; latencyMs?: number; vision?: boolean; error?: string }
 interface CookieImportResult { ok: boolean; source: string; imported: number; skipped: number; domains: number; detail?: string }
 
@@ -65,6 +83,9 @@ export function Settings() {
 
   const theme = (settings.theme as string) ?? "dark";
   const plannerModel = (settings.plannerModel as string) ?? "alibaba/qwen3.8-27b";
+  const plannerOptions = mergeModelOptions(models, plannerModel);
+  const turnValue = (settings.maxModelCalls as number) ?? 8;
+  const turnOptions = TURN_OPTIONS.includes(turnValue) ? TURN_OPTIONS : [turnValue, ...TURN_OPTIONS];
   const hasKey = settings.gatewayApiKey === KEY_MASK;
   const engineMode = readEngineMode(settings);
 
@@ -118,9 +139,17 @@ export function Settings() {
           </div>
         </Field>
 
-        <Field label="Planner model" hint="Pinned to Cerebras Qwen 3.8 27B through the AI Gateway.">
+        <Field label="Planner model" hint="Qwen 3.8 27B (Cerebras) or GPT 5.6 Luna Fast through the AI Gateway.">
           <div className="row">
-            <span className="hint mono selectable grow">{plannerModel}</span>
+            <select
+              className="grow"
+              value={plannerModel}
+              onChange={(e) => void set({ plannerModel: e.target.value })}
+            >
+              {plannerOptions.map((m) => (
+                <option key={m.id} value={m.id}>{m.name ? `${m.name} — ${m.id}` : m.id}</option>
+              ))}
+            </select>
             <button className="btn sm" disabled={probing} onClick={() => void runProbe()}>{probing ? "Probing…" : "Test connection"}</button>
             {probe && (
               <span className={`hint ${probe.ok ? "ok" : "err"}`}>
@@ -130,10 +159,10 @@ export function Settings() {
           </div>
         </Field>
 
-        <Field label="Vision model" hint="Screenshot replan is skipped on the Cerebras planner.">
+        <Field label="Vision model" hint="Screenshot replan. Luna Fast accepts images; Qwen on Cerebras does not.">
           <select value={(settings.visionModel as string) ?? ""} onChange={(e) => void set({ visionModel: e.target.value })}>
             <option value="">Same as planner</option>
-            {models.map((m) => <option key={m.id} value={m.id}>{m.name ? `${m.name} — ${m.id}` : m.id}</option>)}
+            {plannerOptions.map((m) => <option key={m.id} value={m.id}>{m.name ? `${m.name} — ${m.id}` : m.id}</option>)}
           </select>
         </Field>
 
@@ -141,8 +170,15 @@ export function Settings() {
           <Field label="Parallel worker pages">
             <input type="number" min={1} max={16} defaultValue={(settings.maxWorkers as number) ?? 4} onBlur={(e) => void set({ maxWorkers: Number(e.target.value) })} />
           </Field>
-          <Field label="Max model calls per run">
-            <input type="number" min={1} max={8} defaultValue={(settings.maxModelCalls as number) ?? 8} onBlur={(e) => void set({ maxModelCalls: Number(e.target.value) })} />
+          <Field label="Max model turns per run" hint="How many planner calls a run may make. No limit keeps going until the goal finishes or you stop it.">
+            <select
+              value={String(turnValue)}
+              onChange={(e) => void set({ maxModelCalls: Number(e.target.value) })}
+            >
+              {turnOptions.map((n) => (
+                <option key={n} value={n}>{n === 0 ? "No limit" : String(n)}</option>
+              ))}
+            </select>
           </Field>
         </div>
 

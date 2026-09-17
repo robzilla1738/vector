@@ -14,20 +14,29 @@ function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}
 }
 
 describe("settings defaults for a real test pass", () => {
-  it("pins the planner to Cerebras Qwen even if an old catalog model is stored", () => {
-    const { dir, settings } = harness({}, { plannerModel: "anthropic/claude-sonnet-4.5" });
+  it("honours a saved planner model including GPT Luna Fast", () => {
+    const { dir, settings } = harness({}, { plannerModel: "openai/gpt-5.6-luna-fast" });
     try {
-      expect(settings.plannerModel()).toBe(DEFAULT_PLANNER_MODEL);
-      expect(settings.all().plannerModel).toBe("alibaba/qwen3.8-27b");
+      expect(settings.plannerModel()).toBe("openai/gpt-5.6-luna-fast");
+      expect(settings.all().plannerModel).toBe("openai/gpt-5.6-luna-fast");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it("honours VECTOR_PLANNER_MODEL over the pin", () => {
+  it("falls back to VECTOR_PLANNER_MODEL then the Qwen default", () => {
     const { dir, settings } = harness({ VECTOR_PLANNER_MODEL: "alibaba/qwen3.8-27b-custom" });
     try {
       expect(settings.plannerModel()).toBe("alibaba/qwen3.8-27b-custom");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("treats maxModelCalls 0 as no limit", () => {
+    const { dir, settings } = harness({}, { maxModelCalls: 0 });
+    try {
+      expect(settings.maxModelCalls()).toBe(0);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -39,6 +48,7 @@ describe("settings defaults for a real test pass", () => {
       expect(settings.searchEngine()).toBe("https://duckduckgo.com/?q=%s");
       expect(settings.engineMode()).toBe("auto");
       expect(settings.maxModelCalls()).toBe(8);
+      expect(settings.plannerModel()).toBe(DEFAULT_PLANNER_MODEL);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

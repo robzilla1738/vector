@@ -54,8 +54,8 @@ Configuration is otherwise optional — copy `.env.example` to `.env` (in the
 repo root you launch from, or in the data dir
 `~/Library/Application Support/Vector`) and set `AI_GATEWAY_API_KEY` to
 enable agent goals (`runs.start`, `sets.map --goal`). The planner defaults
-to `alibaba/qwen3.8-27b` through Vercel AI Gateway, pinned to Cerebras
-(`VECTOR_GATEWAY_ONLY`, default `cerebras`). The runtime loads
+to `alibaba/qwen3.8-27b` through Vercel AI Gateway; Settings also offers
+`openai/gpt-5.6-luna-fast`. The runtime loads
 `<dataDir>/.env` then `<cwd>/.env` at startup; variables already set in the
 environment always win. Programs, observations, and saved-operation sets
 work with no key. Other agents (Cursor, Codex, Claude) can drive the same

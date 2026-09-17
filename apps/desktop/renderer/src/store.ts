@@ -308,7 +308,8 @@ export const useStore = create<Workspace>((set, get) => ({
           return `"${r.goal.slice(0, 80)}" → ${out}`;
         })
         .join("; ");
-      const budget = Math.min(8, Math.max(1, Number(get().settings.maxModelCalls) || 8));
+      const n = Number(get().settings.maxModelCalls);
+      const budget = n === 0 ? 0 : Math.min(256, Math.max(1, Number.isFinite(n) ? n : 8));
       const run = await call<Run>("runs.start", { goal: g, pageIds, maxModelCalls: budget, context: context || undefined });
       set((s) => ({
         runs: s.runs.some((r) => r.runId === run.runId) ? s.runs : [run, ...s.runs],

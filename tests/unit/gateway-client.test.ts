@@ -5,6 +5,8 @@ import {
   assignMissingStepIds,
   extractJson,
   GatewayModelClient,
+  gatewayOnlyForModel,
+  gatewayProviderOptions,
   isStructuredOutputError,
   normalizePlannerObject,
   schemaNeedsJsonFallback,
@@ -80,6 +82,14 @@ describe("stripReasoning / oneOf errors", () => {
   });
   it("treats Cerebras oneOf rejection as a structured-output failure", () => {
     expect(isStructuredOutputError(new Error("Unsupported JSON schema fields in schema with keys: dict_keys(['oneOf'])."))).toBe(true);
+  });
+  it("drops a Cerebras pin for GPT Luna Fast", () => {
+    expect(gatewayOnlyForModel("openai/gpt-5.6-luna-fast", ["cerebras"])).toBeUndefined();
+    expect(gatewayOnlyForModel("alibaba/qwen3.8-27b", ["cerebras"])).toEqual(["cerebras"]);
+    expect(gatewayProviderOptions(["cerebras"], "openai/gpt-5.6-luna-fast").gateway).toMatchObject({
+      speed: "fast",
+    });
+    expect(gatewayProviderOptions(["cerebras"], "openai/gpt-5.6-luna-fast").gateway.only).toBeUndefined();
   });
   it("rejects image parts before the Gateway call when pinned to Cerebras", async () => {
     const client = new GatewayModelClient("vg_test", { only: ["cerebras"] });

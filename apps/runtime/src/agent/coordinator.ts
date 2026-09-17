@@ -456,7 +456,9 @@ export class RunCoordinator {
     try {
       while (true) {
         await this.waitIfPaused(c, runId);
-        if (modelCalls >= maxModelCalls) throw new VectorError("step_failed", "model call budget exhausted");
+        if (maxModelCalls > 0 && modelCalls >= maxModelCalls) {
+          throw new VectorError("step_failed", "model call budget exhausted");
+        }
         if (stepsRun >= maxSteps) throw new VectorError("step_failed", "step budget exhausted");
         if (!activePageId) throw new VectorError("invalid_params", "run has no target page");
 
