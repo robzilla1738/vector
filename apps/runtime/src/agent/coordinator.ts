@@ -760,9 +760,9 @@ export class RunCoordinator {
               throw new VectorError("step_failed", "planner repeated the same steps without finishing");
             }
             lastError = `You already ran this exact step sequence and it did not complete the goal. If the goal is met return status="done" with the result; if blocked, ask for input or request a different observation scope — do NOT repeat the same actions.`;
-            // with streaming the repeated steps may already be running; let
-            // them finish (they are recorded) and still deliver the nudge
-            if (!early || early.dispatchedCount === 0) {
+            // After a failed chunk the same ops are a repair retry and must
+            // run so consecutive failures can reach MAX_REPAIRS.
+            if (!lastActionFailed && (!early || early.dispatchedCount === 0)) {
               if (early) await early.finish([]);
               continue;
             }
@@ -803,7 +803,10 @@ export class RunCoordinator {
             value: "value" in s ? String((s as { value?: string }).value ?? "") : "",
           })),
         );
-        const writes = (compiled.program.steps ?? []).some((s) => classifyStep(s.op) !== "read");
+        const writes = (compiled.program.steps ?? []).some((s) => {
+          const effect = classifyStep(s.op);
+          return effect === "write" || effect === "egress";
+        });
         let skippedDuplicate = false;
         let intentId: string | undefined;
         if (writes) {
@@ -817,11 +820,13 @@ export class RunCoordinator {
           else intentId = began.intent.id;
         }
         const program = compiled.program;
+        const streamed = early && early.dispatchedCount > 0;
         const result = skippedDuplicate
           ? { status: "completed" as const, steps: [] }
-          : early
-          ? await early.finish(plan.steps)
+          : streamed
+          ? await early!.finish(plan.steps ?? [])
           : await this.deps.pages.execute(program, { runId, signal: c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
+        if (early && !streamed) early.halt();
         if (intentId) {
           if (result.status === "completed") this.durable.confirm(intentId);
           else this.durable.fail(intentId);

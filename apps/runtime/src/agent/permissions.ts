@@ -5,7 +5,7 @@ import type { Step } from "@vector/contracts";
 
 export type EffectClass = "read" | "write" | "destructive" | "egress";
 
-export const DEFAULT_GRANTS = ["effect:read", "effect:write"] as const;
+export const DEFAULT_GRANTS = ["effect:read", "effect:write", "effect:destructive", "effect:egress"] as const;
 
 const WRITE_OPS = new Set([
   "click",

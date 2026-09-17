@@ -27,7 +27,7 @@ export class DurableWriteLedger {
   }): { intent: WriteIntent; duplicate: boolean } {
     const idempotencyKey = this.key(opts.runId, opts.pageId, opts.documentEpoch, opts.signature);
     const existing = this.byKey.get(idempotencyKey);
-    if (existing?.status === "confirmed" || existing?.status === "pending") {
+    if (existing?.status === "confirmed") {
       return { intent: existing, duplicate: true };
     }
     const intent: WriteIntent = {

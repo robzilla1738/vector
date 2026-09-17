@@ -1619,6 +1619,7 @@ pub(crate) fn host_call(
             page,
             &arg_str(args, 0),
             &arg_str(args, 1),
+            &arg_str(args, 2),
             &arg_str(args, 3),
         ),
         "fetchStart" => {

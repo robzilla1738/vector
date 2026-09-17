@@ -52,13 +52,17 @@ function harness() {
     listModels: vi.fn(async () => []),
   } as unknown as ModelClient;
 
+  let executeCalls = 0;
   const pages = {
     observe: vi.fn(async () => obs()),
-    execute: vi.fn(async () => ({
-      status: "failed" as const,
-      steps: [] as StepOutcome[],
-      error: "locator not found",
-    })),
+    execute: vi.fn(async () => {
+      executeCalls += 1;
+      return {
+        status: "failed" as const,
+        steps: [] as StepOutcome[],
+        error: "locator not found",
+      };
+    }),
     capture: vi.fn(async () => ({ dataUrl: "data:image/png;base64,AAAA", width: 100, height: 100, scale: 1 })),
   };
 
@@ -71,7 +75,7 @@ function harness() {
     recoveryModel: () => "test/recovery",
     recordModelCall: () => {},
   });
-  return { repo, coordinator, generateStructured, roles };
+  return { repo, coordinator, generateStructured, roles, get executeCalls() { return executeCalls; } };
 }
 
 async function waitForRun(repo: Repo, runId: string, ms = 5000) {
@@ -92,7 +96,6 @@ describe("repair escalation", () => {
     const run = await h.coordinator.start({ goal: "click go", pageIds: ["p1"], maxModelCalls: 20, maxSteps: 40 });
     const final = await waitForRun(h.repo, run.runId);
     expect(final.status).toBe("failed");
-    const recoveryCalls = h.roles.filter((id) => id === "test/recovery");
-    expect(recoveryCalls).toHaveLength(1);
+    expect(h.roles.filter((id) => id === "test/recovery")).toHaveLength(1);
   });
 });
