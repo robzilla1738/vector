@@ -1022,6 +1022,7 @@ mod tests {
                         } else {
                             let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
                         }
+                        let _ = stream.shutdown(std::net::Shutdown::Write);
                     }
                     Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(std::time::Duration::from_millis(10));
@@ -1040,17 +1041,33 @@ mod tests {
         let addr = url.trim_start_matches("http://").to_owned();
         let mut stream = std::net::TcpStream::connect(&addr).unwrap();
         stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+            .unwrap();
+        stream
             .write_all(
                 b"GET /testharness.js HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n",
             )
             .unwrap();
-        let mut body = String::new();
-        stream.read_to_string(&mut body).unwrap();
+        // macOS may RST after Connection: close; keep any bytes already read.
+        let mut raw = Vec::new();
+        match stream.read_to_end(&mut raw) {
+            Ok(_) => {}
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::ConnectionReset
+                        | std::io::ErrorKind::UnexpectedEof
+                        | std::io::ErrorKind::WouldBlock
+                        | std::io::ErrorKind::TimedOut
+                ) => {}
+            Err(e) => panic!("{e}"),
+        }
+        let body = String::from_utf8_lossy(&raw);
         let _ = stop.send(());
         handle.join().unwrap();
         assert!(
             body.contains("add_completion_callback") || body.contains("testharness"),
-            "{body}"
+            "{body:.200}"
         );
     }
 
@@ -1194,13 +1211,27 @@ mod tests {
             let addr = origin.trim_start_matches("http://").to_owned();
             let mut stream = std::net::TcpStream::connect(&addr).unwrap();
             stream
+                .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                .unwrap();
+            stream
                 .write_all(
                     format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
                         .as_bytes(),
                 )
                 .unwrap();
             let mut body = Vec::new();
-            stream.read_to_end(&mut body).unwrap();
+            match stream.read_to_end(&mut body) {
+                Ok(_) => {}
+                Err(e)
+                    if matches!(
+                        e.kind(),
+                        std::io::ErrorKind::ConnectionReset
+                            | std::io::ErrorKind::UnexpectedEof
+                            | std::io::ErrorKind::WouldBlock
+                            | std::io::ErrorKind::TimedOut
+                    ) => {}
+                Err(e) => panic!("{e}"),
+            }
             body
         };
         let ahem = get("/fonts/Ahem.ttf");

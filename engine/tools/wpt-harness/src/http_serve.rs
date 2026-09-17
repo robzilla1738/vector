@@ -50,6 +50,7 @@ impl DirServer {
                             );
                             let _ = stream.write_all(header.as_bytes());
                             let _ = stream.write_all(body);
+                            let _ = stream.shutdown(std::net::Shutdown::Write);
                             continue;
                         }
                         match resolve(&roots, rel) {
@@ -75,6 +76,7 @@ impl DirServer {
                                 );
                             }
                         }
+                        let _ = stream.shutdown(std::net::Shutdown::Write);
                     }
                     Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(Duration::from_millis(10));
