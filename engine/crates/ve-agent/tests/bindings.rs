@@ -3134,3 +3134,207 @@ fn aria_enumerated_keywords_and_invalid_defaults() {
     assert_eq!(v["missingBusy"], serde_json::Value::Null, "{v}");
     assert_eq!(v["emptyBusy"], "false", "{v}");
 }
+
+#[test]
+fn template_for_buffer_in_place_runs_scripts_atomically() {
+    let mut page = open(
+        r#"<div id="container">
+             <span>Before</span>
+             <template for buffer>
+               <span id="target1">Inside 1</span>
+               <script>
+                 window.target1PresentDuringScript = !!document.getElementById('target1');
+                 window.target2PresentDuringScript = !!document.getElementById('target2');
+               </script>
+               <span id="target2">Inside 2</span>
+             </template>
+             <span>After</span>
+           </div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const c = document.getElementById("container");
+              return {
+                t1: window.target1PresentDuringScript,
+                t2: window.target2PresentDuringScript,
+                tpl: c.querySelector("template") !== null,
+                before: c.querySelector("#target1") && c.querySelector("#target1").previousElementSibling.textContent,
+                after: c.querySelector("#target2") && c.querySelector("#target2").nextElementSibling.textContent
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["t1"], true, "{v}");
+    assert_eq!(v["t2"], true, "{v}");
+    assert_eq!(v["tpl"], false, "{v}");
+    assert_eq!(v["before"], "Before", "{v}");
+    assert_eq!(v["after"], "After", "{v}");
+}
+
+#[test]
+fn template_for_sanitize_invalid_runs_script() {
+    let mut page = open(
+        r#"<div id="t"><?start name="m">Old<?end></div>
+           <template for="m" sanitize="invalid">
+             <script>window.scriptInvalidVal = true;</script>
+             <span id="ok">Allowed Invalid Val</span>
+           </template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                ran: !!window.scriptInvalidVal,
+                text: document.querySelector("#t span") && document.querySelector("#t span").textContent
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["ran"], true, "{v}");
+    assert_eq!(v["text"], "Allowed Invalid Val", "{v}");
+}
+
+#[test]
+fn start_without_end_replaces_through_parent() {
+    let mut page = open(r#"<div id="c"><?start name="content"?><span class="red">Has red</span></div>"#);
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const c = document.getElementById("c");
+              const box = document.createElement("div");
+              box.innerHTML = '<template for="content"><?start name="content"?><span class="blue">Has blue</span></template>';
+              const tpl = box.querySelector("template");
+              document.body.appendChild(tpl);
+              __veApplyPartialUpdates();
+              const first = c.textContent.replace(/\s+/g, " ").trim();
+              const box2 = document.createElement("div");
+              box2.innerHTML = '<template for="content">Green (no span)</template>';
+              document.body.appendChild(box2.querySelector("template"));
+              __veApplyPartialUpdates();
+              return { first, second: c.textContent.replace(/\s+/g, " ").trim() };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["first"], "Has blue", "{v}");
+    assert_eq!(v["second"], "Green (no span)", "{v}");
+}
+
+#[test]
+fn set_html_and_sanitizer_strip_script_and_apply_template() {
+    let mut page = open(r#"<div id="host"></div>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const host = document.getElementById("host");
+              host.setHTML('<div id="t"><?start name="m">Old<?end></div><template for="m" sanitize="unsafe"><script>window.nestedScript7 = true;<\/script><span id="ok7">Allowed 7</span></template>');
+              const bespoke = new Sanitizer({ elements: ["span", "template"], attributes: ["for", "marker"] });
+              const c8 = document.createElement("div");
+              document.body.appendChild(c8);
+              c8.setHTML('<span marker="o"><?start name="o">X<?end></span><template for="o" sanitize="unsafe"><span>ok</span><div>no</div></template>', { sanitizer: bespoke });
+              return {
+                ran: !!window.nestedScript7,
+                span: host.querySelector("#ok7") && host.querySelector("#ok7").textContent,
+                sanitizer: typeof Sanitizer === "function",
+                noDiv: c8.querySelectorAll("div").length === 0,
+                hasSpan: c8.querySelector("span") !== null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ran"], false, "{v}");
+    assert_eq!(v["sanitizer"], true, "{v}");
+    assert_eq!(v["noDiv"], true, "{v}");
+    assert_eq!(v["hasSpan"], true, "{v}");
+}
+
+#[test]
+fn empty_for_streaming_mid_script_sees_prefix_only() {
+    let mut page = open(
+        r#"<div id="container2">
+             <span id="before-span">Before</span>
+             <template for id="tpl-test">
+               <span>A</span><script>
+                 window.step1 = (function () {
+                   const c = document.getElementById("container2").cloneNode(true);
+                   for (const s of c.querySelectorAll("script")) s.remove();
+                   return c.textContent.trim().replace(/\s+/g, " ");
+                 })();
+                 const tpl = document.getElementById("tpl-test");
+                 const beforeSpan = document.getElementById("before-span");
+                 document.getElementById("container2").insertBefore(tpl, beforeSpan);
+               </script><span>B</span><script>
+                 window.step2 = "ran";
+               </script>
+             </template>
+             <span>After</span>
+           </div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                step1: window.step1,
+                step2: window.step2,
+                tpl: document.getElementById("container2").querySelector("template") !== null
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["step1"], "Before A", "{v}");
+    assert_eq!(v["step2"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["tpl"], true, "{v}");
+}
+
+#[test]
+fn review_behavior_counterexamples() {
+    let mut page = open(
+        r#"<div id="h"><span>x</span></div>
+           <script>
+             window.__url = new URL('https://s.test/a/b/../c').href;
+             const ev = new Event('x');
+             window.__composed = ev.composed;
+             let n = 0;
+             const fn = () => { n++; };
+             document.getElementById('h').addEventListener('click', fn);
+             document.getElementById('h').addEventListener('click', fn);
+             document.getElementById('h').click();
+             window.__dedup = n;
+             let sawTarget = false;
+             document.addEventListener('ping', (e) => { e.stopPropagation(); }, true);
+             document.getElementById('h').addEventListener('ping', () => { sawTarget = true; });
+             document.getElementById('h').dispatchEvent(new Event('ping', { bubbles: true }));
+             window.__stopped = sawTarget === false;
+             const kids = document.getElementById('h').childNodes;
+             const before = kids.length;
+             document.getElementById('h').appendChild(document.createElement('i'));
+             window.__live = kids.length === before + 1;
+             window.__owner = document.getElementById('h').ownerDocument === document;
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                url: window.__url,
+                composed: window.__composed,
+                dedup: window.__dedup,
+                stopped: window.__stopped,
+                live: window.__live,
+                owner: window.__owner
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["url"], "https://s.test/a/c", "{v}");
+    assert_eq!(v["composed"], false, "{v}");
+    assert_eq!(v["dedup"], 1, "{v}");
+    assert_eq!(v["stopped"], true, "{v}");
+    assert_eq!(v["live"], true, "{v}");
+    assert_eq!(v["owner"], true, "{v}");
+}

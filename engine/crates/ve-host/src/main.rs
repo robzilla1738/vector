@@ -91,6 +91,21 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
                 .is_some();
             std::process::exit(if ok { 0 } else { 14 });
         }
+        "js" => {
+            // V8 platform threads were preloaded before seccomp. Creating more
+            // work under the sandbox must not SIGSYS.
+            ve_napi::preload_scripting();
+            let ok = std::thread::Builder::new()
+                .name("ve-host-js".into())
+                .spawn(|| {
+                    ve_napi::preload_scripting();
+                    1 + 1
+                })
+                .ok()
+                .and_then(|t| t.join().ok())
+                == Some(2);
+            std::process::exit(if ok { 0 } else { 15 });
+        }
         "clone" => {
             #[cfg(target_os = "linux")]
             unsafe {

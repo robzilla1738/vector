@@ -235,6 +235,17 @@ fn sandbox_denies_network_creation() {
 }
 
 #[test]
+#[test]
+fn sandbox_allows_v8_threads_for_javascript() {
+    let status = sandbox_selftest("js");
+    assert_eq!(
+        status.code(),
+        Some(0),
+        "sandboxed ve-host must run V8/watchdog threads (js selftest): {status:?}"
+    );
+}
+
+#[test]
 fn sandbox_denies_clone() {
     let status = sandbox_selftest("clone");
     assert!(

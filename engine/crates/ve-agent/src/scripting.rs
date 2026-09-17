@@ -408,7 +408,9 @@ impl Page {
             let _ = self.call_script("__veApplyPartialUpdates", &[]);
             let in_head = self.expect_link_in_head(script.node);
             let _ = self.expect_blocking_active();
-            self.eval_document_script(&script);
+            if self.in_browsing_tree(script.node) {
+                self.eval_document_script(&script);
+            }
             let _ = self.call_script("__veApplyPartialUpdates", &[]);
             if in_head {
                 self.snapshot_head_expect_links();
@@ -431,6 +433,12 @@ impl Page {
         self.parser_limit = None;
         self.reveal_parser_progress(prev_limit);
         let _ = self.call_script("__veApplyPartialUpdates", &[]);
+        for script in &scripts {
+            if !script.defer && !script.module && !script.async_ && self.in_browsing_tree(script.node)
+            {
+                self.eval_document_script(script);
+            }
+        }
         let mut later = Vec::new();
         for script in delayed {
             if !self.in_browsing_tree(script.node) {
@@ -461,6 +469,14 @@ impl Page {
 
     fn eval_document_script(&mut self, script: &crate::page::FetchedScript) {
         if self.scripts_executed.contains(&script.node) {
+            return;
+        }
+        if self
+            .call_script("__veScriptRan", &[crate::dom::pack(script.node)])
+            .ok()
+            .is_some_and(|v| v.is_truthy())
+        {
+            self.scripts_executed.insert(script.node);
             return;
         }
         self.scripts_executed.insert(script.node);

@@ -414,6 +414,7 @@ pub(crate) fn host_call(
             |id| arr(page.tree_children(id)),
         )),
         "isConnected" => Ok(JsValue::Bool(page.doc.is_connected(live(page, args, 0)?))),
+        "parserVisible" => Ok(JsValue::Bool(page.parser_visible(live(page, args, 0)?))),
         "appendChild" => {
             let (p, c) = (live(page, args, 0)?, live(page, args, 1)?);
             let ret = crate::idl::LiveDom::new(page, p).append_child(c);

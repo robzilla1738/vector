@@ -12,7 +12,7 @@ use ve_a11y::{
     parse_ref_parts, ref_for,
 };
 use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
-use ve_dom::{DirtyFlags, Document, Namespace, NodeKind};
+use ve_dom::{DirtyFlags, Document, Namespace, Node, NodeKind};
 use ve_gfx::SoftwareRenderer;
 use ve_html::DocumentMeta;
 use ve_layout::{LayoutEngine, LayoutTree};
@@ -1824,12 +1824,35 @@ impl Page {
         }
     }
 
+    /// Light-tree elements plus descendants of live `<template for>` contents,
+    /// in parse/document order, so mid-stream template scripts run.
+    fn script_scan_ids(&self) -> Vec<NodeId> {
+        let mut ids = Vec::new();
+        fn walk(doc: &Document, id: NodeId, ids: &mut Vec<NodeId>, in_for: bool) {
+            if doc.get(id).is_some_and(Node::is_element) {
+                ids.push(id);
+                if let Some(frag) = doc.template_contents(id) {
+                    let is_for = in_for || doc.attribute(id, "for").is_some();
+                    if is_for {
+                        for c in doc.children(frag) {
+                            walk(doc, c, ids, true);
+                        }
+                    }
+                }
+            }
+            for c in doc.children(id) {
+                walk(doc, c, ids, in_for);
+            }
+        }
+        walk(&self.doc, self.doc.root(), &mut ids, false);
+        ids
+    }
+
     /// Records every `<script>` in document order with its source.
     fn collect_scripts(&mut self, external: &HashMap<NodeId, Option<String>>) {
         let mut scripts = Vec::new();
-        for id in self.doc.elements() {
-            if !self.in_browsing_tree(id)
-                || !script_is_classic_or_module(&self.doc, id)
+        for id in self.script_scan_ids() {
+            if !script_is_classic_or_module(&self.doc, id)
                 || self.doc.attribute(id, "nomodule").is_some()
             {
                 continue;

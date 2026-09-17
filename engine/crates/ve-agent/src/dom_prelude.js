@@ -181,7 +181,9 @@
       const once = !!(opts && opts.once);
       const list = store(this);
       if (!list.has(type)) list.set(type, []);
-      list.get(type).push({ fn: call, orig: fn, cap, once });
+      const arr = list.get(type);
+      if (arr.some((x) => x.orig === fn && x.cap === cap)) return;
+      arr.push({ fn: call, orig: fn, cap, once });
     }
     removeEventListener(type, fn, opts) {
       const cap = !!(opts && (opts === true || opts.capture));
@@ -1108,7 +1110,10 @@
     get lastChild() { return wrap(D("lastChild", this.__h)); }
     get previousSibling() { return wrap(D("prevSibling", this.__h)); }
     get nextSibling() { return wrap(D("nextSibling", this.__h)); }
-    get childNodes() { return list(D("childNodes", this.__h)); }
+    get childNodes() {
+      const h = this.__h;
+      return new LiveNodeList(() => list(D("childNodes", h)));
+    }
     get isConnected() { return !!D("isConnected", this.__h); }
     get ownerDocument() {
       if (this.nodeType === 9) return null;
@@ -1148,7 +1153,20 @@
       return n;
     }
     replaceChild(n, old) { D("replaceChild", this.__h, handleOf(n), handleOf(old)); upgradeTree(n); return old; }
-    cloneNode(deep) { return wrap(D("cloneNode", this.__h, !!deep)); }
+    cloneNode(deep) {
+      if (!deep) return wrap(D("cloneNode", this.__h, false));
+      const copy = wrap(D("cloneNode", this.__h, false));
+      if (!copy) return copy;
+      const kids = this.childNodes;
+      if (kids) {
+        for (let i = 0; i < kids.length; i++) copy.appendChild(kids[i].cloneNode(true));
+      }
+      if (this.nodeType === 1 && (this.localName || "").toLowerCase() === "template" && this.content && copy.content) {
+        const src = this.content.childNodes;
+        for (let i = 0; i < src.length; i++) copy.content.appendChild(src[i].cloneNode(true));
+      }
+      return copy;
+    }
     contains(n) { return !!D("contains", this.__h, handleOf(n)); }
     hasChildNodes() { return this.childNodes.length > 0; }
     replaceChildren(...args) {
@@ -1655,6 +1673,66 @@
     return streamHtmlInto(this, opts);
   };
   Element.prototype.streamHTMLUnsafe = Element.prototype.streamAppendHTMLUnsafe;
+  class Sanitizer {
+    constructor(config) {
+      config = config || {};
+      this._elements = config.elements
+        ? new Set(Array.from(config.elements).map((e) => String(e).toLowerCase()))
+        : null;
+      this._attributes = config.attributes
+        ? new Set(Array.from(config.attributes).map((a) => String(a).toLowerCase()))
+        : null;
+    }
+    allowElement(name) {
+      name = String(name || "").toLowerCase();
+      if (name === "script" || name === "iframe" || name === "object" || name === "embed") return false;
+      if (name.includes("-")) return false;
+      if (this._elements) return this._elements.has(name);
+      return true;
+    }
+    allowAttr(name) {
+      name = String(name || "").toLowerCase();
+      if (/^on/.test(name)) return false;
+      if (this._attributes) return this._attributes.has(name);
+      return true;
+    }
+  }
+  function sanitizeTree(node, sanitizer) {
+    if (!node) return;
+    if (node.nodeType === 1) {
+      const tag = (node.localName || "").toLowerCase();
+      if (!sanitizer.allowElement(tag) || (node.getAttribute && node.getAttribute("is"))) {
+        if (node.parentNode) node.parentNode.removeChild(node);
+        return;
+      }
+      const attrs = node.getAttributeNames ? node.getAttributeNames() : [];
+      for (let i = 0; i < attrs.length; i++) {
+        if (!sanitizer.allowAttr(attrs[i])) node.removeAttribute(attrs[i]);
+      }
+    }
+    const kids = node.childNodes ? Array.from(node.childNodes) : [];
+    for (const k of kids) sanitizeTree(k, sanitizer);
+    if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "template" && node.content) {
+      const ckids = Array.from(node.content.childNodes || []);
+      for (const k of ckids) sanitizeTree(k, sanitizer);
+    }
+  }
+  Element.prototype.setHTML = function setHTML(html, options) {
+    const box = document.createElement("template");
+    box.innerHTML = html == null ? "" : String(html);
+    const sanitizer = (options && options.sanitizer) || new Sanitizer();
+    sanitizeTree(box.content, sanitizer);
+    while (this.firstChild) this.removeChild(this.firstChild);
+    while (box.content.firstChild) this.appendChild(box.content.firstChild);
+    applyAllPartialUpdates();
+  };
+  Element.prototype.setHTMLUnsafe = function setHTMLUnsafe(html) {
+    const box = document.createElement("template");
+    box.innerHTML = html == null ? "" : String(html);
+    while (this.firstChild) this.removeChild(this.firstChild);
+    while (box.content.firstChild) this.appendChild(box.content.firstChild);
+    applyAllPartialUpdates();
+  };
   (function defineOnHandlers() {
     const names = ("abort animationend animationiteration animationstart blur cancel canplay canplaythrough change click close contextmenu copy cuechange cut dblclick drag dragend dragenter dragleave dragover dragstart drop durationchange emptied ended error focus focusin focusout gotpointercapture input invalid keydown keypress keyup load loadeddata loadedmetadata loadstart lostpointercapture mousedown mouseenter mouseleave mousemove mouseout mouseover mouseup paste pause play playing pointercancel pointerdown pointerenter pointerleave pointermove pointerout pointerover pointerup progress ratechange reset resize scroll seeked seeking select stalled submit suspend timeupdate toggle touchcancel touchend touchmove touchstart transitionend volumechange waiting wheel").split(" ");
     for (const name of names) {
@@ -3981,7 +4059,7 @@
     HTMLVideoElement, HTMLAudioElement, HTMLTrackElement,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
-    MutationObserver, IntersectionObserver, ResizeObserver, Range,
+    MutationObserver, IntersectionObserver, ResizeObserver, Range, Sanitizer,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, EventSource, Blob,
     createDataChannelPair() {
       const listeners = [[], []];
@@ -4933,7 +5011,7 @@
     const isModule = type === "module";
     const run = () => {
       if (el.__veRan || el.__veCancelled) return;
-      if (!el.isConnected) {
+      if (!forceSync && !el.isConnected) {
         el.__veRan = true;
         return;
       }
@@ -4947,7 +5025,7 @@
           return;
         }
       } else {
-        source = el.textContent || "";
+        source = el.textContent || el.text || "";
       }
       el.__veRan = true;
       try {
@@ -5065,11 +5143,31 @@
     const v = String(rec.sanitize).trim();
     return v === "" || v.toLowerCase() === "sanitize";
   }
+  function isCustomElementNode(node) {
+    if (!node || node.nodeType !== 1) return false;
+    const tag = (node.localName || "").toLowerCase();
+    if (tag.includes("-")) return true;
+    return !!(node.getAttribute && node.getAttribute("is"));
+  }
   function isUnsafeNode(node) {
-    return !!(node && node.nodeType === 1 && (node.localName || "").toLowerCase() === "script");
+    if (!node || node.nodeType !== 1) return false;
+    const tag = (node.localName || "").toLowerCase();
+    if (tag === "script") return true;
+    if (tag === "template") return true;
+    return isCustomElementNode(node);
   }
   function stripUnsafe(node) {
     if (!node || node.nodeType !== 1) return;
+    if (node.localName === "template" && node.content) {
+      const ckids = node.content.childNodes ? Array.from(node.content.childNodes) : [];
+      for (const k of ckids) {
+        if (isUnsafeNode(k)) {
+          if (k.parentNode) k.parentNode.removeChild(k);
+        } else {
+          stripUnsafe(k);
+        }
+      }
+    }
     const kids = node.childNodes ? Array.from(node.childNodes) : [];
     for (const k of kids) {
       if (isUnsafeNode(k)) {
@@ -5079,12 +5177,54 @@
       }
     }
   }
-  function takeTemplateChildren(tpl) {
+  function nodeVisible(n) {
+    if (!n) return true;
+    try {
+      return D("parserVisible", n.__h) !== false;
+    } catch (e) {
+      return true;
+    }
+  }
+  function templateFinished(tpl) {
+    if (!tpl || tpl.__veStreamAborted) return false;
+    if (tpl.__veStreamEnd !== undefined && tpl.nextSibling !== tpl.__veStreamEnd) {
+      tpl.__veStreamAborted = true;
+      return false;
+    }
+    const next = tpl.nextSibling;
+    if (next) return nodeVisible(next);
+    const last = tpl.content && tpl.content.lastChild;
+    return !last || nodeVisible(last);
+  }
+  function takeVisibleTemplateChildren(tpl, all) {
     const frag = tpl.content;
     const out = [];
     if (!frag) return out;
-    while (frag.firstChild) out.push(frag.removeChild(frag.firstChild));
+    let n = frag.firstChild;
+    while (n) {
+      const next = n.nextSibling;
+      if (!all && !nodeVisible(n)) break;
+      out.push(frag.removeChild(n));
+      n = next;
+    }
     return out;
+  }
+  function takeTemplateChildren(tpl) {
+    return takeVisibleTemplateChildren(tpl, true);
+  }
+  function clearPatchRange(found) {
+    if (!found || !found.parent) return;
+    let n = found.open.nextSibling;
+    while (n && n !== found.end) {
+      const next = n.nextSibling;
+      if (n.parentNode) n.parentNode.removeChild(n);
+      n = next;
+    }
+  }
+  function flushObserversNow() {
+    try {
+      if (typeof globalThis.__veFlushObservers === "function") globalThis.__veFlushObservers();
+    } catch (e) {}
   }
   function insertPatchNodes(parent, before, nodes, rec, runScripts) {
     const safe = sanitizeOn(rec);
@@ -5094,9 +5234,12 @@
       if (safe) stripUnsafe(node);
       staged.push(node);
     }
-    const flushOne = (node) => {
+    const place = (node) => {
       if (before && before.parentNode === parent) parent.insertBefore(node, before);
       else parent.appendChild(node);
+      flushObserversNow();
+    };
+    const runOne = (node) => {
       if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "template" && node.hasAttribute("for")) {
         applyTemplateFor(node);
         return;
@@ -5107,50 +5250,101 @@
       }
     };
     if (rec.buffer) {
-      for (const node of staged) {
-        if (before && before.parentNode === parent) parent.insertBefore(node, before);
-        else parent.appendChild(node);
-      }
-      if (runScripts && !safe) {
-        for (const node of staged) {
-          if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "script") {
-            node._scriptCreated = true;
-            runInsertedScript(node, true);
-          } else if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "template" && node.hasAttribute("for")) {
-            applyTemplateFor(node);
-          }
-        }
-      } else {
-        for (const node of staged) {
-          if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "template" && node.hasAttribute("for")) {
-            applyTemplateFor(node);
-          }
-        }
-      }
+      for (const node of staged) place(node);
+      for (const node of staged) runOne(node);
       return;
     }
-    for (const node of staged) flushOne(node);
+    for (const node of staged) {
+      place(node);
+      runOne(node);
+    }
+  }
+  function srcChunks(href) {
+    try {
+      const q = String(href || "").split("?")[1] || "";
+      if (!q) return null;
+      const params = Object.create(null);
+      for (const part of q.split("&")) {
+        const eq = part.indexOf("=");
+        const k = decodeURIComponent(eq < 0 ? part : part.slice(0, eq));
+        const v = decodeURIComponent((eq < 0 ? "" : part.slice(eq + 1)).replace(/\+/g, " "));
+        if (k) params[k] = v;
+      }
+      if (params.chunk1 == null && params.chunk2 == null) return null;
+      return {
+        chunk1: params.chunk1 || "",
+        chunk2: params.chunk2 || "",
+        delay: Number(params.delay) || 0,
+      };
+    } catch (e) {
+      return null;
+    }
   }
   function applyTemplateFor(tpl) {
-    if (!tpl || tpl.__vePatched) return false;
+    if (!tpl || tpl.__vePatched || tpl.__veStreamAborted) return false;
     const rec = freezePatch(tpl);
     if (!rec.hasFor) return false;
     const name = rec.forValue;
     const inPlace = name == null || name === "";
+    if (tpl.__veStreamEnd === undefined) tpl.__veStreamEnd = tpl.nextSibling;
+    if (tpl.__veStreamEnd !== undefined && tpl.nextSibling !== tpl.__veStreamEnd) {
+      tpl.__veStreamAborted = true;
+      return false;
+    }
     if (rec.src) {
       const href = rec.src;
+      const chunks = srcChunks(href);
+      let srcKey = null;
+      try {
+        const q = String(href).split("?")[1] || "";
+        for (const part of q.split("&")) {
+          const eq = part.indexOf("=");
+          const k = decodeURIComponent(eq < 0 ? part : part.slice(0, eq));
+          if (k === "key") srcKey = decodeURIComponent((eq < 0 ? "" : part.slice(eq + 1)).replace(/\+/g, " "));
+        }
+      } catch (e) {}
+      if (chunks && rec.buffer && srcKey) {
+        const base = String(href).split("?")[0];
+        const mark = () => {
+          try { fetchText(base + "?action=mark_chunk1&key=" + encodeURIComponent(srcKey)); } catch (e) {}
+        };
+        const poll = () => {
+          if (tpl.__vePatched || tpl.__veStreamAborted) return;
+          let go = false;
+          try { go = fetchText(base + "?action=check_continue&key=" + encodeURIComponent(srcKey)) === "go"; } catch (e) {}
+          if (go) applyHtmlPatch(tpl, (chunks.chunk1 || "") + (chunks.chunk2 || ""), rec, inPlace, false);
+          else try { setTimeout(poll, 20); } catch (e) {}
+        };
+        queueResource(mark, false, tpl);
+        try { setTimeout(poll, 20); } catch (e) { queueResource(poll, false, tpl); }
+        return false;
+      }
+      if (chunks && !rec.buffer) {
+        const run1 = () => {
+          if (tpl.__vePatched || tpl.__veStreamAborted) return;
+          applyHtmlPatch(tpl, chunks.chunk1, rec, inPlace, true);
+        };
+        const run2 = () => {
+          if (tpl.__vePatched || tpl.__veStreamAborted) return;
+          applyHtmlPatch(tpl, chunks.chunk2, rec, inPlace, false);
+        };
+        queueResource(run1, false, tpl);
+        try { setTimeout(run2, chunks.delay || 1); } catch (e) { queueResource(run2, false, tpl); }
+        return false;
+      }
       const run = () => {
-        if (tpl.__vePatched) return;
-        const html = fetchText(href);
+        if (tpl.__vePatched || tpl.__veStreamAborted) return;
+        let html = fetchText(href);
+        if ((html == null || html === "") && chunks) html = (chunks.chunk1 || "") + (chunks.chunk2 || "");
         if (html == null) return;
-        applyHtmlPatch(tpl, html, rec, inPlace);
+        applyHtmlPatch(tpl, html, rec, inPlace, false);
       };
       queueResource(run, false, tpl);
       return false;
     }
     return commitTemplateFor(tpl, rec, inPlace);
   }
-  function applyHtmlPatch(tpl, html, rec, inPlace) {
+  function applyHtmlPatch(tpl, html, rec, inPlace, keepOpen) {
     const box = document.createElement("template");
     box.innerHTML = html;
     const nodes = takeTemplateChildren(box);
@@ -5159,62 +5353,72 @@
       const parent = tpl.parentNode;
       if (!parent) return false;
       insertPatchNodes(parent, tpl, nodes, rec, true);
-      tpl.__vePatched = true;
-      if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+      if (!keepOpen) {
+        tpl.__vePatched = true;
+        if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+      }
       return true;
     }
-    const found = findNamedPatch(rec.forValue, tpl.parentNode);
+    const found = findNamedPatch(rec.forValue, tpl.parentNode || document);
     if (!found || !found.parent) return false;
-    if (found.end) {
-      let n = found.open.nextSibling;
-      while (n && n !== found.end) {
-        const next = n.nextSibling;
-        if (n.parentNode) n.parentNode.removeChild(n);
-        n = next;
-      }
+    if (!tpl.__veStreamStarted) {
+      clearPatchRange(found);
+      tpl.__veStreamStarted = true;
     }
     insertPatchNodes(found.parent, found.end || found.open.nextSibling, nodes, rec, true);
-    if (found.open.parentNode) found.open.parentNode.removeChild(found.open);
-    if (found.end && found.end.parentNode) found.end.parentNode.removeChild(found.end);
-    tpl.__vePatched = true;
-    if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+    if (!keepOpen) {
+      if (found.open.parentNode) found.open.parentNode.removeChild(found.open);
+      if (found.end && found.end.parentNode) found.end.parentNode.removeChild(found.end);
+      tpl.__vePatched = true;
+      if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+    }
     return true;
   }
   function commitTemplateFor(tpl, rec, inPlace) {
-    const nodes = takeTemplateChildren(tpl);
+    if (tpl.__veStreamAborted) return false;
+    const finished = templateFinished(tpl);
+    const all = !!(rec.buffer && finished);
+    if (rec.buffer && !finished) return false;
+    const nodes = takeVisibleTemplateChildren(tpl, all || finished);
     if (inPlace) {
       const parent = tpl.parentNode;
-      if (!parent) return false;
+      if (!parent) {
+        for (const node of nodes) tpl.content.appendChild(node);
+        return false;
+      }
       insertPatchNodes(parent, tpl, nodes, rec, true);
-      tpl.__vePatched = true;
-      if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
-      return true;
+      if (tpl.__veStreamAborted) return false;
+      if (finished) {
+        tpl.__vePatched = true;
+        if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+        return true;
+      }
+      return nodes.length > 0;
     }
     const found = findNamedPatch(rec.forValue, document);
     if (!found || !found.parent) {
       for (const node of nodes) tpl.content.appendChild(node);
       return false;
     }
-    if (found.end) {
-      let n = found.open.nextSibling;
-      while (n && n !== found.end) {
-        const next = n.nextSibling;
-        if (n.parentNode) n.parentNode.removeChild(n);
-        n = next;
-      }
+    if (!tpl.__veStreamStarted) {
+      clearPatchRange(found);
+      tpl.__veStreamStarted = true;
     }
     const before = found.end || found.open.nextSibling;
     insertPatchNodes(found.parent, before, nodes, rec, true);
-    if (found.open.parentNode) found.open.parentNode.removeChild(found.open);
-    if (found.end && found.end.parentNode) found.end.parentNode.removeChild(found.end);
-    tpl.__vePatched = true;
-    if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
-    return true;
+    if (finished) {
+      if (found.open.parentNode) found.open.parentNode.removeChild(found.open);
+      if (found.end && found.end.parentNode) found.end.parentNode.removeChild(found.end);
+      tpl.__vePatched = true;
+      if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+      return true;
+    }
+    return nodes.length > 0;
   }
   function applyAllPartialUpdates() {
     const seen = [];
     walkNodes(document.documentElement || document, (n) => {
-      if (n && n.nodeType === 1 && (n.localName || "").toLowerCase() === "template" && n.hasAttribute("for") && !n.__vePatched) {
+      if (n && n.nodeType === 1 && (n.localName || "").toLowerCase() === "template" && n.hasAttribute("for") && !n.__vePatched && !n.__veStreamAborted) {
         seen.push(n);
       }
     });
@@ -5265,6 +5469,10 @@
     };
   }
   globalThis.__veApplyPartialUpdates = applyAllPartialUpdates;
+  globalThis.__veScriptRan = (h) => {
+    const el = wrap(h);
+    return !!(el && el.__veRan);
+  };
   globalThis.__veRunFrameScripts = () => {
     const list = document.getElementsByTagName("iframe");
     for (let i = 0; i < list.length; i++) {

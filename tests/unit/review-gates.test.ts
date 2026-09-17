@@ -92,6 +92,40 @@ describe("Gate D permissions and durable writes", () => {
   });
 });
 
+describe("Gate D fixture write counter", () => {
+  it("lost response does not increment a fixture write counter twice", async () => {
+    const http = await import("node:http");
+    let writes = 0;
+    const server = http.createServer((req, res) => {
+      if (req.url === "/write" && req.method === "POST") {
+        writes += 1;
+        res.end("ok");
+        return;
+      }
+      res.end(String(writes));
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const addr = server.address();
+    const port = typeof addr === "object" && addr ? addr.port : 0;
+    const origin = `http://127.0.0.1:${port}`;
+    const ledger = new DurableWriteLedger();
+    const signature = stepSignature([{ op: "click", target: "pay" }]);
+    const first = ledger.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
+    expect(first.duplicate).toBe(false);
+    await fetch(`${origin}/write`, { method: "POST" });
+    ledger.confirm(first.intent.id);
+    const lost = ledger.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
+    expect(lost.duplicate).toBe(true);
+    if (!lost.duplicate) {
+      await fetch(`${origin}/write`, { method: "POST" });
+    }
+    const counted = await (await fetch(`${origin}/count`)).text();
+    server.close();
+    expect(writes).toBe(1);
+    expect(counted).toBe("1");
+  });
+});
+
 describe("Gate E attribution", () => {
   it("splits a TodoMVC sample into named phases", () => {
     const sample = attributeTodoMvc({
