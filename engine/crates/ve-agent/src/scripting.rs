@@ -296,6 +296,9 @@ impl Page {
                 "scripting is not enabled on this page",
             ));
         };
+        if origin != "vector:prelude" && origin != "vector:dom" {
+            vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+        }
         let result = vm.eval_with_host(&mut PageHost { page: self }, source, origin);
         let _ = vm.run_pending_jobs_with_host(&mut PageHost { page: self });
         if let Some(s) = self.scripting.as_mut() {
