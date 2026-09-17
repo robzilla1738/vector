@@ -1559,10 +1559,7 @@ impl Page {
             } else if e.is_html("script") && script_is_classic_or_module(&self.doc, id) {
                 if let Some(url) = self.doc.attribute(id, "src").and_then(resolve) {
                     let url = rewrite_loopback_fetch(&url);
-                    // data: is decoded locally. Non-loopback hosts are not
-                    // served by the harness — fail them without a DNS wait
-                    // so parser-inserted `onerror` can run.
-                    if url_is_local_http(&url) {
+                    if !url.starts_with("data:") {
                         requests.push((
                             id,
                             SubresourceRequest {
@@ -4724,16 +4721,6 @@ pub(crate) fn rewrite_loopback_fetch(url: &str) -> String {
         let _ = u.set_port(Some(p));
     }
     u.to_string()
-}
-
-fn url_is_local_http(url: &str) -> bool {
-    let Ok(u) = url::Url::parse(url) else {
-        return false;
-    };
-    matches!(
-        u.host_str(),
-        Some("127.0.0.1" | "localhost" | "::1" | "[::1]")
-    )
 }
 
 fn strip_css_imports(css: &str) -> String {
