@@ -24,7 +24,7 @@
   ],
   "elements": [
     {
-      "ref": "r37",
+      "ref": "r27",
       "tag": "input",
       "role": "textbox",
       "name": "What needs to be done?",
@@ -33,14 +33,14 @@
       "placeholder": "What needs to be done?"
     },
     {
-      "ref": "r63",
+      "ref": "r53",
       "tag": "a",
       "role": "link",
       "name": "Sindre Sorhus",
       "href": "http://sindresorhus.com/"
     },
     {
-      "ref": "r71",
+      "ref": "r61",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
@@ -49,7 +49,7 @@
   ],
   "formFields": [
     {
-      "ref": "r37",
+      "ref": "r27",
       "label": "What needs to be done?",
       "type": "text",
       "value": "",
@@ -59,12 +59,12 @@
   "tables": [],
   "links": [
     {
-      "ref": "r63",
+      "ref": "r53",
       "text": "Sindre Sorhus",
       "href": "http://sindresorhus.com/"
     },
     {
-      "ref": "r71",
+      "ref": "r61",
       "text": "TodoMVC",
       "href": "http://todomvc.com/"
     }

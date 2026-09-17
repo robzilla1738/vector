@@ -42,42 +42,42 @@
   ],
   "elements": [
     {
-      "ref": "r207",
+      "ref": "r125",
       "tag": "button",
       "role": "button",
       "name": "Start using Photopea",
       "type": "submit"
     },
     {
-      "ref": "r183",
+      "ref": "r101",
       "tag": "a",
       "role": "link",
       "name": "Learn",
       "href": "https://www.photopea.com/learn"
     },
     {
-      "ref": "r186",
+      "ref": "r104",
       "tag": "a",
       "role": "link",
       "name": "Tutorials",
       "href": "https://www.photopea.com/tuts"
     },
     {
-      "ref": "r189",
+      "ref": "r107",
       "tag": "a",
       "role": "link",
       "name": "Templates",
       "href": "https://www.photopea.com/templates"
     },
     {
-      "ref": "r192",
+      "ref": "r110",
       "tag": "a",
       "role": "link",
       "name": "API",
       "href": "https://www.photopea.com/api"
     },
     {
-      "ref": "r245",
+      "ref": "r163",
       "tag": "button",
       "role": "button",
       "name": "Start using Photopea",
@@ -85,7 +85,7 @@
       "offscreen": true
     },
     {
-      "ref": "r271",
+      "ref": "r189",
       "tag": "a",
       "role": "link",
       "name": "40 other formats",
@@ -93,7 +93,7 @@
       "offscreen": true
     },
     {
-      "ref": "r281",
+      "ref": "r199",
       "tag": "button",
       "role": "button",
       "name": "Start using Photopea",
@@ -101,7 +101,7 @@
       "offscreen": true
     },
     {
-      "ref": "r309",
+      "ref": "r227",
       "tag": "a",
       "role": "link",
       "name": "Remove background with one click",
@@ -109,7 +109,7 @@
       "offscreen": true
     },
     {
-      "ref": "r312",
+      "ref": "r230",
       "tag": "a",
       "role": "link",
       "name": "replace any part of an image",
@@ -117,7 +117,7 @@
       "offscreen": true
     },
     {
-      "ref": "r334",
+      "ref": "r252",
       "tag": "button",
       "role": "button",
       "name": "Start using Photopea",
@@ -125,7 +125,7 @@
       "offscreen": true
     },
     {
-      "ref": "r370",
+      "ref": "r288",
       "tag": "button",
       "role": "button",
       "name": "Start using Photopea",
@@ -133,7 +133,7 @@
       "offscreen": true
     },
     {
-      "ref": "r382",
+      "ref": "r300",
       "tag": "a",
       "role": "link",
       "name": "support@photopea.com",
@@ -141,7 +141,7 @@
       "offscreen": true
     },
     {
-      "ref": "r385",
+      "ref": "r303",
       "tag": "a",
       "role": "link",
       "name": "Privacy Policy",
@@ -149,7 +149,7 @@
       "offscreen": true
     },
     {
-      "ref": "r388",
+      "ref": "r306",
       "tag": "a",
       "role": "link",
       "name": "Twitter",
@@ -157,7 +157,7 @@
       "offscreen": true
     },
     {
-      "ref": "r391",
+      "ref": "r309",
       "tag": "a",
       "role": "link",
       "name": "Facebook",
@@ -165,7 +165,7 @@
       "offscreen": true
     },
     {
-      "ref": "r394",
+      "ref": "r312",
       "tag": "a",
       "role": "link",
       "name": "Reddit",
@@ -177,62 +177,62 @@
   "tables": [],
   "links": [
     {
-      "ref": "r183",
+      "ref": "r101",
       "text": "Learn",
       "href": "https://www.photopea.com/learn"
     },
     {
-      "ref": "r186",
+      "ref": "r104",
       "text": "Tutorials",
       "href": "https://www.photopea.com/tuts"
     },
     {
-      "ref": "r189",
+      "ref": "r107",
       "text": "Templates",
       "href": "https://www.photopea.com/templates"
     },
     {
-      "ref": "r192",
+      "ref": "r110",
       "text": "API",
       "href": "https://www.photopea.com/api"
     },
     {
-      "ref": "r271",
+      "ref": "r189",
       "text": "40 other formats",
       "href": "https://github.com/photopea/photopea?tab=readme-ov-file#supported-formats"
     },
     {
-      "ref": "r309",
+      "ref": "r227",
       "text": "Remove background with one click",
       "href": "https://x.com/photopeacom/status/1735723561950539852/video/1"
     },
     {
-      "ref": "r312",
+      "ref": "r230",
       "text": "replace any part of an image",
       "href": "https://x.com/photopeacom/status/1661425407944425494/video/1"
     },
     {
-      "ref": "r382",
+      "ref": "r300",
       "text": "support@photopea.com",
       "href": "mailto:support@photopea.com"
     },
     {
-      "ref": "r385",
+      "ref": "r303",
       "text": "Privacy Policy",
       "href": "https://www.photopea.com/privacy.html"
     },
     {
-      "ref": "r388",
+      "ref": "r306",
       "text": "Twitter",
       "href": "https://x.com/photopeacom"
     },
     {
-      "ref": "r391",
+      "ref": "r309",
       "text": "Facebook",
       "href": "https://facebook.com/photopea/"
     },
     {
-      "ref": "r394",
+      "ref": "r312",
       "text": "Reddit",
       "href": "https://reddit.com/r/photopea/"
     }

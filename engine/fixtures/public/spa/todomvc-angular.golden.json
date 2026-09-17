@@ -22,7 +22,7 @@
   "headings": [],
   "elements": [
     {
-      "ref": "r38",
+      "ref": "r31",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
@@ -33,7 +33,7 @@
   "tables": [],
   "links": [
     {
-      "ref": "r38",
+      "ref": "r31",
       "text": "TodoMVC",
       "href": "http://todomvc.com/"
     }

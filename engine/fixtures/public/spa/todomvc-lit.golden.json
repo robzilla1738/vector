@@ -22,14 +22,14 @@
   "headings": [],
   "elements": [
     {
-      "ref": "r32",
+      "ref": "r25",
       "tag": "a",
       "role": "link",
       "name": "the lit team",
       "href": "https://github.com/lit"
     },
     {
-      "ref": "r37",
+      "ref": "r30",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
@@ -40,12 +40,12 @@
   "tables": [],
   "links": [
     {
-      "ref": "r32",
+      "ref": "r25",
       "text": "the lit team",
       "href": "https://github.com/lit"
     },
     {
-      "ref": "r37",
+      "ref": "r30",
       "text": "TodoMVC",
       "href": "http://todomvc.com/"
     }

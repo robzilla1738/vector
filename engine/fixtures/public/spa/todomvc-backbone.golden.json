@@ -24,7 +24,7 @@
   ],
   "elements": [
     {
-      "ref": "r34",
+      "ref": "r25",
       "tag": "input",
       "role": "textbox",
       "name": "What needs to be done?",
@@ -33,7 +33,7 @@
       "placeholder": "What needs to be done?"
     },
     {
-      "ref": "r63",
+      "ref": "r54",
       "tag": "a",
       "role": "link",
       "name": "TodoMVC",
@@ -42,7 +42,7 @@
   ],
   "formFields": [
     {
-      "ref": "r34",
+      "ref": "r25",
       "label": "What needs to be done?",
       "type": "text",
       "value": "",
@@ -52,7 +52,7 @@
   "tables": [],
   "links": [
     {
-      "ref": "r63",
+      "ref": "r54",
       "text": "TodoMVC",
       "href": "http://todomvc.com/"
     }
