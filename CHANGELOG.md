@@ -3,7 +3,7 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
-## VEC-001–025 engine roadmap (unreleased on `main`)
+## VEC-001–025 engine roadmap (PR #9, `main`)
 
 Independent Vector Engine work after A14–A23. Ticket reports:
 `docs/engine/evidence/`. Roadmap text: `Vector_Engine_Roadmap.md`. This is
