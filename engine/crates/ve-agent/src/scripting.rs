@@ -243,8 +243,16 @@ impl Page {
     pub fn enable_scripting(&mut self, vm: Box<dyn JsVm>, allow_evaluate: bool) -> Result<()> {
         let scripting = Scripting::new(vm, allow_evaluate)?;
         self.scripting = Some(scripting);
+        // DOM prelude is large; do not apply the per-script cutoff until it
+        // has installed. Document scripts keep `SCRIPT_DEADLINE`.
+        if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
+            vm.set_call_deadline(Some(Duration::from_secs(120)));
+        }
         self.run_script(PRELUDE, "vector:prelude")?;
         self.run_script(DOM_PRELUDE, "vector:dom")?;
+        if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
+            vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+        }
         Ok(())
     }
 
