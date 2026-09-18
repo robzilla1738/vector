@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<meta charset=utf-8>
+<title>ARIA enumerated reflection</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="h"></div>
+<script>
+test(function() {
+  var el = document.getElementById("h");
+  el.setAttribute("aria-checked", "mixed");
+  assert_equals(el.ariaChecked, "mixed");
+  el.setAttribute("aria-checked", "TRUE");
+  assert_equals(el.ariaChecked, "true");
+  el.setAttribute("aria-busy", "nope");
+  assert_equals(el.ariaBusy, "false");
+  el.removeAttribute("aria-busy");
+  assert_equals(el.ariaBusy, null);
+  el.setAttribute("aria-busy", "");
+  assert_equals(el.ariaBusy, "false");
+  el.setAttribute("aria-current", "");
+  assert_equals(el.ariaCurrent, "true");
+  el.ariaBusy = null;
+  assert_equals(el.ariaBusy, null);
+  assert_false(el.hasAttribute("aria-busy"));
+  el.removeAttribute("aria-label");
+  assert_equals(el.ariaLabel, null);
+}, "enumerated ARIA keywords, invalid/empty defaults, missing stays null");
+</script>

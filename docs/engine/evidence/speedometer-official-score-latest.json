@@ -1,0 +1,794 @@
+{
+  "arch": "x86_64",
+  "attribution": {
+    "gate": false,
+    "jetstreamSunspider": {
+      "executed": 0,
+      "failed": 0,
+      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, late-eval mandreel/pdfjs, and WasmEMCC/Default wasm through Dart-flute-todomvc, Kotlin-compose, dotnet-interp/aot, and transformersjs-bert. Not a JetStream Next geometric-mean published score.",
+      "officialGroup": 12,
+      "passed": 0
+    },
+    "kind": "adapted-workload-phases",
+    "motionmark13": {
+      "note": "Official MotionMark 1.3 names from resources/runner/tests.js. Official HTML workloads execute when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
+      "officialNames": 8
+    },
+    "officialFullSuite": false,
+    "officialJetStream": {
+      "applied": true,
+      "clock": "performance.now",
+      "defaultIterationCount": 120,
+      "defaultWorstCaseCount": 4,
+      "executedTests": 0,
+      "formula": "JetStreamDriver.js toScore=5000/max(ms,1); DefaultBenchmark first/average/worst4; overall geomean of per-test scores",
+      "geomean": null,
+      "iterationsUsed": 120,
+      "note": "A 1-iteration lab p50 is not a published score. --official-score sets VECTOR_PERFORMANCE_NOW=wall so performance.now() is Date.now()-timeOrigin. officialJetStreamGeometricMean stays false until every official Default name used official per-test counts timed with that clock.",
+      "officialJetStreamGeometricMean": false,
+      "officialPerTestCounts": true,
+      "passedTests": 0,
+      "perTest": {},
+      "runner": "same-page new Benchmark({iterationCount:N}); for i in 0..N runIteration(i)",
+      "scoredTests": 0
+    },
+    "officialMotionMark": {
+      "applied": true,
+      "clock": "performance.now",
+      "defaultIterationCount": 1,
+      "defaultTests": 8,
+      "formula": "MotionMark 1.3 results.js ScoreCalculator: controller=ramp, per-test score is bootstrap median of complexity regression, overall is geomean of those scores then sample mean across iterations",
+      "geomean": null,
+      "iterationsUsed": 1,
+      "note": "Ramp ScoreCalculator publishes only when timed with performance.now(). --official-score sets VECTOR_PERFORMANCE_NOW=wall. officialMotionMarkGeometricMean stays false until all 8 official names have ramp-complexity bootstrap scores on that clock.",
+      "officialMotionMarkGeometricMean": false,
+      "perTest": {},
+      "rampComplexityScores": 0
+    },
+    "officialSpeedometer": {
+      "applied": true,
+      "defaultIterationCount": 10,
+      "defaultSuites": 32,
+      "displayedScore": 1.829611784866265,
+      "executedSuites": 32,
+      "formula": "Speedometer 3.0 benchmark-runner.mjs geomeanToScore=1000/geomean(suite totals ms); displayed Score is the arithmetic mean of 10 iteration scores",
+      "iterationScores": [
+        1.8163690528277983,
+        1.827832407275105,
+        1.8353144953440146,
+        1.8149791878734944,
+        1.8182141043572888,
+        1.827544188636248,
+        1.8353194889171998,
+        1.8354914935454496,
+        1.8425412885059373,
+        1.842512141380117
+      ],
+      "iterationsUsed": 10,
+      "note": "officialSpeedometerScore is true only for 10 iteration scores from benchmark-runner.mjs Page + tests.mjs steps on all 32 official names. Lab add/finish cannot publish.",
+      "officialSpeedometerScore": true,
+      "passedSuites": 32,
+      "steps": "benchmark-runner.mjs"
+    },
+    "phases": [
+      "parse/style/layout(openMs)",
+      "js(jsMs)",
+      "harnessSettle(settleMs)",
+      "unaccounted"
+    ],
+    "source": "official JetStream Next SunSpider group (12) plus speedometer.3.0.* and official MotionMark 1.3 names",
+    "speedometer30": {
+      "executed": 32,
+      "failed": 0,
+      "note": "Official Speedometer 3.0 suite names. Vendored workloads execute; missing sources stay NOTRUN. Not a browserbench.org published score.",
+      "notrun": 0
+    }
+  },
+  "backend": "vector-engine",
+  "chromium": false,
+  "engine_version": "0.0.1",
+  "host_package_energy_uj": null,
+  "os": "linux",
+  "pins": {
+    "jetstream": {
+      "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and Default wasm through Dart-flute-todomvc, Kotlin-compose, dotnet-interp/aot, and transformersjs-bert. Not a published JetStream geometric-mean score.",
+      "repo": "https://github.com/WebKit/JetStream",
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "status": "official-sunspider-default-js-wasmemcc",
+      "tests": [
+        "SunSpider/3d-cube.js",
+        "SunSpider/3d-raytrace.js",
+        "SunSpider/base64.js",
+        "SunSpider/crypto-aes.js",
+        "SunSpider/crypto-md5.js",
+        "SunSpider/crypto-sha1.js",
+        "SunSpider/date-format-tofte.js",
+        "SunSpider/date-format-xparb.js",
+        "SunSpider/n-body.js",
+        "SunSpider/regex-dna.js",
+        "SunSpider/string-unpack-code.js",
+        "SunSpider/tagcloud.js"
+      ]
+    },
+    "motionmark": {
+      "note": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. Each official HTML workload executes when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
+      "officialNames": [
+        "Multiply",
+        "Canvas Arcs",
+        "Leaves",
+        "Paths",
+        "Canvas Lines",
+        "Images",
+        "Design",
+        "Suits"
+      ],
+      "repo": "https://github.com/WebKit/MotionMark",
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "status": "official-html-multiply"
+    },
+    "speedometer": {
+      "note": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply.",
+      "repo": "https://github.com/WebKit/Speedometer",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "official-3.0"
+    }
+  },
+  "process_tree_rss_bytes": 1030455296,
+  "rss_bytes": 1030455296,
+  "security_mode": "developer-offline",
+  "suites": [
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":315,\"sync\":724,\"total\":1039},\"CompletingAllItems\":{\"async\":15,\"sync\":184,\"total\":199},\"DeletingAllItems\":{\"async\":5,\"sync\":118,\"total\":123}},\"total\":1361.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES5",
+      "p50_ms": 1362,
+      "p95_ms": 1401,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1371,
+        1354,
+        1367,
+        1382,
+        1379,
+        1362,
+        1401,
+        1361,
+        1360,
+        1361
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":420,\"sync\":1173,\"total\":1593},\"CompletingAllItems\":{\"async\":119,\"sync\":431,\"total\":550},\"DeletingAllItems\":{\"async\":91,\"sync\":398,\"total\":489}},\"total\":2632.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES5-Complex-DOM",
+      "p50_ms": 2655,
+      "p95_ms": 2690,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        2690,
+        2678,
+        2637,
+        2658,
+        2688,
+        2631,
+        2677,
+        2634,
+        2655,
+        2632
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":18,\"sync\":1076,\"total\":1094},\"CompletingAllItems\":{\"async\":19,\"sync\":248,\"total\":267},\"DeletingAllItems\":{\"async\":6,\"sync\":106,\"total\":112}},\"total\":1473.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack",
+      "p50_ms": 1476,
+      "p95_ms": 1524,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1482,
+        1524,
+        1472,
+        1503,
+        1473,
+        1465,
+        1476,
+        1502,
+        1482,
+        1473
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":2674,\"sync\":1457,\"total\":4131},\"CompletingAllItems\":{\"async\":137,\"sync\":1117,\"total\":1254},\"DeletingAllItems\":{\"async\":100,\"sync\":541,\"total\":641}},\"total\":6026.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack-Complex-DOM",
+      "p50_ms": 5887,
+      "p95_ms": 6026,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        5897,
+        5929,
+        5803,
+        5942,
+        5887,
+        5852,
+        5842,
+        5953,
+        5866,
+        6026
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":22,\"sync\":76,\"total\":98},\"CompletingAllItems\":{\"async\":14,\"sync\":60,\"total\":74},\"DeletingAllItems\":{\"async\":1,\"sync\":14,\"total\":15}},\"total\":187.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-WebComponents",
+      "p50_ms": 184,
+      "p95_ms": 193,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        189,
+        190,
+        179,
+        184,
+        183,
+        189,
+        182,
+        193,
+        181,
+        187
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":50,\"sync\":467,\"total\":517},\"CompletingAllItems\":{\"async\":38,\"sync\":559,\"total\":597},\"DeletingAllItems\":{\"async\":6,\"sync\":620,\"total\":626}},\"total\":1740.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-WebComponents-Complex-DOM",
+      "p50_ms": 1726,
+      "p95_ms": 1755,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1722,
+        1735,
+        1720,
+        1755,
+        1710,
+        1726,
+        1752,
+        1714,
+        1734,
+        1740
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":18,\"sync\":51,\"total\":69},\"CompletingAllItems\":{\"async\":9,\"sync\":13,\"total\":22},\"DeletingAllItems\":{\"async\":2,\"sync\":15,\"total\":17}},\"total\":108.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-React",
+      "p50_ms": 110,
+      "p95_ms": 115,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        113,
+        112,
+        110,
+        115,
+        108,
+        110,
+        111,
+        109,
+        109,
+        108
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":126,\"sync\":58,\"total\":184},\"CompletingAllItems\":{\"async\":26,\"sync\":20,\"total\":46},\"DeletingAllItems\":{\"async\":87,\"sync\":20,\"total\":107}},\"total\":337.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-React-Complex-DOM",
+      "p50_ms": 328,
+      "p95_ms": 343,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        343,
+        327,
+        335,
+        330,
+        327,
+        325,
+        338,
+        325,
+        328,
+        337
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":18,\"sync\":55,\"total\":73},\"CompletingAllItems\":{\"async\":9,\"sync\":17,\"total\":26},\"DeletingAllItems\":{\"async\":2,\"sync\":18,\"total\":20}},\"total\":119.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-React-Redux",
+      "p50_ms": 116,
+      "p95_ms": 119,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        118,
+        115,
+        115,
+        117,
+        117,
+        116,
+        118,
+        115,
+        115,
+        119
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":124,\"sync\":58,\"total\":182},\"CompletingAllItems\":{\"async\":26,\"sync\":21,\"total\":47},\"DeletingAllItems\":{\"async\":84,\"sync\":23,\"total\":107}},\"total\":336.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-React-Redux-Complex-DOM",
+      "p50_ms": 335,
+      "p95_ms": 351,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        348,
+        335,
+        331,
+        338,
+        341,
+        333,
+        351,
+        333,
+        335,
+        336
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":25,\"sync\":88,\"total\":113},\"CompletingAllItems\":{\"async\":24,\"sync\":71,\"total\":95},\"DeletingAllItems\":{\"async\":7,\"sync\":27,\"total\":34}},\"total\":242.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Backbone",
+      "p50_ms": 237,
+      "p95_ms": 246,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        237,
+        240,
+        233,
+        246,
+        242,
+        236,
+        241,
+        236,
+        236,
+        242
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":151,\"sync\":200,\"total\":351},\"CompletingAllItems\":{\"async\":143,\"sync\":176,\"total\":319},\"DeletingAllItems\":{\"async\":94,\"sync\":33,\"total\":127}},\"total\":797.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Backbone-Complex-DOM",
+      "p50_ms": 798,
+      "p95_ms": 814,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        814,
+        800,
+        804,
+        798,
+        797,
+        809,
+        808,
+        795,
+        797,
+        797
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":23,\"sync\":63,\"total\":86},\"CompletingAllItems\":{\"async\":17,\"sync\":17,\"total\":34},\"DeletingAllItems\":{\"async\":2,\"sync\":12,\"total\":14}},\"total\":134.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Angular",
+      "p50_ms": 132,
+      "p95_ms": 134,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        129,
+        133,
+        132,
+        131,
+        133,
+        133,
+        130,
+        131,
+        133,
+        134
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":128,\"sync\":70,\"total\":198},\"CompletingAllItems\":{\"async\":124,\"sync\":21,\"total\":145},\"DeletingAllItems\":{\"async\":83,\"sync\":16,\"total\":99}},\"total\":442.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Angular-Complex-DOM",
+      "p50_ms": 448,
+      "p95_ms": 463,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        455,
+        463,
+        444,
+        456,
+        448,
+        449,
+        450,
+        447,
+        446,
+        442
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":56,\"sync\":4,\"total\":60},\"CompletingAllItems\":{\"async\":25,\"sync\":9,\"total\":34},\"DeletingAllItems\":{\"async\":4,\"sync\":5,\"total\":9}},\"total\":103.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Vue",
+      "p50_ms": 103,
+      "p95_ms": 108,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        108,
+        106,
+        102,
+        103,
+        106,
+        106,
+        103,
+        101,
+        101,
+        103
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":178,\"sync\":13,\"total\":191},\"CompletingAllItems\":{\"async\":142,\"sync\":13,\"total\":155},\"DeletingAllItems\":{\"async\":85,\"sync\":11,\"total\":96}},\"total\":442.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Vue-Complex-DOM",
+      "p50_ms": 443,
+      "p95_ms": 466,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        466,
+        438,
+        443,
+        449,
+        451,
+        440,
+        437,
+        447,
+        459,
+        442
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":3,\"sync\":9038,\"total\":9041},\"CompletingAllItems\":{\"async\":6,\"sync\":24049,\"total\":24055},\"DeletingAllItems\":{\"async\":9,\"sync\":9785,\"total\":9794}},\"total\":42890.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-jQuery",
+      "p50_ms": 43146,
+      "p95_ms": 44047,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        43671,
+        43146,
+        43073,
+        43458,
+        44047,
+        43089,
+        43265,
+        43198,
+        42948,
+        42890
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":103,\"sync\":11073,\"total\":11176},\"CompletingAllItems\":{\"async\":126,\"sync\":28153,\"total\":28279},\"DeletingAllItems\":{\"async\":124,\"sync\":12478,\"total\":12602}},\"total\":52057.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-jQuery-Complex-DOM",
+      "p50_ms": 52110,
+      "p95_ms": 53071,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        53071,
+        51906,
+        52092,
+        52190,
+        52609,
+        52417,
+        52125,
+        52036,
+        52110,
+        52057
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":35,\"sync\":3,\"total\":38},\"CompletingAllItems\":{\"async\":18,\"sync\":6,\"total\":24},\"DeletingAllItems\":{\"async\":2,\"sync\":4,\"total\":6}},\"total\":68.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Preact",
+      "p50_ms": 68,
+      "p95_ms": 70,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        67,
+        68,
+        68,
+        70,
+        69,
+        69,
+        67,
+        67,
+        66,
+        68
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":136,\"sync\":8,\"total\":144},\"CompletingAllItems\":{\"async\":120,\"sync\":11,\"total\":131},\"DeletingAllItems\":{\"async\":83,\"sync\":9,\"total\":92}},\"total\":367.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Preact-Complex-DOM",
+      "p50_ms": 380,
+      "p95_ms": 384,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        383,
+        384,
+        380,
+        377,
+        382,
+        382,
+        372,
+        384,
+        366,
+        367
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":46,\"sync\":4,\"total\":50},\"CompletingAllItems\":{\"async\":16,\"sync\":5,\"total\":21},\"DeletingAllItems\":{\"async\":4,\"sync\":3,\"total\":7}},\"total\":78.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Svelte",
+      "p50_ms": 79,
+      "p95_ms": 85,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        85,
+        79,
+        81,
+        80,
+        82,
+        81,
+        78,
+        78,
+        78,
+        78
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":153,\"sync\":9,\"total\":162},\"CompletingAllItems\":{\"async\":122,\"sync\":11,\"total\":133},\"DeletingAllItems\":{\"async\":84,\"sync\":9,\"total\":93}},\"total\":388.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Svelte-Complex-DOM",
+      "p50_ms": 392,
+      "p95_ms": 410,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        406,
+        392,
+        410,
+        397,
+        404,
+        403,
+        391,
+        390,
+        385,
+        388
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":57,\"sync\":10,\"total\":67},\"CompletingAllItems\":{\"async\":3,\"sync\":14,\"total\":17},\"DeletingAllItems\":{\"async\":3,\"sync\":10,\"total\":13}},\"total\":97.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Lit",
+      "p50_ms": 100,
+      "p95_ms": 110,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        100,
+        101,
+        106,
+        103,
+        110,
+        101,
+        98,
+        96,
+        96,
+        97
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Adding100Items\":{\"async\":186,\"sync\":474,\"total\":660},\"CompletingAllItems\":{\"async\":107,\"sync\":487,\"total\":594},\"DeletingAllItems\":{\"async\":8,\"sync\":487,\"total\":495}},\"total\":1749.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.TodoMVC-Lit-Complex-DOM",
+      "p50_ms": 1763,
+      "p95_ms": 1782,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1750,
+        1778,
+        1757,
+        1763,
+        1781,
+        1782,
+        1764,
+        1761,
+        1763,
+        1749
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"NavigateToPolitics\":{\"async\":237,\"sync\":7346,\"total\":7583},\"NavigateToUS\":{\"async\":291,\"sync\":8159,\"total\":8450},\"NavigateToWorld\":{\"async\":257,\"sync\":8122,\"total\":8379}},\"total\":24412.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.NewsSite-Next",
+      "p50_ms": 24608,
+      "p95_ms": 25215,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        24119,
+        24618,
+        25215,
+        24636,
+        24705,
+        24664,
+        24470,
+        24221,
+        24608,
+        24412
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"NavigateToPolitics\":{\"async\":222,\"sync\":7342,\"total\":7564},\"NavigateToUS\":{\"async\":230,\"sync\":8250,\"total\":8480},\"NavigateToWorld\":{\"async\":212,\"sync\":8110,\"total\":8322}},\"total\":24366.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.NewsSite-Nuxt",
+      "p50_ms": 24509,
+      "p95_ms": 24615,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        24536,
+        24408,
+        24510,
+        24615,
+        24441,
+        24509,
+        24416,
+        24585,
+        24564,
+        24366
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Highlight\":{\"async\":2,\"sync\":25,\"total\":27},\"Long\":{\"async\":15,\"sync\":34,\"total\":49}},\"total\":76.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.Editor-CodeMirror",
+      "p50_ms": 78,
+      "p95_ms": 81,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        78,
+        77,
+        78,
+        79,
+        77,
+        78,
+        76,
+        81,
+        78,
+        76
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Highlight\":{\"async\":1,\"sync\":533,\"total\":534},\"Long\":{\"async\":1548,\"sync\":155,\"total\":1703}},\"total\":2237.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.Editor-TipTap",
+      "p50_ms": 2242,
+      "p95_ms": 2275,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        2228,
+        2242,
+        2249,
+        2269,
+        2238,
+        2275,
+        2230,
+        2255,
+        2255,
+        2237
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Dotted\":{\"async\":20,\"sync\":38,\"total\":58},\"Stacked by 20\":{\"async\":26,\"sync\":68,\"total\":94},\"Stacked by 6\":{\"async\":11,\"sync\":50,\"total\":61}},\"total\":213.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.Charts-observable-plot",
+      "p50_ms": 219,
+      "p95_ms": 226,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        217,
+        226,
+        215,
+        219,
+        223,
+        216,
+        221,
+        220,
+        223,
+        213
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Draw opaque scatter\":{\"async\":5,\"sync\":84,\"total\":89},\"Draw scatter\":{\"async\":2,\"sync\":105,\"total\":107},\"Show tooltip\":{\"async\":77,\"sync\":1,\"total\":78}},\"total\":274.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.Charts-chartjs",
+      "p50_ms": 275,
+      "p95_ms": 296,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        275,
+        270,
+        274,
+        296,
+        280,
+        282,
+        275,
+        293,
+        289,
+        274
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"PanTheChart\":{\"async\":31,\"sync\":20,\"total\":51},\"Render\":{\"async\":12,\"sync\":57,\"total\":69},\"ZoomTheChart\":{\"async\":3,\"sync\":120,\"total\":123}},\"total\":243.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.React-Stockcharts-SVG",
+      "p50_ms": 243,
+      "p95_ms": 248,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        242,
+        241,
+        241,
+        248,
+        245,
+        248,
+        243,
+        244,
+        243,
+        243
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"clock\":\"performance.now\",\"steps\":\"benchmark-runner.mjs\",\"tests\":{\"Render\":{\"async\":0,\"sync\":0,\"total\":0},\"SelectingPoints\":{\"async\":0,\"sync\":0,\"total\":0},\"SelectingRange\":{\"async\":0,\"sync\":0,\"total\":0}},\"total\":1.0,\"viewport\":\"engine\"}",
+      "name": "speedometer.3.0.Perf-Dashboard",
+      "p50_ms": 1,
+      "p95_ms": 1,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply.",
+      "name": "speedometer.todomvc-class",
+      "p50_ms": 16,
+      "p95_ms": 16,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        16,
+        15,
+        16
+      ],
+      "status": "PARTIAL"
+    }
+  ]
+}

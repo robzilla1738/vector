@@ -39,16 +39,22 @@ cd engine && cargo build -p ve-napi --features napi --release
 
 The product GUI is `pnpm dev` / `cargo run -p ve-shell --features product -- --gui`.
 Electron is `pnpm dev:electron`. Evidence:
-[docs/engine/evidence](docs/engine/evidence/README.md) (testharness 112/0;
-official `html/dom` 302 PASS / 29 FAIL, `idlharness.https.html` PASS). Harness:
-`cargo run --release -p wpt-harness --features v8 -- --http` and
-`cargo run --release -p wpt-runner` (geometry; `--use-reftest-fonts` loads Ahem).
+[docs/engine/evidence](docs/engine/evidence/README.md). Merge-blocking
+`testharness.txt` is 114 files. Official `html/dom/partial-updates` on pin
+`7c204383` is 28 PASS / 2 FAIL of 30. Combined Mac tree-family run is
+142 PASS / 2 FAIL of 144 (`wpt-partial-updates-latest.json`). Keep
+`sanitize-template-element` and `template-for-empty` FAIL. Full official
+`html/dom` tree numbers stay in `wpt-tree-latest.json` and are not the
+entire web. Harness: `cargo run --release -p wpt-harness --features v8 -- --http`
+and `cargo run --release -p wpt-runner` (geometry; `--use-reftest-fonts` loads Ahem).
 
 The runtime loads the addon at startup whenever it is present (set
 `VECTOR_ENGINE=0` to skip it) and reports it in `runtime.describe` →
-`engine`. Pages route to it when `engineMode` is `auto` (the default) or
-`always`. Pin Chromium with `settings.set { engineMode: "off" }` or
-`VECTOR_ENGINE_MODE=off`.
+`engine`. `pnpm dev` and the desktop shell set `VECTOR_ENGINE_MODE=always`.
+A stored `settings.engineMode` wins. Without that env or setting the
+fallback is `auto`. Pin Chromium with `settings.set { engineMode: "off" }` or
+`VECTOR_ENGINE_MODE=off`. Packaged desktop sets `VECTOR_ENGINE_PROFILE=production`
+(process-isolated `ve-host`). Unpackaged stays developer unless that env is set.
 
 Configuration is otherwise optional — copy `.env.example` to `.env` (in the
 repo root you launch from, or in the data dir

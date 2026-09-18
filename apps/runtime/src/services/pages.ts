@@ -20,6 +20,7 @@ import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
 import { executeProgram, type ExecContext } from "../execution/executor.js";
+import { authorizeProgram, DEFAULT_GRANTS, type GrantSource } from "../agent/permissions.js";
 import { Router, isFallbackError } from "./router.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 
@@ -87,6 +88,11 @@ export interface PageServiceDeps {
   callOperation?: (name: string, args: Record<string, unknown>, pageId: string) => Promise<unknown>;
   /** Electron hybrid paint for engine pages. Off unless the hybrid desktop opts in. */
   electronEngineView?: () => boolean;
+  /**
+   * Privilege-independent effect grants (Gate D / Gate F). Model text and
+   * RPC params cannot expand these. A function re-reads after settings.set.
+   */
+  grants?: GrantSource;
 }
 
 /**
@@ -739,6 +745,9 @@ export class PageService {
       if (!lp?.driver?.isAttached()) throw new VectorError("target_detached", `page ${pageId} is not attached`);
       if (lp.target.controller === "human")
         throw new VectorError("conflict", `page ${pageId} is under human control`);
+      const allSteps = collectSteps(program);
+      const auth = authorizeProgram(allSteps, this.deps.grants ?? DEFAULT_GRANTS);
+      if (!auth.ok) throw new VectorError("permission_denied", auth.denied);
       this.programInflight.add(pageId);
       try {
       lp.target.controller = ctx.runId ? "agent" : lp.target.controller === "none" ? "external" : lp.target.controller;
@@ -746,7 +755,6 @@ export class PageService {
       // pointer/keyboard input only lands on a visible, laid-out native view —
       // mark the page working (rendered offscreen unless focused) while a
       // program with interactive steps runs; no global lease (plan A8)
-      const allSteps = collectSteps(program);
       const needsStage =
         lp.target.backend === "vector" &&
         this.deps.native.available() &&
@@ -948,6 +956,18 @@ export class PageService {
     if (!this.deps.native.available()) throw new VectorError("backend_unavailable", "zoom requires the desktop shell");
     return this.deps.native.setZoom(pageId, level, delta, reset);
   }
+  /** Display-list scene for the live engine page. Not a PNG. */
+  async scene(pageId: string) {
+    const lp = this.live.get(pageId);
+    if (!lp?.driver || lp.target.backend !== "vector-engine") {
+      throw new VectorError("capability_unsupported", "pages.scene requires vector-engine");
+    }
+    if (lp.driver.scene) return lp.driver.scene();
+    const shot = await lp.driver.screenshot();
+    if (shot.scene) return shot.scene;
+    throw new VectorError("capability_unsupported", "engine did not export a display list");
+  }
+
   async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact" }) {
     const dp = this.driverPageLenient(pageId);
     const shot = await dp.screenshot({ fullPage: opts?.fullPage });
@@ -977,15 +997,63 @@ export class PageService {
   }
 
   /** Human pointer/key on the engine paint view — same document the agent uses. */
-  async onEngineInput(pageId: string, input: { type: string; x?: number; y?: number; button?: number; key?: string }) {
+  async onEngineInput(
+    pageId: string,
+    input: {
+      type: string;
+      x?: number;
+      y?: number;
+      button?: number;
+      key?: string;
+      text?: string;
+      direction?: "up" | "down" | "top" | "bottom";
+      amount?: number;
+      start?: number;
+      end?: number;
+      width?: number;
+      height?: number;
+      name?: string;
+    },
+  ) {
     const lp = this.live.get(pageId);
     if (!lp?.driver || lp.target.backend !== "vector-engine") return;
     this.onNativeTakeover(pageId);
     try {
-      if (input.type === "pointerdown" || input.type === "click") {
+      if (lp.driver.humanEvent) {
+        if (input.type === "pointerdown" || input.type === "click") {
+          await lp.driver.humanEvent({
+            type: "pointerDown",
+            x: input.x ?? 0,
+            y: input.y ?? 0,
+            button: input.button ?? 0,
+          });
+        } else if (input.type === "imePreedit") {
+          await lp.driver.humanEvent({ type: "imePreedit", text: input.text ?? input.key ?? "" });
+        } else if (input.type === "ime") {
+          await lp.driver.humanEvent({ type: "ime", text: input.text ?? input.key ?? "" });
+        } else if (input.type === "key" && input.key) {
+          await lp.driver.humanEvent({ type: "key", key: input.key });
+        } else if (input.type === "scroll") {
+          const dy = input.direction === "up" ? -(input.amount ?? 40) : (input.amount ?? 40);
+          await lp.driver.humanEvent({ type: "wheel", dx: 0, dy });
+        } else if (input.type === "select") {
+          await lp.driver.humanEvent({ type: "select", start: input.start ?? 0, end: input.end ?? 0 });
+        } else if (input.type === "resize") {
+          await lp.driver.humanEvent({
+            type: "resize",
+            width: input.width ?? input.x ?? 0,
+            height: input.height ?? input.y ?? 0,
+          });
+        } else if (input.type === "accessKitAction" && (input.name || input.key)) {
+          await lp.driver.humanEvent({ type: "accessKitAction", name: input.name ?? input.key });
+        }
+      } else if (input.type === "pointerdown" || input.type === "click") {
         await lp.driver.clickPoint(input.x ?? 0, input.y ?? 0);
       } else if (input.type === "key" && input.key) {
         await lp.driver.press(input.key);
+      } else if (input.type === "scroll") {
+        const direction = input.direction ?? ((input.amount ?? 0) >= 0 ? "down" : "up");
+        await lp.driver.scroll({ direction, amount: Math.abs(input.amount ?? 40) });
       }
     } catch {
       /* input is best-effort */
@@ -995,19 +1063,51 @@ export class PageService {
 
   // ---------- takeover ----------
 
-  takeover(pageId: string): PageTarget {
+  /**
+   * Human takeover. Local controller flips before the first await so
+   * in-process execute is blocked immediately. vector-engine pages also
+   * call BrowserService so a second client cannot dispatch (Finding 1).
+   */
+  async takeover(pageId: string): Promise<PageTarget> {
     const lp = this.live.get(pageId);
     if (!lp) throw new VectorError("not_found", `no page ${pageId}`);
     lp.target.controller = "human";
     lp.target.controllerEpoch++;
     this.persist(lp);
     this.deps.events.emit(EventTypes.PageTakeover, { pageId, controller: "human", controllerEpoch: lp.target.controllerEpoch });
+    const engine = this.driverFor(lp.target.backend);
+    if (lp.target.backend === "vector-engine" && engine?.takeover) {
+      const remote = await engine.takeover();
+      if (remote.controllerEpoch > 0) lp.target.controllerEpoch = remote.controllerEpoch;
+      this.persist(lp);
+    }
     return lp.target;
   }
 
-  resume(pageId: string): PageTarget {
+  /**
+   * Release human takeover. vector-engine pages resume on BrowserService
+   * first and refuse if the page is gone or still human-controlled.
+   */
+  async resume(pageId: string): Promise<PageTarget> {
     const lp = this.live.get(pageId);
     if (!lp) throw new VectorError("not_found", `no page ${pageId}`);
+    const engine = this.driverFor(lp.target.backend);
+    if (lp.target.backend === "vector-engine") {
+      if (!lp.driver?.isAttached()) {
+        throw new VectorError("target_detached", `page ${pageId} is not attached — resume requires a live page`);
+      }
+      if (engine?.resume) {
+        const remote = await engine.resume();
+        if (remote.controller === "human") {
+          throw new VectorError("conflict", `page ${pageId} resume did not release human control`);
+        }
+        lp.target.controller = "none";
+        lp.target.controllerEpoch = remote.controllerEpoch > 0 ? remote.controllerEpoch : lp.target.controllerEpoch + 1;
+        this.persist(lp);
+        this.deps.events.emit(EventTypes.PageTakeover, { pageId, controller: "none" });
+        return lp.target;
+      }
+    }
     lp.target.controller = "none";
     lp.target.controllerEpoch++;
     this.persist(lp);
@@ -1023,7 +1123,7 @@ export class PageService {
     // Only agent/external-controlled pages hand control to the human —
     // ordinary browsing must not pin the page as human-owned forever.
     if (lp.target.controller === "agent" || lp.target.controller === "external") {
-      this.takeover(pageId);
+      void this.takeover(pageId);
     }
   }
 

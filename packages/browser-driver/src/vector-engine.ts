@@ -22,6 +22,13 @@ import {
   type VectorErrorCode,
 } from "@vector/contracts";
 import { RefRegistry } from "./ref-registry.js";
+import {
+  BrowserServiceClient,
+  ServiceNativeEngine,
+  browserServiceAddr,
+  spawnVeShellService,
+  type OwnedBrowserService,
+} from "./browser-service.js";
 import type {
   BrowserCookie,
   BrowserDriver,
@@ -33,6 +40,7 @@ import type {
   PageIdentity,
   PageRouting,
   ScreenshotResult,
+  SceneUpdate,
   WaitOutcome,
 } from "./types.js";
 
@@ -47,19 +55,33 @@ export interface NativeEngine {
   executeBuf?(page: number, steps: Buffer, options?: Buffer | null): Promise<Buffer>;
   screenshot(page: number, optionsJson?: string | null): Promise<string>;
   screenshotPng?(page: number, fullPage?: boolean | null): Promise<{ width: number; height: number; scale: number; fullPage: boolean; png: Buffer }>;
+  scene?(): Promise<string>;
   close(page: number): Promise<string>;
   getCookies(contextId: number, url?: string | null): Promise<string>;
   setCookies(contextId: number, cookiesJson: string): Promise<string>;
   pages(): number[];
   shutdown(): void;
+  takeover?(): Promise<string>;
+  resume?(): Promise<string>;
+  inputEvent?(event: Record<string, unknown>): Promise<string>;
+}
+
+export interface BrowserServiceHandle {
+  addr(): string;
+  shutdown(): void;
 }
 
 export interface NativeModule {
   Engine: new (configJson?: string | null) => NativeEngine;
+  BrowserServiceHandle?: {
+    listen(bind?: string | null, configJson?: string | null): BrowserServiceHandle;
+  };
   describe(): string;
   version(): string;
   binaryPath?: string;
 }
+
+export type { OwnedBrowserService } from "./browser-service.js";
 
 export interface EngineNativeConfig {
   viewport?: { width: number; height: number };
@@ -347,8 +369,10 @@ export class VectorEnginePage implements DriverPage {
       });
     }
     if (res.url) this.urlValue = res.url;
-    if (res.navigated) {
-      this.generation = res.generation;
+    const navigated =
+      res.navigated || (typeof res.generation === "number" && res.generation !== this.generation);
+    if (navigated) {
+      this.generation = typeof res.generation === "number" ? res.generation : this.generation + 1;
       this.refs.clear(this.identity.pageId);
       this.events.onNavigated?.(this.urlValue, this.generation);
     }
@@ -423,6 +447,13 @@ export class VectorEnginePage implements DriverPage {
   async clickPoint(x: number, y: number, button?: "left" | "right" | "middle"): Promise<void> {
     await this.one({ op: "clickPoint", x, y, button });
   }
+
+  async humanEvent(event: Record<string, unknown>): Promise<void> {
+    if (!this.native.inputEvent) {
+      throw new VectorError("capability_unsupported", "humanEvent requires BrowserService input.event");
+    }
+    unwrapNative(await this.native.inputEvent(event));
+  }
   async uploadFiles(target: string, files: string[], timeoutMs?: number): Promise<void> {
     await this.one({ op: "upload", target, files, timeoutMs });
   }
@@ -473,11 +504,39 @@ export class VectorEnginePage implements DriverPage {
       const shot = await this.native.screenshotPng(this.pageNum, opts?.fullPage);
       return { buffer: Buffer.from(shot.png), width: shot.width, height: shot.height, scale: shot.scale };
     }
-    const res = unwrapNative<{ pngBase64?: string; width?: number; height?: number; scale?: number }>(
+    const res = unwrapNative<{
+      pngBase64?: string;
+      width?: number;
+      height?: number;
+      scale?: number;
+      scene?: SceneUpdate;
+      kind?: string;
+      transport?: string;
+      png?: boolean;
+      itemCount?: number;
+      items?: Record<string, unknown>[];
+    }>(
       await this.native.screenshot(this.pageNum, JSON.stringify(opts ?? {})),
     );
-    if (!res.pngBase64) throw new VectorError("capability_unsupported", "screenshot returned no image");
-    return { buffer: Buffer.from(res.pngBase64, "base64"), width: res.width ?? 0, height: res.height ?? 0, scale: res.scale ?? 1 };
+    const scene = res.scene ?? (res.kind === "displayList" ? (res as unknown as SceneUpdate) : undefined);
+    if (!res.pngBase64 && !scene) throw new VectorError("capability_unsupported", "screenshot returned no image");
+    return {
+      buffer: Buffer.from(res.pngBase64 ?? "", "base64"),
+      width: res.width ?? scene?.width ?? 0,
+      height: res.height ?? scene?.height ?? 0,
+      scale: res.scale ?? scene?.scale ?? 1,
+      scene,
+    };
+  }
+
+  async scene(): Promise<SceneUpdate> {
+    this.ensureAttached();
+    if (this.native.scene) {
+      return unwrapNative<SceneUpdate>(await this.native.scene());
+    }
+    const shot = await this.screenshot();
+    if (shot.scene) return shot.scene;
+    throw new VectorError("capability_unsupported", "engine did not export a display list");
   }
 
   async observe(req?: Partial<ObservationRequest>): Promise<ObservationContent> {
@@ -533,14 +592,24 @@ export interface VectorEngineDriverOptions {
   config?: EngineNativeConfig;
   /** module loader — injectable so unit tests run without the addon */
   load?: () => Promise<NativeModule>;
+  /** Attach to a running BrowserService instead of creating a local engine. */
+  serviceAddr?: string;
+  /**
+   * Finding 1: start a local BrowserService and attach as a client.
+   * Default true unless `load` is injected (unit tests keep a fake Engine).
+   */
+  ownService?: boolean;
+  /** Test hook that starts a BrowserService and returns its bind address. */
+  startService?: () => Promise<OwnedBrowserService>;
 }
 
 /**
- * Driver over the native engine. One `Engine` per driver; pages live in
- * the default context (`DEFAULT_CONTEXT`). `createTarget(url)` performs the
- * navigation (the engine parses and classifies synchronously on its
- * thread) and `attach` wraps the result — the runtime reads
- * `page.routing()` to decide whether to keep the page or fall back.
+ * Driver over the native engine. Finding 1: the Node planner is a client of
+ * BrowserService (GUI `--service` or an owned listener). Injected `load`
+ * keeps a local Engine for unit tests. Pages live in the default context
+ * (`DEFAULT_CONTEXT`). `createTarget(url)` performs the navigation and
+ * `attach` wraps the result — the runtime reads `page.routing()` to decide
+ * whether to keep the page or fall back.
  */
 export class VectorEngineDriver implements BrowserDriver {
   readonly backend = "vector-engine" as const;
@@ -552,6 +621,10 @@ export class VectorEngineDriver implements BrowserDriver {
   private availability: EngineAvailability = { available: false };
   private readonly load: () => Promise<NativeModule>;
   private readonly config: EngineNativeConfig;
+  private serviceAddr?: string;
+  private readonly ownService: boolean;
+  private readonly startService?: () => Promise<OwnedBrowserService>;
+  private owned?: OwnedBrowserService;
 
   onDisconnected?: () => void;
   onReconnected?: () => void;
@@ -560,10 +633,41 @@ export class VectorEngineDriver implements BrowserDriver {
   constructor(opts: VectorEngineDriverOptions = {}) {
     this.load = opts.load ?? loadEngineNative;
     this.config = opts.config ?? {};
+    this.serviceAddr = opts.serviceAddr ?? browserServiceAddr();
+    this.ownService = opts.ownService ?? opts.load == null;
+    this.startService = opts.startService;
   }
 
   async connect(): Promise<void> {
     if (this.native) return;
+    // Packaged production uses `Engine` + ve-host (Gate A). In-process
+    // `ve-shell --service` is the developer / native-GUI attach path.
+    const production = this.config.securityProfile === "production";
+    if (!this.serviceAddr && this.ownService && !production) {
+      this.owned = this.startService
+        ? await this.startService()
+        : await this.startNativeService();
+      if (this.owned) this.serviceAddr = this.owned.addr;
+    }
+    if (this.serviceAddr) {
+      const client = new BrowserServiceClient(this.serviceAddr);
+      await client.connect();
+      this.native = new ServiceNativeEngine(client);
+      const probed = this.availability.available
+        ? this.availability
+        : await probeEngineNative(this.load);
+      this.availability = {
+        available: true,
+        version: probed.available && probed.version ? probed.version : "browser-service",
+        abiVersion: probed.abiVersion,
+        protocolVersion: probed.protocolVersion,
+        binaryPath: probed.binaryPath,
+        isolation: "process",
+        securityProfile: this.config.securityProfile,
+        capabilities: { ...probed.capabilities, screenshot: probed.capabilities?.screenshot ?? false, service: true },
+      };
+      return;
+    }
     this.availability = await probeEngineNative(this.load);
     if (!this.availability.available) {
       throw new VectorError("backend_unavailable", `vector-engine native module unavailable: ${this.availability.error}`);
@@ -596,6 +700,27 @@ export class VectorEngineDriver implements BrowserDriver {
     }
   }
 
+  private async startNativeService(): Promise<OwnedBrowserService | undefined> {
+    this.availability = await probeEngineNative(this.load);
+    if (this.availability.available) {
+      this.mod = await this.load();
+      const handle = this.mod.BrowserServiceHandle?.listen(
+        "127.0.0.1:0",
+        JSON.stringify(this.config),
+      );
+      if (handle) return { addr: handle.addr(), shutdown: () => handle.shutdown() };
+    }
+    const spawned = await spawnVeShellService();
+    if (spawned) return spawned;
+    if (!this.availability.available) {
+      throw new VectorError(
+        "backend_unavailable",
+        `vector-engine native module unavailable: ${this.availability.error}`,
+      );
+    }
+    return undefined;
+  }
+
   async reconnect(): Promise<void> {
     return this.connect();
   }
@@ -610,6 +735,13 @@ export class VectorEngineDriver implements BrowserDriver {
       /* already down */
     }
     this.native = null;
+    try {
+      this.owned?.shutdown();
+    } catch {
+      /* already down */
+    }
+    if (this.owned) this.serviceAddr = undefined;
+    this.owned = undefined;
   }
 
   isConnected(): boolean {
@@ -676,5 +808,33 @@ export class VectorEngineDriver implements BrowserDriver {
   async setCookies(cookies: BrowserCookie[]): Promise<number> {
     const res = unwrapNative<{ count: number }>(await this.engine().setCookies(DEFAULT_CONTEXT, JSON.stringify(cookies)));
     return res.count;
+  }
+
+  /**
+   * Human takeover on BrowserService (Finding 1 / Gate B / Gate F).
+   * Local-only engines without `takeover` flip nothing on the service.
+   */
+  async takeover(): Promise<{ controller: string; controllerEpoch: number }> {
+    const native = this.engine();
+    if (!native.takeover) return { controller: "human", controllerEpoch: 0 };
+    const r = unwrapNative<{ controller?: string; controllerEpoch?: number }>(await native.takeover());
+    return {
+      controller: r.controller ?? "human",
+      controllerEpoch: r.controllerEpoch ?? 0,
+    };
+  }
+
+  /** Resume after takeover. Requires the service to report a non-human controller. */
+  async resume(): Promise<{ controller: string; controllerEpoch: number }> {
+    const native = this.engine();
+    if (!native.resume) return { controller: "none", controllerEpoch: 0 };
+    const r = unwrapNative<{ controller?: string; controllerEpoch?: number }>(await native.resume());
+    if (r.controller === "human") {
+      throw new VectorError("conflict", "resume left the page under human control");
+    }
+    return {
+      controller: r.controller ?? "none",
+      controllerEpoch: r.controllerEpoch ?? 0,
+    };
   }
 }

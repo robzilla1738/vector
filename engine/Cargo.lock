@@ -379,6 +379,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
+ "flate2",
  "serde",
  "serde_json",
  "ve-api",
@@ -4532,6 +4533,7 @@ dependencies = [
  "libc",
  "serde_json",
  "ve-napi",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4562,6 +4564,7 @@ dependencies = [
 name = "ve-napi"
 version = "0.0.1"
 dependencies = [
+ "cc",
  "napi",
  "napi-build",
  "napi-derive",
@@ -4614,6 +4617,7 @@ dependencies = [
 name = "ve-script"
 version = "0.0.1"
 dependencies = [
+ "cc",
  "rquickjs",
  "serde",
  "serde_json",
@@ -5517,6 +5521,8 @@ dependencies = [
  "anyhow",
  "clap",
  "png",
+ "rcgen",
+ "rustls",
  "serde",
  "serde_json",
  "ve-api",

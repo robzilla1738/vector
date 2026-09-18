@@ -643,8 +643,10 @@ fn canvas_fillrect_records_ops() {
               ctx.fillStyle = "#ff0000";
               ctx.fillRect(0, 0, 10, 10);
               ctx.clearRect(0, 0, 5, 5);
+              ctx.resetTransform();
               return {
                 ctx: ctx instanceof CanvasRenderingContext2D,
+                reset: typeof ctx.resetTransform === "function",
                 w: c.width,
                 h: c.height,
                 webgl: c.getContext("webgl") === null
@@ -653,9 +655,60 @@ fn canvas_fillrect_records_ops() {
         )
         .unwrap();
     assert_eq!(v["ctx"], true, "{v}");
+    assert_eq!(v["reset"], true, "{v}");
     assert_eq!(v["w"], 40, "{v}");
     assert_eq!(v["h"], 20, "{v}");
     assert_eq!(v["webgl"], true, "{v}");
+}
+
+#[test]
+fn remove_attribute_node_clears_named_attr() {
+    let mut page = open(r#"<p id="t" class="x"></p>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const el = document.getElementById("t");
+              const attr = el.attributes[0];
+              const removed = el.removeAttributeNode(attr);
+              return {
+                name: removed && removed.name,
+                hasClass: el.hasAttribute("class"),
+                hasId: el.hasAttribute("id"),
+                remaining: el.attributes.length
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(v["name"].as_str().is_some(), "{v}");
+    assert_eq!(v["remaining"], 1, "{v}");
+}
+
+#[test]
+fn get_client_rects_match_bounding_rect() {
+    let mut page = open(r#"<p id="t">hi</p>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const el = document.getElementById("t");
+              const box = el.getBoundingClientRect();
+              const list = el.getClientRects();
+              const range = document.createRange();
+              range.selectNodeContents(el.firstChild);
+              const rlist = range.getClientRects();
+              return {
+                elLen: list.length,
+                elW: list[0] && list[0].width,
+                boxW: box.width,
+                rangeLen: rlist.length,
+                item: typeof list.item === "function"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["elLen"], 1, "{v}");
+    assert_eq!(v["rangeLen"], 1, "{v}");
+    assert_eq!(v["item"], true, "{v}");
+    assert_eq!(v["elW"], v["boxW"], "{v}");
 }
 
 #[test]
@@ -783,6 +836,28 @@ fn domparser_replacechildren_and_keycode() {
 }
 
 #[test]
+fn domparser_keeps_an_unmoved_document_when_parsing_again() {
+    let mut page = open(r#"<body><div id="h"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var p = new DOMParser();
+              var a = p.parseFromString("<p id=a>one</p>", "text/html");
+              var b = p.parseFromString("<p id=b>two</p>", "text/html");
+              return {
+                a: a.body && a.body.textContent,
+                b: b.body && b.body.textContent,
+                same: a === b
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["a"], "one", "{v}");
+    assert_eq!(v["b"], "two", "{v}");
+    assert_eq!(v["same"], false, "{v}");
+}
+
+#[test]
 fn template_content_cssstylesheet_and_import_node() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -811,6 +886,136 @@ fn template_content_cssstylesheet_and_import_node() {
 }
 
 #[test]
+fn window_named_id_properties_are_replaceable() {
+    let mut page = open(
+        r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
+    );
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const el = document.getElementById("__NEXT_DATA__");
+              const before = window.__NEXT_DATA__ === el;
+              window.__NEXT_DATA__ = { props: { pageProps: {} }, page: "/" };
+              return {
+                before,
+                assigned: window.__NEXT_DATA__ && window.__NEXT_DATA__.page === "/"
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["before"], true, "{v}");
+    assert_eq!(v["assigned"], true, "{v}");
+}
+
+#[test]
+fn composed_events_cross_shadow_to_the_host() {
+    let mut page = open(r#"<body><host-el></host-el></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              class InnerEl extends HTMLElement {
+                constructor() {
+                  super();
+                  this.attachShadow({ mode: "open" }).innerHTML = "<button id=b>go</button>";
+                  this.shadowRoot.getElementById("b").addEventListener("click", () => {
+                    this.dispatchEvent(new Event("inner-click", { bubbles: true, composed: true }));
+                  });
+                }
+              }
+              class HostEl extends HTMLElement {
+                constructor() {
+                  super();
+                  this.attachShadow({ mode: "open" }).innerHTML = "<inner-el></inner-el>";
+                  this.heard = 0;
+                  this.addEventListener("inner-click", () => { this.heard++; });
+                }
+              }
+              customElements.define("inner-el", InnerEl);
+              customElements.define("host-el", HostEl);
+              const host = document.querySelector("host-el");
+              const inner = host.shadowRoot.querySelector("inner-el");
+              inner.shadowRoot.getElementById("b").click();
+              return { heard: host.heard };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["heard"], 1, "{v}");
+}
+
+#[test]
+fn custom_elements_in_imported_template_upgrade_inside_shadow() {
+    let mut page = open(r#"<body><todo-host></todo-host></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const tpl = document.createElement("template");
+              tpl.innerHTML = "<inner-list></inner-list>";
+              class InnerList extends HTMLElement {
+                constructor() {
+                  super();
+                  this.ready = true;
+                  this.updateElements = function () { return 1; };
+                }
+              }
+              class TodoHost extends HTMLElement {
+                constructor() {
+                  super();
+                  const node = document.importNode(tpl.content, true);
+                  this.list = node.querySelector("inner-list");
+                  this.shadow = this.attachShadow({ mode: "open" });
+                  this.shadow.append(node);
+                }
+                connectedCallback() {
+                  window.__listReady = !!(this.list && this.list.ready);
+                  window.__hasUpdate = typeof this.list.updateElements === "function";
+                }
+              }
+              customElements.define("inner-list", InnerList);
+              customElements.define("todo-host", TodoHost);
+              const host = document.querySelector("todo-host");
+              const list = host && host.shadowRoot && host.shadowRoot.querySelector("inner-list");
+              return {
+                listReady: !!window.__listReady,
+                hasUpdate: !!window.__hasUpdate,
+                same: !!(host && list && host.list === list),
+                ctor: list && list.constructor && list.constructor.name
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["listReady"], true, "{v}");
+    assert_eq!(v["hasUpdate"], true, "{v}");
+    assert_eq!(v["same"], true, "{v}");
+    assert_eq!(v["ctor"], "InnerList", "{v}");
+}
+
+#[test]
+fn custom_elements_stay_inert_in_template_content() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const tpl = document.createElement("template");
+              tpl.innerHTML = "<kept-el></kept-el>";
+              class KeptEl extends HTMLElement {
+                constructor() { super(); window.__kept = (window.__kept || 0) + 1; }
+              }
+              customElements.define("kept-el", KeptEl);
+              const inside = tpl.content.querySelector("kept-el");
+              return {
+                constructed: window.__kept || 0,
+                name: inside && inside.constructor && inside.constructor.name,
+                upgraded: !!(inside && inside.__upgraded)
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["constructed"], 0, "{v}");
+    assert_eq!(v["name"], "HTMLElement", "{v}");
+    assert_eq!(v["upgraded"], false, "{v}");
+}
+
+#[test]
 fn custom_elements_upgrade_runs_connected_callback() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -825,12 +1030,15 @@ fn custom_elements_upgrade_runs_connected_callback() {
               customElements.define('x-foo', XFoo);
               const before = window.__n;
               customElements.upgrade(host);
+              const afterUpgrade = window.__n;
+              document.body.appendChild(host);
               const el = host.querySelector('x-foo');
-              return { before, after: window.__n, mark: !!(el && el.mark) };
+              return { before, afterUpgrade, after: window.__n, mark: !!(el && el.mark) };
             })()"#,
         )
         .unwrap();
     assert_eq!(v["before"], 0, "{v}");
+    assert_eq!(v["afterUpgrade"], 0, "{v}");
     assert_eq!(v["after"], 1, "{v}");
     assert_eq!(v["mark"], true, "{v}");
 }
@@ -1056,6 +1264,26 @@ fn node_list_location_hash_and_load_event_match_the_platform() {
     assert!(template["kids"].as_i64().unwrap_or(0) >= 1, "{template}");
     assert_eq!(template["a"], 8, "{template}");
     assert_eq!(template["b"], "DIV", "{template}");
+    let lit_marker = page
+        .evaluate(
+            r#"(function () {
+              const t = document.createElement("template");
+              t.innerHTML = "<?lit$1$><ul class='todo-list'></ul>";
+              const w = document.createTreeWalker(t.content, 129);
+              const a = w.nextNode();
+              const b = w.nextNode();
+              return {
+                a: a && a.nodeType,
+                data: a && a.nodeValue,
+                b: b && b.tagName,
+                kids: t.content.childNodes.length
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(lit_marker["a"], 8, "{lit_marker}");
+    assert_eq!(lit_marker["data"], "?lit$1$", "{lit_marker}");
+    assert_eq!(lit_marker["b"], "UL", "{lit_marker}");
     let script_html = page
         .evaluate(
             r#"(function () {
@@ -1163,6 +1391,68 @@ fn es5_todomvc_delegate_remove_after_domparser_replace() {
     assert_eq!(v["idx"], 0, "{v}");
     assert_eq!(v["ds"], "1", "{v}");
     assert_eq!(v["after"], 0, "{v}");
+}
+
+#[test]
+fn live_childnodes_grows_after_append_on_held_list() {
+    let mut page = open(r#"<ul id="list"></ul>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var ul = document.getElementById("list");
+              var held = ul.childNodes;
+              var before = held.length;
+              ul.appendChild(document.createElement("li"));
+              var mid = held.length;
+              var parsed = new DOMParser().parseFromString(
+                "<li id=a>one</li><li>two</li>",
+                "text/html"
+              );
+              ul.replaceChildren.apply(ul, Array.prototype.slice.call(parsed.body.childNodes));
+              return {
+                before: before,
+                mid: mid,
+                after: held.length,
+                named: typeof window.a !== "undefined" && window.a && window.a.id === "a",
+                text: ul.textContent
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["before"], 0, "{v}");
+    assert_eq!(v["mid"], 1, "{v}");
+    assert_eq!(v["after"], 2, "{v}");
+    assert_eq!(v["named"], true, "{v}");
+    assert_eq!(v["text"], "onetwo", "{v}");
+}
+
+#[test]
+fn es5_todomvc_domparser_replace_grows_to_one_hundred() {
+    let mut page = open(r#"<ul class="todo-list"></ul>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var ul = document.querySelector(".todo-list");
+              function item(i) {
+                return "<li data-id=\"" + i + "\"><div class=\"view\"><input class=\"toggle\" type=\"checkbox\"><label>Item " + i + "</label><button class=\"destroy\"></button></div></li>";
+              }
+              for (var n = 1; n <= 100; n++) {
+                var html = "";
+                for (var i = 1; i <= n; i++) html += item(i);
+                var parsed = new DOMParser().parseFromString(html, "text/html");
+                ul.replaceChildren.apply(ul, Array.prototype.slice.call(parsed.body.childNodes));
+              }
+              return {
+                count: ul.childNodes.length,
+                last: ul.lastChild && ul.lastChild.getAttribute("data-id"),
+                labels: ul.querySelectorAll("label").length
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["count"], 100, "{v}");
+    assert_eq!(v["last"], "100", "{v}");
+    assert_eq!(v["labels"], 100, "{v}");
 }
 
 #[test]
@@ -2914,4 +3204,2283 @@ fn create_cdata_section_counts_for_dir_auto() {
     assert_eq!(v["type"], 4, "{v}");
     assert_eq!(v["ltr"], true, "{v}");
     assert_eq!(v["rtl"], true, "{v}");
+}
+
+#[test]
+fn html_comment_pi_becomes_a_processing_instruction() {
+    let mut page = open(r#"<div id="p"><?marker name="x">keep</div>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const p = document.getElementById("p");
+              const n = p.firstChild;
+              return {
+                type: n && n.nodeType,
+                target: n && n.target,
+                data: n && n.data,
+                html: p.innerHTML
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["type"], 7, "{v}");
+    assert_eq!(v["target"], "marker", "{v}");
+    assert!(
+        v["data"].as_str().unwrap_or("").contains("name=\"x\""),
+        "{v}"
+    );
+}
+
+#[test]
+fn template_for_patches_named_marker() {
+    let mut page = open(
+        r#"<div id="placeholder"><?marker name="E"><?marker name="f"></div>
+           <template for="E">E</template>
+           <template for="f">f</template>
+           <template for="nope">x</template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                text: document.getElementById("placeholder").textContent,
+                leftover: document.querySelectorAll("template[for]").length,
+                bufferDefault: document.createElement("template").buffer
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["text"], "Ef", "{v}");
+    assert_eq!(v["leftover"], 1, "{v}");
+    assert_eq!(v["bufferDefault"], false, "{v}");
+}
+
+#[test]
+fn template_empty_for_is_in_place() {
+    let mut page = open(
+        r#"<div id="c"><span>Before</span><template for><span id="t">Inside</span></template><span>After</span></div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const c = document.getElementById("c");
+              return {
+                text: c.textContent.replace(/\s+/g, " ").trim(),
+                tpl: c.querySelector("template") !== null,
+                inside: !!document.getElementById("t")
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["text"], "BeforeInsideAfter", "{v}");
+    assert_eq!(v["tpl"], false, "{v}");
+    assert_eq!(v["inside"], true, "{v}");
+}
+
+#[test]
+fn render_blocking_remove_cancels_load() {
+    let mut page = open(
+        r#"<script>
+             window.__loads = 0;
+             const el = document.createElement("link");
+             el.rel = "stylesheet";
+             el.blocking = "render";
+             el.href = "/does-not-exist.css";
+             el.addEventListener("load", function () { window.__loads++; });
+             document.head.appendChild(el);
+             el.remove();
+             window.__cancelled = el.isConnected === false;
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate("({ loads: window.__loads, cancelled: window.__cancelled })")
+        .unwrap();
+    assert_eq!(v["loads"], 0, "{v}");
+    assert_eq!(v["cancelled"], true, "{v}");
+}
+
+#[test]
+fn stream_append_html_applies_template_for() {
+    let mut page = open(r#"<div id="placeholder"><?start name="p">Old<?end></div>"#);
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(async function () {
+              const writable = document.body.streamAppendHTMLUnsafe({ runScripts: true });
+              const writer = writable.getWriter();
+              await writer.write('<template for="p">');
+              await writer.write("New");
+              await writer.write("</template>");
+              await writer.close();
+              return document.getElementById("placeholder").textContent;
+            })()"#,
+        )
+        .unwrap();
+    page.settle(200);
+    let text = page
+        .evaluate("document.getElementById('placeholder').textContent")
+        .unwrap();
+    assert_eq!(text, "New", "async={v} settled={text}");
+}
+
+#[test]
+fn template_for_buffer_is_atomic_and_sanitize_strips_script() {
+    let mut page = open(
+        r#"<div id="t"><?start name="m">Old<?end></div>
+           <template for="m" buffer sanitize>
+             <span id="ok">Allowed</span>
+             <script>window.__bad = true;</script>
+           </template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const t = document.getElementById("t");
+              const ok = t.querySelector("[id='ok']");
+              return {
+                text: ok && ok.textContent,
+                script: t.querySelector("script") !== null,
+                bad: !!window.__bad,
+                tpl: document.querySelector("template") !== null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["text"], "Allowed", "{v}");
+    assert_eq!(v["script"], false, "{v}");
+    assert_eq!(v["bad"], false, "{v}");
+    assert_eq!(v["tpl"], false, "{v}");
+}
+
+#[test]
+fn chained_template_for_upgrades_custom_element() {
+    let mut page = open(
+        r#"<div id="target"><?marker name="target"?>Original<?end></div>
+           <script>
+             class CustomElement extends HTMLElement {
+               constructor() {
+                 super();
+                 window.customElementRun = true;
+                 window.ceOwnerDocument = this.ownerDocument;
+               }
+             }
+             customElements.define("custom-element", CustomElement);
+           </script>
+           <template for="target">
+             <div id="inner-div"><?marker name="inner"?></div>
+             <template for="inner">
+               <custom-element id="ce"></custom-element>
+               <span id="streamed">Streamed</span>
+             </template>
+           </template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                ran: !!window.customElementRun,
+                owner: window.ceOwnerDocument === document,
+                parent: document.getElementById("ce") && document.getElementById("ce").parentNode.id,
+                streamed: !!document.getElementById("streamed")
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["ran"], true, "{v}");
+    assert_eq!(v["owner"], true, "{v}");
+    assert_eq!(v["parent"], "inner-div", "{v}");
+    assert_eq!(v["streamed"], true, "{v}");
+}
+
+#[test]
+fn aria_enumerated_keywords_and_invalid_defaults() {
+    let mut page = open(r#"<div id="h"></div>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const el = document.getElementById("h");
+              el.setAttribute("aria-checked", "mixed");
+              const mixed = el.ariaChecked;
+              el.setAttribute("aria-checked", "TRUE");
+              const canon = el.ariaChecked;
+              el.setAttribute("aria-busy", "nope");
+              const invalidBusy = el.ariaBusy;
+              el.removeAttribute("aria-busy");
+              const missingBusy = el.ariaBusy;
+              el.setAttribute("aria-busy", "");
+              const emptyBusy = el.ariaBusy;
+              el.removeAttribute("aria-autocomplete");
+              const missingAuto = el.ariaAutoComplete;
+              el.removeAttribute("aria-checked");
+              const missingChecked = el.ariaChecked;
+              el.removeAttribute("aria-label");
+              const missingLabel = el.ariaLabel;
+              el.setAttribute("aria-current", "");
+              const emptyCurrent = el.ariaCurrent;
+              el.ariaBusy = null;
+              const idlNullBusy = el.ariaBusy;
+              const idlNullHas = el.hasAttribute("aria-busy");
+              return { mixed, canon, invalidBusy, missingBusy, emptyBusy, missingAuto, missingChecked, missingLabel, emptyCurrent, idlNullBusy, idlNullHas };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["mixed"], "mixed", "{v}");
+    assert_eq!(v["canon"], "true", "{v}");
+    assert_eq!(v["invalidBusy"], "false", "{v}");
+    assert_eq!(v["missingBusy"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["emptyBusy"], "false", "{v}");
+    assert_eq!(v["missingAuto"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["missingChecked"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["missingLabel"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["emptyCurrent"], "true", "{v}");
+    assert_eq!(v["idlNullBusy"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["idlNullHas"], false, "{v}");
+}
+
+#[test]
+fn template_for_buffer_in_place_runs_scripts_atomically() {
+    let mut page = open(
+        r#"<div id="container">
+             <span>Before</span>
+             <template for buffer>
+               <span id="target1">Inside 1</span>
+               <script>
+                 window.target1PresentDuringScript = !!document.getElementById('target1');
+                 window.target2PresentDuringScript = !!document.getElementById('target2');
+               </script>
+               <span id="target2">Inside 2</span>
+             </template>
+             <span>After</span>
+           </div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("container");
+              return {
+                t1: window.target1PresentDuringScript,
+                t2: window.target2PresentDuringScript,
+                tpl: c.querySelector("template") !== null,
+                before: c.querySelector("#target1") && c.querySelector("#target1").previousElementSibling.textContent,
+                after: c.querySelector("#target2") && c.querySelector("#target2").nextElementSibling.textContent,
+                html: c.innerHTML,
+                scripts: c.querySelectorAll("script").length
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["t1"], true, "{v}");
+    assert_eq!(v["t2"], true, "{v}");
+    assert_eq!(v["tpl"], false, "{v}");
+    assert_eq!(v["before"], "Before", "{v}");
+    assert_eq!(v["after"], "After", "{v}");
+}
+
+#[test]
+fn template_for_sanitize_invalid_runs_script() {
+    let mut page = open(
+        r#"<div id="t"><?start name="m">Old<?end></div>
+           <template for="m" sanitize="invalid">
+             <script>window.scriptInvalidVal = true;</script>
+             <span id="ok">Allowed Invalid Val</span>
+           </template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return {
+                ran: !!window.scriptInvalidVal,
+                text: (document.getElementById("ok") && document.getElementById("ok").textContent) || (document.getElementById("t") && document.getElementById("t").textContent),
+                html: document.getElementById("t") && document.getElementById("t").innerHTML,
+                kids: document.getElementById("t") && document.getElementById("t").childNodes.length
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ran"], true, "{v}");
+    assert_eq!(v["text"], "Allowed Invalid Val", "{v}");
+}
+
+#[test]
+fn start_without_end_replaces_through_parent() {
+    let mut page =
+        open(r#"<div id="c"><?start name="content"?><span class="red">Has red</span></div>"#);
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const c = document.getElementById("c");
+              const box = document.createElement("div");
+              box.innerHTML = '<template for="content"><?start name="content"?><span class="blue">Has blue</span></template>';
+              const tpl = box.querySelector("template");
+              document.body.appendChild(tpl);
+              __veApplyPartialUpdates();
+              const first = c.textContent.replace(/\s+/g, " ").trim();
+              const box2 = document.createElement("div");
+              box2.innerHTML = '<template for="content">Green (no span)</template>';
+              document.body.appendChild(box2.querySelector("template"));
+              __veApplyPartialUpdates();
+              return { first, second: c.textContent.replace(/\s+/g, " ").trim() };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["first"], "Has blue", "{v}");
+    assert_eq!(v["second"], "Green (no span)", "{v}");
+}
+
+#[test]
+fn set_html_and_sanitizer_strip_script_and_apply_template() {
+    let mut page = open(r#"<div id="host"></div>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const host = document.getElementById("host");
+              host.setHTML('<div id="t"><?start name="m">Old<?end></div><template for="m" sanitize="unsafe"><script>window.nestedScript7 = true;<\/script><span id="ok7">Allowed 7</span></template>');
+              const bespoke = new Sanitizer({ elements: ["span", "template"], attributes: ["for", "marker"] });
+              const c8 = document.createElement("div");
+              document.body.appendChild(c8);
+              c8.setHTML('<span marker="o"><?start name="o">X<?end></span><template for="o" sanitize="unsafe"><span>ok</span><div>no</div></template>', { sanitizer: bespoke });
+              return {
+                ran: !!window.nestedScript7,
+                span: host.querySelector("#ok7") && host.querySelector("#ok7").textContent,
+                sanitizer: typeof Sanitizer === "function",
+                noDiv: c8.querySelectorAll("div").length === 0,
+                hasSpan: c8.querySelector("span") !== null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ran"], false, "{v}");
+    assert_eq!(v["sanitizer"], true, "{v}");
+    assert_eq!(v["noDiv"], true, "{v}");
+    assert_eq!(v["hasSpan"], true, "{v}");
+}
+
+#[test]
+fn empty_for_streaming_mid_script_sees_prefix_only() {
+    let mut page = open(
+        r#"<div id="container2">
+             <span id="before-span">Before</span>
+             <template for id="tpl-test">
+               <span>A</span><script>
+                 window.step1 = (function () {
+                   const c = document.getElementById("container2").cloneNode(true);
+                   for (const s of c.querySelectorAll("script")) s.remove();
+                   return c.textContent.trim().replace(/\s+/g, " ");
+                 })();
+                 const tpl = document.getElementById("tpl-test");
+                 const beforeSpan = document.getElementById("before-span");
+                 document.getElementById("container2").insertBefore(tpl, beforeSpan);
+               </script><span>B</span><script>
+                 window.step2 = "ran";
+               </script>
+             </template>
+             <span>After</span>
+           </div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const c = document.getElementById("container2");
+              return {
+                step1: window.step1,
+                step2: window.step2,
+                tpl: c.querySelector("template") !== null,
+                html: c.innerHTML
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["step1"], "Before A", "{v}");
+    assert_eq!(v["step2"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["tpl"], true, "{v}");
+}
+
+#[test]
+fn review_behavior_counterexamples() {
+    let mut page = open(
+        r#"<div id="h"><span>x</span></div>
+           <script>
+             window.__url = new URL('https://s.test/a/b/../c').href;
+             const u2 = new URL('https://s.test/a/b');
+             u2.pathname = '/a/b/../c';
+             window.__urlSet = u2.href;
+             window.__composed = new Event('x').composed;
+             window.__composedClickCtor = new Event('click').composed;
+             let clickComposed = null;
+             document.addEventListener('click', (e) => { clickComposed = e.composed; }, true);
+             let n = 0;
+             const fn = () => { n++; };
+             document.getElementById('h').addEventListener('click', fn);
+             document.getElementById('h').addEventListener('click', fn);
+             document.getElementById('h').click();
+             window.__dedup = n;
+             window.__clickComposed = clickComposed;
+             let sawTarget = false;
+             document.addEventListener('ping', (e) => { e.stopPropagation(); }, true);
+             document.getElementById('h').addEventListener('ping', () => { sawTarget = true; });
+             document.getElementById('h').dispatchEvent(new Event('ping', { bubbles: true }));
+             window.__stopped = sawTarget === false;
+             const kids = document.getElementById('h').childNodes;
+             const before = kids.length;
+             document.getElementById('h').appendChild(document.createElement('i'));
+             window.__live = kids.length === before + 1;
+             window.__owner = document.getElementById('h').ownerDocument === document;
+           </script>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                url: window.__url,
+                urlSet: window.__urlSet,
+                composed: window.__composed,
+                composedClickCtor: window.__composedClickCtor,
+                clickComposed: window.__clickComposed,
+                dedup: window.__dedup,
+                stopped: window.__stopped,
+                live: window.__live,
+                owner: window.__owner
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["url"], "https://s.test/a/c", "{v}");
+    assert_eq!(v["urlSet"], "https://s.test/a/c", "{v}");
+    assert_eq!(v["composed"], false, "{v}");
+    assert_eq!(v["composedClickCtor"], false, "{v}");
+    assert_eq!(v["clickComposed"], true, "{v}");
+    assert_eq!(v["dedup"], 1, "{v}");
+    assert_eq!(v["stopped"], true, "{v}");
+    assert_eq!(v["live"], true, "{v}");
+    assert_eq!(v["owner"], true, "{v}");
+}
+
+#[test]
+fn required_empty_input_check_validity_is_false() {
+    let mut page =
+        open(r#"<form id="f"><input id="req" required><input id="ok" value="x"></form>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var req = document.getElementById("req");
+              var ok = document.getElementById("ok");
+              var form = document.getElementById("f");
+              var empty = req.checkValidity();
+              req.value = "filled";
+              return {
+                empty: empty,
+                filled: req.checkValidity(),
+                ok: ok.checkValidity(),
+                form: form.checkValidity()
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["empty"], false, "{v}");
+    assert_eq!(v["filled"], true, "{v}");
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(v["form"], true, "{v}");
+}
+
+#[test]
+fn get_computed_style_display_does_not_flush_layout() {
+    let mut html = String::from("<div id=\"root\">");
+    for i in 0..200 {
+        html.push_str(&format!("<p id=\"p{i}\">n</p>"));
+    }
+    html.push_str("</div>");
+    let mut page = open(&html);
+    assert!(page.settle(200).settled);
+    page.reset_restyle_attribution();
+    let v = page
+        .evaluate(
+            r#"(function () {
+              document.body.appendChild(document.createElement("section"));
+              return getComputedStyle(document.body).display;
+            })()"#,
+        )
+        .unwrap();
+    let attr = page.restyle_attribution();
+    assert_eq!(v, "block", "{v} restyle={attr:?}");
+    assert_eq!(
+        attr.layout_calls, 0,
+        "display is computed, not used: {v} restyle={attr:?}"
+    );
+}
+
+#[test]
+fn document_named_property_miss_does_not_wrap_the_tree() {
+    let mut html = String::from("<div id=\"root\">");
+    for i in 0..2000 {
+        html.push_str(&format!("<p id=\"n{i}\">x</p>"));
+    }
+    html.push_str("</div>");
+    let mut page = open(&html);
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var t0 = Date.now();
+              var miss = document["jQuery35123456789"];
+              return { miss: miss == null, ms: Date.now() - t0 };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["miss"], true, "{v}");
+    assert!(
+        v["ms"].as_u64().unwrap_or(u64::MAX) < 50,
+        "named miss must use the id/name indexes: {v}"
+    );
+}
+
+#[test]
+fn window_load_fires_after_a_large_id_tree() {
+    let ids: String = (0..800)
+        .map(|i| format!(r#"<span id="n{i}">{i}</span>"#))
+        .collect();
+    let html = format!(
+        r#"<div>{ids}</div>
+           <script>
+             window.__gotLoad = false;
+             window.addEventListener("load", function () {{
+               window.__gotLoad = true;
+               window.__hash = String(document.location.hash);
+             }});
+           </script>"#
+    );
+    let mut page = open(&html);
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                got: window.__gotLoad,
+                hash: window.__hash,
+                ready: document.readyState
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["got"], true, "{v}");
+    assert_eq!(v["ready"], "complete", "{v}");
+}
+
+#[cfg(feature = "v8")]
+#[test]
+fn document_change_event_does_not_scan_named_properties() {
+    let ids: String = (0..2000)
+        .map(|i| format!(r#"<span id="n{i}">{i}</span>"#))
+        .collect();
+    let html = format!(
+        r#"<input id="todo" class="new-todo">
+           <div>{ids}</div>
+           <script>
+             document.getElementById("todo").addEventListener("change", function () {{
+               window.__changed = true;
+             }});
+           </script>"#
+    );
+    let mut page = open(&html);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var input = document.getElementById("todo");
+              var t0 = Date.now();
+              input.dispatchEvent(new Event("change", { bubbles: true }));
+              return { changed: window.__changed === true, ms: Date.now() - t0, nodes: document.getElementsByTagName("*").length };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["changed"], true, "{v}");
+    assert!(
+        v["ms"].as_u64().unwrap_or(u64::MAX) < 1_000,
+        "onchange named-property scan on a large tree: {v}"
+    );
+}
+
+#[test]
+fn nested_sanitize_keeps_inner_template_policy() {
+    let mut page = open(
+        r#"<div id="target1"><?start name="outer-1">Original 1<?end></div>
+           <template for="outer-1" sanitize>
+             <div id="inner-1"><?start name="inner-1">Inner Original 1<?end></div>
+             <template for="inner-1" sanitize="unsafe">
+               <script>window.nestedScript1 = true;</script>
+               <span id="ok1">Allowed 1</span>
+             </template>
+           </template>
+           <div id="target2"><?start name="outer-2">Original 2<?end></div>
+           <template for="outer-2">
+             <div id="inner-2"><?start name="inner-2">Inner Original 2<?end></div>
+             <template for="inner-2" sanitize>
+               <script>window.nestedScript2 = true;</script>
+               <span id="ok2">Allowed 2</span>
+             </template>
+           </template>
+           <div id="target3"><?start name="outer-3">Original 3<?end></div>
+           <template for="outer-3">
+             <div id="inner-3"><?start name="inner-3">Inner Original 3<?end></div>
+             <template for="inner-3">
+               <script>window.nestedScript3 = true;</script>
+               <span id="ok3">Allowed 3</span>
+             </template>
+           </template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const t1 = document.getElementById("target1");
+              const t2 = document.getElementById("target2");
+              const t3 = document.getElementById("target3");
+              return {
+                s1: !!window.nestedScript1,
+                s2: !!window.nestedScript2,
+                s3: !!window.nestedScript3,
+                span1: !!(t1 && t1.querySelector("span")),
+                orig1: !!(t1 && t1.textContent.includes("Inner Original 1")),
+                ok2: t2 && t2.querySelector("span") && t2.querySelector("span").textContent,
+                ok3: t3 && t3.querySelector("span") && t3.querySelector("span").textContent
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["s1"], false, "{v}");
+    assert_eq!(v["s2"], false, "{v}");
+    assert_eq!(v["s3"], true, "{v}");
+    assert_eq!(v["span1"], false, "{v}");
+    assert_eq!(v["orig1"], true, "{v}");
+    assert_eq!(v["ok2"], "Allowed 2", "{v}");
+    assert_eq!(v["ok3"], "Allowed 3", "{v}");
+}
+
+#[test]
+fn nested_sanitize_template_is_observed_then_applied() {
+    let mut page = open(
+        r#"<div id="container">
+             <div id="target-outer"><?start name="outer-marker">Original Outer<?end></div>
+             <script>
+               window.addedNodes = [];
+               const observer = new MutationObserver((mutations) => {
+                 for (const mutation of mutations) {
+                   for (const node of mutation.addedNodes) {
+                     if (node.nodeType === 1) window.addedNodes.push(node.id || node.nodeName);
+                   }
+                 }
+               });
+               observer.observe(document.getElementById("container"), { childList: true, subtree: true });
+             </script>
+             <template for="outer-marker">
+               <div id="target-inner"><?start name="inner-marker">Original Inner<?end></div>
+               <template id="inner" for="inner-marker" buffer sanitize>
+                 <span id="ok">Inner Allowed</span>
+               </template>
+             </template>
+           </div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                added: window.addedNodes,
+                ok: document.getElementById("ok") && document.getElementById("ok").textContent,
+                innerTpl: document.getElementById("inner")
+              };
+            })()"#,
+        )
+        .unwrap();
+    let added = v["added"].to_string();
+    assert!(added.contains("target-inner"), "{v}");
+    assert!(added.contains("inner"), "{v}");
+    assert!(added.contains("ok") || added.contains("SPAN"), "{v}");
+    assert_eq!(v["ok"], "Inner Allowed", "{v}");
+    assert!(v["innerTpl"].is_null(), "{v}");
+}
+
+#[test]
+fn dom_inserted_pi_targets_are_case_sensitive() {
+    let mut page = open(r#"<div id="placeholder"></div>"#);
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const placeholder = document.getElementById("placeholder");
+              placeholder.append(
+                document.createProcessingInstruction("Start", 'name="a"'),
+                document.createProcessingInstruction("End", ""),
+                document.createProcessingInstruction("MARKER", 'name="b"'),
+                document.createProcessingInstruction("marKER", 'name="c"'),
+                document.createProcessingInstruction("marker", 'Name="z"'),
+                document.createProcessingInstruction("marker", 'name="d"'),
+                document.createProcessingInstruction("start", 'name="e"'),
+                document.createProcessingInstruction("end", ""),
+                "f"
+              );
+              const names = ["a", "b", "c", "z", "d", "e"];
+              for (const name of names) {
+                const tpl = document.createElement("template");
+                tpl.setAttribute("for", name);
+                tpl.innerHTML = name;
+                document.body.appendChild(tpl);
+              }
+              __veApplyPartialUpdates();
+              return {
+                html: placeholder.innerHTML,
+                left: document.querySelectorAll("template[for]").length
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(
+        v["html"],
+        "<?Start name=\"a\"?><?End ?><?MARKER name=\"b\"?><?marKER name=\"c\"?><?marker Name=\"z\"?>def",
+        "{v}"
+    );
+    assert_eq!(v["left"], 4, "{v}");
+}
+
+#[test]
+fn stream_append_replaces_start_without_end() {
+    let mut page = open(
+        r#"<div id="container"><?start name="content"?><span class="red">Has red</span></div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(async function () {
+              const container = document.getElementById("container");
+              async function update(html) {
+                const writer = container.streamAppendHTMLUnsafe({ runScripts: true }).getWriter();
+                await writer.write("<template for=content>" + html + "</template>");
+                await writer.close();
+              }
+              await update('<?start name="content"?><span class="blue">Has blue</span>');
+              const first = container.textContent.trim();
+              await update("Green (no span)");
+              return { first, second: container.textContent.trim(), html: container.innerHTML };
+            })()"#,
+        )
+        .unwrap();
+    page.settle(200);
+    let settled = page
+        .evaluate(
+            r#"(function () {
+              const c = document.getElementById("container");
+              return { text: c.textContent.trim(), html: c.innerHTML };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(
+        settled["text"], "Green (no span)",
+        "async={v} settled={settled}"
+    );
+}
+
+#[test]
+fn live_childnodes_has_own_indexes_after_remove() {
+    let mut page = open(r#"<div id="p"></div>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const parent = document.createElement("div");
+              const node = document.createElement("div");
+              const before = parent.appendChild(document.createComment("before"));
+              parent.appendChild(node);
+              const after = parent.appendChild(document.createComment("after"));
+              node.remove();
+              return {
+                len: parent.childNodes.length,
+                own0: parent.childNodes.hasOwnProperty(0),
+                own1: parent.childNodes.hasOwnProperty(1),
+                first: parent.childNodes[0] === before,
+                second: parent.childNodes[1] === after
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["len"], 2, "{v}");
+    assert_eq!(v["own0"], true, "{v}");
+    assert_eq!(v["own1"], true, "{v}");
+    assert_eq!(v["first"], true, "{v}");
+    assert_eq!(v["second"], true, "{v}");
+}
+
+#[test]
+fn official_sanitize_boolean_compound_id_descendant() {
+    let mut page = open(
+        r#"<div id="container-no-val">
+             <div id="target-no-val"><?start name="marker-no-val">Original<?end></div>
+             <template for="marker-no-val" sanitize>
+               <script>window.scriptNoVal = true;</script>
+               <span id="ok-no-val">Allowed No Val</span>
+             </template>
+           </div>
+           <div id="container-empty-val">
+             <div id="target-empty-val"><?start name="marker-empty-val">Original<?end></div>
+             <template for="marker-empty-val" sanitize="">
+               <script>window.scriptEmptyVal = true;</script>
+               <span id="ok-empty-val">Allowed Empty Val</span>
+             </template>
+           </div>
+           <div id="container-invalid-val">
+             <div id="target-invalid-val"><?start name="marker-invalid-val">Original<?end></div>
+             <template for="marker-invalid-val" sanitize="invalid">
+               <script>window.scriptInvalidVal = true;</script>
+               <span id="ok-invalid-val">Allowed Invalid Val</span>
+             </template>
+           </div>
+           <div id="container-space-val">
+             <div id="target-space-val"><?start name="marker-space-val">Original<?end></div>
+             <template for="marker-space-val" sanitize=" ">
+               <script>window.scriptSpaceVal = true;</script>
+               <span id="ok-space-val">Allowed Space Val</span>
+             </template>
+           </div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const noVal = document.querySelector("#target-no-val span");
+              const emptyVal = document.querySelector("#target-empty-val span");
+              const invalidVal = document.querySelector("#target-invalid-val span");
+              const t1 = document.getElementById("target-no-val");
+              const t3 = document.getElementById("target-invalid-val");
+              return {
+                scriptNoVal: !!window.scriptNoVal,
+                scriptEmptyVal: !!window.scriptEmptyVal,
+                scriptInvalidVal: !!window.scriptInvalidVal,
+                noVal: noVal && noVal.textContent,
+                emptyVal: emptyVal && emptyVal.textContent,
+                invalidVal: invalidVal && invalidVal.textContent,
+                byId: document.getElementById("ok-no-val") && document.getElementById("ok-no-val").textContent,
+                okInvalid: document.getElementById("ok-invalid-val") && document.getElementById("ok-invalid-val").textContent,
+                html1: t1 && t1.innerHTML,
+                html3: t3 && t3.innerHTML,
+                tpls: document.querySelectorAll("template").length,
+                compound: document.querySelector("#target-invalid-val span") && document.querySelector("#target-invalid-val span").id
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["scriptNoVal"], false, "{v}");
+    assert_eq!(v["scriptEmptyVal"], false, "{v}");
+    assert_eq!(v["scriptInvalidVal"], true, "{v}");
+    assert_eq!(
+        page.evaluate("!!window.scriptSpaceVal").unwrap(),
+        serde_json::json!(true),
+        "sanitize space must not sanitize"
+    );
+    assert_eq!(v["noVal"], "Allowed No Val", "{v}");
+    assert_eq!(v["emptyVal"], "Allowed Empty Val", "{v}");
+    assert_eq!(v["invalidVal"], "Allowed Invalid Val", "{v}");
+    assert_eq!(v["byId"], "Allowed No Val", "{v}");
+}
+
+#[test]
+fn official_streaming_target_marker_removed() {
+    let mut page = open(
+        r#"<div id="target" marker="dest-marker">
+             <?start name="dest-marker">Original Content<?end>
+           </div>
+           <template for="dest-marker">
+             <span id="child1">One</span>
+             <script>
+               const target = document.getElementById("target");
+               for (const child of Array.from(target.childNodes)) {
+                 if (child.nodeType === 7 && child.target === "end") child.remove();
+               }
+             </script>
+             <span id="child2">Two</span>
+           </template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const target = document.getElementById("target");
+              const c1 = target && target.querySelector("#child1");
+              const c2 = target && target.querySelector("#child2");
+              const kids = target ? Array.from(target.childNodes).filter((n) => n.nodeType === 1 && n.tagName.toLowerCase() !== "script") : [];
+              return {
+                t1: c1 && c1.textContent,
+                t2: c2 && c2.textContent,
+                n: kids.length,
+                id0: kids[0] && kids[0].id,
+                id1: kids[1] && kids[1].id,
+                tpl: target && target.querySelector("template")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["t1"], "One", "{v}");
+    assert_eq!(v["t2"], "Two", "{v}");
+    assert_eq!(v["n"], 2, "{v}");
+    assert_eq!(v["id0"], "child1", "{v}");
+    assert_eq!(v["id1"], "child2", "{v}");
+    assert!(v["tpl"].is_null(), "{v}");
+}
+
+#[test]
+fn official_src_streaming_single_quoted_ids() {
+    let mut page = open(
+        r#"<div id="container"><?start name="target">Old<?end></div>
+           <template for="target" src="../resources/chunked-html.py?delay=300&chunk1=%3Cspan%20id='c1'%3EC1%3C/span%3E&chunk2=%3Cspan%20id='c2'%3EC2%3C/span%3E" id="tpl"></template>"#,
+    );
+    assert!(page.settle(500).settled);
+    page.pump_virtual_time(400);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("container");
+              return {
+                c1: document.getElementById("c1") && document.getElementById("c1").textContent,
+                c2: document.getElementById("c2") && document.getElementById("c2").textContent,
+                html: c && c.innerHTML.trim().replace(/\s+/g, " ")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["c1"], "C1", "{v}");
+    assert_eq!(v["c2"], "C2", "{v}");
+}
+
+#[test]
+fn official_src_streaming_observer_sees_chunk1_before_chunk2() {
+    let mut page = open(
+        r#"<div id="container"><?start name="target">Old<?end></div>
+           <template for="target" src="../resources/chunked-html.py?delay=300&chunk1=%3Cspan%20id='c1'%3EC1%3C/span%3E&chunk2=%3Cspan%20id='c2'%3EC2%3C/span%3E" id="tpl"></template>
+           <script>
+             window.__src = { calls: 0, sawC1: false, sawC2AtC1: false, aborted: false };
+             (function () {
+               const container = document.getElementById("container");
+               const tpl = document.getElementById("tpl");
+               const finish = () => {
+                 window.__src.sawC1 = true;
+                 window.__src.sawC2AtC1 = !!document.getElementById("c2");
+                 window.__src.aborted = !!(tpl && tpl.__veStreamAborted);
+               };
+               if (document.getElementById("c1")) { finish(); return; }
+               const observer = new MutationObserver(() => {
+                 window.__src.calls++;
+                 if (document.getElementById("c1")) {
+                   observer.disconnect();
+                   finish();
+                 }
+               });
+               observer.observe(container, { childList: true, subtree: true });
+             })();
+           </script>"#,
+    );
+    page.pump_virtual_time(50);
+    let early = page
+        .evaluate(
+            r##"(function () {
+              const tpl = document.getElementById("tpl");
+              return {
+                sawC1: !!(window.__src && window.__src.sawC1),
+                sawC2AtC1: !!(window.__src && window.__src.sawC2AtC1),
+                calls: window.__src && window.__src.calls,
+                aborted: !!(window.__src && window.__src.aborted) || !!(tpl && tpl.__veStreamAborted),
+                patched: !!(tpl && tpl.__vePatched),
+                c1: !!(document.getElementById("c1")),
+                c2: !!(document.getElementById("c2"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(early["c1"], true, "chunk1 missing after 50ms: {early}");
+    assert_eq!(early["c2"], false, "chunk2 applied too early: {early}");
+    assert_eq!(
+        early["sawC1"], true,
+        "MutationObserver missed chunk1: {early}"
+    );
+    assert_eq!(
+        early["sawC2AtC1"], false,
+        "observer saw chunk2 with chunk1: {early}"
+    );
+    assert_eq!(early["aborted"], false, "src stream aborted: {early}");
+    page.pump_virtual_time(400);
+    let late = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("container");
+              return {
+                c1: document.getElementById("c1") && document.getElementById("c1").textContent,
+                c2: document.getElementById("c2") && document.getElementById("c2").textContent,
+                html: c && c.innerHTML.trim().replace(/\s+/g, " ")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(late["c1"], "C1", "{late}");
+    assert_eq!(late["c2"], "C2", "{late}");
+    assert_eq!(
+        late["html"], "<span id=\"c1\">C1</span><span id=\"c2\">C2</span>",
+        "{late}"
+    );
+}
+
+#[test]
+fn official_src_policy_cors_nonce_sri() {
+    let mut page = open(
+        r#"<div id="cors-ok"><?start name="c-ok">Old<?end></div>
+           <template for="c-ok" src="http://www1.web-platform.test:80/x.py?cors=1&chunk1=CORS_OK"></template>
+           <div id="cors-bad"><?start name="c-bad">Old<?end></div>
+           <template for="c-bad" src="http://www1.web-platform.test:80/x.py?cors=0&chunk1=CORS_FAIL"></template>
+           <div id="sri-ok"><?start name="s-ok">Old<?end></div>
+           <template for="s-ok" src="http://www1.web-platform.test:80/x.py?cors=1&chunk1=SRI_OK" integrity="sha256-B9fOqAtaB7EXwH61rP5cQQlWSqoRukf/UC9TatLkCec="></template>
+           <div id="sri-bad"><?start name="s-bad">Old<?end></div>
+           <template for="s-bad" src="http://www1.web-platform.test:80/x.py?cors=1&chunk1=SRI_OK" integrity="sha256-mismatchedhashmismatchedhashmismatchedhash="></template>"#,
+    );
+    assert!(page.settle(200).settled);
+    page.pump_virtual_time(50);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return {
+                corsOk: document.getElementById("cors-ok").textContent.includes("CORS_OK"),
+                corsBad: document.getElementById("cors-bad").textContent.includes("CORS_FAIL"),
+                sriOk: document.getElementById("sri-ok").textContent.includes("SRI_OK"),
+                sriBad: document.getElementById("sri-bad").textContent.includes("SRI_OK")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["corsOk"], true, "{v}");
+    assert_eq!(v["corsBad"], false, "{v}");
+    assert_eq!(v["sriOk"], true, "{v}");
+    assert_eq!(v["sriBad"], false, "{v}");
+}
+
+#[test]
+fn official_src_policy_nonce() {
+    let mut page = open(
+        r#"<meta http-equiv="Content-Security-Policy" content="script-src 'nonce-correctnonce' 'unsafe-inline';">
+           <div id="ok"><?start name="n-ok">Old<?end></div>
+           <template for="n-ok" nonce="correctnonce" src="/x.py?chunk1=NONCE_OK"></template>
+           <div id="bad"><?start name="n-bad">Old<?end></div>
+           <template for="n-bad" nonce="wrongnonce" src="/x.py?chunk1=NONCE_FAIL"></template>"#,
+    );
+    assert!(page.settle(200).settled);
+    page.pump_virtual_time(50);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return {
+                nonceOk: document.getElementById("ok").textContent.includes("NONCE_OK"),
+                nonceBad: document.getElementById("bad").textContent.includes("NONCE_FAIL")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["nonceOk"], true, "{v}");
+    assert_eq!(v["nonceBad"], false, "{v}");
+}
+
+#[test]
+fn iframe_srcdoc_applies_template_for() {
+    let mut page = open(
+        r#"<iframe id="f" srcdoc="<!DOCTYPE html><div id='target'><?start name='t'>Old<?end></div><template for='t'><span id='child1'>One</span><span id='child2'>Two</span></template>"></iframe>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const f = document.getElementById("f");
+              const d = f && f.contentDocument;
+              const t = d && d.getElementById("target");
+              return {
+                c1: t && t.querySelector("#child1") && t.querySelector("#child1").textContent,
+                c2: t && t.querySelector("#child2") && t.querySelector("#child2").textContent
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["c1"], "One", "{v}");
+    assert_eq!(v["c2"], "Two", "{v}");
+}
+
+#[test]
+fn pump_virtual_time_completes_pending_fetch() {
+    let mut page = open("<p>f</p>");
+    let _ = page.evaluate(
+        r##"(async function () {
+          const t = await (await fetch("data:text/plain,ok")).text();
+          window.__got = t;
+        })()"##,
+    );
+    page.pump_virtual_time(50);
+    let v = page.evaluate("window.__got").unwrap();
+    assert_eq!(
+        v, "ok",
+        "fetch after a timer must finish during pump_virtual_time"
+    );
+}
+
+#[test]
+fn pump_virtual_time_does_not_jump_past_horizon() {
+    let mut page = open("<p>f</p>");
+    let _ = page.evaluate(
+        r##"(function () {
+          window.__late = false;
+          setTimeout(function () { window.__late = true; }, 300);
+        })()"##,
+    );
+    page.pump_virtual_time(50);
+    let early = page.evaluate("window.__late").unwrap();
+    assert_eq!(early, false, "300ms timer must not fire in a 50ms pump");
+    page.pump_virtual_time(300);
+    let late = page.evaluate("window.__late").unwrap();
+    assert_eq!(
+        late, true,
+        "300ms timer must fire once the horizon covers it"
+    );
+}
+
+#[test]
+fn pump_virtual_time_finishes_second_timeout_then_fetch() {
+    let mut page = open("<p>f</p>");
+    let _ = page.evaluate(
+        r##"(async function () {
+          await new Promise((r) => setTimeout(r, 500));
+          window.__a = await (await fetch("data:text/plain,one")).text();
+          await new Promise((r) => setTimeout(r, 500));
+          window.__b = await (await fetch("data:text/plain,two")).text();
+        })()"##,
+    );
+    page.pump_virtual_time(200);
+    let mid = page
+        .evaluate(r#"(function(){return {a: window.__a, b: window.__b};})()"#)
+        .unwrap();
+    assert!(
+        mid["a"].is_null(),
+        "500ms wait must not fire in a 200ms pump: {mid}"
+    );
+    assert!(mid["b"].is_null(), "{mid}");
+    page.pump_virtual_time(400);
+    let after_first = page
+        .evaluate(r#"(function(){return {a: window.__a, b: window.__b};})()"#)
+        .unwrap();
+    assert_eq!(after_first["a"], "one", "{after_first}");
+    assert!(
+        after_first["b"].is_null(),
+        "second 500ms wait must stay pending: {after_first}"
+    );
+    page.pump_virtual_time(500);
+    let v = page
+        .evaluate(r#"(function(){return {a: window.__a, b: window.__b};})()"#)
+        .unwrap();
+    assert_eq!(v["a"], "one", "{v}");
+    assert_eq!(v["b"], "two", "{v}");
+}
+
+#[test]
+fn pump_virtual_time_long_horizon_finishes_timeout_fetch_chain() {
+    let mut page = open("<p>f</p>");
+    let _ = page.evaluate(
+        r##"(async function () {
+          await new Promise((r) => setTimeout(r, 500));
+          window.__a = await (await fetch("data:text/plain,one")).text();
+          await new Promise((r) => setTimeout(r, 500));
+          window.__b = await (await fetch("data:text/plain,two")).text();
+        })()"##,
+    );
+    page.pump_virtual_time(10_000);
+    let v = page
+        .evaluate(r#"(function(){return {a: window.__a, b: window.__b};})()"#)
+        .unwrap();
+    assert_eq!(v["a"], "one", "{v}");
+    assert_eq!(v["b"], "two", "{v}");
+}
+
+#[test]
+fn stream_lock_bodyused() {
+    let mut page = open("<p>s</p>");
+    let _ = page.evaluate(
+        r##"(async function () {
+          const r = await fetch("data:text/plain,hello");
+          const reader = r.body.getReader();
+          let secondThrew = false;
+          try { r.body.getReader(); } catch (e) { secondThrew = String(e).includes("locked"); }
+          const chunk = await reader.read();
+          window.__streamLock = {
+            secondThrew: secondThrew,
+            bodyUsed: r.bodyUsed,
+            gotBytes: !!(chunk && chunk.value && chunk.value.length)
+          };
+        })()"##,
+    );
+    page.pump_virtual_time(50);
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__streamLock").unwrap();
+    assert_eq!(v["secondThrew"], true, "{v}");
+    assert_eq!(v["bodyUsed"], true, "{v}");
+    assert_eq!(v["gotBytes"], true, "{v}");
+}
+
+#[test]
+fn already_focused_input_does_not_refire_focus() {
+    let mut page = open(r#"<input id="n" autofocus>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var n = document.getElementById("n");
+              n.focus();
+              var hits = 0;
+              n.addEventListener("focus", function () { hits++; });
+              n.addEventListener("focusin", function () { hits++; });
+              n.focus();
+              n.focus();
+              return { hits: hits, active: document.activeElement === n };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hits"], 0, "{v}");
+    assert_eq!(v["active"], true, "{v}");
+}
+
+#[test]
+fn wheel_event_exposes_delta_and_client_coords() {
+    let mut page = open("<div id='d'></div>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var ev = new WheelEvent("wheel", {
+                clientX: 200, clientY: 200, deltaMode: 0, delta: -10, deltaY: -10, bubbles: true
+              });
+              return {
+                ctor: ev.constructor.name,
+                type: ev.type,
+                clientX: ev.clientX,
+                clientY: ev.clientY,
+                deltaY: ev.deltaY,
+                deltaMode: ev.deltaMode,
+                bubbles: ev.bubbles
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ctor"], "WheelEvent", "{v}");
+    assert_eq!(v["type"], "wheel", "{v}");
+    assert_eq!(v["clientX"], 200, "{v}");
+    assert_eq!(v["deltaY"], -10, "{v}");
+    assert_eq!(v["deltaMode"], 0, "{v}");
+    assert_eq!(v["bubbles"], true, "{v}");
+}
+
+#[test]
+fn content_onclick_attribute_still_runs() {
+    let mut page =
+        open(r#"<button id="b" onclick="window.__hit = (window.__hit||0)+1">Go</button>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var b = document.getElementById("b");
+              b.click();
+              var ev = new Event("click", { bubbles: true });
+              b.dispatchEvent(ev);
+              return { hit: window.__hit };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hit"], 2, "{v}");
+}
+
+#[test]
+fn todomvc_es5_measured_phases() {
+    use std::time::Instant;
+    let t0 = Instant::now();
+    let mut page = open(
+        r#"<section>
+             <input class="new-todo" placeholder="What needs to be done?">
+             <ul class="todo-list"></ul>
+             <span class="todo-count">0</span>
+             <script>
+               (function () {
+                 var list = document.querySelector(".todo-list");
+                 var input = document.querySelector(".new-todo");
+                 var count = document.querySelector(".todo-count");
+                 function render() {
+                   count.textContent = String(list.children.length);
+                 }
+                 input.addEventListener("keydown", function (e) {
+                   if (e.key !== "Enter" || !input.value) return;
+                   var li = document.createElement("li");
+                   li.innerHTML = "<label>" + input.value + "</label><button class=destroy></button>";
+                   list.appendChild(li);
+                   input.value = "";
+                   render();
+                 });
+                 list.addEventListener("click", function (e) {
+                   if (e.target && e.target.className === "destroy") {
+                     var li = e.target.parentNode;
+                     li.parentNode.removeChild(li);
+                     render();
+                   }
+                 });
+                 window.__todoReady = true;
+               })();
+             </script>
+           </section>"#,
+    );
+    let open_ms = t0.elapsed().as_millis() as u64;
+    let t1 = Instant::now();
+    assert!(page.settle(200).settled);
+    let settle_ms = t1.elapsed().as_millis() as u64;
+    let t2 = Instant::now();
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var input = document.querySelector(".new-todo");
+              for (var i = 0; i < 50; i++) {
+                input.value = "item-" + i;
+                input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+              }
+              var n = document.querySelectorAll(".todo-list li").length;
+              document.querySelector(".destroy").click();
+              return { ready: window.__todoReady === true, n: n, after: document.querySelectorAll(".todo-list li").length };
+            })()"##,
+        )
+        .unwrap();
+    let js_ms = t2.elapsed().as_millis() as u64;
+    let t3 = Instant::now();
+    let _ = page.observe(&ObservationRequest::default());
+    let observe_ms = t3.elapsed().as_millis() as u64;
+    assert_eq!(v["ready"], true, "{v}");
+    assert_eq!(v["n"], 50, "{v}");
+    assert_eq!(v["after"], 49, "{v}");
+    assert!(open_ms + settle_ms + js_ms + observe_ms > 0);
+    if let Ok(path) = std::env::var("VECTOR_TODOMVC_ATTRIBUTION_OUT") {
+        let total = open_ms + settle_ms + js_ms + observe_ms;
+        let json = serde_json::json!({
+            "label": "speedometer.3.0.TodoMVC-JavaScript-ES5",
+            "artifact": {
+                "engine": "vector-engine",
+                "review": "Vector_Current_Review_60b2d41",
+                "measured": true,
+                "note": "Timed on this host from bindings todomvc_es5_measured_phases. Adapted workload, not an official Speedometer score."
+            },
+            "samples_ms": [total],
+            "phases": {
+                "openMs": open_ms,
+                "jsMs": js_ms,
+                "settleMs": settle_ms,
+                "observeMs": observe_ms
+            },
+            "accountedMs": total,
+            "unaccountedMs": 0,
+            "errors": [],
+            "retries": 0,
+            "success": true,
+            "officialSuite": false,
+            "heldOut": false,
+            "synthetic": false
+        });
+        let _ = std::fs::write(path, serde_json::to_string_pretty(&json).unwrap());
+    }
+}
+
+#[test]
+fn html_collection_types_match_html_idl() {
+    let mut page = open(
+        r#"<form id="f" name="f">
+             <input id="n" name="n" value="Ada">
+             <input type="radio" name="color" value="red" checked>
+             <input type="radio" name="color" value="blue">
+             <select id="s" name="s"><option value="a" selected>A</option><option value="b">B</option></select>
+           </form>
+           <img id="im" alt="i">
+           <p id="p">x</p>
+           <p id="dup">one</p>
+           <div id="dup">two</div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const all = document.all;
+              const form = document.getElementById("f");
+              const select = document.getElementById("s");
+              const radios = form.elements.namedItem("color");
+              return {
+                allTag: Object.prototype.toString.call(all),
+                allIsAll: all instanceof HTMLAllCollection,
+                allNotCollection: !(all instanceof HTMLCollection),
+                allLength: all.length > 0,
+                allNamed: all.namedItem("p") && all.namedItem("p").id === "p",
+                allItemIndex: all.item(0) !== null,
+                allTypeof: typeof all,
+                allLoose: all == null,
+                allStrict: all === undefined,
+                allCall: all("p") && all("p").id === "p",
+                allCtor: typeof HTMLAllCollection === "function",
+                allCtorLen: HTMLAllCollection.length,
+                allItemLen: HTMLAllCollection.prototype.item.length,
+                allNewThrows: (function () { try { new HTMLAllCollection(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                formNewThrows: (function () { try { new HTMLFormControlsCollection(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                radioProto: Object.getPrototypeOf(RadioNodeList.prototype) === NodeList.prototype,
+                radioCtorProto: Object.getPrototypeOf(RadioNodeList) === NodeList,
+                formHasOwn: typeof form.elements.hasOwnProperty === "function",
+                optionsHasOwn: typeof select.options.hasOwnProperty === "function",
+                imagesIn: document.images.length >= 1 && (0 in document.images)
+                  && [].slice.call(document.images).length === document.images.length,
+                namedItemArgc: (function () { try { form.elements.namedItem(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                addArgc: (function () { try { select.options.add(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                removeArgc: (function () { try { select.options.remove(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                formTag: Object.prototype.toString.call(form.elements),
+                formIsControls: form.elements instanceof HTMLFormControlsCollection,
+                namedInput: form.elements.namedItem("n") && form.elements.namedItem("n").value === "Ada",
+                radioTag: Object.prototype.toString.call(radios),
+                radioIsList: radios instanceof RadioNodeList,
+                radioValue: radios.value,
+                optionsTag: Object.prototype.toString.call(select.options),
+                optionsIsOptions: select.options instanceof HTMLOptionsCollection,
+                optionsLength: select.options.length,
+                optionsSelected: select.options.selectedIndex
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["allTag"], "[object HTMLAllCollection]", "{v}");
+    assert_eq!(v["allIsAll"], true, "{v}");
+    assert_eq!(v["allNotCollection"], true, "{v}");
+    assert_eq!(v["allLength"], true, "{v}");
+    assert_eq!(v["allNamed"], true, "{v}");
+    assert_eq!(v["allItemIndex"], true, "{v}");
+    assert_eq!(v["allTypeof"], "undefined", "{v}");
+    assert_eq!(v["allLoose"], true, "{v}");
+    assert_eq!(v["allStrict"], false, "{v}");
+    assert_eq!(v["allCall"], true, "{v}");
+    assert_eq!(v["allCtor"], true, "{v}");
+    assert_eq!(v["allCtorLen"], 0, "{v}");
+    assert_eq!(v["allItemLen"], 0, "{v}");
+    assert_eq!(v["allNewThrows"], true, "{v}");
+    assert_eq!(v["formNewThrows"], true, "{v}");
+    assert_eq!(v["radioProto"], true, "{v}");
+    assert_eq!(v["radioCtorProto"], true, "{v}");
+    assert_eq!(v["formHasOwn"], true, "{v}");
+    assert_eq!(v["optionsHasOwn"], true, "{v}");
+    assert_eq!(v["imagesIn"], true, "{v}");
+    assert_eq!(v["namedItemArgc"], true, "{v}");
+    assert_eq!(v["addArgc"], true, "{v}");
+    assert_eq!(v["removeArgc"], true, "{v}");
+    assert_eq!(v["formTag"], "[object HTMLFormControlsCollection]", "{v}");
+    assert_eq!(v["formIsControls"], true, "{v}");
+    assert_eq!(v["namedInput"], true, "{v}");
+    assert_eq!(v["radioTag"], "[object RadioNodeList]", "{v}");
+    assert_eq!(v["radioIsList"], true, "{v}");
+    assert_eq!(v["radioValue"], "red", "{v}");
+    assert_eq!(v["optionsTag"], "[object HTMLOptionsCollection]", "{v}");
+    assert_eq!(v["optionsIsOptions"], true, "{v}");
+    assert_eq!(v["optionsLength"], 2, "{v}");
+    assert_eq!(v["optionsSelected"], 0, "{v}");
+}
+
+#[test]
+fn official_html_element_brands_match_idlharness_objects() {
+    let mut page = open("<body></body>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const tags = {
+                HTMLHRElement: "hr",
+                HTMLPreElement: "pre",
+                HTMLQuoteElement: "blockquote",
+                HTMLOListElement: "ol",
+                HTMLUListElement: "ul",
+                HTMLLIElement: "li",
+                HTMLDListElement: "dl",
+                HTMLHeadingElement: "h1",
+                HTMLBRElement: "br",
+                HTMLModElement: "ins",
+                HTMLPictureElement: "picture",
+                HTMLVideoElement: "video",
+                HTMLAudioElement: "audio",
+                HTMLTrackElement: "track",
+                HTMLTableElement: "table",
+                HTMLTableCaptionElement: "caption",
+                HTMLLabelElement: "label",
+                HTMLUnknownElement: "bgsound",
+              };
+              const out = {};
+              for (const [iface, tag] of Object.entries(tags)) {
+                const el = document.createElement(tag);
+                out[iface] = {
+                  tag: Object.prototype.toString.call(el),
+                  inst: el instanceof window[iface],
+                  html: el instanceof HTMLElement,
+                };
+              }
+              const listing = document.createElement("listing");
+              const xmp = document.createElement("xmp");
+              const img = new Image(10, 20);
+              const audio = new Audio("data:,");
+              const opt = new Option("t", "v");
+              const video = document.createElement("video");
+              video.src = "data:,";
+              const track = document.createElement("track");
+              const added = video.addTextTrack("subtitles");
+              return {
+                brands: out,
+                listingPre: listing instanceof HTMLPreElement,
+                xmpPre: xmp instanceof HTMLPreElement,
+                listingTag: Object.prototype.toString.call(listing),
+                imgInst: img instanceof HTMLImageElement,
+                audioInst: audio instanceof HTMLAudioElement,
+                audioErr: audio.error instanceof MediaError,
+                optInst: opt instanceof HTMLOptionElement,
+                optText: opt.text,
+                videoMedia: video instanceof HTMLMediaElement,
+                videoBuf: video.buffered instanceof TimeRanges,
+                videoTracks: video.textTracks instanceof TextTrackList,
+                addedCue: added.cues instanceof TextTrackCueList,
+                trackObj: track.track instanceof TextTrack,
+                validity: document.createElement("input").validity instanceof ValidityState,
+                ancestors: location.ancestorOrigins instanceof DOMStringList,
+                external: window.external instanceof External,
+                pop: new PopStateEvent("popstate", { state: {} }).state,
+                toggle: new ToggleEvent("beforetoggle") instanceof ToggleEvent,
+                formData: new FormDataEvent("formdata", { formData: new FormData() }) instanceof FormDataEvent,
+                trackEv: new TrackEvent("addtrack", { track: track.track }).track instanceof TextTrack,
+              };
+            })()"##,
+        )
+        .unwrap();
+    for iface in [
+        "HTMLHRElement",
+        "HTMLPreElement",
+        "HTMLQuoteElement",
+        "HTMLOListElement",
+        "HTMLUListElement",
+        "HTMLLIElement",
+        "HTMLDListElement",
+        "HTMLHeadingElement",
+        "HTMLBRElement",
+        "HTMLModElement",
+        "HTMLPictureElement",
+        "HTMLVideoElement",
+        "HTMLAudioElement",
+        "HTMLTrackElement",
+        "HTMLTableElement",
+        "HTMLTableCaptionElement",
+        "HTMLLabelElement",
+        "HTMLUnknownElement",
+    ] {
+        let row = &v["brands"][iface];
+        assert_eq!(row["tag"], format!("[object {iface}]"), "{iface} {v}");
+        assert_eq!(row["inst"], true, "{iface} {v}");
+        assert_eq!(row["html"], true, "{iface} {v}");
+    }
+    assert_eq!(v["listingPre"], true, "{v}");
+    assert_eq!(v["xmpPre"], true, "{v}");
+    assert_eq!(v["listingTag"], "[object HTMLPreElement]", "{v}");
+    assert_eq!(v["imgInst"], true, "{v}");
+    assert_eq!(v["audioInst"], true, "{v}");
+    assert_eq!(v["audioErr"], true, "{v}");
+    assert_eq!(v["optInst"], true, "{v}");
+    assert_eq!(v["optText"], "t", "{v}");
+    assert_eq!(v["videoMedia"], true, "{v}");
+    assert_eq!(v["videoBuf"], true, "{v}");
+    assert_eq!(v["videoTracks"], true, "{v}");
+    assert_eq!(v["addedCue"], true, "{v}");
+    assert_eq!(v["trackObj"], true, "{v}");
+    assert_eq!(v["validity"], true, "{v}");
+    assert_eq!(v["ancestors"], true, "{v}");
+    assert_eq!(v["external"], true, "{v}");
+    assert_eq!(v["toggle"], true, "{v}");
+    assert_eq!(v["formData"], true, "{v}");
+    assert_eq!(v["trackEv"], true, "{v}");
+}
+
+#[test]
+fn htmlelement_idl_members_match_official_interface() {
+    let mut page = open("<p id=t>x</p>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const el = document.getElementById("t");
+              const proto = HTMLElement.prototype;
+              let datasetThrew = false;
+              try { void proto.dataset; } catch (e) { datasetThrew = e instanceof TypeError; }
+              el.popover = "auto";
+              const opened = el.togglePopover();
+              el.hidePopover();
+              let internalsThrew = false;
+              try { el.attachInternals(); } catch (e) { internalsThrew = e.name === "NotSupportedError"; }
+              return {
+                writing: el.writingSuggestions,
+                writingOnProto: "writingSuggestions" in proto,
+                autocorrect: el.autocorrect,
+                headingOffset: el.headingOffset,
+                headingReset: el.headingReset,
+                attach: typeof proto.attachInternals === "function",
+                show: typeof proto.showPopover === "function",
+                hide: typeof proto.hidePopover === "function",
+                toggle: typeof proto.togglePopover === "function",
+                opened,
+                datasetThrew,
+                datasetOwn: Object.prototype.hasOwnProperty.call(proto, "dataset"),
+                onEnter: proto.onmouseenter,
+                onClickThrew: (function () { try { void proto.onclick; return false; } catch (e) { return e instanceof TypeError; } })(),
+                toggleLen: proto.togglePopover.length,
+                internalsThrew,
+                internalsCtor: typeof ElementInternals === "function",
+                dataset: typeof el.dataset === "object",
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["writing"], "true", "{v}");
+    assert_eq!(v["writingOnProto"], true, "{v}");
+    assert_eq!(v["autocorrect"], true, "{v}");
+    assert_eq!(v["headingOffset"], 0, "{v}");
+    assert_eq!(v["headingReset"], false, "{v}");
+    assert_eq!(v["attach"], true, "{v}");
+    assert_eq!(v["show"], true, "{v}");
+    assert_eq!(v["hide"], true, "{v}");
+    assert_eq!(v["toggle"], true, "{v}");
+    assert_eq!(v["opened"], true, "{v}");
+    assert_eq!(v["datasetThrew"], true, "{v}");
+    assert_eq!(v["datasetOwn"], true, "{v}");
+    assert_eq!(v["onEnter"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["onClickThrew"], true, "{v}");
+    assert_eq!(v["toggleLen"], 0, "{v}");
+    assert_eq!(v["internalsThrew"], true, "{v}");
+    assert_eq!(v["internalsCtor"], true, "{v}");
+    assert_eq!(v["dataset"], true, "{v}");
+}
+
+#[test]
+fn official_html_link_media_body_and_eventsource_idl() {
+    let mut page =
+        open("<title>Hi</title><link id=l rel=stylesheet><body><video id=v></video></body>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const title = document.querySelector("title");
+              const link = document.getElementById("l");
+              const video = document.getElementById("v");
+              let canPlayThrew = false;
+              try { video.canPlayType(); } catch (e) { canPlayThrew = e instanceof TypeError; }
+              let customThrew = false;
+              try { document.createElement("object").setCustomValidity(); } catch (e) { customThrew = e instanceof TypeError; }
+              let fillThrew = false;
+              try { document.createElement("canvas").getContext("2d").fillRect(); } catch (e) { fillThrew = e instanceof TypeError; }
+              const es = new EventSource("http://invalid");
+              return {
+                titleText: title.text,
+                titleOwn: "text" in HTMLTitleElement.prototype,
+                sizes: link.sizes && typeof link.sizes.add === "function",
+                imageSrcset: "imageSrcset" in HTMLLinkElement.prototype,
+                imageSizes: "imageSizes" in HTMLLinkElement.prototype,
+                fetchPriority: link.fetchPriority,
+                bodyAfter: "onafterprint" in HTMLBodyElement.prototype,
+                canPlay: typeof HTMLMediaElement.prototype.canPlayType === "function",
+                canPlayThrew,
+                customThrew,
+                fillThrew,
+                setHtmlLen: Element.prototype.setHTML.length,
+                esUrl: typeof es.url === "string",
+                esClosed: es.readyState === EventSource.CLOSED,
+                esTag: Object.prototype.toString.call(es),
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["titleText"], "Hi", "{v}");
+    assert_eq!(v["titleOwn"], true, "{v}");
+    assert_eq!(v["sizes"], true, "{v}");
+    assert_eq!(v["imageSrcset"], true, "{v}");
+    assert_eq!(v["imageSizes"], true, "{v}");
+    assert_eq!(v["fetchPriority"], "auto", "{v}");
+    assert_eq!(v["bodyAfter"], true, "{v}");
+    assert_eq!(v["canPlay"], true, "{v}");
+    assert_eq!(v["canPlayThrew"], true, "{v}");
+    assert_eq!(v["customThrew"], true, "{v}");
+    assert_eq!(v["fillThrew"], true, "{v}");
+    assert_eq!(v["setHtmlLen"], 1, "{v}");
+    assert_eq!(v["esUrl"], true, "{v}");
+    assert_eq!(v["esClosed"], true, "{v}");
+    assert_eq!(v["esTag"], "[object EventSource]", "{v}");
+}
+
+#[test]
+fn official_html_reflect_and_media_state_idl() {
+    let mut page = open(
+        r#"<iframe id=f></iframe><img id=i src="x.png"><form id=fm rel="noopener"><details id=d name=n></details><dialog id=g></dialog><script id=s></script><source id=so width=1><template id=t></template><button id=b command=show-modal></button><video id=v src="m.mp4"></video>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const iframe = document.getElementById("f");
+              const img = document.getElementById("i");
+              const form = document.getElementById("fm");
+              const details = document.getElementById("d");
+              const dialog = document.getElementById("g");
+              const script = document.getElementById("s");
+              const source = document.getElementById("so");
+              const tpl = document.getElementById("t");
+              const btn = document.getElementById("b");
+              const video = document.getElementById("v");
+              dialog.returnValue = "ok";
+              tpl.setAttribute("shadowrootmode", "open");
+              return {
+                sandbox: iframe.sandbox && typeof iframe.sandbox.add === "function",
+                allow: "allow" in HTMLIFrameElement.prototype,
+                loading: iframe.loading,
+                imgSizes: "sizes" in HTMLImageElement.prototype,
+                imgFetch: img.fetchPriority,
+                currentSrc: typeof img.currentSrc === "string",
+                formRel: form.rel,
+                formRelList: form.relList && typeof form.relList.contains === "function",
+                detailsName: details.name,
+                dialogClosedBy: "closedBy" in HTMLDialogElement.prototype,
+                dialogRet: dialog.returnValue,
+                scriptFetch: script.fetchPriority,
+                sourceW: source.width,
+                tplFor: "htmlFor" in HTMLTemplateElement.prototype,
+                tplMode: tpl.shadowRootMode,
+                command: btn.command,
+                net: video.networkState === HTMLMediaElement.NETWORK_IDLE,
+                have: video.readyState === HTMLMediaElement.HAVE_NOTHING,
+                paused: video.paused === true,
+                vol: video.volume === 1,
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sandbox"], true, "{v}");
+    assert_eq!(v["allow"], true, "{v}");
+    assert_eq!(v["loading"], "eager", "{v}");
+    assert_eq!(v["imgSizes"], true, "{v}");
+    assert_eq!(v["imgFetch"], "auto", "{v}");
+    assert_eq!(v["currentSrc"], true, "{v}");
+    assert_eq!(v["formRel"], "noopener", "{v}");
+    assert_eq!(v["formRelList"], true, "{v}");
+    assert_eq!(v["detailsName"], "n", "{v}");
+    assert_eq!(v["dialogClosedBy"], true, "{v}");
+    assert_eq!(v["dialogRet"], "ok", "{v}");
+    assert_eq!(v["scriptFetch"], "auto", "{v}");
+    assert_eq!(v["sourceW"], 1, "{v}");
+    assert_eq!(v["tplFor"], true, "{v}");
+    assert_eq!(v["tplMode"], "open", "{v}");
+    assert_eq!(v["command"], "show-modal", "{v}");
+    assert_eq!(v["net"], true, "{v}");
+    assert_eq!(v["have"], true, "{v}");
+    assert_eq!(v["paused"], true, "{v}");
+    assert_eq!(v["vol"], true, "{v}");
+}
+
+#[test]
+fn official_html_table_input_select_and_label_idl() {
+    let mut page = open(
+        r#"<form id=fm><table id=tb><caption>c</caption><thead><tr><th>h</th></tr></thead><tbody><tr><td>d</td></tr></tbody></table><label id=lb for=in>L</label><input id=in type=number value=4 list=dl><select id=sel><option selected>a</option><option>b</option></select><progress id=pr value=2 max=4></progress><map id=mp name=m><area id=ar></map><a id=a href="/">t</a><datalist id=dl><option value=x></datalist><textarea id=ta>hi</textarea></form>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const table = document.getElementById("tb");
+              const row = table.rows[1];
+              const cell = row.cells[0];
+              const input = document.getElementById("in");
+              const select = document.getElementById("sel");
+              const label = document.getElementById("lb");
+              const progress = document.getElementById("pr");
+              const map = document.getElementById("mp");
+              const a = document.getElementById("a");
+              const list = document.getElementById("dl");
+              const ta = document.getElementById("ta");
+              const inserted = table.insertRow();
+              inserted.insertCell();
+              let delRowThrew = false;
+              try { table.deleteRow(); } catch (e) { delRowThrew = e instanceof TypeError; }
+              let rangeThrew = false;
+              try { input.setRangeText(); } catch (e) { rangeThrew = e instanceof TypeError; }
+              input.stepUp();
+              input.select();
+              ta.select();
+              return {
+                caption: table.caption && table.caption.textContent === "c",
+                tHead: table.tHead instanceof HTMLTableSectionElement,
+                tBodies: table.tBodies.length >= 1,
+                rows: table.rows.length >= 3,
+                rowIndex: row.rowIndex,
+                cellIndex: cell.cellIndex,
+                createCap: typeof HTMLTableElement.prototype.createCaption === "function",
+                delRowThrew,
+                filesTag: Object.prototype.toString.call(input.files),
+                filesInst: input.files instanceof FileList,
+                valueAsNumber: typeof input.valueAsNumber === "number",
+                valueAsDate: input.valueAsDate === null,
+                list: input.list === list,
+                selStart: "selectionStart" in HTMLInputElement.prototype,
+                form: input.form === document.getElementById("fm"),
+                will: input.willValidate === true,
+                validity: input.validity instanceof ValidityState,
+                labels: input.labels.length === 1 && input.labels[0] === label,
+                selected: select.selectedOptions.length === 1,
+                selectType: select.type === "select-one",
+                areas: map.areas.length === 1,
+                aText: a.text,
+                listOpts: list.options.length === 1,
+                progressPos: progress.position,
+                labelControl: label.control === input,
+                rangeThrew,
+                showPicker: typeof HTMLInputElement.prototype.showPicker === "function",
+                stepUp: typeof HTMLInputElement.prototype.stepUp === "function",
+                taType: ta.type === "textarea",
+                taLen: ta.textLength,
+                protoOwn: Object.prototype.hasOwnProperty.call(HTMLInputElement.prototype, "setCustomValidity"),
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["caption"], true, "{v}");
+    assert_eq!(v["tHead"], true, "{v}");
+    assert_eq!(v["tBodies"], true, "{v}");
+    assert_eq!(v["rows"], true, "{v}");
+    assert_eq!(v["rowIndex"], 1, "{v}");
+    assert_eq!(v["cellIndex"], 0, "{v}");
+    assert_eq!(v["createCap"], true, "{v}");
+    assert_eq!(v["delRowThrew"], true, "{v}");
+    assert_eq!(v["filesTag"], "[object FileList]", "{v}");
+    assert_eq!(v["filesInst"], true, "{v}");
+    assert_eq!(v["valueAsNumber"], true, "{v}");
+    assert_eq!(v["valueAsDate"], true, "{v}");
+    assert_eq!(v["list"], true, "{v}");
+    assert_eq!(v["selStart"], true, "{v}");
+    assert_eq!(v["form"], true, "{v}");
+    assert_eq!(v["will"], true, "{v}");
+    assert_eq!(v["validity"], true, "{v}");
+    assert_eq!(v["labels"], true, "{v}");
+    assert_eq!(v["selected"], true, "{v}");
+    assert_eq!(v["selectType"], true, "{v}");
+    assert_eq!(v["areas"], true, "{v}");
+    assert_eq!(v["aText"], "t", "{v}");
+    assert_eq!(v["listOpts"], true, "{v}");
+    assert_eq!(v["progressPos"], 0.5, "{v}");
+    assert_eq!(v["labelControl"], true, "{v}");
+    assert_eq!(v["rangeThrew"], true, "{v}");
+    assert_eq!(v["showPicker"], true, "{v}");
+    assert_eq!(v["stepUp"], true, "{v}");
+    assert_eq!(v["taType"], true, "{v}");
+    assert_eq!(v["taLen"], 2, "{v}");
+    assert_eq!(v["protoOwn"], true, "{v}");
+}
+
+#[test]
+fn official_html_brand_window_and_media_idl() {
+    let mut page =
+        open("<video id=v src=m.mp4></video><input id=i><a name=n href=/></a><canvas id=c>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              let inputAcceptThrew = false;
+              try { void HTMLInputElement.prototype.accept; } catch (e) { inputAcceptThrew = e instanceof TypeError; }
+              let svgOnclickThrew = false;
+              try { void SVGElement.prototype.onclick; } catch (e) { svgOnclickThrew = e instanceof TypeError; }
+              const ownAbort = Object.getOwnPropertyDescriptor(window, "onabort");
+              const protoHasAbort = "onabort" in Window.prototype;
+              const loose = ownAbort && ownAbort.get && ownAbort.get.call(undefined);
+              let sanGet = false;
+              try { sanGet = typeof new Sanitizer({}).get === "function"; } catch (e) {}
+              const video = document.getElementById("v");
+              const ctx = document.getElementById("c").getContext("2d");
+              let locThrew = false;
+              try { new Location(); } catch (e) { locThrew = e instanceof TypeError; }
+              let mediaThrew = false;
+              try { new HTMLMediaElement(); } catch (e) { mediaThrew = e instanceof TypeError; }
+              let playRejected = false;
+              try {
+                const p = HTMLMediaElement.prototype.play.call({});
+                if (p && typeof p.then === "function") {
+                  p.then(function () {}, function (e) { playRejected = e instanceof TypeError; });
+                }
+              } catch (e) { playRejected = e instanceof TypeError; }
+              return {
+                inputAcceptThrew,
+                svgOnclickThrew,
+                ownAbort: !!(ownAbort && ownAbort.get),
+                protoHasAbort,
+                looseOk: loose === window.onabort,
+                createCapName: HTMLTableElement.prototype.createCaption.name,
+                insertRowLen: HTMLTableElement.prototype.insertRow.length,
+                setTimeoutLen: setTimeout.length,
+                clearTimeoutLen: clearTimeout.length,
+                setIntervalLen: setInterval.length,
+                netIdle: video.NETWORK_IDLE === 1,
+                play: typeof HTMLMediaElement.prototype.play === "function",
+                getHTML: typeof Element.prototype.getHTML === "function",
+                navInst: navigator instanceof Navigator,
+                storeInst: localStorage instanceof Storage,
+                isSecure: isSecureContext === true,
+                report: typeof reportError === "function",
+                offscreen: typeof OffscreenCanvasRenderingContext2D === "function",
+                sanLen: Sanitizer.length,
+                sanGet,
+                ctxLen: CanvasRenderingContext2D.length,
+                ctxCanvas: Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "canvas") != null,
+                ctxFill: Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "fillStyle") != null,
+                rotateLen: CanvasRenderingContext2D.prototype.rotate.length,
+                linGradLen: CanvasRenderingContext2D.prototype.createLinearGradient.length,
+                navProtoUA: Object.getOwnPropertyDescriptor(Navigator.prototype, "userAgent") != null,
+                navOwnUA: Object.getOwnPropertyDescriptor(navigator, "userAgent") == null,
+                navUA: navigator.userAgent === "Vector/0.0.1",
+                docAnchors: Object.getOwnPropertyDescriptor(Document.prototype, "anchors") != null && document.anchors.length === 1,
+                locThrew,
+                locOwnHref: Object.prototype.hasOwnProperty.call(window.location, "href"),
+                esProto: Object.getOwnPropertyDescriptor(EventSource.prototype, "url") != null,
+                esConst: EventSource.CONNECTING === 0 && EventSource.prototype.OPEN === 1,
+                mediaCross: Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "crossOrigin") != null,
+                mediaThrew,
+                playRejected,
+                userAct: navigator.userActivation instanceof UserActivation,
+                msgLen: MessageEvent.length,
+                msgData: Object.getOwnPropertyDescriptor(MessageEvent.prototype, "data") != null,
+                pathLen: Path2D.length,
+                pathAdd: Path2D.prototype.addPath.length,
+                pathMove: Path2D.prototype.moveTo.length,
+                imgDataLen: ImageData.length,
+                imgDataW: Object.getOwnPropertyDescriptor(ImageData.prototype, "width") != null,
+                workerLen: Worker.length,
+                workerPost: Worker.prototype.postMessage.length,
+                sharedLen: SharedWorker.length,
+                xmlLen: XMLSerializer.prototype.serializeToString.length,
+                originThrew: (function () { try { new Origin(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                mathA: Object.getOwnPropertyDescriptor(MathMLAnchorElement.prototype, "href") != null,
+                imageLen: Image.length,
+                audioLen: Audio.length,
+                formLen: Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "length") != null,
+                canvasCtx: HTMLCanvasElement.prototype.getContext.length,
+                canvasBlob: HTMLCanvasElement.prototype.toBlob.length,
+                histGo: History.prototype.go.length,
+                histPush: History.prototype.pushState.length,
+                ceDefine: CustomElementRegistry.prototype.define.length,
+                shadowHTML: typeof ShadowRoot.prototype.getHTML === "function",
+                trStart: TimeRanges.prototype.start.length,
+                hashLen: HashChangeEvent.length,
+                trackLen: TrackEvent.length,
+                submitLen: SubmitEvent.length,
+                dragLen: DragEvent.length,
+                dialogShow: typeof HTMLDialogElement.prototype.show === "function",
+                scriptSup: typeof HTMLScriptElement.supports === "function",
+                rangeFrag: typeof Range.prototype.createContextualFragment === "function",
+                imageName: Image.name,
+                audioNew: (function () { try { Audio(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                beforeLen: BeforeUnloadEvent.length,
+                beforeThrew: (function () { try { new BeforeUnloadEvent(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                locStr: (function () { try { Location.prototype.toString.apply(null); return false; } catch (e) { return e instanceof TypeError; } })(),
+                extNull: (function () { try { External.prototype.AddSearchProvider.apply(null); return false; } catch (e) { return e instanceof TypeError; } })(),
+                allTypeof: typeof document.all,
+                allLoose: document.all == null,
+                allInst: document.all instanceof HTMLAllCollection,
+                allCallV: document.all("v") && document.all("v").id === "v",
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inputAcceptThrew"], true, "{v}");
+    assert_eq!(v["svgOnclickThrew"], true, "{v}");
+    assert_eq!(v["ownAbort"], true, "{v}");
+    assert_eq!(v["protoHasAbort"], false, "{v}");
+    assert_eq!(v["looseOk"], true, "{v}");
+    assert_eq!(v["createCapName"], "createCaption", "{v}");
+    assert_eq!(v["insertRowLen"], 0, "{v}");
+    assert_eq!(v["setTimeoutLen"], 1, "{v}");
+    assert_eq!(v["clearTimeoutLen"], 0, "{v}");
+    assert_eq!(v["setIntervalLen"], 1, "{v}");
+    assert_eq!(v["netIdle"], true, "{v}");
+    assert_eq!(v["play"], true, "{v}");
+    assert_eq!(v["getHTML"], true, "{v}");
+    assert_eq!(v["navInst"], true, "{v}");
+    assert_eq!(v["storeInst"], true, "{v}");
+    assert_eq!(v["isSecure"], true, "{v}");
+    assert_eq!(v["report"], true, "{v}");
+    assert_eq!(v["offscreen"], true, "{v}");
+    assert_eq!(v["sanLen"], 0, "{v}");
+    assert_eq!(v["sanGet"], true, "{v}");
+    assert_eq!(v["ctxLen"], 0, "{v}");
+    assert_eq!(v["ctxCanvas"], true, "{v}");
+    assert_eq!(v["ctxFill"], true, "{v}");
+    assert_eq!(v["rotateLen"], 1, "{v}");
+    assert_eq!(v["linGradLen"], 4, "{v}");
+    assert_eq!(v["navProtoUA"], true, "{v}");
+    assert_eq!(v["navOwnUA"], true, "{v}");
+    assert_eq!(v["navUA"], true, "{v}");
+    assert_eq!(v["docAnchors"], true, "{v}");
+    assert_eq!(v["locThrew"], true, "{v}");
+    assert_eq!(v["locOwnHref"], true, "{v}");
+    assert_eq!(v["esProto"], true, "{v}");
+    assert_eq!(v["esConst"], true, "{v}");
+    assert_eq!(v["mediaCross"], true, "{v}");
+    assert_eq!(v["mediaThrew"], true, "{v}");
+    assert_eq!(v["userAct"], true, "{v}");
+    assert_eq!(v["msgLen"], 1, "{v}");
+    assert_eq!(v["msgData"], true, "{v}");
+    assert_eq!(v["pathLen"], 0, "{v}");
+    assert_eq!(v["pathAdd"], 1, "{v}");
+    assert_eq!(v["pathMove"], 2, "{v}");
+    assert_eq!(v["imgDataLen"], 2, "{v}");
+    assert_eq!(v["imgDataW"], true, "{v}");
+    assert_eq!(v["workerLen"], 1, "{v}");
+    assert_eq!(v["workerPost"], 1, "{v}");
+    assert_eq!(v["sharedLen"], 1, "{v}");
+    assert_eq!(v["xmlLen"], 1, "{v}");
+    assert_eq!(v["originThrew"], true, "{v}");
+    assert_eq!(v["mathA"], true, "{v}");
+    assert_eq!(v["imageLen"], 0, "{v}");
+    assert_eq!(v["audioLen"], 0, "{v}");
+    assert_eq!(v["formLen"], true, "{v}");
+    assert_eq!(v["canvasCtx"], 1, "{v}");
+    assert_eq!(v["canvasBlob"], 1, "{v}");
+    assert_eq!(v["histGo"], 0, "{v}");
+    assert_eq!(v["histPush"], 2, "{v}");
+    assert_eq!(v["ceDefine"], 2, "{v}");
+    assert_eq!(v["shadowHTML"], true, "{v}");
+    assert_eq!(v["trStart"], 1, "{v}");
+    assert_eq!(v["hashLen"], 1, "{v}");
+    assert_eq!(v["trackLen"], 1, "{v}");
+    assert_eq!(v["submitLen"], 1, "{v}");
+    assert_eq!(v["dragLen"], 1, "{v}");
+    assert_eq!(v["dialogShow"], true, "{v}");
+    assert_eq!(v["scriptSup"], true, "{v}");
+    assert_eq!(v["rangeFrag"], true, "{v}");
+    assert_eq!(v["imageName"], "Image", "{v}");
+    assert_eq!(v["audioNew"], true, "{v}");
+    assert_eq!(v["beforeLen"], 0, "{v}");
+    assert_eq!(v["beforeThrew"], true, "{v}");
+    assert_eq!(v["locStr"], true, "{v}");
+    assert_eq!(v["extNull"], true, "{v}");
+    assert_eq!(v["allTypeof"], "undefined", "{v}");
+    assert_eq!(v["allLoose"], true, "{v}");
+    assert_eq!(v["allInst"], true, "{v}");
+    assert_eq!(v["allCallV"], true, "{v}");
+}
+
+#[test]
+fn text_decoder_decodes_utf8_heap_views() {
+    let mut page = open("<title>enc</title>");
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const json = '{"ok":true,"n":2}';
+              const bytes = new TextEncoder().encode(json);
+              const heap = new Uint8Array(64);
+              heap.set(bytes, 8);
+              const view = heap.subarray(8, 8 + bytes.length);
+              const out = new TextDecoder().decode(view);
+              const u16 = new Uint8Array([0x49, 0x00, 0x43, 0x00, 0x55, 0x00]);
+              const utf16 = new TextDecoder("utf-16le").decode(u16);
+              return {
+                ctor: typeof TextDecoder,
+                enc: typeof TextEncoder,
+                round: out === json,
+                parsed: JSON.parse(out).n,
+                empty: new TextDecoder().decode(new Uint8Array()) === "",
+                utf16le: utf16,
+                utf16enc: new TextDecoder("utf-16le").encoding
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["ctor"], "function", "{v}");
+    assert_eq!(v["enc"], "function", "{v}");
+    assert_eq!(v["round"], true, "{v}");
+    assert_eq!(v["parsed"], 2, "{v}");
+    assert_eq!(v["empty"], true, "{v}");
+    assert_eq!(v["utf16le"], "ICU", "{v}");
+    assert_eq!(v["utf16enc"], "utf-16le", "{v}");
+}
+
+#[test]
+fn mouse_event_buttons_default_is_zero_and_mouseup_reaches_window() {
+    let mut page = open("<div id=t>x</div>");
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const down = new MouseEvent("mousedown");
+              const up = new MouseEvent("mouseup");
+              const click = new MouseEvent("click", { button: 0 });
+              const pressed = new MouseEvent("mousedown", { button: 0, buttons: 1 });
+              const moved = new MouseEvent("mousemove", { clientX: 150, clientY: 200 });
+              let windowUp = 0;
+              window.addEventListener("mouseup", function () { windowUp++; });
+              document.getElementById("t").dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+              const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+              const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+              svg.appendChild(rect);
+              document.body.appendChild(svg);
+              const pt = svg.createSVGPoint();
+              pt.x = 150; pt.y = 200;
+              const local = pt.matrixTransform(rect.getScreenCTM().inverse());
+              return {
+                downButtons: down.buttons,
+                upButtons: up.buttons,
+                clickButtons: click.buttons,
+                downButton: down.button,
+                pressedButtons: pressed.buttons,
+                windowUp: windowUp,
+                pageX: moved.pageX,
+                clientLeft: document.getElementById("t").clientLeft,
+                svgPoint: local.x,
+                ownerSvg: rect.ownerSVGElement === svg
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["downButtons"], 0, "{v}");
+    assert_eq!(v["upButtons"], 0, "{v}");
+    assert_eq!(v["clickButtons"], 0, "{v}");
+    assert_eq!(v["downButton"], 0, "{v}");
+    assert_eq!(v["pressedButtons"], 1, "{v}");
+    assert_eq!(v["windowUp"], 1, "{v}");
+    assert_eq!(v["pageX"], 150, "{v}");
+    assert_eq!(v["clientLeft"], 0, "{v}");
+    assert_eq!(v["svgPoint"], 150, "{v}");
+    assert_eq!(v["ownerSvg"], true, "{v}");
+}
+
+/// Perf-Dashboard PaneSelector constructs `_testsContainer` from a closed
+/// shadow via `content().querySelector('#tests')`. Official Render throws
+/// `childNodes` of undefined if that assignment never sticks.
+#[test]
+fn closed_shadow_template_query_selector_id_and_component_construct() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function probe(label, fn) {
+                try { return { label: label, ok: true, v: fn() }; }
+                catch (e) { return { label: label, ok: false, err: String(e && e.stack ? e.stack : e) }; }
+              }
+              const t = document.createElement("template");
+              t.innerHTML = '<div class="pane-selector-container"><div id="tests"></div><div id="platform"></div></div>';
+              const host = document.createElement("div");
+              const shadow = host.attachShadow({ mode: "closed" });
+              const imported = document.importNode(t.content, true);
+              shadow.appendChild(imported);
+              const q = shadow.querySelector("#tests");
+              const byId = shadow.getElementById ? shadow.getElementById("tests") : null;
+              class FakePane extends HTMLElement {
+                constructor() {
+                  super();
+                  this._shadow = null;
+                  this.ctorErr = null;
+                  try {
+                    const tpl = document.createElement("template");
+                    tpl.innerHTML = '<div class="pane-selector-container"><div id="tests"></div><div id="platform"></div></div>';
+                    this._shadow = this.attachShadow({ mode: "closed" });
+                    this._shadow.appendChild(document.importNode(tpl.content, true));
+                    this._testsContainer = this._shadow.querySelector("#tests");
+                    this._platformContainer = this._shadow.querySelector("#platform");
+                  } catch (e) {
+                    this.ctorErr = String(e && e.stack ? e.stack : e);
+                  }
+                }
+              }
+              customElements.define("fake-pane", FakePane);
+              const el = document.createElement("fake-pane");
+              document.body.appendChild(el);
+              return {
+                tplKids: t.content.childNodes.length,
+                importedKids: imported.childNodes.length,
+                shadowKids: shadow.childNodes.length,
+                shadowHtml: String(shadow.innerHTML || ""),
+                qType: q == null ? String(q) : q.tagName,
+                byIdType: byId == null ? String(byId) : byId.tagName,
+                elCtor: el.constructor && el.constructor.name,
+                testsType: el._testsContainer == null ? String(el._testsContainer) : el._testsContainer.tagName,
+                platformType: el._platformContainer == null ? String(el._platformContainer) : el._platformContainer.tagName,
+                ctorErr: el.ctorErr,
+                upgraded: !!el.__upgraded
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["tplKids"], 1, "{v}");
+    assert_eq!(v["qType"], "DIV", "{v}");
+    assert_eq!(v["byIdType"], "DIV", "{v}");
+    assert_eq!(v["testsType"], "DIV", "{v}");
+    assert_eq!(v["platformType"], "DIV", "{v}");
+    assert_eq!(v["ctorErr"], serde_json::Value::Null, "{v}");
+}
+
+/// createElement of a defined autonomous custom element must run the
+/// constructor immediately (HTML "create an element"). Deferred upgrade on
+/// insert constructed a second instance on an element that already had a
+/// closed shadow — Perf-Dashboard PaneSelector._testsContainer stayed unset.
+#[test]
+fn create_element_constructs_defined_custom_element_immediately() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const currently = new Map();
+              class Pane extends HTMLElement {}
+              class PaneComponent {
+                constructor() {
+                  let element = currently.get(PaneComponent);
+                  if (!element) {
+                    currently.set(PaneComponent, this);
+                    element = document.createElement("ve-pane");
+                    currently.delete(PaneComponent);
+                  }
+                  element.component = () => this;
+                  this._element = element;
+                  this._shadow = element.attachShadow({ mode: "closed" });
+                  const tpl = document.createElement("template");
+                  tpl.innerHTML = '<div id="tests"></div>';
+                  this._shadow.appendChild(document.importNode(tpl.content, true));
+                  this._testsContainer = this._shadow.querySelector("#tests");
+                }
+                element() { return this._element; }
+              }
+              customElements.define("ve-pane", class extends HTMLElement {
+                constructor() {
+                  super();
+                  const component = currently.get(PaneComponent);
+                  if (component) return;
+                  currently.set(PaneComponent, this);
+                  new PaneComponent();
+                  currently.delete(PaneComponent);
+                }
+                connectedCallback() {
+                  this.component().rendered = true;
+                }
+              });
+              const first = new PaneComponent();
+              const created = document.createElement("ve-pane");
+              document.body.appendChild(first.element());
+              let renderErr = null;
+              try { first._testsContainer.childNodes.length; }
+              catch (e) { renderErr = String(e && e.message ? e.message : e); }
+              return {
+                createdBuilt: !!(created && created.component && created.component() && created.component()._testsContainer),
+                createdType: created && created.component && created.component()._testsContainer
+                  ? created.component()._testsContainer.tagName : String(created && created.component && created.component()._testsContainer),
+                firstType: first._testsContainer == null ? String(first._testsContainer) : first._testsContainer.tagName,
+                sameComp: first.element().component() === first,
+                rendered: !!first.rendered,
+                renderErr: renderErr
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["firstType"], "DIV", "{v}");
+    assert_eq!(v["createdBuilt"], true, "{v}");
+    assert_eq!(v["sameComp"], true, "{v}");
+    assert_eq!(v["rendered"], true, "{v}");
+    assert_eq!(v["renderErr"], serde_json::Value::Null, "{v}");
 }

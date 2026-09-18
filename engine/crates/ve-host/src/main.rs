@@ -4,7 +4,7 @@
 
 mod sandbox;
 
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
@@ -17,6 +17,8 @@ fn main() {
         Ok("1" | "true")
     );
     let opt_out = std::env::var_os("VECTOR_ENGINE_SANDBOX").is_some_and(|v| v == "0");
+    // V8 platform + watchdog threads must exist before seccomp denies clone.
+    ve_napi::preload_scripting();
     let sandbox_applied = if production || !opt_out {
         match sandbox::apply() {
             Ok(()) => true,
@@ -70,14 +72,44 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
             std::process::exit(if allowed { 11 } else { 0 });
         }
         "network" => {
+            // Bind is the creation probe. Connect-refused still means socket()
+            // worked. Excluded-port PermissionDenied is not a sandbox.
+            let bound = TcpListener::bind("127.0.0.1:0").is_ok();
             let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 1));
-            match TcpStream::connect_timeout(&addr, Duration::from_millis(200)) {
-                Ok(_) => std::process::exit(12),
-                Err(e) if e.kind() == std::io::ErrorKind::ConnectionRefused => {
-                    // socket() worked; the filter did not deny network creation.
-                    std::process::exit(12);
-                }
-                Err(_) => std::process::exit(0),
+            let connected = match TcpStream::connect_timeout(&addr, Duration::from_millis(200)) {
+                Ok(_) => true,
+                Err(e) if e.kind() == std::io::ErrorKind::ConnectionRefused => true,
+                Err(_) => false,
+            };
+            std::process::exit(if bound || connected { 12 } else { 0 });
+        }
+        "thread" => {
+            let ok = std::thread::Builder::new()
+                .name("ve-host-selftest".into())
+                .spawn(|| 1 + 1)
+                .ok()
+                .and_then(|t| t.join().ok())
+                .is_some();
+            std::process::exit(if ok { 0 } else { 14 });
+        }
+        "js" => {
+            // V8 platform threads were preloaded before seccomp. Creating an
+            // isolate and evaluating under the sandbox must not SIGSYS.
+            ve_napi::preload_scripting();
+            let ok = ve_napi::scripting_selftest();
+            std::process::exit(if ok { 0 } else { 15 });
+        }
+        "clone3" => {
+            #[cfg(target_os = "linux")]
+            unsafe {
+                // Thread-style clone3 must remain available for V8. This
+                // selftest only proves the syscall is not process-killed.
+                let ret = libc::syscall(libc::SYS_clone3, std::ptr::null::<u8>(), 0usize);
+                std::process::exit(if ret >= 0 { 16 } else { 0 });
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                std::process::exit(0);
             }
         }
         "clone" => {
@@ -88,7 +120,7 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
                 }
                 std::process::exit(0);
             }
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(all(unix, not(target_os = "linux")))]
             unsafe {
                 let pid = libc::fork();
                 if pid == 0 {
@@ -99,6 +131,22 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
                     std::process::exit(13);
                 }
                 std::process::exit(0);
+            }
+            #[cfg(not(unix))]
+            {
+                std::process::exit(0);
+            }
+        }
+        "fs" => {
+            // Finding 2: production filesystem confinement must deny a write
+            // outside the allowlist (Landlock / Low Integrity / sandbox_init).
+            let path = std::env::temp_dir().join("ve-host-landlock-probe");
+            match std::fs::write(&path, b"leak") {
+                Ok(()) => {
+                    let _ = std::fs::remove_file(&path);
+                    std::process::exit(17);
+                }
+                Err(_) => std::process::exit(0),
             }
         }
         other => {

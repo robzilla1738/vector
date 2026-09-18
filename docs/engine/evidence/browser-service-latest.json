@@ -1,0 +1,52 @@
+{
+  "review": "Vector_Current_Review_60b2d41",
+  "finding": 1,
+  "gates": ["B", "F"],
+  "chromium": false,
+  "service": "browser-service",
+  "protocol": "newline-jsonrpc",
+  "sceneTransport": "displayList",
+  "pngAsRegularPresent": false,
+  "tests": {
+    "human_and_mcp_clients_share_one_page_authority": "PASS",
+    "in_process_handle_matches_socket_protocol": "PASS",
+    "concurrency_tail_and_process_tree_memory": "PASS 16 concurrent observe on 400-row records tree after one warm observe. Samples and process-tree RSS in concurrency-tail-latest.json. Not a one-input warm fixture.",
+    "unseen_layout_variant_is_scored_by_outcome_only": "PASS",
+    "human_edit_and_agent_observe_the_same_page": "PASS",
+    "gui_thread_pump_and_mcp_client_share_one_native_browser": "PASS",
+    "stalled_host_handshake_fails_without_downgrade": "PASS",
+    "production_sandbox_runs_inline_script_observe_and_input": "PASS",
+    "production_sandbox_runs_external_js_from_allowlisted_fixture": "PASS",
+    "downloaded_release_artifact_runs_production_sandbox": "PASS copy-to-temp host (0.29s). CI job downloaded-artifact downloads engine-native-* then re-runs production_sandbox.",
+    "html_collection_types_match_html_idl": "PASS",
+    "live_os_window_and_mcp_share_one_page": "PASS DISPLAY=:1 after libxkbcommon-x11 (was panic: Library libxkbcommon-x11.so could not be loaded). IME+observe+agent+takeover+resume+resize+wheel+AccessKit+scene on one NativeBrowser. chromium=false. CI xvfb job added.",
+    "node_planner_is_browser_service_client": "PASS VectorEngineDriver ownService starts/attaches to BrowserService. Order: VECTOR_BROWSER_SERVICE, NAPI BrowserServiceHandle.listen, then spawn ve-shell --service. Injected load keeps a local Engine for unit tests.",
+    "node_takeover_stops_second_service_client": "PASS VectorEngineDriver.takeover/resume call pages.takeover/pages.resume. PageService forwards vector-engine takeover to the driver. A second BrowserServiceClient execute is conflict until resume. Local-only Engine without takeover stays TS controller only.",
+    "pages_execute_is_permission_chokepoint": "PASS PageService.execute runs authorizeProgram on collected steps before dispatch. Grants come from PageServiceDeps only. A program/RPC grants field does not expand them. Read extract succeeds under effect:read; click is permission_denied and never reaches the driver.",
+    "workspace_effect_grants_are_settings": "PASS Settings.effectGrants persist via settings.set. Unknown tokens dropped. Model text cannot expand. Runtime PageService and RunCoordinator re-read grants() after settings.set. Desktop Settings drawer toggles Write/Navigate/Evaluate; Read stays on.",
+    "streamed_dispatch_uses_action_compiler": "PASS EarlyDispatcher batches run compileAndAuthorize before pages.execute. Stale documentEpoch is rejected. Missing effect:write is denied. Finished plans use the same helper.",
+    "member_agent_and_learned_replay_use_action_compiler": "PASS runMemberAgent compiles planner steps against the just-taken observation before pages.execute. Stale documentEpoch and missing effect:write never reach execute. SetRunner learned replay observes first then compileAndAuthorize (origin mismatch / deny / reject fall through or fail closed). OperationService browser-program and coordinator repair use the same helper. conflict and permission_denied are pre-dispatch so writes are not re-issued. BiDi performActions compiles before execute.",
+    "member_agent_persist_before_dispatch": "PASS RunService shares one DurableWriteLedger across coordinator, SetRunner learned replay, and runMemberAgent. A confirmed write with the same run/page/epoch/signature does not call pages.execute a second time.",
+    "streamed_and_repair_persist_before_dispatch": "PASS beginConsequentialWrite is the shared persist-before-dispatch helper. EarlyDispatcher batches, finished plans, and recovery-model repair all begin intent before pages.execute. Confirmed writes skip.",
+    "browser_service_accepted_streams_are_blocking": "PASS accept() sockets from the nonblocking listener are set blocking before serve_client. macOS inherits O_NONBLOCK and otherwise closed the socket on the first read_line WouldBlock (Broken pipe / empty JSON-RPC reply).",
+    "outcome_receipts_are_inspectable": "PASS StepTimeline renders receipt.uncertain as Uncertain, remoteConfirmed as Confirmed, and dispatchedBeforeTakeover as Takeover-interrupted (data-testid=tl-receipt). Executor still records the flags; takeover wins over confirmed. Mock run/takeover fixtures carry the same receipts.",
+    "human_engine_input_during_takeover": "PASS EngineView calls pages.engineInput. PageService.onEngineInput prefers DriverPage.humanEvent → BrowserService input.event, not pages.execute. After takeover, execute stays conflict and Ime still types. human_and_mcp_clients_share_one_page_authority observes typed-by-human-agent-still without reopen."
+  },
+  "exit": {
+    "humanEditsField": true,
+    "mcpObservesWithoutReopen": true,
+    "agentChangesSamePage": true,
+    "takeoverStopsDispatch": true,
+    "resumeRevalidates": true,
+    "resizeWheelImeAccessKit": true,
+    "noChromium": true,
+    "guiThreadSameNativeBrowser": true,
+    "liveOsWindowPlusMcp": true,
+    "stalledChildFailsClosed": true
+  },
+  "remaining": [
+    "Gate A downloaded release artifact: copy-to-temp host test + CI job downloaded-artifact (downloads engine-native-{ubuntu,macos,windows} then re-runs production_sandbox). .github/workflows/release.yml publishes ve-host + .node on tag v* for ubuntu/macos/windows. No GitHub Release page exists until a v* tag is pushed.",
+    "official html/dom remaining FAILs sanitize-template-element, template-for-empty, and tentative aria-attribute-reflection-enumerated (contradicts non-tentative string mixin). Official remove-element-unblocks-rendering.optional.html PASS. official idlharness.https.html PASS 1405ms on pin 7c204383 (0 FAIL subtests after V8 MarkAsUndetectable document.all). That file only, not the entire web.",
+    "GitHub Release page still missing (no v* tag). Official html/dom remaining FAILs stay sanitize-template-element and template-for-empty. JetStream 72/72 (geomean 323.94), MotionMark 8/8 (geomean 40.53), Speedometer 10×32 official steps (displayedScore 1.83, officialSpeedometerScore true) are Vector runners with VECTOR_PERFORMANCE_NOW=wall, not browserbench.org hosted scores. officialFullSuite stays false on family-only reports."
+  ]
+}

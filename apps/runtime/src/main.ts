@@ -38,6 +38,7 @@ import { Tracer } from "./services/tracing.js";
 import { makeInvoker } from "./api/handlers.js";
 import { ApiServer } from "./api/server.js";
 import { runBench } from "./services/bench.js";
+import { compileAndAuthorize } from "./agent/action-compiler.js";
 import { attachBidiRuntime } from "./services/bidi.js";
 
 export interface RuntimeHandle {
@@ -157,6 +158,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       .map((s) => s.trim())
       .filter(Boolean);
     const d = new VectorEngineDriver({
+      serviceAddr: env.VECTOR_BROWSER_SERVICE,
       config: {
         dataDir: config.dataDir,
         scripting: env.VECTOR_ENGINE_SCRIPTING !== "0",
@@ -240,6 +242,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     // operations.compile can rebuild the trace (§10.3)
     recordStep: (s) => repo.saveStep(s),
     electronEngineView: () => env.VECTOR_ELECTRON === "1",
+    grants: () => settings.effectGrants(),
     callOperation: async (name, args, pageId) => {
       const slash = name.indexOf("/");
       const siteKey = slash > 0 ? name.slice(0, slash) : new URL(pages.get(pageId).url).host;
@@ -259,7 +262,21 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const first = list[0] as { pageId?: string; context?: string; steps?: Step[] } | undefined;
       const pageId = first?.pageId ?? first?.context;
       if (!pageId || !first?.steps?.length) return { accepted: false };
-      void pages.execute({ pageId, steps: first.steps }, { allowEval: false });
+      const steps = first.steps;
+      void (async () => {
+        const obs = await pages.observe(pageId, {});
+        const live = pages.get(pageId);
+        const prepared = compileAndAuthorize({
+          pageId,
+          documentEpoch: live.documentEpoch ?? obs.documentEpoch,
+          observedEpoch: obs.documentEpoch,
+          steps,
+          observation: obs.content,
+          url: live.url ?? obs.content.url,
+          grants: () => settings.effectGrants(),
+        });
+        if ("program" in prepared) await pages.execute(prepared.program, { allowEval: false });
+      })();
       return { accepted: true };
     },
   });
@@ -416,6 +433,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           y: Number(pl.y ?? 0),
           button: Number(pl.button ?? 0),
           key: str(pl.key),
+          text: str(pl.text),
+          start: pl.start === undefined ? undefined : Number(pl.start),
+          end: pl.end === undefined ? undefined : Number(pl.end),
+          width: pl.width === undefined ? undefined : Number(pl.width),
+          height: pl.height === undefined ? undefined : Number(pl.height),
+          name: str(pl.name),
         });
         return;
       case "view.downloadStarted":

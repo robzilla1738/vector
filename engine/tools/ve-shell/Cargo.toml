@@ -38,3 +38,7 @@ wgpu = { workspace = true, optional = true }
 pollster = { workspace = true, optional = true }
 accesskit = { workspace = true, optional = true }
 accesskit_winit = { workspace = true, optional = true }
+
+[dev-dependencies]
+ve-api.workspace = true
+serde_json.workspace = true

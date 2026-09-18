@@ -2,6 +2,9 @@ import { fork, type ChildProcess } from "node:child_process";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { app } from "electron";
+import { desktopRuntimeEnv } from "./runtime-env.js";
+
+export { desktopRuntimeEnv } from "./runtime-env.js";
 
 const require_ = createRequire(import.meta.url);
 
@@ -34,14 +37,14 @@ export function spawnRuntime(opts: {
     execPath: process.execPath,
     silent: true,
     cwd: app.isPackaged ? undefined : join(app.getAppPath(), "..", ".."),
-    env: {
-      ...process.env,
-      ELECTRON_RUN_AS_NODE: "1",
-      VECTOR_DATA_DIR: opts.dataDir,
-      VECTOR_IPC: "1",
-      VECTOR_ELECTRON_CDP: `http://127.0.0.1:${opts.cdpPort}`,
-      VECTOR_ELECTRON_VERSION: String(process.versions.electron ?? "dev"),
-    },
+    env: desktopRuntimeEnv({
+      dataDir: opts.dataDir,
+      cdpPort: opts.cdpPort,
+      packaged: app.isPackaged,
+      electronVersion: String(process.versions.electron ?? "dev"),
+      resourcesPath: app.isPackaged ? process.resourcesPath : undefined,
+      workspaceRoot: app.isPackaged ? undefined : join(app.getAppPath(), "..", ".."),
+    }),
   });
   proc.stdout?.on("data", (d) => process.stdout.write(`[runtime] ${d}`));
   proc.stderr?.on("data", (d) => process.stderr.write(`[runtime!] ${d}`));

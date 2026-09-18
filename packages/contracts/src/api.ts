@@ -75,6 +75,35 @@ export const PagesCaptureParams = z.object({
   /** data url for transport; file for artifact storage */
   format: z.enum(["dataUrl", "artifact"]).default("dataUrl"),
 });
+/** Human pointer/key on the engine view. Not pages.execute — takeover must still type. */
+export const PagesEngineInputParams = z.object({
+  pageId: id,
+  type: z.enum([
+    "click",
+    "pointerdown",
+    "scroll",
+    "key",
+    "ime",
+    "imePreedit",
+    "select",
+    "resize",
+    "accessKitAction",
+  ]),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  button: z.number().optional(),
+  key: z.string().optional(),
+  text: z.string().optional(),
+  direction: z.enum(["up", "down", "top", "bottom"]).optional(),
+  amount: z.number().optional(),
+  start: z.number().optional(),
+  end: z.number().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  name: z.string().optional(),
+});
+/** Display-list scene for native presentation. Not PNG. */
+export const PagesSceneParams = z.object({ pageId: id });
 export const PagesFindParams = z.object({
   pageId: id,
   text: z.string(),
@@ -213,6 +242,8 @@ export const MethodSchemas = {
   "pages.observe": PagesObserveParams,
   "pages.execute": PagesExecuteParams,
   "pages.capture": PagesCaptureParams,
+  "pages.scene": PagesSceneParams,
+  "pages.engineInput": PagesEngineInputParams,
   "pages.find": PagesFindParams,
   "pages.stopFind": PagesStopFindParams,
   "pages.zoom": PagesZoomParams,
@@ -354,6 +385,18 @@ export const ResultSchemas = {
   "pages.execute": ProgramResultSchema.extend({
     /** present when the request carried returnObservation; full or compact per its format */
     observation: z.union([ObservationSchema, CompactObservationSchema]).optional(),
+  }),
+  "pages.engineInput": z.object({ ok: z.boolean() }),
+  "pages.scene": z.object({
+    kind: z.literal("displayList"),
+    transport: z.literal("scene"),
+    png: z.literal(false),
+    width: z.number(),
+    height: z.number(),
+    itemCount: z.number(),
+    items: z.array(z.record(z.string(), z.unknown())),
+    page: z.union([z.string(), z.number()]).optional(),
+    scale: z.number().optional(),
   }),
   "pages.capture": z.object({
     dataUrl: z.string().optional(),

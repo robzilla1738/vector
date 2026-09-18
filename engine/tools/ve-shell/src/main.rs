@@ -9,7 +9,8 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 use ve_api::{
-    EngineConfig, NativeBrowser, NativeEvent, OpenRequest, ScreenshotOptions, VectorEngine,
+    BrowserServiceListener, BrowserServicePump, EngineConfig, NativeBrowser, NativeEvent,
+    OpenRequest, ScreenshotOptions, VectorEngine,
 };
 use ve_core::Size;
 
@@ -40,12 +41,19 @@ struct Args {
     /// Open a native window (or a headless event pump without `--features window`).
     #[arg(long)]
     gui: bool,
+    /// Bind the shared browser service so Node/MCP clients attach to this
+    /// `NativeBrowser` (`Finding` 1). Example: `127.0.0.1:0`.
+    #[arg(long)]
+    service: Option<String>,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
     if args.gui {
         return run_gui(&args);
+    }
+    if let Some(bind) = args.service.as_deref() {
+        return run_service(bind, &args);
     }
     let mut engine = VectorEngine::new(EngineConfig {
         viewport: Size::new(1280.0, 720.0),
@@ -85,6 +93,40 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+fn run_service(bind: &str, args: &Args) -> Result<()> {
+    let listener = BrowserServiceListener::bind_config(
+        bind,
+        EngineConfig {
+            viewport: Size::new(1280.0, 720.0),
+            offline: args.url.starts_with("data:")
+                || args.url.starts_with("file:")
+                || args.html.is_some(),
+            scripting: cfg!(feature = "v8"),
+            policy: ve_api::NetworkPolicy::permissive(),
+            ..EngineConfig::default()
+        },
+    )?;
+    if args.html.is_some() || args.url != "about:blank" {
+        let mut client = ve_api::BrowserClient::connect(listener.addr())?;
+        let mut params = serde_json::json!({ "url": args.url });
+        if let Some(html) = &args.html {
+            params["html"] = serde_json::Value::String(html.clone());
+        }
+        client.call("pages.open", params)?;
+    }
+    println!(
+        "{}",
+        serde_json::json!({
+            "VECTOR_BROWSER_SERVICE": listener.addr().to_string(),
+            "backend": "vector-engine",
+            "chromium": false,
+            "service": "browser-service",
+        })
+    );
+    listener.wait();
+    Ok(())
+}
+
 fn run_gui(args: &Args) -> Result<()> {
     let mut browser = NativeBrowser::with_config(EngineConfig {
         viewport: Size::new(1280.0, 720.0),
@@ -107,12 +149,34 @@ fn run_gui(args: &Args) -> Result<()> {
         let _ = browser.present();
     }
     let _ = browser.present();
+    let pump = if let Some(bind) = args.service.as_deref() {
+        let pump = BrowserServicePump::bind(bind)?;
+        println!(
+            "{}",
+            serde_json::json!({
+                "VECTOR_BROWSER_SERVICE": pump.addr().to_string(),
+                "backend": "vector-engine",
+                "chromium": false,
+                "service": "browser-service",
+                "gui": true,
+            })
+        );
+        Some(pump)
+    } else {
+        None
+    };
     #[cfg(feature = "window")]
     {
-        gui::run(browser)
+        match pump {
+            Some(pump) => {
+                gui::run_shared(ve_api::BrowserService::from_browser(browser), Some(pump))
+            }
+            None => gui::run(browser),
+        }
     }
     #[cfg(not(feature = "window"))]
     {
+        let _ = pump;
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({

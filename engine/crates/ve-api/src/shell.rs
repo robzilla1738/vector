@@ -12,7 +12,7 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
-use ve_core::{Error, Point, Result, process_rss_bytes};
+use ve_core::{Error, ErrorCode, Point, Result, Size, process_rss_bytes};
 use ve_gfx::{Compositor, Frame};
 
 use crate::{
@@ -32,7 +32,8 @@ pub struct Tab {
 }
 
 /// Input the OS window (or tests) delivers to chrome + page.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
 pub enum NativeEvent {
     /// Keyboard key (`Enter`, `Tab`, `a`, …).
     Key {
@@ -109,6 +110,32 @@ pub enum NativeEvent {
     },
     /// Navigate the active tab to the address-bar contents.
     UrlbarSubmit,
+    /// Window resized; values are CSS pixels.
+    Resize {
+        /// Width in CSS pixels.
+        width: f32,
+        /// Height in CSS pixels.
+        height: f32,
+    },
+    /// Wheel / scroll in CSS pixels.
+    Wheel {
+        /// Horizontal delta.
+        dx: f32,
+        /// Vertical delta.
+        dy: f32,
+    },
+    /// AccessKit action from the platform (click/focus).
+    AccessKitAction {
+        /// Target role or name hint.
+        name: String,
+    },
+    /// Text selection range on the focused field (character offsets).
+    Select {
+        /// Inclusive start.
+        start: u32,
+        /// Exclusive end.
+        end: u32,
+    },
 }
 
 /// Result of handling one native event.
@@ -148,12 +175,29 @@ pub struct NativeBrowser {
     presented: bool,
     ime_preedit: String,
     last_typed: String,
+    selection: Option<(usize, usize)>,
     os_clipboard: bool,
     update_pubkey: Option<[u8; 32]>,
+    controller: NativeController,
+    controller_epoch: u64,
     #[cfg(feature = "gpu")]
     gpu: Option<ve_gfx::VelloRenderer>,
     #[cfg(feature = "gpu")]
     gpu_unavailable: bool,
+    #[cfg(feature = "gpu")]
+    gpu_presented: bool,
+}
+
+/// Who currently owns input on the live page.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum NativeController {
+    /// No exclusive owner.
+    None,
+    /// Agent program is allowed to dispatch.
+    Agent,
+    /// Human takeover: agent dispatch is rejected until resume.
+    Human,
 }
 
 impl NativeBrowser {
@@ -188,12 +232,17 @@ impl NativeBrowser {
             presented: false,
             ime_preedit: String::new(),
             last_typed: String::new(),
+            selection: None,
             os_clipboard: false,
             update_pubkey: None,
+            controller: NativeController::None,
+            controller_epoch: 0,
             #[cfg(feature = "gpu")]
             gpu: None,
             #[cfg(feature = "gpu")]
             gpu_unavailable: false,
+            #[cfg(feature = "gpu")]
+            gpu_presented: false,
         }
     }
 
@@ -210,7 +259,21 @@ impl NativeBrowser {
             "rssBytes": process_rss_bytes(),
             "signedUpdates": self.update_pubkey.is_some(),
             "accessKit": true,
+            "gpuPresent": self.gpu_present(),
         })
+    }
+
+    /// True after a successful GPU present of the live page.
+    #[must_use]
+    pub fn gpu_present(&self) -> bool {
+        #[cfg(feature = "gpu")]
+        {
+            self.gpu_presented
+        }
+        #[cfg(not(feature = "gpu"))]
+        {
+            false
+        }
     }
 
     /// Opens a tab. Human and agent both target this page id.
@@ -264,6 +327,18 @@ impl NativeBrowser {
     #[must_use]
     pub fn pointer(&self) -> Point {
         self.pointer
+    }
+
+    /// Updates the engine viewport and presentation surface in CSS pixels.
+    pub fn set_css_viewport(&mut self, width: f32, height: f32) {
+        let w = width.max(1.0);
+        let h = height.max(1.0);
+        self.surface = Frame::filled(w as u32, h as u32, [255, 255, 255, 255]);
+        if let Some(page) = self.active_tab().map(|t| t.page)
+            && let Ok(p) = self.engine.page_mut(page)
+        {
+            p.set_viewport(Size::new(w, h));
+        }
     }
 
     /// Chrome accessibility tree. Independent of page roles and names.
@@ -323,6 +398,24 @@ impl NativeBrowser {
         let mut nodes = self.chrome_ax();
         nodes.extend(self.page_ax());
         nodes
+    }
+
+    /// Maps a platform AccessKit node id to the name used by [`NativeEvent::AccessKitAction`].
+    #[must_use]
+    pub fn accesskit_action_name(&self, target: u64) -> String {
+        if target == ve_a11y::URLBAR_ID.0 {
+            return "urlbar".into();
+        }
+        if target == ve_a11y::TABLIST_ID.0 {
+            return "tabs".into();
+        }
+        if target == ve_a11y::WINDOW_ID.0 {
+            return "window".into();
+        }
+        self.page_ax()
+            .into_iter()
+            .find(|n| !n.name.is_empty())
+            .map_or_else(|| "urlbar".into(), |n| n.name)
     }
 
     /// AccessKit tree for the native window (chrome first, then page).
@@ -439,17 +532,96 @@ impl NativeBrowser {
 
     /// Agent program against the live native document.
     pub fn execute_active(&mut self, program: Program) -> Result<ExecuteResult> {
+        self.execute_request(ExecuteRequest {
+            program,
+            return_observation: None,
+        })
+    }
+
+    /// Agent program, optionally observing in the same round trip.
+    pub fn execute_request(&mut self, request: ExecuteRequest) -> Result<ExecuteResult> {
+        if self.controller == NativeController::Human {
+            return Err(Error::coded(
+                ErrorCode::Conflict,
+                "page is under human control — resume first",
+            ));
+        }
+        self.controller = NativeController::Agent;
+        self.dispatch_program(request)
+    }
+
+    fn dispatch_program(&mut self, request: ExecuteRequest) -> Result<ExecuteResult> {
         let page = self
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?
             .page;
-        self.engine.execute(
-            page,
-            &ExecuteRequest {
-                program,
-                ..ExecuteRequest::default()
-            },
-        )
+        let executed = self.engine.execute(page, &request)?;
+        self.sync_active_tab();
+        Ok(executed)
+    }
+
+    fn sync_active_tab(&mut self) {
+        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+            return;
+        };
+        let Ok(page) = self.engine.page(page_id) else {
+            return;
+        };
+        let url = page.url().to_owned();
+        let title = page.title();
+        if let Some(tab) = self.tabs.get_mut(self.active) {
+            tab.url = url;
+            tab.page_title = title;
+        }
+    }
+
+    /// Live document URL, title, generation, and revision.
+    #[must_use]
+    pub fn active_page_meta(&self) -> Option<(String, String, u32, u64)> {
+        let tab = self.active_tab()?;
+        let page = self.engine.page(tab.page).ok()?;
+        Some((
+            page.url().to_owned(),
+            page.title(),
+            page.generation(),
+            page.document().revision().0,
+        ))
+    }
+
+    /// Human takeover: later agent programs fail until [`Self::resume`].
+    pub fn takeover(&mut self) {
+        self.controller = NativeController::Human;
+        self.controller_epoch = self.controller_epoch.saturating_add(1);
+    }
+
+    /// Return the page to a shared/agent-eligible controller.
+    pub fn resume(&mut self) {
+        self.controller = NativeController::None;
+        self.controller_epoch = self.controller_epoch.saturating_add(1);
+    }
+
+    /// Current input owner.
+    #[must_use]
+    pub fn controller(&self) -> NativeController {
+        self.controller
+    }
+
+    /// Bumped on every takeover/resume.
+    #[must_use]
+    pub fn controller_epoch(&self) -> u64 {
+        self.controller_epoch
+    }
+
+    /// Engine viewport of a live tab, in CSS pixels.
+    #[must_use]
+    pub fn engine_viewport_for_test(&self, page: PageId) -> (f32, f32) {
+        self.engine
+            .page(page)
+            .map(|p| {
+                let v = p.viewport();
+                (v.width, v.height)
+            })
+            .unwrap_or((0.0, 0.0))
     }
 
     /// Keyboard input into the live document (same path the agent uses).
@@ -492,6 +664,7 @@ impl NativeBrowser {
         if self.try_gpu_present_direct(page) {
             let _ = self.compositor.take_damage();
             self.presented = true;
+            self.gpu_presented = true;
             return Ok(true);
         }
         Ok(false)
@@ -568,6 +741,27 @@ impl NativeBrowser {
         Ok(paint_page(p))
     }
 
+    /// Scene/surface update for native presentation. Not a PNG and not a
+    /// second copy of the document — clients paint this display list.
+    pub fn scene_active(&mut self) -> Result<serde_json::Value> {
+        let page = self
+            .active_tab()
+            .ok_or_else(|| Error::not_found("no tab"))?
+            .page;
+        let p = self.engine.page_mut(page)?;
+        p.update();
+        let mut value = scene_json(p);
+        if let Some(obj) = value.as_object_mut() {
+            obj.insert("page".into(), serde_json::json!(page.0));
+            obj.insert(
+                "controllerEpoch".into(),
+                serde_json::json!(self.controller_epoch),
+            );
+            obj.insert("gpuPresent".into(), serde_json::json!(self.gpu_present()));
+        }
+        Ok(value)
+    }
+
     /// Current framebuffer (after [`Self::present`]).
     #[must_use]
     pub fn framebuffer(&self) -> &Frame {
@@ -640,9 +834,12 @@ impl NativeBrowser {
             NativeEvent::Navigate { url } => {
                 if let Some(tab) = self.tabs.get_mut(self.active) {
                     tab.url.clone_from(&url);
-                    let _ = self.execute_active(Program::from_value(serde_json::json!([
-                        {"id":"n","op":"navigate","url":url}
-                    ]))?);
+                    let _ = self.dispatch_program(ExecuteRequest {
+                        program: Program::from_value(serde_json::json!([
+                            {"id":"n","op":"navigate","url":url}
+                        ]))?,
+                        return_observation: None,
+                    });
                     self.present_dirty();
                 }
             }
@@ -661,16 +858,24 @@ impl NativeBrowser {
                     if key.len() == 1 {
                         self.last_typed.push_str(&key);
                     }
-                    let _ = self.press_key(&key);
+                    let _ = self.dispatch_program(ExecuteRequest {
+                        program: Program::from_value(serde_json::json!([
+                            {"id":"k","op":"press","key":key}
+                        ]))?,
+                        return_observation: None,
+                    });
                     self.present_dirty();
                 }
             }
             NativeEvent::Ime { text } => {
                 self.ime_preedit.clear();
                 self.last_typed.clone_from(&text);
-                let _ = self.execute_active(Program::from_value(serde_json::json!([
-                    {"id":"t","op":"type","target":"css:input,textarea,[contenteditable]","value":text}
-                ]))?);
+                let _ = self.dispatch_program(ExecuteRequest {
+                    program: Program::from_value(serde_json::json!([
+                        {"id":"t","op":"type","target":"css:input,textarea,[contenteditable]","value":text}
+                    ]))?,
+                    return_observation: None,
+                });
                 self.present_dirty();
             }
             NativeEvent::ImePreedit { text } => {
@@ -681,9 +886,12 @@ impl NativeBrowser {
             }
             NativeEvent::PointerDown { x, y, button } => {
                 self.pointer = Point::new(x, y);
-                let _ = self.execute_active(Program::from_value(serde_json::json!([
-                    {"id":"c","op":"clickPoint","x":x,"y":y,"button": if button == 0 { "left" } else { "right" }}
-                ]))?);
+                let _ = self.dispatch_program(ExecuteRequest {
+                    program: Program::from_value(serde_json::json!([
+                        {"id":"c","op":"clickPoint","x":x,"y":y,"button": if button == 0 { "left" } else { "right" }}
+                    ]))?,
+                    return_observation: None,
+                });
                 self.present_dirty();
             }
             NativeEvent::PointerUp { x, y, .. } => {
@@ -692,6 +900,36 @@ impl NativeBrowser {
             NativeEvent::Copy => {
                 let text = self.selection_or_typed();
                 self.copy(&text);
+            }
+            NativeEvent::Resize { width, height } => {
+                self.set_css_viewport(width, height);
+                self.present_dirty();
+            }
+            NativeEvent::Wheel { dx: _, dy } => {
+                let dir = if dy > 0.0 { "down" } else { "up" };
+                let _ = self.dispatch_program(ExecuteRequest {
+                    program: Program::from_value(serde_json::json!([
+                        {"id":"w","op":"scroll","direction":dir,"amount": dy.abs()}
+                    ]))?,
+                    return_observation: None,
+                });
+                self.present_dirty();
+            }
+            NativeEvent::AccessKitAction { name } => {
+                if name.eq_ignore_ascii_case("urlbar") || name.contains("address") {
+                    let _ = self.handle_event(NativeEvent::FocusUrlbar)?;
+                } else {
+                    let _ = self.dispatch_program(ExecuteRequest {
+                        program: Program::from_value(serde_json::json!([
+                            {"id":"ak","op":"click","target": format!("text:{name}")}
+                        ]))?,
+                        return_observation: None,
+                    });
+                    self.present_dirty();
+                }
+            }
+            NativeEvent::Select { start, end } => {
+                self.selection = Some((start as usize, end as usize));
             }
             NativeEvent::Paste => {
                 let mut text = self.clipboard.clone();
@@ -736,6 +974,17 @@ impl NativeBrowser {
     }
 
     fn selection_or_typed(&mut self) -> String {
+        let raw = self.selected_source();
+        let Some((start, end)) = self.selection else {
+            return raw;
+        };
+        raw.chars()
+            .skip(start)
+            .take(end.saturating_sub(start))
+            .collect()
+    }
+
+    fn selected_source(&mut self) -> String {
         let Some(page_id) = self.active_tab().map(|t| t.page) else {
             return self.last_typed.clone();
         };
@@ -886,6 +1135,86 @@ impl Default for NativeBrowser {
     }
 }
 
+fn css_rgba(c: ve_style::Rgba) -> String {
+    if (c.a - 1.0).abs() < f32::EPSILON {
+        format!("rgb({},{},{})", c.r, c.g, c.b)
+    } else {
+        format!("rgba({},{},{},{})", c.r, c.g, c.b, c.a)
+    }
+}
+
+/// Display-list scene for `EngineView`. Not a PNG.
+#[must_use]
+pub fn scene_json(page: &crate::Page) -> serde_json::Value {
+    let list = ve_gfx::DisplayList::from_layout(page.layout_tree(), page.style_tree());
+    let items: Vec<serde_json::Value> = list.items().iter().map(scene_item).collect();
+    serde_json::json!({
+        "kind": "displayList",
+        "transport": "scene",
+        "png": false,
+        "width": list.size.width,
+        "height": list.size.height,
+        "itemCount": list.len(),
+        "items": items,
+    })
+}
+
+fn scene_item(item: &ve_gfx::DisplayItem) -> serde_json::Value {
+    match item {
+        ve_gfx::DisplayItem::Rect { rect, color } => serde_json::json!({
+            "kind": "rect",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+            "color": css_rgba(*color),
+        }),
+        ve_gfx::DisplayItem::Border {
+            rect,
+            widths,
+            color,
+        } => serde_json::json!({
+            "kind": "border",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+            "color": css_rgba(*color),
+            "widths": {
+                "top": widths.top,
+                "right": widths.right,
+                "bottom": widths.bottom,
+                "left": widths.left,
+            },
+        }),
+        ve_gfx::DisplayItem::Text(run) => serde_json::json!({
+            "kind": "text",
+            "x": run.origin.x,
+            "y": run.origin.y,
+            "text": run.text,
+            "size": run.size,
+            "color": css_rgba(run.color),
+        }),
+        ve_gfx::DisplayItem::Image { rect, .. } => serde_json::json!({
+            "kind": "image",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+        }),
+        ve_gfx::DisplayItem::PushClip(rect) => serde_json::json!({
+            "kind": "clip",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+        }),
+        ve_gfx::DisplayItem::PopClip => serde_json::json!({"kind": "popClip"}),
+        ve_gfx::DisplayItem::PushOpacity(a) => serde_json::json!({"kind": "opacity", "a": a}),
+        ve_gfx::DisplayItem::PopOpacity => serde_json::json!({"kind": "popOpacity"}),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -954,9 +1283,13 @@ mod tests {
     fn present_direct_skips_cpu_readback_when_gpu_is_available() {
         let mut browser = NativeBrowser::new();
         browser.new_tab("<p>hi</p>", "https://t.test/").unwrap();
-        let _ = browser.present_direct();
+        let gpu = browser.present_direct().unwrap();
         let frame = browser.present().unwrap();
         assert!(frame.width > 0 && frame.height > 0);
+        if gpu {
+            assert!(browser.gpu_present());
+            assert_eq!(browser.identity()["gpuPresent"], true);
+        }
     }
 
     #[test]
@@ -1024,7 +1357,91 @@ mod tests {
     }
 
     #[test]
-    fn urlbar_and_tab_switch_are_chrome_owned() {
+    fn resize_wheel_and_accesskit_share_the_live_page() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p style=\"height:2000px\">tall</p>".into(),
+                url: "https://geom.test/".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::Resize {
+                width: 800.0,
+                height: 600.0,
+            })
+            .unwrap();
+        let page = browser.active_tab().unwrap().page;
+        let vp = browser.engine_viewport_for_test(page);
+        assert_eq!(vp, (800.0, 600.0));
+        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        let _ = browser.handle_event(NativeEvent::AccessKitAction {
+            name: "urlbar".into(),
+        });
+        assert!(browser.urlbar_focused());
+        browser.handle_event(NativeEvent::BlurUrlbar).unwrap();
+        assert!(!browser.urlbar_focused());
+        let mapped = browser.accesskit_action_name(ve_a11y::URLBAR_ID.0);
+        assert_eq!(mapped, "urlbar");
+        browser
+            .handle_event(NativeEvent::AccessKitAction { name: mapped })
+            .unwrap();
+        assert!(browser.urlbar_focused());
+    }
+
+    #[test]
+    fn human_edit_and_agent_observe_the_same_page() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<input id=t>".into(),
+                url: "https://share.test/".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::Ime {
+                text: "typed-by-human".into(),
+            })
+            .unwrap();
+        let obs = browser.observe_active().unwrap();
+        let value = obs
+            .observation
+            .content
+            .form_fields
+            .iter()
+            .find_map(|f| f.value.as_deref())
+            .or_else(|| {
+                obs.observation
+                    .content
+                    .elements
+                    .iter()
+                    .find(|e| e.tag == "input")
+                    .and_then(|e| e.value.as_deref())
+            })
+            .unwrap_or("");
+        assert_eq!(value, "typed-by-human");
+        browser.takeover();
+        assert_eq!(browser.controller(), NativeController::Human);
+        let blocked = browser.execute_active(
+            Program::from_value(serde_json::json!([
+                {"id":"x","op":"type","target":"css:input","value":"agent"}
+            ]))
+            .unwrap(),
+        );
+        assert!(blocked.is_err(), "agent dispatch must stop after takeover");
+        browser.resume();
+        assert_eq!(browser.controller(), NativeController::None);
+        let resumed = browser.execute_active(
+            Program::from_value(serde_json::json!([
+                {"id":"y","op":"type","target":"css:input","value":"-agent"}
+            ]))
+            .unwrap(),
+        );
+        assert!(resumed.is_ok());
+    }
+
+    #[test]
+    fn chrome_tabs_and_urlbar_are_not_page_owned() {
         let mut browser = NativeBrowser::new();
         browser
             .handle_event(NativeEvent::NewTab {
@@ -1081,6 +1498,39 @@ mod tests {
             .unwrap();
         browser.handle_event(NativeEvent::Copy).unwrap();
         assert_eq!(browser.clipboard(), "hello");
+        browser
+            .handle_event(NativeEvent::Select { start: 1, end: 4 })
+            .unwrap();
+        browser.handle_event(NativeEvent::Copy).unwrap();
+        assert_eq!(browser.clipboard(), "ell");
+    }
+
+    #[test]
+    fn scene_active_exports_display_list_items() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p>hi</p>".into(),
+                url: "https://s.test/".into(),
+            })
+            .unwrap();
+        let scene = browser.scene_active().unwrap();
+        assert_eq!(scene["png"], false);
+        assert_eq!(scene["kind"], "displayList");
+        assert_eq!(scene["transport"], "scene");
+        let items = scene["items"].as_array().expect("items");
+        assert!(!items.is_empty(), "{scene}");
+        assert_eq!(
+            scene["itemCount"].as_u64().unwrap(),
+            items.len() as u64,
+            "{scene}"
+        );
+        assert!(
+            items
+                .iter()
+                .any(|i| { matches!(i["kind"].as_str(), Some("rect" | "text" | "border")) }),
+            "{items:?}"
+        );
     }
 
     #[test]

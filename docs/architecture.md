@@ -76,7 +76,7 @@ implementations, three of them over Playwright-Core CDP:
 | `VectorElectronDriver` | `vector` | pages hosted in the desktop shell; identity via an injected `__vectorTid` marker so same-URL tabs stay distinct |
 | `StandaloneDriver` | `vector` | runtime without the shell — headless Chromium (system Chrome, `VECTOR_BROWSER_PATH`, or a Playwright `chromium_headless_shell` found by `scripts/chromium.mjs`) for tests/CLI/bench |
 | `AttachedChromeDriver` | `chrome` | the user's Chrome at `--remote-debugging-port`; real CDP target ids, borrowed tabs are never closed |
-| `VectorEngineDriver` (`vector-engine.ts`) | `vector-engine` | the in-process Vector Engine via `@vector/engine-native`; `targetId = "ve-<context>-<page>"`; every `DriverPage` method is a one-step program and `executeProgram(steps, { returnObservation })` runs a whole program plus its observation in one native call |
+| `VectorEngineDriver` (`vector-engine.ts`) | `vector-engine` | Finding 1: client of `BrowserService`. Attaches to `VECTOR_BROWSER_SERVICE`, else starts NAPI `BrowserServiceHandle` or spawns `ve-shell --service`. Injected `load` keeps a local Engine for unit tests. `targetId = "ve-<context>-<page>"` |
 
 ## Engine backend and router
 
@@ -84,8 +84,13 @@ implementations, three of them over Playwright-Core CDP:
 present (`VECTOR_ENGINE=0` skips it) and registers a `vector-engine` session
 either `connected` or `disconnected` with the loader's diagnostic. Whether
 pages are *routed* to it is `settings.engineMode`: `off` (Chromium only),
-`auto` (default — engine first, Chromium fallback), `always`; `VECTOR_ENGINE_MODE` is the
-env override.
+`auto` (engine first, Chromium fallback), `always`. `pnpm dev` and the
+desktop shell set `VECTOR_ENGINE_MODE=always`. A stored setting wins.
+Without that env or setting the fallback is `auto`.
+`VECTOR_ENGINE_PROFILE=production` forces `securityProfile: production`,
+`isolation: requireProcess` (`ve-host`), and router `native-only` (no
+Chromium fallback). Unpackaged developer runs stay `engine-always` when
+mode is `always`.
 
 `Router` (`apps/runtime/src/services/router.ts`) decides per `pages.open`
 and returns the decision as `PageTarget.routeReason`:

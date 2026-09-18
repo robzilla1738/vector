@@ -26,8 +26,26 @@ pub const HOST_FUNCTIONS: &[&str] = &[
 
 /// Longest a single script may run before the VM terminates it.
 pub const SCRIPT_DEADLINE: Duration = Duration::from_secs(20);
+
+fn script_deadline() -> Duration {
+    std::env::var("VECTOR_SCRIPT_DEADLINE_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .map(Duration::from_secs)
+        .filter(|d| *d > Duration::ZERO)
+        .unwrap_or(SCRIPT_DEADLINE)
+}
 /// `evaluate` can run a full Speedometer add/delete pass on a complex DOM.
 pub const EVALUATE_DEADLINE: Duration = Duration::from_secs(60);
+
+fn evaluate_deadline() -> Duration {
+    std::env::var("VECTOR_EVALUATE_DEADLINE_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .map(Duration::from_secs)
+        .filter(|d| *d > Duration::ZERO)
+        .unwrap_or(EVALUATE_DEADLINE)
+}
 /// Timers due within this window block `settle()` (architecture §6 cond. 2).
 pub const TIMER_WINDOW_MS: u64 = 50;
 /// Console lines kept per page.
@@ -44,13 +62,27 @@ pub const PRELUDE: &str = r#"(() => {
     return id;
   };
   const disarm = (id) => { if (timers.delete(id)) __ve.clearTimer(id); };
-  globalThis.setTimeout = (fn, ms, ...args) => arm(fn, ms, false, args);
-  globalThis.setInterval = (fn, ms, ...args) => arm(fn, ms, true, args);
-  globalThis.clearTimeout = disarm;
-  globalThis.clearInterval = disarm;
-  globalThis.queueMicrotask = (fn) => { Promise.resolve().then(fn); };
-  globalThis.requestAnimationFrame = (fn) => arm(() => fn(__ve.now()), 16, false, []);
-  globalThis.cancelAnimationFrame = disarm;
+  globalThis.setTimeout = function setTimeout(fn) {
+    const ms = arguments.length > 1 ? arguments[1] : 0;
+    const args = Array.prototype.slice.call(arguments, 2);
+    return arm(fn, ms, false, args);
+  };
+  globalThis.setInterval = function setInterval(fn) {
+    const ms = arguments.length > 1 ? arguments[1] : 0;
+    const args = Array.prototype.slice.call(arguments, 2);
+    return arm(fn, ms, true, args);
+  };
+  globalThis.clearTimeout = function clearTimeout() {
+    if (arguments.length) disarm(arguments[0]);
+  };
+  globalThis.clearInterval = function clearInterval() {
+    if (arguments.length) disarm(arguments[0]);
+  };
+  globalThis.queueMicrotask = function queueMicrotask(fn) { Promise.resolve().then(fn); };
+  globalThis.requestAnimationFrame = function requestAnimationFrame(fn) {
+    return arm(() => fn(__ve.now()), 16, false, []);
+  };
+  globalThis.cancelAnimationFrame = function cancelAnimationFrame(id) { disarm(id); };
   globalThis.requestIdleCallback = (fn) => arm(() => fn({ didTimeout: false, timeRemaining: () => 50 }), 1, false, []);
   globalThis.cancelIdleCallback = disarm;
   globalThis.__veFireTimer = (id) => {
@@ -113,6 +145,26 @@ pub const PRELUDE: &str = r#"(() => {
 /// DOM/Web API prelude (plan A14).
 pub const DOM_PRELUDE: &str = include_str!("dom_prelude.js");
 
+/// Official `BrowserBench` clocks with `performance.now()`. Default `__ve.now()`
+/// is virtual (WPT/settle). `VECTOR_PERFORMANCE_NOW=wall` rebases onto
+/// `Date.now()` so official-score can time with the official API without
+/// changing WPT virtual time. Do not add a host function: `Date.now()` is
+/// already wall and `HOST_FUNCTIONS` indices are a wire contract.
+const WALL_PERFORMANCE_NOW: &str = r#"(() => {
+  const origin = Date.now();
+  globalThis.performance.now = () => Date.now() - origin;
+  globalThis.performance.timeOrigin = origin;
+})();"#;
+
+/// True when this process asked for wall-backed `performance.now()`.
+#[must_use]
+pub fn performance_now_is_wall() -> bool {
+    matches!(
+        std::env::var("VECTOR_PERFORMANCE_NOW").as_deref(),
+        Ok("wall")
+    )
+}
+
 /// A console line captured from the page.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConsoleLine {
@@ -151,7 +203,7 @@ impl std::fmt::Debug for Scripting {
 
 impl Scripting {
     pub(crate) fn new(mut vm: Box<dyn JsVm>, allow_evaluate: bool) -> Result<Self> {
-        vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+        vm.set_call_deadline(Some(script_deadline()));
         vm.register_host_functions("__ve", HOST_FUNCTIONS)?;
         Ok(Self {
             vm: Some(vm),
@@ -250,8 +302,11 @@ impl Page {
         }
         self.run_script(PRELUDE, "vector:prelude")?;
         self.run_script(DOM_PRELUDE, "vector:dom")?;
+        if performance_now_is_wall() {
+            self.run_script(WALL_PERFORMANCE_NOW, "vector:prelude")?;
+        }
         if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
-            vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+            vm.set_call_deadline(Some(script_deadline()));
         }
         Ok(())
     }
@@ -296,8 +351,10 @@ impl Page {
                 "scripting is not enabled on this page",
             ));
         };
-        if origin != "vector:prelude" && origin != "vector:dom" {
-            vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+        // `evaluate()` sets EVALUATE_DEADLINE first. Do not clobber it with
+        // the shorter document-script cutoff.
+        if origin != "vector:prelude" && origin != "vector:dom" && origin != "vector:evaluate" {
+            vm.set_call_deadline(Some(script_deadline()));
         }
         let result = vm.eval_with_host(&mut PageHost { page: self }, source, origin);
         let _ = vm.run_pending_jobs_with_host(&mut PageHost { page: self });
@@ -373,11 +430,12 @@ impl Page {
         }
         self.ensure_document_scripts();
         if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
-            vm.set_call_deadline(Some(EVALUATE_DEADLINE));
+            vm.set_call_deadline(Some(evaluate_deadline()));
         }
         let result = self.run_script(expression, "vector:evaluate");
+        self.drain_js_jobs();
         if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
-            vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+            vm.set_call_deadline(Some(script_deadline()));
         }
         result.map(serde_json::Value::from)
     }
@@ -397,17 +455,21 @@ impl Page {
         let scripts = self.scripts().to_vec();
         let mut delayed = Vec::new();
         let mut prev_limit: Option<ve_core::NodeId> = None;
-        for script in scripts {
+        for script in &scripts {
             if script.defer || script.module || script.async_ {
-                delayed.push(script);
+                delayed.push(script.clone());
                 continue;
             }
             self.parser_limit = Some(script.node);
             self.reveal_parser_progress(prev_limit);
             prev_limit = Some(script.node);
+            let _ = self.call_script("__veApplyPartialUpdates", &[]);
             let in_head = self.expect_link_in_head(script.node);
             let _ = self.expect_blocking_active();
-            self.eval_document_script(&script);
+            if self.in_browsing_tree(script.node) {
+                self.eval_document_script(script);
+            }
+            let _ = self.call_script("__veApplyPartialUpdates", &[]);
             if in_head {
                 self.snapshot_head_expect_links();
             } else {
@@ -428,6 +490,16 @@ impl Page {
         }
         self.parser_limit = None;
         self.reveal_parser_progress(prev_limit);
+        let _ = self.call_script("__veApplyPartialUpdates", &[]);
+        for script in &scripts {
+            if !script.defer
+                && !script.module
+                && !script.async_
+                && self.in_browsing_tree(script.node)
+            {
+                self.eval_document_script(script);
+            }
+        }
         let mut later = Vec::new();
         for script in delayed {
             if !self.in_browsing_tree(script.node) {
@@ -443,7 +515,7 @@ impl Page {
         let _ = self.call_script("__veFlushPendingResources", &[JsValue::Bool(true)]);
         let _ = self.call_script("__veRunFrameScripts", &[]);
         self.drain_js_jobs();
-        let _ = self.call_script("__veDocumentEvents", &[]);
+        let _ = self.call_script("__veUpgradeTree", &[]);
         for script in later {
             if self.in_browsing_tree(script.node) {
                 self.eval_document_script(&script);
@@ -453,11 +525,33 @@ impl Page {
         }
         let _ = self.call_script("__veFlushPendingResources", &[JsValue::Bool(false)]);
         self.drain_js_jobs();
+        // After deferred/module scripts, matching HTML's delayed load event.
+        let _ = self.call_script("__veDocumentEvents", &[]);
+        let _ = self.call_script("__veExposeIds", &[]);
+        self.drain_js_jobs();
+        // Load handlers may restyle a large tree (official Complex-DOM).
+        // Do not leave that work on SCRIPT_DEADLINE; it aborts setView.
+        if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
+            vm.set_call_deadline(Some(evaluate_deadline()));
+        }
+        let _ = self.call_script("__veFireWindowLoad", &[]);
+        if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
+            vm.set_call_deadline(Some(script_deadline()));
+        }
+        self.drain_js_jobs();
         self.pump_timers(TIMER_WINDOW_MS);
     }
 
     fn eval_document_script(&mut self, script: &crate::page::FetchedScript) {
         if self.scripts_executed.contains(&script.node) {
+            return;
+        }
+        if self
+            .call_script("__veScriptRan", &[crate::dom::pack(script.node)])
+            .ok()
+            .is_some_and(|v| v.is_truthy())
+        {
+            self.scripts_executed.insert(script.node);
             return;
         }
         self.scripts_executed.insert(script.node);
@@ -554,6 +648,9 @@ impl Page {
             fired += 1;
             if let Err(e) = self.call_script("__veFireTimer", &[JsValue::Number(timer.id as f64)]) {
                 tracing::debug!(error = %e, "timer callback failed");
+            }
+            if self.script_readiness().2 {
+                self.drain_js_jobs();
             }
         }
         fired

@@ -40,6 +40,17 @@ pub const fn has_http() -> bool {
     cfg!(feature = "http")
 }
 
+/// Start the JS VM (and its watchdog thread) before a production sandbox.
+pub fn preload_scripting() {
+    ve_api::preload_scripting();
+}
+
+/// Create a VM and evaluate `1+1` inside the already-sandboxed host.
+#[must_use]
+pub fn scripting_selftest() -> bool {
+    ve_api::scripting_selftest()
+}
+
 /// Engine version reported to JavaScript.
 #[must_use]
 pub fn version() -> &'static str {
@@ -429,6 +440,41 @@ pub mod bindings {
         }
     }
 
+    /// Finding 1: Node starts this authority and attaches as a client
+    /// instead of constructing a second in-process `Engine`.
+    #[napi]
+    pub struct BrowserServiceHandle {
+        listener: ve_api::BrowserServiceListener,
+    }
+
+    #[napi]
+    impl BrowserServiceHandle {
+        /// Bind `127.0.0.1:0` by default. `config_json` is `EngineConfig`.
+        #[napi(factory)]
+        pub fn listen(bind: Option<String>, config_json: Option<String>) -> Result<Self> {
+            let config = crate::hub::parse_config(config_json.as_deref().unwrap_or("{}"))
+                .map_err(|e| Error::from_reason(e.to_string()))?;
+            let listener = ve_api::BrowserServiceListener::bind_config(
+                bind.as_deref().unwrap_or("127.0.0.1:0"),
+                config,
+            )
+            .map_err(|e| Error::from_reason(e.to_string()))?;
+            Ok(Self { listener })
+        }
+
+        /// Bound `host:port` for `VECTOR_BROWSER_SERVICE` / `BrowserServiceClient`.
+        #[napi]
+        pub fn addr(&self) -> String {
+            self.listener.addr().to_string()
+        }
+
+        /// Stop accepting. In-flight clients finish their current line.
+        #[napi]
+        pub fn shutdown(&self) {
+            self.listener.shutdown();
+        }
+    }
+
     /// Engine and binding version information (JSON).
     #[napi]
     #[must_use]
@@ -443,6 +489,15 @@ pub mod bindings {
         super::version().to_owned()
     }
 }
+
+/// Keep `napi_register_module_v1` reachable from this crate so rustc's
+/// Windows cdylib export list and MSVC `/INCLUDE` can see it.
+#[cfg(all(feature = "napi", target_os = "windows"))]
+#[used]
+static VE_NAPI_REGISTER: unsafe extern "C" fn(
+    napi::sys::napi_env,
+    napi::sys::napi_value,
+) -> napi::sys::napi_value = napi::bindgen_prelude::napi_register_module_v1;
 
 #[cfg(test)]
 mod tests {
@@ -472,5 +527,23 @@ mod tests {
         assert_eq!(&buf[..4], FERRY_MAGIC);
         assert_eq!(decode_ferry(&buf), json);
         assert_eq!(decode_ferry(json.as_bytes()), json);
+    }
+
+    #[test]
+    fn windows_cdylib_exports_napi_register_module_v1() {
+        let build = include_str!("../build.rs");
+        let obj = include_str!("napi_win_export.c");
+        assert!(
+            build.contains("napi_win_export.c"),
+            "Windows cdylib must link the MSVC export object"
+        );
+        assert!(
+            obj.contains("/EXPORT:napi_register_module_v1"),
+            "Windows Node loads the addon via GetProcAddress(napi_register_module_v1)"
+        );
+        assert!(
+            obj.contains("/INCLUDE:napi_register_module_v1"),
+            "MSVC /OPT:REF must not discard the Node entry point"
+        );
     }
 }

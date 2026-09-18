@@ -12,7 +12,7 @@ use ve_a11y::{
     parse_ref_parts, ref_for,
 };
 use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
-use ve_dom::{DirtyFlags, Document, Namespace, NodeKind};
+use ve_dom::{DirtyFlags, Document, Namespace, Node, NodeKind};
 use ve_gfx::SoftwareRenderer;
 use ve_html::DocumentMeta;
 use ve_layout::{LayoutEngine, LayoutTree};
@@ -24,6 +24,23 @@ use crate::routing::{CssCoverage, RoutingInfo, classify};
 use crate::screenshot::{self, Screenshot};
 use crate::steps::{MouseButton, ScrollDirection, Settled};
 use crate::target::TargetSpec;
+
+/// Gate E restyle counters for one attribution window.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RestyleAttribution {
+    /// `Page::update` restyle passes in this window.
+    pub calls: u32,
+    /// Those passes that used a full document compute.
+    pub full_calls: u32,
+    /// Elements recomputed on the last restyle.
+    pub last_recomputed: usize,
+    /// The last restyle used the full `compute()` path.
+    pub last_full: bool,
+    /// Mutation journal entries retained after the window.
+    pub journal_len: usize,
+    /// `Page::update` layout passes in this window.
+    pub layout_calls: u32,
+}
 
 /// Navigation method.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -362,6 +379,9 @@ pub struct Page {
     /// Parser-inserted script currently running; later nodes are not visible
     /// via `getElementById` until this is cleared (HTML parser script point).
     pub(crate) parser_limit: Option<NodeId>,
+    /// Reused `DOMParser` document when its body has been emptied (`TodoMVC`
+    /// `showEntries` parses a growing list 100 times).
+    pub(crate) parser_scratch: Option<NodeId>,
     /// Arena length when document scripts started; later ids are script-created.
     pub(crate) parse_hi: u32,
     /// `rel=expect` links whose target has already been seen (stay unblocked).
@@ -434,6 +454,16 @@ pub struct Page {
     pub(crate) sw_client_posts: Vec<String>,
     /// Per-canvas 2D pixel buffers (VEC-008).
     pub(crate) canvases: HashMap<NodeId, CanvasSurface>,
+    /// Gate E: restyle passes during the current attribution window.
+    restyle_calls: u32,
+    /// Gate E: restyle passes that fell back to a full document compute.
+    restyle_full_calls: u32,
+    /// Elements recomputed on the last restyle.
+    last_recomputed: usize,
+    /// The last restyle used the full `compute()` path.
+    last_restyle_full: bool,
+    /// Gate E: layout passes during the current attribution window.
+    layout_calls: u32,
 }
 
 /// One `IndexedDB` index (VEC-010).
@@ -651,6 +681,7 @@ pub(crate) struct ScriptFetchJob {
     pub id: u64,
     pub url: String,
     pub method: String,
+    pub headers: String,
     pub body: String,
     pub result: Option<ve_script::JsValue>,
     pub error: Option<String>,
@@ -863,6 +894,7 @@ impl Page {
             isolated_frames: HashMap::new(),
             document_scripts_pending: false,
             parser_limit: None,
+            parser_scratch: None,
             parse_hi: 0,
             expect_satisfied: HashSet::new(),
             expect_from_head: HashSet::new(),
@@ -900,6 +932,11 @@ impl Page {
             next_worker: 0,
             sw_client_posts: Vec::new(),
             canvases: HashMap::new(),
+            restyle_calls: 0,
+            restyle_full_calls: 0,
+            last_recomputed: 0,
+            last_restyle_full: false,
+            layout_calls: 0,
         }
     }
 
@@ -920,13 +957,20 @@ impl Page {
         self.network_policy = policy;
     }
 
-    pub(crate) fn start_script_fetch(&mut self, url: &str, method: &str, body: &str) -> u64 {
+    pub(crate) fn start_script_fetch(
+        &mut self,
+        url: &str,
+        method: &str,
+        headers: &str,
+        body: &str,
+    ) -> u64 {
         self.next_script_fetch += 1;
         let id = self.next_script_fetch;
         self.script_fetches.push(ScriptFetchJob {
             id,
             url: url.to_owned(),
             method: method.to_owned(),
+            headers: headers.to_owned(),
             body: body.to_owned(),
             result: None,
             error: None,
@@ -947,11 +991,19 @@ impl Page {
 
     pub(crate) fn complete_script_fetches(&mut self) {
         loop {
-            let pending: Vec<(u64, String, String, String)> = self
+            let pending: Vec<(u64, String, String, String, String)> = self
                 .script_fetches
                 .iter()
                 .filter(|j| j.result.is_none() && j.error.is_none() && !j.aborted)
-                .map(|j| (j.id, j.url.clone(), j.method.clone(), j.body.clone()))
+                .map(|j| {
+                    (
+                        j.id,
+                        j.url.clone(),
+                        j.method.clone(),
+                        j.headers.clone(),
+                        j.body.clone(),
+                    )
+                })
                 .collect();
             if pending.is_empty() {
                 break;
@@ -960,8 +1012,8 @@ impl Page {
                 .iter()
                 .position(|(id, ..)| *id > self.last_script_fetch_rr)
                 .unwrap_or(0);
-            let (id, url, method, body) = pending[start].clone();
-            match crate::dom::script_fetch_now(self, &url, &method, &body) {
+            let (id, url, method, headers, body) = pending[start].clone();
+            match crate::dom::script_fetch_now(self, &url, &method, &headers, &body) {
                 Ok(value) => {
                     if let Some(job) = self.script_fetches.iter_mut().find(|j| j.id == id)
                         && !job.aborted
@@ -1808,12 +1860,35 @@ impl Page {
         }
     }
 
+    /// Light-tree elements plus descendants of live `<template for>` contents,
+    /// in parse/document order, so mid-stream template scripts run.
+    fn script_scan_ids(&self) -> Vec<NodeId> {
+        let mut ids = Vec::new();
+        fn walk(doc: &Document, id: NodeId, ids: &mut Vec<NodeId>, in_for: bool) {
+            if doc.get(id).is_some_and(Node::is_element) {
+                ids.push(id);
+                if let Some(frag) = doc.template_contents(id) {
+                    let is_for = in_for || doc.attribute(id, "for").is_some();
+                    if is_for {
+                        for c in doc.children(frag) {
+                            walk(doc, c, ids, true);
+                        }
+                    }
+                }
+            }
+            for c in doc.children(id) {
+                walk(doc, c, ids, in_for);
+            }
+        }
+        walk(&self.doc, self.doc.root(), &mut ids, false);
+        ids
+    }
+
     /// Records every `<script>` in document order with its source.
     fn collect_scripts(&mut self, external: &HashMap<NodeId, Option<String>>) {
         let mut scripts = Vec::new();
-        for id in self.doc.elements() {
-            if !self.in_browsing_tree(id)
-                || !script_is_classic_or_module(&self.doc, id)
+        for id in self.script_scan_ids() {
+            if !script_is_classic_or_module(&self.doc, id)
                 || self.doc.attribute(id, "nomodule").is_some()
             {
                 continue;
@@ -1985,11 +2060,46 @@ impl Page {
         self.last_modified = Some(raw.into());
     }
 
-    /// Advances virtual time by up to `ms` and fires due JS timers.
+    /// Advances virtual time by `ms` and fires JS timers due in that window.
+    /// Completes pending `fetch()` jobs and drains microtasks so a
+    /// `step_timeout` → `fetch()` → `step_timeout` chain can finish *inside*
+    /// the requested horizon (official template `src` referrerpolicy).
+    /// Does not jump past `ms`: a 300ms src-streaming chunk must not apply
+    /// during `pump_virtual_time(50)`.
     pub fn pump_virtual_time(&mut self, ms: u64) -> usize {
         self.ensure_document_scripts();
-        let fired = self.pump_timers(ms);
-        self.drain_js_jobs();
+        let horizon = self.virtual_time_ms().saturating_add(ms);
+        let mut fired = self.pump_timers(ms);
+        for _ in 0..64 {
+            self.complete_script_fetches();
+            self.drain_js_jobs();
+            let pending_fetch = self
+                .script_fetches
+                .iter()
+                .any(|j| j.result.is_none() && j.error.is_none() && !j.aborted);
+            let micro = self.script_readiness().2;
+            let now = self.virtual_time_ms();
+            let next_due = self
+                .scripting
+                .as_ref()
+                .and_then(|s| s.event_loop.next_js_timer_due_ms());
+            if now < horizon && next_due.is_some_and(|due| due <= horizon) {
+                let step = next_due
+                    .unwrap_or(horizon)
+                    .saturating_sub(now)
+                    .max(1)
+                    .min(horizon.saturating_sub(now));
+                fired += self.pump_timers(step);
+                continue;
+            }
+            if !pending_fetch && !micro {
+                break;
+            }
+        }
+        let now = self.virtual_time_ms();
+        if now < horizon {
+            self.advance_virtual_time(horizon - now);
+        }
         fired
     }
 
@@ -2058,6 +2168,27 @@ impl Page {
         !self.doc.any_dirty(DirtyFlags::LAYOUT | DirtyFlags::TEXT)
     }
 
+    /// Recomputes styles if dirty. Does not flush layout. `getComputedStyle`
+    /// for `display` / colors must not relayout official Complex-DOM Spectrum
+    /// after jQuery `show()` appends a temp node to `body`.
+    pub fn restyle_if_needed(&mut self) {
+        if self.style_clean() {
+            return;
+        }
+        self.style_engine.interaction.set_focus(self.focused, true);
+        let since = self.style_tree.revision();
+        let stats =
+            self.style_engine
+                .restyle_incremental(&mut self.doc, &mut self.style_tree, since);
+        self.restyle_calls += 1;
+        self.last_recomputed = stats.recomputed;
+        self.last_restyle_full = stats.full;
+        if stats.full {
+            self.restyle_full_calls += 1;
+        }
+        self.doc.clear_dirty_all(DirtyFlags::STYLE);
+    }
+
     /// Recomputes styles and layout if anything is dirty. Uses the
     /// incremental restyle/relayout paths (plan A15); they fall back to a
     /// full pass when the journal cannot cover `since`.
@@ -2065,13 +2196,7 @@ impl Page {
         if self.style_clean() && self.layout_clean() {
             return;
         }
-        self.style_engine.interaction.set_focus(self.focused, true);
-        if !self.style_clean() {
-            let since = self.style_tree.revision();
-            let _ =
-                self.style_engine
-                    .restyle_incremental(&mut self.doc, &mut self.style_tree, since);
-        }
+        self.restyle_if_needed();
         if !self.layout_clean() {
             let previous = std::mem::replace(&mut self.layout, LayoutTree::blank(self.viewport));
             let (tree, _stats) = self.layout_engine.relayout_incremental(
@@ -2082,10 +2207,33 @@ impl Page {
             );
             self.layout = tree;
             self.layout.apply_sticky(self.scroll);
+            self.layout_calls += 1;
         }
         self.doc.clear_dirty_all(
             DirtyFlags::STYLE | DirtyFlags::LAYOUT | DirtyFlags::TEXT | DirtyFlags::PAINT,
         );
+    }
+
+    /// Gate E restyle counters for the current attribution window.
+    #[must_use]
+    pub fn restyle_attribution(&self) -> RestyleAttribution {
+        RestyleAttribution {
+            calls: self.restyle_calls,
+            full_calls: self.restyle_full_calls,
+            last_recomputed: self.last_recomputed,
+            last_full: self.last_restyle_full,
+            journal_len: self.doc.journal().len(),
+            layout_calls: self.layout_calls,
+        }
+    }
+
+    /// Clears Gate E restyle counters (call immediately before the timed work).
+    pub fn reset_restyle_attribution(&mut self) {
+        self.restyle_calls = 0;
+        self.restyle_full_calls = 0;
+        self.last_recomputed = 0;
+        self.last_restyle_full = false;
+        self.layout_calls = 0;
     }
 
     fn apply_css_coverage(&mut self) {
@@ -5014,7 +5162,13 @@ pub fn outer_html(doc: &Document, id: NodeId) -> String {
                 }
                 let raw = e.namespace == ve_dom::Namespace::Html
                     && matches!(e.name.as_str(), "script" | "style");
-                for c in doc.children(id) {
+                let kids = if e.is_html("template") {
+                    doc.template_contents(id)
+                        .map_or_else(|| doc.children(id), |frag| doc.children(frag))
+                } else {
+                    doc.children(id)
+                };
+                for c in kids {
                     if raw && let Some(t) = doc.get(c).and_then(ve_dom::Node::as_text) {
                         out.push_str(t);
                     } else {
@@ -5036,7 +5190,7 @@ pub fn outer_html(doc: &Document, id: NodeId) -> String {
                 out.push_str(target);
                 out.push(' ');
                 out.push_str(data);
-                out.push('>');
+                out.push_str("?>");
             }
         }
     }

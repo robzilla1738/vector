@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { VectorError, type Predicate, type Program, type ProgramResult, type Step } from "@vector/contracts";
+import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { agentMayEgress } from "../agent/policy.js";
 import { evalPredicate } from "../execution/interpreter.js";
 import type { Repo } from "../store/repo.js";
@@ -58,6 +59,8 @@ const PRE_DISPATCH_CODES = new Set([
   "not_found",
   "target_detached",
   "unsupported_op",
+  "conflict",
+  "permission_denied",
 ]);
 function isPreDispatchError(e: unknown): boolean {
   return e instanceof VectorError && PRE_DISPATCH_CODES.has(e.code);
@@ -514,7 +517,23 @@ export class OperationService {
     if (impl.kind === "browser-program") {
       if (!opts.pageId) throw new VectorError("invalid_params", "browser-program impl requires pageId");
       const saved = JSON.parse(impl.executable) as Omit<Program, "pageId">;
-      const program: Program = { ...saved, pageId: opts.pageId, inputs: { ...(saved.inputs ?? {}), ...(opts.inputs ?? {}) } };
+      const obs = await this.deps.pages.observe(opts.pageId, {});
+      const live = this.deps.pages.get(opts.pageId);
+      const prepared = compileAndAuthorize({
+        pageId: opts.pageId,
+        documentEpoch: live.documentEpoch ?? obs.documentEpoch,
+        observedEpoch: obs.documentEpoch,
+        steps: saved.steps ?? [],
+        observation: obs.content,
+        url: live.url ?? obs.content.url,
+      });
+      if ("rejected" in prepared) throw new VectorError("conflict", prepared.rejected);
+      if ("denied" in prepared) throw new VectorError("permission_denied", prepared.denied);
+      const program: Program = {
+        ...prepared.program,
+        nodes: saved.nodes,
+        inputs: { ...(saved.inputs ?? {}), ...(opts.inputs ?? {}) },
+      };
       return this.deps.pages.execute(program, { runId: opts.runId, allowEval: false });
     }
     if (impl.kind === "session-request") {

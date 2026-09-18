@@ -8,7 +8,10 @@
 //! the engine only ever sees identity bodies. A dedicated tokio runtime is
 //! owned by the transport so the rest of the engine stays synchronous.
 
+use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -20,6 +23,7 @@ use http_body_util::{BodyExt, Full};
 use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::client::legacy::connect::HttpConnector;
+use hyper_util::client::legacy::connect::dns::{GaiResolver, Name};
 use hyper_util::rt::TokioExecutor;
 use tokio_rustls::rustls::{ClientConfig, RootCertStore};
 
@@ -52,13 +56,66 @@ where
     }
 }
 
-type PooledClient = Client<Counting<HttpsConnector<HttpConnector>>, Full<Bytes>>;
+/// DNS answers from the broker's policy-time lookup. The connector must use
+/// these instead of calling getaddrinfo again (Finding 2).
+#[derive(Clone)]
+struct PinnedResolver {
+    pinned: Arc<Mutex<HashMap<String, Vec<SocketAddr>>>>,
+    inner: GaiResolver,
+}
+
+struct PinnedAddrs {
+    iter: std::vec::IntoIter<SocketAddr>,
+}
+
+impl Iterator for PinnedAddrs {
+    type Item = SocketAddr;
+    fn next(&mut self) -> Option<SocketAddr> {
+        self.iter.next()
+    }
+}
+
+impl tower_service::Service<Name> for PinnedResolver {
+    type Response = PinnedAddrs;
+    type Error = std::io::Error;
+    type Future = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<PinnedAddrs, std::io::Error>> + Send>,
+    >;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, name: Name) -> Self::Future {
+        let host = name.as_str().to_string();
+        if let Ok(guard) = self.pinned.lock() {
+            if let Some(addrs) = guard.get(&host) {
+                let addrs = addrs.clone();
+                return Box::pin(async move {
+                    Ok(PinnedAddrs {
+                        iter: addrs.into_iter(),
+                    })
+                });
+            }
+        }
+        let fut = self.inner.call(name);
+        Box::pin(async move {
+            let addrs = fut.await?;
+            Ok(PinnedAddrs {
+                iter: addrs.collect::<Vec<_>>().into_iter(),
+            })
+        })
+    }
+}
+
+type PooledClient = Client<Counting<HttpsConnector<HttpConnector<PinnedResolver>>>, Full<Bytes>>;
 
 /// hyper + rustls transport with a per-host connection pool.
 pub struct HyperTransport {
     runtime: tokio::runtime::Runtime,
     client: PooledClient,
     opened: Arc<AtomicUsize>,
+    pinned: Arc<Mutex<HashMap<String, Vec<SocketAddr>>>>,
     /// Connect + response timeout.
     pub timeout: Duration,
 }
@@ -75,17 +132,29 @@ impl std::fmt::Debug for HyperTransport {
 impl HyperTransport {
     /// Creates a transport trusting the Mozilla root store (`webpki-roots`).
     pub fn new() -> Result<Self, NetError> {
+        Self::with_extra_roots(std::iter::empty::<Vec<u8>>())
+    }
+
+    /// Same as [`Self::new`], plus extra DER certificates for fixture/WPT CAs.
+    pub fn with_extra_roots(extra: impl IntoIterator<Item = Vec<u8>>) -> Result<Self, NetError> {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .map_err(|e| NetError::Transport(format!("tokio runtime: {e}")))?;
         let mut roots = RootCertStore::empty();
         roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+        for der in extra {
+            let _ = roots.add(tokio_rustls::rustls::pki_types::CertificateDer::from(der));
+        }
         // ALPN (h2, http/1.1) is set by the connector builder below
         let config = ClientConfig::builder()
             .with_root_certificates(roots)
             .with_no_client_auth();
-        let mut http = HttpConnector::new();
+        let pinned = Arc::new(Mutex::new(HashMap::new()));
+        let mut http = HttpConnector::new_with_resolver(PinnedResolver {
+            pinned: Arc::clone(&pinned),
+            inner: GaiResolver::new(),
+        });
         http.enforce_http(false);
         http.set_connect_timeout(Some(Duration::from_secs(10)));
         http.set_nodelay(true);
@@ -107,6 +176,7 @@ impl HyperTransport {
             runtime,
             client,
             opened,
+            pinned,
             timeout: Duration::from_secs(30),
         })
     }
@@ -186,12 +256,53 @@ async fn exchange(client: PooledClient, request: Request) -> Result<Response, Ne
     }
 }
 
+impl HyperTransport {
+    fn pin_requests(&self, requests: &[Request]) {
+        let Ok(mut map) = self.pinned.lock() else {
+            return;
+        };
+        map.clear();
+        for request in requests {
+            if let (Some(host), Some(addrs)) = (request.url.host_str(), request.resolved.as_ref()) {
+                map.insert(host.to_string(), addrs.clone());
+            }
+        }
+    }
+}
+
 impl Transport for HyperTransport {
     fn send(&self, request: &Request) -> Result<Response, NetError> {
+        self.pin_requests(std::slice::from_ref(request));
         self.runtime.block_on(async {
             tokio::time::timeout(self.timeout, self.exchange(request))
                 .await
                 .map_err(|_| NetError::Transport(format!("timed out after {:?}", self.timeout)))?
+        })
+    }
+
+    fn send_many(&self, requests: &[Request]) -> Vec<Result<Response, NetError>> {
+        self.pin_requests(requests);
+        self.runtime.block_on(async {
+            let timeout = self.timeout;
+            let mut handles = Vec::with_capacity(requests.len());
+            for request in requests {
+                let client = self.client.clone();
+                let request = request.clone();
+                handles.push(tokio::spawn(async move {
+                    tokio::time::timeout(timeout, exchange(client, request))
+                        .await
+                        .map_err(|_| NetError::Transport(format!("timed out after {timeout:?}")))?
+                }));
+            }
+            let mut out = Vec::with_capacity(handles.len());
+            for handle in handles {
+                out.push(
+                    handle.await.unwrap_or_else(|e| {
+                        Err(NetError::Transport(format!("send_many join: {e}")))
+                    }),
+                );
+            }
+            out
         })
     }
 

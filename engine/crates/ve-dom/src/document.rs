@@ -1,5 +1,6 @@
 //! The [`Document`] arena and tree operations.
 
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
@@ -43,6 +44,10 @@ pub struct Document {
     manual_shadows: HashSet<NodeId>,
     /// Manual `slot.assign()` results keyed by slot.
     manual_assigned: HashMap<NodeId, Vec<NodeId>>,
+    /// First-in-tree-order `id` → element, rebuilt on demand. `None` means
+    /// dirty. jQuery `$('#…')` / `getElementById` must not walk a 6k-node
+    /// Spectrum tree on every lookup.
+    id_index: RefCell<Option<HashMap<String, NodeId>>>,
 }
 
 /// Strip and collapse ASCII whitespace per HTML `document.title`.
@@ -113,6 +118,7 @@ impl Document {
             content_language: None,
             manual_shadows: HashSet::new(),
             manual_assigned: HashMap::new(),
+            id_index: RefCell::new(None),
         };
         doc.root = doc.alloc(NodeKind::Document);
         doc
@@ -547,6 +553,7 @@ impl Document {
             DirtyFlags::LAYOUT | DirtyFlags::A11Y | DirtyFlags::PAINT,
         );
         self.dirty_auto_dir_ancestors(parent);
+        self.invalidate_id_index();
     }
 
     /// Unlinks `child` from its parent without journaling.
@@ -608,11 +615,70 @@ impl Document {
                 parent,
                 DirtyFlags::STYLE | DirtyFlags::LAYOUT | DirtyFlags::A11Y | DirtyFlags::PAINT,
             );
+            self.invalidate_id_index();
         }
         Ok(parent)
     }
 
-    /// Detaches `id` and frees it together with its whole subtree (including
+    /// Replaces `parent`'s children with `incoming` in one splice.
+    ///
+    /// Same tree and journal effects as remove-all then append-each, but
+    /// dirties `parent` once instead of once per child. Used by the DOM
+    /// `replaceChildren` binding (`TodoMVC` `showEntries`).
+    pub fn replace_children(&mut self, parent: NodeId, incoming: &[NodeId]) -> Result<()> {
+        self.try_get(parent)?;
+        for &kid in incoming {
+            self.check_insertable(parent, kid)?;
+        }
+        let existing: Vec<NodeId> = self.children(parent).collect();
+        for &kid in &existing {
+            let (previous_sibling, next_sibling) = self
+                .get(kid)
+                .map_or((None, None), |n| (n.prev_sibling(), n.next_sibling()));
+            if let Some(old_parent) = self.detach(kid) {
+                self.journal.record(Mutation::NodeRemoved {
+                    node: kid,
+                    parent: old_parent,
+                    previous_sibling,
+                    next_sibling,
+                });
+            }
+        }
+        for &kid in incoming {
+            self.detach(kid);
+            let prev = self.try_get(parent)?.last_child;
+            {
+                let node = self.try_get_mut(kid)?;
+                node.parent = Some(parent);
+                node.prev_sibling = prev;
+                node.next_sibling = None;
+            }
+            match prev {
+                Some(p) => self.try_get_mut(p)?.next_sibling = Some(kid),
+                None => self.try_get_mut(parent)?.first_child = Some(kid),
+            }
+            self.try_get_mut(parent)?.last_child = Some(kid);
+            let (previous_sibling, next_sibling) = self
+                .get(kid)
+                .map_or((None, None), |n| (n.prev_sibling(), n.next_sibling()));
+            self.journal.record(Mutation::NodeInserted {
+                node: kid,
+                parent,
+                previous_sibling,
+                next_sibling,
+            });
+            self.mark_dirty(kid, DirtyFlags::ALL);
+        }
+        self.mark_dirty(
+            parent,
+            DirtyFlags::STYLE | DirtyFlags::LAYOUT | DirtyFlags::A11Y | DirtyFlags::PAINT,
+        );
+        self.dirty_auto_dir_ancestors(parent);
+        self.invalidate_id_index();
+        Ok(())
+    }
+
+    /// Detaches `id` and frees it together with its whole subtree (including)
     /// shadow trees and template contents). All ids in the subtree become
     /// stale.
     pub fn destroy(&mut self, id: NodeId) -> Result<()> {
@@ -869,12 +935,16 @@ impl Document {
             });
             None
         };
+        let is_id = name == "id";
         self.journal.record(Mutation::AttributeChanged {
             node: id,
             name,
             old_value: old.clone(),
         });
         self.mark_dirty(id, DirtyFlags::ALL);
+        if is_id {
+            self.invalidate_id_index();
+        }
         Ok(old)
     }
 
@@ -907,12 +977,16 @@ impl Document {
             });
             None
         };
+        let is_id = local == "id";
         self.journal.record(Mutation::AttributeChanged {
             node: id,
             name: qname,
             old_value: old.clone(),
         });
         self.mark_dirty(id, DirtyFlags::ALL);
+        if is_id {
+            self.invalidate_id_index();
+        }
         Ok(old)
     }
 
@@ -951,6 +1025,7 @@ impl Document {
             }
         }
         if !added.is_empty() {
+            let touched_id = added.iter().any(|n| n == "id");
             for name in added {
                 self.journal.record(Mutation::AttributeChanged {
                     node: id,
@@ -959,6 +1034,9 @@ impl Document {
                 });
             }
             self.mark_dirty(id, DirtyFlags::ALL);
+            if touched_id {
+                self.invalidate_id_index();
+            }
         }
         Ok(())
     }
@@ -975,6 +1053,9 @@ impl Document {
                 old_value: old.clone(),
             });
             self.mark_dirty(id, DirtyFlags::ALL);
+            if name == "id" {
+                self.invalidate_id_index();
+            }
         }
         Ok(old)
     }
@@ -1005,7 +1086,12 @@ impl Document {
         self.element(frame).and_then(|e| e.content_document)
     }
 
-    /// `true` when `id`'s parent chain reaches a document node.
+    /// `true` when `id`'s shadow-including parent chain reaches a document.
+    ///
+    /// HTML treats a node as connected when its shadow-including root is a
+    /// `Document`. Shadow children have no light `parent`; the walk must
+    /// continue through the shadow root's host. Template contents stay
+    /// disconnected: their fragment has neither a parent nor a host.
     #[must_use]
     pub fn is_connected(&self, id: NodeId) -> bool {
         let mut cur = id;
@@ -1013,7 +1099,7 @@ impl Document {
             if self.get(cur).is_some_and(Node::is_document) {
                 return true;
             }
-            match self.parent(cur) {
+            match self.parent(cur).or_else(|| self.host(cur)) {
                 Some(p) => cur = p,
                 None => return false,
             }
@@ -1147,11 +1233,40 @@ impl Document {
         self.title_of(self.root)
     }
 
+    fn invalidate_id_index(&mut self) {
+        *self.id_index.borrow_mut() = None;
+    }
+
+    fn rebuild_id_index(&self) -> HashMap<String, NodeId> {
+        let mut map = HashMap::new();
+        for el in self.elements() {
+            if let Some(id) = self.element(el).and_then(|e| e.id()) {
+                map.entry(id.to_owned()).or_insert(el);
+            }
+        }
+        map
+    }
+
+    fn indexed_id(&self, id: &str) -> Option<NodeId> {
+        if self.id_index.borrow().is_none() {
+            *self.id_index.borrow_mut() = Some(self.rebuild_id_index());
+        }
+        self.id_index
+            .borrow()
+            .as_ref()
+            .and_then(|m| m.get(id).copied())
+    }
+
     /// First element with `id` under `root` (inclusive).
     #[must_use]
     pub fn element_by_id_in(&self, root: NodeId, id: &str) -> Option<NodeId> {
         if id.is_empty() {
             return None;
+        }
+        if let Some(hit) = self.indexed_id(id) {
+            if root == self.root || hit == root || self.is_ancestor_of(root, hit) {
+                return Some(hit);
+            }
         }
         std::iter::once(root)
             .chain(self.descendants(root))
@@ -1161,7 +1276,10 @@ impl Document {
     /// The first element whose `id` attribute equals `id`.
     #[must_use]
     pub fn element_by_id(&self, id: &str) -> Option<NodeId> {
-        self.element_by_id_in(self.root, id)
+        if id.is_empty() {
+            return None;
+        }
+        self.indexed_id(id)
     }
 
     // ----------------------------------------------------------------------
@@ -1794,6 +1912,39 @@ mod tests {
     }
 
     #[test]
+    fn is_connected_walks_shadow_host_but_not_template_contents() {
+        let mut doc = Document::new();
+        let host = html(&mut doc, "div");
+        doc.append_child(doc.root(), host).unwrap();
+        let shadow = doc.attach_shadow(host, ShadowRootMode::Open).unwrap();
+        let child = html(&mut doc, "span");
+        doc.append_child(shadow, child).unwrap();
+        assert!(
+            doc.is_connected(shadow),
+            "connected host makes the shadow root connected"
+        );
+        assert!(
+            doc.is_connected(child),
+            "shadow children are shadow-including connected"
+        );
+
+        let template = html(&mut doc, "template");
+        doc.append_child(doc.root(), template).unwrap();
+        let contents = doc.template_contents(template).expect("template contents");
+        let inert = html(&mut doc, "x-el");
+        doc.append_child(contents, inert).unwrap();
+        assert!(doc.is_connected(template));
+        assert!(
+            !doc.is_connected(contents),
+            "template contents fragment is not connected"
+        );
+        assert!(
+            !doc.is_connected(inert),
+            "nodes in template contents stay inert"
+        );
+    }
+
+    #[test]
     fn create_element_template_has_contents_fragment() {
         let mut doc = Document::new();
         let t = doc.create_element("template", Namespace::Html);
@@ -1828,5 +1979,57 @@ mod tests {
         assert_eq!(doc.assigned_nodes(slot_default), vec![def]);
         assert_eq!(doc.containing_shadow_root(slot_title), Some(shadow));
         assert!(doc.assigned_nodes(host).is_empty());
+    }
+
+    #[test]
+    fn replace_children_swaps_the_child_list_and_detaches_the_old() {
+        let mut doc = Document::new();
+        let ul = html(&mut doc, "ul");
+        doc.append_child(doc.root(), ul).unwrap();
+        let old = html(&mut doc, "li");
+        doc.append_child(ul, old).unwrap();
+        let a = html(&mut doc, "li");
+        let b = html(&mut doc, "li");
+        doc.replace_children(ul, &[a, b]).unwrap();
+        let kids: Vec<_> = doc.children(ul).collect();
+        assert_eq!(kids, vec![a, b]);
+        assert_eq!(doc.parent(old), None);
+        assert_eq!(doc.parent(a), Some(ul));
+        assert_eq!(doc.parent(b), Some(ul));
+    }
+
+    #[test]
+    fn get_element_by_id_uses_an_index_and_updates_on_mutation() {
+        let mut doc = Document::new();
+        let root = doc.root();
+        let body = doc.create_element("body", Namespace::Html);
+        doc.append_child(root, body).unwrap();
+        for i in 0..2_000 {
+            let el = doc.create_element("div", Namespace::Html);
+            doc.set_attribute(el, "id", format!("n{i}")).unwrap();
+            doc.append_child(body, el).unwrap();
+        }
+        assert_eq!(
+            doc.element_by_id("n1999")
+                .and_then(|id| doc.element(id).and_then(|e| e.id().map(str::to_owned))),
+            Some("n1999".into())
+        );
+        let started = std::time::Instant::now();
+        for _ in 0..5_000 {
+            assert!(doc.element_by_id("n0").is_some());
+            assert!(doc.element_by_id("n1999").is_some());
+            assert!(doc.element_by_id("missing").is_none());
+        }
+        let ms = started.elapsed().as_millis();
+        assert!(
+            ms < 200,
+            "10k id lookups on a 2000-element document took {ms}ms"
+        );
+        let hit = doc.element_by_id("n0").unwrap();
+        doc.set_attribute(hit, "id", "renamed").unwrap();
+        assert!(doc.element_by_id("n0").is_none());
+        assert!(doc.element_by_id("renamed").is_some());
+        doc.remove(hit).unwrap();
+        assert!(doc.element_by_id("renamed").is_none());
     }
 }

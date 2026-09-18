@@ -1,0 +1,101 @@
+{
+  "artifact": "vector-engine independent probes",
+  "review": "Vector_Current_Review_60b2d41",
+  "generated": "2026-09-18",
+  "note": "Minimal spec-backed regressions for the review's remaining counterexamples. Official html/dom/partial-updates numbers are from unmodified WPT on pin 7c204383. The supported testharness subset is adapted-harness coverage, not equivalent to unmodified upstream.",
+  "coverage": {
+    "family": "html/dom/partial-updates + url + events + streams",
+    "officialPin": "7c20438303d2b39c8a2b924ed57dfa6448fd2ed2",
+    "officialTree": "html/dom/partial-updates",
+    "labels": {
+      "official": "unmodified upstream html/dom/partial-updates via wpt-harness --http --wpt-dir",
+      "adapted": "supported testharness.txt plus engine bindings; load/done/virtual-time rewritten"
+    },
+    "official": {
+      "pass": 28,
+      "fail": 2,
+      "total": 30,
+      "tls": "official html/dom/usvstring-reflection.https.html PASS over wpt-harness --https. official html/dom/idlharness.https.html PASS 1405ms on pin 7c204383 after V8 MarkAsUndetectable document.all (0 FAIL subtests). Not the entire web.",
+      "rerunAfterLitCommentFix": "Mac wpt-harness --http --wpt-dir /tmp/wpt --tree --tree-family html/dom/partial-updates: 142 PASS / 2 FAIL of 144 (supported subset green). Official remaining FAILs stay sanitize-template-element and template-for-empty. Do not weaken.",
+      "unmodifiedUpstream": true
+    },
+      "supportedSubset": {
+      "pass": 114,
+      "fail": 0,
+      "total": 114,
+      "note": "testharness.txt on the same Mac tree-family run \u2014 adapted regression coverage, not official WPT",
+      "unmodifiedUpstream": false
+    },
+    "denominator": "official html/dom/partial-updates (30) plus testharness.txt (114) = 144 on the Mac tree-family run (142 PASS / 2 FAIL). These are not the entire web.",
+    "exclusions": [
+      "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\"",
+      "sanitize-template-element.html expects addedNodes SPAN while the inserted span has id ok",
+      "aria-attribute-reflection-enumerated.tentative.html missing-value defaults contradict non-tentative aria-attribute-reflection.html (string mixin null). Keep the non-tentative file.",
+      "official BrowserBench / full html/dom tree outside partial-updates; official idlharness.https.html PASS over TLS is that file only. Not the entire web."
+    ],
+    "remainingOfficialFails": [
+      "sanitize-template-element.html",
+      "template-for-empty.html",
+      "aria-attribute-reflection-enumerated.tentative.html"
+    ],
+    "officialRenderBlocking": "html/dom/render-blocking/remove-element-unblocks-rendering.optional.html PASS 173ms (was FAIL in reviewed wpt-tree-latest.json)"
+  },
+  "counterexamples": [
+    {
+      "id": "url-dot-segment",
+      "spec": "https://url.spec.whatwg.org/#path-state",
+      "input": "https://s.test/a/b/../c and URL.pathname = '/a/b/../c'",
+      "expected": "https://s.test/a/c for both constructor and setter",
+      "status": "PASS",
+      "test": "ve-agent bindings review_behavior_counterexamples"
+    },
+    {
+      "id": "event-composed-default",
+      "spec": "https://dom.spec.whatwg.org/#dom-event-event",
+      "input": "new Event('x') and new Event('click')",
+      "expected": "composed === false for every script-constructed Event; element.click() is composed",
+      "status": "PASS",
+      "test": "ve-agent bindings review_behavior_counterexamples"
+    },
+    {
+      "id": "listener-dedup",
+      "spec": "https://dom.spec.whatwg.org/#dom-eventtarget-addeventlistener",
+      "input": "addEventListener twice with the same function and capture flag",
+      "expected": "listener runs once",
+      "status": "PASS",
+      "test": "ve-agent bindings review_behavior_counterexamples"
+    },
+    {
+      "id": "capture-stop-propagation",
+      "spec": "https://dom.spec.whatwg.org/#dom-event-stoppropagation",
+      "input": "capture listener stopPropagation",
+      "expected": "target and bubble listeners do not run",
+      "status": "PASS",
+      "test": "ve-agent bindings review_behavior_counterexamples"
+    },
+    {
+      "id": "live-childnodes",
+      "spec": "https://dom.spec.whatwg.org/#nodelist",
+      "input": "childNodes after append",
+      "expected": "NodeList length updates",
+      "status": "PASS",
+      "test": "ve-agent bindings review_behavior_counterexamples"
+    },
+    {
+      "id": "owner-document",
+      "spec": "https://dom.spec.whatwg.org/#dom-node-ownerdocument",
+      "input": "element.ownerDocument",
+      "expected": "the browsing document, not null",
+      "status": "PASS",
+      "test": "ve-agent bindings review_behavior_counterexamples"
+    },
+    {
+      "id": "stream-lock-bodyused",
+      "spec": "https://streams.spec.whatwg.org/#rs-get-reader",
+      "input": "body.getReader() then bodyUsed",
+      "expected": "second getReader throws; bodyUsed true after read",
+      "status": "PASS",
+      "test": "ve-agent bindings stream_lock_bodyused"
+    }
+  ]
+}

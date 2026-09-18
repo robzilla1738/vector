@@ -1,0 +1,35 @@
+{
+  "chromium": false,
+  "concurrency": 16,
+  "document": {
+    "rows": 400,
+    "url": "https://tail.test/records"
+  },
+  "gate": "E",
+  "p50Ms": 82,
+  "p95Ms": 144,
+  "process_tree_rss_bytes": 30097408,
+  "review": "Vector_Current_Review_60b2d41",
+  "rss_bytes": 30097408,
+  "samplesMs": [
+    20,
+    24,
+    28,
+    44,
+    45,
+    59,
+    60,
+    76,
+    82,
+    84,
+    100,
+    107,
+    108,
+    124,
+    131,
+    144
+  ],
+  "success": 16,
+  "test": "concurrency_tail_and_process_tree_memory",
+  "warmFixture": false
+}

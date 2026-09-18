@@ -3,11 +3,14 @@
  * one-step programs for DriverPage methods, the zero-IPC executeProgram
  * path, ref registration, events derived from results, and error mapping.
  */
+import { createServer, type AddressInfo, type Server } from "node:net";
 import { describe, it, expect, vi } from "vitest";
 import {
   VectorEngineDriver,
+  BrowserServiceClient,
   decodeFerry,
   encodeFerry,
+  flattenExecuteResult,
   parseEngineTargetId,
   probeEngineNative,
   unwrapNative,
@@ -15,6 +18,85 @@ import {
   type NativeModule,
 } from "@vector/browser-driver";
 import { VectorError, type ObservationContent } from "@vector/contracts";
+
+function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server: Server }> {
+  const state = { controller: "none", controllerEpoch: 0 };
+  return new Promise((resolve, reject) => {
+    const server = createServer((socket) => {
+      let buf = "";
+      socket.setEncoding("utf8");
+      socket.on("data", (chunk: string) => {
+        buf += chunk;
+        for (;;) {
+          const nl = buf.indexOf("\n");
+          if (nl < 0) break;
+          const line = buf.slice(0, nl);
+          buf = buf.slice(nl + 1);
+          if (!line.trim()) continue;
+          const req = JSON.parse(line) as { id: number; method: string; params?: Record<string, unknown> };
+          if (req.method === "pages.execute" && state.controller === "human") {
+            socket.write(
+              `${JSON.stringify({
+                jsonrpc: "2.0",
+                id: req.id,
+                error: { code: "conflict", message: "page is under human control — resume first" },
+              })}\n`,
+            );
+            continue;
+          }
+          let result: Record<string, unknown> = { ok: true };
+          if (req.method === "identity") {
+            result = {
+              engine: "vector-engine",
+              service: "browser-service",
+              chromium: false,
+              controller: state.controller,
+              controllerEpoch: state.controllerEpoch,
+            };
+          } else if (req.method === "pages.open") {
+            result = { ok: true, page: 1, url: (req.params?.url as string | undefined) ?? "about:blank", title: "X" };
+          } else if (req.method === "pages.observe") {
+            result = { ok: true, content: content(), documentEpoch: 1 };
+          } else if (req.method === "pages.execute") {
+            result = { ok: true, status: "completed", steps: [] };
+          } else if (req.method === "pages.takeover") {
+            state.controller = "human";
+            state.controllerEpoch += 1;
+            result = { controller: "human", controllerEpoch: state.controllerEpoch, service: "browser-service" };
+          } else if (req.method === "pages.resume") {
+            state.controller = "none";
+            state.controllerEpoch += 1;
+            result = { controller: "none", controllerEpoch: state.controllerEpoch, service: "browser-service" };
+          } else if (req.method === "input.event") {
+            result = { ok: true, chromium: false, event: req.params };
+          } else if (req.method === "scene.update") {
+            result = {
+              kind: "displayList",
+              transport: "scene",
+              png: false,
+              width: 800,
+              height: 600,
+              itemCount: 1,
+              items: [{ kind: "rect", x: 0, y: 0, w: 800, h: 600, color: "rgb(255,255,255)" }],
+            };
+          }
+          socket.write(`${JSON.stringify({ jsonrpc: "2.0", id: req.id, result })}\n`);
+        }
+      });
+    });
+    server.listen(0, "127.0.0.1", () => {
+      const port = (server.address() as AddressInfo).port;
+      resolve({
+        addr: `127.0.0.1:${port}`,
+        shutdown: () => {
+          server.close();
+        },
+        server,
+      });
+    });
+    server.once("error", reject);
+  });
+}
 
 const content = (over: Partial<ObservationContent> = {}): ObservationContent => ({
   url: "https://x.test/",
@@ -280,6 +362,204 @@ describe("VectorEngineDriver", () => {
     const driver = new VectorEngineDriver({ load });
     await expect(driver.connect()).rejects.toMatchObject({ code: "backend_unavailable" });
     expect(driver.describe()).toMatchObject({ available: false });
+  });
+
+  it("Finding 1: Node takeover stops a second BrowserService client", async () => {
+    const owned = await mockBrowserService();
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+    });
+    await driver.connect();
+    await driver.createTarget("https://share.test/");
+    const peer = new BrowserServiceClient(owned.addr);
+    await peer.connect();
+    await expect(
+      peer.call("pages.execute", { program: [{ id: "a", op: "click", target: "css:#n" }] }),
+    ).resolves.toMatchObject({ status: "completed" });
+    const taken = await driver.takeover();
+    expect(taken).toMatchObject({ controller: "human", controllerEpoch: 1 });
+    await expect(
+      peer.call("pages.execute", { program: [{ id: "x", op: "click", target: "css:#n" }] }),
+    ).rejects.toMatchObject({ code: "conflict", message: /human control/i });
+    const resumed = await driver.resume();
+    expect(resumed).toMatchObject({ controller: "none", controllerEpoch: 2 });
+    await expect(
+      peer.call("pages.execute", { program: [{ id: "y", op: "click", target: "css:#n" }] }),
+    ).resolves.toMatchObject({ status: "completed" });
+    peer.close();
+    await driver.disconnect();
+  });
+
+  it("Finding 1: human input.event still types after takeover", async () => {
+    const owned = await mockBrowserService();
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+    });
+    await driver.connect();
+    const targetId = await driver.createTarget("https://share.test/");
+    const page = await driver.attach(targetId, "page-h");
+    await driver.takeover();
+    await expect(page.click("css:#t")).rejects.toMatchObject({ code: "conflict" });
+    await page.humanEvent?.({ type: "imePreedit", text: "ni" });
+    await page.humanEvent?.({ type: "ime", text: "typed-by-human" });
+    await page.humanEvent?.({ type: "select", start: 0, end: 4 });
+    const scene = await page.scene?.();
+    expect(scene).toMatchObject({ kind: "displayList", png: false, itemCount: 1 });
+    expect(scene?.items?.length).toBeGreaterThan(0);
+    const peer = new BrowserServiceClient(owned.addr);
+    await peer.connect();
+    await expect(peer.call("input.event", { type: "ime", text: "more" })).resolves.toMatchObject({ ok: true });
+    peer.close();
+    await driver.disconnect();
+  });
+
+  it("Gate A: production does not start in-process ve-shell", async () => {
+    let started = false;
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      config: { securityProfile: "production" },
+      startService: async () => {
+        started = true;
+        return { addr: "127.0.0.1:1", shutdown() {} };
+      },
+      load: async () => {
+        throw new Error("addon missing");
+      },
+    });
+    await expect(driver.connect()).rejects.toMatchObject({ code: "backend_unavailable" });
+    expect(started).toBe(false);
+    expect(driver.describe()).toMatchObject({ available: false });
+  });
+
+  it("Finding 1: ownService starts BrowserService and Node attaches as a client", async () => {
+    const owned = await mockBrowserService();
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+    });
+    await driver.connect();
+    expect(driver.describe()).toMatchObject({
+      available: true,
+      isolation: "process",
+      capabilities: { service: true },
+    });
+    expect(typeof driver.describe().version).toBe("string");
+    const targetId = await driver.createTarget("https://x.test/");
+    expect(parseEngineTargetId(targetId)).toEqual({ contextId: 1, page: 1 });
+    await driver.disconnect();
+    expect(driver.isConnected()).toBe(false);
+  });
+
+  it("Finding 1: BrowserService execute unwraps nested result.steps", async () => {
+    expect(
+      flattenExecuteResult({
+        ok: true,
+        result: {
+          status: "completed",
+          steps: [{ stepId: "a", op: "click", status: "ok", startedAt: 1, durationMs: 1 }],
+          extracted: { out: { v: "1" } },
+        },
+      }).steps,
+    ).toHaveLength(1);
+    const server = await new Promise<{ addr: string; shutdown(): void }>((resolve, reject) => {
+      const s = createServer((socket) => {
+        let buf = "";
+        socket.setEncoding("utf8");
+        socket.on("data", (chunk: string) => {
+          buf += chunk;
+          for (;;) {
+            const nl = buf.indexOf("\n");
+            if (nl < 0) break;
+            const line = buf.slice(0, nl);
+            buf = buf.slice(nl + 1);
+            if (!line.trim()) continue;
+            const req = JSON.parse(line) as { id: number; method: string; params?: Record<string, unknown> };
+            let result: Record<string, unknown> = { ok: true };
+            if (req.method === "pages.open") {
+              result = { ok: true, page: 1, url: "https://share.test/", title: "X" };
+            } else if (req.method === "pages.execute") {
+              result = {
+                ok: true,
+                result: {
+                  status: "completed",
+                  steps: [{ stepId: "a", op: "click", status: "ok", startedAt: 1, durationMs: 1 }],
+                },
+              };
+            }
+            socket.write(`${JSON.stringify({ jsonrpc: "2.0", id: req.id, result })}\n`);
+          }
+        });
+      });
+      s.listen(0, "127.0.0.1", () => {
+        const port = (s.address() as AddressInfo).port;
+        resolve({ addr: `127.0.0.1:${port}`, shutdown: () => s.close() });
+      });
+      s.once("error", reject);
+    });
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => ({ addr: server.addr, shutdown: server.shutdown }),
+    });
+    await driver.connect();
+    const page = await driver.attach(await driver.createTarget("https://share.test/"), "p1");
+    const res = await page.executeProgram!([{ id: "a", op: "click", target: "css:#n" }]);
+    expect(res.status).toBe("completed");
+    expect(res.steps.map((s) => s.stepId)).toEqual(["a"]);
+    expect(flattenExecuteResult({ ok: true, status: "completed", steps: [], navigated: true, generation: 2, url: "https://share.test/?q=1" })).toMatchObject({
+      navigated: true,
+      generation: 2,
+    });
+    await driver.disconnect();
+  });
+
+  it("Finding 1: service attach reports the probed engine version", async () => {
+    const owned = await mockBrowserService();
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+      load: async () =>
+        ({
+          Engine: class {
+            newContext() {
+              return 1;
+            }
+            open() {
+              return Promise.resolve("{}");
+            }
+            observe() {
+              return Promise.resolve("{}");
+            }
+            execute() {
+              return Promise.resolve("{}");
+            }
+            screenshot() {
+              return Promise.resolve("{}");
+            }
+            close() {
+              return Promise.resolve("{}");
+            }
+            getCookies() {
+              return Promise.resolve("{}");
+            }
+            setCookies() {
+              return Promise.resolve("{}");
+            }
+            pages() {
+              return [];
+            }
+            shutdown() {}
+          },
+          describe: () => JSON.stringify({ engine: "0.0.1", abiVersion: 4 }),
+          version: () => "0.0.1",
+        }) as unknown as NativeModule,
+    });
+    await driver.connect();
+    expect(driver.describe().version).toBe("0.0.1");
+    expect(driver.describe().abiVersion).toBe(4);
+    expect(driver.describe().capabilities?.service).toBe(true);
+    await driver.disconnect();
   });
 
   it("unwrapNative maps engine error codes and rejects malformed JSON", () => {

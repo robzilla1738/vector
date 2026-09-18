@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { EngineMode } from "@vector/contracts";
+import { DEFAULT_GRANTS, sanitizeGrants } from "../agent/permissions.js";
 import { FALLBACK_MODELS, DEFAULT_PLANNER_MODEL, modelCallBudget, type ModelClient } from "../agent/model-client.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
 import type { Repo } from "../store/repo.js";
@@ -25,6 +26,11 @@ export interface Settings {
    * VECTOR_ENGINE_MODE.
    */
   engineMode?: EngineMode;
+  /**
+   * Privilege-independent agent effect grants (Gate D / Gate F).
+   * The person sets these. Model text cannot expand them.
+   */
+  effectGrants?: string[];
 }
 
 const ENGINE_MODES: readonly EngineMode[] = ["off", "auto", "always"];
@@ -71,8 +77,14 @@ export class SettingsService {
       theme: (this.get("theme") as "dark" | "light") ?? "dark",
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,
       engineMode: this.engineMode(),
+      effectGrants: [...this.effectGrants()],
       dataDir: this.settingsPath.replace(/\/settings\.json$/, ""),
     };
+  }
+
+  /** Live grant list. settings.set is the only expander. */
+  effectGrants(): readonly string[] {
+    return sanitizeGrants(this.get("effectGrants") ?? this.fileSettings.effectGrants ?? DEFAULT_GRANTS);
   }
 
   /** Setting wins over the env override; anything unrecognised is "auto". */
@@ -82,7 +94,9 @@ export class SettingsService {
   }
 
   set(patch: Settings): { ok: true } {
-    for (const [k, v] of Object.entries(patch)) {
+    const next: Settings = { ...patch };
+    if (next.effectGrants !== undefined) next.effectGrants = sanitizeGrants(next.effectGrants);
+    for (const [k, v] of Object.entries(next)) {
       if (v === undefined) continue;
       if (k === "gatewayApiKey") {
         this.writeGatewayKey(typeof v === "string" ? v : "");
@@ -91,7 +105,7 @@ export class SettingsService {
       this.repo.setSetting(k, v);
     }
     // persist non-secret prefs to settings.json for transparency
-    const { gatewayApiKey, ...rest } = patch;
+    const { gatewayApiKey, ...rest } = next;
     if (Object.keys(rest).length) {
       this.fileSettings = { ...this.fileSettings, ...rest };
       try {

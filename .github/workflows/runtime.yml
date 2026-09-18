@@ -101,6 +101,11 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: addon-e2e
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -108,5 +113,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - run: pnpm --filter @vector/engine-native build:cargo
       - run: pnpm --filter @vector/desktop build
       - run: pnpm test:e2e
+        env:
+          VECTOR_ENGINE_MODE: always
+          VECTOR_ENGINE_PROFILE: production

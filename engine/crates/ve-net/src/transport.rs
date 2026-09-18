@@ -24,6 +24,12 @@ pub trait Transport {
 
     /// Human readable backend name.
     fn name(&self) -> &'static str;
+
+    /// Live DNS + resolved-IP policy. Replay, null, and mock never open a
+    /// socket, so the broker must not call `to_socket_addrs`.
+    fn uses_live_dns(&self) -> bool {
+        true
+    }
 }
 
 /// A transport that delegates to a callback (the parent broker over IPC).
@@ -72,6 +78,10 @@ impl Transport for NullTransport {
 
     fn name(&self) -> &'static str {
         "null"
+    }
+
+    fn uses_live_dns(&self) -> bool {
+        false
     }
 }
 
@@ -188,6 +198,10 @@ impl Transport for MockTransport {
 
     fn name(&self) -> &'static str {
         "mock"
+    }
+
+    fn uses_live_dns(&self) -> bool {
+        false
     }
 }
 

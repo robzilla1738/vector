@@ -1,0 +1,210 @@
+{
+  "arch": "x86_64",
+  "attribution": {
+    "gate": false,
+    "jetstreamSunspider": {
+      "executed": 12,
+      "failed": 0,
+      "note": "Official SunSpider group from JetStreamDriver.js at the pin. Not a JetStream Next geometric-mean published score.",
+      "officialGroup": 12,
+      "passed": 12
+    },
+    "kind": "adapted-workload-phases",
+    "motionmark13": {
+      "note": "Official MotionMark 1.3 names from resources/runner/tests.js. canvas-class and gpu.multiply are adapted class probes, not a published MotionMark score.",
+      "officialNames": 8
+    },
+    "officialFullSuite": false,
+    "phases": [
+      "parse/style/layout(openMs)",
+      "js(jsMs)",
+      "harnessSettle(settleMs)",
+      "unaccounted"
+    ],
+    "source": "official JetStream Next SunSpider group (12) plus speedometer.3.0.* and official MotionMark 1.3 names",
+    "speedometer30": {
+      "executed": 0,
+      "failed": 0,
+      "note": "Official Speedometer 3.0 suite names. Vendored workloads execute; missing sources stay NOTRUN. Not a browserbench.org published score.",
+      "notrun": 0
+    }
+  },
+  "backend": "vector-engine",
+  "chromium": false,
+  "engine_version": "0.0.1",
+  "host_package_energy_uj": null,
+  "os": "linux",
+  "pins": {
+    "jetstream": {
+      "note": "Official SunSpider group (12) from JetStreamDriver.js at this pin. Other JetStream Next Default workloads stay unexecuted. Not a published JetStream geometric-mean score.",
+      "repo": "https://github.com/WebKit/JetStream",
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "status": "official-sunspider-group",
+      "tests": [
+        "SunSpider/3d-cube.js",
+        "SunSpider/3d-raytrace.js",
+        "SunSpider/base64.js",
+        "SunSpider/crypto-aes.js",
+        "SunSpider/crypto-md5.js",
+        "SunSpider/crypto-sha1.js",
+        "SunSpider/date-format-tofte.js",
+        "SunSpider/date-format-xparb.js",
+        "SunSpider/n-body.js",
+        "SunSpider/regex-dna.js",
+        "SunSpider/string-unpack-code.js",
+        "SunSpider/tagcloud.js"
+      ]
+    },
+    "motionmark": {
+      "note": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. canvas-class and gpu.multiply are adapted class probes. Not a published MotionMark score.",
+      "officialNames": [
+        "Multiply",
+        "Canvas Arcs",
+        "Leaves",
+        "Paths",
+        "Canvas Lines",
+        "Images",
+        "Design",
+        "Suits"
+      ],
+      "repo": "https://github.com/WebKit/MotionMark",
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "status": "gpu"
+    },
+    "speedometer": {
+      "note": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply.",
+      "repo": "https://github.com/WebKit/Speedometer",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "official-3.0"
+    }
+  },
+  "process_tree_rss_bytes": 88891392,
+  "rss_bytes": 88891392,
+  "security_mode": "developer-offline",
+  "suites": [
+    {
+      "name": "jetstream.3d-cube",
+      "p50_ms": 18,
+      "p95_ms": 18,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        18
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.3d-raytrace",
+      "p50_ms": 12,
+      "p95_ms": 12,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        12
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.base64",
+      "p50_ms": 8,
+      "p95_ms": 8,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        8
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.crypto-aes",
+      "p50_ms": 9,
+      "p95_ms": 9,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        9
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.crypto-md5",
+      "p50_ms": 7,
+      "p95_ms": 7,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        7
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.crypto-sha1",
+      "p50_ms": 8,
+      "p95_ms": 8,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        8
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.date-format-tofte",
+      "p50_ms": 8,
+      "p95_ms": 8,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        8
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.date-format-xparb",
+      "p50_ms": 9,
+      "p95_ms": 9,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        9
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.n-body",
+      "p50_ms": 4,
+      "p95_ms": 4,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        4
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.regex-dna",
+      "p50_ms": 5,
+      "p95_ms": 5,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        5
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.string-unpack-code",
+      "p50_ms": 9,
+      "p95_ms": 9,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        9
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.tagcloud",
+      "p50_ms": 14,
+      "p95_ms": 14,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        14
+      ],
+      "status": "PASS"
+    }
+  ],
+  "review": "Vector_Current_Review_60b2d41",
+  "officialFullSuite": false,
+  "officialJetStreamGeometricMean": false,
+  "note": "Official JetStream Next SunSpider group (12/12 PASS) from JetStreamDriver.js on pin c603c04. Other JetStream Next Default workloads were not executed. Not a published JetStream geometric-mean score."
+}

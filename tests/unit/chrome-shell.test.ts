@@ -71,9 +71,9 @@ describe("overlay → native-view visibility", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url: "https://example.com/" })).toBe(page);
   });
 
-  it("does not pin a native view for Chrome tabs", () => {
+  it("does not pin a Chromium view over Chrome tabs or EngineView", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "chrome" })).toBeNull();
-    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "vector-engine" })).toBe(page);
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "vector-engine" })).toBeNull();
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, backend: "vector" })).toBe(page);
   });
 });

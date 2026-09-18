@@ -22,9 +22,12 @@ import { normalizePlannerObject } from "./gateway-client.js";
 import { EarlyDispatcher } from "./early-dispatch.js";
 import { PlanStreamParser } from "./plan-stream.js";
 import { buildFinalAnswerPrompt, buildPlannerPrompt, buildVisionPrompt, extractJson, FINAL_ANSWER_SYSTEM, PLANNER_SYSTEM, VISION_SYSTEM } from "./planner.js";
-import { compileSkill, tryReuseSkill, verifySkillPostconditions, type CompiledSkill } from "./skills.js";
+import { compileSkill, markSkillFailed, tryReuseSkill, verifySkillPostconditions, type CompiledSkill } from "./skills.js";
 import { promptCannotGrant } from "./policy.js";
 import { recoverAfterCrash } from "./recovery.js";
+import type { GrantSource } from "./permissions.js";
+import { compileAndAuthorize } from "./action-compiler.js";
+import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "./durable.js";
 
 interface RunControl {
   abort: AbortController;
@@ -65,6 +68,10 @@ export interface CoordinatorDeps {
     ): { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void };
     incr(name: string, by?: number): void;
   };
+  /** Privilege-independent grants. A function re-reads after settings.set. */
+  grants?: GrantSource;
+  /** Durable write ledger shared across crash/retry. */
+  durableWrites?: DurableWriteLedger;
 }
 
 const TERMINAL_STATUSES: ReadonlySet<Run["status"]> = new Set(["completed", "partially_completed", "failed", "cancelled", "interrupted"]);
@@ -113,8 +120,11 @@ export class RunCoordinator {
     return this.skills;
   }
   private unresolvedByRun = new Map<string, string[]>();
+  private durable: DurableWriteLedger;
 
-  constructor(private deps: CoordinatorDeps) {}
+  constructor(private deps: CoordinatorDeps) {
+    this.durable = deps.durableWrites ?? new DurableWriteLedger();
+  }
 
   list(limit = 50): Run[] {
     return this.deps.repo.listRuns(limit);
@@ -560,12 +570,43 @@ export class RunCoordinator {
           const parser = new PlanStreamParser();
           const epoch = obs.documentEpoch;
           const dispatcher = new EarlyDispatcher(
-            (steps, { first, last }) =>
-              this.deps.pages.execute(
-                { pageId: activePageId!, ...(first ? { documentEpoch: epoch } : {}), steps },
-                { runId, signal: c.abort.signal, onStep: onStepRecorded },
-                last ? { returnObservation: nextObserveReq() } : {},
-              ),
+            (steps, { first, last }) => {
+              const live = this.deps.pages.get(activePageId!);
+              const prepared = compileAndAuthorize({
+                pageId: activePageId!,
+                documentEpoch: live.documentEpoch ?? epoch,
+                observedEpoch: epoch,
+                steps,
+                observation: obs.content,
+                url: live.url ?? obs.content.url,
+                grants: this.deps.grants,
+              });
+              if ("rejected" in prepared) {
+                return Promise.reject(new VectorError("conflict", prepared.rejected));
+              }
+              if ("denied" in prepared) {
+                return Promise.reject(new VectorError("permission_denied", prepared.denied));
+              }
+              const write = beginConsequentialWrite(this.durable, {
+                runId,
+                pageId: activePageId!,
+                documentEpoch: epoch,
+                steps: prepared.program.steps ?? [],
+              });
+              if (write.skip) {
+                return Promise.resolve({ status: "completed" as const, steps: [] });
+              }
+              return this.deps.pages
+                .execute(
+                  { ...prepared.program, ...(first ? { documentEpoch: epoch } : {}) },
+                  { runId, signal: c.abort.signal, onStep: onStepRecorded },
+                  last ? { returnObservation: nextObserveReq() } : {},
+                )
+                .then((r) => {
+                  settleWrite(this.durable, write.intentId, r.status === "completed");
+                  return r;
+                });
+            },
             24,
           );
           early = dispatcher;
@@ -591,7 +632,7 @@ export class RunCoordinator {
         if (claimedGrants.length) {
           run.config = { ...(run.config ?? {}), ignoredPageGrants: claimedGrants };
         }
-        const reuse = tryReuseSkill(this.skills, run.goal, obs.content, obs.content.url);
+        const reuse = tryReuseSkill(this.skills, run.goal, obs.content, obs.content.url, obs.documentEpoch);
         try {
           if ("skill" in reuse && !lastError && !visionPending && !thinObs) {
             plan = {
@@ -750,9 +791,9 @@ export class RunCoordinator {
               throw new VectorError("step_failed", "planner repeated the same steps without finishing");
             }
             lastError = `You already ran this exact step sequence and it did not complete the goal. If the goal is met return status="done" with the result; if blocked, ask for input or request a different observation scope — do NOT repeat the same actions.`;
-            // with streaming the repeated steps may already be running; let
-            // them finish (they are recorded) and still deliver the nudge
-            if (!early || early.dispatchedCount === 0) {
+            // After a failed chunk the same ops are a repair retry and must
+            // run so consecutive failures can reach MAX_REPAIRS.
+            if (!lastActionFailed && (!early || early.dispatchedCount === 0)) {
               if (early) await early.finish([]);
               continue;
             }
@@ -763,17 +804,50 @@ export class RunCoordinator {
           }
         }
 
-        const program = { pageId: activePageId, documentEpoch: obs.documentEpoch, steps: plan.steps };
-        const result = early
-          ? await early.finish(plan.steps)
+        const compiled = compileAndAuthorize({
+          pageId: activePageId,
+          documentEpoch: obs.documentEpoch,
+          steps: plan.steps ?? [],
+          observation: obs.content,
+          url: obs.content.url,
+          guards: "skill" in reuse ? reuse.skill.preconditions : undefined,
+          grants: this.deps.grants,
+        });
+        if ("rejected" in compiled) {
+          if (early) await early.finish([]);
+          lastError = compiled.rejected;
+          lastActionFailed = true;
+          repairCount++;
+          continue;
+        }
+        if ("denied" in compiled) {
+          if (early) await early.finish([]);
+          lastError = compiled.denied;
+          lastActionFailed = true;
+          repairCount++;
+          continue;
+        }
+        const write = beginConsequentialWrite(this.durable, {
+          runId,
+          pageId: activePageId,
+          documentEpoch: obs.documentEpoch,
+          steps: compiled.program.steps ?? [],
+        });
+        const program = compiled.program;
+        const streamed = early && early.dispatchedCount > 0;
+        const result = write.skip
+          ? { status: "completed" as const, steps: [] }
+          : streamed
+          ? await early!.finish(plan.steps ?? [])
           : await this.deps.pages.execute(program, { runId, signal: c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
+        if (early && !streamed) early.halt();
+        settleWrite(this.durable, write.intentId, result.status === "completed");
         const carried = early ? early.observation : (result as { observation?: Observation }).observation;
         if (carried && carried.pageId === activePageId) carriedObs = carried;
         stepsRun += plan.steps.length;
         lastError = repeatNudge;
         repeatNudge = undefined;
         lastActionFailed = false;
-        repairCount = 0;
         this.unresolvedByRun.set(
           runId,
           outcomes
@@ -789,7 +863,8 @@ export class RunCoordinator {
         this.persistCheckpoint(this.get(runId));
         if ("skill" in reuse && result.status !== "failed" && result.status !== "cancelled") {
           const after = carriedObs ?? (await this.deps.pages.observe(activePageId!, {}));
-          if (!verifySkillPostconditions(reuse.skill, after.content, after.content.url)) {
+          if (!verifySkillPostconditions(reuse.skill, after.content, after.content.url, after.documentEpoch)) {
+            markSkillFailed(reuse.skill);
             lastError = `skill ${reuse.skill.id} postconditions failed`;
             lastActionFailed = true;
           }
@@ -801,16 +876,22 @@ export class RunCoordinator {
               .filter((e) => e.role && e.name)
               .slice(0, 2)
               .map((e) => ({ role: e.role, nameIncludes: (e.name ?? "").slice(0, 40) }));
-            if (this.skills.length < 32 && named.length > 0) {
+            const writes = plan.steps.some((s) =>
+              ["click", "fill", "type", "press", "select", "check", "uncheck", "navigate", "submit"].includes(s.op),
+            );
+            if (this.skills.length < 32 && named.length > 0 && !writes) {
               this.skills.push(
                 compileSkill({
                   id: `${runId}:${this.skills.length}`,
                   goalPattern: run.goal.slice(0, 64),
                   pageId: activePageId!,
                   steps: plan.steps,
-                  preconditions: [{ urlIncludes: origin }, ...named],
-                  postconditions: [{ urlIncludes: origin }],
-                  evidence: `compiled from a successful chunk on ${origin}`,
+                  preconditions: [
+                    { exactOrigin: origin },
+                    ...named,
+                  ],
+                  postconditions: [{ exactOrigin: origin }],
+                  evidence: `compiled from a successful read-only chunk on ${origin}`,
                 }),
               );
             }
@@ -820,6 +901,9 @@ export class RunCoordinator {
         }
 
         if (result.status === "cancelled") return;
+        if (result.status !== "failed") {
+          repairCount = 0;
+        }
         if (result.status === "failed") {
           lastError = result.error;
           lastActionFailed = true;
@@ -850,11 +934,31 @@ export class RunCoordinator {
               maxOutputTokens: 8192,
             });
             if (repair.object.steps.length) {
-              const r2 = await this.deps.pages.execute({ pageId: activePageId, steps: repair.object.steps }, { runId, signal: c.abort.signal });
-              stepsRun += repair.object.steps.length;
-              if (r2.status === "completed") {
-                lastError = undefined;
-                repairCount = 0;
+              const compiled = compileAndAuthorize({
+                pageId: activePageId,
+                documentEpoch: fresh.documentEpoch,
+                observedEpoch: fresh.documentEpoch,
+                steps: repair.object.steps,
+                observation: fresh.content,
+                url: fresh.content.url,
+                grants: this.deps.grants,
+              });
+              if (!("rejected" in compiled) && !("denied" in compiled)) {
+                const write = beginConsequentialWrite(this.durable, {
+                  runId,
+                  pageId: activePageId,
+                  documentEpoch: fresh.documentEpoch,
+                  steps: compiled.program.steps ?? [],
+                });
+                if (!write.skip) {
+                  const r2 = await this.deps.pages.execute(compiled.program, { runId, signal: c.abort.signal });
+                  settleWrite(this.durable, write.intentId, r2.status === "completed");
+                  stepsRun += compiled.program.steps?.length ?? repair.object.steps.length;
+                  if (r2.status === "completed") {
+                    lastError = undefined;
+                    repairCount = 0;
+                  }
+                }
               }
             }
           }

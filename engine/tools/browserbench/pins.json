@@ -2,7 +2,22 @@
   "jetstream": {
     "repo": "https://github.com/WebKit/JetStream",
     "revision": "c603c04db8505477867974a69789309ded2cc948",
-    "tests": ["SunSpider/n-body.js", "SunSpider/crypto-sha1.js"]
+    "tests": [
+      "SunSpider/3d-cube.js",
+      "SunSpider/3d-raytrace.js",
+      "SunSpider/base64.js",
+      "SunSpider/crypto-aes.js",
+      "SunSpider/crypto-md5.js",
+      "SunSpider/crypto-sha1.js",
+      "SunSpider/date-format-tofte.js",
+      "SunSpider/date-format-xparb.js",
+      "SunSpider/n-body.js",
+      "SunSpider/regex-dna.js",
+      "SunSpider/string-unpack-code.js",
+      "SunSpider/tagcloud.js"
+    ],
+    "status": "official-sunspider-default-js-wasmemcc",
+    "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and Default wasm through Dart-flute-todomvc, Kotlin-compose, dotnet-interp/aot, and transformersjs-bert. Not a published JetStream geometric-mean score."
   },
   "speedometer": {
     "repo": "https://github.com/WebKit/Speedometer",
@@ -13,7 +28,17 @@
   "motionmark": {
     "repo": "https://github.com/WebKit/MotionMark",
     "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
-    "status": "gpu",
-    "note": "Canvas fillRect class on the engine 2D buffer plus MotionMark Multiply-class GPU present through vello present_list (no CPU readback)."
+    "status": "official-html-multiply",
+    "officialNames": [
+      "Multiply",
+      "Canvas Arcs",
+      "Leaves",
+      "Paths",
+      "Canvas Lines",
+      "Images",
+      "Design",
+      "Suits"
+    ],
+    "note": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. Each official HTML workload executes when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score."
   }
 }

@@ -41,7 +41,22 @@ export { runMemberAgent } from "./agent/member-agent.js";
 export { SetRunner } from "./scheduler/set-runner.js";
 export { EarlyDispatcher } from "./agent/early-dispatch.js";
 export { PlanStreamParser } from "./agent/plan-stream.js";
-export { compileSkill, tryReuseSkill, guardsHold, verifySkillPostconditions, evaluateHeldOutAdvantage, type CompiledSkill, type SkillGuard, type HeldOutMetrics, type HeldOutAdvantage } from "./agent/skills.js";
+export { compileSkill, tryReuseSkill, markSkillFailed, guardsHold, verifySkillPostconditions, evaluateHeldOutAdvantage, type CompiledSkill, type SkillGuard, type HeldOutMetrics, type HeldOutAdvantage } from "./agent/skills.js";
 export { redactForModel, agentMayEgress, promptCannotGrant } from "./agent/policy.js";
+export { queryPage, queryAll, type PageQuery, type QueryHit } from "./agent/page-query.js";
+export { compileAction, compileAndAuthorize, rebindSteps, type CompileResult, type DispatchPrep } from "./agent/action-compiler.js";
+export {
+  authorizeProgram,
+  classifyStep,
+  DEFAULT_GRANTS,
+  KNOWN_GRANTS,
+  resolveGrants,
+  sanitizeGrants,
+  type EffectClass,
+  type GrantSource,
+} from "./agent/permissions.js";
+export { DurableWriteLedger, stepSignature, beginConsequentialWrite, settleWrite, type WriteIntent } from "./agent/durable.js";
+export { BrowserAuthority } from "./agent/browser-authority.js";
+export { attributeSample, attributeTodoMvc, type PhaseTimes, type AttributedSample } from "./agent/attribution.js";
 export { negotiate as negotiateBidi, dispatch as dispatchBidi, authorizePageTool, attachBidiRuntime, type BidiCommand, type BidiSession } from "./services/bidi.js";
 export { recoverAfterCrash, reconcileFallback, speculatePlan, COORDINATOR_TRANSITIONS, type CrashRecovery } from "./agent/recovery.js";

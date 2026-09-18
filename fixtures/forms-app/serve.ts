@@ -1,14 +1,39 @@
 /**
  * Forms fixture: native fields, rich text (contenteditable), autocomplete,
  * validation, file upload — with a server-side record of what was received.
+ *
+ * Gate D: `GET|POST /api/writes` is a durable write counter. Persist path
+ * `VECTOR_WRITE_COUNTER_PATH` so a restart still reports the same count.
  */
 import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { html, json, notFound, page, serve } from "../shared/http.ts";
+
+const counterPath = process.env.VECTOR_WRITE_COUNTER_PATH;
 
 const state = {
   submissions: [] as Record<string, unknown>[],
   uploads: [] as { field: string; name: string; size: number; sha1: string }[],
+  writes: loadWrites(),
 };
+
+function loadWrites(): number {
+  if (!counterPath) return 0;
+  try {
+    const parsed = JSON.parse(readFileSync(counterPath, "utf8")) as { writes?: number };
+    return typeof parsed.writes === "number" ? parsed.writes : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveWrites(n: number) {
+  state.writes = n;
+  if (!counterPath) return;
+  mkdirSync(dirname(counterPath), { recursive: true });
+  writeFileSync(counterPath, JSON.stringify({ writes: n }));
+}
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -131,10 +156,39 @@ async function handle(req: any, res: any, url: URL, body: Buffer) {
     }
     return send(res, 415, "expected multipart", "text/plain");
   }
+  if (path === "/writes") {
+    return html(
+      res,
+      page(
+        "Write counter — fixture",
+        `<header><h1>Write counter</h1><a href="/">Form</a><span class="muted" style="margin-left:auto">fixture writes</span></header>
+<main>
+  <div class="card">
+    <p>Server-side durable write counter (Gate D).</p>
+    <p>Writes: <strong id="count">${state.writes}</strong></p>
+    <button id="pay" type="button">Pay</button>
+  </div>
+</main>
+<script>
+  document.getElementById("pay").addEventListener("click", async () => {
+    const r = await fetch("/api/writes", { method: "POST" });
+    const j = await r.json();
+    document.getElementById("count").textContent = String(j.writes);
+  });
+</script>`,
+      ),
+    );
+  }
+  if (path === "/api/writes" && req.method === "POST") {
+    saveWrites(state.writes + 1);
+    return json(res, { writes: state.writes });
+  }
+  if (path === "/api/writes") return json(res, { writes: state.writes });
   if (path === "/api/state") return json(res, state);
   if (path === "/api/reset" && req.method === "POST") {
     state.submissions = [];
     state.uploads = [];
+    saveWrites(0);
     return json(res, { ok: true });
   }
   return notFound(res);

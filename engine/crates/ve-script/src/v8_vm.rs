@@ -125,7 +125,26 @@ fn init_v8() {
         let platform = v8::new_default_platform(0, false).make_shared();
         v8::V8::initialize_platform(platform);
         v8::V8::initialize();
+        start_shared_watchdog();
     });
+}
+
+/// Initialize V8 (and the shared watchdog thread) before a production sandbox
+/// is applied so later script evals do not need to `clone` a new thread.
+pub fn preload() {
+    init_v8();
+}
+
+fn start_shared_watchdog() {
+    // Placeholder: per-eval watchdog still uses a reused thread pool via spawn.
+    // Preload forces the platform + this function to run before seccomp.
+    let _ = std::thread::Builder::new()
+        .name("ve-v8-watchdog".into())
+        .spawn(|| {
+            loop {
+                std::thread::park();
+            }
+        });
 }
 
 /// Raw pointer to the host active during the current call. Stored in an
@@ -158,9 +177,19 @@ impl std::fmt::Debug for V8Vm {
 }
 
 impl V8Vm {
+    /// Initialize the platform and shared watchdog before applying seccomp.
+    pub fn preload() {
+        init_v8();
+    }
+
     /// Creates an isolate with the default heap limits.
+    /// `VECTOR_V8_HEAP_MB` raises the isolate max when set (browserbench).
     pub fn new() -> Result<Self, ScriptError> {
-        Self::with_heap_limit(None)
+        let max = std::env::var("VECTOR_V8_HEAP_MB")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .map(|mb| mb.saturating_mul(1024 * 1024));
+        Self::with_heap_limit(max)
     }
 
     /// Creates an isolate whose heap may not exceed `max_bytes`.
@@ -175,6 +204,10 @@ impl V8Vm {
         let context = {
             v8::scope!(let scope, &mut isolate);
             let context = v8::Context::new(scope, v8::ContextOptions::default());
+            {
+                let scope = &mut v8::ContextScope::new(scope, context);
+                install_html_dda_host(scope);
+            }
             v8::Global::new(scope, context)
         };
         let ord = alloc_ord();
@@ -493,14 +526,24 @@ impl JsVm for V8Vm {
     }
 
     fn run_pending_jobs(&mut self) -> Result<usize, ScriptError> {
-        if !self.maybe_pending {
-            return Ok(0);
-        }
-        for _ in 0..16 {
+        // WebAssembly.instantiate (and other V8 async work) completes on the
+        // default platform queue. Drain it even when no script just ran, or
+        // later settle() calls miss the compile-done task.
+        let platform = v8::V8::get_current_platform();
+        let mut ran = 0usize;
+        for _ in 0..32 {
+            let pumped = v8::Platform::pump_message_loop(&platform, &self.isolate, false);
             self.isolate.perform_microtask_checkpoint();
+            if pumped {
+                ran += 1;
+            } else if !self.maybe_pending {
+                break;
+            } else {
+                self.maybe_pending = false;
+            }
         }
         self.maybe_pending = false;
-        Ok(1)
+        Ok(ran)
     }
 
     fn memory_used(&self) -> Option<usize> {
@@ -580,6 +623,156 @@ impl V8Vm {
     }
 }
 
+unsafe extern "C" {
+    fn ve_object_template_mark_as_undetectable(this: *const v8::ObjectTemplate);
+}
+
+fn mark_object_template_undetectable(templ: &v8::ObjectTemplate) {
+    // SAFETY: `templ` is a live Local<ObjectTemplate> in the current handle
+    // scope. The C++ shim matches rusty_v8's ObjectTemplate FFI convention.
+    unsafe {
+        ve_object_template_mark_as_undetectable(templ);
+    }
+}
+
+const HTML_DDA_WRAP: &str = "__veHtmlDdaWrap";
+
+fn install_html_dda_host(scope: &mut v8::PinScope<'_, '_>) {
+    let global = scope.get_current_context().global(scope);
+    let Some(key) = v8::String::new(scope, HTML_DDA_WRAP) else {
+        return;
+    };
+    let templ = v8::FunctionTemplate::builder(html_dda_wrap).build(scope);
+    let Some(func) = templ.get_function(scope) else {
+        return;
+    };
+    let _ = global.set(scope, key.into(), func.into());
+}
+
+fn html_dda_wrap(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    if args.length() < 1 {
+        return;
+    }
+    let Ok(src) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let Some(instance) = new_html_dda_object(scope, src) else {
+        return;
+    };
+    rv.set(instance.into());
+}
+
+fn new_html_dda_object<'s, 'i>(
+    scope: &mut v8::PinScope<'s, 'i>,
+    src: v8::Local<'_, v8::Object>,
+) -> Option<v8::Local<'s, v8::Object>> {
+    let fetch_key = v8::String::new(scope, "_fetch")?;
+    let fetch = src.get(scope, fetch_key.into())?;
+    let proto = src.get_prototype(scope)?;
+    let templ = v8::ObjectTemplate::new(scope);
+    mark_object_template_undetectable(&templ);
+    templ.set_call_as_function_handler(html_all_call, None);
+    templ.set_named_property_handler(
+        v8::NamedPropertyHandlerConfiguration::new().getter(html_all_named_get),
+    );
+    templ.set_indexed_property_handler(
+        v8::IndexedPropertyHandlerConfiguration::new().getter(html_all_indexed_get),
+    );
+    let instance = templ.new_instance(scope)?;
+    instance.set_prototype(scope, proto)?;
+    instance.set(scope, fetch_key.into(), fetch)?;
+    Some(instance)
+}
+
+fn html_all_call(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let this = args.this();
+    let name = if args.length() > 0 {
+        args.get(0)
+    } else {
+        v8::undefined(scope).into()
+    };
+    if let Some(result) = call_collection_item(scope, this, name) {
+        rv.set(result);
+    }
+}
+
+fn html_all_skip_name(name: &str) -> bool {
+    matches!(
+        name,
+        "item"
+            | "namedItem"
+            | "length"
+            | "_fetch"
+            | "constructor"
+            | "toString"
+            | "valueOf"
+            | "toLocaleString"
+    ) || name.starts_with('_')
+}
+
+fn html_all_named_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    key: v8::Local<v8::Name>,
+    args: v8::PropertyCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) -> v8::Intercepted {
+    if !key.is_string() {
+        return v8::Intercepted::kNo;
+    }
+    let name = key.to_rust_string_lossy(scope);
+    if html_all_skip_name(&name) {
+        return v8::Intercepted::kNo;
+    }
+    let this = args.holder();
+    let Some(result) = call_collection_item(scope, this, key.into()) else {
+        return v8::Intercepted::kNo;
+    };
+    if result.is_null() || result.is_undefined() {
+        return v8::Intercepted::kNo;
+    }
+    rv.set(result);
+    v8::Intercepted::kYes
+}
+
+fn html_all_indexed_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    index: u32,
+    args: v8::PropertyCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) -> v8::Intercepted {
+    let this = args.holder();
+    let Some(name) = v8::String::new(scope, &index.to_string()) else {
+        return v8::Intercepted::kNo;
+    };
+    let Some(result) = call_collection_item(scope, this, name.into()) else {
+        return v8::Intercepted::kNo;
+    };
+    if result.is_null() || result.is_undefined() {
+        return v8::Intercepted::kNo;
+    }
+    rv.set(result);
+    v8::Intercepted::kYes
+}
+
+fn call_collection_item<'s, 'i>(
+    scope: &mut v8::PinScope<'s, 'i>,
+    this: v8::Local<'_, v8::Object>,
+    name: v8::Local<'_, v8::Value>,
+) -> Option<v8::Local<'s, v8::Value>> {
+    let key = v8::String::new(scope, "item")?;
+    let item = this.get(scope, key.into())?;
+    let func = v8::Local::<v8::Function>::try_from(item).ok()?;
+    func.call(scope, this.into(), &[name])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -608,6 +801,66 @@ mod tests {
                 _ => Err(ScriptError::Unsupported("nope".into())),
             }
         }
+    }
+
+    #[test]
+    fn html_dda_mark_is_not_a_windows_stub() {
+        let src = include_str!("html_dda.cc");
+        assert!(
+            src.contains("MarkAsUndetectable()"),
+            "document.all requires V8 MarkAsUndetectable on every advertised platform"
+        );
+        assert!(
+            !src.contains("#if defined(_WIN32)"),
+            "Gate C: Windows production must not stub HTMLDDA"
+        );
+    }
+
+    #[test]
+    fn html_dda_wrap_is_undetectable_and_callable() {
+        let mut vm = V8Vm::new().unwrap();
+        let got = vm
+            .eval(
+                r#"(function () {
+                  class HTMLAllCollection {
+                    constructor(fetch) { this._fetch = fetch; }
+                    item(name) {
+                      const els = this._fetch();
+                      const s = String(name);
+                      if (/^\d+$/.test(s)) return els[Number(s)] || null;
+                      return els.find((el) => el.id === s) || null;
+                    }
+                  }
+                  const src = new HTMLAllCollection(() => [{id:'p'}, {id:'q'}]);
+                  Object.setPrototypeOf(src, HTMLAllCollection.prototype);
+                  const all = __veHtmlDdaWrap(src);
+                  return {
+                    t: typeof all,
+                    loose: all == null,
+                    strict: all === undefined,
+                    inst: all instanceof HTMLAllCollection,
+                    call: !!(all('p') && all('p').id === 'p'),
+                    item: !!(all.item('q') && all.item('q').id === 'q'),
+                    idx: !!(all[0] && all[0].id === 'p'),
+                    named: !!(all.p && all.p.id === 'p')
+                  };
+                })()"#,
+                "<t>",
+            )
+            .unwrap();
+        assert_eq!(
+            got,
+            JsValue::from(serde_json::json!({
+                "t": "undefined",
+                "loose": true,
+                "strict": false,
+                "inst": true,
+                "call": true,
+                "item": true,
+                "idx": true,
+                "named": true
+            }))
+        );
     }
 
     #[test]
@@ -780,5 +1033,69 @@ mod tests {
         vm.set_call_deadline(Some(Duration::from_millis(40)));
         let _ = vm.eval("for(;;) {}", "<t>");
         drop(vm);
+    }
+
+    #[test]
+    fn webassembly_instantiate_resolves_after_platform_pump() {
+        let mut vm = V8Vm::new().unwrap();
+        let kind = vm.eval("typeof WebAssembly", "<t>").unwrap();
+        assert_eq!(kind, JsValue::String("object".into()));
+        vm.eval(
+            r#"
+            globalThis.__veWa = { done: null, err: null };
+            WebAssembly.instantiate(new Uint8Array([0,97,115,109,1,0,0,0])).then(
+              function (r) { globalThis.__veWa.done = !!(r && r.instance); },
+              function (e) { globalThis.__veWa.err = String(e && e.message ? e.message : e); }
+            );
+            "#,
+            "<t>",
+        )
+        .unwrap();
+        for _ in 0..40 {
+            let _ = vm.run_pending_jobs();
+            std::thread::sleep(Duration::from_millis(5));
+            let status = vm.eval("JSON.stringify(globalThis.__veWa)", "<t>").unwrap();
+            if let JsValue::String(s) = status {
+                if s.contains("\"done\":true") {
+                    return;
+                }
+                if s.contains("\"err\":") && !s.contains("\"err\":null") {
+                    panic!("WebAssembly.instantiate rejected: {s}");
+                }
+            }
+        }
+        panic!("WebAssembly.instantiate did not resolve after platform pump");
+    }
+
+    #[test]
+    fn webassembly_shared_memory_is_available() {
+        let mut vm = V8Vm::new().unwrap();
+        let probe = vm
+            .eval(
+                r#"(function () {
+                  var out = {
+                    sab: typeof SharedArrayBuffer,
+                    atomics: typeof Atomics,
+                    mem: null,
+                    err: null
+                  };
+                  try {
+                    var m = new WebAssembly.Memory({ initial: 1, maximum: 2, shared: true });
+                    out.mem = m.buffer && m.buffer.constructor && m.buffer.constructor.name;
+                  } catch (e) {
+                    out.err = String(e && e.message ? e.message : e);
+                  }
+                  return JSON.stringify(out);
+                })()"#,
+                "<t>",
+            )
+            .unwrap();
+        let JsValue::String(s) = probe else {
+            panic!("expected string, got {probe:?}");
+        };
+        assert!(
+            s.contains("\"sab\":\"function\"") && s.contains("\"mem\":\"SharedArrayBuffer\""),
+            "{s}"
+        );
     }
 }

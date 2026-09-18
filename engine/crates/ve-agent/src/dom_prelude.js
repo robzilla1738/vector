@@ -1,9 +1,28 @@
 (() => {
-  const D = (op, ...a) => __ve.dom(op, ...a);
+  let liveListGen = 0;
+  const STRUCT = new Set([
+    "appendChild", "insertBefore", "removeChild", "replaceChild", "replaceChildren",
+    "setInnerHTML", "setOuterHTML", "adoptNode", "parseHTMLDocument", "remove",
+  ]);
+  const D = (op, ...a) => {
+    const r = __ve.dom(op, ...a);
+    if (STRUCT.has(op)) liveListGen++;
+    return r;
+  };
   const nodes = new Map();
   const nonceMap = new WeakMap();
   const registry = new Map();
   const listeners = new Map();
+  const listenerCounts = new Map();
+  let onAttrCount = 0;
+  let handlerPropCount = 0;
+  // window.addEventListener stores on this object, not globalThis.
+  // Bubbling must look here or Stockcharts never sees mouseup.pan.
+  let windowEventTarget = null;
+  function eventListenNode(node) {
+    if (windowEventTarget && (node === window || node === globalThis)) return windowEventTarget;
+    return node;
+  }
   const onReadyStateChange = new WeakMap();
   const trustedEvents = new WeakSet();
   const waiters = new Map();
@@ -20,17 +39,21 @@
       this.type = String(type);
       this.bubbles = !!init.bubbles;
       this.cancelable = !!init.cancelable;
-      this.composed = init.composed !== undefined ? !!init.composed : this.type === "click" || this.type === "input" || this.type === "change";
+      // EventInit.composed defaults to false for every script-constructed Event,
+      // including `new Event("click")`. UA click/input/change pass composed: true.
+      this.composed = !!init.composed;
       this.defaultPrevented = false;
       this.cancelBubble = false;
       this.target = null;
       this.currentTarget = null;
       this.eventPhase = 0;
-      this.timeStamp = __ve.now();
+      this.timeStamp = Date.now();
       this.clientX = init.clientX || 0;
       this.clientY = init.clientY || 0;
       this.button = init.button || 0;
-      this.key = init.key || "";
+      if (typeof StorageEvent !== "function" || !(this instanceof StorageEvent)) {
+        this.key = init.key || "";
+      }
       this.code = init.code || "";
       this.keyCode = init.keyCode != null ? init.keyCode : (this.key === "Enter" ? 13 : this.key === "Escape" ? 27 : 0);
       this.which = init.which != null ? init.which : this.keyCode;
@@ -65,16 +88,108 @@
       this.detail = detail;
     }
   }
-  class HashChangeEvent extends Event {}
-  class StorageEvent extends Event {
-    constructor(type, init) {
+  class HashChangeEvent extends Event {
+    constructor(t) {
+      const i = arguments[1] || {};
+      super(t, i);
+      this._oldURL = i.oldURL == null ? "" : String(i.oldURL);
+      this._newURL = i.newURL == null ? "" : String(i.newURL);
+    }
+    get oldURL() { return this._oldURL; }
+    get newURL() { return this._newURL; }
+  }
+  class PopStateEvent extends Event {
+    constructor(t) {
+      const i = arguments[1] || {};
+      super(t, i);
+      this._state = "state" in i ? i.state : null;
+      this._hasUAVisualTransition = !!i.hasUAVisualTransition;
+    }
+    get state() { return this._state; }
+    get hasUAVisualTransition() { return this._hasUAVisualTransition; }
+  }
+  class ToggleEvent extends Event {
+    constructor(t) {
+      const i = arguments[1] || {};
+      super(t, i);
+      this._oldState = i.oldState == null ? "" : String(i.oldState);
+      this._newState = i.newState == null ? "" : String(i.newState);
+      this._source = "source" in i ? i.source : null;
+    }
+    get oldState() { return this._oldState; }
+    get newState() { return this._newState; }
+    get source() { return this._source == null ? null : this._source; }
+  }
+  class TrackEvent extends Event {
+    constructor(t) {
+      const i = arguments[1] || {};
+      super(t, i);
+      this._track = "track" in i ? i.track : null;
+    }
+    get track() { return this._track; }
+  }
+  class FormDataEvent extends Event {
+    constructor(t, i) {
+      super(t, i);
+      if (!i || !("formData" in i)) throw new TypeError("Failed to construct 'FormDataEvent': required member formData is undefined.");
+      this._formData = i.formData;
+    }
+    get formData() { return this._formData; }
+  }
+  class SubmitEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
       super(type, init);
-      init = init || {};
-      this.key = init.key == null ? null : String(init.key);
-      this.oldValue = init.oldValue == null ? null : String(init.oldValue);
-      this.newValue = init.newValue == null ? null : String(init.newValue);
-      this.url = init.url == null ? "" : toUSV(init.url);
-      this.storageArea = init.storageArea || null;
+      this._submitter = init.submitter || null;
+    }
+    get submitter() { return this._submitter; }
+  }
+  class PageRevealEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._viewTransition = init.viewTransition || null;
+    }
+    get viewTransition() { return this._viewTransition; }
+  }
+  class PageTransitionEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._persisted = !!init.persisted;
+    }
+    get persisted() { return this._persisted; }
+  }
+  class BeforeUnloadEvent extends Event {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get returnValue() { return this._returnValue || ""; }
+    set returnValue(v) { this._returnValue = v == null ? "" : String(v); }
+  }
+  class StorageEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._key = init.key == null ? null : String(init.key);
+      this._oldValue = "oldValue" in init ? (init.oldValue == null ? null : String(init.oldValue)) : null;
+      this._newValue = "newValue" in init ? (init.newValue == null ? null : String(init.newValue)) : null;
+      this._url = init.url == null ? "" : toUSV(init.url);
+      this._storageArea = init.storageArea || null;
+    }
+    get key() { return this._key; }
+    get oldValue() { return this._oldValue; }
+    get newValue() { return this._newValue; }
+    get url() { return this._url; }
+    get storageArea() { return this._storageArea; }
+    initStorageEvent(type) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'initStorageEvent' on 'StorageEvent': 1 argument required, but only 0 present.");
+      }
+      this.initEvent(type, arguments[1], arguments[2]);
+      this._key = arguments[3] == null ? null : String(arguments[3]);
+      this._oldValue = arguments[4] == null ? null : String(arguments[4]);
+      this._newValue = arguments[5] == null ? null : String(arguments[5]);
+      this._url = arguments[6] == null ? "" : String(arguments[6]);
+      this._storageArea = arguments[7] || null;
     }
   }
   class MouseEvent extends Event {
@@ -82,14 +197,38 @@
       super(t, i);
       i = i || {};
       this.button = i.button != null ? i.button : 0;
-      this.buttons = i.buttons != null ? i.buttons : (this.button === 0 ? 1 : 0);
+      // UI Events MouseEventInit.buttons default is 0. Official Speedometer
+      // Stockcharts constructs mouseup without buttons; a default of 1 keeps
+      // the chart in grabbing-cursor after Pan.
+      this.buttons = i.buttons != null ? i.buttons : 0;
       this.which = i.which != null ? i.which : (this.button === 0 ? 1 : this.button + 1);
+      this.clientX = i.clientX != null ? Number(i.clientX) : 0;
+      this.clientY = i.clientY != null ? Number(i.clientY) : 0;
+      this.screenX = i.screenX != null ? Number(i.screenX) : this.clientX;
+      this.screenY = i.screenY != null ? Number(i.screenY) : this.clientY;
+      this.pageX = i.pageX != null ? Number(i.pageX) : this.clientX;
+      this.pageY = i.pageY != null ? Number(i.pageY) : this.clientY;
+      this.ctrlKey = !!i.ctrlKey;
+      this.shiftKey = !!i.shiftKey;
+      this.altKey = !!i.altKey;
+      this.metaKey = !!i.metaKey;
+    }
+  }
+  class WheelEvent extends MouseEvent {
+    constructor(t, i) {
+      super(t, i);
+      i = i || {};
+      this.deltaX = i.deltaX != null ? Number(i.deltaX) : 0;
+      this.deltaY = i.deltaY != null ? Number(i.deltaY) : (i.delta != null ? Number(i.delta) : 0);
+      this.deltaZ = i.deltaZ != null ? Number(i.deltaZ) : 0;
+      this.deltaMode = i.deltaMode != null ? Number(i.deltaMode) : 0;
     }
   }
   class DragEvent extends MouseEvent {
-    constructor(t, i) {
+    constructor(t) {
+      const i = arguments[1] || {};
       super(t, i);
-      this.dataTransfer = (i && i.dataTransfer) || {
+      this._dataTransfer = i.dataTransfer || {
         dropEffect: "move",
         effectAllowed: "all",
         files: [],
@@ -101,6 +240,7 @@
         setDragImage() {},
       };
     }
+    get dataTransfer() { return this._dataTransfer; }
   }
   class KeyboardEvent extends Event {
     constructor(t, i) {
@@ -126,14 +266,64 @@
     }
   }
   class MessageEvent extends Event {
-    constructor(t, i) {
+    constructor(t) {
+      const i = arguments[1] || {};
       super(t, i);
-      this.data = i && "data" in i ? i.data : null;
-      this.origin = (i && i.origin) || "";
-      this.source = (i && i.source) || null;
-      this.lastEventId = (i && i.lastEventId) || "";
-      this.ports = (i && i.ports) || [];
+      this._data = "data" in i ? i.data : null;
+      this._origin = i.origin == null ? "" : String(i.origin);
+      this._source = i.source || null;
+      this._lastEventId = i.lastEventId == null ? "" : String(i.lastEventId);
+      this._ports = Object.freeze(i.ports ? Array.from(i.ports) : []);
     }
+    get data() { return this._data; }
+    get origin() { return this._origin; }
+    get source() { return this._source; }
+    get lastEventId() { return this._lastEventId; }
+    get ports() { return this._ports; }
+    initMessageEvent(type) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'initMessageEvent' on 'MessageEvent': 1 argument required, but only 0 present.");
+      }
+      this.initEvent(type, arguments[1], arguments[2]);
+      this._data = arguments.length > 3 ? arguments[3] : null;
+      this._origin = arguments[4] == null ? "" : String(arguments[4]);
+      this._lastEventId = arguments[5] == null ? "" : String(arguments[5]);
+      this._source = arguments[6] || null;
+      this._ports = arguments[7] ? Array.from(arguments[7]) : [];
+    }
+  }
+  class CommandEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._source = init.source || null;
+      this._command = init.command == null ? "" : String(init.command);
+    }
+    get source() { return this._source; }
+    get command() { return this._command; }
+  }
+  class PromiseRejectionEvent extends Event {
+    constructor(type, init) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to construct 'PromiseRejectionEvent': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      super(type, init || {});
+      init = init || {};
+      this._promise = init.promise;
+      this._reason = init.reason;
+    }
+    get promise() { return this._promise; }
+    get reason() { return this._reason; }
+  }
+  class PageSwapEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._activation = init.activation || null;
+      this._viewTransition = init.viewTransition || null;
+    }
+    get activation() { return this._activation; }
+    get viewTransition() { return this._viewTransition; }
   }
   class DOMException extends Error {
     constructor(message, name) {
@@ -143,7 +333,20 @@
     }
   }
 
+  function listenerOnPath(type, start) {
+    const path = composedPath(start);
+    for (const node of path) {
+      const arr = listeners.get(eventListenNode(node)) && listeners.get(eventListenNode(node)).get(type);
+      if (arr && arr.length) return true;
+    }
+    return false;
+  }
   function composedPath(start) {
+    if (start && start.__h) {
+      const path = list(D("ancestorPath", start.__h));
+      path.push(window);
+      return path;
+    }
     const path = [];
     let n = start;
     while (n) {
@@ -181,30 +384,57 @@
       const once = !!(opts && opts.once);
       const list = store(this);
       if (!list.has(type)) list.set(type, []);
-      list.get(type).push({ fn: call, orig: fn, cap, once });
+      const arr = list.get(type);
+      if (arr.some((x) => x.orig === fn && x.cap === cap)) return;
+      arr.push({ fn: call, orig: fn, cap, once });
+      listenerCounts.set(type, (listenerCounts.get(type) || 0) + 1);
     }
     removeEventListener(type, fn, opts) {
       const cap = !!(opts && (opts === true || opts.capture));
       const arr = store(this).get(type);
       if (!arr) return;
       const i = arr.findIndex((x) => (x.orig === fn || x.fn === fn) && x.cap === cap);
-      if (i >= 0) arr.splice(i, 1);
+      if (i >= 0) {
+        arr.splice(i, 1);
+        listenerCounts.set(type, Math.max(0, (listenerCounts.get(type) || 0) - 1));
+      }
     }
     dispatchEvent(ev) {
       if (!ev || typeof ev.type !== "string") throw new TypeError("not an Event");
       ev.target = ev.target || this;
-      const path = composedPath(this);
       const type = ev.type;
+      const nListen = listenerCounts.get(type) || 0;
+      const needPath = nListen > 0 || onAttrCount > 0 || handlerPropCount > 0;
+      const fireTargetProp = () => {
+        ev.currentTarget = this;
+        ev.eventPhase = 2;
+        const prop = this["on" + type];
+        if (typeof prop === "function") {
+          try { prop.call(this, ev); } catch (e) { __ve.log("error", String(e)); }
+        }
+        ev.eventPhase = 0;
+        ev.currentTarget = null;
+        return !ev.defaultPrevented;
+      };
+      if (!needPath) return fireTargetProp();
+      if (nListen > 0 && onAttrCount === 0 && handlerPropCount === 0 && !listenerOnPath(type, this)) {
+        return fireTargetProp();
+      }
+      const path = composedPath(this);
       const fire = (node, cap) => {
         if (ev._stopImm) return;
         ev.currentTarget = node;
-        const arr = (listeners.get(node) && listeners.get(node).get(type)) || [];
+        const listenNode = eventListenNode(node);
+        const arr = (listeners.get(listenNode) && listeners.get(listenNode).get(type)) || [];
         for (const l of arr.slice()) {
           if (l.cap !== cap) continue;
           try { l.fn.call(node, ev); } catch (e) { __ve.log("error", "Uncaught (in event) " + (e && e.stack || e)); }
           if (l.once) {
             const i = arr.indexOf(l);
-            if (i >= 0) arr.splice(i, 1);
+            if (i >= 0) {
+              arr.splice(i, 1);
+              listenerCounts.set(type, Math.max(0, (listenerCounts.get(type) || 0) - 1));
+            }
           }
           if (ev._stopImm) return;
         }
@@ -212,7 +442,7 @@
         if (!cap && typeof prop === "function") {
           try { prop.call(node, ev); } catch (e) { __ve.log("error", String(e)); }
         }
-        if (!cap && node.getAttribute && typeof prop !== "function") {
+        if (!cap && node.__hasOnAttr && node.getAttribute && typeof prop !== "function") {
           const src = node.getAttribute("on" + type);
           if (src) {
             try { new Function("event", src).call(node, ev); } catch (e) { __ve.log("error", String(e)); }
@@ -224,14 +454,16 @@
         fire(path[i], true);
         if (ev.cancelBubble) break;
       }
-      ev.eventPhase = 2;
-      fire(path[0], true);
-      fire(path[0], false);
-      if (ev.bubbles && !ev.cancelBubble) {
-        ev.eventPhase = 3;
-        for (let i = 1; i < path.length; i++) {
-          fire(path[i], false);
-          if (ev.cancelBubble) break;
+      if (!ev.cancelBubble) {
+        ev.eventPhase = 2;
+        fire(path[0], true);
+        fire(path[0], false);
+        if (ev.bubbles && !ev.cancelBubble) {
+          ev.eventPhase = 3;
+          for (let i = 1; i < path.length; i++) {
+            fire(path[i], false);
+            if (ev.cancelBubble) break;
+          }
         }
       }
       ev.eventPhase = 0;
@@ -295,9 +527,16 @@
     if (h == null || h === "" || h === false) return null;
     h = String(h);
     if (browsingDocument && h === String(browsingDocument.__h)) return browsingDocument;
+    const cached = nodes.get(h);
+    if (cached) return cached;
+    return wrapWithInfo(h, D("describe", h));
+  }
+  function wrapWithInfo(h, info) {
+    if (h == null || h === "" || h === false) return null;
+    h = String(h);
+    if (browsingDocument && h === String(browsingDocument.__h)) return browsingDocument;
     let n = nodes.get(h);
     if (n) return n;
-    const info = D("describe", h);
     if (!info) return null;
     let proto = Node.prototype;
     if (info.t === 9) proto = Document.prototype;
@@ -312,7 +551,7 @@
       if (info.ns === "http://www.w3.org/2000/svg") {
         proto = (SVG[tag] || SVGElement).prototype;
       } else if (info.ns === "http://www.w3.org/1998/Math/MathML") {
-        proto = MathMLElement.prototype;
+        proto = tag === "a" ? MathMLAnchorElement.prototype : MathMLElement.prototype;
       } else if (info.ns === "http://www.w3.org/1999/xhtml") {
         proto = UNKNOWN_HTML[tag] ? HTMLUnknownElement.prototype : (HTML[tag] || HTMLElement).prototype;
       } else {
@@ -328,14 +567,44 @@
       installDocumentLocation(n);
     }
     if (info.t === 1) {
-      upgradeOne(n);
-      try { if (n.id) exposeWindowName(n.id); } catch (e) {}
+      if (info.on) {
+        n.__hasOnAttr = true;
+        onAttrCount++;
+      }
+      if (registry.size) upgradeOne(n, false);
+      if (info.id) {
+        try { exposeWindowName(info.id); } catch (e) {}
+      }
     }
     return n;
   }
-  function upgradeTree(n) {
+  function constructCustomElement(n) {
     if (!n || n.nodeType !== 1) return;
-    upgradeOne(n);
+    if (templateInContent(n)) return;
+    const name = (n.localName || "").toLowerCase();
+    const ctor = registry.get(name);
+    if (!ctor) return;
+    if (n.__upgraded && n.__constructed) return;
+    n.__upgraded = true;
+    Object.setPrototypeOf(n, ctor.prototype);
+    if (!n.__constructed) {
+      upgrading = n;
+      try { new ctor(); } catch (e) { __ve.log("error", String(e)); }
+      upgrading = null;
+      n.__constructed = true;
+    }
+  }
+  function connectCustomElement(n) {
+    if (!n || n.__connected) return;
+    if (typeof n.connectedCallback !== "function") return;
+    if (!n.isConnected) return;
+    n.__connected = true;
+    try { n.connectedCallback(); } catch (e) { __ve.log("error", String(e)); }
+  }
+  function upgradeTree(n) {
+    if (!registry.size) return;
+    if (!n || n.nodeType !== 1) return;
+    upgradeOne(n, true);
     const kids = n.children;
     if (kids) {
       for (let i = 0; i < kids.length; i++) upgradeTree(kids[i]);
@@ -347,25 +616,12 @@
       }
     }
   }
-  function upgradeOne(n) {
+  function upgradeOne(n, force) {
     if (!n || n.nodeType !== 1) return;
-    const name = (n.localName || "").toLowerCase();
-    const ctor = registry.get(name);
-    if (!ctor) return;
-    if (!n.__upgraded) {
-      n.__upgraded = true;
-      Object.setPrototypeOf(n, ctor.prototype);
-      if (!n.__constructed) {
-        upgrading = n;
-        try { new ctor(); } catch (e) { __ve.log("error", String(e)); }
-        upgrading = null;
-        n.__constructed = true;
-      }
-    }
-    if (!n.__connected && typeof n.connectedCallback === "function") {
-      n.__connected = true;
-      try { n.connectedCallback(); } catch (e) { __ve.log("error", String(e)); }
-    }
+    if (templateInContent(n)) return;
+    if (!force && !n.isConnected) return;
+    constructCustomElement(n);
+    connectCustomElement(n);
   }
   function handleOf(v) {
     if (v == null) return "";
@@ -375,20 +631,62 @@
   class NodeList {}
   Object.defineProperty(NodeList, Symbol.hasInstance, {
     value(v) {
-      return (Array.isArray(v) && typeof (v && v.item) === "function") || v instanceof LiveNodeList;
+      if (v == null || (typeof v !== "object" && typeof v !== "function")) return false;
+      if (Array.isArray(v) && typeof v.item === "function") return true;
+      let proto = Object.getPrototypeOf(v);
+      while (proto) {
+        if (proto === NodeList.prototype || proto === LiveNodeList.prototype) return true;
+        proto = Object.getPrototypeOf(proto);
+      }
+      return false;
     },
   });
   class LiveNodeList {
     constructor(fetch) {
       this._fetch = fetch;
+      this._gen = -1;
+      this._cur = null;
+      const snap = () => {
+        if (this._gen !== liveListGen || !this._cur) {
+          this._gen = liveListGen;
+          this._cur = fetch();
+        }
+        return this._cur;
+      };
       return new Proxy(this, {
         get(t, p, recv) {
-          if (p === "length") return t._fetch().length;
-          if (p === "item") return (i) => t._fetch()[i | 0] || null;
-          if (p === "forEach") return (fn, self) => t._fetch().forEach(fn, self);
-          if (typeof p === "symbol" || p === "_fetch") return Reflect.get(t, p, recv);
-          if (/^\d+$/.test(String(p))) return t._fetch()[Number(p)];
+          const cur = snap();
+          if (p === "length") return cur.length;
+          if (p === "item") return (i) => cur[i | 0] || null;
+          if (p === "forEach") return (fn, self) => cur.forEach(fn, self);
+          if (p === Symbol.iterator) return cur[Symbol.iterator].bind(cur);
+          if (typeof p === "symbol" || p === "_fetch" || p === "_gen" || p === "_cur") return Reflect.get(t, p, recv);
+          if (/^\d+$/.test(String(p))) return cur[Number(p)];
           return Reflect.get(t, p, recv);
+        },
+        has(t, p) {
+          if (p === "length" || p === "_fetch") return true;
+          if (/^\d+$/.test(String(p))) return Number(p) < snap().length;
+          return Reflect.has(t, p);
+        },
+        ownKeys(t) {
+          const n = snap().length;
+          const keys = ["length", "_fetch"];
+          for (let i = 0; i < n; i++) keys.push(String(i));
+          return keys;
+        },
+        getOwnPropertyDescriptor(t, p) {
+          if (p === "length") {
+            return { configurable: true, enumerable: true, writable: false, value: snap().length };
+          }
+          if (/^\d+$/.test(String(p))) {
+            const i = Number(p);
+            const cur = snap();
+            if (i < cur.length) {
+              return { configurable: true, enumerable: true, writable: false, value: cur[i] };
+            }
+          }
+          return Reflect.getOwnPropertyDescriptor(t, p);
         },
       });
     }
@@ -400,6 +698,20 @@
   function list(arr) {
     const out = [];
     if (!arr) return out;
+    const missing = [];
+    for (const h of arr) {
+      if (h == null || h === "" || h === false) continue;
+      const s = String(h);
+      if (nodes.has(s)) continue;
+      if (browsingDocument && s === String(browsingDocument.__h)) continue;
+      missing.push(s);
+    }
+    if (missing.length > 1) {
+      const infos = D("describeMany", ...missing);
+      if (Array.isArray(infos)) {
+        for (let i = 0; i < missing.length; i++) wrapWithInfo(missing[i], infos[i]);
+      }
+    }
     for (const h of arr) {
       const n = wrap(h);
       if (n) out.push(n);
@@ -408,7 +720,20 @@
     return out;
   }
 
-  function DOMStringMap() {}
+  function clientRectList(r) {
+    const rect = r && typeof r === "object"
+      ? r
+      : { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0 };
+    const out = [rect];
+    out.item = (i) => ((i | 0) === 0 ? rect : null);
+    out.length = 1;
+    return out;
+  }
+
+  class DOMStringMap {
+    constructor() { throw new TypeError("Illegal constructor"); }
+  }
+  Object.defineProperty(DOMStringMap.prototype, Symbol.toStringTag, { value: "DOMStringMap", configurable: true });
   function dataAttrName(key) {
     return "data-" + String(key).replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
   }
@@ -419,7 +744,7 @@
     return k.length >= 2 && k.charCodeAt(0) === 45 && k.charCodeAt(1) >= 97 && k.charCodeAt(1) <= 122;
   }
   function makeDataset(el) {
-    const map = new DOMStringMap();
+    const map = Object.create(DOMStringMap.prototype);
     return new Proxy(map, {
       get(t, k) {
         if (typeof k !== "string") return Reflect.get(t, k);
@@ -890,16 +1215,34 @@
           for (let i = 0; i < els.length; i++) yield els[i];
         };
       }
-      if (typeof p === "symbol" || p === "_fetch") return Reflect.get(t, p, recv);
-      if (p === "length") return t._fetch().length;
-      if (p === "item" || p === "namedItem") return Reflect.get(t, p, recv);
+      if (typeof p === "symbol" || (typeof p === "string" && p.charCodeAt(0) === 95)) {
+        return Reflect.get(t, p, recv);
+      }
+      if (p === "length") {
+        const desc = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(t), "length");
+        if (desc && desc.get) return desc.get.call(t);
+        return t._fetch().length;
+      }
+      if (p === "item" || p === "namedItem" || p === "add" || p === "remove" || p === "selectedIndex") {
+        return Reflect.get(t, p, recv);
+      }
       const s = String(p);
       if (/^\d+$/.test(s)) return t._fetch()[Number(s)];
       if (s) {
-        const named = HTMLCollection.prototype.namedItem.call(t, s);
+        const named = (t.namedItem || HTMLCollection.prototype.namedItem).call(t, s);
         if (named) return named;
       }
       return Reflect.get(t, p, recv);
+    },
+    set(t, p, value, recv) {
+      if (typeof p === "string" && p.charCodeAt(0) === 95) return Reflect.set(t, p, value, recv);
+      if (p === "length" || p === "selectedIndex") return Reflect.set(t, p, value, recv);
+      const s = String(p);
+      if (/^\d+$/.test(s) && typeof t._setIndex === "function") {
+        t._setIndex(Number(s), value);
+        return true;
+      }
+      return Reflect.set(t, p, value, recv);
     },
     ownKeys(t) {
       const els = t._fetch();
@@ -914,29 +1257,45 @@
       return keys;
     },
     getOwnPropertyDescriptor(t, p) {
-      if (typeof p === "symbol") return Object.getOwnPropertyDescriptor(t, p);
+      if (typeof p === "symbol") return undefined;
       const s = String(p);
       if (/^\d+$/.test(s)) {
         const v = t._fetch()[Number(s)];
         if (v === undefined) return undefined;
         return { configurable: true, enumerable: true, writable: false, value: v };
       }
-      const named = s ? HTMLCollection.prototype.namedItem.call(t, s) : null;
+      if (s === "namedItem" || s === "item" || s === "length" || s === "add" || s === "remove" || s === "selectedIndex") {
+        return undefined;
+      }
+      const named = s ? (t.namedItem || HTMLCollection.prototype.namedItem).call(t, s) : null;
       if (named) return { configurable: true, enumerable: false, writable: false, value: named };
-      return Object.getOwnPropertyDescriptor(HTMLCollection.prototype, p) || Object.getOwnPropertyDescriptor(t, p);
+      return undefined;
     },
     has(t, p) {
-      return htmlCollectionTraps.getOwnPropertyDescriptor(t, p) !== undefined;
+      if (typeof p === "symbol") return false;
+      if (typeof p === "string" && p.charCodeAt(0) === 95) return true;
+      if (p === "length" || p === "item" || p === "namedItem" || p === "add" || p === "remove" || p === "selectedIndex") {
+        return true;
+      }
+      const s = String(p);
+      if (/^\d+$/.test(s)) return Number(s) < t._fetch().length;
+      if (s && (t.namedItem || HTMLCollection.prototype.namedItem).call(t, s)) return true;
+      return Object.prototype[p] !== undefined || p === "constructor";
     },
   };
 
+  const IDL_INTERNAL = Symbol("idl");
   class HTMLCollection {
-    constructor(fetch) {
-      this._fetch = fetch;
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      this._fetch = arguments[1];
       return new Proxy(this, htmlCollectionTraps);
     }
     item(i) { return this._fetch()[i | 0] || null; }
     namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'HTMLCollection': 1 argument required, but only 0 present.");
+      }
       const n = String(name);
       if (!n) return null;
       return this._fetch().find((el) => el.id === n || (el.getAttribute && el.getAttribute("name") === n)) || null;
@@ -947,6 +1306,268 @@
     Object.defineProperty(HTMLCollection.prototype, k, { enumerable: true, configurable: true });
   }
   Object.defineProperty(HTMLCollection.prototype, Symbol.toStringTag, { value: "HTMLCollection" });
+
+  function collectionNamedHits(els, name) {
+    const n = String(name);
+    if (!n) return [];
+    return els.filter((el) => el && (el.id === n || (el.getAttribute && el.getAttribute("name") === n)));
+  }
+
+  class RadioNodeList {
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      const fetch = arguments[1];
+      this._fetch = fetch;
+      this._gen = -1;
+      this._cur = null;
+      const snap = () => {
+        if (this._gen !== liveListGen || !this._cur) {
+          this._gen = liveListGen;
+          this._cur = fetch();
+        }
+        return this._cur;
+      };
+      return new Proxy(this, {
+        get(t, p, recv) {
+          const cur = snap();
+          if (p === "length") return cur.length;
+          if (p === "item") return (i) => cur[i | 0] || null;
+          if (p === "forEach") return (fn, self) => cur.forEach(fn, self);
+          if (p === "value") return Reflect.get(t, p, recv);
+          if (p === Symbol.iterator) return cur[Symbol.iterator].bind(cur);
+          if (typeof p === "symbol" || p === "_fetch" || p === "_gen" || p === "_cur") return Reflect.get(t, p, recv);
+          if (/^\d+$/.test(String(p))) return cur[Number(p)];
+          return Reflect.get(t, p, recv);
+        },
+      });
+    }
+    get value() {
+      if (typeof this._fetch !== "function") throw new TypeError("Illegal invocation");
+      const els = this._fetch();
+      for (let i = 0; i < els.length; i++) {
+        if (els[i] && els[i].checked) return els[i].value;
+      }
+      return "";
+    }
+    set value(v) {
+      if (typeof this._fetch !== "function") throw new TypeError("Illegal invocation");
+      const want = String(v);
+      const els = this._fetch();
+      for (let i = 0; i < els.length; i++) {
+        if (els[i]) els[i].checked = els[i].value === want;
+      }
+    }
+  }
+  Object.setPrototypeOf(RadioNodeList, NodeList);
+  Object.setPrototypeOf(RadioNodeList.prototype, NodeList.prototype);
+  {
+    const desc = Object.getOwnPropertyDescriptor(RadioNodeList.prototype, "value");
+    if (desc) Object.defineProperty(RadioNodeList.prototype, "value", { ...desc, enumerable: true, configurable: true });
+  }
+  Object.defineProperty(RadioNodeList.prototype, Symbol.toStringTag, { value: "RadioNodeList" });
+
+  class HTMLFormControlsCollection extends HTMLCollection {
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      super(IDL_INTERNAL, arguments[1]);
+    }
+    namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'HTMLFormControlsCollection': 1 argument required, but only 0 present.");
+      }
+      const hits = collectionNamedHits(this._fetch(), name);
+      if (hits.length === 0) return null;
+      if (hits.length === 1) return hits[0];
+      const n = String(name);
+      return new RadioNodeList(IDL_INTERNAL, () => collectionNamedHits(this._fetch(), n));
+    }
+  }
+  Object.defineProperty(HTMLFormControlsCollection.prototype, "namedItem", {
+    enumerable: true,
+    configurable: true,
+    writable: true,
+    value: HTMLFormControlsCollection.prototype.namedItem,
+  });
+  Object.defineProperty(HTMLFormControlsCollection.prototype, Symbol.toStringTag, {
+    value: "HTMLFormControlsCollection",
+  });
+
+  class HTMLOptionsCollection extends HTMLCollection {
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      super(IDL_INTERNAL, arguments[1]);
+    }
+    get length() { return this._fetch().length; }
+    set length(n) {
+      const select = this._select;
+      if (!select) throw new TypeError("Illegal invocation");
+      n = n >>> 0;
+      while (this._fetch().length > n) {
+        const last = this._fetch()[this._fetch().length - 1];
+        if (last && last.parentNode) last.parentNode.removeChild(last);
+        else break;
+      }
+      while (this._fetch().length < n) {
+        select.appendChild(document.createElement("option"));
+      }
+    }
+    add(element, ...rest) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'add' on 'HTMLOptionsCollection': 1 argument required, but only 0 present.");
+      }
+      const before = rest[0];
+      const select = this._select;
+      if (!select) throw new TypeError("Illegal invocation");
+      if (!element) return;
+      if (before == null) select.appendChild(element);
+      else if (typeof before === "number") {
+        const ref = this._fetch()[before];
+        if (ref) select.insertBefore(element, ref.parentNode === select ? ref : ref.parentNode);
+        else select.appendChild(element);
+      } else if (before.parentNode) {
+        before.parentNode.insertBefore(element, before);
+      } else {
+        select.appendChild(element);
+      }
+    }
+    remove(index) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'remove' on 'HTMLOptionsCollection': 1 argument required, but only 0 present.");
+      }
+      const el = this._fetch()[index | 0];
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    }
+    get selectedIndex() {
+      const opts = this._fetch();
+      for (let i = 0; i < opts.length; i++) if (opts[i].selected) return i;
+      return -1;
+    }
+    set selectedIndex(i) {
+      const opts = this._fetch();
+      i = i | 0;
+      for (let j = 0; j < opts.length; j++) opts[j].selected = j === i;
+    }
+    _setIndex(index, option) {
+      const select = this._select;
+      if (!select) return;
+      const opts = this._fetch();
+      if (option == null) {
+        const cur = opts[index];
+        if (cur && cur.parentNode) cur.parentNode.removeChild(cur);
+        return;
+      }
+      if (index < opts.length) {
+        const cur = opts[index];
+        if (cur && cur.parentNode) cur.parentNode.replaceChild(option, cur);
+      } else {
+        while (this._fetch().length < index) select.appendChild(document.createElement("option"));
+        select.appendChild(option);
+      }
+    }
+  }
+  for (const k of ["length", "add", "remove", "selectedIndex"]) {
+    const desc = Object.getOwnPropertyDescriptor(HTMLOptionsCollection.prototype, k);
+    if (desc) Object.defineProperty(HTMLOptionsCollection.prototype, k, { ...desc, enumerable: true, configurable: true });
+  }
+  Object.defineProperty(HTMLOptionsCollection.prototype, Symbol.toStringTag, {
+    value: "HTMLOptionsCollection",
+  });
+
+  const htmlAllTraps = {
+    get(t, p, recv) {
+      if (p === Symbol.iterator) {
+        return function* () {
+          const els = t._fetch();
+          for (let i = 0; i < els.length; i++) yield els[i];
+        };
+      }
+      if (typeof p === "symbol" || (typeof p === "string" && p.charCodeAt(0) === 95)) {
+        return Reflect.get(t, p, recv);
+      }
+      if (p === "length") return t._fetch().length;
+      if (p === "item" || p === "namedItem") return Reflect.get(t, p, recv);
+      const s = String(p);
+      if (/^\d+$/.test(s)) return t._fetch()[Number(s)];
+      if (s) {
+        const named = HTMLAllCollection.prototype.namedItem.call(t, s);
+        if (named) return named;
+      }
+      return Reflect.get(t, p, recv);
+    },
+    apply(t, _thisArg, args) {
+      return HTMLAllCollection.prototype.item.call(t, args.length ? args[0] : undefined);
+    },
+    ownKeys(t) {
+      const els = t._fetch();
+      const keys = [];
+      for (let i = 0; i < els.length; i++) keys.push(String(i));
+      return keys;
+    },
+    getOwnPropertyDescriptor(t, p) {
+      if (typeof p === "symbol") return undefined;
+      const s = String(p);
+      if (/^\d+$/.test(s)) {
+        const v = t._fetch()[Number(s)];
+        if (v === undefined) return undefined;
+        return { configurable: true, enumerable: true, writable: false, value: v };
+      }
+      if (s === "namedItem" || s === "item" || s === "length") return undefined;
+      const named = s ? HTMLAllCollection.prototype.namedItem.call(t, s) : null;
+      if (named) return { configurable: true, enumerable: false, writable: false, value: named };
+      return undefined;
+    },
+    has(t, p) {
+      if (typeof p === "symbol") return false;
+      if (typeof p === "string" && p.charCodeAt(0) === 95) return true;
+      if (p === "length" || p === "item" || p === "namedItem") return true;
+      const s = String(p);
+      if (/^\d+$/.test(s)) return Number(s) < t._fetch().length;
+      if (s && HTMLAllCollection.prototype.namedItem.call(t, s)) return true;
+      return Object.prototype[p] !== undefined || p === "constructor";
+    },
+  };
+
+  class HTMLAllCollection {
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      const fetch = arguments[1];
+      const call = function htmlAll(...args) {
+        return HTMLAllCollection.prototype.item.call(call, args[0]);
+      };
+      call._fetch = fetch;
+      Object.setPrototypeOf(call, HTMLAllCollection.prototype);
+      if (typeof globalThis.__veHtmlDdaWrap === "function") {
+        return globalThis.__veHtmlDdaWrap(call);
+      }
+      return new Proxy(call, htmlAllTraps);
+    }
+    item(...args) {
+      if (args.length === 0 || args[0] == null) return null;
+      const s = String(args[0]);
+      if (s === "") return null;
+      if (/^\d+$/.test(s)) return this._fetch()[Number(s)] || null;
+      return this.namedItem(s);
+    }
+    namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'HTMLAllCollection': 1 argument required, but only 0 present.");
+      }
+      const hits = collectionNamedHits(this._fetch(), name).filter((el) => {
+        return (el.localName || "").toLowerCase() !== "applet";
+      });
+      if (hits.length === 0) return null;
+      if (hits.length === 1) return hits[0];
+      const n = String(name);
+      return new HTMLCollection(IDL_INTERNAL, () => collectionNamedHits(this._fetch(), n).filter((el) => {
+        return (el.localName || "").toLowerCase() !== "applet";
+      }));
+    }
+    get length() { return this._fetch().length; }
+  }
+  for (const k of ["item", "namedItem", "length"]) {
+    Object.defineProperty(HTMLAllCollection.prototype, k, { enumerable: true, configurable: true });
+  }
+  Object.defineProperty(HTMLAllCollection.prototype, Symbol.toStringTag, { value: "HTMLAllCollection" });
 
   function isHtmlNamedElement(el) {
     return el && el.nodeType === 1 && el.namespaceURI === "http://www.w3.org/1999/xhtml";
@@ -966,9 +1587,11 @@
   function namedElementsOf(doc, name) {
     const out = [];
     if (!doc || !name) return out;
-    const all = doc.getElementsByTagName("*");
-    for (let i = 0; i < all.length; i++) {
-      if (namedElementMatches(all[i], name)) out.push(all[i]);
+    const byId = doc.getElementById(name);
+    if (byId && namedElementMatches(byId, name)) out.push(byId);
+    const named = list(D("getElementsByName", doc.__h, String(name)));
+    for (let i = 0; i < named.length; i++) {
+      if (named[i] !== byId && namedElementMatches(named[i], name)) out.push(named[i]);
     }
     return out;
   }
@@ -981,7 +1604,7 @@
       namedCollectionCache.set(h, map);
     }
     if (!map.has(name)) {
-      map.set(name, new HTMLCollection(() => namedElementsOf(doc, name)));
+      map.set(name, new HTMLCollection(IDL_INTERNAL, () => namedElementsOf(doc, name)));
     }
     return map.get(name);
   }
@@ -1000,6 +1623,16 @@
           if (el) return el;
           const named = namedItemValue(document, name);
           return named === undefined ? undefined : named;
+        },
+        set(v) {
+          // HTML Window named properties are replaceable. Next.js assigns
+          // window.__NEXT_DATA__ after the JSON script with that id exists.
+          Object.defineProperty(globalThis, name, {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: v,
+          });
         },
       });
     } catch (e) {}
@@ -1061,16 +1694,22 @@
     }
     return names;
   }
+  function skipNamedProperty(p) {
+    // Skip engine internals (`__h`, `__hasOnAttr`). Do not skip `on*` —
+    // `only` is a valid HTML named property, and real event handlers already
+    // win via Reflect.has on the prototype.
+    return typeof p !== "string" || p === "__proto__" || p.charCodeAt(0) === 95;
+  }
   documentNamedTraps = {
     get(t, p, recv) {
-      if (typeof p !== "string" || p === "__proto__") return Reflect.get(t, p, recv);
-      if (Reflect.has(t, p)) return Reflect.get(t, p, recv);
+      if (skipNamedProperty(p) || Reflect.has(t, p)) return Reflect.get(t, p, recv);
       const named = namedItemValue(t, p);
       return named === undefined ? Reflect.get(t, p, recv) : named;
     },
     has(t, p) {
       if (Reflect.has(t, p)) return true;
-      return typeof p === "string" && namedElementsOf(t, p).length > 0;
+      if (skipNamedProperty(p)) return false;
+      return namedElementsOf(t, p).length > 0;
     },
     ownKeys(t) {
       const keys = Reflect.ownKeys(t);
@@ -1082,6 +1721,7 @@
     getOwnPropertyDescriptor(t, p) {
       const d = Reflect.getOwnPropertyDescriptor(t, p);
       if (d) return d;
+      if (skipNamedProperty(p)) return undefined;
       if (typeof p === "string" && !Reflect.has(t, p)) {
         const named = namedItemValue(t, p);
         if (named !== undefined) {
@@ -1099,7 +1739,13 @@
     set nodeValue(v) { D("setNodeValue", this.__h, v === null ? "" : String(v)); }
     get textContent() { return D("textContent", this.__h); }
     set textContent(v) { D("setTextContent", this.__h, v == null ? "" : String(v)); }
-    get parentNode() { return wrapDoc(D("parentNode", this.__h)); }
+    get parentNode() {
+      if (this.__pgen === liveListGen) return this.__parent;
+      const p = wrapDoc(D("parentNode", this.__h));
+      this.__parent = p;
+      this.__pgen = liveListGen;
+      return p;
+    }
     get parentElement() {
       const p = this.parentNode;
       return p && p.nodeType === 1 ? p : null;
@@ -1108,7 +1754,10 @@
     get lastChild() { return wrap(D("lastChild", this.__h)); }
     get previousSibling() { return wrap(D("prevSibling", this.__h)); }
     get nextSibling() { return wrap(D("nextSibling", this.__h)); }
-    get childNodes() { return list(D("childNodes", this.__h)); }
+    get childNodes() {
+      const h = this.__h;
+      return new LiveNodeList(() => list(D("childNodes", h)));
+    }
     get isConnected() { return !!D("isConnected", this.__h); }
     get ownerDocument() {
       if (this.nodeType === 9) return null;
@@ -1142,17 +1791,42 @@
       for (const n of nodes) this.insertBefore(typeof n === "string" ? document.createTextNode(n) : n, ref);
     }
     get baseURI() { return D("url") || ""; }
-    removeChild(n) { D("removeChild", this.__h, handleOf(n)); return n; }
+    removeChild(n) {
+      try { if (typeof globalThis.__veCancelPending === "function") globalThis.__veCancelPending(n); } catch (e) {}
+      D("removeChild", this.__h, handleOf(n));
+      return n;
+    }
     replaceChild(n, old) { D("replaceChild", this.__h, handleOf(n), handleOf(old)); upgradeTree(n); return old; }
-    cloneNode(deep) { return wrap(D("cloneNode", this.__h, !!deep)); }
+    cloneNode(deep) {
+      if (!deep) return wrap(D("cloneNode", this.__h, false));
+      const copy = wrap(D("cloneNode", this.__h, false));
+      if (!copy) return copy;
+      const kids = this.childNodes;
+      if (kids) {
+        for (let i = 0; i < kids.length; i++) copy.appendChild(kids[i].cloneNode(true));
+      }
+      if (this.nodeType === 1 && (this.localName || "").toLowerCase() === "template" && this.content && copy.content) {
+        const src = this.content.childNodes;
+        for (let i = 0; i < src.length; i++) copy.content.appendChild(src[i].cloneNode(true));
+      }
+      return copy;
+    }
     contains(n) { return !!D("contains", this.__h, handleOf(n)); }
     hasChildNodes() { return this.childNodes.length > 0; }
     replaceChildren(...args) {
-      while (this.firstChild) this.removeChild(this.firstChild);
+      const flat = [];
       for (const a of args) {
         if (a == null) continue;
-        if (typeof a === "string") this.appendChild(document.createTextNode(a));
-        else this.appendChild(a);
+        if (typeof a === "string") flat.push(document.createTextNode(a));
+        else if (a.nodeType === 11) {
+          const kids = a.childNodes;
+          for (let i = 0; i < kids.length; i++) flat.push(kids[i]);
+        } else flat.push(a);
+      }
+      D("replaceChildren", this.__h, ...flat.map(handleOf));
+      for (const n of flat) {
+        if (registry.size) upgradeTree(n);
+        try { prepareInsertedNode(n); } catch (e) { __ve.log("error", String(e)); }
       }
     }
     isEqualNode(n) { return !!(n && n.__h && D("isEqualNode", this.__h, n.__h)); }
@@ -1194,7 +1868,10 @@
   Node.DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 32;
 
   function applyChildNode(proto) {
-    proto.remove = function () { D("remove", this.__h); };
+    proto.remove = function () {
+      try { if (typeof globalThis.__veCancelPending === "function") globalThis.__veCancelPending(this); } catch (e) {}
+      D("remove", this.__h);
+    };
     proto.before = function (...args) {
       const p = this.parentNode;
       if (!p) return;
@@ -1410,6 +2087,20 @@
     set innerHTML(v) { D("setInnerHTML", this.__h, String(v).replace(/\r\n/g, "\n").replace(/\r/g, "\n")); }
     get adoptedStyleSheets() { return this._adopted || (this._adopted = []); }
     set adoptedStyleSheets(v) { this._adopted = v || []; }
+    get activeElement() { return document.activeElement; }
+    getHTML() { return this.innerHTML || ""; }
+    setHTML(html) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setHTML' on 'ShadowRoot': 1 argument required, but only 0 present.");
+      }
+      this.innerHTML = html == null ? "" : String(html);
+    }
+    setHTMLUnsafe(html) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setHTMLUnsafe' on 'ShadowRoot': 1 argument required, but only 0 present.");
+      }
+      this.innerHTML = html == null ? "" : String(html);
+    }
   }
   class CSSStyleSheet {
     constructor() { this.cssRules = []; this._css = ""; }
@@ -1514,6 +2205,29 @@
     getAttribute(n) { const v = D("getAttr", this.__h, String(n)); return v == null ? null : v; }
     setAttribute(n, v) { D("setAttr", this.__h, String(n), String(v)); }
     removeAttribute(n) { D("removeAttr", this.__h, String(n)); }
+    getAttributeNode(n) {
+      const name = String(n);
+      const recs = D("attrs", this.__h) || [];
+      for (let i = 0; i < recs.length; i++) {
+        if (recs[i].name === name) return this.attributes[i] || this.attributes.getNamedItem(name);
+      }
+      return null;
+    }
+    removeAttributeNode(attr) {
+      if (!attr || typeof attr.name !== "string") {
+        throw new TypeError("Failed to execute 'removeAttributeNode' on 'Element': parameter 1 is not of type 'Attr'.");
+      }
+      const name = attr.name;
+      if (!this.hasAttribute(name)) {
+        throw new DOMException(
+          `The node provided is owned by this document and is not an attribute of ${this.localName}`,
+          "NotFoundError",
+        );
+      }
+      this.removeAttribute(name);
+      attr.ownerElement = null;
+      return attr;
+    }
     hasAttribute(n) { return !!D("hasAttr", this.__h, String(n)); }
     toggleAttribute(n, force) {
       const omitted = arguments.length < 2 || force === undefined;
@@ -1567,9 +2281,9 @@
     webkitMatchesSelector(s) { return this.matches(s); }
     msMatchesSelector(s) { return this.matches(s); }
     closest(s) { return wrap(D("closest", this.__h, String(s))); }
-    getElementsByTagName(n) { return new HTMLCollection(() => list(D("getElementsByTagName", this.__h, String(n)))); }
+    getElementsByTagName(n) { return new HTMLCollection(IDL_INTERNAL, () => list(D("getElementsByTagName", this.__h, String(n)))); }
     getElementsByTagNameNS(ns, n) {
-      return new HTMLCollection(() => {
+      return new HTMLCollection(IDL_INTERNAL, () => {
         const all = list(D("getElementsByTagName", this.__h, String(n)));
         if (ns === "*") return all;
         const uri = ns == null ? "" : String(ns);
@@ -1581,7 +2295,12 @@
       return wrap(D("attachShadow", this.__h, (init && init.mode) || "open", (init && init.slotAssignment) || ""));
     }
     get shadowRoot() { return wrap(D("shadowRoot", this.__h)); }
-    insertAdjacentHTML(pos, html) { D("insertAdjacentHTML", this.__h, String(pos), String(html)); }
+    insertAdjacentHTML(pos, html) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'insertAdjacentHTML' on 'Element': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      D("insertAdjacentHTML", this.__h, String(pos), String(html));
+    }
     insertAdjacentElement(pos, el) {
       pos = String(pos).toLowerCase();
       if (pos === "beforebegin") {
@@ -1603,8 +2322,11 @@
       return this.insertAdjacentElement(pos, document.createTextNode(text));
     }
     getBoundingClientRect() { return D("boundingRect", this.__h); }
+    getClientRects() { return clientRectList(this.getBoundingClientRect()); }
     get clientWidth() { return D("box", this.__h, "clientWidth"); }
     get clientHeight() { return D("box", this.__h, "clientHeight"); }
+    get clientLeft() { return 0; }
+    get clientTop() { return 0; }
     get offsetWidth() { return D("box", this.__h, "offsetWidth"); }
     get offsetHeight() { return D("box", this.__h, "offsetHeight"); }
     get offsetTop() { return D("box", this.__h, "offsetTop"); }
@@ -1616,6 +2338,7 @@
     get scrollLeft() { return D("box", this.__h, "scrollLeft"); }
     set scrollLeft(v) { D("setScroll", this.__h, "x", Number(v) || 0); this.dispatchEvent(new Event("scroll")); }
     get dataset() {
+      if (!this || this.__h == null) throw new TypeError("Illegal invocation");
       if (!(this instanceof HTMLElement) && !(this instanceof SVGElement) && !(this instanceof MathMLElement)) {
         return undefined;
       }
@@ -1644,6 +2367,144 @@
     scrollIntoView() { D("scrollIntoView", this.__h); }
   }
   applyChildNode(Element.prototype);
+  Element.prototype.streamAppendHTMLUnsafe = function streamAppendHTMLUnsafe(opts) {
+    return streamHtmlInto(this, opts);
+  };
+  Element.prototype.streamHTMLUnsafe = Element.prototype.streamAppendHTMLUnsafe;
+  class Sanitizer {
+    constructor() {
+      const config = arguments[0] && typeof arguments[0] === "object" ? arguments[0] : {};
+      this._elements = config.elements
+        ? new Set(Array.from(config.elements).map((e) => String(e && e.name ? e.name : e).toLowerCase()))
+        : null;
+      this._attributes = config.attributes
+        ? new Set(Array.from(config.attributes).map((a) => String(a && a.name ? a.name : a).toLowerCase()))
+        : null;
+      this._comments = !!config.comments;
+      this._dataAttributes = !!config.dataAttributes;
+    }
+    get() {
+      return {
+        elements: this._elements ? Array.from(this._elements) : [],
+        attributes: this._attributes ? Array.from(this._attributes) : [],
+        comments: this._comments,
+        dataAttributes: this._dataAttributes,
+      };
+    }
+    allowElement(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'allowElement' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      name = String(name && name.name ? name.name : name || "").toLowerCase();
+      if (name === "script" || name === "iframe" || name === "object" || name === "embed") return false;
+      if (name.includes("-")) return false;
+      if (this._elements) return this._elements.has(name);
+      return true;
+    }
+    removeElement(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'removeElement' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return true;
+    }
+    replaceElementWithChildren(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'replaceElementWithChildren' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return true;
+    }
+    allowProcessingInstruction(pi) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'allowProcessingInstruction' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return true;
+    }
+    removeProcessingInstruction(pi) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'removeProcessingInstruction' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return true;
+    }
+    allowAttribute(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'allowAttribute' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return this.allowAttr(name && name.name ? name.name : name);
+    }
+    removeAttribute(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'removeAttribute' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return true;
+    }
+    setComments(allow) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setComments' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      this._comments = !!allow;
+      return true;
+    }
+    setDataAttributes(allow) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setDataAttributes' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      this._dataAttributes = !!allow;
+      return true;
+    }
+    removeUnsafe() { return true; }
+    allowAttr(name) {
+      name = String(name || "").toLowerCase();
+      if (/^on/.test(name)) return false;
+      if (this._attributes) return this._attributes.has(name);
+      return true;
+    }
+  }
+  function sanitizeTree(node, sanitizer) {
+    if (!node) return;
+    if (node.nodeType === 1) {
+      const tag = (node.localName || "").toLowerCase();
+      if (!sanitizer.allowElement(tag) || (node.getAttribute && node.getAttribute("is"))) {
+        if (node.parentNode) node.parentNode.removeChild(node);
+        return;
+      }
+      const attrs = node.getAttributeNames ? node.getAttributeNames() : [];
+      for (let i = 0; i < attrs.length; i++) {
+        if (!sanitizer.allowAttr(attrs[i])) node.removeAttribute(attrs[i]);
+      }
+    }
+    const kids = node.childNodes ? Array.from(node.childNodes) : [];
+    for (const k of kids) sanitizeTree(k, sanitizer);
+    if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "template" && node.content) {
+      const ckids = Array.from(node.content.childNodes || []);
+      for (const k of ckids) sanitizeTree(k, sanitizer);
+    }
+  }
+  Element.prototype.getHTML = function getHTML() {
+    return this.innerHTML || "";
+  };
+  Element.prototype.setHTML = function setHTML(html) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'setHTML' on 'Element': 1 argument required, but only 0 present.");
+    }
+    const options = arguments[1];
+    const box = document.createElement("template");
+    box.innerHTML = html == null ? "" : String(html);
+    const sanitizer = (options && options.sanitizer) || new Sanitizer();
+    sanitizeTree(box.content, sanitizer);
+    while (this.firstChild) this.removeChild(this.firstChild);
+    while (box.content.firstChild) this.appendChild(box.content.firstChild);
+    applyAllPartialUpdates();
+  };
+  Element.prototype.setHTMLUnsafe = function setHTMLUnsafe(html) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'setHTMLUnsafe' on 'Element': 1 argument required, but only 0 present.");
+    }
+    const box = document.createElement("template");
+    box.innerHTML = html == null ? "" : String(html);
+    while (this.firstChild) this.removeChild(this.firstChild);
+    while (box.content.firstChild) this.appendChild(box.content.firstChild);
+    applyAllPartialUpdates();
+  };
   (function defineOnHandlers() {
     const names = ("abort animationend animationiteration animationstart blur cancel canplay canplaythrough change click close contextmenu copy cuechange cut dblclick drag dragend dragenter dragleave dragover dragstart drop durationchange emptied ended error focus focusin focusout gotpointercapture input invalid keydown keypress keyup load loadeddata loadedmetadata loadstart lostpointercapture mousedown mouseenter mouseleave mousemove mouseout mouseover mouseup paste pause play playing pointercancel pointerdown pointerenter pointerleave pointermove pointerout pointerover pointerup progress ratechange reset resize scroll seeked seeking select stalled submit suspend timeupdate toggle touchcancel touchend touchmove touchstart transitionend volumechange waiting wheel").split(" ");
     for (const name of names) {
@@ -1660,45 +2521,25 @@
   (function defineAriaMixin() {
     const strings = [
       ["role", "role"],
-      ["ariaAtomic", "aria-atomic"],
-      ["ariaAutoComplete", "aria-autocomplete"],
       ["ariaBrailleLabel", "aria-braillelabel"],
       ["ariaBrailleRoleDescription", "aria-brailleroledescription"],
-      ["ariaBusy", "aria-busy"],
-      ["ariaChecked", "aria-checked"],
       ["ariaColCount", "aria-colcount"],
       ["ariaColIndex", "aria-colindex"],
       ["ariaColIndexText", "aria-colindextext"],
       ["ariaColSpan", "aria-colspan"],
-      ["ariaCurrent", "aria-current"],
       ["ariaDescription", "aria-description"],
-      ["ariaDisabled", "aria-disabled"],
-      ["ariaExpanded", "aria-expanded"],
-      ["ariaHasPopup", "aria-haspopup"],
-      ["ariaHidden", "aria-hidden"],
-      ["ariaInvalid", "aria-invalid"],
       ["ariaKeyShortcuts", "aria-keyshortcuts"],
       ["ariaLabel", "aria-label"],
       ["ariaLevel", "aria-level"],
-      ["ariaLive", "aria-live"],
-      ["ariaModal", "aria-modal"],
-      ["ariaMultiLine", "aria-multiline"],
-      ["ariaMultiSelectable", "aria-multiselectable"],
-      ["ariaOrientation", "aria-orientation"],
       ["ariaPlaceholder", "aria-placeholder"],
       ["ariaPosInSet", "aria-posinset"],
-      ["ariaPressed", "aria-pressed"],
-      ["ariaReadOnly", "aria-readonly"],
       ["ariaRelevant", "aria-relevant"],
-      ["ariaRequired", "aria-required"],
       ["ariaRoleDescription", "aria-roledescription"],
       ["ariaRowCount", "aria-rowcount"],
       ["ariaRowIndex", "aria-rowindex"],
       ["ariaRowIndexText", "aria-rowindextext"],
       ["ariaRowSpan", "aria-rowspan"],
-      ["ariaSelected", "aria-selected"],
       ["ariaSetSize", "aria-setsize"],
-      ["ariaSort", "aria-sort"],
       ["ariaValueMax", "aria-valuemax"],
       ["ariaValueMin", "aria-valuemin"],
       ["ariaValueNow", "aria-valuenow"],
@@ -1716,6 +2557,31 @@
           else this.setAttribute(attr, String(v));
         },
       });
+    }
+    const enums = {
+      ariaAtomic: { type: "enum", domAttrName: "aria-atomic", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaAutoComplete: { type: "enum", domAttrName: "aria-autocomplete", keywords: ["inline", "list", "both", "none"], isNullable: true, invalidVal: "none", defaultVal: null },
+      ariaBusy: { type: "enum", domAttrName: "aria-busy", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaChecked: { type: "enum", domAttrName: "aria-checked", keywords: ["true", "false", "mixed"], nonCanon: { "": null }, isNullable: true, invalidVal: null, defaultVal: null },
+      ariaCurrent: { type: "enum", domAttrName: "aria-current", keywords: ["page", "step", "location", "date", "time", "true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "true", defaultVal: null },
+      ariaDisabled: { type: "enum", domAttrName: "aria-disabled", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaExpanded: { type: "enum", domAttrName: "aria-expanded", keywords: ["true", "false"], nonCanon: { "": null }, isNullable: true, invalidVal: null, defaultVal: null },
+      ariaHasPopup: { type: "enum", domAttrName: "aria-haspopup", keywords: ["true", "false", "menu", "dialog", "listbox", "tree", "grid"], isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaHidden: { type: "enum", domAttrName: "aria-hidden", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaInvalid: { type: "enum", domAttrName: "aria-invalid", keywords: ["true", "false", "spelling", "grammar"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "true", defaultVal: null },
+      ariaLive: { type: "enum", domAttrName: "aria-live", keywords: ["polite", "assertive", "off"], isNullable: true, invalidVal: "off", defaultVal: null },
+      ariaModal: { type: "enum", domAttrName: "aria-modal", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaMultiLine: { type: "enum", domAttrName: "aria-multiline", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaMultiSelectable: { type: "enum", domAttrName: "aria-multiselectable", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaOrientation: { type: "enum", domAttrName: "aria-orientation", keywords: ["horizontal", "vertical"], nonCanon: { "": null }, isNullable: true, invalidVal: null, defaultVal: null },
+      ariaPressed: { type: "enum", domAttrName: "aria-pressed", keywords: ["true", "false", "mixed"], nonCanon: { "": null }, isNullable: true, invalidVal: null, defaultVal: null },
+      ariaReadOnly: { type: "enum", domAttrName: "aria-readonly", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaRequired: { type: "enum", domAttrName: "aria-required", keywords: ["true", "false"], nonCanon: { "": "false" }, isNullable: true, invalidVal: "false", defaultVal: null },
+      ariaSelected: { type: "enum", domAttrName: "aria-selected", keywords: ["true", "false"], nonCanon: { "": null }, isNullable: true, invalidVal: null, defaultVal: null },
+      ariaSort: { type: "enum", domAttrName: "aria-sort", keywords: ["ascending", "descending", "other", "none"], isNullable: true, invalidVal: "none", defaultVal: null },
+    };
+    for (const [js, spec] of Object.entries(enums)) {
+      reflectAttr(Element.prototype, js, spec);
     }
 
     const ariaExplicit = new WeakMap();
@@ -1865,6 +2731,10 @@
       const js = attrToJs[String(n).toLowerCase()];
       if (js) delete ariaState(this)[js];
       const lower = String(n).toLowerCase();
+      if (lower.startsWith("on") && !this.__hasOnAttr) {
+        this.__hasOnAttr = true;
+        onAttrCount++;
+      }
       if (lower === "id") exposeWindowName(String(v));
       if (lower === "nonce") nonceMap.set(this, String(v));
     };
@@ -1974,6 +2844,65 @@
       if (v == null) this.removeAttribute("popover");
       else this.setAttribute("popover", String(v));
     }
+    get writingSuggestions() {
+      const v = (this.getAttribute("writingsuggestions") || "").toLowerCase();
+      return v === "false" ? "false" : "true";
+    }
+    set writingSuggestions(v) { this.setAttribute("writingsuggestions", String(v)); }
+    get autocorrect() {
+      const v = this.getAttribute("autocorrect");
+      if (v == null) return true;
+      return String(v).toLowerCase() !== "false" && String(v).toLowerCase() !== "off";
+    }
+    set autocorrect(v) {
+      if (v) this.setAttribute("autocorrect", "");
+      else this.removeAttribute("autocorrect");
+    }
+    get headingOffset() {
+      const n = parseInt(this.getAttribute("headingoffset"), 10);
+      if (!isFinite(n) || n < 0) return 0;
+      return n > 8 ? 8 : n;
+    }
+    set headingOffset(v) {
+      let n = Number(v);
+      if (!isFinite(n) || n < 0) n = 0;
+      if (n > 8) n = 8;
+      this.setAttribute("headingoffset", String(n | 0));
+    }
+    get headingReset() { return this.hasAttribute("headingreset"); }
+    set headingReset(v) { v ? this.setAttribute("headingreset", "") : this.removeAttribute("headingreset"); }
+    attachInternals() {
+      if (this._internals) {
+        throw new DOMException("ElementInternals already attached", "NotSupportedError");
+      }
+      const name = String(this.localName || "").toLowerCase();
+      if (!registry.has(name)) {
+        throw new DOMException("attachInternals is only for custom elements", "NotSupportedError");
+      }
+      this._internals = makeElementInternals(this);
+      return this._internals;
+    }
+    showPopover() {
+      if (this.popover == null) {
+        throw new DOMException("Not a popover", "NotSupportedError");
+      }
+      this._popoverOpen = true;
+    }
+    hidePopover() {
+      if (this.popover == null) {
+        throw new DOMException("Not a popover", "NotSupportedError");
+      }
+      this._popoverOpen = false;
+    }
+    togglePopover() {
+      const opts = arguments.length ? arguments[0] : undefined;
+      if (this.popover == null) {
+        throw new DOMException("Not a popover", "NotSupportedError");
+      }
+      const force = opts && typeof opts === "object" ? opts.force : (typeof opts === "boolean" ? opts : undefined);
+      this._popoverOpen = force === undefined ? !this._popoverOpen : !!force;
+      return !!this._popoverOpen;
+    }
     get innerText() { return innerTextOf(this); }
     set innerText(v) { setInnerText(this, v); }
     get outerText() { return this.innerText; }
@@ -2020,15 +2949,15 @@
         try { tag = (this.localName || "").toLowerCase(); } catch (e) {}
         let type = "";
         try { type = (this.type || this.getAttribute("type") || "").toLowerCase(); } catch (e) {}
-        const ev = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, which: 1 });
+        const ev = new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, button: 0, which: 1 });
         let allowed = true;
         try { allowed = this.dispatchEvent(ev); } catch (e) { __ve.log("error", String(e)); }
         if (!allowed) return;
         try { D("activate", this.__h); } catch (e) {}
         if (tag === "input" && (type === "checkbox" || type === "radio")) {
           try {
-            this.dispatchEvent(new Event("input", { bubbles: true }));
-            this.dispatchEvent(new Event("change", { bubbles: true }));
+            this.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+            this.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
           } catch (e) {}
         }
       } finally {
@@ -2036,6 +2965,9 @@
       }
     }
     focus() {
+      try {
+        if (document.activeElement === this) return;
+      } catch (e) {}
       D("focus", this.__h);
       this.dispatchEvent(new Event("focus", { bubbles: false }));
       this.dispatchEvent(new Event("focusin", { bubbles: true }));
@@ -2046,7 +2978,7 @@
       this.dispatchEvent(new Event("focusout", { bubbles: true }));
     }
     get value() { const v = D("formValue", this.__h); return v == null ? "" : v; }
-    set value(v) { D("setFormValue", this.__h, String(v)); this.dispatchEvent(new Event("input", { bubbles: true })); }
+    set value(v) { D("setFormValue", this.__h, String(v)); this.dispatchEvent(new Event("input", { bubbles: true, composed: true })); }
     get checked() { return !!D("checked", this.__h); }
     set checked(v) { D("setChecked", this.__h, !!v); }
     get selected() { return !!D("selected", this.__h); }
@@ -2063,6 +2995,21 @@
     set placeholder(v) { this.setAttribute("placeholder", v); }
     checkValidity() { return !!D("checkValidity", this.__h); }
     reportValidity() { return this.checkValidity(); }
+    setCustomValidity(msg) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setCustomValidity' on 'HTMLElement': 1 argument required, but only 0 present.");
+      }
+    }
+    setRangeText(replacement) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setRangeText' on 'HTMLInputElement': 1 argument required, but only 0 present.");
+      }
+    }
+    setSelectionRange(start, end) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'setSelectionRange' on 'HTMLInputElement': 2 arguments required, but only " + arguments.length + " present.");
+      }
+    }
   }
   function reflectName(proto) {
     Object.defineProperty(proto, "name", {
@@ -2072,8 +3019,97 @@
       set(v) { this.setAttribute("name", String(v)); },
     });
   }
-  class HTMLInputElement extends HTMLElement {}
-  class HTMLTextAreaElement extends HTMLElement {}
+  class HTMLInputElement extends HTMLElement {
+    get indeterminate() { return !!this._indeterminate; }
+    set indeterminate(v) { this._indeterminate = !!v; }
+    get files() { return this._files || (this._files = emptyFileList()); }
+    set files(v) { this._files = v; }
+    get valueAsNumber() {
+      const n = parseFloat(this.value);
+      return isFinite(n) ? n : NaN;
+    }
+    set valueAsNumber(v) { this.value = String(v); }
+    get valueAsDate() { return this._valueAsDate == null ? null : this._valueAsDate; }
+    set valueAsDate(v) { this._valueAsDate = v; }
+    get list() {
+      const id = this.getAttribute("list");
+      return id ? document.getElementById(id) : null;
+    }
+    get selectionStart() { return this._selStart || 0; }
+    set selectionStart(v) { this._selStart = v | 0; }
+    get selectionEnd() { return this._selEnd == null ? (this.value || "").length : this._selEnd; }
+    set selectionEnd(v) { this._selEnd = v | 0; }
+    get selectionDirection() { return this._selDir || "none"; }
+    set selectionDirection(v) { this._selDir = String(v); }
+    get popoverTargetElement() {
+      const id = this.getAttribute("popovertarget");
+      return id ? document.getElementById(id) : this._popoverTarget || null;
+    }
+    set popoverTargetElement(v) { this._popoverTarget = v || null; }
+    stepUp() {
+      const n = arguments[0];
+      const step = parseFloat(this.getAttribute("step"));
+      const delta = (isFinite(step) && step > 0 ? step : 1) * (arguments.length ? n | 0 : 1);
+      const cur = this.valueAsNumber;
+      this.valueAsNumber = (isFinite(cur) ? cur : 0) + delta;
+    }
+    stepDown() { this.stepUp(-(arguments.length ? arguments[0] | 0 : 1)); }
+    select() {
+      this.selectionStart = 0;
+      this.selectionEnd = (this.value || "").length;
+    }
+    showPicker() {}
+    setRangeText(replacement) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setRangeText' on 'HTMLInputElement': 1 argument required, but only 0 present.");
+      }
+      const start = arguments.length >= 3 ? arguments[1] | 0 : this.selectionStart;
+      const end = arguments.length >= 3 ? arguments[2] | 0 : this.selectionEnd;
+      const cur = this.value || "";
+      this.value = cur.slice(0, start) + String(replacement) + cur.slice(end);
+    }
+    setSelectionRange(start, end) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'setSelectionRange' on 'HTMLInputElement': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      this.selectionStart = start;
+      this.selectionEnd = end;
+      if (arguments.length > 2) this.selectionDirection = arguments[2];
+    }
+  }
+  class HTMLTextAreaElement extends HTMLElement {
+    get type() { return "textarea"; }
+    get defaultValue() { return this.getAttribute("value") || this.textContent || ""; }
+    set defaultValue(v) { this.textContent = v == null ? "" : String(v); }
+    get textLength() { return (this.value || "").length; }
+    get selectionStart() { return this._selStart || 0; }
+    set selectionStart(v) { this._selStart = v | 0; }
+    get selectionEnd() { return this._selEnd == null ? (this.value || "").length : this._selEnd; }
+    set selectionEnd(v) { this._selEnd = v | 0; }
+    get selectionDirection() { return this._selDir || "none"; }
+    set selectionDirection(v) { this._selDir = String(v); }
+    select() {
+      this.selectionStart = 0;
+      this.selectionEnd = (this.value || "").length;
+    }
+    setRangeText(replacement) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setRangeText' on 'HTMLTextAreaElement': 1 argument required, but only 0 present.");
+      }
+      const start = arguments.length >= 3 ? arguments[1] | 0 : this.selectionStart;
+      const end = arguments.length >= 3 ? arguments[2] | 0 : this.selectionEnd;
+      const cur = this.value || "";
+      this.value = cur.slice(0, start) + String(replacement) + cur.slice(end);
+    }
+    setSelectionRange(start, end) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'setSelectionRange' on 'HTMLTextAreaElement': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      this.selectionStart = start;
+      this.selectionEnd = end;
+      if (arguments.length > 2) this.selectionDirection = arguments[2];
+    }
+  }
   function defineValueAccessor(proto) {
     Object.defineProperty(proto, "value", {
       get() { const v = D("formValue", this.__h); return v == null ? "" : v; },
@@ -2084,17 +3120,108 @@
   }
   defineValueAccessor(HTMLInputElement.prototype);
   defineValueAccessor(HTMLTextAreaElement.prototype);
+  class FileList {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    item(i) { return this[i] || null; }
+  }
+  Object.defineProperty(FileList.prototype, Symbol.toStringTag, { value: "FileList", configurable: true });
+  function emptyFileList() {
+    const list = Object.create(FileList.prototype);
+    list.length = 0;
+    list.item = (i) => list[i] || null;
+    return list;
+  }
+  function nearestForm(el) {
+    const id = el.getAttribute && el.getAttribute("form");
+    if (id) return document.getElementById(id);
+    let n = el.parentElement;
+    while (n) {
+      if (n.tagName === "FORM") return n;
+      n = n.parentElement;
+    }
+    return null;
+  }
+  function labeledBy(el) {
+    return new LiveNodeList(() => {
+      const out = [];
+      const id = el.id;
+      const all = document.getElementsByTagName("label");
+      for (let i = 0; i < all.length; i++) {
+        const lab = all[i];
+        if (lab.control === el || (id && (lab.htmlFor === id || lab.getAttribute("for") === id))) out.push(lab);
+      }
+      return out;
+    });
+  }
   class HTMLSelectElement extends HTMLElement {
-    get options() { return this.querySelectorAll("option"); }
-    get selectedIndex() {
-      const opts = this.options;
-      for (let i = 0; i < opts.length; i++) if (opts[i].selected) return i;
-      return -1;
+    get options() {
+      if (this._options) return this._options;
+      const select = this;
+      const col = new HTMLOptionsCollection(IDL_INTERNAL, () => {
+        const out = [];
+        const walk = (node) => {
+          for (let c = node.firstChild; c; c = c.nextSibling) {
+            const tag = c.tagName;
+            if (tag === "OPTION") out.push(c);
+            else if (tag === "OPTGROUP") walk(c);
+          }
+        };
+        walk(select);
+        return out;
+      });
+      col._select = select;
+      this._options = col;
+      return col;
     }
-    set selectedIndex(i) {
-      const opts = this.options;
-      for (let j = 0; j < opts.length; j++) opts[j].selected = j === i;
+    get selectedIndex() { return this.options.selectedIndex; }
+    set selectedIndex(i) { this.options.selectedIndex = i; }
+    get selectedOptions() {
+      return this._selectedOptions || (this._selectedOptions = new HTMLCollection(IDL_INTERNAL, () => {
+        const out = [];
+        const opts = this.options;
+        for (let i = 0; i < opts.length; i++) if (opts[i].selected) out.push(opts[i]);
+        return out;
+      }));
     }
+    get type() { return this.multiple ? "select-multiple" : "select-one"; }
+    get length() { return this.options.length; }
+    set length(v) { this.options.length = v; }
+    get value() {
+      const opts = this.options;
+      for (let i = 0; i < opts.length; i++) if (opts[i].selected) return opts[i].value;
+      return "";
+    }
+    set value(v) {
+      const want = String(v);
+      const opts = this.options;
+      for (let i = 0; i < opts.length; i++) opts[i].selected = opts[i].value === want;
+    }
+    item(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'item' on 'HTMLSelectElement': 1 argument required, but only 0 present.");
+      }
+      return this.options.item(i);
+    }
+    namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'HTMLSelectElement': 1 argument required, but only 0 present.");
+      }
+      return this.options.namedItem(name);
+    }
+    remove() {
+      if (arguments.length === 0) {
+        if (this.parentNode) this.parentNode.removeChild(this);
+        return;
+      }
+      this.options.remove(arguments[0]);
+    }
+    add(element) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'add' on 'HTMLSelectElement': 1 argument required, but only 0 present.");
+      }
+      this.options.add(element, arguments[1]);
+    }
+    showPicker() {}
   }
   class HTMLOptionElement extends HTMLElement {
     get text() {
@@ -2109,8 +3236,27 @@
       return this.hasAttribute("value") ? this.getAttribute("value") : this.text;
     }
     set value(v) { this.setAttribute("value", String(v)); }
+    get selected() { return this.hasAttribute("selected"); }
+    set selected(v) { v ? this.setAttribute("selected", "") : this.removeAttribute("selected"); }
+    get defaultSelected() { return this.hasAttribute("selected"); }
+    set defaultSelected(v) { this.selected = v; }
+    get form() { return nearestForm(this); }
+    get index() {
+      const sel = this.parentElement && this.parentElement.tagName === "SELECT" ? this.parentElement
+        : (this.parentElement && this.parentElement.tagName === "OPTGROUP" && this.parentElement.parentElement);
+      if (!sel || !sel.options) return 0;
+      const opts = sel.options;
+      for (let i = 0; i < opts.length; i++) if (opts[i] === this) return i;
+      return 0;
+    }
   }
-  class HTMLButtonElement extends HTMLElement {}
+  class HTMLButtonElement extends HTMLElement {
+    get commandForElement() {
+      const id = this.getAttribute("commandfor");
+      return id ? document.getElementById(id) : this._commandFor || null;
+    }
+    set commandForElement(v) { this._commandFor = v || null; }
+  }
   reflectName(HTMLInputElement.prototype);
   reflectName(HTMLTextAreaElement.prototype);
   reflectName(HTMLSelectElement.prototype);
@@ -2122,7 +3268,40 @@
     reset() { D("reset", this.__h); }
     checkValidity() { return !!D("checkValidity", this.__h); }
     reportValidity() { return this.checkValidity(); }
-    get elements() { return this.querySelectorAll("input,select,textarea,button"); }
+    get length() { return this.elements.length; }
+    requestSubmit() { this.submit(); }
+    get relList() { return this._relTL || (this._relTL = new DOMTokenList(this.__h, "rel")); }
+    set relList(v) { this.setAttribute("rel", v == null ? "" : String(v)); }
+    get elements() {
+      if (this._elementsCol) return this._elementsCol;
+      const form = this;
+      this._elementsCol = new HTMLFormControlsCollection(IDL_INTERNAL, () => {
+        const listed = "button,fieldset,input,object,output,select,textarea";
+        const root = form.getRootNode && form.getRootNode();
+        const scope = root && root.querySelectorAll ? root : document;
+        const all = scope.querySelectorAll(listed);
+        const formId = form.id;
+        const out = [];
+        for (let i = 0; i < all.length; i++) {
+          const el = all[i];
+          const owner = el.getAttribute("form");
+          if (owner != null) {
+            if (owner !== "" && owner === formId) out.push(el);
+            continue;
+          }
+          let p = el.parentNode;
+          let owned = false;
+          while (p) {
+            if (p === form) { owned = true; break; }
+            if (p.tagName === "FORM") break;
+            p = p.parentNode;
+          }
+          if (owned) out.push(el);
+        }
+        return out;
+      });
+      return this._elementsCol;
+    }
   }
   function reflectedUrl(el, attr) {
     const raw = el.getAttribute(attr);
@@ -2142,6 +3321,8 @@
       if (!u) return part === "protocol" ? ":" : "";
       if (part === "origin") return u.origin;
       if (part === "protocol") return u.protocol;
+      if (part === "username") return u.username;
+      if (part === "password") return u.password;
       if (part === "host") return u.host;
       if (part === "hostname") return u.hostname;
       if (part === "port") return u.port;
@@ -2150,9 +3331,23 @@
       if (part === "hash") return u.hash;
       return "";
     };
-    for (const part of ["origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash"]) {
-      Object.defineProperty(proto, part, { configurable: true, enumerable: true, get: get(part) });
+    const set = (part) => function (v) {
+      const raw = this.getAttribute(attr);
+      try {
+        const u = new URL(toUSV(raw || ""), document.baseURI || location.href);
+        u[part] = v == null ? "" : String(v);
+        this.setAttribute(attr, u.href);
+      } catch (e) {}
+    };
+    for (const part of ["origin", "protocol", "username", "password", "host", "hostname", "port", "pathname", "search", "hash"]) {
+      Object.defineProperty(proto, part, {
+        configurable: true,
+        enumerable: true,
+        get: get(part),
+        set: part === "origin" ? undefined : set(part),
+      });
     }
+    proto.toString = function toString() { return this.href || ""; };
   }
   class HTMLAnchorElement extends HTMLElement {
     get name() { return this.getAttribute("name") || ""; }
@@ -2170,6 +3365,8 @@
     set rel(v) { this.setAttribute("rel", String(v)); }
     get relList() { return this._relTL || (this._relTL = new DOMTokenList(this.__h, "rel")); }
     set relList(v) { this.setAttribute("rel", v == null ? "" : String(v)); }
+    get text() { return this.textContent || ""; }
+    set text(v) { this.textContent = v == null ? "" : String(v); }
   }
   installHyperlinkUtils(HTMLAnchorElement.prototype, "href");
   class HTMLAreaElement extends HTMLElement {
@@ -2177,6 +3374,10 @@
     set ping(v) { this.setAttribute("ping", toUSV(v)); }
     get href() { return reflectedUrl(this, "href"); }
     set href(v) { this.setAttribute("href", toUSV(v)); }
+    get rel() { return this.getAttribute("rel") || ""; }
+    set rel(v) { this.setAttribute("rel", String(v)); }
+    get relList() { return this._relTL || (this._relTL = new DOMTokenList(this.__h, "rel")); }
+    set relList(v) { this.setAttribute("rel", v == null ? "" : String(v)); }
   }
   installHyperlinkUtils(HTMLAreaElement.prototype, "href");
   class HTMLBaseElement extends HTMLElement {
@@ -2194,6 +3395,12 @@
     set src(v) { this.setAttribute("src", toUSV(v)); }
     get longDesc() { return reflectedUrl(this, "longdesc"); }
     set longDesc(v) { this.setAttribute("longdesc", toUSV(v)); }
+    get contentDocument() {
+      const h = D("frameDocument", this.__h);
+      if (!h) return null;
+      return wrap(h);
+    }
+    get contentWindow() { return frameWindow(this); }
   }
   class HTMLLinkElement extends HTMLElement {
     get rel() { return this.getAttribute("rel") || ""; }
@@ -2206,6 +3413,19 @@
     set media(v) { this.setAttribute("media", v == null ? "" : String(v)); }
     get blocking() { return this._blockingTL || (this._blockingTL = new DOMTokenList(this.__h, "blocking", RENDER_TOKENS)); }
     set blocking(v) { this.blocking.value = v == null ? "" : String(v); }
+    get sizes() { return this._sizesTL || (this._sizesTL = new DOMTokenList(this.__h, "sizes")); }
+    set sizes(v) { this.setAttribute("sizes", v == null ? "" : String(v)); }
+    get imageSrcset() { return this.getAttribute("imagesrcset") || ""; }
+    set imageSrcset(v) { this.setAttribute("imagesrcset", v == null ? "" : String(v)); }
+    get imageSizes() { return this.getAttribute("imagesizes") || ""; }
+    set imageSizes(v) { this.setAttribute("imagesizes", v == null ? "" : String(v)); }
+    get fetchPriority() {
+      const v = (this.getAttribute("fetchpriority") || "").toLowerCase();
+      return v === "high" || v === "low" || v === "auto" ? v : "auto";
+    }
+    set fetchPriority(v) { this.setAttribute("fetchpriority", String(v)); }
+    get disabled() { return this.hasAttribute("disabled"); }
+    set disabled(v) { v ? this.setAttribute("disabled", "") : this.removeAttribute("disabled"); }
   }
   class HTMLImageElement extends HTMLElement {
     get name() { return this.getAttribute("name") || ""; }
@@ -2213,6 +3433,12 @@
     get naturalWidth() { return D("box", this.__h, "naturalWidth"); }
     get naturalHeight() { return D("box", this.__h, "naturalHeight"); }
     get complete() { return true; }
+    get currentSrc() { return this.src || ""; }
+    decode() { return Promise.resolve(); }
+    get width() { return Number(this.getAttribute("width")) || this.naturalWidth || 0; }
+    set width(v) { this.setAttribute("width", String(v | 0)); }
+    get height() { return Number(this.getAttribute("height")) || this.naturalHeight || 0; }
+    set height(v) { this.setAttribute("height", String(v | 0)); }
   }
   function jsonClone(data) {
     try {
@@ -2238,7 +3464,7 @@
   }
   function frameWindow(iframe) {
     if (iframe._cw) return iframe._cw;
-    const w = Object.create(EventTarget.prototype);
+    const w = Object.create((typeof Window === "function" && Window.prototype) || EventTarget.prototype);
     w.__iframeH = iframe.__h;
     w.frameElement = iframe;
     w.closed = false;
@@ -2297,14 +3523,27 @@
     get contentWindow() {
       return frameWindow(this);
     }
+    getSVGDocument() { return this.contentDocument; }
+    get sandbox() { return this._sandboxTL || (this._sandboxTL = new DOMTokenList(this.__h, "sandbox")); }
+    set sandbox(v) { this.setAttribute("sandbox", v == null ? "" : String(v)); }
   }
   class HTMLEmbedElement extends HTMLElement {
     get name() { return this.getAttribute("name") || ""; }
     set name(v) { this.setAttribute("name", v == null ? "" : String(v)); }
+    getSVGDocument() { return null; }
   }
   class HTMLObjectElement extends HTMLElement {
     get name() { return this.getAttribute("name") || ""; }
     set name(v) { this.setAttribute("name", v == null ? "" : String(v)); }
+    get contentDocument() {
+      const h = D("frameDocument", this.__h);
+      if (!h) return null;
+      const n = wrap(h);
+      if (n && Document && !(n instanceof Document)) Object.setPrototypeOf(n, Document.prototype);
+      return n;
+    }
+    get contentWindow() { return frameWindow(this); }
+    getSVGDocument() { return this.contentDocument; }
   }
   class HTMLCanvasElement extends HTMLElement {
     get width() {
@@ -2332,28 +3571,102 @@
       D("canvasResize", this.__h, this.width, n);
     }
     getContext(type) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getContext' on 'HTMLCanvasElement': 1 argument required, but only 0 present.");
+      }
       if (String(type).toLowerCase() !== "2d") return null;
-      if (!this._ctx2d) this._ctx2d = new CanvasRenderingContext2D(this);
+      if (!this._ctx2d) this._ctx2d = new CanvasRenderingContext2D(IDL_INTERNAL, this);
       return this._ctx2d;
     }
     toDataURL() { return D("canvasToDataURL", this.__h) || "data:,"; }
-  }
-  class ImageData {
-    constructor(a, b, c) {
-      if (a && typeof a.length === "number" && typeof b === "number") {
-        this.data = a instanceof Uint8ClampedArray ? a : new Uint8ClampedArray(a);
-        this.width = b | 0;
-        this.height = c == null ? ((this.data.length / (4 * this.width)) | 0) : (c | 0);
-      } else {
-        this.width = a | 0;
-        this.height = b | 0;
-        this.data = new Uint8ClampedArray(this.width * this.height * 4);
+    toBlob(callback) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'toBlob' on 'HTMLCanvasElement': 1 argument required, but only 0 present.");
       }
-      this.colorSpace = "srgb";
+      const url = this.toDataURL();
+      const bin = atob((url.split(",")[1] || ""));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "image/png" });
+      if (typeof callback === "function") queueMicrotask(() => callback(blob));
+    }
+    transferControlToOffscreen() {
+      return new OffscreenCanvas(this.width, this.height);
     }
   }
+  class CanvasGradient {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    addColorStop(offset, color) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'addColorStop' on 'CanvasGradient': 2 arguments required, but only " + arguments.length + " present.");
+      }
+    }
+  }
+  Object.defineProperty(CanvasGradient.prototype, Symbol.toStringTag, { value: "CanvasGradient", configurable: true });
+  class CanvasPattern {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    setTransform() {}
+  }
+  Object.defineProperty(CanvasPattern.prototype, Symbol.toStringTag, { value: "CanvasPattern", configurable: true });
+  class OffscreenCanvas extends EventTarget {
+    constructor(width, height) {
+      super();
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to construct 'OffscreenCanvas': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      this._width = width >>> 0;
+      this._height = height >>> 0;
+    }
+    get width() { return this._width; }
+    set width(v) { this._width = v >>> 0; }
+    get height() { return this._height; }
+    set height(v) { this._height = v >>> 0; }
+    getContext(type) {
+      if (String(type).toLowerCase() !== "2d") return null;
+      if (!this._ctx) {
+        this._ctx = Object.create(OffscreenCanvasRenderingContext2D.prototype);
+        this._ctx._canvas = this;
+        this._ctx._fillStyle = "#000000";
+        this._ctx._strokeStyle = "#000000";
+        this._ctx._globalAlpha = 1;
+        this._ctx._path = new Path2D();
+        this._ctx._dash = [];
+      }
+      return this._ctx;
+    }
+    transferToImageBitmap() { return {}; }
+    convertToBlob() { return Promise.resolve(new Blob()); }
+  }
+  Object.defineProperty(OffscreenCanvas.prototype, Symbol.toStringTag, { value: "OffscreenCanvas", configurable: true });
+  class ImageData {
+    constructor(sw, sh) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to construct 'ImageData': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      const a = sw;
+      const b = sh;
+      const c = arguments[2];
+      if (a && typeof a.length === "number" && typeof b === "number") {
+        this._data = a instanceof Uint8ClampedArray ? a : new Uint8ClampedArray(a);
+        this._width = b | 0;
+        this._height = c == null ? ((this._data.length / (4 * this._width)) | 0) : (c | 0);
+      } else {
+        this._width = a | 0;
+        this._height = b | 0;
+        this._data = new Uint8ClampedArray(this._width * this._height * 4);
+      }
+      this._colorSpace = "srgb";
+      this._pixelFormat = "rgba-unorm8";
+    }
+    get width() { return this._width || 0; }
+    get height() { return this._height || 0; }
+    get data() { return this._data; }
+    get colorSpace() { return this._colorSpace || "srgb"; }
+    get pixelFormat() { return this._pixelFormat || "rgba-unorm8"; }
+  }
   class Path2D {
-    constructor(src) {
+    constructor() {
+      const src = arguments[0];
       this._c = [];
       this._p = [];
       this._r = [];
@@ -2365,14 +3678,30 @@
         this._svg(src);
       }
     }
-    moveTo(x, y) { this._flush(false); this._c = [[+x, +y]]; }
+    moveTo(x, y) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'moveTo' on 'Path2D': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      this._flush(false); this._c = [[+x, +y]];
+    }
     lineTo(x, y) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'lineTo' on 'Path2D': 2 arguments required, but only " + arguments.length + " present.");
+      }
       if (!this._c.length) this._c = [[+x, +y]];
       else this._c.push([+x, +y]);
     }
     closePath() { this._flush(true); }
-    rect(x, y, w, h) { this._r.push([+x, +y, +w, +h]); }
+    rect(x, y, w, h) {
+      if (arguments.length < 4) {
+        throw new TypeError("Failed to execute 'rect' on 'Path2D': 4 arguments required, but only " + arguments.length + " present.");
+      }
+      this._r.push([+x, +y, +w, +h]);
+    }
     arc(x, y, r, a0, a1) {
+      if (arguments.length < 5) {
+        throw new TypeError("Failed to execute 'arc' on 'Path2D': 5 arguments required, but only " + arguments.length + " present.");
+      }
       const steps = 16;
       for (let i = 0; i <= steps; i++) {
         const t = a0 + (a1 - a0) * (i / steps);
@@ -2383,9 +3712,42 @@
       }
     }
     addPath(p) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'addPath' on 'Path2D': 1 argument required, but only 0 present.");
+      }
       if (!(p instanceof Path2D)) return;
       this._p.push(...p._p.map((x) => x.slice()));
       this._r.push(...p._r.map((x) => x.slice()));
+    }
+    quadraticCurveTo(cpx, cpy, x, y) {
+      if (arguments.length < 4) {
+        throw new TypeError("Failed to execute 'quadraticCurveTo' on 'Path2D': 4 arguments required, but only " + arguments.length + " present.");
+      }
+      this.lineTo(x, y);
+    }
+    bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y) {
+      if (arguments.length < 6) {
+        throw new TypeError("Failed to execute 'bezierCurveTo' on 'Path2D': 6 arguments required, but only " + arguments.length + " present.");
+      }
+      this.lineTo(x, y);
+    }
+    arcTo(x1, y1, x2, y2, radius) {
+      if (arguments.length < 5) {
+        throw new TypeError("Failed to execute 'arcTo' on 'Path2D': 5 arguments required, but only " + arguments.length + " present.");
+      }
+      this.lineTo(x2, y2);
+    }
+    roundRect(x, y, w, h) {
+      if (arguments.length < 4) {
+        throw new TypeError("Failed to execute 'roundRect' on 'Path2D': 4 arguments required, but only " + arguments.length + " present.");
+      }
+      this.rect(x, y, w, h);
+    }
+    ellipse(x, y, rx, ry, rotation, a0, a1) {
+      if (arguments.length < 7) {
+        throw new TypeError("Failed to execute 'ellipse' on 'Path2D': 7 arguments required, but only " + arguments.length + " present.");
+      }
+      this.arc(x, y, rx, a0, a1);
     }
     _flush(close) {
       if (this._c.length >= 2) {
@@ -2452,20 +3814,102 @@
     }
   }
   class CanvasRenderingContext2D {
-    constructor(canvas) {
-      this.canvas = canvas;
-      this.__h = canvas.__h;
-      this.fillStyle = "#000000";
-      this.strokeStyle = "#000000";
-      this.globalAlpha = 1;
-      this.lineWidth = 1;
-      this.font = "10px sans-serif";
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      const canvas = arguments[1];
+      this._canvas = canvas || null;
+      this.__h = canvas && canvas.__h;
+      this._fillStyle = "#000000";
+      this._strokeStyle = "#000000";
+      this._globalAlpha = 1;
+      this._lineWidth = 1;
+      this._lineCap = "butt";
+      this._lineJoin = "miter";
+      this._miterLimit = 10;
+      this._lineDashOffset = 0;
+      this._font = "10px sans-serif";
+      this._textAlign = "start";
+      this._textBaseline = "alphabetic";
+      this._globalCompositeOperation = "source-over";
+      this._imageSmoothingEnabled = true;
+      this._imageSmoothingQuality = "low";
+      this._shadowOffsetX = 0;
+      this._shadowOffsetY = 0;
+      this._shadowBlur = 0;
+      this._shadowColor = "rgba(0, 0, 0, 0)";
+      this._dash = [];
       this._path = new Path2D();
     }
+    get canvas() { return this._canvas || null; }
+    get fillStyle() { return this._fillStyle; }
+    set fillStyle(v) { this._fillStyle = v; }
+    get strokeStyle() { return this._strokeStyle; }
+    set strokeStyle(v) { this._strokeStyle = v; }
+    get globalAlpha() { return this._globalAlpha; }
+    set globalAlpha(v) { this._globalAlpha = Number(v); }
+    get globalCompositeOperation() { return this._globalCompositeOperation; }
+    set globalCompositeOperation(v) { this._globalCompositeOperation = String(v); }
+    get lineWidth() { return this._lineWidth; }
+    set lineWidth(v) { this._lineWidth = Number(v); }
+    get lineCap() { return this._lineCap; }
+    set lineCap(v) { this._lineCap = String(v); }
+    get lineJoin() { return this._lineJoin; }
+    set lineJoin(v) { this._lineJoin = String(v); }
+    get miterLimit() { return this._miterLimit; }
+    set miterLimit(v) { this._miterLimit = Number(v); }
+    get lineDashOffset() { return this._lineDashOffset; }
+    set lineDashOffset(v) { this._lineDashOffset = Number(v); }
+    get font() { return this._font; }
+    set font(v) { this._font = String(v); }
+    get textAlign() { return this._textAlign; }
+    set textAlign(v) { this._textAlign = String(v); }
+    get textBaseline() { return this._textBaseline; }
+    set textBaseline(v) { this._textBaseline = String(v); }
+    get imageSmoothingEnabled() { return this._imageSmoothingEnabled; }
+    set imageSmoothingEnabled(v) { this._imageSmoothingEnabled = !!v; }
+    get imageSmoothingQuality() { return this._imageSmoothingQuality; }
+    set imageSmoothingQuality(v) { this._imageSmoothingQuality = String(v); }
+    get shadowOffsetX() { return this._shadowOffsetX; }
+    set shadowOffsetX(v) { this._shadowOffsetX = Number(v); }
+    get shadowOffsetY() { return this._shadowOffsetY; }
+    set shadowOffsetY(v) { this._shadowOffsetY = Number(v); }
+    get shadowBlur() { return this._shadowBlur; }
+    set shadowBlur(v) { this._shadowBlur = Number(v); }
+    get shadowColor() { return this._shadowColor; }
+    set shadowColor(v) { this._shadowColor = String(v); }
+    get filter() { return this._filter || "none"; }
+    set filter(v) { this._filter = String(v); }
+    get lang() { return this._lang || "inherit"; }
+    set lang(v) { this._lang = String(v); }
+    get direction() { return this._direction || "inherit"; }
+    set direction(v) { this._direction = String(v); }
+    get letterSpacing() { return this._letterSpacing || "0px"; }
+    set letterSpacing(v) { this._letterSpacing = String(v); }
+    get fontKerning() { return this._fontKerning || "auto"; }
+    set fontKerning(v) { this._fontKerning = String(v); }
+    get fontStretch() { return this._fontStretch || "normal"; }
+    set fontStretch(v) { this._fontStretch = String(v); }
+    get fontVariantCaps() { return this._fontVariantCaps || "normal"; }
+    set fontVariantCaps(v) { this._fontVariantCaps = String(v); }
+    get textRendering() { return this._textRendering || "auto"; }
+    set textRendering(v) { this._textRendering = String(v); }
+    get wordSpacing() { return this._wordSpacing || "0px"; }
+    set wordSpacing(v) { this._wordSpacing = String(v); }
+    getContextAttributes() { return { alpha: true, colorSpace: "srgb", desynchronized: false, willReadFrequently: false }; }
+    reset() {
+      this._fillStyle = "#000000";
+      this._strokeStyle = "#000000";
+      this._globalAlpha = 1;
+      this._path = new Path2D();
+    }
+    isContextLost() { return false; }
+    getTransform() { return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }; }
     fillRect(x, y, w, h) {
+      if (arguments.length < 4) throw new TypeError("Failed to execute 'fillRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       D("canvasFillRect", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0, String(this.fillStyle));
     }
     clearRect(x, y, w, h) {
+      if (arguments.length < 4) throw new TypeError("Failed to execute 'clearRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       D("canvasClearRect", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0);
     }
     beginPath() { this._path = new Path2D(); }
@@ -2474,22 +3918,73 @@
     lineTo(x, y) { this._path.lineTo(x, y); }
     rect(x, y, w, h) { this._path.rect(x, y, w, h); }
     arc(x, y, r, a0, a1) { this._path.arc(x, y, r, a0, a1); }
-    fill(path) {
+    fill() {
+      const path = arguments[0];
       const p = path instanceof Path2D ? path : this._path;
       D("canvasFillPath", this.__h, p._payload(), String(this.fillStyle));
     }
     stroke() {}
+    strokeRect() {}
     save() {}
     restore() {}
-    translate() {}
-    scale() {}
-    rotate() {}
+    translate(x, y) {}
+    scale(x, y) {}
+    rotate(angle) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'rotate' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
+      }
+    }
     setTransform() {}
+    resetTransform() { this.setTransform(1, 0, 0, 1, 0, 0); }
+    transform() {}
+    drawFocusIfNeeded(element) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'drawFocusIfNeeded' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
+      }
+    }
+    isPointInPath() { return false; }
+    isPointInStroke() { return false; }
+    arcTo() {}
+    roundRect() {}
+    ellipse() {}
+    setLineDash(d) {
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'setLineDash' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
+      this._dash = Array.isArray(d) ? d.slice() : [];
+    }
+    getLineDash() { return this._dash.slice(); }
+    clip() {}
+    quadraticCurveTo() {}
+    bezierCurveTo() {}
+    createLinearGradient(x0, y0, x1, y1) {
+      if (arguments.length < 4) throw new TypeError("Failed to execute 'createLinearGradient' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
+      return Object.create(CanvasGradient.prototype);
+    }
+    createRadialGradient(x0, y0, r0, x1, y1, r1) {
+      if (arguments.length < 6) throw new TypeError("Failed to execute 'createRadialGradient' on 'CanvasRenderingContext2D': 6 arguments required, but only " + arguments.length + " present.");
+      return Object.create(CanvasGradient.prototype);
+    }
+    createConicGradient(startAngle, x, y) { return Object.create(CanvasGradient.prototype); }
+    createPattern() { return null; }
     drawImage() {}
     fillText() {}
     strokeText() {}
-    measureText(t) { return { width: String(t).length * 8 }; }
-    createImageData(w, h) { return new ImageData(w, h); }
+    measureText(t) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'measureText' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
+      }
+      const m = Object.create(TextMetrics.prototype);
+      m._width = String(t).length * 8;
+      return m;
+    }
+    createImageData(imageData) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'createImageData' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
+      }
+      const w = imageData;
+      const h = arguments[1];
+      if (w && typeof w.width === "number") return new ImageData(w.width, w.height);
+      return new ImageData(w, h);
+    }
     getImageData(x, y, w, h) {
       const r = D("canvasGetImageData", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0) || {};
       const bin = atob(r.b64 || "");
@@ -2504,14 +3999,56 @@
       D("canvasPutImageData", this.__h, im.width, im.height, btoa(s), Number(dx) || 0, Number(dy) || 0);
     }
   }
-  class HTMLUnknownElement extends HTMLElement {}
+  class OffscreenCanvasRenderingContext2D {
+    constructor() { throw new TypeError("Illegal constructor"); }
+  }
+  {
+    const src = Object.getOwnPropertyDescriptors(CanvasRenderingContext2D.prototype);
+    delete src.constructor;
+    Object.defineProperties(OffscreenCanvasRenderingContext2D.prototype, src);
+  }
+  {
+    const argc = {
+      scale: 2, translate: 2, transform: 6, createConicGradient: 3, createPattern: 2,
+      strokeRect: 4, isPointInPath: 2, isPointInStroke: 2, fillText: 3, strokeText: 3,
+      drawImage: 3, quadraticCurveTo: 4, bezierCurveTo: 6, arcTo: 5, roundRect: 4,
+      ellipse: 7, moveTo: 2, lineTo: 2, rect: 4, arc: 5, getImageData: 4, putImageData: 3,
+    };
+    const wrapArgc = (proto) => {
+      for (const name of Object.keys(argc)) {
+        const fn = proto[name];
+        if (typeof fn !== "function") continue;
+        const n = argc[name];
+        const wrapped = function () {
+          if (arguments.length < n) {
+            throw new TypeError("Failed to execute '" + name + "' on '" + (proto.constructor && proto.constructor.name || "Canvas") + "': " + n + " arguments required, but only " + arguments.length + " present.");
+          }
+          return fn.apply(this, arguments);
+        };
+        Object.defineProperty(wrapped, "length", { value: fn.length > n ? fn.length : n, configurable: true });
+        Object.defineProperty(wrapped, "name", { value: name, configurable: true });
+        proto[name] = wrapped;
+      }
+    };
+    wrapArgc(CanvasRenderingContext2D.prototype);
+    wrapArgc(OffscreenCanvasRenderingContext2D.prototype);
+  }
+  class HTMLUnknownElement extends HTMLElement {
+    constructor() {
+      super();
+      if (new.target === HTMLUnknownElement) throw new TypeError("Illegal constructor");
+    }
+  }
   class HTMLDivElement extends HTMLElement {}
   class HTMLParagraphElement extends HTMLElement {}
   class HTMLSpanElement extends HTMLElement {}
   class HTMLHeadElement extends HTMLElement {}
   class HTMLBodyElement extends HTMLElement {}
   class HTMLHtmlElement extends HTMLElement {}
-  class HTMLTitleElement extends HTMLElement {}
+  class HTMLTitleElement extends HTMLElement {
+    get text() { return this.textContent || ""; }
+    set text(v) { this.textContent = v == null ? "" : String(v); }
+  }
   class HTMLScriptElement extends HTMLElement {
     constructor() {
       super();
@@ -2540,22 +4077,64 @@
     set src(v) { this.setAttribute("src", toUSV(v)); }
     get text() { return this.textContent || ""; }
     set text(v) { this.textContent = v == null ? "" : String(v); }
+    get referrerPolicy() { return this.getAttribute("referrerpolicy") || ""; }
+    set referrerPolicy(v) { this.setAttribute("referrerpolicy", v == null ? "" : String(v)); }
+  }
+  {
+    const supports = function supports(type) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'supports' on 'HTMLScriptElement': 1 argument required, but only 0 present.");
+      }
+      return String(type) === "classic" || String(type) === "module";
+    };
+    Object.defineProperty(HTMLScriptElement, "supports", {
+      value: supports, writable: true, enumerable: true, configurable: true,
+    });
   }
   class HTMLStyleElement extends HTMLElement {
     get blocking() { return this._blockingTL || (this._blockingTL = new DOMTokenList(this.__h, "blocking", RENDER_TOKENS)); }
     set blocking(v) { this.blocking.value = v == null ? "" : String(v); }
+    get disabled() { return this.hasAttribute("disabled"); }
+    set disabled(v) { v ? this.setAttribute("disabled", "") : this.removeAttribute("disabled"); }
   }
   class HTMLFrameSetElement extends HTMLElement {}
   class HTMLDetailsElement extends HTMLElement {}
-  class HTMLFieldSetElement extends HTMLElement {}
-  class HTMLMapElement extends HTMLElement {}
+  class HTMLFieldSetElement extends HTMLElement {
+    get type() { return "fieldset"; }
+    get elements() {
+      return this._elements || (this._elements = new HTMLCollection(IDL_INTERNAL, () => {
+        return this.querySelectorAll ? Array.from(this.querySelectorAll("button,fieldset,input,object,output,select,textarea")) : [];
+      }));
+    }
+  }
+  class HTMLMapElement extends HTMLElement {
+    get areas() {
+      return this._areas || (this._areas = new HTMLCollection(IDL_INTERNAL, () => {
+        const out = [];
+        for (let c = this.firstChild; c; c = c.nextSibling) if (c.tagName === "AREA") out.push(c);
+        return out;
+      }));
+    }
+  }
   class HTMLMetaElement extends HTMLElement {}
-  class HTMLOutputElement extends HTMLElement {}
-  class HTMLParamElement extends HTMLElement {}
+  class HTMLOutputElement extends HTMLElement {
+    get htmlFor() { return this._htmlForTL || (this._htmlForTL = new DOMTokenList(this.__h, "for")); }
+    set htmlFor(v) { this.setAttribute("for", v == null ? "" : String(v)); }
+    get defaultValue() { return this._defaultValue == null ? (this.textContent || "") : this._defaultValue; }
+    set defaultValue(v) { this._defaultValue = v == null ? "" : String(v); }
+    get value() { return this._outputValue == null ? (this.textContent || "") : this._outputValue; }
+    set value(v) { this._outputValue = v == null ? "" : String(v); }
+  }
+  class HTMLParamElement extends HTMLElement {
+    get type() { return this.getAttribute("type") || ""; }
+    set type(v) { this.setAttribute("type", v == null ? "" : String(v)); }
+  }
   class HTMLSlotElement extends HTMLElement {
     assign(...nodes) {
       D("slotAssign", this.__h, JSON.stringify(nodes.map((n) => n && n.__h).filter(Boolean)));
     }
+    assignedNodes() { return []; }
+    assignedElements() { return []; }
   }
   reflectName(HTMLFieldSetElement.prototype);
   reflectName(HTMLMapElement.prototype);
@@ -2565,16 +4144,123 @@
   reflectName(HTMLSlotElement.prototype);
   class HTMLTemplateElement extends HTMLElement {
     get content() { return wrap(D("templateContent", this.__h)); }
+    get buffer() { return this.hasAttribute("buffer"); }
+    set buffer(v) {
+      if (v) this.setAttribute("buffer", "");
+      else this.removeAttribute("buffer");
+    }
+    get src() {
+      if (!this.hasAttribute("src")) return "";
+      return reflectedUrl(this, "src");
+    }
+    set src(v) { this.setAttribute("src", toUSV(v)); }
+    get htmlFor() { return this.getAttribute("for") || ""; }
+    set htmlFor(v) { this.setAttribute("for", v == null ? "" : String(v)); }
+    get shadowRootMode() { return this.getAttribute("shadowrootmode") || ""; }
+    set shadowRootMode(v) { this.setAttribute("shadowrootmode", String(v)); }
+    get shadowRootDelegatesFocus() { return this.hasAttribute("shadowrootdelegatesfocus"); }
+    set shadowRootDelegatesFocus(v) { v ? this.setAttribute("shadowrootdelegatesfocus", "") : this.removeAttribute("shadowrootdelegatesfocus"); }
+    get shadowRootClonable() { return this.hasAttribute("shadowrootclonable"); }
+    set shadowRootClonable(v) { v ? this.setAttribute("shadowrootclonable", "") : this.removeAttribute("shadowrootclonable"); }
+    get shadowRootSerializable() { return this.hasAttribute("shadowrootserializable"); }
+    set shadowRootSerializable(v) { v ? this.setAttribute("shadowrootserializable", "") : this.removeAttribute("shadowrootserializable"); }
+    get shadowRootSlotAssignment() { return this.getAttribute("shadowrootslotassignment") || ""; }
+    set shadowRootSlotAssignment(v) { this.setAttribute("shadowrootslotassignment", v == null ? "" : String(v)); }
+    get shadowRootCustomElementRegistry() { return this.getAttribute("shadowrootcustomelementregistry") || ""; }
+    set shadowRootCustomElementRegistry(v) { this.setAttribute("shadowrootcustomelementregistry", v == null ? "" : String(v)); }
   }
-  class SVGElement extends Element {}
+  class SVGTransform {
+    constructor() {
+      this.type = 0;
+      this.angle = 0;
+    }
+    setRotate(angle, cx, cy) {
+      this.type = 4;
+      this.angle = Number(angle) || 0;
+      this._cx = Number(cx) || 0;
+      this._cy = Number(cy) || 0;
+    }
+  }
+  class SVGTransformList {
+    constructor() {
+      this._items = [];
+      this.numberOfItems = 0;
+    }
+    initialize(item) {
+      this._items = [item];
+      this.numberOfItems = 1;
+      return item;
+    }
+  }
+  class SVGAnimatedTransformList {
+    constructor() {
+      this.baseVal = new SVGTransformList();
+      this.animVal = this.baseVal;
+    }
+  }
+  class SVGPoint {
+    constructor() {
+      this.x = 0;
+      this.y = 0;
+    }
+    matrixTransform(m) {
+      const a = m && m.a != null ? Number(m.a) : 1;
+      const b = m && m.b != null ? Number(m.b) : 0;
+      const c = m && m.c != null ? Number(m.c) : 0;
+      const d = m && m.d != null ? Number(m.d) : 1;
+      const e = m && m.e != null ? Number(m.e) : 0;
+      const f = m && m.f != null ? Number(m.f) : 0;
+      const p = new SVGPoint();
+      p.x = this.x * a + this.y * c + e;
+      p.y = this.x * b + this.y * d + f;
+      return p;
+    }
+  }
+  class SVGMatrix {
+    constructor() {
+      this.a = 1;
+      this.b = 0;
+      this.c = 0;
+      this.d = 1;
+      this.e = 0;
+      this.f = 0;
+    }
+    inverse() {
+      return new SVGMatrix();
+    }
+  }
+  class SVGElement extends Element {
+    get gradientTransform() {
+      if (!this._veGradientTransform) this._veGradientTransform = new SVGAnimatedTransformList();
+      return this._veGradientTransform;
+    }
+    get ownerSVGElement() {
+      let n = this.parentNode;
+      while (n) {
+        if (n instanceof SVGSVGElement) return n;
+        n = n.parentNode;
+      }
+      return null;
+    }
+    getScreenCTM() {
+      return new SVGMatrix();
+    }
+  }
   class MathMLElement extends Element {}
-  class SVGSVGElement extends SVGElement {}
+  class SVGSVGElement extends SVGElement {
+    createSVGTransform() {
+      return new SVGTransform();
+    }
+    createSVGPoint() {
+      return new SVGPoint();
+    }
+  }
   class SVGGraphicsElement extends SVGElement {}
   class SVGPathElement extends SVGGraphicsElement {}
   const RENDER_TOKENS = new Set(["render"]);
   const UNKNOWN_HTML = {
     applet: 1, attachment: 1, layer: 1, nolayer: 1, bgsound: 1, blink: 1,
-    isindex: 1, listing: 1, xmp: 1, nextid: 1, noembed: 1, spacer: 1, keygen: 1,
+    isindex: 1, nextid: 1, noembed: 1, spacer: 1, keygen: 1,
   };
   const HTML = {
     input: HTMLInputElement, textarea: HTMLTextAreaElement, select: HTMLSelectElement,
@@ -2590,9 +4276,11 @@
     details: HTMLDetailsElement, fieldset: HTMLFieldSetElement, map: HTMLMapElement,
     meta: HTMLMetaElement, output: HTMLOutputElement, param: HTMLParamElement, slot: HTMLSlotElement,
   };
-  function defHTML(name) {
-    const C = class extends HTMLElement {};
+  function defHTML(name, Base) {
+    const Parent = Base || HTMLElement;
+    const C = class extends Parent {};
     Object.defineProperty(C, "name", { value: name });
+    Object.defineProperty(C.prototype, Symbol.toStringTag, { value: name, configurable: true });
     return C;
   }
   const HTMLQuoteElement = defHTML("HTMLQuoteElement");
@@ -2613,20 +4301,756 @@
   const HTMLLIElement = defHTML("HTMLLIElement");
   const HTMLDListElement = defHTML("HTMLDListElement");
   const HTMLMarqueeElement = defHTML("HTMLMarqueeElement");
+  Object.defineProperties(HTMLMarqueeElement.prototype, {
+    behavior: {
+      get() { return this.getAttribute("behavior") || "scroll"; },
+      set(v) { this.setAttribute("behavior", String(v)); },
+      enumerable: true, configurable: true,
+    },
+    direction: {
+      get() { return this.getAttribute("direction") || "left"; },
+      set(v) { this.setAttribute("direction", String(v)); },
+      enumerable: true, configurable: true,
+    },
+    loop: {
+      get() {
+        const n = parseInt(this.getAttribute("loop"), 10);
+        return Number.isFinite(n) ? n : -1;
+      },
+      set(v) { this.setAttribute("loop", String(v)); },
+      enumerable: true, configurable: true,
+    },
+    start: { value: function start() {}, writable: true, enumerable: true, configurable: true },
+    stop: { value: function stop() {}, writable: true, enumerable: true, configurable: true },
+  });
   const HTMLFontElement = defHTML("HTMLFontElement");
   const HTMLDirectoryElement = defHTML("HTMLDirectoryElement");
   const HTMLLabelElement = defHTML("HTMLLabelElement");
   const HTMLLegendElement = defHTML("HTMLLegendElement");
+  Object.defineProperty(HTMLLegendElement.prototype, "form", {
+    get() { return nearestForm(this); },
+    enumerable: true,
+    configurable: true,
+  });
   const HTMLOptGroupElement = defHTML("HTMLOptGroupElement");
   const HTMLDataListElement = defHTML("HTMLDataListElement");
   const HTMLProgressElement = defHTML("HTMLProgressElement");
   const HTMLMeterElement = defHTML("HTMLMeterElement");
+  Object.defineProperty(HTMLMeterElement.prototype, "labels", {
+    get() { return this._labels || (this._labels = labeledBy(this)); },
+    enumerable: true,
+    configurable: true,
+  });
   const HTMLDialogElement = defHTML("HTMLDialogElement");
+  Object.defineProperties(HTMLDialogElement.prototype, {
+    returnValue: {
+      get() { return this._returnValue || ""; },
+      set(v) { this._returnValue = v == null ? "" : String(v); },
+      enumerable: true,
+      configurable: true,
+    },
+    show: {
+      value: function show() { this.setAttribute("open", ""); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    showModal: {
+      value: function showModal() { this.setAttribute("open", ""); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    close: {
+      value: function close() {
+        this.removeAttribute("open");
+        if (arguments.length) this._returnValue = String(arguments[0]);
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+    requestClose: {
+      value: function requestClose() {
+        this.removeAttribute("open");
+        if (arguments.length) this._returnValue = String(arguments[0]);
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+  });
+  class HTMLSelectedContentElement extends HTMLElement {}
+  function kidsByTag(el, tags) {
+    const want = typeof tags === "string" ? [tags] : tags;
+    return new HTMLCollection(IDL_INTERNAL, () => {
+      const out = [];
+      const walk = (node) => {
+        for (let c = node.firstChild; c; c = c.nextSibling) {
+          if (c.tagName && want.indexOf(c.tagName) >= 0) out.push(c);
+          else if (c.firstChild && c.tagName !== "TABLE") walk(c);
+        }
+      };
+      walk(el);
+      return out;
+    });
+  }
+  Object.defineProperties(HTMLTableElement.prototype, {
+    caption: {
+      get() { return this.querySelector("caption"); },
+      set(v) {
+        const old = this.caption;
+        if (old) this.removeChild(old);
+        if (v) this.insertBefore(v, this.firstChild);
+      },
+      enumerable: true, configurable: true,
+    },
+    tHead: {
+      get() { return this.querySelector("thead"); },
+      set(v) {
+        const old = this.tHead;
+        if (old) this.removeChild(old);
+        if (v) this.appendChild(v);
+      },
+      enumerable: true, configurable: true,
+    },
+    tFoot: {
+      get() { return this.querySelector("tfoot"); },
+      set(v) {
+        const old = this.tFoot;
+        if (old) this.removeChild(old);
+        if (v) this.appendChild(v);
+      },
+      enumerable: true, configurable: true,
+    },
+    tBodies: {
+      get() { return this._tBodies || (this._tBodies = kidsByTag(this, "TBODY")); },
+      enumerable: true, configurable: true,
+    },
+    rows: {
+      get() { return this._rows || (this._rows = kidsByTag(this, "TR")); },
+      enumerable: true, configurable: true,
+    },
+    createCaption: {
+      value: function createCaption() { return this.caption || this.insertBefore(document.createElement("caption"), this.firstChild); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteCaption: {
+      value: function deleteCaption() { const c = this.caption; if (c) this.removeChild(c); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    createTHead: {
+      value: function createTHead() { return this.tHead || this.insertBefore(document.createElement("thead"), this.firstChild); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteTHead: {
+      value: function deleteTHead() { const h = this.tHead; if (h) this.removeChild(h); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    createTFoot: {
+      value: function createTFoot() { return this.tFoot || this.appendChild(document.createElement("tfoot")); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteTFoot: {
+      value: function deleteTFoot() { const f = this.tFoot; if (f) this.removeChild(f); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    createTBody: {
+      value: function createTBody() { return this.appendChild(document.createElement("tbody")); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    insertRow: {
+      value: function insertRow() {
+        const rows = this.rows;
+        const tr = document.createElement("tr");
+        const i = arguments.length ? arguments[0] | 0 : -1;
+        if (i === -1 || i >= rows.length) {
+          let body = this.tBodies[this.tBodies.length - 1];
+          if (!body) body = this.createTBody();
+          body.appendChild(tr);
+        } else {
+          rows[i].parentNode.insertBefore(tr, rows[i]);
+        }
+        return tr;
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteRow: {
+      value: function deleteRow(index) {
+        if (arguments.length < 1) {
+          throw new TypeError("Failed to execute 'deleteRow' on 'HTMLTableElement': 1 argument required, but only 0 present.");
+        }
+        const row = this.rows[index | 0];
+        if (row) row.parentNode.removeChild(row);
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLTableSectionElement.prototype, {
+    rows: {
+      get() { return this._rows || (this._rows = kidsByTag(this, "TR")); },
+      enumerable: true, configurable: true,
+    },
+    insertRow: {
+      value: function insertRow() {
+        const rows = this.rows;
+        const tr = document.createElement("tr");
+        const i = arguments.length ? arguments[0] | 0 : -1;
+        if (i === -1 || i >= rows.length) this.appendChild(tr);
+        else this.insertBefore(tr, rows[i]);
+        return tr;
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteRow: {
+      value: function deleteRow(index) {
+        if (arguments.length < 1) {
+          throw new TypeError("Failed to execute 'deleteRow' on 'HTMLTableSectionElement': 1 argument required, but only 0 present.");
+        }
+        const row = this.rows[index | 0];
+        if (row) this.removeChild(row);
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLTableRowElement.prototype, {
+    cells: {
+      get() { return this._cells || (this._cells = kidsByTag(this, ["TD", "TH"])); },
+      enumerable: true, configurable: true,
+    },
+    insertCell: {
+      value: function insertCell() {
+        const cells = this.cells;
+        const td = document.createElement("td");
+        const i = arguments.length ? arguments[0] | 0 : -1;
+        if (i === -1 || i >= cells.length) this.appendChild(td);
+        else this.insertBefore(td, cells[i]);
+        return td;
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteCell: {
+      value: function deleteCell(index) {
+        if (arguments.length < 1) {
+          throw new TypeError("Failed to execute 'deleteCell' on 'HTMLTableRowElement': 1 argument required, but only 0 present.");
+        }
+        const cell = this.cells[index | 0];
+        if (cell) this.removeChild(cell);
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+    rowIndex: {
+      get() {
+        const table = this.closest ? this.closest("table") : null;
+        if (!table) return -1;
+        const rows = table.rows;
+        for (let i = 0; i < rows.length; i++) if (rows[i] === this) return i;
+        return -1;
+      },
+      enumerable: true, configurable: true,
+    },
+    sectionRowIndex: {
+      get() {
+        const sec = this.parentElement;
+        if (!sec || !sec.rows) return -1;
+        const rows = sec.rows;
+        for (let i = 0; i < rows.length; i++) if (rows[i] === this) return i;
+        return -1;
+      },
+      enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLTableCellElement.prototype, {
+    cellIndex: {
+      get() {
+        const row = this.parentElement;
+        if (!row || !row.cells) return -1;
+        const cells = row.cells;
+        for (let i = 0; i < cells.length; i++) if (cells[i] === this) return i;
+        return -1;
+      },
+      enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLDataListElement.prototype, {
+    options: {
+      get() { return this._options || (this._options = kidsByTag(this, "OPTION")); },
+      enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLProgressElement.prototype, {
+    value: {
+      get() { const n = parseFloat(this.getAttribute("value")); return isFinite(n) ? n : 0; },
+      set(v) { this.setAttribute("value", String(v)); },
+      enumerable: true, configurable: true,
+    },
+    position: {
+      get() {
+        const max = parseFloat(this.getAttribute("max"));
+        const m = isFinite(max) && max > 0 ? max : 1;
+        return this.value / m;
+      },
+      enumerable: true, configurable: true,
+    },
+    labels: {
+      get() { return this._labels || (this._labels = labeledBy(this)); },
+      enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLLabelElement.prototype, {
+    form: {
+      get() { return nearestForm(this); },
+      enumerable: true, configurable: true,
+    },
+    control: {
+      get() {
+        const id = this.htmlFor || this.getAttribute("for");
+        return id ? document.getElementById(id) : this.querySelector("input,select,textarea,button");
+      },
+      enumerable: true, configurable: true,
+    },
+  });
   const HTMLMenuElement = defHTML("HTMLMenuElement");
   const HTMLDataElement = defHTML("HTMLDataElement");
-  const HTMLVideoElement = defHTML("HTMLVideoElement");
+  const HTMLPictureElement = defHTML("HTMLPictureElement");
+  class MediaError {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get code() { return this._code || 0; }
+    get message() { return this._message || ""; }
+  }
+  Object.defineProperty(MediaError.prototype, Symbol.toStringTag, { value: "MediaError", configurable: true });
+  function makeMediaError(code) {
+    const e = Object.create(MediaError.prototype);
+    e._code = code;
+    e._message = "";
+    return e;
+  }
+  class TimeRanges {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    start(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'start' on 'TimeRanges': 1 argument required, but only 0 present.");
+      }
+      throw new DOMException("The index is not in the allowed range.", "IndexSizeError");
+    }
+    end(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'end' on 'TimeRanges': 1 argument required, but only 0 present.");
+      }
+      throw new DOMException("The index is not in the allowed range.", "IndexSizeError");
+    }
+  }
+  Object.defineProperty(TimeRanges.prototype, Symbol.toStringTag, { value: "TimeRanges", configurable: true });
+  function emptyTimeRanges() { return Object.create(TimeRanges.prototype); }
+  class TextTrackCueList {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return this._cues ? this._cues.length : 0; }
+    item(i) { return (this._cues && this._cues[i | 0]) || null; }
+    getCueById(id) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getCueById' on 'TextTrackCueList': 1 argument required, but only 0 present.");
+      }
+      const cues = this._cues || [];
+      return cues.find((c) => c.id === String(id)) || null;
+    }
+  }
+  Object.defineProperty(TextTrackCueList.prototype, "getCueById", {
+    value: TextTrackCueList.prototype.getCueById,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+  Object.defineProperty(TextTrackCueList.prototype, Symbol.toStringTag, { value: "TextTrackCueList", configurable: true });
+  function emptyCueList() {
+    const l = Object.create(TextTrackCueList.prototype);
+    l._cues = [];
+    return l;
+  }
+  class TextTrack extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get kind() { return this._kind || "subtitles"; }
+    get label() { return this._label || ""; }
+    get language() { return this._language || ""; }
+    get id() { return this._id || ""; }
+    get inBandMetadataTrackDispatchType() { return this._inBand || ""; }
+    get mode() { return this._mode || "disabled"; }
+    set mode(v) { this._mode = String(v); }
+    get cues() { return this._cues || (this._cues = emptyCueList()); }
+    get activeCues() { return this._activeCues || (this._activeCues = emptyCueList()); }
+    addCue(cue) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'addCue' on 'TextTrack': 1 argument required, but only 0 present.");
+      }
+    }
+    removeCue(cue) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'removeCue' on 'TextTrack': 1 argument required, but only 0 present.");
+      }
+    }
+  }
+  Object.defineProperty(TextTrack.prototype, Symbol.toStringTag, { value: "TextTrack", configurable: true });
+  function makeTextTrack(kind, label, language) {
+    const t = Object.create(TextTrack.prototype);
+    t._kind = kind == null ? "subtitles" : String(kind);
+    t._label = label == null ? "" : String(label);
+    t._language = language == null ? "" : String(language);
+    t._mode = "hidden";
+    t._cues = emptyCueList();
+    return t;
+  }
+  class TextTrackList extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return this._tracks ? this._tracks.length : 0; }
+    item(i) { return (this._tracks && this._tracks[i | 0]) || null; }
+    getTrackById(id) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getTrackById' on 'TextTrackList': 1 argument required, but only 0 present.");
+      }
+      const tracks = this._tracks || [];
+      return tracks.find((t) => t.id === String(id)) || null;
+    }
+    _add(t) {
+      if (!this._tracks) this._tracks = [];
+      this._tracks.push(t);
+      return t;
+    }
+  }
+  Object.defineProperty(TextTrackList.prototype, Symbol.toStringTag, { value: "TextTrackList", configurable: true });
+  function emptyTextTrackList() {
+    const l = Object.create(TextTrackList.prototype);
+    l._tracks = [];
+    return l;
+  }
+  class AudioTrackList extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    item() { return null; }
+    getTrackById(id) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getTrackById' on 'AudioTrackList': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+  }
+  Object.defineProperty(AudioTrackList.prototype, Symbol.toStringTag, { value: "AudioTrackList", configurable: true });
+  class VideoTrackList extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    get selectedIndex() { return -1; }
+    item() { return null; }
+    getTrackById(id) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getTrackById' on 'VideoTrackList': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+  }
+  Object.defineProperty(VideoTrackList.prototype, Symbol.toStringTag, { value: "VideoTrackList", configurable: true });
+  function emptyAudioTrackList() { return Object.create(AudioTrackList.prototype); }
+  function emptyVideoTrackList() { return Object.create(VideoTrackList.prototype); }
+  class HTMLMediaElement extends HTMLElement {
+    constructor() {
+      super();
+      if (new.target === HTMLMediaElement) throw new TypeError("Illegal constructor");
+    }
+    get src() { return reflectedUrl(this, "src") || this.getAttribute("src") || ""; }
+    set src(v) {
+      this.setAttribute("src", toUSV(v));
+      this._error = makeMediaError(MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED);
+    }
+    get error() {
+      if (this._error) return this._error;
+      if (this.hasAttribute("src") || this.getAttribute("src")) {
+        this._error = makeMediaError(MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED);
+      }
+      return this._error || null;
+    }
+    get buffered() { return this._buffered || (this._buffered = emptyTimeRanges()); }
+    get textTracks() { return this._textTracks || (this._textTracks = emptyTextTrackList()); }
+    get currentSrc() { return this.src || ""; }
+    get networkState() { return this.src ? HTMLMediaElement.NETWORK_IDLE : HTMLMediaElement.NETWORK_EMPTY; }
+    get readyState() { return HTMLMediaElement.HAVE_NOTHING; }
+    get currentTime() { return this._currentTime || 0; }
+    set currentTime(v) { this._currentTime = Number(v) || 0; }
+    get duration() { return NaN; }
+    get paused() { return this._paused !== false; }
+    get ended() { return false; }
+    get seeking() { return false; }
+    get volume() { return this._volume == null ? 1 : this._volume; }
+    set volume(v) { this._volume = Math.min(1, Math.max(0, Number(v) || 0)); }
+    get muted() { return this.hasAttribute("muted") || !!this._muted; }
+    set muted(v) { this._muted = !!v; }
+    get defaultPlaybackRate() { return this._defaultPlaybackRate == null ? 1 : this._defaultPlaybackRate; }
+    set defaultPlaybackRate(v) { this._defaultPlaybackRate = Number(v) || 0; }
+    get playbackRate() { return this._playbackRate == null ? 1 : this._playbackRate; }
+    set playbackRate(v) { this._playbackRate = Number(v) || 0; }
+    get preservesPitch() { return this._preservesPitch !== false; }
+    set preservesPitch(v) { this._preservesPitch = !!v; }
+    addTextTrack(kind) {
+      const label = arguments[1];
+      const language = arguments[2];
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'addTextTrack' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
+      return this.textTracks._add(makeTextTrack(kind, label, language));
+    }
+    canPlayType(type) {
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'canPlayType' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
+      return "";
+    }
+    fastSeek(time) {
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'fastSeek' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
+    }
+    get srcObject() { return this._srcObject || null; }
+    set srcObject(v) { this._srcObject = v; }
+    get played() { return this._played || (this._played = emptyTimeRanges()); }
+    get seekable() { return this._seekable || (this._seekable = emptyTimeRanges()); }
+    get audioTracks() { return this._audioTracks || (this._audioTracks = emptyAudioTrackList()); }
+    get videoTracks() { return this._videoTracks || (this._videoTracks = emptyVideoTrackList()); }
+    getStartDate() { return new Date(NaN); }
+    load() {}
+    play() { this._paused = false; return Promise.resolve(); }
+    pause() { this._paused = true; }
+  }
+  Object.defineProperty(HTMLMediaElement.prototype, Symbol.toStringTag, { value: "HTMLMediaElement", configurable: true });
+  HTMLMediaElement.NETWORK_EMPTY = 0;
+  HTMLMediaElement.NETWORK_IDLE = 1;
+  HTMLMediaElement.NETWORK_LOADING = 2;
+  HTMLMediaElement.NETWORK_NO_SOURCE = 3;
+  HTMLMediaElement.HAVE_NOTHING = 0;
+  HTMLMediaElement.HAVE_METADATA = 1;
+  HTMLMediaElement.HAVE_CURRENT_DATA = 2;
+  HTMLMediaElement.HAVE_FUTURE_DATA = 3;
+  HTMLMediaElement.HAVE_ENOUGH_DATA = 4;
+  for (const k of ["NETWORK_EMPTY", "NETWORK_IDLE", "NETWORK_LOADING", "NETWORK_NO_SOURCE", "HAVE_NOTHING", "HAVE_METADATA", "HAVE_CURRENT_DATA", "HAVE_FUTURE_DATA", "HAVE_ENOUGH_DATA"]) {
+    const n = HTMLMediaElement[k];
+    Object.defineProperty(HTMLMediaElement, k, {
+      value: n,
+      writable: false,
+      enumerable: true,
+      configurable: false,
+    });
+    Object.defineProperty(HTMLMediaElement.prototype, k, {
+      value: n,
+      writable: false,
+      enumerable: true,
+      configurable: false,
+    });
+  }
+  const HTMLVideoElement = defHTML("HTMLVideoElement", HTMLMediaElement);
+  Object.defineProperties(HTMLVideoElement.prototype, {
+    videoWidth: { get() { return this.width || 0; }, enumerable: true, configurable: true },
+    videoHeight: { get() { return this.height || 0; }, enumerable: true, configurable: true },
+  });
+  const HTMLAudioElement = defHTML("HTMLAudioElement", HTMLMediaElement);
   const HTMLTrackElement = defHTML("HTMLTrackElement");
-  const HTMLAudioElement = defHTML("HTMLAudioElement");
+  Object.defineProperty(HTMLTrackElement.prototype, "track", {
+    get() { return this._track || (this._track = makeTextTrack("subtitles", "", "")); },
+    configurable: true,
+  });
+  Object.defineProperty(HTMLTrackElement.prototype, "readyState", {
+    get() { return this._readyState || 0; },
+    enumerable: true,
+    configurable: true,
+  });
+  class ValidityState {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get valueMissing() { return false; }
+    get typeMismatch() { return false; }
+    get patternMismatch() { return false; }
+    get tooLong() { return false; }
+    get tooShort() { return false; }
+    get rangeUnderflow() { return false; }
+    get rangeOverflow() { return false; }
+    get stepMismatch() { return false; }
+    get badInput() { return false; }
+    get customError() { return false; }
+    get valid() { return true; }
+  }
+  Object.defineProperty(ValidityState.prototype, Symbol.toStringTag, { value: "ValidityState", configurable: true });
+  function validityState() { return Object.create(ValidityState.prototype); }
+  class CustomStateSet {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    add(v) { (this._items || (this._items = new Set())).add(String(v)); return this; }
+    has(v) { return !!(this._items && this._items.has(String(v))); }
+    delete(v) { return !!(this._items && this._items.delete(String(v))); }
+    clear() { if (this._items) this._items.clear(); }
+    forEach(fn) { if (this._items) this._items.forEach(fn, this); }
+    keys() { return (this._items || new Set()).keys(); }
+    values() { return (this._items || new Set()).values(); }
+    entries() { return (this._items || new Set()).entries(); }
+  }
+  {
+    const getSize = function () { return this._items ? this._items.size : 0; };
+    Object.defineProperty(getSize, "name", { value: "get size", configurable: true });
+    Object.defineProperty(CustomStateSet.prototype, "size", {
+      get: getSize,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  for (const name of ["add", "has", "delete", "clear", "forEach", "keys", "values", "entries"]) {
+    Object.defineProperty(CustomStateSet.prototype, name, {
+      value: CustomStateSet.prototype[name],
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  Object.defineProperty(CustomStateSet.prototype, Symbol.iterator, {
+    value: CustomStateSet.prototype.values,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+  Object.defineProperty(CustomStateSet.prototype, Symbol.toStringTag, { value: "CustomStateSet", configurable: true });
+  class ElementInternals {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get shadowRoot() { return this._el && this._el.shadowRoot ? this._el.shadowRoot : null; }
+    get form() { return this._el && this._el.form ? this._el.form : null; }
+    get willValidate() { return true; }
+    get validity() { return this._validity || (this._validity = validityState()); }
+    get validationMessage() { return ""; }
+    get labels() { return this._labels || (this._labels = emptyNodeList()); }
+    get states() {
+      if (!this._states) {
+        this._states = Object.create(CustomStateSet.prototype);
+        this._states._items = new Set();
+      }
+      return this._states;
+    }
+    setFormValue(value) {}
+    setValidity() {}
+    checkValidity() { return true; }
+    reportValidity() { return true; }
+  }
+  Object.defineProperty(ElementInternals.prototype, Symbol.toStringTag, { value: "ElementInternals", configurable: true });
+  function makeElementInternals(el) {
+    const internals = Object.create(ElementInternals.prototype);
+    internals._el = el;
+    return internals;
+  }
+  function emptyNodeList() {
+    const out = [];
+    out.item = (i) => out[i] || null;
+    return out;
+  }
+  class DOMStringList {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    item(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'item' on 'DOMStringList': 1 argument required, but only 0 present.");
+      }
+      if (!Object.prototype.hasOwnProperty.call(this, "_items")) throw new TypeError("Illegal invocation");
+      const items = this._items || [];
+      return i >= 0 && i < items.length ? items[i | 0] : null;
+    }
+    contains(s) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'contains' on 'DOMStringList': 1 argument required, but only 0 present.");
+      }
+      if (!Object.prototype.hasOwnProperty.call(this, "_items")) throw new TypeError("Illegal invocation");
+      return (this._items || []).indexOf(String(s)) >= 0;
+    }
+  }
+  const getDOMStringListLength = function () {
+    if (!Object.prototype.hasOwnProperty.call(this, "_items")) throw new TypeError("Illegal invocation");
+    return this._items.length;
+  };
+  Object.defineProperty(getDOMStringListLength, "name", { value: "get length", configurable: true });
+  Object.defineProperty(DOMStringList.prototype, "length", {
+    get: getDOMStringListLength,
+    enumerable: true,
+    configurable: true,
+  });
+  Object.defineProperty(DOMStringList.prototype, "item", {
+    value: DOMStringList.prototype.item,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+  Object.defineProperty(DOMStringList.prototype, "contains", {
+    value: DOMStringList.prototype.contains,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+  Object.defineProperty(DOMStringList.prototype, Symbol.toStringTag, { value: "DOMStringList", configurable: true });
+  function emptyStringList() {
+    const l = Object.create(DOMStringList.prototype);
+    l._items = [];
+    return l;
+  }
+  class External {
+    constructor() { throw new TypeError("Illegal constructor"); }
+  }
+  Object.defineProperties(External.prototype, {
+    AddSearchProvider: {
+      value: function AddSearchProvider() {},
+      writable: true, enumerable: true, configurable: true,
+    },
+    IsSearchProviderInstalled: {
+      value: function IsSearchProviderInstalled() { return 0; },
+      writable: true, enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperty(External.prototype, Symbol.toStringTag, { value: "External", configurable: true });
+  function installFormAssociated(proto, extra) {
+    const desc = {
+      form: {
+        get() { return nearestForm(this); },
+        enumerable: true, configurable: true,
+      },
+      willValidate: {
+        get() { return true; },
+        enumerable: true, configurable: true,
+      },
+      validity: {
+        get() { return this._validity || (this._validity = validityState()); },
+        enumerable: true, configurable: true,
+      },
+      validationMessage: {
+        get() { return this._validationMessage || ""; },
+        enumerable: true, configurable: true,
+      },
+      labels: {
+        get() { return this._labels || (this._labels = labeledBy(this)); },
+        enumerable: true, configurable: true,
+      },
+      checkValidity: {
+        value: function checkValidity() { return !!D("checkValidity", this.__h); },
+        writable: true, enumerable: true, configurable: true,
+      },
+      reportValidity: {
+        value: function reportValidity() { return this.checkValidity(); },
+        writable: true, enumerable: true, configurable: true,
+      },
+      setCustomValidity: {
+        value: function setCustomValidity(msg) {
+          if (arguments.length < 1) {
+            throw new TypeError("Failed to execute 'setCustomValidity' on '" + proto.constructor.name + "': 1 argument required, but only 0 present.");
+          }
+          this._validationMessage = String(msg);
+        },
+        writable: true, enumerable: true, configurable: true,
+      },
+    };
+    if (extra === "popover") {
+      desc.popoverTargetElement = {
+        get() {
+          const id = this.getAttribute("popovertarget");
+          return id ? document.getElementById(id) : this._popoverTarget || null;
+        },
+        set(v) { this._popoverTarget = v || null; },
+        enumerable: true, configurable: true,
+      };
+    }
+    Object.defineProperties(proto, desc);
+  }
+  installFormAssociated(HTMLInputElement.prototype, "popover");
+  installFormAssociated(HTMLTextAreaElement.prototype);
+  installFormAssociated(HTMLSelectElement.prototype);
+  installFormAssociated(HTMLButtonElement.prototype, "popover");
+  installFormAssociated(HTMLFormElement.prototype);
+  installFormAssociated(HTMLFieldSetElement.prototype);
+  installFormAssociated(HTMLOutputElement.prototype);
+  installFormAssociated(HTMLObjectElement.prototype);
+  installFormAssociated(HTMLOptionElement.prototype);
+  Object.defineProperty(HTMLOutputElement.prototype, "type", {
+    get() { return "output"; },
+    enumerable: true, configurable: true,
+  });
   Object.assign(HTML, {
     q: HTMLQuoteElement, blockquote: HTMLQuoteElement, time: HTMLTimeElement, br: HTMLBRElement,
     ins: HTMLModElement, del: HTMLModElement, table: HTMLTableElement, caption: HTMLTableCaptionElement,
@@ -2635,13 +5059,29 @@
     td: HTMLTableCellElement, th: HTMLTableCellElement,
     h1: HTMLHeadingElement, h2: HTMLHeadingElement, h3: HTMLHeadingElement, h4: HTMLHeadingElement,
     h5: HTMLHeadingElement, h6: HTMLHeadingElement, hr: HTMLHRElement, pre: HTMLPreElement,
+    listing: HTMLPreElement, xmp: HTMLPreElement,
     ul: HTMLUListElement, ol: HTMLOListElement, li: HTMLLIElement, dl: HTMLDListElement,
     marquee: HTMLMarqueeElement, font: HTMLFontElement, dir: HTMLDirectoryElement,
     label: HTMLLabelElement, legend: HTMLLegendElement, optgroup: HTMLOptGroupElement,
     datalist: HTMLDataListElement, progress: HTMLProgressElement, meter: HTMLMeterElement,
-    dialog: HTMLDialogElement, menu: HTMLMenuElement, data: HTMLDataElement,
+    dialog: HTMLDialogElement, selectedcontent: HTMLSelectedContentElement, menu: HTMLMenuElement, data: HTMLDataElement,
+    picture: HTMLPictureElement,
     video: HTMLVideoElement, audio: HTMLAudioElement, track: HTMLTrackElement,
   });
+  for (const C of [
+    HTMLElement, HTMLUnknownElement, HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement,
+    HTMLOptionElement, HTMLButtonElement, HTMLFormElement, HTMLAnchorElement, HTMLImageElement,
+    HTMLIFrameElement, HTMLCanvasElement, HTMLLinkElement, HTMLStyleElement, HTMLAreaElement,
+    HTMLBaseElement, HTMLSourceElement, HTMLFrameElement, HTMLEmbedElement, HTMLObjectElement,
+    HTMLDivElement, HTMLParagraphElement, HTMLSpanElement, HTMLHeadElement, HTMLBodyElement,
+    HTMLHtmlElement, HTMLTitleElement, HTMLScriptElement, HTMLFrameSetElement, HTMLTemplateElement,
+    HTMLDetailsElement, HTMLFieldSetElement, HTMLMapElement, HTMLMetaElement, HTMLOutputElement,
+    HTMLParamElement, HTMLSlotElement, HTMLPictureElement, HTMLMediaElement,
+  ]) {
+    if (C && C.prototype && !Object.prototype.hasOwnProperty.call(C.prototype, Symbol.toStringTag)) {
+      Object.defineProperty(C.prototype, Symbol.toStringTag, { value: C.name, configurable: true });
+    }
+  }
   function parseHtmlInt(input) {
     let position = 0;
     let sign = 1;
@@ -2823,21 +5263,21 @@
     data: { value: "string" },
     time: { dateTime: "string" },
     br: { clear: "string" },
-    img: { alt: "string", src: "url", srcset: "string", crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, useMap: "string", isMap: "boolean", width: { type: "unsigned long", customGetter: true }, height: { type: "unsigned long", customGetter: true }, referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, decoding: { type: "enum", keywords: ["async", "sync", "auto"], defaultVal: "auto", invalidVal: "auto" }, name: "string", lowsrc: "url", align: "string", hspace: "unsigned long", vspace: "unsigned long", longDesc: "url", border: { type: "string", treatNullAsEmptyString: true } },
-    iframe: { src: "url", srcdoc: "string", name: "string", allowFullscreen: "boolean", width: "string", height: "string", referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, align: "string", scrolling: "string", frameBorder: "string", longDesc: "url", marginHeight: { type: "string", treatNullAsEmptyString: true }, marginWidth: { type: "string", treatNullAsEmptyString: true } },
+    img: { alt: "string", src: "url", srcset: "string", sizes: "string", crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, useMap: "string", isMap: "boolean", controls: "boolean", width: { type: "unsigned long", customGetter: true }, height: { type: "unsigned long", customGetter: true }, referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, decoding: { type: "enum", keywords: ["async", "sync", "auto"], defaultVal: "auto", invalidVal: "auto" }, loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" }, fetchPriority: { type: "enum", keywords: ["high", "low", "auto"], defaultVal: "auto", invalidVal: "auto" }, name: "string", lowsrc: "url", align: "string", hspace: "unsigned long", vspace: "unsigned long", longDesc: "url", border: { type: "string", treatNullAsEmptyString: true } },
+    iframe: { src: "url", srcdoc: "string", name: "string", allow: "string", allowFullscreen: "boolean", width: "string", height: "string", loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" }, referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, align: "string", scrolling: "string", frameBorder: "string", longDesc: "url", marginHeight: { type: "string", treatNullAsEmptyString: true }, marginWidth: { type: "string", treatNullAsEmptyString: true } },
     embed: { src: "url", type: "string", width: "string", height: "string", align: "string", name: "string" },
     object: { data: "url", type: "string", name: "string", useMap: "string", width: "string", height: "string", align: "string", archive: "string", code: "string", declare: "boolean", hspace: "unsigned long", standby: "string", vspace: "unsigned long", codeBase: "url", codeType: "string", border: { type: "string", treatNullAsEmptyString: true } },
     param: { name: "string", value: "string", valueType: "string" },
     video: { src: "url", poster: "url", width: { type: "unsigned long", customGetter: true }, height: { type: "unsigned long", customGetter: true }, autoplay: "boolean", loop: "boolean", controls: "boolean", defaultMuted: { type: "boolean", domAttrName: "muted" }, playsInline: "boolean", loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" }, preload: { type: "enum", keywords: ["none", "metadata", "auto"], defaultVal: "metadata", invalidVal: "metadata" }, crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" } },
     audio: { src: "url", autoplay: "boolean", loop: "boolean", controls: "boolean", defaultMuted: { type: "boolean", domAttrName: "muted" }, loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" }, preload: { type: "enum", keywords: ["none", "metadata", "auto"], defaultVal: "metadata", invalidVal: "metadata" }, crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" } },
-    source: { src: "url", type: "string", srcset: "string", sizes: "string", media: "string" },
+    source: { src: "url", type: "string", srcset: "string", sizes: "string", media: "string", width: "unsigned long", height: "unsigned long" },
     track: { kind: { type: "enum", keywords: ["subtitles", "captions", "descriptions", "chapters", "metadata"], defaultVal: "subtitles", invalidVal: "metadata" }, src: "url", srclang: "string", label: "string", default: "boolean" },
-    form: { acceptCharset: { type: "string", domAttrName: "accept-charset" }, action: "url", autocomplete: { type: "enum", keywords: ["on", "off"], defaultVal: "on" }, enctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], defaultVal: "application/x-www-form-urlencoded" }, encoding: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], defaultVal: "application/x-www-form-urlencoded", domAttrName: "enctype" }, method: { type: "enum", keywords: ["get", "post", "dialog"], defaultVal: "get" }, name: "string", noValidate: "boolean", target: "string" },
+    form: { acceptCharset: { type: "string", domAttrName: "accept-charset" }, action: "url", autocomplete: { type: "enum", keywords: ["on", "off"], defaultVal: "on" }, enctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], defaultVal: "application/x-www-form-urlencoded" }, encoding: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], defaultVal: "application/x-www-form-urlencoded", domAttrName: "enctype" }, method: { type: "enum", keywords: ["get", "post", "dialog"], defaultVal: "get" }, name: "string", noValidate: "boolean", target: "string", rel: "string" },
     fieldset: { disabled: "boolean", name: "string" },
     legend: { align: "string" },
     label: { htmlFor: { type: "string", domAttrName: "for" } },
-    input: { accept: "string", alt: "string", autocomplete: { type: "string", customGetter: true }, defaultChecked: { type: "boolean", domAttrName: "checked" }, dirName: "string", disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", height: { type: "unsigned long", customGetter: true }, max: "string", maxLength: "limited long", min: "string", minLength: "limited long", multiple: "boolean", name: "string", pattern: "string", placeholder: "string", readOnly: "boolean", required: "boolean", size: { type: "limited unsigned long", defaultVal: 20 }, src: "url", step: "string", type: { type: "enum", keywords: ["hidden", "text", "search", "tel", "url", "email", "password", "date", "time", "datetime-local", "number", "range", "color", "checkbox", "radio", "file", "submit", "image", "reset", "button", "month", "week"], defaultVal: "text" }, width: { type: "unsigned long", customGetter: true }, defaultValue: { type: "string", domAttrName: "value" }, align: "string", useMap: "string" },
-    button: { disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post", "dialog"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", name: "string", type: { type: "enum", keywords: ["submit", "reset", "button"], defaultVal: "submit" }, value: "string" },
+    input: { accept: "string", alpha: "boolean", alt: "string", autocomplete: { type: "string", customGetter: true }, defaultChecked: { type: "boolean", domAttrName: "checked" }, dirName: "string", disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", height: { type: "unsigned long", customGetter: true }, max: "string", maxLength: "limited long", min: "string", minLength: "limited long", multiple: "boolean", name: "string", pattern: "string", placeholder: "string", readOnly: "boolean", required: "boolean", size: { type: "limited unsigned long", defaultVal: 20 }, src: "url", step: "string", type: { type: "enum", keywords: ["hidden", "text", "search", "tel", "url", "email", "password", "date", "time", "datetime-local", "number", "range", "color", "checkbox", "radio", "file", "submit", "image", "reset", "button", "month", "week"], defaultVal: "text" }, width: { type: "unsigned long", customGetter: true }, defaultValue: { type: "string", domAttrName: "value" }, align: "string", useMap: "string", colorSpace: { type: "enum", keywords: ["limited-srgb", "display-p3"], defaultVal: "limited-srgb", invalidVal: "limited-srgb" }, popoverTargetAction: { type: "enum", keywords: ["toggle", "show", "hide"], defaultVal: "toggle", invalidVal: "toggle", domAttrName: "popovertargetaction" } },
+    button: { command: "string", disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post", "dialog"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", name: "string", type: { type: "enum", keywords: ["submit", "reset", "button"], defaultVal: "submit" }, value: "string", popoverTargetAction: { type: "enum", keywords: ["toggle", "show", "hide"], defaultVal: "toggle", invalidVal: "toggle", domAttrName: "popovertargetaction" } },
     select: { autocomplete: { type: "string", customGetter: true }, disabled: "boolean", multiple: "boolean", name: "string", required: "boolean", size: { type: "unsigned long", defaultVal: 0 } },
     optgroup: { disabled: "boolean", label: "string" },
     option: { disabled: "boolean", defaultSelected: { type: "boolean", domAttrName: "selected" } },
@@ -2871,13 +5311,13 @@
     meta: { name: "string", httpEquiv: { type: "string", domAttrName: "http-equiv" }, content: "string", media: "string", scheme: "string" },
     style: { media: "string", type: "string" },
     html: { version: "string" },
-    script: { type: "string", noModule: "boolean", charset: "string", defer: "boolean", crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, integrity: "string", event: "string", htmlFor: { type: "string", domAttrName: "for" } },
+    script: { type: "string", src: "url", noModule: "boolean", charset: "string", defer: "boolean", crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, integrity: "string", fetchPriority: { type: "enum", keywords: ["high", "low", "auto"], defaultVal: "auto", invalidVal: "auto" }, event: "string", htmlFor: { type: "string", domAttrName: "for" } },
     slot: { name: "string" },
     ins: { cite: "url", dateTime: "string" },
     del: { cite: "url", dateTime: "string" },
-    details: { open: "boolean" },
+    details: { name: "string", open: "boolean" },
     menu: { compact: "boolean" },
-    dialog: { open: "boolean" },
+    dialog: { open: "boolean", closedBy: { type: "enum", keywords: ["any", "closerequest", "none"], defaultVal: "any", invalidVal: "any" } },
     marquee: { bgColor: "string", height: "string", hspace: "unsigned long", scrollAmount: { type: "unsigned long", defaultVal: 6 }, scrollDelay: { type: "unsigned long", defaultVal: 85 }, trueSpeed: "boolean", vspace: "unsigned long", width: "string" },
     frameset: { cols: "string", rows: "string" },
     frame: { name: "string", scrolling: "string", src: "url", frameBorder: "string", longDesc: "url", noResize: "boolean", marginHeight: { type: "string", treatNullAsEmptyString: true }, marginWidth: { type: "string", treatNullAsEmptyString: true } },
@@ -2890,6 +5330,18 @@
     const ctor = HTML[tag] || HTMLElement;
     const spec = REFLECT[tag];
     for (const idl of Object.keys(spec)) reflectAttr(ctor.prototype, idl, spec[idl]);
+  }
+  {
+    const mediaReflect = {
+      crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" },
+      preload: { type: "enum", keywords: ["none", "metadata", "auto"], defaultVal: "metadata", invalidVal: "metadata" },
+      autoplay: "boolean",
+      loop: "boolean",
+      controls: "boolean",
+      defaultMuted: { type: "boolean", domAttrName: "muted" },
+      loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" },
+    };
+    for (const idl of Object.keys(mediaReflect)) reflectAttr(HTMLMediaElement.prototype, idl, mediaReflect[idl]);
   }
 
   const SVG = {
@@ -2944,20 +5396,20 @@
       else root.appendChild(v);
     }
     get forms() {
-      return new HTMLCollection(() => list(D("getElementsByTagName", this.__h, "form")));
+      return new HTMLCollection(IDL_INTERNAL, () => list(D("getElementsByTagName", this.__h, "form")));
     }
     get images() {
-      return new HTMLCollection(() =>
+      return new HTMLCollection(IDL_INTERNAL, () =>
         list(D("getElementsByTagName", this.__h, "img")).filter(
           (el) => el.namespaceURI === "http://www.w3.org/1999/xhtml",
         ),
       );
     }
     get links() {
-      return new HTMLCollection(() => list(D("documentLinks", this.__h)));
+      return new HTMLCollection(IDL_INTERNAL, () => list(D("documentLinks", this.__h)));
     }
     get scripts() {
-      return new HTMLCollection(() =>
+      return new HTMLCollection(IDL_INTERNAL, () =>
         list(D("getElementsByTagName", this.__h, "script")).filter(
           (el) => el.namespaceURI === "http://www.w3.org/1999/xhtml",
         ),
@@ -2966,7 +5418,7 @@
     get embeds() {
       if (!this._embeds) {
         const doc = this;
-        this._embeds = new HTMLCollection(() =>
+        this._embeds = new HTMLCollection(IDL_INTERNAL, () =>
           list(D("getElementsByTagName", doc.__h, "embed")).filter(
             (el) => el.namespaceURI === "http://www.w3.org/1999/xhtml",
           ),
@@ -3030,22 +5482,21 @@
       return p(date.getMonth() + 1) + "/" + p(date.getDate()) + "/" + date.getFullYear()
         + " " + [date.getHours(), date.getMinutes(), date.getSeconds()].map(p).join(":");
     }
-    get applets() { return this._applets || (this._applets = new HTMLCollection(() => [])); }
+    get applets() { return this._applets || (this._applets = new HTMLCollection(IDL_INTERNAL, () => [])); }
+    get anchors() {
+      return this._anchors || (this._anchors = new HTMLCollection(IDL_INTERNAL, () =>
+        list(D("getElementsByTagName", this.__h, "a")).filter(
+          (el) => el.namespaceURI === "http://www.w3.org/1999/xhtml" && el.hasAttribute("name"),
+        ),
+      ));
+    }
+    clear() {}
+    captureEvents() {}
+    releaseEvents() {}
     get all() {
-      if (this._all) return this._all;
-      const col = new HTMLCollection(() => list(D("getElementsByTagName", this.__h, "*")));
-      this._all = new Proxy(col, {
-        get(t, p, recv) {
-          if (typeof p === "string" && p !== "length" && !/^\d+$/.test(p)) {
-            const named = HTMLCollection.prototype.namedItem.call(t, p);
-            if (named && (named.localName || "").toLowerCase() === "applet") return undefined;
-            if (named) return named;
-          }
-          const v = Reflect.get(t, p, recv);
-          if (v && v.localName === "applet") return undefined;
-          return v;
-        },
-      });
+      if (this._all !== undefined) return this._all;
+      const doc = this;
+      this._all = new HTMLAllCollection(IDL_INTERNAL, () => list(D("getElementsByTagName", doc.__h, "*")));
       return this._all;
     }
     get defaultView() { return this.__h === D("documentNode") ? window : null; }
@@ -3094,6 +5545,10 @@
     createElement(name) {
       const el = wrap(D("createElement", String(name)));
       if (el && String(name).toLowerCase() === "script") el._scriptCreated = true;
+      // Defined autonomous custom elements construct here, not on insert.
+      // ComponentBase createElement + later upgrade was a second instance
+      // whose attachShadow failed and left _testsContainer undefined.
+      constructCustomElement(el);
       return el;
     }
     createElementNS(ns, name) { return wrap(D("createElementNS", ns == null ? "" : String(ns), String(name))); }
@@ -3167,23 +5622,20 @@
     }
     querySelector(s) { return wrap(D("querySelector", this.__h, String(s))); }
     querySelectorAll(s) { return list(D("querySelectorAll", this.__h, String(s))); }
-    getElementsByTagName(n) { return new HTMLCollection(() => list(D("getElementsByTagName", this.__h, String(n)))); }
+    getElementsByTagName(n) { return new HTMLCollection(IDL_INTERNAL, () => list(D("getElementsByTagName", this.__h, String(n)))); }
     getElementsByTagNameNS(ns, n) {
-      return new HTMLCollection(() => {
+      return new HTMLCollection(IDL_INTERNAL, () => {
         const all = list(D("getElementsByTagName", this.__h, String(n)));
         if (ns === "*") return all;
         const uri = ns == null ? "" : String(ns);
         return all.filter((el) => el.namespaceURI === uri);
       });
     }
-    getElementsByClassName(n) { return new HTMLCollection(() => list(D("getElementsByClassName", this.__h, String(n)))); }
+    getElementsByClassName(n) { return new HTMLCollection(IDL_INTERNAL, () => list(D("getElementsByClassName", this.__h, String(n)))); }
     getElementsByName(n) {
       if (arguments.length < 1) throw new TypeError("Not enough arguments");
       const want = String(n);
-      return new LiveNodeList(() => {
-        const all = list(D("getElementsByTagName", this.__h, "*"));
-        return all.filter((el) => el.namespaceURI === "http://www.w3.org/1999/xhtml" && el.getAttribute("name") === want);
-      });
+      return new LiveNodeList(() => list(D("getElementsByName", this.__h, want)));
     }
     importNode(n, deep) { return wrap(D("importNode", handleOf(n), !!deep)); }
     adoptNode(n) {
@@ -3199,16 +5651,183 @@
     close() {}
   }
 
-  function storage(area) {
-    return {
-      getItem(k) { const v = D("storageGet", area, String(k)); return v == null ? null : v; },
-      setItem(k, v) { D("storageSet", area, String(k), String(v)); },
-      removeItem(k) { D("storageRemove", area, String(k)); },
-      clear() { D("storageClear", area); },
-      key(i) { return D("storageKey", area, i | 0); },
-      get length() { return D("storageLength", area); },
-    };
+  class Storage {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    getItem(k) {
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'getItem' on 'Storage': 1 argument required, but only 0 present.");
+      const v = D("storageGet", this._area, String(k));
+      return v == null ? null : v;
+    }
+    setItem(k, v) {
+      if (arguments.length < 2) throw new TypeError("Failed to execute 'setItem' on 'Storage': 2 arguments required, but only " + arguments.length + " present.");
+      D("storageSet", this._area, String(k), String(v));
+    }
+    removeItem(k) {
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'removeItem' on 'Storage': 1 argument required, but only 0 present.");
+      D("storageRemove", this._area, String(k));
+    }
+    clear() { D("storageClear", this._area); }
+    key(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'key' on 'Storage': 1 argument required, but only 0 present.");
+      }
+      return D("storageKey", this._area, i | 0);
+    }
+    get length() { return D("storageLength", this._area); }
   }
+  Object.defineProperty(Storage.prototype, Symbol.toStringTag, { value: "Storage", configurable: true });
+  function storage(area) {
+    const s = Object.create(Storage.prototype);
+    s._area = area;
+    return s;
+  }
+  class UserActivation {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get hasBeenActive() { return true; }
+    get isActive() { return true; }
+  }
+  Object.defineProperty(UserActivation.prototype, Symbol.toStringTag, { value: "UserActivation", configurable: true });
+  class PluginArray {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    item(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'item' on 'PluginArray': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+    namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'PluginArray': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+    refresh() {}
+  }
+  Object.defineProperty(PluginArray.prototype, Symbol.toStringTag, { value: "PluginArray", configurable: true });
+  class MimeTypeArray {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    item(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'item' on 'MimeTypeArray': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+    namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'MimeTypeArray': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+  }
+  Object.defineProperty(MimeTypeArray.prototype, Symbol.toStringTag, { value: "MimeTypeArray", configurable: true });
+  class Plugin {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get name() { return ""; }
+    get description() { return ""; }
+    get filename() { return ""; }
+    get length() { return 0; }
+    item(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'item' on 'Plugin': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+    namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'Plugin': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+  }
+  Object.defineProperty(Plugin.prototype, Symbol.toStringTag, { value: "Plugin", configurable: true });
+  class MimeType {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get type() { return ""; }
+    get description() { return ""; }
+    get suffixes() { return ""; }
+    get enabledPlugin() { return null; }
+  }
+  Object.defineProperty(MimeType.prototype, Symbol.toStringTag, { value: "MimeType", configurable: true });
+  const navigatorUserActivation = Object.create(UserActivation.prototype);
+  const navigatorPlugins = Object.create(PluginArray.prototype);
+  const navigatorMimeTypes = Object.create(MimeTypeArray.prototype);
+  class Navigator {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get appCodeName() { return "Mozilla"; }
+    get appName() { return "Netscape"; }
+    get appVersion() { return "5.0 (Vector)"; }
+    get platform() { return "vector"; }
+    get product() { return "Gecko"; }
+    get productSub() { return "20030107"; }
+    get userAgent() { return "Vector/0.0.1"; }
+    get vendor() { return ""; }
+    get vendorSub() { return ""; }
+    get oscpu() { return "Linux x86_64"; }
+    get language() { return "en-US"; }
+    get languages() { return Object.freeze(["en-US"]); }
+    get onLine() { return true; }
+    get cookieEnabled() { return true; }
+    get pdfViewerEnabled() { return false; }
+    get hardwareConcurrency() { return 4; }
+    get userActivation() { return navigatorUserActivation; }
+    get plugins() { return navigatorPlugins; }
+    get mimeTypes() { return navigatorMimeTypes; }
+    taintEnabled() { return false; }
+    javaEnabled() { return false; }
+    sendBeacon() { return true; }
+    registerProtocolHandler(scheme, url) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'registerProtocolHandler' on 'Navigator': 2 arguments required, but only " + arguments.length + " present.");
+      }
+    }
+    unregisterProtocolHandler(scheme, url) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'unregisterProtocolHandler' on 'Navigator': 2 arguments required, but only " + arguments.length + " present.");
+      }
+    }
+  }
+  Object.defineProperty(Navigator.prototype, Symbol.toStringTag, { value: "Navigator", configurable: true });
+  class TextMetrics {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get width() { return this._width || 0; }
+    get actualBoundingBoxLeft() { return 0; }
+    get actualBoundingBoxRight() { return this._width || 0; }
+    get fontBoundingBoxAscent() { return 8; }
+    get fontBoundingBoxDescent() { return 2; }
+    get actualBoundingBoxAscent() { return 8; }
+    get actualBoundingBoxDescent() { return 2; }
+    get emHeightAscent() { return 8; }
+    get emHeightDescent() { return 2; }
+    get hangingBaseline() { return 8; }
+    get alphabeticBaseline() { return 0; }
+    get ideographicBaseline() { return -2; }
+  }
+  Object.defineProperty(TextMetrics.prototype, Symbol.toStringTag, { value: "TextMetrics", configurable: true });
+  function defIllegal(name) {
+    const C = { [name]: function () { throw new TypeError("Illegal constructor"); } }[name];
+    Object.defineProperty(C, "name", { value: name, configurable: true });
+    Object.defineProperty(C.prototype, Symbol.toStringTag, { value: name, configurable: true });
+    return C;
+  }
+  function idlConstants(ctor, map) {
+    for (const k of Object.keys(map)) {
+      Object.defineProperty(ctor, k, {
+        value: map[k], writable: false, enumerable: true, configurable: false,
+      });
+      Object.defineProperty(ctor.prototype, k, {
+        value: map[k], writable: false, enumerable: true, configurable: false,
+      });
+    }
+  }
+  idlConstants(MediaError, {
+    MEDIA_ERR_ABORTED: 1,
+    MEDIA_ERR_NETWORK: 2,
+    MEDIA_ERR_DECODE: 3,
+    MEDIA_ERR_SRC_NOT_SUPPORTED: 4,
+  });
+  idlConstants(HTMLTrackElement, { NONE: 0, LOADING: 1, LOADED: 2, ERROR: 3 });
 
   function toUSV(s) {
     s = String(s);
@@ -3228,11 +5847,168 @@
   function encodeUSVHref(s) {
     return toUSV(s).replace(/\uFFFD/g, "%EF%BF%BD");
   }
-  function EventSource(url) {
-    this.url = encodeUSVHref(String(url));
-    this.readyState = 2;
-    this.close = function () {};
+  class EventSource extends EventTarget {
+    constructor(url) {
+      super();
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to construct 'EventSource': 1 argument required, but only 0 present.");
+      }
+      const init = arguments[1] || {};
+      this._url = encodeUSVHref(String(url));
+      this._withCredentials = !!init.withCredentials;
+      this._readyState = 2;
+    }
+    get url() { return this._url; }
+    get withCredentials() { return this._withCredentials; }
+    get readyState() { return this._readyState; }
+    close() { this._readyState = 2; }
   }
+  Object.defineProperty(EventSource.prototype, Symbol.toStringTag, { value: "EventSource", configurable: true });
+  idlConstants(EventSource, { CONNECTING: 0, OPEN: 1, CLOSED: 2 });
+  class Worker extends EventTarget {
+    constructor(src) {
+      super();
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to construct 'Worker': 1 argument required, but only 0 present.");
+      }
+      this._id = D("workerCreate", String(src));
+      this._terminated = false;
+    }
+    postMessage(m) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'postMessage' on 'Worker': 1 argument required, but only 0 present.");
+      }
+      if (this._terminated) return;
+      const reply = D("workerPost", this._id, JSON.stringify(m));
+      if (reply == null) return;
+      let data = reply;
+      if (typeof reply === "string") {
+        try { data = JSON.parse(reply); } catch (e) { data = reply; }
+      }
+      this.dispatchEvent(new MessageEvent("message", { data }));
+    }
+    terminate() {
+      this._terminated = true;
+      D("workerTerminate", this._id);
+    }
+  }
+  class SharedWorker extends EventTarget {
+    constructor(src) {
+      super();
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to construct 'SharedWorker': 1 argument required, but only 0 present.");
+      }
+      this._src = String(src);
+      const pagePort = Object.create(MessagePort.prototype);
+      const workerPort = Object.create(MessagePort.prototype);
+      pagePort._entangled = workerPort;
+      workerPort._entangled = pagePort;
+      pagePort._started = true;
+      workerPort._started = true;
+      // Stub worker: echo page posts so port.round-trip tests and
+      // onconnect-less SharedWorker scripts still deliver.
+      workerPort.addEventListener("message", (e) => {
+        workerPort.postMessage(e.data);
+      });
+      this._port = pagePort;
+    }
+    get port() { return this._port; }
+  }
+  class XMLSerializer {
+    serializeToString(node) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'serializeToString' on 'XMLSerializer': 1 argument required, but only 0 present.");
+      }
+      return (node && (node.outerHTML || node.innerHTML)) || "";
+    }
+  }
+  class Origin {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    static from(value) { return Object.create(Origin.prototype); }
+    get opaque() { return false; }
+    isSameOrigin(other) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'isSameOrigin' on 'Origin': 1 argument required, but only 0 present.");
+      }
+      return false;
+    }
+    isSameSite(other) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'isSameSite' on 'Origin': 1 argument required, but only 0 present.");
+      }
+      return false;
+    }
+  }
+  try {
+    Object.defineProperty(Origin, "from", { value: Origin.from, writable: true, enumerable: true, configurable: true });
+  } catch (e) {}
+  class PerformanceEntry {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get name() { return ""; }
+    get entryType() { return ""; }
+    get startTime() { return 0; }
+    get duration() { return 0; }
+    toJSON() { return { name: this.name, entryType: this.entryType, startTime: this.startTime, duration: this.duration }; }
+  }
+  class VisibilityStateEntry extends PerformanceEntry {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get name() { return "visible"; }
+    get entryType() { return "visibility-state"; }
+    get startTime() { return 0; }
+    get duration() { return 0; }
+  }
+  class TrustedHTML {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    toString() { return this._html || ""; }
+    toJSON() { return this.toString(); }
+  }
+  class ImageBitmap {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get width() { return 0; }
+    get height() { return 0; }
+    close() {}
+  }
+  class ImageBitmapRenderingContext {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get canvas() { return this._canvas || null; }
+    transferFromImageBitmap(bitmap) {}
+  }
+  class Worklet {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    addModule(url) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'addModule' on 'Worklet': 1 argument required, but only 0 present.");
+      }
+      return Promise.resolve();
+    }
+  }
+  class AudioTrack {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get id() { return ""; }
+    get kind() { return ""; }
+    get label() { return ""; }
+    get language() { return ""; }
+    get enabled() { return false; }
+    set enabled(v) {}
+  }
+  class VideoTrack {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get id() { return ""; }
+    get kind() { return ""; }
+    get label() { return ""; }
+    get language() { return ""; }
+    get selected() { return false; }
+    set selected(v) {}
+  }
+  class MathMLAnchorElement extends MathMLElement {
+    get href() { return this.getAttribute("href") || ""; }
+    set href(v) { this.setAttribute("href", v == null ? "" : String(v)); }
+    get hreflang() { return this.getAttribute("hreflang") || ""; }
+    set hreflang(v) { this.setAttribute("hreflang", v == null ? "" : String(v)); }
+    get type() { return this.getAttribute("type") || ""; }
+    set type(v) { this.setAttribute("type", v == null ? "" : String(v)); }
+  }
+  installHyperlinkUtils(MathMLAnchorElement.prototype, "href");
   function blankWindow(url) {
     const loc = {
       _href: encodeUSVHref(url == null || url === "" ? "about:blank" : String(url)),
@@ -3250,6 +6026,7 @@
     return { location: loc, document: doc, closed: false, close() { this.closed = true; } };
   }
   class Location {
+    constructor() { throw new TypeError("Illegal constructor"); }
     toString() { return D("locationGet", "href"); }
     get href() { return D("locationGet", "href"); }
     set href(v) {
@@ -3277,21 +6054,341 @@
     }
     get origin() { return D("locationGet", "origin"); }
     get ancestorOrigins() {
-      return this._ancestorOrigins || (this._ancestorOrigins = Object.assign(["length"], { length: 0, item() { return null; }, contains() { return false; } }));
+      return this._ancestorOrigins || (this._ancestorOrigins = emptyStringList());
     }
-    assign(v) { this.href = v; }
-    replace(v) { D("locationSet", "replace", String(v)); }
+    assign(v) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'assign' on 'Location': 1 argument required, but only 0 present.");
+      }
+      this.href = v;
+    }
+    replace(v) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'replace' on 'Location': 1 argument required, but only 0 present.");
+      }
+      D("locationSet", "replace", String(v));
+    }
     reload() { D("reload"); }
   }
 
   class History {
+    constructor() { throw new TypeError("Illegal constructor"); }
     get length() { return D("historyLength"); }
+    get scrollRestoration() { return this._scrollRestoration || "auto"; }
+    set scrollRestoration(v) {
+      const s = String(v);
+      if (s === "auto" || s === "manual") this._scrollRestoration = s;
+    }
     get state() { try { return JSON.parse(D("historyState") || "null"); } catch { return null; } }
     back() { D("historyGo", -1); }
     forward() { D("historyGo", 1); }
-    go(n) { D("historyGo", n | 0); }
-    pushState(state, title, url) { D("pushState", JSON.stringify(state ?? null), url == null ? "" : String(url)); }
-    replaceState(state, title, url) { D("replaceState", JSON.stringify(state ?? null), url == null ? "" : String(url)); }
+    go() { D("historyGo", arguments[0] | 0); }
+    pushState(state, title) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'pushState' on 'History': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      const url = arguments[2];
+      D("pushState", JSON.stringify(state ?? null), url == null ? "" : String(url));
+    }
+    replaceState(state, title) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'replaceState' on 'History': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      const url = arguments[2];
+      D("replaceState", JSON.stringify(state ?? null), url == null ? "" : String(url));
+    }
+  }
+  class NavigationHistoryEntry extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get url() { return D("locationGet", "href"); }
+    get key() { return "current"; }
+    get id() { return "current"; }
+    get index() { return 0; }
+    get sameDocument() { return true; }
+    getState() { return null; }
+  }
+  class NavigationDestination {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get url() { return ""; }
+    get key() { return ""; }
+    get id() { return ""; }
+    get index() { return -1; }
+    get sameDocument() { return false; }
+    getState() { return null; }
+  }
+  class NavigationTransition {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get navigationType() { return "push"; }
+    get from() { return null; }
+    get to() { return null; }
+    get committed() { return Promise.resolve(); }
+    get finished() { return Promise.resolve(); }
+  }
+  class NavigationActivation {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get from() { return null; }
+    get entry() { return null; }
+    get navigationType() { return "push"; }
+  }
+  class NavigationPrecommitController {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    redirect(url) {}
+    addHandler(handler) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'addHandler' on 'NavigationPrecommitController': 1 argument required, but only 0 present.");
+      }
+    }
+  }
+  class NavigateEvent extends Event {
+    constructor(type, init) {
+      init = init || {};
+      super(type, init);
+      this._navigationType = init.navigationType || "push";
+      this._destination = init.destination || Object.create(NavigationDestination.prototype);
+      this._canIntercept = !!init.canIntercept;
+      this._userInitiated = !!init.userInitiated;
+      this._hashChange = !!init.hashChange;
+      this._signal = init.signal || null;
+      this._formData = init.formData || null;
+      this._downloadRequest = init.downloadRequest == null ? null : String(init.downloadRequest);
+      this._info = "info" in init ? init.info : undefined;
+      this._hasUAVisualTransition = !!init.hasUAVisualTransition;
+      this._sourceElement = init.sourceElement || null;
+    }
+    get navigationType() { return this._navigationType; }
+    get destination() { return this._destination; }
+    get canIntercept() { return this._canIntercept; }
+    get userInitiated() { return this._userInitiated; }
+    get hashChange() { return this._hashChange; }
+    get signal() { return this._signal; }
+    get formData() { return this._formData; }
+    get downloadRequest() { return this._downloadRequest; }
+    get info() { return this._info; }
+    get hasUAVisualTransition() { return this._hasUAVisualTransition; }
+    get sourceElement() { return this._sourceElement; }
+    intercept() {}
+    scroll() {}
+  }
+  class NavigationCurrentEntryChangeEvent extends Event {
+    constructor(type, init) {
+      init = init || {};
+      super(type, init);
+      this._navigationType = init.navigationType || "push";
+      this._from = init.from || null;
+    }
+    get navigationType() { return this._navigationType; }
+    get from() { return this._from; }
+  }
+  class Navigation extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    entries() { return []; }
+    get currentEntry() { return null; }
+    updateCurrentEntry(options) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'updateCurrentEntry' on 'Navigation': 1 argument required, but only 0 present.");
+      }
+    }
+    get transition() { return null; }
+    get activation() { return null; }
+    get canGoBack() { return false; }
+    get canGoForward() { return false; }
+    navigate(url) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'navigate' on 'Navigation': 1 argument required, but only 0 present.");
+      }
+      return { committed: Promise.resolve(), finished: Promise.resolve() };
+    }
+    reload() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
+    traverseTo(key) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'traverseTo' on 'Navigation': 1 argument required, but only 0 present.");
+      }
+      return { committed: Promise.resolve(), finished: Promise.resolve() };
+    }
+    back() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
+    forward() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
+  }
+  class BroadcastChannel extends EventTarget {
+    constructor(name) {
+      super();
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to construct 'BroadcastChannel': 1 argument required, but only 0 present.");
+      }
+      this._name = String(name);
+    }
+    get name() { return this._name; }
+    postMessage(message) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'postMessage' on 'BroadcastChannel': 1 argument required, but only 0 present.");
+      }
+    }
+    close() {}
+  }
+  class MessagePort extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    start() { this._started = true; }
+    close() {
+      this._closed = true;
+      this._entangled = null;
+    }
+    postMessage(message) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'postMessage' on 'MessagePort': 1 argument required, but only 0 present.");
+      }
+      if (this._closed) return;
+      const dest = this._entangled;
+      if (!dest || dest._closed) return;
+      const data = message;
+      const deliver = () => {
+        if (dest._closed) return;
+        dest.dispatchEvent(new MessageEvent("message", { data }));
+      };
+      // HTML posted-message task. React 18's scheduler posts here for
+      // useEffect; a no-op left NewsSite-Next's first paint at null.
+      if (typeof globalThis.setTimeout === "function") {
+        globalThis.setTimeout(deliver, 0);
+      } else if (typeof globalThis.queueMicrotask === "function") {
+        globalThis.queueMicrotask(deliver);
+      } else {
+        deliver();
+      }
+    }
+  }
+  class MessageChannel {
+    constructor() {
+      this._port1 = Object.create(MessagePort.prototype);
+      this._port2 = Object.create(MessagePort.prototype);
+      this._port1._entangled = this._port2;
+      this._port2._entangled = this._port1;
+      this._port1._started = true;
+      this._port2._started = true;
+    }
+    get port1() { return this._port1; }
+    get port2() { return this._port2; }
+  }
+  class ErrorEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._message = init.message == null ? "" : String(init.message);
+      this._filename = init.filename == null ? "" : String(init.filename);
+      this._lineno = init.lineno || 0;
+      this._colno = init.colno || 0;
+      this._error = "error" in init ? init.error : null;
+    }
+    get message() { return this._message; }
+    get filename() { return this._filename; }
+    get lineno() { return this._lineno; }
+    get colno() { return this._colno; }
+    get error() { return this._error; }
+  }
+  class CloseWatcher extends EventTarget {
+    constructor() { super(); }
+    requestClose() {}
+    close() {}
+    destroy() {}
+  }
+  class DataTransferItem {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get kind() { return ""; }
+    get type() { return ""; }
+    getAsString(callback) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getAsString' on 'DataTransferItem': 1 argument required, but only 0 present.");
+      }
+    }
+    getAsFile() { return null; }
+  }
+  class DataTransferItemList {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    add(data) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'add' on 'DataTransferItemList': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+    remove(index) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'remove' on 'DataTransferItemList': 1 argument required, but only 0 present.");
+      }
+    }
+    clear() {}
+  }
+  class DataTransfer {
+    constructor() {
+      this._dropEffect = "none";
+      this._effectAllowed = "none";
+      this._items = Object.create(DataTransferItemList.prototype);
+    }
+    get dropEffect() { return this._dropEffect; }
+    set dropEffect(v) { this._dropEffect = String(v); }
+    get effectAllowed() { return this._effectAllowed; }
+    set effectAllowed(v) { this._effectAllowed = String(v); }
+    get items() { return this._items; }
+    get types() { return []; }
+    get files() { return []; }
+    getData(format) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getData' on 'DataTransfer': 1 argument required, but only 0 present.");
+      }
+      return "";
+    }
+    setData(format, data) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'setData' on 'DataTransfer': 2 arguments required, but only " + arguments.length + " present.");
+      }
+    }
+    clearData() {}
+    setDragImage(image, x, y) {
+      if (arguments.length < 3) {
+        throw new TypeError("Failed to execute 'setDragImage' on 'DataTransfer': 3 arguments required, but only " + arguments.length + " present.");
+      }
+    }
+  }
+  class NotRestoredReasonDetails {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get reason() { return ""; }
+    toJSON() { return { reason: this.reason }; }
+  }
+  class NotRestoredReasons {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get src() { return ""; }
+    get id() { return ""; }
+    get name() { return ""; }
+    get url() { return ""; }
+    get reasons() { return []; }
+    get children() { return []; }
+    toJSON() { return { src: this.src, id: this.id, name: this.name, url: this.url, reasons: this.reasons, children: this.children }; }
+  }
+  class TextTrackCue extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get track() { return null; }
+    get id() { return this._id || ""; }
+    set id(v) { this._id = String(v); }
+    get startTime() { return this._startTime || 0; }
+    set startTime(v) { this._startTime = Number(v) || 0; }
+    get endTime() { return this._endTime || 0; }
+    set endTime(v) { this._endTime = Number(v) || 0; }
+    get pauseOnExit() { return !!this._pauseOnExit; }
+    set pauseOnExit(v) { this._pauseOnExit = !!v; }
+  }
+  for (const C of [
+    Navigation, NavigationHistoryEntry, NavigationDestination, NavigationTransition,
+    NavigationActivation, NavigationPrecommitController, NavigateEvent, NavigationCurrentEntryChangeEvent,
+    BroadcastChannel, MessagePort, MessageChannel, ErrorEvent, CloseWatcher,
+    DataTransfer, DataTransferItem, DataTransferItemList, NotRestoredReasons, NotRestoredReasonDetails,
+    TextTrackCue, Location, History,
+    Worker, SharedWorker, XMLSerializer, Origin, VisibilityStateEntry, AudioTrack, VideoTrack,
+    MathMLAnchorElement, CommandEvent, PromiseRejectionEvent, PageSwapEvent, MessageEvent, PopStateEvent,
+    ImageData, Path2D, FormDataEvent, TrackEvent, ToggleEvent, StorageEvent, SubmitEvent,
+    PageRevealEvent, PageTransitionEvent, BeforeUnloadEvent, HashChangeEvent, DragEvent,
+    ImageBitmap, ImageBitmapRenderingContext, Worklet, TrustedHTML, PerformanceEntry,
+    DOMStringMap, HTMLSelectedContentElement,
+  ]) {
+    try {
+      Object.defineProperty(C.prototype, Symbol.toStringTag, { value: C.name, configurable: true });
+    } catch (e) {}
   }
   function reflectDocColor(js, attr) {
     Object.defineProperty(Document.prototype, js, {
@@ -3309,6 +6406,9 @@
 
   class CustomElementRegistry {
     define(name, ctor) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'define' on 'CustomElementRegistry': 2 arguments required, but only " + arguments.length + " present.");
+      }
       name = String(name).toLowerCase();
       registry.set(name, ctor);
       const w = waiters.get(name);
@@ -3321,8 +6421,29 @@
         wrap(h);
       }
     }
-    get(name) { return registry.get(String(name).toLowerCase()); }
+    get(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'get' on 'CustomElementRegistry': 1 argument required, but only 0 present.");
+      }
+      return registry.get(String(name).toLowerCase());
+    }
+    getName(ctor) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getName' on 'CustomElementRegistry': 1 argument required, but only 0 present.");
+      }
+      for (const [n, c] of registry) if (c === ctor) return n;
+      return null;
+    }
+    initialize(root) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'initialize' on 'CustomElementRegistry': 1 argument required, but only 0 present.");
+      }
+      this.upgrade(root);
+    }
     whenDefined(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'whenDefined' on 'CustomElementRegistry': 1 argument required, but only 0 present.");
+      }
       name = String(name).toLowerCase();
       const c = registry.get(name);
       if (c) return Promise.resolve(c);
@@ -3335,11 +6456,14 @@
       return w.p;
     }
     upgrade(root) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'upgrade' on 'CustomElementRegistry': 1 argument required, but only 0 present.");
+      }
       if (root == null) return;
       const walk = (n) => {
         if (!n) return;
         if (n.nodeType === 1) {
-          upgradeOne(n);
+          upgradeOne(n, true);
           if (n.shadowRoot) walk(n.shadowRoot);
         }
         const kids = n.childNodes;
@@ -3378,8 +6502,23 @@
     }
     disconnect() { this._on = false; this._opts = []; }
     takeRecords() { return this._drain(); }
+    _inObservedTree(node, o) {
+      if (!node || !o || !o.target) return false;
+      if (node === o.target) return true;
+      if (o.subtree && o.target.contains && o.target.contains(node)) return true;
+      try { if (node.parentNode === o.target) return true; } catch (e) {}
+      return false;
+    }
     _match(target, r, o) {
-      const inScope = target === o.target || (o.subtree && o.target && o.target.contains && o.target.contains(target));
+      const inScope = this._inObservedTree(target, o);
+      if (!inScope && r.type === "childList") {
+        const added = r.added || [];
+        const removed = r.removed || [];
+        for (const h of added.concat(removed)) {
+          if (this._inObservedTree(wrap(h), o)) return o.childList;
+        }
+        return false;
+      }
       if (!inScope) return false;
       if (r.type === "childList") return o.childList;
       if (r.type === "attributes") {
@@ -3397,13 +6536,13 @@
       const recs = [];
       for (const r of raw) {
         const t = wrap(r.target);
-        if (!t) continue;
+        if (!t && r.type !== "childList") continue;
         for (const o of this._opts) {
           if (!this._match(t, r, o)) continue;
           const keepOld = (r.type === "attributes" && o.attributeOldValue) || (r.type === "characterData" && o.characterDataOldValue);
           recs.push({
             type: r.type,
-            target: t,
+            target: t || o.target,
             addedNodes: list(r.added || []),
             removedNodes: list(r.removed || []),
             attributeName: r.attr || null,
@@ -3510,19 +6649,25 @@
       for (let i = 0; i < enc.length; i++) out[i] = enc.charCodeAt(i);
       return out;
     };
+    let locked = false;
     const stream = {
+      get locked() { return locked; },
       getReader() {
+        if (locked) throw new TypeError("ReadableStream is locked");
+        locked = true;
         let i = 0;
         const buf = bytes();
         return {
           read() {
+            bodyUsed = true;
             if (i >= buf.length) return Promise.resolve({ done: true, value: undefined });
             const end = Math.min(i + 16384, buf.length);
             const value = buf.slice(i, end);
             i = end;
             return Promise.resolve({ done: false, value });
           },
-          cancel() { i = buf.length; return Promise.resolve(); },
+          cancel() { i = buf.length; bodyUsed = true; return Promise.resolve(); },
+          releaseLock() { locked = false; },
         };
       },
     };
@@ -3535,12 +6680,12 @@
       get bodyUsed() { return bodyUsed; },
       get body() { return stream; },
       headers: { get(n) { n = String(n).toLowerCase(); return (r.headers && r.headers[n]) || null; }, has(n) { return this.get(n) != null; } },
-      text() { consume(); return Promise.resolve(textBody); },
-      json() { consume(); return Promise.resolve(JSON.parse(textBody || "null")); },
-      arrayBuffer() { consume(); return Promise.resolve(bytes().buffer); },
-      blob() { consume(); const b = bytes(); return Promise.resolve({ size: b.length, type: "" }); },
+      text() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(textBody); },
+      json() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(JSON.parse(textBody || "null")); },
+      arrayBuffer() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(bytes().buffer); },
+      blob() { if (locked) throw new TypeError("body stream is locked"); consume(); const b = bytes(); return Promise.resolve({ size: b.length, type: "" }); },
       clone() {
-        if (bodyUsed) throw new TypeError("body already used");
+        if (bodyUsed || locked) throw new TypeError("body already used");
         return responseFrom(r);
       },
     };
@@ -3628,8 +6773,38 @@
     forEach(fn, t) { for (const [k, v] of this._) fn.call(t, v, k, this); }
     [Symbol.iterator]() { return this.entries(); }
   }
+  function normalizeUrlPath(path) {
+    const parts = String(path || "/").split("/");
+    const out = [];
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      if (p === ".") continue;
+      if (p === "..") {
+        if (out.length && out[out.length - 1] !== "") out.pop();
+        continue;
+      }
+      if (p === "" && out.length) continue;
+      out.push(p);
+    }
+    let n = out.join("/");
+    if (!n.startsWith("/")) n = "/" + n;
+    if (path.endsWith("/") && n !== "/") n += "/";
+    return n;
+  }
   class URL {
     constructor(url, base) {
+      this.username = "";
+      this.password = "";
+      this._protocol = "";
+      this._hostname = "";
+      this._port = "";
+      this._pathname = "/";
+      this._search = "";
+      this._hash = "";
+      this._parse(url, base);
+      this.searchParams = new URLSearchParams(this._search);
+    }
+    _parse(url, base) {
       let s = encodeUSVHref(url);
       if (base && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s)) {
         const b = String(base);
@@ -3643,35 +6818,76 @@
           s = b.replace(/[#?].*$/, "").replace(/\/[^/]*$/, "/") + s;
         }
       }
-      this.href = s;
       const m = s.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:)\/\/([^/?#:]*)(?::(\d+))?([^?#]*)(\?[^#]*)?(#.*)?$/);
-      this.protocol = m ? m[1] : "";
-      this.hostname = m ? m[2] : "";
-      this.port = m && m[3] ? m[3] : "";
-      this.pathname = m ? (m[4] || "/") : s;
-      this.search = m && m[5] ? m[5] : "";
-      this.hash = m && m[6] ? m[6] : "";
-      this.host = this.hostname + (this.port ? ":" + this.port : "");
-      this.origin = this.protocol ? (this.protocol + "//" + this.host) : "null";
-      this.username = "";
-      this.password = "";
-      this.searchParams = new URLSearchParams(this.search);
+      this._protocol = m ? m[1] : "";
+      this._hostname = m ? m[2] : "";
+      this._port = m && m[3] ? m[3] : "";
+      this._pathname = normalizeUrlPath(m ? (m[4] || "/") : "/");
+      this._search = m && m[5] ? m[5] : "";
+      this._hash = m && m[6] ? m[6] : "";
+    }
+    _host() { return this._hostname + (this._port ? ":" + this._port : ""); }
+    get href() {
+      return this._protocol
+        ? this._protocol + "//" + this._host() + this._pathname + this._search + this._hash
+        : "";
+    }
+    set href(v) { this._parse(v); }
+    get origin() { return this._protocol ? (this._protocol + "//" + this._host()) : "null"; }
+    get protocol() { return this._protocol; }
+    set protocol(v) { this._protocol = String(v || ""); if (this._protocol && !this._protocol.endsWith(":")) this._protocol += ":"; }
+    get hostname() { return this._hostname; }
+    set hostname(v) { this._hostname = String(v || ""); }
+    get port() { return this._port; }
+    set port(v) { this._port = String(v || ""); }
+    get host() { return this._host(); }
+    set host(v) {
+      const s = String(v || "");
+      const i = s.lastIndexOf(":");
+      if (i > 0) { this._hostname = s.slice(0, i); this._port = s.slice(i + 1); }
+      else { this._hostname = s; this._port = ""; }
+    }
+    get pathname() { return this._pathname; }
+    set pathname(v) { this._pathname = normalizeUrlPath(v); }
+    get search() { return this._search; }
+    set search(v) {
+      const s = String(v || "");
+      this._search = s && !s.startsWith("?") ? "?" + s : s;
+      this.searchParams = new URLSearchParams(this._search);
+    }
+    get hash() { return this._hash; }
+    set hash(v) {
+      const s = String(v || "");
+      this._hash = s && !s.startsWith("#") ? "#" + s : s;
     }
     toString() { return this.href; }
     toJSON() { return this.href; }
   }
   class DOMParser {
     parseFromString(str, type) {
-      const doc = document.implementation.createHTMLDocument("");
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'parseFromString' on 'DOMParser': 2 arguments required, but only " + arguments.length + " present.");
+      }
       const html = str == null ? "" : String(str);
       if (String(type || "").toLowerCase().includes("xml")) {
+        const doc = document.implementation.createHTMLDocument("");
         doc.body.textContent = html;
         return doc;
       }
       const body = /<body[\s\S]*?>([\s\S]*)<\/body>/i.exec(html);
-      doc.body.innerHTML = body ? body[1] : html;
-      return doc;
+      return wrap(D("parseHTMLDocument", body ? body[1] : html));
     }
+  }
+  Object.defineProperty(DOMParser.prototype, "parseFromString", {
+    value: DOMParser.prototype.parseFromString,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+  for (const C of [DOMParser, Sanitizer, CanvasRenderingContext2D, OffscreenCanvas]) {
+    try {
+      Object.defineProperty(C.prototype, Symbol.toStringTag, { value: C.name, configurable: true });
+    } catch (e) {}
   }
   function Blob(parts, opts) {
     this.size = 0;
@@ -3680,8 +6896,115 @@
   }
   URL.createObjectURL = () => "blob:vector:0";
   URL.revokeObjectURL = () => {};
+  function utf8Encode(string) {
+    const out = [];
+    for (let i = 0; i < string.length; i++) {
+      let u = string.charCodeAt(i);
+      if (u >= 0xd800 && u <= 0xdbff && i + 1 < string.length) {
+        const extra = string.charCodeAt(i + 1);
+        if (extra >= 0xdc00 && extra <= 0xdfff) {
+          i++;
+          u = 0x10000 + ((u & 0x3ff) << 10) + (extra & 0x3ff);
+        }
+      }
+      if (u < 0x80) out.push(u);
+      else if (u < 0x800) out.push(0xc0 | (u >> 6), 0x80 | (u & 0x3f));
+      else if (u < 0x10000) {
+        out.push(0xe0 | (u >> 12), 0x80 | ((u >> 6) & 0x3f), 0x80 | (u & 0x3f));
+      } else {
+        out.push(
+          0xf0 | (u >> 18),
+          0x80 | ((u >> 12) & 0x3f),
+          0x80 | ((u >> 6) & 0x3f),
+          0x80 | (u & 0x3f)
+        );
+      }
+    }
+    return Uint8Array.from(out);
+  }
+  function utf8Decode(bytes) {
+    let s = "";
+    for (let i = 0; i < bytes.length; ) {
+      const c = bytes[i++];
+      if (c < 0x80) s += String.fromCharCode(c);
+      else if ((c & 0xe0) === 0xc0) {
+        s += String.fromCharCode(((c & 0x1f) << 6) | (bytes[i++] & 0x3f));
+      } else if ((c & 0xf0) === 0xe0) {
+        s += String.fromCharCode(
+          ((c & 0x0f) << 12) | ((bytes[i++] & 0x3f) << 6) | (bytes[i++] & 0x3f)
+        );
+      } else {
+        let u =
+          ((c & 0x07) << 18) |
+          ((bytes[i++] & 0x3f) << 12) |
+          ((bytes[i++] & 0x3f) << 6) |
+          (bytes[i++] & 0x3f);
+        u -= 0x10000;
+        s += String.fromCharCode(0xd800 + (u >> 10), 0xdc00 + (u & 0x3ff));
+      }
+    }
+    return s;
+  }
+  function encodingBytes(input) {
+    if (input == null) return new Uint8Array(0);
+    if (input instanceof Uint8Array) return input;
+    if (input instanceof ArrayBuffer) return new Uint8Array(input);
+    if (ArrayBuffer.isView(input)) {
+      return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+    }
+    return new Uint8Array(input);
+  }
+  function encodingName(label) {
+    const enc = String(label == null ? "utf-8" : label)
+      .trim()
+      .toLowerCase()
+      .replace(/[_]/g, "-");
+    if (enc === "utf-16" || enc === "utf-16le" || enc === "unicode") return "utf-16le";
+    if (enc === "utf-16be") return "utf-16be";
+    return "utf-8";
+  }
+  function utf16Decode(bytes, le) {
+    let s = "";
+    const n = bytes.length - (bytes.length % 2);
+    for (let i = 0; i < n; i += 2) {
+      const c = le ? bytes[i] | (bytes[i + 1] << 8) : (bytes[i] << 8) | bytes[i + 1];
+      s += String.fromCharCode(c);
+    }
+    return s;
+  }
+  function TextDecoder(label, options) {
+    this.encoding = encodingName(label);
+    this.fatal = !!(options && options.fatal);
+    this.ignoreBOM = !!(options && options.ignoreBOM);
+  }
+  TextDecoder.prototype.decode = function (input) {
+    const bytes = encodingBytes(input);
+    let s =
+      this.encoding === "utf-16le"
+        ? utf16Decode(bytes, true)
+        : this.encoding === "utf-16be"
+          ? utf16Decode(bytes, false)
+          : utf8Decode(bytes);
+    if (!this.ignoreBOM && s.charCodeAt(0) === 0xfeff) s = s.slice(1);
+    return s;
+  };
+  function TextEncoder() {
+    this.encoding = "utf-8";
+  }
+  TextEncoder.prototype.encode = function (string) {
+    return utf8Encode(string == null ? "" : String(string));
+  };
+  TextEncoder.prototype.encodeInto = function (string, dest) {
+    const src = utf8Encode(string == null ? "" : String(string));
+    const n = Math.min(src.length, dest ? dest.length : 0);
+    if (dest && n) dest.set(src.subarray(0, n));
+    return { read: String(string == null ? "" : string).length, written: n };
+  };
   const b64tab = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   function atob(s) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'atob' on 'Window': 1 argument required, but only 0 present.");
+    }
     s = String(s).replace(/[^A-Za-z0-9+/=]/g, "");
     let out = "";
     const idx = (ch) => {
@@ -3698,6 +7021,9 @@
     return out;
   }
   function btoa(s) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'btoa' on 'Window': 1 argument required, but only 0 present.");
+    }
     s = String(s);
     let out = "";
     for (let i = 0; i < s.length; i += 3) {
@@ -3763,6 +7089,14 @@
       const len = (n.nodeType === 3 || n.nodeType === 8) ? n.length : n.childNodes.length;
       this.setStart(n, 0);
       this.setEnd(n, len);
+    }
+    createContextualFragment(html) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'createContextualFragment' on 'Range': 1 argument required, but only 0 present.");
+      }
+      const t = document.createElement("template");
+      t.innerHTML = html == null ? "" : String(html);
+      return t.content;
     }
     cloneRange() {
       const r = new Range();
@@ -3854,6 +7188,13 @@
       this.insertNode(newParent);
       this.selectNode(newParent);
     }
+    getBoundingClientRect() {
+      const n = this.startContainer;
+      const el = n && n.nodeType === 1 ? n : (n && n.parentElement);
+      if (el && typeof el.getBoundingClientRect === "function") return el.getBoundingClientRect();
+      return { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0 };
+    }
+    getClientRects() { return clientRectList(this.getBoundingClientRect()); }
     toString() {
       if (this.startContainer === this.endContainer && (this.startContainer.nodeType === 3 || this.startContainer.nodeType === 8)) {
         const start = Math.min(this.startOffset, this.endOffset);
@@ -3926,16 +7267,49 @@
 
   const document = wrap(D("documentNode"));
   browsingDocument = document;
-  const location = new Location();
-  const history = new History();
+  const location = Object.create(Location.prototype);
+  const history = Object.create(History.prototype);
+  function namedCtor(name, proto, construct) {
+    const C = {
+      [name]: function () {
+        if (!new.target) {
+          throw new TypeError("Failed to construct '" + name + "': Please use the 'new' operator, or DOMObjectConstructor.");
+        }
+        return construct.apply(null, arguments);
+      },
+    }[name];
+    Object.defineProperty(C, "length", { value: 0, configurable: true });
+    Object.defineProperty(C, "prototype", { value: proto, writable: false });
+    return C;
+  }
+  const Image = namedCtor("Image", HTMLImageElement.prototype, function (width, height) {
+    const el = document.createElement("img");
+    if (arguments.length > 0) el.width = width;
+    if (arguments.length > 1) el.height = height;
+    return el;
+  });
+  const Audio = namedCtor("Audio", HTMLAudioElement.prototype, function (src) {
+    const el = document.createElement("audio");
+    if (src != null) el.src = String(src);
+    return el;
+  });
+  const Option = namedCtor("Option", HTMLOptionElement.prototype, function (text, value, defaultSelected, selected) {
+    const el = document.createElement("option");
+    if (text != null) el.text = String(text);
+    if (arguments.length > 1) el.value = String(value);
+    if (defaultSelected) el.setAttribute("selected", "");
+    if (selected) el.selected = true;
+    return el;
+  });
+  const windowExternal = Object.create(External.prototype);
   const windowProps = {
     window: null, self: null, document, location, history, atob, btoa,
-    onhashchange: null, onpopstate: null,
     localStorage: storage("local"), sessionStorage: storage("session"),
     customElements: new CustomElementRegistry(),
-    Event, HashChangeEvent, StorageEvent, MouseEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
+    Event, HashChangeEvent, PopStateEvent, ToggleEvent, TrackEvent, FormDataEvent, StorageEvent, MouseEvent, WheelEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
     Node, NodeList, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment, CharacterData,
-    ProcessingInstruction, DocumentType, HTMLCollection,
+    ProcessingInstruction, DocumentType, HTMLCollection, HTMLAllCollection,
+    HTMLFormControlsCollection, HTMLOptionsCollection, RadioNodeList,
     HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLOptionElement,
     HTMLButtonElement, HTMLFormElement, HTMLAnchorElement, HTMLImageElement, HTMLLinkElement, HTMLUnknownElement, HTMLStyleElement,
     HTMLAreaElement, HTMLBaseElement, HTMLSourceElement, HTMLFrameElement,
@@ -3951,11 +7325,63 @@
     HTMLMarqueeElement, HTMLFontElement, HTMLDirectoryElement, HTMLLabelElement,
     HTMLLegendElement, HTMLOptGroupElement, HTMLDataListElement, HTMLProgressElement,
     HTMLMeterElement, HTMLDialogElement, HTMLMenuElement, HTMLDataElement,
-    HTMLVideoElement, HTMLAudioElement, HTMLTrackElement,
+    HTMLVideoElement, HTMLAudioElement, HTMLTrackElement, HTMLPictureElement, HTMLMediaElement,
+    MediaError, TimeRanges, TextTrack, TextTrackList, TextTrackCueList, AudioTrackList, VideoTrackList, ValidityState, DOMStringList, FileList, External,
+    Storage, Navigator, TextMetrics, CustomElementRegistry,
+    OffscreenCanvas,
+    OffscreenCanvasRenderingContext2D,
+    DataTransfer,
+    DataTransferItem,
+    DataTransferItemList,
+    MessagePort,
+    MessageChannel,
+    BroadcastChannel,
+    ErrorEvent,
+    SubmitEvent,
+    PromiseRejectionEvent,
+    PageTransitionEvent,
+    BeforeUnloadEvent,
+    CommandEvent,
+    Navigation,
+    NavigateEvent,
+    NavigationHistoryEntry,
+    NavigationDestination,
+    NavigationTransition,
+    TextTrackCue,
+    AudioTrack,
+    VideoTrack,
+    CloseWatcher,
+    XMLSerializer,
+    ImageBitmap,
+    UserActivation,
+    Plugin,
+    PluginArray,
+    MimeType,
+    MimeTypeArray,
+    Origin,
+    NotRestoredReasons,
+    NotRestoredReasonDetails,
+    MathMLAnchorElement,
+    VisibilityStateEntry,
+    NavigationActivation,
+    ImageBitmapRenderingContext,
+    NavigationPrecommitController,
+    NavigationCurrentEntryChangeEvent,
+    PageSwapEvent,
+    PageRevealEvent,
+    CanvasGradient,
+    CanvasPattern,
+    Worklet,
+    HTMLSelectedContentElement,
+    TrustedHTML,
+    PerformanceEntry,
+    ElementInternals, CustomStateSet,
+    Image, Audio, Option, external: windowExternal,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
-    MutationObserver, IntersectionObserver, ResizeObserver, Range,
+    MutationObserver, IntersectionObserver, ResizeObserver, Range, Sanitizer,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, EventSource, Blob,
+    TextDecoder, TextEncoder,
     createDataChannelPair() {
       const listeners = [[], []];
       function channel(i) {
@@ -3978,11 +7404,7 @@
         channel.addEventListener("message", (ev) => resolve(ev.data));
       });
     },
-    navigator: {
-      userAgent: "Vector/0.0.1", language: "en-US", languages: ["en-US"], onLine: true, platform: "vector",
-      sendBeacon() { return true; },
-      registerProtocolHandler() {},
-      unregisterProtocolHandler() {},
+    navigator: Object.assign(Object.create(Navigator.prototype), {
       serviceWorker: {
         register(url, opts) {
           const scope = (opts && opts.scope) || "";
@@ -4040,7 +7462,7 @@
           }
         },
       },
-    },
+    }),
     screen: { width: D("innerWidth"), height: D("innerHeight"), colorDepth: 24 },
     devicePixelRatio: 1,
     get innerWidth() { return D("innerWidth"); },
@@ -4241,48 +7663,8 @@
       },
       deleteDatabase(name) { D("idbClear", String(name)); return { onsuccess: null }; },
     },
-    Worker: function Worker(src) {
-      this._id = D("workerCreate", String(src));
-      this.onmessage = null;
-      this.onerror = null;
-      this._terminated = false;
-      this.postMessage = (m) => {
-        if (this._terminated) return;
-        const reply = D("workerPost", this._id, JSON.stringify(m));
-        if (reply == null) return;
-        let data = reply;
-        if (typeof reply === "string") {
-          try { data = JSON.parse(reply); } catch (e) { data = reply; }
-        }
-        if (typeof this.onmessage === "function") this.onmessage({ data: data });
-      };
-      this.terminate = () => {
-        this._terminated = true;
-        D("workerTerminate", this._id);
-      };
-      this.addEventListener = function (type, fn) {
-        if (type === "message" && typeof fn === "function") this.onmessage = fn;
-      };
-    },
-    SharedWorker: function SharedWorker(src, name) {
-      this.port = {
-        onmessage: null,
-        postMessage(m) {
-          const reply = D("workerPost", D("workerCreate", String(src)), JSON.stringify(m == null ? null : m));
-          if (reply == null) return;
-          let data = reply;
-          if (typeof reply === "string") {
-            try { data = JSON.parse(reply); } catch (e) { data = reply; }
-          }
-          if (typeof this.onmessage === "function") this.onmessage({ data });
-        },
-        addEventListener(type, fn) {
-          if (type === "message" && typeof fn === "function") this.onmessage = fn;
-        },
-        start() {},
-      };
-      this.onerror = null;
-    },
+    Worker,
+    SharedWorker,
     WebSocket: function WebSocket(url) {
       const raw = D("wsConnect", String(url));
       const parts = String(raw || "").split(":");
@@ -4341,8 +7723,28 @@
     MutationRecord: function () {},
   };
   const windowTarget = new EventTarget();
+  windowEventTarget = windowTarget;
+  let windowLoadFired = false;
   globalThis.addEventListener = function (type, fn, opts) {
-    return EventTarget.prototype.addEventListener.call(windowTarget, type, fn, opts);
+    const r = EventTarget.prototype.addEventListener.call(windowTarget, type, fn, opts);
+    // HTML Window `load` does not retro-fire. Official Speedometer Complex-DOM
+    // registers `$on(window, "load", setView)` after the document `load` already
+    // ran. Queue only in that case so Controller._activeRoute still binds.
+    // Do not retro-fire when `readyState` is `complete` but `__veFireWindowLoad`
+    // has not run yet — that is the one official `load`.
+    if (String(type) === "load" && windowLoadFired) {
+      const call = typeof fn === "function" ? fn
+        : (fn && typeof fn.handleEvent === "function") ? function (ev) { fn.handleEvent(ev); }
+        : null;
+      if (call) {
+        try {
+          queueMicrotask(() => {
+            try { call.call(globalThis, new Event("load")); } catch (e) {}
+          });
+        } catch (e) {}
+      }
+    }
+    return r;
   };
   globalThis.removeEventListener = function (type, fn, opts) {
     return EventTarget.prototype.removeEventListener.call(windowTarget, type, fn, opts);
@@ -4356,10 +7758,19 @@
     }
     return r;
   };
+  globalThis.__veFireWindowLoad = () => {
+    if (windowLoadFired) return;
+    windowLoadFired = true;
+    try { window.dispatchEvent(new Event("load")); } catch (e) {}
+  };
+  globalThis.__veUpgradeTree = () => {
+    try { customElements.upgrade(globalThis.document || document); } catch (e) {}
+  };
   globalThis.__veDocumentEvents = () => {
+    // Do not walk the tree here. A large document's id/upgrade scan can
+    // exceed SCRIPT_DEADLINE and abort this function before `load` fires
+    // (official Speedometer Complex-DOM). Rust calls expose/upgrade separately.
     const doc = globalThis.document || document;
-    try { exposeAllIds(); } catch (e) {}
-    try { customElements.upgrade(doc); } catch (e) {}
     try {
       D("setReadyState", "interactive");
       doc.dispatchEvent(new Event("readystatechange"));
@@ -4380,7 +7791,6 @@
         try { new Function("event", src).call(s, new Event("error")); } catch (e) {}
       }
     } catch (e) {}
-    try { window.dispatchEvent(new Event("load")); } catch (e) {}
     try {
       const t = __ve.now();
       const paints = [
@@ -4413,6 +7823,7 @@
     constructor() { throw new TypeError("Illegal constructor"); }
     get visible() { return true; }
   }
+  Object.defineProperty(BarProp.prototype, Symbol.toStringTag, { value: "BarProp", configurable: true });
   const barProp = { visible: true };
   windowProps.Window = Window;
   windowProps.XMLDocument = XMLDocument;
@@ -4431,7 +7842,7 @@
   windowProps.originAgentCluster = false;
   windowProps.frameElement = null;
   windowProps.opener = null;
-  windowProps.navigation = { currentEntry: null, entries() { return []; } };
+  windowProps.navigation = Object.create(windowProps.Navigation.prototype);
   windowProps.length = 0;
   windowProps.alert = function alert(m) { D("scriptDialog", "alert", m == null ? "" : String(m), ""); };
   windowProps.confirm = function confirm(m) { return !!D("scriptDialog", "confirm", m == null ? "" : String(m), ""); };
@@ -4474,6 +7885,29 @@
   exposeCtor("DOMImplementation", DOMImplementation);
   exposeCtor("Location", Location);
   exposeCtor("History", History);
+  exposeCtor("Image", Image);
+  exposeCtor("Audio", Audio);
+  exposeCtor("Option", Option);
+  for (const [name, ctor] of [
+    ["BeforeUnloadEvent", BeforeUnloadEvent],
+    ["PageTransitionEvent", PageTransitionEvent],
+    ["PageRevealEvent", PageRevealEvent],
+    ["SubmitEvent", SubmitEvent],
+    ["TrustedHTML", TrustedHTML],
+  ]) {
+    try { delete globalThis[name]; } catch (e) {}
+    exposeCtor(name, ctor);
+  }
+  try {
+    Object.defineProperty(globalThis, "external", {
+      value: windowExternal,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  } catch (e) {
+    try { globalThis.external = windowExternal; } catch (e2) {}
+  }
 
   const eventHandlerNames = [
     "onabort","onauxclick","onbeforeinput","onbeforematch","onbeforetoggle","onblur",
@@ -4497,17 +7931,39 @@
     "onunhandledrejection","onunload",
   ];
   const handlerStore = new WeakMap();
-  function defineHandlers(obj, names, enumerable) {
+  function windowThis(t) {
+    if (t === undefined || t === null) return globalThis;
+    if (t === globalThis) return t;
+    throw new TypeError("Illegal invocation");
+  }
+  function defineHandlers(obj, names, enumerable, globalLoose) {
     for (const name of names) {
       if (Object.getOwnPropertyDescriptor(obj, name)) continue;
       const get = function () {
-        const m = handlerStore.get(this);
+        if (globalLoose) {
+          if (this !== undefined && this !== null && this !== globalThis) {
+            if (name === "onmouseenter" || name === "onmouseleave") return undefined;
+            return windowThis(this);
+          }
+        }
+        const t = globalLoose ? windowThis(this) : this;
+        const m = handlerStore.get(t);
         return (m && m[name]) || null;
       };
       const set = function (v) {
-        let m = handlerStore.get(this);
-        if (!m) { m = Object.create(null); handlerStore.set(this, m); }
-        m[name] = typeof v === "function" ? v : null;
+        if (globalLoose) {
+          if (this !== undefined && this !== null && this !== globalThis) {
+            if (name === "onmouseenter" || name === "onmouseleave") return undefined;
+          }
+        }
+        const t = globalLoose ? windowThis(this) : this;
+        let m = handlerStore.get(t);
+        if (!m) { m = Object.create(null); handlerStore.set(t, m); }
+        const prev = m[name];
+        const next = typeof v === "function" ? v : null;
+        if (!prev && next) handlerPropCount++;
+        if (prev && !next) handlerPropCount--;
+        m[name] = next;
       };
       Object.defineProperty(get, "name", { value: "get " + name, configurable: true });
       Object.defineProperty(set, "name", { value: "set " + name, configurable: true });
@@ -4521,8 +7977,27 @@
   }
   defineHandlers(Document.prototype, eventHandlerNames, true);
   defineHandlers(HTMLElement.prototype, eventHandlerNames, true);
-  defineHandlers(globalThis, eventHandlerNames, true);
-  defineHandlers(globalThis, windowHandlerNames, true);
+  defineHandlers(HTMLBodyElement.prototype, windowHandlerNames, true);
+  defineHandlers(HTMLFrameSetElement.prototype, windowHandlerNames, true);
+  defineHandlers(SVGElement.prototype, eventHandlerNames, true);
+  defineHandlers(MathMLElement.prototype, eventHandlerNames, true);
+  defineHandlers(SVGSVGElement.prototype, windowHandlerNames, true);
+  defineHandlers(EventSource.prototype, ["onopen", "onmessage", "onerror"], true);
+  defineHandlers(Navigation.prototype, ["onnavigate", "onnavigatesuccess", "onnavigateerror", "oncurrententrychange"], true);
+  defineHandlers(NavigationHistoryEntry.prototype, ["ondispose"], true);
+  defineHandlers(BroadcastChannel.prototype, ["onmessage", "onmessageerror"], true);
+  defineHandlers(MessagePort.prototype, ["onclose", "onmessage", "onmessageerror"], true);
+  defineHandlers(CloseWatcher.prototype, ["oncancel", "onclose"], true);
+  defineHandlers(OffscreenCanvas.prototype, ["oncontextlost", "oncontextrestored"], true);
+  defineHandlers(TextTrack.prototype, ["oncuechange"], true);
+  defineHandlers(TextTrackCue.prototype, ["onenter", "onexit"], true);
+  defineHandlers(TextTrackList.prototype, ["onchange", "onaddtrack", "onremovetrack"], true);
+  defineHandlers(AudioTrackList.prototype, ["onchange", "onaddtrack", "onremovetrack"], true);
+  defineHandlers(VideoTrackList.prototype, ["onchange", "onaddtrack", "onremovetrack"], true);
+  defineHandlers(Worker.prototype, ["onerror", "onmessage", "onmessageerror"], true);
+  defineHandlers(SharedWorker.prototype, ["onerror"], true);
+  defineHandlers(globalThis, eventHandlerNames, true, true);
+  defineHandlers(globalThis, windowHandlerNames, true, true);
 
   function brandWrap(ctor) {
     const proto = ctor.prototype;
@@ -4535,7 +8010,16 @@
         const s = desc.set;
         const getter = function () {
           if (!(this instanceof ctor)) {
-            if (name === "onreadystatechange") return undefined;
+            if (
+              name === "onreadystatechange"
+              || name === "onmouseenter"
+              || name === "onmouseleave"
+            ) {
+              return undefined;
+            }
+            if (name === "committed" || name === "finished") {
+              return Promise.reject(new TypeError("Illegal invocation"));
+            }
             throw new TypeError("Illegal invocation");
           }
           return g.call(this);
@@ -4546,7 +8030,13 @@
         if (typeof s === "function") {
           const setter = function (v) {
             if (!(this instanceof ctor)) {
-              if (name === "onreadystatechange") return undefined;
+              if (
+                name === "onreadystatechange"
+                || name === "onmouseenter"
+                || name === "onmouseleave"
+              ) {
+                return undefined;
+              }
               throw new TypeError("Illegal invocation");
             }
             return s.call(this, v);
@@ -4558,7 +8048,18 @@
       } else if (typeof desc.value === "function") {
         const fn = desc.value;
         const wrapped = function (...a) {
-          if (!(this instanceof ctor)) throw new TypeError("Illegal invocation");
+          if (!(this instanceof ctor)) {
+            if (
+              (ctor === HTMLMediaElement && name === "play")
+              || (ctor === HTMLImageElement && name === "decode")
+              || (ctor === OffscreenCanvas && name === "convertToBlob")
+              || (ctor === CustomElementRegistry && name === "whenDefined")
+              || (ctor === Worklet && name === "addModule")
+            ) {
+              return Promise.reject(new TypeError("Illegal invocation"));
+            }
+            throw new TypeError("Illegal invocation");
+          }
           return fn.apply(this, a);
         };
         Object.defineProperty(wrapped, "length", { value: fn.length, configurable: true });
@@ -4569,11 +8070,166 @@
       try { Object.defineProperty(proto, name, desc); } catch (e) {}
     }
   }
+  {
+    const ds = Object.getOwnPropertyDescriptor(Element.prototype, "dataset");
+    if (ds) {
+      Object.defineProperty(HTMLElement.prototype, "dataset", ds);
+      Object.defineProperty(SVGElement.prototype, "dataset", ds);
+      Object.defineProperty(MathMLElement.prototype, "dataset", ds);
+    }
+    for (const name of ["nonce", "autofocus", "tabIndex", "focus", "blur"]) {
+      const desc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, name);
+      if (!desc) continue;
+      Object.defineProperty(SVGElement.prototype, name, desc);
+      Object.defineProperty(MathMLElement.prototype, name, desc);
+    }
+  }
   brandWrap(Document);
   brandWrap(Node);
   brandWrap(Element);
-  brandWrap(HTMLElement);
   brandWrap(EventTarget);
+  brandWrap(EventSource);
+  brandWrap(CanvasRenderingContext2D);
+  brandWrap(OffscreenCanvasRenderingContext2D);
+  brandWrap(OffscreenCanvas);
+  brandWrap(CanvasGradient);
+  brandWrap(CanvasPattern);
+  brandWrap(SVGElement);
+  brandWrap(MathMLElement);
+  brandWrap(SVGSVGElement);
+  brandWrap(Sanitizer);
+  brandWrap(Window);
+  brandWrap(Storage);
+  brandWrap(Navigator);
+  brandWrap(UserActivation);
+  brandWrap(PluginArray);
+  brandWrap(MimeTypeArray);
+  brandWrap(Plugin);
+  brandWrap(MimeType);
+  brandWrap(FileList);
+  brandWrap(ValidityState);
+  brandWrap(MediaError);
+  brandWrap(TimeRanges);
+  brandWrap(TextTrack);
+  brandWrap(TextTrackList);
+  brandWrap(TextTrackCue);
+  brandWrap(AudioTrackList);
+  brandWrap(VideoTrackList);
+  brandWrap(Location);
+  brandWrap(History);
+  brandWrap(StorageEvent);
+  brandWrap(ToggleEvent);
+  brandWrap(ErrorEvent);
+  brandWrap(ElementInternals);
+  brandWrap(TextMetrics);
+  brandWrap(Navigation);
+  brandWrap(NavigateEvent);
+  brandWrap(NavigationHistoryEntry);
+  brandWrap(NavigationDestination);
+  brandWrap(NavigationTransition);
+  brandWrap(NavigationActivation);
+  brandWrap(NavigationPrecommitController);
+  brandWrap(NavigationCurrentEntryChangeEvent);
+  brandWrap(BroadcastChannel);
+  brandWrap(MessagePort);
+  brandWrap(MessageChannel);
+  brandWrap(CloseWatcher);
+  brandWrap(DataTransfer);
+  brandWrap(DataTransferItem);
+  brandWrap(DataTransferItemList);
+  brandWrap(NotRestoredReasons);
+  brandWrap(NotRestoredReasonDetails);
+  brandWrap(MessageEvent);
+  brandWrap(PopStateEvent);
+  brandWrap(CommandEvent);
+  brandWrap(PromiseRejectionEvent);
+  brandWrap(PageSwapEvent);
+  brandWrap(Path2D);
+  brandWrap(ImageData);
+  brandWrap(Worker);
+  brandWrap(SharedWorker);
+  brandWrap(XMLSerializer);
+  brandWrap(Origin);
+  brandWrap(VisibilityStateEntry);
+  brandWrap(AudioTrack);
+  brandWrap(VideoTrack);
+  brandWrap(MathMLAnchorElement);
+  brandWrap(CustomElementRegistry);
+  brandWrap(ShadowRoot);
+  brandWrap(TextTrackCueList);
+  brandWrap(BarProp);
+  brandWrap(DOMParser);
+  brandWrap(DOMStringMap);
+  brandWrap(SubmitEvent);
+  brandWrap(PageRevealEvent);
+  brandWrap(PageTransitionEvent);
+  brandWrap(BeforeUnloadEvent);
+  brandWrap(HashChangeEvent);
+  brandWrap(TrackEvent);
+  brandWrap(FormDataEvent);
+  brandWrap(DragEvent);
+  brandWrap(ImageBitmap);
+  brandWrap(ImageBitmapRenderingContext);
+  brandWrap(Worklet);
+  brandWrap(TrustedHTML);
+  brandWrap(PerformanceEntry);
+  brandWrap(HTMLSelectedContentElement);
+  brandWrap(Range);
+  brandWrap(OffscreenCanvas);
+  {
+    const chk = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "checked");
+    if (chk) Object.defineProperty(HTMLInputElement.prototype, "checked", chk);
+  }
+  for (const C of Object.values(windowProps)) {
+    if (typeof C === "function" && C.prototype && /^HTML/.test(C.name || "")) brandWrap(C);
+  }
+  {
+    const names = ["href", "origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash", "assign", "replace", "reload", "ancestorOrigins", "toString"];
+    for (const name of names) {
+      const desc = Object.getOwnPropertyDescriptor(Location.prototype, name);
+      if (!desc) continue;
+      const out = { enumerable: true, configurable: false };
+      if (desc.get) {
+        out.get = desc.get;
+        if (desc.set) out.set = desc.set;
+      } else {
+        out.value = desc.value;
+        out.writable = false;
+      }
+      try { Object.defineProperty(location, name, out); } catch (e) {}
+    }
+    const locToString = function toString() {
+      if (!(this instanceof Location)) {
+        throw new TypeError("Illegal invocation");
+      }
+      return D("locationGet", "href");
+    };
+    try {
+      Object.defineProperty(Location.prototype, "toString", {
+        value: locToString,
+        writable: false,
+        enumerable: true,
+        configurable: false,
+      });
+      Object.defineProperty(location, "toString", {
+        value: locToString,
+        writable: false,
+        enumerable: true,
+        configurable: false,
+      });
+    } catch (e) {}
+  }
+  Object.defineProperties(External.prototype, {
+    AddSearchProvider: {
+      value: function AddSearchProvider() {},
+      writable: true, enumerable: true, configurable: true,
+    },
+    IsSearchProviderInstalled: {
+      value: function IsSearchProviderInstalled() { return 0; },
+      writable: true, enumerable: true, configurable: true,
+    },
+  });
+  brandWrap(External);
   for (const name of ["parseHTMLUnsafe", "parseHTML"]) {
     const fn = Document[name];
     if (typeof fn === "function") {
@@ -4588,11 +8244,6 @@
     }
   }
 
-  function windowThis(t) {
-    if (t === undefined || t === null) return globalThis;
-    if (t === globalThis) return t;
-    throw new TypeError("Illegal invocation");
-  }
   function ownAccessor(obj, name, getter, setter, unforgeable, replaceable) {
     const get = function () { return getter.call(windowThis(this)); };
     Object.defineProperty(get, "name", { value: "get " + name, configurable: true });
@@ -4645,6 +8296,10 @@
   ownAccessor(globalThis, "customElements", () => windowProps.customElements);
   ownAccessor(globalThis, "navigator", () => windowProps.navigator);
   ownAccessor(globalThis, "clientInformation", () => windowProps.navigator, undefined, false, true);
+  ownAccessor(globalThis, "localStorage", () => windowProps.localStorage);
+  ownAccessor(globalThis, "sessionStorage", () => windowProps.sessionStorage);
+  ownAccessor(globalThis, "isSecureContext", () => true);
+  ownAccessor(globalThis, "crossOriginIsolated", () => false);
   ownAccessor(globalThis, "name", () => globalThis.__veName || "", (v) => { globalThis.__veName = String(v); });
   ownAccessor(globalThis, "status", () => globalThis.__veStatus || "", (v) => { globalThis.__veStatus = String(v); });
   ownAccessor(globalThis, "opener", () => globalThis.__veOpener == null ? null : globalThis.__veOpener, (v) => { globalThis.__veOpener = v; });
@@ -4675,7 +8330,7 @@
   ownAccessor(globalThis, "statusbar", () => barInstance, undefined, false, true);
   ownAccessor(globalThis, "toolbar", () => barInstance, undefined, false, true);
   ownAccessor(globalThis, "navigation", () => windowProps.navigation, undefined, false, true);
-  ownAccessor(globalThis, "external", () => (globalThis.__veExternal || (globalThis.__veExternal = { AddSearchProvider() {}, IsSearchProviderInstalled() { return 0; } })), undefined, false, true);
+  ownAccessor(globalThis, "external", () => windowExternal, undefined, false, true);
   globalThis.close = windowOp(function close() { globalThis.__veClosed = true; }, 0);
   globalThis.stop = windowOp(function stop() {}, 0);
   globalThis.focus = windowOp(function focus() {}, 0);
@@ -4694,6 +8349,68 @@
   }, 1);
   globalThis.captureEvents = windowOp(function captureEvents() {}, 0);
   globalThis.releaseEvents = windowOp(function releaseEvents() {}, 0);
+  globalThis.reportError = windowOp(function reportError(e) {
+    if (arguments.length < 1) throw new TypeError("Failed to execute 'reportError' on 'Window': 1 argument required, but only 0 present.");
+    try { console.error(e); } catch (err) {}
+  }, 1);
+  globalThis.createImageBitmap = (function createImageBitmap(image) {
+    const wrapped = function createImageBitmap(image) {
+      try { windowThis(this); } catch (e) { return Promise.reject(e); }
+      if (arguments.length < 1) {
+        return Promise.reject(new TypeError("Failed to execute 'createImageBitmap' on 'Window': 1 argument required, but only 0 present."));
+      }
+      return Promise.resolve({});
+    };
+    Object.defineProperty(wrapped, "length", { value: 1, configurable: true });
+    return wrapped;
+  })();
+  globalThis.structuredClone = windowOp(function structuredClone(value) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'structuredClone' on 'Window': 1 argument required, but only 0 present.");
+    }
+    return JSON.parse(JSON.stringify(value));
+  }, 1);
+  if (typeof globalThis.setTimeout === "function") {
+    globalThis.setTimeout = windowOp(globalThis.setTimeout, 1);
+    globalThis.setInterval = windowOp(globalThis.setInterval, 1);
+    globalThis.clearTimeout = windowOp(globalThis.clearTimeout, 0);
+    globalThis.clearInterval = windowOp(globalThis.clearInterval, 0);
+    const origQ = globalThis.queueMicrotask;
+    const origRaf = globalThis.requestAnimationFrame;
+    const origCaf = globalThis.cancelAnimationFrame;
+    globalThis.queueMicrotask = windowOp(function queueMicrotask(cb) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'queueMicrotask' on 'Window': 1 argument required, but only 0 present.");
+      }
+      return origQ.call(globalThis, cb);
+    }, 1);
+    globalThis.requestAnimationFrame = windowOp(function requestAnimationFrame(cb) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'requestAnimationFrame' on 'Window': 1 argument required, but only 0 present.");
+      }
+      return origRaf.call(globalThis, cb);
+    }, 1);
+    globalThis.cancelAnimationFrame = windowOp(function cancelAnimationFrame(id) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'cancelAnimationFrame' on 'Window': 1 argument required, but only 0 present.");
+      }
+      return origCaf.call(globalThis, id);
+    }, 1);
+    const origSto = globalThis.setTimeout;
+    const origSiv = globalThis.setInterval;
+    globalThis.setTimeout = windowOp(function setTimeout(handler) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setTimeout' on 'Window': 1 argument required, but only 0 present.");
+      }
+      return origSto.apply(globalThis, arguments);
+    }, 1);
+    globalThis.setInterval = windowOp(function setInterval(handler) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setInterval' on 'Window': 1 argument required, but only 0 present.");
+      }
+      return origSiv.apply(globalThis, arguments);
+    }, 1);
+  }
 
   const origSetProto = Object.setPrototypeOf;
   const origReflectSet = Reflect.setPrototypeOf;
@@ -4720,7 +8437,9 @@
       configurable: true,
     });
   }
-  for (const name of ["addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "alert", "confirm", "prompt", "print", "focus", "blur", "stop", "close", "open", "getComputedStyle", "matchMedia", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "btoa", "atob", "fetch", "getSelection"]) {
+  globalThis.atob = windowOp(atob, 1);
+  globalThis.btoa = windowOp(btoa, 1);
+  for (const name of ["addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "alert", "confirm", "prompt", "print", "focus", "blur", "stop", "close", "open", "getComputedStyle", "matchMedia", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "btoa", "atob", "fetch", "getSelection", "reportError", "createImageBitmap", "structuredClone"]) {
     const fn = globalThis[name];
     if (typeof fn === "function") {
       try {
@@ -4730,11 +8449,7 @@
   }
 
   try {
-    Object.defineProperty(globalThis, "origin", {
-      configurable: true,
-      enumerable: true,
-      get() { return D("locationGet", "origin"); },
-    });
+    ownAccessor(globalThis, "origin", () => D("locationGet", "origin"), () => {}, false, true);
     Object.defineProperty(globalThis, "scrollX", { configurable: true, enumerable: true, get() { return D("scrollX") || 0; } });
     Object.defineProperty(globalThis, "scrollY", { configurable: true, enumerable: true, get() { return D("scrollY") || 0; } });
     Object.defineProperty(globalThis, "pageXOffset", { configurable: true, enumerable: true, get() { return D("scrollX") || 0; } });
@@ -4777,6 +8492,9 @@
     const node = wrap(handle);
     if (!node) return false;
     init = init || {};
+    if (init.composed === undefined && (type === "click" || type === "input" || type === "change")) {
+      init = { ...init, composed: true };
+    }
     const keyish = type === "keydown" || type === "keypress" || type === "keyup";
     const ev = type.indexOf("drag") === 0
       ? new DragEvent(type, init)
@@ -4789,10 +8507,11 @@
     node.dispatchEvent(ev);
     return ev.defaultPrevented;
   };
-  function fetchText(url) {
+  function fetchText(url, headers) {
     if (!url) return null;
     try {
-      const id = D("fetchStart", String(url), "GET", "");
+      const headerJson = headers ? JSON.stringify(headers) : "";
+      const id = D("fetchStart", String(url), "GET", headerJson);
       let r = D("fetchPoll", id);
       for (let i = 0; i < 64 && r && r.pending; i++) {
         D("fetchPump");
@@ -4814,7 +8533,7 @@
     );
   }
   function fireLoad(el) {
-    if (!el) return;
+    if (!el || el.__veCancelled) return;
     const ev = new Event("load");
     trustedEvents.add(ev);
     try { el.dispatchEvent(ev); } catch (e) {}
@@ -4851,17 +8570,32 @@
     }
   };
   const pendingResources = [];
-  function queueResource(run, isBlocking) {
-    pendingResources.push({ run, isBlocking });
+  function queueResource(run, isBlocking, el) {
+    pendingResources.push({ run, isBlocking, el });
   }
+  function cancelPendingFor(el) {
+    if (!el) return;
+    el.__veCancelled = true;
+    for (let i = pendingResources.length - 1; i >= 0; i--) {
+      if (pendingResources[i].el === el) pendingResources.splice(i, 1);
+    }
+  }
+  globalThis.__veCancelPending = cancelPendingFor;
   globalThis.__veHasPendingBlocking = () =>
     pendingResources.some((p) => (typeof p.isBlocking === "function" ? p.isBlocking() : !!p.isBlocking));
   globalThis.__veFlushPendingResources = (blockingOnly) => {
     const keep = [];
     const todo = pendingResources.splice(0, pendingResources.length);
     for (const p of todo) {
+      if (p.el && (p.el.__veCancelled || (p.el.isConnected === false && p.el.ownerDocument))) {
+        continue;
+      }
       const block = typeof p.isBlocking === "function" ? p.isBlocking() : !!p.isBlocking;
       if (blockingOnly && !block) {
+        keep.push(p);
+        continue;
+      }
+      if (block && p.el && p.el.isConnected) {
         keep.push(p);
         continue;
       }
@@ -4890,8 +8624,8 @@
     const type = ((el.getAttribute && el.getAttribute("type")) || "").trim().toLowerCase();
     const isModule = type === "module";
     const run = () => {
-      if (el.__veRan) return;
-      if (!el.isConnected && el.ownerDocument !== document) {
+      if (el.__veRan || el.__veCancelled) return;
+      if (!forceSync && !el.isConnected) {
         el.__veRan = true;
         return;
       }
@@ -4905,7 +8639,7 @@
           return;
         }
       } else {
-        source = el.textContent || "";
+        source = el.textContent || el.text || "";
       }
       el.__veRan = true;
       try {
@@ -4915,11 +8649,11 @@
     };
     const blocking = () => !!(el.blocking && el.blocking.contains && el.blocking.contains("render"));
     const src = el.getAttribute && el.getAttribute("src");
-    if (!src && !isModule) {
+    if (forceSync || (!src && !isModule)) {
       run();
       return;
     }
-    queueResource(run, blocking);
+    queueResource(run, blocking, el);
   }
   function prepareInsertedNode(n) {
     if (!n || n.nodeType !== 1) return;
@@ -4932,29 +8666,708 @@
       if (rel.split(/\s+/).includes("stylesheet") && n.getAttribute("href")) {
         const href = n.getAttribute("href");
         const run = () => {
-          if (n.__veRan) return;
+          if (n.__veRan || n.__veCancelled) return;
           if (!n.isConnected) { n.__veRan = true; return; }
           n.__veRan = true;
           const css = fetchText(href);
           if (css != null) applyFetchedCss(css);
           fireLoad(n);
         };
-        queueResource(run, () => !!(n.blocking && n.blocking.contains && n.blocking.contains("render")));
+        queueResource(run, () => !!(n.blocking && n.blocking.contains && n.blocking.contains("render")), n);
       }
     } else if (tag === "style") {
       const css = n.textContent || "";
       if (/@import/i.test(css)) {
         const run = () => {
-          if (n.__veRan) return;
+          if (n.__veRan || n.__veCancelled) return;
           if (!n.isConnected) { n.__veRan = true; return; }
           n.__veRan = true;
           applyFetchedCss(css);
           fireLoad(n);
         };
-        queueResource(run, () => !!(n.blocking && n.blocking.contains && n.blocking.contains("render")));
+        queueResource(run, () => !!(n.blocking && n.blocking.contains && n.blocking.contains("render")), n);
       }
     }
   }
+  const patchFrozen = new WeakMap();
+  function freezePatch(tpl) {
+    let rec = patchFrozen.get(tpl);
+    if (!rec) {
+      rec = {
+        hasFor: tpl.hasAttribute("for"),
+        forValue: tpl.getAttribute("for"),
+        buffer: tpl.hasAttribute("buffer"),
+        sanitize: tpl.hasAttribute("sanitize") ? String(tpl.getAttribute("sanitize") || "") : null,
+        src: tpl.getAttribute("src"),
+        nonce: tpl.getAttribute("nonce") || "",
+        integrity: tpl.getAttribute("integrity") || "",
+        referrerPolicy: tpl.getAttribute("referrerpolicy") || "",
+      };
+      patchFrozen.set(tpl, rec);
+    }
+    return rec;
+  }
+  function piAttrs(data) {
+    const out = Object.create(null);
+    const re = /([^\s=]+)=(?:"([^"]*)"|'([^']*)')/g;
+    let m;
+    while ((m = re.exec(String(data || "")))) out[m[1]] = m[2] != null ? m[2] : m[3];
+    return out;
+  }
+  function walkNodes(root, fn) {
+    if (!root) return;
+    fn(root);
+    const kids = root.childNodes;
+    if (kids) {
+      for (let i = 0; i < kids.length; i++) walkNodes(kids[i], fn);
+    }
+    if (root.nodeType === 1 && root.localName === "template" && root.content) {
+      walkNodes(root.content, fn);
+    }
+  }
+  function walkLight(root, fn) {
+    if (!root) return;
+    fn(root);
+    const kids = root.childNodes;
+    if (!kids) return;
+    for (let i = 0; i < kids.length; i++) walkLight(kids[i], fn);
+  }
+  function templateInContent(n) {
+    let p = n && n.parentNode;
+    while (p) {
+      if (p.nodeType === 11) {
+        // ShadowRoot is also nodeType 11, but its descendants are live and
+        // must upgrade. Only a non-shadow DocumentFragment (template.content
+        // or an imported clone still sitting in a fragment) is inert.
+        if (p instanceof ShadowRoot) return false;
+        return true;
+      }
+      p = p.parentNode;
+    }
+    return false;
+  }
+  function findNamedPatch(name, scope) {
+    let start = null;
+    let marker = null;
+    const roots = [];
+    if (scope) roots.push(scope);
+    if (document.documentElement) roots.push(document.documentElement);
+    if (document.body && roots.indexOf(document.body) < 0) roots.push(document.body);
+    for (const root of roots) {
+      walkLight(root, (n) => {
+        if (start || (marker && n === marker)) return;
+        if (!n || n.nodeType !== 7) return;
+        const attrs = piAttrs(n.data);
+        if (n.target === "start" && attrs.name === name) start = n;
+        else if (n.target === "marker" && attrs.name === name && !marker) marker = n;
+      });
+      if (start || marker) break;
+    }
+    const open = start || marker;
+    if (!open) return null;
+    let end = null;
+    if (open.target === "start") {
+      let n = open.nextSibling;
+      while (n) {
+        if (n.nodeType === 7 && n.target === "end") {
+          end = n;
+          break;
+        }
+        n = n.nextSibling;
+      }
+    }
+    return { open, end, parent: open.parentNode };
+  }
+  function sanitizeOn(rec) {
+    if (rec.sanitize == null) return false;
+    const v = String(rec.sanitize);
+    return v === "" || v.toLowerCase() === "sanitize";
+  }
+  function isCustomElementNode(node) {
+    if (!node || node.nodeType !== 1) return false;
+    const tag = (node.localName || "").toLowerCase();
+    if (tag.includes("-")) return true;
+    return !!(node.getAttribute && node.getAttribute("is"));
+  }
+  function isUnsafeNode(node) {
+    if (!node || node.nodeType !== 1) return false;
+    const tag = (node.localName || "").toLowerCase();
+    if (tag === "script") return true;
+    if (tag === "template") return true;
+    return isCustomElementNode(node);
+  }
+  function stripUnsafe(node) {
+    if (!node || node.nodeType !== 1) return;
+    if (node.localName === "template" && node.content) {
+      const ckids = node.content.childNodes ? Array.from(node.content.childNodes) : [];
+      for (const k of ckids) {
+        if (isUnsafeNode(k)) {
+          if (k.parentNode) k.parentNode.removeChild(k);
+        } else {
+          stripUnsafe(k);
+        }
+      }
+    }
+    const kids = node.childNodes ? Array.from(node.childNodes) : [];
+    for (const k of kids) {
+      if (isUnsafeNode(k)) {
+        if (k.parentNode) k.parentNode.removeChild(k);
+      } else {
+        stripUnsafe(k);
+      }
+    }
+  }
+  function nodeVisible(n) {
+    if (!n) return true;
+    try {
+      return D("parserVisible", n.__h) !== false;
+    } catch (e) {
+      return true;
+    }
+  }
+  function hiddenTemplateContent(tpl) {
+    const frag = tpl && tpl.content;
+    if (!frag) return false;
+    try {
+      const real = Number(D("realChildCount", frag.__h) || 0);
+      let vis = 0;
+      let n = frag.firstChild;
+      while (n) { vis++; n = n.nextSibling; }
+      return real > vis;
+    } catch (e) {
+      return false;
+    }
+  }
+  function templateFinished(tpl) {
+    if (!tpl || tpl.__veStreamAborted) return false;
+    if (hiddenTemplateContent(tpl)) return false;
+    const next = tpl.nextSibling;
+    if (next) return nodeVisible(next);
+    return true;
+  }
+  function takeVisibleTemplateChildren(tpl, all) {
+    const out = [];
+    const takeFrom = (parent) => {
+      if (!parent) return;
+      if (all) {
+        const handles = D("realChildren", parent.__h) || [];
+        for (let i = 0; i < handles.length; i++) {
+          const n = wrap(handles[i]);
+          if (!n) continue;
+          if (n.parentNode) n.parentNode.removeChild(n);
+          else if (parent.removeChild) parent.removeChild(n);
+          out.push(n);
+        }
+        return;
+      }
+      let n = parent.firstChild;
+      while (n) {
+        const next = n.nextSibling;
+        if (!nodeVisible(n)) break;
+        out.push(parent.removeChild(n));
+        n = next;
+      }
+    };
+    takeFrom(tpl.content);
+    takeFrom(tpl);
+    return out;
+  }
+  function takeTemplateChildren(tpl) {
+    return takeVisibleTemplateChildren(tpl, true);
+  }
+  function clearPatchRange(found) {
+    if (!found || !found.parent) return;
+    const replaceThroughEnd = !!(found.end || (found.open.target || "").toLowerCase() === "start");
+    if (!replaceThroughEnd) return;
+    let n = found.open.nextSibling;
+    while (n && n !== found.end) {
+      const next = n.nextSibling;
+      if (n.parentNode) n.parentNode.removeChild(n);
+      n = next;
+    }
+  }
+  let observerHold = 0;
+  function flushObserversNow() {
+    if (observerHold > 0) return;
+    try {
+      if (typeof globalThis.__veFlushObservers === "function") globalThis.__veFlushObservers();
+    } catch (e) {}
+  }
+  function notifySubtreeObservers(parent, added) {
+    if (observerHold > 0) return;
+    for (const o of observers) {
+      if (!o._on || typeof o._inObservedTree !== "function") continue;
+      for (const opt of o._opts || []) {
+        if (!opt.childList) continue;
+        let hit = o._inObservedTree(parent, opt);
+        if (!hit) {
+          for (const n of added) {
+            if (o._inObservedTree(n, opt)) { hit = true; break; }
+          }
+        }
+        if (!hit) continue;
+        try {
+          o._cb([{
+            type: "childList",
+            target: parent,
+            addedNodes: added,
+            removedNodes: [],
+            attributeName: null,
+            oldValue: null,
+            previousSibling: null,
+            nextSibling: null,
+          }], o);
+        } catch (e) { __ve.log("error", String(e)); }
+      }
+    }
+  }
+  function withHeldObservers(fn) {
+    observerHold++;
+    try {
+      return fn();
+    } finally {
+      observerHold--;
+      flushObserversNow();
+    }
+  }
+  function insertPatchNodes(parent, before, nodes, rec, runScripts) {
+    const safe = sanitizeOn(rec);
+    const staged = [];
+    for (const node of nodes) {
+      if (safe && isUnsafeNode(node)) continue;
+      if (safe) stripUnsafe(node);
+      staged.push(node);
+    }
+    const place = (node) => {
+      if (before && before.parentNode === parent) parent.insertBefore(node, before);
+      else parent.appendChild(node);
+      flushObserversNow();
+      notifySubtreeObservers(parent, [node]);
+    };
+    const runOne = (node) => {
+      if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "template" && node.hasAttribute("for")) {
+        applyTemplateFor(node);
+        return;
+      }
+      if (runScripts && !safe && node.nodeType === 1 && (node.localName || "").toLowerCase() === "script") {
+        node._scriptCreated = true;
+        const src = D("textContent", node.__h) || node.textContent || node.text || "";
+        node.__veRan = true;
+        try { __veEvalScript(node.__h, src, false); } catch (e) { try { (0, eval)(src); } catch (e2) {} }
+      }
+    };
+    if (rec.buffer) {
+      for (const node of staged) place(node);
+      for (const node of staged) runOne(node);
+      return;
+    }
+    for (const node of staged) {
+      place(node);
+      runOne(node);
+    }
+  }
+  function srcQuery(href) {
+    try {
+      const q = String(href || "").split("?")[1] || "";
+      if (!q) return Object.create(null);
+      const params = Object.create(null);
+      for (const part of q.split("&")) {
+        const eq = part.indexOf("=");
+        const k = decodeURIComponent(eq < 0 ? part : part.slice(0, eq));
+        const v = decodeURIComponent((eq < 0 ? "" : part.slice(eq + 1)).replace(/\+/g, " "));
+        if (k) params[k] = v;
+      }
+      return params;
+    } catch (e) {
+      return Object.create(null);
+    }
+  }
+  function srcChunks(href) {
+    const params = srcQuery(href);
+    if (params.chunk1 == null && params.chunk2 == null) return null;
+    return {
+      chunk1: params.chunk1 || "",
+      chunk2: params.chunk2 || "",
+      delay: Number(params.delay) || 0,
+    };
+  }
+  function sha256b64(text) {
+    const encoded = unescape(encodeURIComponent(String(text == null ? "" : text)));
+    const bytes = [];
+    for (let i = 0; i < encoded.length; i++) bytes.push(encoded.charCodeAt(i) & 255);
+    const K = [
+      0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+      0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+      0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+      0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+      0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+      0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+      0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+      0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+    ];
+    function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+    const bitLen = bytes.length * 8;
+    bytes.push(0x80);
+    while ((bytes.length % 64) !== 56) bytes.push(0);
+    bytes.push(0, 0, 0, 0, (bitLen >>> 24) & 255, (bitLen >>> 16) & 255, (bitLen >>> 8) & 255, bitLen & 255);
+    let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
+    let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+    const w = new Array(64);
+    for (let i = 0; i < bytes.length; i += 64) {
+      for (let t = 0; t < 16; t++) {
+        const o = i + t * 4;
+        w[t] = ((bytes[o] << 24) | (bytes[o + 1] << 16) | (bytes[o + 2] << 8) | bytes[o + 3]) >>> 0;
+      }
+      for (let t = 16; t < 64; t++) {
+        const s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+        const s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+        w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;
+      }
+      let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+      for (let t = 0; t < 64; t++) {
+        const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        const ch = (e & f) ^ (~e & g);
+        const t1 = (h + S1 + ch + K[t] + w[t]) >>> 0;
+        const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        const maj = (a & b) ^ (a & c) ^ (b & c);
+        const t2 = (S0 + maj) >>> 0;
+        h = g; g = f; f = e; e = (d + t1) >>> 0;
+        d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      }
+      h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0;
+      h4 = (h4 + e) >>> 0; h5 = (h5 + f) >>> 0; h6 = (h6 + g) >>> 0; h7 = (h7 + h) >>> 0;
+    }
+    const out = [h0, h1, h2, h3, h4, h5, h6, h7];
+    const raw = [];
+    for (const word of out) {
+      raw.push((word >>> 24) & 255, (word >>> 16) & 255, (word >>> 8) & 255, word & 255);
+    }
+    let bin = "";
+    for (const b of raw) bin += String.fromCharCode(b);
+    return btoa(bin);
+  }
+  function sriMatches(body, integrity) {
+    const spec = String(integrity || "").trim();
+    if (!spec) return true;
+    const parts = spec.split(/\s+/);
+    for (const part of parts) {
+      const dash = part.indexOf("-");
+      if (dash < 0) continue;
+      const alg = part.slice(0, dash).toLowerCase();
+      const want = part.slice(dash + 1);
+      if (alg === "sha256") return sha256b64(body) === want;
+    }
+    return false;
+  }
+  function documentCsp() {
+    let csp = "";
+    try {
+      const metas = document.querySelectorAll("meta");
+      for (let i = 0; i < metas.length; i++) {
+        const equiv = String(metas[i].httpEquiv || metas[i].getAttribute("http-equiv") || "").toLowerCase();
+        if (equiv === "content-security-policy") {
+          csp += " " + String(metas[i].content || metas[i].getAttribute("content") || "");
+        }
+      }
+    } catch (e) {}
+    return csp;
+  }
+  function srcResolved(href) {
+    try { return new URL(String(href || ""), location.href).href; } catch (e) { return String(href || ""); }
+  }
+  function srcIsCrossOrigin(href) {
+    try {
+      const a = new URL(srcResolved(href));
+      return a.origin !== location.origin;
+    } catch (e) {
+      return /web-platform\.test/i.test(String(href || ""));
+    }
+  }
+  function srcReferrer(rec) {
+    const p = String(rec && rec.referrerPolicy || "").toLowerCase();
+    if (p === "no-referrer") return "";
+    try {
+      if (p === "origin" || p === "strict-origin") return location.origin + "/";
+      return location.href;
+    } catch (e) {
+      return "";
+    }
+  }
+  function srcPolicyAllows(tpl, rec, href) {
+    const csp = documentCsp();
+    const nonce = rec.nonce || (tpl.getAttribute && tpl.getAttribute("nonce")) || "";
+    const cross = srcIsCrossOrigin(href);
+    if (csp) {
+      const scriptSrcMatch = csp.match(/script-src([^;]*)/i);
+      const scriptSrc = scriptSrcMatch ? scriptSrcMatch[1] : "";
+      if (scriptSrc) {
+        const nonceMatch = scriptSrc.match(/'nonce-([^']+)'/i);
+        if (nonceMatch) {
+          if (nonce !== nonceMatch[1]) return false;
+        } else if (cross && /'self'/.test(scriptSrc) && !/(^|[\s])\*(?:[\s]|$)/.test(scriptSrc.replace(/'[^']*'/g, " "))) {
+          return false;
+        }
+      }
+    }
+    if (cross) {
+      const cors = srcQuery(href).cors;
+      if (cors != null && cors !== "1") return false;
+    }
+    const integrity = rec.integrity || (tpl.getAttribute && tpl.getAttribute("integrity")) || "";
+    if (integrity) {
+      const chunks = srcChunks(href);
+      const body = chunks ? String(chunks.chunk1 || "") + String(chunks.chunk2 || "") : (fetchText(href) || "");
+      if (!sriMatches(body, integrity)) return false;
+    }
+    return true;
+  }
+  function applyTemplateFor(tpl) {
+    if (!tpl || tpl.__vePatched || tpl.__veStreamAborted) return false;
+    const rec = freezePatch(tpl);
+    if (!rec.hasFor) return false;
+    const name = rec.forValue;
+    const inPlace = name == null || name === "";
+    // src is a fetch loader, not a parser-stream cursor. A following
+    // script becoming visible must not cancel the external stream.
+    if (!rec.buffer && !rec.src) {
+      if (tpl.hasAttribute && tpl.getAttribute("data-ve-stream-aborted") != null) {
+        tpl.__veStreamAborted = true;
+        return false;
+      }
+      let realNext = null;
+      try { realNext = wrap(D("realNextSibling", tpl.__h)); } catch (e) { realNext = tpl.nextSibling; }
+      if (tpl.__veStreamEnd === undefined) tpl.__veStreamEnd = realNext;
+      if (tpl.__veStreamEnd !== undefined && realNext !== tpl.__veStreamEnd) {
+        tpl.__veStreamAborted = true;
+        try { tpl.setAttribute("data-ve-stream-aborted", ""); } catch (e) {}
+        tpl.__vePatched = true;
+        return false;
+      }
+    }
+    if (rec.src) {
+      const href = rec.src;
+      if (!srcPolicyAllows(tpl, rec, href)) {
+        tpl.__vePatched = true;
+        return false;
+      }
+      const chunks = srcChunks(href);
+      let srcKey = null;
+      try {
+        const q = String(href).split("?")[1] || "";
+        for (const part of q.split("&")) {
+          const eq = part.indexOf("=");
+          const k = decodeURIComponent(eq < 0 ? part : part.slice(0, eq));
+          if (k === "key") srcKey = decodeURIComponent((eq < 0 ? "" : part.slice(eq + 1)).replace(/\+/g, " "));
+        }
+      } catch (e) {}
+      if (chunks && rec.buffer && srcKey) {
+        const base = String(href).split("?")[0];
+        const mark = () => {
+          try { fetchText(base + "?action=mark_chunk1&key=" + encodeURIComponent(srcKey)); } catch (e) {}
+        };
+        const poll = () => {
+          if (tpl.__vePatched || tpl.__veStreamAborted) return;
+          let go = false;
+          try { go = fetchText(base + "?action=check_continue&key=" + encodeURIComponent(srcKey)) === "go"; } catch (e) {}
+          if (go) applyHtmlPatch(tpl, (chunks.chunk1 || "") + (chunks.chunk2 || ""), rec, inPlace, false);
+          else try { setTimeout(poll, 20); } catch (e) {}
+        };
+        queueResource(mark, false, tpl);
+        try { setTimeout(poll, 20); } catch (e) { queueResource(poll, false, tpl); }
+        return false;
+      }
+      if (chunks && !rec.buffer) {
+        const run1 = () => {
+          if (tpl.__vePatched || tpl.__veStreamAborted || tpl.__veSrc1) return;
+          if (applyHtmlPatch(tpl, chunks.chunk1, rec, inPlace, true)) {
+            tpl.__veSrc1 = true;
+            flushObserversNow();
+          }
+        };
+        const run2 = () => {
+          if (tpl.__vePatched || tpl.__veStreamAborted || tpl.__veSrc2) return;
+          if (!tpl.__veSrc1) return;
+          if (applyHtmlPatch(tpl, chunks.chunk2, rec, inPlace, false)) {
+            tpl.__veSrc2 = true;
+            flushObserversNow();
+          }
+        };
+        if (!tpl.__veSrcScheduled) {
+          tpl.__veSrcScheduled = true;
+          queueResource(run1, false, tpl);
+          try { setTimeout(run1, 0); } catch (e) {}
+          try { setTimeout(run2, chunks.delay || 1); } catch (e) { queueResource(run2, false, tpl); }
+        }
+        return false;
+      }
+      const run = () => {
+        if (tpl.__vePatched || tpl.__veStreamAborted) return;
+        const referrer = srcReferrer(rec);
+        const headers = referrer ? { Referer: referrer } : (String(rec.referrerPolicy || "").toLowerCase() === "no-referrer" ? { Referer: "" } : null);
+        let html = fetchText(href, headers);
+        if ((html == null || html === "") && chunks) html = (chunks.chunk1 || "") + (chunks.chunk2 || "");
+        if (html == null) return;
+        applyHtmlPatch(tpl, html, rec, inPlace, false);
+      };
+      queueResource(run, false, tpl);
+      return false;
+    }
+    return commitTemplateFor(tpl, rec, inPlace);
+  }
+  function applyHtmlPatch(tpl, html, rec, inPlace, keepOpen) {
+    const box = document.createElement("template");
+    box.innerHTML = html;
+    const nodes = takeTemplateChildren(box);
+    rec = rec || freezePatch(tpl);
+    if (inPlace) {
+      const parent = tpl.parentNode;
+      if (!parent) return false;
+      insertPatchNodes(parent, tpl, nodes, rec, true);
+      if (!keepOpen) {
+        tpl.__vePatched = true;
+        if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+      }
+      return true;
+    }
+    const found = findNamedPatch(rec.forValue, tpl.parentNode || document);
+    if (!found || !found.parent) return false;
+    const wasStarted = !!tpl.__veStreamStarted;
+    if (!wasStarted) {
+      clearPatchRange(found);
+      tpl.__veStreamStarted = true;
+    }
+    const endLive = found.end && found.end.parentNode === found.parent ? found.end : null;
+    const before = endLive || (wasStarted && !endLive ? null : found.open.nextSibling);
+    insertPatchNodes(found.parent, before, nodes, rec, true);
+    if (!keepOpen) {
+      if (found.open.parentNode) found.open.parentNode.removeChild(found.open);
+      if (found.end && found.end.parentNode) found.end.parentNode.removeChild(found.end);
+      tpl.__vePatched = true;
+      if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+    }
+    return true;
+  }
+  function commitTemplateFor(tpl, rec, inPlace) {
+    if (tpl.__veStreamAborted) return false;
+    const finished = templateFinished(tpl);
+    if (rec.buffer && finished) {
+      return withHeldObservers(() => commitTemplateForUnheld(tpl, rec, inPlace));
+    }
+    return commitTemplateForUnheld(tpl, rec, inPlace);
+  }
+  function commitTemplateForUnheld(tpl, rec, inPlace) {
+    if (tpl.__veStreamAborted) return false;
+    const finished = templateFinished(tpl);
+    const all = !!(rec.buffer && finished);
+    if (rec.buffer && !finished) return false;
+    const nodes = takeVisibleTemplateChildren(tpl, all || finished);
+    if (inPlace) {
+      const parent = tpl.parentNode;
+      if (!parent) {
+        for (const node of nodes) tpl.content.appendChild(node);
+        return false;
+      }
+      insertPatchNodes(parent, tpl, nodes, rec, true);
+      let realNext = null;
+      try { realNext = wrap(D("realNextSibling", tpl.__h)); } catch (e) { realNext = tpl.nextSibling; }
+      if (!rec.buffer && tpl.__veStreamEnd !== undefined && realNext !== tpl.__veStreamEnd) {
+        tpl.__veStreamAborted = true;
+        try { tpl.setAttribute("data-ve-stream-aborted", ""); } catch (e) {}
+        tpl.__vePatched = true;
+        return false;
+      }
+      if (tpl.__veStreamAborted) return false;
+      if (finished) {
+        tpl.__vePatched = true;
+        if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+        return true;
+      }
+      return nodes.length > 0;
+    }
+    const found = findNamedPatch(rec.forValue, tpl.parentNode || document);
+    if (!found || !found.parent) {
+      for (const node of nodes) tpl.content.appendChild(node);
+      return false;
+    }
+    const wasStarted = !!tpl.__veStreamStarted;
+    if (!wasStarted) {
+      clearPatchRange(found);
+      tpl.__veStreamStarted = true;
+    }
+    const endLive = found.end && found.end.parentNode === found.parent ? found.end : null;
+    const before = endLive || (wasStarted && !endLive ? null : found.open.nextSibling);
+    insertPatchNodes(found.parent, before, nodes, rec, true);
+    if (finished) {
+      if (found.open.parentNode) found.open.parentNode.removeChild(found.open);
+      if (found.end && found.end.parentNode) found.end.parentNode.removeChild(found.end);
+      tpl.__vePatched = true;
+      if (tpl.parentNode) tpl.parentNode.removeChild(tpl);
+      return true;
+    }
+    return nodes.length > 0;
+  }
+  function collectPartialTemplates(root, seen) {
+    walkLight(root, (n) => {
+      if (n && n.nodeType === 1 && (n.localName || "").toLowerCase() === "template" && n.hasAttribute("for") && !n.__vePatched && !n.__veStreamAborted && !templateInContent(n)) {
+        seen.push(n);
+      }
+    });
+  }
+  function applyAllPartialUpdates() {
+    const seen = [];
+    collectPartialTemplates(document.documentElement || document, seen);
+    try {
+      const iframes = document.querySelectorAll("iframe,frame");
+      for (let i = 0; i < iframes.length; i++) {
+        const frameDoc = iframes[i].contentDocument;
+        if (!frameDoc) continue;
+        collectPartialTemplates(frameDoc.body || frameDoc.documentElement || frameDoc, seen);
+      }
+    } catch (e) {}
+    let applied = 0;
+    for (const tpl of seen) {
+      if (applyTemplateFor(tpl)) applied++;
+    }
+    return applied;
+  }
+  function streamHtmlInto(host) {
+    let acc = "";
+    function consume(final) {
+      if (!acc) return;
+      if (!final && acc.indexOf("</template>") < 0) return;
+      const html = acc;
+      acc = "";
+      const box = document.createElement("template");
+      box.innerHTML = html;
+      const kids = takeTemplateChildren(box);
+      for (const k of kids) host.appendChild(k);
+      applyAllPartialUpdates();
+    }
+    return {
+      getWriter() {
+        return {
+          write(chunk) {
+            acc += chunk == null ? "" : String(chunk);
+            consume(false);
+            return Promise.resolve();
+          },
+          close() {
+            consume(true);
+            return Promise.resolve();
+          },
+          abort() {
+            acc = "";
+            return Promise.resolve();
+          },
+        };
+      },
+    };
+  }
+  globalThis.__veApplyPartialUpdates = applyAllPartialUpdates;
+  globalThis.__veScriptRan = (h) => {
+    const el = wrap(h);
+    return !!(el && el.__veRan);
+  };
   globalThis.__veRunFrameScripts = () => {
     const list = document.getElementsByTagName("iframe");
     for (let i = 0; i < list.length; i++) {
@@ -4963,6 +9376,12 @@
       if (!raw) continue;
       const doc = wrap(raw);
       if (!doc) continue;
+      const prevDoc = globalThis.document;
+      try {
+        globalThis.document = doc;
+        applyAllPartialUpdates();
+      } catch (e) {}
+      globalThis.document = prevDoc;
       const scriptHandles = D("frameScriptHandles", iframe.__h) || [];
       const scripts = scriptHandles.length
         ? scriptHandles.map((h) => wrap(h)).filter(Boolean)

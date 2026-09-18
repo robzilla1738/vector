@@ -3,6 +3,24 @@
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
 
+## Current review Mac pickup (PR #11, `cursor/vector-current-review-418e`)
+
+Mac-run proof of `Vector_Current_Review_60b2d41` on this development tree.
+Windows, GitHub Release, and `v*` tags are out of scope. Product is
+`pnpm dev` (`ve-shell --gui --service`). `dev:mock` / Vite is not EngineView.
+
+- Production `ve-host` under `sandbox_init`. Node
+  `VECTOR_ENGINE_PROFILE=production` reports `securityProfile=production`,
+  `isolation=process`, `routeReason=native-only`.
+- Always-mode native loop: `documentEpoch` advances after filter GET.
+- Official `html/dom/partial-updates` pin `7c204383`: 28 PASS / 2 FAIL of 30;
+  combined Mac tree-family run 142 PASS / 2 FAIL of 144. Kept FAILs:
+  `sanitize-template-element`, `template-for-empty`.
+- `Page::pump_virtual_time` completes pending script fetches and follow-up
+  testharness timers (closes `src-referrerpolicy.sub.html` timeout).
+- Merge-blocking `testharness.txt` is 114 files. Status:
+  `docs/engine/HANDOFF-mac.md`.
+
 ## Settings: GPT Luna Fast + uncapped model turns
 
 Planner model is selectable: `alibaba/qwen3.8-27b` (default) or

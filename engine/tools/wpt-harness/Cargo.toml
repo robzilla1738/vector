@@ -24,3 +24,5 @@ anyhow.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+rustls.workspace = true
+rcgen.workspace = true

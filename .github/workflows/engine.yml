@@ -70,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.88.0
@@ -112,12 +112,25 @@ jobs:
       - name: native product shell
         if: runner.os == 'macOS'
         run: cargo clippy -p ve-shell --all-targets --features product -- -D warnings
+      - name: X11 deps for live window
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 xvfb
+      - name: Live OS window + MCP share one page (Gate B)
+        if: runner.os == 'Linux'
+        env:
+          DISPLAY: ":99"
+        run: |
+          Xvfb :99 -screen 0 1280x720x24 &
+          sleep 1
+          cargo test -p ve-shell --features window,v8,gpu --test window -- --nocapture
       - run: cargo test -p ve-net --features http
       - run: cargo test -p ve-script --features quickjs
       - name: V8 backend (prebuilt static lib download)
         run: cargo test -p ve-script --features v8
       - name: Page scripting on V8 (timers, console, evaluate gating)
         run: cargo test -p ve-agent --features v8
+      - name: Production ve-host runs V8 under the sandbox
+        run: cargo test -p ve-host --features v8 --tests
       - name: SPA fixtures settle on V8
         run: cargo test -p ve-api --features v8 --test spa
       - run: cargo test -p ve-gfx --features images
@@ -239,7 +252,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.88.0
@@ -259,12 +272,40 @@ jobs:
       - name: Build the .node binary and ve-host next to index.js
         run: pnpm --filter @vector/engine-native build:cargo
         working-directory: .
+      - name: Windows PE exports napi_register_module_v1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: .
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $dumpbin = & $vswhere -latest -find "**\dumpbin.exe" | Select-Object -First 1
+          if (-not $dumpbin) { throw "dumpbin.exe not found" }
+          $node = "engine/crates/ve-napi/vector-engine.win32-x64.node"
+          $out = & $dumpbin /exports $node | Out-String
+          Write-Host $out
+          if ($out -notmatch "napi_register_module_v1") {
+            throw "napi_register_module_v1 missing from PE export table"
+          }
       - name: Addon smoke test
         run: pnpm --filter @vector/engine-native test
         working-directory: .
       - name: Host binary is packaged
         run: test -x engine/crates/ve-napi/ve-host || test -x engine/crates/ve-napi/ve-host.exe
         working-directory: .
+      - name: V8 HTMLDDA on every advertised platform
+        working-directory: engine
+        run: cargo test -p ve-script --features v8 html_dda -- --test-threads=1
+      - name: Packaged host runs the production fixture
+        shell: bash
+        working-directory: engine
+        run: |
+          if [ -x "$GITHUB_WORKSPACE/engine/crates/ve-napi/ve-host.exe" ]; then
+            HOST="$GITHUB_WORKSPACE/engine/crates/ve-napi/ve-host.exe"
+          else
+            HOST="$GITHUB_WORKSPACE/engine/crates/ve-napi/ve-host"
+          fi
+          test -x "$HOST"
+          VECTOR_PACKAGED_HOST="$HOST" cargo test -p ve-host --features v8 --test process production_sandbox -- --test-threads=1
       - uses: actions/upload-artifact@v4
         with:
           name: engine-native-${{ matrix.os }}
@@ -272,3 +313,33 @@ jobs:
             engine/crates/ve-napi/vector-engine.*.node
             engine/crates/ve-napi/ve-host
             engine/crates/ve-napi/ve-host.exe
+
+  downloaded-artifact:
+    name: downloaded release artifact (${{ matrix.os }})
+    needs: addon
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: downloaded-artifact
+      - uses: actions/download-artifact@v4
+        with:
+          name: engine-native-${{ matrix.os }}
+          path: downloaded-artifact
+      - name: Downloaded host runs the production fixture
+        shell: bash
+        working-directory: engine
+        run: |
+          HOST=$(find "$GITHUB_WORKSPACE/downloaded-artifact" \( -name ve-host -o -name ve-host.exe \) -type f | head -n 1)
+          test -n "$HOST"
+          chmod +x "$HOST"
+          test -x "$HOST"
+          echo "downloaded host=$HOST"
+          VECTOR_PACKAGED_HOST="$HOST" cargo test -p ve-host --features v8 --test process production_sandbox -- --test-threads=1

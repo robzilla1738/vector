@@ -223,6 +223,18 @@ export declare class Engine {
   shutdown(): void;
 }
 
+/**
+ * Finding 1: shared page authority. Node starts this and attaches as a
+ * client instead of constructing a second in-process `Engine`.
+ */
+export declare class BrowserServiceHandle {
+  /** Bind `127.0.0.1:0` by default. `configJson` is `EngineConfig`. */
+  static listen(bind?: string | null, configJson?: string | null): BrowserServiceHandle;
+  /** Bound `host:port` for `VECTOR_BROWSER_SERVICE`. */
+  addr(): string;
+  shutdown(): void;
+}
+
 /** JSON: `{ abiVersion, engine, enabled, http, protocolVersion, capabilities }`. */
 export declare function describe(): string;
 export declare function version(): string;

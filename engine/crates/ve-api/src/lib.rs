@@ -31,6 +31,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod ffi;
+pub mod service;
 pub mod shell;
 pub mod updates;
 
@@ -44,7 +45,10 @@ use serde_json::{Value, json};
 use ve_core::{Error, ErrorCode, Result, Size};
 use ve_net::{Initiator, NetworkContext, Request};
 
-pub use shell::{ChromeAxNode, EventOutcome, NativeBrowser, NativeEvent, Tab};
+pub use service::{BrowserClient, BrowserService, BrowserServiceListener, BrowserServicePump};
+pub use shell::{
+    ChromeAxNode, EventOutcome, NativeBrowser, NativeController, NativeEvent, Tab, scene_json,
+};
 pub use updates::{UpdateKeyPair, verify_update_manifest};
 pub use ve_agent::{
     EngineObservation, ExecuteRequest, ExecuteResult, Format, InFlightSummary, LoadedDocument,
@@ -54,6 +58,23 @@ pub use ve_agent::{
 };
 pub use ve_core::VERSION;
 pub use ve_net::{BrowserCookie, ContextId, NetworkPolicy};
+
+/// Start V8 before a production sandbox denies new threads.
+pub fn preload_scripting() {
+    #[cfg(feature = "v8")]
+    ve_script::V8Vm::preload();
+}
+
+/// Create a VM and evaluate `1+1`. Used to prove production containment and
+/// V8 initialization work together.
+#[must_use]
+pub fn scripting_selftest() -> bool {
+    let mut vm = ve_script::default_vm();
+    if vm.name() == "null" {
+        return !cfg!(feature = "v8");
+    }
+    matches!(vm.eval("1 + 1", "vector:selftest"), Ok(v) if v.as_f64() == Some(2.0))
+}
 
 /// Production vs trusted-fixture developer execution (VEC-002).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -116,6 +137,10 @@ pub struct EngineConfig {
     pub security_profile: SecurityProfile,
     /// Process vs in-process placement. Production forces [`IsolationMode::RequireProcess`].
     pub isolation: IsolationMode,
+    /// Extra DER certificates trusted by the production hyper+rustls transport
+    /// (WPT/fixture HTTPS CAs). Empty in ordinary browsing.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extra_tls_roots: Vec<Vec<u8>>,
 }
 
 impl Default for EngineConfig {
@@ -131,6 +156,7 @@ impl Default for EngineConfig {
             hermetic: false,
             security_profile: SecurityProfile::Developer,
             isolation: IsolationMode::Auto,
+            extra_tls_roots: Vec::new(),
         }
     }
 }
@@ -446,7 +472,7 @@ fn make_transport(config: &EngineConfig) -> Box<dyn ve_net::Transport> {
     }
     #[cfg(feature = "http")]
     {
-        match ve_net::HyperTransport::new() {
+        match ve_net::HyperTransport::with_extra_roots(config.extra_tls_roots.clone()) {
             Ok(t) => return Box::new(t),
             Err(e) => tracing::warn!(error = %e, "hyper transport unavailable; running offline"),
         }

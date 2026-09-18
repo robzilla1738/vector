@@ -35,6 +35,17 @@ use crate::stylesheet::{
 use crate::ua::UA_STYLESHEET;
 use crate::values::{Content, Direction};
 
+/// `#todo-list` / `#new-todo` without combinators or other simple selectors.
+fn simple_id_selector(selector: &str) -> Option<&str> {
+    let rest = selector.trim().strip_prefix('#')?;
+    if rest.is_empty() {
+        return None;
+    }
+    rest.bytes()
+        .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        .then_some(rest)
+}
+
 fn uses_auto_direction(doc: &Document, id: NodeId) -> bool {
     let Some(el) = doc.element(id) else {
         return false;
@@ -827,7 +838,7 @@ impl StyleEngine {
         }
 
         // Drop styles of nodes removed since the last pass.
-        if let Some(entries) = doc.journal().entries_since(since) {
+        if let Some(entries) = doc.journal().style_entries_since(since) {
             let removed: Vec<NodeId> = entries
                 .filter_map(|e| match &e.mutation {
                     ve_dom::Mutation::NodeRemoved { node, .. } => Some(*node),
@@ -977,6 +988,52 @@ impl StyleEngine {
             .into_iter()
             .next()
             .ok_or_else(|| Error::NoMatch(selector.to_owned()))
+    }
+
+    /// Descendants of `root` matching `selector`, in tree order.
+    /// `visible` skips nodes the caller does not consider queryable.
+    pub fn select_descendants(
+        &self,
+        doc: &Document,
+        root: NodeId,
+        selector: &str,
+        all: bool,
+        visible: impl Fn(NodeId) -> bool,
+    ) -> Result<Vec<NodeId>> {
+        if let Some(id) = simple_id_selector(selector) {
+            return Ok(doc
+                .element_by_id_in(root, id)
+                .filter(|&hit| hit != root && visible(hit))
+                .into_iter()
+                .collect());
+        }
+        let list = parse_selector_list(selector)?;
+        let mut caches = SelectorCaches::default();
+        let mut ctx = MatchingContext::new(
+            MatchingMode::Normal,
+            None,
+            &mut caches,
+            Self::quirks(doc),
+            NeedsSelectorFlags::No,
+            MatchingForInvalidation::No,
+        );
+        let mut out = Vec::new();
+        for id in doc.descendants(root) {
+            if !doc.get(id).is_some_and(Node::is_element) || !visible(id) {
+                continue;
+            }
+            if matches_selector_list(
+                &list,
+                &DomElement::new(doc, &self.interaction, id),
+                &mut ctx,
+            ) {
+                out.push(id);
+                if !all {
+                    break;
+                }
+            }
+        }
+        Ok(out)
     }
 
     /// Returns `true` if element `id` matches `selector`.
@@ -1263,6 +1320,17 @@ mod tests {
         assert_eq!(stats.recomputed, 21);
         assert_eq!(tree.style(p).color, Rgba::BLACK);
 
+        // Geometry records must not force a full restyle (Complex-DOM layout
+        // used to fill the journal and trip `entries_since` → `None`).
+        let since = tree.revision();
+        for _ in 0..64 {
+            doc.record_geometry_change(target);
+        }
+        doc.set_attribute(target, "class", "section hot").unwrap();
+        let stats = engine.restyle_incremental(&mut doc, &mut tree, since);
+        assert!(!stats.full, "geometry flood must keep incremental restyle");
+        assert_eq!(stats.recomputed, 21);
+
         // Paint-only change: recomputed, but LAYOUT not set.
         let since = doc.revision();
         let other = sections[3];
@@ -1364,5 +1432,27 @@ mod tests {
                 "incremental == full for {id}"
             );
         }
+    }
+
+    #[test]
+    fn structural_insert_under_body_restyles_siblings_not_cousins() {
+        let (mut doc, _) = wide_document(50, 20);
+        let mut engine = StyleEngine::new();
+        engine.add_stylesheet("div:nth-child(2n) { outline-style: solid }");
+        engine.add_document_styles(&doc);
+        let (mut tree, _) = engine.compute_and_clear(&mut doc, None);
+        let total = doc.elements().count();
+        let body = doc.body().unwrap();
+        let since = doc.revision();
+        let probe = doc.create_element_with_attrs("span", Namespace::Html, vec![]);
+        doc.append_child(body, probe).unwrap();
+        let stats = engine.restyle_incremental(&mut doc, &mut tree, since);
+        assert!(!stats.full, "structural insert must stay incremental");
+        assert!(
+            stats.recomputed < 80,
+            "body + direct children, not {total} cousins: recomputed={}",
+            stats.recomputed
+        );
+        assert!(tree.styles.contains_key(&probe));
     }
 }

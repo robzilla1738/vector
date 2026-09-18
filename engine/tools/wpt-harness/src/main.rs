@@ -46,6 +46,9 @@ struct Args {
     /// Serve fixtures (and optional WPT checkout) over HTTP/1.1.
     #[arg(long)]
     http: bool,
+    /// Also serve fixtures over HTTPS with a generated fixture CA (Finding 6).
+    #[arg(long)]
+    https: bool,
     /// Whole-tree WPT checkout. Combined with `--http` this is the production
     /// testharness path (`/resources/testharness.js`, `/fonts/Ahem.ttf`).
     #[arg(long)]
@@ -121,6 +124,10 @@ struct Report {
     overall_manifest: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     http_origin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    https_origin: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    https: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     tree_family: Option<String>,
     tree_complete: bool,
@@ -210,6 +217,11 @@ fn collect_testharness_tree(
         let dir = root.join(fam);
         if dir.is_dir() {
             walk(&dir, root, &mut out, &mut seen, limit)?;
+        } else if dir.is_file() {
+            let rel = fam.replace('\\', "/");
+            if seen.insert(rel.clone()) {
+                out.push((rel, dir));
+            }
         }
         return Ok(out);
     }
@@ -444,6 +456,29 @@ const TESTDRIVER_VENDOR_SRC: &[&str] = &[
     r#"<script src=/resources/testdriver-vendor.js></script>"#,
 ];
 
+fn inject_csp_from_sidecar(html: &str, fixture: &Path) -> String {
+    let Some(csp) = http_serve::content_security_policy_for(fixture) else {
+        return html.to_string();
+    };
+    if html
+        .to_ascii_lowercase()
+        .contains("content-security-policy")
+    {
+        return html.to_string();
+    }
+    let meta = format!(
+        r#"<meta http-equiv="Content-Security-Policy" content="{}">"#,
+        csp.replace('"', "&quot;")
+    );
+    if let Some(idx) = html.to_ascii_lowercase().find("<head") {
+        if let Some(end) = html[idx..].find('>') {
+            let at = idx + end + 1;
+            return format!("{}{}{}", &html[..at], meta, &html[at..]);
+        }
+    }
+    format!("{meta}{html}")
+}
+
 fn inject_upstream_testharness(html: &str) -> String {
     if !html.contains("testharness.js") {
         return html.to_string();
@@ -592,6 +627,7 @@ fn run_script_test(
     let expect_testharness = html.contains("testharness.js");
     let variant = first_wpt_variant(html).map(str::to_owned);
     let html = inject_relative_scripts(html, dir);
+    let html = inject_csp_from_sidecar(&html, fixture);
     let html = inject_upstream_testharness(&html);
     let html = if let Some((origin, rel)) = wpt_origin_rel(url) {
         http_serve::substitute_wpt_text(&html, &origin, &rel)
@@ -794,6 +830,19 @@ fn check_pixel_expectations(html: &str, w: u32, h: u32, rgba: &[u8]) -> Option<S
     None
 }
 
+fn discover_interfaces(wpt: &Path) -> Option<PathBuf> {
+    let mut cands = Vec::new();
+    if let Some(env) = std::env::var_os("VECTOR_WPT_INTERFACES") {
+        cands.push(PathBuf::from(env));
+    }
+    cands.push(wpt.join("interfaces"));
+    if let Some(parent) = wpt.parent() {
+        cands.push(parent.join("wpt-src/wpt/interfaces"));
+    }
+    cands.push(PathBuf::from("/tmp/wpt-src/wpt/interfaces"));
+    cands.into_iter().find(|p| p.is_dir())
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     let manifest = load_manifest(&args.manifest)?;
@@ -809,13 +858,6 @@ fn main() -> Result<()> {
     } else {
         0
     };
-    let mut engine = VectorEngine::new(EngineConfig {
-        viewport: Size::new(800.0, 600.0),
-        offline: !args.http,
-        scripting: cfg!(feature = "v8"),
-        policy: ve_api::NetworkPolicy::permissive(),
-        ..EngineConfig::default()
-    });
     let mut roots = vec![
         (
             "resources".into(),
@@ -826,13 +868,33 @@ fn main() -> Result<()> {
     ];
     if let Some(wpt) = &args.wpt_dir {
         roots.push((String::new(), wpt.clone()));
+        if !wpt.join("interfaces").is_dir() {
+            if let Some(interfaces) = discover_interfaces(wpt) {
+                roots.push(("interfaces".into(), interfaces));
+            }
+        }
     }
     let http = if args.http || args.wpt_dir.is_some() {
-        Some(http_serve::DirServer::start(roots)?)
+        Some(http_serve::DirServer::start(roots.clone())?)
     } else {
         None
     };
+    let (https, extra_tls_roots) = if args.https {
+        let (server, der) = http_serve::DirServer::start_https(roots)?;
+        (Some(server), vec![der])
+    } else {
+        (None, Vec::new())
+    };
+    let mut engine = VectorEngine::new(EngineConfig {
+        viewport: Size::new(800.0, 600.0),
+        offline: http.is_none() && https.is_none(),
+        scripting: cfg!(feature = "v8"),
+        policy: ve_api::NetworkPolicy::permissive(),
+        extra_tls_roots,
+        ..EngineConfig::default()
+    });
     let origin = http.as_ref().map(|s| s.origin.clone());
+    let https_origin = https.as_ref().map(|s| s.origin.clone());
     let timeout = Duration::from_secs(args.timeout_secs);
     let mut results = Vec::new();
     let mut totals = Counts::default();
@@ -858,10 +920,13 @@ fn main() -> Result<()> {
             (Status::NotRun, Some("missing fixture".into()))
         } else {
             let mut html = std::fs::read_to_string(path)?;
-            let url = origin
-                .as_ref()
-                .map_or_else(|| format!("file:///{rel}"), |o| format!("{o}/{rel}"));
-            if let Some(o) = origin.as_ref() {
+            let chosen = if rel.contains(".https.") {
+                https_origin.as_ref().or(origin.as_ref())
+            } else {
+                origin.as_ref().or(https_origin.as_ref())
+            };
+            let url = chosen.map_or_else(|| format!("file:///{rel}"), |o| format!("{o}/{rel}"));
+            if let Some(o) = chosen {
                 html = http_serve::substitute_wpt_text(&html, o, rel);
             }
             let pixel = rel.contains("pixel") || html.contains("data-pixel");
@@ -901,11 +966,16 @@ fn main() -> Result<()> {
     if let Some(s) = http {
         s.stop();
     }
+    if let Some(s) = https {
+        s.stop();
+    }
     let report = Report {
         fixtures: args.fixtures.display().to_string(),
         tested_subset: totals.pass + totals.fail + totals.timeout + totals.crash,
         overall_manifest: geometry + manifest.len(),
         http_origin: origin,
+        https_origin,
+        https: args.https,
         tree_family: args.tree_family.clone(),
         tree_complete: args.tree && args.tree_limit == 0,
         fonts_dir: args.fonts_dir.display().to_string(),
@@ -1167,6 +1237,20 @@ mod tests {
     }
 
     #[test]
+    fn tree_family_accepts_a_single_official_file() {
+        let root = std::env::temp_dir().join(format!("ve-wpt-family-{}", std::process::id()));
+        let rel = "html/dom/one.html";
+        let path = root.join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, "<script src=/resources/testharness.js></script>").unwrap();
+        let got = super::collect_testharness_tree(&root, 0, Some(rel)).unwrap();
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(got.len(), 1, "{got:?}");
+        assert_eq!(got[0].0, rel);
+        assert_eq!(got[0].1, path);
+    }
+
+    #[test]
     fn inject_preserves_leading_doctype() {
         let html = concat!(
             "<!DOCTYPE html>\n",
@@ -1244,6 +1328,49 @@ mod tests {
         assert!(ahem.len() > 1000, "{}", ahem.len());
         let idl_bytes = get("/resources/idlharness.js");
         let idl = String::from_utf8_lossy(&idl_bytes);
+        assert!(idl.contains("IdlArray"), "{idl:.200}");
+        server.stop();
+    }
+
+    #[test]
+    fn https_server_serves_idlharness_over_tls() {
+        use rustls::pki_types::{CertificateDer, ServerName};
+        let res = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/resources");
+        let (server, cert) =
+            super::http_serve::DirServer::start_https(vec![("resources".into(), res.into())])
+                .unwrap();
+        let origin = server.origin.clone();
+        assert!(origin.starts_with("https://"), "{origin}");
+        let addr = origin.trim_start_matches("https://").to_owned();
+        let mut roots = rustls::RootCertStore::empty();
+        roots.add(CertificateDer::from(cert)).unwrap();
+        let cfg = rustls::ClientConfig::builder()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+        let name = ServerName::try_from("127.0.0.1").unwrap();
+        let conn = rustls::ClientConnection::new(std::sync::Arc::new(cfg), name).unwrap();
+        let tcp = std::net::TcpStream::connect(&addr).unwrap();
+        tcp.set_read_timeout(Some(std::time::Duration::from_secs(5)))
+            .unwrap();
+        let mut tls = rustls::StreamOwned::new(conn, tcp);
+        tls.write_all(
+            b"GET /resources/idlharness.js HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n",
+        )
+        .unwrap();
+        let mut body = Vec::new();
+        match tls.read_to_end(&mut body) {
+            Ok(_) => {}
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::ConnectionReset
+                        | std::io::ErrorKind::UnexpectedEof
+                        | std::io::ErrorKind::WouldBlock
+                        | std::io::ErrorKind::TimedOut
+                ) => {}
+            Err(e) => panic!("{e}"),
+        }
+        let idl = String::from_utf8_lossy(&body);
         assert!(idl.contains("IdlArray"), "{idl:.200}");
         server.stop();
     }

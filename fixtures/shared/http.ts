@@ -59,7 +59,9 @@ export function serve(port: number, name: string, handler: Handler) {
     }
   });
   server.listen(port, "127.0.0.1", () => {
-    console.log(`[fixture:${name}] http://127.0.0.1:${port}`);
+    const addr = server.address();
+    const bound = typeof addr === "object" && addr ? addr.port : port;
+    console.log(`[fixture:${name}] http://127.0.0.1:${bound}`);
   });
   return server;
 }

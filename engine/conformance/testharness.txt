@@ -110,3 +110,5 @@ wpt-innertext.html
 wpt-outertext.html
 wpt-aria-reflection.html
 wpt-aria-labelledby.html
+wpt-partial-updates.html
+wpt-aria-enumerated.html

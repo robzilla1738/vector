@@ -39,6 +39,10 @@ impl Transport for ReplayTransport {
     fn name(&self) -> &'static str {
         "replay"
     }
+
+    fn uses_live_dns(&self) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]

@@ -255,7 +255,7 @@ export const useStore = create<Workspace>((set, get) => ({
 
   newTab: async (url = "about:blank") => {
     try {
-      const p = await call<PageTarget>("pages.open", { url, backend: "vector", activate: true });
+      const p = await call<PageTarget>("pages.open", { url, activate: true });
       set((s) => {
         const pages = s.pages.some((x) => x.pageId === p.pageId) ? s.pages.map((x) => (x.pageId === p.pageId ? p : x)) : [...s.pages, p];
         const layout = assignSpace({ ...s.layout, order: syncOrder(s.layout.order, pages) }, p.pageId, s.layout.activeSpaceId);

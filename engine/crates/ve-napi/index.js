@@ -96,6 +96,7 @@ if (!process.env.VECTOR_ENGINE_HOST) {
   }
 }
 export const Engine = native.Engine;
+export const BrowserServiceHandle = native.BrowserServiceHandle;
 export const describe = native.describe;
 export const version = native.version;
-export default { Engine, describe, version, binaryPath };
+export default { Engine, BrowserServiceHandle, describe, version, binaryPath };

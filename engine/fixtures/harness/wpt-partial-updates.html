@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<meta charset=utf-8>
+<title>Declarative partial updates</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<div id="placeholder"><?marker name="E"><?marker name="f"></div>
+<template for="E">E</template>
+<template for="f">f</template>
+<template for="nope">x</template>
+<div id="c"><span>Before</span><template for><span id="inside">Inside</span></template><span>After</span></div>
+<script>
+test(function() {
+  var p = document.getElementById("placeholder");
+  assert_equals(p.textContent, "Ef");
+  assert_equals(document.querySelectorAll("template[for]").length, 1);
+}, "named marker templates patch and unmatched templates stay");
+
+test(function() {
+  var c = document.getElementById("c");
+  assert_equals(c.textContent.replace(/\s+/g, ""), "BeforeInsideAfter");
+  assert_equals(c.querySelector("template"), null);
+  assert_not_equals(document.getElementById("inside"), null);
+}, "empty for inserts in place");
+
+test(function() {
+  var t = document.createElement("template");
+  assert_equals(t.buffer, false);
+  t.buffer = true;
+  assert_true(t.hasAttribute("buffer"));
+  assert_equals(t.getAttribute("buffer"), "");
+  t.buffer = false;
+  assert_false(t.hasAttribute("buffer"));
+}, "HTMLTemplateElement.buffer reflects a boolean attribute");
+
+promise_test(async function() {
+  var host = document.createElement("div");
+  host.id = "stream-host";
+  host.innerHTML = '<?start name="p">Old<?end>';
+  document.body.appendChild(host);
+  var writable = host.streamAppendHTMLUnsafe({runScripts: true});
+  var writer = writable.getWriter();
+  await writer.write('<template for="p">New</template>');
+  await writer.close();
+  assert_equals(host.textContent, "New");
+}, "streamAppendHTMLUnsafe applies template for");
+</script>

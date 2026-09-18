@@ -6,6 +6,35 @@ interface HTMLCollection {
 };
 
 [Exposed=Window]
+interface HTMLAllCollection {
+  readonly attribute unsigned long length;
+  Element? item(unsigned long index);
+  Element? namedItem(DOMString name);
+};
+
+[Exposed=Window]
+interface HTMLFormControlsCollection {
+  readonly attribute unsigned long length;
+  Element? item(unsigned long index);
+  Element? namedItem(DOMString name);
+};
+
+[Exposed=Window]
+interface RadioNodeList {
+  attribute DOMString value;
+};
+
+[Exposed=Window]
+interface HTMLOptionsCollection {
+  attribute unsigned long length;
+  Element? item(unsigned long index);
+  Element? namedItem(DOMString name);
+  undefined add(Element element, optional long before);
+  undefined remove(long index);
+  attribute long selectedIndex;
+};
+
+[Exposed=Window]
 interface DOMImplementation {
   Document createHTMLDocument(optional DOMString title);
   boolean hasFeature(optional DOMString feature, optional DOMString version);
@@ -26,6 +55,7 @@ interface Document : Node {
   readonly attribute HTMLCollection images;
   readonly attribute HTMLCollection links;
   readonly attribute HTMLCollection scripts;
+  readonly attribute HTMLAllCollection all;
   readonly attribute DOMImplementation implementation;
   Element createElement(DOMString localName);
   Element createElementNS(DOMString? namespace, DOMString qualifiedName);

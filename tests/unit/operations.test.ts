@@ -248,6 +248,32 @@ describe("OperationService", () => {
     expect(saved.steps.map((x) => x.op)).toEqual(["click", "fill"]);
   });
 
+  it("browser-program compileAndAuthorize rejects a stale epoch before dispatch", async () => {
+    let executeCalls = 0;
+    const pages = fakePages();
+    const orig = pages.execute;
+    pages.get = () => page({ documentEpoch: 4 });
+    pages.observe = async () => ({
+      observationId: "o1",
+      pageId: "p1",
+      documentEpoch: 1,
+      revision: 1,
+      observedAt: Date.now(),
+      scope: "full",
+      content: { url: "http://app.test/records", title: "records", elements: ELEMENTS },
+    });
+    pages.execute = async (p: never) => {
+      executeCalls++;
+      return orig(p);
+    };
+    const s = svc(pages);
+    s.saveFromProgram({ siteKey: "app.test", name: "edit", program: program() });
+    const r = await s.invoke({ siteKey: "app.test", name: "edit", pageId: "p1" });
+    expect(r.status).toBe("failed");
+    expect(r.error).toMatch(/epoch/i);
+    expect(executeCalls).toBe(0);
+  });
+
   it("denies cross-host session-request fallback egress", async () => {
     const r = repo();
     const s = new OperationService({

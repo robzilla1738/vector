@@ -136,12 +136,17 @@ unavailable`.
 
 ## Pages open on Chromium although the engine is available
 
-`engineMode` defaults to `auto`. Check `runtime.describe` → `engine.mode`;
-`VECTOR_ENGINE_MODE` is the env override (the stored setting wins). Then read
-`routeReason` on the `pages.open` result:
+`engineMode` falls back to `auto` when neither a stored setting nor
+`VECTOR_ENGINE_MODE` is set. `pnpm dev` and the desktop shell set
+`VECTOR_ENGINE_MODE=always`. Check `runtime.describe` → `engine.mode`;
+the stored setting wins over the env. Then read `routeReason` on the
+`pages.open` result:
 
+- `engine-always` — mode is `always` and the profile is developer.
+- `native-only` — `VECTOR_ENGINE_PROFILE=production` (no Chromium fallback).
 - `engine-mode-off` — the setting is `off`.
 - `engine-unavailable` — the addon did not load (section above).
+- `native-only:engine-unavailable` — production profile and the engine did not connect.
 - `engine-first:native-view` — a visible desktop tab. Auto-mode tabs the
   shell will show open on Chromium so the stage has a `WebContentsView`.
   Background/CLI opens still go engine-first.

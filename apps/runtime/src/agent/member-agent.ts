@@ -8,7 +8,10 @@ import {
   type StepOutcome,
 } from "@vector/contracts";
 import type { PageService } from "../services/pages.js";
+import { compileAndAuthorize } from "./action-compiler.js";
+import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "./durable.js";
 import type { ModelClient } from "./model-client.js";
+import type { GrantSource } from "./permissions.js";
 import { buildPlannerPrompt, PLANNER_SYSTEM } from "./planner.js";
 
 const MEMBER_MAX_CALLS = 6;
@@ -28,6 +31,10 @@ export async function runMemberAgent(opts: {
   model: ModelClient;
   modelId: string;
   signal: AbortSignal;
+  /** Privilege-independent grants. Model text cannot expand them. */
+  grants?: GrantSource;
+  /** Persist write intent before dispatch (Gate D). */
+  durable?: DurableWriteLedger;
   recordModelCall?: (c: { modelId: string; durationMs: number; inputTokens?: number; outputTokens?: number }) => void;
 }): Promise<{ result: ResultRecord; executedSteps: Step[] }> {
   const { member, pages, model, modelId, signal, runId } = opts;
@@ -71,10 +78,35 @@ export async function runMemberAgent(opts: {
       return err(member, pageId, obs.content.url, plan.question ?? "needs input", executed);
     }
     if (!plan.steps?.length) continue;
-    const res = await pages.execute({ pageId, steps: plan.steps }, { runId, signal });
-    executed.push(...plan.steps);
+    const live = pages.get(pageId);
+    const prepared = compileAndAuthorize({
+      pageId,
+      documentEpoch: live.documentEpoch ?? obs.documentEpoch,
+      observedEpoch: obs.documentEpoch,
+      steps: plan.steps,
+      observation: obs.content,
+      url: live.url ?? obs.content.url,
+      grants: opts.grants,
+    });
+    if ("rejected" in prepared) return err(member, pageId, obs.content.url, prepared.rejected, executed);
+    if ("denied" in prepared) return err(member, pageId, obs.content.url, prepared.denied, executed);
+    const steps = prepared.program.steps ?? plan.steps;
+    const write = beginConsequentialWrite(opts.durable, {
+      runId,
+      pageId,
+      documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
+      steps,
+    });
+    if (write.skip) {
+      executed.push(...steps);
+      stepsRun += steps.length;
+      continue;
+    }
+    const res = await pages.execute(prepared.program, { runId, signal });
+    settleWrite(opts.durable, write.intentId, res.status === "completed");
+    executed.push(...steps);
     outcomes.push(...res.steps);
-    stepsRun += plan.steps.length;
+    stepsRun += steps.length;
     if (res.status === "failed") return err(member, pageId, obs.content.url, res.error ?? "step failed", executed);
     if (res.status === "cancelled") break;
   }

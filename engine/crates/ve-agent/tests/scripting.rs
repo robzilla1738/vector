@@ -102,6 +102,21 @@ fn evaluate_step_returns_json_and_is_capability_gated() {
 }
 
 #[test]
+fn message_channel_delivers_to_the_entangled_port_after_settle() {
+    let mut page = open(
+        r#"<script>
+          const ch = new MessageChannel();
+          globalThis.got = null;
+          ch.port1.onmessage = function (ev) { globalThis.got = ev.data; };
+          ch.port2.postMessage("ping");
+        </script>"#,
+        true,
+    );
+    page.settle(50);
+    assert_eq!(page.evaluate("got").unwrap(), serde_json::json!("ping"));
+}
+
+#[test]
 fn a_runaway_script_is_cut_off_and_the_page_survives() {
     let started = std::time::Instant::now();
     let mut page = open(
@@ -109,7 +124,8 @@ fn a_runaway_script_is_cut_off_and_the_page_survives() {
         true,
     );
     page.settle(500);
-    // SCRIPT_DEADLINE is 20s; CI macOS V8 terminate can lag. Survival
+    // SCRIPT_DEADLINE is 20s unless VECTOR_SCRIPT_DEADLINE_SECS is set.
+    // CI macOS V8 terminate can lag. Survival
     // assertions below are the behavior gate.
     assert!(
         started.elapsed() < std::time::Duration::from_secs(180),
@@ -119,4 +135,25 @@ fn a_runaway_script_is_cut_off_and_the_page_survives() {
     assert_eq!(page.script_stats(), (2, 1));
     assert_eq!(page.evaluate("ok").unwrap(), serde_json::json!(1));
     assert!(page.document().element_by_id("p").is_some());
+}
+
+#[test]
+fn performance_now_tracks_virtual_time_by_default() {
+    let mut page = open("<title>t</title>", true);
+    let now = page
+        .evaluate("performance.now()")
+        .unwrap()
+        .as_f64()
+        .expect("performance.now number");
+    assert_eq!(now, page.virtual_time_ms() as f64);
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    let later = page
+        .evaluate("performance.now()")
+        .unwrap()
+        .as_f64()
+        .expect("performance.now number");
+    assert_eq!(
+        later, now,
+        "wall sleep must not advance virtual performance.now"
+    );
 }

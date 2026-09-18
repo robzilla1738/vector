@@ -85,6 +85,7 @@ impl TryFrom<WireRequest> for Request {
             initiator: wire.initiator,
             origin: wire.origin.as_deref().map(Url::parse).transpose()?,
             background: wire.background,
+            resolved: None,
         })
     }
 }

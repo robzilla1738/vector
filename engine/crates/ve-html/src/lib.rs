@@ -432,6 +432,35 @@ mod tests {
     }
 
     #[test]
+    fn fragment_parse_into_a_large_document_is_proportional_to_the_fragment() {
+        let mut html = String::from("<body>");
+        for i in 0..2_000 {
+            html.push_str(&format!("<div id=n{i}></div>"));
+        }
+        html.push_str("</body>");
+        let mut doc = parse_document(&html).document;
+        assert!(doc.element_by_id("n1999").is_some());
+        let started = std::time::Instant::now();
+        for _ in 0..50 {
+            let (next, kids) = parse_fragment_into(doc, "body", "<li class=x>item</li>", false);
+            doc = next;
+            assert_eq!(kids.len(), 1);
+            for kid in kids {
+                let _ = doc.destroy(kid);
+            }
+        }
+        assert!(
+            doc.element_by_id("n0").is_some() && doc.element_by_id("n1999").is_some(),
+            "host tree must survive fragment parses"
+        );
+        let ms = started.elapsed().as_millis();
+        assert!(
+            ms < 400,
+            "50 one-node fragments into a 2000-element document took {ms}ms"
+        );
+    }
+
+    #[test]
     fn fragment_parse_script_with_scripting_enabled() {
         let doc = parse_document("<body><p id=keep>keep</p></body>").document;
         let keep = doc.element_by_id("keep");

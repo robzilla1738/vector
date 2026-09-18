@@ -89,6 +89,7 @@ tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "net", "time"
 rquickjs = { version = "0.13.0", features = ["futures", "macro", "classes", "properties"] }
 # ---- scripting (optional; feature `v8`, decision D1) — prebuilt static lib ----
 v8 = "152.2.0"
+cc = "1.2"
 
 # ---- graphics (optional; feature `gpu`) -----------------------------------
 # `vello 0.10` requires `wgpu ^29`; do not bump one without the other.
@@ -101,7 +102,7 @@ image = { version = "0.25.10", default-features = false, features = ["png", "jpe
 pollster = "0.4.0"
 
 # ---- Node bindings (optional; crate ve-napi) --------------------------------
-napi = { version = "3.12.4", default-features = false, features = ["napi8", "serde-json"] }
+napi = { version = "3.12.4", default-features = false, features = ["napi8", "serde-json", "dyn-symbols"] }
 napi-derive = "3.6.5"
 napi-build = "2.4.2"
 

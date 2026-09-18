@@ -83,6 +83,7 @@ export function installMockBridge(q: URLSearchParams) {
     maxModelCalls: 8,
     engineMode: q.get("engine") ?? "off",
     gatewayApiKey: "••••••••",
+    effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   };
 
   if (withRun) {
@@ -239,6 +240,21 @@ export function installMockBridge(q: URLSearchParams) {
         return page(p.pageId as string);
       case "pages.observe":
         return { observation: { ...OBSERVATION, pageId: p.pageId as string } };
+      case "pages.engineInput":
+        return { ok: true };
+      case "pages.scene":
+        return {
+          kind: "displayList",
+          transport: "scene",
+          png: false,
+          width: 800,
+          height: 600,
+          itemCount: 2,
+          items: [
+            { kind: "rect", x: 0, y: 0, w: 800, h: 600, color: "rgb(255,255,255)" },
+            { kind: "text", x: 16, y: 32, text: "Vector", size: 18, color: "rgb(0,0,0)" },
+          ],
+        };
       case "pages.find":
         return { matches: 7, activeMatch: 2 };
       case "pages.stopFind":

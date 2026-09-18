@@ -82,3 +82,48 @@ fn keep_alive_pooling_and_gzip_decoding() {
     );
     assert_eq!(transport.connections_opened(), 1);
 }
+
+#[test]
+fn loopback_https_with_fixture_ca() {
+    use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
+
+    let certified =
+        rcgen::generate_simple_self_signed(["127.0.0.1".into(), "localhost".into()]).unwrap();
+    let cert_der = certified.cert.der().to_vec();
+    let key_der = certified.key_pair.serialize_der();
+    let mut server_crypto = rustls::ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(
+            vec![CertificateDer::from(cert_der.clone())],
+            PrivatePkcs8KeyDer::from(key_der).into(),
+        )
+        .unwrap();
+    server_crypto.alpn_protocols = vec![b"http/1.1".to_vec()];
+    let server_crypto = std::sync::Arc::new(server_crypto);
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        let Ok((stream, _)) = listener.accept() else {
+            return;
+        };
+        let conn = rustls::ServerConnection::new(server_crypto).unwrap();
+        let mut tls = rustls::StreamOwned::new(conn, stream);
+        let mut buf = [0u8; 4096];
+        let _ = tls.read(&mut buf);
+        let body = b"<p>tls</p>";
+        let _ = write!(
+            tls,
+            "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        );
+        let _ = tls.write_all(body);
+    });
+
+    let transport = HyperTransport::with_extra_roots([cert_der]).unwrap();
+    let res = transport
+        .send(&Request::get(&format!("https://127.0.0.1:{port}/")).unwrap())
+        .unwrap();
+    assert_eq!(res.status, 200);
+    assert_eq!(res.text(), "<p>tls</p>");
+}

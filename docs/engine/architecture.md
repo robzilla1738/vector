@@ -94,9 +94,10 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   `internal`, mid-program migration and
   replay (`ProgramResult.fallback`, `repair: true` when ref-targeted steps
   remain). Visible auto-mode desktop tabs skip the engine
-  (`engine-first:native-view`). `settings.engineMode: "off" | "auto" | "always"` (default
-  `auto`); `pages.open` results carry `routeReason`; `pnpm bench --backend
-  chrome|vector-engine|both`.
+  (`engine-first:native-view`). `settings.engineMode: "off" | "auto" | "always"`
+  (schema fallback `auto`; `pnpm dev` / desktop set `VECTOR_ENGINE_MODE=always`;
+  production profile is `native-only`); `pages.open` results carry
+  `routeReason`; `pnpm bench --backend chrome|vector-engine|both`.
 
 - **Script layer (A13)** — `ve-script::V8Vm` (feature `v8`, decision D1;
   the `napi` addon includes it): one isolate per page, host functions
@@ -164,14 +165,14 @@ acceptance text.
 | Area | In tree | Not yet |
 |---|---|---|
 | M0 identity / containment / broker / CI | `engineMode: always` never selects Chromium; `ve-host` sandbox; `NetworkBroker` honors config allowlists; rustc 1.88 CI including product clippy, wpt-harness tree HTTP, browserbench | — |
-| M1 web execution | V8 DOM, async fetch, frames, IDB unique/compound/versionchange/abort, event loop; testharness + IDL harness + pinned `html/dom` tree (302 PASS / 29 FAIL, 0 timeout/crash; official `idlharness.https.html` PASS); Ahem reftest fonts; Worker `postMessage` on a second V8 isolate thread; Worker `importScripts`; SW install/activate, `importScripts`, `clients.claim`, `clients.matchAll`, `Client.postMessage`, dedicated/shared worker clients, waiting-worker `skipWaiting`; live document named properties; layout-aware innerText/outerText; ARIA string and element reflection | generated IDL for every interface |
+| M1 web execution | V8 DOM, async fetch, frames, IDB unique/compound/versionchange/abort, event loop; testharness + IDL harness + pinned `html/dom` tree (302 PASS / 29 FAIL, 0 timeout/crash; official `idlharness.https.html` PASS); official `html/dom/partial-updates` 28/2 of 30 (Mac 142/2 of 144, keep `sanitize-template-element` and `template-for-empty`); Ahem reftest fonts; Worker `postMessage` on a second V8 isolate thread; Worker `importScripts`; SW install/activate, `importScripts`, `clients.claim`, `clients.matchAll`, `Client.postMessage`, dedicated/shared worker clients, waiting-worker `skipWaiting`; live document named properties; layout-aware innerText/outerText; ARIA string and element reflection | generated IDL for every interface |
 | M2 visual | GPU glyph *outlines*, clips/opacity/`<img>`, `present_list`, `NativeBrowser` + packaged `ve-shell` as the product; GPU swapchain blit when `--features gpu,window`; Ed25519 signed updates; AccessKit winit adapter (`accesskit_winit` 0.23) publishing chrome-then-page | Electron hybrid still exists as a labeled extra; WebGL/WebGPU are an explicit compatibility track (`describe()` false) |
 | M3 agent | receipts, crash recovery, skills, policy, BiDi; held-out p95 vs Chromium measured (5.32× `act+observe`); token-measured stretch `meetsStretch` true (`tokenRatio` 8.35, declared model usage) | — |
 | M4 perf | `perf --gate m1`, RSS, host RAPL, official Speedometer 3.0 / JetStream / MotionMark GPU lab | every Speedometer suite passing (many FAIL honestly) |
 | M5 research | `ve-replay`, `EngineConfig.hermetic`, prefetch denied at the broker, `ve-vm` Test262 subset | replacing V8 (forbidden without evidence) |
 
 Conformance: `wpt-runner` geometry (`m1.txt`) plus `wpt-harness` testharness
-(pinned `testharness.js` / `idlharness.js`, HTTP origin, 112-file supported
+(pinned `testharness.js` / `idlharness.js`, HTTP origin, 114-file supported
 subset in `engine/conformance/testharness.txt`, `--tree --tree-family html/dom`
 walks the pinned checkout). Latest full-family report:
 `docs/engine/evidence/wpt-tree-latest.json` — 302 PASS / 29 FAIL / 0
@@ -256,7 +257,7 @@ Chromium observe script.
 7. ~~Corpus size.~~ `engine/fixtures/public/` holds 36 server-rendered public pages and 22 client-rendered shells (manifest `engine/conformance/corpus.json`, fetcher `engine/tools/corpus/fetch.mjs`, external CSS inlined). The 8 hand-written fixtures keep their goldens; the public corpus is gated on routing and budgets, not goldens, because the pages change upstream.
 8. ~~Router false-positive rate not measured.~~ `cargo test -p ve-api --test corpus` (results in `engine/conformance/corpus-results.json`): **false positives 0/36**, **false negatives 0/22**, 0/36 static pages over the 10 k-token Compact budget (range 1.2–9.0 k; the 4 k design target holds only on the small fixtures, see plan A10). Thresholds were tuned from this data: empty-shell < 500 chars, noscript < 3000 chars, `script-heavy` (≥ 2 relative `.js` URLs injected from one inline script, or ≥ 5 external scripts and < 2000 chars), `form-without-action-or-submit` only on pages under 1000 chars. Open-to-observe on these pages is 3–350 ms with two MDN outliers at 1.2 s (670-element pages; full cascade + layout, see A15). SPA settle/hit-rate is gated by `cargo test -p ve-api --features v8 --test spa` (`engine/conformance/spa-results.json`, hit rate 1.0, 22/22 settled).
 
-**Still open after VEC work:** official `html/dom` 29 FAIL at WPT `7c20438…` (`wpt-tree-latest.json`): tentative `partial-updates/**`, `aria-attribute-reflection-enumerated.tentative.html` (string mixin kept so `aria-attribute-reflection.html` stays PASS), and optional `remove-element-unblocks-rendering.optional.html`. Official `html/dom/idlharness.https.html` PASS. Generated IDL is not every interface; Speedometer class probes PARTIAL; WebGL/WebGPU null; ve-vm must not replace V8. Official nameditem-*.html, innerText/outerText family, `aria-element-reflection.html` / disconnected / labelledby, `historical.html`, `document.cookie`, lastModified, usvstring-reflection, `Document.currentScript.html`, `cdata-dir_auto.html`, leftover per-element IDL reflection, HTTP `:lang()`, `document.dir` / `dir-slots-directionality`, `self-origin.sub.html`, `name-content-attribute-and-property.html`, and `rel=expect` render-blocking (including `element-render-blocking-001/004/005/009/010/013/014/021.html`) PASS. SW `clients.matchAll`, waiting-worker `skipWaiting`, `Client.postMessage`, and dedicated/shared worker clients are implemented.
+**Still open after VEC work:** official `html/dom` remaining disclosed FAIL at WPT `7c20438…`: `aria-attribute-reflection-enumerated.tentative.html` missing-value defaults that are not null (string mixin `null` after remove keeps `aria-attribute-reflection.html` PASS). Partial updates (`template for` / `buffer` / `sanitize` / `streamAppendHTMLUnsafe`) and `remove-element-unblocks-rendering` cancel-on-remove are implemented. Official `html/dom/idlharness.https.html` PASS. Generated IDL is not every interface; Speedometer class probes PARTIAL; WebGL/WebGPU null; ve-vm must not replace V8. Official nameditem-*.html, innerText/outerText family, `aria-element-reflection.html` / disconnected / labelledby, `historical.html`, `document.cookie`, lastModified, usvstring-reflection, `Document.currentScript.html`, `cdata-dir_auto.html`, leftover per-element IDL reflection, HTTP `:lang()`, `document.dir` / `dir-slots-directionality`, `self-origin.sub.html`, `name-content-attribute-and-property.html`, and `rel=expect` render-blocking (including `element-render-blocking-001/004/005/009/010/013/014/021.html`) PASS. SW `clients.matchAll`, waiting-worker `skipWaiting`, `Client.postMessage`, and dedicated/shared worker clients are implemented.
 
 
 ## 1. Thesis and non-goals

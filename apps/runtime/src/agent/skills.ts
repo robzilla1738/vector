@@ -12,6 +12,10 @@ export interface SkillGuard {
   role?: string;
   nameIncludes?: string;
   urlIncludes?: string;
+  /** Exact origin; substring matches are not enough for reuse. */
+  exactOrigin?: string;
+  /** Document generation that must still be current. */
+  documentEpoch?: number;
 }
 
 export interface CompiledSkill {
@@ -21,11 +25,28 @@ export interface CompiledSkill {
   preconditions: SkillGuard[];
   postconditions: SkillGuard[];
   evidence: string;
+  /** Set after postconditions fail. Consequential reuse is then refused. */
+  blocked?: boolean;
 }
 
-export function guardsHold(obs: ObservationContent, url: string, guards: SkillGuard[]): boolean {
+export function guardsHold(
+  obs: ObservationContent,
+  url: string,
+  guards: SkillGuard[],
+  documentEpoch?: number,
+): boolean {
   return guards.every((g) => {
     if (g.urlIncludes && !url.includes(g.urlIncludes)) return false;
+    if (g.exactOrigin) {
+      try {
+        if (new URL(url).origin !== g.exactOrigin) return false;
+      } catch {
+        return false;
+      }
+    }
+    if (g.documentEpoch != null && documentEpoch != null && documentEpoch !== g.documentEpoch) {
+      return false;
+    }
     if (g.role || g.nameIncludes) {
       const hit = obs.elements.some((e) => {
         if (g.role && e.role !== g.role) return false;
@@ -62,19 +83,33 @@ export function tryReuseSkill(
   goal: string,
   obs: ObservationContent,
   url: string,
+  documentEpoch?: number,
 ): { skill: CompiledSkill; reason: string } | { skipped: string } {
   const match = skills.find((s) => goal.toLowerCase().includes(s.goalPattern.toLowerCase()));
   if (!match) return { skipped: "no skill matched the goal" };
-  if (!guardsHold(obs, url, match.preconditions)) {
+  if (match.blocked) {
+    return { skipped: `skill ${match.id} blocked after failed postconditions` };
+  }
+  if (!guardsHold(obs, url, match.preconditions, documentEpoch)) {
     return { skipped: `skill ${match.id} guards failed` };
   }
   return { skill: match, reason: match.evidence };
 }
 
+/** Refuse later reuse after a postcondition miss. */
+export function markSkillFailed(skill: CompiledSkill): void {
+  skill.blocked = true;
+}
+
 /** After a reused skill runs, postconditions must still hold or the skill failed closed. */
-export function verifySkillPostconditions(skill: CompiledSkill, obs: ObservationContent, url: string): boolean {
+export function verifySkillPostconditions(
+  skill: CompiledSkill,
+  obs: ObservationContent,
+  url: string,
+  documentEpoch?: number,
+): boolean {
   if (skill.postconditions.length === 0) return true;
-  return guardsHold(obs, url, skill.postconditions);
+  return guardsHold(obs, url, skill.postconditions, documentEpoch);
 }
 
 /** Measured task metrics for VEC-021 / M3 stretch comparison. */

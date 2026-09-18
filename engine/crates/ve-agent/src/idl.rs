@@ -5,9 +5,9 @@ use ve_dom::{Document, Namespace, NodeKind, ShadowRootMode};
 use ve_script::JsValue;
 use ve_script::generated::{
     DOMImplementationInterface, DocumentInterface, ElementInterface, EventTargetInterface,
-    HTMLButtonElementInterface, HTMLCollectionInterface, HTMLElementInterface,
-    HTMLFormElementInterface, HTMLInputElementInterface, MediaQueryListInterface, NodeInterface,
-    ShadowRootInterface, WindowInterface,
+    HTMLAllCollectionInterface, HTMLButtonElementInterface, HTMLCollectionInterface,
+    HTMLElementInterface, HTMLFormElementInterface, HTMLInputElementInterface,
+    MediaQueryListInterface, NodeInterface, ShadowRootInterface, WindowInterface,
 };
 
 use crate::page::{Page, outer_html};
@@ -1162,6 +1162,10 @@ impl DocumentInterface for LiveDom<'_> {
         .to_js()
     }
 
+    fn all(&self) -> JsValue {
+        LiveCollection::from_doc(&self.page.doc, self.id, |_| true).to_js()
+    }
+
     fn implementation(&self) -> JsValue {
         let mut m = std::collections::BTreeMap::new();
         m.insert("hasFeature".into(), JsValue::Bool(true));
@@ -1384,6 +1388,20 @@ impl LiveCollection {
 
     fn to_js(&self) -> JsValue {
         JsValue::Array(self.ids.iter().copied().map(pack_id).collect())
+    }
+}
+
+impl HTMLAllCollectionInterface for LiveCollection {
+    fn length(&self) -> u32 {
+        HTMLCollectionInterface::length(self)
+    }
+
+    fn item(&mut self, index: u32) -> Option<NodeId> {
+        HTMLCollectionInterface::item(self, index)
+    }
+
+    fn named_item(&mut self, name: String) -> Option<NodeId> {
+        HTMLCollectionInterface::named_item(self, name)
     }
 }
 
@@ -1728,11 +1746,15 @@ mod tests {
             );
         }
         let mut forms = LiveCollection::from_doc(&page.doc, page.doc.root(), |e| e.name == "form");
-        assert_eq!(forms.length(), 0);
-        assert!(forms.item(0).is_none());
+        assert_eq!(HTMLCollectionInterface::length(&forms), 0);
+        assert!(HTMLCollectionInterface::item(&mut forms, 0).is_none());
         let impl_ok = LiveImpl::new(&mut page).has_feature(None, None);
         assert!(impl_ok);
         assert!(INTERFACE_NAMES.contains(&"HTMLCollection"));
+        assert!(INTERFACE_NAMES.contains(&"HTMLAllCollection"));
+        assert!(INTERFACE_NAMES.contains(&"HTMLFormControlsCollection"));
+        assert!(INTERFACE_NAMES.contains(&"HTMLOptionsCollection"));
+        assert!(INTERFACE_NAMES.contains(&"RadioNodeList"));
         assert!(INTERFACE_NAMES.contains(&"DOMImplementation"));
         assert!(INTERFACE_NAMES.contains(&"HTMLFormElement"));
         assert!(INTERFACE_NAMES.contains(&"ShadowRoot"));

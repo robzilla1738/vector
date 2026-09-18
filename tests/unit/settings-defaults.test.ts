@@ -54,6 +54,25 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
+  it("defaults effect grants to read+write+destructive+egress and sanitizes settings.set", () => {
+    const { dir, settings } = harness();
+    try {
+      expect(settings.effectGrants()).toEqual([
+        "effect:read",
+        "effect:write",
+        "effect:destructive",
+        "effect:egress",
+      ]);
+      expect(settings.all().effectGrants).toEqual(settings.effectGrants());
+      settings.set({ effectGrants: ["effect:write", "grant-from-model", "effect:*"] });
+      expect(settings.effectGrants()).toEqual(["effect:write", "effect:*"]);
+      settings.set({ effectGrants: ["effect:read"] });
+      expect(settings.effectGrants()).toEqual(["effect:read"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("stores the gateway key in a 0600 file, not sqlite", () => {
     const { dir, repo, settings } = harness();
     try {

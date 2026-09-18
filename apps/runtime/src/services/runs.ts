@@ -17,8 +17,11 @@ import type { ArtifactStore } from "./artifacts.js";
 import type { PageService } from "./pages.js";
 import type { SetService } from "./sets.js";
 import type { SettingsService } from "./settings.js";
+import { join } from "node:path";
 import { RunCoordinator } from "../agent/coordinator.js";
+import { DurableWriteLedger } from "../agent/durable.js";
 import { runMemberAgent } from "../agent/member-agent.js";
+import { DEFAULT_GRANTS } from "../agent/permissions.js";
 import { SetRunner } from "../scheduler/set-runner.js";
 import { WorkerPool } from "../scheduler/pool.js";
 
@@ -113,6 +116,11 @@ export class RunService {
     };
   }) {
     this.pool = new WorkerPool({ maxWorkers: deps.settings.maxWorkers(), perOrigin: deps.settings.perOrigin() });
+    const durableWrites = new DurableWriteLedger(
+      typeof deps.settings.all === "function" && deps.settings.all().dataDir
+        ? join(deps.settings.all().dataDir, "durable-writes.json")
+        : undefined,
+    );
     this.coordinator = new RunCoordinator({
       repo: deps.repo,
       events: deps.events,
@@ -136,6 +144,8 @@ export class RunService {
           buffer: Buffer.from(JSON.stringify(obs)),
         }).artifactId,
       tracer: deps.tracer,
+      grants: () => deps.settings.effectGrants(),
+      durableWrites,
     });
     this.setRunner = new SetRunner({
       repo: deps.repo,
@@ -145,6 +155,8 @@ export class RunService {
       pool: this.pool,
       nativeAvailable: deps.nativeAvailable,
       translateSteps: deps.translateSteps,
+      grants: () => deps.settings.effectGrants?.() ?? DEFAULT_GRANTS,
+      durableWrites,
       getProgram: (id) => {
         const p = deps.repo.getProgram(id);
         return p ? { stepsJson: p.stepsJson, siteKey: p.siteKey } : undefined;
@@ -190,6 +202,8 @@ export class RunService {
           modelId,
           // the set-run's own signal — runs.cancel stops member model calls
           signal: ctx.signal,
+          grants: () => deps.settings.effectGrants?.() ?? DEFAULT_GRANTS,
+          durable: durableWrites,
           recordModelCall: (c) => this.recordModelCall({ runId: ctx.runId, role: "planner", ...c }),
         });
       },

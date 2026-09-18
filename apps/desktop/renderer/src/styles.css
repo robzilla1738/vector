@@ -569,7 +569,33 @@ body.resizing .sidebar { transition: none; }
 .stage-progress::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 32%; border-radius: 1px; background: var(--ink-0); animation: sweep 1.1s var(--ease-in-out) infinite; }
 .stage-card.loading .stage-progress { opacity: 1; }
 
-.engine-view { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; background: #fff; user-select: none; }
+.engine-view { position: absolute; inset: 0; width: 100%; height: 100%; background: #fff; user-select: none; }
+.engine-view-scene { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; display: block; pointer-events: none; }
+.engine-view-ax {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  white-space: nowrap;
+}
+.engine-view-ime {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  resize: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+}
 .stage-message { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--space-7); background: var(--bg-0); }
 .empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); max-width: 26rem; }
 .empty-ico { width: var(--row-h-lg); height: var(--row-h-lg); border-radius: var(--r-xl); display: grid; place-items: center; background: var(--bg-2); color: var(--ink-1); box-shadow: var(--line-inset); margin-bottom: var(--space-2); }
@@ -781,6 +807,9 @@ body.resizing .rail { transition: none; }
 .tl-detail { font-size: var(--fs-xs); color: var(--ink-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
 .tl-step.failed .tl-detail { color: var(--err); white-space: normal; overflow-wrap: anywhere; }
 .tl-code { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--ink-2); }
+.tl-receipt { font-size: var(--fs-2xs); color: var(--ink-2); }
+.tl-receipt[data-receipt="confirmed"] { color: var(--ok); }
+.tl-receipt[data-receipt="uncertain"], .tl-receipt[data-receipt="takeover"] { color: var(--warn); }
 .tl-obs { opacity: 0; margin-top: 2px; }
 .tl-step:hover .tl-obs, .tl-obs:focus-visible { opacity: 1; }
 .timeline.compact .tl-step { padding: 3px 0; }

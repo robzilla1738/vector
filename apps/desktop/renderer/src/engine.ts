@@ -64,5 +64,5 @@ export function engineModeLabel(mode: EngineMode | undefined): string {
 
 export function readEngineMode(settings: Record<string, unknown>): EngineMode {
   const m = settings.engineMode;
-  return m === "auto" || m === "always" || m === "off" ? m : "off";
+  return m === "auto" || m === "always" || m === "off" ? m : "always";
 }
