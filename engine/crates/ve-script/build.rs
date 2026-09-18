@@ -90,14 +90,20 @@ type HTMLButtonElement = Node;
 
 fn compile_html_dda() {
     let include = v8_include_dir();
-    cc::Build::new()
-        .compiler("g++")
+    let mut build = cc::Build::new();
+    build
         .cpp(true)
         .std("c++20")
         .include(&include)
         .file("src/html_dda.cc")
-        .warnings(false)
-        .compile("ve_html_dda");
+        .warnings(false);
+    // Linux/macOS: g++ finds cstddef. Windows: rusty_v8 ships MSVC/clang-cl
+    // objects; MinGW g++ cannot link MarkAsUndetectable.
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    if target_os != "windows" {
+        build.compiler("g++");
+    }
+    build.compile("ve_html_dda");
     if let Ok(entries) = std::fs::read_dir("/usr/lib/gcc") {
         for entry in entries.flatten() {
             let so = entry.path().join("libstdc++.so");

@@ -804,6 +804,19 @@ mod tests {
     }
 
     #[test]
+    fn html_dda_mark_is_not_a_windows_stub() {
+        let src = include_str!("html_dda.cc");
+        assert!(
+            src.contains("MarkAsUndetectable()"),
+            "document.all requires V8 MarkAsUndetectable on every advertised platform"
+        );
+        assert!(
+            !src.contains("#if defined(_WIN32)"),
+            "Gate C: Windows production must not stub HTMLDDA"
+        );
+    }
+
+    #[test]
     fn html_dda_wrap_is_undetectable_and_callable() {
         let mut vm = V8Vm::new().unwrap();
         let got = vm

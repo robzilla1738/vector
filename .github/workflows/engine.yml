@@ -278,6 +278,9 @@ jobs:
       - name: Host binary is packaged
         run: test -x engine/crates/ve-napi/ve-host || test -x engine/crates/ve-napi/ve-host.exe
         working-directory: .
+      - name: V8 HTMLDDA on every advertised platform
+        working-directory: engine
+        run: cargo test -p ve-script --features v8 html_dda -- --test-threads=1
       - name: Packaged host runs the production fixture
         shell: bash
         working-directory: engine
