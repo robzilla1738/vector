@@ -1,0 +1,490 @@
+{
+  "arch": "x86_64",
+  "attribution": {
+    "gate": false,
+    "jetstreamSunspider": {
+      "executed": 0,
+      "failed": 0,
+      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, late-eval mandreel/pdfjs, and WasmEMCC/Default wasm through Dart-flute-todomvc, Kotlin-compose, dotnet-interp/aot, and transformersjs-bert. Not a JetStream Next geometric-mean published score.",
+      "officialGroup": 12,
+      "passed": 0
+    },
+    "kind": "adapted-workload-phases",
+    "motionmark13": {
+      "note": "Official MotionMark 1.3 names from resources/runner/tests.js. Official HTML workloads execute when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
+      "officialNames": 8
+    },
+    "officialFullSuite": false,
+    "officialJetStream": {
+      "applied": true,
+      "clock": "Date.now-wall",
+      "defaultIterationCount": 120,
+      "defaultWorstCaseCount": 4,
+      "executedTests": 0,
+      "formula": "JetStreamDriver.js toScore=5000/max(ms,1); DefaultBenchmark first/average/worst4; overall geomean of per-test scores",
+      "geomean": null,
+      "iterationsUsed": 1,
+      "note": "A 1-iteration lab p50 is not a published score. Date.now() wall is not official performance.now() (virtual in this engine). --official-score uses JetStreamDriver.js per-test iteration/worstCaseCount. officialJetStreamGeometricMean stays false until every official Default name used those counts timed with performance.now().",
+      "officialJetStreamGeometricMean": false,
+      "officialPerTestCounts": true,
+      "passedTests": 0,
+      "perTest": {},
+      "runner": "same-page new Benchmark({iterationCount:N}); for i in 0..N runIteration(i)",
+      "scoredTests": 0
+    },
+    "officialMotionMark": {
+      "applied": true,
+      "defaultTests": 8,
+      "formula": "MotionMark 1.3 results.js ScoreCalculator: controller=ramp, per-test score is bootstrap median of complexity regression, overall is geomean of those scores then sample mean across iterations",
+      "note": "initialize+animate PASS is not a published MotionMark score. officialMotionMarkGeometricMean stays false until all 8 official names have ramp-complexity bootstrap scores.",
+      "officialMotionMarkGeometricMean": false,
+      "rampComplexityScores": 0
+    },
+    "officialSpeedometer": {
+      "applied": true,
+      "defaultIterationCount": 10,
+      "defaultSuites": 32,
+      "displayedScore": null,
+      "executedSuites": 32,
+      "formula": "Speedometer 3.0 benchmark-runner.mjs geomeanToScore=1000/geomean(suite totals ms); displayed Score is the arithmetic mean of 10 iteration scores",
+      "iterationScores": [
+        7.547643334079542
+      ],
+      "iterationsUsed": 1,
+      "note": "Lab add/finish steps are not benchmark-runner.mjs. officialSpeedometerScore stays false until 10 iteration scores exist from official steps.",
+      "officialSpeedometerScore": false,
+      "passedSuites": 32,
+      "steps": "lab-add-finish"
+    },
+    "phases": [
+      "parse/style/layout(openMs)",
+      "js(jsMs)",
+      "harnessSettle(settleMs)",
+      "unaccounted"
+    ],
+    "source": "official JetStream Next SunSpider group (12) plus speedometer.3.0.* and official MotionMark 1.3 names",
+    "speedometer30": {
+      "executed": 32,
+      "failed": 0,
+      "note": "Official Speedometer 3.0 suite names. Vendored workloads execute; missing sources stay NOTRUN. Not a browserbench.org published score.",
+      "notrun": 0
+    }
+  },
+  "backend": "vector-engine",
+  "chromium": false,
+  "engine_version": "0.0.1",
+  "host_package_energy_uj": null,
+  "os": "linux",
+  "pins": {
+    "jetstream": {
+      "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and Default wasm through Dart-flute-todomvc, Kotlin-compose, dotnet-interp/aot, and transformersjs-bert. Not a published JetStream geometric-mean score.",
+      "repo": "https://github.com/WebKit/JetStream",
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "status": "official-sunspider-default-js-wasmemcc",
+      "tests": [
+        "SunSpider/3d-cube.js",
+        "SunSpider/3d-raytrace.js",
+        "SunSpider/base64.js",
+        "SunSpider/crypto-aes.js",
+        "SunSpider/crypto-md5.js",
+        "SunSpider/crypto-sha1.js",
+        "SunSpider/date-format-tofte.js",
+        "SunSpider/date-format-xparb.js",
+        "SunSpider/n-body.js",
+        "SunSpider/regex-dna.js",
+        "SunSpider/string-unpack-code.js",
+        "SunSpider/tagcloud.js"
+      ]
+    },
+    "motionmark": {
+      "note": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. Each official HTML workload executes when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
+      "officialNames": [
+        "Multiply",
+        "Canvas Arcs",
+        "Leaves",
+        "Paths",
+        "Canvas Lines",
+        "Images",
+        "Design",
+        "Suits"
+      ],
+      "repo": "https://github.com/WebKit/MotionMark",
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "status": "official-html-multiply"
+    },
+    "speedometer": {
+      "note": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply.",
+      "repo": "https://github.com/WebKit/Speedometer",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "official-3.0"
+    }
+  },
+  "process_tree_rss_bytes": 979927040,
+  "rss_bytes": 979927040,
+  "security_mode": "developer-offline",
+  "suites": [
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":368,\"changeMs\":362,\"enterMs\":2,\"finishMs\":82,\"finishOtherRenderMs\":19,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":49,\"focusMs\":1,\"inputMs\":1,\"jsMs\":487,\"label\":\"speedometer.3.0.TodoMVC-JavaScript-ES5\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":66,\"otherRenderMs\":4,\"settleMs\":3200,\"showEntriesMs\":343,\"updateElementCountMs\":7,\"valueMs\":1},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES5",
+      "p50_ms": 487,
+      "p95_ms": 487,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        487
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":664,\"changeMs\":659,\"enterMs\":3,\"finishMs\":89,\"finishOtherRenderMs\":28,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":16,\"focusMs\":1,\"inputMs\":0,\"jsMs\":853,\"label\":\"speedometer.3.0.TodoMVC-JavaScript-ES5-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":1136,\"otherRenderMs\":5,\"settleMs\":3200,\"showEntriesMs\":609,\"updateElementCountMs\":35,\"valueMs\":1},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES5-Complex-DOM",
+      "p50_ms": 853,
+      "p95_ms": 853,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        853
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":505,\"changeMs\":504,\"enterMs\":0,\"finishMs\":19,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":1,\"jsMs\":534,\"label\":\"speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":35,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack",
+      "p50_ms": 534,
+      "p95_ms": 534,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        534
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":643,\"changeMs\":640,\"enterMs\":1,\"finishMs\":93,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":1,\"jsMs\":1581,\"label\":\"speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":491,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":1},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack-Complex-DOM",
+      "p50_ms": 1581,
+      "p95_ms": 1581,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1581
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":24,\"changeMs\":0,\"enterMs\":23,\"finishMs\":8,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":1,\"jsMs\":38,\"label\":\"speedometer.3.0.TodoMVC-WebComponents\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":43,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-WebComponents",
+      "p50_ms": 38,
+      "p95_ms": 38,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        38
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":72,\"changeMs\":2,\"enterMs\":66,\"finishMs\":106,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":1,\"inputMs\":3,\"jsMs\":204,\"label\":\"speedometer.3.0.TodoMVC-WebComponents-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":1146,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-WebComponents-Complex-DOM",
+      "p50_ms": 204,
+      "p95_ms": 204,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        204
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":39,\"changeMs\":1,\"enterMs\":34,\"finishMs\":10,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":4,\"jsMs\":55,\"label\":\"speedometer.3.0.TodoMVC-React\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":49,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-React",
+      "p50_ms": 55,
+      "p95_ms": 55,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        55
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":36,\"changeMs\":0,\"enterMs\":33,\"finishMs\":42,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":3,\"jsMs\":134,\"label\":\"speedometer.3.0.TodoMVC-React-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":474,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-React-Complex-DOM",
+      "p50_ms": 134,
+      "p95_ms": 134,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        134
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":45,\"changeMs\":1,\"enterMs\":38,\"finishMs\":15,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":6,\"jsMs\":65,\"label\":\"speedometer.3.0.TodoMVC-React-Redux\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":50,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-React-Redux",
+      "p50_ms": 65,
+      "p95_ms": 65,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        65
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":43,\"changeMs\":3,\"enterMs\":37,\"finishMs\":44,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":3,\"jsMs\":148,\"label\":\"speedometer.3.0.TodoMVC-React-Redux-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":486,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-React-Redux-Complex-DOM",
+      "p50_ms": 148,
+      "p95_ms": 148,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        148
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":38,\"changeMs\":1,\"enterMs\":36,\"finishMs\":15,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":1,\"jsMs\":65,\"label\":\"speedometer.3.0.TodoMVC-Backbone\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":63,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Backbone",
+      "p50_ms": 65,
+      "p95_ms": 65,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        65
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":60,\"changeMs\":0,\"enterMs\":57,\"finishMs\":42,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":1,\"inputMs\":1,\"jsMs\":208,\"label\":\"speedometer.3.0.TodoMVC-Backbone-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":46567,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":1},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Backbone-Complex-DOM",
+      "p50_ms": 208,
+      "p95_ms": 208,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        208
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":40,\"changeMs\":0,\"enterMs\":31,\"finishMs\":9,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":9,\"jsMs\":54,\"label\":\"speedometer.3.0.TodoMVC-Angular\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":87,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Angular",
+      "p50_ms": 54,
+      "p95_ms": 54,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        54
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":41,\"changeMs\":0,\"enterMs\":34,\"finishMs\":40,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":7,\"jsMs\":139,\"label\":\"speedometer.3.0.TodoMVC-Angular-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":652,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Angular-Complex-DOM",
+      "p50_ms": 139,
+      "p95_ms": 139,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        139
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":6,\"changeMs\":0,\"enterMs\":6,\"finishMs\":14,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":0,\"jsMs\":43,\"label\":\"speedometer.3.0.TodoMVC-Vue\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":52,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Vue",
+      "p50_ms": 43,
+      "p95_ms": 43,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        43
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":5,\"changeMs\":0,\"enterMs\":5,\"finishMs\":57,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":0,\"jsMs\":141,\"label\":\"speedometer.3.0.TodoMVC-Vue-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":499,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Vue-Complex-DOM",
+      "p50_ms": 141,
+      "p95_ms": 141,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        141
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":3580,\"changeMs\":0,\"enterMs\":3578,\"finishMs\":3326,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":2,\"jsMs\":6914,\"label\":\"speedometer.3.0.TodoMVC-jQuery\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":59,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-jQuery",
+      "p50_ms": 6914,
+      "p95_ms": 6914,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        6914
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":3775,\"changeMs\":1,\"enterMs\":3772,\"finishMs\":3621,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":2,\"jsMs\":7482,\"label\":\"speedometer.3.0.TodoMVC-jQuery-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":22988,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-jQuery-Complex-DOM",
+      "p50_ms": 7482,
+      "p95_ms": 7482,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        7482
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":4,\"changeMs\":0,\"enterMs\":3,\"finishMs\":6,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":1,\"inputMs\":0,\"jsMs\":21,\"label\":\"speedometer.3.0.TodoMVC-Preact\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":31,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Preact",
+      "p50_ms": 21,
+      "p95_ms": 21,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        21
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":4,\"changeMs\":0,\"enterMs\":4,\"finishMs\":59,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":0,\"jsMs\":125,\"label\":\"speedometer.3.0.TodoMVC-Preact-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":471,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Preact-Complex-DOM",
+      "p50_ms": 125,
+      "p95_ms": 125,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        125
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":5,\"changeMs\":1,\"enterMs\":4,\"finishMs\":6,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":0,\"jsMs\":24,\"label\":\"speedometer.3.0.TodoMVC-Svelte\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":30,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Svelte",
+      "p50_ms": 24,
+      "p95_ms": 24,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        24
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":4,\"changeMs\":0,\"enterMs\":3,\"finishMs\":58,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":1,\"jsMs\":127,\"label\":\"speedometer.3.0.TodoMVC-Svelte-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":433,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Svelte-Complex-DOM",
+      "p50_ms": 127,
+      "p95_ms": 127,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        127
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":8,\"changeMs\":2,\"enterMs\":4,\"finishMs\":19,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":2,\"jsMs\":47,\"label\":\"speedometer.3.0.TodoMVC-Lit\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":34,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Lit",
+      "p50_ms": 47,
+      "p95_ms": 47,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        47
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":64,\"changeMs\":58,\"enterMs\":5,\"finishMs\":580,\"finishOtherRenderMs\":0,\"finishShowEntriesMs\":0,\"finishUpdateCountMs\":0,\"focusMs\":0,\"inputMs\":0,\"jsMs\":710,\"label\":\"speedometer.3.0.TodoMVC-Lit-Complex-DOM\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":998,\"otherRenderMs\":0,\"settleMs\":3200,\"showEntriesMs\":0,\"updateElementCountMs\":0,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-Lit-Complex-DOM",
+      "p50_ms": 710,
+      "p95_ms": 710,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        710
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":1,\"attribution\":{\"jsMs\":110,\"label\":\"speedometer.3.0.NewsSite-Next\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":167,\"settleMs\":3200},\"kind\":\"news\",\"remaining\":0}",
+      "name": "speedometer.3.0.NewsSite-Next",
+      "p50_ms": 110,
+      "p95_ms": 110,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        110
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":1,\"attribution\":{\"jsMs\":95,\"label\":\"speedometer.3.0.NewsSite-Nuxt\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":178,\"settleMs\":3200},\"kind\":\"news\",\"remaining\":0}",
+      "name": "speedometer.3.0.NewsSite-Nuxt",
+      "p50_ms": 95,
+      "p95_ms": 95,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        95
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":1,\"attribution\":{\"jsMs\":42,\"label\":\"speedometer.3.0.Editor-CodeMirror\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":58,\"settleMs\":3200},\"kind\":\"editor\",\"remaining\":0}",
+      "name": "speedometer.3.0.Editor-CodeMirror",
+      "p50_ms": 42,
+      "p95_ms": 42,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        42
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":1,\"attribution\":{\"jsMs\":453,\"label\":\"speedometer.3.0.Editor-TipTap\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":38,\"settleMs\":3200},\"kind\":\"editor\",\"remaining\":0}",
+      "name": "speedometer.3.0.Editor-TipTap",
+      "p50_ms": 453,
+      "p95_ms": 453,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        453
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":1,\"attribution\":{\"jsMs\":52,\"label\":\"speedometer.3.0.Charts-observable-plot\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":46,\"settleMs\":3200},\"kind\":\"chart\",\"remaining\":0}",
+      "name": "speedometer.3.0.Charts-observable-plot",
+      "p50_ms": 52,
+      "p95_ms": 52,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        52
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":1,\"attribution\":{\"jsMs\":120,\"label\":\"speedometer.3.0.Charts-chartjs\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":36,\"settleMs\":3200},\"kind\":\"chart\",\"remaining\":0}",
+      "name": "speedometer.3.0.Charts-chartjs",
+      "p50_ms": 120,
+      "p95_ms": 120,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        120
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":1,\"attribution\":{\"jsMs\":40,\"label\":\"speedometer.3.0.React-Stockcharts-SVG\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":109,\"settleMs\":3200},\"kind\":\"stock\",\"remaining\":0}",
+      "name": "speedometer.3.0.React-Stockcharts-SVG",
+      "p50_ms": 40,
+      "p95_ms": 40,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        40
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":1,\"attribution\":{\"jsMs\":1,\"label\":\"speedometer.3.0.Perf-Dashboard\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":1397,\"settleMs\":3200},\"kind\":\"perf\",\"remaining\":0}",
+      "name": "speedometer.3.0.Perf-Dashboard",
+      "p50_ms": 1,
+      "p95_ms": 1,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        1
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply.",
+      "name": "speedometer.todomvc-class",
+      "p50_ms": 7,
+      "p95_ms": 7,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        7
+      ],
+      "status": "PARTIAL"
+    }
+  ]
+}
