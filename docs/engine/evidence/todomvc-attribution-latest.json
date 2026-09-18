@@ -1,25 +1,33 @@
 {
-  "accountedMs": 589,
+  "accountedMs": 48642,
+  "added": 100,
+  "remaining": 0,
   "artifact": {
+    "arch": "x86_64",
     "engine": "vector-engine",
+    "engineVersion": "0.0.1",
     "measured": true,
-    "note": "Timed on this host from bindings todomvc_es5_measured_phases. Adapted workload, not an official Speedometer score.",
-    "review": "Vector_Current_Review_60b2d41"
+    "os": "linux",
+    "processTreeRssBytes": 142811136,
+    "review": "Vector_Current_Review_60b2d41",
+    "rssBytes": 142811136,
+    "securityMode": "developer-offline",
+    "speedometerRevision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+    "note": "Official vendored Speedometer 3.0 TodoMVC-JavaScript-ES5 via browserbench --gate --iterations 1. Not a full official suite score. Thirty-one other named Speedometer workloads are NOTRUN in this gate."
   },
+  "bottleneck": "jsMs is add+complete+count. openMs (parse/style/layout/boot) is 53ms. settleMs is harness wait, not engine work.",
   "errors": [],
   "heldOut": false,
   "label": "speedometer.3.0.TodoMVC-JavaScript-ES5",
-  "officialSuite": false,
+  "officialFullSuite": false,
+  "officialSuite": true,
   "phases": {
-    "jsMs": 547,
-    "observeMs": 6,
-    "openMs": 30,
-    "settleMs": 6
+    "jsMs": 45389,
+    "openMs": 53,
+    "settleMs": 3200
   },
   "retries": 0,
-  "samples_ms": [
-    589
-  ],
+  "samples_ms": [45389],
   "success": true,
   "synthetic": false,
   "unaccountedMs": 0
