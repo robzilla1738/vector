@@ -24,7 +24,7 @@
       "path": "html/dom/idlharness.https.html",
       "status": "FAIL",
       "duration_ms": 1776,
-      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. HTML element brands and HTMLElement writingSuggestions/autocorrect/headingOffset/headingReset/attachInternals/showPopover/hidePopover/togglePopover/dataset now exist. Official file still FAIL: document.all [[IsHTMLDDA]] (typeof function, not undefined) plus remaining WebIDL (canvas/input argument counts, EventSource, ImageData). Not an official idlharness PASS."
+      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. HTMLTitle/Link/Body/Media/EventSource/canvas argc and setCustomValidity now exist. Official file still FAIL: document.all [[IsHTMLDDA]] plus remaining reflected attributes. Not an official idlharness PASS."
     }
   ]
 }
