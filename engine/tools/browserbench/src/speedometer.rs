@@ -1483,6 +1483,31 @@ mod tests {
                     r##"(function () {
                       var input = todoInput();
                       if (!input) return JSON.stringify({ input: false });
+                      var renderMs = {};
+                      if (window.app && app.render && !app.__veTimedRender) {
+                        app.render = function () {
+                          var todos = this.getFilteredTodos();
+                          var t = Date.now();
+                          var html = this.todoTemplate(todos);
+                          renderMs.tpl = Date.now() - t;
+                          t = Date.now();
+                          $('#todo-list').html(html);
+                          renderMs.listHtml = Date.now() - t;
+                          t = Date.now();
+                          $('#main').toggle(todos.length > 0);
+                          renderMs.toggleMain = Date.now() - t;
+                          t = Date.now();
+                          $('#toggle-all').prop('checked', this.getActiveTodos().length === 0);
+                          renderMs.prop = Date.now() - t;
+                          t = Date.now();
+                          this.renderFooter();
+                          renderMs.footer = Date.now() - t;
+                          t = Date.now();
+                          $('#new-todo').focus();
+                          renderMs.focus = Date.now() - t;
+                        };
+                        app.__veTimedRender = true;
+                      }
                       var t0 = Date.now();
                       input.focus();
                       var focusMs = Date.now() - t0;
@@ -1502,6 +1527,12 @@ mod tests {
                         valueMs: valueMs,
                         inputMs: inputMs,
                         enterMs: enterMs,
+                        tplMs: renderMs.tpl || 0,
+                        listHtmlMs: renderMs.listHtml || 0,
+                        toggleMainMs: renderMs.toggleMain || 0,
+                        propMs: renderMs.prop || 0,
+                        footerMs: renderMs.footer || 0,
+                        renderFocusMs: renderMs.focus || 0,
                         nodes: document.getElementsByTagName("*").length
                       });
                     })()"##,
