@@ -34,7 +34,13 @@ const server = createServer((socket) => {
       if (req.method === "pages.open") {
         result = { ok: true, page: 1, url: req.params?.url ?? "about:blank", title: "shell" };
       } else if (req.method === "identity") {
-        result = { engine: "vector-engine", service: "browser-service", chromium: false };
+        result = { engine: "vector-engine", service: "browser-service", chromium: false, controller: "none" };
+      } else if (req.method === "pages.takeover") {
+        result = { controller: "human", controllerEpoch: 1, service: "browser-service" };
+      } else if (req.method === "pages.resume") {
+        result = { controller: "none", controllerEpoch: 2, service: "browser-service" };
+      } else if (req.method === "pages.execute") {
+        result = { ok: true, status: "completed", steps: [] };
       }
       socket.write(JSON.stringify({ jsonrpc: "2.0", id: req.id, result }) + "\\n");
     }
@@ -105,5 +111,33 @@ describe("Finding 1 browser service client", () => {
     expect(obs.chromium).toBe(false);
     owned!.shutdown();
     client.close();
+  });
+
+  it("live ve-shell --service: Node takeover blocks a second client execute", async () => {
+    const bin = resolveVeShell();
+    if (!bin) return;
+    const owned = await spawnVeShellService(bin);
+    expect(owned?.addr).toMatch(/^127\.0\.0\.1:\d+$/);
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => owned!,
+    });
+    await driver.connect();
+    await driver.createTarget("about:blank");
+    const peer = new BrowserServiceClient(owned!.addr);
+    await peer.connect();
+    await peer.call("pages.open", { url: "about:blank", html: "<input id=n>" });
+    const taken = await driver.takeover();
+    expect(taken.controller).toBe("human");
+    await expect(
+      peer.call("pages.execute", { program: [{ id: "x", op: "type", target: "css:#n", value: "blocked" }] }),
+    ).rejects.toMatchObject({ code: "conflict" });
+    const resumed = await driver.resume();
+    expect(resumed.controller).not.toBe("human");
+    await expect(
+      peer.call("pages.execute", { program: [{ id: "y", op: "type", target: "css:#n", value: "ok" }] }),
+    ).resolves.toBeTruthy();
+    peer.close();
+    await driver.disconnect();
   });
 });

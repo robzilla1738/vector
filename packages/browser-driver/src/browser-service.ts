@@ -252,6 +252,16 @@ export class ServiceNativeEngine {
     return JSON.stringify({ ok: true, ...r });
   }
 
+  async takeover(): Promise<string> {
+    const r = await this.client.call("pages.takeover", {});
+    return JSON.stringify({ ok: true, ...r });
+  }
+
+  async resume(): Promise<string> {
+    const r = await this.client.call("pages.resume", {});
+    return JSON.stringify({ ok: true, ...r });
+  }
+
   async screenshot(_page: number, _optionsJson?: string | null): Promise<string> {
     const r = await this.client.call("scene.update", {});
     return JSON.stringify({

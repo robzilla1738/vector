@@ -59,6 +59,8 @@ export interface NativeEngine {
   setCookies(contextId: number, cookiesJson: string): Promise<string>;
   pages(): number[];
   shutdown(): void;
+  takeover?(): Promise<string>;
+  resume?(): Promise<string>;
 }
 
 export interface BrowserServiceHandle {
@@ -756,5 +758,33 @@ export class VectorEngineDriver implements BrowserDriver {
   async setCookies(cookies: BrowserCookie[]): Promise<number> {
     const res = unwrapNative<{ count: number }>(await this.engine().setCookies(DEFAULT_CONTEXT, JSON.stringify(cookies)));
     return res.count;
+  }
+
+  /**
+   * Human takeover on BrowserService (Finding 1 / Gate B / Gate F).
+   * Local-only engines without `takeover` flip nothing on the service.
+   */
+  async takeover(): Promise<{ controller: string; controllerEpoch: number }> {
+    const native = this.engine();
+    if (!native.takeover) return { controller: "human", controllerEpoch: 0 };
+    const r = unwrapNative<{ controller?: string; controllerEpoch?: number }>(await native.takeover());
+    return {
+      controller: r.controller ?? "human",
+      controllerEpoch: r.controllerEpoch ?? 0,
+    };
+  }
+
+  /** Resume after takeover. Requires the service to report a non-human controller. */
+  async resume(): Promise<{ controller: string; controllerEpoch: number }> {
+    const native = this.engine();
+    if (!native.resume) return { controller: "none", controllerEpoch: 0 };
+    const r = unwrapNative<{ controller?: string; controllerEpoch?: number }>(await native.resume());
+    if (r.controller === "human") {
+      throw new VectorError("conflict", "resume left the page under human control");
+    }
+    return {
+      controller: r.controller ?? "none",
+      controllerEpoch: r.controllerEpoch ?? 0,
+    };
   }
 }

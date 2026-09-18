@@ -7,6 +7,7 @@ import { createServer, type AddressInfo, type Server } from "node:net";
 import { describe, it, expect, vi } from "vitest";
 import {
   VectorEngineDriver,
+  BrowserServiceClient,
   decodeFerry,
   encodeFerry,
   parseEngineTargetId,
@@ -18,6 +19,7 @@ import {
 import { VectorError, type ObservationContent } from "@vector/contracts";
 
 function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server: Server }> {
+  const state = { controller: "none", controllerEpoch: 0 };
   return new Promise((resolve, reject) => {
     const server = createServer((socket) => {
       let buf = "";
@@ -31,15 +33,39 @@ function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server:
           buf = buf.slice(nl + 1);
           if (!line.trim()) continue;
           const req = JSON.parse(line) as { id: number; method: string; params?: { url?: string; html?: string } };
+          if (req.method === "pages.execute" && state.controller === "human") {
+            socket.write(
+              `${JSON.stringify({
+                jsonrpc: "2.0",
+                id: req.id,
+                error: { code: "conflict", message: "page is under human control — resume first" },
+              })}\n`,
+            );
+            continue;
+          }
           let result: Record<string, unknown> = { ok: true };
           if (req.method === "identity") {
-            result = { engine: "vector-engine", service: "browser-service", chromium: false };
+            result = {
+              engine: "vector-engine",
+              service: "browser-service",
+              chromium: false,
+              controller: state.controller,
+              controllerEpoch: state.controllerEpoch,
+            };
           } else if (req.method === "pages.open") {
             result = { ok: true, page: 1, url: req.params?.url ?? "about:blank", title: "X" };
           } else if (req.method === "pages.observe") {
             result = { ok: true, content: content(), documentEpoch: 1 };
           } else if (req.method === "pages.execute") {
             result = { ok: true, status: "completed", steps: [] };
+          } else if (req.method === "pages.takeover") {
+            state.controller = "human";
+            state.controllerEpoch += 1;
+            result = { controller: "human", controllerEpoch: state.controllerEpoch, service: "browser-service" };
+          } else if (req.method === "pages.resume") {
+            state.controller = "none";
+            state.controllerEpoch += 1;
+            result = { controller: "none", controllerEpoch: state.controllerEpoch, service: "browser-service" };
           }
           socket.write(`${JSON.stringify({ jsonrpc: "2.0", id: req.id, result })}\n`);
         }
@@ -323,6 +349,33 @@ describe("VectorEngineDriver", () => {
     const driver = new VectorEngineDriver({ load });
     await expect(driver.connect()).rejects.toMatchObject({ code: "backend_unavailable" });
     expect(driver.describe()).toMatchObject({ available: false });
+  });
+
+  it("Finding 1: Node takeover stops a second BrowserService client", async () => {
+    const owned = await mockBrowserService();
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+    });
+    await driver.connect();
+    await driver.createTarget("https://share.test/");
+    const peer = new BrowserServiceClient(owned.addr);
+    await peer.connect();
+    await expect(
+      peer.call("pages.execute", { program: [{ id: "a", op: "click", target: "css:#n" }] }),
+    ).resolves.toMatchObject({ status: "completed" });
+    const taken = await driver.takeover();
+    expect(taken).toMatchObject({ controller: "human", controllerEpoch: 1 });
+    await expect(
+      peer.call("pages.execute", { program: [{ id: "x", op: "click", target: "css:#n" }] }),
+    ).rejects.toMatchObject({ code: "conflict", message: /human control/i });
+    const resumed = await driver.resume();
+    expect(resumed).toMatchObject({ controller: "none", controllerEpoch: 2 });
+    await expect(
+      peer.call("pages.execute", { program: [{ id: "y", op: "click", target: "css:#n" }] }),
+    ).resolves.toMatchObject({ status: "completed" });
+    peer.close();
+    await driver.disconnect();
   });
 
   it("Finding 1: ownService starts BrowserService and Node attaches as a client", async () => {

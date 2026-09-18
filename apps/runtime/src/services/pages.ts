@@ -995,19 +995,51 @@ export class PageService {
 
   // ---------- takeover ----------
 
-  takeover(pageId: string): PageTarget {
+  /**
+   * Human takeover. Local controller flips before the first await so
+   * in-process execute is blocked immediately. vector-engine pages also
+   * call BrowserService so a second client cannot dispatch (Finding 1).
+   */
+  async takeover(pageId: string): Promise<PageTarget> {
     const lp = this.live.get(pageId);
     if (!lp) throw new VectorError("not_found", `no page ${pageId}`);
     lp.target.controller = "human";
     lp.target.controllerEpoch++;
     this.persist(lp);
     this.deps.events.emit(EventTypes.PageTakeover, { pageId, controller: "human", controllerEpoch: lp.target.controllerEpoch });
+    const engine = this.driverFor(lp.target.backend);
+    if (lp.target.backend === "vector-engine" && engine?.takeover) {
+      const remote = await engine.takeover();
+      if (remote.controllerEpoch > 0) lp.target.controllerEpoch = remote.controllerEpoch;
+      this.persist(lp);
+    }
     return lp.target;
   }
 
-  resume(pageId: string): PageTarget {
+  /**
+   * Release human takeover. vector-engine pages resume on BrowserService
+   * first and refuse if the page is gone or still human-controlled.
+   */
+  async resume(pageId: string): Promise<PageTarget> {
     const lp = this.live.get(pageId);
     if (!lp) throw new VectorError("not_found", `no page ${pageId}`);
+    const engine = this.driverFor(lp.target.backend);
+    if (lp.target.backend === "vector-engine") {
+      if (!lp.driver?.isAttached()) {
+        throw new VectorError("target_detached", `page ${pageId} is not attached — resume requires a live page`);
+      }
+      if (engine?.resume) {
+        const remote = await engine.resume();
+        if (remote.controller === "human") {
+          throw new VectorError("conflict", `page ${pageId} resume did not release human control`);
+        }
+        lp.target.controller = "none";
+        lp.target.controllerEpoch = remote.controllerEpoch > 0 ? remote.controllerEpoch : lp.target.controllerEpoch + 1;
+        this.persist(lp);
+        this.deps.events.emit(EventTypes.PageTakeover, { pageId, controller: "none" });
+        return lp.target;
+      }
+    }
     lp.target.controller = "none";
     lp.target.controllerEpoch++;
     this.persist(lp);
@@ -1023,7 +1055,7 @@ export class PageService {
     // Only agent/external-controlled pages hand control to the human —
     // ordinary browsing must not pin the page as human-owned forever.
     if (lp.target.controller === "agent" || lp.target.controller === "external") {
-      this.takeover(pageId);
+      void this.takeover(pageId);
     }
   }
 
