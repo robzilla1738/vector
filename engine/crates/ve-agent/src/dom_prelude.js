@@ -239,10 +239,15 @@
         return !ev.defaultPrevented;
       };
       if (!needPath) return fireTargetProp();
-      if (nListen > 0 && onAttrCount === 0 && handlerPropCount === 0 && !listenerOnPath(type, this)) {
+      const tOnPath = Date.now();
+      const onPath = listenerOnPath(type, this);
+      if (type === "change") globalThis.__veOnPathMs = Date.now() - tOnPath;
+      if (nListen > 0 && onAttrCount === 0 && handlerPropCount === 0 && !onPath) {
         return fireTargetProp();
       }
+      const tPath = Date.now();
       const path = composedPath(this);
+      if (type === "change") globalThis.__vePath2Ms = Date.now() - tPath;
       const fire = (node, cap) => {
         if (ev._stopImm) return;
         ev.currentTarget = node;
@@ -253,6 +258,7 @@
           globalThis.__veOnMs = (globalThis.__veOnMs || 0) + (Date.now() - tOn);
           globalThis.__veFireCalls = (globalThis.__veFireCalls || 0) + 1;
         }
+        const tL = Date.now();
         for (const l of arr.slice()) {
           if (l.cap !== cap) continue;
           try { l.fn.call(node, ev); } catch (e) { __ve.log("error", "Uncaught (in event) " + (e && e.stack || e)); }
@@ -265,6 +271,7 @@
           }
           if (ev._stopImm) return;
         }
+        if (type === "change") globalThis.__veListenMs = (globalThis.__veListenMs || 0) + (Date.now() - tL);
         const prop = onLookup;
         if (!cap && typeof prop === "function") {
           try { prop.call(node, ev); } catch (e) { __ve.log("error", String(e)); }
@@ -277,6 +284,7 @@
         }
       };
       ev.eventPhase = 1;
+      const tFire = Date.now();
       for (let i = path.length - 1; i > 0; i--) {
         fire(path[i], true);
         if (ev.cancelBubble) break;
@@ -295,6 +303,7 @@
       }
       ev.eventPhase = 0;
       ev.currentTarget = null;
+      if (type === "change") globalThis.__veFireLoopMs = Date.now() - tFire;
       return !ev.defaultPrevented;
     }
   }

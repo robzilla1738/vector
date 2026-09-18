@@ -1439,6 +1439,10 @@ mod tests {
                       var pathMs = Date.now() - t;
                       window.__veOnMs = 0;
                       window.__veFireCalls = 0;
+                      window.__veListenMs = 0;
+                      window.__veOnPathMs = 0;
+                      window.__vePath2Ms = 0;
+                      window.__veFireLoopMs = 0;
                       var t0 = Date.now();
                       input.focus();
                       var focusMs = Date.now() - t0;
@@ -1478,6 +1482,10 @@ mod tests {
                         pathListeners: pathListenerCounts,
                         onMs: window.__veOnMs || 0,
                         fireCalls: window.__veFireCalls || 0,
+                        listenMs: window.__veListenMs || 0,
+                        onPathMs: window.__veOnPathMs || 0,
+                        path2Ms: window.__vePath2Ms || 0,
+                        fireLoopMs: window.__veFireLoopMs || 0,
                         nodes: document.getElementsByTagName("*").length
                       });
                     })()"##,
