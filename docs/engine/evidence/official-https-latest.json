@@ -23,8 +23,8 @@
     {
       "path": "html/dom/idlharness.https.html",
       "status": "FAIL",
-      "duration_ms": 1776,
-      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. Official file still FAIL: document.all [[IsHTMLDDA]] plus remaining members. Window on* are own on the global (not on Window.prototype). SVG/MathML handlers are branded. Sanitizer get/remove* added. Not recorded as PASS."
+      "duration_ms": 1332,
+      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. Official file still FAIL: 20 residual subtests. document.all [[IsHTMLDDA]] is 10 of them. Remaining: CustomStateSet setlike, Window onmouseenter/onmouseleave, Location stringifier, NavigationTransition committed/finished, BeforeUnloadEvent interface object, External enumerable. Not recorded as PASS."
     }
   ]
 }
