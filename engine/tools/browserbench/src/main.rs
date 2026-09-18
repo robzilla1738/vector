@@ -205,7 +205,7 @@ fn parse_iteration_samples(value: &serde_json::Value) -> Result<Vec<u64>, String
     Ok(samples)
 }
 
-/// Official `AsyncBenchmark`: await init / prepareForNextIteration / runIteration.
+/// Official `AsyncBenchmark`: one load, then init + N×(prepare/runIteration).
 pub(crate) fn jetstream_async_chunks(
     engine: &mut VectorEngine,
     iterations: u32,
@@ -226,76 +226,78 @@ pub(crate) fn jetstream_async_chunks(
         };
     }
     let html = format!("<!doctype html><title>{name}</title>");
-    let mut samples = Vec::new();
-    let mut last_err = None;
-    for _ in 0..iterations.max(1) {
-        let opened = match engine.open(OpenRequest {
-            url: Some(format!("https://browserbench.org/JetStream/{path}")),
-            html: Some(html.clone()),
-            allow_evaluate: true,
-            ..OpenRequest::default()
-        }) {
-            Ok(o) => o,
-            Err(e) => {
-                last_err = Some(e.to_string());
-                break;
-            }
-        };
-        if let Ok(page) = engine.page_mut(opened.page) {
-            page.settle(500);
-        }
-        let load = engine.page_mut(opened.page).and_then(|p| {
-            for chunk in chunks {
-                p.evaluate(chunk)?;
-            }
-            Ok(())
-        });
-        if let Err(e) = load {
-            last_err = Some(e.to_string());
-            engine.close(opened.page);
-            continue;
-        }
-        let started = Instant::now();
-        if let Err(e) = engine
-            .page_mut(opened.page)
-            .and_then(|p| p.evaluate(ASYNC_START))
-        {
-            last_err = Some(e.to_string());
-            engine.close(opened.page);
-            continue;
-        }
-        match wait_async(engine, opened.page) {
-            Ok(()) => {
-                samples.push(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX))
-            }
-            Err(e) => last_err = Some(e),
-        }
-        engine.close(opened.page);
+    let opened = match engine.open(OpenRequest {
+        url: Some(format!("https://browserbench.org/JetStream/{path}")),
+        html: Some(html),
+        allow_evaluate: true,
+        ..OpenRequest::default()
+    }) {
+        Ok(o) => o,
+        Err(e) => return finish_jetstream(name, revision, Vec::new(), Some(e.to_string())),
+    };
+    if let Ok(page) = engine.page_mut(opened.page) {
+        page.settle(500);
     }
+    let load = engine.page_mut(opened.page).and_then(|p| {
+        for chunk in chunks {
+            p.evaluate(chunk)?;
+        }
+        Ok(())
+    });
+    if let Err(e) = load {
+        engine.close(opened.page);
+        return finish_jetstream(name, revision, Vec::new(), Some(e.to_string()));
+    }
+    let n = iterations.max(1);
+    let (samples, last_err) = match engine
+        .page_mut(opened.page)
+        .and_then(|p| p.evaluate(&official_async_runner(n)))
+    {
+        Ok(_) => match wait_async_results(engine, opened.page) {
+            Ok(samples) => (samples, None),
+            Err(e) => (Vec::new(), Some(e)),
+        },
+        Err(e) => (Vec::new(), Some(e.to_string())),
+    };
+    engine.close(opened.page);
     finish_jetstream(name, revision, samples, last_err)
 }
 
-const ASYNC_START: &str = r#"(function () {
-  if (typeof RegExp.escape !== "function") {
-    RegExp.escape = function (s) {
-      return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    };
-  }
-  window.__veJs = { done: null, err: null };
-  var b = new Benchmark({ iterationCount: 1 });
+fn official_async_runner(iterations: u32) -> String {
+    format!(
+        r#"(function () {{
+  if (typeof RegExp.escape !== "function") {{
+    RegExp.escape = function (s) {{
+      return String(s).replace(/[.*+?^${{}}()|[\]\\]/g, "\\$&");
+    }};
+  }}
+  window.__veJs = {{ done: null, err: null, results: null }};
+  var n = {iterations};
   Promise.resolve()
-    .then(function () { return b.init && b.init(); })
-    .then(function () { return b.prepareForNextIteration && b.prepareForNextIteration(); })
-    .then(function () { return b.runIteration(0); })
-    .then(function () { return b.validate && b.validate(1); })
-    .then(function () { window.__veJs.done = true; })
-    .catch(function (e) {
+    .then(async function () {{
+      var benchmark = new Benchmark({{ iterationCount: n }});
+      if (benchmark.init) await benchmark.init();
+      var results = [];
+      for (var i = 0; i < n; i++) {{
+        if (benchmark.prepareForNextIteration) await benchmark.prepareForNextIteration();
+        var start = Date.now();
+        await benchmark.runIteration(i);
+        var end = Date.now();
+        results.push(Math.max(1, end - start));
+      }}
+      if (benchmark.validate) benchmark.validate(n);
+      window.__veJs.results = results;
+      window.__veJs.done = true;
+    }})
+    .catch(function (e) {{
       var msg = e && e.message ? String(e.message) : String(e);
       var stack = e && e.stack ? String(e.stack) : "";
-      window.__veJs.err = msg + (stack && stack.indexOf(msg) < 0 ? "\n" + stack : stack ? "\n" + stack : "");
-    });
+      window.__veJs.err = msg + (stack && stack.indexOf(msg) < 0 ? "\\n" + stack : stack ? "\\n" + stack : "");
+    }});
   return true;
-})()"#;
+}})()"#
+    )
+}
 
 const ASYNC_STATUS: &str = r#"(function () {
   var s = window.__veJs || {};
@@ -304,8 +306,21 @@ const ASYNC_STATUS: &str = r#"(function () {
   return "pending";
 })()"#;
 
+const ASYNC_RESULTS: &str = r#"(function () {
+  var s = window.__veJs || {};
+  return s.results || [];
+})()"#;
+
+fn async_poll_limit() -> usize {
+    let secs = std::env::var("VECTOR_EVALUATE_DEADLINE_SECS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(240);
+    ((secs * 1000) / 25).max(120) as usize
+}
+
 fn wait_async(engine: &mut VectorEngine, page: ve_api::PageId) -> Result<(), String> {
-    for _ in 0..120 {
+    for _ in 0..async_poll_limit() {
         if let Ok(p) = engine.page_mut(page) {
             p.settle(500);
         }
@@ -337,6 +352,15 @@ fn wait_async(engine: &mut VectorEngine, page: ve_api::PageId) -> Result<(), Str
         page,
         "async runIteration did not finish".into(),
     ))
+}
+
+fn wait_async_results(engine: &mut VectorEngine, page: ve_api::PageId) -> Result<Vec<u64>, String> {
+    wait_async(engine, page)?;
+    let value = engine
+        .page_mut(page)
+        .and_then(|p| p.evaluate(ASYNC_RESULTS))
+        .map_err(|e| e.to_string())?;
+    parse_iteration_samples(&value)
 }
 
 fn with_console(engine: &mut VectorEngine, page: ve_api::PageId, err: String) -> String {
@@ -576,7 +600,11 @@ fn jetstream_official_attribution(
         None
     };
     let published = official_score
-        && score::published_jetstream_ready(iterations, jet.len())
+        && score::published_jetstream_ready_with_clock(
+            iterations,
+            jet.len(),
+            score::LAB_ITERATION_CLOCK,
+        )
         && scores.len() == jet.len()
         && jet.iter().all(|s| s.status == "PASS")
         && geomean.is_some();
@@ -594,7 +622,7 @@ fn jetstream_official_attribution(
         "perTest": per_test,
         "geomean": geomean,
         "officialJetStreamGeometricMean": published,
-        "note": "A 1-iteration lab p50 is not a published score. Date.now() wall is not official performance.now() (virtual in this engine). officialJetStreamGeometricMean is true only when every official Default name ran 120 iterations with first/average/worst."
+        "note": "A 1-iteration lab p50 is not a published score. Date.now() wall is not official performance.now() (virtual in this engine). officialJetStreamGeometricMean stays false until every official Default name ran 120 iterations timed with performance.now()."
     })
 }
 
@@ -620,7 +648,7 @@ fn speedometer_official_attribution(
         None
     };
     let published = official_score
-        && score::published_speedometer_ready(iterations, passed)
+        && score::published_speedometer_ready_official(iterations, passed, false)
         && iteration_score.is_some()
         && sp.iter().all(|s| s.status == "PASS");
     json!({
@@ -633,7 +661,7 @@ fn speedometer_official_attribution(
         "passedSuites": passed,
         "iterationScore": iteration_score,
         "officialSpeedometerScore": published,
-        "note": "A 1-iteration lab p50 set is not a published Score. officialSpeedometerScore is true only when all 32 default suites PASS across 10 official iterations."
+        "note": "Independent suite p50s are not a published Score. officialSpeedometerScore stays false until 10 iteration scores exist, each 1000/geomean of all 32 suite totals."
     })
 }
 
@@ -656,6 +684,10 @@ fn main() -> Result<()> {
     } else {
         args.iterations
     };
+    // Official 120-iter async loops (kotlin/typescript) exceed the 90s script cap.
+    if args.official_score && std::env::var_os("VECTOR_SCRIPT_DEADLINE_SECS").is_none() {
+        unsafe { std::env::set_var("VECTOR_SCRIPT_DEADLINE_SECS", "300") };
+    }
     // Official TodoMVC-JavaScript-ES5 is the review's 54–68s profiling target.
     // The default 20s script deadline aborts boot before attribution exists.
     if std::env::var_os("VECTOR_SCRIPT_DEADLINE_SECS").is_none() {
@@ -665,7 +697,12 @@ fn main() -> Result<()> {
     // Official Complex-DOM add/delete exceeds the 60s evaluate default.
     // Do not raise the engine-wide default (runaway evaluate tests stay 60s).
     if std::env::var_os("VECTOR_EVALUATE_DEADLINE_SECS").is_none() {
-        unsafe { std::env::set_var("VECTOR_EVALUATE_DEADLINE_SECS", "240") };
+        unsafe {
+            std::env::set_var(
+                "VECTOR_EVALUATE_DEADLINE_SECS",
+                if args.official_score { "300" } else { "240" },
+            )
+        };
     }
     if !args.gate && std::env::var_os("VECTOR_BROWSERBENCH_SUITE_DEADLINE_SECS").is_none() {
         unsafe { std::env::set_var("VECTOR_BROWSERBENCH_SUITE_DEADLINE_SECS", "300") };

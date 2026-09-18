@@ -78,11 +78,28 @@ pub fn official_default_score(
     })
 }
 
+/// Official `JetStreamDriver.js` iteration clock. Vector's `performance.now()`
+/// is virtual, so a lab geomean from `Date.now()` is not a published score.
+pub const OFFICIAL_ITERATION_CLOCK: &str = "performance.now";
+
 /// True only when official scoring ran at the official iteration count for
-/// every executed JetStream name. Lab subsets stay false.
+/// every executed JetStream name **and** used official `performance.now()`.
+/// `Date.now-wall` lab subsets stay false.
 #[must_use]
 pub fn published_jetstream_ready(iterations: u32, executed_default_names: usize) -> bool {
-    iterations >= DEFAULT_ITERATION_COUNT && executed_default_names >= 72
+    published_jetstream_ready_with_clock(iterations, executed_default_names, LAB_ITERATION_CLOCK)
+}
+
+/// Same gate with an explicit clock label.
+#[must_use]
+pub fn published_jetstream_ready_with_clock(
+    iterations: u32,
+    executed_default_names: usize,
+    clock: &str,
+) -> bool {
+    iterations >= DEFAULT_ITERATION_COUNT
+        && executed_default_names >= 72
+        && clock == OFFICIAL_ITERATION_CLOCK
 }
 
 /// Official Speedometer 3.0 `iterationCount` in `resources/shared/params.mjs`.
@@ -113,10 +130,23 @@ pub fn official_speedometer_iteration_score(suite_totals_ms: &[f64]) -> Option<f
     speedometer_geomean_to_score(geomean(suite_totals_ms)?)
 }
 
-/// True only when 10 iterations of all 32 default suites exist.
+/// True only when the official runner produced 10 iteration scores from all
+/// 32 default suites in one iteration (not independent suite p50s).
 #[must_use]
 pub fn published_speedometer_ready(iterations: u32, executed_default_suites: usize) -> bool {
-    iterations >= SPEEDOMETER_ITERATION_COUNT
+    published_speedometer_ready_official(iterations, executed_default_suites, false)
+}
+
+/// `official_iteration_scores` is true only when each sample is one
+/// `1000/geomean(32 suite totals)` from a full iteration, not a suite p50.
+#[must_use]
+pub fn published_speedometer_ready_official(
+    iterations: u32,
+    executed_default_suites: usize,
+    official_iteration_scores: bool,
+) -> bool {
+    official_iteration_scores
+        && iterations >= SPEEDOMETER_ITERATION_COUNT
         && executed_default_suites >= SPEEDOMETER_DEFAULT_SUITES
 }
 
@@ -161,6 +191,17 @@ mod tests {
         assert!(official_default_score(&[18], DEFAULT_WORST_CASE_COUNT).is_none());
         assert!(!published_jetstream_ready(1, 72));
         assert!(!published_jetstream_ready(120, 12));
+        assert!(!published_jetstream_ready(120, 72));
+        assert!(!published_jetstream_ready_with_clock(
+            120,
+            72,
+            LAB_ITERATION_CLOCK
+        ));
+        assert!(published_jetstream_ready_with_clock(
+            120,
+            72,
+            OFFICIAL_ITERATION_CLOCK
+        ));
         assert_eq!(LAB_ITERATION_CLOCK, "Date.now-wall");
     }
 
@@ -173,7 +214,8 @@ mod tests {
         assert!(official_speedometer_iteration_score(&[10.0; 31]).is_none());
         assert!(!published_speedometer_ready(1, 32));
         assert!(!published_speedometer_ready(10, 8));
-        assert!(published_speedometer_ready(10, 32));
+        assert!(!published_speedometer_ready(10, 32));
+        assert!(published_speedometer_ready_official(10, 32, true));
     }
 
     #[test]
