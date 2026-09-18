@@ -1421,6 +1421,14 @@ mod tests {
                       var pathLen = 0;
                       for (var n = input; n && pathLen < 64; n = n.parentNode) pathLen++;
                       window.__veNamedLookups = 0;
+                      var t = Date.now();
+                      input.dispatchEvent(new Event("veprobe", { bubbles: true }));
+                      var probeMs = Date.now() - t;
+                      t = Date.now();
+                      var pathNodes = (new Event("veprobe2", { bubbles: true }));
+                      pathNodes.target = input;
+                      var composed = pathNodes.composedPath();
+                      var pathMs = Date.now() - t;
                       var t0 = Date.now();
                       input.focus();
                       var focusMs = Date.now() - t0;
@@ -1453,6 +1461,9 @@ mod tests {
                         filterMs: filterMs,
                         pathLen: pathLen,
                         namedLookups: window.__veNamedLookups || 0,
+                        probeMs: probeMs,
+                        pathMs: pathMs,
+                        composedLen: composed.length,
                         nodes: document.getElementsByTagName("*").length
                       });
                     })()"##,
