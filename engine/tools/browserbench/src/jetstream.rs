@@ -911,7 +911,7 @@ fn preload_one(root: &std::path::Path, name: &str, rel: &str) -> Result<Vec<Stri
             head.push_str(&bytes.len().to_string());
             head.push_str(");\nJetStream.__vePreloadBinary[");
             head.push_str(&key);
-            head.push_str(").__veOff = 0;\n");
+            head.push_str("].__veOff = 0;\n");
             let mut out = vec![head];
             for part in bytes.chunks(CHUNK) {
                 let val = serde_json::to_string(&base64_encode(part))
