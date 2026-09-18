@@ -1468,6 +1468,77 @@ mod tests {
 
     #[cfg(feature = "v8")]
     #[test]
+    fn official_jquery_complex_one_add_is_attributed() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(
+            &mut engine,
+            "todomvc/architecture-examples/jquery-complex/dist/index.html",
+        );
+        let (probe, console) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            let probe = page
+                .evaluate(&with_lib(
+                    r##"(function () {
+                      var input = todoInput();
+                      if (!input) return JSON.stringify({ input: false });
+                      var t0 = Date.now();
+                      input.focus();
+                      var focusMs = Date.now() - t0;
+                      t0 = Date.now();
+                      input.value = "Task-0";
+                      var valueMs = Date.now() - t0;
+                      t0 = Date.now();
+                      fire(input, "input", { bubbles: true, data: "Task-0", inputType: "insertText" }, InputEvent);
+                      var inputMs = Date.now() - t0;
+                      t0 = Date.now();
+                      fire(input, "keyup", { key: "Enter", keyCode: 13, which: 13, bubbles: true }, KeyboardEvent);
+                      var enterMs = Date.now() - t0;
+                      return JSON.stringify({
+                        input: true,
+                        added: countTodos(),
+                        focusMs: focusMs,
+                        valueMs: valueMs,
+                        inputMs: inputMs,
+                        enterMs: enterMs,
+                        nodes: document.getElementsByTagName("*").length
+                      });
+                    })()"##,
+                ))
+                .expect("jquery complex one add");
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(180).collect())
+                .take(4)
+                .collect();
+            (probe, console)
+        };
+        engine.close(page_id);
+        let text = match &probe {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
+        assert_eq!(v["input"], true, "{v} err={console:?}");
+        assert!(
+            v["nodes"].as_u64().unwrap_or(0) > 1000,
+            "jquery Complex-DOM lost its extra tree: {v} err={console:?}"
+        );
+        assert!(
+            v["added"].as_u64().unwrap_or(0) >= 1,
+            "jquery Complex-DOM one-add: {v} err={console:?}"
+        );
+        assert!(
+            v["enterMs"].as_u64().unwrap_or(u64::MAX) < 2_000,
+            "jquery create/render must not walk the Spectrum tree: {v}"
+        );
+        eprintln!("jquery-complex one-add {v}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
     fn official_es5_complex_dom_hundred_add_is_attributed() {
         let mut engine = bench_engine();
         let page_id = open_workload(
