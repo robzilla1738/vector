@@ -23,8 +23,8 @@
     {
       "path": "html/dom/idlharness.https.html",
       "status": "FAIL",
-      "duration_ms": 1332,
-      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. Official file still FAIL: 20 residual subtests. document.all [[IsHTMLDDA]] is 10 of them. Remaining: CustomStateSet setlike, Window onmouseenter/onmouseleave, Location stringifier, NavigationTransition committed/finished, BeforeUnloadEvent interface object, External enumerable. Not recorded as PASS."
+      "duration_ms": 1350,
+      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. Official file still FAIL: 10 residual subtests, all document.all [[IsHTMLDDA]] (typeof function, not undefined). rusty_v8 has no HTMLDDA host slot. Not recorded as PASS."
     }
   ]
 }
