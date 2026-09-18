@@ -294,12 +294,8 @@ const DEFAULT_JS: &[(&str, &[&str], bool)] = &[
 
 /// Official `AsyncBenchmark` Default JS from `JetStreamDriver.js`.
 const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
-    (
-        "doxbee-promise",
-        &["./simple/doxbee-promise.js"],
-        false,
-        &[],
-    ),
+    ("doxbee-promise", &["./simple/doxbee-promise.js"], false, &[
+    ]),
     ("doxbee-async", &["./simple/doxbee-async.js"], false, &[]),
     (
         "Babylon",
@@ -360,12 +356,8 @@ const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
         false,
         &[],
     ),
-    (
-        "async-fs",
-        &["./generators/async-file-system.js"],
-        true,
-        &[],
-    ),
+    ("async-fs", &["./generators/async-file-system.js"], true, &[
+    ]),
     (
         "mobx-startup",
         &["./utils/StartupBenchmark.js", "./mobx/benchmark.js"],
@@ -499,10 +491,7 @@ const WASM_PRERUN: &str = r#"(function () {
       WebAssembly.instantiate = function (bytes, imports) {
         try {
           if (bytes instanceof WebAssembly.Module) {
-            return Promise.resolve({
-              module: bytes,
-              instance: new WebAssembly.Instance(bytes, imports)
-            });
+            return Promise.resolve(new WebAssembly.Instance(bytes, imports));
           }
           var view = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes;
           var module = new WebAssembly.Module(view);
@@ -518,10 +507,9 @@ const WASM_PRERUN: &str = r#"(function () {
     if (typeof WebAssembly.compile === "function") {
       var compile = WebAssembly.compile.bind(WebAssembly);
       WebAssembly.compile = function (bytes, options) {
+        if (options) return compile(bytes, options);
         try {
-          return Promise.resolve(
-            options ? new WebAssembly.Module(bytes, options) : new WebAssembly.Module(bytes)
-          );
+          return Promise.resolve(new WebAssembly.Module(bytes));
         } catch (e) {
           return compile(bytes, options);
         }
@@ -627,7 +615,7 @@ fn run_default_js(
     }
     for (name, files, det_rand, preloads) in WASM_JS {
         eprintln!("browserbench: start jetstream.{name}");
-        match load_chunks(root, files, *det_rand, preloads, true) {
+        match load_wasm_chunks(root, name, files, *det_rand, preloads) {
             Ok(chunks) => results.push(crate::jetstream_async_chunks(
                 engine,
                 iterations,
@@ -645,6 +633,48 @@ fn run_default_js(
     );
     results
 }
+
+fn load_wasm_chunks(
+    root: &std::path::Path,
+    name: &str,
+    files: &[&str],
+    det_rand: bool,
+    preloads: &[(&str, &str)],
+) -> Result<Vec<String>, String> {
+    let mut chunks = load_chunks(root, files, det_rand, preloads, true)?;
+    if name == "sqlite3-wasm" {
+        chunks.push(SQLITE_POST.to_owned());
+    }
+    Ok(chunks)
+}
+
+const SQLITE_POST: &str = r#"(function () {
+  var origErr = console.error;
+  console.error = function () {
+    var s = Array.prototype.map.call(arguments, String).join(" ");
+    globalThis.__veSqliteErr = (globalThis.__veSqliteErr || "") + s + "\n";
+    return origErr.apply(console, arguments);
+  };
+  var orig = globalThis.sqlite3InitModule;
+  if (typeof orig !== "function") return;
+  globalThis.sqlite3InitModule = function (mod) {
+    return Promise.resolve(orig(mod)).then(function (em) {
+      if (em && !em.sqlite3 && mod && mod.sqlite3) em.sqlite3 = mod.sqlite3;
+      if (!em || !em.sqlite3) {
+        throw new Error(
+          "sqlite3 missing after init keys=" +
+            Object.keys(em || {}) +
+            " moduleKeys=" +
+            Object.keys(mod || {}) +
+            " err=" +
+            (globalThis.__veSqliteErr || "")
+        );
+      }
+      return em;
+    });
+  };
+})();
+"#;
 
 fn load_chunks(
     root: &std::path::Path,
