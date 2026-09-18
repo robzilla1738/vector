@@ -289,6 +289,7 @@ const DEFAULT_JS: &[(&str, &[&str], bool)] = &[
         true,
     ),
     ("pdfjs", &["./Octane/pdfjs.js"], true),
+    ("mandreel", &["./Octane/mandreel.js"], true),
 ];
 
 /// Official `AsyncBenchmark` Default JS from `JetStreamDriver.js`.
@@ -409,10 +410,7 @@ const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
     ),
 ];
 
-const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[(
-    "mandreel",
-    "Octane/mandreel.js is 4.8MB; late-eval of that source is not run in this lab",
-)];
+const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[];
 
 const DETERMINISTIC_RANDOM: &str = r#"(function () {
   const initialSeed = 49734321;
