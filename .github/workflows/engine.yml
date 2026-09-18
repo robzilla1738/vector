@@ -267,6 +267,17 @@ jobs:
       - name: Host binary is packaged
         run: test -x engine/crates/ve-napi/ve-host || test -x engine/crates/ve-napi/ve-host.exe
         working-directory: .
+      - name: Packaged host runs the production fixture
+        shell: bash
+        working-directory: engine
+        run: |
+          if [ -x "$GITHUB_WORKSPACE/engine/crates/ve-napi/ve-host.exe" ]; then
+            HOST="$GITHUB_WORKSPACE/engine/crates/ve-napi/ve-host.exe"
+          else
+            HOST="$GITHUB_WORKSPACE/engine/crates/ve-napi/ve-host"
+          fi
+          test -x "$HOST"
+          VECTOR_PACKAGED_HOST="$HOST" cargo test -p ve-host --features v8 --test process production_sandbox -- --test-threads=1
       - uses: actions/upload-artifact@v4
         with:
           name: engine-native-${{ matrix.os }}

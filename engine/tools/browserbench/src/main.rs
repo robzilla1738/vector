@@ -298,6 +298,12 @@ fn motionmark_class(engine: &mut VectorEngine, iterations: u32) -> SuiteResult {
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    // Official TodoMVC-JavaScript-ES5 is the review's 54–68s profiling target.
+    // The default 20s script deadline aborts boot before attribution exists.
+    if std::env::var_os("VECTOR_SCRIPT_DEADLINE_SECS").is_none() {
+        // Safety: process start, no other threads yet.
+        unsafe { std::env::set_var("VECTOR_SCRIPT_DEADLINE_SECS", "90") };
+    }
     let mut engine = VectorEngine::new(EngineConfig {
         viewport: Size::new(1280.0, 720.0),
         offline: true,

@@ -26,6 +26,15 @@ pub const HOST_FUNCTIONS: &[&str] = &[
 
 /// Longest a single script may run before the VM terminates it.
 pub const SCRIPT_DEADLINE: Duration = Duration::from_secs(20);
+
+fn script_deadline() -> Duration {
+    std::env::var("VECTOR_SCRIPT_DEADLINE_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .map(Duration::from_secs)
+        .filter(|d| *d > Duration::ZERO)
+        .unwrap_or(SCRIPT_DEADLINE)
+}
 /// `evaluate` can run a full Speedometer add/delete pass on a complex DOM.
 pub const EVALUATE_DEADLINE: Duration = Duration::from_secs(60);
 /// Timers due within this window block `settle()` (architecture §6 cond. 2).
@@ -151,7 +160,7 @@ impl std::fmt::Debug for Scripting {
 
 impl Scripting {
     pub(crate) fn new(mut vm: Box<dyn JsVm>, allow_evaluate: bool) -> Result<Self> {
-        vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+        vm.set_call_deadline(Some(script_deadline()));
         vm.register_host_functions("__ve", HOST_FUNCTIONS)?;
         Ok(Self {
             vm: Some(vm),
@@ -251,7 +260,7 @@ impl Page {
         self.run_script(PRELUDE, "vector:prelude")?;
         self.run_script(DOM_PRELUDE, "vector:dom")?;
         if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
-            vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+            vm.set_call_deadline(Some(script_deadline()));
         }
         Ok(())
     }
@@ -297,7 +306,7 @@ impl Page {
             ));
         };
         if origin != "vector:prelude" && origin != "vector:dom" {
-            vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+            vm.set_call_deadline(Some(script_deadline()));
         }
         let result = vm.eval_with_host(&mut PageHost { page: self }, source, origin);
         let _ = vm.run_pending_jobs_with_host(&mut PageHost { page: self });
@@ -377,7 +386,7 @@ impl Page {
         }
         let result = self.run_script(expression, "vector:evaluate");
         if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
-            vm.set_call_deadline(Some(SCRIPT_DEADLINE));
+            vm.set_call_deadline(Some(script_deadline()));
         }
         result.map(serde_json::Value::from)
     }
@@ -577,7 +586,9 @@ impl Page {
             if let Err(e) = self.call_script("__veFireTimer", &[JsValue::Number(timer.id as f64)]) {
                 tracing::debug!(error = %e, "timer callback failed");
             }
-            self.drain_js_jobs();
+            if self.script_readiness().2 {
+                self.drain_js_jobs();
+            }
         }
         fired
     }

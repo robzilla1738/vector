@@ -10,6 +10,10 @@ fn write_line(w: &mut impl Write, v: &Value) {
     w.flush().unwrap();
 }
 
+fn host_bin() -> String {
+    std::env::var("VECTOR_PACKAGED_HOST").unwrap_or_else(|_| env!("CARGO_BIN_EXE_ve-host").into())
+}
+
 fn read_line(r: &mut impl BufRead) -> Value {
     let mut line = String::new();
     r.read_line(&mut line).unwrap();
@@ -169,8 +173,8 @@ fn read_until_reply(w: &mut impl Write, r: &mut impl BufRead, allow: &str) -> Va
 #[test]
 #[allow(clippy::zombie_processes)]
 fn context_process_opens_inline_html() {
-    let bin = env!("CARGO_BIN_EXE_ve-host");
-    let mut child = Command::new(bin)
+    let bin = host_bin();
+    let mut child = Command::new(&bin)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
@@ -217,8 +221,8 @@ fn context_process_opens_inline_html() {
 fn production_sandbox_runs_inline_script_observe_and_input() {
     use std::time::{Duration, Instant};
 
-    let bin = env!("CARGO_BIN_EXE_ve-host");
-    let mut child = Command::new(bin)
+    let bin = host_bin();
+    let mut child = Command::new(&bin)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
@@ -337,8 +341,8 @@ fn production_sandbox_runs_external_js_from_allowlisted_fixture() {
     let (port, _server) = spawn_fixture();
     let allow = format!("127.0.0.1:{port}");
     let origin = format!("http://{allow}");
-    let bin = env!("CARGO_BIN_EXE_ve-host");
-    let mut child = Command::new(bin)
+    let bin = host_bin();
+    let mut child = Command::new(&bin)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
