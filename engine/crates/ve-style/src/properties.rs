@@ -713,6 +713,23 @@ mod conv {
         }
     }
 
+    pub fn ident_name(v: &SpecifiedValue, _: &ConvertContext) -> Option<String> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(String::new()),
+            SpecifiedValue::Keyword(k) => Some(k.clone()),
+            SpecifiedValue::Str(s) => Some(s.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn time_ms(v: &SpecifiedValue, _: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Number(n) if *n >= 0.0 => Some(*n),
+            SpecifiedValue::Integer(i) if *i >= 0 => Some(*i as f32),
+            _ => None,
+        }
+    }
+
     pub fn clip_path(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<ClipPath> {
         match v {
             SpecifiedValue::Keyword(k) if k == "none" => Some(ClipPath::None),
@@ -1121,6 +1138,14 @@ property_table! {
     BackgroundImage: "background-image" => background_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
     /// `filter` (`none` or `blur()`)
     Filter: "filter" => filter: Filter = Filter::None, inherited = false, syntax = Single, convert = conv::filter;
+    /// `animation-name` (`none` is empty)
+    AnimationName: "animation-name" => animation_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `animation-duration` in milliseconds
+    AnimationDuration: "animation-duration" => animation_duration_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
+    /// `transition-property` (`all` default)
+    TransitionProperty: "transition-property" => transition_property: String = String::from("all"), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `transition-duration` in milliseconds
+    TransitionDuration: "transition-duration" => transition_duration_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
 }
 
 impl ComputedStyle {
@@ -1225,18 +1250,12 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
 /// Known properties the engine parses names for but does not implement.
 /// Declarations of these count as `deferred` rather than `unknown`.
 pub const DEFERRED_PROPERTIES: &[&str] = &[
-    "animation",
-    "animation-name",
-    "animation-duration",
     "animation-delay",
     "animation-timing-function",
     "animation-iteration-count",
     "animation-direction",
     "animation-fill-mode",
     "animation-play-state",
-    "transition",
-    "transition-property",
-    "transition-duration",
     "transition-delay",
     "transition-timing-function",
     "background-position",
@@ -1248,7 +1267,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "background-clip",
     "background-origin",
     "background-blend-mode",
-    "border-radius",
     "border-image",
     "text-shadow",
     "backdrop-filter",
@@ -1402,7 +1420,14 @@ fn parse_component<'i>(input: &mut Parser<'i, '_>) -> Option<SpecifiedValue> {
             SpecifiedValue::Color(Color::Rgba(Rgba::from_hex(&h)?))
         }
         Token::Dimension { value, unit, .. } => {
-            SpecifiedValue::Length(Length::from_unit(value, &unit)?)
+            let u = unit.to_ascii_lowercase();
+            if u == "s" {
+                SpecifiedValue::Number(value * 1000.0)
+            } else if u == "ms" {
+                SpecifiedValue::Number(value)
+            } else {
+                SpecifiedValue::Length(Length::from_unit(value, &unit)?)
+            }
         }
         Token::Percentage { unit_value, .. } => SpecifiedValue::Percentage(unit_value * 100.0),
         Token::Number {
@@ -2192,6 +2217,9 @@ pub const SHORTHANDS: &[&str] = &[
     "grid",
     "list-style",
     "font",
+    "animation",
+    "transition",
+    "border-radius",
 ];
 
 /// Expands a shorthand into longhand `(property, value)` pairs. Returns
@@ -2474,6 +2502,73 @@ pub fn expand_shorthand<'i>(
                 Some(vec![(P::ListStyleType, ty), (P::ListStylePosition, pos)])
             }
             "font" => expand_font(input),
+            "animation" => {
+                let values = parse_components(input, 8)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::AnimationName, values[0].clone()),
+                        (P::AnimationDuration, values[0].clone()),
+                    ]);
+                }
+                let mut name = SpecifiedValue::Keyword("none".into());
+                let mut duration = SpecifiedValue::Number(0.0);
+                for v in values {
+                    if matches!(
+                        &v,
+                        SpecifiedValue::Number(n) if *n >= 0.0
+                    ) || matches!(&v, SpecifiedValue::Integer(i) if *i >= 0)
+                    {
+                        duration = v;
+                    } else if matches!(
+                        &v,
+                        SpecifiedValue::Keyword(_) | SpecifiedValue::Str(_)
+                    ) {
+                        name = v;
+                    }
+                }
+                Some(vec![
+                    (P::AnimationName, name),
+                    (P::AnimationDuration, duration),
+                ])
+            }
+            "border-radius" => four(
+                [
+                    P::BorderTopLeftRadius,
+                    P::BorderTopRightRadius,
+                    P::BorderBottomRightRadius,
+                    P::BorderBottomLeftRadius,
+                ],
+                input,
+            ),
+            "transition" => {
+                let values = parse_components(input, 8)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::TransitionProperty, values[0].clone()),
+                        (P::TransitionDuration, values[0].clone()),
+                    ]);
+                }
+                let mut property = SpecifiedValue::Keyword("all".into());
+                let mut duration = SpecifiedValue::Number(0.0);
+                for v in values {
+                    if matches!(
+                        &v,
+                        SpecifiedValue::Number(n) if *n >= 0.0
+                    ) || matches!(&v, SpecifiedValue::Integer(i) if *i >= 0)
+                    {
+                        duration = v;
+                    } else if matches!(
+                        &v,
+                        SpecifiedValue::Keyword(_) | SpecifiedValue::Str(_)
+                    ) {
+                        property = v;
+                    }
+                }
+                Some(vec![
+                    (P::TransitionProperty, property),
+                    (P::TransitionDuration, duration),
+                ])
+            }
             _ => None,
         }
     })();
@@ -2745,6 +2840,31 @@ mod tests {
         ok("background-image", "linear-gradient(red, blue)");
         ok("filter", "blur(4px)");
         ok("filter", "none");
+        ok("animation-name", "fade");
+        ok("animation-name", "none");
+        ok("animation-duration", "1s");
+        ok("animation-duration", "250ms");
+        ok("transition-property", "opacity");
+        ok("transition-duration", "0.2s");
+        let anim = expand("animation", "fade 1s").expect("animation shorthand");
+        assert_eq!(
+            anim,
+            vec![
+                (PropertyId::AnimationName, SpecifiedValue::Keyword("fade".into())),
+                (PropertyId::AnimationDuration, SpecifiedValue::Number(1000.0)),
+            ]
+        );
+        let trans = expand("transition", "opacity 200ms").expect("transition shorthand");
+        assert_eq!(
+            trans,
+            vec![
+                (
+                    PropertyId::TransitionProperty,
+                    SpecifiedValue::Keyword("opacity".into())
+                ),
+                (PropertyId::TransitionDuration, SpecifiedValue::Number(200.0)),
+            ]
+        );
         ok("border-top-style", "dashed");
         ok("pointer-events", "none");
         ok("opacity", "0.5");
@@ -2763,7 +2883,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 101);
+        assert_eq!(PropertyId::ALL.len(), 105);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
@@ -2817,6 +2937,15 @@ mod tests {
 
     #[test]
     fn expands_shorthands() {
+        let radius = expand("border-radius", "4px").unwrap();
+        assert_eq!(radius.len(), 4);
+        assert_eq!(
+            radius[0],
+            (
+                PropertyId::BorderTopLeftRadius,
+                SpecifiedValue::Length(Length::Px(4.0))
+            )
+        );
         let out = expand("margin", "1px 2em").unwrap();
         assert_eq!(out.len(), 4);
         assert_eq!(

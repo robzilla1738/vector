@@ -148,6 +148,11 @@ impl Compositor {
         &self.layers
     }
 
+    /// Compositor-only animation: lerp opacity from `from` to `to` at `t` in `0..=1`.
+    pub fn animate_opacity_at(&mut self, id: LayerId, from: f32, to: f32, t: f32) -> bool {
+        self.animate_opacity(id, from + (to - from) * t.clamp(0.0, 1.0))
+    }
+
     /// Compositor-only animation: change opacity without relayout.
     pub fn animate_opacity(&mut self, id: LayerId, opacity: f32) -> bool {
         let Some(layer) = self.layer_mut(id) else {
@@ -229,6 +234,8 @@ mod tests {
         assert_eq!(items[4], DisplayItem::PopOpacity);
         assert!(comp.animate_opacity(id, 0.25));
         assert!((comp.layer(id).unwrap().opacity - 0.25).abs() < f32::EPSILON);
+        assert!(comp.animate_opacity_at(id, 0.0, 1.0, 0.4));
+        assert!((comp.layer(id).unwrap().opacity - 0.4).abs() < f32::EPSILON);
         assert!(comp.take_damage());
         assert!(comp.remove_layer(id));
         assert!(comp.composite(Size::ZERO).is_empty());

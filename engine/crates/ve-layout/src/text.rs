@@ -84,6 +84,11 @@ pub trait TextShaper {
     fn descent(&mut self, style: &ComputedStyle) -> f32 {
         style.font_size * MetricShaper::DESCENT_RATIO
     }
+
+    /// Registers an OpenType/TrueType file. Default is a no-op (metric shaper).
+    fn register_font(&mut self, _data: Vec<u8>) -> usize {
+        0
+    }
 }
 
 /// Character width classes of the deterministic metric model.
@@ -548,6 +553,10 @@ impl TextShaper for ParleyShaper {
             ));
         }
         out
+    }
+
+    fn register_font(&mut self, data: Vec<u8>) -> usize {
+        Self::register_font(self, data)
     }
 }
 

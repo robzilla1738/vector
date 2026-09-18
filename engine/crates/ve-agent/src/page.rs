@@ -16,7 +16,7 @@ use ve_dom::{DirtyFlags, Document, Namespace, Node, NodeKind};
 use ve_gfx::{ImageCache, ImageHandle, SoftwareRenderer};
 use ve_html::DocumentMeta;
 use ve_layout::{LayoutEngine, LayoutTree, ParleyShaper};
-use ve_style::{BackgroundImage, StyleEngine, StyleTree};
+use ve_style::{BackgroundImage, FontFaceSrc, StyleEngine, StyleTree};
 
 use crate::forms::{self, Enctype, FormMethod};
 use crate::keys::{Chord, Key};
@@ -203,7 +203,7 @@ pub enum SubresourceKind {
     Image,
     /// `<script src>`.
     Script,
-    /// `@font-face src` (reserved; fonts are registered by the embedder).
+    /// `@font-face src`.
     Font,
     /// `<iframe>` / `<frame>` document (same-origin, plan A16).
     Document,
@@ -264,6 +264,8 @@ pub struct LoadStats {
     pub images: usize,
     /// External scripts fetched.
     pub scripts: usize,
+    /// `@font-face` files installed into the page font system.
+    pub fonts: usize,
     /// Iframes whose document was parsed (same-origin attached, cross-origin isolated).
     pub frames: usize,
     /// Subresource fetches that failed.
@@ -1730,6 +1732,7 @@ impl Page {
         self.style_engine.clear_author_styles();
         let sheets = self.fetch_subresources();
         self.add_styles(&sheets);
+        self.fetch_font_faces();
         self.update();
         if let Some(s) = self.scripting.as_mut() {
             s.reset();
@@ -2122,6 +2125,120 @@ impl Page {
         }
         for (_, css) in ordered {
             self.style_engine.add_stylesheet(&css);
+        }
+    }
+
+    /// Fetches `@font-face src` URLs after author sheets are parsed (H1-B3).
+    fn fetch_font_faces(&mut self) {
+        let faces: Vec<ve_style::FontFaceRule> = self
+            .style_engine
+            .font_faces()
+            .into_iter()
+            .cloned()
+            .collect();
+        if faces.is_empty() {
+            return;
+        }
+        let page = self.id;
+        let referrer = Some(self.url.clone());
+        let base = self.base_url.clone();
+        let mut requests = Vec::new();
+        let mut data_fonts = Vec::new();
+        for face in &faces {
+            for src in &face.sources {
+                let FontFaceSrc::Url(href) = src else {
+                    continue;
+                };
+                if href.starts_with("data:") {
+                    if let Some(bytes) = decode_data_url_bytes(href) {
+                        data_fonts.push(bytes);
+                    }
+                    continue;
+                }
+                let url = base
+                    .as_ref()
+                    .and_then(|b| b.join(href.trim()).ok())
+                    .map(|u| u.to_string())
+                    .or_else(|| {
+                        href.starts_with("http")
+                            .then(|| href.clone())
+                    });
+                if let Some(url) = url {
+                    requests.push(SubresourceRequest {
+                        url,
+                        kind: SubresourceKind::Font,
+                        page,
+                        referrer: referrer.clone(),
+                    });
+                }
+            }
+        }
+        for bytes in data_fonts {
+            self.install_font(bytes);
+        }
+        if requests.is_empty() || self.loader.is_none() {
+            return;
+        }
+        let results = self
+            .loader
+            .as_mut()
+            .expect("loader")
+            .fetch_subresources(&requests);
+        for result in results {
+            match result {
+                Ok(res) if res.status < 400 && !res.bytes.is_empty() => {
+                    self.install_font(res.bytes);
+                }
+                Ok(_) | Err(_) => self.load_stats.failed += 1,
+            }
+        }
+    }
+
+    fn install_font(&mut self, bytes: Vec<u8>) {
+        if bytes.is_empty() {
+            return;
+        }
+        self.layout_engine.register_font(bytes.clone());
+        self.renderer
+            .get_or_insert_with(SoftwareRenderer::with_system_fonts)
+            .fonts
+            .load_font_data(bytes);
+        self.load_stats.fonts += 1;
+    }
+
+    fn apply_animations(&mut self) {
+        let animated: Vec<(NodeId, String, f32)> = self
+            .doc
+            .elements()
+            .filter_map(|id| {
+                let style = self.style_tree.style(id);
+                if style.animation_name.is_empty() || style.animation_duration_ms <= 0.0 {
+                    None
+                } else {
+                    Some((
+                        id,
+                        style.animation_name.clone(),
+                        style.animation_duration_ms,
+                    ))
+                }
+            })
+            .collect();
+        if animated.is_empty() {
+            return;
+        }
+        let keyframes = self.style_engine.keyframes();
+        let now = self.now_ms() as f32;
+        for (id, name, duration) in animated {
+            let Some(rule) = keyframes
+                .iter()
+                .find(|k| k.name.eq_ignore_ascii_case(&name))
+            else {
+                continue;
+            };
+            let t = (now / duration).clamp(0.0, 1.0);
+            if let Some(opacity) = interpolate_keyframe_opacity(rule, t) {
+                self.style_tree.override_opacity(id, opacity);
+            }
         }
     }
 
@@ -2521,6 +2638,7 @@ impl Page {
         }
         self.doc.clear_dirty_all(DirtyFlags::STYLE);
         self.install_background_images();
+        self.apply_animations();
     }
 
     fn install_background_images(&mut self) {
@@ -2544,6 +2662,7 @@ impl Page {
     /// full pass when the journal cannot cover `since`.
     pub fn update(&mut self) {
         if self.style_clean() && self.layout_clean() {
+            self.apply_animations();
             return;
         }
         self.restyle_if_needed();
@@ -5326,6 +5445,48 @@ fn collect_imports(css: &str) -> Vec<String> {
 }
 
 /// Natural size of a `data:` image without fetching anything.
+fn interpolate_keyframe_opacity(rule: &ve_style::KeyframesRule, t: f32) -> Option<f32> {
+    let mut stops: Vec<(f32, f32)> = Vec::new();
+    for frame in &rule.frames {
+        let Some(opacity) = frame.block.declarations.iter().find_map(|d| {
+            if d.property != ve_style::PropertyId::Opacity {
+                return None;
+            }
+            match &d.value {
+                ve_style::SpecifiedValue::Number(n) => Some(*n),
+                ve_style::SpecifiedValue::Integer(i) => Some(*i as f32),
+                ve_style::SpecifiedValue::Percentage(p) => Some(p / 100.0),
+                _ => None,
+            }
+        }) else {
+            continue;
+        };
+        for offset in &frame.offsets {
+            stops.push((*offset, opacity));
+        }
+    }
+    if stops.is_empty() {
+        return None;
+    }
+    stops.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    if t <= stops[0].0 {
+        return Some(stops[0].1);
+    }
+    if let Some(last) = stops.last()
+        && t >= last.0
+    {
+        return Some(last.1);
+    }
+    for w in stops.windows(2) {
+        if t >= w[0].0 && t <= w[1].0 {
+            let span = (w[1].0 - w[0].0).max(f32::EPSILON);
+            let u = (t - w[0].0) / span;
+            return Some(w[0].1 + (w[1].1 - w[0].1) * u);
+        }
+    }
+    Some(stops.last().map(|s| s.1).unwrap_or(1.0))
+}
+
 fn decode_data_url_image_size(data_url: &str) -> Option<(u32, u32)> {
     let bytes = decode_data_url_bytes(data_url)?;
     let size = imagesize::blob_size(&bytes).ok()?;

@@ -317,6 +317,8 @@ impl SoftwareRenderer {
     pub fn with_system_fonts() -> Self {
         let mut fonts = FontSystem::new();
         fonts.load_system_fonts();
+        fonts.set_generic(&ve_style::FontFamily::SansSerif, "Inter");
+        fonts.set_generic(&ve_style::FontFamily::SystemUi, "Inter");
         Self {
             fonts,
             images: ImageCache::new(),
@@ -347,18 +349,20 @@ impl SoftwareRenderer {
             return;
         };
         let size = run.size * canvas.scale;
-        let mut pen_x = run.origin.x * canvas.scale;
+        let origin_x = run.origin.x * canvas.scale;
         let baseline_y = run.origin.y * canvas.scale;
-        for ch in run.text.chars() {
-            let Some(glyph) = self.fonts.glyph_for_char(face, ch) else {
+        let Some(shaped) = self.fonts.shape_retained(face, &run.text, size) else {
+            return;
+        };
+        for glyph in shaped.glyphs {
+            if glyph.id == 0 {
                 continue;
-            };
-            let advance = self.fonts.advance(face, glyph, size).unwrap_or(size * 0.5);
-            if let Some(bitmap) = self.fonts.rasterize(face, glyph, size)
+            }
+            if let Some(bitmap) = self.fonts.rasterize(face, glyph.id as u16, size)
                 && bitmap.width > 0
             {
-                let left = pen_x.round() as i32 + bitmap.left;
-                let top = baseline_y.round() as i32 - bitmap.top;
+                let left = (origin_x + glyph.x).round() as i32 + bitmap.left;
+                let top = (baseline_y + glyph.y).round() as i32 - bitmap.top;
                 canvas.blit_alpha(
                     left,
                     top,
@@ -368,7 +372,6 @@ impl SoftwareRenderer {
                     run.color,
                 );
             }
-            pen_x += advance;
         }
     }
 
@@ -577,5 +580,37 @@ mod tests {
         let hi = renderer.render(&list, 20, 20, 2.0).unwrap();
         assert_eq!(hi.pixel(4, 10), Some([255, 0, 0, 255]), "HiDPI scale");
         assert_eq!(hi.to_ppm().len(), "P6\n20 20\n255\n".len() + 20 * 20 * 3);
+    }
+
+    #[test]
+    fn system_fonts_paint_inter_ui_text() {
+        let mut list = DisplayList::new(Size::new(200.0, 40.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 200.0, 40.0),
+            color: Rgba::WHITE,
+        });
+        list.push(DisplayItem::Text(TextRun {
+            origin: ve_core::Point::new(8.0, 28.0),
+            text: "Personal".into(),
+            size: 16.0,
+            color: Rgba::BLACK,
+            weight: ve_style::FontWeight::NORMAL,
+            style: ve_style::FontStyle::Normal,
+            family: vec![
+                ve_style::FontFamily::Named("Inter".into()),
+                ve_style::FontFamily::SansSerif,
+            ],
+        }));
+        let mut renderer = SoftwareRenderer::with_system_fonts();
+        let frame = renderer.render(&list, 200, 40, 1.0).unwrap();
+        let ink = frame
+            .rgba
+            .chunks_exact(4)
+            .filter(|px| px[0] < 200 && px[3] > 0)
+            .count();
+        assert!(
+            ink > 40,
+            "Inter/sans-serif must paint real glyphs, ink={ink}"
+        );
     }
 }

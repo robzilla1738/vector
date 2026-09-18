@@ -186,3 +186,58 @@ fn a_failed_stylesheet_or_script_does_not_break_the_load() {
     assert!(page.scripts()[0].failed);
     assert!(page.document().element_by_id("p").is_some());
 }
+
+#[test]
+fn font_face_src_is_fetched_and_installed() {
+    let mut site = Site::default();
+    site.docs.insert(
+        "https://s.test/".into(),
+        r#"<!doctype html><html><head>
+             <style>
+               @font-face { font-family: InterTest; src: url("/fonts/inter.ttf"); }
+               p { font-family: InterTest, sans-serif }
+             </style>
+           </head><body><p id=p>Hi</p></body></html>"#
+            .into(),
+    );
+    let font_bytes = std::fs::read("/usr/share/fonts/truetype/macos/Inter-Regular.ttf")
+        .unwrap_or_else(|_| b"not-a-font".to_vec());
+    site.files.insert(
+        "https://s.test/fonts/inter.ttf".into(),
+        (font_bytes, "font/ttf"),
+    );
+    let batches = site.batches.clone();
+    let page = Page::open(1, Box::new(site), "https://s.test/", DEFAULT_VIEWPORT).unwrap();
+    let b = batches.borrow();
+    assert!(
+        b.iter()
+            .any(|batch| batch.iter().any(|u| u.ends_with("/fonts/inter.ttf"))),
+        "font-face src must be fetched: {b:?}"
+    );
+    assert_eq!(page.load_stats().fonts, 1);
+}
+
+#[test]
+fn css_animation_interpolates_opacity_from_keyframes() {
+    let mut page = Page::from_html(
+        1,
+        r#"<style>
+            @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+            #box { animation: fade 1000ms; width: 10px; height: 10px }
+           </style><div id=box>x</div>"#,
+        None,
+        DEFAULT_VIEWPORT,
+    );
+    let id = page.document().element_by_id("box").unwrap();
+    assert!(
+        (page.style_tree().style(id).opacity - 0.0).abs() < 1e-4,
+        "t=0 uses the from keyframe"
+    );
+    page.pump_virtual_time(500);
+    page.update();
+    let mid = page.style_tree().style(id).opacity;
+    assert!(
+        (mid - 0.5).abs() < 0.05,
+        "mid-animation opacity was {mid}"
+    );
+}

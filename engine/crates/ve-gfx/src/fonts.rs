@@ -208,6 +208,9 @@ impl FontSystem {
             let Some(gid) = self.glyph_for_char(id, ch) else {
                 continue;
             };
+            if gid == 0 {
+                continue;
+            }
             let advance = self.advance(id, gid, size).unwrap_or(size * 0.5);
             let snapped = (x * 4.0).round() / 4.0;
             glyphs.push(PlacedGlyph {
@@ -350,6 +353,14 @@ mod tests {
         for g in &shaped.glyphs {
             let quarter = (g.x * 4.0).round() / 4.0;
             assert!((g.x - quarter).abs() < f32::EPSILON);
+            assert_ne!(g.id, 0, "missing glyphs are skipped, not .notdef");
         }
+        let tofu = fs
+            .shape_retained(id, "\u{10ffff}", 16.0)
+            .expect("missing char");
+        assert!(
+            tofu.glyphs.is_empty(),
+            "unmapped characters must not emit glyph 0"
+        );
     }
 }

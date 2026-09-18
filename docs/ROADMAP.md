@@ -128,7 +128,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-A7 | Spec pointer/mouse sequence, hover, capture, selection, composition, `contextmenu`; human/agent events-log identical | A | ☑ | `fixtures/events-log` |
 | H1-B1 | Phase-0 bindings memo from dombench; `VECTOR_DOM_BINDINGS=prelude\|native` | B | ☑ | env read; prelude default |
 | H1-B2 | Real ES modules via `v8::Module`; delete `rewriteModule` and Speedometer bundler | B | ☑ | `es_module_export_runs_via_v8_module`; `es_module_spa_runs_without_bundler`; `esm::bundle` is identity; `rewriteModule` deleted |
-| H1-B3 | CSS by corpus frequency: abs/fixed, background-image, radius, shadows, transform, transitions, `@font-face`, object-fit | B | ☑ | radius + object-fit + transform + `box-shadow` + `background-image: url()` |
+| H1-B3 | CSS by corpus frequency: abs/fixed, background-image, radius, shadows, transform, transitions, `@font-face`, object-fit | B | ☑ | `parses_font_face_src_family_weight`; `font_face_src_is_fetched_and_installed`; `animation: fade 1s` / `transition: opacity 200ms`; `border-radius` shorthand; radius + object-fit + transform + `box-shadow` + `background-image: url()` |
 | H1-B4 | Display-list primitives: transform, rounded clip, gradient, box-shadow, image src-rect, per-side border, filter, clip-path | B | ☑ | `from_layout_emits_linear_gradient_and_filter_blur`; `DisplayItem::Image.src`; RoundedClip / PushTransform / BoxShadow |
 | H1-B5 | Cache revalidation; async resolver; `preconnect`/`prefetch`; non-blocking subresource fetch | B | ☑ | `stale_entries_are_revalidated_and_a_304_refreshes_them` |
 | H1-C1 | `protocolVersion`, `agent.capabilities`, token budget + ranking + cursor, `frameChain`/`shadowDepth`/`scrollContainer`/`occludedBy`, `ref_stale`, closed `VectorErrorCode` | C | ☑ | `protocolVersion: 1` on observe list |
@@ -145,7 +145,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | ID | Item | WS | Status | Evidence |
 |---|---|---|---|---|
 | H2-A1 | Split `NativeBrowser` into `Browser` + `Window`; private windows via contexts | A | ☑ | `ve_api::NativeWindow` + `Browser` alias |
-| H2-A2 | `crates/ve-chrome` retained widgets; tokens + `workspace.ts` + `intent.ts` port | A | ☑ | `docs/ui/screenshots/ve-shell-gui.png`; `ve-chrome-regions.json`; `03-browsing-sidebar.png`; Engine/Chromium badge + `route_reason`; `gui_chrome_typing_scroll_and_screenshot`; `chromium_tab_does_not_expose_engine_dom` |
+| H2-A2 | `crates/ve-chrome` retained widgets; tokens + `workspace.ts` + `intent.ts` port | A | ☑ | `docs/ui/screenshots/ve-shell-gui.png` (Inter sans-serif + retained glyph runs); `system_fonts_paint_inter_ui_text`; `ve-chrome-regions.json`; Engine/Chromium badge + `route_reason`; `gui_chrome_typing_scroll_and_screenshot`; `chromium_tab_does_not_expose_engine_dom` |
 | H2-A3 | `ve-shell-mac` (objc2): NSWindow, menus, IME, scroll phases, appearance | A | ☑ | `MacWindow::product` + objc2 `NSWindow` on macOS; `test_double_covers_ime_scroll_appearance_menus` elsewhere |
 | H2-A4 | `ve-profile` (SQLite): history, bookmarks, session restore, downloads, find, zoom, cert interstitial, permission sheets | A | ☑ | `session_restore_reopens_tabs_after_restart`; `cert_and_permission_sheets_persist_to_profile`; `Profile::open` rusqlite |
 | H2-C1 | `agent/machine.ts` pure reducer; coordinator &lt; 350 lines; ≥ 25 transition tests | C | ☑ | `coordinator.ts` 305 lines; `runCoordinatorLoop` applies `reduce`; `tests/unit/machine.test.ts` (26) |
@@ -163,7 +163,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 |---|---|---|---|---|
 | H3-1 | Remove Chromium fallback and Electron per D5 gates | D | ☑ | gated: `docs/adr/D5-chromium-removal.md` (gates unmet; not deleted) |
 | H3-2 | Native bindings default-on after two weeks green differential CI | B | ☑ | switch + `.github/workflows/engine.yml` prelude/native differential jobs; default remains prelude (`dom_bindings_default_is_prelude`) |
-| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☑ | `from_layout_emits_box_shadow`; `from_layout_emits_linear_gradient_and_filter_blur`; `background-image: url()`/`linear-gradient`; `filter: blur()`; SVG rect+circle+ellipse+line; canvas stroke/fill/text/image; `Compositor::animate_opacity` |
+| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☑ | `css_animation_interpolates_opacity_from_keyframes`; `Compositor::animate_opacity_at`; `from_layout_emits_box_shadow`; `from_layout_emits_linear_gradient_and_filter_blur`; `background-image: url()`/`linear-gradient`; `filter: blur()`; SVG rect+circle+ellipse+line; canvas stroke/fill/text/image |
 | H3-4 | Per-site process isolation, COOP/COEP | B | ☑ | `Hub::map_site_context`; `map_site_context_reuses_origin_and_isolates_sites`; `Page::coop_allows_open`; `coop_same_origin_blocks_cross_origin_window_open` |
 | H3-5 | Speedometer as a tracked number, not a target | D | ☑ | `docs/BENCHMARKS.md` engine + same-machine Chrome tracked rows |
 

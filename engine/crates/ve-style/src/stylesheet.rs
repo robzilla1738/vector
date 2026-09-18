@@ -12,6 +12,7 @@ use crate::coverage::CssCoverage;
 use crate::media::MediaQueryList;
 use crate::properties::{PropertyId, SpecifiedValue, expand_shorthand};
 use crate::selector_impl::{SelectorParser, StyleParseErrorKind, VeSelectorImpl};
+use crate::values::{FontStyle, FontWeight};
 
 /// Where a stylesheet comes from; the first key of the cascade.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -84,6 +85,28 @@ pub struct KeyframesRule {
     pub frames: Vec<Keyframe>,
 }
 
+/// One `@font-face` `src` component.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FontFaceSrc {
+    /// `url(...)`.
+    Url(String),
+    /// `local(...)`.
+    Local(String),
+}
+
+/// A `@font-face` rule. Does not participate in the cascade.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FontFaceRule {
+    /// `font-family` name.
+    pub family: String,
+    /// `src` list in source order.
+    pub sources: Vec<FontFaceSrc>,
+    /// `font-weight` (defaults to 400).
+    pub weight: FontWeight,
+    /// `font-style` (defaults to normal).
+    pub style: FontStyle,
+}
+
 /// A top-level or nested rule.
 #[derive(Clone, Debug)]
 pub enum CssRule {
@@ -93,6 +116,8 @@ pub enum CssRule {
     Media(MediaRule),
     /// A `@keyframes` rule. Does not participate in the cascade.
     Keyframes(KeyframesRule),
+    /// A `@font-face` rule. Does not participate in the cascade.
+    FontFace(FontFaceRule),
 }
 
 /// A parsed stylesheet.
@@ -126,7 +151,7 @@ impl Stylesheet {
                 .map(|r| match r {
                     CssRule::Style(_) => 1,
                     CssRule::Media(m) => count(&m.rules),
-                    CssRule::Keyframes(_) => 0,
+                    CssRule::Keyframes(_) | CssRule::FontFace(_) => 0,
                 })
                 .sum()
         }
@@ -141,7 +166,24 @@ impl Stylesheet {
                 match rule {
                     CssRule::Keyframes(k) => out.push(k),
                     CssRule::Media(m) => walk(&m.rules, out),
-                    CssRule::Style(_) => {}
+                    CssRule::Style(_) | CssRule::FontFace(_) => {}
+                }
+            }
+        }
+        let mut out = Vec::new();
+        walk(&self.rules, &mut out);
+        out
+    }
+
+    /// `@font-face` rules in source order, including nested sheets.
+    #[must_use]
+    pub fn font_faces(&self) -> Vec<&FontFaceRule> {
+        fn walk<'a>(rules: &'a [CssRule], out: &mut Vec<&'a FontFaceRule>) {
+            for rule in rules {
+                match rule {
+                    CssRule::FontFace(f) => out.push(f),
+                    CssRule::Media(m) => walk(&m.rules, out),
+                    CssRule::Style(_) | CssRule::Keyframes(_) => {}
                 }
             }
         }
@@ -360,6 +402,8 @@ enum AtPrelude {
     Transparent,
     /// `@keyframes name`.
     Keyframes(String),
+    /// `@font-face`.
+    FontFace,
 }
 
 impl<'i> QualifiedRuleParser<'i> for RuleParser {
@@ -402,6 +446,8 @@ impl<'i> AtRuleParser<'i> for RuleParser {
         {
             let ident = input.expect_ident()?;
             Ok(AtPrelude::Keyframes(ident.as_ref().to_owned()))
+        } else if name.eq_ignore_ascii_case("font-face") {
+            Ok(AtPrelude::FontFace)
         } else if name.eq_ignore_ascii_case("supports")
             || name.eq_ignore_ascii_case("layer")
             || name.eq_ignore_ascii_case("scope")
@@ -435,6 +481,20 @@ impl<'i> AtRuleParser<'i> for RuleParser {
                     .collect();
                 Ok(CssRule::Keyframes(KeyframesRule { name, frames }))
             }
+            AtPrelude::FontFace => {
+                let mut body = FontFaceBodyParser::default();
+                for item in RuleBodyParser::new(input, &mut body) {
+                    if let Err((err, slice)) = item {
+                        tracing::debug!(?err.kind, slice, "skipping invalid @font-face descriptor");
+                    }
+                }
+                Ok(CssRule::FontFace(FontFaceRule {
+                    family: body.family.unwrap_or_default(),
+                    sources: body.sources,
+                    weight: body.weight,
+                    style: body.style,
+                }))
+            }
             prelude => {
                 let rules = RuleBodyParser::new(input, self)
                     .filter_map(|r| match r {
@@ -451,7 +511,9 @@ impl<'i> AtRuleParser<'i> for RuleParser {
                         query: MediaQueryList::default(),
                         rules,
                     })),
-                    AtPrelude::Keyframes(_) => unreachable!("handled above"),
+                    AtPrelude::Keyframes(_) | AtPrelude::FontFace => {
+                        unreachable!("handled above")
+                    }
                 }
             }
         }
@@ -534,6 +596,143 @@ impl<'i> RuleBodyItemParser<'i, CssRule, StyleParseErrorKind<'i>> for RuleParser
     fn parse_qualified(&self) -> bool {
         true
     }
+}
+
+struct FontFaceBodyParser {
+    family: Option<String>,
+    sources: Vec<FontFaceSrc>,
+    weight: FontWeight,
+    style: FontStyle,
+}
+
+impl Default for FontFaceBodyParser {
+    fn default() -> Self {
+        Self {
+            family: None,
+            sources: Vec::new(),
+            weight: FontWeight::NORMAL,
+            style: FontStyle::Normal,
+        }
+    }
+}
+
+impl<'i> DeclarationParser<'i> for FontFaceBodyParser {
+    type Declaration = ();
+    type Error = StyleParseErrorKind<'i>;
+
+    fn parse_value<'t>(
+        &mut self,
+        name: CowRcStr<'i>,
+        input: &mut Parser<'i, 't>,
+        _start: &ParserState,
+    ) -> Result<Self::Declaration, ParseError<'i, Self::Error>> {
+        if name.eq_ignore_ascii_case("font-family") {
+            if let Ok(s) = input.try_parse(|i| i.expect_string_cloned()) {
+                self.family = Some(s.to_string());
+            } else {
+                let ident = input.expect_ident()?;
+                self.family = Some(ident.as_ref().to_owned());
+            }
+            let _ = input.try_parse(parse_important);
+            return Ok(());
+        }
+        if name.eq_ignore_ascii_case("src") {
+            self.sources = parse_font_face_src(input);
+            let _ = input.try_parse(parse_important);
+            return Ok(());
+        }
+        if name.eq_ignore_ascii_case("font-weight") {
+            if let Ok(n) = input.try_parse(Parser::expect_number) {
+                self.weight = FontWeight(n.round().clamp(1.0, 1000.0) as u16);
+            } else if let Ok(ident) = input.try_parse(|i| i.expect_ident_cloned()) {
+                self.weight = match ident.as_ref() {
+                    s if s.eq_ignore_ascii_case("bold") => FontWeight::BOLD,
+                    s if s.eq_ignore_ascii_case("normal") => FontWeight::NORMAL,
+                    _ => FontWeight::NORMAL,
+                };
+            }
+            let _ = input.try_parse(parse_important);
+            return Ok(());
+        }
+        if name.eq_ignore_ascii_case("font-style") {
+            if let Ok(ident) = input.try_parse(|i| i.expect_ident_cloned()) {
+                self.style = if ident.eq_ignore_ascii_case("italic") {
+                    FontStyle::Italic
+                } else if ident.eq_ignore_ascii_case("oblique") {
+                    FontStyle::Oblique
+                } else {
+                    FontStyle::Normal
+                };
+            }
+            let _ = input.try_parse(parse_important);
+            return Ok(());
+        }
+        while input.next().is_ok() {}
+        Ok(())
+    }
+}
+
+impl<'i> QualifiedRuleParser<'i> for FontFaceBodyParser {
+    type Prelude = ();
+    type QualifiedRule = ();
+    type Error = StyleParseErrorKind<'i>;
+}
+
+impl<'i> AtRuleParser<'i> for FontFaceBodyParser {
+    type Prelude = ();
+    type AtRule = ();
+    type Error = StyleParseErrorKind<'i>;
+}
+
+impl<'i> RuleBodyItemParser<'i, (), StyleParseErrorKind<'i>> for FontFaceBodyParser {
+    fn parse_declarations(&self) -> bool {
+        true
+    }
+
+    fn parse_qualified(&self) -> bool {
+        false
+    }
+}
+
+fn parse_font_face_src(input: &mut Parser<'_, '_>) -> Vec<FontFaceSrc> {
+    let mut sources = Vec::new();
+    loop {
+        if input.is_exhausted() {
+            break;
+        }
+        if let Ok(url) = input.try_parse(|i| i.expect_url()) {
+            sources.push(FontFaceSrc::Url(url.as_ref().to_owned()));
+        } else if input
+            .try_parse(|i| i.expect_function_matching("local"))
+            .is_ok()
+        {
+            let local = input
+                .parse_nested_block(|args| {
+                    if let Ok(s) = args.try_parse(|i| i.expect_string_cloned()) {
+                        return Ok(s.to_string());
+                    }
+                    let ident = args.expect_ident()?.as_ref().to_owned();
+                    Ok::<_, ParseError<'_, StyleParseErrorKind<'_>>>(ident)
+                })
+                .ok();
+            if let Some(name) = local {
+                sources.push(FontFaceSrc::Local(name));
+            }
+        } else if input
+            .try_parse(|i| i.expect_function_matching("format"))
+            .is_ok()
+        {
+            let _ = input.parse_nested_block(|args| {
+                while args.next().is_ok() {}
+                Ok::<_, ParseError<'_, StyleParseErrorKind<'_>>>(())
+            });
+        } else if input.try_parse(Parser::expect_comma).is_ok() {
+            continue;
+        } else if input.next().is_err() {
+            break;
+        }
+    }
+    sources
 }
 
 #[cfg(test)]
@@ -619,5 +818,36 @@ mod tests {
         assert!(!fade.frames[0].block.is_empty());
         let slide = &sheet.keyframes()[1];
         assert_eq!(slide.frames[0].offsets, [0.0, 1.0]);
+    }
+
+    #[test]
+    fn parses_font_face_src_family_weight() {
+        let sheet = parse_stylesheet(
+            r#"
+            @font-face {
+                font-family: "InterTest";
+                src: url("/fonts/inter.woff2") format("woff2"),
+                     local("Inter"),
+                     url(data:font/ttf;base64,AA==);
+                font-weight: 600;
+                font-style: italic;
+            }
+            "#,
+            Origin::Author,
+        );
+        assert_eq!(sheet.style_rule_count(), 0);
+        assert_eq!(sheet.font_faces().len(), 1);
+        let face = &sheet.font_faces()[0];
+        assert_eq!(face.family, "InterTest");
+        assert_eq!(
+            face.sources,
+            [
+                FontFaceSrc::Url("/fonts/inter.woff2".into()),
+                FontFaceSrc::Local("Inter".into()),
+                FontFaceSrc::Url("data:font/ttf;base64,AA==".into()),
+            ]
+        );
+        assert_eq!(face.weight, FontWeight(600));
+        assert_eq!(face.style, FontStyle::Italic);
     }
 }

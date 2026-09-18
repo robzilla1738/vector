@@ -308,6 +308,11 @@ impl LayoutEngine {
         Self { shaper }
     }
 
+    /// Registers a `@font-face` file on the current shaper.
+    pub fn register_font(&mut self, data: Vec<u8>) -> usize {
+        self.shaper.register_font(data)
+    }
+
     /// Lays out `doc` into `viewport`.
     pub fn layout(&mut self, doc: &Document, styles: &StyleTree, viewport: Size) -> LayoutTree {
         let span = Stage::Layout.span();
