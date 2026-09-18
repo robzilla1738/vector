@@ -288,10 +288,11 @@ const DEFAULT_JS: &[(&str, &[&str], bool)] = &[
         &["./threejs/three.js", "./threejs/benchmark.js"],
         true,
     ),
+    ("pdfjs", &["./Octane/pdfjs.js"], true),
 ];
 
 /// Official `AsyncBenchmark` Default JS from `JetStreamDriver.js`.
-/// Startup/SSR/TypeScript-lib/wasm stay out of this slice.
+/// Wasm stays out of this slice.
 const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
     (
         "doxbee-promise",
@@ -365,18 +366,53 @@ const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
         true,
         &[],
     ),
+    (
+        "mobx-startup",
+        &["./utils/StartupBenchmark.js", "./mobx/benchmark.js"],
+        false,
+        &[("BUNDLE", "./mobx/dist/bundle.es6.min.js")],
+    ),
+    (
+        "web-ssr",
+        &["./utils/StartupBenchmark.js", "./web-ssr/benchmark.js"],
+        false,
+        &[("BUNDLE", "./web-ssr/dist/bundle.min.js")],
+    ),
+    (
+        "jsdom-d3-startup",
+        &[
+            "./utils/StartupBenchmark.js",
+            "./jsdom-d3-startup/benchmark.js",
+        ],
+        false,
+        &[
+            ("BUNDLE", "./jsdom-d3-startup/dist/bundle.min.js"),
+            (
+                "US_DATA",
+                "./jsdom-d3-startup/data/counties-albers-10m.json",
+            ),
+            ("AIRPORTS", "./jsdom-d3-startup/data/airports.csv"),
+        ],
+    ),
+    (
+        "typescript-lib",
+        &[
+            "./TypeScript/src/mock/sys.js",
+            "./TypeScript/dist/bundle.js",
+            "./TypeScript/benchmark.js",
+        ],
+        false,
+        &[
+            ("tsconfig", "./TypeScript/src/gen/immer-tiny/tsconfig.json"),
+            ("files", "./TypeScript/src/gen/immer-tiny/files.json"),
+        ],
+    ),
 ];
 
-const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[
-    (
-        "mandreel",
-        "Octane/mandreel.js is 4.8MB; late-eval of that source is not run in this lab",
-    ),
-    (
-        "pdfjs",
-        "Octane/pdfjs.js (1.4MB) SIGKILL/OOM when concatenated into the page",
-    ),
-];
+const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[(
+    "mandreel",
+    "Octane/mandreel.js is 4.8MB; late-eval of that source is not run in this lab",
+)];
 
 const DETERMINISTIC_RANDOM: &str = r#"(function () {
   const initialSeed = 49734321;

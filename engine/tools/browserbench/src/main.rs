@@ -229,12 +229,17 @@ pub(crate) fn jetstream_async_chunks(
 }
 
 const ASYNC_START: &str = r#"(function () {
+  if (typeof RegExp.escape !== "function") {
+    RegExp.escape = function (s) {
+      return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    };
+  }
   window.__veJs = { done: null, err: null };
-  var b = new Benchmark();
+  var b = new Benchmark({ iterationCount: 1 });
   Promise.resolve()
     .then(function () { return b.init && b.init(); })
     .then(function () { return b.prepareForNextIteration && b.prepareForNextIteration(); })
-    .then(function () { return b.runIteration(); })
+    .then(function () { return b.runIteration(0); })
     .then(function () { window.__veJs.done = true; })
     .catch(function (e) { window.__veJs.err = String(e && e.message ? e.message : e); });
   return true;
@@ -529,7 +534,7 @@ fn main() -> Result<()> {
                 "passed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "PASS").count(),
                 "failed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "FAIL").count(),
                 "officialGroup": 12,
-                "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z assets and AsyncBenchmark Default names. mandreel/pdfjs/startup/wasm stay unexecuted. Not a JetStream Next geometric-mean published score."
+                "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, and startup/SSR/TypeScript-lib. mandreel/wasm stay unexecuted. Not a JetStream Next geometric-mean published score."
             },
             "motionmark13": {
                 "officialNames": 8,
