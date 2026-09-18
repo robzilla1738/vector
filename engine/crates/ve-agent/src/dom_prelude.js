@@ -3714,6 +3714,7 @@
           });
         }
         const tick = () => {
+          D("fetchPump");
           const r = D("fetchPoll", id);
           if (!r || r.pending) { setTimeout(tick, 0); return; }
           if (r.error) reject(new TypeError(r.error));

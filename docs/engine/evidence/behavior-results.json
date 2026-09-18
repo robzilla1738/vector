@@ -8,8 +8,8 @@
     "officialPin": "7c20438303d2b39c8a2b924ed57dfa6448fd2ed2",
     "officialTree": "html/dom/partial-updates",
     "official": {
-      "pass": 20,
-      "fail": 10,
+      "pass": 26,
+      "fail": 4,
       "total": 30
     },
     "supportedSubset": {
@@ -19,18 +19,13 @@
     },
     "denominator": "official html/dom/partial-updates (30) plus supported testharness subset",
     "exclusions": [
-      "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\""
+      "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\"",
+      "sanitize-template-element.html expects addedNodes SPAN while the inserted span has id ok"
     ],
     "remainingOfficialFails": [
-      "buffer-streaming-reflection.html",
-      "sanitize-boolean.html",
       "sanitize-template-element.html",
-      "src-csp-cors.sub.html",
-      "src-nonce.sub.html",
       "src-referrerpolicy.sub.html",
-      "src-sri.sub.html",
       "src-streaming.html",
-      "streaming-target-marker-removed.html",
       "template-for-empty.html"
     ]
   },
