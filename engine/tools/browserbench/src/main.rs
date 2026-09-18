@@ -621,6 +621,7 @@ fn jetstream_official_attribution(
         "defaultWorstCaseCount": score::DEFAULT_WORST_CASE_COUNT,
         "applied": official_score,
         "iterationsUsed": iterations,
+        "officialPerTestCounts": official_score,
         "scoredTests": scores.len(),
         "executedTests": jet.len(),
         "passedTests": passed,
