@@ -6,7 +6,7 @@
   "officialFullSuite": false,
   "gate": false,
   "iterations": 1,
-  "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. evaluate() keeps EVALUATE_DEADLINE. Official ES5 Complex-DOM one-add PASS (6655 nodes, addMs=4, changeMs=3, restyle.full_calls=0). Official 100-add PASS (added=100, addMs=1218, showEntriesMs=1072, restyle.full_calls=0) after O(1) journal crowd-out eviction. Document named-property lookup skips on* and __ names. Independently rechecked: WebComponents/React/React-Redux/Vue/Lit add 3 todos; News-Next exposes the navbar.",
+  "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. evaluate() keeps EVALUATE_DEADLINE. Official ES5 Complex-DOM one-add PASS (6655 nodes, addMs=4, changeMs=3, restyle.full_calls=0). Official 100-add PASS (added=100, addMs=1218, showEntriesMs=1072, restyle.full_calls=0). Official jQuery Complex-DOM one-add PASS enterMs=12 (was 42184) after named-property misses used getElementById/getElementsByName instead of wrapping getElementsByTagName('*'). Independently rechecked: WebComponents/React/React-Redux/Vue/Lit add 3 todos; remaining official 3-add/finish PASS in 15.7s.",
   "verifiedAfterFixes": {
     "TodoMVC-WebComponents": "PASS add/finish 3 items",
     "TodoMVC-React": "PASS add 3 items",
@@ -17,7 +17,8 @@
     "NewsSite-Nuxt": "PASS in killed full-suite log",
     "Editor-CodeMirror": "killed OOM/SIGKILL in full-suite log",
     "TodoMVC-JavaScript-ES5-Complex-DOM": "one-add PASS addMs=4 changeMs=3; 100-add PASS addMs=1218 showEntriesMs=1072 restyle.full_calls=0",
-    "remainingOfficial3AddFinish": "vue/lit/preact/svelte/jquery/backbone/web-components/web-components-complex/lit-complex/news-next/news-nuxt/perf PASS add/finish 3 in 16.7s. backbone-complex PASS add/finish 3 in a prior run (347s, enterMs=131s). jquery-complex add 3 PASS, finish left remaining=3."
+    "TodoMVC-jQuery-Complex-DOM": "one-add PASS enterMs=12 renderFocusMs=1 restyle.full_calls=0 layout_calls=0 nodes=6654 (was enterMs=42184 / renderFocusMs=39827). Boot 43s after named-property miss stopped wrapping the Spectrum tree.",
+    "remainingOfficial3AddFinish": "vue/lit/preact/svelte/jquery/backbone/web-components/web-components-complex/lit-complex/news-next/news-nuxt/perf PASS add/finish 3 in 15.7s. Editor-TipTap/Charts/Stockcharts OOM this host (ignored). backbone-complex previously 347s."
   },
   "speedometer30": {
     "executed": 25,

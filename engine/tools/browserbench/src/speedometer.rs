@@ -1669,6 +1669,7 @@ mod tests {
 
     #[cfg(feature = "v8")]
     #[test]
+    #[ignore = "TipTap/charts/stockcharts OOM this host (same class as Editor-CodeMirror)"]
     fn remaining_official_editor_chart_workloads_boot() {
         let mut engine = bench_engine();
         let suites = [
