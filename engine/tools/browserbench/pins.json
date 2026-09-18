@@ -17,7 +17,7 @@
       "SunSpider/tagcloud.js"
     ],
     "status": "official-sunspider-and-default-js",
-    "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin. .z assets are zlib-inflated. AsyncBenchmark Default names await runIteration, including startup/SSR/TypeScript-lib. mandreel/wasm stay unexecuted. Not a published JetStream geometric-mean score."
+    "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, and startup/SSR/TypeScript-lib. Wasm Default tests stay unexecuted. Not a published JetStream geometric-mean score."
   },
   "speedometer": {
     "repo": "https://github.com/WebKit/Speedometer",

@@ -3,11 +3,11 @@
   "attribution": {
     "gate": false,
     "jetstreamSunspider": {
-      "executed": 59,
+      "executed": 60,
       "failed": 0,
-      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, and startup/SSR/TypeScript-lib. mandreel/wasm stay unexecuted. Not a JetStream Next geometric-mean published score.",
+      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and late-eval mandreel/pdfjs. Wasm Default tests stay unexecuted. Not a JetStream Next geometric-mean published score.",
       "officialGroup": 12,
-      "passed": 59
+      "passed": 60
     },
     "kind": "adapted-workload-phases",
     "motionmark13": {
@@ -36,7 +36,7 @@
   "os": "linux",
   "pins": {
     "jetstream": {
-      "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin. .z assets are zlib-inflated. AsyncBenchmark Default names await runIteration, including startup/SSR/TypeScript-lib. mandreel/wasm stay unexecuted. Not a published JetStream geometric-mean score.",
+      "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, and startup/SSR/TypeScript-lib. Wasm Default tests stay unexecuted. Not a published JetStream geometric-mean score.",
       "repo": "https://github.com/WebKit/JetStream",
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "status": "official-sunspider-and-default-js",
@@ -78,17 +78,17 @@
       "status": "official-3.0"
     }
   },
-  "process_tree_rss_bytes": 341049344,
-  "rss_bytes": 341049344,
+  "process_tree_rss_bytes": 343355392,
+  "rss_bytes": 343355392,
   "security_mode": "developer-offline",
   "suites": [
     {
       "name": "jetstream.3d-cube",
-      "p50_ms": 18,
-      "p95_ms": 18,
+      "p50_ms": 20,
+      "p95_ms": 20,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        18
+        20
       ],
       "status": "PASS"
     },
@@ -104,11 +104,11 @@
     },
     {
       "name": "jetstream.base64",
-      "p50_ms": 9,
-      "p95_ms": 9,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        9
+        8
       ],
       "status": "PASS"
     },
@@ -124,21 +124,21 @@
     },
     {
       "name": "jetstream.crypto-md5",
-      "p50_ms": 9,
-      "p95_ms": 9,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        9
+        8
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.crypto-sha1",
-      "p50_ms": 10,
-      "p95_ms": 10,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        10
+        8
       ],
       "status": "PASS"
     },
@@ -184,31 +184,31 @@
     },
     {
       "name": "jetstream.string-unpack-code",
-      "p50_ms": 8,
-      "p95_ms": 8,
+      "p50_ms": 9,
+      "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        8
+        9
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.tagcloud",
-      "p50_ms": 13,
-      "p95_ms": 13,
+      "p50_ms": 14,
+      "p95_ms": 14,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        13
+        14
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.Air",
-      "p50_ms": 21,
-      "p95_ms": 21,
+      "p50_ms": 22,
+      "p95_ms": 22,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        21
+        22
       ],
       "status": "PASS"
     },
@@ -224,31 +224,31 @@
     },
     {
       "name": "jetstream.ML",
-      "p50_ms": 39,
-      "p95_ms": 39,
+      "p50_ms": 40,
+      "p95_ms": 40,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        39
+        40
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.cdjs",
-      "p50_ms": 30,
-      "p95_ms": 30,
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "samples_ms": [
-        30
-      ],
-      "status": "PASS"
-    },
-    {
-      "name": "jetstream.Box2D",
       "p50_ms": 35,
       "p95_ms": 35,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
         35
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.Box2D",
+      "p50_ms": 36,
+      "p95_ms": 36,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        36
       ],
       "status": "PASS"
     },
@@ -284,21 +284,21 @@
     },
     {
       "name": "jetstream.earley-boyer",
-      "p50_ms": 13,
-      "p95_ms": 13,
+      "p50_ms": 9,
+      "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        13
+        9
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.gbemu",
-      "p50_ms": 78,
-      "p95_ms": 78,
+      "p50_ms": 71,
+      "p95_ms": 71,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        78
+        71
       ],
       "status": "PASS"
     },
@@ -314,51 +314,51 @@
     },
     {
       "name": "jetstream.raytrace",
-      "p50_ms": 17,
-      "p95_ms": 17,
+      "p50_ms": 12,
+      "p95_ms": 12,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        17
+        12
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.regexp-octane",
-      "p50_ms": 9,
-      "p95_ms": 9,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        9
+        8
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.richards",
-      "p50_ms": 7,
-      "p95_ms": 7,
+      "p50_ms": 6,
+      "p95_ms": 6,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        7
+        6
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.splay",
-      "p50_ms": 24,
-      "p95_ms": 24,
+      "p50_ms": 23,
+      "p95_ms": 23,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        24
+        23
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.OfflineAssembler",
-      "p50_ms": 33,
-      "p95_ms": 33,
+      "p50_ms": 34,
+      "p95_ms": 34,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        33
+        34
       ],
       "status": "PASS"
     },
@@ -384,6 +384,26 @@
     },
     {
       "name": "jetstream.hash-map",
+      "p50_ms": 13,
+      "p95_ms": 13,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        13
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.ai-astar",
+      "p50_ms": 76,
+      "p95_ms": 76,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        76
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.gaussian-blur",
       "p50_ms": 15,
       "p95_ms": 15,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
@@ -393,32 +413,12 @@
       "status": "PASS"
     },
     {
-      "name": "jetstream.ai-astar",
-      "p50_ms": 81,
-      "p95_ms": 81,
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "samples_ms": [
-        81
-      ],
-      "status": "PASS"
-    },
-    {
-      "name": "jetstream.gaussian-blur",
-      "p50_ms": 16,
-      "p95_ms": 16,
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "samples_ms": [
-        16
-      ],
-      "status": "PASS"
-    },
-    {
       "name": "jetstream.stanford-crypto-aes",
-      "p50_ms": 13,
-      "p95_ms": 13,
+      "p50_ms": 12,
+      "p95_ms": 12,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        13
+        12
       ],
       "status": "PASS"
     },
@@ -434,11 +434,11 @@
     },
     {
       "name": "jetstream.stanford-crypto-sha256",
-      "p50_ms": 7,
-      "p95_ms": 7,
+      "p50_ms": 10,
+      "p95_ms": 10,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        7
+        10
       ],
       "status": "PASS"
     },
@@ -454,11 +454,11 @@
     },
     {
       "name": "jetstream.json-stringify-inspector",
-      "p50_ms": 8,
-      "p95_ms": 8,
+      "p50_ms": 9,
+      "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        8
+        9
       ],
       "status": "PASS"
     },
@@ -474,11 +474,11 @@
     },
     {
       "name": "jetstream.raytrace-public-class-fields",
-      "p50_ms": 16,
-      "p95_ms": 16,
+      "p50_ms": 17,
+      "p95_ms": 17,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        16
+        17
       ],
       "status": "PASS"
     },
@@ -494,11 +494,11 @@
     },
     {
       "name": "jetstream.sync-fs",
-      "p50_ms": 15,
-      "p95_ms": 15,
+      "p50_ms": 16,
+      "p95_ms": 16,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        15
+        16
       ],
       "status": "PASS"
     },
@@ -514,31 +514,41 @@
     },
     {
       "name": "jetstream.js-tokens",
-      "p50_ms": 19,
-      "p95_ms": 19,
+      "p50_ms": 20,
+      "p95_ms": 20,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        19
+        20
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.threejs",
-      "p50_ms": 514,
-      "p95_ms": 514,
+      "p50_ms": 570,
+      "p95_ms": 570,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        514
+        570
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.pdfjs",
-      "p50_ms": 36,
-      "p95_ms": 36,
+      "p50_ms": 42,
+      "p95_ms": 42,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        36
+        42
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.mandreel",
+      "p50_ms": 61,
+      "p95_ms": 61,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        61
       ],
       "status": "PASS"
     },
@@ -584,11 +594,11 @@
     },
     {
       "name": "jetstream.multi-inspector-code-load",
-      "p50_ms": 21,
-      "p95_ms": 21,
+      "p50_ms": 20,
+      "p95_ms": 20,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        21
+        20
       ],
       "status": "PASS"
     },
@@ -644,49 +654,43 @@
     },
     {
       "name": "jetstream.web-ssr",
-      "p50_ms": 33,
-      "p95_ms": 33,
+      "p50_ms": 28,
+      "p95_ms": 28,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        33
+        28
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.jsdom-d3-startup",
-      "p50_ms": 337,
-      "p95_ms": 337,
+      "p50_ms": 330,
+      "p95_ms": 330,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        337
+        330
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.typescript-lib",
-      "p50_ms": 1116,
-      "p95_ms": 1116,
+      "p50_ms": 1117,
+      "p95_ms": 1117,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        1116
+        1117
       ],
       "status": "PASS"
-    },
-    {
-      "detail": "Octane/mandreel.js is 4.8MB; late-eval of that source is not run in this lab",
-      "name": "jetstream.mandreel",
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "status": "NOTRUN"
     }
   ],
   "review": "Vector_Current_Review_60b2d41",
   "officialFullSuite": false,
   "officialJetStreamGeometricMean": false,
-  "note": "Official JetStream Next pin c603c04: SunSpider 12/12 PASS plus Default JS including startup/SSR/TypeScript-lib and late-eval pdfjs (59 PASS, 0 FAIL, 1 NOTRUN). mandreel/wasm stay NOTRUN. Not a published JetStream geometric-mean score.",
+  "note": "Official JetStream Next pin c603c04: SunSpider 12/12 PASS plus Default JS including mandreel, pdfjs, startup/SSR/TypeScript-lib (60 PASS, 0 FAIL, 0 NOTRUN). Wasm Default tests stay unexecuted. Not a published JetStream geometric-mean score.",
   "counts": {
-    "pass": 59,
+    "pass": 60,
     "fail": 0,
-    "notrun": 1,
+    "notrun": 0,
     "total": 60
   }
 }
