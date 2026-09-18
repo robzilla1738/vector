@@ -23,8 +23,8 @@
     "remainingOfficial3AddFinish": "vue/lit/preact/svelte/jquery/jquery-complex/backbone/web-components/web-components-complex/lit-complex/news-next/news-nuxt/perf PASS add/finish 3 in 58.4s. jquery-complex addMs=37 finishMs=238 remaining=0. Editor-CodeMirror/TipTap OOM this host (ignored).",
     "Charts-chartjs": "prepare/scatter/tooltip PASS 9.4s err=[] after ESM mid-file import lift + Canvas resetTransform/setLineDash",
     "Charts-observable-plot": "prepare/stacked/dotted PASS 8.67s err=[]",
-    "React-Stockcharts-SVG": "render PASS 0.42s cursor=true svg=1 nodes=790 err=[]",
-    "TodoMVC-Angular-Complex-DOM": "one-add PASS 2.99s added=1 enterMs=6 nodes=6654 restyle.full_calls=0 (was 428s FAIL in killed full-suite log)"
+    "React-Stockcharts-SVG": "render PASS 0.42s cursor=true svg=1 nodes=790 err=[]. Official pan/zoom PASS 0.44s after WheelEvent (deltaY/clientX) was added.",
+    "TodoMVC-Angular-Complex-DOM": "one-add PASS 2.99s added=1 enterMs=6 nodes=6654 restyle.full_calls=0 (was 428s FAIL). 3-add/finish PASS 3.45s added=3 remaining=0 addMs=9 finishMs=212 restyle.full_calls=0."
   },
   "speedometer30": {
     "executed": 25,
