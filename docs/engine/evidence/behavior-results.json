@@ -15,7 +15,7 @@
       "pass": 28,
       "fail": 2,
       "total": 30,
-      "tls": "production hyper+rustls extra-CA path proven (ve-net loopback_https_with_fixture_ca); wpt-harness --https serves fixture CA; official html/dom/partial-updates tree remains HTTP on this pin",
+      "tls": "official html/dom/usvstring-reflection.https.html PASS over wpt-harness --https (https://127.0.0.1, fixture CA). official html/dom/idlharness.https.html FAIL: Error fetching /interfaces/html.idl (harness/environment, not a new engine counterexample). extra-CA path: ve-net loopback_https_with_fixture_ca.",
       "unmodifiedUpstream": true
     },
     "supportedSubset": {
@@ -29,7 +29,7 @@
     "exclusions": [
       "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\"",
       "sanitize-template-element.html expects addedNodes SPAN while the inserted span has id ok",
-      "official BrowserBench / full html/dom tree outside partial-updates; official .https.html WPT files not yet scored over TLS"
+      "official BrowserBench / full html/dom tree outside partial-updates; idlharness.https.html still FAIL on missing /interfaces/html.idl"
     ],
     "remainingOfficialFails": [
       "sanitize-template-element.html",

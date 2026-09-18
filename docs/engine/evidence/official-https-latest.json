@@ -1,0 +1,33 @@
+{
+  "fixtures": "/tmp/wpt",
+  "tested_subset": 2,
+  "overall_manifest": 771,
+  "http_origin": "http://127.0.0.1:33261",
+  "https_origin": "https://127.0.0.1:37077",
+  "https": true,
+  "tree_complete": false,
+  "fonts_dir": "/workspace/engine/tools/wpt-harness/../../conformance/fonts",
+  "idlharness": true,
+  "totals": {
+    "total": 2,
+    "pass": 1,
+    "fail": 1,
+    "timeout": 0,
+    "crash": 0,
+    "notrun": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "path": "html/dom/usvstring-reflection.https.html",
+      "status": "PASS",
+      "duration_ms": 561
+    },
+    {
+      "path": "html/dom/idlharness.https.html",
+      "status": "FAIL",
+      "detail": "idl_test setup: 1:promise_test: Unhandled rejection with value: object \"Error fetching /interfaces/html.idl.\"",
+      "duration_ms": 936
+    }
+  ]
+}
