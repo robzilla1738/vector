@@ -17,7 +17,7 @@
       "SunSpider/tagcloud.js"
     ],
     "status": "official-sunspider-default-js-wasmemcc",
-    "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and WasmEMCC Default richards/zlib/tsf/argon2. Remaining Default wasm stays unexecuted. Not a published JetStream geometric-mean score."
+    "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and Default wasm richards/zlib/tsf/argon2/8bitbench/j2cl-box2d. sqlite3-wasm FAIL (bootstrap JSON.parse). Remaining Default wasm stays unexecuted. Not a published JetStream geometric-mean score."
   },
   "speedometer": {
     "repo": "https://github.com/WebKit/Speedometer",
