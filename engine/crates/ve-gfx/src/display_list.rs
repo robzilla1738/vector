@@ -333,12 +333,16 @@ impl DisplayList {
             } else if let Some(c) = clip {
                 list.push(DisplayItem::PushClip(c));
             }
-            let translate = style.transform.iter().find_map(|op| match op {
-                TransformOp::Translate(x, y) => {
-                    Some((x.resolve(item.rect.width()), y.resolve(item.rect.height())))
-                }
-                _ => None,
-            });
+            let translate = style
+                .transform
+                .iter()
+                .chain(style.translate.iter())
+                .find_map(|op| match op {
+                    TransformOp::Translate(x, y) => {
+                        Some((x.resolve(item.rect.width()), y.resolve(item.rect.height())))
+                    }
+                    _ => None,
+                });
             if let Some((tx, ty)) = translate {
                 list.push(DisplayItem::PushTransform { tx, ty });
             }
@@ -810,6 +814,30 @@ mod tests {
                     .iter()
                     .any(|i| matches!(i, DisplayItem::Text(run) if run.text == "Hi")),
             "underline missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_applies_individual_translate() {
+        let html = "<style>body{margin:0} #g{width:20px;height:10px;background:red;translate:8px 4px}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert!(
+            !styles.style(id).translate.is_empty(),
+            "translate computed"
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::PushTransform { tx, ty } if (*tx - 8.0).abs() < 0.1 && (*ty - 4.0).abs() < 0.1)),
+            "individual translate missing: {:?}",
             list.items()
         );
     }

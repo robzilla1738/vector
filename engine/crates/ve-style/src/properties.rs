@@ -376,6 +376,8 @@ enum ValueSyntax {
     BoxShadow,
     /// `aspect-ratio`.
     AspectRatio,
+    /// Individual `translate` property (`none` | `<length-percentage>{1,2}`).
+    IndividualTranslate,
     /// `background-size`.
     BackgroundSize,
     /// `background-position`.
@@ -1077,6 +1079,8 @@ property_table! {
     ClipPath: "clip-path" => clip_path: ClipPath = ClipPath::None, inherited = false, syntax = ClipPath, convert = conv::clip_path;
     /// `transform` (`translate` / `scale` only; geometry only)
     Transform: "transform" => transform: Vec<TransformOp> = Vec::new(), inherited = false, syntax = Transform, convert = conv::transform;
+    /// Individual `translate` (`none` or one/two lengths)
+    Translate: "translate" => translate: Vec<TransformOp> = Vec::new(), inherited = false, syntax = IndividualTranslate, convert = conv::transform;
     /// `font-size` (pixels)
     FontSize: "font-size" => font_size: f32 = 16.0, inherited = true, syntax = Single, convert = conv::font_size;
     /// `font-weight`
@@ -1318,7 +1322,6 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
     "columns",
     "column-count",
     "column-width",
-    "translate",
     "rotate",
     "scale",
     "offset",
@@ -1413,7 +1416,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "column-width",
     "column-rule",
     "column-span",
-    "translate",
     "rotate",
     "scale",
     "transform-style",
@@ -2148,6 +2150,24 @@ fn specified_lpa(v: &SpecifiedValue) -> Option<LengthPercentageAuto> {
     }
 }
 
+fn parse_individual_translate(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    if input
+        .try_parse(|i| i.expect_ident_matching("none"))
+        .is_ok()
+    {
+        return Some(SpecifiedValue::Keyword("none".into()));
+    }
+    let x = parse_component(input)?;
+    let y = if input.is_exhausted() {
+        SpecifiedValue::Length(Length::ZERO)
+    } else {
+        parse_component(input)?
+    };
+    Some(SpecifiedValue::Transform(vec![SpecifiedTransform::Translate(
+        x, y,
+    )]))
+}
+
 fn parse_aspect_ratio(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     if input
         .try_parse(|i| i.expect_ident_matching("auto"))
@@ -2350,6 +2370,9 @@ impl PropertyId {
                 .ok()?,
             ValueSyntax::AspectRatio => css_wide(input)
                 .or_else(|()| parse_aspect_ratio(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::IndividualTranslate => css_wide(input)
+                .or_else(|()| parse_individual_translate(input).ok_or(()))
                 .ok()?,
         };
         input.expect_exhausted().ok()?;
@@ -3077,6 +3100,8 @@ mod tests {
         ok("clip-path", "inset(50%)");
         ok("transform", "translate(10px, 20%) scale(2)");
         ok("transform", "none");
+        ok("translate", "10px 20px");
+        ok("translate", "none");
         ok("box-shadow", "0 4px 8px black");
         ok("box-shadow", "none");
         ok("background-image", "none");
@@ -3151,7 +3176,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 121);
+        assert_eq!(PropertyId::ALL.len(), 122);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
