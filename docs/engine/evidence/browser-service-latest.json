@@ -17,6 +17,7 @@
     "stalled_host_handshake_fails_without_downgrade": "PASS",
     "production_sandbox_runs_inline_script_observe_and_input": "PASS",
     "production_sandbox_runs_external_js_from_allowlisted_fixture": "PASS",
+    "downloaded_release_artifact_runs_production_sandbox": "added copy-to-temp host + CI download job; not scored until this revision's test run",
     "html_collection_types_match_html_idl": "PASS"
   },
   "exit": {
@@ -31,9 +32,9 @@
     "stalledChildFailsClosed": true
   },
   "remaining": [
-    "Gate A downloaded release artifact on every advertised platform (Linux production sandbox PASS on this host; CI matrix is ubuntu/macOS/windows)",
+    "Gate A downloaded release artifact: copy-to-temp host test + CI job downloaded-artifact (downloads engine-native-{ubuntu,macos,windows} then re-runs production_sandbox). Not a GitHub Release page download.",
     "live GPU window plus MCP on a display (pump shares NativeBrowser; no GPU in this environment)",
     "official html/dom remaining FAILs sanitize-template-element and template-for-empty; idlharness.https.html still FAIL ([[IsHTMLDDA]] plus other HTML interfaces)",
-    "full official Speedometer/JetStream/MotionMark published score (25 official Speedometer 3.0 names executed this host: 7 PASS / 18 FAIL; Complex-DOM often hits evaluate deadline)"
+    "full official Speedometer/JetStream/MotionMark published score. Rechecked add path: WebComponents/React/React-Redux/Vue/Lit add. Complex-DOM often hits evaluate deadline. Editor-CodeMirror killed OOM."
   ]
 }

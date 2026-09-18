@@ -14,6 +14,35 @@ fn host_bin() -> String {
     std::env::var("VECTOR_PACKAGED_HOST").unwrap_or_else(|_| env!("CARGO_BIN_EXE_ve-host").into())
 }
 
+/// Gate A: copy the host out of the build tree so the binary under test is a
+/// downloaded/installed artifact, not `CARGO_BIN_EXE_ve-host` in place.
+fn copy_host_to_download_dir() -> (std::path::PathBuf, String) {
+    let src = host_bin();
+    let dir = std::env::temp_dir().join(format!(
+        "vector-downloaded-artifact-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    std::fs::create_dir_all(&dir).expect("download dir");
+    let dest = dir.join(if cfg!(windows) {
+        "ve-host.exe"
+    } else {
+        "ve-host"
+    });
+    std::fs::copy(&src, &dest).expect("copy downloaded host");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perm = std::fs::metadata(&dest).unwrap().permissions();
+        perm.set_mode(0o755);
+        std::fs::set_permissions(&dest, perm).unwrap();
+    }
+    (dir, dest.to_string_lossy().into_owned())
+}
+
 fn read_line(r: &mut impl BufRead) -> Value {
     let mut line = String::new();
     r.read_line(&mut line).unwrap();
@@ -216,13 +245,10 @@ fn context_process_opens_inline_html() {
 }
 
 #[cfg(feature = "v8")]
-#[test]
-#[allow(clippy::zombie_processes)]
-fn production_sandbox_runs_inline_script_observe_and_input() {
+fn production_inline_script_observe_and_input(bin: &str) {
     use std::time::{Duration, Instant};
 
-    let bin = host_bin();
-    let mut child = Command::new(&bin)
+    let mut child = Command::new(bin)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
@@ -330,6 +356,22 @@ fn production_sandbox_runs_inline_script_observe_and_input() {
         std::thread::sleep(Duration::from_millis(10));
     }
     let _ = child.wait();
+}
+
+#[cfg(feature = "v8")]
+#[test]
+#[allow(clippy::zombie_processes)]
+fn production_sandbox_runs_inline_script_observe_and_input() {
+    production_inline_script_observe_and_input(&host_bin());
+}
+
+#[cfg(feature = "v8")]
+#[test]
+#[allow(clippy::zombie_processes)]
+fn downloaded_release_artifact_runs_production_sandbox() {
+    let (dir, dest) = copy_host_to_download_dir();
+    production_inline_script_observe_and_input(&dest);
+    let _ = std::fs::remove_dir_all(dir);
 }
 
 #[cfg(feature = "v8")]

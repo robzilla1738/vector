@@ -304,6 +304,11 @@ fn main() -> Result<()> {
         // Safety: process start, no other threads yet.
         unsafe { std::env::set_var("VECTOR_SCRIPT_DEADLINE_SECS", "90") };
     }
+    // Official Complex-DOM add/delete exceeds the 60s evaluate default.
+    // Do not raise the engine-wide default (runaway evaluate tests stay 60s).
+    if std::env::var_os("VECTOR_EVALUATE_DEADLINE_SECS").is_none() {
+        unsafe { std::env::set_var("VECTOR_EVALUATE_DEADLINE_SECS", "240") };
+    }
     let mut engine = VectorEngine::new(EngineConfig {
         viewport: Size::new(1280.0, 720.0),
         offline: true,

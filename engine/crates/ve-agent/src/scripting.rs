@@ -37,6 +37,15 @@ fn script_deadline() -> Duration {
 }
 /// `evaluate` can run a full Speedometer add/delete pass on a complex DOM.
 pub const EVALUATE_DEADLINE: Duration = Duration::from_secs(60);
+
+fn evaluate_deadline() -> Duration {
+    std::env::var("VECTOR_EVALUATE_DEADLINE_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .map(Duration::from_secs)
+        .filter(|d| *d > Duration::ZERO)
+        .unwrap_or(EVALUATE_DEADLINE)
+}
 /// Timers due within this window block `settle()` (architecture §6 cond. 2).
 pub const TIMER_WINDOW_MS: u64 = 50;
 /// Console lines kept per page.
@@ -382,7 +391,7 @@ impl Page {
         }
         self.ensure_document_scripts();
         if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
-            vm.set_call_deadline(Some(EVALUATE_DEADLINE));
+            vm.set_call_deadline(Some(evaluate_deadline()));
         }
         let result = self.run_script(expression, "vector:evaluate");
         self.drain_js_jobs();

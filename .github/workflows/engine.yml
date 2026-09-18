@@ -285,3 +285,33 @@ jobs:
             engine/crates/ve-napi/vector-engine.*.node
             engine/crates/ve-napi/ve-host
             engine/crates/ve-napi/ve-host.exe
+
+  downloaded-artifact:
+    name: downloaded release artifact (${{ matrix.os }})
+    needs: addon
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          key: downloaded-artifact
+      - uses: actions/download-artifact@v4
+        with:
+          name: engine-native-${{ matrix.os }}
+          path: downloaded-artifact
+      - name: Downloaded host runs the production fixture
+        shell: bash
+        working-directory: engine
+        run: |
+          HOST=$(find "$GITHUB_WORKSPACE/downloaded-artifact" \( -name ve-host -o -name ve-host.exe \) -type f | head -n 1)
+          test -n "$HOST"
+          chmod +x "$HOST"
+          test -x "$HOST"
+          echo "downloaded host=$HOST"
+          VECTOR_PACKAGED_HOST="$HOST" cargo test -p ve-host --features v8 --test process production_sandbox -- --test-threads=1
