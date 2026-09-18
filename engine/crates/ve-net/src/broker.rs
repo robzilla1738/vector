@@ -81,7 +81,10 @@ impl NetworkBroker {
             ));
         }
         self.policy.check_request(&job.request)?;
-        self.pin_resolved(&mut job.request)
+        if self.inner.uses_live_dns() {
+            self.pin_resolved(&mut job.request)?;
+        }
+        Ok(())
     }
 
     /// One DNS lookup, policy check, then stamp the same addresses on the
@@ -145,6 +148,10 @@ impl Transport for NetworkBroker {
 
     fn name(&self) -> &'static str {
         "broker"
+    }
+
+    fn uses_live_dns(&self) -> bool {
+        self.inner.uses_live_dns()
     }
 }
 
@@ -246,6 +253,37 @@ mod tests {
             request,
         });
         assert_eq!(*seen.borrow(), "https://127.0.0.1/x");
+    }
+
+    #[test]
+    fn replay_transport_does_not_perform_live_dns() {
+        let mut replay = crate::ReplayTransport::new();
+        replay.insert(
+            "GET",
+            "https://archive.test/",
+            Response::new(
+                url::Url::parse("https://archive.test/").unwrap(),
+                http::StatusCode::OK,
+                http::header::HeaderMap::new(),
+                "ok",
+            ),
+        );
+        let broker = NetworkBroker::with_policy(Box::new(replay), NetworkPolicy::permissive(), 0);
+        let response = broker
+            .fetch(FetchJob {
+                context: 0,
+                request: Request::get("https://archive.test/").unwrap(),
+            })
+            .expect("archived get");
+        assert_eq!(response.text(), "ok");
+        let missing = broker.fetch(FetchJob {
+            context: 0,
+            request: Request::get("https://example.test/secret").unwrap(),
+        });
+        assert!(
+            matches!(missing, Err(NetError::Blocked(ref s)) if s.contains("replay")),
+            "{missing:?}"
+        );
     }
 
     #[test]
