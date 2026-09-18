@@ -1,8 +1,13 @@
 /**
  * Node/MCP client of the Rust browser service (Finding 1 / Gate B).
  * Native UI and the Node planner are clients of the same page authority.
- * The driver starts an owned listener when VECTOR_BROWSER_SERVICE is unset.
+ * When VECTOR_BROWSER_SERVICE is unset the driver starts `ve-shell --service`
+ * (or NAPI `BrowserServiceHandle.listen`) and attaches as a client.
  */
+import { existsSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawn, type ChildProcess } from "node:child_process";
 import { createConnection, type Socket } from "node:net";
 import { VectorError, type VectorErrorCode } from "@vector/contracts";
 
@@ -11,6 +16,109 @@ export function browserServiceAddr(
 ): string | undefined {
   const raw = env.VECTOR_BROWSER_SERVICE?.trim();
   return raw && raw.length > 0 ? raw : undefined;
+}
+
+/** Local BrowserService started by the Node planner (Finding 1). */
+export interface OwnedBrowserService {
+  addr: string;
+  shutdown(): void;
+}
+
+function withExe(path: string): string {
+  return process.platform === "win32" && !path.endsWith(".exe") ? `${path}.exe` : path;
+}
+
+/** `VECTOR_SHELL` / `VECTOR_BROWSER_SHELL`, then cargo/release locations. */
+export function resolveVeShell(env: NodeJS.ProcessEnv = process.env, cwd = process.cwd()): string | undefined {
+  const named = (env.VECTOR_SHELL ?? env.VECTOR_BROWSER_SHELL)?.trim();
+  if (named && existsSync(named)) return named;
+  const here = dirname(fileURLToPath(import.meta.url));
+  const root = join(here, "..", "..", "..");
+  const candidates = [
+    named,
+    join(root, "engine/target/debug/ve-shell"),
+    join(root, "engine/target/release/ve-shell"),
+    join(root, "release/ve-shell"),
+    join(cwd, "engine/target/debug/ve-shell"),
+    join(cwd, "engine/target/release/ve-shell"),
+    join(cwd, "release/ve-shell"),
+  ]
+    .filter((p): p is string => Boolean(p && p.length > 0))
+    .map(withExe);
+  return candidates.find((p) => existsSync(p));
+}
+
+/**
+ * Spawn `ve-shell --service 127.0.0.1:0` and read `VECTOR_BROWSER_SERVICE`
+ * from the first JSON stdout line. Cargo noise is ignored.
+ */
+export function spawnVeShellService(
+  bin = resolveVeShell(),
+  bind = "127.0.0.1:0",
+): Promise<OwnedBrowserService | undefined> {
+  if (!bin) return Promise.resolve(undefined);
+  return new Promise((resolve) => {
+    let settled = false;
+    let child: ChildProcess;
+    try {
+      child = spawn(bin, ["--service", bind], {
+        stdio: ["ignore", "pipe", "pipe"],
+        env: process.env,
+      });
+    } catch {
+      resolve(undefined);
+      return;
+    }
+    const finish = (owned?: OwnedBrowserService) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      child.stdout?.off("data", onData);
+      if (!owned) {
+        try {
+          child.kill();
+        } catch {
+          /* already gone */
+        }
+      }
+      resolve(owned);
+    };
+    const timer = setTimeout(() => finish(undefined), 8000);
+    let buf = "";
+    const onData = (chunk: Buffer | string) => {
+      buf += String(chunk);
+      for (;;) {
+        const nl = buf.indexOf("\n");
+        if (nl < 0) break;
+        const line = buf.slice(0, nl).replace(/\r$/, "");
+        buf = buf.slice(nl + 1);
+        if (!line.trim()) continue;
+        try {
+          const v = JSON.parse(line) as { VECTOR_BROWSER_SERVICE?: string };
+          if (v.VECTOR_BROWSER_SERVICE) {
+            finish({
+              addr: v.VECTOR_BROWSER_SERVICE,
+              shutdown: () => {
+                try {
+                  child.kill();
+                } catch {
+                  /* already gone */
+                }
+              },
+            });
+            return;
+          }
+        } catch {
+          /* cargo / rustc lines */
+        }
+      }
+    };
+    child.stdout?.on("data", onData);
+    child.once("error", () => finish(undefined));
+    child.once("exit", () => {
+      if (!settled) finish(undefined);
+    });
+  });
 }
 
 export class BrowserServiceClient {

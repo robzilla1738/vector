@@ -22,7 +22,13 @@ import {
   type VectorErrorCode,
 } from "@vector/contracts";
 import { RefRegistry } from "./ref-registry.js";
-import { BrowserServiceClient, ServiceNativeEngine, browserServiceAddr } from "./browser-service.js";
+import {
+  BrowserServiceClient,
+  ServiceNativeEngine,
+  browserServiceAddr,
+  spawnVeShellService,
+  type OwnedBrowserService,
+} from "./browser-service.js";
 import type {
   BrowserCookie,
   BrowserDriver,
@@ -70,11 +76,7 @@ export interface NativeModule {
   binaryPath?: string;
 }
 
-/** Local BrowserService started by the Node planner (Finding 1). */
-export interface OwnedBrowserService {
-  addr: string;
-  shutdown(): void;
-}
+export type { OwnedBrowserService } from "./browser-service.js";
 
 export interface EngineNativeConfig {
   viewport?: { width: number; height: number };
@@ -648,16 +650,23 @@ export class VectorEngineDriver implements BrowserDriver {
 
   private async startNativeService(): Promise<OwnedBrowserService | undefined> {
     this.availability = await probeEngineNative(this.load);
+    if (this.availability.available) {
+      this.mod = await this.load();
+      const handle = this.mod.BrowserServiceHandle?.listen(
+        "127.0.0.1:0",
+        JSON.stringify(this.config),
+      );
+      if (handle) return { addr: handle.addr(), shutdown: () => handle.shutdown() };
+    }
+    const spawned = await spawnVeShellService();
+    if (spawned) return spawned;
     if (!this.availability.available) {
       throw new VectorError(
         "backend_unavailable",
         `vector-engine native module unavailable: ${this.availability.error}`,
       );
     }
-    this.mod = await this.load();
-    const handle = this.mod.BrowserServiceHandle?.listen("127.0.0.1:0", JSON.stringify(this.config));
-    if (!handle) return undefined;
-    return { addr: handle.addr(), shutdown: () => handle.shutdown() };
+    return undefined;
   }
 
   async reconnect(): Promise<void> {

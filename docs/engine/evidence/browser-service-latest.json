@@ -20,7 +20,7 @@
     "downloaded_release_artifact_runs_production_sandbox": "PASS copy-to-temp host (0.29s). CI job downloaded-artifact downloads engine-native-* then re-runs production_sandbox.",
     "html_collection_types_match_html_idl": "PASS",
     "live_os_window_and_mcp_share_one_page": "PASS DISPLAY=:1 after libxkbcommon-x11 (was panic: Library libxkbcommon-x11.so could not be loaded). IME+observe+agent+takeover+resume+resize+wheel+AccessKit+scene on one NativeBrowser. chromium=false. CI xvfb job added.",
-    "node_planner_is_browser_service_client": "PASS VectorEngineDriver ownService starts/attaches to BrowserService; injected load keeps a local Engine for unit tests. VECTOR_BROWSER_SERVICE still wins when the GUI owns the page."
+    "node_planner_is_browser_service_client": "PASS VectorEngineDriver ownService starts/attaches to BrowserService. Order: VECTOR_BROWSER_SERVICE, NAPI BrowserServiceHandle.listen, then spawn ve-shell --service. Injected load keeps a local Engine for unit tests."
   },
   "exit": {
     "humanEditsField": true,

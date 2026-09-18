@@ -1,5 +1,58 @@
+import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
-import { browserServiceAddr } from "../../packages/browser-driver/src/browser-service.ts";
+import {
+  browserServiceAddr,
+  resolveVeShell,
+  spawnVeShellService,
+  BrowserServiceClient,
+} from "../../packages/browser-driver/src/browser-service.ts";
+import { VectorEngineDriver, parseEngineTargetId } from "../../packages/browser-driver/src/vector-engine.ts";
+
+function fakeShell(): string {
+  const dir = mkdtempSync(join(tmpdir(), "ve-shell-"));
+  const path = join(dir, "ve-shell.mjs");
+  writeFileSync(
+    path,
+    `#!/usr/bin/env node
+import { createServer } from "node:net";
+const server = createServer((socket) => {
+  let buf = "";
+  socket.setEncoding("utf8");
+  socket.on("data", (chunk) => {
+    buf += chunk;
+    for (;;) {
+      const nl = buf.indexOf("\\n");
+      if (nl < 0) break;
+      const line = buf.slice(0, nl);
+      buf = buf.slice(nl + 1);
+      if (!line.trim()) continue;
+      const req = JSON.parse(line);
+      let result = { ok: true };
+      if (req.method === "pages.open") {
+        result = { ok: true, page: 1, url: req.params?.url ?? "about:blank", title: "shell" };
+      } else if (req.method === "identity") {
+        result = { engine: "vector-engine", service: "browser-service", chromium: false };
+      }
+      socket.write(JSON.stringify({ jsonrpc: "2.0", id: req.id, result }) + "\\n");
+    }
+  });
+});
+server.listen(0, "127.0.0.1", () => {
+  const { port } = server.address();
+  console.log(JSON.stringify({
+    VECTOR_BROWSER_SERVICE: "127.0.0.1:" + port,
+    backend: "vector-engine",
+    chromium: false,
+    service: "browser-service",
+  }));
+});
+`,
+  );
+  chmodSync(path, 0o755);
+  return path;
+}
 
 describe("Finding 1 browser service client", () => {
   it("reads VECTOR_BROWSER_SERVICE and ignores empty", () => {
@@ -8,5 +61,48 @@ describe("Finding 1 browser service client", () => {
     expect(browserServiceAddr({ VECTOR_BROWSER_SERVICE: "127.0.0.1:9876" } as NodeJS.ProcessEnv)).toBe(
       "127.0.0.1:9876",
     );
+  });
+
+  it("resolveVeShell prefers VECTOR_SHELL when the file exists", () => {
+    const bin = fakeShell();
+    expect(resolveVeShell({ VECTOR_SHELL: bin } as NodeJS.ProcessEnv)).toBe(bin);
+  });
+
+  it("spawns --service and Node attaches as a client", async () => {
+    const bin = fakeShell();
+    const owned = await spawnVeShellService(bin);
+    expect(owned?.addr).toMatch(/^127\.0\.0\.1:\d+$/);
+    const client = new BrowserServiceClient(owned!.addr);
+    await client.connect();
+    const opened = await client.call("pages.open", { url: "about:blank" });
+    expect(opened).toMatchObject({ ok: true, page: 1, url: "about:blank" });
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => owned!,
+    });
+    await driver.connect();
+    expect(driver.describe().capabilities?.service).toBe(true);
+    const targetId = await driver.createTarget("https://share.test/");
+    expect(parseEngineTargetId(targetId)).toEqual({ contextId: 1, page: 1 });
+    await driver.disconnect();
+  });
+
+  it("live ve-shell --service: Node opens and observes one page", async () => {
+    const bin = resolveVeShell();
+    if (!bin) return;
+    const owned = await spawnVeShellService(bin);
+    expect(owned?.addr).toMatch(/^127\.0\.0\.1:\d+$/);
+    const client = new BrowserServiceClient(owned!.addr);
+    await client.connect();
+    const opened = await client.call("pages.open", {
+      url: "about:blank",
+      html: "<title>svc</title><p>ok</p>",
+    });
+    expect(opened).toMatchObject({ ok: true, chromium: false, backend: "vector-engine" });
+    const obs = await client.call("pages.observe", {});
+    expect(obs.ok).toBe(true);
+    expect(obs.chromium).toBe(false);
+    owned!.shutdown();
+    client.close();
   });
 });
