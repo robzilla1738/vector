@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use ve_core::{Edges, NodeId, Point, Rect, Size};
 use ve_layout::LayoutTree;
 use ve_style::{
-    BackgroundClip, BackgroundImage, BackgroundPosition, BackgroundRepeat, BackgroundSize,
-    ComputedStyle, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto, ObjectFit,
-    Rgba, StyleTree, TextDecorationLine, TransformOp,
+    BackgroundClip, BackgroundImage, BackgroundOrigin, BackgroundPosition, BackgroundRepeat,
+    BackgroundSize, ComputedStyle, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto,
+    ObjectFit, Rgba, StyleTree, TextDecorationLine, TransformOp,
 };
 
 use crate::image::ImageHandle;
@@ -457,18 +457,30 @@ impl DisplayList {
                             BackgroundRepeat::NoRepeat,
                         )
                     };
+                    let dest = if is_bg {
+                        background_origin_rect(item.rect, &style)
+                    } else {
+                        item.rect
+                    };
+                    let clip = if is_bg {
+                        Some(background_clip_rect(item.rect, &style))
+                    } else {
+                        None
+                    };
+                    if let Some(c) = clip {
+                        list.push(DisplayItem::PushClip(c));
+                    }
                     list.push(DisplayItem::Image {
-                        rect: if is_bg {
-                            background_clip_rect(item.rect, &style)
-                        } else {
-                            item.rect
-                        },
+                        rect: dest,
                         handle: *handle,
                         src: None,
                         size,
                         position,
                         repeat,
                     });
+                    if clip.is_some() {
+                        list.push(DisplayItem::PopClip);
+                    }
                 }
                 if let Filter::Blur(radius) = style.filter {
                     if radius > 0.0 {
@@ -526,9 +538,22 @@ impl DisplayList {
     }
 }
 
+fn background_origin_rect(rect: Rect, style: &ComputedStyle) -> Rect {
+    let kind = match style.background_origin {
+        BackgroundOrigin::BorderBox => BackgroundClip::BorderBox,
+        BackgroundOrigin::PaddingBox => BackgroundClip::PaddingBox,
+        BackgroundOrigin::ContentBox => BackgroundClip::ContentBox,
+    };
+    inset_box(rect, style, kind)
+}
+
 fn background_clip_rect(rect: Rect, style: &ComputedStyle) -> Rect {
+    inset_box(rect, style, style.background_clip)
+}
+
+fn inset_box(rect: Rect, style: &ComputedStyle, kind: BackgroundClip) -> Rect {
     let w = rect.width();
-    let (bt, br, bb, bl) = match style.background_clip {
+    let (bt, br, bb, bl) = match kind {
         BackgroundClip::BorderBox => return rect,
         BackgroundClip::PaddingBox => (
             style.border_top(),
@@ -888,6 +913,33 @@ mod tests {
                     if (*sx - 2.0).abs() < 0.1 && (*sy - 2.0).abs() < 0.1
             )),
             "individual scale missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_uses_background_origin_content_box() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;padding:4px;border:2px solid black;background-image:url(\"https://a.test/x.png\");background-origin:content-box;background-repeat:no-repeat}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(
+            styles.style(id).background_origin,
+            BackgroundOrigin::ContentBox
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image { rect, .. } if (rect.width() - 40.0).abs() < 0.5
+            )),
+            "origin content-box image missing: {:?}",
             list.items()
         );
     }

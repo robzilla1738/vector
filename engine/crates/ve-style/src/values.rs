@@ -846,6 +846,18 @@ keyword_enum! {
 }
 
 keyword_enum! {
+    /// The `background-origin` property.
+    BackgroundOrigin {
+        /// Position relative to the border box.
+        BorderBox = "border-box",
+        /// Position relative to the padding box (initial).
+        PaddingBox = "padding-box",
+        /// Position relative to the content box.
+        ContentBox = "content-box",
+    }
+}
+
+keyword_enum! {
     /// The `background-repeat` property.
     BackgroundRepeat {
         /// Tile on both axes.

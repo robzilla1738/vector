@@ -18,8 +18,8 @@ use cssparser::{Parser, Token};
 use ve_core::Size;
 
 use crate::values::{
-    AlignItems, BackgroundClip, BackgroundImage, BackgroundPosition, BackgroundRepeat,
-    BackgroundSize,
+    AlignItems, BackgroundClip, BackgroundImage, BackgroundOrigin, BackgroundPosition,
+    BackgroundRepeat, BackgroundSize,
     BorderCollapse, BorderStyle, BoxShadow, BoxSizing, CaptionSide,
     Clear, ClipPath, Color, Content, ContentItem, Direction, Display, Filter, FlexDirection,
     FlexWrap,
@@ -1221,6 +1221,8 @@ property_table! {
     BackgroundRepeat: "background-repeat" => background_repeat: BackgroundRepeat = BackgroundRepeat::Repeat, inherited = false, syntax = Single, convert = conv::kw::<BackgroundRepeat>;
     /// `background-clip`
     BackgroundClip: "background-clip" => background_clip: BackgroundClip = BackgroundClip::BorderBox, inherited = false, syntax = Single, convert = conv::kw::<BackgroundClip>;
+    /// `background-origin`
+    BackgroundOrigin: "background-origin" => background_origin: BackgroundOrigin = BackgroundOrigin::PaddingBox, inherited = false, syntax = Single, convert = conv::kw::<BackgroundOrigin>;
     /// `cursor` (keyword stored as the canonical name)
     Cursor: "cursor" => cursor: String = String::from("auto"), inherited = true, syntax = Single, convert = conv::cursor;
     /// `filter` (`none` or `blur()`)
@@ -1362,7 +1364,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "background-position-x",
     "background-position-y",
     "background-attachment",
-    "background-origin",
     "background-blend-mode",
     "border-image",
     "backdrop-filter",
@@ -3146,6 +3147,7 @@ mod tests {
         ok("background-position", "right 20px");
         ok("background-repeat", "no-repeat");
         ok("background-clip", "content-box");
+        ok("background-origin", "content-box");
         ok("cursor", "pointer");
         ok("cursor", "auto");
         ok("user-select", "none");
@@ -3208,7 +3210,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 123);
+        assert_eq!(PropertyId::ALL.len(), 124);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
