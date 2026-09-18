@@ -4964,7 +4964,24 @@
   };
   const windowTarget = new EventTarget();
   globalThis.addEventListener = function (type, fn, opts) {
-    return EventTarget.prototype.addEventListener.call(windowTarget, type, fn, opts);
+    const r = EventTarget.prototype.addEventListener.call(windowTarget, type, fn, opts);
+    // HTML Window `load` does not retro-fire. Official Speedometer Complex-DOM
+    // registers `$on(window, "load", setView)` after readyState is already
+    // `complete` (the id/upgrade scan used to run first and consume the
+    // deadline). Queue the listener so Controller._activeRoute still binds.
+    if (String(type) === "load" && D("readyState") === "complete") {
+      const call = typeof fn === "function" ? fn
+        : (fn && typeof fn.handleEvent === "function") ? function (ev) { fn.handleEvent(ev); }
+        : null;
+      if (call) {
+        try {
+          queueMicrotask(() => {
+            try { call.call(globalThis, new Event("load")); } catch (e) {}
+          });
+        } catch (e) {}
+      }
+    }
+    return r;
   };
   globalThis.removeEventListener = function (type, fn, opts) {
     return EventTarget.prototype.removeEventListener.call(windowTarget, type, fn, opts);

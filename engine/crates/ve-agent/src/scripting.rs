@@ -479,8 +479,6 @@ impl Page {
         let _ = self.call_script("__veRunFrameScripts", &[]);
         self.drain_js_jobs();
         let _ = self.call_script("__veUpgradeTree", &[]);
-        let _ = self.call_script("__veDocumentEvents", &[]);
-        let _ = self.call_script("__veExposeIds", &[]);
         for script in later {
             if self.in_browsing_tree(script.node) {
                 self.eval_document_script(&script);
@@ -489,6 +487,10 @@ impl Page {
             }
         }
         let _ = self.call_script("__veFlushPendingResources", &[JsValue::Bool(false)]);
+        self.drain_js_jobs();
+        // After deferred/module scripts, matching HTML's delayed load event.
+        let _ = self.call_script("__veDocumentEvents", &[]);
+        let _ = self.call_script("__veExposeIds", &[]);
         self.drain_js_jobs();
         self.pump_timers(TIMER_WINDOW_MS);
     }
