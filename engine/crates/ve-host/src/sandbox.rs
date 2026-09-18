@@ -811,7 +811,7 @@ fn deny_network() -> Result<(), String> {
             let err = FwpmFilterAdd0(
                 engine,
                 &raw const filter,
-                std::ptr::null(),
+                std::ptr::null_mut(),
                 std::ptr::null_mut(),
             );
             if err != 0 {
