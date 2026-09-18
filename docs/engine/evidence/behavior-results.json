@@ -15,7 +15,7 @@
       "pass": 28,
       "fail": 2,
       "total": 30,
-      "tls": "official html/dom/usvstring-reflection.https.html PASS over wpt-harness --https. official html/dom/idlharness.https.html still FAIL (10 residual subtests on pin 7c204383, all document.all [[IsHTMLDDA]], down from 20). Not recorded as PASS.",
+      "tls": "official html/dom/usvstring-reflection.https.html PASS over wpt-harness --https. official html/dom/idlharness.https.html PASS 1405ms on pin 7c204383 after V8 MarkAsUndetectable document.all (0 FAIL subtests). Not the entire web.",
       "rerunAfterLitCommentFix": "wpt-harness --http --wpt-dir /tmp/wpt-src/wpt --tree --tree-family html/dom/partial-updates: official tree 28 PASS / 2 FAIL of 30. Same two FAILs.",
       "unmodifiedUpstream": true
     },
@@ -31,7 +31,7 @@
       "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\"",
       "sanitize-template-element.html expects addedNodes SPAN while the inserted span has id ok",
       "aria-attribute-reflection-enumerated.tentative.html missing-value defaults contradict non-tentative aria-attribute-reflection.html (string mixin null). Keep the non-tentative file.",
-      "official BrowserBench / full html/dom tree outside partial-updates; idlharness.https.html FAIL is remaining HTML WebIDL including document.all [[IsHTMLDDA]], scored over TLS. Not the entire web."
+      "official BrowserBench / full html/dom tree outside partial-updates; official idlharness.https.html PASS over TLS is that file only. Not the entire web."
     ],
     "remainingOfficialFails": [
       "sanitize-template-element.html",

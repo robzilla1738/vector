@@ -1,14 +1,14 @@
 {
   "review": "Vector_Current_Review_60b2d41",
   "https": true,
-  "httpsOrigin": "https://127.0.0.1:38783",
-  "httpOrigin": "http://127.0.0.1:45985",
+  "httpsOrigin": "https://127.0.0.1:35821",
+  "httpOrigin": "http://127.0.0.1:38909",
   "unmodifiedUpstream": true,
   "pin": "7c20438303d2b39c8a2b924ed57dfa6448fd2ed2",
   "totals": {
     "total": 2,
-    "pass": 1,
-    "fail": 1,
+    "pass": 2,
+    "fail": 0,
     "timeout": 0,
     "crash": 0,
     "notrun": 0,
@@ -18,13 +18,13 @@
     {
       "path": "html/dom/usvstring-reflection.https.html",
       "status": "PASS",
-      "duration_ms": 521
+      "duration_ms": 502
     },
     {
       "path": "html/dom/idlharness.https.html",
-      "status": "FAIL",
-      "duration_ms": 1350,
-      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. Official file still FAIL: 10 residual subtests, all document.all [[IsHTMLDDA]] (typeof function, not undefined). rusty_v8 has no HTMLDDA host slot. Not recorded as PASS."
+      "status": "PASS",
+      "duration_ms": 1405,
+      "detail": "idl_test ran over TLS after serving /interfaces/*.idl on pin 7c204383. wpt-harness collected testharness subtests and recorded 0 FAIL. document.all uses V8 ObjectTemplate::MarkAsUndetectable (typeof undefined and callable). This is not a claim that the entire web or the full html/dom tree passes."
     }
   ]
 }
