@@ -1618,6 +1618,7 @@ mod tests {
             "todomvc/architecture-examples/preact/dist/index.html#/home",
             "todomvc/architecture-examples/svelte/dist/index.html",
             "todomvc/architecture-examples/jquery/dist/index.html",
+            "todomvc/architecture-examples/jquery-complex/dist/index.html",
             "todomvc/architecture-examples/backbone/dist/index.html",
             "todomvc/vanilla-examples/javascript-web-components/dist/index.html",
             "todomvc/vanilla-examples/javascript-web-components-complex/dist/index.html",
