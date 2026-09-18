@@ -20,7 +20,9 @@
 //! so the shared border is not doubled. Column elements contribute no widths.
 
 use ve_core::{Point, Rect, Size};
-use ve_style::{BorderCollapse, BoxSizing, CaptionSide, LengthPercentageAuto, VerticalAlign};
+use ve_style::{
+    BorderCollapse, BoxSizing, CaptionSide, LengthPercentageAuto, TableLayout, VerticalAlign,
+};
 
 use crate::block::{
     ContainingBlock, Forced, LayoutCtx, border_edges, box_edges, intrinsic_min_width,
@@ -183,12 +185,50 @@ fn overlap_sum(ov: &[f32], start: usize, end: usize) -> f32 {
     ov.get(start..end).map_or(0.0, |s| s.iter().copied().sum())
 }
 
+fn column_widths_fixed(bx: &LayoutBox, grid: &Grid) -> Columns {
+    let n = grid.n_cols;
+    let mut cols = Columns {
+        min: vec![0.0; n],
+        max: vec![0.0; n],
+        spec: vec![ColSpec::Auto; n],
+    };
+    let first_row = grid.rows.first().copied();
+    for gc in &grid.cells {
+        if first_row != Some((gc.group, gc.row)) || gc.col_span != 1 {
+            continue;
+        }
+        let cell = cell(bx, gc);
+        let (_, padding, border) = box_edges(cell, 0.0);
+        let bp_h = padding.horizontal() + border.horizontal();
+        match cell.style.width {
+            LengthPercentageAuto::Px(w) => {
+                let border_box = if cell.style.box_sizing == BoxSizing::BorderBox {
+                    w
+                } else {
+                    w + bp_h
+                };
+                cols.spec[gc.col] = ColSpec::Px(border_box);
+                cols.min[gc.col] = border_box;
+                cols.max[gc.col] = border_box;
+            }
+            LengthPercentageAuto::Percent(p) => {
+                cols.spec[gc.col] = ColSpec::Percent(p);
+            }
+            _ => {}
+        }
+    }
+    cols
+}
+
 fn column_widths(
     bx: &mut LayoutBox,
     grid: &Grid,
     spacing: f32,
     ctx: &mut LayoutCtx<'_>,
 ) -> Columns {
+    if bx.style.table_layout == TableLayout::Fixed {
+        return column_widths_fixed(bx, grid);
+    }
     let n = grid.n_cols;
     let mut cols = Columns {
         min: vec![0.0; n],

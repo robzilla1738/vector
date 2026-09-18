@@ -7,7 +7,8 @@ use ve_layout::LayoutTree;
 use ve_style::{
     BackgroundClip, BackgroundImage, BackgroundOrigin, BackgroundPosition, BackgroundRepeat,
     BackgroundSize, ComputedStyle, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto,
-    ContentVisibility, ObjectFit, Rgba, StyleTree, TextDecorationLine, TransformOp,
+    ContentVisibility, Display, EmptyCells, ObjectFit, Rgba, StyleTree, TextDecorationLine,
+    TransformOp,
 };
 
 use crate::image::ImageHandle;
@@ -318,6 +319,21 @@ impl DisplayList {
         Self::from_layout_with(layout, styles, &HashMap::new())
     }
 
+    fn table_cell_is_empty(layout: &LayoutTree, node: NodeId) -> bool {
+        let Some(bx) = layout.root.find(node) else {
+            return true;
+        };
+        !bx.children.iter().any(|c| {
+            if c.is_out_of_flow() {
+                return false;
+            }
+            match &c.kind {
+                ve_layout::BoxKind::Text(s) => !s.trim().is_empty(),
+                _ => true,
+            }
+        })
+    }
+
     /// [`from_layout`] with decoded `<img>` pixels keyed by node.
     #[must_use]
     pub fn from_layout_with(
@@ -465,6 +481,9 @@ impl DisplayList {
             } else if !item.rect.is_empty()
                 && style.visibility == ve_style::Visibility::Visible
                 && style.content_visibility != ContentVisibility::Hidden
+                && !(style.empty_cells == EmptyCells::Hide
+                    && style.display == Display::TableCell
+                    && Self::table_cell_is_empty(layout, node))
             {
                 if !style.box_shadow.is_none() {
                     list.push(DisplayItem::BoxShadow {
@@ -1023,6 +1042,24 @@ mod tests {
             "css clip missing: {:?}",
             list.items()
         );
+    }
+
+    #[test]
+    fn from_layout_hides_empty_cells() {
+        let html = "<style>body{margin:0} table{border-spacing:0;empty-cells:hide} td{width:20px;height:10px;background:red;padding:0}</style>\
+                    <table><tr><td id=e></td><td id=f>x</td></tr></table>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        let reds = list
+            .items()
+            .iter()
+            .filter(|i| matches!(i, DisplayItem::Rect { color, .. } if *color == Rgba::rgb(255, 0, 0)))
+            .count();
+        assert_eq!(reds, 1, "empty cell still painted: {:?}", list.items());
     }
 
     #[test]

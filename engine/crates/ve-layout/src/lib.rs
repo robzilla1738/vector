@@ -1112,6 +1112,29 @@ mod tests {
     }
 
     #[test]
+    fn table_layout_fixed_ignores_later_row_content() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} table{table-layout:fixed;width:200px;border-spacing:0} td{padding:0;height:10px}</style>\
+             <table><tr><td id=a style='width:50px'>x</td><td id=b>y</td></tr>\
+             <tr><td id=c>mmmmmmmmmmmmmmmmmmmm</td><td id=d></td></tr></table>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let c = rect(&tree, &engine, &doc, "#c");
+        assert!(
+            (a.width() - 50.0).abs() < 1.0,
+            "first-row specified width, got {}",
+            a.width()
+        );
+        assert!(
+            (c.width() - a.width()).abs() < 1.0,
+            "fixed layout does not grow from later content, a={} c={}",
+            a.width(),
+            c.width()
+        );
+    }
+
+    #[test]
     fn tables_size_columns_and_span_cells() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} table{border-spacing:0;width:300px} td{padding:0;height:20px}</style>\

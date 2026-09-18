@@ -1086,6 +1086,26 @@ impl Contain {
 }
 
 keyword_enum! {
+    /// The `table-layout` property.
+    TableLayout {
+        /// Automatic (content-based) column sizing.
+        Auto = "auto",
+        /// Fixed: first-row specified widths, no content measurement.
+        Fixed = "fixed",
+    }
+}
+
+keyword_enum! {
+    /// The `empty-cells` property.
+    EmptyCells {
+        /// Paint empty cells.
+        Show = "show",
+        /// Hide background and borders of empty cells.
+        Hide = "hide",
+    }
+}
+
+keyword_enum! {
     /// The `container-type` property.
     ContainerType {
         /// Not a container.

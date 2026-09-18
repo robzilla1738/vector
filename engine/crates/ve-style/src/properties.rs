@@ -26,11 +26,11 @@ use crate::values::{
     Float, FontFamily,
     FontStyle, FontWeight, GridLine, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
-    Contain, ContainerType, ContentVisibility, ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba,
+    Contain, ContainerType, ContentVisibility, EmptyCells, ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba,
     SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
-    VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
+    TableLayout, VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
 };
 
 /// Custom property store: raw token text keyed by `--name`.
@@ -1316,6 +1316,10 @@ property_table! {
     ColumnCount: "column-count" => column_count: Option<u32> = None, inherited = false, syntax = Single, convert = conv::column_count;
     /// `column-width` (`auto` is `None`)
     ColumnWidth: "column-width" => column_width: Option<f32> = None, inherited = false, syntax = Single, convert = conv::column_width;
+    /// `table-layout`
+    TableLayout: "table-layout" => table_layout: TableLayout = TableLayout::Auto, inherited = false, syntax = Single, convert = conv::kw::<TableLayout>;
+    /// `empty-cells`
+    EmptyCells: "empty-cells" => empty_cells: EmptyCells = EmptyCells::Show, inherited = true, syntax = Single, convert = conv::kw::<EmptyCells>;
     /// `content-visibility`
     ContentVisibility: "content-visibility" => content_visibility: ContentVisibility = ContentVisibility::Visible, inherited = false, syntax = Single, convert = conv::kw::<ContentVisibility>;
 }
@@ -1395,12 +1399,9 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
     "anchor-name",
     "inset-area",
     "position-area",
-    "container-type",
     "text-orientation",
     "float-offset",
     "shape-outside",
-    "table-layout",
-    "empty-cells",
     "visibility-collapse",
     "grid-template-areas",
     "grid-area",
@@ -1480,8 +1481,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "backface-visibility",
     "container-name",
     "container",
-    "table-layout",
-    "empty-cells",
     "grid-template-areas",
     "grid-auto-flow",
     "resize",
@@ -3363,11 +3362,13 @@ mod tests {
         ok("container-type", "size");
         ok("column-count", "3");
         ok("column-width", "12em");
+        ok("table-layout", "fixed");
+        ok("empty-cells", "hide");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 132);
+        assert_eq!(PropertyId::ALL.len(), 134);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
