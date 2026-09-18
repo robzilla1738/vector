@@ -78,6 +78,33 @@
     }
   }
   class HashChangeEvent extends Event {}
+  class PopStateEvent extends Event {
+    constructor(t, i) {
+      super(t, i);
+      this.state = i && "state" in i ? i.state : null;
+    }
+  }
+  class ToggleEvent extends Event {
+    constructor(t, i) {
+      super(t, i);
+      i = i || {};
+      this.oldState = i.oldState == null ? "" : String(i.oldState);
+      this.newState = i.newState == null ? "" : String(i.newState);
+    }
+  }
+  class TrackEvent extends Event {
+    constructor(t, i) {
+      super(t, i);
+      this.track = i && "track" in i ? i.track : null;
+    }
+  }
+  class FormDataEvent extends Event {
+    constructor(t, i) {
+      super(t, i);
+      if (!i || !("formData" in i)) throw new TypeError("Failed to construct 'FormDataEvent': required member formData is undefined.");
+      this.formData = i.formData;
+    }
+  }
   class StorageEvent extends Event {
     constructor(type, init) {
       super(type, init);
@@ -2722,6 +2749,10 @@
       return this.hasAttribute("value") ? this.getAttribute("value") : this.text;
     }
     set value(v) { this.setAttribute("value", String(v)); }
+    get selected() { return this.hasAttribute("selected"); }
+    set selected(v) { v ? this.setAttribute("selected", "") : this.removeAttribute("selected"); }
+    get defaultSelected() { return this.hasAttribute("selected"); }
+    set defaultSelected(v) { this.selected = v; }
   }
   class HTMLButtonElement extends HTMLElement {}
   reflectName(HTMLInputElement.prototype);
@@ -2855,6 +2886,10 @@
     get naturalWidth() { return D("box", this.__h, "naturalWidth"); }
     get naturalHeight() { return D("box", this.__h, "naturalHeight"); }
     get complete() { return true; }
+    get width() { return Number(this.getAttribute("width")) || this.naturalWidth || 0; }
+    set width(v) { this.setAttribute("width", String(v | 0)); }
+    get height() { return Number(this.getAttribute("height")) || this.naturalHeight || 0; }
+    set height(v) { this.setAttribute("height", String(v | 0)); }
   }
   function jsonClone(data) {
     try {
@@ -3243,7 +3278,7 @@
   const RENDER_TOKENS = new Set(["render"]);
   const UNKNOWN_HTML = {
     applet: 1, attachment: 1, layer: 1, nolayer: 1, bgsound: 1, blink: 1,
-    isindex: 1, listing: 1, xmp: 1, nextid: 1, noembed: 1, spacer: 1, keygen: 1,
+    isindex: 1, nextid: 1, noembed: 1, spacer: 1, keygen: 1,
   };
   const HTML = {
     input: HTMLInputElement, textarea: HTMLTextAreaElement, select: HTMLSelectElement,
@@ -3259,9 +3294,11 @@
     details: HTMLDetailsElement, fieldset: HTMLFieldSetElement, map: HTMLMapElement,
     meta: HTMLMetaElement, output: HTMLOutputElement, param: HTMLParamElement, slot: HTMLSlotElement,
   };
-  function defHTML(name) {
-    const C = class extends HTMLElement {};
+  function defHTML(name, Base) {
+    const Parent = Base || HTMLElement;
+    const C = class extends Parent {};
     Object.defineProperty(C, "name", { value: name });
+    Object.defineProperty(C.prototype, Symbol.toStringTag, { value: name, configurable: true });
     return C;
   }
   const HTMLQuoteElement = defHTML("HTMLQuoteElement");
@@ -3293,9 +3330,190 @@
   const HTMLDialogElement = defHTML("HTMLDialogElement");
   const HTMLMenuElement = defHTML("HTMLMenuElement");
   const HTMLDataElement = defHTML("HTMLDataElement");
-  const HTMLVideoElement = defHTML("HTMLVideoElement");
+  const HTMLPictureElement = defHTML("HTMLPictureElement");
+  class MediaError {
+    constructor() { throw new TypeError("Illegal constructor"); }
+  }
+  MediaError.MEDIA_ERR_ABORTED = 1;
+  MediaError.MEDIA_ERR_NETWORK = 2;
+  MediaError.MEDIA_ERR_DECODE = 3;
+  MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
+  Object.defineProperty(MediaError.prototype, Symbol.toStringTag, { value: "MediaError", configurable: true });
+  function makeMediaError(code) {
+    const e = Object.create(MediaError.prototype);
+    e.code = code;
+    e.message = "";
+    return e;
+  }
+  class TimeRanges {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    start() { throw new DOMException("The index is not in the allowed range.", "IndexSizeError"); }
+    end() { throw new DOMException("The index is not in the allowed range.", "IndexSizeError"); }
+  }
+  Object.defineProperty(TimeRanges.prototype, Symbol.toStringTag, { value: "TimeRanges", configurable: true });
+  function emptyTimeRanges() { return Object.create(TimeRanges.prototype); }
+  class TextTrackCueList {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return this._cues ? this._cues.length : 0; }
+    item(i) { return (this._cues && this._cues[i | 0]) || null; }
+    getCueById(id) {
+      const cues = this._cues || [];
+      return cues.find((c) => c.id === String(id)) || null;
+    }
+  }
+  Object.defineProperty(TextTrackCueList.prototype, Symbol.toStringTag, { value: "TextTrackCueList", configurable: true });
+  function emptyCueList() {
+    const l = Object.create(TextTrackCueList.prototype);
+    l._cues = [];
+    return l;
+  }
+  class TextTrack {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get kind() { return this._kind || "subtitles"; }
+    get label() { return this._label || ""; }
+    get language() { return this._language || ""; }
+    get mode() { return this._mode || "disabled"; }
+    set mode(v) { this._mode = String(v); }
+    get cues() { return this._cues || (this._cues = emptyCueList()); }
+    get activeCues() { return this._activeCues || (this._activeCues = emptyCueList()); }
+    addCue() {}
+    removeCue() {}
+  }
+  Object.defineProperty(TextTrack.prototype, Symbol.toStringTag, { value: "TextTrack", configurable: true });
+  function makeTextTrack(kind, label, language) {
+    const t = Object.create(TextTrack.prototype);
+    t._kind = kind == null ? "subtitles" : String(kind);
+    t._label = label == null ? "" : String(label);
+    t._language = language == null ? "" : String(language);
+    t._mode = "hidden";
+    t._cues = emptyCueList();
+    return t;
+  }
+  class TextTrackList extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return this._tracks ? this._tracks.length : 0; }
+    item(i) { return (this._tracks && this._tracks[i | 0]) || null; }
+    getTrackById(id) {
+      const tracks = this._tracks || [];
+      return tracks.find((t) => t.id === String(id)) || null;
+    }
+    _add(t) {
+      if (!this._tracks) this._tracks = [];
+      this._tracks.push(t);
+      return t;
+    }
+  }
+  Object.defineProperty(TextTrackList.prototype, Symbol.toStringTag, { value: "TextTrackList", configurable: true });
+  function emptyTextTrackList() {
+    const l = Object.create(TextTrackList.prototype);
+    l._tracks = [];
+    return l;
+  }
+  class HTMLMediaElement extends HTMLElement {
+    get src() { return reflectedUrl(this, "src") || this.getAttribute("src") || ""; }
+    set src(v) {
+      this.setAttribute("src", toUSV(v));
+      this._error = makeMediaError(MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED);
+    }
+    get error() {
+      if (this._error) return this._error;
+      if (this.hasAttribute("src") || this.getAttribute("src")) {
+        this._error = makeMediaError(MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED);
+      }
+      return this._error || null;
+    }
+    get buffered() { return this._buffered || (this._buffered = emptyTimeRanges()); }
+    get textTracks() { return this._textTracks || (this._textTracks = emptyTextTrackList()); }
+    addTextTrack(kind, label, language) {
+      if (kind == null) throw new TypeError("Failed to execute 'addTextTrack' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
+      return this.textTracks._add(makeTextTrack(kind, label, language));
+    }
+  }
+  Object.defineProperty(HTMLMediaElement.prototype, Symbol.toStringTag, { value: "HTMLMediaElement", configurable: true });
+  const HTMLVideoElement = defHTML("HTMLVideoElement", HTMLMediaElement);
+  const HTMLAudioElement = defHTML("HTMLAudioElement", HTMLMediaElement);
   const HTMLTrackElement = defHTML("HTMLTrackElement");
-  const HTMLAudioElement = defHTML("HTMLAudioElement");
+  Object.defineProperty(HTMLTrackElement.prototype, "track", {
+    get() { return this._track || (this._track = makeTextTrack("subtitles", "", "")); },
+    configurable: true,
+  });
+  class ValidityState {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get valueMissing() { return false; }
+    get typeMismatch() { return false; }
+    get patternMismatch() { return false; }
+    get tooLong() { return false; }
+    get tooShort() { return false; }
+    get rangeUnderflow() { return false; }
+    get rangeOverflow() { return false; }
+    get stepMismatch() { return false; }
+    get badInput() { return false; }
+    get customError() { return false; }
+    get valid() { return true; }
+  }
+  Object.defineProperty(ValidityState.prototype, Symbol.toStringTag, { value: "ValidityState", configurable: true });
+  function validityState() { return Object.create(ValidityState.prototype); }
+  class DOMStringList {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    item(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'item' on 'DOMStringList': 1 argument required, but only 0 present.");
+      }
+      if (!Object.prototype.hasOwnProperty.call(this, "_items")) throw new TypeError("Illegal invocation");
+      const items = this._items || [];
+      return i >= 0 && i < items.length ? items[i | 0] : null;
+    }
+    contains(s) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'contains' on 'DOMStringList': 1 argument required, but only 0 present.");
+      }
+      if (!Object.prototype.hasOwnProperty.call(this, "_items")) throw new TypeError("Illegal invocation");
+      return (this._items || []).indexOf(String(s)) >= 0;
+    }
+  }
+  Object.defineProperty(DOMStringList.prototype, "length", {
+    get() {
+      if (!Object.prototype.hasOwnProperty.call(this, "_items")) throw new TypeError("Illegal invocation");
+      return this._items.length;
+    },
+    enumerable: true,
+    configurable: true,
+  });
+  Object.defineProperty(DOMStringList.prototype, "item", {
+    value: DOMStringList.prototype.item,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+  Object.defineProperty(DOMStringList.prototype, "contains", {
+    value: DOMStringList.prototype.contains,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+  Object.defineProperty(DOMStringList.prototype, Symbol.toStringTag, { value: "DOMStringList", configurable: true });
+  function emptyStringList() {
+    const l = Object.create(DOMStringList.prototype);
+    l._items = [];
+    return l;
+  }
+  class External {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    AddSearchProvider() {}
+    IsSearchProviderInstalled() { return 0; }
+  }
+  Object.defineProperty(External.prototype, Symbol.toStringTag, { value: "External", configurable: true });
+  for (const proto of [
+    HTMLInputElement.prototype, HTMLTextAreaElement.prototype, HTMLSelectElement.prototype,
+    HTMLButtonElement.prototype, HTMLFormElement.prototype, HTMLFieldSetElement.prototype,
+    HTMLOutputElement.prototype,
+  ]) {
+    Object.defineProperty(proto, "validity", {
+      get() { return this._validity || (this._validity = validityState()); },
+      configurable: true,
+    });
+  }
   Object.assign(HTML, {
     q: HTMLQuoteElement, blockquote: HTMLQuoteElement, time: HTMLTimeElement, br: HTMLBRElement,
     ins: HTMLModElement, del: HTMLModElement, table: HTMLTableElement, caption: HTMLTableCaptionElement,
@@ -3304,13 +3522,29 @@
     td: HTMLTableCellElement, th: HTMLTableCellElement,
     h1: HTMLHeadingElement, h2: HTMLHeadingElement, h3: HTMLHeadingElement, h4: HTMLHeadingElement,
     h5: HTMLHeadingElement, h6: HTMLHeadingElement, hr: HTMLHRElement, pre: HTMLPreElement,
+    listing: HTMLPreElement, xmp: HTMLPreElement,
     ul: HTMLUListElement, ol: HTMLOListElement, li: HTMLLIElement, dl: HTMLDListElement,
     marquee: HTMLMarqueeElement, font: HTMLFontElement, dir: HTMLDirectoryElement,
     label: HTMLLabelElement, legend: HTMLLegendElement, optgroup: HTMLOptGroupElement,
     datalist: HTMLDataListElement, progress: HTMLProgressElement, meter: HTMLMeterElement,
     dialog: HTMLDialogElement, menu: HTMLMenuElement, data: HTMLDataElement,
+    picture: HTMLPictureElement,
     video: HTMLVideoElement, audio: HTMLAudioElement, track: HTMLTrackElement,
   });
+  for (const C of [
+    HTMLElement, HTMLUnknownElement, HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement,
+    HTMLOptionElement, HTMLButtonElement, HTMLFormElement, HTMLAnchorElement, HTMLImageElement,
+    HTMLIFrameElement, HTMLCanvasElement, HTMLLinkElement, HTMLStyleElement, HTMLAreaElement,
+    HTMLBaseElement, HTMLSourceElement, HTMLFrameElement, HTMLEmbedElement, HTMLObjectElement,
+    HTMLDivElement, HTMLParagraphElement, HTMLSpanElement, HTMLHeadElement, HTMLBodyElement,
+    HTMLHtmlElement, HTMLTitleElement, HTMLScriptElement, HTMLFrameSetElement, HTMLTemplateElement,
+    HTMLDetailsElement, HTMLFieldSetElement, HTMLMapElement, HTMLMetaElement, HTMLOutputElement,
+    HTMLParamElement, HTMLSlotElement, HTMLPictureElement, HTMLMediaElement,
+  ]) {
+    if (C && C.prototype && !Object.prototype.hasOwnProperty.call(C.prototype, Symbol.toStringTag)) {
+      Object.defineProperty(C.prototype, Symbol.toStringTag, { value: C.name, configurable: true });
+    }
+  }
   function parseHtmlInt(input) {
     let position = 0;
     let sign = 1;
@@ -3932,7 +4166,7 @@
     }
     get origin() { return D("locationGet", "origin"); }
     get ancestorOrigins() {
-      return this._ancestorOrigins || (this._ancestorOrigins = Object.assign(["length"], { length: 0, item() { return null; }, contains() { return false; } }));
+      return this._ancestorOrigins || (this._ancestorOrigins = emptyStringList());
     }
     assign(v) { this.href = v; }
     replace(v) { D("locationSet", "replace", String(v)); }
@@ -4630,12 +4864,35 @@
   browsingDocument = document;
   const location = new Location();
   const history = new History();
+  function Image(width, height) {
+    const el = document.createElement("img");
+    if (arguments.length > 0) el.width = width;
+    if (arguments.length > 1) el.height = height;
+    return el;
+  }
+  Image.prototype = HTMLImageElement.prototype;
+  function Audio(src) {
+    const el = document.createElement("audio");
+    if (src != null) el.src = String(src);
+    return el;
+  }
+  Audio.prototype = HTMLAudioElement.prototype;
+  function Option(text, value, defaultSelected, selected) {
+    const el = document.createElement("option");
+    if (text != null) el.text = String(text);
+    if (arguments.length > 1) el.value = String(value);
+    if (defaultSelected) el.setAttribute("selected", "");
+    if (selected) el.selected = true;
+    return el;
+  }
+  Option.prototype = HTMLOptionElement.prototype;
+  const windowExternal = Object.create(External.prototype);
   const windowProps = {
     window: null, self: null, document, location, history, atob, btoa,
     onhashchange: null, onpopstate: null,
     localStorage: storage("local"), sessionStorage: storage("session"),
     customElements: new CustomElementRegistry(),
-    Event, HashChangeEvent, StorageEvent, MouseEvent, WheelEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
+    Event, HashChangeEvent, PopStateEvent, ToggleEvent, TrackEvent, FormDataEvent, StorageEvent, MouseEvent, WheelEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
     Node, NodeList, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment, CharacterData,
     ProcessingInstruction, DocumentType, HTMLCollection, HTMLAllCollection,
     HTMLFormControlsCollection, HTMLOptionsCollection, RadioNodeList,
@@ -4654,7 +4911,9 @@
     HTMLMarqueeElement, HTMLFontElement, HTMLDirectoryElement, HTMLLabelElement,
     HTMLLegendElement, HTMLOptGroupElement, HTMLDataListElement, HTMLProgressElement,
     HTMLMeterElement, HTMLDialogElement, HTMLMenuElement, HTMLDataElement,
-    HTMLVideoElement, HTMLAudioElement, HTMLTrackElement,
+    HTMLVideoElement, HTMLAudioElement, HTMLTrackElement, HTMLPictureElement, HTMLMediaElement,
+    MediaError, TimeRanges, TextTrack, TextTrackList, TextTrackCueList, ValidityState, DOMStringList, External,
+    Image, Audio, Option, external: windowExternal,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, Range, Sanitizer,
@@ -5201,6 +5460,16 @@
   exposeCtor("DOMImplementation", DOMImplementation);
   exposeCtor("Location", Location);
   exposeCtor("History", History);
+  try {
+    Object.defineProperty(globalThis, "external", {
+      value: windowExternal,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  } catch (e) {
+    try { globalThis.external = windowExternal; } catch (e2) {}
+  }
 
   const eventHandlerNames = [
     "onabort","onauxclick","onbeforeinput","onbeforematch","onbeforetoggle","onblur",
@@ -5406,7 +5675,7 @@
   ownAccessor(globalThis, "statusbar", () => barInstance, undefined, false, true);
   ownAccessor(globalThis, "toolbar", () => barInstance, undefined, false, true);
   ownAccessor(globalThis, "navigation", () => windowProps.navigation, undefined, false, true);
-  ownAccessor(globalThis, "external", () => (globalThis.__veExternal || (globalThis.__veExternal = { AddSearchProvider() {}, IsSearchProviderInstalled() { return 0; } })), undefined, false, true);
+  ownAccessor(globalThis, "external", () => windowExternal, undefined, false, true);
   globalThis.close = windowOp(function close() { globalThis.__veClosed = true; }, 0);
   globalThis.stop = windowOp(function stop() {}, 0);
   globalThis.focus = windowOp(function focus() {}, 0);

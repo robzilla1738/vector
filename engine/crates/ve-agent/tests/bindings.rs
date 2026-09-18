@@ -887,7 +887,9 @@ fn template_content_cssstylesheet_and_import_node() {
 
 #[test]
 fn window_named_id_properties_are_replaceable() {
-    let mut page = open(r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#);
+    let mut page = open(
+        r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
+    );
     let v = page
         .evaluate(
             r#"(function () {
@@ -3937,7 +3939,10 @@ fn stream_append_replaces_start_without_end() {
             })()"#,
         )
         .unwrap();
-    assert_eq!(settled["text"], "Green (no span)", "async={v} settled={settled}");
+    assert_eq!(
+        settled["text"], "Green (no span)",
+        "async={v} settled={settled}"
+    );
 }
 
 #[test]
@@ -3999,7 +4004,7 @@ fn official_sanitize_boolean_compound_id_descendant() {
                <script>window.scriptSpaceVal = true;</script>
                <span id="ok-space-val">Allowed Space Val</span>
              </template>
-           </div>"#
+           </div>"#,
     );
     assert!(page.settle(200).settled);
     let v = page
@@ -4155,8 +4160,14 @@ fn official_src_streaming_observer_sees_chunk1_before_chunk2() {
         .unwrap();
     assert_eq!(early["c1"], true, "chunk1 missing after 50ms: {early}");
     assert_eq!(early["c2"], false, "chunk2 applied too early: {early}");
-    assert_eq!(early["sawC1"], true, "MutationObserver missed chunk1: {early}");
-    assert_eq!(early["sawC2AtC1"], false, "observer saw chunk2 with chunk1: {early}");
+    assert_eq!(
+        early["sawC1"], true,
+        "MutationObserver missed chunk1: {early}"
+    );
+    assert_eq!(
+        early["sawC2AtC1"], false,
+        "observer saw chunk2 with chunk1: {early}"
+    );
     assert_eq!(early["aborted"], false, "src stream aborted: {early}");
     page.pump_virtual_time(400);
     let late = page
@@ -4174,8 +4185,7 @@ fn official_src_streaming_observer_sees_chunk1_before_chunk2() {
     assert_eq!(late["c1"], "C1", "{late}");
     assert_eq!(late["c2"], "C2", "{late}");
     assert_eq!(
-        late["html"],
-        "<span id=\"c1\">C1</span><span id=\"c2\">C2</span>",
+        late["html"], "<span id=\"c1\">C1</span><span id=\"c2\">C2</span>",
         "{late}"
     );
 }
@@ -4337,7 +4347,8 @@ fn wheel_event_exposes_delta_and_client_coords() {
 
 #[test]
 fn content_onclick_attribute_still_runs() {
-    let mut page = open(r#"<button id="b" onclick="window.__hit = (window.__hit||0)+1">Go</button>"#);
+    let mut page =
+        open(r#"<button id="b" onclick="window.__hit = (window.__hit||0)+1">Go</button>"#);
     let v = page
         .evaluate(
             r##"(function () {
@@ -4534,4 +4545,120 @@ fn html_collection_types_match_html_idl() {
     assert_eq!(v["optionsIsOptions"], true, "{v}");
     assert_eq!(v["optionsLength"], 2, "{v}");
     assert_eq!(v["optionsSelected"], 0, "{v}");
+}
+
+#[test]
+fn official_html_element_brands_match_idlharness_objects() {
+    let mut page = open("<body></body>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const tags = {
+                HTMLHRElement: "hr",
+                HTMLPreElement: "pre",
+                HTMLQuoteElement: "blockquote",
+                HTMLOListElement: "ol",
+                HTMLUListElement: "ul",
+                HTMLLIElement: "li",
+                HTMLDListElement: "dl",
+                HTMLHeadingElement: "h1",
+                HTMLBRElement: "br",
+                HTMLModElement: "ins",
+                HTMLPictureElement: "picture",
+                HTMLVideoElement: "video",
+                HTMLAudioElement: "audio",
+                HTMLTrackElement: "track",
+                HTMLTableElement: "table",
+                HTMLTableCaptionElement: "caption",
+                HTMLLabelElement: "label",
+                HTMLUnknownElement: "bgsound",
+              };
+              const out = {};
+              for (const [iface, tag] of Object.entries(tags)) {
+                const el = document.createElement(tag);
+                out[iface] = {
+                  tag: Object.prototype.toString.call(el),
+                  inst: el instanceof window[iface],
+                  html: el instanceof HTMLElement,
+                };
+              }
+              const listing = document.createElement("listing");
+              const xmp = document.createElement("xmp");
+              const img = new Image(10, 20);
+              const audio = new Audio("data:,");
+              const opt = new Option("t", "v");
+              const video = document.createElement("video");
+              video.src = "data:,";
+              const track = document.createElement("track");
+              const added = video.addTextTrack("subtitles");
+              return {
+                brands: out,
+                listingPre: listing instanceof HTMLPreElement,
+                xmpPre: xmp instanceof HTMLPreElement,
+                listingTag: Object.prototype.toString.call(listing),
+                imgInst: img instanceof HTMLImageElement,
+                audioInst: audio instanceof HTMLAudioElement,
+                audioErr: audio.error instanceof MediaError,
+                optInst: opt instanceof HTMLOptionElement,
+                optText: opt.text,
+                videoMedia: video instanceof HTMLMediaElement,
+                videoBuf: video.buffered instanceof TimeRanges,
+                videoTracks: video.textTracks instanceof TextTrackList,
+                addedCue: added.cues instanceof TextTrackCueList,
+                trackObj: track.track instanceof TextTrack,
+                validity: document.createElement("input").validity instanceof ValidityState,
+                ancestors: location.ancestorOrigins instanceof DOMStringList,
+                external: window.external instanceof External,
+                pop: new PopStateEvent("popstate", { state: {} }).state,
+                toggle: new ToggleEvent("beforetoggle") instanceof ToggleEvent,
+                formData: new FormDataEvent("formdata", { formData: new FormData() }) instanceof FormDataEvent,
+                trackEv: new TrackEvent("addtrack", { track: track.track }).track instanceof TextTrack,
+              };
+            })()"##,
+        )
+        .unwrap();
+    for iface in [
+        "HTMLHRElement",
+        "HTMLPreElement",
+        "HTMLQuoteElement",
+        "HTMLOListElement",
+        "HTMLUListElement",
+        "HTMLLIElement",
+        "HTMLDListElement",
+        "HTMLHeadingElement",
+        "HTMLBRElement",
+        "HTMLModElement",
+        "HTMLPictureElement",
+        "HTMLVideoElement",
+        "HTMLAudioElement",
+        "HTMLTrackElement",
+        "HTMLTableElement",
+        "HTMLTableCaptionElement",
+        "HTMLLabelElement",
+        "HTMLUnknownElement",
+    ] {
+        let row = &v["brands"][iface];
+        assert_eq!(row["tag"], format!("[object {iface}]"), "{iface} {v}");
+        assert_eq!(row["inst"], true, "{iface} {v}");
+        assert_eq!(row["html"], true, "{iface} {v}");
+    }
+    assert_eq!(v["listingPre"], true, "{v}");
+    assert_eq!(v["xmpPre"], true, "{v}");
+    assert_eq!(v["listingTag"], "[object HTMLPreElement]", "{v}");
+    assert_eq!(v["imgInst"], true, "{v}");
+    assert_eq!(v["audioInst"], true, "{v}");
+    assert_eq!(v["audioErr"], true, "{v}");
+    assert_eq!(v["optInst"], true, "{v}");
+    assert_eq!(v["optText"], "t", "{v}");
+    assert_eq!(v["videoMedia"], true, "{v}");
+    assert_eq!(v["videoBuf"], true, "{v}");
+    assert_eq!(v["videoTracks"], true, "{v}");
+    assert_eq!(v["addedCue"], true, "{v}");
+    assert_eq!(v["trackObj"], true, "{v}");
+    assert_eq!(v["validity"], true, "{v}");
+    assert_eq!(v["ancestors"], true, "{v}");
+    assert_eq!(v["external"], true, "{v}");
+    assert_eq!(v["toggle"], true, "{v}");
+    assert_eq!(v["formData"], true, "{v}");
+    assert_eq!(v["trackEv"], true, "{v}");
 }

@@ -24,7 +24,7 @@
       "path": "html/dom/idlharness.https.html",
       "status": "FAIL",
       "duration_ms": 1776,
-      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. HTMLAllCollection, HTMLFormControlsCollection, HTMLOptionsCollection, and RadioNodeList are now engine WebIDL surfaces. Remaining HTMLAllCollection FAILs are [[IsHTMLDDA]] (typeof document.all is function, not undefined). The file still FAILs on other HTML interface gaps; this is not an official idlharness PASS."
+      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. HTML element brands, listing/xmp as HTMLPreElement, HTMLMediaElement, MediaError, TimeRanges, TextTrack*, ValidityState, DOMStringList, External, Image/Audio/Option, and form/media objects now match official add_objects. Remaining FAIL includes document.all [[IsHTMLDDA]] (typeof function, not undefined) plus remaining HTMLElement members (writingSuggestions, attachInternals, popover). Not an official idlharness PASS."
     }
   ]
 }
