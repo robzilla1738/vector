@@ -734,6 +734,68 @@ pub(crate) fn run_official(
         .collect()
 }
 
+/// Official Score loop: each iteration runs every default suite once, then
+/// `1000/geomean(suite totals)`. Displayed Score is the mean of those
+/// iteration scores. Lab add/finish steps are not `benchmark-runner.mjs`.
+pub(crate) fn run_official_score_loop(
+    engine: &mut VectorEngine,
+    iterations: u32,
+) -> (Vec<SuiteResult>, Vec<f64>) {
+    let revision = pin("speedometer", "revision");
+    let root = vendor_root();
+    let names = official_suites();
+    let mut samples: Vec<Vec<u64>> = names.iter().map(|_| Vec::new()).collect();
+    let mut details: Vec<Option<String>> = names.iter().map(|_| None).collect();
+    let mut statuses: Vec<&'static str> = names.iter().map(|_| "FAIL").collect();
+    let mut iteration_scores = Vec::new();
+    let n = iterations.max(1);
+    for iter in 0..n {
+        let mut totals = Vec::new();
+        for (i, (name, url)) in names.iter().enumerate() {
+            eprint!("browserbench: score-iter {}/{} {name} ... ", iter + 1, n);
+            let _ = std::io::Write::flush(&mut std::io::stderr());
+            let started = Instant::now();
+            let result = run_one(engine, 1, &revision, &root, name.clone(), url.clone());
+            eprintln!(
+                "{} {}ms {:?}",
+                result.status,
+                started.elapsed().as_millis(),
+                result.p50_ms
+            );
+            if let Some(ms) = result.p50_ms.filter(|ms| *ms > 0) {
+                totals.push(ms as f64);
+                if let Some(s) = result.samples_ms.and_then(|v| v.into_iter().next()) {
+                    samples[i].push(s);
+                } else {
+                    samples[i].push(ms);
+                }
+            }
+            details[i] = result.detail;
+            statuses[i] = result.status;
+        }
+        if let Some(score) = crate::score::official_speedometer_iteration_score(&totals) {
+            iteration_scores.push(score);
+        }
+    }
+    let suites = names
+        .into_iter()
+        .enumerate()
+        .map(|(i, (name, _))| {
+            let s = &samples[i];
+            SuiteResult {
+                name: format!("speedometer.3.0.{name}"),
+                status: statuses[i],
+                revision: revision.clone(),
+                p50_ms: (!s.is_empty()).then(|| percentile(s, 0.50)),
+                p95_ms: (!s.is_empty()).then(|| percentile(s, 0.95)),
+                samples_ms: (!s.is_empty()).then(|| s.clone()),
+                detail: details[i].clone(),
+            }
+        })
+        .collect();
+    (suites, iteration_scores)
+}
+
 fn run_one(
     engine: &mut VectorEngine,
     iterations: u32,
@@ -1268,7 +1330,13 @@ mod tests {
             let console: Vec<String> = page
                 .console()
                 .iter()
-                .map(|l| format!("{}:{}", l.level, l.message.chars().take(160).collect::<String>()))
+                .map(|l| {
+                    format!(
+                        "{}:{}",
+                        l.level,
+                        l.message.chars().take(160).collect::<String>()
+                    )
+                })
                 .take(8)
                 .collect();
             (probe, console)
@@ -1703,7 +1771,9 @@ mod tests {
             let page = engine.page_mut(page_id).unwrap();
             page.settle(3_000);
             page.reset_restyle_attribution();
-            let probe = page.evaluate(&with_lib(ADD_STEPS)).expect("complex 100 add");
+            let probe = page
+                .evaluate(&with_lib(ADD_STEPS))
+                .expect("complex 100 add");
             let restyle = page.restyle_attribution();
             (probe, restyle)
         };
@@ -1717,7 +1787,10 @@ mod tests {
             v["added"].as_u64().unwrap_or(0) >= 100,
             "official Complex-DOM 100-add: {v} restyle={restyle:?}"
         );
-        assert_eq!(restyle.full_calls, 0, "100-add full restyle: {v} restyle={restyle:?}");
+        assert_eq!(
+            restyle.full_calls, 0,
+            "100-add full restyle: {v} restyle={restyle:?}"
+        );
         assert!(
             v["showEntriesMs"].as_u64().unwrap_or(u64::MAX) < 4_000,
             "showEntries must not scan a full mutation journal: {v} restyle={restyle:?}"
@@ -1867,13 +1940,11 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
         eprintln!("chartjs {v} err={console:?}");
         assert!(
-            console
-                .iter()
-                .all(|m| {
-                    !m.contains("Cannot use import")
-                        && !m.contains("resetTransform")
-                        && !m.contains("setLineDash")
-                }),
+            console.iter().all(|m| {
+                !m.contains("Cannot use import")
+                    && !m.contains("resetTransform")
+                    && !m.contains("setLineDash")
+            }),
             "chart module still missing canvas/ESM: {v} err={console:?}"
         );
         assert_eq!(v["ok"], true, "{v} err={console:?}");
@@ -2175,10 +2246,7 @@ mod tests {
     #[test]
     fn remaining_official_editor_chart_workloads_boot() {
         let mut engine = bench_engine();
-        let suites = [
-            "editors/dist/tiptap.html",
-            "editors/dist/codemirror.html",
-        ];
+        let suites = ["editors/dist/tiptap.html", "editors/dist/codemirror.html"];
         let mut fails = Vec::new();
         let add = with_lib(&add_steps(1));
         for rel in suites {
@@ -2258,8 +2326,11 @@ mod tests {
     fn defer_head_scripts_are_moved_past_the_mount_point() {
         let dir = std::env::temp_dir();
         let js_path = dir.join("ve-defer-app.js");
-        std::fs::write(&js_path, "window.__booted = !!document.getElementById('root');")
-            .unwrap();
+        std::fs::write(
+            &js_path,
+            "window.__booted = !!document.getElementById('root');",
+        )
+        .unwrap();
         let html = "<head><script defer src=\"ve-defer-app.js\"></script></head><body><div id=\"root\"></div></body>";
         let out = inline_scripts(html, &dir, &mut Vec::new());
         let _ = std::fs::remove_file(&js_path);

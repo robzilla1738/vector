@@ -157,6 +157,12 @@ pub fn official_speedometer_iteration_score(suite_totals_ms: &[f64]) -> Option<f
     speedometer_geomean_to_score(geomean(suite_totals_ms)?)
 }
 
+/// Lab Speedometer steps are add/finish helpers, not `benchmark-runner.mjs`.
+pub const LAB_SPEEDOMETER_STEPS: &str = "lab-add-finish";
+
+/// Official `benchmark-runner.mjs` step source.
+pub const OFFICIAL_SPEEDOMETER_STEPS: &str = "benchmark-runner.mjs";
+
 /// True only when the official runner produced 10 iteration scores from all
 /// 32 default suites in one iteration (not independent suite p50s).
 #[must_use]
@@ -172,9 +178,38 @@ pub fn published_speedometer_ready_official(
     executed_default_suites: usize,
     official_iteration_scores: bool,
 ) -> bool {
+    published_speedometer_ready_with_steps(
+        iterations,
+        executed_default_suites,
+        official_iteration_scores,
+        LAB_SPEEDOMETER_STEPS,
+    )
+}
+
+/// Lab add/finish steps cannot set a published Score.
+#[must_use]
+pub fn published_speedometer_ready_with_steps(
+    iterations: u32,
+    executed_default_suites: usize,
+    official_iteration_scores: bool,
+    steps: &str,
+) -> bool {
     official_iteration_scores
         && iterations >= SPEEDOMETER_ITERATION_COUNT
         && executed_default_suites >= SPEEDOMETER_DEFAULT_SUITES
+        && steps == OFFICIAL_SPEEDOMETER_STEPS
+}
+
+/// Arithmetic mean of official iteration scores (displayed Speedometer Score).
+#[must_use]
+pub fn official_speedometer_displayed_score(iteration_scores: &[f64]) -> Option<f64> {
+    if iteration_scores.len() < SPEEDOMETER_ITERATION_COUNT as usize {
+        return None;
+    }
+    if iteration_scores.iter().any(|v| *v <= 0.0) {
+        return None;
+    }
+    Some(iteration_scores.iter().sum::<f64>() / iteration_scores.len() as f64)
 }
 
 /// Official MotionMark 1.3 default test count (`resources/runner/tests.js`).
@@ -248,7 +283,16 @@ mod tests {
         assert!(!published_speedometer_ready(1, 32));
         assert!(!published_speedometer_ready(10, 8));
         assert!(!published_speedometer_ready(10, 32));
-        assert!(published_speedometer_ready_official(10, 32, true));
+        assert!(!published_speedometer_ready_official(10, 32, true));
+        assert!(published_speedometer_ready_with_steps(
+            10,
+            32,
+            true,
+            OFFICIAL_SPEEDOMETER_STEPS
+        ));
+        let scores = vec![100.0; SPEEDOMETER_ITERATION_COUNT as usize];
+        assert!((official_speedometer_displayed_score(&scores).unwrap() - 100.0).abs() < 1e-9);
+        assert!(official_speedometer_displayed_score(&[100.0; 9]).is_none());
     }
 
     #[test]

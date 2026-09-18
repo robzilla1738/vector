@@ -54,8 +54,8 @@ struct Args {
     /// Apply official BrowserBench formulas (JetStream 120-iter first/average/worst,
     /// Speedometer `1000/geomean` of 32 suite totals over 10 iterations,
     /// MotionMark ramp-complexity bootstrap). Does not claim a published
-    /// score from a lab subset. JetStream defaults to 120 iterations unless
-    /// `--iterations` is set.
+    /// score from a lab subset. JetStream uses per-test official counts.
+    /// Speedometer uses 10 iterations unless `--iterations` is set.
     #[arg(long)]
     official_score: bool,
 }
@@ -575,16 +575,15 @@ fn jetstream_official_attribution(
         .iter()
         .filter_map(|s| {
             let samples = s.samples_ms.as_deref()?;
-            Some(
-                score::official_default_score(samples, jetstream::official_plan(&s.name).1)?.score,
-            )
+            Some(score::official_default_score(samples, jetstream::official_plan(&s.name).1)?.score)
         })
         .collect();
     let per_test: serde_json::Map<String, serde_json::Value> = jet
         .iter()
         .filter_map(|s| {
             let samples = s.samples_ms.as_deref()?;
-            let scored = score::official_default_score(samples, jetstream::official_plan(&s.name).1)?;
+            let scored =
+                score::official_default_score(samples, jetstream::official_plan(&s.name).1)?;
             Some((
                 s.name.clone(),
                 json!({
@@ -636,26 +635,27 @@ fn speedometer_official_attribution(
     suites: &[SuiteResult],
     official_score: bool,
     iterations: u32,
+    iteration_scores: &[f64],
 ) -> serde_json::Value {
     let sp: Vec<&SuiteResult> = suites
         .iter()
         .filter(|s| s.name.starts_with("speedometer.3.0.") && s.status != "NOTRUN")
         .collect();
     let passed = sp.iter().filter(|s| s.status == "PASS").count();
-    let totals: Vec<f64> = sp
-        .iter()
-        .filter(|s| s.status == "PASS")
-        .filter_map(|s| s.p50_ms.map(|ms| ms as f64))
-        .filter(|ms| *ms > 0.0)
-        .collect();
-    let iteration_score = if official_score {
-        score::official_speedometer_iteration_score(&totals)
+    let has_official_loop = !iteration_scores.is_empty();
+    let displayed = if official_score {
+        score::official_speedometer_displayed_score(iteration_scores)
     } else {
         None
     };
     let published = official_score
-        && score::published_speedometer_ready_official(iterations, passed, false)
-        && iteration_score.is_some()
+        && score::published_speedometer_ready_with_steps(
+            iteration_scores.len() as u32,
+            passed,
+            has_official_loop,
+            score::LAB_SPEEDOMETER_STEPS,
+        )
+        && displayed.is_some()
         && sp.iter().all(|s| s.status == "PASS");
     json!({
         "formula": "Speedometer 3.0 benchmark-runner.mjs geomeanToScore=1000/geomean(suite totals ms); displayed Score is the arithmetic mean of 10 iteration scores",
@@ -663,11 +663,13 @@ fn speedometer_official_attribution(
         "defaultSuites": score::SPEEDOMETER_DEFAULT_SUITES,
         "applied": official_score,
         "iterationsUsed": iterations,
+        "steps": score::LAB_SPEEDOMETER_STEPS,
         "executedSuites": sp.len(),
         "passedSuites": passed,
-        "iterationScore": iteration_score,
+        "iterationScores": iteration_scores,
+        "displayedScore": displayed,
         "officialSpeedometerScore": published,
-        "note": "Independent suite p50s are not a published Score. officialSpeedometerScore stays false until 10 iteration scores exist, each 1000/geomean of all 32 suite totals."
+        "note": "Lab add/finish steps are not benchmark-runner.mjs. officialSpeedometerScore stays false until 10 iteration scores exist from official steps."
     })
 }
 
@@ -724,8 +726,14 @@ fn main() -> Result<()> {
         policy: ve_api::NetworkPolicy::permissive(),
         ..EngineConfig::default()
     });
+    let speedometer_iterations = if args.official_score && !iterations_explicit() {
+        score::SPEEDOMETER_ITERATION_COUNT
+    } else {
+        args.iterations
+    };
     let only = args.only.as_str();
     let mut suites = Vec::new();
+    let mut speedometer_iteration_scores = Vec::new();
     if only == "all" || only == "jetstream" {
         let jetstream_dir = args
             .jetstream_dir
@@ -739,12 +747,22 @@ fn main() -> Result<()> {
         ));
     }
     if only == "all" || only == "speedometer" {
-        suites.extend(speedometer::run_official(
+        if args.official_score && !args.gate {
+            let (sp, scores) =
+                speedometer::run_official_score_loop(&mut engine, speedometer_iterations);
+            suites.extend(sp);
+            speedometer_iteration_scores = scores;
+        } else {
+            suites.extend(speedometer::run_official(
+                &mut engine,
+                speedometer_iterations,
+                args.gate,
+            ));
+        }
+        suites.push(speedometer_class(
             &mut engine,
-            iterations,
-            args.gate,
+            speedometer_iterations.min(3),
         ));
-        suites.push(speedometer_class(&mut engine, iterations));
     }
     if only == "all" || only == "motionmark" {
         let motionmark_dir = args
@@ -775,7 +793,12 @@ fn main() -> Result<()> {
             "kind": "adapted-workload-phases",
             "officialFullSuite": false,
             "officialJetStream": jetstream_official_attribution(&suites, args.official_score, iterations),
-            "officialSpeedometer": speedometer_official_attribution(&suites, args.official_score, iterations),
+            "officialSpeedometer": speedometer_official_attribution(
+                &suites,
+                args.official_score,
+                speedometer_iterations,
+                &speedometer_iteration_scores,
+            ),
             "officialMotionMark": motionmark_official_attribution(args.official_score),
             "gate": args.gate,
             "source": "official JetStream Next SunSpider group (12) plus speedometer.3.0.* and official MotionMark 1.3 names",
