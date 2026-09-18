@@ -281,3 +281,31 @@ fn linux_seccomp_has_arch_guard_and_allows_thread_clone() {
         "clone/clone3 must not be on the deny list; fork/exec remain denied"
     );
 }
+
+#[test]
+fn sandbox_denies_filesystem_write() {
+    let status = sandbox_selftest("fs");
+    assert!(
+        sandbox_denied(&status),
+        "Finding 2: Landlock must deny /tmp writes (17) or skip the sandbox (2): {status:?}"
+    );
+    assert_ne!(status.code(), Some(17));
+    assert_ne!(status.code(), Some(2));
+}
+
+#[test]
+fn linux_filesystem_confinement_is_landlock() {
+    let src = include_str!("../src/sandbox.rs");
+    assert!(
+        src.contains("confine_filesystem"),
+        "Finding 2: Linux must confine the filesystem, not only deny sockets"
+    );
+    assert!(
+        src.contains("landlock_restrict_self") || src.contains("SYS_LANDLOCK_RESTRICT_SELF"),
+        "Finding 2: filesystem confinement must be Landlock, fail closed"
+    );
+    assert!(
+        src.contains("landlock unavailable"),
+        "Finding 2: missing Landlock must fail closed in production"
+    );
+}

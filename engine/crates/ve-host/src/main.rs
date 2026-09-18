@@ -132,6 +132,17 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
                 std::process::exit(0);
             }
         }
+        "fs" => {
+            // Finding 2: Landlock must deny a write outside the allowlist.
+            let path = std::env::temp_dir().join("ve-host-landlock-probe");
+            match std::fs::write(&path, b"leak") {
+                Ok(()) => {
+                    let _ = std::fs::remove_file(&path);
+                    std::process::exit(17);
+                }
+                Err(_) => std::process::exit(0),
+            }
+        }
         other => {
             eprintln!("ve-host unknown selftest {other}");
             std::process::exit(2);

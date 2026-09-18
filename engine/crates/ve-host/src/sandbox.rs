@@ -2,8 +2,9 @@
 //!
 //! Production: apply fails closed. Developer: `VECTOR_ENGINE_SANDBOX=0` skips.
 //! macOS uses `sandbox_init` (deny default, no network, no fork/exec). Linux
-//! uses seccomp-bpf (no sockets, no exec). A socket denylist is not the whole
-//! sandbox — filesystem, env, and inherited descriptors are tightened here too.
+//! uses Landlock (filesystem) then seccomp-bpf (no sockets, no exec). A socket
+//! denylist is not the whole sandbox — filesystem, env, and inherited
+//! descriptors are tightened here too.
 
 /// Applies the tightest sandbox this OS supports.
 pub fn apply() -> Result<(), String> {
@@ -123,7 +124,199 @@ unsafe extern "C" {
 
 #[cfg(target_os = "linux")]
 fn linux() -> Result<(), String> {
+    // Landlock before seccomp: restrict_self needs NO_NEW_PRIVS and still
+    // needs the landlock syscalls. Production fails closed if Landlock is
+    // unavailable (Finding 2).
+    confine_filesystem()?;
     deny_syscalls()
+}
+
+/// Linux filesystem confinement. Writes are denied except `/dev/null`.
+/// System libraries and the host binary stay readable/executable.
+#[cfg(target_os = "linux")]
+fn confine_filesystem() -> Result<(), String> {
+    const SYS_LANDLOCK_CREATE_RULESET: libc::c_long = 444;
+    const SYS_LANDLOCK_ADD_RULE: libc::c_long = 445;
+    const SYS_LANDLOCK_RESTRICT_SELF: libc::c_long = 446;
+    const LANDLOCK_CREATE_RULESET_VERSION: u32 = 1 << 0;
+    const LANDLOCK_RULE_PATH_BENEATH: u32 = 1;
+    const LANDLOCK_ACCESS_FS_EXECUTE: u64 = 1 << 0;
+    const LANDLOCK_ACCESS_FS_WRITE_FILE: u64 = 1 << 1;
+    const LANDLOCK_ACCESS_FS_READ_FILE: u64 = 1 << 2;
+    const LANDLOCK_ACCESS_FS_READ_DIR: u64 = 1 << 3;
+    const LANDLOCK_ACCESS_FS_REMOVE_DIR: u64 = 1 << 4;
+    const LANDLOCK_ACCESS_FS_REMOVE_FILE: u64 = 1 << 5;
+    const LANDLOCK_ACCESS_FS_MAKE_CHAR: u64 = 1 << 6;
+    const LANDLOCK_ACCESS_FS_MAKE_DIR: u64 = 1 << 7;
+    const LANDLOCK_ACCESS_FS_MAKE_REG: u64 = 1 << 8;
+    const LANDLOCK_ACCESS_FS_MAKE_SOCK: u64 = 1 << 9;
+    const LANDLOCK_ACCESS_FS_MAKE_FIFO: u64 = 1 << 10;
+    const LANDLOCK_ACCESS_FS_MAKE_BLOCK: u64 = 1 << 11;
+    const LANDLOCK_ACCESS_FS_MAKE_SYM: u64 = 1 << 12;
+    const LANDLOCK_ACCESS_FS_REFER: u64 = 1 << 13;
+    const LANDLOCK_ACCESS_FS_TRUNCATE: u64 = 1 << 14;
+    const LANDLOCK_ACCESS_FS_IOCTL_DEV: u64 = 1 << 15;
+    const PR_SET_NO_NEW_PRIVS: libc::c_int = 38;
+
+    #[repr(C)]
+    struct RulesetAttr {
+        handled_access_fs: u64,
+    }
+    #[repr(C)]
+    struct PathBeneath {
+        allowed_access: u64,
+        parent_fd: i32,
+    }
+
+    let abi = unsafe {
+        libc::syscall(
+            SYS_LANDLOCK_CREATE_RULESET,
+            std::ptr::null::<u8>(),
+            0usize,
+            libc::c_ulong::from(LANDLOCK_CREATE_RULESET_VERSION),
+        )
+    };
+    if abi < 0 {
+        return Err(format!(
+            "landlock unavailable: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+
+    let mut handled = LANDLOCK_ACCESS_FS_EXECUTE
+        | LANDLOCK_ACCESS_FS_WRITE_FILE
+        | LANDLOCK_ACCESS_FS_READ_FILE
+        | LANDLOCK_ACCESS_FS_READ_DIR
+        | LANDLOCK_ACCESS_FS_REMOVE_DIR
+        | LANDLOCK_ACCESS_FS_REMOVE_FILE
+        | LANDLOCK_ACCESS_FS_MAKE_CHAR
+        | LANDLOCK_ACCESS_FS_MAKE_DIR
+        | LANDLOCK_ACCESS_FS_MAKE_REG
+        | LANDLOCK_ACCESS_FS_MAKE_SOCK
+        | LANDLOCK_ACCESS_FS_MAKE_FIFO
+        | LANDLOCK_ACCESS_FS_MAKE_BLOCK
+        | LANDLOCK_ACCESS_FS_MAKE_SYM;
+    if abi >= 2 {
+        handled |= LANDLOCK_ACCESS_FS_REFER;
+    }
+    if abi >= 3 {
+        handled |= LANDLOCK_ACCESS_FS_TRUNCATE;
+    }
+    if abi >= 5 {
+        handled |= LANDLOCK_ACCESS_FS_IOCTL_DEV;
+    }
+
+    let dir_rx = handled
+        & (LANDLOCK_ACCESS_FS_EXECUTE | LANDLOCK_ACCESS_FS_READ_FILE | LANDLOCK_ACCESS_FS_READ_DIR);
+    let file_ro = handled
+        & (LANDLOCK_ACCESS_FS_EXECUTE
+            | LANDLOCK_ACCESS_FS_READ_FILE
+            | LANDLOCK_ACCESS_FS_IOCTL_DEV);
+    let file_rw = handled
+        & (LANDLOCK_ACCESS_FS_READ_FILE
+            | LANDLOCK_ACCESS_FS_WRITE_FILE
+            | LANDLOCK_ACCESS_FS_TRUNCATE
+            | LANDLOCK_ACCESS_FS_IOCTL_DEV);
+
+    let attr = RulesetAttr {
+        handled_access_fs: handled,
+    };
+    let ruleset = unsafe {
+        libc::syscall(
+            SYS_LANDLOCK_CREATE_RULESET,
+            std::ptr::from_ref(&attr),
+            std::mem::size_of::<RulesetAttr>(),
+            0u32,
+        )
+    };
+    if ruleset < 0 {
+        return Err(format!(
+            "landlock_create_ruleset failed: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    let ruleset_fd = ruleset as i32;
+
+    let add = |path: &std::path::Path, access: u64, directory: bool| -> Result<(), String> {
+        let Some(p) = path.to_str() else {
+            return Ok(());
+        };
+        let c = match std::ffi::CString::new(p) {
+            Ok(c) => c,
+            Err(_) => return Ok(()),
+        };
+        let mut flags = libc::O_PATH | libc::O_CLOEXEC;
+        if directory {
+            flags |= libc::O_DIRECTORY;
+        }
+        let fd = unsafe { libc::open(c.as_ptr(), flags) };
+        if fd < 0 {
+            return Ok(());
+        }
+        let beneath = PathBeneath {
+            allowed_access: access,
+            parent_fd: fd,
+        };
+        let rc = unsafe {
+            libc::syscall(
+                SYS_LANDLOCK_ADD_RULE,
+                libc::c_long::from(ruleset_fd),
+                libc::c_long::from(LANDLOCK_RULE_PATH_BENEATH),
+                std::ptr::from_ref(&beneath),
+                0u32,
+            )
+        };
+        unsafe { libc::close(fd) };
+        if rc < 0 {
+            return Err(format!(
+                "landlock_add_rule {p}: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+        Ok(())
+    };
+
+    for dir in [
+        "/usr", "/lib", "/lib64", "/lib32", "/opt", "/etc", "/proc", "/sys",
+    ] {
+        add(std::path::Path::new(dir), dir_rx, true)?;
+    }
+    add(std::path::Path::new("/dev/null"), file_rw, false)?;
+    for dev in ["/dev/urandom", "/dev/random", "/dev/zero"] {
+        add(std::path::Path::new(dev), file_ro, false)?;
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            add(parent, dir_rx, true)?;
+        }
+        add(&exe, file_ro, false)?;
+    }
+    if let Ok(p) = std::env::var("SSL_CERT_FILE") {
+        add(std::path::Path::new(&p), file_ro, false)?;
+    }
+    if let Ok(p) = std::env::var("SSL_CERT_DIR") {
+        add(std::path::Path::new(&p), dir_rx, true)?;
+    }
+
+    unsafe {
+        if libc::prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0 {
+            libc::close(ruleset_fd);
+            return Err("prctl NO_NEW_PRIVS failed".into());
+        }
+        let rc = libc::syscall(
+            SYS_LANDLOCK_RESTRICT_SELF,
+            libc::c_long::from(ruleset_fd),
+            0u32,
+        );
+        libc::close(ruleset_fd);
+        if rc < 0 {
+            return Err(format!(
+                "landlock_restrict_self failed: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(target_os = "linux")]
@@ -348,6 +541,18 @@ mod tests {
     #[test]
     fn apply_is_defined_on_production_hosts() {
         assert!(cfg!(any(target_os = "macos", target_os = "linux", windows)));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_applies_landlock_before_seccomp() {
+        let src = include_str!("sandbox.rs");
+        let landlock = src.find("confine_filesystem()?").expect("landlock apply");
+        let seccomp = src.find("deny_syscalls()").expect("seccomp apply");
+        assert!(
+            landlock < seccomp,
+            "Finding 2: Landlock must be applied before the seccomp filter"
+        );
     }
 
     #[cfg(windows)]
