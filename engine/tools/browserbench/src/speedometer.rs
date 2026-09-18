@@ -8,6 +8,83 @@ use ve_api::{OpenRequest, VectorEngine};
 use crate::{SuiteResult, percentile, pin};
 
 const TESTS_MJS: &str = include_str!("../vendor/speedometer/tests.mjs");
+const TRANSLATIONS_MJS: &str = include_str!("../vendor/speedometer/translations.mjs");
+const OFFICIAL_PAGE_JS: &str = include_str!("speedometer_official.js");
+
+fn official_steps_bundle() -> String {
+    let translations = TRANSLATIONS_MJS.replace("export ", "");
+    let tests = TESTS_MJS
+        .lines()
+        .filter(|line| !line.starts_with("import "))
+        .collect::<Vec<_>>()
+        .join("\n")
+        .replace("export ", "");
+    format!("{OFFICIAL_PAGE_JS}\n{translations}\n{tests}")
+}
+
+const OFFICIAL_PREPARE: &str = r#"(function (name) {
+  window.__veSp = { name: name, prepared: false, err: null, tests: {}, total: 0, done: false };
+  var suite = Suites.find(function (s) { return s.name === name; });
+  if (!suite) {
+    window.__veSp.err = "unknown suite " + name;
+    window.__veSp.prepared = true;
+    return false;
+  }
+  window.__veSp.page = new Page();
+  Promise.resolve(suite.prepare(window.__veSp.page)).then(function () {
+    window.__veSp.prepared = true;
+  }, function (e) {
+    window.__veSp.err = String(e && e.message ? e.message : e);
+    window.__veSp.prepared = true;
+  });
+  return true;
+})"#;
+
+const OFFICIAL_RUN: &str = r#"(function () {
+  var s = window.__veSp;
+  var suite = Suites.find(function (x) { return x.name === s.name; });
+  var page = s.page;
+  var i = 0;
+  function next() {
+    if (s.err) { s.done = true; return; }
+    if (i >= suite.tests.length) { s.done = true; return; }
+    var test = suite.tests[i++];
+    requestAnimationFrame(function () {
+      var syncStart = performance.now();
+      try { test.run(page); }
+      catch (e) {
+        s.err = String(e && e.message ? e.message : e);
+        s.done = true;
+        return;
+      }
+      var sync = performance.now() - syncStart;
+      var asyncStart = performance.now();
+      requestAnimationFrame(function () {
+        setTimeout(function () {
+          var height = document.body.getBoundingClientRect().height;
+          var asyncTime = performance.now() - asyncStart;
+          window._unusedHeightValue = height;
+          s.tests[test.name] = { sync: sync, async: asyncTime, total: sync + asyncTime };
+          s.total += sync + asyncTime;
+          setTimeout(next, 0);
+        }, 0);
+      });
+    });
+  }
+  next();
+  return true;
+})()"#;
+
+const OFFICIAL_STATUS: &str = r#"(function () {
+  var s = window.__veSp || {};
+  return JSON.stringify({
+    prepared: !!s.prepared,
+    done: !!s.done,
+    err: s.err || null,
+    total: s.total || 0,
+    tests: s.tests || {}
+  });
+})()"#;
 
 const STEPS_LIB: &str = r##"
   function fire(el, type, init, Ctor) {
@@ -738,9 +815,10 @@ pub(crate) fn run_official(
         .collect()
 }
 
-/// Official Score loop: each iteration runs every default suite once, then
+/// Official Score loop: each iteration runs every default suite once via
+/// `benchmark-runner.mjs` Page + `tests.mjs` steps, then
 /// `1000/geomean(suite totals)`. Displayed Score is the mean of those
-/// iteration scores. Lab add/finish steps are not `benchmark-runner.mjs`.
+/// iteration scores.
 pub(crate) fn run_official_score_loop(
     engine: &mut VectorEngine,
     iterations: u32,
@@ -759,7 +837,7 @@ pub(crate) fn run_official_score_loop(
             eprint!("browserbench: score-iter {}/{} {name} ... ", iter + 1, n);
             let _ = std::io::Write::flush(&mut std::io::stderr());
             let started = Instant::now();
-            let result = run_one(engine, 1, &revision, &root, name.clone(), url.clone());
+            let result = run_one_official(engine, &revision, &root, name.clone(), url.clone());
             eprintln!(
                 "{} {}ms {:?}",
                 result.status,
@@ -798,6 +876,224 @@ pub(crate) fn run_official_score_loop(
         })
         .collect();
     (suites, iteration_scores)
+}
+
+fn parse_status(value: &serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::String(s) => serde_json::from_str(s).unwrap_or(value.clone()),
+        other => other.clone(),
+    }
+}
+
+fn wait_official_status(
+    engine: &mut VectorEngine,
+    page: ve_api::PageId,
+    want_done: bool,
+    deadline: Duration,
+) -> Result<serde_json::Value, String> {
+    let started = Instant::now();
+    loop {
+        if let Ok(p) = engine.page_mut(page) {
+            p.settle(16);
+        }
+        let status = engine
+            .page_mut(page)
+            .and_then(|p| p.evaluate(OFFICIAL_STATUS))
+            .map_err(|e| e.to_string())?;
+        let status = parse_status(&status);
+        if let Some(err) = status.get("err").and_then(|e| e.as_str()) {
+            return Err(err.to_owned());
+        }
+        let ready = if want_done {
+            status.get("done").and_then(|d| d.as_bool()) == Some(true)
+        } else {
+            status.get("prepared").and_then(|d| d.as_bool()) == Some(true)
+        };
+        if ready {
+            return Ok(status);
+        }
+        if started.elapsed() > deadline {
+            return Err(format!(
+                "official {} did not finish after {}ms",
+                if want_done { "steps" } else { "prepare" },
+                started.elapsed().as_millis()
+            ));
+        }
+    }
+}
+
+/// Official `tests.mjs` steps through the 3.0 Page API. Suite total is
+/// sync+async per `RAFTestInvoker` (`benchmark-runner.mjs`).
+fn run_one_official(
+    engine: &mut VectorEngine,
+    revision: &str,
+    root: &Path,
+    name: String,
+    url: String,
+) -> SuiteResult {
+    let mut path = root.join(workload_path(&url));
+    if path.is_dir() {
+        path.push("index.html");
+    }
+    if !path.exists() {
+        return SuiteResult {
+            name: format!("speedometer.3.0.{name}"),
+            status: "NOTRUN",
+            revision: revision.to_owned(),
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: Some(format!("workload not vendored: {url}")),
+        };
+    }
+    if !cfg!(feature = "v8") {
+        return SuiteResult {
+            name: format!("speedometer.3.0.{name}"),
+            status: "NOTRUN",
+            revision: revision.to_owned(),
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: Some("built without v8".into()),
+        };
+    }
+    let doc = match inline_document(&path) {
+        Ok(d) => d,
+        Err(e) => {
+            return SuiteResult {
+                name: format!("speedometer.3.0.{name}"),
+                status: "FAIL",
+                revision: revision.to_owned(),
+                samples_ms: None,
+                p50_ms: None,
+                p95_ms: None,
+                detail: Some(e.to_string()),
+            };
+        }
+    };
+    let opened = match engine.open(OpenRequest {
+        url: Some(format!("https://browserbench.org/Speedometer3.0/{url}")),
+        html: Some(doc.html),
+        allow_evaluate: true,
+        viewport: Some(ve_core::Size::new(800.0, 600.0)),
+        ..OpenRequest::default()
+    }) {
+        Ok(o) => o,
+        Err(e) => {
+            return SuiteResult {
+                name: format!("speedometer.3.0.{name}"),
+                status: "FAIL",
+                revision: revision.to_owned(),
+                samples_ms: None,
+                p50_ms: None,
+                p95_ms: None,
+                detail: Some(e.to_string()),
+            };
+        }
+    };
+    if let Ok(page) = engine.page_mut(opened.page) {
+        for js in &doc.late_js {
+            let _ = page.evaluate(js);
+        }
+        page.settle(3_000);
+        if name.starts_with("NewsSite") {
+            let _ = page.evaluate(
+                "(function(){ if (!location.hash) location.hash = '#/home'; return location.hash; })()",
+            );
+            for _ in 0..40 {
+                page.settle(200);
+                let ready = page
+                    .evaluate("(function(){ return !!document.querySelector('#navbar-dropdown-toggle'); })()")
+                    .ok();
+                let ready = match ready {
+                    Some(serde_json::Value::Bool(true)) => true,
+                    Some(serde_json::Value::String(s)) if s == "true" => true,
+                    _ => false,
+                };
+                if ready {
+                    break;
+                }
+            }
+        }
+    }
+    let suite_wall = std::env::var("VECTOR_BROWSERBENCH_SUITE_DEADLINE_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .map(Duration::from_secs)
+        .filter(|d| *d > Duration::ZERO)
+        .unwrap_or(Duration::from_secs(90));
+    let page = opened.page;
+    let failed = |engine: &mut VectorEngine, detail: String| {
+        engine.close(page);
+        SuiteResult {
+            name: format!("speedometer.3.0.{name}"),
+            status: "FAIL",
+            revision: revision.to_owned(),
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: Some(detail),
+        }
+    };
+    if let Err(e) = engine
+        .page_mut(page)
+        .and_then(|p| p.evaluate(&official_steps_bundle()))
+    {
+        return failed(engine, format!("official runner install: {e}"));
+    }
+    let prepare = format!(
+        "{OFFICIAL_PREPARE}({})",
+        serde_json::to_string(&name).unwrap_or_else(|_| "\"\"".into())
+    );
+    if let Err(e) = engine.page_mut(page).and_then(|p| p.evaluate(&prepare)) {
+        return failed(engine, format!("official prepare: {e}"));
+    }
+    if let Err(e) = wait_official_status(engine, page, false, Duration::from_secs(30)) {
+        return failed(engine, e);
+    }
+    if let Err(e) = engine.page_mut(page).and_then(|p| p.evaluate(OFFICIAL_RUN)) {
+        return failed(engine, format!("official run: {e}"));
+    }
+    let status = match wait_official_status(engine, page, true, suite_wall) {
+        Ok(v) => v,
+        Err(e) => return failed(engine, e),
+    };
+    engine.close(opened.page);
+    let total = status.get("total").and_then(|t| t.as_f64()).unwrap_or(0.0);
+    if total <= 0.0 {
+        return SuiteResult {
+            name: format!("speedometer.3.0.{name}"),
+            status: "FAIL",
+            revision: revision.to_owned(),
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: Some(format!("non-positive official suite total: {status}")),
+        };
+    }
+    let ms = total.max(1.0) as u64;
+    SuiteResult {
+        name: format!("speedometer.3.0.{name}"),
+        status: "PASS",
+        revision: revision.to_owned(),
+        samples_ms: Some(vec![ms]),
+        p50_ms: Some(ms),
+        p95_ms: Some(ms),
+        detail: Some(
+            serde_json::json!({
+                "steps": crate::score::OFFICIAL_SPEEDOMETER_STEPS,
+                "clock": if crate::score::performance_now_is_wall() {
+                    crate::score::OFFICIAL_ITERATION_CLOCK
+                } else {
+                    crate::score::LAB_ITERATION_CLOCK
+                },
+                "total": total,
+                "tests": status.get("tests").cloned().unwrap_or(serde_json::json!({})),
+                "viewport": "800x600"
+            })
+            .to_string(),
+        ),
+    }
 }
 
 fn run_one(
@@ -1080,6 +1376,30 @@ mod tests {
             let p = vendor_root().join(workload_path(&url));
             assert!(p.exists(), "{name} missing {}", p.display());
         }
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn official_es5_steps_produce_a_suite_total() {
+        let mut engine = bench_engine();
+        let revision = pin("speedometer", "revision");
+        let result = run_one_official(
+            &mut engine,
+            &revision,
+            &vendor_root(),
+            "TodoMVC-JavaScript-ES5".into(),
+            "todomvc/vanilla-examples/javascript-es5/dist/index.html".into(),
+        );
+        assert_eq!(result.status, "PASS", "{:?}", result.detail);
+        let detail = result.detail.as_deref().unwrap_or("");
+        let v: serde_json::Value = serde_json::from_str(detail).unwrap_or_default();
+        assert_eq!(
+            v["steps"],
+            crate::score::OFFICIAL_SPEEDOMETER_STEPS,
+            "{detail}"
+        );
+        assert!(v["total"].as_f64().unwrap_or(0.0) > 0.0, "{detail}");
+        assert!(v["tests"].get("Adding100Items").is_some(), "{detail}");
     }
 
     #[cfg(feature = "v8")]

@@ -648,12 +648,17 @@ fn speedometer_official_attribution(
     } else {
         None
     };
+    let steps = if official_score {
+        score::OFFICIAL_SPEEDOMETER_STEPS
+    } else {
+        score::LAB_SPEEDOMETER_STEPS
+    };
     let published = official_score
         && score::published_speedometer_ready_with_steps(
             iteration_scores.len() as u32,
             passed,
             has_official_loop,
-            score::LAB_SPEEDOMETER_STEPS,
+            steps,
         )
         && displayed.is_some()
         && sp.iter().all(|s| s.status == "PASS");
@@ -663,13 +668,13 @@ fn speedometer_official_attribution(
         "defaultSuites": score::SPEEDOMETER_DEFAULT_SUITES,
         "applied": official_score,
         "iterationsUsed": iterations,
-        "steps": score::LAB_SPEEDOMETER_STEPS,
+        "steps": steps,
         "executedSuites": sp.len(),
         "passedSuites": passed,
         "iterationScores": iteration_scores,
         "displayedScore": displayed,
         "officialSpeedometerScore": published,
-        "note": "Lab add/finish steps are not benchmark-runner.mjs. officialSpeedometerScore stays false until 10 iteration scores exist from official steps."
+        "note": "officialSpeedometerScore is true only for 10 iteration scores from benchmark-runner.mjs Page + tests.mjs steps on all 32 official names. Lab add/finish cannot publish."
     })
 }
 
@@ -813,6 +818,28 @@ fn main() -> Result<()> {
         suites.push(motionmark_class(&mut engine, motionmark_iterations));
         suites.push(motionmark::run_gpu(motionmark_iterations));
     }
+    let official_jetstream =
+        jetstream_official_attribution(&suites, args.official_score, iterations);
+    let official_speedometer = speedometer_official_attribution(
+        &suites,
+        args.official_score,
+        speedometer_iterations,
+        &speedometer_iteration_scores,
+    );
+    let official_motionmark =
+        motionmark_official_attribution(&suites, args.official_score, motionmark_iterations);
+    let official_full_suite = official_jetstream
+        .get("officialJetStreamGeometricMean")
+        .and_then(|v| v.as_bool())
+        == Some(true)
+        && official_speedometer
+            .get("officialSpeedometerScore")
+            .and_then(|v| v.as_bool())
+            == Some(true)
+        && official_motionmark
+            .get("officialMotionMarkGeometricMean")
+            .and_then(|v| v.as_bool())
+            == Some(true);
     let report = json!({
         "backend": "vector-engine",
         "chromium": false,
@@ -827,19 +854,10 @@ fn main() -> Result<()> {
         "suites": suites,
         "attribution": {
             "kind": "adapted-workload-phases",
-            "officialFullSuite": false,
-            "officialJetStream": jetstream_official_attribution(&suites, args.official_score, iterations),
-            "officialSpeedometer": speedometer_official_attribution(
-                &suites,
-                args.official_score,
-                speedometer_iterations,
-                &speedometer_iteration_scores,
-            ),
-            "officialMotionMark": motionmark_official_attribution(
-                &suites,
-                args.official_score,
-                motionmark_iterations,
-            ),
+            "officialFullSuite": official_full_suite,
+            "officialJetStream": official_jetstream,
+            "officialSpeedometer": official_speedometer,
+            "officialMotionMark": official_motionmark,
             "gate": args.gate,
             "source": "official JetStream Next SunSpider group (12) plus speedometer.3.0.* and official MotionMark 1.3 names",
             "jetstreamSunspider": {
