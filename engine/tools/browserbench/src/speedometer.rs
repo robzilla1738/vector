@@ -1576,6 +1576,83 @@ mod tests {
 
     #[cfg(feature = "v8")]
     #[test]
+    fn official_backbone_complex_one_add_is_attributed() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(
+            &mut engine,
+            "todomvc/architecture-examples/backbone-complex/dist/index.html",
+        );
+        let (probe, console, restyle) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            page.reset_restyle_attribution();
+            let probe = page
+                .evaluate(&with_lib(
+                    r##"(function () {
+                      var input = todoInput();
+                      if (!input) return JSON.stringify({ input: false });
+                      var t0 = Date.now();
+                      input.focus();
+                      var focusMs = Date.now() - t0;
+                      t0 = Date.now();
+                      input.value = "Task-0";
+                      var valueMs = Date.now() - t0;
+                      t0 = Date.now();
+                      fire(input, "input", { bubbles: true, data: "Task-0", inputType: "insertText" }, InputEvent);
+                      var inputMs = Date.now() - t0;
+                      t0 = Date.now();
+                      enter(input);
+                      var enterMs = Date.now() - t0;
+                      return JSON.stringify({
+                        input: true,
+                        added: countTodos(),
+                        focusMs: focusMs,
+                        valueMs: valueMs,
+                        inputMs: inputMs,
+                        enterMs: enterMs,
+                        nodes: document.getElementsByTagName("*").length
+                      });
+                    })()"##,
+                ))
+                .expect("backbone complex one add");
+            let restyle = page.restyle_attribution();
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(180).collect())
+                .take(4)
+                .collect();
+            (probe, console, restyle)
+        };
+        engine.close(page_id);
+        let text = match &probe {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
+        assert_eq!(v["input"], true, "{v} err={console:?}");
+        assert!(
+            v["nodes"].as_u64().unwrap_or(0) > 1000,
+            "backbone Complex-DOM lost its extra tree: {v} err={console:?}"
+        );
+        assert!(
+            v["added"].as_u64().unwrap_or(0) >= 1,
+            "backbone Complex-DOM one-add: {v} err={console:?}"
+        );
+        assert_eq!(
+            restyle.full_calls, 0,
+            "backbone add must not full-restyle Spectrum: {v} restyle={restyle:?}"
+        );
+        assert!(
+            v["enterMs"].as_u64().unwrap_or(u64::MAX) < 2_000,
+            "backbone create/render must not walk the Spectrum tree: {v} restyle={restyle:?}"
+        );
+        eprintln!("backbone-complex one-add {v} restyle={restyle:?}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
     fn official_es5_complex_dom_hundred_add_is_attributed() {
         let mut engine = bench_engine();
         let page_id = open_workload(
@@ -1666,6 +1743,91 @@ mod tests {
             }
         }
         assert!(fails.is_empty(), "{}", fails.join("\n"));
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn remaining_official_complex_workloads_add_and_finish() {
+        let mut engine = bench_engine();
+        let suites = [
+            "todomvc/architecture-examples/backbone-complex/dist/index.html",
+            "todomvc/architecture-examples/vue-complex/dist/index.html",
+            "todomvc/architecture-examples/preact-complex/dist/index.html#/home",
+            "todomvc/architecture-examples/svelte-complex/dist/index.html",
+            "todomvc/architecture-examples/react-complex/dist/index.html#/home",
+            "todomvc/architecture-examples/react-redux-complex/dist/index.html",
+            "todomvc/vanilla-examples/javascript-es6-webpack-complex/dist/index.html",
+        ];
+        let mut fails = Vec::new();
+        let add = with_lib(&add_steps(3));
+        let count = with_lib(&count_steps(3));
+        for rel in suites {
+            let started = Instant::now();
+            let page_id = open_workload(&mut engine, rel);
+            let (finish, console) = {
+                let page = engine.page_mut(page_id).unwrap();
+                page.settle(3_000);
+                page.evaluate(&add).ok();
+                page.settle(250);
+                page.evaluate(&with_lib(FINISH_STEPS)).ok();
+                page.settle(250);
+                let finish = page.evaluate(&count).unwrap();
+                let console: Vec<String> = page
+                    .console()
+                    .iter()
+                    .filter(|l| l.level == "error")
+                    .map(|l| l.message.chars().take(180).collect())
+                    .take(2)
+                    .collect();
+                (finish, console)
+            };
+            engine.close(page_id);
+            let text = match &finish {
+                serde_json::Value::String(s) => s.clone(),
+                other => other.to_string(),
+            };
+            let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(finish);
+            let ok = v.get("ok").and_then(serde_json::Value::as_bool) == Some(true);
+            eprintln!(
+                "remaining-complex {rel} ok={ok} {}ms {v} err={console:?}",
+                started.elapsed().as_millis()
+            );
+            if !ok {
+                fails.push(format!("{rel} => {v} err={console:?}"));
+            }
+        }
+        assert!(fails.is_empty(), "{}", fails.join("\n"));
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn official_chartjs_exposes_prepare() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(&mut engine, "charts/dist/chartjs.html");
+        let (probe, console) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            let probe = page
+                .evaluate(&with_lib(ADD_STEPS))
+                .unwrap_or(serde_json::Value::Null);
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(180).collect())
+                .take(2)
+                .collect();
+            (probe, console)
+        };
+        engine.close(page_id);
+        let text = match &probe {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
+        eprintln!("chartjs {v} err={console:?}");
+        assert_eq!(v["ok"], true, "{v} err={console:?}");
+        assert_eq!(v["kind"], "chart", "{v}");
     }
 
     #[cfg(feature = "v8")]
