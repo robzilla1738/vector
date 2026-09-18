@@ -217,6 +217,20 @@ pub enum Mutation {
 }
 
 impl Mutation {
+    /// Layout/lifecycle records that must not evict style-relevant history.
+    /// `GeometryChanged` and `NodeCreated` flood the journal on a 6k-node
+    /// page and would otherwise force a full restyle (`entries_since` → `None`).
+    #[must_use]
+    pub fn crowds_out_style(&self) -> bool {
+        matches!(
+            self,
+            Mutation::GeometryChanged { .. }
+                | Mutation::Scrolled { .. }
+                | Mutation::NodeCreated { .. }
+                | Mutation::NodeDestroyed { .. }
+        )
+    }
+
     /// The node most directly affected by this mutation, if any.
     #[must_use]
     pub fn target(&self) -> Option<NodeId> {
@@ -253,6 +267,9 @@ pub struct MutationJournal {
     capacity: usize,
     /// Revision of the oldest entry still retained, if any.
     oldest_retained: Revision,
+    /// Highest revision of a style-relevant entry that was evicted. Style
+    /// consumers fall behind only when they need an entry at or below this.
+    style_evicted_through: Revision,
 }
 
 impl Default for MutationJournal {
@@ -273,6 +290,7 @@ impl MutationJournal {
             entries: VecDeque::new(),
             capacity: capacity.max(1),
             oldest_retained: Revision::ZERO,
+            style_evicted_through: Revision::ZERO,
         }
     }
 
@@ -286,10 +304,7 @@ impl MutationJournal {
     pub fn record(&mut self, mutation: Mutation) -> Revision {
         self.revision = self.revision.next();
         if self.entries.len() == self.capacity {
-            self.entries.pop_front();
-            if let Some(front) = self.entries.front() {
-                self.oldest_retained = front.revision;
-            }
+            self.evict_one();
         }
         if self.entries.is_empty() {
             self.oldest_retained = self.revision;
@@ -299,6 +314,25 @@ impl MutationJournal {
             mutation,
         });
         self.revision
+    }
+
+    fn evict_one(&mut self) {
+        let idx = self
+            .entries
+            .iter()
+            .position(|e| e.mutation.crowds_out_style())
+            .unwrap_or(0);
+        if let Some(e) = self.entries.remove(idx) {
+            if !e.mutation.crowds_out_style() && e.revision > self.style_evicted_through {
+                self.style_evicted_through = e.revision;
+            }
+            if idx == 0 {
+                self.oldest_retained = self
+                    .entries
+                    .front()
+                    .map_or(self.revision.next(), |front| front.revision);
+            }
+        }
     }
 
     /// Entries recorded strictly after `since`.
@@ -314,6 +348,23 @@ impl MutationJournal {
             return None;
         }
         // Entries are sorted by revision; binary search for the first one after `since`.
+        let start = self.entries.partition_point(|e| e.revision <= since);
+        Some(self.entries.range(start..))
+    }
+
+    /// Style-relevant entries after `since`. Geometry/`NodeCreated` holes do
+    /// not force a full restyle; only an evicted attribute/insert/remove does.
+    #[must_use]
+    pub fn style_entries_since(
+        &self,
+        since: Revision,
+    ) -> Option<impl Iterator<Item = &JournalEntry>> {
+        if since >= self.revision {
+            return Some(self.entries.range(0..0));
+        }
+        if since < self.style_evicted_through {
+            return None;
+        }
         let start = self.entries.partition_point(|e| e.revision <= since);
         Some(self.entries.range(start..))
     }
@@ -381,6 +432,45 @@ mod tests {
             j.touched_since(r1).unwrap(),
             vec![NodeId::new(2, 0), NodeId::new(3, 0), NodeId::new(1, 0)]
         );
+    }
+
+    fn geom(i: u32) -> Mutation {
+        Mutation::GeometryChanged {
+            node: NodeId::new(i, 0),
+        }
+    }
+
+    fn attr(i: u32) -> Mutation {
+        Mutation::AttributeChanged {
+            node: NodeId::new(i, 0),
+            name: "class".into(),
+            old_value: None,
+        }
+    }
+
+    #[test]
+    fn geometry_eviction_does_not_force_style_full_pass() {
+        let mut j = MutationJournal::with_capacity(3);
+        let style_at = j.record(attr(1));
+        j.record(geom(2));
+        j.record(geom(3));
+        j.record(geom(4)); // evicts a GeometryChanged, keeps the attribute
+        assert!(
+            j.style_entries_since(Revision::ZERO).is_some(),
+            "losing geometry must not drop style history"
+        );
+        assert_eq!(j.style_entries_since(style_at).unwrap().count(), 2);
+        assert!(j.entries_since(Revision::ZERO).is_some());
+    }
+
+    #[test]
+    fn evicting_style_entries_marks_style_consumers_behind() {
+        let mut j = MutationJournal::with_capacity(2);
+        let first = j.record(attr(1));
+        j.record(attr(2));
+        j.record(attr(3));
+        assert!(j.style_entries_since(Revision::ZERO).is_none());
+        assert!(j.style_entries_since(first).is_some());
     }
 
     #[test]

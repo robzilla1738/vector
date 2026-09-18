@@ -294,7 +294,7 @@ impl InvalidationMap {
     /// dependency clear the provisional `STYLE` bit `ve-dom` set.
     pub fn apply_journal(&self, doc: &mut Document, since: ve_core::Revision) -> InvalidationStats {
         let mut stats = InvalidationStats::default();
-        let Some(entries) = doc.journal().entries_since(since) else {
+        let Some(entries) = doc.journal().style_entries_since(since) else {
             stats.full = true;
             return stats;
         };

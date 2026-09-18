@@ -1369,9 +1369,10 @@ mod tests {
             &mut engine,
             "todomvc/vanilla-examples/javascript-es5-complex/dist/index.html",
         );
-        let (probe, console) = {
+        let (probe, console, restyle) = {
             let page = engine.page_mut(page_id).unwrap();
             page.settle(3_000);
+            page.reset_restyle_attribution();
             let probe = page
                 .evaluate(&with_lib(
                     r##"(function () {
@@ -1379,19 +1380,34 @@ mod tests {
                       if (!input) return JSON.stringify({ input: false });
                       var t0 = Date.now();
                       input.focus();
+                      var focusMs = Date.now() - t0;
+                      t0 = Date.now();
                       input.value = "Task-0";
+                      var valueMs = Date.now() - t0;
+                      t0 = Date.now();
                       fire(input, "input", { bubbles: true, data: "Task-0", inputType: "insertText" }, InputEvent);
+                      var inputMs = Date.now() - t0;
+                      t0 = Date.now();
                       fire(input, "change");
+                      var changeMs = Date.now() - t0;
+                      t0 = Date.now();
                       enter(input);
+                      var enterMs = Date.now() - t0;
                       return JSON.stringify({
                         input: true,
                         added: countTodos(),
-                        addMs: Date.now() - t0,
+                        addMs: focusMs + valueMs + inputMs + changeMs + enterMs,
+                        focusMs: focusMs,
+                        valueMs: valueMs,
+                        inputMs: inputMs,
+                        changeMs: changeMs,
+                        enterMs: enterMs,
                         nodes: document.getElementsByTagName("*").length
                       });
                     })()"##,
                 ))
                 .expect("complex one add");
+            let restyle = page.restyle_attribution();
             let console: Vec<String> = page
                 .console()
                 .iter()
@@ -1399,7 +1415,7 @@ mod tests {
                 .map(|l| l.message.chars().take(180).collect())
                 .take(4)
                 .collect();
-            (probe, console)
+            (probe, console, restyle)
         };
         engine.close(page_id);
         let text = match &probe {
@@ -1416,6 +1432,11 @@ mod tests {
             v["added"].as_u64().unwrap_or(0) >= 1,
             "window load must bind Controller._activeRoute: {v} err={console:?}"
         );
+        assert_eq!(
+            restyle.full_calls, 0,
+            "one add must not full-restyle the Spectrum tree: {v} restyle={restyle:?} err={console:?}"
+        );
+        eprintln!("complex-dom one-add {v} restyle={restyle:?}");
     }
 
     #[cfg(feature = "v8")]

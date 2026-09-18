@@ -42,8 +42,8 @@ pub use keys::{Chord, Key, Modifiers};
 pub use page::{
     CompletedDownload, DEFAULT_TIMEOUT_MS, DEFAULT_VIEWPORT, EngineObservation, FetchedScript,
     FnLoader, InFlightSummary, LoadStats, LoadedDocument, LoadedResource, Loader, NavMethod,
-    NavigationRequest, Page, SETTLE_NAVIGATION_MS, SETTLE_STEP_MS, ScrollState, SubresourceKind,
-    SubresourceRequest, outer_html,
+    NavigationRequest, Page, RestyleAttribution, SETTLE_NAVIGATION_MS, SETTLE_STEP_MS, ScrollState,
+    SubresourceKind, SubresourceRequest, outer_html,
 };
 pub use routing::{CssCoverage, RoutingInfo, classify};
 pub use screenshot::Screenshot;

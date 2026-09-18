@@ -3,7 +3,7 @@
 Each package lists the acceptance target, current-tree evidence, and remaining
 gaps. Identity is the native Vector Engine (`vector-engine`), not Chromium.
 
-**The supported testharness subset, native product, official Speedometer 3.0 lab, and held-out p95 measurement are in tree.** Agent 2× p95 vs Chromium is measured (`held-out-latest.json`). Token stretch is measured from declared model usage: `meetsStretch` true, `tokenRatio` 8.35 (baseline 14200 / candidate 1700). Official `html/dom` tree: 302 PASS / 29 FAIL (`wpt-tree-latest.json`; merge does not wait on tree FAILs). Official `html/dom/idlharness.https.html` PASS. Remaining disclosed official FAIL: `aria-attribute-reflection-enumerated.tentative.html` missing-value defaults that are not null. Partial updates and render-blocking cancel-on-remove are in tree. ve-vm remains research (V8 is production).
+**Labels follow Vector_Current_Review_60b2d41 Finding 6.** The supported testharness subset is adapted-harness coverage, not unmodified upstream. Official `html/dom/partial-updates` on pin 7c204383: 28 PASS / 2 FAIL of 30 (`sanitize-template-element`, `template-for-empty` — HTML5 contradictions; do not weaken empty-for-streaming). Official `html/dom/idlharness.https.html` fetches IDL over TLS and still FAILs (remaining HTML WebIDL, including `document.all` [[IsHTMLDDA]]). Official `html/dom` tree numbers in `wpt-tree-latest.json` are not a claim that the entire web passes. ve-vm remains research (V8 is production).
 
 | Ticket | Evidence file | Status |
 |---|---|---|

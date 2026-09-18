@@ -827,7 +827,7 @@ impl StyleEngine {
         }
 
         // Drop styles of nodes removed since the last pass.
-        if let Some(entries) = doc.journal().entries_since(since) {
+        if let Some(entries) = doc.journal().style_entries_since(since) {
             let removed: Vec<NodeId> = entries
                 .filter_map(|e| match &e.mutation {
                     ve_dom::Mutation::NodeRemoved { node, .. } => Some(*node),
@@ -1301,6 +1301,17 @@ mod tests {
         let stats = engine.restyle_incremental(&mut doc, &mut tree, since);
         assert_eq!(stats.recomputed, 21);
         assert_eq!(tree.style(p).color, Rgba::BLACK);
+
+        // Geometry records must not force a full restyle (Complex-DOM layout
+        // used to fill the journal and trip `entries_since` → `None`).
+        let since = tree.revision();
+        for _ in 0..64 {
+            doc.record_geometry_change(target);
+        }
+        doc.set_attribute(target, "class", "section hot").unwrap();
+        let stats = engine.restyle_incremental(&mut doc, &mut tree, since);
+        assert!(!stats.full, "geometry flood must keep incremental restyle");
+        assert_eq!(stats.recomputed, 21);
 
         // Paint-only change: recomputed, but LAYOUT not set.
         let since = doc.revision();

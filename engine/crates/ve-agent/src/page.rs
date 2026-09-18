@@ -25,6 +25,21 @@ use crate::screenshot::{self, Screenshot};
 use crate::steps::{MouseButton, ScrollDirection, Settled};
 use crate::target::TargetSpec;
 
+/// Gate E restyle counters for one attribution window.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RestyleAttribution {
+    /// `Page::update` restyle passes in this window.
+    pub calls: u32,
+    /// Those passes that used a full document compute.
+    pub full_calls: u32,
+    /// Elements recomputed on the last restyle.
+    pub last_recomputed: usize,
+    /// The last restyle used the full `compute()` path.
+    pub last_full: bool,
+    /// Mutation journal entries retained after the window.
+    pub journal_len: usize,
+}
+
 /// Navigation method.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -437,6 +452,14 @@ pub struct Page {
     pub(crate) sw_client_posts: Vec<String>,
     /// Per-canvas 2D pixel buffers (VEC-008).
     pub(crate) canvases: HashMap<NodeId, CanvasSurface>,
+    /// Gate E: restyle passes during the current attribution window.
+    restyle_calls: u32,
+    /// Gate E: restyle passes that fell back to a full document compute.
+    restyle_full_calls: u32,
+    /// Elements recomputed on the last restyle.
+    last_recomputed: usize,
+    /// The last restyle used the full `compute()` path.
+    last_restyle_full: bool,
 }
 
 /// One `IndexedDB` index (VEC-010).
@@ -905,6 +928,10 @@ impl Page {
             next_worker: 0,
             sw_client_posts: Vec::new(),
             canvases: HashMap::new(),
+            restyle_calls: 0,
+            restyle_full_calls: 0,
+            last_recomputed: 0,
+            last_restyle_full: false,
         }
     }
 
@@ -2111,9 +2138,15 @@ impl Page {
         self.style_engine.interaction.set_focus(self.focused, true);
         if !self.style_clean() {
             let since = self.style_tree.revision();
-            let _ =
+            let stats =
                 self.style_engine
                     .restyle_incremental(&mut self.doc, &mut self.style_tree, since);
+            self.restyle_calls += 1;
+            self.last_recomputed = stats.recomputed;
+            self.last_restyle_full = stats.full;
+            if stats.full {
+                self.restyle_full_calls += 1;
+            }
         }
         if !self.layout_clean() {
             let previous = std::mem::replace(&mut self.layout, LayoutTree::blank(self.viewport));
@@ -2129,6 +2162,26 @@ impl Page {
         self.doc.clear_dirty_all(
             DirtyFlags::STYLE | DirtyFlags::LAYOUT | DirtyFlags::TEXT | DirtyFlags::PAINT,
         );
+    }
+
+    /// Gate E restyle counters for the current attribution window.
+    #[must_use]
+    pub fn restyle_attribution(&self) -> RestyleAttribution {
+        RestyleAttribution {
+            calls: self.restyle_calls,
+            full_calls: self.restyle_full_calls,
+            last_recomputed: self.last_recomputed,
+            last_full: self.last_restyle_full,
+            journal_len: self.doc.journal().len(),
+        }
+    }
+
+    /// Clears Gate E restyle counters (call immediately before the timed work).
+    pub fn reset_restyle_attribution(&mut self) {
+        self.restyle_calls = 0;
+        self.restyle_full_calls = 0;
+        self.last_recomputed = 0;
+        self.last_restyle_full = false;
     }
 
     fn apply_css_coverage(&mut self) {
