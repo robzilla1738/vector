@@ -4124,6 +4124,9 @@ fn html_collection_types_match_html_idl() {
                 optionsHasOwn: typeof select.options.hasOwnProperty === "function",
                 imagesIn: document.images.length >= 1 && (0 in document.images)
                   && [].slice.call(document.images).length === document.images.length,
+                namedItemArgc: (function () { try { form.elements.namedItem(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                addArgc: (function () { try { select.options.add(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                removeArgc: (function () { try { select.options.remove(); return false; } catch (e) { return e instanceof TypeError; } })(),
                 formTag: Object.prototype.toString.call(form.elements),
                 formIsControls: form.elements instanceof HTMLFormControlsCollection,
                 namedInput: form.elements.namedItem("n") && form.elements.namedItem("n").value === "Ada",
@@ -4155,6 +4158,9 @@ fn html_collection_types_match_html_idl() {
     assert_eq!(v["formHasOwn"], true, "{v}");
     assert_eq!(v["optionsHasOwn"], true, "{v}");
     assert_eq!(v["imagesIn"], true, "{v}");
+    assert_eq!(v["namedItemArgc"], true, "{v}");
+    assert_eq!(v["addArgc"], true, "{v}");
+    assert_eq!(v["removeArgc"], true, "{v}");
     assert_eq!(v["formTag"], "[object HTMLFormControlsCollection]", "{v}");
     assert_eq!(v["formIsControls"], true, "{v}");
     assert_eq!(v["namedInput"], true, "{v}");

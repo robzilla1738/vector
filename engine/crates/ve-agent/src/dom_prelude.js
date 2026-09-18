@@ -1096,6 +1096,9 @@
     }
     item(i) { return this._fetch()[i | 0] || null; }
     namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'HTMLCollection': 1 argument required, but only 0 present.");
+      }
       const n = String(name);
       if (!n) return null;
       return this._fetch().find((el) => el.id === n || (el.getAttribute && el.getAttribute("name") === n)) || null;
@@ -1172,6 +1175,9 @@
       super(IDL_INTERNAL, arguments[1]);
     }
     namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'HTMLFormControlsCollection': 1 argument required, but only 0 present.");
+      }
       const hits = collectionNamedHits(this._fetch(), name);
       if (hits.length === 0) return null;
       if (hits.length === 1) return hits[0];
@@ -1209,6 +1215,9 @@
       }
     }
     add(element, ...rest) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'add' on 'HTMLOptionsCollection': 1 argument required, but only 0 present.");
+      }
       const before = rest[0];
       const select = this._select;
       if (!select) throw new TypeError("Illegal invocation");
@@ -1225,6 +1234,9 @@
       }
     }
     remove(index) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'remove' on 'HTMLOptionsCollection': 1 argument required, but only 0 present.");
+      }
       const el = this._fetch()[index | 0];
       if (el && el.parentNode) el.parentNode.removeChild(el);
     }
@@ -1337,6 +1349,9 @@
       return this.namedItem(s);
     }
     namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'HTMLAllCollection': 1 argument required, but only 0 present.");
+      }
       const hits = collectionNamedHits(this._fetch(), name).filter((el) => {
         return (el.localName || "").toLowerCase() !== "applet";
       });
