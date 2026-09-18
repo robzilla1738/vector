@@ -1,0 +1,13 @@
+{
+  "backend": "vector-engine",
+  "security_mode": "production",
+  "not_a_published_score": true,
+  "handles": "numeric_u64",
+  "wrapper": "WeakRef+FinalizationRegistry",
+  "listeners": "WeakMap",
+  "VECTOR_DOM_PROFILE": true,
+  "todoMvcIterations": 0,
+  "nodesSize": null,
+  "rssBytes": null,
+  "notes": "Harness lands with H0-B2. Run VECTOR_DOM_PROFILE=1 and write nodes.size / RSS here after 100 TodoMVC iterations."
+}

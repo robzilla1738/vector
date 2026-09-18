@@ -17,8 +17,9 @@ use ve_gfx::{Compositor, Frame};
 
 use crate::{
     EngineConfig, ExecuteRequest, ExecuteResult, Observation, ObservationRequest, OpenRequest,
-    PageId, Program, UpdateKeyPair, VectorEngine, verify_update_manifest,
+    PageId, Program, ShaperKind, UpdateKeyPair, VectorEngine, verify_update_manifest,
 };
+use ve_agent::MouseButton;
 
 /// A tab in the native shell.
 #[derive(Clone, Debug)]
@@ -31,14 +32,37 @@ pub struct Tab {
     pub page_title: String,
 }
 
+/// Key down or up.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum KeyState {
+    /// Key pressed (including repeats).
+    #[default]
+    Down,
+    /// Key released.
+    Up,
+}
+
 /// Input the OS window (or tests) delivers to chrome + page.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum NativeEvent {
-    /// Keyboard key (`Enter`, `Tab`, `a`, …).
+    /// Keyboard key (`Enter`, `Tab`, `ArrowLeft`, `F5`, …).
     Key {
-        /// Key name.
+        /// Key name (`Enter`, `a`, `ArrowDown`).
         key: String,
+        /// UI Events `code` (`KeyA`, `ArrowDown`). Empty when unknown.
+        #[serde(default)]
+        code: String,
+        /// Bitmask: 1 = alt, 2 = ctrl, 4 = meta, 8 = shift.
+        #[serde(default)]
+        modifiers: u8,
+        /// OS key-repeat.
+        #[serde(default)]
+        repeat: bool,
+        /// Down or up.
+        #[serde(default)]
+        state: KeyState,
     },
     /// IME committed text.
     Ime {
@@ -159,6 +183,14 @@ pub struct ChromeAxNode {
     pub from_page: bool,
 }
 
+/// Cached document-space display list. Scroll only re-translates.
+struct DisplayListCache {
+    revision: u64,
+    layout_revision: u64,
+    viewport: ve_core::Size,
+    list: ve_gfx::DisplayList,
+}
+
 /// Native Vector browser. Human and agent share the same live documents.
 pub struct NativeBrowser {
     engine: VectorEngine,
@@ -173,6 +205,9 @@ pub struct NativeBrowser {
     urlbar_focused: bool,
     compositor: Compositor,
     presented: bool,
+    device_scale: f32,
+    list_cache: Option<DisplayListCache>,
+    from_layout_calls: u64,
     ime_preedit: String,
     last_typed: String,
     selection: Option<(usize, usize)>,
@@ -217,6 +252,7 @@ impl NativeBrowser {
     /// Browser with a custom engine config.
     #[must_use]
     pub fn with_config(config: EngineConfig) -> Self {
+        let device_scale = config.scale.max(0.01);
         Self {
             engine: VectorEngine::new(config),
             tabs: Vec::new(),
@@ -230,6 +266,9 @@ impl NativeBrowser {
             urlbar_focused: false,
             compositor: Compositor::new(),
             presented: false,
+            device_scale,
+            list_cache: None,
+            from_layout_calls: 0,
             ime_preedit: String::new(),
             last_typed: String::new(),
             selection: None,
@@ -260,7 +299,41 @@ impl NativeBrowser {
             "signedUpdates": self.update_pubkey.is_some(),
             "accessKit": true,
             "gpuPresent": self.gpu_present(),
+            "shaper": match self.engine.config().shaper {
+                ShaperKind::Metric => "metric",
+                ShaperKind::System => "system",
+            },
+            "fromLayoutCalls": self.from_layout_calls,
+            "deviceScale": self.device_scale,
         })
+    }
+
+    /// Display-list rebuilds since this browser was created.
+    #[must_use]
+    pub fn from_layout_calls(&self) -> u64 {
+        self.from_layout_calls
+    }
+
+    /// Device pixel ratio used for present.
+    #[must_use]
+    pub fn device_scale(&self) -> f32 {
+        self.device_scale
+    }
+
+    /// Sets the device pixel ratio (Retina = 2.0). Display list stays in CSS px.
+    pub fn set_device_scale(&mut self, scale: f32) {
+        self.device_scale = scale.max(0.01);
+        if let Some(page) = self.active_tab().map(|t| t.page)
+            && let Ok(p) = self.engine.page_mut(page)
+        {
+            p.set_scale(self.device_scale);
+        }
+        let (w, h) = self
+            .active_tab()
+            .and_then(|t| self.engine.page(t.page).ok())
+            .map(|p| (p.viewport().width, p.viewport().height))
+            .unwrap_or((1280.0, 720.0));
+        self.resize_surface(w, h);
     }
 
     /// True after a successful GPU present of the live page.
@@ -329,16 +402,24 @@ impl NativeBrowser {
         self.pointer
     }
 
-    /// Updates the engine viewport and presentation surface in CSS pixels.
+    /// Updates the engine viewport in CSS pixels. The surface is physical px.
     pub fn set_css_viewport(&mut self, width: f32, height: f32) {
         let w = width.max(1.0);
         let h = height.max(1.0);
-        self.surface = Frame::filled(w as u32, h as u32, [255, 255, 255, 255]);
+        self.resize_surface(w, h);
         if let Some(page) = self.active_tab().map(|t| t.page)
             && let Ok(p) = self.engine.page_mut(page)
         {
             p.set_viewport(Size::new(w, h));
+            p.set_scale(self.device_scale);
         }
+        self.list_cache = None;
+    }
+
+    fn resize_surface(&mut self, css_w: f32, css_h: f32) {
+        let pw = (css_w * self.device_scale).round().max(1.0) as u32;
+        let ph = (css_h * self.device_scale).round().max(1.0) as u32;
+        self.surface = Frame::filled(pw, ph, [255, 255, 255, 255]);
     }
 
     /// Chrome accessibility tree. Independent of page roles and names.
@@ -523,11 +604,16 @@ impl NativeBrowser {
 
     /// Agent and human observe the same page.
     pub fn observe_active(&mut self) -> Result<Observation> {
+        self.observe_active_with(&ObservationRequest::default())
+    }
+
+    /// Observe the active tab with an explicit request (`format` included).
+    pub fn observe_active_with(&mut self, request: &ObservationRequest) -> Result<Observation> {
         let page = self
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?
             .page;
-        self.engine.observe(page, &ObservationRequest::default())
+        self.engine.observe(page, request)
     }
 
     /// Agent program against the live native document.
@@ -680,11 +766,7 @@ impl NativeBrowser {
         if self.gpu_unavailable && self.gpu.is_none() {
             return None;
         }
-        let list = {
-            let p = self.engine.page_mut(page).ok()?;
-            p.update();
-            paint_page(p)
-        };
+        let list = self.paint_page_id(page)?;
         if self.gpu.is_none() {
             match ve_gfx::VelloRenderer::headless() {
                 Ok((renderer, _)) => self.gpu = Some(renderer),
@@ -697,7 +779,8 @@ impl NativeBrowser {
         let gpu = self.gpu.as_mut()?;
         let width = self.surface.width;
         let height = self.surface.height;
-        gpu.present_list(&list, width, height, 1.0).ok()?;
+        gpu.present_list(&list, width, height, self.device_scale)
+            .ok()?;
         gpu.readback_present_target().ok()
     }
 
@@ -706,12 +789,8 @@ impl NativeBrowser {
         if self.gpu_unavailable && self.gpu.is_none() {
             return false;
         }
-        let list = {
-            let Ok(p) = self.engine.page_mut(page) else {
-                return false;
-            };
-            p.update();
-            paint_page(p)
+        let Some(list) = self.paint_page_id(page) else {
+            return false;
         };
         if self.gpu.is_none() {
             match ve_gfx::VelloRenderer::headless() {
@@ -725,8 +804,13 @@ impl NativeBrowser {
         let Some(gpu) = self.gpu.as_mut() else {
             return false;
         };
-        gpu.present_list(&list, self.surface.width, self.surface.height, 1.0)
-            .is_ok()
+        gpu.present_list(
+            &list,
+            self.surface.width,
+            self.surface.height,
+            self.device_scale,
+        )
+        .is_ok()
     }
 
     /// Display list for the active tab (GPU window present without CPU readback).
@@ -736,9 +820,8 @@ impl NativeBrowser {
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?
             .page;
-        let p = self.engine.page_mut(page)?;
-        p.update();
-        Ok(paint_page(p))
+        self.paint_page_id(page)
+            .ok_or_else(|| Error::internal("paint failed"))
     }
 
     /// Scene/surface update for native presentation. Not a PNG and not a
@@ -843,39 +926,41 @@ impl NativeBrowser {
                     self.present_dirty();
                 }
             }
-            NativeEvent::Key { key } => {
+            NativeEvent::Key {
+                key,
+                code: _,
+                modifiers,
+                repeat: _,
+                state,
+            } => {
                 if self.urlbar_focused {
-                    if key == "Enter" {
-                        let _ = self.handle_event(NativeEvent::UrlbarSubmit)?;
-                    } else if key == "Escape" {
-                        self.urlbar_focused = false;
-                    } else if key == "Backspace" {
-                        self.urlbar.pop();
-                    } else if key.len() == 1 {
-                        self.urlbar.push_str(&key);
+                    if state == KeyState::Down {
+                        if key == "Enter" {
+                            let _ = self.handle_event(NativeEvent::UrlbarSubmit)?;
+                        } else if key == "Escape" {
+                            self.urlbar_focused = false;
+                        } else if key == "Backspace" {
+                            self.urlbar.pop();
+                        } else if key.len() == 1 {
+                            self.urlbar.push_str(&key);
+                        }
                     }
+                } else if self.dispatch_chrome_shortcut(&key, modifiers, state) {
+                    // chrome handled
                 } else {
-                    if key.len() == 1 {
+                    if state == KeyState::Down && key.len() == 1 {
                         self.last_typed.push_str(&key);
                     }
-                    let _ = self.dispatch_program(ExecuteRequest {
-                        program: Program::from_value(serde_json::json!([
-                            {"id":"k","op":"press","key":key}
-                        ]))?,
-                        return_observation: None,
-                    });
-                    self.present_dirty();
+                    self.dispatch_human_key(&key, state)?;
+                    if state == KeyState::Down {
+                        self.present_dirty();
+                    }
                 }
             }
             NativeEvent::Ime { text } => {
                 self.ime_preedit.clear();
                 self.last_typed.clone_from(&text);
-                let _ = self.dispatch_program(ExecuteRequest {
-                    program: Program::from_value(serde_json::json!([
-                        {"id":"t","op":"type","target":"css:input,textarea,[contenteditable]","value":text}
-                    ]))?,
-                    return_observation: None,
-                });
+                self.dispatch_human_ime(&text)?;
                 self.present_dirty();
             }
             NativeEvent::ImePreedit { text } => {
@@ -886,12 +971,7 @@ impl NativeBrowser {
             }
             NativeEvent::PointerDown { x, y, button } => {
                 self.pointer = Point::new(x, y);
-                let _ = self.dispatch_program(ExecuteRequest {
-                    program: Program::from_value(serde_json::json!([
-                        {"id":"c","op":"clickPoint","x":x,"y":y,"button": if button == 0 { "left" } else { "right" }}
-                    ]))?,
-                    return_observation: None,
-                });
+                self.dispatch_human_click(x, y, button)?;
                 self.present_dirty();
             }
             NativeEvent::PointerUp { x, y, .. } => {
@@ -905,14 +985,8 @@ impl NativeBrowser {
                 self.set_css_viewport(width, height);
                 self.present_dirty();
             }
-            NativeEvent::Wheel { dx: _, dy } => {
-                let dir = if dy > 0.0 { "down" } else { "up" };
-                let _ = self.dispatch_program(ExecuteRequest {
-                    program: Program::from_value(serde_json::json!([
-                        {"id":"w","op":"scroll","direction":dir,"amount": dy.abs()}
-                    ]))?,
-                    return_observation: None,
-                });
+            NativeEvent::Wheel { dx, dy } => {
+                self.dispatch_human_scroll(dx, dy)?;
                 self.present_dirty();
             }
             NativeEvent::AccessKitAction { name } => {
@@ -1056,6 +1130,157 @@ impl NativeBrowser {
     pub fn active_index(&self) -> usize {
         self.active
     }
+
+    /// All tabs.
+    #[must_use]
+    pub fn tabs(&self) -> &[Tab] {
+        &self.tabs
+    }
+
+    /// Mutable engine (service screenshot / cookies).
+    pub fn engine_mut(&mut self) -> &mut VectorEngine {
+        &mut self.engine
+    }
+
+    fn dispatch_chrome_shortcut(&mut self, key: &str, modifiers: u8, state: KeyState) -> bool {
+        if state != KeyState::Down {
+            return false;
+        }
+        let chrome = modifiers & (2 | 4) != 0;
+        if !chrome {
+            return false;
+        }
+        match key {
+            "[" | "ArrowLeft" => {
+                let _ = self.dispatch_human_key("Back", KeyState::Down);
+                true
+            }
+            "]" | "ArrowRight" => {
+                let _ = self.dispatch_human_key("Forward", KeyState::Down);
+                true
+            }
+            "f" | "F" => true, // find — chrome owns this
+            "-" => true,       // zoom out
+            "=" | "+" => true, // zoom in
+            "0" => true,       // zoom reset
+            _ => false,
+        }
+    }
+
+    fn dispatch_human_key(&mut self, key: &str, state: KeyState) -> Result<()> {
+        if state == KeyState::Up {
+            return Ok(());
+        }
+        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+            return Ok(());
+        };
+        let page = self.engine.page_mut(page_id)?;
+        if key.eq_ignore_ascii_case("back") {
+            let _ = page.press(None, "Back", 0);
+            self.sync_active_tab();
+            return Ok(());
+        }
+        if key.eq_ignore_ascii_case("forward") {
+            let _ = page.press(None, "Forward", 0);
+            self.sync_active_tab();
+            return Ok(());
+        }
+        let focused = page.focused();
+        let _ = page.press(focused, key, 0);
+        self.sync_active_tab();
+        Ok(())
+    }
+
+    fn dispatch_human_ime(&mut self, text: &str) -> Result<()> {
+        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+            return Ok(());
+        };
+        let page = self.engine.page_mut(page_id)?;
+        let target = page.focused().or_else(|| page.first_editable());
+        if let Some(id) = target {
+            let _ = page.type_text(id, text, 0);
+        }
+        self.sync_active_tab();
+        Ok(())
+    }
+
+    fn dispatch_human_click(&mut self, x: f32, y: f32, button: u8) -> Result<()> {
+        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+            return Ok(());
+        };
+        let page = self.engine.page_mut(page_id)?;
+        let btn = if button == 0 {
+            MouseButton::Left
+        } else if button == 1 {
+            MouseButton::Middle
+        } else {
+            MouseButton::Right
+        };
+        let _ = page.click_point(x, y, btn);
+        self.sync_active_tab();
+        Ok(())
+    }
+
+    fn dispatch_human_scroll(&mut self, dx: f32, dy: f32) -> Result<()> {
+        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+            return Ok(());
+        };
+        let page = self.engine.page_mut(page_id)?;
+        let _ = page.scroll_by(dx, dy);
+        Ok(())
+    }
+
+    fn paint_page_id(&mut self, page: PageId) -> Option<ve_gfx::DisplayList> {
+        use ve_core::{Rect, Size};
+        use ve_gfx::{DisplayItem, DisplayList};
+
+        let cached = self
+            .list_cache
+            .as_ref()
+            .map(|c| (c.revision, c.layout_revision, c.viewport));
+        let (revision, layout_revision, viewport, scroll, rebuilt) = {
+            let p = self.engine.page_mut(page).ok()?;
+            p.update();
+            let revision = p.document().revision().0;
+            let layout_revision = p.layout_tree().revision().0;
+            let viewport = p.viewport();
+            let scroll = p.scroll_offset();
+            let hit = cached
+                .is_some_and(|(r, l, v)| r == revision && l == layout_revision && v == viewport);
+            let rebuilt = if hit {
+                None
+            } else {
+                Some(DisplayList::from_layout_with(
+                    p.layout_tree(),
+                    p.style_tree(),
+                    p.node_images(),
+                ))
+            };
+            (revision, layout_revision, viewport, scroll, rebuilt)
+        };
+        if let Some(list) = rebuilt {
+            self.from_layout_calls += 1;
+            self.list_cache = Some(DisplayListCache {
+                revision,
+                layout_revision,
+                viewport,
+                list,
+            });
+        }
+        let src = self.list_cache.as_ref()?;
+        let mut translated = DisplayList::new(Size::new(viewport.width, viewport.height));
+        translated.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, viewport.width, viewport.height),
+            color: match src.list.items().first() {
+                Some(DisplayItem::Rect { color, .. }) => *color,
+                _ => ve_style::Rgba::WHITE,
+            },
+        });
+        for item in src.list.items().iter().skip(1) {
+            translated.push(item.translated(-scroll.x, -scroll.y));
+        }
+        Some(translated)
+    }
 }
 
 fn write_os_clipboard(enabled: bool, text: &str) {
@@ -1105,29 +1330,6 @@ fn read_os_clipboard(enabled: bool) -> Option<String> {
     }
 }
 
-#[cfg(feature = "gpu")]
-fn paint_page(page: &crate::Page) -> ve_gfx::DisplayList {
-    use ve_core::{Rect, Size};
-    use ve_gfx::{DisplayItem, DisplayList};
-
-    let layout = page.layout_tree();
-    let styles = page.style_tree();
-    let viewport = page.viewport();
-    let scroll = page.scroll_offset();
-    let list = DisplayList::from_layout(layout, styles);
-    let mut translated = DisplayList::new(Size::new(viewport.width, viewport.height));
-    translated.push(DisplayItem::Rect {
-        rect: Rect::new(0.0, 0.0, viewport.width, viewport.height),
-        color: match list.items().first() {
-            Some(DisplayItem::Rect { color, .. }) => *color,
-            _ => ve_style::Rgba::WHITE,
-        },
-    });
-    for item in list.items().iter().skip(1) {
-        translated.push(item.translated(-scroll.x, -scroll.y));
-    }
-    translated
-}
 
 impl Default for NativeBrowser {
     fn default() -> Self {
@@ -1146,7 +1348,11 @@ fn css_rgba(c: ve_style::Rgba) -> String {
 /// Display-list scene for `EngineView`. Not a PNG.
 #[must_use]
 pub fn scene_json(page: &crate::Page) -> serde_json::Value {
-    let list = ve_gfx::DisplayList::from_layout(page.layout_tree(), page.style_tree());
+    let list = ve_gfx::DisplayList::from_layout_with(
+        page.layout_tree(),
+        page.style_tree(),
+        page.node_images(),
+    );
     let items: Vec<serde_json::Value> = list.items().iter().map(scene_item).collect();
     serde_json::json!({
         "kind": "displayList",
@@ -1212,6 +1418,35 @@ fn scene_item(item: &ve_gfx::DisplayItem) -> serde_json::Value {
         ve_gfx::DisplayItem::PopClip => serde_json::json!({"kind": "popClip"}),
         ve_gfx::DisplayItem::PushOpacity(a) => serde_json::json!({"kind": "opacity", "a": a}),
         ve_gfx::DisplayItem::PopOpacity => serde_json::json!({"kind": "popOpacity"}),
+        ve_gfx::DisplayItem::RoundedClip { rect, radius } => serde_json::json!({
+            "kind": "roundedClip",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+            "radius": radius,
+        }),
+        ve_gfx::DisplayItem::PushTransform { tx, ty } => {
+            serde_json::json!({"kind": "transform", "tx": tx, "ty": ty})
+        }
+        ve_gfx::DisplayItem::PopTransform => serde_json::json!({"kind": "popTransform"}),
+        ve_gfx::DisplayItem::BoxShadow {
+            rect,
+            dx,
+            dy,
+            blur,
+            color,
+        } => serde_json::json!({
+            "kind": "boxShadow",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+            "dx": dx,
+            "dy": dy,
+            "blur": blur,
+            "color": css_rgba(*color),
+        }),
     }
 }
 
@@ -1347,7 +1582,13 @@ mod tests {
             y: 10.0,
             button: 0,
         });
-        let _ = browser.handle_event(NativeEvent::Key { key: "Tab".into() });
+        let _ = browser.handle_event(NativeEvent::Key {
+            key: "Tab".into(),
+            code: "Tab".into(),
+            modifiers: 0,
+            repeat: false,
+            state: KeyState::Down,
+        });
         let _ = browser.handle_event(NativeEvent::Copy);
         browser.copy("paste-me");
         let _ = browser.handle_event(NativeEvent::Paste);
@@ -1491,6 +1732,11 @@ mod tests {
                 url: "https://c.test/".into(),
             })
             .unwrap();
+        let _ = browser.handle_event(NativeEvent::PointerDown {
+            x: 8.0,
+            y: 8.0,
+            button: 0,
+        });
         browser
             .handle_event(NativeEvent::Ime {
                 text: "hello".into(),
@@ -1542,6 +1788,11 @@ mod tests {
                 url: "https://ime.test/".into(),
             })
             .unwrap();
+        let _ = browser.handle_event(NativeEvent::PointerDown {
+            x: 8.0,
+            y: 8.0,
+            button: 0,
+        });
         browser
             .handle_event(NativeEvent::ImePreedit { text: "ni".into() })
             .unwrap();
@@ -1584,5 +1835,53 @@ mod tests {
             })
             .unwrap_or("");
         assert_eq!(value, "你");
+    }
+
+    #[test]
+    fn ime_types_into_the_focused_field_not_the_first_input() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: r#"<input id=a style="width:80px;height:24px"><input id=b style="width:80px;height:24px;margin-top:40px">"#.into(),
+                url: "https://two.test/".into(),
+            })
+            .unwrap();
+        let _ = browser.handle_event(NativeEvent::PointerDown {
+            x: 10.0,
+            y: 50.0,
+            button: 0,
+        });
+        browser
+            .handle_event(NativeEvent::Ime {
+                text: "second".into(),
+            })
+            .unwrap();
+        let obs = browser.observe_active().unwrap();
+        let fields = &obs.observation.content.form_fields;
+        let values: Vec<String> = fields.iter().filter_map(|f| f.value.clone()).collect();
+        assert!(
+            values.iter().any(|v| v.contains("second")),
+            "focused field should receive IME text, got {fields:?}"
+        );
+    }
+
+    #[test]
+    fn wheel_does_not_rebuild_the_display_list() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p style=\"height:4000px\">tall</p>".into(),
+                url: "https://scroll.test/".into(),
+            })
+            .unwrap();
+        let _ = browser.present();
+        let before = browser.from_layout_calls();
+        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        assert_eq!(
+            browser.from_layout_calls(),
+            before,
+            "scroll must reuse the cached display list"
+        );
     }
 }

@@ -4458,7 +4458,6 @@ dependencies = [
  "ve-net",
  "ve-script",
  "ve-style",
- "ve-vm",
 ]
 
 [[package]]
@@ -4482,6 +4481,17 @@ dependencies = [
  "ve-layout",
  "ve-net",
  "ve-script",
+ "ve-style",
+]
+
+[[package]]
+name = "ve-chrome"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "ve-core",
+ "ve-gfx",
  "ve-style",
 ]
 
@@ -4606,6 +4616,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ve-profile"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "ve-core",
+]
+
+[[package]]
 name = "ve-replay"
 version = "0.0.1"
 dependencies = [
@@ -4637,6 +4656,7 @@ dependencies = [
  "anyhow",
  "clap",
  "pollster",
+ "serde",
  "serde_json",
  "softbuffer",
  "ve-api",
@@ -4644,6 +4664,15 @@ dependencies = [
  "ve-gfx",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "ve-shell-mac"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "ve-core",
 ]
 
 [[package]]
@@ -4658,15 +4687,6 @@ dependencies = [
  "tracing",
  "ve-core",
  "ve-dom",
-]
-
-[[package]]
-name = "ve-vm"
-version = "0.0.1"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror 2.0.20",
 ]
 
 [[package]]

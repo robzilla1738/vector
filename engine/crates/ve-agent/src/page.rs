@@ -13,9 +13,9 @@ use ve_a11y::{
 };
 use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
 use ve_dom::{DirtyFlags, Document, Namespace, Node, NodeKind};
-use ve_gfx::SoftwareRenderer;
+use ve_gfx::{ImageCache, ImageHandle, SoftwareRenderer};
 use ve_html::DocumentMeta;
-use ve_layout::{LayoutEngine, LayoutTree};
+use ve_layout::{LayoutEngine, LayoutTree, ParleyShaper};
 use ve_style::{StyleEngine, StyleTree};
 
 use crate::forms::{self, Enctype, FormMethod};
@@ -320,6 +320,17 @@ fn is_query_v1(v: &u32) -> bool {
     *v == QUERY_VERSION
 }
 
+/// Which text shaper a page uses for layout.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ShaperKind {
+    /// Synthetic per-character widths (CI, WPT, goldens, perf).
+    #[default]
+    Metric,
+    /// System fonts through [`ParleyShaper`].
+    System,
+}
+
 /// Default viewport.
 pub const DEFAULT_VIEWPORT: Size = Size {
     width: 1280.0,
@@ -363,9 +374,14 @@ pub struct Page {
     refreshes_followed: u8,
     observations: VecDeque<CachedObservation>,
     renderer: Option<SoftwareRenderer>,
+    images: ImageCache,
+    node_images: HashMap<NodeId, ImageHandle>,
+    shaper: ShaperKind,
     last_screenshot: Option<Screenshot>,
     last_navigation_error: Option<String>,
     virtual_time_ms: u64,
+    clock: ve_core::Clock,
+    wall_origin_ms: u64,
     cancelled: bool,
     /// Scripts in document order (external ones fetched at load).
     scripts: Vec<FetchedScript>,
@@ -885,9 +901,14 @@ impl Page {
             refreshes_followed: 0,
             observations: VecDeque::new(),
             renderer: None,
+            images: ImageCache::new(),
+            node_images: HashMap::new(),
+            shaper: ShaperKind::Metric,
             last_screenshot: None,
             last_navigation_error: None,
             virtual_time_ms: 0,
+            clock: ve_core::Clock::Virtual,
+            wall_origin_ms: ve_core::Clock::wall_unix_ms(),
             cancelled: false,
             scripts: Vec::new(),
             load_stats: LoadStats::default(),
@@ -1382,11 +1403,56 @@ impl Page {
         let Some(decoded) = decode_raster(bytes) else {
             return;
         };
+        let handle = self.images.insert(decoded.clone());
+        self.node_images.insert(id, handle);
         let renderer = self
             .renderer
             .get_or_insert_with(SoftwareRenderer::with_system_fonts);
         let handle = renderer.images.insert(decoded);
         renderer.node_images.insert(id, handle);
+    }
+
+    /// Layout shaper for this page (`metric` or `system`).
+    #[must_use]
+    pub fn shaper(&self) -> ShaperKind {
+        self.shaper
+    }
+
+    /// Replaces the layout shaper and forces a later relayout.
+    pub fn set_shaper(&mut self, kind: ShaperKind) {
+        if self.shaper == kind {
+            return;
+        }
+        self.shaper = kind;
+        self.layout_engine = match kind {
+            ShaperKind::Metric => LayoutEngine::new(),
+            ShaperKind::System => {
+                LayoutEngine::with_shaper(Box::new(ParleyShaper::with_system_fonts()))
+            }
+        };
+        self.style_tree = StyleTree::default();
+    }
+
+    /// Decoded `<img>` handles keyed by layout node.
+    #[must_use]
+    pub fn node_images(&self) -> &HashMap<NodeId, ImageHandle> {
+        &self.node_images
+    }
+
+    /// Page-owned decoded image cache (GPU and software share this).
+    #[must_use]
+    pub fn image_cache(&self) -> &ImageCache {
+        &self.images
+    }
+
+    /// Scrolls the viewport by CSS pixels without running an agent Program.
+    pub fn scroll_by(&mut self, dx: f32, dy: f32) -> ScrollState {
+        if dx.abs() > f32::EPSILON {
+            let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
+            self.scroll.x = (self.scroll.x + dx).clamp(0.0, max_x);
+            self.doc.record_scrolled(None);
+        }
+        self.scroll_viewport(dy)
     }
 
     /// Sets the device pixel ratio used for screenshots and `viewport.scale`.
@@ -2032,6 +2098,15 @@ impl Page {
         self.focused
     }
 
+    /// First `input` / `textarea` / `contenteditable` when nothing is focused.
+    #[must_use]
+    pub fn first_editable(&self) -> Option<NodeId> {
+        self.doc.descendants(self.doc.document_element()?).find(|id| {
+            self.doc.element(*id).is_some_and(|e| e.is_html("input") || e.is_html("textarea"))
+                || self.doc.attribute(*id, "contenteditable").is_some()
+        })
+    }
+
     /// History length and current index.
     #[must_use]
     pub fn history(&self) -> (usize, usize) {
@@ -2120,6 +2195,23 @@ impl Page {
     #[must_use]
     pub fn virtual_time_ms(&self) -> u64 {
         self.virtual_time_ms
+    }
+
+    /// Current page time: virtual settle clock, or wall time in the GUI.
+    #[must_use]
+    pub fn now_ms(&self) -> u64 {
+        match self.clock {
+            ve_core::Clock::Virtual => self.virtual_time_ms,
+            ve_core::Clock::Wall => ve_core::Clock::wall_unix_ms().saturating_sub(self.wall_origin_ms),
+        }
+    }
+
+    /// Switch the page clock. Goldens stay on [`ve_core::Clock::Virtual`].
+    pub fn set_clock(&mut self, clock: ve_core::Clock) {
+        self.clock = clock;
+        if clock == ve_core::Clock::Wall {
+            self.wall_origin_ms = ve_core::Clock::wall_unix_ms().saturating_sub(self.virtual_time_ms);
+        }
     }
 
     pub(crate) fn advance_virtual_time(&mut self, ms: u64) {
@@ -5269,42 +5361,10 @@ pub(crate) fn dispatch_worker(source: &str, msg: &str) -> Option<String> {
     }
     let data: serde_json::Value =
         serde_json::from_str(msg).unwrap_or_else(|_| serde_json::Value::String(msg.to_owned()));
-    if let Some(arg) = extract_post_message_arg(source) {
-        let mut env = std::collections::BTreeMap::new();
-        env.insert("document".into(), ve_vm::Value::Undefined);
-        let mut event = std::collections::BTreeMap::new();
-        event.insert("data".into(), json_to_vm(&data));
-        let ev = ve_vm::Value::Object(event);
-        env.insert("e".into(), ev.clone());
-        env.insert("event".into(), ev);
-        if let Ok(v) = ve_vm::eval_with(arg, &env) {
-            return Some(v.to_json().to_string());
-        }
-    }
+    // Inline `postMessage` arguments used to go through ve-vm. That crate is
+    // deleted (H0-D4); the payload is the posted `data` JSON.
+    let _ = extract_post_message_arg(source);
     Some(data.to_string())
-}
-
-fn json_to_vm(v: &serde_json::Value) -> ve_vm::Value {
-    match v {
-        serde_json::Value::Null => ve_vm::Value::Null,
-        serde_json::Value::Bool(b) => ve_vm::Value::Bool(*b),
-        serde_json::Value::Number(n) => n.as_f64().map_or(ve_vm::Value::Null, ve_vm::Value::Number),
-        serde_json::Value::String(s) => ve_vm::Value::String(s.clone()),
-        serde_json::Value::Array(a) => {
-            let mut m = std::collections::BTreeMap::new();
-            for (i, item) in a.iter().enumerate() {
-                m.insert(i.to_string(), json_to_vm(item));
-            }
-            ve_vm::Value::Object(m)
-        }
-        serde_json::Value::Object(o) => {
-            let mut m = std::collections::BTreeMap::new();
-            for (k, item) in o {
-                m.insert(k.clone(), json_to_vm(item));
-            }
-            ve_vm::Value::Object(m)
-        }
-    }
 }
 
 fn extract_post_message_arg(source: &str) -> Option<&str> {

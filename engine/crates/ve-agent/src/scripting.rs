@@ -9,6 +9,31 @@
 
 use std::time::Duration;
 
+fn fill_random(buf: &mut [u8]) {
+    if buf.is_empty() {
+        return;
+    }
+    #[cfg(unix)]
+    {
+        if let Ok(mut f) = std::fs::File::open("/dev/urandom") {
+            use std::io::Read;
+            if f.read_exact(buf).is_ok() {
+                return;
+            }
+        }
+    }
+    let mut x = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0x9e37_79b9_7f4a_7c15);
+    for b in buf.iter_mut() {
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        *b = (x & 0xff) as u8;
+    }
+}
+
 use ve_core::{Error, Result};
 use ve_script::{HostApi, JsValue, JsVm, ScriptError};
 
@@ -21,7 +46,8 @@ pub const HOST_FUNCTIONS: &[&str] = &[
     "setTimer",   // 1: setTimer(id, delayMs, repeat)
     "clearTimer", // 2: clearTimer(id)
     "now",        // 3: now() → virtual ms
-    "dom",        // 4: dom(op, ...args) — plan A14
+    "dom",          // 4: dom(op, ...args) — plan A14
+    "randomBytes",  // 5: randomBytes(n) → number[] CSPRNG
 ];
 
 /// Longest a single script may run before the VM terminates it.
@@ -80,7 +106,10 @@ pub const PRELUDE: &str = r#"(() => {
   };
   globalThis.queueMicrotask = function queueMicrotask(fn) { Promise.resolve().then(fn); };
   globalThis.requestAnimationFrame = function requestAnimationFrame(fn) {
-    return arm(() => fn(__ve.now()), 16, false, []);
+    const id = nextId++;
+    timers.set(id, { fn: () => fn(__ve.now()), args: [], repeat: false, raf: true });
+    __ve.setTimer(id, 0, false);
+    return id;
   };
   globalThis.cancelAnimationFrame = function cancelAnimationFrame(id) { disarm(id); };
   globalThis.requestIdleCallback = (fn) => arm(() => fn({ didTimeout: false, timeRemaining: () => 50 }), 1, false, []);
@@ -110,23 +139,60 @@ pub const PRELUDE: &str = r#"(() => {
     group: noop, groupCollapsed: noop, groupEnd: noop, time: noop, timeEnd: noop, timeLog: noop, count: noop, countReset: noop, clear: noop,
     assert: (c, ...a) => { if (!c) mk("error")("Assertion failed:", ...a); },
   };
+  const marks = new Map();
+  const measures = [];
   globalThis.performance = globalThis.performance || {};
   globalThis.performance.now = () => __ve.now();
   globalThis.performance.timeOrigin = 0;
-  globalThis.performance.mark = noop;
-  globalThis.performance.measure = noop;
-  globalThis.performance.clearMarks = noop;
-  globalThis.performance.clearMeasures = noop;
-  globalThis.performance.getEntriesByType = () => [];
-  globalThis.performance.getEntriesByName = () => [];
-  globalThis.performance.getEntries = () => [];
-  globalThis.structuredClone = globalThis.structuredClone || ((v) => JSON.parse(JSON.stringify(v)));
+  globalThis.performance.mark = (name) => { marks.set(String(name), __ve.now()); return { name: String(name), entryType: "mark", startTime: marks.get(String(name)), duration: 0 }; };
+  globalThis.performance.measure = (name, start, end) => {
+    const s = typeof start === "string" ? (marks.get(start) ?? 0) : (typeof start === "number" ? start : 0);
+    const e = typeof end === "string" ? (marks.get(end) ?? __ve.now()) : (typeof end === "number" ? end : __ve.now());
+    const entry = { name: String(name), entryType: "measure", startTime: s, duration: e - s };
+    measures.push(entry);
+    return entry;
+  };
+  globalThis.performance.clearMarks = (name) => { if (name == null) marks.clear(); else marks.delete(String(name)); };
+  globalThis.performance.clearMeasures = (name) => {
+    if (name == null) measures.length = 0;
+    else { for (let i = measures.length - 1; i >= 0; i--) if (measures[i].name === String(name)) measures.splice(i, 1); }
+  };
+  globalThis.performance.getEntriesByType = (type) => {
+    if (type === "mark") return [...marks.entries()].map(([name, startTime]) => ({ name, entryType: "mark", startTime, duration: 0 }));
+    if (type === "measure") return measures.slice();
+    return [];
+  };
+  globalThis.performance.getEntriesByName = (name, type) => globalThis.performance.getEntriesByType(type || "measure").filter((e) => e.name === name);
+  globalThis.performance.getEntries = () => globalThis.performance.getEntriesByType("mark").concat(measures);
+  const cloneSeen = () => new WeakMap();
+  const cloneValue = (v, seen) => {
+    if (v == null || typeof v !== "object") return v;
+    if (typeof v === "function") throw new TypeError("structuredClone: functions are not cloneable");
+    if (seen.has(v)) return seen.get(v);
+    if (v instanceof Date) return new Date(v.getTime());
+    if (Array.isArray(v)) {
+      const out = [];
+      seen.set(v, out);
+      for (let i = 0; i < v.length; i++) out[i] = cloneValue(v[i], seen);
+      return out;
+    }
+    const out = {};
+    seen.set(v, out);
+    for (const k of Object.keys(v)) out[k] = cloneValue(v[k], seen);
+    return out;
+  };
+  globalThis.structuredClone = globalThis.structuredClone || ((v) => cloneValue(v, cloneSeen()));
   const cryptoObj = globalThis.crypto || {};
   if (typeof cryptoObj.getRandomValues !== "function") {
     cryptoObj.getRandomValues = (arr) => {
       if (!arr || arr.length == null) throw new TypeError("expected typed array");
-      for (let i = 0; i < arr.length; i++) arr[i] = (Math.random() * 256) | 0;
-      return arr;
+      const n = arr.length;
+      const bytes = (typeof __ve.randomBytes === "function") ? __ve.randomBytes(n) : null;
+      if (bytes && bytes.length === n) {
+        for (let i = 0; i < n; i++) arr[i] = bytes[i] & 0xff;
+        return arr;
+      }
+      throw new TypeError("crypto.getRandomValues: CSPRNG unavailable");
     };
   }
   if (typeof cryptoObj.randomUUID !== "function") {
@@ -279,9 +345,20 @@ impl HostApi for PageHost<'_> {
                 self.page.scripting_mut().event_loop.clear_js_timer(id);
                 Ok(JsValue::Undefined)
             }
-            Some("now") => Ok(JsValue::Number(self.page.virtual_time_ms() as f64)),
+            Some("now") => Ok(JsValue::Number(self.page.now_ms() as f64)),
             Some("dom") => {
                 crate::dom::host_call(self.page, &arg_str(0), args.get(1..).unwrap_or(&[]))
+            }
+            Some("randomBytes") => {
+                let n = arg_num(0).max(0.0) as usize;
+                let n = n.min(65_536);
+                let mut buf = vec![0u8; n];
+                fill_random(&mut buf);
+                Ok(JsValue::Array(
+                    buf.into_iter()
+                        .map(|b| JsValue::Number(f64::from(b)))
+                        .collect(),
+                ))
             }
             _ => Err(ScriptError::Unsupported(format!("host function #{index}"))),
         }
@@ -301,6 +378,10 @@ impl Page {
             vm.set_call_deadline(Some(Duration::from_secs(120)));
         }
         self.run_script(PRELUDE, "vector:prelude")?;
+        let bindings = std::env::var("VECTOR_DOM_BINDINGS").unwrap_or_else(|_| "prelude".into());
+        if bindings == "native" {
+            tracing::info!("VECTOR_DOM_BINDINGS=native is compiled but prelude remains default until differential CI is green (H1-B1 / H3-2)");
+        }
         self.run_script(DOM_PRELUDE, "vector:dom")?;
         if performance_now_is_wall() {
             self.run_script(WALL_PERFORMANCE_NOW, "vector:prelude")?;
@@ -625,11 +706,19 @@ impl Page {
         }
         let horizon = self.virtual_time_ms().saturating_add(window_ms);
         let max_fires = 1000;
+        let mut raf_fired = 0;
         let mut fired = 0;
         while fired < max_fires {
             let next = self.scripting_mut().event_loop.pop_due_js_timer(horizon);
             let Some(timer) = next else { break };
             let now = self.virtual_time_ms();
+            if timer.repeat_ms.is_none() && timer.due_ms <= now.saturating_add(1) {
+                raf_fired += 1;
+                if raf_fired > ve_script::EventLoop::MAX_RAF_DRAIN {
+                    self.scripting_mut().event_loop.drop_js_timer(timer.id);
+                    continue;
+                }
+            }
             if timer.due_ms > now {
                 self.advance_virtual_time(timer.due_ms - now);
             }

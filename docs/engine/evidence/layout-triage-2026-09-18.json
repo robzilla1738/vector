@@ -1,0 +1,7 @@
+{
+  "date": "2026-09-18",
+  "backend": "vector-engine",
+  "reference": "chromium-headless",
+  "pages": 0,
+  "notes": "H1-D4 harness. Compare engine layout boxes to Chromium getBoundingClientRect on the public corpus."
+}

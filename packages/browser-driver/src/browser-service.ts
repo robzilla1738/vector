@@ -250,7 +250,7 @@ export class ServiceNativeEngine {
   async observe(_page: number, optionsJson?: string | null): Promise<string> {
     const opts = optionsJson ? (JSON.parse(optionsJson) as Record<string, unknown>) : {};
     const r = await this.client.call("pages.observe", opts);
-    return JSON.stringify({ ok: true, ...r, generation: r.documentEpoch ?? r.generation ?? 1 });
+    return JSON.stringify({ ok: true, ...r, documentEpoch: r.documentEpoch ?? r.generation ?? 1 });
   }
 
   async execute(_page: number, stepsJson: string, optionsJson?: string | null): Promise<string> {
@@ -280,14 +280,11 @@ export class ServiceNativeEngine {
   }
 
   async screenshot(_page: number, _optionsJson?: string | null): Promise<string> {
-    const r = await this.client.call("scene.update", {});
-    return JSON.stringify({
-      ok: true,
-      width: r.width ?? 0,
-      height: r.height ?? 0,
-      pngBase64: "",
-      scene: r,
-    });
+    const r = await this.client.call("pages.screenshot", {});
+    if (!r.pngBase64) {
+      throw new VectorError("capability_unsupported", "screenshot returned no image");
+    }
+    return JSON.stringify({ ok: true, ...r });
   }
 
   async scene(): Promise<string> {
@@ -296,15 +293,16 @@ export class ServiceNativeEngine {
   }
 
   async close(_page: number): Promise<string> {
-    return JSON.stringify({ ok: true, closed: true });
+    const r = await this.client.call("pages.close", {});
+    return JSON.stringify({ ok: true, ...r });
   }
 
   async getCookies(_contextId: number, _url?: string | null): Promise<string> {
-    return JSON.stringify({ ok: true, cookies: [] });
+    throw new VectorError("capability_unsupported", "cookies are not available on this BrowserService path");
   }
 
   async setCookies(_contextId: number, _cookiesJson: string): Promise<string> {
-    return JSON.stringify({ ok: true });
+    throw new VectorError("capability_unsupported", "cookies are not available on this BrowserService path");
   }
 
   pages(): number[] {

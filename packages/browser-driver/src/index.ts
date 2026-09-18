@@ -11,3 +11,4 @@ export * from "./attached-chrome.js";
 export * from "./standalone.js";
 export * from "./vector-engine.js";
 export * from "./browser-service.js";
+export { VectorEnginePage as EnginePage } from "./vector-engine.js";

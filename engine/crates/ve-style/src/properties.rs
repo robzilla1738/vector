@@ -22,7 +22,7 @@ use crate::values::{
     Content, ContentItem, Direction, Display, FlexDirection, FlexWrap, Float, FontFamily,
     FontStyle, FontWeight, GridLine, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
-    Overflow, OverflowWrap, PointerEvents, Position, Rgba, SelfAlignment, TextAlign,
+    ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba, SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
 };
@@ -1029,6 +1029,16 @@ property_table! {
     GridColumnStart: "grid-column-start" => grid_column_start: GridLine = GridLine::Auto, inherited = false, syntax = GridLine, convert = conv::grid_line;
     /// `grid-column-end`
     GridColumnEnd: "grid-column-end" => grid_column_end: GridLine = GridLine::Auto, inherited = false, syntax = GridLine, convert = conv::grid_line;
+    /// `border-top-left-radius` (pixels)
+    BorderTopLeftRadius: "border-top-left-radius" => border_top_left_radius: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `border-top-right-radius` (pixels)
+    BorderTopRightRadius: "border-top-right-radius" => border_top_right_radius: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `border-bottom-right-radius` (pixels)
+    BorderBottomRightRadius: "border-bottom-right-radius" => border_bottom_right_radius: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `border-bottom-left-radius` (pixels)
+    BorderBottomLeftRadius: "border-bottom-left-radius" => border_bottom_left_radius: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `object-fit`
+    ObjectFit: "object-fit" => object_fit: ObjectFit = ObjectFit::Fill, inherited = false, syntax = Single, convert = conv::kw::<ObjectFit>;
 }
 
 impl ComputedStyle {
@@ -1158,10 +1168,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "background-origin",
     "background-blend-mode",
     "border-radius",
-    "border-top-left-radius",
-    "border-top-right-radius",
-    "border-bottom-left-radius",
-    "border-bottom-right-radius",
     "border-image",
     "box-shadow",
     "text-shadow",
@@ -1205,7 +1211,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "scroll-snap-align",
     "overscroll-behavior",
     "touch-action",
-    "object-fit",
     "object-position",
     "image-rendering",
     "quotes",
@@ -2565,7 +2570,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 93);
+        assert_eq!(PropertyId::ALL.len(), 98);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

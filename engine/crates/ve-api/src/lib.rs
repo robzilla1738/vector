@@ -47,16 +47,17 @@ use ve_net::{Initiator, NetworkContext, Request};
 
 pub use service::{BrowserClient, BrowserService, BrowserServiceListener, BrowserServicePump};
 pub use shell::{
-    ChromeAxNode, EventOutcome, NativeBrowser, NativeController, NativeEvent, Tab, scene_json,
+    ChromeAxNode, EventOutcome, KeyState, NativeBrowser, NativeController, NativeEvent, Tab,
+    scene_json,
 };
 pub use updates::{UpdateKeyPair, verify_update_manifest};
 pub use ve_agent::{
     EngineObservation, ExecuteRequest, ExecuteResult, Format, InFlightSummary, LoadedDocument,
     Loader, NavMethod, NavigationRequest, ObservationContent, ObservationRequest, Page, Program,
     ProgramResult, RoutingInfo, SETTLE_NAVIGATION_MS, SETTLE_STEP_MS, Scope, Screenshot, Settled,
-    StepOutcome,
+    ShaperKind, StepOutcome,
 };
-pub use ve_core::VERSION;
+pub use ve_core::{Clock, VERSION};
 pub use ve_net::{BrowserCookie, ContextId, NetworkPolicy};
 
 /// Start V8 before a production sandbox denies new threads.
@@ -141,6 +142,10 @@ pub struct EngineConfig {
     /// (WPT/fixture HTTPS CAs). Empty in ordinary browsing.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub extra_tls_roots: Vec<Vec<u8>>,
+    /// Layout text shaper. GUI / corpus / Speedometer use [`ShaperKind::System`].
+    pub shaper: ShaperKind,
+    /// Page clock. Goldens stay [`Clock::Virtual`]; `ve-shell --gui` uses Wall.
+    pub clock: Clock,
 }
 
 impl Default for EngineConfig {
@@ -157,6 +162,8 @@ impl Default for EngineConfig {
             security_profile: SecurityProfile::Developer,
             isolation: IsolationMode::Auto,
             extra_tls_roots: Vec::new(),
+            shaper: ShaperKind::Metric,
+            clock: Clock::Virtual,
         }
     }
 }
@@ -671,6 +678,8 @@ impl VectorEngine {
             }
         };
         page.set_scale(self.config.scale);
+        page.set_shaper(self.config.shaper);
+        page.set_clock(self.config.clock);
         page.set_network_policy(policy);
         let settled = page.settle_passive(SETTLE_NAVIGATION_MS);
         if let Some(error) = page.take_navigation_error() {

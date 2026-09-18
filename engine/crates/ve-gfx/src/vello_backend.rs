@@ -290,7 +290,32 @@ pub fn build_scene_fonts(
                 );
                 scene.push_layer(Fill::NonZero, Mix::Normal, *alpha, transform, &everything);
             }
-            DisplayItem::PopClip | DisplayItem::PopOpacity => scene.pop_layer(),
+            DisplayItem::PopClip | DisplayItem::PopOpacity | DisplayItem::PopTransform => {
+                scene.pop_layer()
+            }
+            DisplayItem::RoundedClip { rect, .. } => {
+                scene.push_clip_layer(Fill::NonZero, transform, &krect(*rect));
+            }
+            DisplayItem::PushTransform { tx, ty } => {
+                let shifted = transform * Affine::translate((f64::from(*tx), f64::from(*ty)));
+                let everything = KRect::new(
+                    0.0,
+                    0.0,
+                    f64::from(list.size.width),
+                    f64::from(list.size.height),
+                );
+                scene.push_layer(Fill::NonZero, Mix::Normal, 1.0, shifted, &everything);
+            }
+            DisplayItem::BoxShadow {
+                rect,
+                dx,
+                dy,
+                color: c,
+                ..
+            } => {
+                let shadow = Rect::new(rect.x() + dx, rect.y() + dy, rect.width(), rect.height());
+                scene.fill(Fill::NonZero, transform, color(*c), None, &krect(shadow));
+            }
         }
     }
     scene

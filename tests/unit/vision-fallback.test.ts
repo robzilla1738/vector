@@ -82,6 +82,7 @@ function harness(opts: {
     recoveryModel: () => undefined,
     visionModel: () => "test/vision",
     recordModelCall: (c) => modelCalls.push({ role: c.role, modelId: c.modelId }),
+    grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   });
   return { repo, coordinator, model, generateStructured, generateText, pages, modelCalls, executeCalls };
 }
@@ -101,12 +102,12 @@ describe("vision fallback", () => {
     const h = harness({
       executeFails: 1,
       structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
-      visionText: `sure! {"status":"done","message":"done","result":{"note":"fixed via screenshot"}}`,
+      visionText: `sure! {"status":"done","message":"done","result":{"ok":true}}`,
     });
     const run = await h.coordinator.start({ goal: "do it", pageIds: ["p1"] });
     const final = await waitForRun(h.repo, run.runId);
     expect(final.status).toBe("completed");
-    expect(final.result).toEqual({ note: "fixed via screenshot" });
+    expect(final.result).toEqual({ ok: true });
     expect(h.generateText).toHaveBeenCalledOnce();
     const call = h.generateText.mock.calls[0]?.[0];
     expect(call?.imageDataUrl).toMatch(/^data:image\/png/);
@@ -147,6 +148,7 @@ describe("vision fallback", () => {
       recordModelCall: () => {},
       saveObservation: () => "art-obs-1",
       onStepRecorded: (_r, _o, _s, obsArtifactId) => recorded.push({ obsArtifactId }),
+      grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     });
     const run = await coord.start({ goal: "click it", pageIds: ["p1"] });
     const final = await waitForRun(h.repo, run.runId);
@@ -159,7 +161,7 @@ describe("vision fallback", () => {
     const h = harness({
       executeFails: 1,
       structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
-      thenPlans: [{ status: "done", message: "ok", result: { note: "planner recovered" } }],
+      thenPlans: [{ status: "done", message: "ok", result: { ok: true } }],
       visionText: `{"status":"done","message":"via vision","result":{"note":"vision"}}`,
     });
     const coord = new RunCoordinator({
@@ -170,11 +172,12 @@ describe("vision fallback", () => {
       defaultModel: () => "test/planner",
       recoveryModel: () => undefined,
       recordModelCall: () => {},
+      grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     });
     const run = await coord.start({ goal: "do it", pageIds: ["p1"] });
     const final = await waitForRun(h.repo, run.runId);
     expect(final.status).toBe("completed");
-    expect(final.result).toEqual({ note: "planner recovered" });
+    expect(final.result).toEqual({ ok: true });
     expect(h.generateText).not.toHaveBeenCalled();
     expect(h.pages.capture).not.toHaveBeenCalled();
   });
@@ -183,13 +186,13 @@ describe("vision fallback", () => {
     const h = harness({
       executeFails: 1,
       structuredPlan: { status: "continue", message: "clicking", steps: [{ id: "s1", op: "click", target: "r1" }] },
-      thenPlans: [{ status: "done", message: "ok", result: { note: "planner recovered" } }],
+      thenPlans: [{ status: "done", message: "ok", result: { ok: true } }],
       visionText: "I cannot help with that.",
     });
     const run = await h.coordinator.start({ goal: "do it again", pageIds: ["p1"] });
     const final = await waitForRun(h.repo, run.runId);
     expect(final.status).toBe("completed");
-    expect(final.result).toEqual({ note: "planner recovered" });
+    expect(final.result).toEqual({ ok: true });
     expect(h.modelCalls.filter((c) => c.role === "vision")).toHaveLength(1);
     expect(h.generateStructured).toHaveBeenCalled();
   });

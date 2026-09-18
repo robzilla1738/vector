@@ -403,9 +403,20 @@ impl ParleyShaper {
     /// it behaves like [`MetricShaper`].
     #[must_use]
     pub fn new() -> Self {
+        Self::with_system_fonts_enabled(false)
+    }
+
+    /// System-installed fonts through fontique. Used by `ve-shell --gui`,
+    /// the corpus, and Speedometer. Tests/WPT/perf keep [`Self::new`].
+    #[must_use]
+    pub fn with_system_fonts() -> Self {
+        Self::with_system_fonts_enabled(true)
+    }
+
+    fn with_system_fonts_enabled(system_fonts: bool) -> Self {
         let collection = parley::fontique::Collection::new(parley::fontique::CollectionOptions {
             shared: false,
-            system_fonts: false,
+            system_fonts,
         });
         let fonts = parley::FontContext {
             collection,
@@ -415,7 +426,7 @@ impl ParleyShaper {
             fonts,
             layouts: parley::LayoutContext::new(),
             fallback: MetricShaper::default(),
-            has_fonts: false,
+            has_fonts: system_fonts,
         }
     }
 

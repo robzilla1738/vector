@@ -261,6 +261,7 @@ function observeOptions(req?: Partial<ObservationRequest>): string {
     maxElements: req?.maxElements,
     maxTextChars: req?.maxTextChars,
     sinceRevision: req?.sinceRevision,
+    format: req?.format,
   });
 }
 

@@ -229,7 +229,7 @@ harness (`tests/benchmarks/run.mjs`):
 | fill by ref | 23.7 ms | 0.8 ms |
 | navigate + observe | 56.5 ms | 2.4 ms |
 | act + observe | 13.1 ms | 2.0 ms |
-| full observation | 9,499 bytes | 13,148 bytes |
+| full observation | 9,580 bytes | 5,917 bytes |
 
 The engine observation is larger because it surfaces more elements than the
 Chromium observe script.

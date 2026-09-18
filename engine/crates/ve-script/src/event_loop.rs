@@ -303,6 +303,9 @@ impl EventLoop {
             .min()
     }
 
+    /// rAF callbacks do not block settle after [`Self::MAX_RAF_DRAIN`] frames.
+    pub const MAX_RAF_DRAIN: usize = 8;
+
     /// `(due within horizon, armed later)` for settle readiness.
     #[must_use]
     pub fn js_timer_readiness(&self, horizon_ms: u64) -> (usize, usize) {

@@ -13,13 +13,20 @@ use ve_script::{JsValue, ScriptError};
 use crate::page::{LoadedDocument, Page, outer_html};
 
 pub(crate) fn pack(id: NodeId) -> JsValue {
-    JsValue::String(format!("{}:{}", id.index(), id.generation()))
+    JsValue::Number(id.to_u64() as f64)
 }
 
 fn unpack(v: &JsValue) -> Option<NodeId> {
+    if let Some(n) = v.as_f64() {
+        if n.is_finite() && n >= 0.0 {
+            return Some(NodeId::from_u64(n as u64));
+        }
+    }
     let s = v.as_str()?;
-    let (i, g) = s.split_once(':')?;
-    Some(NodeId::new(i.parse().ok()?, g.parse().ok()?))
+    if let Some((i, g)) = s.split_once(':') {
+        return Some(NodeId::new(i.parse().ok()?, g.parse().ok()?));
+    }
+    s.parse::<u64>().ok().map(NodeId::from_u64)
 }
 
 fn arg_str(args: &[JsValue], i: usize) -> String {

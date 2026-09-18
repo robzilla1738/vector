@@ -1,0 +1,11 @@
+{
+  "note": "One rust-cache key per job class. Windows legs removed (H0-D2).",
+  "jobs": {
+    "fmt": { "os": ["ubuntu-latest", "macos-latest"], "cacheKey": "none" },
+    "clippy": { "os": ["ubuntu-latest", "macos-latest"], "cacheKey": "clippy" },
+    "test": { "os": ["ubuntu-latest", "macos-latest"], "cacheKey": "test" },
+    "addon": { "os": ["ubuntu-latest", "macos-latest"], "cacheKey": "addon" },
+    "downloaded-artifact": { "os": ["ubuntu-latest", "macos-latest"], "cacheKey": "downloaded-artifact" }
+  },
+  "windowsJobInstancesRemoved": 6
+}

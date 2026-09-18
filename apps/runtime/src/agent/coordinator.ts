@@ -100,6 +100,50 @@ function harvestResults(outcomes: StepOutcome[]): Record<string, unknown> | unde
 /** Ops whose effect the observer can't see — JS state, downloads, screenshots. */
 const OBSERVATION_BLIND_OPS = new Set(["evaluate", "extract", "collectScroll", "expectDownload", "screenshot"]);
 
+const WRITE_LIKE_OPS = new Set([
+  "click", "dblclick", "fill", "type", "press", "select", "check", "uncheck",
+  "navigate", "submit", "hover", "scroll", "dragTo", "clickPoint", "reload",
+]);
+
+function observationGroundText(obs: Observation): string {
+  const c = obs.content;
+  return [c.text, c.title, c.url, ...(c.headings ?? []).map((h) => (typeof h === "string" ? h : String((h as { text?: string }).text ?? "")))]
+    .join(" ")
+    .toLowerCase();
+}
+
+function collectStringClaims(result: unknown): string[] {
+  const out: string[] = [];
+  const walk = (v: unknown) => {
+    if (typeof v === "string") {
+      const t = v.trim();
+      if (t) out.push(t);
+      return;
+    }
+    if (typeof v === "number" && Number.isFinite(v)) out.push(String(v));
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") Object.values(v as Record<string, unknown>).forEach(walk);
+  };
+  walk(result);
+  return out;
+}
+
+/** Re-observe challenge: long textual claims must appear on the page, or a write must have landed. */
+export function verifyDoneAgainstObservation(
+  result: unknown,
+  obs: Observation,
+  outcomes: StepOutcome[],
+): { ok: boolean; reason: string } {
+  const writesOk = outcomes.some((o) => o.status === "ok" && WRITE_LIKE_OPS.has(o.op));
+  const text = observationGroundText(obs);
+  const claims = collectStringClaims(result);
+  const longClaims = claims.filter((c) => c.length >= 8);
+  const ungrounded = longClaims.filter((c) => !text.includes(c.toLowerCase()));
+  if (ungrounded.length === 0) return { ok: true, reason: "grounded" };
+  if (writesOk && longClaims.length === 0) return { ok: true, reason: "writes-ok" };
+  return { ok: false, reason: `ungrounded claims: ${ungrounded.slice(0, 3).join(", ")}` };
+}
+
 /**
  * The built-in agent: goal -> observe -> plan chunk -> execute locally ->
  * verify -> repair/escalate -> done. One page at a time per chunk; the
@@ -446,6 +490,10 @@ export class RunCoordinator {
         }
         if (d.status !== "done") return "gave_up";
         const result = d.result && Object.keys(d.result).length ? d.result : harvestResults(outcomes);
+        if (!activePageId) return "gave_up";
+        const verifyObs = await this.deps.pages.observe(activePageId, { sinceRevision: obs.revision, format: "full" });
+        const verified = verifyDoneAgainstObservation(result, verifyObs, outcomes);
+        if (!verified.ok) return "gave_up";
         this.finish(runId, "completed", result, undefined, d.message || "Done");
         return "done";
       } catch {
@@ -715,6 +763,22 @@ export class RunCoordinator {
             doneChallenged = true;
             lastError = `the last action failed (${lastError ?? "see outcomes"}) and you returned done without trying an alternative — if another mechanism could reach the goal (press Enter, navigate to a URL you can construct, a different selector), run it now; only return done again if every alternative is exhausted`;
             continue;
+          }
+          let verifyObs = obs;
+          try {
+            verifyObs = await this.deps.pages.observe(activePageId, { sinceRevision: obs.revision, format: "full" });
+          } catch {
+            verifyObs = obs;
+          }
+          const verified = verifyDoneAgainstObservation(plan.result, verifyObs, outcomes);
+          if (!verified.ok && !doneChallenged) {
+            doneChallenged = true;
+            lastError = `done was not verified against a fresh observation (${verified.reason}) — re-observe and only return done with values that appear on the page`;
+            continue;
+          }
+          if (!verified.ok) {
+            this.finish(runId, "failed", plan.result, `done not verified: ${verified.reason}`, "Done was not grounded in the page");
+            return;
           }
           this.finish(runId, "completed", plan.result, undefined, plan.message || "Done");
           return;

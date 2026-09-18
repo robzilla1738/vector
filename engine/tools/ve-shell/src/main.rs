@@ -8,9 +8,11 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Parser;
+mod frame_trace;
+
 use ve_api::{
-    BrowserServiceListener, BrowserServicePump, EngineConfig, NativeBrowser, NativeEvent,
-    OpenRequest, ScreenshotOptions, VectorEngine,
+    BrowserServiceListener, BrowserServicePump, Clock, EngineConfig, NativeBrowser, NativeEvent,
+    OpenRequest, ScreenshotOptions, ShaperKind, VectorEngine,
 };
 use ve_core::Size;
 
@@ -45,10 +47,19 @@ struct Args {
     /// `NativeBrowser` (`Finding` 1). Example: `127.0.0.1:0`.
     #[arg(long)]
     service: Option<String>,
+    /// Write a frame trace JSON (input→paint, from_layout, jank).
+    #[arg(long)]
+    trace_frames: Option<PathBuf>,
+    /// Replay scripted input JSON, then exit (headless).
+    #[arg(long)]
+    replay_input: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    if args.replay_input.is_some() && !args.gui {
+        return run_replay(&args);
+    }
     if args.gui {
         return run_gui(&args);
     }
@@ -89,6 +100,41 @@ fn main() -> Result<()> {
                 "rssBytes": ve_core::process_rss_bytes(),
             })
         );
+    }
+    Ok(())
+}
+
+fn run_replay(args: &Args) -> Result<()> {
+    let mut browser = NativeBrowser::with_config(EngineConfig {
+        viewport: Size::new(1280.0, 720.0),
+        offline: args.url.starts_with("data:")
+            || args.url.starts_with("file:")
+            || args.html.is_some(),
+        scripting: cfg!(feature = "v8"),
+        shaper: ShaperKind::System,
+        policy: ve_api::NetworkPolicy::permissive(),
+        ..EngineConfig::default()
+    });
+    if let Some(html) = &args.html {
+        browser.handle_event(NativeEvent::NewTab {
+            html: html.clone(),
+            url: args.url.clone(),
+        })?;
+    } else {
+        browser.open_url(&args.url)?;
+    }
+    let _ = browser.present();
+    let path = args
+        .replay_input
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("--replay-input required"))?;
+    let events = frame_trace::load_replay(path)?;
+    let trace = frame_trace::replay(&mut browser, &events);
+    if let Some(out) = &args.trace_frames {
+        trace.write(out)?;
+        eprintln!("wrote {}", out.display());
+    } else {
+        println!("{}", serde_json::to_string_pretty(&trace)?);
     }
     Ok(())
 }
@@ -135,6 +181,8 @@ fn run_gui(args: &Args) -> Result<()> {
             || args.html.is_some(),
         scripting: cfg!(feature = "v8"),
         policy: ve_api::NetworkPolicy::permissive(),
+        shaper: ShaperKind::System,
+        clock: Clock::Wall,
         ..EngineConfig::default()
     });
     browser.enable_os_clipboard();

@@ -74,6 +74,7 @@ function harness() {
     defaultModel: () => "test/planner",
     recoveryModel: () => "test/recovery",
     recordModelCall: () => {},
+    grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   });
   return { repo, coordinator, generateStructured, roles, get executeCalls() { return executeCalls; } };
 }

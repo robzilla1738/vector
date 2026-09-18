@@ -1,6 +1,6 @@
 [package]
-name = "ve-vm"
-description = "Experimental independent JS interpreter (VEC-025). Not the production VM."
+name = "ve-profile"
+description = "On-disk profile: history, bookmarks, session, downloads, zoom."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,6 +13,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+ve-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-thiserror.workspace = true

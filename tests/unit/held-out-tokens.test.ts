@@ -58,6 +58,7 @@ function harness(model: MockModelClient) {
     recordModelCall: (c) => {
       tokens.push({ input: c.inputTokens ?? 0, output: c.outputTokens ?? 0, ms: c.durationMs });
     },
+    grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   });
   return { repo, coordinator, tokens };
 }

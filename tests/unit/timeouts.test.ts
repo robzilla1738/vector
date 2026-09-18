@@ -77,6 +77,7 @@ function harness(model: ModelClient) {
     defaultModel: () => "test/planner",
     recoveryModel: () => undefined,
     recordModelCall: (c) => recorded.push({ role: c.role, error: c.error }),
+    grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   });
   return { repo, coordinator, recorded };
 }

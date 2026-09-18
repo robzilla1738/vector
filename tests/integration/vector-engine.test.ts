@@ -100,7 +100,7 @@ describeIfEngine("vector-engine backend", () => {
     expect(obs.revision).toBeGreaterThan(0);
     expect(obs.content.elements.length).toBeGreaterThan(3);
     expect(obs.content.tables.length).toBeGreaterThanOrEqual(1);
-    for (const e of obs.content.elements) expect(e.ref).toMatch(/^r\d+$/);
+    for (const e of obs.content.elements) expect(e.ref).toMatch(/^r\d+(?:\.\d+)?$/);
     expect(obs.content.formFields.length).toBeGreaterThan(0);
     const epochBefore = obs.documentEpoch;
 
@@ -131,7 +131,7 @@ describeIfEngine("vector-engine backend", () => {
     await invoke("pages.navigate", { pageId: page.pageId, url: `${RECORDS}/new` });
     const form = await invoke<Observation>("pages.observe", { pageId: page.pageId, scope: "forms" });
     const title = form.content.formFields.find((f) => /title/i.test(f.label ?? f.name ?? ""));
-    expect(title?.ref, "title field ref").toMatch(/^r\d+$/);
+    expect(title?.ref, "title field ref").toMatch(/^r\d+(?:\.\d+)?$/);
     const filled = await invoke<ProgramResult>("pages.execute", {
       program: {
         pageId: page.pageId,

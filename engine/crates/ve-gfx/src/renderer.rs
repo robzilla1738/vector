@@ -368,6 +368,23 @@ impl Renderer for SoftwareRenderer {
                 DisplayItem::PopOpacity => {
                     canvas.opacity.pop();
                 }
+                DisplayItem::RoundedClip { rect, .. } => {
+                    let clipped = canvas.clip_rect().intersection(rect).unwrap_or(Rect::ZERO);
+                    canvas.clip.push(clipped);
+                }
+                DisplayItem::PushTransform { .. } | DisplayItem::PopTransform => {}
+                DisplayItem::BoxShadow {
+                    rect,
+                    dx,
+                    dy,
+                    color,
+                    ..
+                } => {
+                    canvas.fill_rect(
+                        Rect::new(rect.x() + dx, rect.y() + dy, rect.width(), rect.height()),
+                        *color,
+                    );
+                }
             }
         }
         Ok(Frame {

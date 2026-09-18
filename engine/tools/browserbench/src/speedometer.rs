@@ -1600,6 +1600,7 @@ mod tests {
             offline: true,
             scripting: true,
             policy: ve_api::NetworkPolicy::permissive(),
+            shaper: ve_api::ShaperKind::System,
             ..EngineConfig::default()
         })
     }

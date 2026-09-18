@@ -60,6 +60,17 @@ struct Args {
     official_score: bool,
 }
 
+/// Official BrowserBench scoring is parked (H0-D4 / D2). The flag is accepted
+/// so existing scripts do not break; it does not enable wall-clock hacks.
+fn official_score_parked(requested: bool) -> bool {
+    if requested {
+        eprintln!(
+            "warning: --official-score is parked (docs/ROADMAP.md D2). Running as a profiling input only."
+        );
+    }
+    false
+}
+
 #[derive(Serialize)]
 struct SuiteResult {
     name: String,
@@ -716,7 +727,8 @@ fn motionmark_official_attribution(
 }
 
 fn main() -> Result<()> {
-    let args = Args::parse();
+    let mut args = Args::parse();
+    args.official_score = official_score_parked(args.official_score);
     let iterations = if args.official_score && !iterations_explicit() {
         score::DEFAULT_ITERATION_COUNT
     } else {
@@ -759,6 +771,7 @@ fn main() -> Result<()> {
         offline: true,
         scripting: cfg!(feature = "v8"),
         policy: ve_api::NetworkPolicy::permissive(),
+        shaper: ve_api::ShaperKind::System,
         ..EngineConfig::default()
     });
     let speedometer_iterations = if args.official_score && !iterations_explicit() {

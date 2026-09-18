@@ -73,9 +73,9 @@ runtime over [MCP](docs/mcp.md) or the [loopback API](docs/api.md).
 same harness (`tests/benchmarks/run.mjs`), 5 repeats after 1 warmup, p50 on
 darwin arm64 (2026-09-16). Chromium is the headless standalone driver with
 `engineMode: off`; Vector Engine is `engineMode: always` (process isolation).
-Held-out p95 of `act+observe`: Chromium 14.9 ms, engine 2.8 ms (5.32×).
-Token stretch is measured from declared model usage (`meetsStretch` true,
-`tokenRatio` 8.35). Snapshot: `docs/engine/evidence/held-out-latest.json`.
+Held-out mock 5.32× / 8.35× tokens is retired (`MockModelClient`, n=1). Live
+held-out rows live in `docs/BENCHMARKS.md`. Snapshot kept for audit:
+`docs/engine/evidence/held-out-latest.json`.
 
 | Metric | Chromium | Vector Engine |
 |---|---:|---:|

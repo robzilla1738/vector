@@ -129,6 +129,7 @@ fn router_classifies_the_public_corpus() {
     }
     let mut engine = VectorEngine::new(EngineConfig {
         offline: true,
+        shaper: ve_api::ShaperKind::System,
         ..EngineConfig::default()
     });
     let mut pages = Vec::new();

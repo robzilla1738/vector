@@ -12,8 +12,11 @@
   const nodes = new Map();
   const nonceMap = new WeakMap();
   const registry = new Map();
-  const listeners = new Map();
+  const listeners = typeof WeakMap === "function" ? new WeakMap() : new Map();
   const listenerCounts = new Map();
+  const wrapperRegistry = typeof FinalizationRegistry === "function"
+    ? new FinalizationRegistry((h) => { nodes.delete(h); })
+    : null;
   let onAttrCount = 0;
   let handlerPropCount = 0;
   // window.addEventListener stores on this object, not globalThis.
@@ -517,25 +520,37 @@
   };
   let exposeWindowName = function () {};
   let browsingDocument = null;
+  function liveWrapper(h) {
+    const cached = nodes.get(h);
+    if (!cached) return null;
+    if (typeof WeakRef === "function" && cached instanceof WeakRef) {
+      const v = cached.deref();
+      if (!v) { nodes.delete(h); return null; }
+      return v;
+    }
+    return cached;
+  }
+  function rememberWrapper(h, n, strong) {
+    if (strong || typeof WeakRef !== "function") nodes.set(h, n);
+    else nodes.set(h, new WeakRef(n));
+    if (wrapperRegistry) wrapperRegistry.register(n, h);
+  }
   function wrapDoc(h) {
     if (h == null || h === "" || h === false) return null;
-    h = String(h);
-    if (browsingDocument && h === String(browsingDocument.__h)) return browsingDocument;
+    if (browsingDocument && h == browsingDocument.__h) return browsingDocument;
     return wrap(h);
   }
   function wrap(h) {
     if (h == null || h === "" || h === false) return null;
-    h = String(h);
-    if (browsingDocument && h === String(browsingDocument.__h)) return browsingDocument;
-    const cached = nodes.get(h);
+    if (browsingDocument && h == browsingDocument.__h) return browsingDocument;
+    const cached = liveWrapper(h);
     if (cached) return cached;
     return wrapWithInfo(h, D("describe", h));
   }
   function wrapWithInfo(h, info) {
     if (h == null || h === "" || h === false) return null;
-    h = String(h);
-    if (browsingDocument && h === String(browsingDocument.__h)) return browsingDocument;
-    let n = nodes.get(h);
+    if (browsingDocument && h == browsingDocument.__h) return browsingDocument;
+    let n = liveWrapper(h);
     if (n) return n;
     if (!info) return null;
     let proto = Node.prototype;
@@ -560,10 +575,10 @@
     }
     n = Object.create(proto);
     n.__h = h;
-    nodes.set(h, n);
+    rememberWrapper(h, n, info.t === 9);
     if (info.t === 9) {
       n = new Proxy(n, documentNamedTraps);
-      nodes.set(h, n);
+      rememberWrapper(h, n, true);
       installDocumentLocation(n);
     }
     if (info.t === 1) {
@@ -624,10 +639,11 @@
     connectCustomElement(n);
   }
   function handleOf(v) {
-    if (v == null) return "";
-    if (typeof v === "string") return v;
-    return v.__h || "";
+    if (v == null) return 0;
+    if (typeof v === "number" || typeof v === "string") return v;
+    return v.__h || 0;
   }
+  globalThis.__veDomProfile = () => ({ nodes: nodes.size });
   class NodeList {}
   Object.defineProperty(NodeList, Symbol.hasInstance, {
     value(v) {

@@ -253,7 +253,7 @@ export class Router {
   }
 }
 
-const REF = /^r\d+$/;
+const REF = /^r\d+(?:\.\d+)?$/;
 /** Does the step address an observation ref anywhere (target, drag destination, refReady wait)? */
 export function stepTargetsRef(s: Step): boolean {
   const rec = s as unknown as Record<string, unknown>;

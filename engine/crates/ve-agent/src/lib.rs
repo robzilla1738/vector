@@ -41,6 +41,7 @@ pub use executor::{ExecuteRequest, ExecuteResult};
 pub use keys::{Chord, Key, Modifiers};
 pub use page::{
     CompletedDownload, DEFAULT_TIMEOUT_MS, DEFAULT_VIEWPORT, EngineObservation, FetchedScript,
+    ShaperKind,
     FnLoader, InFlightSummary, LoadStats, LoadedDocument, LoadedResource, Loader, NavMethod,
     NavigationRequest, Page, RestyleAttribution, SETTLE_NAVIGATION_MS, SETTLE_STEP_MS, ScrollState,
     SubresourceKind, SubresourceRequest, outer_html,

@@ -32,7 +32,7 @@ export interface DriverSet {
   engine?: BrowserDriver | null;
 }
 
-type ObserveReq = Partial<Pick<ObservationRequest, "scope" | "subtreeRef" | "maxElements" | "maxTextChars" | "sinceRevision">>;
+type ObserveReq = Partial<Pick<ObservationRequest, "scope" | "subtreeRef" | "maxElements" | "maxTextChars" | "sinceRevision" | "format">>;
 
 /** `pages.execute` result: the program result plus the act-and-observe observation. */
 export type ExecuteResult = ProgramResult & { observation?: Observation };

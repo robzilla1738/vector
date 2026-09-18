@@ -865,6 +865,22 @@ keyword_enum! {
 }
 
 keyword_enum! {
+    /// The `object-fit` property.
+    ObjectFit {
+        /// Stretch to fill.
+        Fill = "fill",
+        /// Preserve aspect, may letterbox.
+        Contain = "contain",
+        /// Preserve aspect, may crop.
+        Cover = "cover",
+        /// Intrinsic size, no scale.
+        None = "none",
+        /// Smaller of none/contain.
+        ScaleDown = "scale-down",
+    }
+}
+
+keyword_enum! {
     /// The `pointer-events` property.
     PointerEvents {
         /// Normal hit testing.

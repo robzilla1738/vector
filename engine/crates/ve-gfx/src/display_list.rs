@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use ve_core::{Edges, NodeId, Point, Rect, Size};
 use ve_layout::LayoutTree;
-use ve_style::{FontFamily, FontStyle, FontWeight, Rgba, StyleTree};
+use ve_style::{FontFamily, FontStyle, FontWeight, Rgba, StyleTree, TransformOp};
 
 use crate::image::ImageHandle;
 
@@ -64,6 +64,35 @@ pub enum DisplayItem {
     PushOpacity(f32),
     /// Ends an opacity group.
     PopOpacity,
+    /// Clip to a rounded rectangle until [`DisplayItem::PopClip`].
+    RoundedClip {
+        /// Bounds.
+        rect: Rect,
+        /// Corner radius in CSS pixels (uniform).
+        radius: f32,
+    },
+    /// Translate subsequent items until [`DisplayItem::PopTransform`].
+    PushTransform {
+        /// X translation.
+        tx: f32,
+        /// Y translation.
+        ty: f32,
+    },
+    /// Ends a transform group.
+    PopTransform,
+    /// Drop shadow behind a rectangle.
+    BoxShadow {
+        /// Box bounds.
+        rect: Rect,
+        /// Offset.
+        dx: f32,
+        /// Offset.
+        dy: f32,
+        /// Blur radius.
+        blur: f32,
+        /// Shadow colour.
+        color: Rgba,
+    },
 }
 
 impl DisplayItem {
@@ -74,14 +103,20 @@ impl DisplayItem {
             Self::Rect { rect, .. }
             | Self::Border { rect, .. }
             | Self::Image { rect, .. }
-            | Self::PushClip(rect) => Some(*rect),
+            | Self::PushClip(rect)
+            | Self::RoundedClip { rect, .. }
+            | Self::BoxShadow { rect, .. } => Some(*rect),
             Self::Text(run) => Some(Rect::new(
                 run.origin.x,
                 run.origin.y - run.size,
                 run.text.chars().count() as f32 * run.size * 0.5,
                 run.size * 1.2,
             )),
-            Self::PopClip | Self::PushOpacity(_) | Self::PopOpacity => None,
+            Self::PopClip
+            | Self::PushOpacity(_)
+            | Self::PopOpacity
+            | Self::PushTransform { .. }
+            | Self::PopTransform => None,
         }
     }
 
@@ -111,6 +146,27 @@ impl DisplayItem {
                 handle: *handle,
             },
             Self::PushClip(rect) => Self::PushClip(rect.translate(dx, dy)),
+            Self::RoundedClip { rect, radius } => Self::RoundedClip {
+                rect: rect.translate(dx, dy),
+                radius: *radius,
+            },
+            Self::BoxShadow {
+                rect,
+                dx: sdx,
+                dy: sdy,
+                blur,
+                color,
+            } => Self::BoxShadow {
+                rect: rect.translate(dx, dy),
+                dx: *sdx,
+                dy: *sdy,
+                blur: *blur,
+                color: *color,
+            },
+            Self::PushTransform { tx, ty } => Self::PushTransform {
+                tx: *tx + dx,
+                ty: *ty + dy,
+            },
             other => other.clone(),
         }
     }
@@ -206,8 +262,27 @@ impl DisplayList {
             let style = styles.style(node);
             let clip = layout.clip_of(node);
             let faded = style.opacity < 1.0 - f32::EPSILON;
-            if let Some(c) = clip {
+            let radius = style
+                .border_top_left_radius
+                .max(style.border_top_right_radius)
+                .max(style.border_bottom_right_radius)
+                .max(style.border_bottom_left_radius);
+            if radius > 0.0 {
+                list.push(DisplayItem::RoundedClip {
+                    rect: item.rect,
+                    radius,
+                });
+            } else if let Some(c) = clip {
                 list.push(DisplayItem::PushClip(c));
+            }
+            let translate = style.transform.iter().find_map(|op| match op {
+                TransformOp::Translate(x, y) => {
+                    Some((x.resolve(item.rect.width()), y.resolve(item.rect.height())))
+                }
+                _ => None,
+            });
+            if let Some((tx, ty)) = translate {
+                list.push(DisplayItem::PushTransform { tx, ty });
             }
             if faded {
                 list.push(DisplayItem::PushOpacity(style.opacity.clamp(0.0, 1.0)));
@@ -261,7 +336,10 @@ impl DisplayList {
             if faded {
                 list.push(DisplayItem::PopOpacity);
             }
-            if clip.is_some() {
+            if translate.is_some() {
+                list.push(DisplayItem::PopTransform);
+            }
+            if radius > 0.0 || clip.is_some() {
                 list.push(DisplayItem::PopClip);
             }
         }

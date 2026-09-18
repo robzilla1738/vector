@@ -22,7 +22,9 @@ members = [
     "crates/ve-napi",
     "crates/ve-host",
     "crates/ve-replay",
-    "crates/ve-vm",
+    "crates/ve-chrome",
+    "crates/ve-profile",
+    "crates/ve-shell-mac",
     "tools/wpt-runner",
     "tools/wpt-harness",
     "tools/perf",
@@ -53,7 +55,6 @@ ve-gfx = { path = "crates/ve-gfx" }
 ve-agent = { path = "crates/ve-agent" }
 ve-api = { path = "crates/ve-api" }
 ve-replay = { path = "crates/ve-replay" }
-ve-vm = { path = "crates/ve-vm" }
 
 # ---- parsing (pure Rust, default) -----------------------------------------
 html5ever = "0.40.1"

@@ -54,14 +54,11 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
-  it("defaults effect grants to read+write+destructive+egress and sanitizes settings.set", () => {
+  it("defaults effect grants to read-only and sanitizes settings.set", () => {
     const { dir, settings } = harness();
     try {
       expect(settings.effectGrants()).toEqual([
         "effect:read",
-        "effect:write",
-        "effect:destructive",
-        "effect:egress",
       ]);
       expect(settings.all().effectGrants).toEqual(settings.effectGrants());
       settings.set({ effectGrants: ["effect:write", "grant-from-model", "effect:*"] });

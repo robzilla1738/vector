@@ -102,6 +102,7 @@ describe("RunCoordinator.failActive (P1-10)", () => {
       repo, events,
       pages: { observe: vi.fn(async () => obs()), execute: vi.fn(), capture: vi.fn(), livePageIds: () => ["p1"], get: () => ({ viewStatus: "visible" }) } as never,
       model: () => model, defaultModel: () => "m", recoveryModel: () => undefined, recordModelCall: () => {},
+      grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     });
     const run = await coordinator.start({ goal: "g", pageIds: ["p1"] });
     for (let i = 0; i < 50 && !seen; i++) await new Promise((r) => setTimeout(r, 10));

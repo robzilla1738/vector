@@ -560,22 +560,10 @@ impl NetworkContext {
 
     #[cfg(feature = "http")]
     fn try_http3(&self, request: &Request) -> Option<Response> {
-        use std::net::ToSocketAddrs;
-        let origin = origin_key(&request.url);
-        let ep = self.h3_endpoints.get(&origin)?;
-        let host = ep.host.as_deref().or_else(|| request.url.host_str())?;
-        let addr = request
-            .resolved
-            .as_ref()
-            .and_then(|addrs| {
-                addrs
-                    .iter()
-                    .copied()
-                    .find(|a| a.port() == ep.port)
-                    .or_else(|| addrs.first().copied())
-            })
-            .or_else(|| (host, ep.port).to_socket_addrs().ok()?.next())?;
-        crate::http3::get(request.url.as_str(), host, addr).ok()
+        // HTTP/3 is parked (docs/ROADMAP.md D7 / H0-D4). Keep `http3.rs` compiled
+        // so the module does not rot; the live fetch path never speaks H3.
+        let _ = (self, request);
+        None
     }
 
     /// Fetches several requests in one batch: cache hits are answered

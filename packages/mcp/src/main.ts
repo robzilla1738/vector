@@ -7,12 +7,34 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { PlanStepSchema, toErrorPayload, VectorError } from "@vector/contracts";
 import { rpc } from "./client.js";
 
 const server = new McpServer({ name: "vector", version: "0.1.0" });
 
+const FlattenedStepSchema = z
+  .object({
+    id: z.string(),
+    op: z.string(),
+  })
+  .passthrough();
+export const McpStepSchema = z.union([PlanStepSchema, FlattenedStepSchema]);
+
 const text = (v: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(v, null, 2) }] });
-const err = (e: unknown) => ({ content: [{ type: "text" as const, text: `error: ${(e as Error).message}` }], isError: true });
+const err = (e: unknown) => {
+  const payload = e instanceof VectorError
+    ? { code: e.code, message: e.message, details: e.detail ?? null, retryable: false, hint: null }
+    : {
+        ...toErrorPayload(e),
+        details: null,
+        retryable: false,
+        hint: null,
+      };
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify({ code: payload.code, message: payload.message, details: payload.details, retryable: payload.retryable, hint: payload.hint }, null, 2) }],
+    isError: true,
+  };
+};
 
 server.registerTool("vector_pages_list", { description: "List open browser pages (tabs, background workers, attached Chrome tabs)." }, async () => {
   try {
@@ -94,7 +116,7 @@ server.registerTool(
       "{pageId, steps:[{id:'s1',op:'fill',target:'r4',value:'hello'},{id:'s2',op:'press',key:'Enter',target:'r4',expect:[{kind:'textVisible',text:'Results'}]}], returnObservation:{format:'compact'}}",
     inputSchema: {
       pageId: z.string(),
-      steps: z.array(z.record(z.string(), z.unknown())).describe("step objects, e.g. {id:'s1', op:'click', target:'r3'}"),
+      steps: z.array(McpStepSchema).describe("step objects, e.g. {id:'s1', op:'click', target:'r3'}"),
       documentEpoch: z.number().int().nonnegative().optional().describe("epoch the refs were observed in; the program fails fast if the page navigated since"),
       returnObservation: z
         .object({
@@ -557,6 +579,60 @@ server.registerTool(
       return err(e);
     }
   },
+);
+
+server.registerTool(
+  "vector_extract",
+  {
+    description: "Extract structured fields from the current observation.",
+    inputSchema: { pageId: z.string(), fields: z.array(z.string()).optional() },
+  },
+  async ({ pageId, fields }) => {
+    try {
+      return text(await rpc("pages.extract", { pageId, fields }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+server.registerTool(
+  "vector_wait_for",
+  {
+    description: "Wait until a condition holds on the page.",
+    inputSchema: { pageId: z.string(), condition: z.record(z.string(), z.unknown()) },
+  },
+  async ({ pageId, condition }) => {
+    try {
+      return text(await rpc("pages.waitFor", { pageId, condition }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+server.registerTool(
+  "vector_console",
+  {
+    description: "Read page console lines.",
+    inputSchema: { pageId: z.string() },
+  },
+  async ({ pageId }) => {
+    try {
+      return text(await rpc("pages.console", { pageId }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+server.registerResource(
+  "vector://page/observation",
+  "vector://page/observation",
+  { description: "Latest compact observation for the active page." },
+  async () => ({
+    contents: [{ uri: "vector://page/observation", text: JSON.stringify(await rpc("pages.observe", { format: "compact" })) }],
+  }),
 );
 
 const transport = new StdioServerTransport();

@@ -10,7 +10,7 @@ use std::sync::Arc;
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use anyhow::Result;
 use softbuffer::{Context, Surface};
-use ve_api::{BrowserService, BrowserServicePump, NativeBrowser, NativeEvent};
+use ve_api::{BrowserService, BrowserServicePump, KeyState, NativeBrowser, NativeEvent};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
@@ -86,10 +86,13 @@ impl App {
         }
         #[cfg(feature = "gpu")]
         if let Some(gpu) = &mut self.gpu
-            && gpu.present(self.service.browser_mut()).is_ok()
         {
-            window.set_title(NativeBrowser::CHROME_TITLE);
-            return;
+            let scale = window.scale_factor() as f32;
+            if gpu.present(self.service.browser_mut(), scale).is_ok()
+            {
+                window.set_title(NativeBrowser::CHROME_TITLE);
+                return;
+            }
         }
         let Some(surface) = &mut self.surface else {
             return;
@@ -113,17 +116,31 @@ impl App {
         let dst_h = size.height as usize;
         let src_w = frame.width as usize;
         let src_h = frame.height as usize;
-        for y in 0..dst_h {
-            let sy = y * src_h / dst_h.max(1);
-            for x in 0..dst_w {
-                let sx = x * src_w / dst_w.max(1);
-                let px = frame
-                    .pixel(sx as u32, sy as u32)
-                    .unwrap_or([255, 255, 255, 255]);
-                buffer[y * dst_w + x] = (u32::from(px[3]) << 24)
-                    | (u32::from(px[0]) << 16)
-                    | (u32::from(px[1]) << 8)
-                    | u32::from(px[2]);
+        if src_w == dst_w && src_h == dst_h && frame.rgba.len() >= src_w * src_h * 4 {
+            for y in 0..dst_h {
+                let src_row = y * src_w * 4;
+                for x in 0..dst_w {
+                    let i = src_row + x * 4;
+                    let px = &frame.rgba[i..i + 4];
+                    buffer[y * dst_w + x] = (u32::from(px[3]) << 24)
+                        | (u32::from(px[0]) << 16)
+                        | (u32::from(px[1]) << 8)
+                        | u32::from(px[2]);
+                }
+            }
+        } else {
+            for y in 0..dst_h {
+                let sy = y * src_h / dst_h.max(1);
+                for x in 0..dst_w {
+                    let sx = x * src_w / dst_w.max(1);
+                    let px = frame
+                        .pixel(sx as u32, sy as u32)
+                        .unwrap_or([255, 255, 255, 255]);
+                    buffer[y * dst_w + x] = (u32::from(px[3]) << 24)
+                        | (u32::from(px[0]) << 16)
+                        | (u32::from(px[1]) << 8)
+                        | u32::from(px[2]);
+                }
             }
         }
         let _ = buffer.present();
@@ -140,6 +157,7 @@ impl App {
                 .as_ref()
                 .map_or(1.0, |w| w.scale_factor() as f32)
         });
+        self.browser_mut().set_device_scale(scale.max(0.01));
         let _ = self.browser_mut().handle_event(NativeEvent::Resize {
             width: phys_w as f32 / scale.max(0.01),
             height: phys_h as f32 / scale.max(0.01),
@@ -238,32 +256,68 @@ impl ApplicationHandler<AccessKitEvent> for App {
                 self.mods = m.state();
             }
             WindowEvent::KeyboardInput { event, .. } => {
-                if event.state != ElementState::Pressed {
-                    return;
-                }
                 let key = match event.logical_key {
                     Key::Named(NamedKey::Enter) => "Enter".into(),
                     Key::Named(NamedKey::Tab) => "Tab".into(),
                     Key::Named(NamedKey::Escape) => "Escape".into(),
                     Key::Named(NamedKey::Backspace) => "Backspace".into(),
+                    Key::Named(NamedKey::Delete) => "Delete".into(),
                     Key::Named(NamedKey::Space) => " ".into(),
+                    Key::Named(NamedKey::ArrowLeft) => "ArrowLeft".into(),
+                    Key::Named(NamedKey::ArrowRight) => "ArrowRight".into(),
+                    Key::Named(NamedKey::ArrowUp) => "ArrowUp".into(),
+                    Key::Named(NamedKey::ArrowDown) => "ArrowDown".into(),
+                    Key::Named(NamedKey::Home) => "Home".into(),
+                    Key::Named(NamedKey::End) => "End".into(),
+                    Key::Named(NamedKey::PageUp) => "PageUp".into(),
+                    Key::Named(NamedKey::PageDown) => "PageDown".into(),
+                    Key::Named(NamedKey::F1) => "F1".into(),
+                    Key::Named(NamedKey::F2) => "F2".into(),
+                    Key::Named(NamedKey::F3) => "F3".into(),
+                    Key::Named(NamedKey::F4) => "F4".into(),
+                    Key::Named(NamedKey::F5) => "F5".into(),
+                    Key::Named(NamedKey::F12) => "F12".into(),
                     Key::Character(c) => c.to_string(),
                     _ => return,
                 };
+                let state = if event.state == ElementState::Pressed {
+                    KeyState::Down
+                } else {
+                    KeyState::Up
+                };
+                let mut modifiers = 0u8;
+                if self.mods.alt_key() {
+                    modifiers |= 1;
+                }
+                if self.mods.control_key() {
+                    modifiers |= 2;
+                }
+                if self.mods.super_key() {
+                    modifiers |= 4;
+                }
+                if self.mods.shift_key() {
+                    modifiers |= 8;
+                }
                 let chrome = self.mods.control_key() || self.mods.super_key();
-                let ev = if chrome && key == "t" {
+                let ev = if state == KeyState::Down && chrome && key == "t" {
                     NativeEvent::NewTab {
                         html: "<body></body>".into(),
                         url: "about:blank".into(),
                     }
-                } else if chrome && key == "w" {
+                } else if state == KeyState::Down && chrome && key == "w" {
                     NativeEvent::CloseTab
-                } else if chrome && key == "l" {
+                } else if state == KeyState::Down && chrome && key == "l" {
                     NativeEvent::FocusUrlbar
-                } else if chrome && key == "Tab" {
+                } else if state == KeyState::Down && chrome && key == "Tab" {
                     NativeEvent::NextTab
                 } else {
-                    NativeEvent::Key { key }
+                    NativeEvent::Key {
+                        key,
+                        code: format!("{:?}", event.physical_key),
+                        modifiers,
+                        repeat: event.repeat,
+                        state,
+                    }
                 };
                 let _ = self.browser_mut().handle_event(ev);
                 if let Some(w) = &self.window {

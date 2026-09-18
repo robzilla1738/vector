@@ -65,7 +65,7 @@ impl BrowserService {
         match method {
             "identity" => Ok(self.identity()),
             "pages.open" => self.open(params),
-            "pages.observe" => self.observe(),
+            "pages.observe" => self.observe(params),
             "pages.execute" => self.execute(params),
             "pages.takeover" => {
                 self.browser.takeover();
@@ -77,6 +77,14 @@ impl BrowserService {
             }
             "input.event" => self.event(params),
             "scene.update" => self.browser.scene_active(),
+            "pages.list" => self.list_pages(),
+            "pages.close" => self.close_page(),
+            "pages.screenshot" => self.screenshot(),
+            "cookies.get" | "cookies.set" | "storage.state.get" | "storage.state.set" => {
+                Err(Error::capability_unsupported(format!(
+                    "{method} requires ve-profile (H2-A4)"
+                )))
+            }
             "shutdown" => Ok(json!({ "ok": true })),
             other => Err(Error::invalid_params(format!("unknown method {other}"))),
         }
@@ -135,13 +143,21 @@ impl BrowserService {
         }))
     }
 
-    fn observe(&mut self) -> Result<Value> {
-        let obs = self.browser.observe_active()?;
+    fn observe(&mut self, params: &Value) -> Result<Value> {
+        let request = if params.is_null() || params.as_object().is_some_and(serde_json::Map::is_empty)
+        {
+            ObservationRequest::default()
+        } else {
+            serde_json::from_value(params.clone())
+                .map_err(|e| Error::invalid_params(format!("observe: {e}")))?
+        };
+        let obs = self.browser.observe_active_with(&request)?;
         let mut value = serde_json::to_value(&obs)
             .map_err(|e| Error::internal(format!("observe encode: {e}")))?;
         if let Some(obj) = value.as_object_mut() {
             obj.insert("ok".into(), json!(true));
             obj.insert("chromium".into(), json!(false));
+            obj.remove("generation");
         }
         Ok(value)
     }
@@ -197,6 +213,48 @@ impl BrowserService {
         Ok(value)
     }
 
+    fn list_pages(&self) -> Result<Value> {
+        let tabs: Vec<Value> = self
+            .browser
+            .tabs()
+            .iter()
+            .enumerate()
+            .map(|(i, t)| {
+                json!({
+                    "page": t.page.0,
+                    "url": t.url,
+                    "title": t.page_title,
+                    "active": i == self.browser.active_index(),
+                })
+            })
+            .collect();
+        Ok(json!({ "ok": true, "pages": tabs, "protocolVersion": 1 }))
+    }
+
+    fn close_page(&mut self) -> Result<Value> {
+        self.browser.handle_event(NativeEvent::CloseTab)?;
+        Ok(json!({ "ok": true, "closed": true }))
+    }
+
+    fn screenshot(&mut self) -> Result<Value> {
+        let tab = self
+            .browser
+            .active_tab()
+            .ok_or_else(|| Error::not_found("no active page"))?;
+        let page = tab.page;
+        let shot = self
+            .browser
+            .engine_mut()
+            .screenshot(page, &crate::ScreenshotOptions::default())?;
+        Ok(json!({
+            "ok": true,
+            "width": shot.width,
+            "height": shot.height,
+            "scale": shot.scale,
+            "pngBase64": shot.to_json().get("pngBase64").cloned().unwrap_or(json!("")),
+        }))
+    }
+
     fn event(&mut self, params: &Value) -> Result<Value> {
         let event: NativeEvent = serde_json::from_value(params.clone())
             .map_err(|e| Error::invalid_params(format!("event: {e}")))?;
@@ -215,9 +273,7 @@ fn observation_envelope(obs: crate::EngineObservation) -> Result<Value> {
         .map_err(|e| Error::internal(format!("observation encode: {e}")))?;
     if let Some(obj) = value.as_object_mut() {
         obj.insert("ok".into(), json!(true));
-        if let Some(epoch) = obj.get("documentEpoch").cloned() {
-            obj.insert("generation".into(), epoch);
-        }
+        obj.remove("generation");
         if let Some(settled) = obj.get("settled").cloned()
             && settled.is_object()
         {

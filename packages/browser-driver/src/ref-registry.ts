@@ -50,7 +50,7 @@ export class RefRegistry {
 export function parseTarget(
   target: string,
 ): { kind: "ref"; ref: string } | { kind: "selector"; strategy: SelectorStrategy } {
-  if (/^r\d+$/.test(target)) return { kind: "ref", ref: target };
+  if (/^r\d+(?:\.\d+)?$/.test(target)) return { kind: "ref", ref: target };
   if (target.startsWith("css:")) return { kind: "selector", strategy: { css: target.slice(4) } };
   if (target.startsWith("xpath:")) return { kind: "selector", strategy: { xpath: `xpath=${target.slice(6)}` } };
   if (target.startsWith("text:")) return { kind: "selector", strategy: { text: target.slice(5) } };
