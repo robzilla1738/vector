@@ -1827,8 +1827,10 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
         eprintln!("chartjs {v} err={console:?}");
         assert!(
-            console.iter().all(|m| !m.contains("Cannot use import")),
-            "chart module still has a leftover import: {v} err={console:?}"
+            console
+                .iter()
+                .all(|m| !m.contains("Cannot use import") && !m.contains("resetTransform")),
+            "chart module still missing canvas/ESM: {v} err={console:?}"
         );
         assert_eq!(v["ok"], true, "{v} err={console:?}");
         assert_eq!(v["kind"], "chart", "{v}");

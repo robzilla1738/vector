@@ -3075,6 +3075,7 @@
     scale() {}
     rotate() {}
     setTransform() {}
+    resetTransform() { this.setTransform(1, 0, 0, 1, 0, 0); }
     drawImage() {}
     fillText() {}
     strokeText() {}

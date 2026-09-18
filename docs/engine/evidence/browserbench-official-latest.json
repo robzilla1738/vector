@@ -18,7 +18,9 @@
     "Editor-CodeMirror": "killed OOM/SIGKILL in full-suite log",
     "TodoMVC-JavaScript-ES5-Complex-DOM": "one-add PASS addMs=4 changeMs=3; 100-add PASS addMs=1218 showEntriesMs=1072 restyle.full_calls=0",
     "TodoMVC-jQuery-Complex-DOM": "one-add PASS enterMs=12. 3-add/finish PASS addMs=37 finishMs=238 remaining=0 in 43s boot. Was enterMs=42184 / finish remaining=3.",
-    "remainingOfficial3AddFinish": "vue/lit/preact/svelte/jquery/jquery-complex/backbone/web-components/web-components-complex/lit-complex/news-next/news-nuxt/perf PASS add/finish 3 in 58.4s. jquery-complex addMs=37 finishMs=238 remaining=0. Editor-TipTap/Charts/Stockcharts OOM this host (ignored)."
+    "TodoMVC-Backbone-Complex-DOM": "one-add PASS enterMs=14 nodes=6653 restyle.full_calls=0 (was enterMs=131s). 3-add/finish PASS addMs=18 finishMs=189 remaining=0.",
+    "remainingOfficialComplex3AddFinish": "backbone/vue/preact/svelte/react/react-redux/es6-webpack complex PASS add/finish 3 in 101.7s.",
+    "remainingOfficial3AddFinish": "vue/lit/preact/svelte/jquery/jquery-complex/backbone/web-components/web-components-complex/lit-complex/news-next/news-nuxt/perf PASS add/finish 3 in 58.4s. jquery-complex addMs=37 finishMs=238 remaining=0. Editor-CodeMirror/TipTap OOM this host (ignored)."
   },
   "speedometer30": {
     "executed": 25,

@@ -643,8 +643,10 @@ fn canvas_fillrect_records_ops() {
               ctx.fillStyle = "#ff0000";
               ctx.fillRect(0, 0, 10, 10);
               ctx.clearRect(0, 0, 5, 5);
+              ctx.resetTransform();
               return {
                 ctx: ctx instanceof CanvasRenderingContext2D,
+                reset: typeof ctx.resetTransform === "function",
                 w: c.width,
                 h: c.height,
                 webgl: c.getContext("webgl") === null
@@ -653,6 +655,7 @@ fn canvas_fillrect_records_ops() {
         )
         .unwrap();
     assert_eq!(v["ctx"], true, "{v}");
+    assert_eq!(v["reset"], true, "{v}");
     assert_eq!(v["w"], 40, "{v}");
     assert_eq!(v["h"], 20, "{v}");
     assert_eq!(v["webgl"], true, "{v}");
