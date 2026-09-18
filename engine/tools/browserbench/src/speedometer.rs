@@ -415,8 +415,12 @@ fn park_script(
     deferred: &mut Vec<String>,
     late: &mut Vec<String>,
     defer: bool,
+    is_module: bool,
 ) {
-    if js.len() >= LARGE_MODULE_BYTES {
+    // TipTap/CodeMirror type=module sources OOM as script text nodes.
+    // Classic webpack chunks must stay in document order: NewsSite-Next's
+    // page (650KB) is a webpack push that main.js consumes during boot.
+    if is_module && js.len() >= LARGE_MODULE_BYTES {
         late.push(js);
     } else if defer {
         deferred.push(js);
@@ -602,7 +606,7 @@ fn inline_scripts(html: &str, dir: &Path, late: &mut Vec<String>) -> String {
                 let path = dir.join(src);
                 if is_module {
                     match crate::esm::bundle(&path) {
-                        Ok(js) => park_script(js, &mut out, &mut deferred, late, is_defer),
+                        Ok(js) => park_script(js, &mut out, &mut deferred, late, is_defer, true),
                         Err(e) => {
                             out.push_str("<script>throw new Error(");
                             out.push_str(
@@ -614,7 +618,7 @@ fn inline_scripts(html: &str, dir: &Path, late: &mut Vec<String>) -> String {
                     }
                 } else {
                     match std::fs::read_to_string(&path) {
-                        Ok(js) => park_script(js, &mut out, &mut deferred, late, is_defer),
+                        Ok(js) => park_script(js, &mut out, &mut deferred, late, is_defer, false),
                         Err(_) => {
                             out.push_str(open);
                             out.push_str(attrs);
@@ -626,7 +630,7 @@ fn inline_scripts(html: &str, dir: &Path, late: &mut Vec<String>) -> String {
                 }
             } else if is_module {
                 match crate::esm::bundle_inline(body, dir) {
-                    Ok(js) => park_script(js, &mut out, &mut deferred, late, is_defer),
+                    Ok(js) => park_script(js, &mut out, &mut deferred, late, is_defer, true),
                     Err(_) => {
                         out.push_str(open);
                         out.push_str(attrs);
@@ -1513,6 +1517,67 @@ mod tests {
 
     #[cfg(feature = "v8")]
     #[test]
+    fn news_next_exposes_navbar_dropdown_toggle() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(&mut engine, "newssite/news-next/dist/index.html#/home");
+        let (probe, console) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            let _ = page.evaluate(
+                "(function(){ if (!location.hash) location.hash = '#/home'; return location.hash; })()",
+            );
+            for _ in 0..20 {
+                page.settle(200);
+                let ready = page
+                    .evaluate(
+                        "(function(){ return !!document.querySelector('#navbar-dropdown-toggle'); })()",
+                    )
+                    .ok();
+                let ready = match ready {
+                    Some(serde_json::Value::Bool(true)) => true,
+                    Some(serde_json::Value::String(s)) if s == "true" => true,
+                    _ => false,
+                };
+                if ready {
+                    break;
+                }
+            }
+            let probe = page
+                .evaluate(
+                    r##"(function () {
+                      return {
+                        news: !!document.querySelector("#navbar-dropdown-toggle"),
+                        hash: String(location.hash || ""),
+                        nextKids: document.getElementById("__next")
+                          ? document.getElementById("__next").childElementCount
+                          : -1,
+                        title: document.title || ""
+                      };
+                    })()"##,
+                )
+                .unwrap();
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(240).collect())
+                .take(6)
+                .collect();
+            (probe, console)
+        };
+        engine.close(page_id);
+        let v: serde_json::Value = match &probe {
+            serde_json::Value::String(s) => serde_json::from_str(s).unwrap_or(probe.clone()),
+            other => other.clone(),
+        };
+        assert_eq!(
+            v["news"], true,
+            "NewsSite-Next navbar missing: {v} err={console:?}"
+        );
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
     fn official_es5_complex_dom_one_add_is_attributed() {
         let mut engine = bench_engine();
         let page_id = open_workload(
@@ -2259,6 +2324,28 @@ mod tests {
             );
             assert!(doc.html.contains("id=\"create\""), "{rel}");
         }
+    }
+
+    #[test]
+    fn news_next_page_chunk_stays_in_document_order() {
+        let doc =
+            inline_document(&vendor_root().join("newssite/news-next/dist/index.html")).unwrap();
+        assert!(
+            doc.late_js.is_empty(),
+            "classic webpack page must not late-eval after main.js: late={:?}",
+            doc.late_js.iter().map(String::len).collect::<Vec<_>>()
+        );
+        assert!(
+            doc.html.contains("navbar-dropdown-toggle"),
+            "page chunk missing from HTML: {}",
+            doc.html.len()
+        );
+        let webpack_at = doc.html.find("webpackChunk_N_E").expect("webpack runtime");
+        let page_at = doc.html.find("navbar-dropdown-toggle").expect("page chunk");
+        assert!(
+            page_at > webpack_at,
+            "page chunk must follow webpack runtime"
+        );
     }
 
     #[cfg(feature = "v8")]

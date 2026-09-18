@@ -102,6 +102,21 @@ fn evaluate_step_returns_json_and_is_capability_gated() {
 }
 
 #[test]
+fn message_channel_delivers_to_the_entangled_port_after_settle() {
+    let mut page = open(
+        r#"<script>
+          const ch = new MessageChannel();
+          globalThis.got = null;
+          ch.port1.onmessage = function (ev) { globalThis.got = ev.data; };
+          ch.port2.postMessage("ping");
+        </script>"#,
+        true,
+    );
+    page.settle(50);
+    assert_eq!(page.evaluate("got").unwrap(), serde_json::json!("ping"));
+}
+
+#[test]
 fn a_runaway_script_is_cut_off_and_the_page_survives() {
     let started = std::time::Instant::now();
     let mut page = open(

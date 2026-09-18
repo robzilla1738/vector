@@ -6141,11 +6141,31 @@
   }
   class MessagePort extends EventTarget {
     constructor() { throw new TypeError("Illegal constructor"); }
-    start() {}
-    close() {}
+    start() { this._started = true; }
+    close() {
+      this._closed = true;
+      this._entangled = null;
+    }
     postMessage(message) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'postMessage' on 'MessagePort': 1 argument required, but only 0 present.");
+      }
+      if (this._closed) return;
+      const dest = this._entangled;
+      if (!dest || dest._closed) return;
+      const data = message;
+      const deliver = () => {
+        if (dest._closed) return;
+        dest.dispatchEvent(new MessageEvent("message", { data }));
+      };
+      // HTML posted-message task. React 18's scheduler posts here for
+      // useEffect; a no-op left NewsSite-Next's first paint at null.
+      if (typeof globalThis.setTimeout === "function") {
+        globalThis.setTimeout(deliver, 0);
+      } else if (typeof globalThis.queueMicrotask === "function") {
+        globalThis.queueMicrotask(deliver);
+      } else {
+        deliver();
       }
     }
   }
@@ -6153,6 +6173,10 @@
     constructor() {
       this._port1 = Object.create(MessagePort.prototype);
       this._port2 = Object.create(MessagePort.prototype);
+      this._port1._entangled = this._port2;
+      this._port2._entangled = this._port1;
+      this._port1._started = true;
+      this._port2._started = true;
     }
     get port1() { return this._port1; }
     get port2() { return this._port2; }
