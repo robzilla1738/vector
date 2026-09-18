@@ -4947,12 +4947,20 @@ fn official_html_brand_window_and_media_idl() {
             r##"(function () {
               let inputAcceptThrew = false;
               try { void HTMLInputElement.prototype.accept; } catch (e) { inputAcceptThrew = e instanceof TypeError; }
-              let winAbortThrew = false;
-              try { Window.prototype.onabort.call({}); } catch (e) { winAbortThrew = e instanceof TypeError; }
+              let svgOnclickThrew = false;
+              try { void SVGElement.prototype.onclick; } catch (e) { svgOnclickThrew = e instanceof TypeError; }
+              const ownAbort = Object.getOwnPropertyDescriptor(window, "onabort");
+              const protoHasAbort = "onabort" in Window.prototype;
+              const loose = ownAbort && ownAbort.get && ownAbort.get.call(undefined);
+              let sanGet = false;
+              try { sanGet = typeof new Sanitizer({}).get === "function"; } catch (e) {}
               const video = document.getElementById("v");
               return {
                 inputAcceptThrew,
-                winAbortThrew,
+                svgOnclickThrew,
+                ownAbort: !!(ownAbort && ownAbort.get),
+                protoHasAbort,
+                looseOk: loose === window.onabort,
                 createCapName: HTMLTableElement.prototype.createCaption.name,
                 insertRowLen: HTMLTableElement.prototype.insertRow.length,
                 setTimeoutLen: setTimeout.length,
@@ -4966,12 +4974,17 @@ fn official_html_brand_window_and_media_idl() {
                 isSecure: isSecureContext === true,
                 report: typeof reportError === "function",
                 offscreen: typeof OffscreenCanvasRenderingContext2D === "function",
+                sanLen: Sanitizer.length,
+                sanGet,
               };
             })()"##,
         )
         .unwrap();
     assert_eq!(v["inputAcceptThrew"], true, "{v}");
-    assert_eq!(v["winAbortThrew"], true, "{v}");
+    assert_eq!(v["svgOnclickThrew"], true, "{v}");
+    assert_eq!(v["ownAbort"], true, "{v}");
+    assert_eq!(v["protoHasAbort"], false, "{v}");
+    assert_eq!(v["looseOk"], true, "{v}");
     assert_eq!(v["createCapName"], "createCaption", "{v}");
     assert_eq!(v["insertRowLen"], 0, "{v}");
     assert_eq!(v["setTimeoutLen"], 1, "{v}");
@@ -4985,4 +4998,6 @@ fn official_html_brand_window_and_media_idl() {
     assert_eq!(v["isSecure"], true, "{v}");
     assert_eq!(v["report"], true, "{v}");
     assert_eq!(v["offscreen"], true, "{v}");
+    assert_eq!(v["sanLen"], 0, "{v}");
+    assert_eq!(v["sanGet"], true, "{v}");
 }

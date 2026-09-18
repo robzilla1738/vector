@@ -2203,22 +2203,86 @@
   };
   Element.prototype.streamHTMLUnsafe = Element.prototype.streamAppendHTMLUnsafe;
   class Sanitizer {
-    constructor(config) {
-      config = config || {};
+    constructor() {
+      const config = arguments[0] && typeof arguments[0] === "object" ? arguments[0] : {};
       this._elements = config.elements
-        ? new Set(Array.from(config.elements).map((e) => String(e).toLowerCase()))
+        ? new Set(Array.from(config.elements).map((e) => String(e && e.name ? e.name : e).toLowerCase()))
         : null;
       this._attributes = config.attributes
-        ? new Set(Array.from(config.attributes).map((a) => String(a).toLowerCase()))
+        ? new Set(Array.from(config.attributes).map((a) => String(a && a.name ? a.name : a).toLowerCase()))
         : null;
+      this._comments = !!config.comments;
+      this._dataAttributes = !!config.dataAttributes;
+    }
+    get() {
+      return {
+        elements: this._elements ? Array.from(this._elements) : [],
+        attributes: this._attributes ? Array.from(this._attributes) : [],
+        comments: this._comments,
+        dataAttributes: this._dataAttributes,
+      };
     }
     allowElement(name) {
-      name = String(name || "").toLowerCase();
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'allowElement' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      name = String(name && name.name ? name.name : name || "").toLowerCase();
       if (name === "script" || name === "iframe" || name === "object" || name === "embed") return false;
       if (name.includes("-")) return false;
       if (this._elements) return this._elements.has(name);
       return true;
     }
+    removeElement(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'removeElement' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return true;
+    }
+    replaceElementWithChildren(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'replaceElementWithChildren' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return true;
+    }
+    allowProcessingInstruction(pi) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'allowProcessingInstruction' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return true;
+    }
+    removeProcessingInstruction(pi) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'removeProcessingInstruction' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return true;
+    }
+    allowAttribute(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'allowAttribute' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return this.allowAttr(name && name.name ? name.name : name);
+    }
+    removeAttribute(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'removeAttribute' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      return true;
+    }
+    setComments(allow) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setComments' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      this._comments = !!allow;
+      return true;
+    }
+    setDataAttributes(allow) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setDataAttributes' on 'Sanitizer': 1 argument required, but only 0 present.");
+      }
+      this._dataAttributes = !!allow;
+      return true;
+    }
+    removeUnsafe() { return true; }
     allowAttr(name) {
       name = String(name || "").toLowerCase();
       if (/^on/.test(name)) return false;
@@ -3443,6 +3507,14 @@
       D("canvasPutImageData", this.__h, im.width, im.height, btoa(s), Number(dx) || 0, Number(dy) || 0);
     }
   }
+  class OffscreenCanvasRenderingContext2D {
+    constructor() { throw new TypeError("Illegal constructor"); }
+  }
+  {
+    const src = Object.getOwnPropertyDescriptors(CanvasRenderingContext2D.prototype);
+    delete src.constructor;
+    Object.defineProperties(OffscreenCanvasRenderingContext2D.prototype, src);
+  }
   class HTMLUnknownElement extends HTMLElement {}
   class HTMLDivElement extends HTMLElement {}
   class HTMLParagraphElement extends HTMLElement {}
@@ -3995,8 +4067,15 @@
   HTMLMediaElement.HAVE_FUTURE_DATA = 3;
   HTMLMediaElement.HAVE_ENOUGH_DATA = 4;
   for (const k of ["NETWORK_EMPTY", "NETWORK_IDLE", "NETWORK_LOADING", "NETWORK_NO_SOURCE", "HAVE_NOTHING", "HAVE_METADATA", "HAVE_CURRENT_DATA", "HAVE_FUTURE_DATA", "HAVE_ENOUGH_DATA"]) {
+    const n = HTMLMediaElement[k];
+    Object.defineProperty(HTMLMediaElement, k, {
+      value: n,
+      writable: false,
+      enumerable: true,
+      configurable: false,
+    });
     Object.defineProperty(HTMLMediaElement.prototype, k, {
-      value: HTMLMediaElement[k],
+      value: n,
       writable: false,
       enumerable: true,
       configurable: false,
@@ -5608,7 +5687,7 @@
     MediaError, TimeRanges, TextTrack, TextTrackList, TextTrackCueList, AudioTrackList, VideoTrackList, ValidityState, DOMStringList, FileList, External,
     Storage, Navigator, TextMetrics, CustomElementRegistry,
     OffscreenCanvas: defIllegal("OffscreenCanvas"),
-    OffscreenCanvasRenderingContext2D: defIllegal("OffscreenCanvasRenderingContext2D"),
+    OffscreenCanvasRenderingContext2D,
     DataTransfer: defIllegal("DataTransfer"),
     DataTransferItem: defIllegal("DataTransferItem"),
     DataTransferItemList: defIllegal("DataTransferItemList"),
@@ -5640,6 +5719,18 @@
     Origin: defIllegal("Origin"),
     NotRestoredReasons: defIllegal("NotRestoredReasons"),
     NotRestoredReasonDetails: defIllegal("NotRestoredReasonDetails"),
+    MathMLAnchorElement: defIllegal("MathMLAnchorElement"),
+    VisibilityStateEntry: defIllegal("VisibilityStateEntry"),
+    NavigationActivation: defIllegal("NavigationActivation"),
+    ImageBitmapRenderingContext: defIllegal("ImageBitmapRenderingContext"),
+    NavigationPrecommitController: defIllegal("NavigationPrecommitController"),
+    NavigationCurrentEntryChangeEvent: defIllegal("NavigationCurrentEntryChangeEvent"),
+    PageSwapEvent: defIllegal("PageSwapEvent"),
+    PageRevealEvent: defIllegal("PageRevealEvent"),
+    CanvasGradient: defIllegal("CanvasGradient"),
+    CanvasPattern: defIllegal("CanvasPattern"),
+    Worklet: defIllegal("Worklet"),
+    HTMLSelectedContentElement: defIllegal("HTMLSelectedContentElement"),
     ElementInternals, CustomStateSet,
     Image, Audio, Option, external: windowExternal,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
@@ -6224,16 +6315,23 @@
     "onunhandledrejection","onunload",
   ];
   const handlerStore = new WeakMap();
-  function defineHandlers(obj, names, enumerable) {
+  function windowThis(t) {
+    if (t === undefined || t === null) return globalThis;
+    if (t === globalThis) return t;
+    throw new TypeError("Illegal invocation");
+  }
+  function defineHandlers(obj, names, enumerable, globalLoose) {
     for (const name of names) {
       if (Object.getOwnPropertyDescriptor(obj, name)) continue;
       const get = function () {
-        const m = handlerStore.get(this);
+        const t = globalLoose ? windowThis(this) : this;
+        const m = handlerStore.get(t);
         return (m && m[name]) || null;
       };
       const set = function (v) {
-        let m = handlerStore.get(this);
-        if (!m) { m = Object.create(null); handlerStore.set(this, m); }
+        const t = globalLoose ? windowThis(this) : this;
+        let m = handlerStore.get(t);
+        if (!m) { m = Object.create(null); handlerStore.set(t, m); }
         const prev = m[name];
         const next = typeof v === "function" ? v : null;
         if (!prev && next) handlerPropCount++;
@@ -6254,8 +6352,10 @@
   defineHandlers(HTMLElement.prototype, eventHandlerNames, true);
   defineHandlers(HTMLBodyElement.prototype, windowHandlerNames, true);
   defineHandlers(HTMLFrameSetElement.prototype, windowHandlerNames, true);
-  defineHandlers(Window.prototype, eventHandlerNames, true);
-  defineHandlers(Window.prototype, windowHandlerNames, true);
+  defineHandlers(SVGElement.prototype, eventHandlerNames, true);
+  defineHandlers(MathMLElement.prototype, eventHandlerNames, true);
+  defineHandlers(globalThis, eventHandlerNames, true, true);
+  defineHandlers(globalThis, windowHandlerNames, true, true);
 
   function brandWrap(ctor) {
     const proto = ctor.prototype;
@@ -6324,6 +6424,11 @@
   brandWrap(EventTarget);
   brandWrap(EventSource);
   brandWrap(CanvasRenderingContext2D);
+  brandWrap(OffscreenCanvasRenderingContext2D);
+  brandWrap(SVGElement);
+  brandWrap(MathMLElement);
+  brandWrap(SVGSVGElement);
+  brandWrap(Sanitizer);
   brandWrap(Window);
   brandWrap(Storage);
   brandWrap(Navigator);
@@ -6352,11 +6457,6 @@
     }
   }
 
-  function windowThis(t) {
-    if (t === undefined || t === null) return globalThis;
-    if (t === globalThis) return t;
-    throw new TypeError("Illegal invocation");
-  }
   function ownAccessor(obj, name, getter, setter, unforgeable, replaceable) {
     const get = function () { return getter.call(windowThis(this)); };
     Object.defineProperty(get, "name", { value: "get " + name, configurable: true });
