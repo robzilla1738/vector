@@ -138,6 +138,7 @@ export class RunService {
           buffer: Buffer.from(JSON.stringify(obs)),
         }).artifactId,
       tracer: deps.tracer,
+      grants: () => deps.settings.effectGrants(),
       durableWrites: new DurableWriteLedger(
         typeof deps.settings.all === "function" && deps.settings.all().dataDir
           ? join(deps.settings.all().dataDir, "durable-writes.json")

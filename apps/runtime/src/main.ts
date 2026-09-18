@@ -241,6 +241,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     // operations.compile can rebuild the trace (§10.3)
     recordStep: (s) => repo.saveStep(s),
     electronEngineView: () => env.VECTOR_ELECTRON === "1",
+    grants: () => settings.effectGrants(),
     callOperation: async (name, args, pageId) => {
       const slash = name.indexOf("/");
       const siteKey = slash > 0 ? name.slice(0, slash) : new URL(pages.get(pageId).url).host;

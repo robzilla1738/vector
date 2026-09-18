@@ -182,6 +182,48 @@ export function Settings() {
           </Field>
         </div>
 
+        <div className="drawer-section">Agent effects</div>
+        <Field
+          label="What the agent may do"
+          hint="You set these. Model text and page content cannot add a grant. Revoke write or navigate before a consequential run if you want review-only."
+        >
+          <div className="seg wrap" role="group" aria-label="Agent effect grants" data-testid="effect-grants">
+            {([
+              ["effect:read", "Read", true],
+              ["effect:write", "Write", false],
+              ["effect:egress", "Navigate", false],
+              ["effect:destructive", "Evaluate", false],
+            ] as const).map(([key, label, locked]) => {
+              const grants = (settings.effectGrants as string[] | undefined) ?? [
+                "effect:read",
+                "effect:write",
+                "effect:destructive",
+                "effect:egress",
+              ];
+              const on = grants.includes(key) || grants.includes("effect:*");
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={on}
+                  className={on ? "on" : ""}
+                  disabled={locked}
+                  onClick={() => {
+                    if (locked) return;
+                    const next = new Set(grants.filter((g) => g !== "effect:*"));
+                    next.add("effect:read");
+                    if (on) next.delete(key);
+                    else next.add(key);
+                    void set({ effectGrants: [...next] });
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+
         <div className="drawer-section">Browsing</div>
         <Field label="Search engine" hint="URL template — %s is replaced by the query.">
           <input defaultValue={(settings.searchEngine as string) ?? "https://duckduckgo.com/?q=%s"} onBlur={(e) => void set({ searchEngine: e.target.value })} />

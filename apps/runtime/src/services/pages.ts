@@ -20,7 +20,7 @@ import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
 import { executeProgram, type ExecContext } from "../execution/executor.js";
-import { authorizeProgram, DEFAULT_GRANTS } from "../agent/permissions.js";
+import { authorizeProgram, DEFAULT_GRANTS, type GrantSource } from "../agent/permissions.js";
 import { Router, isFallbackError } from "./router.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 
@@ -89,10 +89,10 @@ export interface PageServiceDeps {
   /** Electron hybrid paint for engine pages. Off unless the hybrid desktop opts in. */
   electronEngineView?: () => boolean;
   /**
-   * Privilege-independent effect grants (Gate D). Model text and RPC
-   * params cannot expand these. Defaults allow the existing test surface.
+   * Privilege-independent effect grants (Gate D / Gate F). Model text and
+   * RPC params cannot expand these. A function re-reads after settings.set.
    */
-  grants?: readonly string[];
+  grants?: GrantSource;
 }
 
 /**

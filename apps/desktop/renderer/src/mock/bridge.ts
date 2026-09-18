@@ -83,6 +83,7 @@ export function installMockBridge(q: URLSearchParams) {
     maxModelCalls: 8,
     engineMode: q.get("engine") ?? "off",
     gatewayApiKey: "••••••••",
+    effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   };
 
   if (withRun) {

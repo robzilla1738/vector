@@ -45,7 +45,16 @@ export { compileSkill, tryReuseSkill, markSkillFailed, guardsHold, verifySkillPo
 export { redactForModel, agentMayEgress, promptCannotGrant } from "./agent/policy.js";
 export { queryPage, queryAll, type PageQuery, type QueryHit } from "./agent/page-query.js";
 export { compileAction, rebindSteps, type CompileResult } from "./agent/action-compiler.js";
-export { authorizeProgram, classifyStep, DEFAULT_GRANTS, type EffectClass } from "./agent/permissions.js";
+export {
+  authorizeProgram,
+  classifyStep,
+  DEFAULT_GRANTS,
+  KNOWN_GRANTS,
+  resolveGrants,
+  sanitizeGrants,
+  type EffectClass,
+  type GrantSource,
+} from "./agent/permissions.js";
 export { DurableWriteLedger, stepSignature, type WriteIntent } from "./agent/durable.js";
 export { BrowserAuthority } from "./agent/browser-authority.js";
 export { attributeSample, attributeTodoMvc, type PhaseTimes, type AttributedSample } from "./agent/attribution.js";

@@ -25,7 +25,7 @@ import { buildFinalAnswerPrompt, buildPlannerPrompt, buildVisionPrompt, extractJ
 import { compileSkill, markSkillFailed, tryReuseSkill, verifySkillPostconditions, type CompiledSkill } from "./skills.js";
 import { promptCannotGrant } from "./policy.js";
 import { recoverAfterCrash } from "./recovery.js";
-import { authorizeProgram, classifyStep, DEFAULT_GRANTS } from "./permissions.js";
+import { authorizeProgram, classifyStep, DEFAULT_GRANTS, type GrantSource } from "./permissions.js";
 import { compileAction } from "./action-compiler.js";
 import { DurableWriteLedger, stepSignature } from "./durable.js";
 
@@ -68,8 +68,8 @@ export interface CoordinatorDeps {
     ): { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void };
     incr(name: string, by?: number): void;
   };
-  /** Privilege-independent grants. Defaults allow read+write so existing tests run. */
-  grants?: readonly string[];
+  /** Privilege-independent grants. A function re-reads after settings.set. */
+  grants?: GrantSource;
   /** Durable write ledger shared across crash/retry. */
   durableWrites?: DurableWriteLedger;
 }
