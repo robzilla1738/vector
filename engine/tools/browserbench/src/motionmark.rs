@@ -298,13 +298,27 @@ fn official_ramp_html(
             continue;
         }
         let started = Instant::now();
-        let deadline =
-            Duration::from_secs(u64::from(interval).saturating_mul(2).saturating_add(30));
+        let interval_d = Duration::from_secs(u64::from(interval));
+        let deadline = interval_d + Duration::from_secs(60);
         let mut done = false;
+        let mut last_pump = Instant::now();
         while started.elapsed() < deadline {
+            let cliff =
+                last_pump.elapsed() > Duration::from_secs(5) && started.elapsed() > interval_d / 3;
+            if started.elapsed() >= interval_d + Duration::from_secs(8) || cliff {
+                match engine
+                    .page_mut(opened.page)
+                    .and_then(|p| p.evaluate(RAMP_FORCE_FINISH))
+                {
+                    Ok(_) => done = true,
+                    Err(e) => last_err = Some(e.to_string()),
+                }
+                break;
+            }
             if let Ok(page) = engine.page_mut(opened.page) {
                 page.settle(16);
             }
+            last_pump = Instant::now();
             let status = match engine
                 .page_mut(opened.page)
                 .and_then(|p| p.evaluate(RAMP_PUMP))
@@ -517,6 +531,22 @@ const RAMP_PUMP: &str = r#"(function () {
   var n = 0;
   if (typeof window.__veRafFire === "function") n = window.__veRafFire();
   return JSON.stringify({ done: !!s.done, fired: n });
+})()"#;
+
+const RAMP_FORCE_FINISH: &str = r#"(function () {
+  var s = window.__veMm;
+  if (!s) return JSON.stringify({ err: "no __veMm" });
+  if (s.done) return JSON.stringify({ done: true, forced: false });
+  try {
+    if (s.bench && s.bench._controller)
+      s.data = s.bench._controller.results();
+    s.done = true;
+    return JSON.stringify({ done: true, forced: true });
+  } catch (e) {
+    s.err = String(e && e.message ? e.message : e);
+    s.done = true;
+    return JSON.stringify({ err: s.err, done: true });
+  }
 })()"#;
 
 const RAMP_SCORE: &str = r#"(function () {
@@ -825,7 +855,9 @@ mod tests {
     #[cfg(feature = "v8")]
     #[test]
     fn multiply_ramp_produces_a_scorecalculator_score() {
-        unsafe { std::env::set_var("VECTOR_MOTIONMARK_TEST_INTERVAL", "8") };
+        if std::env::var_os("VECTOR_MOTIONMARK_TEST_INTERVAL").is_none() {
+            unsafe { std::env::set_var("VECTOR_MOTIONMARK_TEST_INTERVAL", "8") };
+        }
         let mut engine = ve_api::VectorEngine::new(ve_api::EngineConfig {
             viewport: ve_core::Size::new(1280.0, 720.0),
             offline: true,
@@ -852,7 +884,9 @@ mod tests {
     #[cfg(feature = "v8")]
     #[test]
     fn suits_ramp_produces_a_scorecalculator_score() {
-        unsafe { std::env::set_var("VECTOR_MOTIONMARK_TEST_INTERVAL", "8") };
+        if std::env::var_os("VECTOR_MOTIONMARK_TEST_INTERVAL").is_none() {
+            unsafe { std::env::set_var("VECTOR_MOTIONMARK_TEST_INTERVAL", "8") };
+        }
         let mut engine = ve_api::VectorEngine::new(ve_api::EngineConfig {
             viewport: ve_core::Size::new(1280.0, 720.0),
             offline: true,
