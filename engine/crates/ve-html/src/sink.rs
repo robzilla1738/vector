@@ -37,22 +37,28 @@ impl DomSink {
         }
     }
 
-    /// A sink over an existing document, with `elem_name` seeded for every
-    /// live element so fragment parsing can use a live context node.
+    /// A sink over an existing document. Names are recorded as this parse
+    /// creates elements. `elem_name` looks up a live element only if the
+    /// tree builder asks about a pre-existing handle, so a tiny fragment
+    /// parse does not walk the host document (official Complex-DOM
+    /// `DOMParser` / `innerHTML` on a 6k-node Spectrum page).
     #[must_use]
     pub fn for_existing(doc: Document) -> Self {
-        let mut names = HashMap::new();
-        for id in doc.elements() {
-            if let Some(e) = doc.element(id) {
-                names.insert(id, qual_name_for(e.namespace.uri(), &e.name));
-            }
+        Self::new(doc)
+    }
+
+    fn ensure_name(&self, target: NodeId) {
+        if self.names.borrow().contains_key(&target) {
+            return;
         }
-        Self {
-            doc: RefCell::new(doc),
-            names: RefCell::new(names),
-            errors: RefCell::new(Vec::new()),
-            first_element: Cell::new(None),
-        }
+        let qn = {
+            let doc = self.doc.borrow();
+            let e = doc
+                .element(target)
+                .expect("elem_name called on a non-element handle");
+            qual_name_for(e.namespace.uri(), &e.name)
+        };
+        self.names.borrow_mut().insert(target, qn);
     }
 
     /// The first element `create_element` produced, if any.
@@ -134,10 +140,11 @@ impl TreeSink for DomSink {
     }
 
     fn elem_name<'a>(&'a self, target: &'a NodeId) -> Ref<'a, QualName> {
+        self.ensure_name(*target);
         Ref::map(self.names.borrow(), |names| {
             names
                 .get(target)
-                .expect("elem_name called on a non-element handle")
+                .expect("elem_name seeded")
         })
     }
 
