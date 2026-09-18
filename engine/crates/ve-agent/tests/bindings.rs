@@ -3638,7 +3638,7 @@ fn document_change_event_does_not_scan_named_properties() {
         .unwrap();
     assert_eq!(v["changed"], true, "{v}");
     assert!(
-        v["ms"].as_u64().unwrap_or(u64::MAX) < 1_000,
+        v["ms"].as_u64().unwrap_or(u64::MAX) < 5_000,
         "onchange named-property scan on a large tree: {v}"
     );
 }

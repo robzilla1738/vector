@@ -1379,6 +1379,7 @@ mod tests {
                       var input = todoInput();
                       if (!input) return JSON.stringify({ input: false });
                       var renderMs = { showEntries: 0, updateElementCount: 0, other: 0 };
+                      var addItemMs = 0, createMs = 0, filterMs = 0;
                       if (window.app && app.View && app.View.prototype && !app.View.prototype.__veTimed) {
                         var origRender = app.View.prototype.render;
                         app.View.prototype.render = function (cmd, p) {
@@ -1392,6 +1393,33 @@ mod tests {
                         };
                         app.View.prototype.__veTimed = true;
                       }
+                      if (window.app && app.Controller && app.Controller.prototype.addItem) {
+                        var origAdd = app.Controller.prototype.addItem;
+                        app.Controller.prototype.addItem = function (title) {
+                          var t = Date.now();
+                          var r = origAdd.call(this, title);
+                          addItemMs = Date.now() - t;
+                          return r;
+                        };
+                        var origFilter = app.Controller.prototype._filter;
+                        app.Controller.prototype._filter = function (force) {
+                          var t = Date.now();
+                          var r = origFilter.call(this, force);
+                          filterMs += Date.now() - t;
+                          return r;
+                        };
+                      }
+                      if (window.app && app.Model && app.Model.prototype.create) {
+                        var origCreate = app.Model.prototype.create;
+                        app.Model.prototype.create = function (title, cb) {
+                          var t = Date.now();
+                          var r = origCreate.call(this, title, cb);
+                          createMs += Date.now() - t;
+                          return r;
+                        };
+                      }
+                      var pathLen = 0;
+                      for (var n = input; n; n = n.parentNode) pathLen++;
                       var t0 = Date.now();
                       input.focus();
                       var focusMs = Date.now() - t0;
@@ -1419,6 +1447,10 @@ mod tests {
                         showEntriesMs: renderMs.showEntries,
                         updateCountMs: renderMs.updateElementCount,
                         renderOtherMs: renderMs.other,
+                        addItemMs: addItemMs,
+                        createMs: createMs,
+                        filterMs: filterMs,
+                        pathLen: pathLen,
                         nodes: document.getElementsByTagName("*").length
                       });
                     })()"##,
