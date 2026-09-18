@@ -292,10 +292,20 @@ pub fn layout_box_at(
                     intrinsic.height
                 }
             });
-        let h = specified
-            .or(replaced_auto)
-            .or(from_ratio)
-            .unwrap_or(content_height);
+        let size_contained = style.contain.contains_size()
+            || style.content_visibility == ve_style::ContentVisibility::Hidden;
+        let h = if size_contained
+            && specified.is_none()
+            && from_ratio.is_none()
+            && replaced_auto.is_none()
+        {
+            0.0
+        } else {
+            specified
+                .or(replaced_auto)
+                .or(from_ratio)
+                .unwrap_or(content_height)
+        };
         clamp_height(&style, h, cb.height, bp_v)
     };
 

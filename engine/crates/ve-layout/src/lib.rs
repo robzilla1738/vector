@@ -1414,4 +1414,19 @@ mod tests {
             tall.width()
         );
     }
+
+    #[test]
+    fn contain_size_does_not_grow_from_children() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{contain:size;width:80px} #k{height:40px}</style>\
+             <div id=c><div id=k></div></div>",
+            400.0,
+        );
+        let boxc = rect(&tree, &engine, &doc, "#c");
+        assert!(
+            boxc.height() < 8.0,
+            "contain:size auto height stays empty, got {}",
+            boxc.height()
+        );
+    }
 }

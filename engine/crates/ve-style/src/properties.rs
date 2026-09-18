@@ -26,7 +26,8 @@ use crate::values::{
     Float, FontFamily,
     FontStyle, FontWeight, GridLine, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
-    ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba, SelfAlignment, TextAlign,
+    Contain, ContentVisibility, ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba,
+    SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
     VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
@@ -767,6 +768,16 @@ mod conv {
         }
     }
 
+    pub fn zoom(v: &SpecifiedValue, _: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "normal" => Some(1.0),
+            SpecifiedValue::Number(n) if *n > 0.0 => Some(*n),
+            SpecifiedValue::Integer(i) if *i > 0 => Some(*i as f32),
+            SpecifiedValue::Percentage(p) if *p > 0.0 => Some(*p / 100.0),
+            _ => None,
+        }
+    }
+
     pub fn time_ms(v: &SpecifiedValue, _: &ConvertContext) -> Option<f32> {
         match v {
             SpecifiedValue::Number(n) if *n >= 0.0 => Some(*n),
@@ -1252,6 +1263,12 @@ property_table! {
     }, inherited = false, syntax = BoxShadow, convert = conv::box_shadow;
     /// `aspect-ratio` (`auto` is `None`)
     AspectRatio: "aspect-ratio" => aspect_ratio: Option<f32> = None, inherited = false, syntax = AspectRatio, convert = conv::aspect_ratio;
+    /// `zoom` (unitless scale; `normal` is 1)
+    Zoom: "zoom" => zoom: f32 = 1.0, inherited = false, syntax = Single, convert = conv::zoom;
+    /// `contain`
+    Contain: "contain" => contain: Contain = Contain::None, inherited = false, syntax = Single, convert = conv::kw::<Contain>;
+    /// `content-visibility`
+    ContentVisibility: "content-visibility" => content_visibility: ContentVisibility = ContentVisibility::Visible, inherited = false, syntax = Single, convert = conv::kw::<ContentVisibility>;
 }
 
 impl ComputedStyle {
@@ -1323,8 +1340,6 @@ impl ComputedStyle {
 /// displayed, where, or whether it is visible. Used by the coverage counter
 /// (see [`crate::coverage`]).
 pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
-    "contain",
-    "content-visibility",
     "columns",
     "column-count",
     "column-width",
@@ -1336,7 +1351,6 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
     "inset-area",
     "position-area",
     "clip",
-    "zoom",
     "container-type",
     "text-orientation",
     "float-offset",
@@ -1413,8 +1427,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "speak",
     "src",
     "unicode-range",
-    "contain",
-    "content-visibility",
     "columns",
     "column-count",
     "column-width",
@@ -1427,7 +1439,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "perspective-origin",
     "backface-visibility",
     "clip",
-    "zoom",
     "container-type",
     "container-name",
     "container",
@@ -3156,6 +3167,11 @@ mod tests {
         ok("aspect-ratio", "auto");
         ok("aspect-ratio", "16 / 9");
         ok("aspect-ratio", "1.5");
+        ok("zoom", "2");
+        ok("zoom", "normal");
+        ok("contain", "size");
+        ok("contain", "strict");
+        ok("content-visibility", "hidden");
         ok("object-position", "center");
         ok("object-position", "right 20px");
         ok("transform-origin", "center");
@@ -3210,7 +3226,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 124);
+        assert_eq!(PropertyId::ALL.len(), 127);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

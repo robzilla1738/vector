@@ -7,7 +7,7 @@ use ve_layout::LayoutTree;
 use ve_style::{
     BackgroundClip, BackgroundImage, BackgroundOrigin, BackgroundPosition, BackgroundRepeat,
     BackgroundSize, ComputedStyle, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto,
-    ObjectFit, Rgba, StyleTree, TextDecorationLine, TransformOp,
+    ContentVisibility, ObjectFit, Rgba, StyleTree, TextDecorationLine, TransformOp,
 };
 
 use crate::image::ImageHandle;
@@ -364,6 +364,11 @@ impl DisplayList {
                     }
                 }
             }
+            if (style.zoom - 1.0).abs() > f32::EPSILON {
+                sx *= style.zoom;
+                sy *= style.zoom;
+                xformed = true;
+            }
             if xformed {
                 if (sx - 1.0).abs() > f32::EPSILON || (sy - 1.0).abs() > f32::EPSILON {
                     let ox = item.rect.x() + style.transform_origin.x.resolve(item.rect.width());
@@ -377,7 +382,9 @@ impl DisplayList {
                 list.push(DisplayItem::PushOpacity(style.opacity.clamp(0.0, 1.0)));
             }
             if let Some(text) = &item.text {
-                if style.visibility == ve_style::Visibility::Visible {
+                if style.visibility == ve_style::Visibility::Visible
+                    && style.content_visibility != ContentVisibility::Hidden
+                {
                     if !style.text_shadow.is_none() {
                         list.push(DisplayItem::Text(TextRun {
                             origin: Point::new(
@@ -413,7 +420,10 @@ impl DisplayList {
                         });
                     }
                 }
-            } else if !item.rect.is_empty() && style.visibility == ve_style::Visibility::Visible {
+            } else if !item.rect.is_empty()
+                && style.visibility == ve_style::Visibility::Visible
+                && style.content_visibility != ContentVisibility::Hidden
+            {
                 if !style.box_shadow.is_none() {
                     list.push(DisplayItem::BoxShadow {
                         rect: item.rect,
@@ -915,6 +925,40 @@ mod tests {
             "individual scale missing: {:?}",
             list.items()
         );
+    }
+
+    #[test]
+    fn from_layout_applies_zoom_and_hides_content_visibility() {
+        let html = "<style>body{margin:0} #z{width:10px;height:10px;background:red;zoom:2;transform-origin:0 0} #h{width:10px;height:10px;background:blue;content-visibility:hidden}</style>\
+                    <div id=z></div><div id=h></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let z = engine.select(&doc, "#z").unwrap()[0];
+        let h = engine.select(&doc, "#h").unwrap()[0];
+        assert!((styles.style(z).zoom - 2.0).abs() < f32::EPSILON);
+        assert_eq!(
+            styles.style(h).content_visibility,
+            ContentVisibility::Hidden
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::PushTransform { sx, sy, .. }
+                    if (*sx - 2.0).abs() < 0.1 && (*sy - 2.0).abs() < 0.1
+            )),
+            "zoom missing: {:?}",
+            list.items()
+        );
+        let blues = list
+            .items()
+            .iter()
+            .filter(|i| matches!(i, DisplayItem::Rect { color, .. } if *color == Rgba::rgb(0, 0, 255)))
+            .count();
+        assert_eq!(blues, 0, "hidden still painted: {:?}", list.items());
     }
 
     #[test]

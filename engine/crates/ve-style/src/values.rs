@@ -1018,6 +1018,44 @@ keyword_enum! {
 }
 
 keyword_enum! {
+    /// The `contain` property (single keyword).
+    Contain {
+        /// No containment.
+        None = "none",
+        /// Size containment.
+        Size = "size",
+        /// Layout containment.
+        Layout = "layout",
+        /// Paint containment.
+        Paint = "paint",
+        /// Layout + paint.
+        Content = "content",
+        /// Size + layout + paint.
+        Strict = "strict",
+    }
+}
+
+impl Contain {
+    /// Size is independent of descendants.
+    #[must_use]
+    pub fn contains_size(self) -> bool {
+        matches!(self, Self::Size | Self::Strict)
+    }
+}
+
+keyword_enum! {
+    /// The `content-visibility` property.
+    ContentVisibility {
+        /// Paint and lay out normally.
+        Visible = "visible",
+        /// Skip painting; size-contain.
+        Hidden = "hidden",
+        /// Skip painting when off-screen.
+        Auto = "auto",
+    }
+}
+
+keyword_enum! {
     /// The `pointer-events` property.
     PointerEvents {
         /// Normal hit testing.
