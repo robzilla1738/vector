@@ -3610,6 +3610,39 @@ fn window_load_fires_after_a_large_id_tree() {
     assert_eq!(v["ready"], "complete", "{v}");
 }
 
+#[cfg(feature = "v8")]
+#[test]
+fn document_change_event_does_not_scan_named_properties() {
+    let ids: String = (0..2000)
+        .map(|i| format!(r#"<span id="n{i}">{i}</span>"#))
+        .collect();
+    let html = format!(
+        r#"<input id="todo" class="new-todo">
+           <div>{ids}</div>
+           <script>
+             document.getElementById("todo").addEventListener("change", function () {{
+               window.__changed = true;
+             }});
+           </script>"#
+    );
+    let mut page = open(&html);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var input = document.getElementById("todo");
+              var t0 = Date.now();
+              input.dispatchEvent(new Event("change", { bubbles: true }));
+              return { changed: window.__changed === true, ms: Date.now() - t0, nodes: document.getElementsByTagName("*").length };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["changed"], true, "{v}");
+    assert!(
+        v["ms"].as_u64().unwrap_or(u64::MAX) < 1_000,
+        "onchange named-property scan on a large tree: {v}"
+    );
+}
+
 #[test]
 fn nested_sanitize_keeps_inner_template_policy() {
     let mut page = open(

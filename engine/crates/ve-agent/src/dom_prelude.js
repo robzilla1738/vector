@@ -1489,16 +1489,23 @@
     }
     return names;
   }
+  function isEventHandlerName(p) {
+    return typeof p === "string" && p.length > 2 && p.charCodeAt(0) === 111 && p.charCodeAt(1) === 110;
+  }
   documentNamedTraps = {
     get(t, p, recv) {
       if (typeof p !== "string" || p === "__proto__") return Reflect.get(t, p, recv);
-      if (Reflect.has(t, p)) return Reflect.get(t, p, recv);
+      // Event-handler names are IDL attributes, not HTML named properties.
+      // Looking up document.onchange via getElementsByTagName("*") is O(n)
+      // and made official Complex-DOM change dispatch ~40s.
+      if (isEventHandlerName(p) || Reflect.has(t, p)) return Reflect.get(t, p, recv);
       const named = namedItemValue(t, p);
       return named === undefined ? Reflect.get(t, p, recv) : named;
     },
     has(t, p) {
       if (Reflect.has(t, p)) return true;
-      return typeof p === "string" && namedElementsOf(t, p).length > 0;
+      if (isEventHandlerName(p) || typeof p !== "string") return false;
+      return namedElementsOf(t, p).length > 0;
     },
     ownKeys(t) {
       const keys = Reflect.ownKeys(t);
@@ -1510,6 +1517,7 @@
     getOwnPropertyDescriptor(t, p) {
       const d = Reflect.getOwnPropertyDescriptor(t, p);
       if (d) return d;
+      if (isEventHandlerName(p)) return undefined;
       if (typeof p === "string" && !Reflect.has(t, p)) {
         const named = namedItemValue(t, p);
         if (named !== undefined) {
