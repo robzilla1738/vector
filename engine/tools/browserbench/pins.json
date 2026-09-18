@@ -17,7 +17,7 @@
       "SunSpider/tagcloud.js"
     ],
     "status": "official-sunspider-default-js-wasmemcc",
-    "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and Default wasm through Kotlin-compose. transformersjs-bert-wasm is executed FAIL (onnx wasm shared Memory Not supported). Remaining Default wasm is dotnet-*. Not a published JetStream geometric-mean score."
+    "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and Default wasm through Dart-flute-todomvc, Kotlin-compose, and dotnet-interp/aot. transformersjs-bert-wasm is executed FAIL (onnx wasm shared Memory Not supported). Not a published JetStream geometric-mean score."
   },
   "speedometer": {
     "repo": "https://github.com/WebKit/Speedometer",
