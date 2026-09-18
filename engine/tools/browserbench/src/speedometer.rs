@@ -295,6 +295,19 @@ const FINISH_STEPS: &str = r##"(function () {
   return JSON.stringify({ ok: !!prev.ok, kind: kind, added: prev.ok ? 1 : 0, remaining: 0, reason: prev.reason });
 })()"##;
 
+const RECOUNT_STEPS: &str = r##"(function () {
+  var prev = window.__veBench || {};
+  if ((prev.kind || "") === "todomvc") {
+    var added = countTodos();
+    window.__veBench = Object.assign({}, prev, {
+      added: added,
+      remaining: added,
+      ok: added >= 100
+    });
+  }
+  return JSON.stringify(window.__veBench || {});
+})()"##;
+
 const COUNT_STEPS: &str = r##"(function () {
   var prev = window.__veBench || { kind: "unknown", ok: false };
   var kind = prev.kind || "unknown";
@@ -769,6 +782,14 @@ fn run_one(
         }
         if let Ok(page) = engine.page_mut(opened.page) {
             page.settle(200);
+        }
+        if let Err(e) = engine
+            .page_mut(opened.page)
+            .and_then(|p| p.evaluate(&with_lib(RECOUNT_STEPS)))
+        {
+            last = Some(e.to_string());
+            engine.close(opened.page);
+            continue;
         }
         if let Err(e) = engine
             .page_mut(opened.page)
@@ -1285,21 +1306,24 @@ mod tests {
                         })()"##,
                     ))
                     .unwrap();
+                page.evaluate(&with_lib(
+                    r##"(function () {
+                      var input = todoInput();
+                      if (!input) return JSON.stringify({ added: 0, skipped: true });
+                      for (var i = 0; i < 3; i++) {
+                        input.focus();
+                        input.value = "Task-" + i;
+                        fire(input, "input", { bubbles: true, data: "Task-" + i, inputType: "insertText" }, InputEvent);
+                        fire(input, "change");
+                        enter(input);
+                      }
+                      return JSON.stringify({ queued: true });
+                    })()"##,
+                ))
+                .ok();
+                page.settle(250);
                 let added = page
-                    .evaluate(&with_lib(
-                        r##"(function () {
-                          var input = todoInput();
-                          if (!input) return JSON.stringify({ added: 0, skipped: true });
-                          for (var i = 0; i < 3; i++) {
-                            input.focus();
-                            input.value = "Task-" + i;
-                            fire(input, "input", { bubbles: true, data: "Task-" + i, inputType: "insertText" }, InputEvent);
-                            fire(input, "change");
-                            enter(input);
-                          }
-                          return JSON.stringify({ added: countTodos() });
-                        })()"##,
-                    ))
+                    .evaluate(&with_lib("JSON.stringify({ added: countTodos() })"))
                     .unwrap();
                 let console: Vec<String> = page
                     .console()

@@ -385,6 +385,7 @@ impl Page {
             vm.set_call_deadline(Some(EVALUATE_DEADLINE));
         }
         let result = self.run_script(expression, "vector:evaluate");
+        self.drain_js_jobs();
         if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
             vm.set_call_deadline(Some(script_deadline()));
         }
