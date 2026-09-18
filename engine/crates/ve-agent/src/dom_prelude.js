@@ -4978,10 +4978,14 @@
     }
     return r;
   };
+  globalThis.__veUpgradeTree = () => {
+    try { customElements.upgrade(globalThis.document || document); } catch (e) {}
+  };
   globalThis.__veDocumentEvents = () => {
+    // Do not walk the tree here. A large document's id/upgrade scan can
+    // exceed SCRIPT_DEADLINE and abort this function before `load` fires
+    // (official Speedometer Complex-DOM). Rust calls expose/upgrade separately.
     const doc = globalThis.document || document;
-    try { exposeAllIds(); } catch (e) {}
-    try { customElements.upgrade(doc); } catch (e) {}
     try {
       D("setReadyState", "interactive");
       doc.dispatchEvent(new Event("readystatechange"));

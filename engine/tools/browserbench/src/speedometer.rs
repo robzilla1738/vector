@@ -1412,9 +1412,10 @@ mod tests {
             v["nodes"].as_u64().unwrap_or(0) > 1000,
             "official Complex-DOM page did not keep its extra tree: {v} err={console:?}"
         );
-        // 100-item official add still exceeds evaluate deadline. One add currently
-        // leaves added=0 because Controller._filter reads unset _activeRoute
-        // (load/setView did not bind). Do not treat that as a suite PASS.
+        assert!(
+            v["added"].as_u64().unwrap_or(0) >= 1,
+            "window load must bind Controller._activeRoute: {v} err={console:?}"
+        );
     }
 
     #[cfg(feature = "v8")]

@@ -3579,6 +3579,38 @@ fn review_behavior_counterexamples() {
 }
 
 #[test]
+fn window_load_fires_after_a_large_id_tree() {
+    let ids: String = (0..800)
+        .map(|i| format!(r#"<span id="n{i}">{i}</span>"#))
+        .collect();
+    let html = format!(
+        r#"<div>{ids}</div>
+           <script>
+             window.__gotLoad = false;
+             window.addEventListener("load", function () {{
+               window.__gotLoad = true;
+               window.__hash = String(document.location.hash);
+             }});
+           </script>"#
+    );
+    let mut page = open(&html);
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                got: window.__gotLoad,
+                hash: window.__hash,
+                ready: document.readyState
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["got"], true, "{v}");
+    assert_eq!(v["ready"], "complete", "{v}");
+}
+
+#[test]
 fn nested_sanitize_keeps_inner_template_policy() {
     let mut page = open(
         r#"<div id="target1"><?start name="outer-1">Original 1<?end></div>
