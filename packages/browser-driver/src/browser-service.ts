@@ -253,10 +253,15 @@ export class ServiceNativeEngine {
     return JSON.stringify({ ok: true, ...r, generation: r.documentEpoch ?? r.generation ?? 1 });
   }
 
-  async execute(_page: number, stepsJson: string, _optionsJson?: string | null): Promise<string> {
+  async execute(_page: number, stepsJson: string, optionsJson?: string | null): Promise<string> {
     const program = JSON.parse(stepsJson) as unknown;
-    const r = await this.client.call("pages.execute", { program });
-    return JSON.stringify({ ok: true, ...r });
+    const opts = optionsJson ? (JSON.parse(optionsJson) as { returnObservation?: unknown }) : {};
+    const params: Record<string, unknown> = { program };
+    if (opts.returnObservation != null && opts.returnObservation !== false) {
+      params.returnObservation = opts.returnObservation;
+    }
+    const r = await this.client.call("pages.execute", params);
+    return JSON.stringify(flattenExecuteResult(r));
   }
 
   async takeover(): Promise<string> {
@@ -309,4 +314,44 @@ export class ServiceNativeEngine {
   shutdown(): void {
     this.client.close();
   }
+}
+
+/** NAPI `Engine.execute` envelope. Nested `{ result: { steps } }` is flattened. */
+export function flattenExecuteResult(r: Record<string, unknown>): Record<string, unknown> {
+  const nested =
+    r.result && typeof r.result === "object" && !Array.isArray(r.result)
+      ? (r.result as Record<string, unknown>)
+      : undefined;
+  const steps = Array.isArray(r.steps) ? r.steps : Array.isArray(nested?.steps) ? nested.steps : [];
+  const status =
+    (typeof r.status === "string" ? r.status : undefined) ??
+    (typeof nested?.status === "string" ? nested.status : undefined) ??
+    "failed";
+  const extracted = r.extracted !== undefined ? r.extracted : (nested?.extracted ?? null);
+  const error = r.error !== undefined ? r.error : (nested?.error ?? null);
+  let observation = r.observation;
+  if (observation && typeof observation === "object" && !Array.isArray(observation)) {
+    const obs = observation as Record<string, unknown>;
+    if (obs.ok !== true && obs.ok !== false) {
+      observation = {
+        ok: true,
+        ...obs,
+        generation: obs.generation ?? obs.documentEpoch ?? 1,
+      };
+    }
+  }
+  return {
+    ok: true,
+    status,
+    steps,
+    extracted,
+    error,
+    url: r.url ?? null,
+    title: r.title ?? null,
+    titleChanged: Boolean(r.titleChanged),
+    generation: r.generation ?? r.documentEpoch ?? 1,
+    navigated: Boolean(r.navigated),
+    revision: r.revision ?? 1,
+    ...(observation !== undefined ? { observation } : {}),
+  };
 }

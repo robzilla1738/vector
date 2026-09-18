@@ -10,6 +10,7 @@ import {
   BrowserServiceClient,
   decodeFerry,
   encodeFerry,
+  flattenExecuteResult,
   parseEngineTargetId,
   probeEngineNative,
   unwrapNative,
@@ -441,14 +442,120 @@ describe("VectorEngineDriver", () => {
     await driver.connect();
     expect(driver.describe()).toMatchObject({
       available: true,
-      version: "browser-service",
       isolation: "process",
       capabilities: { service: true },
     });
+    expect(typeof driver.describe().version).toBe("string");
     const targetId = await driver.createTarget("https://x.test/");
     expect(parseEngineTargetId(targetId)).toEqual({ contextId: 1, page: 1 });
     await driver.disconnect();
     expect(driver.isConnected()).toBe(false);
+  });
+
+  it("Finding 1: BrowserService execute unwraps nested result.steps", async () => {
+    expect(
+      flattenExecuteResult({
+        ok: true,
+        result: {
+          status: "completed",
+          steps: [{ stepId: "a", op: "click", status: "ok", startedAt: 1, durationMs: 1 }],
+          extracted: { out: { v: "1" } },
+        },
+      }).steps,
+    ).toHaveLength(1);
+    const server = await new Promise<{ addr: string; shutdown(): void }>((resolve, reject) => {
+      const s = createServer((socket) => {
+        let buf = "";
+        socket.setEncoding("utf8");
+        socket.on("data", (chunk: string) => {
+          buf += chunk;
+          for (;;) {
+            const nl = buf.indexOf("\n");
+            if (nl < 0) break;
+            const line = buf.slice(0, nl);
+            buf = buf.slice(nl + 1);
+            if (!line.trim()) continue;
+            const req = JSON.parse(line) as { id: number; method: string; params?: Record<string, unknown> };
+            let result: Record<string, unknown> = { ok: true };
+            if (req.method === "pages.open") {
+              result = { ok: true, page: 1, url: "https://share.test/", title: "X" };
+            } else if (req.method === "pages.execute") {
+              result = {
+                ok: true,
+                result: {
+                  status: "completed",
+                  steps: [{ stepId: "a", op: "click", status: "ok", startedAt: 1, durationMs: 1 }],
+                },
+              };
+            }
+            socket.write(`${JSON.stringify({ jsonrpc: "2.0", id: req.id, result })}\n`);
+          }
+        });
+      });
+      s.listen(0, "127.0.0.1", () => {
+        const port = (s.address() as AddressInfo).port;
+        resolve({ addr: `127.0.0.1:${port}`, shutdown: () => s.close() });
+      });
+      s.once("error", reject);
+    });
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => ({ addr: server.addr, shutdown: server.shutdown }),
+    });
+    await driver.connect();
+    const page = await driver.attach(await driver.createTarget("https://share.test/"), "p1");
+    const res = await page.executeProgram!([{ id: "a", op: "click", target: "css:#n" }]);
+    expect(res.status).toBe("completed");
+    expect(res.steps.map((s) => s.stepId)).toEqual(["a"]);
+    await driver.disconnect();
+  });
+
+  it("Finding 1: service attach reports the probed engine version", async () => {
+    const owned = await mockBrowserService();
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+      load: async () =>
+        ({
+          Engine: class {
+            newContext() {
+              return 1;
+            }
+            open() {
+              return Promise.resolve("{}");
+            }
+            observe() {
+              return Promise.resolve("{}");
+            }
+            execute() {
+              return Promise.resolve("{}");
+            }
+            screenshot() {
+              return Promise.resolve("{}");
+            }
+            close() {
+              return Promise.resolve("{}");
+            }
+            getCookies() {
+              return Promise.resolve("{}");
+            }
+            setCookies() {
+              return Promise.resolve("{}");
+            }
+            pages() {
+              return [];
+            }
+            shutdown() {}
+          },
+          describe: () => JSON.stringify({ engine: "0.0.1", abiVersion: 4 }),
+          version: () => "0.0.1",
+        }) as unknown as NativeModule,
+    });
+    await driver.connect();
+    expect(driver.describe().version).toBe("0.0.1");
+    expect(driver.describe().abiVersion).toBe(4);
+    expect(driver.describe().capabilities?.service).toBe(true);
+    await driver.disconnect();
   });
 
   it("unwrapNative maps engine error codes and rejects malformed JSON", () => {

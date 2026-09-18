@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 use ve_core::{Error, ErrorCode, Result};
 
 use crate::shell::{NativeBrowser, NativeController, NativeEvent};
-use crate::{EngineConfig, Program};
+use crate::{EngineConfig, ExecuteRequest, ObservationRequest, Program};
 
 type Job = Box<dyn FnOnce(&mut BrowserService) + Send>;
 
@@ -148,11 +148,38 @@ impl BrowserService {
             .cloned()
             .or_else(|| params.get("steps").cloned())
             .ok_or_else(|| Error::invalid_params("execute needs program or steps"))?;
-        let executed = self.browser.execute_active(Program::from_value(program)?)?;
-        let mut value = serde_json::to_value(&executed)
+        let return_observation = match params.get("returnObservation") {
+            None | Some(Value::Null) => None,
+            Some(Value::Bool(true)) => Some(ObservationRequest::default()),
+            Some(Value::Bool(false)) => None,
+            Some(other) => Some(
+                serde_json::from_value(other.clone())
+                    .map_err(|e| Error::invalid_params(format!("returnObservation: {e}")))?,
+            ),
+        };
+        let executed = self.browser.execute_request(ExecuteRequest {
+            program: Program::from_value(program)?,
+            return_observation,
+        })?;
+        self.flatten_execute(executed)
+    }
+
+    /// NAPI `Engine.execute` envelope: top-level `status` / `steps`, not `{ result }`.
+    fn flatten_execute(&self, executed: crate::ExecuteResult) -> Result<Value> {
+        let mut value = serde_json::to_value(&executed.result)
             .map_err(|e| Error::internal(format!("execute encode: {e}")))?;
-        if let Some(obj) = value.as_object_mut() {
-            obj.insert("ok".into(), json!(true));
+        let Some(obj) = value.as_object_mut() else {
+            return Ok(json!({ "ok": true, "result": value }));
+        };
+        obj.insert("ok".into(), json!(true));
+        if let Some((url, title, generation, revision)) = self.browser.active_page_meta() {
+            obj.insert("url".into(), json!(url));
+            obj.insert("title".into(), json!(title));
+            obj.insert("generation".into(), json!(generation));
+            obj.insert("revision".into(), json!(revision));
+        }
+        if let Some(obs) = executed.observation {
+            obj.insert("observation".into(), observation_envelope(obs)?);
         }
         Ok(value)
     }
@@ -168,6 +195,31 @@ impl BrowserService {
             "chromium": false,
         }))
     }
+}
+
+fn observation_envelope(obs: crate::EngineObservation) -> Result<Value> {
+    let mut value = serde_json::to_value(&obs)
+        .map_err(|e| Error::internal(format!("observation encode: {e}")))?;
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert("ok".into(), json!(true));
+        if let Some(epoch) = obj.get("documentEpoch").cloned() {
+            obj.insert("generation".into(), epoch);
+        }
+        if let Some(settled) = obj.get("settled").cloned()
+            && settled.is_object()
+        {
+            obj.insert(
+                "settled".into(),
+                json!(
+                    settled
+                        .get("settled")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(true)
+                ),
+            );
+        }
+    }
+    Ok(value)
 }
 
 impl Default for BrowserService {
@@ -651,6 +703,34 @@ mod tests {
         assert_eq!(opened["chromium"], false);
         let scene = svc.handle("scene.update", &json!({})).unwrap();
         assert_eq!(scene["png"], false);
+    }
+
+    #[test]
+    fn execute_returns_top_level_steps_and_observation() {
+        let mut svc = BrowserService::new();
+        svc.handle(
+            "pages.open",
+            &json!({"html":"<input id=t>","url":"https://t.test/"}),
+        )
+        .unwrap();
+        let executed = svc
+            .handle(
+                "pages.execute",
+                &json!({
+                    "program": [{"id":"a","op":"type","target":"css:input","value":"x"}],
+                    "returnObservation": true
+                }),
+            )
+            .unwrap();
+        assert_eq!(executed["ok"], true);
+        assert_eq!(executed["status"], "completed");
+        let steps = executed["steps"].as_array().expect("top-level steps");
+        assert_eq!(steps[0]["stepId"], "a");
+        assert_eq!(steps[0]["status"], "ok");
+        assert!(executed.get("result").is_none(), "{executed}");
+        assert_eq!(executed["observation"]["ok"], true);
+        assert!(executed["observation"]["content"].is_object());
+        assert!(executed["generation"].as_u64().is_some());
     }
 
     #[test]

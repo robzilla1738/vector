@@ -651,11 +651,18 @@ export class VectorEngineDriver implements BrowserDriver {
       const client = new BrowserServiceClient(this.serviceAddr);
       await client.connect();
       this.native = new ServiceNativeEngine(client);
+      const probed = this.availability.available
+        ? this.availability
+        : await probeEngineNative(this.load);
       this.availability = {
         available: true,
-        version: "browser-service",
+        version: probed.available && probed.version ? probed.version : "browser-service",
+        abiVersion: probed.abiVersion,
+        protocolVersion: probed.protocolVersion,
+        binaryPath: probed.binaryPath,
         isolation: "process",
-        capabilities: { screenshot: false, service: true },
+        securityProfile: this.config.securityProfile,
+        capabilities: { ...probed.capabilities, screenshot: probed.capabilities?.screenshot ?? false, service: true },
       };
       return;
     }

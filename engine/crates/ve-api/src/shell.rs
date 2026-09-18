@@ -532,6 +532,14 @@ impl NativeBrowser {
 
     /// Agent program against the live native document.
     pub fn execute_active(&mut self, program: Program) -> Result<ExecuteResult> {
+        self.execute_request(ExecuteRequest {
+            program,
+            return_observation: None,
+        })
+    }
+
+    /// Agent program, optionally observing in the same round trip.
+    pub fn execute_request(&mut self, request: ExecuteRequest) -> Result<ExecuteResult> {
         if self.controller == NativeController::Human {
             return Err(Error::coded(
                 ErrorCode::Conflict,
@@ -539,21 +547,45 @@ impl NativeBrowser {
             ));
         }
         self.controller = NativeController::Agent;
-        self.dispatch_program(program)
+        self.dispatch_program(request)
     }
 
-    fn dispatch_program(&mut self, program: Program) -> Result<ExecuteResult> {
+    fn dispatch_program(&mut self, request: ExecuteRequest) -> Result<ExecuteResult> {
         let page = self
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?
             .page;
-        self.engine.execute(
-            page,
-            &ExecuteRequest {
-                program,
-                ..ExecuteRequest::default()
-            },
-        )
+        let executed = self.engine.execute(page, &request)?;
+        self.sync_active_tab();
+        Ok(executed)
+    }
+
+    fn sync_active_tab(&mut self) {
+        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+            return;
+        };
+        let Ok(page) = self.engine.page(page_id) else {
+            return;
+        };
+        let url = page.url().to_owned();
+        let title = page.title();
+        if let Some(tab) = self.tabs.get_mut(self.active) {
+            tab.url = url;
+            tab.page_title = title;
+        }
+    }
+
+    /// Live document URL, title, generation, and revision.
+    #[must_use]
+    pub fn active_page_meta(&self) -> Option<(String, String, u32, u64)> {
+        let tab = self.active_tab()?;
+        let page = self.engine.page(tab.page).ok()?;
+        Some((
+            page.url().to_owned(),
+            page.title(),
+            page.generation(),
+            page.document().revision().0,
+        ))
     }
 
     /// Human takeover: later agent programs fail until [`Self::resume`].
@@ -806,9 +838,12 @@ impl NativeBrowser {
             NativeEvent::Navigate { url } => {
                 if let Some(tab) = self.tabs.get_mut(self.active) {
                     tab.url.clone_from(&url);
-                    let _ = self.dispatch_program(Program::from_value(serde_json::json!([
-                        {"id":"n","op":"navigate","url":url}
-                    ]))?);
+                    let _ = self.dispatch_program(ExecuteRequest {
+                        program: Program::from_value(serde_json::json!([
+                            {"id":"n","op":"navigate","url":url}
+                        ]))?,
+                        return_observation: None,
+                    });
                     self.present_dirty();
                 }
             }
@@ -827,18 +862,24 @@ impl NativeBrowser {
                     if key.len() == 1 {
                         self.last_typed.push_str(&key);
                     }
-                    let _ = self.dispatch_program(Program::from_value(serde_json::json!([
-                        {"id":"k","op":"press","key":key}
-                    ]))?);
+                    let _ = self.dispatch_program(ExecuteRequest {
+                        program: Program::from_value(serde_json::json!([
+                            {"id":"k","op":"press","key":key}
+                        ]))?,
+                        return_observation: None,
+                    });
                     self.present_dirty();
                 }
             }
             NativeEvent::Ime { text } => {
                 self.ime_preedit.clear();
                 self.last_typed.clone_from(&text);
-                let _ = self.dispatch_program(Program::from_value(serde_json::json!([
-                    {"id":"t","op":"type","target":"css:input,textarea,[contenteditable]","value":text}
-                ]))?);
+                let _ = self.dispatch_program(ExecuteRequest {
+                    program: Program::from_value(serde_json::json!([
+                        {"id":"t","op":"type","target":"css:input,textarea,[contenteditable]","value":text}
+                    ]))?,
+                    return_observation: None,
+                });
                 self.present_dirty();
             }
             NativeEvent::ImePreedit { text } => {
@@ -849,9 +890,12 @@ impl NativeBrowser {
             }
             NativeEvent::PointerDown { x, y, button } => {
                 self.pointer = Point::new(x, y);
-                let _ = self.dispatch_program(Program::from_value(serde_json::json!([
-                    {"id":"c","op":"clickPoint","x":x,"y":y,"button": if button == 0 { "left" } else { "right" }}
-                ]))?);
+                let _ = self.dispatch_program(ExecuteRequest {
+                    program: Program::from_value(serde_json::json!([
+                        {"id":"c","op":"clickPoint","x":x,"y":y,"button": if button == 0 { "left" } else { "right" }}
+                    ]))?,
+                    return_observation: None,
+                });
                 self.present_dirty();
             }
             NativeEvent::PointerUp { x, y, .. } => {
@@ -867,18 +911,24 @@ impl NativeBrowser {
             }
             NativeEvent::Wheel { dx: _, dy } => {
                 let dir = if dy > 0.0 { "down" } else { "up" };
-                let _ = self.dispatch_program(Program::from_value(serde_json::json!([
-                    {"id":"w","op":"scroll","direction":dir,"amount": dy.abs()}
-                ]))?);
+                let _ = self.dispatch_program(ExecuteRequest {
+                    program: Program::from_value(serde_json::json!([
+                        {"id":"w","op":"scroll","direction":dir,"amount": dy.abs()}
+                    ]))?,
+                    return_observation: None,
+                });
                 self.present_dirty();
             }
             NativeEvent::AccessKitAction { name } => {
                 if name.eq_ignore_ascii_case("urlbar") || name.contains("address") {
                     let _ = self.handle_event(NativeEvent::FocusUrlbar)?;
                 } else {
-                    let _ = self.dispatch_program(Program::from_value(serde_json::json!([
-                        {"id":"ak","op":"click","target": format!("text:{name}")}
-                    ]))?);
+                    let _ = self.dispatch_program(ExecuteRequest {
+                        program: Program::from_value(serde_json::json!([
+                            {"id":"ak","op":"click","target": format!("text:{name}")}
+                        ]))?,
+                        return_observation: None,
+                    });
                     self.present_dirty();
                 }
             }
