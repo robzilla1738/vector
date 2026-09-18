@@ -3,11 +3,11 @@
   "attribution": {
     "gate": false,
     "jetstreamSunspider": {
-      "executed": 54,
+      "executed": 59,
       "failed": 0,
-      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z assets and AsyncBenchmark Default names. mandreel/pdfjs/startup/wasm stay unexecuted. Not a JetStream Next geometric-mean published score.",
+      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, and startup/SSR/TypeScript-lib. mandreel/wasm stay unexecuted. Not a JetStream Next geometric-mean published score.",
       "officialGroup": 12,
-      "passed": 54
+      "passed": 59
     },
     "kind": "adapted-workload-phases",
     "motionmark13": {
@@ -36,7 +36,7 @@
   "os": "linux",
   "pins": {
     "jetstream": {
-      "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin. .z assets are zlib-inflated. AsyncBenchmark Default names await runIteration. mandreel/pdfjs/startup/wasm stay unexecuted. Not a published JetStream geometric-mean score.",
+      "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin. .z assets are zlib-inflated. AsyncBenchmark Default names await runIteration, including startup/SSR/TypeScript-lib. mandreel/wasm stay unexecuted. Not a published JetStream geometric-mean score.",
       "repo": "https://github.com/WebKit/JetStream",
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "status": "official-sunspider-and-default-js",
@@ -78,27 +78,27 @@
       "status": "official-3.0"
     }
   },
-  "process_tree_rss_bytes": 344444928,
-  "rss_bytes": 344444928,
+  "process_tree_rss_bytes": 341049344,
+  "rss_bytes": 341049344,
   "security_mode": "developer-offline",
   "suites": [
     {
       "name": "jetstream.3d-cube",
-      "p50_ms": 21,
-      "p95_ms": 21,
+      "p50_ms": 18,
+      "p95_ms": 18,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        21
+        18
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.3d-raytrace",
-      "p50_ms": 12,
-      "p95_ms": 12,
+      "p50_ms": 11,
+      "p95_ms": 11,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        12
+        11
       ],
       "status": "PASS"
     },
@@ -114,26 +114,6 @@
     },
     {
       "name": "jetstream.crypto-aes",
-      "p50_ms": 10,
-      "p95_ms": 10,
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "samples_ms": [
-        10
-      ],
-      "status": "PASS"
-    },
-    {
-      "name": "jetstream.crypto-md5",
-      "p50_ms": 8,
-      "p95_ms": 8,
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "samples_ms": [
-        8
-      ],
-      "status": "PASS"
-    },
-    {
-      "name": "jetstream.crypto-sha1",
       "p50_ms": 9,
       "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
@@ -143,22 +123,42 @@
       "status": "PASS"
     },
     {
-      "name": "jetstream.date-format-tofte",
-      "p50_ms": 20,
-      "p95_ms": 20,
+      "name": "jetstream.crypto-md5",
+      "p50_ms": 9,
+      "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        20
+        9
       ],
       "status": "PASS"
     },
     {
-      "name": "jetstream.date-format-xparb",
+      "name": "jetstream.crypto-sha1",
       "p50_ms": 10,
       "p95_ms": 10,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
         10
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.date-format-tofte",
+      "p50_ms": 8,
+      "p95_ms": 8,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        8
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.date-format-xparb",
+      "p50_ms": 9,
+      "p95_ms": 9,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        9
       ],
       "status": "PASS"
     },
@@ -184,76 +184,86 @@
     },
     {
       "name": "jetstream.string-unpack-code",
-      "p50_ms": 9,
-      "p95_ms": 9,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        9
+        8
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.tagcloud",
-      "p50_ms": 16,
-      "p95_ms": 16,
+      "p50_ms": 13,
+      "p95_ms": 13,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        16
+        13
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.Air",
-      "p50_ms": 25,
-      "p95_ms": 25,
+      "p50_ms": 21,
+      "p95_ms": 21,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        25
+        21
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.Basic",
-      "p50_ms": 11,
-      "p95_ms": 11,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        11
+        8
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.ML",
-      "p50_ms": 53,
-      "p95_ms": 53,
+      "p50_ms": 39,
+      "p95_ms": 39,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        53
+        39
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.cdjs",
-      "p50_ms": 36,
-      "p95_ms": 36,
+      "p50_ms": 30,
+      "p95_ms": 30,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        36
+        30
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.Box2D",
-      "p50_ms": 54,
-      "p95_ms": 54,
+      "p50_ms": 35,
+      "p95_ms": 35,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        54
+        35
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.octane-code-load",
+      "p50_ms": 4,
+      "p95_ms": 4,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        4
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.crypto",
       "p50_ms": 5,
       "p95_ms": 5,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
@@ -263,7 +273,7 @@
       "status": "PASS"
     },
     {
-      "name": "jetstream.crypto",
+      "name": "jetstream.delta-blue",
       "p50_ms": 7,
       "p95_ms": 7,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
@@ -273,32 +283,22 @@
       "status": "PASS"
     },
     {
-      "name": "jetstream.delta-blue",
-      "p50_ms": 9,
-      "p95_ms": 9,
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "samples_ms": [
-        9
-      ],
-      "status": "PASS"
-    },
-    {
       "name": "jetstream.earley-boyer",
-      "p50_ms": 12,
-      "p95_ms": 12,
+      "p50_ms": 13,
+      "p95_ms": 13,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        12
+        13
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.gbemu",
-      "p50_ms": 81,
-      "p95_ms": 81,
+      "p50_ms": 78,
+      "p95_ms": 78,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        81
+        78
       ],
       "status": "PASS"
     },
@@ -314,21 +314,21 @@
     },
     {
       "name": "jetstream.raytrace",
-      "p50_ms": 14,
-      "p95_ms": 14,
+      "p50_ms": 17,
+      "p95_ms": 17,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        14
+        17
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.regexp-octane",
-      "p50_ms": 8,
-      "p95_ms": 8,
+      "p50_ms": 9,
+      "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        8
+        9
       ],
       "status": "PASS"
     },
@@ -344,31 +344,31 @@
     },
     {
       "name": "jetstream.splay",
-      "p50_ms": 26,
-      "p95_ms": 26,
+      "p50_ms": 24,
+      "p95_ms": 24,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        26
+        24
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.OfflineAssembler",
-      "p50_ms": 36,
-      "p95_ms": 36,
+      "p50_ms": 33,
+      "p95_ms": 33,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        36
+        33
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.UniPoker",
-      "p50_ms": 11,
-      "p95_ms": 11,
+      "p50_ms": 10,
+      "p95_ms": 10,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        11
+        10
       ],
       "status": "PASS"
     },
@@ -384,21 +384,21 @@
     },
     {
       "name": "jetstream.hash-map",
-      "p50_ms": 14,
-      "p95_ms": 14,
+      "p50_ms": 15,
+      "p95_ms": 15,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        14
+        15
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.ai-astar",
-      "p50_ms": 106,
-      "p95_ms": 106,
+      "p50_ms": 81,
+      "p95_ms": 81,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        106
+        81
       ],
       "status": "PASS"
     },
@@ -414,21 +414,21 @@
     },
     {
       "name": "jetstream.stanford-crypto-aes",
-      "p50_ms": 15,
-      "p95_ms": 15,
+      "p50_ms": 13,
+      "p95_ms": 13,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        15
+        13
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.stanford-crypto-pbkdf2",
-      "p50_ms": 8,
-      "p95_ms": 8,
+      "p50_ms": 7,
+      "p95_ms": 7,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        8
+        7
       ],
       "status": "PASS"
     },
@@ -444,106 +444,126 @@
     },
     {
       "name": "jetstream.FlightPlanner",
-      "p50_ms": 9,
-      "p95_ms": 9,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        9
+        8
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.json-stringify-inspector",
-      "p50_ms": 9,
-      "p95_ms": 9,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        9
+        8
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.json-parse-inspector",
-      "p50_ms": 27,
-      "p95_ms": 27,
+      "p50_ms": 23,
+      "p95_ms": 23,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        27
+        23
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.raytrace-public-class-fields",
-      "p50_ms": 23,
-      "p95_ms": 23,
+      "p50_ms": 16,
+      "p95_ms": 16,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        23
+        16
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.raytrace-private-class-fields",
-      "p50_ms": 21,
-      "p95_ms": 21,
+      "p50_ms": 16,
+      "p95_ms": 16,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        21
+        16
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.sync-fs",
-      "p50_ms": 21,
-      "p95_ms": 21,
+      "p50_ms": 15,
+      "p95_ms": 15,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        21
+        15
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.lazy-collections",
-      "p50_ms": 22,
-      "p95_ms": 22,
+      "p50_ms": 18,
+      "p95_ms": 18,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        22
+        18
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.js-tokens",
-      "p50_ms": 22,
-      "p95_ms": 22,
+      "p50_ms": 19,
+      "p95_ms": 19,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        22
+        19
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.threejs",
-      "p50_ms": 645,
-      "p95_ms": 645,
+      "p50_ms": 514,
+      "p95_ms": 514,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        645
+        514
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.pdfjs",
+      "p50_ms": 36,
+      "p95_ms": 36,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        36
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.doxbee-promise",
-      "p50_ms": 23,
-      "p95_ms": 23,
+      "p50_ms": 16,
+      "p95_ms": 16,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        23
+        16
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.doxbee-async",
+      "p50_ms": 10,
+      "p95_ms": 10,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        10
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.Babylon",
       "p50_ms": 17,
       "p95_ms": 17,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
@@ -553,22 +573,12 @@
       "status": "PASS"
     },
     {
-      "name": "jetstream.Babylon",
-      "p50_ms": 20,
-      "p95_ms": 20,
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "samples_ms": [
-        20
-      ],
-      "status": "PASS"
-    },
-    {
       "name": "jetstream.first-inspector-code-load",
-      "p50_ms": 23,
-      "p95_ms": 23,
+      "p50_ms": 21,
+      "p95_ms": 21,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        23
+        21
       ],
       "status": "PASS"
     },
@@ -584,41 +594,81 @@
     },
     {
       "name": "jetstream.bigint-noble-ed25519",
-      "p50_ms": 53,
-      "p95_ms": 53,
+      "p50_ms": 43,
+      "p95_ms": 43,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        53
+        43
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.proxy-mobx",
-      "p50_ms": 12,
-      "p95_ms": 12,
+      "p50_ms": 9,
+      "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        12
+        9
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.proxy-vue",
-      "p50_ms": 11,
-      "p95_ms": 11,
+      "p50_ms": 9,
+      "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        11
+        9
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.async-fs",
-      "p50_ms": 27,
-      "p95_ms": 27,
+      "p50_ms": 19,
+      "p95_ms": 19,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        27
+        19
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.mobx-startup",
+      "p50_ms": 28,
+      "p95_ms": 28,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        28
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.web-ssr",
+      "p50_ms": 33,
+      "p95_ms": 33,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        33
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.jsdom-d3-startup",
+      "p50_ms": 337,
+      "p95_ms": 337,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        337
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.typescript-lib",
+      "p50_ms": 1116,
+      "p95_ms": 1116,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        1116
       ],
       "status": "PASS"
     },
@@ -627,22 +677,16 @@
       "name": "jetstream.mandreel",
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "status": "NOTRUN"
-    },
-    {
-      "detail": "Octane/pdfjs.js (1.4MB) SIGKILL/OOM when concatenated into the page",
-      "name": "jetstream.pdfjs",
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "status": "NOTRUN"
     }
   ],
   "review": "Vector_Current_Review_60b2d41",
   "officialFullSuite": false,
   "officialJetStreamGeometricMean": false,
-  "note": "Official JetStream Next pin c603c04: SunSpider 12/12 PASS plus Default JS including AsyncBenchmark names (54 PASS, 0 FAIL, 2 NOTRUN). doxbee/Babylon/inspector-code-load/noble-ed25519/proxy-mobx/vue/async-fs PASS. mandreel/pdfjs/startup/wasm stay NOTRUN. Not a published JetStream geometric-mean score.",
+  "note": "Official JetStream Next pin c603c04: SunSpider 12/12 PASS plus Default JS including startup/SSR/TypeScript-lib and late-eval pdfjs (59 PASS, 0 FAIL, 1 NOTRUN). mandreel/wasm stay NOTRUN. Not a published JetStream geometric-mean score.",
   "counts": {
-    "pass": 54,
+    "pass": 59,
     "fail": 0,
-    "notrun": 2,
-    "total": 56
+    "notrun": 1,
+    "total": 60
   }
 }
