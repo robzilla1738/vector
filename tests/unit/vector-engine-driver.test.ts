@@ -14,7 +14,7 @@ import {
   unwrapNative,
   type NativeEngine,
   type NativeModule,
-} from "@vector/browser-driver";
+} from "../../packages/browser-driver/src/vector-engine.ts";
 import { VectorError, type ObservationContent } from "@vector/contracts";
 
 function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server: Server }> {

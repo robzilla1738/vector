@@ -94,15 +94,15 @@ mod tests {
 
     #[test]
     fn official_default_split_matches_webkit() {
-        // first=10; remaining desc 20,12,9,8,7; worst2=(20+12)/2=16; avg=13.2
+        // first=10; remaining desc 20,12,9,8,7; worst2=(20+12)/2=16; avg=11.2
         let samples = [10_u64, 8, 12, 9, 20, 7];
         let s = official_default_score(&samples, 2).expect("score");
         assert!((s.first_ms - 10.0).abs() < 1e-9);
         assert!((s.first_score - 500.0).abs() < 1e-9);
         assert!((s.worst_ms - 16.0).abs() < 1e-9);
         assert!((s.worst_score - 5000.0 / 16.0).abs() < 1e-9);
-        assert!((s.average_ms - 13.2).abs() < 1e-9);
-        let expected = geomean(&[500.0, 5000.0 / 16.0, 5000.0 / 13.2]).unwrap();
+        assert!((s.average_ms - 11.2).abs() < 1e-9);
+        let expected = geomean(&[500.0, 5000.0 / 16.0, 5000.0 / 11.2]).unwrap();
         assert!((s.score - expected).abs() < 1e-9);
     }
 
