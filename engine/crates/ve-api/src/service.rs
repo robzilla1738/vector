@@ -537,7 +537,7 @@ mod tests {
     use crate::VectorEngine;
     use std::thread;
     use std::time::Instant;
-    use ve_core::{process_rss_bytes, process_tree_rss_bytes};
+    use ve_core::process_memory_snapshot;
 
     #[test]
     fn human_and_mcp_clients_share_one_page_authority() {
@@ -694,11 +694,13 @@ mod tests {
         let p95 =
             samples[((samples.len() as f64 * 0.95).ceil() as usize).clamp(1, samples.len()) - 1];
         assert!(p95 > 0);
-        let rss = process_rss_bytes();
-        let tree = process_tree_rss_bytes();
-        if let (Some(rss), Some(tree)) = (rss, tree) {
-            assert!(tree >= rss, "tree={tree} rss={rss}");
-        }
+        let (rss, tree) = match process_memory_snapshot() {
+            Some((rss, tree)) => {
+                assert!(tree >= rss, "tree={tree} rss={rss}");
+                (Some(rss), Some(tree))
+            }
+            None => (None, None),
+        };
         if let Ok(out) = std::env::var("VECTOR_EVIDENCE_OUT") {
             let report = json!({
                 "review": "Vector_Current_Review_60b2d41",

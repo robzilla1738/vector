@@ -40,6 +40,10 @@ fn source_url(html: &str, name: &str) -> String {
         .unwrap_or_else(|| format!("https://corpus.vector.test/{name}"))
 }
 
+fn normalize_newlines(s: &str) -> String {
+    s.replace("\r\n", "\n").replace('\r', "\n")
+}
+
 fn first_diff(expected: &str, actual: &str) -> String {
     for (n, (e, a)) in expected.lines().zip(actual.lines()).enumerate() {
         if e != a {
@@ -100,7 +104,7 @@ fn spa_fixtures_settle_and_match_goldens() {
             continue;
         }
         match std::fs::read_to_string(&golden_path) {
-            Ok(expected) if expected == actual => {}
+            Ok(expected) if normalize_newlines(&expected) == normalize_newlines(&actual) => {}
             Ok(expected) => failures.push(format!(
                 "{name}: observation differs from {} — {}",
                 golden_path.display(),

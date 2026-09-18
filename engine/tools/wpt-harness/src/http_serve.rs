@@ -38,6 +38,7 @@ impl DirServer {
             while rx.try_recv().is_err() && Instant::now() < deadline {
                 match listener.accept() {
                     Ok((stream, _)) => {
+                        let _ = stream.set_nonblocking(false);
                         let roots = roots.clone();
                         let origin = origin_thread.clone();
                         let stash = Arc::clone(&stash);
@@ -95,6 +96,7 @@ impl DirServer {
             while rx.try_recv().is_err() && Instant::now() < deadline {
                 match listener.accept() {
                     Ok((stream, _)) => {
+                        let _ = stream.set_nonblocking(false);
                         let roots = roots.clone();
                         let origin = origin_thread.clone();
                         let stash = Arc::clone(&stash);
