@@ -1030,12 +1030,15 @@ fn custom_elements_upgrade_runs_connected_callback() {
               customElements.define('x-foo', XFoo);
               const before = window.__n;
               customElements.upgrade(host);
+              const afterUpgrade = window.__n;
+              document.body.appendChild(host);
               const el = host.querySelector('x-foo');
-              return { before, after: window.__n, mark: !!(el && el.mark) };
+              return { before, afterUpgrade, after: window.__n, mark: !!(el && el.mark) };
             })()"#,
         )
         .unwrap();
     assert_eq!(v["before"], 0, "{v}");
+    assert_eq!(v["afterUpgrade"], 0, "{v}");
     assert_eq!(v["after"], 1, "{v}");
     assert_eq!(v["mark"], true, "{v}");
 }

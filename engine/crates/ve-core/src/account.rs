@@ -40,12 +40,16 @@ pub fn process_rss_bytes() -> Option<u64> {
 }
 
 /// RSS of this process plus children (`pgrep -P`), when the OS exposes it.
+///
+/// Self RSS is sampled once and used as the floor so a later `/proc` read
+/// cannot report a tree smaller than the process just measured.
 #[must_use]
 pub fn process_tree_rss_bytes() -> Option<u64> {
     let root = std::process::id();
-    let mut total = 0u64;
-    let mut stack = vec![root];
-    let mut seen = std::collections::BTreeSet::new();
+    let self_rss = process_rss_bytes()?;
+    let mut total = self_rss;
+    let mut stack = child_pids(root);
+    let mut seen = std::collections::BTreeSet::from([root]);
     while let Some(pid) = stack.pop() {
         if !seen.insert(pid) {
             continue;
@@ -53,7 +57,7 @@ pub fn process_tree_rss_bytes() -> Option<u64> {
         total = total.saturating_add(rss_of(pid).unwrap_or(0));
         stack.extend(child_pids(pid));
     }
-    (total > 0).then_some(total)
+    Some(total)
 }
 
 fn rss_of(pid: u32) -> Option<u64> {
