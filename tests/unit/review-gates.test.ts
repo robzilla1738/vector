@@ -1,16 +1,30 @@
 import { describe, it, expect, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   authorizeProgram,
   attributeTodoMvc,
+  BrowserAuthority,
   compileAction,
   compileSkill,
   DurableWriteLedger,
+  EventBus,
+  markSkillFailed,
+  MemoryRouterStore,
+  NullNativeBridge,
+  PageService,
   queryPage,
   rebindSteps,
+  Repo,
+  Router,
+  openDb,
   stepSignature,
   tryReuseSkill,
+  type DriverSet,
 } from "@vector/runtime";
 import type { ObservationContent, Step } from "@vector/contracts";
+import type { BrowserDriver, DriverPage, ExecuteProgramResult } from "@vector/browser-driver";
 
 const obs = (opts?: { ref?: string; name?: string; url?: string }): ObservationContent =>
   ({
@@ -97,9 +111,13 @@ describe("Gate D fixture write counter", () => {
     const http = await import("node:http");
     let writes = 0;
     const server = http.createServer((req, res) => {
-      if (req.url === "/write" && req.method === "POST") {
+      if (req.url === "/api/writes" && req.method === "POST") {
         writes += 1;
-        res.end("ok");
+        res.end(JSON.stringify({ writes }));
+        return;
+      }
+      if (req.url === "/api/writes") {
+        res.end(JSON.stringify({ writes }));
         return;
       }
       res.end(String(writes));
@@ -108,21 +126,40 @@ describe("Gate D fixture write counter", () => {
     const addr = server.address();
     const port = typeof addr === "object" && addr ? addr.port : 0;
     const origin = `http://127.0.0.1:${port}`;
-    const ledger = new DurableWriteLedger();
+    const dir = mkdtempSync(join(tmpdir(), "vector-ledger-"));
+    const path = join(dir, "ledger.json");
+    const ledger = new DurableWriteLedger(path);
     const signature = stepSignature([{ op: "click", target: "pay" }]);
     const first = ledger.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
     expect(first.duplicate).toBe(false);
-    await fetch(`${origin}/write`, { method: "POST" });
+    await fetch(`${origin}/api/writes`, { method: "POST" });
     ledger.confirm(first.intent.id);
-    const lost = ledger.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
+    const restarted = new DurableWriteLedger(path);
+    const lost = restarted.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
     expect(lost.duplicate).toBe(true);
     if (!lost.duplicate) {
-      await fetch(`${origin}/write`, { method: "POST" });
+      await fetch(`${origin}/api/writes`, { method: "POST" });
     }
-    const counted = await (await fetch(`${origin}/count`)).text();
+    const counted = await (await fetch(`${origin}/api/writes`)).json() as { writes: number };
     server.close();
+    rmSync(dir, { recursive: true, force: true });
     expect(writes).toBe(1);
-    expect(counted).toBe("1");
+    expect(counted.writes).toBe(1);
+  });
+
+  it("pending intent persisted before dispatch blocks a restart replay", () => {
+    const dir = mkdtempSync(join(tmpdir(), "vector-ledger-"));
+    const path = join(dir, "ledger.json");
+    const ledger = new DurableWriteLedger(path);
+    const signature = stepSignature([{ op: "click", target: "pay" }]);
+    const first = ledger.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
+    expect(first.duplicate).toBe(false);
+    expect(first.intent.status).toBe("pending");
+    const restarted = new DurableWriteLedger(path);
+    const replay = restarted.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
+    expect(replay.duplicate).toBe(true);
+    expect(replay.intent.status).toBe("pending");
+    rmSync(dir, { recursive: true, force: true });
   });
 });
 
@@ -156,6 +193,165 @@ describe("skill compile does not freeze a document epoch", () => {
     });
     const later = tryReuseSkill([skill], "list rows", obs(), "https://app.test/form", 99);
     expect("skill" in later).toBe(true);
+  });
+});
+
+describe("Finding 5 skill reuse after failed postconditions", () => {
+  it("blocks later reuse of a skill whose postconditions failed", () => {
+    const skill = compileSkill({
+      id: "save",
+      goalPattern: "save",
+      pageId: "p1",
+      steps: [{ id: "c", op: "click", target: "r1" }],
+      preconditions: [{ exactOrigin: "https://app.test", role: "button", nameIncludes: "Save" }],
+      postconditions: [{ exactOrigin: "https://app.test", role: "button", nameIncludes: "Saved" }],
+      evidence: "must see Saved",
+    });
+    expect(tryReuseSkill([skill], "save the form", obs(), "https://app.test/form")).toMatchObject({
+      skill: { id: "save" },
+    });
+    markSkillFailed(skill);
+    const skip = tryReuseSkill([skill], "save the form", obs(), "https://app.test/form");
+    expect("skipped" in skip).toBe(true);
+    if ("skipped" in skip) expect(skip.skipped).toMatch(/blocked after failed postconditions/);
+  });
+});
+
+describe("Gate B/F one session without Chromium", () => {
+  it("human edit, agent observe, compile, takeover, resume share one page", async () => {
+    const repo = new Repo(openDb(":memory:"));
+    const events = new EventBus(repo);
+    let fieldValue = "old";
+    const makePage = (pageId: string, url: string): DriverPage => {
+      const page: DriverPage = {
+        identity: { pageId, targetId: "engine-t1", backend: "vector-engine" },
+        url: () => url,
+        title: async () => "form",
+        isAttached: () => true,
+        navigate: async () => {},
+        back: async () => {},
+        forward: async () => {},
+        reload: async () => {},
+        stop: async () => {},
+        click: async () => {},
+        dblclick: async () => {},
+        hover: async () => {},
+        fill: async (_t, v) => {
+          fieldValue = v;
+        },
+        typeText: async (_t, v) => {
+          fieldValue = v;
+        },
+        press: async () => {},
+        check: async () => {},
+        uncheck: async () => {},
+        select: async () => {},
+        scroll: async () => {},
+        dragTo: async () => {},
+        clickPoint: async () => {},
+        uploadFiles: async () => {},
+        waitFor: async () => ({ ok: true, timedOut: false }),
+        waitForDownload: async () => ({ suggestedFilename: "f" }),
+        handleDialog: async () => {},
+        collectScroll: async () => ({ items: [], collected: 0 }),
+        screenshot: async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }),
+        observe: async () =>
+          ({
+            ...obs({ ref: "r9", name: "Save", url }),
+            formFields: [{ ref: "r1", name: "Name", tag: "input", value: fieldValue }],
+            elements: [
+              { ref: "r1", role: "textbox", name: "Name", tag: "input", value: fieldValue },
+              { ref: "r9", role: "button", name: "Save", tag: "button" },
+            ],
+          }) as ObservationContent,
+        expandRef: async () => [],
+        extract: async () => ({ value: fieldValue }),
+        evaluate: async () => fieldValue,
+        setEvents: () => {},
+        dispose: async () => {},
+        executeProgram: async (steps) => {
+          for (const s of steps) {
+            if (s.op === "fill" && "value" in s) fieldValue = String(s.value);
+            if (s.op === "type" && "value" in s) fieldValue = String(s.value);
+          }
+          return {
+            status: "completed",
+            steps: steps.map((s) => ({
+              stepId: s.id,
+              op: s.op,
+              status: "ok",
+              startedAt: 1,
+              durationMs: 1,
+            })),
+          } as ExecuteProgramResult;
+        },
+      };
+      return page;
+    };
+    const driver: BrowserDriver = {
+      backend: "vector-engine",
+      connect: async () => {},
+      disconnect: async () => {},
+      isConnected: () => true,
+      listTargets: async () => [],
+      createTarget: async () => "engine-t1",
+      routingOf: () => ({ requiresScript: false }),
+      attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/form"),
+    };
+    const drivers: DriverSet = { vector: null, chrome: null, engine: driver };
+    const router = new Router({
+      mode: () => "always",
+      engineAvailable: () => true,
+      store: new MemoryRouterStore(),
+    });
+    const pages = new PageService({
+      repo,
+      events,
+      native: new NullNativeBridge(),
+      drivers: () => drivers,
+      router,
+    });
+    const opened = await pages.open({ url: "https://app.test/form", background: true, ownedByRuntime: true });
+    expect(opened.backend).toBe("vector-engine");
+    const authority = new BrowserAuthority(pages);
+    expect(authority.identity(opened.pageId).chromium).toBe(false);
+    await pages.execute(
+      { pageId: opened.pageId, steps: [{ id: "h", op: "fill", target: "r1", value: "typed-by-human" }] },
+      {},
+    );
+    const seen = await authority.observe(opened.pageId);
+    expect(seen.pageId).toBe(opened.pageId);
+    const compiled = compileAction({
+      pageId: opened.pageId,
+      documentEpoch: opened.documentEpoch,
+      steps: [{ id: "c", op: "click", target: "r0" }],
+      observation: obs({ ref: "r9", name: "Save", url: "https://app.test/form" }),
+      url: "https://app.test/form",
+      guards: [{ exactOrigin: "https://app.test", role: "button", nameIncludes: "Save" }],
+    });
+    expect("program" in compiled).toBe(true);
+    if ("program" in compiled) {
+      const agent = await authority.execute(compiled.program);
+      expect(agent.status).toBe("completed");
+    }
+    authority.takeover(opened.pageId);
+    expect(authority.identity(opened.pageId).controller).toBe("human");
+    await expect(
+      authority.execute({ pageId: opened.pageId, steps: [{ id: "x", op: "click", target: "r9" }] }),
+    ).rejects.toMatchObject({ message: /human control/i });
+    const resumed = authority.resume(opened.pageId);
+    expect(resumed.controller).not.toBe("human");
+    const hit = queryPage(obs({ name: "Save" }), { role: "button", nameIncludes: "Save" });
+    expect(hit?.ref).toBe("r9");
+    const stale = compileAction({
+      pageId: opened.pageId,
+      documentEpoch: opened.documentEpoch,
+      observedEpoch: opened.documentEpoch + 1,
+      steps: [{ id: "c", op: "click", target: "r9" }],
+      observation: obs(),
+      url: "https://app.test/form",
+    });
+    expect("rejected" in stale).toBe(true);
   });
 });
 

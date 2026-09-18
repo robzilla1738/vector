@@ -254,3 +254,30 @@ fn sandbox_denies_clone() {
     assert_ne!(status.code(), Some(13));
     assert_ne!(status.code(), Some(2));
 }
+
+#[test]
+fn sandbox_clone3_is_not_process_killed() {
+    let status = sandbox_selftest("clone3");
+    assert_eq!(
+        status.code(),
+        Some(0),
+        "Finding 2: clone3 for V8 threads must not SIGSYS/kill: {status:?}"
+    );
+}
+
+#[test]
+fn linux_seccomp_has_arch_guard_and_allows_thread_clone() {
+    let src = include_str!("../src/sandbox.rs");
+    assert!(
+        src.contains("AUDIT_ARCH"),
+        "Finding 2: syscall filter must reject the wrong architecture"
+    );
+    assert!(
+        src.contains("Thread creation (clone/clone3) stays allowed"),
+        "Finding 2: clone3 for V8 threads must stay allowed under the sandbox"
+    );
+    assert!(
+        !src.contains("libc::SYS_clone3") && !src.contains("SYS_clone,"),
+        "clone/clone3 must not be on the deny list; fork/exec remain denied"
+    );
+}

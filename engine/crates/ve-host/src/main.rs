@@ -98,6 +98,19 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
             let ok = ve_napi::scripting_selftest();
             std::process::exit(if ok { 0 } else { 15 });
         }
+        "clone3" => {
+            #[cfg(target_os = "linux")]
+            unsafe {
+                // Thread-style clone3 must remain available for V8. This
+                // selftest only proves the syscall is not process-killed.
+                let ret = libc::syscall(libc::SYS_clone3, std::ptr::null::<u8>(), 0usize);
+                std::process::exit(if ret >= 0 { 16 } else { 0 });
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                std::process::exit(0);
+            }
+        }
         "clone" => {
             #[cfg(target_os = "linux")]
             unsafe {

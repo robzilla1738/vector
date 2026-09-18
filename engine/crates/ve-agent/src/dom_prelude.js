@@ -3645,19 +3645,25 @@
       for (let i = 0; i < enc.length; i++) out[i] = enc.charCodeAt(i);
       return out;
     };
+    let locked = false;
     const stream = {
+      get locked() { return locked; },
       getReader() {
+        if (locked) throw new TypeError("ReadableStream is locked");
+        locked = true;
         let i = 0;
         const buf = bytes();
         return {
           read() {
+            bodyUsed = true;
             if (i >= buf.length) return Promise.resolve({ done: true, value: undefined });
             const end = Math.min(i + 16384, buf.length);
             const value = buf.slice(i, end);
             i = end;
             return Promise.resolve({ done: false, value });
           },
-          cancel() { i = buf.length; return Promise.resolve(); },
+          cancel() { i = buf.length; bodyUsed = true; return Promise.resolve(); },
+          releaseLock() { locked = false; },
         };
       },
     };
@@ -3670,12 +3676,12 @@
       get bodyUsed() { return bodyUsed; },
       get body() { return stream; },
       headers: { get(n) { n = String(n).toLowerCase(); return (r.headers && r.headers[n]) || null; }, has(n) { return this.get(n) != null; } },
-      text() { consume(); return Promise.resolve(textBody); },
-      json() { consume(); return Promise.resolve(JSON.parse(textBody || "null")); },
-      arrayBuffer() { consume(); return Promise.resolve(bytes().buffer); },
-      blob() { consume(); const b = bytes(); return Promise.resolve({ size: b.length, type: "" }); },
+      text() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(textBody); },
+      json() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(JSON.parse(textBody || "null")); },
+      arrayBuffer() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(bytes().buffer); },
+      blob() { if (locked) throw new TypeError("body stream is locked"); consume(); const b = bytes(); return Promise.resolve({ size: b.length, type: "" }); },
       clone() {
-        if (bodyUsed) throw new TypeError("body already used");
+        if (bodyUsed || locked) throw new TypeError("body already used");
         return responseFrom(r);
       },
     };

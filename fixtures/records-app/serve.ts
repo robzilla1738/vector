@@ -30,6 +30,7 @@ const state = {
   records: new Map<string, Record_>(),
   edits: [] as { id: string; at: number; fields: Record<string, string> }[],
   downloads: [] as { id: string; file: string; at: number }[],
+  writes: 0,
   faults: { delayMs: 0, renameEditButton: false, timeoutAfterSave: false, removeRecord: "" },
 };
 
@@ -38,6 +39,7 @@ function seed() {
   state.records.clear();
   state.edits.length = 0;
   state.downloads.length = 0;
+  state.writes = 0;
   for (let i = 1; i <= 30; i++) {
     const id = `rec-${String(i).padStart(2, "0")}`;
     const status = STATUSES[i % STATUSES.length]!;
@@ -247,8 +249,16 @@ async function handle(req: any, res: any, url: URL, body: Buffer) {
       records: [...state.records.values()],
       edits: state.edits,
       downloads: state.downloads,
+      writes: state.writes,
       faults: state.faults,
     });
+  }
+  if (path === "/api/writes" && req.method === "POST") {
+    state.writes += 1;
+    return json(res, { ok: true, writes: state.writes });
+  }
+  if (path === "/api/writes") {
+    return json(res, { writes: state.writes });
   }
   if (path === "/api/faults" && req.method === "POST") {
     const f = JSON.parse(body.toString("utf8") || "{}");

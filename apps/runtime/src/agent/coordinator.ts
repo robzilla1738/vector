@@ -22,7 +22,7 @@ import { normalizePlannerObject } from "./gateway-client.js";
 import { EarlyDispatcher } from "./early-dispatch.js";
 import { PlanStreamParser } from "./plan-stream.js";
 import { buildFinalAnswerPrompt, buildPlannerPrompt, buildVisionPrompt, extractJson, FINAL_ANSWER_SYSTEM, PLANNER_SYSTEM, VISION_SYSTEM } from "./planner.js";
-import { compileSkill, tryReuseSkill, verifySkillPostconditions, type CompiledSkill } from "./skills.js";
+import { compileSkill, markSkillFailed, tryReuseSkill, verifySkillPostconditions, type CompiledSkill } from "./skills.js";
 import { promptCannotGrant } from "./policy.js";
 import { recoverAfterCrash } from "./recovery.js";
 import { authorizeProgram, classifyStep, DEFAULT_GRANTS } from "./permissions.js";
@@ -853,6 +853,7 @@ export class RunCoordinator {
         if ("skill" in reuse && result.status !== "failed" && result.status !== "cancelled") {
           const after = carriedObs ?? (await this.deps.pages.observe(activePageId!, {}));
           if (!verifySkillPostconditions(reuse.skill, after.content, after.content.url, after.documentEpoch)) {
+            markSkillFailed(reuse.skill);
             lastError = `skill ${reuse.skill.id} postconditions failed`;
             lastActionFailed = true;
           }

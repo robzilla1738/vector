@@ -371,6 +371,25 @@ impl NativeBrowser {
         nodes
     }
 
+    /// Maps a platform AccessKit node id to the name used by [`NativeEvent::AccessKitAction`].
+    #[must_use]
+    pub fn accesskit_action_name(&self, target: u64) -> String {
+        if target == ve_a11y::URLBAR_ID.0 {
+            return "urlbar".into();
+        }
+        if target == ve_a11y::TABLIST_ID.0 {
+            return "tabs".into();
+        }
+        if target == ve_a11y::WINDOW_ID.0 {
+            return "window".into();
+        }
+        self.page_ax()
+            .into_iter()
+            .find(|n| !n.name.is_empty())
+            .map(|n| n.name)
+            .unwrap_or_else(|| "urlbar".into())
+    }
+
     /// AccessKit tree for the native window (chrome first, then page).
     #[must_use]
     pub fn accesskit_update(&self) -> accesskit::TreeUpdate {
@@ -1161,6 +1180,14 @@ mod tests {
         let _ = browser.handle_event(NativeEvent::AccessKitAction {
             name: "urlbar".into(),
         });
+        assert!(browser.urlbar_focused());
+        browser.handle_event(NativeEvent::BlurUrlbar).unwrap();
+        assert!(!browser.urlbar_focused());
+        let mapped = browser.accesskit_action_name(ve_a11y::URLBAR_ID.0);
+        assert_eq!(mapped, "urlbar");
+        browser
+            .handle_event(NativeEvent::AccessKitAction { name: mapped })
+            .unwrap();
         assert!(browser.urlbar_focused());
     }
 

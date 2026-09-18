@@ -36,7 +36,7 @@ pub use observation::{
     Stats, TableBlock, ViewportInfo, Visibility5, classify, observe, parse_ref, parse_ref_parts,
     ref_for,
 };
-pub use os::{WEB_ID, WINDOW_ID, page_node_id, page_tree_update, shell_tree_update};
+pub use os::{TABLIST_ID, URLBAR_ID, WEB_ID, WINDOW_ID, page_node_id, page_tree_update, shell_tree_update};
 pub use roles::Role;
 pub use snapshot::{
     SemanticSnapshot, SnapshotDiff, SnapshotFormat, SnapshotNode, changed_refs_since,

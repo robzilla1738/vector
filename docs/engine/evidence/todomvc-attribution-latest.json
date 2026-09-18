@@ -1,25 +1,26 @@
 {
-  "label": "speedometer.3.0.TodoMVC-JavaScript-ES5",
+  "accountedMs": 589,
   "artifact": {
     "engine": "vector-engine",
-    "review": "Vector_Current_Review_60b2d41",
-    "note": "Attributed phases from the review's 54–68s adapted TodoMVC samples. This is not an official Speedometer score."
+    "measured": true,
+    "note": "Timed on this host from bindings todomvc_es5_measured_phases. Adapted workload, not an official Speedometer score.",
+    "review": "Vector_Current_Review_60b2d41"
   },
-  "samples_ms": [68451, 54106],
-  "phases": {
-    "openMs": 12000,
-    "jsMs": 40000,
-    "settleMs": 8000,
-    "observeMs": 2000,
-    "parseMs": 4000,
-    "styleMs": 4000,
-    "layoutMs": 4000
-  },
-  "accountedMs": 62000,
-  "unaccountedMs": 2000,
   "errors": [],
-  "retries": 0,
-  "success": true,
+  "heldOut": false,
+  "label": "speedometer.3.0.TodoMVC-JavaScript-ES5",
   "officialSuite": false,
-  "heldOut": false
+  "phases": {
+    "jsMs": 547,
+    "observeMs": 6,
+    "openMs": 30,
+    "settleMs": 6
+  },
+  "retries": 0,
+  "samples_ms": [
+    589
+  ],
+  "success": true,
+  "synthetic": false,
+  "unaccountedMs": 0
 }

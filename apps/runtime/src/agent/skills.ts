@@ -25,6 +25,8 @@ export interface CompiledSkill {
   preconditions: SkillGuard[];
   postconditions: SkillGuard[];
   evidence: string;
+  /** Set after postconditions fail. Consequential reuse is then refused. */
+  blocked?: boolean;
 }
 
 export function guardsHold(
@@ -85,10 +87,18 @@ export function tryReuseSkill(
 ): { skill: CompiledSkill; reason: string } | { skipped: string } {
   const match = skills.find((s) => goal.toLowerCase().includes(s.goalPattern.toLowerCase()));
   if (!match) return { skipped: "no skill matched the goal" };
+  if (match.blocked) {
+    return { skipped: `skill ${match.id} blocked after failed postconditions` };
+  }
   if (!guardsHold(obs, url, match.preconditions, documentEpoch)) {
     return { skipped: `skill ${match.id} guards failed` };
   }
   return { skill: match, reason: match.evidence };
+}
+
+/** Refuse later reuse after a postcondition miss. */
+export function markSkillFailed(skill: CompiledSkill): void {
+  skill.blocked = true;
 }
 
 /** After a reused skill runs, postconditions must still hold or the skill failed closed. */

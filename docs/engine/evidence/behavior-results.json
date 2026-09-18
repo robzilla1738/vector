@@ -2,29 +2,37 @@
   "artifact": "vector-engine independent probes",
   "review": "Vector_Current_Review_60b2d41",
   "generated": "2026-09-18",
-  "note": "Minimal spec-backed regressions for the review's remaining counterexamples. Results are from engine bindings, not a claim of whole-web coverage.",
+  "note": "Minimal spec-backed regressions for the review's remaining counterexamples. Official html/dom/partial-updates numbers are from unmodified WPT on pin 7c204383. The supported testharness subset is adapted-harness coverage, not equivalent to unmodified upstream.",
   "coverage": {
     "family": "html/dom/partial-updates + url + events + streams",
     "officialPin": "7c20438303d2b39c8a2b924ed57dfa6448fd2ed2",
     "officialTree": "html/dom/partial-updates",
+    "labels": {
+      "official": "unmodified upstream html/dom/partial-updates via wpt-harness --http --wpt-dir",
+      "adapted": "supported testharness.txt plus engine bindings; load/done/virtual-time rewritten"
+    },
     "official": {
-      "pass": 26,
-      "fail": 4,
-      "total": 30
+      "pass": 27,
+      "fail": 3,
+      "total": 30,
+      "tls": "not run; official tree is http fixture only on this pin",
+      "unmodifiedUpstream": true
     },
     "supportedSubset": {
-      "pass": 114,
-      "fail": 0,
-      "note": "same harness run, testharness.txt"
+      "pass": 141,
+      "fail": 3,
+      "total": 144,
+      "note": "same harness run, testharness.txt — adapted regression coverage, not official WPT",
+      "unmodifiedUpstream": false
     },
-    "denominator": "official html/dom/partial-updates (30) plus supported testharness subset",
+    "denominator": "official html/dom/partial-updates (30) plus supported testharness subset (144). These are not the entire web.",
     "exclusions": [
       "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\"",
-      "sanitize-template-element.html expects addedNodes SPAN while the inserted span has id ok"
+      "sanitize-template-element.html expects addedNodes SPAN while the inserted span has id ok",
+      "official BrowserBench / TLS / full html/dom tree outside partial-updates"
     ],
     "remainingOfficialFails": [
       "sanitize-template-element.html",
-      "src-referrerpolicy.sub.html",
       "src-streaming.html",
       "template-for-empty.html"
     ]

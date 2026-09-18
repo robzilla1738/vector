@@ -41,7 +41,7 @@ export { runMemberAgent } from "./agent/member-agent.js";
 export { SetRunner } from "./scheduler/set-runner.js";
 export { EarlyDispatcher } from "./agent/early-dispatch.js";
 export { PlanStreamParser } from "./agent/plan-stream.js";
-export { compileSkill, tryReuseSkill, guardsHold, verifySkillPostconditions, evaluateHeldOutAdvantage, type CompiledSkill, type SkillGuard, type HeldOutMetrics, type HeldOutAdvantage } from "./agent/skills.js";
+export { compileSkill, tryReuseSkill, markSkillFailed, guardsHold, verifySkillPostconditions, evaluateHeldOutAdvantage, type CompiledSkill, type SkillGuard, type HeldOutMetrics, type HeldOutAdvantage } from "./agent/skills.js";
 export { redactForModel, agentMayEgress, promptCannotGrant } from "./agent/policy.js";
 export { queryPage, queryAll, type PageQuery, type QueryHit } from "./agent/page-query.js";
 export { compileAction, rebindSteps, type CompileResult } from "./agent/action-compiler.js";

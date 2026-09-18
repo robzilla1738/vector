@@ -3770,3 +3770,122 @@ fn iframe_srcdoc_applies_template_for() {
     assert_eq!(v["c1"], "One", "{v}");
     assert_eq!(v["c2"], "Two", "{v}");
 }
+
+#[test]
+fn stream_lock_bodyused() {
+    let mut page = open("<p>s</p>");
+    let _ = page.evaluate(
+        r##"(async function () {
+          const r = await fetch("data:text/plain,hello");
+          const reader = r.body.getReader();
+          let secondThrew = false;
+          try { r.body.getReader(); } catch (e) { secondThrew = String(e).includes("locked"); }
+          const chunk = await reader.read();
+          window.__streamLock = {
+            secondThrew: secondThrew,
+            bodyUsed: r.bodyUsed,
+            gotBytes: !!(chunk && chunk.value && chunk.value.length)
+          };
+        })()"##,
+    );
+    page.pump_virtual_time(50);
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__streamLock").unwrap();
+    assert_eq!(v["secondThrew"], true, "{v}");
+    assert_eq!(v["bodyUsed"], true, "{v}");
+    assert_eq!(v["gotBytes"], true, "{v}");
+}
+
+#[test]
+fn todomvc_es5_measured_phases() {
+    use std::time::Instant;
+    let t0 = Instant::now();
+    let mut page = open(
+        r#"<section>
+             <input class="new-todo" placeholder="What needs to be done?">
+             <ul class="todo-list"></ul>
+             <span class="todo-count">0</span>
+             <script>
+               (function () {
+                 var list = document.querySelector(".todo-list");
+                 var input = document.querySelector(".new-todo");
+                 var count = document.querySelector(".todo-count");
+                 function render() {
+                   count.textContent = String(list.children.length);
+                 }
+                 input.addEventListener("keydown", function (e) {
+                   if (e.key !== "Enter" || !input.value) return;
+                   var li = document.createElement("li");
+                   li.innerHTML = "<label>" + input.value + "</label><button class=destroy></button>";
+                   list.appendChild(li);
+                   input.value = "";
+                   render();
+                 });
+                 list.addEventListener("click", function (e) {
+                   if (e.target && e.target.className === "destroy") {
+                     var li = e.target.parentNode;
+                     li.parentNode.removeChild(li);
+                     render();
+                   }
+                 });
+                 window.__todoReady = true;
+               })();
+             </script>
+           </section>"#,
+    );
+    let open_ms = t0.elapsed().as_millis() as u64;
+    let t1 = Instant::now();
+    assert!(page.settle(200).settled);
+    let settle_ms = t1.elapsed().as_millis() as u64;
+    let t2 = Instant::now();
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var input = document.querySelector(".new-todo");
+              for (var i = 0; i < 50; i++) {
+                input.value = "item-" + i;
+                input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+              }
+              var n = document.querySelectorAll(".todo-list li").length;
+              document.querySelector(".destroy").click();
+              return { ready: window.__todoReady === true, n: n, after: document.querySelectorAll(".todo-list li").length };
+            })()"##,
+        )
+        .unwrap();
+    let js_ms = t2.elapsed().as_millis() as u64;
+    let t3 = Instant::now();
+    let _ = page.observe(&ObservationRequest::default());
+    let observe_ms = t3.elapsed().as_millis() as u64;
+    assert_eq!(v["ready"], true, "{v}");
+    assert_eq!(v["n"], 50, "{v}");
+    assert_eq!(v["after"], 49, "{v}");
+    assert!(open_ms + settle_ms + js_ms + observe_ms > 0);
+    if let Ok(path) = std::env::var("VECTOR_TODOMVC_ATTRIBUTION_OUT") {
+        let total = open_ms + settle_ms + js_ms + observe_ms;
+        let json = serde_json::json!({
+            "label": "speedometer.3.0.TodoMVC-JavaScript-ES5",
+            "artifact": {
+                "engine": "vector-engine",
+                "review": "Vector_Current_Review_60b2d41",
+                "measured": true,
+                "note": "Timed on this host from bindings todomvc_es5_measured_phases. Adapted workload, not an official Speedometer score."
+            },
+            "samples_ms": [total],
+            "phases": {
+                "openMs": open_ms,
+                "jsMs": js_ms,
+                "settleMs": settle_ms,
+                "observeMs": observe_ms
+            },
+            "accountedMs": total,
+            "unaccountedMs": 0,
+            "errors": [],
+            "retries": 0,
+            "success": true,
+            "officialSuite": false,
+            "heldOut": false,
+            "synthetic": false
+        });
+        let _ = std::fs::write(path, serde_json::to_string_pretty(&json).unwrap());
+    }
+}

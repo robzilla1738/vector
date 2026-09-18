@@ -147,7 +147,7 @@ impl ApplicationHandler<AccessKitEvent> for App {
                 }
             }
             AccessKitWindowEvent::ActionRequested(req) => {
-                let name = format!("{:?}", req);
+                let name = self.browser.accesskit_action_name(req.target.0);
                 let _ = self.browser.handle_event(NativeEvent::AccessKitAction { name });
                 if let Some(w) = &self.window {
                     w.request_redraw();

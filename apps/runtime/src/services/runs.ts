@@ -17,7 +17,9 @@ import type { ArtifactStore } from "./artifacts.js";
 import type { PageService } from "./pages.js";
 import type { SetService } from "./sets.js";
 import type { SettingsService } from "./settings.js";
+import { join } from "node:path";
 import { RunCoordinator } from "../agent/coordinator.js";
+import { DurableWriteLedger } from "../agent/durable.js";
 import { runMemberAgent } from "../agent/member-agent.js";
 import { SetRunner } from "../scheduler/set-runner.js";
 import { WorkerPool } from "../scheduler/pool.js";
@@ -136,6 +138,11 @@ export class RunService {
           buffer: Buffer.from(JSON.stringify(obs)),
         }).artifactId,
       tracer: deps.tracer,
+      durableWrites: new DurableWriteLedger(
+        typeof deps.settings.all === "function" && deps.settings.all().dataDir
+          ? join(deps.settings.all().dataDir, "durable-writes.json")
+          : undefined,
+      ),
     });
     this.setRunner = new SetRunner({
       repo: deps.repo,
