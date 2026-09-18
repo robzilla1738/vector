@@ -46,6 +46,9 @@ export function nativePageId(input: {
   const url = input.url?.trim() ?? "";
   if (!url || url === "about:blank") return null;
   if (input.backend === "chrome") return null;
+  // EngineView paints the Vector document. A Chromium WebContentsView must
+  // not sit on top of that surface.
+  if (input.backend === "vector-engine") return null;
   return input.activePageId;
 }
 

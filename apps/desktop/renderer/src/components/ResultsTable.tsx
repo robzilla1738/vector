@@ -78,7 +78,7 @@ export function ResultsTable() {
   const openSource = (r: ResultRecord) => {
     const existing = useStore.getState().pages.find((p) => p.url === r.sourceUrl);
     if (existing) void useStore.getState().activate(existing.pageId);
-    else void call("pages.open", { url: r.sourceUrl, backend: "vector", activate: true });
+    else void call("pages.open", { url: r.sourceUrl, activate: true });
   };
 
   const copyRow = async (r: ResultRecord) => {

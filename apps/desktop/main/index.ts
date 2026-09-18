@@ -137,7 +137,7 @@ const viewHooks = {
     notifyRuntime("view.takeover", { pageId });
   },
   openAsTab: (url: string) => {
-    void channel?.call("api.invoke", { method: "pages.open", params: { url, backend: "vector" } }).then((t) => {
+    void channel?.call("api.invoke", { method: "pages.open", params: { url } }).then((t) => {
       const page = t as { pageId: string };
       void channel?.call("api.invoke", { method: "pages.activate", params: { pageId: page.pageId } });
     });

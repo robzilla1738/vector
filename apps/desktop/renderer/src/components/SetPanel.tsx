@@ -71,7 +71,7 @@ export function SetPanel({ setId }: { setId: string }) {
               aria-label={`${label(m)}: ${m.status}`}
               onClick={() => {
                 if (m.pageId) void activate(m.pageId).catch(errToast);
-                else if (m.url) void call("pages.open", { url: m.url, backend: "vector", activate: true }).catch(errToast);
+                else if (m.url) void call("pages.open", { url: m.url, activate: true }).catch(errToast);
               }}
             >
               <span className="member-label">{label(m)}</span>
