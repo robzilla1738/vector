@@ -161,6 +161,7 @@ const ADD_STEPS: &str = r##"(function () {
   var input = todoInput();
   if (input) {
     kind = "todomvc";
+    var addStarted = performance.now();
     for (var i = 0; i < 100; i++) {
       input.focus();
       input.value = "Task-" + i;
@@ -168,8 +169,9 @@ const ADD_STEPS: &str = r##"(function () {
       fire(input, "change");
       enter(input);
     }
+    var addMs = Math.round(performance.now() - addStarted);
     var added = countTodos();
-    window.__veBench = { kind: kind, ok: added >= 100, added: added, remaining: added };
+    window.__veBench = { kind: kind, ok: added >= 100, added: added, remaining: added, addMs: addMs };
     return JSON.stringify(window.__veBench);
   }
   var news = document.querySelector("#navbar-dropdown-toggle");
@@ -237,15 +239,17 @@ const FINISH_STEPS: &str = r##"(function () {
   var prev = window.__veBench || { kind: "unknown", ok: false };
   var kind = prev.kind || "unknown";
   if (kind === "todomvc") {
+    var finishStarted = performance.now();
     try {
       completeAndDeleteTodos();
     } catch (e) {
-      window.__veBench = { kind: kind, added: countTodos(), remaining: countTodos(), err: String(e) };
+      window.__veBench = { kind: kind, added: countTodos(), remaining: countTodos(), err: String(e), addMs: prev.addMs };
       return JSON.stringify(window.__veBench);
     }
+    var finishMs = Math.round(performance.now() - finishStarted);
     var added = prev.added || countTodos();
     var remaining = countTodos();
-    window.__veBench = { kind: kind, added: added, remaining: remaining };
+    window.__veBench = { kind: kind, added: added, remaining: remaining, addMs: prev.addMs, finishMs: finishMs };
     return JSON.stringify(window.__veBench);
   }
   return JSON.stringify({ ok: !!prev.ok, kind: kind, added: prev.ok ? 1 : 0, remaining: 0, reason: prev.reason });
@@ -257,7 +261,14 @@ const COUNT_STEPS: &str = r##"(function () {
   if (kind === "todomvc") {
     var remaining = countTodos();
     var added = prev.added || 0;
-    return JSON.stringify({ ok: added >= 100 && remaining === 0, kind: kind, added: added, remaining: remaining });
+    return JSON.stringify({
+      ok: added >= 100 && remaining === 0,
+      kind: kind,
+      added: added,
+      remaining: remaining,
+      addMs: prev.addMs || 0,
+      finishMs: prev.finishMs || 0
+    });
   }
   return JSON.stringify({ ok: !!prev.ok, kind: kind, added: prev.ok ? 1 : 0, remaining: 0, reason: prev.reason });
 })()"##;
@@ -699,6 +710,16 @@ fn run_one(
                     other => other.to_string(),
                 };
                 if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
+                    if let Some(attr) = last_attribution.as_mut() {
+                        if let Some(obj) = attr.as_object_mut() {
+                            if let Some(n) = v.get("addMs").and_then(serde_json::Value::as_u64) {
+                                obj.insert("addMs".into(), serde_json::json!(n));
+                            }
+                            if let Some(n) = v.get("finishMs").and_then(serde_json::Value::as_u64) {
+                                obj.insert("finishMs".into(), serde_json::json!(n));
+                            }
+                        }
+                    }
                     added = v
                         .get("added")
                         .and_then(serde_json::Value::as_u64)
