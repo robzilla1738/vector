@@ -662,6 +662,28 @@ fn canvas_fillrect_records_ops() {
 }
 
 #[test]
+fn remove_attribute_node_clears_named_attr() {
+    let mut page = open(r#"<p id="t" class="x"></p>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const el = document.getElementById("t");
+              const attr = el.attributes[0];
+              const removed = el.removeAttributeNode(attr);
+              return {
+                name: removed && removed.name,
+                hasClass: el.hasAttribute("class"),
+                hasId: el.hasAttribute("id"),
+                remaining: el.attributes.length
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(v["name"].as_str().is_some(), "{v}");
+    assert_eq!(v["remaining"], 1, "{v}");
+}
+
+#[test]
 fn canvas_todataurl_is_a_png() {
     let mut page = open(r#"<body></body>"#);
     let v = page

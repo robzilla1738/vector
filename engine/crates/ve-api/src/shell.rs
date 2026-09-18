@@ -176,6 +176,8 @@ pub struct NativeBrowser {
     gpu: Option<ve_gfx::VelloRenderer>,
     #[cfg(feature = "gpu")]
     gpu_unavailable: bool,
+    #[cfg(feature = "gpu")]
+    gpu_presented: bool,
 }
 
 /// Who currently owns input on the live page.
@@ -230,6 +232,8 @@ impl NativeBrowser {
             gpu: None,
             #[cfg(feature = "gpu")]
             gpu_unavailable: false,
+            #[cfg(feature = "gpu")]
+            gpu_presented: false,
         }
     }
 
@@ -246,7 +250,21 @@ impl NativeBrowser {
             "rssBytes": process_rss_bytes(),
             "signedUpdates": self.update_pubkey.is_some(),
             "accessKit": true,
+            "gpuPresent": self.gpu_present(),
         })
+    }
+
+    /// True after a successful GPU present of the live page.
+    #[must_use]
+    pub fn gpu_present(&self) -> bool {
+        #[cfg(feature = "gpu")]
+        {
+            self.gpu_presented
+        }
+        #[cfg(not(feature = "gpu"))]
+        {
+            false
+        }
     }
 
     /// Opens a tab. Human and agent both target this page id.
@@ -597,6 +615,7 @@ impl NativeBrowser {
         if self.try_gpu_present_direct(page) {
             let _ = self.compositor.take_damage();
             self.presented = true;
+            self.gpu_presented = true;
             return Ok(true);
         }
         Ok(false)
@@ -692,6 +711,7 @@ impl NativeBrowser {
             "itemCount": list.len(),
             "page": page.0,
             "controllerEpoch": self.controller_epoch,
+            "gpuPresent": self.gpu_present(),
         }))
     }
 
@@ -1104,9 +1124,13 @@ mod tests {
     fn present_direct_skips_cpu_readback_when_gpu_is_available() {
         let mut browser = NativeBrowser::new();
         browser.new_tab("<p>hi</p>", "https://t.test/").unwrap();
-        let _ = browser.present_direct();
+        let gpu = browser.present_direct().unwrap();
         let frame = browser.present().unwrap();
         assert!(frame.width > 0 && frame.height > 0);
+        if gpu {
+            assert!(browser.gpu_present());
+            assert_eq!(browser.identity()["gpuPresent"], true);
+        }
     }
 
     #[test]

@@ -729,6 +729,68 @@ mod tests {
         assert!(!service.browser().identity()["chromium"].as_bool().unwrap());
     }
 
+    #[cfg(feature = "gpu")]
+    #[test]
+    fn gpu_present_and_mcp_share_one_page() {
+        let mut service = BrowserService::new();
+        service
+            .handle(
+                "pages.open",
+                &json!({"html":"<input id=t>","url":"https://gpu.test/"}),
+            )
+            .expect("open");
+        let gpu = service
+            .browser_mut()
+            .present_direct()
+            .expect("present_direct");
+        service
+            .handle("input.event", &json!({"type":"ime","text":"typed-on-gpu"}))
+            .expect("ime");
+        if gpu {
+            assert!(
+                service.browser().gpu_present(),
+                "Finding 1: GPU present must mark the live page"
+            );
+        }
+        let page = service.browser().active_tab().expect("tab").page.0;
+        let pump = BrowserServicePump::bind("127.0.0.1:0").expect("pump");
+        let addr = pump.addr();
+        let (tx, rx) = std::sync::mpsc::channel();
+        thread::spawn(move || {
+            let mut mcp = BrowserClient::connect(addr).expect("mcp");
+            let obs = mcp.call("pages.observe", json!({}));
+            let scene = mcp.call("scene.update", json!({}));
+            let id = mcp.call("identity", json!({}));
+            tx.send((obs, scene, id)).expect("send");
+        });
+        let started = Instant::now();
+        let mut got = None;
+        while started.elapsed() < Duration::from_secs(3) {
+            pump.poll(&mut service);
+            if let Ok(triple) = rx.try_recv() {
+                got = Some(triple);
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        let (obs, scene, id) = got.expect("mcp observe");
+        let obs = obs.expect("observe ok");
+        let scene = scene.expect("scene ok");
+        let id = id.expect("identity ok");
+        assert_eq!(obs["page"], page);
+        assert_eq!(field_value(&obs), "typed-on-gpu");
+        assert_eq!(scene["png"], false);
+        assert_eq!(scene["kind"], "displayList");
+        assert_eq!(scene["page"], page);
+        assert_eq!(id["chromium"], false);
+        assert_eq!(id["service"], "browser-service");
+        assert_eq!(id["page"], page);
+        if gpu {
+            assert_eq!(id["gpuPresent"], true);
+            assert_eq!(scene["gpuPresent"], true);
+        }
+    }
+
     fn field_value(obs: &Value) -> String {
         obs.pointer("/observation/content/formFields")
             .or_else(|| obs.pointer("/content/formFields"))

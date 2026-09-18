@@ -2006,6 +2006,29 @@
     getAttribute(n) { const v = D("getAttr", this.__h, String(n)); return v == null ? null : v; }
     setAttribute(n, v) { D("setAttr", this.__h, String(n), String(v)); }
     removeAttribute(n) { D("removeAttr", this.__h, String(n)); }
+    getAttributeNode(n) {
+      const name = String(n);
+      const recs = D("attrs", this.__h) || [];
+      for (let i = 0; i < recs.length; i++) {
+        if (recs[i].name === name) return this.attributes[i] || this.attributes.getNamedItem(name);
+      }
+      return null;
+    }
+    removeAttributeNode(attr) {
+      if (!attr || typeof attr.name !== "string") {
+        throw new TypeError("Failed to execute 'removeAttributeNode' on 'Element': parameter 1 is not of type 'Attr'.");
+      }
+      const name = attr.name;
+      if (!this.hasAttribute(name)) {
+        throw new DOMException(
+          `The node provided is owned by this document and is not an attribute of ${this.localName}`,
+          "NotFoundError",
+        );
+      }
+      this.removeAttribute(name);
+      attr.ownerElement = null;
+      return attr;
+    }
     hasAttribute(n) { return !!D("hasAttr", this.__h, String(n)); }
     toggleAttribute(n, force) {
       const omitted = arguments.length < 2 || force === undefined;

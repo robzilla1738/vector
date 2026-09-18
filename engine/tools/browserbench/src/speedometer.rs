@@ -383,14 +383,46 @@ pub(crate) fn official_suites() -> Vec<(String, String)> {
     out
 }
 
-fn inline_html(path: &Path) -> anyhow::Result<String> {
+/// Official HTML plus type=module sources too large to keep as script text
+/// nodes (TipTap/CodeMirror). Those run after open via `evaluate`.
+struct InlinedDocument {
+    html: String,
+    late_js: Vec<String>,
+}
+
+/// Modules this large stay out of the HTML tree. A 2MB script text node plus
+/// V8 compile of the same source OOMs this host.
+const LARGE_MODULE_BYTES: usize = 400_000;
+
+fn inline_document(path: &Path) -> anyhow::Result<InlinedDocument> {
     let html = std::fs::read_to_string(path)?;
     let dir = path.parent().unwrap_or(path);
-    let mut out = inline_scripts(&inline_styles(&html, dir), dir);
+    let mut late_js = Vec::new();
+    let mut out = inline_scripts(&inline_styles(&html, dir), dir, &mut late_js);
     if path_is_perf_dashboard(path) {
         out = embed_perf_dashboard_json(&out, dir);
     }
-    Ok(out)
+    Ok(InlinedDocument { html: out, late_js })
+}
+
+fn inline_html(path: &Path) -> anyhow::Result<String> {
+    Ok(inline_document(path)?.html)
+}
+
+fn park_script(
+    js: String,
+    html: &mut String,
+    deferred: &mut Vec<String>,
+    late: &mut Vec<String>,
+    defer: bool,
+) {
+    if js.len() >= LARGE_MODULE_BYTES {
+        late.push(js);
+    } else if defer {
+        deferred.push(js);
+    } else {
+        emit_script(html, &js);
+    }
 }
 
 fn path_is_perf_dashboard(path: &Path) -> bool {
@@ -508,7 +540,7 @@ fn append_deferred(html: &mut String, deferred: &[String]) {
     }
 }
 
-fn inline_scripts(html: &str, dir: &Path) -> String {
+fn inline_scripts(html: &str, dir: &Path, late: &mut Vec<String>) -> String {
     let mut out = String::new();
     let mut deferred = Vec::new();
     let mut rest = html;
@@ -570,8 +602,7 @@ fn inline_scripts(html: &str, dir: &Path) -> String {
                 let path = dir.join(src);
                 if is_module {
                     match crate::esm::bundle(&path) {
-                        Ok(js) if is_defer => deferred.push(js),
-                        Ok(js) => emit_script(&mut out, &js),
+                        Ok(js) => park_script(js, &mut out, &mut deferred, late, is_defer),
                         Err(e) => {
                             out.push_str("<script>throw new Error(");
                             out.push_str(
@@ -583,8 +614,7 @@ fn inline_scripts(html: &str, dir: &Path) -> String {
                     }
                 } else {
                     match std::fs::read_to_string(&path) {
-                        Ok(js) if is_defer => deferred.push(js),
-                        Ok(js) => emit_script(&mut out, &js),
+                        Ok(js) => park_script(js, &mut out, &mut deferred, late, is_defer),
                         Err(_) => {
                             out.push_str(open);
                             out.push_str(attrs);
@@ -596,8 +626,7 @@ fn inline_scripts(html: &str, dir: &Path) -> String {
                 }
             } else if is_module {
                 match crate::esm::bundle_inline(body, dir) {
-                    Ok(js) if is_defer => deferred.push(js),
-                    Ok(js) => emit_script(&mut out, &js),
+                    Ok(js) => park_script(js, &mut out, &mut deferred, late, is_defer),
                     Err(_) => {
                         out.push_str(open);
                         out.push_str(attrs);
@@ -739,8 +768,8 @@ fn run_one(
             detail: Some("built without v8".into()),
         };
     }
-    let html = match inline_html(&path) {
-        Ok(h) => h,
+    let doc = match inline_document(&path) {
+        Ok(d) => d,
         Err(e) => {
             return SuiteResult {
                 name: format!("speedometer.3.0.{name}"),
@@ -753,6 +782,7 @@ fn run_one(
             };
         }
     };
+    let html = doc.html;
     let mut samples = Vec::new();
     let mut last = None;
     let mut added = 0u64;
@@ -775,6 +805,9 @@ fn run_one(
             }
         };
         if let Ok(page) = engine.page_mut(opened.page) {
+            for js in &doc.late_js {
+                let _ = page.evaluate(js);
+            }
             page.settle(3_000);
         }
         let open_ms = open_started.elapsed().as_millis();
@@ -989,16 +1022,23 @@ mod tests {
     #[cfg(feature = "v8")]
     fn open_workload(engine: &mut ve_api::VectorEngine, rel: &str) -> ve_api::PageId {
         use ve_api::OpenRequest;
-        let html = inline_html(&vendor_root().join(workload_path(rel))).unwrap();
-        engine
+        let doc = inline_document(&vendor_root().join(workload_path(rel))).unwrap();
+        let page_id = engine
             .open(OpenRequest {
                 url: Some(format!("https://browserbench.org/Speedometer3.0/{rel}")),
-                html: Some(html),
+                html: Some(doc.html),
                 allow_evaluate: true,
                 ..OpenRequest::default()
             })
             .unwrap()
-            .page
+            .page;
+        if !doc.late_js.is_empty() {
+            let page = engine.page_mut(page_id).unwrap();
+            for js in &doc.late_js {
+                let _ = page.evaluate(js);
+            }
+        }
+        page_id
     }
 
     #[cfg(feature = "v8")]
@@ -2112,9 +2152,27 @@ mod tests {
         assert_eq!(restyle.full_calls, 0, "{v} restyle={restyle:?}");
     }
 
+    #[test]
+    fn official_editor_modules_are_evaluated_outside_the_html_tree() {
+        for rel in ["editors/dist/tiptap.html", "editors/dist/codemirror.html"] {
+            let doc = inline_document(&vendor_root().join(rel)).unwrap();
+            assert!(
+                doc.late_js.iter().any(|j| j.len() >= LARGE_MODULE_BYTES),
+                "{rel} html={} late={:?}",
+                doc.html.len(),
+                doc.late_js.iter().map(String::len).collect::<Vec<_>>()
+            );
+            assert!(
+                doc.html.len() < 250_000,
+                "{rel} html still embeds the module: {}",
+                doc.html.len()
+            );
+            assert!(doc.html.contains("id=\"create\""), "{rel}");
+        }
+    }
+
     #[cfg(feature = "v8")]
     #[test]
-    #[ignore = "TipTap/CodeMirror OOM this host"]
     fn remaining_official_editor_chart_workloads_boot() {
         let mut engine = bench_engine();
         let suites = [
@@ -2162,7 +2220,7 @@ mod tests {
         let html = r#"<script id="todo-template" type="text/x-handlebars-template">{{title}}</script>
 <script src="app.js"></script>"#;
         let dir = vendor_root().join("todomvc/architecture-examples/jquery/dist");
-        let out = inline_scripts(html, &dir);
+        let out = inline_scripts(html, &dir, &mut Vec::new());
         assert!(out.contains("type=\"text/x-handlebars-template\""), "{out}");
         assert!(out.contains("{{title}}"), "{out}");
     }
@@ -2173,7 +2231,7 @@ mod tests {
         let dir = std::env::temp_dir();
         let js_path = dir.join("app.js");
         std::fs::write(&js_path, r#"var x = "</script>" + "ok";"#).unwrap();
-        let out = inline_scripts(html, &dir);
+        let out = inline_scripts(html, &dir, &mut Vec::new());
         let _ = std::fs::remove_file(&js_path);
         assert!(out.contains("<\\/script"), "{out}");
         assert_eq!(out.matches("</script>").count(), 1, "{out}");
@@ -2192,7 +2250,7 @@ mod tests {
     fn nomodule_scripts_are_dropped_when_inlining() {
         let html = r#"<script nomodule src="polyfills.js"></script><script src="app.js"></script>"#;
         let dir = vendor_root().join("todomvc/architecture-examples/jquery/dist");
-        let out = inline_scripts(html, &dir);
+        let out = inline_scripts(html, &dir, &mut Vec::new());
         assert!(!out.to_ascii_lowercase().contains("nomodule"), "{out}");
     }
 
@@ -2203,7 +2261,7 @@ mod tests {
         std::fs::write(&js_path, "window.__booted = !!document.getElementById('root');")
             .unwrap();
         let html = "<head><script defer src=\"ve-defer-app.js\"></script></head><body><div id=\"root\"></div></body>";
-        let out = inline_scripts(html, &dir);
+        let out = inline_scripts(html, &dir, &mut Vec::new());
         let _ = std::fs::remove_file(&js_path);
         let root_at = out.find("id=\"root\"").expect(&out);
         let boot_at = out.find("window.__booted").expect(&out);

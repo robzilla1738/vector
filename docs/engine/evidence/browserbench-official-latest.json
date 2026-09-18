@@ -6,7 +6,7 @@
   "officialFullSuite": false,
   "gate": false,
   "iterations": 1,
-    "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. Independently verified after fixes: 30 of 32 official tests.mjs names. Official Chart.js, Observable Plot, React-Stockcharts-SVG render/pan/zoom, and Angular-complex 3-add/finish PASS. Official remove-element-unblocks-rendering.optional.html PASS. Editor-CodeMirror/TipTap OOM this host.",
+    "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. Independently verified after fixes: 32 of 32 official tests.mjs names. Editor-TipTap/CodeMirror boot after large type=module sources are evaluated outside the HTML tree (was OOM). Not a browserbench.org published score.",
   "verifiedAfterFixes": {
     "TodoMVC-WebComponents": "PASS add/finish 3 items",
     "TodoMVC-React": "PASS add 3 items",
@@ -15,12 +15,13 @@
     "TodoMVC-Lit": "PASS add 3 items after keeping <?lit$…$> as comments",
     "NewsSite-Next": "PASS navbar present",
     "NewsSite-Nuxt": "PASS in killed full-suite log",
-    "Editor-CodeMirror": "killed OOM/SIGKILL in full-suite log",
+    "Editor-CodeMirror": "boot + official Long/Highlight steps PASS 0.5s after late-eval of the 1.9MB module (was OOM/SIGKILL)",
+    "Editor-TipTap": "boot + official Long/Highlight steps PASS 1.0s after late-eval of the 810KB module (was OOM)",
     "TodoMVC-JavaScript-ES5-Complex-DOM": "one-add PASS addMs=4 changeMs=3; 100-add PASS addMs=1218 showEntriesMs=1072 restyle.full_calls=0",
     "TodoMVC-jQuery-Complex-DOM": "one-add PASS enterMs=12. 3-add/finish PASS addMs=37 finishMs=238 remaining=0 in 43s boot. Was enterMs=42184 / finish remaining=3.",
     "TodoMVC-Backbone-Complex-DOM": "one-add PASS enterMs=14 nodes=6653 restyle.full_calls=0 (was enterMs=131s). 3-add/finish PASS addMs=18 finishMs=189 remaining=0.",
     "remainingOfficialComplex3AddFinish": "backbone/vue/preact/svelte/react/react-redux/es6-webpack complex PASS add/finish 3 in 101.7s.",
-    "remainingOfficial3AddFinish": "vue/lit/preact/svelte/jquery/jquery-complex/backbone/web-components/web-components-complex/lit-complex/news-next/news-nuxt/perf PASS add/finish 3 in 58.4s. jquery-complex addMs=37 finishMs=238 remaining=0. Editor-CodeMirror/TipTap OOM this host (ignored).",
+    "remainingOfficial3AddFinish": "vue/lit/preact/svelte/jquery/jquery-complex/backbone/web-components/web-components-complex/lit-complex/news-next/news-nuxt/perf PASS add/finish 3 in 58.4s. jquery-complex addMs=37 finishMs=238 remaining=0. Editor-TipTap/CodeMirror now boot independently.",
     "Charts-chartjs": "prepare/scatter/tooltip PASS 9.4s err=[] after ESM mid-file import lift + Canvas resetTransform/setLineDash",
     "Charts-observable-plot": "prepare/stacked/dotted PASS 8.67s err=[]",
     "React-Stockcharts-SVG": "render PASS 0.42s cursor=true svg=1 nodes=790 err=[]. Official pan/zoom PASS 0.44s after WheelEvent (deltaY/clientX) was added.",
@@ -31,11 +32,8 @@
     "passed": 7,
     "failed": 18,
     "inProgress": "NewsSite-Nuxt",
-    "remaining": [
-      "Editor-CodeMirror",
-      "Editor-TipTap"
-    ],
-    "independentlyVerified": "30 of 32 official Speedometer 3.0 names from tests.mjs have add/prepare/render evidence on this host. Editor-CodeMirror and Editor-TipTap OOM. Not a browserbench.org published score."
+    "remaining": [],
+    "independentlyVerified": "32 of 32 official Speedometer 3.0 names from tests.mjs have add/prepare/render/editor evidence on this host. Not a browserbench.org published score."
   },
   "results": [
     { "name": "speedometer.3.0.TodoMVC-JavaScript-ES5", "status": "PASS", "p95_ms": 20209 },
