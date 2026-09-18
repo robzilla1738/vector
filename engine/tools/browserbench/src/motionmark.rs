@@ -298,7 +298,8 @@ fn official_ramp_html(
             continue;
         }
         let started = Instant::now();
-        let deadline = Duration::from_secs(u64::from(interval) + 15);
+        let deadline =
+            Duration::from_secs(u64::from(interval).saturating_mul(2).saturating_add(30));
         let mut done = false;
         while started.elapsed() < deadline {
             if let Ok(page) = engine.page_mut(opened.page) {
@@ -331,7 +332,28 @@ fn official_ramp_html(
             }
         }
         if !done && last_err.is_none() {
-            last_err = Some("ramp run() did not finish".into());
+            let console = engine
+                .page_mut(opened.page)
+                .map(|p| {
+                    p.console()
+                        .iter()
+                        .rev()
+                        .take(6)
+                        .map(|l| {
+                            format!(
+                                "{}: {}",
+                                l.level,
+                                l.message.chars().take(160).collect::<String>()
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" | ")
+                })
+                .unwrap_or_default();
+            last_err = Some(format!(
+                "ramp run() did not finish after {}ms console={console}",
+                started.elapsed().as_millis()
+            ));
             engine.close(opened.page);
             continue;
         }
@@ -815,13 +837,39 @@ mod tests {
         if !dir.join("MotionMark/tests/core/multiply.html").is_file() {
             return;
         }
-        let spec = &OFFICIAL_HTML[0];
+        let spec = OFFICIAL_HTML
+            .iter()
+            .find(|s| s.name == "Multiply")
+            .expect("Multiply");
         let result = official_ramp_html(&mut engine, 1, dir, spec);
         assert_eq!(result.status, "PASS", "{:?}", result.detail);
         let detail = result.detail.as_deref().unwrap_or("");
         let v: serde_json::Value = serde_json::from_str(detail).unwrap_or_default();
         assert_eq!(v["controller"], "ramp", "{detail}");
         assert!(v["score"].as_f64().unwrap_or(0.0) > 0.0, "{detail}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn suits_ramp_produces_a_scorecalculator_score() {
+        unsafe { std::env::set_var("VECTOR_MOTIONMARK_TEST_INTERVAL", "8") };
+        let mut engine = ve_api::VectorEngine::new(ve_api::EngineConfig {
+            viewport: ve_core::Size::new(1280.0, 720.0),
+            offline: true,
+            scripting: true,
+            policy: ve_api::NetworkPolicy::permissive(),
+            ..ve_api::EngineConfig::default()
+        });
+        let dir = Path::new("/tmp/motionmark-src");
+        if !dir.join("MotionMark/tests/core/suits.html").is_file() {
+            return;
+        }
+        let spec = OFFICIAL_HTML
+            .iter()
+            .find(|s| s.name == "Suits")
+            .expect("Suits");
+        let result = official_ramp_html(&mut engine, 1, dir, spec);
+        assert_eq!(result.status, "PASS", "{:?}", result.detail);
     }
 
     #[test]
