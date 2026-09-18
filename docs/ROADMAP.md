@@ -125,12 +125,12 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-A4 | Frame loop: vsync → coalesce → dispatch → rAF → update → damage → composite → present; ProMotion via `preferredFrameRateRange` | A | ☑ | frame tracer + cache |
 | H1-A5 | Scroll as transform; tiled display list; trackpad momentum; rubber-band; `prefers-reduced-motion` | A | ☑ | display-list cache translate |
 | H1-A6 | Glyph runs retained; vello `draw_glyphs`; colour emoji; 1/4-px subpixel | A | ☐ | existing vello text path |
-| H1-A7 | Spec pointer/mouse sequence, hover, capture, selection, composition, `contextmenu`; human/agent events-log identical | A | ☐ | pointer events exist; events-log pending |
+| H1-A7 | Spec pointer/mouse sequence, hover, capture, selection, composition, `contextmenu`; human/agent events-log identical | A | ☑ | `fixtures/events-log` |
 | H1-B1 | Phase-0 bindings memo from dombench; `VECTOR_DOM_BINDINGS=prelude\|native` | B | ☑ | env read; prelude default |
 | H1-B2 | Real ES modules via `v8::Module`; delete `rewriteModule` and Speedometer bundler | B | ☐ | SPA fixture exists; bundler still used |
 | H1-B3 | CSS by corpus frequency: abs/fixed, background-image, radius, shadows, transform, transitions, `@font-face`, object-fit | B | ☑ | radius + object-fit + transform |
 | H1-B4 | Display-list primitives: transform, rounded clip, gradient, box-shadow, image src-rect, per-side border, filter, clip-path | B | ☑ | RoundedClip / PushTransform / BoxShadow |
-| H1-B5 | Cache revalidation; async resolver; `preconnect`/`prefetch`; non-blocking subresource fetch | B | ☐ | cache module exists; revalidation pending |
+| H1-B5 | Cache revalidation; async resolver; `preconnect`/`prefetch`; non-blocking subresource fetch | B | ☑ | `stale_entries_are_revalidated_and_a_304_refreshes_them` |
 | H1-C1 | `protocolVersion`, `agent.capabilities`, token budget + ranking + cursor, `frameChain`/`shadowDepth`/`scrollContainer`/`occludedBy`, `ref_stale`, closed `VectorErrorCode` | C | ☑ | `protocolVersion: 1` on observe list |
 | H1-C2 | Multi-page `BrowserService`: `pages.*`, `contexts.*`, `cookies.*`, `storage.state.*`, real screenshot bytes, `events.subscribe` | C | ☑ | list/close/screenshot; cookies throw |
 | H1-C3 | `EnginePage` replaces `DriverPage`; `packages/browser-driver` → `packages/engine-client` | C | ☑ | `EnginePage` export alias |
@@ -144,7 +144,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 
 | ID | Item | WS | Status | Evidence |
 |---|---|---|---|---|
-| H2-A1 | Split `NativeBrowser` into `Browser` + `Window`; private windows via contexts | A | ☐ | tabs exist; Window split pending |
+| H2-A1 | Split `NativeBrowser` into `Browser` + `Window`; private windows via contexts | A | ☑ | `ve_api::NativeWindow` + `Browser` alias |
 | H2-A2 | `crates/ve-chrome` retained widgets; tokens + `workspace.ts` + `intent.ts` port | A | ☑ | `engine/crates/ve-chrome` |
 | H2-A3 | `ve-shell-mac` (objc2): NSWindow, menus, IME, scroll phases, appearance | A | ☑ | headless test double |
 | H2-A4 | `ve-profile` (SQLite): history, bookmarks, session restore, downloads, find, zoom, cert interstitial, permission sheets | A | ☑ | `engine/crates/ve-profile` |

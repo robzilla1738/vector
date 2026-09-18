@@ -34,6 +34,7 @@ pub mod ffi;
 pub mod service;
 pub mod shell;
 pub mod updates;
+pub mod window;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -50,6 +51,7 @@ pub use shell::{
     ChromeAxNode, EventOutcome, KeyState, NativeBrowser, NativeController, NativeEvent, Tab,
     scene_json,
 };
+pub use window::{Browser, NativeWindow};
 pub use updates::{UpdateKeyPair, verify_update_manifest};
 pub use ve_agent::{
     EngineObservation, ExecuteRequest, ExecuteResult, Format, InFlightSummary, LoadedDocument,
