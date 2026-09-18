@@ -1043,7 +1043,8 @@ JetStream.__veRewriteModule = function (src, key) {
   const names = [];
   let rewritten = String(src)
     .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\bimport\.meta\b/g, "__veImportMeta");
+    .replace(/\bimport\.meta\b/g, "__veImportMeta")
+    .replace(/\bimport\s*\(/g, "JetStream.dynamicImport(");
   // Official .NET runtimes put `export{...}` / `export default` after `}` or `;`
   // on one minified line. Keep a preceding delimiter so `.export` / `jsexport`
   // identifiers are not rewritten.
@@ -1100,9 +1101,16 @@ JetStream.__veRewriteModule = function (src, key) {
   );
 };
 JetStream.dynamicImport = async function (key) {
-  const src = JetStream.__vePreload[key];
+  if (key && typeof key === "object" && typeof key.href === "string") key = key.href;
+  key = String(key || "");
+  const resolved =
+    JetStream.resources[key] ||
+    JetStream.resources[key.replace(/^\.\//, "")] ||
+    key;
+  const src = JetStream.__vePreload[resolved];
   if (src == null) throw new Error("missing preload " + key);
-  const factory = new Function(JetStream.__veRewriteModule(src, key));
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  const factory = new AsyncFunction(JetStream.__veRewriteModule(src, resolved));
   return factory();
 };
 "#,

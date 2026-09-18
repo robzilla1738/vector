@@ -1053,4 +1053,36 @@ mod tests {
         }
         panic!("WebAssembly.instantiate did not resolve after platform pump");
     }
+
+    #[test]
+    fn webassembly_shared_memory_is_available() {
+        let mut vm = V8Vm::new().unwrap();
+        let probe = vm
+            .eval(
+                r#"(function () {
+                  var out = {
+                    sab: typeof SharedArrayBuffer,
+                    atomics: typeof Atomics,
+                    mem: null,
+                    err: null
+                  };
+                  try {
+                    var m = new WebAssembly.Memory({ initial: 1, maximum: 2, shared: true });
+                    out.mem = m.buffer && m.buffer.constructor && m.buffer.constructor.name;
+                  } catch (e) {
+                    out.err = String(e && e.message ? e.message : e);
+                  }
+                  return JSON.stringify(out);
+                })()"#,
+                "<t>",
+            )
+            .unwrap();
+        let JsValue::String(s) = probe else {
+            panic!("expected string, got {probe:?}");
+        };
+        assert!(
+            s.contains("\"sab\":\"function\"") && s.contains("\"mem\":\"SharedArrayBuffer\""),
+            "{s}"
+        );
+    }
 }
