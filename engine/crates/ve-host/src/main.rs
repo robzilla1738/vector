@@ -137,7 +137,8 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
             }
         }
         "fs" => {
-            // Finding 2: Landlock must deny a write outside the allowlist.
+            // Finding 2: production filesystem confinement must deny a write
+            // outside the allowlist (Landlock / Low Integrity / sandbox_init).
             let path = std::env::temp_dir().join("ve-host-landlock-probe");
             match std::fs::write(&path, b"leak") {
                 Ok(()) => {

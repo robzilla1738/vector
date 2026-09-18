@@ -2,9 +2,10 @@
 //!
 //! Production: apply fails closed. Developer: `VECTOR_ENGINE_SANDBOX=0` skips.
 //! macOS uses `sandbox_init` (deny default, no network, no fork/exec). Linux
-//! uses Landlock (filesystem) then seccomp-bpf (no sockets, no exec). A socket
-//! denylist is not the whole sandbox — filesystem, env, and inherited
-//! descriptors are tightened here too.
+//! uses Landlock (filesystem) then seccomp-bpf (no sockets, no exec). Windows
+//! uses a Job Object (no child processes) then Low Integrity Level so writes
+//! to Medium+ paths fail. A socket denylist is not the whole sandbox —
+//! filesystem, env, and inherited descriptors are tightened here too.
 
 /// Applies the tightest sandbox this OS supports.
 pub fn apply() -> Result<(), String> {
@@ -20,7 +21,7 @@ pub fn apply() -> Result<(), String> {
     }
     #[cfg(windows)]
     {
-        windows_job()
+        windows()
     }
     #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
     {
@@ -423,6 +424,14 @@ fn deny_syscalls() -> Result<(), String> {
     Ok(())
 }
 
+/// Job Object first, then Mandatory Integrity Control. Job Objects do not
+/// confine the filesystem; Low Integrity is what denies the `fs` selftest.
+#[cfg(windows)]
+fn windows() -> Result<(), String> {
+    windows_job()?;
+    confine_filesystem()
+}
+
 /// Job Object + child-process mitigation. The job handle is left open so
 /// `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` does not kill this process.
 #[cfg(windows)]
@@ -536,6 +545,95 @@ fn windows_job() -> Result<(), String> {
     Ok(())
 }
 
+/// Windows filesystem confinement. Low Integrity (`S-1-16-4096`) denies
+/// writes to Medium+ paths, including the process temp directory the `fs`
+/// selftest probes. Job Objects do not implement this (Finding 2).
+#[cfg(windows)]
+fn confine_filesystem() -> Result<(), String> {
+    const TOKEN_QUERY: u32 = 0x0008;
+    const TOKEN_ADJUST_DEFAULT: u32 = 0x0080;
+    const TOKEN_INTEGRITY_LEVEL: u32 = 25;
+    const SE_GROUP_INTEGRITY: u32 = 0x0000_0020;
+    // SECURITY_MANDATORY_LOW_RID, "S-1-16-4096"
+    const LOW_INTEGRITY_SID: [u16; 12] = [
+        0x53, 0x2d, 0x31, 0x2d, 0x31, 0x36, 0x2d, 0x34, 0x30, 0x39, 0x36, 0,
+    ];
+
+    #[repr(C)]
+    struct SidAndAttributes {
+        sid: *mut u8,
+        attributes: u32,
+    }
+    #[repr(C)]
+    struct TokenMandatoryLabel {
+        label: SidAndAttributes,
+    }
+
+    #[link(name = "advapi32")]
+    unsafe extern "system" {
+        fn OpenProcessToken(process: isize, access: u32, token: *mut isize) -> i32;
+        fn SetTokenInformation(
+            token: isize,
+            class: u32,
+            info: *const core::ffi::c_void,
+            len: u32,
+        ) -> i32;
+        fn ConvertStringSidToSidW(string_sid: *const u16, sid: *mut *mut u8) -> i32;
+        fn GetLengthSid(sid: *mut u8) -> u32;
+    }
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetCurrentProcess() -> isize;
+        fn CloseHandle(handle: isize) -> i32;
+        fn LocalFree(mem: *mut u8) -> *mut u8;
+        fn GetLastError() -> u32;
+    }
+
+    // Safety: process start, before page threads; token/SID APIs copy the SID.
+    unsafe {
+        let mut token = 0isize;
+        if OpenProcessToken(
+            GetCurrentProcess(),
+            TOKEN_QUERY | TOKEN_ADJUST_DEFAULT,
+            &raw mut token,
+        ) == 0
+        {
+            return Err(format!("OpenProcessToken failed ({})", GetLastError()));
+        }
+        let mut sid = core::ptr::null_mut();
+        if ConvertStringSidToSidW(LOW_INTEGRITY_SID.as_ptr(), &raw mut sid) == 0 || sid.is_null() {
+            let err = GetLastError();
+            CloseHandle(token);
+            return Err(format!("ConvertStringSidToSidW Low IL failed ({err})"));
+        }
+        let label = TokenMandatoryLabel {
+            label: SidAndAttributes {
+                sid,
+                attributes: SE_GROUP_INTEGRITY,
+            },
+        };
+        let sid_len = GetLengthSid(sid);
+        let info_len = u32::try_from(std::mem::size_of::<TokenMandatoryLabel>())
+            .unwrap_or(0)
+            .saturating_add(sid_len);
+        let ok = SetTokenInformation(
+            token,
+            TOKEN_INTEGRITY_LEVEL,
+            (&raw const label).cast(),
+            info_len,
+        );
+        let err = GetLastError();
+        LocalFree(sid);
+        CloseHandle(token);
+        if ok == 0 {
+            return Err(format!(
+                "SetTokenInformation TokenIntegrityLevel failed ({err})"
+            ));
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -561,5 +659,22 @@ mod tests {
         const ACTIVE: u32 = 0x0000_0008;
         const KILL: u32 = 0x0000_2000;
         assert_eq!(ACTIVE | KILL, 0x0000_2008);
+    }
+
+    #[test]
+    fn windows_production_confines_filesystem() {
+        let src = include_str!("sandbox.rs");
+        assert!(
+            src.contains("S-1-16-4096") && src.contains("TOKEN_INTEGRITY_LEVEL"),
+            "Finding 2: Windows production must confine filesystem writes, not only Job Object process limits"
+        );
+        let windows_fn = src.find("fn windows()").expect("windows apply");
+        let rest = &src[windows_fn..];
+        let job = rest.find("windows_job()?").expect("job apply");
+        let fs = rest.find("confine_filesystem()").expect("fs apply");
+        assert!(
+            job < fs,
+            "Finding 2: Job Object must be applied before Low Integrity"
+        );
     }
 }
