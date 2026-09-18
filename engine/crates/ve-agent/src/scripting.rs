@@ -62,13 +62,27 @@ pub const PRELUDE: &str = r#"(() => {
     return id;
   };
   const disarm = (id) => { if (timers.delete(id)) __ve.clearTimer(id); };
-  globalThis.setTimeout = (fn, ms, ...args) => arm(fn, ms, false, args);
-  globalThis.setInterval = (fn, ms, ...args) => arm(fn, ms, true, args);
-  globalThis.clearTimeout = disarm;
-  globalThis.clearInterval = disarm;
-  globalThis.queueMicrotask = (fn) => { Promise.resolve().then(fn); };
-  globalThis.requestAnimationFrame = (fn) => arm(() => fn(__ve.now()), 16, false, []);
-  globalThis.cancelAnimationFrame = disarm;
+  globalThis.setTimeout = function setTimeout(fn) {
+    const ms = arguments.length > 1 ? arguments[1] : 0;
+    const args = Array.prototype.slice.call(arguments, 2);
+    return arm(fn, ms, false, args);
+  };
+  globalThis.setInterval = function setInterval(fn) {
+    const ms = arguments.length > 1 ? arguments[1] : 0;
+    const args = Array.prototype.slice.call(arguments, 2);
+    return arm(fn, ms, true, args);
+  };
+  globalThis.clearTimeout = function clearTimeout() {
+    if (arguments.length) disarm(arguments[0]);
+  };
+  globalThis.clearInterval = function clearInterval() {
+    if (arguments.length) disarm(arguments[0]);
+  };
+  globalThis.queueMicrotask = function queueMicrotask(fn) { Promise.resolve().then(fn); };
+  globalThis.requestAnimationFrame = function requestAnimationFrame(fn) {
+    return arm(() => fn(__ve.now()), 16, false, []);
+  };
+  globalThis.cancelAnimationFrame = function cancelAnimationFrame(id) { disarm(id); };
   globalThis.requestIdleCallback = (fn) => arm(() => fn({ didTimeout: false, timeRemaining: () => 50 }), 1, false, []);
   globalThis.cancelIdleCallback = disarm;
   globalThis.__veFireTimer = (id) => {

@@ -4938,3 +4938,51 @@ fn official_html_table_input_select_and_label_idl() {
     assert_eq!(v["taLen"], 2, "{v}");
     assert_eq!(v["protoOwn"], true, "{v}");
 }
+
+#[test]
+fn official_html_brand_window_and_media_idl() {
+    let mut page = open("<video id=v src=m.mp4></video><input id=i>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              let inputAcceptThrew = false;
+              try { void HTMLInputElement.prototype.accept; } catch (e) { inputAcceptThrew = e instanceof TypeError; }
+              let winAbortThrew = false;
+              try { Window.prototype.onabort.call({}); } catch (e) { winAbortThrew = e instanceof TypeError; }
+              const video = document.getElementById("v");
+              return {
+                inputAcceptThrew,
+                winAbortThrew,
+                createCapName: HTMLTableElement.prototype.createCaption.name,
+                insertRowLen: HTMLTableElement.prototype.insertRow.length,
+                setTimeoutLen: setTimeout.length,
+                clearTimeoutLen: clearTimeout.length,
+                setIntervalLen: setInterval.length,
+                netIdle: video.NETWORK_IDLE === 1,
+                play: typeof HTMLMediaElement.prototype.play === "function",
+                getHTML: typeof Element.prototype.getHTML === "function",
+                navInst: navigator instanceof Navigator,
+                storeInst: localStorage instanceof Storage,
+                isSecure: isSecureContext === true,
+                report: typeof reportError === "function",
+                offscreen: typeof OffscreenCanvasRenderingContext2D === "function",
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inputAcceptThrew"], true, "{v}");
+    assert_eq!(v["winAbortThrew"], true, "{v}");
+    assert_eq!(v["createCapName"], "createCaption", "{v}");
+    assert_eq!(v["insertRowLen"], 0, "{v}");
+    assert_eq!(v["setTimeoutLen"], 1, "{v}");
+    assert_eq!(v["clearTimeoutLen"], 0, "{v}");
+    assert_eq!(v["setIntervalLen"], 1, "{v}");
+    assert_eq!(v["netIdle"], true, "{v}");
+    assert_eq!(v["play"], true, "{v}");
+    assert_eq!(v["getHTML"], true, "{v}");
+    assert_eq!(v["navInst"], true, "{v}");
+    assert_eq!(v["storeInst"], true, "{v}");
+    assert_eq!(v["isSecure"], true, "{v}");
+    assert_eq!(v["report"], true, "{v}");
+    assert_eq!(v["offscreen"], true, "{v}");
+}

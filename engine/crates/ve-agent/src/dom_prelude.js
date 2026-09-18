@@ -2246,6 +2246,9 @@
       for (const k of ckids) sanitizeTree(k, sanitizer);
     }
   }
+  Element.prototype.getHTML = function getHTML() {
+    return this.innerHTML || "";
+  };
   Element.prototype.setHTML = function setHTML(html) {
     if (arguments.length < 1) {
       throw new TypeError("Failed to execute 'setHTML' on 'Element': 1 argument required, but only 0 present.");
@@ -3420,7 +3423,11 @@
     drawImage() {}
     fillText() {}
     strokeText() {}
-    measureText(t) { return { width: String(t).length * 8 }; }
+    measureText(t) {
+      const m = Object.create(TextMetrics.prototype);
+      m._width = String(t).length * 8;
+      return m;
+    }
     createImageData(w, h) { return new ImageData(w, h); }
     getImageData(x, y, w, h) {
       const r = D("canvasGetImageData", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0) || {};
@@ -3637,38 +3644,38 @@
       enumerable: true, configurable: true,
     },
     createCaption: {
-      value() { return this.caption || this.insertBefore(document.createElement("caption"), this.firstChild); },
+      value: function createCaption() { return this.caption || this.insertBefore(document.createElement("caption"), this.firstChild); },
       writable: true, enumerable: true, configurable: true,
     },
     deleteCaption: {
-      value() { const c = this.caption; if (c) this.removeChild(c); },
+      value: function deleteCaption() { const c = this.caption; if (c) this.removeChild(c); },
       writable: true, enumerable: true, configurable: true,
     },
     createTHead: {
-      value() { return this.tHead || this.insertBefore(document.createElement("thead"), this.firstChild); },
+      value: function createTHead() { return this.tHead || this.insertBefore(document.createElement("thead"), this.firstChild); },
       writable: true, enumerable: true, configurable: true,
     },
     deleteTHead: {
-      value() { const h = this.tHead; if (h) this.removeChild(h); },
+      value: function deleteTHead() { const h = this.tHead; if (h) this.removeChild(h); },
       writable: true, enumerable: true, configurable: true,
     },
     createTFoot: {
-      value() { return this.tFoot || this.appendChild(document.createElement("tfoot")); },
+      value: function createTFoot() { return this.tFoot || this.appendChild(document.createElement("tfoot")); },
       writable: true, enumerable: true, configurable: true,
     },
     deleteTFoot: {
-      value() { const f = this.tFoot; if (f) this.removeChild(f); },
+      value: function deleteTFoot() { const f = this.tFoot; if (f) this.removeChild(f); },
       writable: true, enumerable: true, configurable: true,
     },
     createTBody: {
-      value() { return this.appendChild(document.createElement("tbody")); },
+      value: function createTBody() { return this.appendChild(document.createElement("tbody")); },
       writable: true, enumerable: true, configurable: true,
     },
     insertRow: {
-      value(index) {
+      value: function insertRow() {
         const rows = this.rows;
         const tr = document.createElement("tr");
-        const i = arguments.length ? index | 0 : -1;
+        const i = arguments.length ? arguments[0] | 0 : -1;
         if (i === -1 || i >= rows.length) {
           let body = this.tBodies[this.tBodies.length - 1];
           if (!body) body = this.createTBody();
@@ -3681,7 +3688,7 @@
       writable: true, enumerable: true, configurable: true,
     },
     deleteRow: {
-      value(index) {
+      value: function deleteRow(index) {
         if (arguments.length < 1) {
           throw new TypeError("Failed to execute 'deleteRow' on 'HTMLTableElement': 1 argument required, but only 0 present.");
         }
@@ -3697,10 +3704,10 @@
       enumerable: true, configurable: true,
     },
     insertRow: {
-      value(index) {
+      value: function insertRow() {
         const rows = this.rows;
         const tr = document.createElement("tr");
-        const i = arguments.length ? index | 0 : -1;
+        const i = arguments.length ? arguments[0] | 0 : -1;
         if (i === -1 || i >= rows.length) this.appendChild(tr);
         else this.insertBefore(tr, rows[i]);
         return tr;
@@ -3708,7 +3715,7 @@
       writable: true, enumerable: true, configurable: true,
     },
     deleteRow: {
-      value(index) {
+      value: function deleteRow(index) {
         if (arguments.length < 1) {
           throw new TypeError("Failed to execute 'deleteRow' on 'HTMLTableSectionElement': 1 argument required, but only 0 present.");
         }
@@ -3724,10 +3731,10 @@
       enumerable: true, configurable: true,
     },
     insertCell: {
-      value(index) {
+      value: function insertCell() {
         const cells = this.cells;
         const td = document.createElement("td");
-        const i = arguments.length ? index | 0 : -1;
+        const i = arguments.length ? arguments[0] | 0 : -1;
         if (i === -1 || i >= cells.length) this.appendChild(td);
         else this.insertBefore(td, cells[i]);
         return td;
@@ -3735,7 +3742,7 @@
       writable: true, enumerable: true, configurable: true,
     },
     deleteCell: {
-      value(index) {
+      value: function deleteCell(index) {
         if (arguments.length < 1) {
           throw new TypeError("Failed to execute 'deleteCell' on 'HTMLTableRowElement': 1 argument required, but only 0 present.");
         }
@@ -3908,6 +3915,22 @@
     l._tracks = [];
     return l;
   }
+  class AudioTrackList extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    item() { return null; }
+    getTrackById() { return null; }
+  }
+  Object.defineProperty(AudioTrackList.prototype, Symbol.toStringTag, { value: "AudioTrackList", configurable: true });
+  class VideoTrackList extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    item() { return null; }
+    getTrackById() { return null; }
+  }
+  Object.defineProperty(VideoTrackList.prototype, Symbol.toStringTag, { value: "VideoTrackList", configurable: true });
+  function emptyAudioTrackList() { return Object.create(AudioTrackList.prototype); }
+  function emptyVideoTrackList() { return Object.create(VideoTrackList.prototype); }
   class HTMLMediaElement extends HTMLElement {
     get src() { return reflectedUrl(this, "src") || this.getAttribute("src") || ""; }
     set src(v) {
@@ -3950,6 +3973,16 @@
     fastSeek(time) {
       if (arguments.length < 1) throw new TypeError("Failed to execute 'fastSeek' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
     }
+    get srcObject() { return this._srcObject || null; }
+    set srcObject(v) { this._srcObject = v; }
+    get played() { return this._played || (this._played = emptyTimeRanges()); }
+    get seekable() { return this._seekable || (this._seekable = emptyTimeRanges()); }
+    get audioTracks() { return this._audioTracks || (this._audioTracks = emptyAudioTrackList()); }
+    get videoTracks() { return this._videoTracks || (this._videoTracks = emptyVideoTrackList()); }
+    getStartDate() { return new Date(NaN); }
+    load() {}
+    play() { this._paused = false; return Promise.resolve(); }
+    pause() { this._paused = true; }
   }
   Object.defineProperty(HTMLMediaElement.prototype, Symbol.toStringTag, { value: "HTMLMediaElement", configurable: true });
   HTMLMediaElement.NETWORK_EMPTY = 0;
@@ -3961,6 +3994,14 @@
   HTMLMediaElement.HAVE_CURRENT_DATA = 2;
   HTMLMediaElement.HAVE_FUTURE_DATA = 3;
   HTMLMediaElement.HAVE_ENOUGH_DATA = 4;
+  for (const k of ["NETWORK_EMPTY", "NETWORK_IDLE", "NETWORK_LOADING", "NETWORK_NO_SOURCE", "HAVE_NOTHING", "HAVE_METADATA", "HAVE_CURRENT_DATA", "HAVE_FUTURE_DATA", "HAVE_ENOUGH_DATA"]) {
+    Object.defineProperty(HTMLMediaElement.prototype, k, {
+      value: HTMLMediaElement[k],
+      writable: false,
+      enumerable: true,
+      configurable: false,
+    });
+  }
   const HTMLVideoElement = defHTML("HTMLVideoElement", HTMLMediaElement);
   const HTMLAudioElement = defHTML("HTMLAudioElement", HTMLMediaElement);
   const HTMLTrackElement = defHTML("HTMLTrackElement");
@@ -4086,15 +4127,15 @@
         enumerable: true, configurable: true,
       },
       checkValidity: {
-        value() { return this.validity.valid !== false; },
+        value: function checkValidity() { return this.validity.valid !== false; },
         writable: true, enumerable: true, configurable: true,
       },
       reportValidity: {
-        value() { return this.checkValidity(); },
+        value: function reportValidity() { return this.checkValidity(); },
         writable: true, enumerable: true, configurable: true,
       },
       setCustomValidity: {
-        value(msg) {
+        value: function setCustomValidity(msg) {
           if (arguments.length < 1) {
             throw new TypeError("Failed to execute 'setCustomValidity' on '" + proto.constructor.name + "': 1 argument required, but only 0 present.");
           }
@@ -4700,15 +4741,45 @@
     close() {}
   }
 
+  class Storage {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    getItem(k) {
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'getItem' on 'Storage': 1 argument required, but only 0 present.");
+      const v = D("storageGet", this._area, String(k));
+      return v == null ? null : v;
+    }
+    setItem(k, v) {
+      if (arguments.length < 2) throw new TypeError("Failed to execute 'setItem' on 'Storage': 2 arguments required, but only " + arguments.length + " present.");
+      D("storageSet", this._area, String(k), String(v));
+    }
+    removeItem(k) {
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'removeItem' on 'Storage': 1 argument required, but only 0 present.");
+      D("storageRemove", this._area, String(k));
+    }
+    clear() { D("storageClear", this._area); }
+    key(i) { return D("storageKey", this._area, i | 0); }
+    get length() { return D("storageLength", this._area); }
+  }
+  Object.defineProperty(Storage.prototype, Symbol.toStringTag, { value: "Storage", configurable: true });
   function storage(area) {
-    return {
-      getItem(k) { const v = D("storageGet", area, String(k)); return v == null ? null : v; },
-      setItem(k, v) { D("storageSet", area, String(k), String(v)); },
-      removeItem(k) { D("storageRemove", area, String(k)); },
-      clear() { D("storageClear", area); },
-      key(i) { return D("storageKey", area, i | 0); },
-      get length() { return D("storageLength", area); },
-    };
+    const s = Object.create(Storage.prototype);
+    s._area = area;
+    return s;
+  }
+  class Navigator {
+    constructor() { throw new TypeError("Illegal constructor"); }
+  }
+  Object.defineProperty(Navigator.prototype, Symbol.toStringTag, { value: "Navigator", configurable: true });
+  class TextMetrics {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get width() { return this._width || 0; }
+  }
+  Object.defineProperty(TextMetrics.prototype, Symbol.toStringTag, { value: "TextMetrics", configurable: true });
+  function defIllegal(name) {
+    const C = { [name]: function () { throw new TypeError("Illegal constructor"); } }[name];
+    Object.defineProperty(C, "name", { value: name, configurable: true });
+    Object.defineProperty(C.prototype, Symbol.toStringTag, { value: name, configurable: true });
+    return C;
   }
 
   function toUSV(s) {
@@ -5512,7 +5583,6 @@
   const windowExternal = Object.create(External.prototype);
   const windowProps = {
     window: null, self: null, document, location, history, atob, btoa,
-    onhashchange: null, onpopstate: null,
     localStorage: storage("local"), sessionStorage: storage("session"),
     customElements: new CustomElementRegistry(),
     Event, HashChangeEvent, PopStateEvent, ToggleEvent, TrackEvent, FormDataEvent, StorageEvent, MouseEvent, WheelEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
@@ -5535,7 +5605,41 @@
     HTMLLegendElement, HTMLOptGroupElement, HTMLDataListElement, HTMLProgressElement,
     HTMLMeterElement, HTMLDialogElement, HTMLMenuElement, HTMLDataElement,
     HTMLVideoElement, HTMLAudioElement, HTMLTrackElement, HTMLPictureElement, HTMLMediaElement,
-    MediaError, TimeRanges, TextTrack, TextTrackList, TextTrackCueList, ValidityState, DOMStringList, FileList, External,
+    MediaError, TimeRanges, TextTrack, TextTrackList, TextTrackCueList, AudioTrackList, VideoTrackList, ValidityState, DOMStringList, FileList, External,
+    Storage, Navigator, TextMetrics, CustomElementRegistry,
+    OffscreenCanvas: defIllegal("OffscreenCanvas"),
+    OffscreenCanvasRenderingContext2D: defIllegal("OffscreenCanvasRenderingContext2D"),
+    DataTransfer: defIllegal("DataTransfer"),
+    DataTransferItem: defIllegal("DataTransferItem"),
+    DataTransferItemList: defIllegal("DataTransferItemList"),
+    MessagePort: defIllegal("MessagePort"),
+    MessageChannel: defIllegal("MessageChannel"),
+    BroadcastChannel: defIllegal("BroadcastChannel"),
+    ErrorEvent: defIllegal("ErrorEvent"),
+    SubmitEvent: defIllegal("SubmitEvent"),
+    PromiseRejectionEvent: defIllegal("PromiseRejectionEvent"),
+    PageTransitionEvent: defIllegal("PageTransitionEvent"),
+    BeforeUnloadEvent: defIllegal("BeforeUnloadEvent"),
+    CommandEvent: defIllegal("CommandEvent"),
+    Navigation: defIllegal("Navigation"),
+    NavigateEvent: defIllegal("NavigateEvent"),
+    NavigationHistoryEntry: defIllegal("NavigationHistoryEntry"),
+    NavigationDestination: defIllegal("NavigationDestination"),
+    NavigationTransition: defIllegal("NavigationTransition"),
+    TextTrackCue: defIllegal("TextTrackCue"),
+    AudioTrack: defIllegal("AudioTrack"),
+    VideoTrack: defIllegal("VideoTrack"),
+    CloseWatcher: defIllegal("CloseWatcher"),
+    XMLSerializer: defIllegal("XMLSerializer"),
+    ImageBitmap: defIllegal("ImageBitmap"),
+    UserActivation: defIllegal("UserActivation"),
+    Plugin: defIllegal("Plugin"),
+    PluginArray: defIllegal("PluginArray"),
+    MimeType: defIllegal("MimeType"),
+    MimeTypeArray: defIllegal("MimeTypeArray"),
+    Origin: defIllegal("Origin"),
+    NotRestoredReasons: defIllegal("NotRestoredReasons"),
+    NotRestoredReasonDetails: defIllegal("NotRestoredReasonDetails"),
     ElementInternals, CustomStateSet,
     Image, Audio, Option, external: windowExternal,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
@@ -5564,7 +5668,7 @@
         channel.addEventListener("message", (ev) => resolve(ev.data));
       });
     },
-    navigator: {
+    navigator: Object.assign(Object.create(Navigator.prototype), {
       userAgent: "Vector/0.0.1", language: "en-US", languages: ["en-US"], onLine: true, platform: "vector",
       sendBeacon() { return true; },
       registerProtocolHandler() {},
@@ -5626,7 +5730,7 @@
           }
         },
       },
-    },
+    }),
     screen: { width: D("innerWidth"), height: D("innerHeight"), colorDepth: 24 },
     devicePixelRatio: 1,
     get innerWidth() { return D("innerWidth"); },
@@ -6041,7 +6145,10 @@
   windowProps.originAgentCluster = false;
   windowProps.frameElement = null;
   windowProps.opener = null;
-  windowProps.navigation = { currentEntry: null, entries() { return []; } };
+  windowProps.navigation = Object.assign(Object.create(windowProps.Navigation.prototype), {
+    currentEntry: null,
+    entries() { return []; },
+  });
   windowProps.length = 0;
   windowProps.alert = function alert(m) { D("scriptDialog", "alert", m == null ? "" : String(m), ""); };
   windowProps.confirm = function confirm(m) { return !!D("scriptDialog", "confirm", m == null ? "" : String(m), ""); };
@@ -6147,8 +6254,8 @@
   defineHandlers(HTMLElement.prototype, eventHandlerNames, true);
   defineHandlers(HTMLBodyElement.prototype, windowHandlerNames, true);
   defineHandlers(HTMLFrameSetElement.prototype, windowHandlerNames, true);
-  defineHandlers(globalThis, eventHandlerNames, true);
-  defineHandlers(globalThis, windowHandlerNames, true);
+  defineHandlers(Window.prototype, eventHandlerNames, true);
+  defineHandlers(Window.prototype, windowHandlerNames, true);
 
   function brandWrap(ctor) {
     const proto = ctor.prototype;
@@ -6214,15 +6321,23 @@
   brandWrap(Document);
   brandWrap(Node);
   brandWrap(Element);
-  brandWrap(HTMLElement);
-  brandWrap(HTMLBodyElement);
-  brandWrap(HTMLFrameSetElement);
-  brandWrap(HTMLMediaElement);
-  brandWrap(HTMLLinkElement);
-  brandWrap(HTMLTitleElement);
+  brandWrap(EventTarget);
   brandWrap(EventSource);
   brandWrap(CanvasRenderingContext2D);
-  brandWrap(EventTarget);
+  brandWrap(Window);
+  brandWrap(Storage);
+  brandWrap(Navigator);
+  brandWrap(FileList);
+  brandWrap(ValidityState);
+  brandWrap(MediaError);
+  brandWrap(TimeRanges);
+  brandWrap(TextTrack);
+  brandWrap(TextTrackList);
+  brandWrap(AudioTrackList);
+  brandWrap(VideoTrackList);
+  for (const C of Object.values(windowProps)) {
+    if (typeof C === "function" && C.prototype && /^HTML/.test(C.name || "")) brandWrap(C);
+  }
   for (const name of ["parseHTMLUnsafe", "parseHTML"]) {
     const fn = Document[name];
     if (typeof fn === "function") {
@@ -6294,6 +6409,10 @@
   ownAccessor(globalThis, "customElements", () => windowProps.customElements);
   ownAccessor(globalThis, "navigator", () => windowProps.navigator);
   ownAccessor(globalThis, "clientInformation", () => windowProps.navigator, undefined, false, true);
+  ownAccessor(globalThis, "localStorage", () => windowProps.localStorage);
+  ownAccessor(globalThis, "sessionStorage", () => windowProps.sessionStorage);
+  ownAccessor(globalThis, "isSecureContext", () => true);
+  ownAccessor(globalThis, "crossOriginIsolated", () => false);
   ownAccessor(globalThis, "name", () => globalThis.__veName || "", (v) => { globalThis.__veName = String(v); });
   ownAccessor(globalThis, "status", () => globalThis.__veStatus || "", (v) => { globalThis.__veStatus = String(v); });
   ownAccessor(globalThis, "opener", () => globalThis.__veOpener == null ? null : globalThis.__veOpener, (v) => { globalThis.__veOpener = v; });
@@ -6343,6 +6462,19 @@
   }, 1);
   globalThis.captureEvents = windowOp(function captureEvents() {}, 0);
   globalThis.releaseEvents = windowOp(function releaseEvents() {}, 0);
+  globalThis.reportError = windowOp(function reportError(e) {
+    if (arguments.length < 1) throw new TypeError("Failed to execute 'reportError' on 'Window': 1 argument required, but only 0 present.");
+    try { console.error(e); } catch (err) {}
+  }, 1);
+  if (typeof globalThis.setTimeout === "function") {
+    globalThis.setTimeout = windowOp(globalThis.setTimeout, 1);
+    globalThis.setInterval = windowOp(globalThis.setInterval, 1);
+    globalThis.clearTimeout = windowOp(globalThis.clearTimeout, 0);
+    globalThis.clearInterval = windowOp(globalThis.clearInterval, 0);
+    globalThis.queueMicrotask = windowOp(globalThis.queueMicrotask, 1);
+    globalThis.requestAnimationFrame = windowOp(globalThis.requestAnimationFrame, 1);
+    globalThis.cancelAnimationFrame = windowOp(globalThis.cancelAnimationFrame, 1);
+  }
 
   const origSetProto = Object.setPrototypeOf;
   const origReflectSet = Reflect.setPrototypeOf;
@@ -6369,7 +6501,7 @@
       configurable: true,
     });
   }
-  for (const name of ["addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "alert", "confirm", "prompt", "print", "focus", "blur", "stop", "close", "open", "getComputedStyle", "matchMedia", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "btoa", "atob", "fetch", "getSelection"]) {
+  for (const name of ["addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "alert", "confirm", "prompt", "print", "focus", "blur", "stop", "close", "open", "getComputedStyle", "matchMedia", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "btoa", "atob", "fetch", "getSelection", "reportError"]) {
     const fn = globalThis[name];
     if (typeof fn === "function") {
       try {

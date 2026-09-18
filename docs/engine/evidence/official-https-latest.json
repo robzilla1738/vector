@@ -24,7 +24,7 @@
       "path": "html/dom/idlharness.https.html",
       "status": "FAIL",
       "duration_ms": 1776,
-      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. Official table/input/select/label/progress/map/anchor members plus form-associated constraint validation now exist (bindings official_html_table_input_select_and_label_idl PASS). Official file still FAIL: document.all [[IsHTMLDDA]] plus remaining members. Not an official idlharness PASS."
+      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. After table/input/select IDL the official file still FAIL (2218ms): document.all [[IsHTMLDDA]] plus remaining members. Brand wrap, named table methods, media constants on prototype, Window timer lengths, and missing HTML constructors added next; not recorded as PASS."
     }
   ]
 }
