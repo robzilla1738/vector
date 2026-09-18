@@ -1422,6 +1422,16 @@
           const named = namedItemValue(document, name);
           return named === undefined ? undefined : named;
         },
+        set(v) {
+          // HTML Window named properties are replaceable. Next.js assigns
+          // window.__NEXT_DATA__ after the JSON script with that id exists.
+          Object.defineProperty(globalThis, name, {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: v,
+          });
+        },
       });
     } catch (e) {}
   };

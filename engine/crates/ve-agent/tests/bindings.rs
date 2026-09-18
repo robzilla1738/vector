@@ -833,6 +833,26 @@ fn template_content_cssstylesheet_and_import_node() {
 }
 
 #[test]
+fn window_named_id_properties_are_replaceable() {
+    let mut page = open(r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const el = document.getElementById("__NEXT_DATA__");
+              const before = window.__NEXT_DATA__ === el;
+              window.__NEXT_DATA__ = { props: { pageProps: {} }, page: "/" };
+              return {
+                before,
+                assigned: window.__NEXT_DATA__ && window.__NEXT_DATA__.page === "/"
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["before"], true, "{v}");
+    assert_eq!(v["assigned"], true, "{v}");
+}
+
+#[test]
 fn custom_elements_in_imported_template_upgrade_inside_shadow() {
     let mut page = open(r#"<body><todo-host></todo-host></body>"#);
     let v = page
