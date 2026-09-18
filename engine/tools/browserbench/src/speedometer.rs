@@ -1419,7 +1419,8 @@ mod tests {
                         };
                       }
                       var pathLen = 0;
-                      for (var n = input; n; n = n.parentNode) pathLen++;
+                      for (var n = input; n && pathLen < 64; n = n.parentNode) pathLen++;
+                      window.__veNamedLookups = 0;
                       var t0 = Date.now();
                       input.focus();
                       var focusMs = Date.now() - t0;
@@ -1451,6 +1452,7 @@ mod tests {
                         createMs: createMs,
                         filterMs: filterMs,
                         pathLen: pathLen,
+                        namedLookups: window.__veNamedLookups || 0,
                         nodes: document.getElementsByTagName("*").length
                       });
                     })()"##,

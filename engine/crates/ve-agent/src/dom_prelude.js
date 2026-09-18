@@ -1384,6 +1384,7 @@
   function namedElementsOf(doc, name) {
     const out = [];
     if (!doc || !name) return out;
+    globalThis.__veNamedLookups = (globalThis.__veNamedLookups || 0) + 1;
     const all = doc.getElementsByTagName("*");
     for (let i = 0; i < all.length; i++) {
       if (namedElementMatches(all[i], name)) out.push(all[i]);
