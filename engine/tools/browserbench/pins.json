@@ -17,7 +17,7 @@
       "SunSpider/tagcloud.js"
     ],
     "status": "official-sunspider-and-default-js",
-    "note": "Official SunSpider group (12) plus Default JS workloads loaded from --jetstream-dir at this pin. mandreel/pdfjs/FlightPlanner and async/wasm/.z Default tests stay unexecuted. Not a published JetStream geometric-mean score."
+    "note": "Official SunSpider group (12) plus Default JS workloads loaded from --jetstream-dir at this pin. .z assets are zlib-inflated then late-evaluated (FlightPlanner, json-*-inspector). mandreel/pdfjs and async/wasm stay unexecuted. Not a published JetStream geometric-mean score."
   },
   "speedometer": {
     "repo": "https://github.com/WebKit/Speedometer",
@@ -28,7 +28,7 @@
   "motionmark": {
     "repo": "https://github.com/WebKit/MotionMark",
     "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
-    "status": "gpu",
+    "status": "official-html-multiply",
     "officialNames": [
       "Multiply",
       "Canvas Arcs",
@@ -39,6 +39,6 @@
       "Design",
       "Suits"
     ],
-    "note": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. canvas-class and gpu.multiply are adapted class probes. Not a published MotionMark score."
+    "note": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. Multiply executes official tests/core/multiply.html when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score."
   }
 }

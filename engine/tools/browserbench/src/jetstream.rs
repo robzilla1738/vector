@@ -96,7 +96,7 @@ pub(crate) const SUNSPIDER: &[(&str, &str)] = &[
 pub(crate) const GATED: &[&str] = &["jetstream.n-body", "jetstream.crypto-sha1"];
 
 /// Official Default JS workloads from `JetStreamDriver.js` that are
-/// `DefaultBenchmark`, have no `.z` assets, and stay under a 2 MiB concat.
+/// `DefaultBenchmark`. `.z` files are zlib-inflated then late-evaluated.
 const DEFAULT_JS: &[(&str, &[&str], bool)] = &[
     (
         "Air",
@@ -239,20 +239,43 @@ const DEFAULT_JS: &[(&str, &[&str], bool)] = &[
         ],
         false,
     ),
+    (
+        "FlightPlanner",
+        &[
+            "./RexBench/FlightPlanner/airways.js",
+            "./RexBench/FlightPlanner/waypoints.js.z",
+            "./RexBench/FlightPlanner/flight_planner.js",
+            "./RexBench/FlightPlanner/expectations.js",
+            "./RexBench/FlightPlanner/benchmark.js",
+        ],
+        false,
+    ),
+    (
+        "json-stringify-inspector",
+        &[
+            "./SeaMonster/inspector-json-payload.js.z",
+            "./SeaMonster/json-stringify-inspector.js",
+        ],
+        false,
+    ),
+    (
+        "json-parse-inspector",
+        &[
+            "./SeaMonster/inspector-json-payload.js.z",
+            "./SeaMonster/json-parse-inspector.js",
+        ],
+        false,
+    ),
 ];
 
 const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[
     (
         "mandreel",
-        "Octane/mandreel.js is 4.8MB; concat exceeds this runner's 2MiB cap",
+        "Octane/mandreel.js is 4.8MB; late-eval of that source is not run in this lab",
     ),
     (
         "pdfjs",
         "Octane/pdfjs.js (1.4MB) SIGKILL/OOM when concatenated into the page",
-    ),
-    (
-        "FlightPlanner",
-        "RexBench/FlightPlanner uses a .z preload this runner does not decompress",
     ),
 ];
 
@@ -316,12 +339,12 @@ fn run_default_js(
     let mut results = Vec::new();
     for (name, files, det_rand) in DEFAULT_JS {
         eprintln!("browserbench: start jetstream.{name}");
-        match load_concat(root, files, *det_rand) {
-            Ok(source) => results.push(crate::jetstream(
+        match load_chunks(root, files, *det_rand) {
+            Ok(chunks) => results.push(crate::jetstream_chunks(
                 engine,
                 iterations,
                 &format!("jetstream.{name}"),
-                &source,
+                &chunks,
                 name,
             )),
             Err(detail) => results.push(SuiteResult {
@@ -343,28 +366,33 @@ fn run_default_js(
     results
 }
 
-fn load_concat(root: &std::path::Path, files: &[&str], det_rand: bool) -> Result<String, String> {
-    let mut source = String::from(DETERMINISTIC_RANDOM);
+fn load_chunks(
+    root: &std::path::Path,
+    files: &[&str],
+    det_rand: bool,
+) -> Result<Vec<String>, String> {
+    let mut chunks = vec![DETERMINISTIC_RANDOM.to_owned()];
     if det_rand {
-        source.push_str("Math.random.__resetSeed();\n");
+        chunks.push("Math.random.__resetSeed();\n".into());
     }
-    let mut total = source.len();
     for rel in files {
         let path = root.join(rel.trim_start_matches("./"));
-        let chunk =
-            std::fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
-        total += chunk.len();
-        if total > 2 * 1024 * 1024 {
-            return Err(format!(
-                "concat {} exceeds 2MiB at {}",
-                total,
-                path.display()
-            ));
-        }
-        source.push_str(&chunk);
-        source.push('\n');
+        chunks.push(read_js(&path)?);
     }
-    Ok(source)
+    Ok(chunks)
+}
+
+fn read_js(path: &std::path::Path) -> Result<String, String> {
+    if path.extension().and_then(|e| e.to_str()) == Some("z") {
+        let bytes = std::fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
+        let mut decoder = flate2::read::ZlibDecoder::new(bytes.as_slice());
+        let mut out = String::new();
+        std::io::Read::read_to_string(&mut decoder, &mut out)
+            .map_err(|e| format!("inflate {}: {e}", path.display()))?;
+        Ok(out)
+    } else {
+        std::fs::read_to_string(path).map_err(|e| format!("read {}: {e}", path.display()))
+    }
 }
 
 fn notrun(name: &str, revision: &str, detail: &str) -> SuiteResult {
@@ -376,5 +404,27 @@ fn notrun(name: &str, revision: &str, detail: &str) -> SuiteResult {
         p50_ms: None,
         p95_ms: None,
         detail: Some(detail.into()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::read_js;
+    use std::io::Write;
+
+    #[test]
+    fn inflates_official_zlib_dot_z() {
+        let dir = tempfile_dir();
+        let path = dir.join("payload.js.z");
+        let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::fast());
+        encoder.write_all(b"var payload = 42;\n").unwrap();
+        std::fs::write(&path, encoder.finish().unwrap()).unwrap();
+        assert_eq!(read_js(&path).unwrap(), "var payload = 42;\n");
+    }
+
+    fn tempfile_dir() -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("vector-jetstream-z-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        dir
     }
 }

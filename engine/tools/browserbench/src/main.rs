@@ -47,6 +47,9 @@ struct Args {
     /// Official JetStream Next checkout (pin in `pins.json`) for Default JS workloads.
     #[arg(long)]
     jetstream_dir: Option<PathBuf>,
+    /// Official MotionMark checkout (pin in `pins.json`) for official HTML workloads.
+    #[arg(long)]
+    motionmark_dir: Option<PathBuf>,
 }
 
 #[derive(Serialize)]
@@ -90,6 +93,17 @@ pub(crate) fn jetstream(
     source: &str,
     path: &str,
 ) -> SuiteResult {
+    jetstream_chunks(engine, iterations, name, &[source.to_owned()], path)
+}
+
+/// Load official sources after `open` so large `.z` payloads are not HTML text nodes.
+pub(crate) fn jetstream_chunks(
+    engine: &mut VectorEngine,
+    iterations: u32,
+    name: &str,
+    chunks: &[String],
+    path: &str,
+) -> SuiteResult {
     let revision = pin("jetstream", "revision");
     if !cfg!(feature = "v8") {
         return SuiteResult {
@@ -102,7 +116,7 @@ pub(crate) fn jetstream(
             detail: Some("built without v8".into()),
         };
     }
-    let html = format!("<!doctype html><title>{name}</title><script>\n{source}\n</script>");
+    let html = format!("<!doctype html><title>{name}</title>");
     let mut samples = Vec::new();
     let mut last_err = None;
     for _ in 0..iterations.max(1) {
@@ -119,7 +133,18 @@ pub(crate) fn jetstream(
             }
         };
         if let Ok(page) = engine.page_mut(opened.page) {
-            page.settle(2_000);
+            page.settle(500);
+        }
+        let load = engine.page_mut(opened.page).and_then(|p| {
+            for chunk in chunks {
+                p.evaluate(chunk)?;
+            }
+            Ok(())
+        });
+        if let Err(e) = load {
+            last_err = Some(e.to_string());
+            engine.close(opened.page);
+            continue;
         }
         let started = Instant::now();
         match engine.page_mut(opened.page).and_then(|p| {
@@ -341,7 +366,15 @@ fn main() -> Result<()> {
         suites.push(speedometer_class(&mut engine, args.iterations));
     }
     if only == "all" || only == "motionmark" {
-        suites.extend(motionmark::official_names());
+        let motionmark_dir = args
+            .motionmark_dir
+            .clone()
+            .or_else(|| std::env::var_os("VECTOR_MOTIONMARK_DIR").map(PathBuf::from));
+        suites.extend(motionmark::run(
+            &mut engine,
+            args.iterations,
+            motionmark_dir.as_deref(),
+        ));
         suites.push(motionmark_class(&mut engine, args.iterations));
         suites.push(motionmark::run_gpu(args.iterations));
     }
@@ -372,11 +405,11 @@ fn main() -> Result<()> {
                 "passed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "PASS").count(),
                 "failed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "FAIL").count(),
                 "officialGroup": 12,
-                "note": "Official SunSpider group plus Default JS workloads loaded from --jetstream-dir. Skipped .z/async/wasm and mandreel/pdfjs. Not a JetStream Next geometric-mean published score."
+                "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib-decompressed .z assets (FlightPlanner, json-*-inspector). mandreel/pdfjs and async/wasm stay unexecuted. Not a JetStream Next geometric-mean published score."
             },
             "motionmark13": {
                 "officialNames": 8,
-                "note": "Official MotionMark 1.3 names from resources/runner/tests.js. canvas-class and gpu.multiply are adapted class probes, not a published MotionMark score."
+                "note": "Official MotionMark 1.3 names from resources/runner/tests.js. Multiply executes official tests/core/multiply.html when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score."
             },
             "phases": ["parse/style/layout(openMs)", "js(jsMs)", "harnessSettle(settleMs)", "unaccounted"],
             "speedometer30": {
