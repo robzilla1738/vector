@@ -1,13 +1,37 @@
 {
   "artifact": "vector-engine independent probes",
   "review": "Vector_Current_Review_60b2d41",
-  "generated": "2026-09-17",
+  "generated": "2026-09-18",
   "note": "Minimal spec-backed regressions for the review's remaining counterexamples. Results are from engine bindings, not a claim of whole-web coverage.",
   "coverage": {
-    "family": "html/dom + url + events + streams",
-    "denominator": "official html/dom tree plus these probes",
+    "family": "html/dom/partial-updates + url + events + streams",
+    "officialPin": "7c20438303d2b39c8a2b924ed57dfa6448fd2ed2",
+    "officialTree": "html/dom/partial-updates",
+    "official": {
+      "pass": 20,
+      "fail": 10,
+      "total": 30
+    },
+    "supportedSubset": {
+      "pass": 114,
+      "fail": 0,
+      "note": "same harness run, testharness.txt"
+    },
+    "denominator": "official html/dom/partial-updates (30) plus supported testharness subset",
     "exclusions": [
       "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\""
+    ],
+    "remainingOfficialFails": [
+      "buffer-streaming-reflection.html",
+      "sanitize-boolean.html",
+      "sanitize-template-element.html",
+      "src-csp-cors.sub.html",
+      "src-nonce.sub.html",
+      "src-referrerpolicy.sub.html",
+      "src-sri.sub.html",
+      "src-streaming.html",
+      "streaming-target-marker-removed.html",
+      "template-for-empty.html"
     ]
   },
   "counterexamples": [

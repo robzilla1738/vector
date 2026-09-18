@@ -1,0 +1,786 @@
+{
+  "fixtures": "/workspace/engine/tools/wpt-harness/../../fixtures/harness",
+  "tested_subset": 144,
+  "overall_manifest": 883,
+  "http_origin": "http://127.0.0.1:34937",
+  "tree_family": "html/dom/partial-updates",
+  "tree_complete": true,
+  "fonts_dir": "/workspace/engine/tools/wpt-harness/../../conformance/fonts",
+  "idlharness": true,
+  "totals": {
+    "total": 144,
+    "pass": 134,
+    "fail": 10,
+    "timeout": 0,
+    "crash": 0,
+    "notrun": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "path": "capabilities.html",
+      "status": "PASS",
+      "duration_ms": 23
+    },
+    {
+      "path": "pixel-opacity.html",
+      "status": "PASS",
+      "detail": "800x600",
+      "duration_ms": 95
+    },
+    {
+      "path": "testharness-dom.html",
+      "status": "PASS",
+      "duration_ms": 17
+    },
+    {
+      "path": "idl-element.html",
+      "status": "PASS",
+      "duration_ms": 483
+    },
+    {
+      "path": "idb-index.html",
+      "status": "PASS",
+      "duration_ms": 19
+    },
+    {
+      "path": "worker-isolate.html",
+      "status": "PASS",
+      "duration_ms": 19
+    },
+    {
+      "path": "fetch-data.html",
+      "status": "PASS",
+      "duration_ms": 71
+    },
+    {
+      "path": "pixel-text.html",
+      "status": "PASS",
+      "detail": "800x600",
+      "duration_ms": 59
+    },
+    {
+      "path": "pixel-clip.html",
+      "status": "PASS",
+      "detail": "800x600",
+      "duration_ms": 48
+    },
+    {
+      "path": "pixel-paint.html",
+      "status": "PASS",
+      "detail": "800x600",
+      "duration_ms": 46
+    },
+    {
+      "path": "pixel-image.html",
+      "status": "PASS",
+      "detail": "800x600",
+      "duration_ms": 47
+    },
+    {
+      "path": "css-supports-compound.html",
+      "status": "PASS",
+      "duration_ms": 18
+    },
+    {
+      "path": "matchmedia-listeners.html",
+      "status": "PASS",
+      "duration_ms": 17
+    },
+    {
+      "path": "matchmedia-orientation.html",
+      "status": "PASS",
+      "duration_ms": 19
+    },
+    {
+      "path": "event-trusted.html",
+      "status": "PASS",
+      "duration_ms": 18
+    },
+    {
+      "path": "websocket-close.html",
+      "status": "PASS",
+      "duration_ms": 17
+    },
+    {
+      "path": "storage.html",
+      "status": "PASS",
+      "duration_ms": 17
+    },
+    {
+      "path": "idb-unique.html",
+      "status": "PASS",
+      "duration_ms": 17
+    },
+    {
+      "path": "wpt-document-title.html",
+      "status": "PASS",
+      "duration_ms": 458
+    },
+    {
+      "path": "wpt-document-title-03.html",
+      "status": "PASS",
+      "duration_ms": 430
+    },
+    {
+      "path": "wpt-document-title-05.html",
+      "status": "PASS",
+      "duration_ms": 440
+    },
+    {
+      "path": "wpt-document-head.html",
+      "status": "PASS",
+      "duration_ms": 445
+    },
+    {
+      "path": "wpt-document-head-ns.html",
+      "status": "PASS",
+      "duration_ms": 439
+    },
+    {
+      "path": "wpt-getelementbyid.html",
+      "status": "PASS",
+      "duration_ms": 405
+    },
+    {
+      "path": "wpt-getelementsbyclassname-null-undef.html",
+      "status": "PASS",
+      "duration_ms": 119
+    },
+    {
+      "path": "wpt-element-hasattribute.html",
+      "status": "PASS",
+      "duration_ms": 151
+    },
+    {
+      "path": "wpt-document-forms.html",
+      "status": "PASS",
+      "duration_ms": 436
+    },
+    {
+      "path": "wpt-document-images.html",
+      "status": "PASS",
+      "duration_ms": 443
+    },
+    {
+      "path": "wpt-document-links.html",
+      "status": "PASS",
+      "duration_ms": 425
+    },
+    {
+      "path": "wpt-document-scripts.html",
+      "status": "PASS",
+      "duration_ms": 421
+    },
+    {
+      "path": "wpt-document-body.html",
+      "status": "PASS",
+      "duration_ms": 427
+    },
+    {
+      "path": "wpt-element-remove.html",
+      "status": "PASS",
+      "duration_ms": 424
+    },
+    {
+      "path": "wpt-id-name.html",
+      "status": "PASS",
+      "duration_ms": 416
+    },
+    {
+      "path": "wpt-isconnected.html",
+      "status": "PASS",
+      "duration_ms": 418
+    },
+    {
+      "path": "wpt-element-hasattributes.html",
+      "status": "PASS",
+      "duration_ms": 428
+    },
+    {
+      "path": "wpt-document-createcomment.html",
+      "status": "PASS",
+      "duration_ms": 419
+    },
+    {
+      "path": "wpt-document-createtextnode.html",
+      "status": "PASS",
+      "duration_ms": 417
+    },
+    {
+      "path": "wpt-element-childelementcount.html",
+      "status": "PASS",
+      "duration_ms": 430
+    },
+    {
+      "path": "wpt-node-nodename.html",
+      "status": "PASS",
+      "duration_ms": 433
+    },
+    {
+      "path": "wpt-node-nodevalue.html",
+      "status": "PASS",
+      "duration_ms": 426
+    },
+    {
+      "path": "wpt-node-textcontent.html",
+      "status": "PASS",
+      "duration_ms": 444
+    },
+    {
+      "path": "wpt-element-firstelementchild.html",
+      "status": "PASS",
+      "duration_ms": 435
+    },
+    {
+      "path": "wpt-doctype-literal.html",
+      "status": "PASS",
+      "duration_ms": 430
+    },
+    {
+      "path": "wpt-createhtmldocument.html",
+      "status": "PASS",
+      "duration_ms": 425
+    },
+    {
+      "path": "wpt-document-createpi.html",
+      "status": "PASS",
+      "duration_ms": 414
+    },
+    {
+      "path": "wpt-element-lastelementchild.html",
+      "status": "PASS",
+      "duration_ms": 429
+    },
+    {
+      "path": "wpt-element-nextelementsibling.html",
+      "status": "PASS",
+      "duration_ms": 439
+    },
+    {
+      "path": "wpt-element-previouselementsibling.html",
+      "status": "PASS",
+      "duration_ms": 462
+    },
+    {
+      "path": "wpt-characterdata-data.html",
+      "status": "PASS",
+      "duration_ms": 530
+    },
+    {
+      "path": "wpt-documentfragment-constructor.html",
+      "status": "PASS",
+      "duration_ms": 453
+    },
+    {
+      "path": "wpt-node-parentnode.html",
+      "status": "PASS",
+      "duration_ms": 428
+    },
+    {
+      "path": "wpt-node-contains.html",
+      "status": "PASS",
+      "duration_ms": 430
+    },
+    {
+      "path": "wpt-node-haschildnodes.html",
+      "status": "PASS",
+      "duration_ms": 453
+    },
+    {
+      "path": "wpt-node-clonenode.html",
+      "status": "PASS",
+      "duration_ms": 444
+    },
+    {
+      "path": "wpt-document-createelement.html",
+      "status": "PASS",
+      "duration_ms": 443
+    },
+    {
+      "path": "wpt-element-id.html",
+      "status": "PASS",
+      "duration_ms": 435
+    },
+    {
+      "path": "wpt-node-appendchild.html",
+      "status": "PASS",
+      "duration_ms": 439
+    },
+    {
+      "path": "wpt-node-removechild.html",
+      "status": "PASS",
+      "duration_ms": 441
+    },
+    {
+      "path": "wpt-element-tagname.html",
+      "status": "PASS",
+      "duration_ms": 561
+    },
+    {
+      "path": "wpt-document-url.html",
+      "status": "PASS",
+      "duration_ms": 418
+    },
+    {
+      "path": "wpt-element-matches.html",
+      "status": "PASS",
+      "duration_ms": 418
+    },
+    {
+      "path": "wpt-document-getelementsbytagname.html",
+      "status": "PASS",
+      "duration_ms": 423
+    },
+    {
+      "path": "wpt-element-closest.html",
+      "status": "PASS",
+      "duration_ms": 416
+    },
+    {
+      "path": "wpt-element-classname.html",
+      "status": "PASS",
+      "duration_ms": 439
+    },
+    {
+      "path": "wpt-document-charset.html",
+      "status": "PASS",
+      "duration_ms": 442
+    },
+    {
+      "path": "wpt-html-validity.html",
+      "status": "PASS",
+      "duration_ms": 449
+    },
+    {
+      "path": "wpt-element-toggleattribute.html",
+      "status": "PASS",
+      "duration_ms": 455
+    },
+    {
+      "path": "wpt-node-insertbefore.html",
+      "status": "PASS",
+      "duration_ms": 424
+    },
+    {
+      "path": "wpt-node-replacechild.html",
+      "status": "PASS",
+      "duration_ms": 435
+    },
+    {
+      "path": "wpt-element-queryselector.html",
+      "status": "PASS",
+      "duration_ms": 468
+    },
+    {
+      "path": "wpt-element-classlist.html",
+      "status": "PASS",
+      "duration_ms": 436
+    },
+    {
+      "path": "wpt-element-hidden.html",
+      "status": "PASS",
+      "duration_ms": 457
+    },
+    {
+      "path": "wpt-node-comparedocumentposition.html",
+      "status": "PASS",
+      "duration_ms": 452
+    },
+    {
+      "path": "wpt-node-isequalnode.html",
+      "status": "PASS",
+      "duration_ms": 464
+    },
+    {
+      "path": "wpt-element-attachshadow.html",
+      "status": "PASS",
+      "duration_ms": 471
+    },
+    {
+      "path": "wpt-element-dataset.html",
+      "status": "PASS",
+      "duration_ms": 440
+    },
+    {
+      "path": "wpt-element-getattributenames.html",
+      "status": "PASS",
+      "duration_ms": 436
+    },
+    {
+      "path": "wpt-node-normalize.html",
+      "status": "PASS",
+      "duration_ms": 463
+    },
+    {
+      "path": "wpt-mutationobserver-attributes.html",
+      "status": "PASS",
+      "duration_ms": 474
+    },
+    {
+      "path": "wpt-element-scrollintoview.html",
+      "status": "PASS",
+      "duration_ms": 466
+    },
+    {
+      "path": "wpt-node-getrootnode.html",
+      "status": "PASS",
+      "duration_ms": 468
+    },
+    {
+      "path": "wpt-node-ownerdocument.html",
+      "status": "PASS",
+      "duration_ms": 497
+    },
+    {
+      "path": "wpt-node-issamenode.html",
+      "status": "PASS",
+      "duration_ms": 482
+    },
+    {
+      "path": "wpt-element-insertadjacent.html",
+      "status": "PASS",
+      "duration_ms": 489
+    },
+    {
+      "path": "wpt-document-readystate.html",
+      "status": "PASS",
+      "duration_ms": 472
+    },
+    {
+      "path": "wpt-characterdata-methods.html",
+      "status": "PASS",
+      "duration_ms": 459
+    },
+    {
+      "path": "wpt-element-queryselectorall.html",
+      "status": "PASS",
+      "duration_ms": 429
+    },
+    {
+      "path": "wpt-document-adoptnode.html",
+      "status": "PASS",
+      "duration_ms": 430
+    },
+    {
+      "path": "wpt-document-importnode.html",
+      "status": "PASS",
+      "duration_ms": 450
+    },
+    {
+      "path": "wpt-node-lookupnamespace.html",
+      "status": "PASS",
+      "duration_ms": 463
+    },
+    {
+      "path": "wpt-range-basic.html",
+      "status": "PASS",
+      "duration_ms": 416
+    },
+    {
+      "path": "wpt-text-splittext.html",
+      "status": "PASS",
+      "duration_ms": 410
+    },
+    {
+      "path": "wpt-mutationobserver-siblings.html",
+      "status": "PASS",
+      "duration_ms": 417
+    },
+    {
+      "path": "wpt-element-before-after.html",
+      "status": "PASS",
+      "duration_ms": 436
+    },
+    {
+      "path": "wpt-element-outerhtml.html",
+      "status": "PASS",
+      "duration_ms": 422
+    },
+    {
+      "path": "wpt-document-elementfrompoint.html",
+      "status": "PASS",
+      "duration_ms": 417
+    },
+    {
+      "path": "wpt-document-activeelement.html",
+      "status": "PASS",
+      "duration_ms": 440
+    },
+    {
+      "path": "wpt-document-cookie.html",
+      "status": "PASS",
+      "duration_ms": 440
+    },
+    {
+      "path": "wpt-document-treewalker.html",
+      "status": "PASS",
+      "duration_ms": 425
+    },
+    {
+      "path": "wpt-element-classlist-replace.html",
+      "status": "PASS",
+      "duration_ms": 454
+    },
+    {
+      "path": "wpt-selection-range.html",
+      "status": "PASS",
+      "duration_ms": 432
+    },
+    {
+      "path": "wpt-document-getelementsbyname.html",
+      "status": "PASS",
+      "duration_ms": 437
+    },
+    {
+      "path": "wpt-document-compatmode.html",
+      "status": "PASS",
+      "duration_ms": 448
+    },
+    {
+      "path": "wpt-idb-abort.html",
+      "status": "PASS",
+      "duration_ms": 423
+    },
+    {
+      "path": "wpt-node-prepend.html",
+      "status": "PASS",
+      "duration_ms": 451
+    },
+    {
+      "path": "wpt-node-baseuri.html",
+      "status": "PASS",
+      "duration_ms": 419
+    },
+    {
+      "path": "idlharness-load.html",
+      "status": "PASS",
+      "duration_ms": 941
+    },
+    {
+      "path": "wpt-nameditem.html",
+      "status": "PASS",
+      "duration_ms": 141
+    },
+    {
+      "path": "wpt-innertext.html",
+      "status": "PASS",
+      "duration_ms": 119
+    },
+    {
+      "path": "wpt-outertext.html",
+      "status": "PASS",
+      "duration_ms": 116
+    },
+    {
+      "path": "wpt-aria-reflection.html",
+      "status": "PASS",
+      "duration_ms": 115
+    },
+    {
+      "path": "wpt-aria-labelledby.html",
+      "status": "PASS",
+      "duration_ms": 121
+    },
+    {
+      "path": "wpt-partial-updates.html",
+      "status": "PASS",
+      "duration_ms": 123
+    },
+    {
+      "path": "wpt-aria-enumerated.html",
+      "status": "PASS",
+      "duration_ms": 116
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/chained-streaming-templates-with-custom-element.html",
+      "status": "PASS",
+      "duration_ms": 120,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-immutability.html",
+      "status": "PASS",
+      "duration_ms": 165,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-in-place.html",
+      "status": "PASS",
+      "duration_ms": 262,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-mutation-observer.html",
+      "status": "PASS",
+      "duration_ms": 299,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-reflection.html",
+      "status": "PASS",
+      "duration_ms": 452,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-streaming-reflection.html",
+      "status": "FAIL",
+      "detail": "template.content reflects the buffered content progressively while streaming: 1:assert_true: expected true got false",
+      "duration_ms": 485,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/buffer-targeted.html",
+      "status": "PASS",
+      "duration_ms": 492,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/empty-for-streaming.html",
+      "status": "PASS",
+      "duration_ms": 473,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-boolean.html",
+      "status": "FAIL",
+      "detail": "The sanitize attribute behaves like a boolean attribute: 1:Cannot read properties of null (reading 'textContent')",
+      "duration_ms": 504,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-default.html",
+      "status": "PASS",
+      "duration_ms": 457,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-nested.html",
+      "status": "PASS",
+      "duration_ms": 438,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-regular.html",
+      "status": "PASS",
+      "duration_ms": 134,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-template-element.html",
+      "status": "FAIL",
+      "detail": "Template with sanitize attribute should not strip itself when nested: 1:assert_true: inner span should be added, got: [\"TEMPLATE\",\"target-inner\",\"inner\",\"ok\"] expected true got false",
+      "duration_ms": 123,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/sanitize-unsafe.html",
+      "status": "PASS",
+      "duration_ms": 126,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-buffered.sub.html",
+      "status": "PASS",
+      "duration_ms": 342,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-cancel.html",
+      "status": "PASS",
+      "duration_ms": 471,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-csp-cors.sub.html",
+      "status": "FAIL",
+      "detail": "Cross-origin template src load succeeds when CORS Access-Control-Allow-Origin is present: 2:Test timed out,Cross-origin template src load fails when CORS Access-Control-Allow-Origin is missing: 3:",
+      "duration_ms": 481,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-csp.sub.html",
+      "status": "PASS",
+      "duration_ms": 462,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-nonce.sub.html",
+      "status": "FAIL",
+      "detail": "Template src load succeeds when nonce matches CSP policy: 2:Test timed out,Template src load fails when nonce mismatches CSP policy: 3:",
+      "duration_ms": 492,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-parser-blocking.html",
+      "status": "PASS",
+      "duration_ms": 470,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-referrerpolicy.sub.html",
+      "status": "FAIL",
+      "detail": "Template src referrerpolicy=no-referrer blocks Referer header: 2:Test timed out,Template src referrerpolicy=origin sends only origin in Referer header: 3:",
+      "duration_ms": 542,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-sri.sub.html",
+      "status": "FAIL",
+      "detail": "Template src load succeeds when Subresource Integrity hash matches: 2:Test timed out,Template src load fails when Subresource Integrity hash mismatches: 3:",
+      "duration_ms": 471,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/src-streaming.html",
+      "status": "FAIL",
+      "detail": "External template src streams progressively into target: 2:Test timed out",
+      "duration_ms": 448,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/fragment/streaming-target-marker-removed.html",
+      "status": "FAIL",
+      "detail": "Streaming target end marker can be removed mid-stream safely, falling back to appending: 1:Cannot read properties of null (reading 'textContent')",
+      "duration_ms": 450,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/stream-append-has-invalidation.html",
+      "status": "PASS",
+      "duration_ms": 546,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/stream-append-positional-pseudo-class-invalidation.html",
+      "status": "PASS",
+      "duration_ms": 505,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/stream-append-with-template-for.html",
+      "status": "PASS",
+      "duration_ms": 464,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/template-for-case-sensitive-dom-inserted.html",
+      "status": "PASS",
+      "duration_ms": 464,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/template-for-case-sensitive.html",
+      "status": "PASS",
+      "duration_ms": 471,
+      "tree": true
+    },
+    {
+      "path": "html/dom/partial-updates/tentative/template-for-empty.html",
+      "status": "FAIL",
+      "detail": "A template with an empty for attribute is ignored and attached to the DOM: 1:assert_not_equals: got disallowed value null",
+      "duration_ms": 467,
+      "tree": true
+    }
+  ]
+}
