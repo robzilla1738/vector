@@ -5216,3 +5216,136 @@ fn mouse_event_buttons_default_is_zero_and_mouseup_reaches_window() {
     assert_eq!(v["svgPoint"], 150, "{v}");
     assert_eq!(v["ownerSvg"], true, "{v}");
 }
+
+/// Perf-Dashboard PaneSelector constructs `_testsContainer` from a closed
+/// shadow via `content().querySelector('#tests')`. Official Render throws
+/// `childNodes` of undefined if that assignment never sticks.
+#[test]
+fn closed_shadow_template_query_selector_id_and_component_construct() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function probe(label, fn) {
+                try { return { label: label, ok: true, v: fn() }; }
+                catch (e) { return { label: label, ok: false, err: String(e && e.stack ? e.stack : e) }; }
+              }
+              const t = document.createElement("template");
+              t.innerHTML = '<div class="pane-selector-container"><div id="tests"></div><div id="platform"></div></div>';
+              const host = document.createElement("div");
+              const shadow = host.attachShadow({ mode: "closed" });
+              const imported = document.importNode(t.content, true);
+              shadow.appendChild(imported);
+              const q = shadow.querySelector("#tests");
+              const byId = shadow.getElementById ? shadow.getElementById("tests") : null;
+              class FakePane extends HTMLElement {
+                constructor() {
+                  super();
+                  this._shadow = null;
+                  this.ctorErr = null;
+                  try {
+                    const tpl = document.createElement("template");
+                    tpl.innerHTML = '<div class="pane-selector-container"><div id="tests"></div><div id="platform"></div></div>';
+                    this._shadow = this.attachShadow({ mode: "closed" });
+                    this._shadow.appendChild(document.importNode(tpl.content, true));
+                    this._testsContainer = this._shadow.querySelector("#tests");
+                    this._platformContainer = this._shadow.querySelector("#platform");
+                  } catch (e) {
+                    this.ctorErr = String(e && e.stack ? e.stack : e);
+                  }
+                }
+              }
+              customElements.define("fake-pane", FakePane);
+              const el = document.createElement("fake-pane");
+              document.body.appendChild(el);
+              return {
+                tplKids: t.content.childNodes.length,
+                importedKids: imported.childNodes.length,
+                shadowKids: shadow.childNodes.length,
+                shadowHtml: String(shadow.innerHTML || ""),
+                qType: q == null ? String(q) : q.tagName,
+                byIdType: byId == null ? String(byId) : byId.tagName,
+                elCtor: el.constructor && el.constructor.name,
+                testsType: el._testsContainer == null ? String(el._testsContainer) : el._testsContainer.tagName,
+                platformType: el._platformContainer == null ? String(el._platformContainer) : el._platformContainer.tagName,
+                ctorErr: el.ctorErr,
+                upgraded: !!el.__upgraded
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["tplKids"], 1, "{v}");
+    assert_eq!(v["qType"], "DIV", "{v}");
+    assert_eq!(v["byIdType"], "DIV", "{v}");
+    assert_eq!(v["testsType"], "DIV", "{v}");
+    assert_eq!(v["platformType"], "DIV", "{v}");
+    assert_eq!(v["ctorErr"], serde_json::Value::Null, "{v}");
+}
+
+/// createElement of a defined autonomous custom element must run the
+/// constructor immediately (HTML "create an element"). Deferred upgrade on
+/// insert constructed a second instance on an element that already had a
+/// closed shadow — Perf-Dashboard PaneSelector._testsContainer stayed unset.
+#[test]
+fn create_element_constructs_defined_custom_element_immediately() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const currently = new Map();
+              class Pane extends HTMLElement {}
+              class PaneComponent {
+                constructor() {
+                  let element = currently.get(PaneComponent);
+                  if (!element) {
+                    currently.set(PaneComponent, this);
+                    element = document.createElement("ve-pane");
+                    currently.delete(PaneComponent);
+                  }
+                  element.component = () => this;
+                  this._element = element;
+                  this._shadow = element.attachShadow({ mode: "closed" });
+                  const tpl = document.createElement("template");
+                  tpl.innerHTML = '<div id="tests"></div>';
+                  this._shadow.appendChild(document.importNode(tpl.content, true));
+                  this._testsContainer = this._shadow.querySelector("#tests");
+                }
+                element() { return this._element; }
+              }
+              customElements.define("ve-pane", class extends HTMLElement {
+                constructor() {
+                  super();
+                  const component = currently.get(PaneComponent);
+                  if (component) return;
+                  currently.set(PaneComponent, this);
+                  new PaneComponent();
+                  currently.delete(PaneComponent);
+                }
+                connectedCallback() {
+                  this.component().rendered = true;
+                }
+              });
+              const first = new PaneComponent();
+              const created = document.createElement("ve-pane");
+              document.body.appendChild(first.element());
+              let renderErr = null;
+              try { first._testsContainer.childNodes.length; }
+              catch (e) { renderErr = String(e && e.message ? e.message : e); }
+              return {
+                createdBuilt: !!(created && created.component && created.component() && created.component()._testsContainer),
+                createdType: created && created.component && created.component()._testsContainer
+                  ? created.component()._testsContainer.tagName : String(created && created.component && created.component()._testsContainer),
+                firstType: first._testsContainer == null ? String(first._testsContainer) : first._testsContainer.tagName,
+                sameComp: first.element().component() === first,
+                rendered: !!first.rendered,
+                renderErr: renderErr
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["firstType"], "DIV", "{v}");
+    assert_eq!(v["createdBuilt"], true, "{v}");
+    assert_eq!(v["sameComp"], true, "{v}");
+    assert_eq!(v["rendered"], true, "{v}");
+    assert_eq!(v["renderErr"], serde_json::Value::Null, "{v}");
+}

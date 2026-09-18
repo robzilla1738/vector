@@ -576,6 +576,29 @@
     }
     return n;
   }
+  function constructCustomElement(n) {
+    if (!n || n.nodeType !== 1) return;
+    if (templateInContent(n)) return;
+    const name = (n.localName || "").toLowerCase();
+    const ctor = registry.get(name);
+    if (!ctor) return;
+    if (n.__upgraded && n.__constructed) return;
+    n.__upgraded = true;
+    Object.setPrototypeOf(n, ctor.prototype);
+    if (!n.__constructed) {
+      upgrading = n;
+      try { new ctor(); } catch (e) { __ve.log("error", String(e)); }
+      upgrading = null;
+      n.__constructed = true;
+    }
+  }
+  function connectCustomElement(n) {
+    if (!n || n.__connected) return;
+    if (typeof n.connectedCallback !== "function") return;
+    if (!n.isConnected) return;
+    n.__connected = true;
+    try { n.connectedCallback(); } catch (e) { __ve.log("error", String(e)); }
+  }
   function upgradeTree(n) {
     if (!registry.size) return;
     if (!n || n.nodeType !== 1) return;
@@ -595,23 +618,8 @@
     if (!n || n.nodeType !== 1) return;
     if (templateInContent(n)) return;
     if (!force && !n.isConnected) return;
-    const name = (n.localName || "").toLowerCase();
-    const ctor = registry.get(name);
-    if (!ctor) return;
-    if (!n.__upgraded) {
-      n.__upgraded = true;
-      Object.setPrototypeOf(n, ctor.prototype);
-      if (!n.__constructed) {
-        upgrading = n;
-        try { new ctor(); } catch (e) { __ve.log("error", String(e)); }
-        upgrading = null;
-        n.__constructed = true;
-      }
-    }
-    if (!n.__connected && typeof n.connectedCallback === "function") {
-      n.__connected = true;
-      try { n.connectedCallback(); } catch (e) { __ve.log("error", String(e)); }
-    }
+    constructCustomElement(n);
+    connectCustomElement(n);
   }
   function handleOf(v) {
     if (v == null) return "";
@@ -5535,6 +5543,10 @@
     createElement(name) {
       const el = wrap(D("createElement", String(name)));
       if (el && String(name).toLowerCase() === "script") el._scriptCreated = true;
+      // Defined autonomous custom elements construct here, not on insert.
+      // ComponentBase createElement + later upgrade was a second instance
+      // whose attachShadow failed and left _testsContainer undefined.
+      constructCustomElement(el);
       return el;
     }
     createElementNS(ns, name) { return wrap(D("createElementNS", ns == null ? "" : String(ns), String(name))); }

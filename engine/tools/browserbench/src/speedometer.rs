@@ -72,7 +72,7 @@ const OFFICIAL_RUN_NEXT: &str = r#"(function () {
     var syncWall = Date.now();
     try { test.run(page); }
     catch (e) {
-      s.err = String(e && e.message ? e.message : e);
+      s.err = String(e && e.stack ? e.stack : (e && e.message ? e.message : e));
       s.done = true;
       s.stepDone = true;
       return;
@@ -1135,6 +1135,14 @@ fn run_one_official(
                           try { heading = !!document.querySelector("page-heading"); } catch (e) {}
                           try { if (typeof getChartPane === "function") getChartPane(); }
                           catch (e) { paneErr = String(e && e.message ? e.message : e); }
+                          var sel = document.querySelector("pane-selector");
+                          var comp = null, testsType = null, platformType = null, selShadow = false, selHtml = "", ctorName = "";
+                          try { comp = sel && sel.component && sel.component(); } catch (e) {}
+                          try { testsType = !comp ? "no-comp" : (comp._testsContainer == null ? String(comp._testsContainer) : comp._testsContainer.tagName); } catch (e) { testsType = String(e); }
+                          try { platformType = !comp ? "no-comp" : (comp._platformContainer == null ? String(comp._platformContainer) : comp._platformContainer.tagName); } catch (e) { platformType = String(e); }
+                          try { selShadow = !!(comp && comp._shadow); } catch (e) {}
+                          try { selHtml = comp && comp._shadow ? String(comp._shadow.innerHTML || "").slice(0, 200) : ""; } catch (e) {}
+                          try { ctorName = comp && comp.constructor && comp.constructor.name || ""; } catch (e) {}
                           return JSON.stringify({
                           render: !!document.getElementById("render"),
                           cursor: !!document.querySelector(".react-stockcharts-crosshair-cursor"),
@@ -1151,6 +1159,13 @@ fn run_one_official(
                           pending: !!(typeof ComponentBase !== "undefined" && ComponentBase._componentsToRender),
                           rafQ: typeof rAFCallbacks !== "undefined" ? rAFCallbacks.length : -1,
                           paneErr: paneErr,
+                          hasSel: !!sel,
+                          hasComp: !!comp,
+                          testsType: testsType,
+                          platformType: platformType,
+                          selShadow: selShadow,
+                          selHtml: selHtml,
+                          ctorName: ctorName,
                           tests: Object.keys((window.__veSp && window.__veSp.tests) || {})
                         });})()"##,
                     )
@@ -1548,7 +1563,6 @@ mod tests {
 
     #[cfg(feature = "v8")]
     #[test]
-    #[ignore = "official Render still throws childNodes on undefined during pane update"]
     fn official_perf_dashboard_steps_produce_a_suite_total() {
         let mut engine = bench_engine();
         let revision = pin("speedometer", "revision");
