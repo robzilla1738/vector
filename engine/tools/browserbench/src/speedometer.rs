@@ -466,8 +466,24 @@ fn emit_script(out: &mut String, js: &str) {
     out.push_str("\n</script>");
 }
 
+fn append_deferred(html: &mut String, deferred: &[String]) {
+    if deferred.is_empty() {
+        return;
+    }
+    let mut scripts = String::new();
+    for js in deferred {
+        emit_script(&mut scripts, js);
+    }
+    if let Some(i) = html.rfind("</body>") {
+        html.insert_str(i, &scripts);
+    } else {
+        html.push_str(&scripts);
+    }
+}
+
 fn inline_scripts(html: &str, dir: &Path) -> String {
     let mut out = String::new();
+    let mut deferred = Vec::new();
     let mut rest = html;
     let open = "<script";
     while let Some(i) = rest.find(open) {
@@ -476,6 +492,7 @@ fn inline_scripts(html: &str, dir: &Path) -> String {
         let Some(tag_end) = rest.find('>') else {
             out.push_str(open);
             out.push_str(rest);
+            append_deferred(&mut out, &deferred);
             return out;
         };
         let attrs = &rest[..tag_end];
@@ -489,11 +506,13 @@ fn inline_scripts(html: &str, dir: &Path) -> String {
             || lower.contains("type='application/json'")
             || lower.contains("importmap");
         let is_module = lower.contains("type=\"module\"") || lower.contains("type='module'");
+        let is_defer = is_module || lower.contains("defer");
         let is_nomodule = lower.contains("nomodule");
         if is_nomodule {
             if let Some(close) = rest.find("</script>") {
                 rest = &rest[close + 9..];
             } else {
+                append_deferred(&mut out, &deferred);
                 return out;
             }
             continue;
@@ -511,6 +530,7 @@ fn inline_scripts(html: &str, dir: &Path) -> String {
                 out.push_str(attrs);
                 out.push('>');
                 out.push_str(rest);
+                append_deferred(&mut out, &deferred);
                 return out;
             }
             continue;
@@ -523,6 +543,7 @@ fn inline_scripts(html: &str, dir: &Path) -> String {
                 let path = dir.join(src);
                 if is_module {
                     match crate::esm::bundle(&path) {
+                        Ok(js) if is_defer => deferred.push(js),
                         Ok(js) => emit_script(&mut out, &js),
                         Err(e) => {
                             out.push_str("<script>throw new Error(");
@@ -535,6 +556,7 @@ fn inline_scripts(html: &str, dir: &Path) -> String {
                     }
                 } else {
                     match std::fs::read_to_string(&path) {
+                        Ok(js) if is_defer => deferred.push(js),
                         Ok(js) => emit_script(&mut out, &js),
                         Err(_) => {
                             out.push_str(open);
@@ -547,6 +569,7 @@ fn inline_scripts(html: &str, dir: &Path) -> String {
                 }
             } else if is_module {
                 match crate::esm::bundle_inline(body, dir) {
+                    Ok(js) if is_defer => deferred.push(js),
                     Ok(js) => emit_script(&mut out, &js),
                     Err(_) => {
                         out.push_str(open);
@@ -566,6 +589,7 @@ fn inline_scripts(html: &str, dir: &Path) -> String {
         }
     }
     out.push_str(rest);
+    append_deferred(&mut out, &deferred);
     out
 }
 
@@ -1168,6 +1192,123 @@ mod tests {
 
     #[cfg(feature = "v8")]
     #[test]
+    fn web_components_workload_adds_and_finishes() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(
+            &mut engine,
+            "todomvc/vanilla-examples/javascript-web-components/dist/index.html",
+        );
+        let (after_add, after_finish, console) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            page.evaluate(&with_lib(
+                r##"(function () {
+                  var input = todoInput();
+                  if (!input) return JSON.stringify({ todo: false });
+                  for (var i = 0; i < 3; i++) {
+                    input.focus();
+                    input.value = "Task-" + i;
+                    fire(input, "input", { bubbles: true, data: "Task-" + i, inputType: "insertText" }, InputEvent);
+                    fire(input, "change");
+                    enter(input);
+                  }
+                  return JSON.stringify({ todo: true, added: countTodos() });
+                })()"##,
+            ))
+            .unwrap();
+            page.settle(250);
+            let after_add = page
+                .evaluate(&with_lib("JSON.stringify({ added: countTodos() })"))
+                .unwrap();
+            page.evaluate(&with_lib(
+                r##"(function () {
+                  completeAndDeleteTodos();
+                  return JSON.stringify({ remaining: countTodos() });
+                })()"##,
+            ))
+            .unwrap();
+            page.settle(250);
+            let after_finish = page
+                .evaluate(&with_lib("JSON.stringify({ remaining: countTodos() })"))
+                .unwrap();
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(180).collect())
+                .take(4)
+                .collect();
+            (after_add, after_finish, console)
+        };
+        engine.close(page_id);
+        let add: serde_json::Value = match &after_add {
+            serde_json::Value::String(s) => serde_json::from_str(s).unwrap_or(after_add.clone()),
+            other => other.clone(),
+        };
+        let finish: serde_json::Value = match &after_finish {
+            serde_json::Value::String(s) => serde_json::from_str(s).unwrap_or(after_finish.clone()),
+            other => other.clone(),
+        };
+        assert_eq!(add["added"], 3, "{add} err={console:?}");
+        assert_eq!(finish["remaining"], 0, "{finish} err={console:?}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn official_fast_fail_suites_boot_and_expose_input() {
+        let mut engine = bench_engine();
+        let suites = [
+            "todomvc/architecture-examples/react/dist/index.html",
+            "todomvc/architecture-examples/react-redux/dist/index.html",
+            "todomvc/architecture-examples/vue/dist/index.html",
+            "todomvc/architecture-examples/lit/dist/index.html",
+            "newssite/news-next/dist/index.html#/home",
+        ];
+        let mut fails = Vec::new();
+        for rel in suites {
+            let page_id = open_workload(&mut engine, rel);
+            let (probe, console) = {
+                let page = engine.page_mut(page_id).unwrap();
+                page.settle(3_000);
+                let probe = page
+                    .evaluate(&with_lib(
+                        r##"(function () {
+                          var input = todoInput();
+                          var news = document.querySelector("#navbar-dropdown-toggle");
+                          return {
+                            input: !!(input && input.tagName),
+                            news: !!news,
+                            title: document.title || "",
+                            root: !!(document.querySelector(".todoapp") || document.querySelector("#root") || document.querySelector("todo-app")),
+                            body: String(document.body && document.body.innerHTML || "").slice(0, 180)
+                          };
+                        })()"##,
+                    ))
+                    .unwrap();
+                let console: Vec<String> = page
+                    .console()
+                    .iter()
+                    .filter(|l| l.level == "error" || l.level == "warn")
+                    .map(|l| l.message.chars().take(400).collect())
+                    .take(6)
+                    .collect();
+                (probe, console)
+            };
+            engine.close(page_id);
+            let v: serde_json::Value = match &probe {
+                serde_json::Value::String(s) => serde_json::from_str(s).unwrap_or(probe.clone()),
+                other => other.clone(),
+            };
+            let ok = v["input"].as_bool() == Some(true) || v["news"].as_bool() == Some(true);
+            if !ok {
+                fails.push(format!("{rel} => {v} err={console:?}"));
+            }
+        }
+        assert!(fails.is_empty(), "{}", fails.join("\n"));
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
     fn remaining_official_workloads_add_and_finish() {
         let mut engine = bench_engine();
         let suites = [
@@ -1257,5 +1398,19 @@ mod tests {
         let dir = vendor_root().join("todomvc/architecture-examples/jquery/dist");
         let out = inline_scripts(html, &dir);
         assert!(!out.to_ascii_lowercase().contains("nomodule"), "{out}");
+    }
+
+    #[test]
+    fn defer_head_scripts_are_moved_past_the_mount_point() {
+        let dir = std::env::temp_dir();
+        let js_path = dir.join("ve-defer-app.js");
+        std::fs::write(&js_path, "window.__booted = !!document.getElementById('root');")
+            .unwrap();
+        let html = "<head><script defer src=\"ve-defer-app.js\"></script></head><body><div id=\"root\"></div></body>";
+        let out = inline_scripts(html, &dir);
+        let _ = std::fs::remove_file(&js_path);
+        let root_at = out.find("id=\"root\"").expect(&out);
+        let boot_at = out.find("window.__booted").expect(&out);
+        assert!(boot_at > root_at, "{out}");
     }
 }
