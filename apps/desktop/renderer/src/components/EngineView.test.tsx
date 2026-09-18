@@ -68,8 +68,11 @@ describe("EngineView", () => {
     await act(async () => {
       img.dispatchEvent(new MouseEvent("click", { clientX: 50, clientY: 40, bubbles: true }));
     });
-    expect(mockedCall).toHaveBeenCalledWith("pages.execute", {
-      program: { pageId: page.pageId, steps: [{ id: "ev-click", op: "clickPoint", x: 50, y: 40 }] },
+    expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
+      pageId: page.pageId,
+      type: "click",
+      x: 50,
+      y: 40,
     });
   });
 });

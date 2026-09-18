@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type WheelEvent } from "react";
-import type { PageTarget, Step } from "@vector/contracts";
+import type { PageTarget } from "@vector/contracts";
 import { call } from "../store";
 
 interface Shot {
@@ -11,8 +11,8 @@ interface Shot {
 
 /**
  * Vector Engine has no WebContentsView. The stage paints a software screenshot
- * of the same document the agent sees, and maps click/wheel back through
- * `pages.execute`.
+ * of the same document the agent sees, and maps click/wheel through
+ * `pages.engineInput` so takeover still types.
  */
 export function EngineView({ page }: { page: PageTarget }) {
   const [shot, setShot] = useState<Shot | null>(null);
@@ -31,11 +31,11 @@ export function EngineView({ page }: { page: PageTarget }) {
     void paint().catch(() => {});
   }, [paint, page.pageId, page.url, page.documentEpoch, page.lastRevision, page.loading]);
 
-  const run = async (steps: Step[]) => {
+  const run = async (input: { type: "click" | "scroll"; x?: number; y?: number; direction?: "up" | "down"; amount?: number }) => {
     if (busy.current || pageRef.current.controller === "agent") return;
     busy.current = true;
     try {
-      await call("pages.execute", { program: { pageId: pageRef.current.pageId, steps } });
+      await call("pages.engineInput", { pageId: pageRef.current.pageId, ...input });
       await paint();
     } finally {
       busy.current = false;
@@ -48,14 +48,14 @@ export function EngineView({ page }: { page: PageTarget }) {
     if (r.width === 0 || r.height === 0) return;
     const x = ((e.clientX - r.left) / r.width) * shot.width / shot.scale;
     const y = ((e.clientY - r.top) / r.height) * shot.height / shot.scale;
-    void run([{ id: "ev-click", op: "clickPoint", x, y }]).catch(() => {});
+    void run({ type: "click", x, y }).catch(() => {});
   };
 
   const onWheel = (e: WheelEvent<HTMLImageElement>) => {
     e.preventDefault();
     const direction = e.deltaY >= 0 ? "down" : "up";
     const amount = Math.min(800, Math.max(40, Math.abs(e.deltaY)));
-    void run([{ id: "ev-scroll", op: "scroll", direction, amount }]).catch(() => {});
+    void run({ type: "scroll", direction, amount }).catch(() => {});
   };
 
   if (!shot) return null;

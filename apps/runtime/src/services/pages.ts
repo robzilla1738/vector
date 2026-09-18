@@ -985,7 +985,18 @@ export class PageService {
   }
 
   /** Human pointer/key on the engine paint view — same document the agent uses. */
-  async onEngineInput(pageId: string, input: { type: string; x?: number; y?: number; button?: number; key?: string }) {
+  async onEngineInput(
+    pageId: string,
+    input: {
+      type: string;
+      x?: number;
+      y?: number;
+      button?: number;
+      key?: string;
+      direction?: "up" | "down" | "top" | "bottom";
+      amount?: number;
+    },
+  ) {
     const lp = this.live.get(pageId);
     if (!lp?.driver || lp.target.backend !== "vector-engine") return;
     this.onNativeTakeover(pageId);
@@ -994,6 +1005,9 @@ export class PageService {
         await lp.driver.clickPoint(input.x ?? 0, input.y ?? 0);
       } else if (input.type === "key" && input.key) {
         await lp.driver.press(input.key);
+      } else if (input.type === "scroll") {
+        const direction = input.direction ?? ((input.amount ?? 0) >= 0 ? "down" : "up");
+        await lp.driver.scroll({ direction, amount: Math.abs(input.amount ?? 40) });
       }
     } catch {
       /* input is best-effort */

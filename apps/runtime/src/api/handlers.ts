@@ -78,6 +78,20 @@ export function makeInvoker(s: Services) {
         if (!p.returnObservation) return result;
         return { ...result, observation: observation ? (format === "compact" ? compactObservation(observation) : observation) : undefined };
       }
+      case "pages.engineInput": {
+        const p = params as {
+          pageId: string;
+          type: string;
+          x?: number;
+          y?: number;
+          button?: number;
+          key?: string;
+          direction?: "up" | "down" | "top" | "bottom";
+          amount?: number;
+        };
+        await s.pages.onEngineInput(p.pageId, p);
+        return { ok: true };
+      }
       case "pages.capture": return s.pages.capture(params.pageId, params as never);
       case "pages.find": {
         const p = params as { pageId: string; text: string; forward: boolean; findNext: boolean };

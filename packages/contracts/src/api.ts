@@ -75,6 +75,17 @@ export const PagesCaptureParams = z.object({
   /** data url for transport; file for artifact storage */
   format: z.enum(["dataUrl", "artifact"]).default("dataUrl"),
 });
+/** Human pointer/key on the engine view. Not pages.execute — takeover must still type. */
+export const PagesEngineInputParams = z.object({
+  pageId: id,
+  type: z.enum(["click", "pointerdown", "scroll", "key"]),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  button: z.number().optional(),
+  key: z.string().optional(),
+  direction: z.enum(["up", "down", "top", "bottom"]).optional(),
+  amount: z.number().optional(),
+});
 export const PagesFindParams = z.object({
   pageId: id,
   text: z.string(),
@@ -213,6 +224,7 @@ export const MethodSchemas = {
   "pages.observe": PagesObserveParams,
   "pages.execute": PagesExecuteParams,
   "pages.capture": PagesCaptureParams,
+  "pages.engineInput": PagesEngineInputParams,
   "pages.find": PagesFindParams,
   "pages.stopFind": PagesStopFindParams,
   "pages.zoom": PagesZoomParams,
@@ -355,6 +367,7 @@ export const ResultSchemas = {
     /** present when the request carried returnObservation; full or compact per its format */
     observation: z.union([ObservationSchema, CompactObservationSchema]).optional(),
   }),
+  "pages.engineInput": z.object({ ok: z.boolean() }),
   "pages.capture": z.object({
     dataUrl: z.string().optional(),
     artifactId: z.string().optional(),

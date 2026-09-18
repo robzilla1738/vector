@@ -240,6 +240,8 @@ export function installMockBridge(q: URLSearchParams) {
         return page(p.pageId as string);
       case "pages.observe":
         return { observation: { ...OBSERVATION, pageId: p.pageId as string } };
+      case "pages.engineInput":
+        return { ok: true };
       case "pages.find":
         return { matches: 7, activeMatch: 2 };
       case "pages.stopFind":

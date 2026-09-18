@@ -648,6 +648,7 @@ describe("Gate B/F one session without Chromium", () => {
   it("Node takeover forwards to BrowserService so a second client is blocked", async () => {
     let serviceController = "none";
     let serviceEpoch = 0;
+    const clicks: string[] = [];
     const makePage = (pageId: string, url: string): DriverPage => ({
       identity: { pageId, targetId: "engine-t2", backend: "vector-engine" },
       url: () => url,
@@ -669,7 +670,9 @@ describe("Gate B/F one session without Chromium", () => {
       select: async () => {},
       scroll: async () => {},
       dragTo: async () => {},
-      clickPoint: async () => {},
+      clickPoint: async (x, y) => {
+        clicks.push(`${x},${y}`);
+      },
       uploadFiles: async () => {},
       waitFor: async () => ({ ok: true, timedOut: false }),
       waitForDownload: async () => ({ suggestedFilename: "f" }),
@@ -736,6 +739,10 @@ describe("Gate B/F one session without Chromium", () => {
     await expect(
       pages.execute({ pageId: opened.pageId, steps: [{ id: "x", op: "click", target: "r9" }] }),
     ).rejects.toMatchObject({ message: /human control/i });
+    await pages.onEngineInput(opened.pageId, { type: "click", x: 40, y: 12 });
+    expect(clicks).toEqual(["40,12"]);
+    const seen = await pages.observe(opened.pageId, {});
+    expect(seen.content.url).toContain("app.test");
     const resumed = await pages.resume(opened.pageId);
     expect(resumed.controller).toBe("none");
     expect(serviceController).toBe("none");
