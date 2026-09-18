@@ -833,6 +833,17 @@ pub(crate) fn host_call(
                 page.doc.element(id).is_some_and(|e| e.has_class(&class))
             })))
         }
+        "getElementsByName" => {
+            let want = arg_str(args, 1);
+            if want.is_empty() {
+                return Ok(arr(std::iter::empty()));
+            }
+            Ok(arr(page.doc.elements().filter(|&id| {
+                page.doc.element(id).is_some_and(|e| {
+                    e.namespace == Namespace::Html && e.attr("name") == Some(want.as_str())
+                })
+            })))
+        }
         "children" => Ok(arr(page
             .tree_children(live(page, args, 0)?)
             .into_iter()

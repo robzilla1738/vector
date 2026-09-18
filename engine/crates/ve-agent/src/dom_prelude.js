@@ -1384,9 +1384,11 @@
   function namedElementsOf(doc, name) {
     const out = [];
     if (!doc || !name) return out;
-    const all = doc.getElementsByTagName("*");
-    for (let i = 0; i < all.length; i++) {
-      if (namedElementMatches(all[i], name)) out.push(all[i]);
+    const byId = doc.getElementById(name);
+    if (byId && namedElementMatches(byId, name)) out.push(byId);
+    const named = list(D("getElementsByName", doc.__h, String(name)));
+    for (let i = 0; i < named.length; i++) {
+      if (named[i] !== byId && namedElementMatches(named[i], name)) out.push(named[i]);
     }
     return out;
   }
@@ -3768,10 +3770,7 @@
     getElementsByName(n) {
       if (arguments.length < 1) throw new TypeError("Not enough arguments");
       const want = String(n);
-      return new LiveNodeList(() => {
-        const all = list(D("getElementsByTagName", this.__h, "*"));
-        return all.filter((el) => el.namespaceURI === "http://www.w3.org/1999/xhtml" && el.getAttribute("name") === want);
-      });
+      return new LiveNodeList(() => list(D("getElementsByName", this.__h, want)));
     }
     importNode(n, deep) { return wrap(D("importNode", handleOf(n), !!deep)); }
     adoptNode(n) {

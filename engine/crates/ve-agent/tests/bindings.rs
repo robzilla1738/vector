@@ -3605,6 +3605,31 @@ fn get_computed_style_display_does_not_flush_layout() {
 }
 
 #[test]
+fn document_named_property_miss_does_not_wrap_the_tree() {
+    let mut html = String::from("<div id=\"root\">");
+    for i in 0..2000 {
+        html.push_str(&format!("<p id=\"n{i}\">x</p>"));
+    }
+    html.push_str("</div>");
+    let mut page = open(&html);
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var t0 = Date.now();
+              var miss = document["jQuery35123456789"];
+              return { miss: miss == null, ms: Date.now() - t0 };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["miss"], true, "{v}");
+    assert!(
+        v["ms"].as_u64().unwrap_or(u64::MAX) < 50,
+        "named miss must use the id/name indexes: {v}"
+    );
+}
+
+#[test]
 fn window_load_fires_after_a_large_id_tree() {
     let ids: String = (0..800)
         .map(|i| format!(r#"<span id="n{i}">{i}</span>"#))
