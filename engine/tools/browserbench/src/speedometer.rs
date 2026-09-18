@@ -1873,14 +1873,145 @@ mod tests {
 
     #[cfg(feature = "v8")]
     #[test]
-    #[ignore = "TipTap/charts/stockcharts OOM this host (same class as Editor-CodeMirror)"]
+    fn official_react_stockcharts_exposes_render() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(&mut engine, "react-stockcharts/build/index.html?type=svg");
+        let (probe, console) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            let probe = page
+                .evaluate(&with_lib(
+                    r##"(function () {
+                      var render = document.querySelector("#render");
+                      if (!render) {
+                        return JSON.stringify({
+                          kind: "stock",
+                          ok: false,
+                          render: false,
+                          nodes: document.getElementsByTagName("*").length
+                        });
+                      }
+                      render.click();
+                      var cursor = document.querySelector(".react-stockcharts-crosshair-cursor")
+                        || document.querySelector("svg")
+                        || document.querySelector("#root svg");
+                      return JSON.stringify({
+                        kind: "stock",
+                        ok: !!(cursor || document.querySelector("svg")),
+                        render: true,
+                        cursor: !!document.querySelector(".react-stockcharts-crosshair-cursor"),
+                        svg: document.querySelectorAll("svg").length,
+                        nodes: document.getElementsByTagName("*").length
+                      });
+                    })()"##,
+                ))
+                .unwrap_or(serde_json::Value::Null);
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(180).collect())
+                .take(4)
+                .collect();
+            (probe, console)
+        };
+        engine.close(page_id);
+        let text = match &probe {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
+        eprintln!("react-stockcharts {v} err={console:?}");
+        assert_eq!(v["render"], true, "{v} err={console:?}");
+        assert_eq!(v["ok"], true, "{v} err={console:?}");
+        assert_eq!(v["kind"], "stock", "{v}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn official_angular_complex_one_add_is_attributed() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(
+            &mut engine,
+            "todomvc/architecture-examples/angular-complex/dist/index.html",
+        );
+        let (probe, console, restyle) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            page.reset_restyle_attribution();
+            let probe = page
+                .evaluate(&with_lib(
+                    r##"(function () {
+                      var input = todoInput();
+                      if (!input) return JSON.stringify({ input: false, nodes: document.getElementsByTagName("*").length });
+                      var t0 = Date.now();
+                      input.focus();
+                      var focusMs = Date.now() - t0;
+                      t0 = Date.now();
+                      input.value = "Task-0";
+                      var valueMs = Date.now() - t0;
+                      t0 = Date.now();
+                      fire(input, "input", { bubbles: true, data: "Task-0", inputType: "insertText" }, InputEvent);
+                      var inputMs = Date.now() - t0;
+                      t0 = Date.now();
+                      enter(input);
+                      var enterMs = Date.now() - t0;
+                      return JSON.stringify({
+                        input: true,
+                        added: countTodos(),
+                        focusMs: focusMs,
+                        valueMs: valueMs,
+                        inputMs: inputMs,
+                        enterMs: enterMs,
+                        nodes: document.getElementsByTagName("*").length
+                      });
+                    })()"##,
+                ))
+                .expect("angular complex one add");
+            let restyle = page.restyle_attribution();
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(180).collect())
+                .take(4)
+                .collect();
+            (probe, console, restyle)
+        };
+        engine.close(page_id);
+        let text = match &probe {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
+        assert_eq!(v["input"], true, "{v} err={console:?}");
+        assert!(
+            v["nodes"].as_u64().unwrap_or(0) > 1000,
+            "angular Complex-DOM lost its extra tree: {v} err={console:?}"
+        );
+        assert!(
+            v["added"].as_u64().unwrap_or(0) >= 1,
+            "angular Complex-DOM one-add: {v} err={console:?}"
+        );
+        assert_eq!(
+            restyle.full_calls, 0,
+            "angular one add must not full-restyle Spectrum: {v} restyle={restyle:?}"
+        );
+        assert!(
+            v["enterMs"].as_u64().unwrap_or(u64::MAX) < 2_000,
+            "angular add must not walk the Spectrum tree: {v} restyle={restyle:?}"
+        );
+        eprintln!("angular-complex one-add {v} restyle={restyle:?}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    #[ignore = "TipTap/CodeMirror OOM this host"]
     fn remaining_official_editor_chart_workloads_boot() {
         let mut engine = bench_engine();
         let suites = [
             "editors/dist/tiptap.html",
-            "charts/dist/observable-plot.html",
-            "charts/dist/chartjs.html",
-            "react-stockcharts/build/index.html?type=svg",
+            "editors/dist/codemirror.html",
         ];
         let mut fails = Vec::new();
         let add = with_lib(&add_steps(1));

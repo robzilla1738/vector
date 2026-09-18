@@ -35,6 +35,6 @@
     "Gate A downloaded release artifact: copy-to-temp host test + CI job downloaded-artifact (downloads engine-native-{ubuntu,macos,windows} then re-runs production_sandbox). Not a GitHub Release page download.",
     "live GPU window plus MCP on a display (pump shares NativeBrowser; no GPU in this environment)",
     "official html/dom remaining FAILs sanitize-template-element and template-for-empty; idlharness.https.html still FAIL ([[IsHTMLDDA]] plus other HTML interfaces)",
-    "full official Speedometer/JetStream/MotionMark published score. Official ES5 Complex-DOM one-add PASS; 100-add PASS. Official jQuery Complex-DOM one-add PASS enterMs=12 (was 42184). Editor-CodeMirror/TipTap/Charts/Stockcharts OOM this host."
+    "full official Speedometer/JetStream/MotionMark published score. Official Chart.js and Observable Plot prepare PASS. Official ES5/jQuery/Backbone Complex-DOM one-add PASS. Editor-CodeMirror/TipTap OOM this host. React-Stockcharts and Angular-complex still open."
   ]
 }

@@ -6,7 +6,7 @@
   "officialFullSuite": false,
   "gate": false,
   "iterations": 1,
-  "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. evaluate() keeps EVALUATE_DEADLINE. Official ES5 Complex-DOM one-add PASS (6655 nodes, addMs=4, changeMs=3, restyle.full_calls=0). Official 100-add PASS (added=100, addMs=1218, showEntriesMs=1072, restyle.full_calls=0). Official jQuery Complex-DOM one-add PASS enterMs=12 (was 42184) after named-property misses used getElementById/getElementsByName instead of wrapping getElementsByTagName('*'). Independently rechecked: WebComponents/React/React-Redux/Vue/Lit add 3 todos; remaining official 3-add/finish PASS in 15.7s.",
+    "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. evaluate() keeps EVALUATE_DEADLINE. Official ES5 Complex-DOM one-add PASS (6655 nodes, addMs=4, changeMs=3, restyle.full_calls=0). Official 100-add PASS (added=100, addMs=1218, showEntriesMs=1072, restyle.full_calls=0). Official jQuery Complex-DOM one-add PASS enterMs=12 (was 42184) after named-property misses used getElementById/getElementsByName instead of wrapping getElementsByTagName('*'). Independently rechecked: WebComponents/React/React-Redux/Vue/Lit add 3 todos; remaining official 3-add/finish PASS in 15.7s. Official Chart.js and Observable Plot prepare PASS.",
   "verifiedAfterFixes": {
     "TodoMVC-WebComponents": "PASS add/finish 3 items",
     "TodoMVC-React": "PASS add 3 items",
@@ -20,7 +20,9 @@
     "TodoMVC-jQuery-Complex-DOM": "one-add PASS enterMs=12. 3-add/finish PASS addMs=37 finishMs=238 remaining=0 in 43s boot. Was enterMs=42184 / finish remaining=3.",
     "TodoMVC-Backbone-Complex-DOM": "one-add PASS enterMs=14 nodes=6653 restyle.full_calls=0 (was enterMs=131s). 3-add/finish PASS addMs=18 finishMs=189 remaining=0.",
     "remainingOfficialComplex3AddFinish": "backbone/vue/preact/svelte/react/react-redux/es6-webpack complex PASS add/finish 3 in 101.7s.",
-    "remainingOfficial3AddFinish": "vue/lit/preact/svelte/jquery/jquery-complex/backbone/web-components/web-components-complex/lit-complex/news-next/news-nuxt/perf PASS add/finish 3 in 58.4s. jquery-complex addMs=37 finishMs=238 remaining=0. Editor-CodeMirror/TipTap OOM this host (ignored)."
+    "remainingOfficial3AddFinish": "vue/lit/preact/svelte/jquery/jquery-complex/backbone/web-components/web-components-complex/lit-complex/news-next/news-nuxt/perf PASS add/finish 3 in 58.4s. jquery-complex addMs=37 finishMs=238 remaining=0. Editor-CodeMirror/TipTap OOM this host (ignored).",
+    "Charts-chartjs": "prepare/scatter/tooltip PASS 9.4s err=[] after ESM mid-file import lift + Canvas resetTransform/setLineDash",
+    "Charts-observable-plot": "prepare/stacked/dotted PASS 8.67s err=[]"
   },
   "speedometer30": {
     "executed": 25,
@@ -28,13 +30,10 @@
     "failed": 18,
     "inProgress": "NewsSite-Nuxt",
     "remaining": [
-      "NewsSite-Nuxt",
       "Editor-CodeMirror",
       "Editor-TipTap",
-      "Charts-observable-plot",
-      "Charts-chartjs",
       "React-Stockcharts-SVG",
-      "Perf-Dashboard"
+      "TodoMVC-Angular-Complex-DOM"
     ]
   },
   "results": [
