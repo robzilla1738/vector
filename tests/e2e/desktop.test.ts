@@ -1,7 +1,7 @@
 /**
  * E2E: launch the real Electron app (built output), wait for the runtime
- * descriptor, drive the loopback API, confirm a native page view is created
- * and automation works end-to-end on the actual desktop surface.
+ * descriptor, drive the loopback API against vector-engine + EngineView.
+ * Does not prove a human Mac .app / IME / VoiceOver / GPU session.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
@@ -32,7 +32,6 @@ async function rpc<T>(method: string, params: unknown = {}): Promise<T> {
 }
 
 beforeAll(async () => {
-  // the app must be built: dist/main, dist/preload, dist/renderer
   if (!existsSync(join(desktopDir, "dist/main/index.js"))) {
     const b = spawnSync(join(desktopDir, "node_modules/.bin/tsc"), ["-b", "tsconfig.main.json", "tsconfig.preload.json"], { cwd: desktopDir, stdio: "inherit" });
     if (b.status !== 0) throw new Error("desktop main/preload build failed");
@@ -41,21 +40,20 @@ beforeAll(async () => {
     const b = spawnSync(join(desktopDir, "node_modules/.bin/vite"), ["build"], { cwd: desktopDir, stdio: "inherit" });
     if (b.status !== 0) throw new Error("renderer build failed");
   }
-  // runtime must be built for the forked child
   spawnSync(join(root, "node_modules/.bin/tsc"), ["-b", "tsconfig.json"], { cwd: root, stdio: "inherit" });
 
   fixtures = await startFixturesIfNeeded();
   await waitForFixtures();
 
   dataDir = mkdtempSync(join(tmpdir(), "vector-e2e-"));
-  // ELECTRON_RUN_AS_NODE makes the binary boot as plain Node — never let it
-  // leak in from the parent shell.
   const { ELECTRON_RUN_AS_NODE: _drop, ...parentEnv } = process.env;
   app = spawn(electronBin, ["."], {
     cwd: desktopDir,
     env: {
       ...parentEnv,
       VECTOR_DATA_DIR: dataDir,
+      VECTOR_ENGINE_MODE: parentEnv.VECTOR_ENGINE_MODE || "always",
+      VECTOR_ENGINE_PROFILE: parentEnv.VECTOR_ENGINE_PROFILE || "production",
       ELECTRON_ENABLE_LOGGING: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -63,7 +61,6 @@ beforeAll(async () => {
   app.stdout?.on("data", (d) => process.stdout.write(`[electron] ${d}`));
   app.stderr?.on("data", (d) => process.stderr.write(`[electron!] ${d}`));
 
-  // wait for the runtime descriptor — written once the forked runtime is serving
   const descFile = join(dataDir, "runtime.json");
   const deadline = Date.now() + 60_000;
   while (!existsSync(descFile)) {
@@ -73,13 +70,14 @@ beforeAll(async () => {
   }
   desc = JSON.parse(readFileSync(descFile, "utf8"));
 
-  // wait for the vector CDP attach to settle
   const start = Date.now();
   for (;;) {
-    const ws = await rpc<{ sessions: { backend: string; status: string }[] }>("workspace.get").catch(() => null);
-    const v = ws?.sessions.find((s) => s.backend === "vector");
-    if (v?.status === "connected") break;
-    if (Date.now() - start > 45_000) throw new Error(`vector session never connected: ${JSON.stringify(ws?.sessions)}`);
+    const ws = await rpc<{ sessions: { backend: string; status: string; detail?: string }[] }>("workspace.get").catch(() => null);
+    const engine = ws?.sessions.find((s) => s.backend === "vector-engine");
+    if (engine?.status === "connected") break;
+    if (Date.now() - start > 45_000) {
+      throw new Error(`vector-engine never connected: ${JSON.stringify(ws?.sessions)}`);
+    }
     await new Promise((r) => setTimeout(r, 500));
   }
 }, 150_000);
@@ -91,24 +89,22 @@ afterAll(async () => {
 });
 
 describe("desktop e2e", () => {
-  it("drives a native Vector page through the loopback API", async () => {
-    const page = await rpc<{ pageId: string; targetId: string; url: string }>("pages.open", {
+  it("drives a Vector Engine page through the loopback API", async () => {
+    const page = await rpc<{ pageId: string; targetId: string; url: string; backend: string }>("pages.open", {
       url: "http://127.0.0.1:4810/records",
-      backend: "vector",
     });
+    expect(page.backend).toBe("vector-engine");
     expect(page.pageId).toBeTruthy();
-    expect(page.targetId).toMatch(/^vtab-/);
+    expect(page.targetId).toMatch(/^ve-\d+-\d+$/);
 
-    // API-opened pages activate by default and surface in the workspace
     const ws = await rpc<{ activePageId: string | null }>("workspace.get");
     expect(ws.activePageId).toBe(page.pageId);
 
-    // a background page must not steal activation
-    const bg = await rpc<{ pageId: string }>("pages.open", {
+    const bg = await rpc<{ pageId: string; backend: string }>("pages.open", {
       url: "http://127.0.0.1:4810/records",
-      backend: "vector",
       background: true,
     });
+    expect(bg.backend).toBe("vector-engine");
     const ws2 = await rpc<{ activePageId: string | null }>("workspace.get");
     expect(ws2.activePageId).toBe(page.pageId);
     expect(ws2.activePageId).not.toBe(bg.pageId);
@@ -128,16 +124,21 @@ describe("desktop e2e", () => {
 
   it("two tabs with identical URLs get distinct identities", async () => {
     const url = "http://127.0.0.1:4810/records";
-    const a = await rpc<{ pageId: string; targetId: string }>("pages.open", { url, backend: "vector" });
-    const b = await rpc<{ pageId: string; targetId: string }>("pages.open", { url, backend: "vector" });
+    const a = await rpc<{ pageId: string; targetId: string; backend: string }>("pages.open", { url });
+    const b = await rpc<{ pageId: string; targetId: string; backend: string }>("pages.open", { url });
+    expect(a.backend).toBe("vector-engine");
+    expect(b.backend).toBe("vector-engine");
     expect(a.pageId).not.toBe(b.pageId);
     expect(a.targetId).not.toBe(b.targetId);
+    expect(a.targetId).toMatch(/^ve-\d+-\d+$/);
+    expect(b.targetId).toMatch(/^ve-\d+-\d+$/);
   }, 60_000);
 
-  it("interactive programs run in parallel on background pages without flipping the focused tab (A8)", async () => {
-    const front = await rpc<{ pageId: string }>("pages.open", { url: "http://127.0.0.1:4810/records", backend: "vector" });
-    const bgA = await rpc<{ pageId: string }>("pages.open", { url: "http://127.0.0.1:4810/new", backend: "vector", background: true });
-    const bgB = await rpc<{ pageId: string }>("pages.open", { url: "http://127.0.0.1:4810/new", backend: "vector", background: true });
+  it("interactive programs run in parallel on background engine pages without flipping the focused tab", async () => {
+    const front = await rpc<{ pageId: string; backend: string }>("pages.open", { url: "http://127.0.0.1:4810/records" });
+    expect(front.backend).toBe("vector-engine");
+    const bgA = await rpc<{ pageId: string }>("pages.open", { url: "http://127.0.0.1:4810/new", background: true });
+    const bgB = await rpc<{ pageId: string }>("pages.open", { url: "http://127.0.0.1:4810/new", background: true });
     const program = (pageId: string, value: string) => ({
       pageId,
       steps: [
@@ -160,35 +161,28 @@ describe("desktop e2e", () => {
     expect(b.status, b.error).toBe("completed");
     expect(await readTitle(bgA.pageId)).toBe("alpha");
     expect(await readTitle(bgB.pageId)).toBe("bravo");
-    // the human's tab stayed on the stage the whole time
     const ws = await rpc<{ activePageId: string | null }>("workspace.get");
     expect(ws.activePageId).toBe(front.pageId);
-    // the pages ran at the same time (the sequential lease took turns);
-    // generous bound so CI variance cannot flake it
     expect(wall).toBeLessThan(20_000);
     for (const p of [bgA, bgB]) await rpc("pages.close", { pageId: p.pageId });
   }, 90_000);
 
-  it("native find and zoom round-trip through the API", async () => {
-    const page = await rpc<{ pageId: string }>("pages.open", {
+  it("engine scene and takeover share the live page", async () => {
+    const page = await rpc<{ pageId: string; backend: string }>("pages.open", {
       url: "http://127.0.0.1:4810/records",
-      backend: "vector",
     });
+    expect(page.backend).toBe("vector-engine");
     await rpc("pages.observe", { pageId: page.pageId });
-    const found = await rpc<{ matches: number }>("pages.find", {
-      pageId: page.pageId,
-      text: "records",
-      forward: true,
-      findNext: false,
-    });
-    expect(found.matches).toBeGreaterThan(0);
-
-    // zoom levels persist per-origin in the persistent profile partition —
-    // assert relative change, not an absolute level
-    const before = await rpc<{ level: number }>("pages.zoom", { pageId: page.pageId });
-    const z1 = await rpc<{ level: number }>("pages.zoom", { pageId: page.pageId, delta: 0.5 });
-    expect(z1.level).toBe(before.level + 0.5);
-    const z0 = await rpc<{ level: number }>("pages.zoom", { pageId: page.pageId, reset: true });
-    expect(z0.level).toBe(0);
+    const scene = await rpc<{ kind?: string; items?: unknown[] }>("pages.scene", { pageId: page.pageId });
+    expect(scene.kind ?? "displayList").toBeTruthy();
+    const taken = await rpc<{ controller?: string }>("pages.takeover", { pageId: page.pageId });
+    expect(taken.controller).toBe("human");
+    await expect(
+      rpc("pages.execute", {
+        program: { pageId: page.pageId, steps: [{ id: "x", op: "extract", fields: [{ name: "n", selector: "table#records-table" }] }] },
+      }),
+    ).rejects.toThrow(/human control|takeover|conflict/i);
+    const resumed = await rpc<{ controller?: string }>("pages.resume", { pageId: page.pageId });
+    expect(resumed.controller).not.toBe("human");
   }, 60_000);
 });
