@@ -12,7 +12,7 @@
     "TodoMVC-React": "PASS add 3 items",
     "TodoMVC-React-Redux": "PASS add 3 items",
     "TodoMVC-Vue": "PASS add 3 items after microtask recount",
-    "TodoMVC-Lit": "FAIL list render empty after model add",
+    "TodoMVC-Lit": "PASS add 3 items after keeping <?lit$…$> as comments",
     "NewsSite-Next": "PASS navbar present",
     "NewsSite-Nuxt": "PASS in killed full-suite log",
     "Editor-CodeMirror": "killed OOM/SIGKILL in full-suite log"
