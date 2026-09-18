@@ -44,16 +44,16 @@
     {
       "id": "url-dot-segment",
       "spec": "https://url.spec.whatwg.org/#path-state",
-      "input": "https://s.test/a/b/../c",
-      "expected": "https://s.test/a/c",
+      "input": "https://s.test/a/b/../c and URL.pathname = '/a/b/../c'",
+      "expected": "https://s.test/a/c for both constructor and setter",
       "status": "PASS",
       "test": "ve-agent bindings review_behavior_counterexamples"
     },
     {
       "id": "event-composed-default",
       "spec": "https://dom.spec.whatwg.org/#dom-event-event",
-      "input": "new Event('x')",
-      "expected": "composed === false unless click/input/change",
+      "input": "new Event('x') and new Event('click')",
+      "expected": "composed === false for every script-constructed Event; element.click() is composed",
       "status": "PASS",
       "test": "ve-agent bindings review_behavior_counterexamples"
     },

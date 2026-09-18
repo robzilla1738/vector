@@ -3610,14 +3610,20 @@ fn review_behavior_counterexamples() {
         r#"<div id="h"><span>x</span></div>
            <script>
              window.__url = new URL('https://s.test/a/b/../c').href;
-             const ev = new Event('x');
-             window.__composed = ev.composed;
+             const u2 = new URL('https://s.test/a/b');
+             u2.pathname = '/a/b/../c';
+             window.__urlSet = u2.href;
+             window.__composed = new Event('x').composed;
+             window.__composedClickCtor = new Event('click').composed;
+             let clickComposed = null;
+             document.addEventListener('click', (e) => { clickComposed = e.composed; }, true);
              let n = 0;
              const fn = () => { n++; };
              document.getElementById('h').addEventListener('click', fn);
              document.getElementById('h').addEventListener('click', fn);
              document.getElementById('h').click();
              window.__dedup = n;
+             window.__clickComposed = clickComposed;
              let sawTarget = false;
              document.addEventListener('ping', (e) => { e.stopPropagation(); }, true);
              document.getElementById('h').addEventListener('ping', () => { sawTarget = true; });
@@ -3636,7 +3642,10 @@ fn review_behavior_counterexamples() {
             r#"(function () {
               return {
                 url: window.__url,
+                urlSet: window.__urlSet,
                 composed: window.__composed,
+                composedClickCtor: window.__composedClickCtor,
+                clickComposed: window.__clickComposed,
                 dedup: window.__dedup,
                 stopped: window.__stopped,
                 live: window.__live,
@@ -3646,7 +3655,10 @@ fn review_behavior_counterexamples() {
         )
         .unwrap();
     assert_eq!(v["url"], "https://s.test/a/c", "{v}");
+    assert_eq!(v["urlSet"], "https://s.test/a/c", "{v}");
     assert_eq!(v["composed"], false, "{v}");
+    assert_eq!(v["composedClickCtor"], false, "{v}");
+    assert_eq!(v["clickComposed"], true, "{v}");
     assert_eq!(v["dedup"], 1, "{v}");
     assert_eq!(v["stopped"], true, "{v}");
     assert_eq!(v["live"], true, "{v}");

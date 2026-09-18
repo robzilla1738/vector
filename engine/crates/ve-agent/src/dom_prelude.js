@@ -39,7 +39,9 @@
       this.type = String(type);
       this.bubbles = !!init.bubbles;
       this.cancelable = !!init.cancelable;
-      this.composed = init.composed !== undefined ? !!init.composed : this.type === "click" || this.type === "input" || this.type === "change";
+      // EventInit.composed defaults to false for every script-constructed Event,
+      // including `new Event("click")`. UA click/input/change pass composed: true.
+      this.composed = !!init.composed;
       this.defaultPrevented = false;
       this.cancelBubble = false;
       this.target = null;
@@ -2947,15 +2949,15 @@
         try { tag = (this.localName || "").toLowerCase(); } catch (e) {}
         let type = "";
         try { type = (this.type || this.getAttribute("type") || "").toLowerCase(); } catch (e) {}
-        const ev = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, which: 1 });
+        const ev = new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, button: 0, which: 1 });
         let allowed = true;
         try { allowed = this.dispatchEvent(ev); } catch (e) { __ve.log("error", String(e)); }
         if (!allowed) return;
         try { D("activate", this.__h); } catch (e) {}
         if (tag === "input" && (type === "checkbox" || type === "radio")) {
           try {
-            this.dispatchEvent(new Event("input", { bubbles: true }));
-            this.dispatchEvent(new Event("change", { bubbles: true }));
+            this.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+            this.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
           } catch (e) {}
         }
       } finally {
@@ -2976,7 +2978,7 @@
       this.dispatchEvent(new Event("focusout", { bubbles: true }));
     }
     get value() { const v = D("formValue", this.__h); return v == null ? "" : v; }
-    set value(v) { D("setFormValue", this.__h, String(v)); this.dispatchEvent(new Event("input", { bubbles: true })); }
+    set value(v) { D("setFormValue", this.__h, String(v)); this.dispatchEvent(new Event("input", { bubbles: true, composed: true })); }
     get checked() { return !!D("checked", this.__h); }
     set checked(v) { D("setChecked", this.__h, !!v); }
     get selected() { return !!D("selected", this.__h); }
@@ -6791,6 +6793,18 @@
   }
   class URL {
     constructor(url, base) {
+      this.username = "";
+      this.password = "";
+      this._protocol = "";
+      this._hostname = "";
+      this._port = "";
+      this._pathname = "/";
+      this._search = "";
+      this._hash = "";
+      this._parse(url, base);
+      this.searchParams = new URLSearchParams(this._search);
+    }
+    _parse(url, base) {
       let s = encodeUSVHref(url);
       if (base && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s)) {
         const b = String(base);
@@ -6804,20 +6818,47 @@
           s = b.replace(/[#?].*$/, "").replace(/\/[^/]*$/, "/") + s;
         }
       }
-      this.href = s;
       const m = s.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:)\/\/([^/?#:]*)(?::(\d+))?([^?#]*)(\?[^#]*)?(#.*)?$/);
-      this.protocol = m ? m[1] : "";
-      this.hostname = m ? m[2] : "";
-      this.port = m && m[3] ? m[3] : "";
-      this.pathname = normalizeUrlPath(m ? (m[4] || "/") : "/");
-      this.search = m && m[5] ? m[5] : "";
-      this.hash = m && m[6] ? m[6] : "";
-      this.host = this.hostname + (this.port ? ":" + this.port : "");
-      this.origin = this.protocol ? (this.protocol + "//" + this.host) : "null";
-      if (m) this.href = this.protocol + "//" + this.host + this.pathname + this.search + this.hash;
-      this.username = "";
-      this.password = "";
-      this.searchParams = new URLSearchParams(this.search);
+      this._protocol = m ? m[1] : "";
+      this._hostname = m ? m[2] : "";
+      this._port = m && m[3] ? m[3] : "";
+      this._pathname = normalizeUrlPath(m ? (m[4] || "/") : "/");
+      this._search = m && m[5] ? m[5] : "";
+      this._hash = m && m[6] ? m[6] : "";
+    }
+    _host() { return this._hostname + (this._port ? ":" + this._port : ""); }
+    get href() {
+      return this._protocol
+        ? this._protocol + "//" + this._host() + this._pathname + this._search + this._hash
+        : "";
+    }
+    set href(v) { this._parse(v); }
+    get origin() { return this._protocol ? (this._protocol + "//" + this._host()) : "null"; }
+    get protocol() { return this._protocol; }
+    set protocol(v) { this._protocol = String(v || ""); if (this._protocol && !this._protocol.endsWith(":")) this._protocol += ":"; }
+    get hostname() { return this._hostname; }
+    set hostname(v) { this._hostname = String(v || ""); }
+    get port() { return this._port; }
+    set port(v) { this._port = String(v || ""); }
+    get host() { return this._host(); }
+    set host(v) {
+      const s = String(v || "");
+      const i = s.lastIndexOf(":");
+      if (i > 0) { this._hostname = s.slice(0, i); this._port = s.slice(i + 1); }
+      else { this._hostname = s; this._port = ""; }
+    }
+    get pathname() { return this._pathname; }
+    set pathname(v) { this._pathname = normalizeUrlPath(v); }
+    get search() { return this._search; }
+    set search(v) {
+      const s = String(v || "");
+      this._search = s && !s.startsWith("?") ? "?" + s : s;
+      this.searchParams = new URLSearchParams(this._search);
+    }
+    get hash() { return this._hash; }
+    set hash(v) {
+      const s = String(v || "");
+      this._hash = s && !s.startsWith("#") ? "#" + s : s;
     }
     toString() { return this.href; }
     toJSON() { return this.href; }
@@ -8451,6 +8492,9 @@
     const node = wrap(handle);
     if (!node) return false;
     init = init || {};
+    if (init.composed === undefined && (type === "click" || type === "input" || type === "change")) {
+      init = { ...init, composed: true };
+    }
     const keyish = type === "keydown" || type === "keypress" || type === "keyup";
     const ev = type.indexOf("drag") === 0
       ? new DragEvent(type, init)
