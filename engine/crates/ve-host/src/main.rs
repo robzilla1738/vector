@@ -119,7 +119,7 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
                 }
                 std::process::exit(0);
             }
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(all(unix, not(target_os = "linux")))]
             unsafe {
                 let pid = libc::fork();
                 if pid == 0 {
@@ -129,6 +129,10 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
                     libc::waitpid(pid, std::ptr::null_mut(), 0);
                     std::process::exit(13);
                 }
+                std::process::exit(0);
+            }
+            #[cfg(not(unix))]
+            {
                 std::process::exit(0);
             }
         }

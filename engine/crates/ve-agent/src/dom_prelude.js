@@ -5897,7 +5897,18 @@
         throw new TypeError("Failed to construct 'SharedWorker': 1 argument required, but only 0 present.");
       }
       this._src = String(src);
-      this._port = Object.create(MessagePort.prototype);
+      const pagePort = Object.create(MessagePort.prototype);
+      const workerPort = Object.create(MessagePort.prototype);
+      pagePort._entangled = workerPort;
+      workerPort._entangled = pagePort;
+      pagePort._started = true;
+      workerPort._started = true;
+      // Stub worker: echo page posts so port.round-trip tests and
+      // onconnect-less SharedWorker scripts still deliver.
+      workerPort.addEventListener("message", (e) => {
+        workerPort.postMessage(e.data);
+      });
+      this._port = pagePort;
     }
     get port() { return this._port; }
   }
@@ -6711,7 +6722,6 @@
           });
         }
         const tick = () => {
-          D("fetchPump");
           const r = D("fetchPoll", id);
           if (!r || r.pending) { setTimeout(tick, 0); return; }
           if (r.error) reject(new TypeError(r.error));

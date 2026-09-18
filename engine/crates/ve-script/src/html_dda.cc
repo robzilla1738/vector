@@ -17,5 +17,12 @@ inline v8::Local<T> ptr_to_local(const T* ptr) {
 
 extern "C" void ve_object_template_mark_as_undetectable(
     const v8::ObjectTemplate& self) {
+#if defined(_WIN32)
+  // rusty_v8 152.2.0's MSVC link set does not export
+  // v8::ObjectTemplate::MarkAsUndetectable. Linux/macOS keep the real
+  // HTMLDDA mark. Official idlharness was proven on Linux.
+  (void)self;
+#else
   ptr_to_local(&self)->MarkAsUndetectable();
+#endif
 }
