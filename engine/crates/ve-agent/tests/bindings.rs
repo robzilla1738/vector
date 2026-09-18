@@ -5029,6 +5029,15 @@ fn official_html_brand_window_and_media_idl() {
                 ceDefine: CustomElementRegistry.prototype.define.length,
                 shadowHTML: typeof ShadowRoot.prototype.getHTML === "function",
                 trStart: TimeRanges.prototype.start.length,
+                hashLen: HashChangeEvent.length,
+                trackLen: TrackEvent.length,
+                submitLen: SubmitEvent.length,
+                dragLen: DragEvent.length,
+                dialogShow: typeof HTMLDialogElement.prototype.show === "function",
+                scriptSup: typeof HTMLScriptElement.supports === "function",
+                rangeFrag: typeof Range.prototype.createContextualFragment === "function",
+                imageName: Image.name,
+                audioNew: (function () { try { Audio(); return false; } catch (e) { return e instanceof TypeError; } })(),
               };
             })()"##,
         )
@@ -5092,4 +5101,13 @@ fn official_html_brand_window_and_media_idl() {
     assert_eq!(v["ceDefine"], 2, "{v}");
     assert_eq!(v["shadowHTML"], true, "{v}");
     assert_eq!(v["trStart"], 1, "{v}");
+    assert_eq!(v["hashLen"], 1, "{v}");
+    assert_eq!(v["trackLen"], 1, "{v}");
+    assert_eq!(v["submitLen"], 1, "{v}");
+    assert_eq!(v["dragLen"], 1, "{v}");
+    assert_eq!(v["dialogShow"], true, "{v}");
+    assert_eq!(v["scriptSup"], true, "{v}");
+    assert_eq!(v["rangeFrag"], true, "{v}");
+    assert_eq!(v["imageName"], "Image", "{v}");
+    assert_eq!(v["audioNew"], true, "{v}");
 }

@@ -79,7 +79,16 @@
       this.detail = detail;
     }
   }
-  class HashChangeEvent extends Event {}
+  class HashChangeEvent extends Event {
+    constructor(t) {
+      const i = arguments[1] || {};
+      super(t, i);
+      this._oldURL = i.oldURL == null ? "" : String(i.oldURL);
+      this._newURL = i.newURL == null ? "" : String(i.newURL);
+    }
+    get oldURL() { return this._oldURL; }
+    get newURL() { return this._newURL; }
+  }
   class PopStateEvent extends Event {
     constructor(t) {
       const i = arguments[1] || {};
@@ -103,17 +112,52 @@
     get source() { return this._source == null ? null : this._source; }
   }
   class TrackEvent extends Event {
-    constructor(t, i) {
+    constructor(t) {
+      const i = arguments[1] || {};
       super(t, i);
-      this.track = i && "track" in i ? i.track : null;
+      this._track = "track" in i ? i.track : null;
     }
+    get track() { return this._track; }
   }
   class FormDataEvent extends Event {
     constructor(t, i) {
       super(t, i);
       if (!i || !("formData" in i)) throw new TypeError("Failed to construct 'FormDataEvent': required member formData is undefined.");
-      this.formData = i.formData;
+      this._formData = i.formData;
     }
+    get formData() { return this._formData; }
+  }
+  class SubmitEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._submitter = init.submitter || null;
+    }
+    get submitter() { return this._submitter; }
+  }
+  class PageRevealEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._viewTransition = init.viewTransition || null;
+    }
+    get viewTransition() { return this._viewTransition; }
+  }
+  class PageTransitionEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._persisted = !!init.persisted;
+    }
+    get persisted() { return this._persisted; }
+  }
+  class BeforeUnloadEvent extends Event {
+    constructor(type) {
+      super(type, arguments[1] || {});
+      this._returnValue = "";
+    }
+    get returnValue() { return this._returnValue; }
+    set returnValue(v) { this._returnValue = v == null ? "" : String(v); }
   }
   class StorageEvent extends Event {
     constructor(type) {
@@ -170,9 +214,10 @@
     }
   }
   class DragEvent extends MouseEvent {
-    constructor(t, i) {
+    constructor(t) {
+      const i = arguments[1] || {};
       super(t, i);
-      this.dataTransfer = (i && i.dataTransfer) || {
+      this._dataTransfer = i.dataTransfer || {
         dropEffect: "move",
         effectAllowed: "all",
         files: [],
@@ -184,6 +229,7 @@
         setDragImage() {},
       };
     }
+    get dataTransfer() { return this._dataTransfer; }
   }
   class KeyboardEvent extends Event {
     constructor(t, i) {
@@ -216,7 +262,7 @@
       this._origin = i.origin == null ? "" : String(i.origin);
       this._source = i.source || null;
       this._lastEventId = i.lastEventId == null ? "" : String(i.lastEventId);
-      this._ports = i.ports ? Array.from(i.ports) : [];
+      this._ports = Object.freeze(i.ports ? Array.from(i.ports) : []);
     }
     get data() { return this._data; }
     get origin() { return this._origin; }
@@ -246,9 +292,12 @@
     get command() { return this._command; }
   }
   class PromiseRejectionEvent extends Event {
-    constructor(type) {
-      const init = arguments[1] || {};
-      super(type, init);
+    constructor(type, init) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to construct 'PromiseRejectionEvent': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      super(type, init || {});
+      init = init || {};
       this._promise = init.promise;
       this._reason = init.reason;
     }
@@ -661,7 +710,10 @@
     return out;
   }
 
-  function DOMStringMap() {}
+  class DOMStringMap {
+    constructor() { throw new TypeError("Illegal constructor"); }
+  }
+  Object.defineProperty(DOMStringMap.prototype, Symbol.toStringTag, { value: "DOMStringMap", configurable: true });
   function dataAttrName(key) {
     return "data-" + String(key).replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
   }
@@ -672,7 +724,7 @@
     return k.length >= 2 && k.charCodeAt(0) === 45 && k.charCodeAt(1) >= 97 && k.charCodeAt(1) <= 122;
   }
   function makeDataset(el) {
-    const map = new DOMStringMap();
+    const map = Object.create(DOMStringMap.prototype);
     return new Proxy(map, {
       get(t, k) {
         if (typeof k !== "string") return Reflect.get(t, k);
@@ -2220,7 +2272,12 @@
       return wrap(D("attachShadow", this.__h, (init && init.mode) || "open", (init && init.slotAssignment) || ""));
     }
     get shadowRoot() { return wrap(D("shadowRoot", this.__h)); }
-    insertAdjacentHTML(pos, html) { D("insertAdjacentHTML", this.__h, String(pos), String(html)); }
+    insertAdjacentHTML(pos, html) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'insertAdjacentHTML' on 'Element': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      D("insertAdjacentHTML", this.__h, String(pos), String(html));
+    }
     insertAdjacentElement(pos, el) {
       pos = String(pos).toLowerCase();
       if (pos === "beforebegin") {
@@ -2964,13 +3021,14 @@
       return id ? document.getElementById(id) : this._popoverTarget || null;
     }
     set popoverTargetElement(v) { this._popoverTarget = v || null; }
-    stepUp(n) {
+    stepUp() {
+      const n = arguments[0];
       const step = parseFloat(this.getAttribute("step"));
       const delta = (isFinite(step) && step > 0 ? step : 1) * (arguments.length ? n | 0 : 1);
       const cur = this.valueAsNumber;
       this.valueAsNumber = (isFinite(cur) ? cur : 0) + delta;
     }
-    stepDown(n) { this.stepUp(-(arguments.length ? n | 0 : 1)); }
+    stepDown() { this.stepUp(-(arguments.length ? arguments[0] | 0 : 1)); }
     select() {
       this.selectionStart = 0;
       this.selectionEnd = (this.value || "").length;
@@ -3525,8 +3583,9 @@
     setTransform() {}
   }
   Object.defineProperty(CanvasPattern.prototype, Symbol.toStringTag, { value: "CanvasPattern", configurable: true });
-  class OffscreenCanvas {
+  class OffscreenCanvas extends EventTarget {
     constructor(width, height) {
+      super();
       if (arguments.length < 2) {
         throw new TypeError("Failed to construct 'OffscreenCanvas': 2 arguments required, but only " + arguments.length + " present.");
       }
@@ -3993,6 +4052,14 @@
     set src(v) { this.setAttribute("src", toUSV(v)); }
     get text() { return this.textContent || ""; }
     set text(v) { this.textContent = v == null ? "" : String(v); }
+    get referrerPolicy() { return this.getAttribute("referrerpolicy") || ""; }
+    set referrerPolicy(v) { this.setAttribute("referrerpolicy", v == null ? "" : String(v)); }
+    static supports(type) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'supports' on 'HTMLScriptElement': 1 argument required, but only 0 present.");
+      }
+      return String(type) === "classic" || String(type) === "module";
+    }
   }
   class HTMLStyleElement extends HTMLElement {
     get blocking() { return this._blockingTL || (this._blockingTL = new DOMTokenList(this.__h, "blocking", RENDER_TOKENS)); }
@@ -4002,7 +4069,14 @@
   }
   class HTMLFrameSetElement extends HTMLElement {}
   class HTMLDetailsElement extends HTMLElement {}
-  class HTMLFieldSetElement extends HTMLElement {}
+  class HTMLFieldSetElement extends HTMLElement {
+    get type() { return "fieldset"; }
+    get elements() {
+      return this._elements || (this._elements = new HTMLCollection(IDL_INTERNAL, () => {
+        return this.querySelectorAll ? Array.from(this.querySelectorAll("button,fieldset,input,object,output,select,textarea")) : [];
+      }));
+    }
+  }
   class HTMLMapElement extends HTMLElement {
     get areas() {
       return this._areas || (this._areas = new HTMLCollection(IDL_INTERNAL, () => {
@@ -4016,6 +4090,10 @@
   class HTMLOutputElement extends HTMLElement {
     get htmlFor() { return this._htmlForTL || (this._htmlForTL = new DOMTokenList(this.__h, "for")); }
     set htmlFor(v) { this.setAttribute("for", v == null ? "" : String(v)); }
+    get defaultValue() { return this._defaultValue == null ? (this.textContent || "") : this._defaultValue; }
+    set defaultValue(v) { this._defaultValue = v == null ? "" : String(v); }
+    get value() { return this._outputValue == null ? (this.textContent || "") : this._outputValue; }
+    set value(v) { this._outputValue = v == null ? "" : String(v); }
   }
   class HTMLParamElement extends HTMLElement {}
   class HTMLSlotElement extends HTMLElement {
@@ -4053,10 +4131,10 @@
     set shadowRootClonable(v) { v ? this.setAttribute("shadowrootclonable", "") : this.removeAttribute("shadowrootclonable"); }
     get shadowRootSerializable() { return this.hasAttribute("shadowrootserializable"); }
     set shadowRootSerializable(v) { v ? this.setAttribute("shadowrootserializable", "") : this.removeAttribute("shadowrootserializable"); }
-    get shadowRootCustomElementRegistry() { return this.hasAttribute("shadowrootcustomelementregistry"); }
-    set shadowRootCustomElementRegistry(v) {
-      v ? this.setAttribute("shadowrootcustomelementregistry", "") : this.removeAttribute("shadowrootcustomelementregistry");
-    }
+    get shadowRootSlotAssignment() { return this.getAttribute("shadowrootslotassignment") || ""; }
+    set shadowRootSlotAssignment(v) { this.setAttribute("shadowrootslotassignment", v == null ? "" : String(v)); }
+    get shadowRootCustomElementRegistry() { return this.getAttribute("shadowrootcustomelementregistry") || ""; }
+    set shadowRootCustomElementRegistry(v) { this.setAttribute("shadowrootcustomelementregistry", v == null ? "" : String(v)); }
   }
   class SVGElement extends Element {}
   class MathMLElement extends Element {}
@@ -4133,17 +4211,52 @@
   const HTMLDirectoryElement = defHTML("HTMLDirectoryElement");
   const HTMLLabelElement = defHTML("HTMLLabelElement");
   const HTMLLegendElement = defHTML("HTMLLegendElement");
+  Object.defineProperty(HTMLLegendElement.prototype, "form", {
+    get() { return nearestForm(this); },
+    enumerable: true,
+    configurable: true,
+  });
   const HTMLOptGroupElement = defHTML("HTMLOptGroupElement");
   const HTMLDataListElement = defHTML("HTMLDataListElement");
   const HTMLProgressElement = defHTML("HTMLProgressElement");
   const HTMLMeterElement = defHTML("HTMLMeterElement");
-  const HTMLDialogElement = defHTML("HTMLDialogElement");
-  Object.defineProperty(HTMLDialogElement.prototype, "returnValue", {
-    get() { return this._returnValue || ""; },
-    set(v) { this._returnValue = v == null ? "" : String(v); },
+  Object.defineProperty(HTMLMeterElement.prototype, "labels", {
+    get() { return this._labels || (this._labels = labeledBy(this)); },
     enumerable: true,
     configurable: true,
   });
+  const HTMLDialogElement = defHTML("HTMLDialogElement");
+  Object.defineProperties(HTMLDialogElement.prototype, {
+    returnValue: {
+      get() { return this._returnValue || ""; },
+      set(v) { this._returnValue = v == null ? "" : String(v); },
+      enumerable: true,
+      configurable: true,
+    },
+    show: {
+      value: function show() { this.setAttribute("open", ""); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    showModal: {
+      value: function showModal() { this.setAttribute("open", ""); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    close: {
+      value: function close() {
+        this.removeAttribute("open");
+        if (arguments.length) this._returnValue = String(arguments[0]);
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+    requestClose: {
+      value: function requestClose() {
+        this.removeAttribute("open");
+        if (arguments.length) this._returnValue = String(arguments[0]);
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+  });
+  class HTMLSelectedContentElement extends HTMLElement {}
   function kidsByTag(el, tags) {
     const want = typeof tags === "string" ? [tags] : tags;
     return new HTMLCollection(IDL_INTERNAL, () => {
@@ -4411,23 +4524,31 @@
     get length() { return this._cues ? this._cues.length : 0; }
     item(i) { return (this._cues && this._cues[i | 0]) || null; }
     getCueById(id) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getCueById' on 'TextTrackCueList': 1 argument required, but only 0 present.");
+      }
       const cues = this._cues || [];
       return cues.find((c) => c.id === String(id)) || null;
     }
   }
+  Object.defineProperty(TextTrackCueList.prototype, "getCueById", {
+    value: TextTrackCueList.prototype.getCueById,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
   Object.defineProperty(TextTrackCueList.prototype, Symbol.toStringTag, { value: "TextTrackCueList", configurable: true });
   function emptyCueList() {
     const l = Object.create(TextTrackCueList.prototype);
     l._cues = [];
     return l;
   }
-  class TextTrack {
+  class TextTrack extends EventTarget {
     constructor() { throw new TypeError("Illegal constructor"); }
     get kind() { return this._kind || "subtitles"; }
     get label() { return this._label || ""; }
     get language() { return this._language || ""; }
     get id() { return this._id || ""; }
-    set id(v) { this._id = String(v); }
     get inBandMetadataTrackDispatchType() { return this._inBand || ""; }
     get mode() { return this._mode || "disabled"; }
     set mode(v) { this._mode = String(v); }
@@ -4481,14 +4602,25 @@
     constructor() { throw new TypeError("Illegal constructor"); }
     get length() { return 0; }
     item() { return null; }
-    getTrackById() { return null; }
+    getTrackById(id) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getTrackById' on 'AudioTrackList': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
   }
   Object.defineProperty(AudioTrackList.prototype, Symbol.toStringTag, { value: "AudioTrackList", configurable: true });
   class VideoTrackList extends EventTarget {
     constructor() { throw new TypeError("Illegal constructor"); }
     get length() { return 0; }
+    get selectedIndex() { return -1; }
     item() { return null; }
-    getTrackById() { return null; }
+    getTrackById(id) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getTrackById' on 'VideoTrackList': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
   }
   Object.defineProperty(VideoTrackList.prototype, Symbol.toStringTag, { value: "VideoTrackList", configurable: true });
   function emptyAudioTrackList() { return Object.create(AudioTrackList.prototype); }
@@ -4531,7 +4663,9 @@
     set playbackRate(v) { this._playbackRate = Number(v) || 0; }
     get preservesPitch() { return this._preservesPitch !== false; }
     set preservesPitch(v) { this._preservesPitch = !!v; }
-    addTextTrack(kind, label, language) {
+    addTextTrack(kind) {
+      const label = arguments[1];
+      const language = arguments[2];
       if (arguments.length < 1) throw new TypeError("Failed to execute 'addTextTrack' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
       return this.textTracks._add(makeTextTrack(kind, label, language));
     }
@@ -4610,7 +4744,19 @@
   }
   Object.defineProperty(ValidityState.prototype, Symbol.toStringTag, { value: "ValidityState", configurable: true });
   function validityState() { return Object.create(ValidityState.prototype); }
-  class CustomStateSet extends Set {}
+  class CustomStateSet {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get size() { return this._items ? this._items.size : 0; }
+    add(v) { (this._items || (this._items = new Set())).add(String(v)); return this; }
+    has(v) { return !!(this._items && this._items.has(String(v))); }
+    delete(v) { return !!(this._items && this._items.delete(String(v))); }
+    clear() { if (this._items) this._items.clear(); }
+    forEach(fn) { if (this._items) this._items.forEach(fn, this); }
+    keys() { return (this._items || new Set()).keys(); }
+    values() { return (this._items || new Set()).values(); }
+    entries() { return (this._items || new Set()).entries(); }
+    [Symbol.iterator]() { return this.values(); }
+  }
   Object.defineProperty(CustomStateSet.prototype, Symbol.toStringTag, { value: "CustomStateSet", configurable: true });
   class ElementInternals {
     constructor() { throw new TypeError("Illegal constructor"); }
@@ -4620,8 +4766,14 @@
     get validity() { return this._validity || (this._validity = validityState()); }
     get validationMessage() { return ""; }
     get labels() { return this._labels || (this._labels = emptyNodeList()); }
-    get states() { return this._states || (this._states = new CustomStateSet()); }
-    setFormValue() {}
+    get states() {
+      if (!this._states) {
+        this._states = Object.create(CustomStateSet.prototype);
+        this._states._items = new Set();
+      }
+      return this._states;
+    }
+    setFormValue(value) {}
     setValidity() {}
     checkValidity() { return true; }
     reportValidity() { return true; }
@@ -4685,9 +4837,17 @@
   }
   class External {
     constructor() { throw new TypeError("Illegal constructor"); }
-    AddSearchProvider() {}
-    IsSearchProviderInstalled() { return 0; }
   }
+  Object.defineProperties(External.prototype, {
+    AddSearchProvider: {
+      value: function AddSearchProvider() {},
+      writable: true, enumerable: true, configurable: true,
+    },
+    IsSearchProviderInstalled: {
+      value: function IsSearchProviderInstalled() { return 0; },
+      writable: true, enumerable: true, configurable: true,
+    },
+  });
   Object.defineProperty(External.prototype, Symbol.toStringTag, { value: "External", configurable: true });
   function installFormAssociated(proto, extra) {
     const desc = {
@@ -4767,7 +4927,7 @@
     marquee: HTMLMarqueeElement, font: HTMLFontElement, dir: HTMLDirectoryElement,
     label: HTMLLabelElement, legend: HTMLLegendElement, optgroup: HTMLOptGroupElement,
     datalist: HTMLDataListElement, progress: HTMLProgressElement, meter: HTMLMeterElement,
-    dialog: HTMLDialogElement, menu: HTMLMenuElement, data: HTMLDataElement,
+    dialog: HTMLDialogElement, selectedcontent: HTMLSelectedContentElement, menu: HTMLMenuElement, data: HTMLDataElement,
     picture: HTMLPictureElement,
     video: HTMLVideoElement, audio: HTMLAudioElement, track: HTMLTrackElement,
   });
@@ -5366,7 +5526,12 @@
       D("storageRemove", this._area, String(k));
     }
     clear() { D("storageClear", this._area); }
-    key(i) { return D("storageKey", this._area, i | 0); }
+    key(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'key' on 'Storage': 1 argument required, but only 0 present.");
+      }
+      return D("storageKey", this._area, i | 0);
+    }
     get length() { return D("storageLength", this._area); }
   }
   Object.defineProperty(Storage.prototype, Symbol.toStringTag, { value: "Storage", configurable: true });
@@ -5384,16 +5549,36 @@
   class PluginArray {
     constructor() { throw new TypeError("Illegal constructor"); }
     get length() { return 0; }
-    item() { return null; }
-    namedItem() { return null; }
+    item(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'item' on 'PluginArray': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+    namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'PluginArray': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
     refresh() {}
   }
   Object.defineProperty(PluginArray.prototype, Symbol.toStringTag, { value: "PluginArray", configurable: true });
   class MimeTypeArray {
     constructor() { throw new TypeError("Illegal constructor"); }
     get length() { return 0; }
-    item() { return null; }
-    namedItem() { return null; }
+    item(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'item' on 'MimeTypeArray': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+    namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'MimeTypeArray': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
   }
   Object.defineProperty(MimeTypeArray.prototype, Symbol.toStringTag, { value: "MimeTypeArray", configurable: true });
   class Plugin {
@@ -5402,8 +5587,18 @@
     get description() { return ""; }
     get filename() { return ""; }
     get length() { return 0; }
-    item() { return null; }
-    namedItem() { return null; }
+    item(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'item' on 'Plugin': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+    namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'Plugin': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
   }
   Object.defineProperty(Plugin.prototype, Symbol.toStringTag, { value: "Plugin", configurable: true });
   class MimeType {
@@ -5441,8 +5636,16 @@
     taintEnabled() { return false; }
     javaEnabled() { return false; }
     sendBeacon() { return true; }
-    registerProtocolHandler() {}
-    unregisterProtocolHandler() {}
+    registerProtocolHandler(scheme, url) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'registerProtocolHandler' on 'Navigator': 2 arguments required, but only " + arguments.length + " present.");
+      }
+    }
+    unregisterProtocolHandler(scheme, url) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'unregisterProtocolHandler' on 'Navigator': 2 arguments required, but only " + arguments.length + " present.");
+      }
+    }
   }
   Object.defineProperty(Navigator.prototype, Symbol.toStringTag, { value: "Navigator", configurable: true });
   class TextMetrics {
@@ -5569,17 +5772,63 @@
   }
   class Origin {
     constructor() { throw new TypeError("Illegal constructor"); }
-    static from() { return Object.create(Origin.prototype); }
+    static from(value) { return Object.create(Origin.prototype); }
     get opaque() { return false; }
-    isSameOrigin() { return false; }
-    isSameSite() { return false; }
+    isSameOrigin(other) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'isSameOrigin' on 'Origin': 1 argument required, but only 0 present.");
+      }
+      return false;
+    }
+    isSameSite(other) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'isSameSite' on 'Origin': 1 argument required, but only 0 present.");
+      }
+      return false;
+    }
   }
-  class VisibilityStateEntry {
+  try {
+    Object.defineProperty(Origin, "from", { value: Origin.from, writable: true, enumerable: true, configurable: true });
+  } catch (e) {}
+  class PerformanceEntry {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get name() { return ""; }
+    get entryType() { return ""; }
+    get startTime() { return 0; }
+    get duration() { return 0; }
+    toJSON() { return { name: this.name, entryType: this.entryType, startTime: this.startTime, duration: this.duration }; }
+  }
+  class VisibilityStateEntry extends PerformanceEntry {
     constructor() { throw new TypeError("Illegal constructor"); }
     get name() { return "visible"; }
     get entryType() { return "visibility-state"; }
     get startTime() { return 0; }
     get duration() { return 0; }
+  }
+  class TrustedHTML {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    toString() { return this._html || ""; }
+    toJSON() { return this.toString(); }
+  }
+  class ImageBitmap {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get width() { return 0; }
+    get height() { return 0; }
+    close() {}
+  }
+  class ImageBitmapRenderingContext {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get canvas() { return this._canvas || null; }
+    transferFromImageBitmap(bitmap) {}
+  }
+  class Worklet {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    addModule(url) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'addModule' on 'Worklet': 1 argument required, but only 0 present.");
+      }
+      return Promise.resolve();
+    }
   }
   class AudioTrack {
     constructor() { throw new TypeError("Illegal constructor"); }
@@ -5669,6 +5918,12 @@
     }
     reload() { D("reload"); }
   }
+  Object.defineProperty(Location.prototype, "toString", {
+    value: Location.prototype.toString,
+    writable: false,
+    enumerable: true,
+    configurable: false,
+  });
 
   class History {
     constructor() { throw new TypeError("Illegal constructor"); }
@@ -5731,11 +5986,16 @@
   }
   class NavigationPrecommitController {
     constructor() { throw new TypeError("Illegal constructor"); }
-    addHandler() {}
+    redirect(url) {}
+    addHandler(handler) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'addHandler' on 'NavigationPrecommitController': 1 argument required, but only 0 present.");
+      }
+    }
   }
   class NavigateEvent extends Event {
-    constructor(type) {
-      const init = arguments[1] || {};
+    constructor(type, init) {
+      init = init || {};
       super(type, init);
       this._navigationType = init.navigationType || "push";
       this._destination = init.destination || Object.create(NavigationDestination.prototype);
@@ -5764,8 +6024,8 @@
     scroll() {}
   }
   class NavigationCurrentEntryChangeEvent extends Event {
-    constructor(type) {
-      const init = arguments[1] || {};
+    constructor(type, init) {
+      init = init || {};
       super(type, init);
       this._navigationType = init.navigationType || "push";
       this._from = init.from || null;
@@ -5777,14 +6037,28 @@
     constructor() { throw new TypeError("Illegal constructor"); }
     entries() { return []; }
     get currentEntry() { return null; }
-    updateCurrentEntry() {}
+    updateCurrentEntry(options) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'updateCurrentEntry' on 'Navigation': 1 argument required, but only 0 present.");
+      }
+    }
     get transition() { return null; }
     get activation() { return null; }
     get canGoBack() { return false; }
     get canGoForward() { return false; }
-    navigate() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
+    navigate(url) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'navigate' on 'Navigation': 1 argument required, but only 0 present.");
+      }
+      return { committed: Promise.resolve(), finished: Promise.resolve() };
+    }
     reload() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
-    traverseTo() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
+    traverseTo(key) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'traverseTo' on 'Navigation': 1 argument required, but only 0 present.");
+      }
+      return { committed: Promise.resolve(), finished: Promise.resolve() };
+    }
     back() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
     forward() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
   }
@@ -5797,14 +6071,22 @@
       this._name = String(name);
     }
     get name() { return this._name; }
-    postMessage() {}
+    postMessage(message) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'postMessage' on 'BroadcastChannel': 1 argument required, but only 0 present.");
+      }
+    }
     close() {}
   }
   class MessagePort extends EventTarget {
     constructor() { throw new TypeError("Illegal constructor"); }
     start() {}
     close() {}
-    postMessage() {}
+    postMessage(message) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'postMessage' on 'MessagePort': 1 argument required, but only 0 present.");
+      }
+    }
   }
   class MessageChannel {
     constructor() {
@@ -5840,14 +6122,27 @@
     constructor() { throw new TypeError("Illegal constructor"); }
     get kind() { return ""; }
     get type() { return ""; }
-    getAsString() {}
+    getAsString(callback) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getAsString' on 'DataTransferItem': 1 argument required, but only 0 present.");
+      }
+    }
     getAsFile() { return null; }
   }
   class DataTransferItemList {
     constructor() { throw new TypeError("Illegal constructor"); }
     get length() { return 0; }
-    add() { return null; }
-    remove() {}
+    add(data) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'add' on 'DataTransferItemList': 1 argument required, but only 0 present.");
+      }
+      return null;
+    }
+    remove(index) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'remove' on 'DataTransferItemList': 1 argument required, but only 0 present.");
+      }
+    }
     clear() {}
   }
   class DataTransfer {
@@ -5863,10 +6158,23 @@
     get items() { return this._items; }
     get types() { return []; }
     get files() { return []; }
-    getData() { return ""; }
-    setData() {}
+    getData(format) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getData' on 'DataTransfer': 1 argument required, but only 0 present.");
+      }
+      return "";
+    }
+    setData(format, data) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'setData' on 'DataTransfer': 2 arguments required, but only " + arguments.length + " present.");
+      }
+    }
     clearData() {}
-    setDragImage() {}
+    setDragImage(image, x, y) {
+      if (arguments.length < 3) {
+        throw new TypeError("Failed to execute 'setDragImage' on 'DataTransfer': 3 arguments required, but only " + arguments.length + " present.");
+      }
+    }
   }
   class NotRestoredReasonDetails {
     constructor() { throw new TypeError("Illegal constructor"); }
@@ -5903,7 +6211,11 @@
     TextTrackCue, Location, History,
     Worker, SharedWorker, XMLSerializer, Origin, VisibilityStateEntry, AudioTrack, VideoTrack,
     MathMLAnchorElement, CommandEvent, PromiseRejectionEvent, PageSwapEvent, MessageEvent, PopStateEvent,
-    ImageData, Path2D,
+    ImageData, Path2D, FormDataEvent, TrackEvent, ToggleEvent, StorageEvent, SubmitEvent,
+    PageRevealEvent, PageTransitionEvent, BeforeUnloadEvent, HashChangeEvent, DragEvent,
+    DOMParser, Sanitizer, CanvasRenderingContext2D, OffscreenCanvas, ImageBitmap,
+    ImageBitmapRenderingContext, Worklet, TrustedHTML, PerformanceEntry, DOMStringMap,
+    HTMLSelectedContentElement, BarProp,
   ]) {
     try {
       Object.defineProperty(C.prototype, Symbol.toStringTag, { value: C.name, configurable: true });
@@ -6346,6 +6658,9 @@
   }
   class DOMParser {
     parseFromString(str, type) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'parseFromString' on 'DOMParser': 2 arguments required, but only " + arguments.length + " present.");
+      }
       const html = str == null ? "" : String(str);
       if (String(type || "").toLowerCase().includes("xml")) {
         const doc = document.implementation.createHTMLDocument("");
@@ -6356,6 +6671,12 @@
       return wrap(D("parseHTMLDocument", body ? body[1] : html));
     }
   }
+  Object.defineProperty(DOMParser.prototype, "parseFromString", {
+    value: DOMParser.prototype.parseFromString,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
   function Blob(parts, opts) {
     this.size = 0;
     this.type = (opts && opts.type) || "";
@@ -6452,6 +6773,14 @@
       const len = (n.nodeType === 3 || n.nodeType === 8) ? n.length : n.childNodes.length;
       this.setStart(n, 0);
       this.setEnd(n, len);
+    }
+    createContextualFragment(html) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'createContextualFragment' on 'Range': 1 argument required, but only 0 present.");
+      }
+      const t = document.createElement("template");
+      t.innerHTML = html == null ? "" : String(html);
+      return t.content;
     }
     cloneRange() {
       const r = new Range();
@@ -6624,31 +6953,38 @@
   browsingDocument = document;
   const location = Object.create(Location.prototype);
   const history = Object.create(History.prototype);
-  function Image(width, height) {
+  function namedCtor(name, proto, construct) {
+    const C = {
+      [name]: function () {
+        if (!new.target) {
+          throw new TypeError("Failed to construct '" + name + "': Please use the 'new' operator, or DOMObjectConstructor.");
+        }
+        return construct.apply(null, arguments);
+      },
+    }[name];
+    Object.defineProperty(C, "length", { value: 0, configurable: true });
+    Object.defineProperty(C, "prototype", { value: proto, writable: false });
+    return C;
+  }
+  const Image = namedCtor("Image", HTMLImageElement.prototype, function (width, height) {
     const el = document.createElement("img");
     if (arguments.length > 0) el.width = width;
     if (arguments.length > 1) el.height = height;
     return el;
-  }
-  Image.prototype = HTMLImageElement.prototype;
-  Object.defineProperty(Image, "length", { value: 0, configurable: true });
-  function Audio(src) {
+  });
+  const Audio = namedCtor("Audio", HTMLAudioElement.prototype, function (src) {
     const el = document.createElement("audio");
     if (src != null) el.src = String(src);
     return el;
-  }
-  Audio.prototype = HTMLAudioElement.prototype;
-  Object.defineProperty(Audio, "length", { value: 0, configurable: true });
-  function Option(text, value, defaultSelected, selected) {
+  });
+  const Option = namedCtor("Option", HTMLOptionElement.prototype, function (text, value, defaultSelected, selected) {
     const el = document.createElement("option");
     if (text != null) el.text = String(text);
     if (arguments.length > 1) el.value = String(value);
     if (defaultSelected) el.setAttribute("selected", "");
     if (selected) el.selected = true;
     return el;
-  }
-  Option.prototype = HTMLOptionElement.prototype;
-  Object.defineProperty(Option, "length", { value: 0, configurable: true });
+  });
   const windowExternal = Object.create(External.prototype);
   const windowProps = {
     window: null, self: null, document, location, history, atob, btoa,
@@ -6685,10 +7021,10 @@
     MessageChannel,
     BroadcastChannel,
     ErrorEvent,
-    SubmitEvent: defIllegal("SubmitEvent"),
+    SubmitEvent,
     PromiseRejectionEvent,
-    PageTransitionEvent: defIllegal("PageTransitionEvent"),
-    BeforeUnloadEvent: defIllegal("BeforeUnloadEvent"),
+    PageTransitionEvent,
+    BeforeUnloadEvent,
     CommandEvent,
     Navigation,
     NavigateEvent,
@@ -6700,7 +7036,7 @@
     VideoTrack,
     CloseWatcher,
     XMLSerializer,
-    ImageBitmap: defIllegal("ImageBitmap"),
+    ImageBitmap,
     UserActivation,
     Plugin,
     PluginArray,
@@ -6712,15 +7048,17 @@
     MathMLAnchorElement,
     VisibilityStateEntry,
     NavigationActivation,
-    ImageBitmapRenderingContext: defIllegal("ImageBitmapRenderingContext"),
+    ImageBitmapRenderingContext,
     NavigationPrecommitController,
     NavigationCurrentEntryChangeEvent,
     PageSwapEvent,
-    PageRevealEvent: defIllegal("PageRevealEvent"),
+    PageRevealEvent,
     CanvasGradient,
     CanvasPattern,
-    Worklet: defIllegal("Worklet"),
-    HTMLSelectedContentElement: defIllegal("HTMLSelectedContentElement"),
+    Worklet,
+    HTMLSelectedContentElement,
+    TrustedHTML,
+    PerformanceEntry,
     ElementInternals, CustomStateSet,
     Image, Audio, Option, external: windowExternal,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
@@ -7225,6 +7563,9 @@
   exposeCtor("DOMImplementation", DOMImplementation);
   exposeCtor("Location", Location);
   exposeCtor("History", History);
+  exposeCtor("Image", Image);
+  exposeCtor("Audio", Audio);
+  exposeCtor("Option", Option);
   try {
     Object.defineProperty(globalThis, "external", {
       value: windowExternal,
@@ -7267,6 +7608,12 @@
     for (const name of names) {
       if (Object.getOwnPropertyDescriptor(obj, name)) continue;
       const get = function () {
+        if (globalLoose) {
+          if (this !== undefined && this !== null && this !== globalThis) {
+            if (name === "onmouseenter" || name === "onmouseleave") return undefined;
+            return windowThis(this);
+          }
+        }
         const t = globalLoose ? windowThis(this) : this;
         const m = handlerStore.get(t);
         return (m && m[name]) || null;
@@ -7362,7 +7709,13 @@
         const fn = desc.value;
         const wrapped = function (...a) {
           if (!(this instanceof ctor)) {
-            if (ctor === HTMLMediaElement && name === "play") {
+            if (
+              (ctor === HTMLMediaElement && name === "play")
+              || (ctor === HTMLImageElement && name === "decode")
+              || (ctor === OffscreenCanvas && name === "convertToBlob")
+              || (ctor === CustomElementRegistry && name === "whenDefined")
+              || (ctor === Worklet && name === "addModule")
+            ) {
               return Promise.reject(new TypeError("Illegal invocation"));
             }
             throw new TypeError("Illegal invocation");
@@ -7463,12 +7816,32 @@
   brandWrap(MathMLAnchorElement);
   brandWrap(CustomElementRegistry);
   brandWrap(ShadowRoot);
-  for (const C of Object.values(windowProps)) {
-    if (typeof C === "function" && C.prototype && /^HTML/.test(C.name || "")) brandWrap(C);
-  }
+  brandWrap(TextTrackCueList);
+  brandWrap(BarProp);
+  brandWrap(DOMParser);
+  brandWrap(DOMStringMap);
+  brandWrap(SubmitEvent);
+  brandWrap(PageRevealEvent);
+  brandWrap(PageTransitionEvent);
+  brandWrap(BeforeUnloadEvent);
+  brandWrap(HashChangeEvent);
+  brandWrap(TrackEvent);
+  brandWrap(FormDataEvent);
+  brandWrap(DragEvent);
+  brandWrap(ImageBitmap);
+  brandWrap(ImageBitmapRenderingContext);
+  brandWrap(Worklet);
+  brandWrap(TrustedHTML);
+  brandWrap(PerformanceEntry);
+  brandWrap(HTMLSelectedContentElement);
+  brandWrap(Range);
+  brandWrap(OffscreenCanvas);
   {
     const chk = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "checked");
     if (chk) Object.defineProperty(HTMLInputElement.prototype, "checked", chk);
+  }
+  for (const C of Object.values(windowProps)) {
+    if (typeof C === "function" && C.prototype && /^HTML/.test(C.name || "")) brandWrap(C);
   }
   {
     const names = ["href", "origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash", "assign", "replace", "reload", "ancestorOrigins", "toString"];
@@ -7609,12 +7982,17 @@
     if (arguments.length < 1) throw new TypeError("Failed to execute 'reportError' on 'Window': 1 argument required, but only 0 present.");
     try { console.error(e); } catch (err) {}
   }, 1);
-  globalThis.createImageBitmap = windowOp(function createImageBitmap(image) {
-    if (arguments.length < 1) {
-      throw new TypeError("Failed to execute 'createImageBitmap' on 'Window': 1 argument required, but only 0 present.");
-    }
-    return Promise.resolve({});
-  }, 1);
+  globalThis.createImageBitmap = (function createImageBitmap(image) {
+    const wrapped = function createImageBitmap(image) {
+      try { windowThis(this); } catch (e) { return Promise.reject(e); }
+      if (arguments.length < 1) {
+        return Promise.reject(new TypeError("Failed to execute 'createImageBitmap' on 'Window': 1 argument required, but only 0 present."));
+      }
+      return Promise.resolve({});
+    };
+    Object.defineProperty(wrapped, "length", { value: 1, configurable: true });
+    return wrapped;
+  })();
   globalThis.structuredClone = windowOp(function structuredClone(value) {
     if (arguments.length < 1) {
       throw new TypeError("Failed to execute 'structuredClone' on 'Window': 1 argument required, but only 0 present.");
@@ -7688,6 +8066,8 @@
       configurable: true,
     });
   }
+  globalThis.atob = windowOp(atob, 1);
+  globalThis.btoa = windowOp(btoa, 1);
   for (const name of ["addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "alert", "confirm", "prompt", "print", "focus", "blur", "stop", "close", "open", "getComputedStyle", "matchMedia", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "btoa", "atob", "fetch", "getSelection", "reportError", "createImageBitmap", "structuredClone"]) {
     const fn = globalThis[name];
     if (typeof fn === "function") {
@@ -7698,7 +8078,7 @@
   }
 
   try {
-    ownAccessor(globalThis, "origin", () => D("locationGet", "origin"));
+    ownAccessor(globalThis, "origin", () => D("locationGet", "origin"), () => {}, false, true);
     Object.defineProperty(globalThis, "scrollX", { configurable: true, enumerable: true, get() { return D("scrollX") || 0; } });
     Object.defineProperty(globalThis, "scrollY", { configurable: true, enumerable: true, get() { return D("scrollY") || 0; } });
     Object.defineProperty(globalThis, "pageXOffset", { configurable: true, enumerable: true, get() { return D("scrollX") || 0; } });
