@@ -399,6 +399,45 @@ const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
             ("files", "./TypeScript/src/gen/immer-tiny/files.json"),
         ],
     ),
+    (
+        "transformersjs-bert-wasm",
+        &[
+            "./utils/polyfills/fast-text-encoding/1.0.3/text.js",
+            "./transformersjs/benchmark.js",
+            "./transformersjs/task-bert.js",
+        ],
+        false,
+        &[
+            (
+                "transformersJsModule",
+                "./transformersjs/build/transformers.js",
+            ),
+            (
+                "onnxJsModule",
+                "./transformersjs/build/onnxruntime-web/ort-wasm-simd-threaded.mjs",
+            ),
+            (
+                "onnxWasmBinary",
+                "./transformersjs/build/onnxruntime-web/ort-wasm-simd-threaded.wasm",
+            ),
+            (
+                "modelWeights",
+                "./transformersjs/build/models/Xenova/distilbert-base-uncased-finetuned-sst-2-english/onnx/model_uint8.onnx",
+            ),
+            (
+                "modelConfig",
+                "./transformersjs/build/models/Xenova/distilbert-base-uncased-finetuned-sst-2-english/config.json",
+            ),
+            (
+                "modelTokenizer",
+                "./transformersjs/build/models/Xenova/distilbert-base-uncased-finetuned-sst-2-english/tokenizer.json",
+            ),
+            (
+                "modelTokenizerConfig",
+                "./transformersjs/build/models/Xenova/distilbert-base-uncased-finetuned-sst-2-english/tokenizer_config.json",
+            ),
+        ],
+    ),
 ];
 
 /// Official `WasmEMCCBenchmark` Default names from `JetStreamDriver.js`.
@@ -730,7 +769,7 @@ fn load_chunks(
         chunks.push("Math.random.__resetSeed();\n".into());
     }
     if !preloads.is_empty() {
-        chunks.push(preload_prelude(root, preloads)?);
+        chunks.extend(preload_chunks(root, preloads)?);
     }
     if wasm {
         chunks.push(WASM_PRERUN.to_owned());
@@ -742,10 +781,14 @@ fn load_chunks(
     Ok(chunks)
 }
 
-fn preload_prelude(root: &std::path::Path, preloads: &[(&str, &str)]) -> Result<String, String> {
-    let mut js = String::from(
+fn preload_chunks(
+    root: &std::path::Path,
+    preloads: &[(&str, &str)],
+) -> Result<Vec<String>, String> {
+    let mut chunks = vec![String::from(
         r#"globalThis.JetStream = globalThis.JetStream || {};
 JetStream.preload = JetStream.preload || {};
+JetStream.resources = JetStream.resources || {};
 JetStream.__vePreload = JetStream.__vePreload || {};
 JetStream.__vePreloadBinary = JetStream.__vePreloadBinary || {};
 JetStream.__veDecodeB64 = function (b64) {
@@ -755,41 +798,18 @@ JetStream.__veDecodeB64 = function (b64) {
   return out;
 };
 "#,
-    );
+    )];
     for (name, rel) in preloads {
-        let path = root.join(rel.trim_start_matches("./"));
-        let key = serde_json::to_string(name).unwrap_or_else(|_| "\"\"".into());
-        js.push_str("JetStream.preload[");
-        js.push_str(&key);
-        js.push_str("] = ");
-        js.push_str(&key);
-        js.push_str(";\n");
-        if is_binary_preload(rel) {
-            let bytes = read_bytes(&path)?;
-            let val = serde_json::to_string(&base64_encode(&bytes))
-                .map_err(|e| format!("encode binary preload {name}: {e}"))?;
-            js.push_str("JetStream.__vePreloadBinary[");
-            js.push_str(&key);
-            js.push_str("] = JetStream.__veDecodeB64(");
-            js.push_str(&val);
-            js.push_str(");\n");
-        } else {
-            let text = read_js(&path)?;
-            let val =
-                serde_json::to_string(&text).map_err(|e| format!("encode preload {name}: {e}"))?;
-            js.push_str("JetStream.__vePreload[");
-            js.push_str(&key);
-            js.push_str("] = ");
-            js.push_str(&val);
-            js.push_str(";\n");
-        }
+        chunks.push(preload_one(root, name, rel)?);
     }
-    js.push_str(
+    chunks.push(String::from(
         r#"
 JetStream.getString = async function (key) {
   const v = JetStream.__vePreload[key];
-  if (v == null) throw new Error("missing preload " + key);
-  return v;
+  if (v != null) return v;
+  const bin = JetStream.__vePreloadBinary[key];
+  if (bin != null) return new TextDecoder().decode(bin);
+  throw new Error("missing preload " + key);
 };
 JetStream.getBinary = async function (key) {
   const v = JetStream.__vePreloadBinary[key];
@@ -856,7 +876,43 @@ JetStream.dynamicImport = async function (key) {
   return factory();
 };
 "#,
-    );
+    ));
+    Ok(chunks)
+}
+
+fn preload_one(root: &std::path::Path, name: &str, rel: &str) -> Result<String, String> {
+    let path = root.join(rel.trim_start_matches("./"));
+    let key = serde_json::to_string(name).unwrap_or_else(|_| "\"\"".into());
+    let resource = serde_json::to_string(rel).unwrap_or_else(|_| "\"\"".into());
+    let mut js = String::new();
+    js.push_str("JetStream.preload[");
+    js.push_str(&key);
+    js.push_str("] = ");
+    js.push_str(&key);
+    js.push_str(";\nJetStream.resources[");
+    js.push_str(&resource);
+    js.push_str("] = ");
+    js.push_str(&key);
+    js.push_str(";\n");
+    if is_binary_preload(rel) {
+        let bytes = read_bytes(&path)?;
+        let val = serde_json::to_string(&base64_encode(&bytes))
+            .map_err(|e| format!("encode binary preload {name}: {e}"))?;
+        js.push_str("JetStream.__vePreloadBinary[");
+        js.push_str(&key);
+        js.push_str("] = JetStream.__veDecodeB64(");
+        js.push_str(&val);
+        js.push_str(");\n");
+    } else {
+        let text = read_js(&path)?;
+        let val =
+            serde_json::to_string(&text).map_err(|e| format!("encode preload {name}: {e}"))?;
+        js.push_str("JetStream.__vePreload[");
+        js.push_str(&key);
+        js.push_str("] = ");
+        js.push_str(&val);
+        js.push_str(";\n");
+    }
     Ok(js)
 }
 
@@ -871,6 +927,7 @@ fn is_binary_preload(rel: &str) -> bool {
         || name.ends_with(".ttf")
         || name.ends_with(".onnx")
         || name.ends_with(".dat")
+        || name.ends_with(".json")
 }
 
 fn read_bytes(path: &std::path::Path) -> Result<Vec<u8>, String> {
@@ -979,6 +1036,12 @@ mod tests {
         assert!(is_binary_preload("./Kotlin-compose/build/example1_cat.jpg"));
         assert!(is_binary_preload(
             "./Kotlin-compose/build/jetbrainsmono_regular.ttf"
+        ));
+        assert!(is_binary_preload(
+            "./transformersjs/build/models/Xenova/x/tokenizer.json"
+        ));
+        assert!(is_binary_preload(
+            "./transformersjs/build/models/Xenova/x/onnx/model_uint8.onnx"
         ));
         assert!(!is_binary_preload(
             "./SeaMonster/inspector-json-payload.js.z"
