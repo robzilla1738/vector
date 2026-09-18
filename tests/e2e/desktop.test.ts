@@ -167,14 +167,13 @@ describe("desktop e2e", () => {
     for (const p of [bgA, bgB]) await rpc("pages.close", { pageId: p.pageId });
   }, 90_000);
 
-  it("engine scene and takeover share the live page", async () => {
+  it("takeover blocks dispatch on the live engine page", async () => {
     const page = await rpc<{ pageId: string; backend: string }>("pages.open", {
       url: "http://127.0.0.1:4810/records",
     });
     expect(page.backend).toBe("vector-engine");
-    await rpc("pages.observe", { pageId: page.pageId });
-    const scene = await rpc<{ kind?: string; items?: unknown[] }>("pages.scene", { pageId: page.pageId });
-    expect(scene.kind ?? "displayList").toBeTruthy();
+    const obs = await rpc<{ content: { url: string; elements: unknown[] } }>("pages.observe", { pageId: page.pageId });
+    expect(obs.content.elements.length).toBeGreaterThan(0);
     const taken = await rpc<{ controller?: string }>("pages.takeover", { pageId: page.pageId });
     expect(taken.controller).toBe("human");
     await expect(
