@@ -148,6 +148,16 @@ impl Compositor {
         &self.layers
     }
 
+    /// Compositor-only animation: change opacity without relayout.
+    pub fn animate_opacity(&mut self, id: LayerId, opacity: f32) -> bool {
+        let Some(layer) = self.layer_mut(id) else {
+            return false;
+        };
+        layer.opacity = opacity.clamp(0.0, 1.0);
+        self.damaged = true;
+        true
+    }
+
     /// Flattens all layers into one root-space display list for a surface of `size`.
     #[must_use]
     pub fn composite(&self, size: Size) -> DisplayList {
@@ -217,6 +227,9 @@ mod tests {
         );
         assert_eq!(items[3], DisplayItem::PopClip);
         assert_eq!(items[4], DisplayItem::PopOpacity);
+        assert!(comp.animate_opacity(id, 0.25));
+        assert!((comp.layer(id).unwrap().opacity - 0.25).abs() < f32::EPSILON);
+        assert!(comp.take_damage());
         assert!(comp.remove_layer(id));
         assert!(comp.composite(Size::ZERO).is_empty());
     }

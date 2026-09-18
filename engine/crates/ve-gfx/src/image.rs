@@ -123,11 +123,14 @@ impl DecodedImage {
 /// `gpu`); without it every format reports [`GfxError::Unsupported`].
 pub fn decode(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     let format = sniff_format(bytes);
+    if format == ImageFormat::Svg {
+        return decode_svg(bytes);
+    }
     #[cfg(feature = "images")]
     {
         if !matches!(
             format,
-            ImageFormat::Svg | ImageFormat::Unknown | ImageFormat::Avif | ImageFormat::Ico
+            ImageFormat::Unknown | ImageFormat::Avif | ImageFormat::Ico
         ) {
             let img = ::image::load_from_memory(bytes)
                 .map_err(|e| GfxError::Decode(e.to_string()))?
@@ -144,6 +147,95 @@ pub fn decode(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         "decoding {} images (enable the `images` feature)",
         format.mime_type()
     )))
+}
+
+fn svg_attr(tag: &str, name: &str) -> Option<f32> {
+    for quote in ['"', '\''] {
+        let key = format!("{name}={quote}");
+        if let Some(i) = tag.find(&key) {
+            let rest = &tag[i + key.len()..];
+            if let Some(end) = rest.find(quote)
+                && let Ok(n) = rest[..end].parse()
+            {
+                return Some(n);
+            }
+        }
+    }
+    None
+}
+
+fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
+    let text = String::from_utf8_lossy(bytes);
+    let mut width = 64u32;
+    let mut height = 64u32;
+    if let Some(start) = text.find("<svg") {
+        let tag_end = text[start..].find('>').unwrap_or(64);
+        let tag = &text[start..start + tag_end];
+        if let Some(w) = svg_attr(tag, "width") {
+            width = w.max(1.0) as u32;
+        }
+        if let Some(h) = svg_attr(tag, "height") {
+            height = h.max(1.0) as u32;
+        }
+        if let Some(vb) = tag.split("viewBox=\"").nth(1).and_then(|s| s.split('"').next())
+        {
+            let nums: Vec<f32> = vb.split_whitespace().filter_map(|p| p.parse().ok()).collect();
+            if nums.len() == 4 {
+                width = nums[2].max(1.0) as u32;
+                height = nums[3].max(1.0) as u32;
+            }
+        }
+    }
+    width = width.min(2048);
+    height = height.min(2048);
+    let mut img = DecodedImage::solid(width, height, [0, 0, 0, 0]);
+    let mut rest = text.as_ref();
+    while let Some(i) = rest.find("<rect") {
+        let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
+        let tag = &rest[i..i + tag_end];
+        let x = svg_attr(tag, "x").unwrap_or(0.0) as u32;
+        let y = svg_attr(tag, "y").unwrap_or(0.0) as u32;
+        let w = svg_attr(tag, "width").unwrap_or(0.0) as u32;
+        let h = svg_attr(tag, "height").unwrap_or(0.0) as u32;
+        let fill = tag
+            .split("fill=")
+            .nth(1)
+            .and_then(|s| {
+                let q = s.chars().next()?;
+                if q == '"' || q == '\'' {
+                    s[1..].split(q).next()
+                } else {
+                    None
+                }
+            })
+            .unwrap_or("#000000");
+        let color = parse_svg_color(fill);
+        for yy in y..(y + h).min(img.height) {
+            for xx in x..(x + w).min(img.width) {
+                let idx = ((yy * img.width + xx) * 4) as usize;
+                img.rgba[idx..idx + 4].copy_from_slice(&color);
+            }
+        }
+        rest = &rest[i + tag_end + 1..];
+    }
+    Ok(img)
+}
+
+fn parse_svg_color(s: &str) -> [u8; 4] {
+    let s = s.trim();
+    if let Some(hex) = s.strip_prefix('#') {
+        if hex.len() == 6 {
+            if let Ok(n) = u32::from_str_radix(hex, 16) {
+                return [
+                    ((n >> 16) & 0xff) as u8,
+                    ((n >> 8) & 0xff) as u8,
+                    (n & 0xff) as u8,
+                    255,
+                ];
+            }
+        }
+    }
+    [0, 0, 0, 255]
 }
 
 /// Handle to a decoded image in an [`ImageCache`].
@@ -232,5 +324,11 @@ mod tests {
                 Err(GfxError::Unsupported(_))
             ));
         }
+        let svg = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><rect x='0' y='0' width='8' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg");
+        assert_eq!(svg.width, 8);
+        assert_eq!(svg.pixel(0, 0), Some([255, 0, 0, 255]));
     }
 }

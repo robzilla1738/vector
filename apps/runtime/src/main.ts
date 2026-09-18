@@ -18,7 +18,7 @@ import {
   VectorEngineDriver,
   type BrowserDriver,
   type EngineAvailability,
-} from "@vector/browser-driver";
+} from "@vector/engine-client";
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb } from "./store/db.js";
 import { Repo } from "./store/repo.js";

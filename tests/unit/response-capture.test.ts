@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { bodyCapturePolicy, defaultResponseCaptureOptions, DEFAULT_BODY_CAP } from "@vector/browser-driver";
+import { bodyCapturePolicy, defaultResponseCaptureOptions, DEFAULT_BODY_CAP } from "@vector/engine-client";
 
 const opts = defaultResponseCaptureOptions({});
 

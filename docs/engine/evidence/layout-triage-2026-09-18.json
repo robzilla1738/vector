@@ -2,6 +2,35 @@
   "date": "2026-09-18",
   "backend": "vector-engine",
   "reference": "chromium-headless",
-  "pages": 0,
-  "notes": "H1-D4 harness. Compare engine layout boxes to Chromium getBoundingClientRect on the public corpus."
+  "chromiumLive": false,
+  "skippedLive": true,
+  "reason": "no headed Chrome in this environment",
+  "pages": 4,
+  "engineBoxes": [
+    {
+      "html": "flex-row",
+      "selector": "#a",
+      "engine": { "x": 0, "y": 0, "w": 100, "h": 30 },
+      "test": "flex_row_distributes_width_and_hit_testing_finds_items"
+    },
+    {
+      "html": "flex-row",
+      "selector": "#big",
+      "engine": { "x": 100, "y": 0, "w": 200, "h": 30 },
+      "test": "flex_row_distributes_width_and_hit_testing_finds_items"
+    },
+    {
+      "html": "block-margin",
+      "selector": "#a",
+      "engine": { "x": 0, "y": 0, "w": 400, "h": 50 },
+      "test": "ve-layout block layout"
+    },
+    {
+      "html": "inline-wrap",
+      "selector": "p",
+      "engine": { "x": 0, "y": 0, "w": 100, "h": 40 },
+      "test": "inline_text_wraps_into_lines"
+    }
+  ],
+  "notes": "Engine boxes measured by ve-layout tests. Chromium getBoundingClientRect comparison is skipped-live."
 }

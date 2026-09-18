@@ -30,7 +30,7 @@ import {
   type DriverSet,
 } from "@vector/runtime";
 import type { ObservationContent, SetMember, Step } from "@vector/contracts";
-import type { BrowserDriver, DriverPage, ExecuteProgramResult } from "@vector/browser-driver";
+import type { BrowserDriver, DriverPage, ExecuteProgramResult } from "@vector/engine-client";
 
 const obs = (opts?: { ref?: string; name?: string; url?: string }): ObservationContent =>
   ({

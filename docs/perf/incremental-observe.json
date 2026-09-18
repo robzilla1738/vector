@@ -1,0 +1,13 @@
+{
+  "backend": "vector-engine",
+  "metric": "incremental_observe",
+  "n": 8,
+  "p95Ms": 0.4,
+  "targetP95Ms": 2,
+  "security_mode": "production",
+  "evidence": "ve-agent::incremental_observe_is_under_two_milliseconds",
+  "spatialHitIndex": "ve_layout::HitIndex 64px cells",
+  "v8HeapCaps": "V8Vm::with_heap_limit / VECTOR_V8_HEAP_MB",
+  "v8SnapshotStartup": "V8Vm startup snapshot blob + platform Once",
+  "notes": "Cached sinceRevision observe. Not an Apple-silicon published score."
+}

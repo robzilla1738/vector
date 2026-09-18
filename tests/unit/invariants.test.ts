@@ -14,7 +14,7 @@ import {
   verifySkillPostconditions,
   compileSkill,
 } from "@vector/runtime";
-import { RefRegistry } from "@vector/browser-driver";
+import { RefRegistry } from "@vector/engine-client";
 import { VectorError } from "@vector/contracts";
 
 describe("non-negotiable invariants", () => {

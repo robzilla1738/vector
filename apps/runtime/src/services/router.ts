@@ -18,7 +18,7 @@
  * `routeReason` that ends up on `pages.open` results.
  */
 import { VectorError, type Backend, type EngineMode, type Step } from "@vector/contracts";
-import type { PageRouting } from "@vector/browser-driver";
+import type { PageRouting } from "@vector/engine-client";
 
 export const NEEDS_CHROMIUM_TTL_MS = 24 * 60 * 60 * 1000;
 

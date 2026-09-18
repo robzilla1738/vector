@@ -63,6 +63,58 @@ pub use floats::FloatContext;
 pub use stacking::{PaintItem, StackingContext};
 pub use text::{CharClass, MetricShaper, ParleyShaper, ShapedLine, TextShaper};
 
+/// Uniform grid over paint items so observe occlusion is O(k) not O(n).
+#[derive(Clone, Debug, Default)]
+struct HitIndex {
+    cell: f32,
+    cells: HashMap<(i32, i32), Vec<usize>>,
+}
+
+impl HitIndex {
+    const CELL: f32 = 64.0;
+
+    fn build(paint: &[PaintItem]) -> Self {
+        let mut cells: HashMap<(i32, i32), Vec<usize>> = HashMap::new();
+        for (i, item) in paint.iter().enumerate() {
+            if !item.hit_testable {
+                continue;
+            }
+            let r = item.rect;
+            let x0 = (r.x() / Self::CELL).floor() as i32;
+            let y0 = (r.y() / Self::CELL).floor() as i32;
+            let x1 = (r.right() / Self::CELL).floor() as i32;
+            let y1 = (r.bottom() / Self::CELL).floor() as i32;
+            for y in y0..=y1 {
+                for x in x0..=x1 {
+                    cells.entry((x, y)).or_default().push(i);
+                }
+            }
+        }
+        Self {
+            cell: Self::CELL,
+            cells,
+        }
+    }
+
+    fn query(&self, point: Point, paint: &[PaintItem]) -> Option<NodeId> {
+        if self.cells.is_empty() {
+            return paint
+                .iter()
+                .rev()
+                .find(|item| item.hit_testable && item.rect.contains(point))
+                .and_then(|i| i.element);
+        }
+        let cx = (point.x / self.cell).floor() as i32;
+        let cy = (point.y / self.cell).floor() as i32;
+        let idxs = self.cells.get(&(cx, cy))?;
+        idxs.iter()
+            .rev()
+            .copied()
+            .find(|&i| paint[i].hit_testable && paint[i].rect.contains(point))
+            .and_then(|i| paint[i].element)
+    }
+}
+
 /// Flags a relayout clears on the nodes it visits.
 fn layout_flags() -> DirtyFlags {
     DirtyFlags::LAYOUT | DirtyFlags::TEXT | DirtyFlags::LAYOUT_CHILDREN
@@ -81,6 +133,8 @@ pub struct LayoutTree {
     clips: HashMap<NodeId, Rect>,
     /// `stacking` flattened once; hit testing and painting read this.
     paint: Vec<PaintItem>,
+    /// Spatial index over `paint` (64 CSS-px cells) for observe occlusion.
+    hit_index: HitIndex,
     revision: Revision,
     boxes_laid_out: usize,
 }
@@ -97,6 +151,7 @@ impl LayoutTree {
             geometry: HashMap::new(),
             clips: HashMap::new(),
             paint: Vec::new(),
+            hit_index: HitIndex::default(),
             revision: Revision(0),
             boxes_laid_out: 0,
         }
@@ -157,11 +212,7 @@ impl LayoutTree {
     /// per candidate element, so it must not re-flatten the stacking tree.
     #[must_use]
     pub fn hit_test(&self, point: Point) -> Option<NodeId> {
-        self.paint
-            .iter()
-            .rev()
-            .find(|item| item.hit_testable && item.rect.contains(point))
-            .and_then(|i| i.element)
+        self.hit_index.query(point, &self.paint)
     }
 
     /// Boxes in paint order (back to front).
@@ -207,6 +258,7 @@ impl LayoutTree {
         collect_geometry(&self.root, &mut self.geometry, &mut self.clips);
         self.stacking = StackingContext::build(&self.root);
         self.paint = self.stacking.paint_order();
+        self.hit_index = HitIndex::build(&self.paint);
     }
 
     /// Applies `position: sticky` against `scroll` (VEC-012).
@@ -274,6 +326,7 @@ impl LayoutEngine {
             geometry: HashMap::new(),
             clips: HashMap::new(),
             paint: Vec::new(),
+            hit_index: HitIndex::default(),
             revision: styles.revision(),
             boxes_laid_out,
         };
@@ -849,6 +902,15 @@ mod tests {
             tree.hit_test(Point::new(350.0, 10.0)),
             Some(doc.body().unwrap()),
             "outside the row"
+        );
+        assert_eq!(
+            tree.hit_test(Point::new(150.0, 10.0)),
+            tree.paint_order()
+                .iter()
+                .rev()
+                .find(|item| item.hit_testable && item.rect.contains(Point::new(150.0, 10.0)))
+                .and_then(|i| i.element),
+            "spatial index matches linear paint-order scan"
         );
     }
 

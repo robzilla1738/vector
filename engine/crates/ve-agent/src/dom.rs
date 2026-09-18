@@ -2097,6 +2097,28 @@ pub(crate) fn host_call(
             );
             Ok(JsValue::Undefined)
         }
+        "canvasFillText" => {
+            let id = live(page, args, 0)?;
+            let ops = page.canvas_fill_text(
+                id,
+                &arg_str(args, 1),
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+                &arg_str(args, 4),
+            );
+            Ok(JsValue::Number(ops as f64))
+        }
+        "canvasDrawImage" => {
+            let id = live(page, args, 0)?;
+            let src = live(page, args, 1)?;
+            let ops = page.canvas_draw_image(
+                id,
+                src,
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+            );
+            Ok(JsValue::Number(ops as f64))
+        }
         "canvasFillPath" => {
             let id = live(page, args, 0)?;
             let spec: serde_json::Value =

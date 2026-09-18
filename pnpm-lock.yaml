@@ -81,12 +81,12 @@ importers:
       '@ai-sdk/gateway':
         specifier: 4.0.75
         version: 4.0.75(zod@4.5.4)
-      '@vector/browser-driver':
-        specifier: workspace:*
-        version: link:../../packages/browser-driver
       '@vector/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@vector/engine-client':
+        specifier: workspace:*
+        version: link:../../packages/engine-client
       ai:
         specifier: 7.0.93
         version: 7.0.93(zod@4.5.4)
@@ -113,25 +113,6 @@ importers:
         specifier: 3.5.1
         version: 3.5.1(@emnapi/runtime@1.11.2)(@types/node@24.13.4)
 
-  packages/browser-driver:
-    dependencies:
-      '@vector/contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      '@vector/engine-native':
-        specifier: workspace:*
-        version: link:../../engine/crates/ve-napi
-      playwright-core:
-        specifier: 1.63.0
-        version: 1.63.0
-      zod:
-        specifier: 4.5.4
-        version: 4.5.4
-    devDependencies:
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
-
   packages/cli:
     dependencies:
       '@vector/contracts':
@@ -150,6 +131,25 @@ importers:
 
   packages/contracts:
     dependencies:
+      zod:
+        specifier: 4.5.4
+        version: 4.5.4
+    devDependencies:
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+  packages/engine-client:
+    dependencies:
+      '@vector/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@vector/engine-native':
+        specifier: workspace:*
+        version: link:../../engine/crates/ve-napi
+      playwright-core:
+        specifier: 1.63.0
+        version: 1.63.0
       zod:
         specifier: 4.5.4
         version: 4.5.4
@@ -179,12 +179,12 @@ importers:
 
   tests:
     dependencies:
-      '@vector/browser-driver':
-        specifier: workspace:*
-        version: link:../packages/browser-driver
       '@vector/contracts':
         specifier: workspace:*
         version: link:../packages/contracts
+      '@vector/engine-client':
+        specifier: workspace:*
+        version: link:../packages/engine-client
       '@vector/runtime':
         specifier: workspace:*
         version: link:../apps/runtime

@@ -10,7 +10,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { EventBus, MemoryRouterStore, NullNativeBridge, PageService, Repo, Router, openDb, type DriverSet, type NativeBridge } from "@vector/runtime";
-import type { BrowserDriver, DriverPage, ExecuteProgramOptions, ExecuteProgramResult, PageRouting } from "@vector/browser-driver";
+import type { BrowserDriver, DriverPage, ExecuteProgramOptions, ExecuteProgramResult, PageRouting } from "@vector/engine-client";
 import type { EngineMode, ObservationContent, Step } from "@vector/contracts";
 
 const content = (url: string, over: Partial<ObservationContent> = {}): ObservationContent => ({

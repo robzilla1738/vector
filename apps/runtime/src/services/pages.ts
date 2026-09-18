@@ -15,7 +15,7 @@ import {
   type StepRecord,
 } from "@vector/contracts";
 import { newStepId } from "@vector/contracts";
-import type { BrowserDriver, DriverPage, DriverPageEvents } from "@vector/browser-driver";
+import type { BrowserDriver, DriverPage, DriverPageEvents } from "@vector/engine-client";
 import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";

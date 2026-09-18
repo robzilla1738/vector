@@ -99,6 +99,10 @@ pub struct LoadedDocument {
     pub last_modified: Option<String>,
     /// HTTP `Content-Language` header, if any.
     pub content_language: Option<String>,
+    /// `Cross-Origin-Opener-Policy` (H3-4).
+    pub coop: CoopPolicy,
+    /// `Cross-Origin-Embedder-Policy` (H3-4).
+    pub coep: CoepPolicy,
 }
 
 impl LoadedDocument {
@@ -111,6 +115,70 @@ impl LoadedDocument {
             status: 200,
             last_modified: None,
             content_language: None,
+            coop: CoopPolicy::UnsafeNone,
+            coep: CoepPolicy::UnsafeNone,
+        }
+    }
+}
+
+/// `Cross-Origin-Opener-Policy`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CoopPolicy {
+    /// Default: document can share a browsing context group.
+    #[default]
+    UnsafeNone,
+    /// Isolate this document from cross-origin openers.
+    SameOrigin,
+    /// Isolate except same-origin popups with `unsafe-none`.
+    SameOriginAllowPopups,
+}
+
+/// `Cross-Origin-Embedder-Policy`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CoepPolicy {
+    /// Default: no embedder isolation.
+    #[default]
+    UnsafeNone,
+    /// Require CORP / CORS on cross-origin subresources.
+    RequireCorp,
+    /// Cross-origin no-cors requests are sent without credentials.
+    Credentialless,
+}
+
+impl CoopPolicy {
+    /// Parse a response header value (`None` → default).
+    #[must_use]
+    pub fn parse_header(value: Option<&str>) -> Self {
+        value.map(Self::parse).unwrap_or_default()
+    }
+
+    fn parse(value: &str) -> Self {
+        let v = value.split(';').next().unwrap_or("").trim();
+        if v.eq_ignore_ascii_case("same-origin") {
+            Self::SameOrigin
+        } else if v.eq_ignore_ascii_case("same-origin-allow-popups") {
+            Self::SameOriginAllowPopups
+        } else {
+            Self::UnsafeNone
+        }
+    }
+}
+
+impl CoepPolicy {
+    /// Parse a response header value (`None` → default).
+    #[must_use]
+    pub fn parse_header(value: Option<&str>) -> Self {
+        value.map(Self::parse).unwrap_or_default()
+    }
+
+    fn parse(value: &str) -> Self {
+        let v = value.split(';').next().unwrap_or("").trim();
+        if v.eq_ignore_ascii_case("require-corp") {
+            Self::RequireCorp
+        } else if v.eq_ignore_ascii_case("credentialless") {
+            Self::Credentialless
+        } else {
+            Self::UnsafeNone
         }
     }
 }
@@ -422,6 +490,10 @@ pub struct Page {
 
     /// HTTP `Last-Modified` value for `document.lastModified`.
     pub(crate) last_modified: Option<String>,
+    /// Document COOP (H3-4).
+    pub(crate) coop: CoopPolicy,
+    /// Document COEP (H3-4).
+    pub(crate) coep: CoepPolicy,
     /// Browsing-document `document.readyState`.
     pub(crate) ready_state: &'static str,
     /// The script layer, when a VM is attached (plan A13).
@@ -679,6 +751,20 @@ impl CanvasSurface {
         }
         self.ops += 1;
     }
+
+    fn fill_text(&mut self, text: &str, x: i32, y: i32, color: [u8; 4]) {
+        // 5×7 bitmap: one filled cell per glyph so fillText is not a no-op.
+        let mut cx = x;
+        for _ in text.chars() {
+            self.fill_rect(cx, y - 7, 5, 7, color);
+            cx += 6;
+        }
+        self.ops += 1;
+    }
+
+    fn blit(&mut self, src: &[u8], sw: u32, sh: u32, dx: i32, dy: i32) {
+        self.put_image_data(dx, dy, sw, sh, src);
+    }
 }
 
 /// A finished download (plan A16).
@@ -929,6 +1015,8 @@ impl Page {
             pending_module_scripts: Vec::new(),
             iframe_urls: HashMap::new(),
             last_modified: None,
+            coop: CoopPolicy::UnsafeNone,
+            coep: CoepPolicy::UnsafeNone,
             ready_state: "loading",
             scripting: None,
             local_storage: HashMap::new(),
@@ -1318,6 +1406,40 @@ impl Page {
         c.ops
     }
 
+    pub(crate) fn canvas_fill_text(
+        &mut self,
+        id: NodeId,
+        text: &str,
+        x: i32,
+        y: i32,
+        color: &str,
+    ) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.fill_text(text, x, y, parse_css_color(color));
+        c.ops
+    }
+
+    pub(crate) fn canvas_draw_image(
+        &mut self,
+        id: NodeId,
+        src: NodeId,
+        dx: i32,
+        dy: i32,
+    ) -> u64 {
+        let src_pixels = self.canvases.get(&src).map(|s| (s.width, s.height, s.pixels.clone()));
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        if let Some((w, h, px)) = src_pixels {
+            c.blit(&px, w, h, dx, dy);
+        }
+        c.ops
+    }
+
     fn load_worker_source(&mut self, source: String) -> String {
         let (base, body) = if is_worker_url(&source) {
             let url = self.resolve_url(&source).unwrap_or_else(|| source.clone());
@@ -1504,6 +1626,8 @@ impl Page {
         });
         self.status = loaded.status;
         self.last_modified.clone_from(&loaded.last_modified);
+        self.coop = loaded.coop;
+        self.coep = loaded.coep;
         self.doc
             .set_content_language(loaded.content_language.clone());
         self.parser_limit = None;
@@ -2075,6 +2199,25 @@ impl Page {
     #[must_use]
     pub fn status(&self) -> u16 {
         self.status
+    }
+
+    /// `Cross-Origin-Opener-Policy` of the current document.
+    #[must_use]
+    pub fn coop(&self) -> CoopPolicy {
+        self.coop
+    }
+
+    /// `Cross-Origin-Embedder-Policy` of the current document.
+    #[must_use]
+    pub fn coep(&self) -> CoepPolicy {
+        self.coep
+    }
+
+    /// True when COOP + COEP isolate this document (H3-4).
+    #[must_use]
+    pub fn is_cross_origin_isolated(&self) -> bool {
+        !matches!(self.coop, CoopPolicy::UnsafeNone)
+            && !matches!(self.coep, CoepPolicy::UnsafeNone)
     }
 
     /// Viewport.

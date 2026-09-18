@@ -265,7 +265,7 @@ function observeOptions(req?: Partial<ObservationRequest>): string {
   });
 }
 
-export class VectorEnginePage implements DriverPage {
+export class EnginePage implements DriverPage {
   readonly identity: PageIdentity;
   private events: DriverPageEvents = {};
   private attached = true;
@@ -618,7 +618,7 @@ export class VectorEngineDriver implements BrowserDriver {
   private native: NativeEngine | null = null;
   private refs = new RefRegistry();
   private opened = new Map<string, OpenResult>();
-  private pages = new Map<string, VectorEnginePage>();
+  private pages = new Map<string, EnginePage>();
   private availability: EngineAvailability = { available: false };
   private readonly load: () => Promise<NativeModule>;
   private readonly config: EngineNativeConfig;
@@ -782,7 +782,7 @@ export class VectorEngineDriver implements BrowserDriver {
     const parsed = parseEngineTargetId(targetId);
     const opened = this.opened.get(targetId);
     if (!parsed || !opened) throw new VectorError("target_detached", `no engine page for target ${targetId}`);
-    const page = new VectorEnginePage(
+    const page = new EnginePage(
       this.engine(),
       parsed.page,
       this.refs,

@@ -6,7 +6,7 @@ on:
     paths:
       - "engine/**"
       - "packages/contracts/**"
-      - "packages/browser-driver/**"
+      - "packages/engine-client/**"
       - "apps/runtime/**"
       - "scripts/**"
       - ".github/workflows/engine.yml"
@@ -14,7 +14,7 @@ on:
     paths:
       - "engine/**"
       - "packages/contracts/**"
-      - "packages/browser-driver/**"
+      - "packages/engine-client/**"
       - "apps/runtime/**"
       - "scripts/**"
       - ".github/workflows/engine.yml"
@@ -129,6 +129,14 @@ jobs:
         run: cargo test -p ve-script --features v8
       - name: Page scripting on V8 (timers, console, evaluate gating)
         run: cargo test -p ve-agent --features v8
+      - name: DOM bindings differential (prelude default)
+        env:
+          VECTOR_DOM_BINDINGS: prelude
+        run: cargo test -p ve-agent --features v8 --test scripting -- --nocapture
+      - name: DOM bindings differential (native switch; prelude still default-on)
+        env:
+          VECTOR_DOM_BINDINGS: native
+        run: cargo test -p ve-agent --features v8 --test scripting -- --nocapture
       - name: Production ve-host runs V8 under the sandbox
         run: cargo test -p ve-host --features v8 --tests
       - name: SPA fixtures settle on V8

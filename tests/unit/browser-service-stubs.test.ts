@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { VectorError } from "@vector/contracts";
-import { flattenExecuteResult } from "@vector/browser-driver";
+import { flattenExecuteResult } from "@vector/engine-client";
 
 describe("BrowserService native stubs", () => {
   it("flattenExecuteResult keeps documentEpoch without inventing a wire generation", () => {

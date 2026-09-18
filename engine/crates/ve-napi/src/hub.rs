@@ -18,6 +18,8 @@ pub struct Hub {
     config: EngineConfig,
     contexts: HashMap<u32, Host>,
     pages: HashMap<u64, u32>,
+    /// Origin → process context (H3-4 per-site isolation).
+    site_contexts: HashMap<String, u32>,
     next_context: u32,
     next_page: u64,
 }
@@ -97,6 +99,7 @@ impl Hub {
             config,
             contexts: HashMap::new(),
             pages: HashMap::new(),
+            site_contexts: HashMap::new(),
             next_context: DEFAULT_CONTEXT,
             next_page: 0,
         };
@@ -170,6 +173,36 @@ impl Hub {
         self.context(*ctx)
     }
 
+    fn site_origin(url: &str) -> String {
+        url::Url::parse(url)
+            .ok()
+            .map(|u| u.origin().ascii_serialization())
+            .unwrap_or_else(|| url.to_owned())
+    }
+
+    /// Process context for `url`'s origin. Production isolation gets one
+    /// host process per site (H3-4). Callers still pass a context id; a
+    /// different origin is remapped onto the site process.
+    fn context_for_site(&mut self, fallback: u32, url: &str) -> Result<u32, ApiError> {
+        if !matches!(
+            self.config.security_profile,
+            ve_api::SecurityProfile::Production
+        ) {
+            return Ok(fallback);
+        }
+        let origin = Self::site_origin(url);
+        if let Some(&id) = self.site_contexts.get(&origin) {
+            return Ok(id);
+        }
+        let id = if self.site_contexts.is_empty() && self.contexts.contains_key(&fallback) {
+            fallback
+        } else {
+            self.spawn_context(None)?
+        };
+        self.site_contexts.insert(origin, id);
+        Ok(id)
+    }
+
     /// Opens a page in a context; the reply carries the new page id.
     pub fn open(&mut self, context_id: u32, url: &str, options_json: &str) -> Receiver<Value> {
         let options = match parse_options(options_json) {
@@ -179,6 +212,10 @@ impl Hub {
         if let Err(e) = self.context(context_id) {
             return fail(&e);
         }
+        let context_id = match self.context_for_site(context_id, url) {
+            Ok(id) => id,
+            Err(e) => return fail(&e),
+        };
         self.next_page += 1;
         let page = self.next_page;
         self.pages.insert(page, context_id);

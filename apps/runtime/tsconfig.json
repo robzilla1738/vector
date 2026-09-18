@@ -9,6 +9,6 @@
   "include": ["src"],
   "references": [
     { "path": "../../packages/contracts" },
-    { "path": "../../packages/browser-driver" }
+    { "path": "../../packages/engine-client" }
   ]
 }

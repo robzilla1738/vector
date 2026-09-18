@@ -3981,9 +3981,15 @@
     }
     createConicGradient(startAngle, x, y) { return Object.create(CanvasGradient.prototype); }
     createPattern() { return null; }
-    drawImage() {}
-    fillText() {}
-    strokeText() {}
+    drawImage(img, dx, dy) {
+      if (img && img.__h != null) D("canvasDrawImage", this.__h, img.__h, Number(dx) || 0, Number(dy) || 0);
+    }
+    fillText(t, x, y) {
+      D("canvasFillText", this.__h, String(t == null ? "" : t), Number(x) || 0, Number(y) || 0, String(this.fillStyle));
+    }
+    strokeText(t, x, y) {
+      this.fillText(t, x, y);
+    }
     measureText(t) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'measureText' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");

@@ -9,7 +9,7 @@ import {
   BrowserServiceClient,
   VectorEngineDriver,
   parseEngineTargetId,
-} from "@vector/browser-driver";
+} from "@vector/engine-client";
 import { startRuntime } from "@vector/runtime";
 
 function fakeShell(): string {

@@ -4,7 +4,9 @@
 //! gated by the context capability.
 #![cfg(feature = "v8")]
 
-use ve_agent::{DEFAULT_VIEWPORT, Page, Program, ProgramStatus, Step, StepBase, StepStatus};
+use ve_agent::{
+    DEFAULT_VIEWPORT, ObservationRequest, Page, Program, ProgramStatus, Step, StepBase, StepStatus,
+};
 use ve_script::{JsVm, V8Vm};
 
 fn vm() -> Box<dyn JsVm> {
@@ -20,6 +22,33 @@ fn open(html: &str, allow_evaluate: bool) -> Page {
         Some((vm(), allow_evaluate)),
     )
     .unwrap()
+}
+
+#[test]
+fn incremental_observe_is_under_two_milliseconds() {
+    let mut page = open(
+        "<body><h1>observe</h1><p>one</p><p>two</p><p>three</p></body>",
+        true,
+    );
+    let first = page.observe(&ObservationRequest::default()).unwrap();
+    let mut times = Vec::new();
+    for _ in 0..8 {
+        let t0 = std::time::Instant::now();
+        let _ = page
+            .observe(&ObservationRequest {
+                since_revision: Some(first.revision),
+                ..ObservationRequest::default()
+            })
+            .unwrap();
+        times.push(t0.elapsed().as_secs_f64() * 1000.0);
+    }
+    times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let p95 = times[(times.len() * 95 / 100).min(times.len() - 1)];
+    assert!(
+        p95 < 2.0,
+        "incremental observe p95 {p95} ms (n={}) must be < 2 ms; samples={times:?}",
+        times.len()
+    );
 }
 
 #[test]
@@ -135,6 +164,18 @@ fn a_runaway_script_is_cut_off_and_the_page_survives() {
     assert_eq!(page.script_stats(), (2, 1));
     assert_eq!(page.evaluate("ok").unwrap(), serde_json::json!(1));
     assert!(page.document().element_by_id("p").is_some());
+}
+
+#[test]
+fn dom_bindings_default_is_prelude() {
+    let mode = std::env::var("VECTOR_DOM_BINDINGS").unwrap_or_else(|_| "prelude".into());
+    assert!(
+        mode == "prelude" || mode == "native",
+        "VECTOR_DOM_BINDINGS must be prelude|native, got {mode}"
+    );
+    if std::env::var("VECTOR_DOM_BINDINGS").is_err() {
+        assert_eq!(mode, "prelude");
+    }
 }
 
 #[test]

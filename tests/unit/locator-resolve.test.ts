@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { locatorAttempts, selectUniqueLocator, type FrameLike, type LocatorLike } from "@vector/browser-driver";
+import { locatorAttempts, selectUniqueLocator, type FrameLike, type LocatorLike } from "@vector/engine-client";
 import { VectorError } from "@vector/contracts";
 
 /** Fake locator: a fixed match count plus a visible-filtered count; records count() calls. */

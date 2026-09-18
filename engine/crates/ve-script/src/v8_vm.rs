@@ -20,7 +20,7 @@ use std::cell::{Cell, RefCell};
 use std::mem::ManuallyDrop;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Once};
+use std::sync::{Arc, Once, OnceLock};
 use std::time::Duration;
 
 use crate::vm::{HostApi, JsValue, JsVm, ScriptError};
@@ -135,6 +135,32 @@ pub fn preload() {
     init_v8();
 }
 
+fn startup_snapshot_blob() -> Option<v8::StartupData> {
+    static BYTES: OnceLock<Option<Vec<u8>>> = OnceLock::new();
+    BYTES
+        .get_or_init(create_startup_snapshot)
+        .clone()
+        .map(v8::StartupData::from)
+}
+
+fn create_startup_snapshot() -> Option<Vec<u8>> {
+    init_v8();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut isolate = v8::Isolate::snapshot_creator(None, None);
+        {
+            v8::scope!(let scope, &mut isolate);
+            let context = v8::Context::new(scope, v8::ContextOptions::default());
+            let scope = &mut v8::ContextScope::new(scope, context);
+            scope.set_default_context(context);
+        }
+        isolate
+            .create_blob(v8::FunctionCodeHandling::Keep)
+            .map(|blob| blob.to_vec())
+    }))
+    .ok()
+    .flatten()
+}
+
 fn start_shared_watchdog() {
     // Placeholder: per-eval watchdog still uses a reused thread pool via spawn.
     // Preload forces the platform + this function to run before seccomp.
@@ -198,6 +224,9 @@ impl V8Vm {
         let mut params = v8::CreateParams::default();
         if let Some(max) = max_bytes {
             params = params.heap_limits(0, max);
+        }
+        if let Some(blob) = startup_snapshot_blob() {
+            params = params.snapshot_blob(blob);
         }
         let mut isolate = v8::Isolate::new(params);
         isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
@@ -1117,6 +1146,12 @@ mod tests {
             }
         }
         panic!("WebAssembly.instantiate did not resolve after platform pump");
+    }
+
+    #[test]
+    fn v8_startup_snapshot_or_heap_limit_creates_isolate() {
+        let mut vm = V8Vm::with_heap_limit(Some(64 * 1024 * 1024)).unwrap();
+        assert_eq!(vm.eval("1+1", "<t>").unwrap(), JsValue::Number(2.0));
     }
 
     #[test]

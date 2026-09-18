@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { applyMigrations, EventBus, executeProgram, openDb, Repo, RunCoordinator } from "@vector/runtime";
 import type { ModelClient } from "@vector/runtime";
-import type { DriverPage, } from "@vector/browser-driver";
+import type { DriverPage, } from "@vector/engine-client";
 import type { Observation } from "@vector/contracts";
 
 const memRepo = () => new Repo(openDb(":memory:"));

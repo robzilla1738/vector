@@ -212,6 +212,8 @@ fn documents_are_decoded_with_the_declared_charset() {
             status: 200,
             last_modified: None,
             content_language: None,
+            coop: Default::default(),
+            coep: Default::default(),
         },
     );
     let page = Page::open(
@@ -222,6 +224,9 @@ fn documents_are_decoded_with_the_declared_charset() {
     )
     .unwrap();
     assert_eq!(page.title(), "Café ©");
+    assert_eq!(page.coop(), ve_agent::CoopPolicy::UnsafeNone);
+    assert_eq!(page.coep(), ve_agent::CoepPolicy::UnsafeNone);
+    assert!(!page.is_cross_origin_isolated());
     assert_eq!(page.status(), 200);
     let content = page.observe_now(&ObservationRequest::default());
     assert_eq!(content.headings, vec!["Crème".to_owned()]);

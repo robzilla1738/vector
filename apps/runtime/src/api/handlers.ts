@@ -10,7 +10,7 @@ import type { StateService } from "../services/state.js";
 import type { Tracer } from "../services/tracing.js";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
-import type { EngineAvailability } from "@vector/browser-driver";
+import type { EngineAvailability } from "@vector/engine-client";
 import { compactObservation } from "../services/observation-render.js";
 import type { DriverSet } from "../services/pages.js";
 import type { Router } from "../services/router.js";

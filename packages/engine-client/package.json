@@ -1,5 +1,5 @@
 {
-  "name": "@vector/browser-driver",
+  "name": "@vector/engine-client",
   "version": "0.1.0",
   "private": true,
   "type": "module",

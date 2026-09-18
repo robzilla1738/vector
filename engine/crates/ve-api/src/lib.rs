@@ -312,6 +312,18 @@ impl Loader for NetLoader {
             status: response.status.as_u16(),
             last_modified: response.last_modified().map(str::to_owned),
             content_language: response.content_language().map(str::to_owned),
+            coop: ve_agent::CoopPolicy::parse_header(
+                response
+                    .headers
+                    .get("cross-origin-opener-policy")
+                    .and_then(|v| v.to_str().ok()),
+            ),
+            coep: ve_agent::CoepPolicy::parse_header(
+                response
+                    .headers
+                    .get("cross-origin-embedder-policy")
+                    .and_then(|v| v.to_str().ok()),
+            ),
         })
     }
 

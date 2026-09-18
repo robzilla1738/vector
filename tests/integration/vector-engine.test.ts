@@ -18,7 +18,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startRuntime, type RuntimeHandle } from "@vector/runtime";
-import { probeEngineNative } from "@vector/browser-driver";
+import { probeEngineNative } from "@vector/engine-client";
 import type { Observation, ObservationContent, PageTarget, ProgramResult } from "@vector/contracts";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 import { findChromium } from "../../scripts/chromium.mjs";
