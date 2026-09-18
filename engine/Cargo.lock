@@ -4564,6 +4564,7 @@ dependencies = [
 name = "ve-napi"
 version = "0.0.1"
 dependencies = [
+ "cc",
  "napi",
  "napi-build",
  "napi-derive",

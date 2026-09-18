@@ -531,13 +531,18 @@ mod tests {
 
     #[test]
     fn windows_cdylib_exports_napi_register_module_v1() {
-        let src = include_str!("../build.rs");
+        let build = include_str!("../build.rs");
+        let obj = include_str!("napi_win_export.c");
         assert!(
-            src.contains("/EXPORT:napi_register_module_v1"),
+            build.contains("napi_win_export.c"),
+            "Windows cdylib must link the MSVC export object"
+        );
+        assert!(
+            obj.contains("/EXPORT:napi_register_module_v1"),
             "Windows Node loads the addon via GetProcAddress(napi_register_module_v1)"
         );
         assert!(
-            src.contains("/INCLUDE:napi_register_module_v1"),
+            obj.contains("/INCLUDE:napi_register_module_v1"),
             "MSVC /OPT:REF must not discard the Node entry point"
         );
     }

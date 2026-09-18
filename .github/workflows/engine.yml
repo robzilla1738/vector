@@ -272,6 +272,20 @@ jobs:
       - name: Build the .node binary and ve-host next to index.js
         run: pnpm --filter @vector/engine-native build:cargo
         working-directory: .
+      - name: Windows PE exports napi_register_module_v1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: .
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $dumpbin = & $vswhere -latest -find "**\dumpbin.exe" | Select-Object -First 1
+          if (-not $dumpbin) { throw "dumpbin.exe not found" }
+          $node = "engine/crates/ve-napi/vector-engine.win32-x64.node"
+          $out = & $dumpbin /exports $node | Out-String
+          Write-Host $out
+          if ($out -notmatch "napi_register_module_v1") {
+            throw "napi_register_module_v1 missing from PE export table"
+          }
       - name: Addon smoke test
         run: pnpm --filter @vector/engine-native test
         working-directory: .
