@@ -12,8 +12,8 @@ import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
 import type { SetService } from "../services/sets.js";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
-import { DurableWriteLedger, stepSignature } from "../agent/durable.js";
-import { classifyStep, type GrantSource } from "../agent/permissions.js";
+import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "../agent/durable.js";
+import type { GrantSource } from "../agent/permissions.js";
 import { WorkerPool } from "./pool.js";
 
 export interface SetRunnerDeps {
@@ -346,39 +346,20 @@ export class SetRunner {
     if ("rejected" in prepared) return { blocked: prepared.rejected };
     if ("denied" in prepared) return { blocked: prepared.denied };
     const steps = prepared.program.steps ?? learned.steps ?? [];
-    const writes = steps.some((s) => {
-      const effect = classifyStep(s.op);
-      return effect === "write" || effect === "egress";
+    const write = beginConsequentialWrite(this.deps.durableWrites, {
+      runId: opts.runId,
+      pageId,
+      documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
+      steps,
     });
-    let intentId: string | undefined;
-    if (writes && this.deps.durableWrites) {
-      const began = this.deps.durableWrites.begin({
-        runId: opts.runId,
-        pageId,
-        documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
-        signature: stepSignature(
-          steps.map((s) => ({
-            op: s.op,
-            target: "target" in s ? String((s as { target?: string }).target ?? "") : "",
-            value: "value" in s ? String((s as { value?: string }).value ?? "") : "",
-          })),
-        ),
-      });
-      if (began.duplicate) {
-        return { res: { status: "completed", extracted: {} } };
-      }
-      intentId = began.intent.id;
-    }
+    if (write.skip) return { res: { status: "completed", extracted: {} } };
     const program: Program = { ...prepared.program, nodes: learned.nodes };
     const res = await this.deps.pages.execute(program, {
       runId: opts.runId,
       signal: opts.signal,
       allowEval: learned.trusted,
     });
-    if (intentId && this.deps.durableWrites) {
-      if (res.status === "completed") this.deps.durableWrites.confirm(intentId);
-      else this.deps.durableWrites.fail(intentId);
-    }
+    settleWrite(this.deps.durableWrites, write.intentId, res.status === "completed");
     return { res };
   }
 

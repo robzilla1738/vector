@@ -9,6 +9,7 @@ import {
   attributeTodoMvc,
   BrowserAuthority,
   compileAction,
+  beginConsequentialWrite,
   compileAndAuthorize,
   compileSkill,
   DurableWriteLedger,
@@ -318,6 +319,35 @@ describe("Gate D permissions and durable writes", () => {
     const second = ledger.begin({ runId: "run1", pageId: "p1", documentEpoch: 3, signature });
     expect(second.duplicate).toBe(true);
     expect(second.intent.status).toBe("confirmed");
+  });
+
+  it("beginConsequentialWrite persists before dispatch and skips a confirmed write", () => {
+    const ledger = new DurableWriteLedger();
+    const steps = [{ id: "c", op: "click", target: "r9" }];
+    const first = beginConsequentialWrite(ledger, {
+      runId: "run1",
+      pageId: "p1",
+      documentEpoch: 2,
+      steps,
+    });
+    expect(first.skip).toBe(false);
+    expect(first.intentId).toBeTruthy();
+    ledger.confirm(first.intentId!);
+    const streamed = beginConsequentialWrite(ledger, {
+      runId: "run1",
+      pageId: "p1",
+      documentEpoch: 2,
+      steps,
+    });
+    expect(streamed.skip).toBe(true);
+    const read = beginConsequentialWrite(ledger, {
+      runId: "run1",
+      pageId: "p1",
+      documentEpoch: 2,
+      steps: [{ op: "extract" }],
+    });
+    expect(read.skip).toBe(false);
+    expect(read.intentId).toBeUndefined();
   });
 
   it("does not reuse a skill on a different origin", () => {

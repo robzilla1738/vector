@@ -55,7 +55,7 @@ export {
   type EffectClass,
   type GrantSource,
 } from "./agent/permissions.js";
-export { DurableWriteLedger, stepSignature, type WriteIntent } from "./agent/durable.js";
+export { DurableWriteLedger, stepSignature, beginConsequentialWrite, settleWrite, type WriteIntent } from "./agent/durable.js";
 export { BrowserAuthority } from "./agent/browser-authority.js";
 export { attributeSample, attributeTodoMvc, type PhaseTimes, type AttributedSample } from "./agent/attribution.js";
 export { negotiate as negotiateBidi, dispatch as dispatchBidi, authorizePageTool, attachBidiRuntime, type BidiCommand, type BidiSession } from "./services/bidi.js";

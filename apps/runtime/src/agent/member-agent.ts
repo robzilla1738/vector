@@ -9,9 +9,9 @@ import {
 } from "@vector/contracts";
 import type { PageService } from "../services/pages.js";
 import { compileAndAuthorize } from "./action-compiler.js";
-import { DurableWriteLedger, stepSignature } from "./durable.js";
+import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "./durable.js";
 import type { ModelClient } from "./model-client.js";
-import { classifyStep, type GrantSource } from "./permissions.js";
+import type { GrantSource } from "./permissions.js";
 import { buildPlannerPrompt, PLANNER_SYSTEM } from "./planner.js";
 
 const MEMBER_MAX_CALLS = 6;
@@ -91,36 +91,19 @@ export async function runMemberAgent(opts: {
     if ("rejected" in prepared) return err(member, pageId, obs.content.url, prepared.rejected, executed);
     if ("denied" in prepared) return err(member, pageId, obs.content.url, prepared.denied, executed);
     const steps = prepared.program.steps ?? plan.steps;
-    const writes = steps.some((s) => {
-      const effect = classifyStep(s.op);
-      return effect === "write" || effect === "egress";
+    const write = beginConsequentialWrite(opts.durable, {
+      runId,
+      pageId,
+      documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
+      steps,
     });
-    let intentId: string | undefined;
-    if (writes && opts.durable) {
-      const began = opts.durable.begin({
-        runId,
-        pageId,
-        documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
-        signature: stepSignature(
-          steps.map((s) => ({
-            op: s.op,
-            target: "target" in s ? String((s as { target?: string }).target ?? "") : "",
-            value: "value" in s ? String((s as { value?: string }).value ?? "") : "",
-          })),
-        ),
-      });
-      if (began.duplicate) {
-        executed.push(...steps);
-        stepsRun += steps.length;
-        continue;
-      }
-      intentId = began.intent.id;
+    if (write.skip) {
+      executed.push(...steps);
+      stepsRun += steps.length;
+      continue;
     }
     const res = await pages.execute(prepared.program, { runId, signal });
-    if (intentId && opts.durable) {
-      if (res.status === "completed") opts.durable.confirm(intentId);
-      else opts.durable.fail(intentId);
-    }
+    settleWrite(opts.durable, write.intentId, res.status === "completed");
     executed.push(...steps);
     outcomes.push(...res.steps);
     stepsRun += steps.length;

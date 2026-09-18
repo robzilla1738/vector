@@ -4,6 +4,7 @@
  */
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { classifyStep } from "./permissions.js";
 
 export interface WriteIntent {
   id: string;
@@ -104,4 +105,48 @@ export class DurableWriteLedger {
 
 export function stepSignature(ops: Array<{ op: string; target?: string; value?: string }>): string {
   return ops.map((s) => `${s.op}:${s.target ?? ""}:${s.value ?? ""}`).join("|");
+}
+
+function stepsForSignature(steps: Array<{ op: string; target?: unknown; value?: unknown }>): Array<{ op: string; target?: string; value?: string }> {
+  return steps.map((s) => ({
+    op: s.op,
+    target: typeof s.target === "string" ? s.target : "",
+    value: typeof s.value === "string" ? s.value : "",
+  }));
+}
+
+/** Persist a write/egress intent. `skip` means do not dispatch. */
+export function beginConsequentialWrite(
+  ledger: DurableWriteLedger | undefined,
+  opts: {
+    runId: string;
+    pageId: string;
+    documentEpoch: number;
+    steps: Array<{ op: string; target?: unknown; value?: unknown }>;
+  },
+): { skip: boolean; intentId?: string } {
+  if (!ledger) return { skip: false };
+  const writes = opts.steps.some((s) => {
+    const effect = classifyStep(s.op);
+    return effect === "write" || effect === "egress";
+  });
+  if (!writes) return { skip: false };
+  const began = ledger.begin({
+    runId: opts.runId,
+    pageId: opts.pageId,
+    documentEpoch: opts.documentEpoch,
+    signature: stepSignature(stepsForSignature(opts.steps)),
+  });
+  if (began.duplicate) return { skip: true };
+  return { skip: false, intentId: began.intent.id };
+}
+
+export function settleWrite(
+  ledger: DurableWriteLedger | undefined,
+  intentId: string | undefined,
+  ok: boolean,
+): void {
+  if (!ledger || !intentId) return;
+  if (ok) ledger.confirm(intentId);
+  else ledger.fail(intentId);
 }

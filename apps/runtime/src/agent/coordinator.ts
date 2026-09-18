@@ -25,9 +25,9 @@ import { buildFinalAnswerPrompt, buildPlannerPrompt, buildVisionPrompt, extractJ
 import { compileSkill, markSkillFailed, tryReuseSkill, verifySkillPostconditions, type CompiledSkill } from "./skills.js";
 import { promptCannotGrant } from "./policy.js";
 import { recoverAfterCrash } from "./recovery.js";
-import { classifyStep, type GrantSource } from "./permissions.js";
+import type { GrantSource } from "./permissions.js";
 import { compileAndAuthorize } from "./action-compiler.js";
-import { DurableWriteLedger, stepSignature } from "./durable.js";
+import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "./durable.js";
 
 interface RunControl {
   abort: AbortController;
@@ -587,11 +587,25 @@ export class RunCoordinator {
               if ("denied" in prepared) {
                 return Promise.reject(new VectorError("permission_denied", prepared.denied));
               }
-              return this.deps.pages.execute(
-                { ...prepared.program, ...(first ? { documentEpoch: epoch } : {}) },
-                { runId, signal: c.abort.signal, onStep: onStepRecorded },
-                last ? { returnObservation: nextObserveReq() } : {},
-              );
+              const write = beginConsequentialWrite(this.durable, {
+                runId,
+                pageId: activePageId!,
+                documentEpoch: epoch,
+                steps: prepared.program.steps ?? [],
+              });
+              if (write.skip) {
+                return Promise.resolve({ status: "completed" as const, steps: [] });
+              }
+              return this.deps.pages
+                .execute(
+                  { ...prepared.program, ...(first ? { documentEpoch: epoch } : {}) },
+                  { runId, signal: c.abort.signal, onStep: onStepRecorded },
+                  last ? { returnObservation: nextObserveReq() } : {},
+                )
+                .then((r) => {
+                  settleWrite(this.durable, write.intentId, r.status === "completed");
+                  return r;
+                });
             },
             24,
           );
@@ -813,41 +827,21 @@ export class RunCoordinator {
           repairCount++;
           continue;
         }
-        const signature = stepSignature(
-          (compiled.program.steps ?? []).map((s) => ({
-            op: s.op,
-            target: "target" in s ? String((s as { target?: string }).target ?? "") : "",
-            value: "value" in s ? String((s as { value?: string }).value ?? "") : "",
-          })),
-        );
-        const writes = (compiled.program.steps ?? []).some((s) => {
-          const effect = classifyStep(s.op);
-          return effect === "write" || effect === "egress";
+        const write = beginConsequentialWrite(this.durable, {
+          runId,
+          pageId: activePageId,
+          documentEpoch: obs.documentEpoch,
+          steps: compiled.program.steps ?? [],
         });
-        let skippedDuplicate = false;
-        let intentId: string | undefined;
-        if (writes) {
-          const began = this.durable.begin({
-            runId,
-            pageId: activePageId,
-            documentEpoch: obs.documentEpoch,
-            signature,
-          });
-          if (began.duplicate) skippedDuplicate = true;
-          else intentId = began.intent.id;
-        }
         const program = compiled.program;
         const streamed = early && early.dispatchedCount > 0;
-        const result = skippedDuplicate
+        const result = write.skip
           ? { status: "completed" as const, steps: [] }
           : streamed
           ? await early!.finish(plan.steps ?? [])
           : await this.deps.pages.execute(program, { runId, signal: c.abort.signal, onStep: onStepRecorded }, { returnObservation: nextObserveReq() });
         if (early && !streamed) early.halt();
-        if (intentId) {
-          if (result.status === "completed") this.durable.confirm(intentId);
-          else this.durable.fail(intentId);
-        }
+        settleWrite(this.durable, write.intentId, result.status === "completed");
         const carried = early ? early.observation : (result as { observation?: Observation }).observation;
         if (carried && carried.pageId === activePageId) carriedObs = carried;
         stepsRun += plan.steps.length;
@@ -950,11 +944,20 @@ export class RunCoordinator {
                 grants: this.deps.grants,
               });
               if (!("rejected" in compiled) && !("denied" in compiled)) {
-                const r2 = await this.deps.pages.execute(compiled.program, { runId, signal: c.abort.signal });
-                stepsRun += compiled.program.steps?.length ?? repair.object.steps.length;
-                if (r2.status === "completed") {
-                  lastError = undefined;
-                  repairCount = 0;
+                const write = beginConsequentialWrite(this.durable, {
+                  runId,
+                  pageId: activePageId,
+                  documentEpoch: fresh.documentEpoch,
+                  steps: compiled.program.steps ?? [],
+                });
+                if (!write.skip) {
+                  const r2 = await this.deps.pages.execute(compiled.program, { runId, signal: c.abort.signal });
+                  settleWrite(this.durable, write.intentId, r2.status === "completed");
+                  stepsRun += compiled.program.steps?.length ?? repair.object.steps.length;
+                  if (r2.status === "completed") {
+                    lastError = undefined;
+                    repairCount = 0;
+                  }
                 }
               }
             }
