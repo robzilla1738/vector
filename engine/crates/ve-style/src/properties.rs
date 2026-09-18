@@ -19,7 +19,8 @@ use ve_core::Size;
 
 use crate::values::{
     AlignItems, BackgroundImage, BorderCollapse, BorderStyle, BoxShadow, BoxSizing, CaptionSide,
-    Clear, ClipPath, Color, Content, ContentItem, Direction, Display, FlexDirection, FlexWrap,
+    Clear, ClipPath, Color, Content, ContentItem, Direction, Display, Filter, FlexDirection,
+    FlexWrap,
     Float, FontFamily,
     FontStyle, FontWeight, GridLine, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
@@ -260,6 +261,10 @@ pub enum SpecifiedValue {
     Str(String),
     /// `url(...)`.
     Url(String),
+    /// `linear-gradient` stops as (offset 0–1, colour).
+    LinearGradient(Vec<(f32, Color)>),
+    /// `blur(Npx)`.
+    FilterBlur(f32),
     /// A font-family list.
     Family(Vec<FontFamily>),
     /// A grid track list.
@@ -662,11 +667,32 @@ mod conv {
         }
     }
 
-    pub fn background_image(v: &SpecifiedValue, _: &ConvertContext) -> Option<BackgroundImage> {
+    pub fn background_image(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<BackgroundImage> {
         match v {
             SpecifiedValue::Keyword(k) if k == "none" => Some(BackgroundImage::None),
             SpecifiedValue::Url(u) => Some(BackgroundImage::Url(u.clone())),
             SpecifiedValue::Str(s) => Some(BackgroundImage::Url(s.clone())),
+            SpecifiedValue::LinearGradient(stops) => {
+                let out = stops
+                    .iter()
+                    .map(|(t, c)| {
+                        let rgba = match c {
+                            Color::Rgba(c) => *c,
+                            Color::CurrentColor => ctx.parent_color,
+                        };
+                        (*t, rgba)
+                    })
+                    .collect();
+                Some(BackgroundImage::LinearGradient(out))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn filter(v: &SpecifiedValue, _: &ConvertContext) -> Option<Filter> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(Filter::None),
+            SpecifiedValue::FilterBlur(r) => Some(Filter::Blur(*r)),
             _ => None,
         }
     }
@@ -1093,6 +1119,8 @@ property_table! {
     }, inherited = false, syntax = BoxShadow, convert = conv::box_shadow;
     /// `background-image` (`none` or `url(...)`)
     BackgroundImage: "background-image" => background_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
+    /// `filter` (`none` or `blur()`)
+    Filter: "filter" => filter: Filter = Filter::None, inherited = false, syntax = Single, convert = conv::filter;
 }
 
 impl ComputedStyle {
@@ -1223,7 +1251,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "border-radius",
     "border-image",
     "text-shadow",
-    "filter",
     "backdrop-filter",
     "mix-blend-mode",
     "isolation",
@@ -1406,6 +1433,53 @@ fn parse_component<'i>(input: &mut Parser<'i, '_>) -> Option<SpecifiedValue> {
                         })
                         .ok()?;
                     SpecifiedValue::Color(Color::Rgba(rgba))
+                }
+                "linear-gradient" => {
+                    let stops = input
+                        .parse_nested_block(|args| {
+                            let mut stops = Vec::new();
+                            while !args.is_exhausted() {
+                                let _ = args.try_parse(Parser::expect_comma);
+                                if let Some(v) = parse_component(args) {
+                                    match v {
+                                        SpecifiedValue::Color(c) => {
+                                            stops.push((stops.len() as f32, c));
+                                        }
+                                        SpecifiedValue::Keyword(k) => {
+                                            if let Some(c) = Rgba::from_name(&k) {
+                                                stops.push((stops.len() as f32, Color::Rgba(c)));
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                } else {
+                                    break;
+                                }
+                            }
+                            Ok::<_, cssparser::ParseError<'_, ()>>(stops)
+                        })
+                        .ok()?;
+                    if stops.len() < 2 {
+                        return None;
+                    }
+                    let last = (stops.len() - 1) as f32;
+                    let stops = stops
+                        .into_iter()
+                        .map(|(i, c)| (if last == 0.0 { 0.0 } else { i / last }, c))
+                        .collect();
+                    SpecifiedValue::LinearGradient(stops)
+                }
+                "blur" => {
+                    let r = input
+                        .parse_nested_block(|args| {
+                            let v = parse_component(args)
+                                .ok_or_else(|| args.new_error_for_next_token::<()>())?;
+                            while args.next().is_ok() {}
+                            Ok::<_, cssparser::ParseError<'_, ()>>(v)
+                        })
+                        .ok()?;
+                    let px = conv::length_px(&r, &ConvertContext::DUMMY).unwrap_or(0.0);
+                    SpecifiedValue::FilterBlur(px)
                 }
                 "url" => {
                     let href = input
@@ -2668,6 +2742,9 @@ mod tests {
         ok("box-shadow", "none");
         ok("background-image", "none");
         ok("background-image", "url(\"https://a.test/x.png\")");
+        ok("background-image", "linear-gradient(red, blue)");
+        ok("filter", "blur(4px)");
+        ok("filter", "none");
         ok("border-top-style", "dashed");
         ok("pointer-events", "none");
         ok("opacity", "0.5");
@@ -2686,7 +2763,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 100);
+        assert_eq!(PropertyId::ALL.len(), 101);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

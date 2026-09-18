@@ -776,14 +776,16 @@ impl BoxShadow {
     }
 }
 
-/// Computed `background-image` (`none` or `url(...)`).
-#[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+/// Computed `background-image` (`none`, `url(...)`, or a linear gradient).
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub enum BackgroundImage {
     /// `none`
     #[default]
     None,
     /// `url(...)`
     Url(String),
+    /// `linear-gradient(...)` with stops as (offset 0–1, colour).
+    LinearGradient(Vec<(f32, Rgba)>),
 }
 
 impl BackgroundImage {
@@ -792,6 +794,16 @@ impl BackgroundImage {
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
+}
+
+/// Computed `filter` (`none` or `blur(Npx)`).
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum Filter {
+    /// `none`
+    #[default]
+    None,
+    /// `blur(radius)`
+    Blur(f32),
 }
 
 /// One `transform` function (only the geometry-affecting subset).

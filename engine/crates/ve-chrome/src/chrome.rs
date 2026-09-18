@@ -412,7 +412,13 @@ impl Chrome {
             .iter()
             .find(|s| s.id == self.layout.active_space_id)
             .map_or("Personal", |s| s.name.as_str());
-        self.label(list, Point::new(16.0, 30.0), space, 13.0, t.sb_ink_0);
+        self.label(
+            list,
+            Point::new(16.0, 30.0),
+            &format!("{space} ▾"),
+            13.0,
+            t.sb_ink_0,
+        );
 
         let mut pin_x = 16.0;
         if let Some((_, pins)) = self
@@ -483,7 +489,7 @@ impl Chrome {
         }
 
         let mut y = cmd_y + self.metrics.control_h + 16.0;
-        self.label(list, Point::new(16.0, y + 18.0), "New Tab", 12.0, t.sb_ink_1);
+        self.label(list, Point::new(16.0, y + 18.0), "+ New Tab", 12.0, t.sb_ink_1);
         y += self.metrics.row_h;
         for tab in self.tabs_for_active_space() {
             if tab.active {
@@ -763,7 +769,11 @@ impl Chrome {
             color,
             weight: FontWeight::NORMAL,
             style: FontStyle::Normal,
-            family: vec![FontFamily::SystemUi, FontFamily::SansSerif],
+            family: vec![
+                FontFamily::Named("Inter".into()),
+                FontFamily::SystemUi,
+                FontFamily::SansSerif,
+            ],
         }));
     }
 }
@@ -822,7 +832,7 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert!(texts.iter().any(|t| *t == "Personal"), "{texts:?}");
+        assert!(texts.iter().any(|t| t.starts_with("Personal")), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Example"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Vector Engine"), "{texts:?}");
         chrome.backend = ChromeBackend::Chromium;

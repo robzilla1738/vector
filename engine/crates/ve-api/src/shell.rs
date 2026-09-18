@@ -1927,6 +1927,22 @@ fn scene_item(item: &ve_gfx::DisplayItem) -> serde_json::Value {
             "blur": blur,
             "color": css_rgba(*color),
         }),
+        ve_gfx::DisplayItem::LinearGradient { rect, stops, .. } => serde_json::json!({
+            "kind": "linearGradient",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+            "stops": stops.len(),
+        }),
+        ve_gfx::DisplayItem::FilterBlur { rect, radius } => serde_json::json!({
+            "kind": "filterBlur",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+            "radius": radius,
+        }),
     }
 }
 

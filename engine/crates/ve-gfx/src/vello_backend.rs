@@ -212,7 +212,7 @@ pub fn build_scene_fonts(
             DisplayItem::Text(run) => {
                 paint_text(&mut scene, run, transform, fonts.as_deref_mut());
             }
-            DisplayItem::Image { rect, handle } => {
+            DisplayItem::Image { rect, handle, .. } => {
                 if let Some(img) = images.and_then(|c| c.get(*handle)) {
                     let image = peniko_rgba(img.rgba.clone(), img.width, img.height);
                     let sx = f64::from(rect.width()) / f64::from(img.width.max(1));
@@ -259,6 +259,14 @@ pub fn build_scene_fonts(
                 );
                 scene.push_layer(Fill::NonZero, Mix::Normal, 1.0, shifted, &everything);
             }
+            DisplayItem::LinearGradient { rect, stops, .. } => {
+                let c = stops
+                    .first()
+                    .map(|(_, c)| *c)
+                    .unwrap_or(ve_style::Rgba::TRANSPARENT);
+                scene.fill(Fill::NonZero, transform, color(c), None, &krect(*rect));
+            }
+            DisplayItem::FilterBlur { .. } => {}
             DisplayItem::BoxShadow {
                 rect,
                 dx,
@@ -688,6 +696,7 @@ mod tests {
         list.push(DisplayItem::Image {
             rect: Rect::new(0.0, 0.0, 8.0, 8.0),
             handle: crate::ImageHandle(1),
+            src: None,
         });
         let empty = DisplayList::new(Size::new(40.0, 20.0));
         let with = build_scene(&list, 1.0);
@@ -747,6 +756,7 @@ mod tests {
         list.push(DisplayItem::Image {
             rect: Rect::new(0.0, 0.0, 8.0, 8.0),
             handle: crate::ImageHandle(1),
+            src: None,
         });
         let mut cpu = crate::SoftwareRenderer::new();
         let cpu_frame = cpu.render(&list, 32, 16, 1.0).unwrap();

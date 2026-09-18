@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use ve_core::{Edges, NodeId, Point, Rect, Size};
 use ve_layout::LayoutTree;
-use ve_style::{FontFamily, FontStyle, FontWeight, Rgba, StyleTree, TransformOp};
+use ve_style::{BackgroundImage, Filter, FontFamily, FontStyle, FontWeight, Rgba, StyleTree, TransformOp};
 
 use crate::image::ImageHandle;
 
@@ -55,6 +55,26 @@ pub enum DisplayItem {
         rect: Rect,
         /// The image.
         handle: ImageHandle,
+        /// Optional source rectangle in image pixels. `None` uses the full image.
+        src: Option<Rect>,
+    },
+    /// Linear gradient fill.
+    LinearGradient {
+        /// Destination bounds.
+        rect: Rect,
+        /// Start point in list space.
+        start: Point,
+        /// End point in list space.
+        end: Point,
+        /// Colour stops as (offset 0–1, colour).
+        stops: Vec<(f32, Rgba)>,
+    },
+    /// Blur the pixels already in `rect` (filter: blur).
+    FilterBlur {
+        /// Region to blur.
+        rect: Rect,
+        /// Blur radius in CSS pixels.
+        radius: f32,
     },
     /// Everything until the matching [`DisplayItem::PopClip`] is clipped to `rect`.
     PushClip(Rect),
@@ -103,6 +123,8 @@ impl DisplayItem {
             Self::Rect { rect, .. }
             | Self::Border { rect, .. }
             | Self::Image { rect, .. }
+            | Self::LinearGradient { rect, .. }
+            | Self::FilterBlur { rect, .. }
             | Self::PushClip(rect)
             | Self::RoundedClip { rect, .. }
             | Self::BoxShadow { rect, .. } => Some(*rect),
@@ -141,9 +163,25 @@ impl DisplayItem {
                 origin: run.origin.translate(dx, dy),
                 ..run.clone()
             }),
-            Self::Image { rect, handle } => Self::Image {
+            Self::Image { rect, handle, src } => Self::Image {
                 rect: rect.translate(dx, dy),
                 handle: *handle,
+                src: *src,
+            },
+            Self::LinearGradient {
+                rect,
+                start,
+                end,
+                stops,
+            } => Self::LinearGradient {
+                rect: rect.translate(dx, dy),
+                start: start.translate(dx, dy),
+                end: end.translate(dx, dy),
+                stops: stops.clone(),
+            },
+            Self::FilterBlur { rect, radius } => Self::FilterBlur {
+                rect: rect.translate(dx, dy),
+                radius: *radius,
             },
             Self::PushClip(rect) => Self::PushClip(rect.translate(dx, dy)),
             Self::RoundedClip { rect, radius } => Self::RoundedClip {
@@ -319,11 +357,28 @@ impl DisplayList {
                         });
                     }
                 }
+                if let BackgroundImage::LinearGradient(stops) = &style.background_image {
+                    list.push(DisplayItem::LinearGradient {
+                        rect: item.rect,
+                        start: Point::new(item.rect.x(), item.rect.y()),
+                        end: Point::new(item.rect.x(), item.rect.bottom()),
+                        stops: stops.clone(),
+                    });
+                }
                 if let Some(handle) = images.get(&node) {
                     list.push(DisplayItem::Image {
                         rect: item.rect,
                         handle: *handle,
+                        src: None,
                     });
+                }
+                if let Filter::Blur(radius) = style.filter {
+                    if radius > 0.0 {
+                        list.push(DisplayItem::FilterBlur {
+                            rect: item.rect,
+                            radius,
+                        });
+                    }
                 }
                 let widths = Edges::new(
                     style.border_top_width,
@@ -472,6 +527,32 @@ mod tests {
                     && *color == Rgba::BLACK
             )),
             "box-shadow missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_linear_gradient_and_filter_blur() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;background-image:linear-gradient(red, blue);filter:blur(2px)}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::LinearGradient { stops, .. } if stops.len() >= 2)),
+            "linear-gradient missing: {:?}",
+            list.items()
+        );
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::FilterBlur { radius, .. } if *radius >= 2.0)),
+            "filter blur missing: {:?}",
             list.items()
         );
     }

@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use ve_core::{NodeId, Rect};
+use ve_core::{NodeId, Point, Rect};
 use ve_style::Rgba;
 
 use crate::GfxError;
@@ -52,6 +52,28 @@ impl Frame {
         }
         out
     }
+}
+
+fn sample_stops(stops: &[(f32, Rgba)], t: f32) -> Rgba {
+    if stops.len() == 1 {
+        return stops[0].1;
+    }
+    let t = t.clamp(0.0, 1.0);
+    for w in stops.windows(2) {
+        let (t0, c0) = w[0];
+        let (t1, c1) = w[1];
+        if t <= t1 {
+            let span = (t1 - t0).max(f32::EPSILON);
+            let u = ((t - t0) / span).clamp(0.0, 1.0);
+            return Rgba::rgba(
+                (f32::from(c0.r) + (f32::from(c1.r) - f32::from(c0.r)) * u).round() as u8,
+                (f32::from(c0.g) + (f32::from(c1.g) - f32::from(c0.g)) * u).round() as u8,
+                (f32::from(c0.b) + (f32::from(c1.b) - f32::from(c0.b)) * u).round() as u8,
+                c0.a + (c1.a - c0.a) * u,
+            );
+        }
+    }
+    stops.last().map(|s| s.1).unwrap_or(Rgba::TRANSPARENT)
 }
 
 /// A paint backend.
@@ -167,6 +189,85 @@ impl Canvas {
         }
     }
 
+    fn fill_linear_gradient(
+        &mut self,
+        rect: Rect,
+        start: Point,
+        end: Point,
+        stops: &[(f32, Rgba)],
+    ) {
+        if stops.is_empty() {
+            return;
+        }
+        let Some(visible) = rect.intersection(&self.clip_rect()) else {
+            return;
+        };
+        let s = self.scale;
+        let dx = end.x - start.x;
+        let dy = end.y - start.y;
+        let len2 = dx * dx + dy * dy;
+        let px0 = (visible.x() * s).floor().max(0.0) as u32;
+        let py0 = (visible.y() * s).floor().max(0.0) as u32;
+        let px1 = ((visible.right() * s).ceil() as u32).min(self.width);
+        let py1 = ((visible.bottom() * s).ceil() as u32).min(self.height);
+        for py in py0..py1 {
+            for px in px0..px1 {
+                let x = px as f32 / s;
+                let y = py as f32 / s;
+                let t = if len2 < f32::EPSILON {
+                    0.0
+                } else {
+                    ((x - start.x) * dx + (y - start.y) * dy) / len2
+                }
+                .clamp(0.0, 1.0);
+                self.blend(px, py, sample_stops(stops, t), 1.0);
+            }
+        }
+    }
+
+    fn blur_rect(&mut self, rect: Rect, radius: f32) {
+        let r = radius.round().max(0.0) as i32;
+        if r == 0 {
+            return;
+        }
+        let Some(visible) = rect.intersection(&self.clip_rect()) else {
+            return;
+        };
+        let s = self.scale;
+        let x0 = (visible.x() * s).floor().max(0.0) as i32;
+        let y0 = (visible.y() * s).floor().max(0.0) as i32;
+        let x1 = ((visible.right() * s).ceil() as i32).min(self.width as i32);
+        let y1 = ((visible.bottom() * s).ceil() as i32).min(self.height as i32);
+        if x1 <= x0 || y1 <= y0 {
+            return;
+        }
+        let src = self.rgba.clone();
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let mut acc = [0u32; 4];
+                let mut n = 0u32;
+                for yy in (y - r).max(y0)..(y + r + 1).min(y1) {
+                    for xx in (x - r).max(x0)..(x + r + 1).min(x1) {
+                        let i = ((yy as u32 * self.width + xx as u32) * 4) as usize;
+                        acc[0] += u32::from(src[i]);
+                        acc[1] += u32::from(src[i + 1]);
+                        acc[2] += u32::from(src[i + 2]);
+                        acc[3] += u32::from(src[i + 3]);
+                        n += 1;
+                    }
+                }
+                if n == 0 {
+                    continue;
+                }
+                let i = ((y as u32 * self.width + x as u32) * 4) as usize;
+                self.rgba[i] = (acc[0] / n) as u8;
+                self.rgba[i + 1] = (acc[1] / n) as u8;
+                self.rgba[i + 2] = (acc[2] / n) as u8;
+                self.rgba[i + 3] = (acc[3] / n) as u8;
+            }
+        }
+    }
+
     fn blit_alpha(
         &mut self,
         left: i32,
@@ -271,24 +372,31 @@ impl SoftwareRenderer {
         }
     }
 
-    fn draw_image(&self, canvas: &mut Canvas, rect: Rect, handle: crate::image::ImageHandle) {
+    fn draw_image(
+        &self,
+        canvas: &mut Canvas,
+        rect: Rect,
+        handle: crate::image::ImageHandle,
+        src: Option<Rect>,
+    ) {
         let Some(image) = self.images.get(handle) else {
             return;
         };
         let Some(visible) = rect.intersection(&canvas.clip_rect()) else {
             return;
         };
+        let src = src.unwrap_or(Rect::new(0.0, 0.0, image.width as f32, image.height as f32));
         let s = canvas.scale;
         let px0 = (visible.x() * s).floor().max(0.0) as u32;
         let py0 = (visible.y() * s).floor().max(0.0) as u32;
         let px1 = ((visible.right() * s).ceil() as u32).min(canvas.width);
         let py1 = ((visible.bottom() * s).ceil() as u32).min(canvas.height);
         for py in py0..py1 {
-            let v = ((py as f32 / s - rect.y()) / rect.height()).clamp(0.0, 0.999_99);
+            let v = ((py as f32 / s - rect.y()) / rect.height().max(0.001)).clamp(0.0, 0.999_99);
             for px in px0..px1 {
-                let u = ((px as f32 / s - rect.x()) / rect.width()).clamp(0.0, 0.999_99);
-                let sx = (u * image.width as f32) as u32;
-                let sy = (v * image.height as f32) as u32;
+                let u = ((px as f32 / s - rect.x()) / rect.width().max(0.001)).clamp(0.0, 0.999_99);
+                let sx = (src.x() + u * src.width()) as u32;
+                let sy = (src.y() + v * src.height()) as u32;
                 if let Some([r, g, b, a]) = image.pixel(sx, sy) {
                     canvas.blend(px, py, Rgba::rgba(r, g, b, f32::from(a) / 255.0), 1.0);
                 }
@@ -356,7 +464,18 @@ impl Renderer for SoftwareRenderer {
                     );
                 }
                 DisplayItem::Text(run) => self.draw_text(&mut canvas, run),
-                DisplayItem::Image { rect, handle } => self.draw_image(&mut canvas, *rect, *handle),
+                DisplayItem::Image {
+                    rect,
+                    handle,
+                    src,
+                } => self.draw_image(&mut canvas, *rect, *handle, *src),
+                DisplayItem::LinearGradient {
+                    rect,
+                    start,
+                    end,
+                    stops,
+                } => canvas.fill_linear_gradient(*rect, *start, *end, stops),
+                DisplayItem::FilterBlur { rect, radius } => canvas.blur_rect(*rect, *radius),
                 DisplayItem::PushClip(rect) => {
                     let clipped = canvas.clip_rect().intersection(rect).unwrap_or(Rect::ZERO);
                     canvas.clip.push(clipped);
