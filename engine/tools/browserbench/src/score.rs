@@ -10,6 +10,10 @@
 //! true unless every official Default name ran `defaultIterationCount` (120)
 //! with this split.
 
+/// Lab iteration timer. Official `JetStreamDriver.js` uses `performance.now()`.
+/// Vector's `performance.now()` is virtual, so this is wall `Date.now()`.
+pub const LAB_ITERATION_CLOCK: &str = "Date.now-wall";
+
 /// Official `defaultIterationCount` in `JetStreamDriver.js`.
 pub const DEFAULT_ITERATION_COUNT: u32 = 120;
 
@@ -157,6 +161,7 @@ mod tests {
         assert!(official_default_score(&[18], DEFAULT_WORST_CASE_COUNT).is_none());
         assert!(!published_jetstream_ready(1, 72));
         assert!(!published_jetstream_ready(120, 12));
+        assert_eq!(LAB_ITERATION_CLOCK, "Date.now-wall");
     }
 
     #[test]

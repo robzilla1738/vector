@@ -125,45 +125,84 @@ pub(crate) fn jetstream_chunks(
         };
     }
     let html = format!("<!doctype html><title>{name}</title>");
-    let mut samples = Vec::new();
-    let mut last_err = None;
-    for _ in 0..iterations.max(1) {
-        let opened = match engine.open(OpenRequest {
-            url: Some(format!("https://browserbench.org/JetStream/{path}")),
-            html: Some(html.clone()),
-            allow_evaluate: true,
-            ..OpenRequest::default()
-        }) {
-            Ok(o) => o,
-            Err(e) => {
-                last_err = Some(e.to_string());
-                break;
-            }
-        };
-        if let Ok(page) = engine.page_mut(opened.page) {
-            page.settle(500);
-        }
-        let load = engine.page_mut(opened.page).and_then(|p| {
-            for chunk in chunks {
-                p.evaluate(chunk)?;
-            }
-            Ok(())
-        });
-        if let Err(e) = load {
-            last_err = Some(e.to_string());
-            engine.close(opened.page);
-            continue;
-        }
-        let started = Instant::now();
-        match engine.page_mut(opened.page).and_then(|p| {
-            p.evaluate("(function(){ new Benchmark().runIteration(); return true; })()")
-        }) {
-            Ok(_) => samples.push(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)),
-            Err(e) => last_err = Some(e.to_string()),
-        }
-        engine.close(opened.page);
+    let opened = match engine.open(OpenRequest {
+        url: Some(format!("https://browserbench.org/JetStream/{path}")),
+        html: Some(html),
+        allow_evaluate: true,
+        ..OpenRequest::default()
+    }) {
+        Ok(o) => o,
+        Err(e) => return finish_jetstream(name, revision, Vec::new(), Some(e.to_string())),
+    };
+    if let Ok(page) = engine.page_mut(opened.page) {
+        page.settle(500);
     }
+    let load = engine.page_mut(opened.page).and_then(|p| {
+        for chunk in chunks {
+            p.evaluate(chunk)?;
+        }
+        Ok(())
+    });
+    if let Err(e) = load {
+        engine.close(opened.page);
+        return finish_jetstream(name, revision, Vec::new(), Some(e.to_string()));
+    }
+    // Official DefaultBenchmark: one load, then runIteration(i) N times.
+    // Date.now() is wall clock. performance.now() is virtual in this engine.
+    let n = iterations.max(1);
+    let runner = official_default_runner(n);
+    let (samples, last_err) = match engine
+        .page_mut(opened.page)
+        .and_then(|p| p.evaluate(&runner))
+    {
+        Ok(v) => match parse_iteration_samples(&v) {
+            Ok(samples) => (samples, None),
+            Err(e) => (Vec::new(), Some(e)),
+        },
+        Err(e) => (Vec::new(), Some(e.to_string())),
+    };
+    engine.close(opened.page);
     finish_jetstream(name, revision, samples, last_err)
+}
+
+/// Official `JetStreamDriver.js` DefaultBenchmark runner body.
+/// Times with `Date.now()` because `performance.now()` is virtual here.
+fn official_default_runner(iterations: u32) -> String {
+    format!(
+        r#"(function () {{
+  var n = {iterations};
+  var benchmark = new Benchmark({{ iterationCount: n }});
+  var results = [];
+  for (var i = 0; i < n; i++) {{
+    var start = Date.now();
+    benchmark.runIteration(i);
+    var end = Date.now();
+    results.push(Math.max(1, end - start));
+  }}
+  if (benchmark.validate) benchmark.validate(n);
+  return results;
+}})()"#
+    )
+}
+
+fn parse_iteration_samples(value: &serde_json::Value) -> Result<Vec<u64>, String> {
+    let Some(items) = value.as_array() else {
+        return Err(format!("official runner did not return an array: {value}"));
+    };
+    let mut samples = Vec::with_capacity(items.len());
+    for item in items {
+        let ms = item
+            .as_u64()
+            .or_else(|| item.as_f64().map(|f| f.max(1.0) as u64));
+        match ms {
+            Some(n) => samples.push(n.max(1)),
+            None => return Err(format!("official runner sample is not a number: {item}")),
+        }
+    }
+    if samples.is_empty() {
+        return Err("official runner returned no iteration samples".into());
+    }
+    Ok(samples)
 }
 
 /// Official `AsyncBenchmark`: await init / prepareForNextIteration / runIteration.
@@ -512,6 +551,25 @@ fn jetstream_official_attribution(
             Some(score::official_default_score(samples, score::DEFAULT_WORST_CASE_COUNT)?.score)
         })
         .collect();
+    let per_test: serde_json::Map<String, serde_json::Value> = jet
+        .iter()
+        .filter_map(|s| {
+            let samples = s.samples_ms.as_deref()?;
+            let scored = score::official_default_score(samples, score::DEFAULT_WORST_CASE_COUNT)?;
+            Some((
+                s.name.clone(),
+                json!({
+                    "firstMs": scored.first_ms,
+                    "averageMs": scored.average_ms,
+                    "worstMs": scored.worst_ms,
+                    "firstScore": scored.first_score,
+                    "averageScore": scored.average_score,
+                    "worstScore": scored.worst_score,
+                    "score": scored.score,
+                }),
+            ))
+        })
+        .collect();
     let geomean = if official_score && scores.len() == jet.len() && !scores.is_empty() {
         score::geomean(&scores)
     } else {
@@ -524,6 +582,8 @@ fn jetstream_official_attribution(
         && geomean.is_some();
     json!({
         "formula": "JetStreamDriver.js toScore=5000/max(ms,1); DefaultBenchmark first/average/worst4; overall geomean of per-test scores",
+        "runner": "same-page new Benchmark({iterationCount:N}); for i in 0..N runIteration(i)",
+        "clock": score::LAB_ITERATION_CLOCK,
         "defaultIterationCount": score::DEFAULT_ITERATION_COUNT,
         "defaultWorstCaseCount": score::DEFAULT_WORST_CASE_COUNT,
         "applied": official_score,
@@ -531,9 +591,10 @@ fn jetstream_official_attribution(
         "scoredTests": scores.len(),
         "executedTests": jet.len(),
         "passedTests": passed,
+        "perTest": per_test,
         "geomean": geomean,
         "officialJetStreamGeometricMean": published,
-        "note": "A 1-iteration lab p50 is not a published score. officialJetStreamGeometricMean is true only when every official Default name ran 120 iterations with first/average/worst."
+        "note": "A 1-iteration lab p50 is not a published score. Date.now() wall is not official performance.now() (virtual in this engine). officialJetStreamGeometricMean is true only when every official Default name ran 120 iterations with first/average/worst."
     })
 }
 
@@ -577,12 +638,13 @@ fn speedometer_official_attribution(
 }
 
 fn motionmark_official_attribution(official_score: bool) -> serde_json::Value {
+    let ramp_complexity_scores = 0_usize;
     json!({
         "formula": "MotionMark 1.3 results.js ScoreCalculator: controller=ramp, per-test score is bootstrap median of complexity regression, overall is geomean of those scores then sample mean across iterations",
         "defaultTests": score::MOTIONMARK_DEFAULT_TESTS,
         "applied": official_score,
-        "rampComplexityScores": 0,
-        "officialMotionMarkGeometricMean": false,
+        "rampComplexityScores": ramp_complexity_scores,
+        "officialMotionMarkGeometricMean": official_score && score::published_motionmark_ready(ramp_complexity_scores),
         "note": "initialize+animate PASS is not a published MotionMark score. officialMotionMarkGeometricMean stays false until all 8 official names have ramp-complexity bootstrap scores."
     })
 }
