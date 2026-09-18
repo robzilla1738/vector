@@ -775,7 +775,13 @@ fn run_one(
             engine.close(opened.page);
             continue;
         }
-        if started.elapsed() > Duration::from_secs(90) {
+        let suite_wall = std::env::var("VECTOR_BROWSERBENCH_SUITE_DEADLINE_SECS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .map(Duration::from_secs)
+            .filter(|d| *d > Duration::ZERO)
+            .unwrap_or(Duration::from_secs(90));
+        if started.elapsed() > suite_wall {
             last = Some("suite wall deadline after add".into());
             engine.close(opened.page);
             break;
@@ -1357,6 +1363,40 @@ mod tests {
 
     #[cfg(feature = "v8")]
     #[test]
+    fn official_es5_complex_dom_adds_and_finishes() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(
+            &mut engine,
+            "todomvc/vanilla-examples/javascript-es5-complex/dist/index.html",
+        );
+        let (finish, console) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            page.evaluate(&with_lib(ADD_STEPS)).expect("complex add");
+            page.settle(250);
+            page.evaluate(&with_lib(FINISH_STEPS)).expect("complex finish");
+            page.settle(250);
+            let finish = page.evaluate(&with_lib(COUNT_STEPS)).unwrap();
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(180).collect())
+                .take(4)
+                .collect();
+            (finish, console)
+        };
+        engine.close(page_id);
+        let text = match &finish {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(finish);
+        assert_eq!(v.get("ok").and_then(serde_json::Value::as_bool), Some(true), "{v} err={console:?}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
     fn remaining_official_workloads_add_and_finish() {
         let mut engine = bench_engine();
         let suites = [
@@ -1366,6 +1406,7 @@ mod tests {
             "todomvc/architecture-examples/svelte/dist/index.html",
             "todomvc/architecture-examples/jquery/dist/index.html",
             "todomvc/architecture-examples/backbone/dist/index.html",
+            "todomvc/vanilla-examples/javascript-es5-complex/dist/index.html",
             "todomvc/architecture-examples/backbone-complex/dist/index.html",
             "todomvc/architecture-examples/jquery-complex/dist/index.html",
             "todomvc/vanilla-examples/javascript-web-components/dist/index.html",

@@ -309,6 +309,9 @@ fn main() -> Result<()> {
     if std::env::var_os("VECTOR_EVALUATE_DEADLINE_SECS").is_none() {
         unsafe { std::env::set_var("VECTOR_EVALUATE_DEADLINE_SECS", "240") };
     }
+    if !args.gate && std::env::var_os("VECTOR_BROWSERBENCH_SUITE_DEADLINE_SECS").is_none() {
+        unsafe { std::env::set_var("VECTOR_BROWSERBENCH_SUITE_DEADLINE_SECS", "300") };
+    }
     let mut engine = VectorEngine::new(EngineConfig {
         viewport: Size::new(1280.0, 720.0),
         offline: true,
