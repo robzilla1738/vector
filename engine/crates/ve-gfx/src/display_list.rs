@@ -101,12 +101,17 @@ pub enum DisplayItem {
         /// Corner radius in CSS pixels (uniform).
         radius: f32,
     },
-    /// Translate subsequent items until [`DisplayItem::PopTransform`].
+    /// Affine subsequent items until [`DisplayItem::PopTransform`].
+    /// `p' = (p.x * sx + tx, p.y * sy + ty)`.
     PushTransform {
-        /// X translation.
+        /// X translation (includes transform-origin compensation).
         tx: f32,
-        /// Y translation.
+        /// Y translation (includes transform-origin compensation).
         ty: f32,
+        /// X scale.
+        sx: f32,
+        /// Y scale.
+        sy: f32,
     },
     /// Ends a transform group.
     PopTransform,
@@ -221,9 +226,11 @@ impl DisplayItem {
                 blur: *blur,
                 color: *color,
             },
-            Self::PushTransform { tx, ty } => Self::PushTransform {
+            Self::PushTransform { tx, ty, sx, sy } => Self::PushTransform {
                 tx: *tx + dx,
                 ty: *ty + dy,
+                sx: *sx,
+                sy: *sy,
             },
             other => other.clone(),
         }
@@ -333,18 +340,38 @@ impl DisplayList {
             } else if let Some(c) = clip {
                 list.push(DisplayItem::PushClip(c));
             }
-            let translate = style
+            let mut tx = 0.0f32;
+            let mut ty = 0.0f32;
+            let mut sx = 1.0f32;
+            let mut sy = 1.0f32;
+            let mut xformed = false;
+            for op in style
                 .transform
                 .iter()
                 .chain(style.translate.iter())
-                .find_map(|op| match op {
+                .chain(style.scale.iter())
+            {
+                match op {
                     TransformOp::Translate(x, y) => {
-                        Some((x.resolve(item.rect.width()), y.resolve(item.rect.height())))
+                        tx += x.resolve(item.rect.width());
+                        ty += y.resolve(item.rect.height());
+                        xformed = true;
                     }
-                    _ => None,
-                });
-            if let Some((tx, ty)) = translate {
-                list.push(DisplayItem::PushTransform { tx, ty });
+                    TransformOp::Scale(x, y) => {
+                        sx *= *x;
+                        sy *= *y;
+                        xformed = true;
+                    }
+                }
+            }
+            if xformed {
+                if (sx - 1.0).abs() > f32::EPSILON || (sy - 1.0).abs() > f32::EPSILON {
+                    let ox = item.rect.x() + style.transform_origin.x.resolve(item.rect.width());
+                    let oy = item.rect.y() + style.transform_origin.y.resolve(item.rect.height());
+                    tx += ox * (1.0 - sx);
+                    ty += oy * (1.0 - sy);
+                }
+                list.push(DisplayItem::PushTransform { tx, ty, sx, sy });
             }
             if faded {
                 list.push(DisplayItem::PushOpacity(style.opacity.clamp(0.0, 1.0)));
@@ -488,7 +515,7 @@ impl DisplayList {
             if faded {
                 list.push(DisplayItem::PopOpacity);
             }
-            if translate.is_some() {
+            if xformed {
                 list.push(DisplayItem::PopTransform);
             }
             if radius > 0.0 || clip.is_some() {
@@ -836,8 +863,31 @@ mod tests {
         assert!(
             list.items()
                 .iter()
-                .any(|i| matches!(i, DisplayItem::PushTransform { tx, ty } if (*tx - 8.0).abs() < 0.1 && (*ty - 4.0).abs() < 0.1)),
+                .any(|i| matches!(i, DisplayItem::PushTransform { tx, ty, sx, sy } if (*tx - 8.0).abs() < 0.1 && (*ty - 4.0).abs() < 0.1 && (*sx - 1.0).abs() < f32::EPSILON && (*sy - 1.0).abs() < f32::EPSILON)),
             "individual translate missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_applies_individual_scale() {
+        let html = "<style>body{margin:0} #g{width:20px;height:10px;background:red;scale:2;transform-origin:0 0}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert!(!styles.style(id).scale.is_empty(), "scale computed");
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::PushTransform { sx, sy, .. }
+                    if (*sx - 2.0).abs() < 0.1 && (*sy - 2.0).abs() < 0.1
+            )),
+            "individual scale missing: {:?}",
             list.items()
         );
     }

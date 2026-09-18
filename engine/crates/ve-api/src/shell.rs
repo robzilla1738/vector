@@ -1908,8 +1908,8 @@ fn scene_item(item: &ve_gfx::DisplayItem) -> serde_json::Value {
             "h": rect.height(),
             "radius": radius,
         }),
-        ve_gfx::DisplayItem::PushTransform { tx, ty } => {
-            serde_json::json!({"kind": "transform", "tx": tx, "ty": ty})
+        ve_gfx::DisplayItem::PushTransform { tx, ty, sx, sy } => {
+            serde_json::json!({"kind": "transform", "tx": tx, "ty": ty, "sx": sx, "sy": sy})
         }
         ve_gfx::DisplayItem::PopTransform => serde_json::json!({"kind": "popTransform"}),
         ve_gfx::DisplayItem::BoxShadow {

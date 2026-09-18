@@ -126,7 +126,7 @@ struct Canvas {
     clip: Vec<Rect>,
     opacity: Vec<f32>,
     scale: f32,
-    translate: Vec<(f32, f32)>,
+    translate: Vec<(f32, f32, f32, f32)>,
 }
 
 impl Canvas {
@@ -143,20 +143,22 @@ impl Canvas {
         self.opacity.iter().product()
     }
 
-    fn offset(&self) -> (f32, f32) {
-        self.translate
-            .iter()
-            .fold((0.0, 0.0), |(ax, ay), (x, y)| (ax + x, ay + y))
+    fn map_point(&self, p: Point) -> Point {
+        let mut x = p.x;
+        let mut y = p.y;
+        for &(tx, ty, sx, sy) in &self.translate {
+            x = x * sx + tx;
+            y = y * sy + ty;
+        }
+        Point::new(x, y)
     }
 
     fn map_rect(&self, rect: Rect) -> Rect {
-        let (tx, ty) = self.offset();
-        Rect::new(rect.x() + tx, rect.y() + ty, rect.width(), rect.height())
-    }
-
-    fn map_point(&self, p: Point) -> Point {
-        let (tx, ty) = self.offset();
-        Point::new(p.x + tx, p.y + ty)
+        let a = self.map_point(Point::new(rect.x(), rect.y()));
+        let b = self.map_point(Point::new(rect.right(), rect.bottom()));
+        let x0 = a.x.min(b.x);
+        let y0 = a.y.min(b.y);
+        Rect::new(x0, y0, (a.x - b.x).abs(), (a.y - b.y).abs())
     }
 
     fn blend(&mut self, x: u32, y: u32, color: Rgba, coverage: f32) {
@@ -558,7 +560,9 @@ impl Renderer for SoftwareRenderer {
                     let clipped = canvas.clip_rect().intersection(&mapped).unwrap_or(Rect::ZERO);
                     canvas.clip.push(clipped);
                 }
-                DisplayItem::PushTransform { tx, ty } => canvas.translate.push((*tx, *ty)),
+                DisplayItem::PushTransform { tx, ty, sx, sy } => {
+                    canvas.translate.push((*tx, *ty, *sx, *sy));
+                }
                 DisplayItem::PopTransform => {
                     canvas.translate.pop();
                 }
@@ -688,7 +692,12 @@ mod tests {
             rect: Rect::new(0.0, 0.0, 20.0, 10.0),
             color: Rgba::WHITE,
         });
-        list.push(DisplayItem::PushTransform { tx: 8.0, ty: 0.0 });
+        list.push(DisplayItem::PushTransform {
+            tx: 8.0,
+            ty: 0.0,
+            sx: 1.0,
+            sy: 1.0,
+        });
         list.push(DisplayItem::Rect {
             rect: Rect::new(0.0, 0.0, 4.0, 4.0),
             color: Rgba::rgb(255, 0, 0),
@@ -702,5 +711,33 @@ mod tests {
             Some([255, 0, 0, 255]),
             "translated red"
         );
+    }
+
+    #[test]
+    fn software_renderer_applies_push_scale() {
+        let mut list = DisplayList::new(Size::new(20.0, 10.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 20.0, 10.0),
+            color: Rgba::WHITE,
+        });
+        list.push(DisplayItem::PushTransform {
+            tx: 0.0,
+            ty: 0.0,
+            sx: 2.0,
+            sy: 1.0,
+        });
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 4.0, 4.0),
+            color: Rgba::rgb(255, 0, 0),
+        });
+        list.push(DisplayItem::PopTransform);
+        let mut renderer = SoftwareRenderer::new();
+        let frame = renderer.render(&list, 20, 10, 1.0).unwrap();
+        assert_eq!(
+            frame.pixel(6, 1),
+            Some([255, 0, 0, 255]),
+            "scaled width covers x=6"
+        );
+        assert_eq!(frame.pixel(18, 1), Some([255, 255, 255, 255]), "outside scale");
     }
 }

@@ -313,7 +313,76 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         }
         rest = &rest[i + tag_end + 1..];
     }
+    rest = text.as_ref();
+    loop {
+        let i = match (rest.find("<polyline"), rest.find("<polygon")) {
+            (Some(a), Some(b)) => a.min(b),
+            (Some(a), None) => a,
+            (None, Some(b)) => b,
+            (None, None) => break,
+        };
+        let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
+        let tag = &rest[i..i + tag_end];
+        let closed = tag.starts_with("<polygon");
+        let color = parse_svg_color(
+            tag.split("stroke=")
+                .nth(1)
+                .and_then(|s| {
+                    let q = s.chars().next()?;
+                    if q == '"' || q == '\'' {
+                        s[1..].split(q).next()
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| svg_fill(tag)),
+        );
+        let mut pts = Vec::new();
+        if let Some(raw) = svg_attr_str(tag, "points") {
+            for pair in raw.split(|c: char| c == ',' || c.is_whitespace()) {
+                if pair.is_empty() {
+                    continue;
+                }
+                if let Ok(n) = pair.parse::<f32>() {
+                    pts.push(n);
+                }
+            }
+        }
+        let mut coords: Vec<(f32, f32)> = pts.chunks(2).filter_map(|c| {
+            (c.len() == 2).then_some((c[0], c[1]))
+        }).collect();
+        if closed && coords.len() >= 2 {
+            let first = coords[0];
+            coords.push(first);
+        }
+        for w in coords.windows(2) {
+            let (x1, y1) = w[0];
+            let (x2, y2) = w[1];
+            let steps = (x2 - x1).abs().max((y2 - y1).abs()).ceil().max(1.0) as i32;
+            for s in 0..=steps {
+                let t = s as f32 / steps as f32;
+                let xx = (x1 + (x2 - x1) * t).round() as i32;
+                let yy = (y1 + (y2 - y1) * t).round() as i32;
+                if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height {
+                    let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
+                    img.rgba[idx..idx + 4].copy_from_slice(&color);
+                }
+            }
+        }
+        rest = &rest[i + tag_end + 1..];
+    }
     Ok(img)
+}
+
+fn svg_attr_str<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
+    let key = format!("{name}=");
+    let rest = tag.split(&key).nth(1)?;
+    let q = rest.chars().next()?;
+    if q == '"' || q == '\'' {
+        rest[1..].split(q).next()
+    } else {
+        None
+    }
 }
 
 fn svg_fill(tag: &str) -> &str {
@@ -457,5 +526,11 @@ mod tests {
         .expect("svg line");
         assert_eq!(line.pixel(0, 0), Some([255, 255, 255, 255]));
         assert_eq!(line.pixel(7, 0), Some([255, 255, 255, 255]));
+        let poly = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><polyline points='0,0 7,0' stroke='#00ffff'/></svg>",
+        )
+        .expect("svg polyline");
+        assert_eq!(poly.pixel(0, 0), Some([0, 255, 255, 255]));
+        assert_eq!(poly.pixel(7, 0), Some([0, 255, 255, 255]));
     }
 }

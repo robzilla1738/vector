@@ -378,6 +378,8 @@ enum ValueSyntax {
     AspectRatio,
     /// Individual `translate` property (`none` | `<length-percentage>{1,2}`).
     IndividualTranslate,
+    /// Individual `scale` property (`none` | `<number>{1,2}`).
+    IndividualScale,
     /// `background-size`.
     BackgroundSize,
     /// `background-position`.
@@ -1081,6 +1083,8 @@ property_table! {
     Transform: "transform" => transform: Vec<TransformOp> = Vec::new(), inherited = false, syntax = Transform, convert = conv::transform;
     /// Individual `translate` (`none` or one/two lengths)
     Translate: "translate" => translate: Vec<TransformOp> = Vec::new(), inherited = false, syntax = IndividualTranslate, convert = conv::transform;
+    /// Individual `scale` (`none` or one/two numbers)
+    Scale: "scale" => scale: Vec<TransformOp> = Vec::new(), inherited = false, syntax = IndividualScale, convert = conv::transform;
     /// `font-size` (pixels)
     FontSize: "font-size" => font_size: f32 = 16.0, inherited = true, syntax = Single, convert = conv::font_size;
     /// `font-weight`
@@ -1323,7 +1327,6 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
     "column-count",
     "column-width",
     "rotate",
-    "scale",
     "offset",
     "offset-path",
     "position-anchor",
@@ -1417,7 +1420,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "column-rule",
     "column-span",
     "rotate",
-    "scale",
     "transform-style",
     "transform-box",
     "perspective",
@@ -2168,6 +2170,30 @@ fn parse_individual_translate(input: &mut Parser<'_, '_>) -> Option<SpecifiedVal
     )]))
 }
 
+fn parse_individual_scale(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    if input
+        .try_parse(|i| i.expect_ident_matching("none"))
+        .is_ok()
+    {
+        return Some(SpecifiedValue::Keyword("none".into()));
+    }
+    let x = match parse_component(input)? {
+        SpecifiedValue::Number(n) => n,
+        SpecifiedValue::Integer(i) => i as f32,
+        _ => return None,
+    };
+    let y = if input.is_exhausted() {
+        x
+    } else {
+        match parse_component(input)? {
+            SpecifiedValue::Number(n) => n,
+            SpecifiedValue::Integer(i) => i as f32,
+            _ => return None,
+        }
+    };
+    Some(SpecifiedValue::Transform(vec![SpecifiedTransform::Scale(x, y)]))
+}
+
 fn parse_aspect_ratio(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     if input
         .try_parse(|i| i.expect_ident_matching("auto"))
@@ -2373,6 +2399,9 @@ impl PropertyId {
                 .ok()?,
             ValueSyntax::IndividualTranslate => css_wide(input)
                 .or_else(|()| parse_individual_translate(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::IndividualScale => css_wide(input)
+                .or_else(|()| parse_individual_scale(input).ok_or(()))
                 .ok()?,
         };
         input.expect_exhausted().ok()?;
@@ -3102,6 +3131,9 @@ mod tests {
         ok("transform", "none");
         ok("translate", "10px 20px");
         ok("translate", "none");
+        ok("scale", "2");
+        ok("scale", "1 2");
+        ok("scale", "none");
         ok("box-shadow", "0 4px 8px black");
         ok("box-shadow", "none");
         ok("background-image", "none");
@@ -3176,7 +3208,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 122);
+        assert_eq!(PropertyId::ALL.len(), 123);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
