@@ -1,9 +1,9 @@
 //! Official-suite identity laboratory (VEC-021).
 //!
-//! Runs the official JetStream Next `SunSpider` group (12 named tests) on V8,
+//! Runs the official `JetStream` Next `SunSpider` group (12 named tests) on V8,
 //! every official `Speedometer` 3.0 suite name (vendored workloads execute;
-//! others `NOTRUN`), a TodoMVC-class DOM mutation, a canvas `fillRect` loop,
-//! official MotionMark 1.3 names (Multiply-class GPU present plus the other
+//! others `NOTRUN`), a `TodoMVC`-class DOM mutation, a canvas `fillRect` loop,
+//! official `MotionMark` 1.3 names (Multiply-class GPU present plus the other
 //! seven recorded `NOTRUN`), and `present_list` with no CPU readback. Scores
 //! are never fabricated. Identity is always written.
 
@@ -45,16 +45,16 @@ struct Args {
     /// Run one family: `all`, `jetstream`, `speedometer`, or `motionmark`.
     #[arg(long, default_value = "all")]
     only: String,
-    /// Official JetStream Next checkout (pin in `pins.json`) for Default JS workloads.
+    /// Official `JetStream` Next checkout (pin in `pins.json`) for Default JS workloads.
     #[arg(long)]
     jetstream_dir: Option<PathBuf>,
-    /// Official MotionMark checkout (pin in `pins.json`) for official HTML workloads.
+    /// Official `MotionMark` checkout (pin in `pins.json`) for official HTML workloads.
     #[arg(long)]
     motionmark_dir: Option<PathBuf>,
-    /// Apply official BrowserBench formulas (JetStream 120-iter first/average/worst,
-    /// Speedometer `1000/geomean` of 32 suite totals over 10 iterations,
-    /// MotionMark ramp-complexity bootstrap). Does not claim a published
-    /// score from a lab subset. JetStream uses per-test official counts.
+    /// Apply official `BrowserBench` formulas (`JetStream` 120-iter first/average/worst,
+    /// `Speedometer` `1000/geomean` of 32 suite totals over 10 iterations,
+    /// `MotionMark` ramp-complexity bootstrap). Does not claim a published
+    /// score from a lab subset. `JetStream` uses per-test official counts.
     /// Speedometer uses 10 iterations unless `--iterations` is set.
     #[arg(long)]
     official_score: bool,
@@ -166,7 +166,7 @@ pub(crate) fn jetstream_chunks(
     finish_jetstream(name, revision, samples, last_err)
 }
 
-/// Official `JetStreamDriver.js` DefaultBenchmark runner body.
+/// Official `JetStreamDriver.js` `DefaultBenchmark` runner body.
 /// Uses `performance.now()` when `VECTOR_PERFORMANCE_NOW=wall`.
 fn official_default_runner(iterations: u32) -> String {
     let now = score::jetstream_iteration_now_js();

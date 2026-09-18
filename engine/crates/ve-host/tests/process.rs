@@ -16,6 +16,7 @@ fn host_bin() -> String {
 
 /// Gate A: copy the host out of the build tree so the binary under test is a
 /// downloaded/installed artifact, not `CARGO_BIN_EXE_ve-host` in place.
+#[cfg(feature = "v8")]
 fn copy_host_to_download_dir() -> (std::path::PathBuf, String) {
     let src = host_bin();
     let dir = std::env::temp_dir().join(format!(
@@ -126,7 +127,10 @@ fn http_get(url: &str) -> Result<(u16, String, Vec<u8>), String> {
     let mut stream =
         TcpStream::connect(hostport).map_err(|e| format!("connect {hostport}: {e}"))?;
     stream
-        .write_all(format!("GET {path} HTTP/1.1\r\nHost: {hostport}\r\nConnection: close\r\n\r\n").as_bytes())
+        .write_all(
+            format!("GET {path} HTTP/1.1\r\nHost: {hostport}\r\nConnection: close\r\n\r\n")
+                .as_bytes(),
+        )
         .map_err(|e| e.to_string())?;
     let mut raw = Vec::new();
     stream.read_to_end(&mut raw).map_err(|e| e.to_string())?;
@@ -275,8 +279,7 @@ fn production_inline_script_observe_and_input(bin: &str) {
     assert_eq!(ready["ch"], "ready", "{ready}");
     assert_eq!(ready["sandbox"], true, "{ready}");
     assert_eq!(
-        ready["scripting"],
-        true,
+        ready["scripting"], true,
         "production init must keep scripting=true: {ready}"
     );
     write_line(

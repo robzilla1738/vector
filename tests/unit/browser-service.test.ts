@@ -7,8 +7,9 @@ import {
   resolveVeShell,
   spawnVeShellService,
   BrowserServiceClient,
-} from "../../packages/browser-driver/src/browser-service.ts";
-import { VectorEngineDriver, parseEngineTargetId } from "../../packages/browser-driver/src/vector-engine.ts";
+  VectorEngineDriver,
+  parseEngineTargetId,
+} from "@vector/browser-driver";
 
 function fakeShell(): string {
   const dir = mkdtempSync(join(tmpdir(), "ve-shell-"));

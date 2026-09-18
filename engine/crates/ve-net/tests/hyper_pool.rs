@@ -87,7 +87,8 @@ fn keep_alive_pooling_and_gzip_decoding() {
 fn loopback_https_with_fixture_ca() {
     use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 
-    let certified = rcgen::generate_simple_self_signed(["127.0.0.1".into(), "localhost".into()]).unwrap();
+    let certified =
+        rcgen::generate_simple_self_signed(["127.0.0.1".into(), "localhost".into()]).unwrap();
     let cert_der = certified.cert.der().to_vec();
     let key_der = certified.key_pair.serialize_der();
     let mut server_crypto = rustls::ServerConfig::builder()

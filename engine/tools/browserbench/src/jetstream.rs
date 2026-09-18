@@ -1,4 +1,4 @@
-//! Official JetStream Next `SunSpider` group from `pins.json`.
+//! Official `JetStream` Next `SunSpider` group from `pins.json`.
 
 use ve_api::VectorEngine;
 
@@ -293,7 +293,13 @@ const DEFAULT_JS: &[(&str, &[&str], bool)] = &[
 ];
 
 /// Official `AsyncBenchmark` Default JS from `JetStreamDriver.js`.
-const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
+type OfficialJsEntry = (
+    &'static str,
+    &'static [&'static str],
+    bool,
+    &'static [(&'static str, &'static str)],
+);
+const ASYNC_JS: &[OfficialJsEntry] = &[
     (
         "doxbee-promise",
         &["./simple/doxbee-promise.js"],
@@ -628,7 +634,7 @@ const DOTNET_AOT_PRELOADS: &[(&str, &str)] = &[
 
 /// Official `WasmEMCCBenchmark` Default names from `JetStreamDriver.js`.
 /// Start with the smallest emcc builds; larger Default wasm stays later.
-const WASM_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
+const WASM_JS: &[OfficialJsEntry] = &[
     (
         "richards-wasm",
         &[
@@ -1216,17 +1222,16 @@ fn preload_one(root: &std::path::Path, name: &str, rel: &str) -> Result<Vec<Stri
 }
 
 fn is_binary_preload(rel: &str) -> bool {
-    let name = rel.to_ascii_lowercase();
-    name.ends_with(".wasm")
-        || name.ends_with(".wasm.z")
-        || name.ends_with(".bin")
-        || name.ends_with(".png")
-        || name.ends_with(".jpg")
-        || name.ends_with(".jpeg")
-        || name.ends_with(".ttf")
-        || name.ends_with(".onnx")
-        || name.ends_with(".dat")
-        || name.ends_with(".json")
+    let lower = rel.to_ascii_lowercase();
+    if lower.ends_with(".wasm.z") {
+        return true;
+    }
+    matches!(
+        std::path::Path::new(&lower)
+            .extension()
+            .and_then(|e| e.to_str()),
+        Some("wasm" | "bin" | "png" | "jpg" | "jpeg" | "ttf" | "onnx" | "dat" | "json")
+    )
 }
 
 fn read_bytes(path: &std::path::Path) -> Result<Vec<u8>, String> {

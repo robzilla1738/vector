@@ -141,7 +141,7 @@ fn handle_conn(
         .next()
         .and_then(|l| l.split_whitespace().nth(1))
         .unwrap_or("/");
-    let query = path.split_once('?').map(|(_, q)| q).unwrap_or("");
+    let query = path.split_once('?').map_or("", |(_, q)| q);
     let rel = path
         .split('?')
         .next()
@@ -251,7 +251,7 @@ fn stash_put(stash: &Stash, key: &str, val: impl Into<String>) {
 
 fn serve_chunked_html(stream: &mut (impl Read + Write), query: &str, stash: &Stash) {
     let q = query_map(query);
-    let action = q.get("action").map(String::as_str).unwrap_or("");
+    let action = q.get("action").map_or("", String::as_str);
     let key = q.get("key").cloned().unwrap_or_default();
     match action {
         "continue" => {
@@ -390,7 +390,7 @@ fn resolve(roots: &[(String, PathBuf)], rel: &str) -> Option<(PathBuf, &'static 
 fn serve_stash_referrer(stream: &mut impl Write, query: &str, req: &str, stash: &Stash) {
     let q = query_map(query);
     let key = q.get("key").cloned().unwrap_or_default();
-    let operation = q.get("operation").map(String::as_str).unwrap_or("");
+    let operation = q.get("operation").map_or("", String::as_str);
     match operation {
         "put" => {
             let referrer = q

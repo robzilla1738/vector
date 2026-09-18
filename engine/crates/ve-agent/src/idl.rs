@@ -6,9 +6,8 @@ use ve_script::JsValue;
 use ve_script::generated::{
     DOMImplementationInterface, DocumentInterface, ElementInterface, EventTargetInterface,
     HTMLAllCollectionInterface, HTMLButtonElementInterface, HTMLCollectionInterface,
-    HTMLElementInterface,
-    HTMLFormElementInterface, HTMLInputElementInterface, MediaQueryListInterface, NodeInterface,
-    ShadowRootInterface, WindowInterface,
+    HTMLElementInterface, HTMLFormElementInterface, HTMLInputElementInterface,
+    MediaQueryListInterface, NodeInterface, ShadowRootInterface, WindowInterface,
 };
 
 use crate::page::{Page, outer_html};

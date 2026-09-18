@@ -135,9 +135,9 @@ fn take_imports(source: &str) -> (Vec<Import>, String) {
         }
         if depth == 0
             && starts_with(&chars, i, "import")
-            && chars.get(i + 6).is_some_and(|c| {
-                c.is_whitespace() || *c == '"' || *c == '\'' || *c == '{'
-            })
+            && chars
+                .get(i + 6)
+                .is_some_and(|c| c.is_whitespace() || *c == '"' || *c == '\'' || *c == '{')
         {
             if let Some((imp, end)) = parse_import(&chars, i) {
                 imports.push(imp);

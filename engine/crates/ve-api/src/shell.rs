@@ -406,8 +406,7 @@ impl NativeBrowser {
         self.page_ax()
             .into_iter()
             .find(|n| !n.name.is_empty())
-            .map(|n| n.name)
-            .unwrap_or_else(|| "urlbar".into())
+            .map_or_else(|| "urlbar".into(), |n| n.name)
     }
 
     /// AccessKit tree for the native window (chrome first, then page).
@@ -435,11 +434,14 @@ impl NativeBrowser {
         });
         let page_tree = self.active_tab().and_then(|tab| {
             self.engine.page(tab.page).ok().map(|page| {
-                ve_a11y::AccessibilityTree::build(page.document(), &ve_a11y::BuildOptions {
-                    styles: Some(page.style_tree()),
-                    focused: page.focused(),
-                    ..ve_a11y::BuildOptions::default()
-                })
+                ve_a11y::AccessibilityTree::build(
+                    page.document(),
+                    &ve_a11y::BuildOptions {
+                        styles: Some(page.style_tree()),
+                        focused: page.focused(),
+                        ..ve_a11y::BuildOptions::default()
+                    },
+                )
             })
         });
         let focus = self
@@ -463,10 +465,13 @@ impl NativeBrowser {
         let Ok(page) = self.engine.page(tab.page) else {
             return Vec::new();
         };
-        let tree = ve_a11y::AccessibilityTree::build(page.document(), &ve_a11y::BuildOptions {
-            styles: Some(page.style_tree()),
-            ..ve_a11y::BuildOptions::default()
-        });
+        let tree = ve_a11y::AccessibilityTree::build(
+            page.document(),
+            &ve_a11y::BuildOptions {
+                styles: Some(page.style_tree()),
+                ..ve_a11y::BuildOptions::default()
+            },
+        );
         tree.root
             .iter()
             .filter(|n| !n.name.is_empty())
@@ -533,10 +538,13 @@ impl NativeBrowser {
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?
             .page;
-        self.engine.execute(page, &ExecuteRequest {
-            program,
-            ..ExecuteRequest::default()
-        })
+        self.engine.execute(
+            page,
+            &ExecuteRequest {
+                program,
+                ..ExecuteRequest::default()
+            },
+        )
     }
 
     /// Human takeover: later agent programs fail until [`Self::resume`].

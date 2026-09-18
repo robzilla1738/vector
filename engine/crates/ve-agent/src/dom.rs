@@ -375,8 +375,7 @@ pub(crate) fn host_call(
 ) -> Result<JsValue, ScriptError> {
     match op {
         "documentNode" => Ok(pack(page.doc.root())),
-        "describe" => describe_node(page, live(page, args, 0)?)
-            .ok_or_else(|| fail("detached")),
+        "describe" => describe_node(page, live(page, args, 0)?).ok_or_else(|| fail("detached")),
         "describeMany" => Ok(JsValue::Array(
             args.iter()
                 .map(|a| {

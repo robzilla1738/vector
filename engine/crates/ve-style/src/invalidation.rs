@@ -291,11 +291,7 @@ struct Effect {
 /// `:nth-*` / `:empty` / `:first-child` change the parent and its children,
 /// not every cousin under `parent`. Official Complex-DOM Spectrum lives under
 /// `body`; jQuery `show()` appends a temp node there for `getDefaultDisplay`.
-fn mark_structural_siblings(
-    effects: &mut HashMap<NodeId, Effect>,
-    doc: &Document,
-    parent: NodeId,
-) {
+fn mark_structural_siblings(effects: &mut HashMap<NodeId, Effect>, doc: &Document, parent: NodeId) {
     let p = effects.entry(parent).or_default();
     p.self_ = true;
     p.forced = true;

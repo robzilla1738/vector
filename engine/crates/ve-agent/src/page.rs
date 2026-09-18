@@ -379,7 +379,7 @@ pub struct Page {
     /// Parser-inserted script currently running; later nodes are not visible
     /// via `getElementById` until this is cleared (HTML parser script point).
     pub(crate) parser_limit: Option<NodeId>,
-    /// Reused `DOMParser` document when its body has been emptied (TodoMVC
+    /// Reused `DOMParser` document when its body has been emptied (`TodoMVC`
     /// `showEntries` parses a growing list 100 times).
     pub(crate) parser_scratch: Option<NodeId>,
     /// Arena length when document scripts started; later ids are script-created.
@@ -5129,8 +5129,7 @@ pub fn outer_html(doc: &Document, id: NodeId) -> String {
                     && matches!(e.name.as_str(), "script" | "style");
                 let kids = if e.is_html("template") {
                     doc.template_contents(id)
-                        .map(|frag| doc.children(frag))
-                        .unwrap_or_else(|| doc.children(id))
+                        .map_or_else(|| doc.children(id), |frag| doc.children(frag))
                 } else {
                     doc.children(id)
                 };

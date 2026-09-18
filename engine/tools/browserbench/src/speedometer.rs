@@ -462,12 +462,14 @@ const COUNT_STEPS: &str = r##"(function () {
   return JSON.stringify({ ok: !!prev.ok, kind: kind, added: prev.ok ? 1 : 0, remaining: 0, reason: prev.reason });
 })()"##;
 
+#[allow(dead_code)]
 fn add_steps(n: u32) -> String {
     ADD_STEPS
         .replace("i < 100", &format!("i < {n}"))
         .replace("added >= 100", &format!("added >= {n}"))
 }
 
+#[allow(dead_code)]
 fn count_steps(n: u32) -> String {
     COUNT_STEPS.replace("added >= 100", &format!("added >= {n}"))
 }
@@ -526,6 +528,7 @@ fn inline_document(path: &Path) -> anyhow::Result<InlinedDocument> {
     Ok(InlinedDocument { html: out, late_js })
 }
 
+#[allow(dead_code)]
 fn inline_html(path: &Path) -> anyhow::Result<String> {
     Ok(inline_document(path)?.html)
 }
@@ -1194,8 +1197,7 @@ fn run_one_official(
     let recorded = status
         .get("tests")
         .and_then(|t| t.as_object())
-        .map(|o| !o.is_empty())
-        .unwrap_or(false);
+        .is_some_and(|o| !o.is_empty());
     if total <= 0.0 {
         if !recorded {
             return SuiteResult {

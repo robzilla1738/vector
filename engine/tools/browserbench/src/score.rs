@@ -1,4 +1,4 @@
-//! Official JetStream Next scoring from `JetStreamDriver.js` at pin c603c04.
+//! Official `JetStream` Next scoring from `JetStreamDriver.js` at pin c603c04.
 //!
 //! `toScore(ms) = 5000 / max(ms, 1)`.
 //! `DefaultBenchmark`: first iteration split from the rest; remaining sorted
@@ -48,7 +48,7 @@ pub struct OfficialDefaultScore {
     pub score: f64,
 }
 
-/// Complete official DefaultBenchmark score. Needs `1 + worst_case_count`
+/// Complete official `DefaultBenchmark` score. Needs `1 + worst_case_count`
 /// samples (`iterations > worstCaseCount` in the official driver).
 #[must_use]
 pub fn official_default_score(
@@ -139,9 +139,10 @@ pub fn jetstream_iteration_now_js() -> &'static str {
 }
 
 /// True only when official scoring ran at the official iteration count for
-/// every executed JetStream name **and** used official `performance.now()`.
+/// every executed `JetStream` name **and** used official `performance.now()`.
 /// `Date.now-wall` lab subsets stay false.
 #[must_use]
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn published_jetstream_ready(iterations: u32, executed_default_names: usize) -> bool {
     published_jetstream_ready_with_clock(iterations, executed_default_names, LAB_ITERATION_CLOCK)
 }
@@ -195,6 +196,7 @@ pub const OFFICIAL_SPEEDOMETER_STEPS: &str = "benchmark-runner.mjs";
 /// True only when the official runner produced 10 iteration scores from all
 /// 32 default suites in one iteration (not independent suite p50s).
 #[must_use]
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn published_speedometer_ready(iterations: u32, executed_default_suites: usize) -> bool {
     published_speedometer_ready_official(iterations, executed_default_suites, false)
 }
@@ -202,6 +204,7 @@ pub fn published_speedometer_ready(iterations: u32, executed_default_suites: usi
 /// `official_iteration_scores` is true only when each sample is one
 /// `1000/geomean(32 suite totals)` from a full iteration, not a suite p50.
 #[must_use]
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn published_speedometer_ready_official(
     iterations: u32,
     executed_default_suites: usize,
@@ -241,23 +244,23 @@ pub fn official_speedometer_displayed_score(iteration_scores: &[f64]) -> Option<
     Some(iteration_scores.iter().sum::<f64>() / iteration_scores.len() as f64)
 }
 
-/// Official MotionMark 1.3 default test count (`resources/runner/tests.js`).
+/// Official `MotionMark` 1.3 default test count (`resources/runner/tests.js`).
 pub const MOTIONMARK_DEFAULT_TESTS: usize = 8;
 
-/// Official MotionMark 1.3 iteration count (`BenchmarkRunnerClient.iterationCount`).
+/// Official `MotionMark` 1.3 iteration count (`BenchmarkRunnerClient.iterationCount`).
 pub const MOTIONMARK_ITERATION_COUNT: u32 = 1;
 
-/// Official MotionMark `test-interval` seconds (`benchmarkDefaultParameters`).
+/// Official `MotionMark` `test-interval` seconds (`benchmarkDefaultParameters`).
 pub const MOTIONMARK_TEST_INTERVAL_SECS: u32 = 30;
 
-/// Lab ramp timer. Official MotionMark uses `time-measurement: performance`.
+/// Lab ramp timer. Official `MotionMark` uses `time-measurement: performance`.
 /// Vector's `performance.now()` is virtual, so this is wall `Date.now()`.
 pub const LAB_MOTIONMARK_CLOCK: &str = "Date.now-wall";
 
 /// Official `time-measurement: performance`.
 pub const OFFICIAL_MOTIONMARK_CLOCK: &str = "performance.now";
 
-/// Clock label for this MotionMark process.
+/// Clock label for this `MotionMark` process.
 #[must_use]
 pub fn motionmark_clock() -> &'static str {
     if performance_now_is_wall() {
@@ -267,8 +270,8 @@ pub fn motionmark_clock() -> &'static str {
     }
 }
 
-/// Official MotionMark score is the geomean of per-test ramp-complexity
-/// bootstrap medians (`results.js` ScoreCalculator, controller=`ramp`).
+/// Official `MotionMark` score is the geomean of per-test ramp-complexity
+/// bootstrap medians (`results.js` `ScoreCalculator`, controller=`ramp`).
 /// initialize+animate samples are not that.
 #[must_use]
 pub fn published_motionmark_ready(ramp_complexity_scores: usize) -> bool {

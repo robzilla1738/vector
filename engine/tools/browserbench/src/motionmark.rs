@@ -14,7 +14,8 @@ use ve_style::Rgba;
 use crate::percentile;
 use crate::{SuiteResult, pin};
 
-/// Official MotionMark 1.3 names from `resources/runner/tests.js` at the pin.
+/// Official `MotionMark` 1.3 names from `resources/runner/tests.js` at the pin.
+#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) const OFFICIAL_NAMES: &[&str] = &[
     "Multiply",
     "Canvas Arcs",
@@ -674,7 +675,7 @@ fn inline_official_html(path: &Path) -> Result<String, String> {
     let html =
         std::fs::read_to_string(path).map_err(|e| format!("read {}: {e}", path.display()))?;
     let dir = path.parent().unwrap_or(path);
-    Ok(inline_scripts(&inline_styles(&html, dir)?, dir)?)
+    inline_scripts(&inline_styles(&html, dir)?, dir)
 }
 
 fn inline_styles(html: &str, dir: &Path) -> Result<String, String> {
@@ -858,7 +859,10 @@ fn run_gpu_inner(iterations: u32, revision: String) -> SuiteResult {
 
 #[cfg(test)]
 mod tests {
-    use super::{OFFICIAL_HTML, OFFICIAL_NAMES, official_ramp_html, run_gpu};
+    #[cfg(feature = "v8")]
+    use super::official_ramp_html;
+    use super::{OFFICIAL_HTML, OFFICIAL_NAMES, run_gpu};
+    #[cfg(feature = "v8")]
     use std::path::Path;
 
     #[test]

@@ -1,4 +1,4 @@
-//! Gate B: a live OS window and an MCP client share one NativeBrowser.
+//! Gate B: a live OS window and an MCP client share one `NativeBrowser`.
 //!
 //! Requires `--features window,v8`. Needs a working `DISPLAY` (Xvfb is enough)
 //! and `libxkbcommon-x11` on Linux.

@@ -624,7 +624,7 @@ impl Document {
     ///
     /// Same tree and journal effects as remove-all then append-each, but
     /// dirties `parent` once instead of once per child. Used by the DOM
-    /// `replaceChildren` binding (TodoMVC `showEntries`).
+    /// `replaceChildren` binding (`TodoMVC` `showEntries`).
     pub fn replace_children(&mut self, parent: NodeId, incoming: &[NodeId]) -> Result<()> {
         self.try_get(parent)?;
         for &kid in incoming {
@@ -1919,8 +1919,14 @@ mod tests {
         let shadow = doc.attach_shadow(host, ShadowRootMode::Open).unwrap();
         let child = html(&mut doc, "span");
         doc.append_child(shadow, child).unwrap();
-        assert!(doc.is_connected(shadow), "connected host makes the shadow root connected");
-        assert!(doc.is_connected(child), "shadow children are shadow-including connected");
+        assert!(
+            doc.is_connected(shadow),
+            "connected host makes the shadow root connected"
+        );
+        assert!(
+            doc.is_connected(child),
+            "shadow children are shadow-including connected"
+        );
 
         let template = html(&mut doc, "template");
         doc.append_child(doc.root(), template).unwrap();

@@ -460,7 +460,10 @@ fn inject_csp_from_sidecar(html: &str, fixture: &Path) -> String {
     let Some(csp) = http_serve::content_security_policy_for(fixture) else {
         return html.to_string();
     };
-    if html.to_ascii_lowercase().contains("content-security-policy") {
+    if html
+        .to_ascii_lowercase()
+        .contains("content-security-policy")
+    {
         return html.to_string();
     }
     let meta = format!(
@@ -1235,10 +1238,7 @@ mod tests {
 
     #[test]
     fn tree_family_accepts_a_single_official_file() {
-        let root = std::env::temp_dir().join(format!(
-            "ve-wpt-family-{}",
-            std::process::id()
-        ));
+        let root = std::env::temp_dir().join(format!("ve-wpt-family-{}", std::process::id()));
         let rel = "html/dom/one.html";
         let path = root.join(rel);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -1336,11 +1336,9 @@ mod tests {
     fn https_server_serves_idlharness_over_tls() {
         use rustls::pki_types::{CertificateDer, ServerName};
         let res = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/resources");
-        let (server, cert) = super::http_serve::DirServer::start_https(vec![(
-            "resources".into(),
-            res.into(),
-        )])
-        .unwrap();
+        let (server, cert) =
+            super::http_serve::DirServer::start_https(vec![("resources".into(), res.into())])
+                .unwrap();
         let origin = server.origin.clone();
         assert!(origin.starts_with("https://"), "{origin}");
         let addr = origin.trim_start_matches("https://").to_owned();

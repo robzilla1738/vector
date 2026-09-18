@@ -188,11 +188,14 @@ pub struct BrowserServiceListener {
 impl BrowserServiceListener {
     /// Bind `host:port` (`127.0.0.1:0` for an ephemeral test port).
     pub fn bind(addr: &str) -> Result<Self> {
-        Self::bind_config(addr, EngineConfig {
-            offline: true,
-            policy: crate::NetworkPolicy::permissive(),
-            ..EngineConfig::default()
-        })
+        Self::bind_config(
+            addr,
+            EngineConfig {
+                offline: true,
+                policy: crate::NetworkPolicy::permissive(),
+                ..EngineConfig::default()
+            },
+        )
     }
 
     /// Bind and construct the authority on the owner thread (engine is `!Send`).
@@ -663,13 +666,16 @@ mod tests {
                 .open(crate::OpenRequest::html(html, Some(url)))
                 .expect("open");
             engine
-                .execute(opened.page, &crate::ExecuteRequest {
-                    program: Program::from_value(json!([
-                        {"id":"f","op":"fill","target":"css:input","value":"Ada Lovelace"}
-                    ]))
-                    .unwrap(),
-                    ..crate::ExecuteRequest::default()
-                })
+                .execute(
+                    opened.page,
+                    &crate::ExecuteRequest {
+                        program: Program::from_value(json!([
+                            {"id":"f","op":"fill","target":"css:input","value":"Ada Lovelace"}
+                        ]))
+                        .unwrap(),
+                        ..crate::ExecuteRequest::default()
+                    },
+                )
                 .expect("fill");
             let obs = engine
                 .observe(opened.page, &crate::ObservationRequest::default())

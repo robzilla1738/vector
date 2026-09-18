@@ -145,7 +145,7 @@ pub const PRELUDE: &str = r#"(() => {
 /// DOM/Web API prelude (plan A14).
 pub const DOM_PRELUDE: &str = include_str!("dom_prelude.js");
 
-/// Official BrowserBench clocks with `performance.now()`. Default `__ve.now()`
+/// Official `BrowserBench` clocks with `performance.now()`. Default `__ve.now()`
 /// is virtual (WPT/settle). `VECTOR_PERFORMANCE_NOW=wall` rebases onto
 /// `Date.now()` so official-score can time with the official API without
 /// changing WPT virtual time. Do not add a host function: `Date.now()` is

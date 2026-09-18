@@ -182,11 +182,14 @@ impl ProcessClient {
             .stdout
             .take()
             .ok_or_else(|| "ve-host stdout missing".to_owned())?;
-        write_msg(&mut stdin, &Channel::Init {
-            protocol: HOST_PROTOCOL,
-            config: config.clone(),
-            context_id,
-        })
+        write_msg(
+            &mut stdin,
+            &Channel::Init {
+                protocol: HOST_PROTOCOL,
+                config: config.clone(),
+                context_id,
+            },
+        )
         .map_err(|e| format!("ve-host init write: {e}"))?;
         let (hs_tx, hs_rx) = mpsc::channel();
         thread::Builder::new()

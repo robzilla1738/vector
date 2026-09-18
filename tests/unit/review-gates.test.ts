@@ -263,7 +263,7 @@ describe("Gate B/F one session without Chromium", () => {
               { ref: "r1", role: "textbox", name: "Name", tag: "input", value: fieldValue },
               { ref: "r9", role: "button", name: "Save", tag: "button" },
             ],
-          }) as ObservationContent,
+          }) as unknown as ObservationContent,
         expandRef: async () => [],
         extract: async () => ({ value: fieldValue }),
         evaluate: async () => fieldValue,

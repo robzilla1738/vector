@@ -142,9 +142,7 @@ impl TreeSink for DomSink {
     fn elem_name<'a>(&'a self, target: &'a NodeId) -> Ref<'a, QualName> {
         self.ensure_name(*target);
         Ref::map(self.names.borrow(), |names| {
-            names
-                .get(target)
-                .expect("elem_name seeded")
+            names.get(target).expect("elem_name seeded")
         })
     }
 
@@ -315,9 +313,7 @@ fn parse_html_pi_comment(text: &str) -> Option<(String, String)> {
         return None;
     }
     let (target, data) = match rest.split_once(|c: char| c.is_ascii_whitespace()) {
-        Some((target, data)) if !target.is_empty() => {
-            (target.to_string(), data.trim().to_string())
-        }
+        Some((target, data)) if !target.is_empty() => (target.to_string(), data.trim().to_string()),
         None => (rest.to_string(), String::new()),
         _ => return None,
     };

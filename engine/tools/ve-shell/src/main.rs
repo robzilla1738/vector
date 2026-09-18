@@ -42,7 +42,7 @@ struct Args {
     #[arg(long)]
     gui: bool,
     /// Bind the shared browser service so Node/MCP clients attach to this
-    /// NativeBrowser (Finding 1). Example: `127.0.0.1:0`.
+    /// `NativeBrowser` (`Finding` 1). Example: `127.0.0.1:0`.
     #[arg(long)]
     service: Option<String>,
 }
@@ -94,15 +94,18 @@ fn main() -> Result<()> {
 }
 
 fn run_service(bind: &str, args: &Args) -> Result<()> {
-    let listener = BrowserServiceListener::bind_config(bind, EngineConfig {
-        viewport: Size::new(1280.0, 720.0),
-        offline: args.url.starts_with("data:")
-            || args.url.starts_with("file:")
-            || args.html.is_some(),
-        scripting: cfg!(feature = "v8"),
-        policy: ve_api::NetworkPolicy::permissive(),
-        ..EngineConfig::default()
-    })?;
+    let listener = BrowserServiceListener::bind_config(
+        bind,
+        EngineConfig {
+            viewport: Size::new(1280.0, 720.0),
+            offline: args.url.starts_with("data:")
+                || args.url.starts_with("file:")
+                || args.html.is_some(),
+            scripting: cfg!(feature = "v8"),
+            policy: ve_api::NetworkPolicy::permissive(),
+            ..EngineConfig::default()
+        },
+    )?;
     if args.html.is_some() || args.url != "about:blank" {
         let mut client = ve_api::BrowserClient::connect(listener.addr())?;
         let mut params = serde_json::json!({ "url": args.url });
