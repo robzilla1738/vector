@@ -4330,6 +4330,26 @@ fn pump_virtual_time_completes_pending_fetch() {
 }
 
 #[test]
+fn pump_virtual_time_does_not_jump_past_horizon() {
+    let mut page = open("<p>f</p>");
+    let _ = page.evaluate(
+        r##"(function () {
+          window.__late = false;
+          setTimeout(function () { window.__late = true; }, 300);
+        })()"##,
+    );
+    page.pump_virtual_time(50);
+    let early = page.evaluate("window.__late").unwrap();
+    assert_eq!(early, false, "300ms timer must not fire in a 50ms pump");
+    page.pump_virtual_time(300);
+    let late = page.evaluate("window.__late").unwrap();
+    assert_eq!(
+        late, true,
+        "300ms timer must fire once the horizon covers it"
+    );
+}
+
+#[test]
 fn pump_virtual_time_finishes_second_timeout_then_fetch() {
     let mut page = open("<p>f</p>");
     let _ = page.evaluate(
@@ -4341,6 +4361,43 @@ fn pump_virtual_time_finishes_second_timeout_then_fetch() {
         })()"##,
     );
     page.pump_virtual_time(200);
+    let mid = page
+        .evaluate(r#"(function(){return {a: window.__a, b: window.__b};})()"#)
+        .unwrap();
+    assert!(
+        mid["a"].is_null(),
+        "500ms wait must not fire in a 200ms pump: {mid}"
+    );
+    assert!(mid["b"].is_null(), "{mid}");
+    page.pump_virtual_time(400);
+    let after_first = page
+        .evaluate(r#"(function(){return {a: window.__a, b: window.__b};})()"#)
+        .unwrap();
+    assert_eq!(after_first["a"], "one", "{after_first}");
+    assert!(
+        after_first["b"].is_null(),
+        "second 500ms wait must stay pending: {after_first}"
+    );
+    page.pump_virtual_time(500);
+    let v = page
+        .evaluate(r#"(function(){return {a: window.__a, b: window.__b};})()"#)
+        .unwrap();
+    assert_eq!(v["a"], "one", "{v}");
+    assert_eq!(v["b"], "two", "{v}");
+}
+
+#[test]
+fn pump_virtual_time_long_horizon_finishes_timeout_fetch_chain() {
+    let mut page = open("<p>f</p>");
+    let _ = page.evaluate(
+        r##"(async function () {
+          await new Promise((r) => setTimeout(r, 500));
+          window.__a = await (await fetch("data:text/plain,one")).text();
+          await new Promise((r) => setTimeout(r, 500));
+          window.__b = await (await fetch("data:text/plain,two")).text();
+        })()"##,
+    );
+    page.pump_virtual_time(10_000);
     let v = page
         .evaluate(r#"(function(){return {a: window.__a, b: window.__b};})()"#)
         .unwrap();

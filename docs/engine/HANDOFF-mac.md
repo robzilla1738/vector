@@ -25,7 +25,7 @@ Always-mode native loop: `VECTOR_REQUIRE_ENGINE=1 VECTOR_ENGINE_PROFILE=producti
 
 Pin `7c20438303d2b39c8a2b924ed57dfa6448fd2ed2`. Do not weaken `sanitize-template-element` or `template-for-empty`. See `docs/engine/evidence/behavior-results.json`.
 
-Mac fix that closed `src-referrerpolicy.sub.html`: `Page::pump_virtual_time` completes pending script fetches and follow-up testharness `step_timeout` + `fetch()` (`engine/crates/ve-agent/src/page.rs`). Bindings: `pump_virtual_time_completes_pending_fetch`, `pump_virtual_time_finishes_second_timeout_then_fetch`.
+Mac fix that closed `src-referrerpolicy.sub.html`: `Page::pump_virtual_time` completes pending script fetches and follow-up testharness `step_timeout` + `fetch()` inside the requested horizon (`engine/crates/ve-agent/src/page.rs`). It does not jump past `ms`, so src-streaming chunk 2 (delay 300) stays off during a 50ms pump. Bindings: `pump_virtual_time_completes_pending_fetch`, `pump_virtual_time_does_not_jump_past_horizon`, `pump_virtual_time_finishes_second_timeout_then_fetch`, `pump_virtual_time_long_horizon_finishes_timeout_fetch_chain`.
 
 ## Vector runners, not hosted BrowserBench
 

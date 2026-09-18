@@ -2060,15 +2060,16 @@ impl Page {
         self.last_modified = Some(raw.into());
     }
 
-    /// Advances virtual time by up to `ms` and fires due JS timers.
-    /// Then drains fetches and follow-up timers so a later `promise_test`
-    /// `step_timeout` + `fetch()` can finish (official template `src`
-    /// referrerpolicy runs two sequential 500ms waits).
+    /// Advances virtual time by `ms` and fires JS timers due in that window.
+    /// Completes pending `fetch()` jobs and drains microtasks so a
+    /// `step_timeout` → `fetch()` → `step_timeout` chain can finish *inside*
+    /// the requested horizon (official template `src` referrerpolicy).
+    /// Does not jump past `ms`: a 300ms src-streaming chunk must not apply
+    /// during `pump_virtual_time(50)`.
     pub fn pump_virtual_time(&mut self, ms: u64) -> usize {
         self.ensure_document_scripts();
-        let start = self.virtual_time_ms();
+        let horizon = self.virtual_time_ms().saturating_add(ms);
         let mut fired = self.pump_timers(ms);
-        let extra_limit = start.saturating_add(ms).saturating_add(2_000);
         for _ in 0..64 {
             self.complete_script_fetches();
             self.drain_js_jobs();
@@ -2076,28 +2077,28 @@ impl Page {
                 .script_fetches
                 .iter()
                 .any(|j| j.result.is_none() && j.error.is_none() && !j.aborted);
-            let (soon, later, micro) = self.script_readiness();
-            if !pending_fetch && !micro && soon == 0 && later == 0 {
-                break;
-            }
-            if self.virtual_time_ms() >= extra_limit && !pending_fetch && !micro && soon == 0 {
-                break;
-            }
+            let micro = self.script_readiness().2;
             let now = self.virtual_time_ms();
             let next_due = self
                 .scripting
                 .as_ref()
-                .and_then(|s| s.event_loop.next_js_timer_due_ms())
-                .unwrap_or(now.saturating_add(crate::scripting::TIMER_WINDOW_MS));
-            let step = next_due
-                .saturating_sub(now)
-                .max(crate::scripting::TIMER_WINDOW_MS)
-                .min(
-                    extra_limit
-                        .saturating_sub(now)
-                        .max(crate::scripting::TIMER_WINDOW_MS),
-                );
-            fired += self.pump_timers(step);
+                .and_then(|s| s.event_loop.next_js_timer_due_ms());
+            if now < horizon && next_due.is_some_and(|due| due <= horizon) {
+                let step = next_due
+                    .unwrap_or(horizon)
+                    .saturating_sub(now)
+                    .max(1)
+                    .min(horizon.saturating_sub(now));
+                fired += self.pump_timers(step);
+                continue;
+            }
+            if !pending_fetch && !micro {
+                break;
+            }
+        }
+        let now = self.virtual_time_ms();
+        if now < horizon {
+            self.advance_virtual_time(horizon - now);
         }
         fired
     }
