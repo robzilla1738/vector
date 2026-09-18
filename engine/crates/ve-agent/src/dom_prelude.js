@@ -204,6 +204,8 @@
       this.clientY = i.clientY != null ? Number(i.clientY) : 0;
       this.screenX = i.screenX != null ? Number(i.screenX) : this.clientX;
       this.screenY = i.screenY != null ? Number(i.screenY) : this.clientY;
+      this.pageX = i.pageX != null ? Number(i.pageX) : this.clientX;
+      this.pageY = i.pageY != null ? Number(i.pageY) : this.clientY;
       this.ctrlKey = !!i.ctrlKey;
       this.shiftKey = !!i.shiftKey;
       this.altKey = !!i.altKey;
@@ -2313,6 +2315,8 @@
     getClientRects() { return clientRectList(this.getBoundingClientRect()); }
     get clientWidth() { return D("box", this.__h, "clientWidth"); }
     get clientHeight() { return D("box", this.__h, "clientHeight"); }
+    get clientLeft() { return 0; }
+    get clientTop() { return 0; }
     get offsetWidth() { return D("box", this.__h, "offsetWidth"); }
     get offsetHeight() { return D("box", this.__h, "offsetHeight"); }
     get offsetTop() { return D("box", this.__h, "offsetTop"); }
@@ -4184,16 +4188,61 @@
       this.animVal = this.baseVal;
     }
   }
+  class SVGPoint {
+    constructor() {
+      this.x = 0;
+      this.y = 0;
+    }
+    matrixTransform(m) {
+      const a = m && m.a != null ? Number(m.a) : 1;
+      const b = m && m.b != null ? Number(m.b) : 0;
+      const c = m && m.c != null ? Number(m.c) : 0;
+      const d = m && m.d != null ? Number(m.d) : 1;
+      const e = m && m.e != null ? Number(m.e) : 0;
+      const f = m && m.f != null ? Number(m.f) : 0;
+      const p = new SVGPoint();
+      p.x = this.x * a + this.y * c + e;
+      p.y = this.x * b + this.y * d + f;
+      return p;
+    }
+  }
+  class SVGMatrix {
+    constructor() {
+      this.a = 1;
+      this.b = 0;
+      this.c = 0;
+      this.d = 1;
+      this.e = 0;
+      this.f = 0;
+    }
+    inverse() {
+      return new SVGMatrix();
+    }
+  }
   class SVGElement extends Element {
     get gradientTransform() {
       if (!this._veGradientTransform) this._veGradientTransform = new SVGAnimatedTransformList();
       return this._veGradientTransform;
+    }
+    get ownerSVGElement() {
+      let n = this.parentNode;
+      while (n) {
+        if (n instanceof SVGSVGElement) return n;
+        n = n.parentNode;
+      }
+      return null;
+    }
+    getScreenCTM() {
+      return new SVGMatrix();
     }
   }
   class MathMLElement extends Element {}
   class SVGSVGElement extends SVGElement {
     createSVGTransform() {
       return new SVGTransform();
+    }
+    createSVGPoint() {
+      return new SVGPoint();
     }
   }
   class SVGGraphicsElement extends SVGElement {}

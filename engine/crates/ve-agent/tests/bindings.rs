@@ -5179,16 +5179,28 @@ fn mouse_event_buttons_default_is_zero_and_mouseup_reaches_window() {
               const up = new MouseEvent("mouseup");
               const click = new MouseEvent("click", { button: 0 });
               const pressed = new MouseEvent("mousedown", { button: 0, buttons: 1 });
+              const moved = new MouseEvent("mousemove", { clientX: 150, clientY: 200 });
               let windowUp = 0;
               window.addEventListener("mouseup", function () { windowUp++; });
               document.getElementById("t").dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+              const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+              const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+              svg.appendChild(rect);
+              document.body.appendChild(svg);
+              const pt = svg.createSVGPoint();
+              pt.x = 150; pt.y = 200;
+              const local = pt.matrixTransform(rect.getScreenCTM().inverse());
               return {
                 downButtons: down.buttons,
                 upButtons: up.buttons,
                 clickButtons: click.buttons,
                 downButton: down.button,
                 pressedButtons: pressed.buttons,
-                windowUp: windowUp
+                windowUp: windowUp,
+                pageX: moved.pageX,
+                clientLeft: document.getElementById("t").clientLeft,
+                svgPoint: local.x,
+                ownerSvg: rect.ownerSVGElement === svg
               };
             })()"#,
         )
@@ -5199,4 +5211,8 @@ fn mouse_event_buttons_default_is_zero_and_mouseup_reaches_window() {
     assert_eq!(v["downButton"], 0, "{v}");
     assert_eq!(v["pressedButtons"], 1, "{v}");
     assert_eq!(v["windowUp"], 1, "{v}");
+    assert_eq!(v["pageX"], 150, "{v}");
+    assert_eq!(v["clientLeft"], 0, "{v}");
+    assert_eq!(v["svgPoint"], 150, "{v}");
+    assert_eq!(v["ownerSvg"], true, "{v}");
 }
