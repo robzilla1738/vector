@@ -239,26 +239,14 @@
         return !ev.defaultPrevented;
       };
       if (!needPath) return fireTargetProp();
-      const tOnPath = Date.now();
-      const onPath = listenerOnPath(type, this);
-      if (type === "change") globalThis.__veOnPathMs = Date.now() - tOnPath;
-      if (nListen > 0 && onAttrCount === 0 && handlerPropCount === 0 && !onPath) {
+      if (nListen > 0 && onAttrCount === 0 && handlerPropCount === 0 && !listenerOnPath(type, this)) {
         return fireTargetProp();
       }
-      const tPath = Date.now();
       const path = composedPath(this);
-      if (type === "change") globalThis.__vePath2Ms = Date.now() - tPath;
       const fire = (node, cap) => {
         if (ev._stopImm) return;
         ev.currentTarget = node;
         const arr = (listeners.get(node) && listeners.get(node).get(type)) || [];
-        const tOn = Date.now();
-        const onLookup = node && node["on" + type];
-        if (type === "change") {
-          globalThis.__veOnMs = (globalThis.__veOnMs || 0) + (Date.now() - tOn);
-          globalThis.__veFireCalls = (globalThis.__veFireCalls || 0) + 1;
-        }
-        const tL = Date.now();
         for (const l of arr.slice()) {
           if (l.cap !== cap) continue;
           try { l.fn.call(node, ev); } catch (e) { __ve.log("error", "Uncaught (in event) " + (e && e.stack || e)); }
@@ -271,8 +259,7 @@
           }
           if (ev._stopImm) return;
         }
-        if (type === "change") globalThis.__veListenMs = (globalThis.__veListenMs || 0) + (Date.now() - tL);
-        const prop = onLookup;
+        const prop = node["on" + type];
         if (!cap && typeof prop === "function") {
           try { prop.call(node, ev); } catch (e) { __ve.log("error", String(e)); }
         }
@@ -284,7 +271,6 @@
         }
       };
       ev.eventPhase = 1;
-      const tFire = Date.now();
       for (let i = path.length - 1; i > 0; i--) {
         fire(path[i], true);
         if (ev.cancelBubble) break;
@@ -303,7 +289,6 @@
       }
       ev.eventPhase = 0;
       ev.currentTarget = null;
-      if (type === "change") globalThis.__veFireLoopMs = Date.now() - tFire;
       return !ev.defaultPrevented;
     }
   }
@@ -1399,7 +1384,6 @@
   function namedElementsOf(doc, name) {
     const out = [];
     if (!doc || !name) return out;
-    globalThis.__veNamedLookups = (globalThis.__veNamedLookups || 0) + 1;
     const all = doc.getElementsByTagName("*");
     for (let i = 0; i < all.length; i++) {
       if (namedElementMatches(all[i], name)) out.push(all[i]);
@@ -6375,11 +6359,6 @@
     if (!node) return false;
     node.value = v;
     return true;
-  };
-  globalThis.__veListenerCount = (type) => listenerCounts.get(String(type)) || 0;
-  globalThis.__veListenerDebug = (node, type) => {
-    const arr = listeners.get(node) && listeners.get(node).get(String(type));
-    return arr ? arr.length : 0;
   };
   globalThis.__veFlushObservers = () => {
     for (const o of observers) {

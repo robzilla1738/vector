@@ -35,6 +35,6 @@
     "Gate A downloaded release artifact: copy-to-temp host test + CI job downloaded-artifact (downloads engine-native-{ubuntu,macos,windows} then re-runs production_sandbox). Not a GitHub Release page download.",
     "live GPU window plus MCP on a display (pump shares NativeBrowser; no GPU in this environment)",
     "official html/dom remaining FAILs sanitize-template-element and template-for-empty; idlharness.https.html still FAIL ([[IsHTMLDDA]] plus other HTML interfaces)",
-    "full official Speedometer/JetStream/MotionMark published score. Rechecked add path: WebComponents/React/React-Redux/Vue/Lit add. Official ES5 Complex-DOM one-add PASS; 100-add still ~40s/item in debug. Editor-CodeMirror killed OOM."
+    "full official Speedometer/JetStream/MotionMark published score. Rechecked add path: WebComponents/React/React-Redux/Vue/Lit add. Official ES5 Complex-DOM one-add PASS (addMs 16, changeMs 15). Editor-CodeMirror killed OOM."
   ]
 }

@@ -1378,71 +1378,6 @@ mod tests {
                     r##"(function () {
                       var input = todoInput();
                       if (!input) return JSON.stringify({ input: false });
-                      var renderMs = { showEntries: 0, updateElementCount: 0, other: 0 };
-                      var addItemMs = 0, createMs = 0, filterMs = 0;
-                      if (window.app && app.View && app.View.prototype && !app.View.prototype.__veTimed) {
-                        var origRender = app.View.prototype.render;
-                        app.View.prototype.render = function (cmd, p) {
-                          var t = Date.now();
-                          var r = origRender.call(this, cmd, p);
-                          var d = Date.now() - t;
-                          if (cmd === "showEntries") renderMs.showEntries += d;
-                          else if (cmd === "updateElementCount") renderMs.updateElementCount += d;
-                          else renderMs.other += d;
-                          return r;
-                        };
-                        app.View.prototype.__veTimed = true;
-                      }
-                      if (window.app && app.Controller && app.Controller.prototype.addItem) {
-                        var origAdd = app.Controller.prototype.addItem;
-                        app.Controller.prototype.addItem = function (title) {
-                          var t = Date.now();
-                          var r = origAdd.call(this, title);
-                          addItemMs = Date.now() - t;
-                          return r;
-                        };
-                        var origFilter = app.Controller.prototype._filter;
-                        app.Controller.prototype._filter = function (force) {
-                          var t = Date.now();
-                          var r = origFilter.call(this, force);
-                          filterMs += Date.now() - t;
-                          return r;
-                        };
-                      }
-                      if (window.app && app.Model && app.Model.prototype.create) {
-                        var origCreate = app.Model.prototype.create;
-                        app.Model.prototype.create = function (title, cb) {
-                          var t = Date.now();
-                          var r = origCreate.call(this, title, cb);
-                          createMs += Date.now() - t;
-                          return r;
-                        };
-                      }
-                      var pathLen = 0;
-                      for (var n = input; n && pathLen < 64; n = n.parentNode) pathLen++;
-                      window.__veNamedLookups = 0;
-                      var changeListeners = typeof __veListenerCount === "function" ? __veListenerCount("change") : -1;
-                      var pathListenerCounts = [];
-                      if (typeof __veListenerDebug === "function") {
-                        for (var n = input; n && pathListenerCounts.length < 16; n = n.parentNode) {
-                          pathListenerCounts.push(__veListenerDebug(n, "change"));
-                        }
-                        pathListenerCounts.push(__veListenerDebug(window, "change"));
-                      }
-                      var t = Date.now();
-                      input.dispatchEvent(new Event("veprobe", { bubbles: true }));
-                      var probeMs = Date.now() - t;
-                      t = Date.now();
-                      var pathNodes = (new Event("veprobe2", { bubbles: true }));
-                      pathNodes.target = input;
-                      var composed = pathNodes.composedPath();
-                      var pathMs = Date.now() - t;
-                      window.__veOnMs = 0;
-                      window.__veFireCalls = 0;
-                      window.__veListenMs = 0;
-                      window.__veOnPathMs = 0;
-                      window.__vePath2Ms = 0;
-                      window.__veFireLoopMs = 0;
                       var t0 = Date.now();
                       input.focus();
                       var focusMs = Date.now() - t0;
@@ -1467,25 +1402,6 @@ mod tests {
                         inputMs: inputMs,
                         changeMs: changeMs,
                         enterMs: enterMs,
-                        showEntriesMs: renderMs.showEntries,
-                        updateCountMs: renderMs.updateElementCount,
-                        renderOtherMs: renderMs.other,
-                        addItemMs: addItemMs,
-                        createMs: createMs,
-                        filterMs: filterMs,
-                        pathLen: pathLen,
-                        namedLookups: window.__veNamedLookups || 0,
-                        probeMs: probeMs,
-                        pathMs: pathMs,
-                        composedLen: composed.length,
-                        changeListeners: changeListeners,
-                        pathListeners: pathListenerCounts,
-                        onMs: window.__veOnMs || 0,
-                        fireCalls: window.__veFireCalls || 0,
-                        listenMs: window.__veListenMs || 0,
-                        onPathMs: window.__veOnPathMs || 0,
-                        path2Ms: window.__vePath2Ms || 0,
-                        fireLoopMs: window.__veFireLoopMs || 0,
                         nodes: document.getElementsByTagName("*").length
                       });
                     })()"##,
@@ -1525,6 +1441,36 @@ mod tests {
             "change dispatch must not scan the Spectrum tree as named properties: {v} restyle={restyle:?}"
         );
         eprintln!("complex-dom one-add {v} restyle={restyle:?}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn official_es5_complex_dom_hundred_add_is_attributed() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(
+            &mut engine,
+            "todomvc/vanilla-examples/javascript-es5-complex/dist/index.html",
+        );
+        let (probe, restyle) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            page.reset_restyle_attribution();
+            let probe = page.evaluate(&with_lib(ADD_STEPS)).expect("complex 100 add");
+            let restyle = page.restyle_attribution();
+            (probe, restyle)
+        };
+        engine.close(page_id);
+        let text = match &probe {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
+        assert!(
+            v["added"].as_u64().unwrap_or(0) >= 100,
+            "official Complex-DOM 100-add: {v} restyle={restyle:?}"
+        );
+        assert_eq!(restyle.full_calls, 0, "100-add full restyle: {v} restyle={restyle:?}");
+        eprintln!("complex-dom 100-add {v} restyle={restyle:?}");
     }
 
     #[cfg(feature = "v8")]

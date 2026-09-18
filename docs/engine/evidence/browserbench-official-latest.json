@@ -6,7 +6,7 @@
   "officialFullSuite": false,
   "gate": false,
   "iterations": 1,
-  "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. evaluate() keeps EVALUATE_DEADLINE. Official ES5 Complex-DOM one-add PASS (6655 nodes, added=1). Geometry journal eviction no longer forces a full restyle (restyle.full_calls=0 during add). Remaining add cost is changeMs ~41109 (View.render / DOMParser / replaceChildren path), not style compute. 100-add still too slow in debug. Independently rechecked: WebComponents/React/React-Redux/Vue/Lit add 3 todos; News-Next exposes the navbar.",
+  "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. evaluate() keeps EVALUATE_DEADLINE. Official ES5 Complex-DOM one-add PASS (6655 nodes, added=1, addMs=16, changeMs=15, restyle.full_calls=0). Document named-property lookup no longer scans the Spectrum tree for on* or __internal names. Independently rechecked: WebComponents/React/React-Redux/Vue/Lit add 3 todos; News-Next exposes the navbar.",
   "verifiedAfterFixes": {
     "TodoMVC-WebComponents": "PASS add/finish 3 items",
     "TodoMVC-React": "PASS add 3 items",
