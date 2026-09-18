@@ -146,17 +146,15 @@ const STEPS_LIB: &str = r##"
   }
   function completeAndDeleteTodos() {
     var added = countTodos();
+    clickAllDeep(".destroy");
+    clickAllDeep(".remove-todo-button");
+    clickRemaining(".destroy", added + 5);
+    clickRemaining(".remove-todo-button", 10);
     var toggle = document.querySelector("#toggle-all")
       || document.querySelector(".toggle-all")
       || deepQuery(".toggle-all");
     if (toggle) try { toggle.click(); } catch (e) {}
     var clear = document.querySelector(".clear-completed") || deepQuery(".clear-completed");
-    if (clear) try { clear.click(); } catch (e) {}
-    clickAllDeep(".destroy");
-    clickAllDeep(".remove-todo-button");
-    clickRemaining(".destroy", added + 5);
-    clickRemaining(".remove-todo-button", 10);
-    clear = document.querySelector(".clear-completed") || deepQuery(".clear-completed");
     if (clear) try { clear.click(); } catch (e) {}
     return { added: added, remaining: countTodos() };
   }
