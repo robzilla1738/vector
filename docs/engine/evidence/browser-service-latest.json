@@ -27,7 +27,8 @@
     "streamed_dispatch_uses_action_compiler": "PASS EarlyDispatcher batches run compileAndAuthorize before pages.execute. Stale documentEpoch is rejected. Missing effect:write is denied. Finished plans use the same helper.",
     "member_agent_and_learned_replay_use_action_compiler": "PASS runMemberAgent compiles planner steps against the just-taken observation before pages.execute. Stale documentEpoch and missing effect:write never reach execute. SetRunner learned replay observes first then compileAndAuthorize (origin mismatch / deny / reject fall through or fail closed). OperationService browser-program and coordinator repair use the same helper. conflict and permission_denied are pre-dispatch so writes are not re-issued. BiDi performActions compiles before execute.",
     "member_agent_persist_before_dispatch": "PASS RunService shares one DurableWriteLedger across coordinator, SetRunner learned replay, and runMemberAgent. A confirmed write with the same run/page/epoch/signature does not call pages.execute a second time.",
-    "streamed_and_repair_persist_before_dispatch": "PASS beginConsequentialWrite is the shared persist-before-dispatch helper. EarlyDispatcher batches, finished plans, and recovery-model repair all begin intent before pages.execute. Confirmed writes skip."
+    "streamed_and_repair_persist_before_dispatch": "PASS beginConsequentialWrite is the shared persist-before-dispatch helper. EarlyDispatcher batches, finished plans, and recovery-model repair all begin intent before pages.execute. Confirmed writes skip.",
+    "browser_service_accepted_streams_are_blocking": "PASS accept() sockets from the nonblocking listener are set blocking before serve_client. macOS inherits O_NONBLOCK and otherwise closed the socket on the first read_line WouldBlock (Broken pipe / empty JSON-RPC reply)."
   },
   "exit": {
     "humanEditsField": true,

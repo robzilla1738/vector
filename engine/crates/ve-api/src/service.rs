@@ -341,6 +341,10 @@ fn accept_loop(listener: TcpListener, jobs: Sender<Job>, stop: Arc<AtomicBool>) 
     while !stop.load(Ordering::Relaxed) {
         match listener.accept() {
             Ok((stream, _)) => {
+                // macOS inherits O_NONBLOCK from the listener. A nonblocking
+                // client stream makes read_line return WouldBlock and close
+                // the socket before the first RPC (Broken pipe / empty reply).
+                let _ = stream.set_nonblocking(false);
                 let jobs = jobs.clone();
                 let _ = thread::Builder::new()
                     .name("ve-browser-client".into())
@@ -366,6 +370,7 @@ fn accept_loop(listener: TcpListener, jobs: Sender<Job>, stop: Arc<AtomicBool>) 
 }
 
 fn serve_client(stream: TcpStream, jobs: Sender<Job>) {
+    let _ = stream.set_nonblocking(false);
     let _ = stream.set_nodelay(true);
     let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
     let mut reader = match stream.try_clone() {
@@ -379,6 +384,19 @@ fn serve_client(stream: TcpStream, jobs: Sender<Job>) {
         match reader.read_line(&mut line) {
             Ok(0) => break,
             Ok(_) => {}
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::WouldBlock
+                        | std::io::ErrorKind::Interrupted
+                        | std::io::ErrorKind::TimedOut
+                ) =>
+            {
+                if e.kind() == std::io::ErrorKind::WouldBlock {
+                    thread::sleep(Duration::from_millis(5));
+                }
+                continue;
+            }
             Err(_) => break,
         }
         let trimmed = line.trim();
@@ -454,6 +472,7 @@ impl BrowserClient {
     pub fn connect(addr: SocketAddr) -> Result<Self> {
         let stream = TcpStream::connect_timeout(&addr, Duration::from_secs(2))
             .map_err(|e| Error::coded(ErrorCode::BackendUnavailable, format!("connect: {e}")))?;
+        let _ = stream.set_nonblocking(false);
         stream
             .set_nodelay(true)
             .map_err(|e| Error::internal(format!("nodelay: {e}")))?;
