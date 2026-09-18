@@ -3574,7 +3574,14 @@ fn official_sanitize_boolean_compound_id_descendant() {
                <script>window.scriptInvalidVal = true;</script>
                <span id="ok-invalid-val">Allowed Invalid Val</span>
              </template>
-           </div>"#,
+           </div>
+           <div id="container-space-val">
+             <div id="target-space-val"><?start name="marker-space-val">Original<?end></div>
+             <template for="marker-space-val" sanitize=" ">
+               <script>window.scriptSpaceVal = true;</script>
+               <span id="ok-space-val">Allowed Space Val</span>
+             </template>
+           </div>"#
     );
     assert!(page.settle(200).settled);
     let v = page
@@ -3605,6 +3612,11 @@ fn official_sanitize_boolean_compound_id_descendant() {
     assert_eq!(v["scriptNoVal"], false, "{v}");
     assert_eq!(v["scriptEmptyVal"], false, "{v}");
     assert_eq!(v["scriptInvalidVal"], true, "{v}");
+    assert_eq!(
+        page.evaluate("!!window.scriptSpaceVal").unwrap(),
+        serde_json::json!(true),
+        "sanitize space must not sanitize"
+    );
     assert_eq!(v["noVal"], "Allowed No Val", "{v}");
     assert_eq!(v["emptyVal"], "Allowed Empty Val", "{v}");
     assert_eq!(v["invalidVal"], "Allowed Invalid Val", "{v}");

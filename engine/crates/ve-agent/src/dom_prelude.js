@@ -5210,7 +5210,7 @@
   }
   function sanitizeOn(rec) {
     if (rec.sanitize == null) return false;
-    const v = String(rec.sanitize).trim();
+    const v = String(rec.sanitize);
     return v === "" || v.toLowerCase() === "sanitize";
   }
   function isCustomElementNode(node) {
@@ -5577,14 +5577,17 @@
       }
       if (chunks && !rec.buffer) {
         const run1 = () => {
-          if (tpl.__vePatched || tpl.__veStreamAborted) return;
+          if (tpl.__vePatched || tpl.__veStreamAborted || tpl.__veSrc1) return;
+          tpl.__veSrc1 = true;
           applyHtmlPatch(tpl, chunks.chunk1, rec, inPlace, true);
         };
         const run2 = () => {
-          if (tpl.__vePatched || tpl.__veStreamAborted) return;
+          if (tpl.__vePatched || tpl.__veStreamAborted || tpl.__veSrc2) return;
+          tpl.__veSrc2 = true;
           applyHtmlPatch(tpl, chunks.chunk2, rec, inPlace, false);
         };
         queueResource(run1, false, tpl);
+        try { setTimeout(run1, 0); } catch (e) {}
         try { setTimeout(run2, chunks.delay || 1); } catch (e) { queueResource(run2, false, tpl); }
         return false;
       }
