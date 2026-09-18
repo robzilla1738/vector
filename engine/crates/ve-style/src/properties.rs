@@ -26,7 +26,7 @@ use crate::values::{
     Float, FontFamily,
     FontStyle, FontWeight, GridLine, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
-    Contain, ContentVisibility, ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba,
+    Contain, ContainerType, ContentVisibility, ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba,
     SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
@@ -818,6 +818,22 @@ mod conv {
         }
     }
 
+    pub fn column_count(v: &SpecifiedValue, _: &ConvertContext) -> Option<Option<u32>> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
+            SpecifiedValue::Integer(i) if *i >= 1 => Some(Some(*i as u32)),
+            SpecifiedValue::Number(n) if *n >= 1.0 => Some(Some(*n as u32)),
+            _ => None,
+        }
+    }
+
+    pub fn column_width(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Option<f32>> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
+            _ => Some(Some(length_px(v, ctx)?)),
+        }
+    }
+
     pub fn css_clip(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<CssClip> {
         match v {
             SpecifiedValue::Keyword(k) if k == "auto" => Some(CssClip::Auto),
@@ -1294,6 +1310,12 @@ property_table! {
     Zoom: "zoom" => zoom: f32 = 1.0, inherited = false, syntax = Single, convert = conv::zoom;
     /// `contain`
     Contain: "contain" => contain: Contain = Contain::None, inherited = false, syntax = Single, convert = conv::kw::<Contain>;
+    /// `container-type`
+    ContainerType: "container-type" => container_type: ContainerType = ContainerType::Normal, inherited = false, syntax = Single, convert = conv::kw::<ContainerType>;
+    /// `column-count` (`auto` is `None`)
+    ColumnCount: "column-count" => column_count: Option<u32> = None, inherited = false, syntax = Single, convert = conv::column_count;
+    /// `column-width` (`auto` is `None`)
+    ColumnWidth: "column-width" => column_width: Option<f32> = None, inherited = false, syntax = Single, convert = conv::column_width;
     /// `content-visibility`
     ContentVisibility: "content-visibility" => content_visibility: ContentVisibility = ContentVisibility::Visible, inherited = false, syntax = Single, convert = conv::kw::<ContentVisibility>;
 }
@@ -1367,9 +1389,6 @@ impl ComputedStyle {
 /// displayed, where, or whether it is visible. Used by the coverage counter
 /// (see [`crate::coverage`]).
 pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
-    "columns",
-    "column-count",
-    "column-width",
     "offset",
     "offset-path",
     "position-anchor",
@@ -1452,9 +1471,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "speak",
     "src",
     "unicode-range",
-    "columns",
-    "column-count",
-    "column-width",
     "column-rule",
     "column-span",
     "transform-style",
@@ -1462,7 +1478,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "perspective",
     "perspective-origin",
     "backface-visibility",
-    "container-type",
     "container-name",
     "container",
     "table-layout",
@@ -2592,6 +2607,7 @@ pub const SHORTHANDS: &[&str] = &[
     "transition",
     "border-radius",
     "outline",
+    "columns",
 ];
 
 /// Expands a shorthand into longhand `(property, value)` pairs. Returns
@@ -2972,6 +2988,31 @@ pub fn expand_shorthand<'i>(
                     (P::TransitionDuration, duration),
                 ])
             }
+            "columns" => {
+                let values = parse_components(input, 2)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::ColumnCount, values[0].clone()),
+                        (P::ColumnWidth, values[0].clone()),
+                    ]);
+                }
+                let mut count = SpecifiedValue::Keyword("auto".into());
+                let mut width = SpecifiedValue::Keyword("auto".into());
+                for v in values {
+                    if P::ColumnCount.accepts(&v) && !P::ColumnWidth.accepts(&v) {
+                        count = v;
+                    } else if P::ColumnWidth.accepts(&v) && !P::ColumnCount.accepts(&v) {
+                        width = v;
+                    } else if P::ColumnCount.accepts(&v) {
+                        count = v;
+                    } else if P::ColumnWidth.accepts(&v) {
+                        width = v;
+                    } else {
+                        return None;
+                    }
+                }
+                Some(vec![(P::ColumnCount, count), (P::ColumnWidth, width)])
+            }
             _ => None,
         }
     })();
@@ -3319,11 +3360,14 @@ mod tests {
         ok("--x", "anything at all");
         ok("rotate", "45deg");
         ok("clip", "rect(0, 10px, 10px, 0)");
+        ok("container-type", "size");
+        ok("column-count", "3");
+        ok("column-width", "12em");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 129);
+        assert_eq!(PropertyId::ALL.len(), 132);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
@@ -3513,6 +3557,13 @@ mod tests {
                 PropertyId::BorderSpacingY,
                 SpecifiedValue::Length(Length::Px(4.0))
             )
+        );
+
+        let out = expand("columns", "2").unwrap();
+        assert_eq!(out[0], (PropertyId::ColumnCount, SpecifiedValue::Integer(2)));
+        assert_eq!(
+            out[1],
+            (PropertyId::ColumnWidth, SpecifiedValue::Keyword("auto".into()))
         );
 
         let mut input = cssparser::ParserInput::new("1px");

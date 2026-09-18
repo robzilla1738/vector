@@ -1474,6 +1474,44 @@ mod tests {
     }
 
     #[test]
+    fn container_type_size_does_not_grow_from_children() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{container-type:size;width:80px} #k{height:40px}</style>\
+             <div id=c><div id=k></div></div>",
+            400.0,
+        );
+        let boxc = rect(&tree, &engine, &doc, "#c");
+        assert!(
+            boxc.height() < 8.0,
+            "container-type:size auto height stays empty, got {}",
+            boxc.height()
+        );
+    }
+
+    #[test]
+    fn column_count_places_children_side_by_side() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{column-count:2;width:200px} #c>div{height:20px}</style>\
+             <div id=c><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.y() - b.y()).abs() < 0.5,
+            "columns share a row, a.y={} b.y={}",
+            a.y(),
+            b.y()
+        );
+        assert!(
+            b.x() > a.x() + 40.0,
+            "second child is in column 2, a.x={} b.x={}",
+            a.x(),
+            b.x()
+        );
+    }
+
+    #[test]
     fn contain_size_does_not_grow_from_children() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #c{contain:size;width:80px} #k{height:40px}</style>\

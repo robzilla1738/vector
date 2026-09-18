@@ -293,6 +293,7 @@ pub fn layout_box_at(
                 }
             });
         let size_contained = style.contain.contains_size()
+            || style.container_type.contains_size()
             || style.content_visibility == ve_style::ContentVisibility::Hidden;
         let h = if size_contained
             && specified.is_none()
@@ -453,12 +454,64 @@ fn peek_collapsing_top(bx: &LayoutBox, cb_width: f32) -> f32 {
 }
 
 /// Stacks block-level children vertically. Returns the content height.
+fn used_column_count(style: &ComputedStyle, width: f32) -> u32 {
+    if let Some(n) = style.column_count.filter(|n| *n >= 2) {
+        return n;
+    }
+    if let Some(cw) = style.column_width.filter(|w| *w > 0.0) {
+        return ((width / cw).floor() as u32).max(1);
+    }
+    1
+}
+
+fn layout_block_flow_columns(
+    bx: &mut LayoutBox,
+    ctx: &mut LayoutCtx<'_>,
+    content: Rect,
+    cb_height: Option<f32>,
+    cols: u32,
+) -> f32 {
+    let cols = cols.max(2) as usize;
+    let gap = 16.0_f32;
+    let col_w = ((content.width() - gap * (cols as f32 - 1.0)) / cols as f32).max(0.0);
+    let cb = ContainingBlock {
+        width: col_w,
+        height: cb_height,
+    };
+    let mut col_y = vec![content.y(); cols];
+    let mut i = 0usize;
+    for child in &mut bx.children {
+        if child.is_out_of_flow() || child.is_float() {
+            continue;
+        }
+        let col = i % cols;
+        i += 1;
+        let x = content.x() + col as f32 * (col_w + gap);
+        layout_box_at(
+            child,
+            ctx,
+            cb,
+            Point::new(x, col_y[col]),
+            Forced::default(),
+        );
+        if child.style.position == Position::Relative || child.style.position == Position::Sticky {
+            apply_relative_offset(child, cb);
+        }
+        col_y[col] = child.rect.bottom();
+    }
+    col_y.into_iter().fold(content.y(), f32::max) - content.y()
+}
+
 fn layout_block_flow(
     bx: &mut LayoutBox,
     ctx: &mut LayoutCtx<'_>,
     content: Rect,
     cb_height: Option<f32>,
 ) -> f32 {
+    let cols = used_column_count(&bx.style, content.width());
+    if cols >= 2 {
+        return layout_block_flow_columns(bx, ctx, content, cb_height, cols);
+    }
     let cb = ContainingBlock {
         width: content.width(),
         height: cb_height,

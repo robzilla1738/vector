@@ -1086,6 +1086,26 @@ impl Contain {
 }
 
 keyword_enum! {
+    /// The `container-type` property.
+    ContainerType {
+        /// Not a container.
+        Normal = "normal",
+        /// Size container (width and height).
+        Size = "size",
+        /// Inline-size container.
+        InlineSize = "inline-size",
+    }
+}
+
+impl ContainerType {
+    /// Size containment as if `contain: size`.
+    #[must_use]
+    pub fn contains_size(self) -> bool {
+        matches!(self, Self::Size)
+    }
+}
+
+keyword_enum! {
     /// The `content-visibility` property.
     ContentVisibility {
         /// Paint and lay out normally.
