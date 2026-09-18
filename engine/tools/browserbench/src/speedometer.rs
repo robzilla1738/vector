@@ -1925,6 +1925,69 @@ mod tests {
         assert_eq!(v["render"], true, "{v} err={console:?}");
         assert_eq!(v["ok"], true, "{v} err={console:?}");
         assert_eq!(v["kind"], "stock", "{v}");
+        assert_eq!(v["cursor"], true, "{v} err={console:?}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn official_react_stockcharts_pan_and_zoom() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(&mut engine, "react-stockcharts/build/index.html?type=svg");
+        let (probe, console) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            page.evaluate(&with_lib(
+                r##"(function () {
+                  var render = document.querySelector("#render");
+                  if (render) render.click();
+                  return true;
+                })()"##,
+            ))
+            .ok();
+            page.settle(250);
+            let probe = page
+                .evaluate(&with_lib(
+                    r##"(function () {
+                      var cursor = document.querySelector(".react-stockcharts-crosshair-cursor");
+                      if (!cursor) return JSON.stringify({ ok: false, cursor: false });
+                      var x = 150, y = 200;
+                      function coords(i) {
+                        return { clientX: x + i * 10, clientY: y + i * 2, bubbles: true, cancelable: true };
+                      }
+                      for (var i = 0; i < 5; i++) {
+                        fire(cursor, "mousedown", coords(0), MouseEvent);
+                        for (var j = 0; j < 10; j++) fire(cursor, "mousemove", coords(j), MouseEvent);
+                        fire(cursor, "mouseup", coords(10), MouseEvent);
+                      }
+                      fire(cursor, "wheel", {
+                        clientX: 200, clientY: 200, deltaMode: 0, deltaY: -10, bubbles: true, cancelable: true
+                      }, WheelEvent);
+                      return JSON.stringify({
+                        ok: true,
+                        cursor: true,
+                        svg: document.querySelectorAll("svg").length
+                      });
+                    })()"##,
+                ))
+                .unwrap_or(serde_json::Value::Null);
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(180).collect())
+                .take(4)
+                .collect();
+            (probe, console)
+        };
+        engine.close(page_id);
+        let text = match &probe {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
+        eprintln!("react-stockcharts pan/zoom {v} err={console:?}");
+        assert_eq!(v["ok"], true, "{v} err={console:?}");
+        assert_eq!(v["cursor"], true, "{v} err={console:?}");
     }
 
     #[cfg(feature = "v8")]
@@ -2002,6 +2065,46 @@ mod tests {
             "angular add must not walk the Spectrum tree: {v} restyle={restyle:?}"
         );
         eprintln!("angular-complex one-add {v} restyle={restyle:?}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn official_angular_complex_three_add_and_finish() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(
+            &mut engine,
+            "todomvc/architecture-examples/angular-complex/dist/index.html",
+        );
+        let add = with_lib(&add_steps(3));
+        let count = with_lib(&count_steps(3));
+        let (finish, console, restyle) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            page.reset_restyle_attribution();
+            page.evaluate(&add).ok();
+            page.settle(250);
+            page.evaluate(&with_lib(FINISH_STEPS)).ok();
+            page.settle(250);
+            let finish = page.evaluate(&count).unwrap();
+            let restyle = page.restyle_attribution();
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(180).collect())
+                .take(4)
+                .collect();
+            (finish, console, restyle)
+        };
+        engine.close(page_id);
+        let text = match &finish {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(finish);
+        eprintln!("angular-complex 3-add/finish {v} restyle={restyle:?} err={console:?}");
+        assert_eq!(v["ok"], true, "{v} err={console:?}");
+        assert_eq!(restyle.full_calls, 0, "{v} restyle={restyle:?}");
     }
 
     #[cfg(feature = "v8")]
