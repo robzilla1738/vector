@@ -290,6 +290,83 @@ const DEFAULT_JS: &[(&str, &[&str], bool)] = &[
     ),
 ];
 
+/// Official `AsyncBenchmark` Default JS from `JetStreamDriver.js`.
+/// Startup/SSR/TypeScript-lib/wasm stay out of this slice.
+const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
+    (
+        "doxbee-promise",
+        &["./simple/doxbee-promise.js"],
+        false,
+        &[],
+    ),
+    ("doxbee-async", &["./simple/doxbee-async.js"], false, &[]),
+    (
+        "Babylon",
+        &["./ARES-6/Babylon/index.js", "./ARES-6/Babylon/benchmark.js"],
+        false,
+        &[
+            ("airBlob", "./ARES-6/Babylon/air-blob.js"),
+            ("basicBlob", "./ARES-6/Babylon/basic-blob.js"),
+            ("inspectorBlob", "./ARES-6/Babylon/inspector-blob.js"),
+            ("babylonBlob", "./ARES-6/Babylon/babylon-blob.js"),
+        ],
+    ),
+    (
+        "first-inspector-code-load",
+        &["./code-load/code-first-load.js"],
+        false,
+        &[(
+            "inspectorPayloadBlob",
+            "./code-load/inspector-payload-minified.js",
+        )],
+    ),
+    (
+        "multi-inspector-code-load",
+        &["./code-load/code-multi-load.js"],
+        false,
+        &[(
+            "inspectorPayloadBlob",
+            "./code-load/inspector-payload-minified.js",
+        )],
+    ),
+    (
+        "bigint-noble-ed25519",
+        &[
+            "./bigint/web-crypto-sham.js",
+            "./bigint/noble-ed25519-bundle.js",
+            "./bigint/noble-benchmark.js",
+        ],
+        true,
+        &[],
+    ),
+    (
+        "proxy-mobx",
+        &[
+            "./proxy/common.js",
+            "./proxy/mobx-bundle.js",
+            "./proxy/mobx-benchmark.js",
+        ],
+        false,
+        &[],
+    ),
+    (
+        "proxy-vue",
+        &[
+            "./proxy/common.js",
+            "./proxy/vue-bundle.js",
+            "./proxy/vue-benchmark.js",
+        ],
+        false,
+        &[],
+    ),
+    (
+        "async-fs",
+        &["./generators/async-file-system.js"],
+        true,
+        &[],
+    ),
+];
+
 const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[
     (
         "mandreel",
@@ -352,6 +429,11 @@ fn run_default_js(
             .iter()
             .map(|(name, _, _)| notrun(name, &revision, "no --jetstream-dir checkout"))
             .chain(
+                ASYNC_JS
+                    .iter()
+                    .map(|(name, _, _, _)| notrun(name, &revision, "no --jetstream-dir checkout")),
+            )
+            .chain(
                 SKIPPED_DEFAULT_JS
                     .iter()
                     .map(|(name, why)| notrun(name, &revision, why)),
@@ -361,7 +443,7 @@ fn run_default_js(
     let mut results = Vec::new();
     for (name, files, det_rand) in DEFAULT_JS {
         eprintln!("browserbench: start jetstream.{name}");
-        match load_chunks(root, files, *det_rand) {
+        match load_chunks(root, files, *det_rand, &[]) {
             Ok(chunks) => results.push(crate::jetstream_chunks(
                 engine,
                 iterations,
@@ -369,15 +451,20 @@ fn run_default_js(
                 &chunks,
                 name,
             )),
-            Err(detail) => results.push(SuiteResult {
-                name: format!("jetstream.{name}"),
-                status: "NOTRUN",
-                revision: revision.clone(),
-                samples_ms: None,
-                p50_ms: None,
-                p95_ms: None,
-                detail: Some(detail),
-            }),
+            Err(detail) => results.push(failed_load(name, &revision, detail)),
+        }
+    }
+    for (name, files, det_rand, preloads) in ASYNC_JS {
+        eprintln!("browserbench: start jetstream.{name}");
+        match load_chunks(root, files, *det_rand, preloads) {
+            Ok(chunks) => results.push(crate::jetstream_async_chunks(
+                engine,
+                iterations,
+                &format!("jetstream.{name}"),
+                &chunks,
+                name,
+            )),
+            Err(detail) => results.push(failed_load(name, &revision, detail)),
         }
     }
     results.extend(
@@ -392,16 +479,73 @@ fn load_chunks(
     root: &std::path::Path,
     files: &[&str],
     det_rand: bool,
+    preloads: &[(&str, &str)],
 ) -> Result<Vec<String>, String> {
     let mut chunks = vec![DETERMINISTIC_RANDOM.to_owned()];
     if det_rand {
         chunks.push("Math.random.__resetSeed();\n".into());
+    }
+    if !preloads.is_empty() {
+        chunks.push(preload_prelude(root, preloads)?);
     }
     for rel in files {
         let path = root.join(rel.trim_start_matches("./"));
         chunks.push(read_js(&path)?);
     }
     Ok(chunks)
+}
+
+fn preload_prelude(root: &std::path::Path, preloads: &[(&str, &str)]) -> Result<String, String> {
+    let mut js = String::from(
+        r#"globalThis.JetStream = globalThis.JetStream || {};
+JetStream.preload = JetStream.preload || {};
+JetStream.__vePreload = JetStream.__vePreload || {};
+"#,
+    );
+    for (name, rel) in preloads {
+        let path = root.join(rel.trim_start_matches("./"));
+        let text = read_js(&path)?;
+        let key = serde_json::to_string(name).unwrap_or_else(|_| "\"\"".into());
+        let val =
+            serde_json::to_string(&text).map_err(|e| format!("encode preload {name}: {e}"))?;
+        js.push_str("JetStream.preload[");
+        js.push_str(&key);
+        js.push_str("] = ");
+        js.push_str(&key);
+        js.push_str(";\nJetStream.__vePreload[");
+        js.push_str(&key);
+        js.push_str("] = ");
+        js.push_str(&val);
+        js.push_str(";\n");
+    }
+    js.push_str(
+        r#"
+JetStream.getString = async function (key) {
+  const v = JetStream.__vePreload[key];
+  if (v == null) throw new Error("missing preload " + key);
+  return v;
+};
+JetStream.getBinary = async function (key) {
+  const v = await JetStream.getString(key);
+  const out = new Int8Array(v.length);
+  for (let i = 0; i < v.length; i++) out[i] = v.charCodeAt(i) & 0xff;
+  return out;
+};
+"#,
+    );
+    Ok(js)
+}
+
+fn failed_load(name: &str, revision: &str, detail: String) -> SuiteResult {
+    SuiteResult {
+        name: format!("jetstream.{name}"),
+        status: "NOTRUN",
+        revision: revision.to_owned(),
+        samples_ms: None,
+        p50_ms: None,
+        p95_ms: None,
+        detail: Some(detail),
+    }
 }
 
 fn read_js(path: &std::path::Path) -> Result<String, String> {

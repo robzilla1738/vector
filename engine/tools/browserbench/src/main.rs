@@ -155,6 +155,130 @@ pub(crate) fn jetstream_chunks(
         }
         engine.close(opened.page);
     }
+    finish_jetstream(name, revision, samples, last_err)
+}
+
+/// Official `AsyncBenchmark`: await init / prepareForNextIteration / runIteration.
+pub(crate) fn jetstream_async_chunks(
+    engine: &mut VectorEngine,
+    iterations: u32,
+    name: &str,
+    chunks: &[String],
+    path: &str,
+) -> SuiteResult {
+    let revision = pin("jetstream", "revision");
+    if !cfg!(feature = "v8") {
+        return SuiteResult {
+            name: name.to_owned(),
+            status: "NOTRUN",
+            revision,
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: Some("built without v8".into()),
+        };
+    }
+    let html = format!("<!doctype html><title>{name}</title>");
+    let mut samples = Vec::new();
+    let mut last_err = None;
+    for _ in 0..iterations.max(1) {
+        let opened = match engine.open(OpenRequest {
+            url: Some(format!("https://browserbench.org/JetStream/{path}")),
+            html: Some(html.clone()),
+            allow_evaluate: true,
+            ..OpenRequest::default()
+        }) {
+            Ok(o) => o,
+            Err(e) => {
+                last_err = Some(e.to_string());
+                break;
+            }
+        };
+        if let Ok(page) = engine.page_mut(opened.page) {
+            page.settle(500);
+        }
+        let load = engine.page_mut(opened.page).and_then(|p| {
+            for chunk in chunks {
+                p.evaluate(chunk)?;
+            }
+            Ok(())
+        });
+        if let Err(e) = load {
+            last_err = Some(e.to_string());
+            engine.close(opened.page);
+            continue;
+        }
+        let started = Instant::now();
+        if let Err(e) = engine
+            .page_mut(opened.page)
+            .and_then(|p| p.evaluate(ASYNC_START))
+        {
+            last_err = Some(e.to_string());
+            engine.close(opened.page);
+            continue;
+        }
+        match wait_async(engine, opened.page) {
+            Ok(()) => {
+                samples.push(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX))
+            }
+            Err(e) => last_err = Some(e),
+        }
+        engine.close(opened.page);
+    }
+    finish_jetstream(name, revision, samples, last_err)
+}
+
+const ASYNC_START: &str = r#"(function () {
+  window.__veJs = { done: null, err: null };
+  var b = new Benchmark();
+  Promise.resolve()
+    .then(function () { return b.init && b.init(); })
+    .then(function () { return b.prepareForNextIteration && b.prepareForNextIteration(); })
+    .then(function () { return b.runIteration(); })
+    .then(function () { window.__veJs.done = true; })
+    .catch(function (e) { window.__veJs.err = String(e && e.message ? e.message : e); });
+  return true;
+})()"#;
+
+const ASYNC_STATUS: &str = r#"(function () {
+  var s = window.__veJs || {};
+  if (s.err) return "err:" + s.err;
+  if (s.done) return "ok";
+  return "pending";
+})()"#;
+
+fn wait_async(engine: &mut VectorEngine, page: ve_api::PageId) -> Result<(), String> {
+    for _ in 0..120 {
+        if let Ok(p) = engine.page_mut(page) {
+            p.settle(500);
+        }
+        let status = engine
+            .page_mut(page)
+            .and_then(|p| p.evaluate(ASYNC_STATUS))
+            .map_err(|e| e.to_string())?;
+        let text = match status {
+            serde_json::Value::String(s) => s,
+            other => other.to_string(),
+        };
+        if text == "ok" || text == "\"ok\"" {
+            return Ok(());
+        }
+        if let Some(err) = text.strip_prefix("err:") {
+            return Err(err.to_owned());
+        }
+        if let Some(err) = text.strip_prefix("\"err:") {
+            return Err(err.trim_end_matches('"').to_owned());
+        }
+    }
+    Err("async runIteration did not finish".into())
+}
+
+fn finish_jetstream(
+    name: &str,
+    revision: String,
+    samples: Vec<u64>,
+    last_err: Option<String>,
+) -> SuiteResult {
     if samples.is_empty() {
         return SuiteResult {
             name: name.to_owned(),
@@ -405,7 +529,7 @@ fn main() -> Result<()> {
                 "passed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "PASS").count(),
                 "failed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "FAIL").count(),
                 "officialGroup": 12,
-                "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib-decompressed .z assets and remaining DefaultBenchmark names. mandreel/pdfjs and async/wasm stay unexecuted. Not a JetStream Next geometric-mean published score."
+                "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z assets and AsyncBenchmark Default names. mandreel/pdfjs/startup/wasm stay unexecuted. Not a JetStream Next geometric-mean published score."
             },
             "motionmark13": {
                 "officialNames": 8,
