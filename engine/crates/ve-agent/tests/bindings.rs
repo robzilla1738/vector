@@ -3579,6 +3579,32 @@ fn review_behavior_counterexamples() {
 }
 
 #[test]
+fn get_computed_style_display_does_not_flush_layout() {
+    let mut html = String::from("<div id=\"root\">");
+    for i in 0..200 {
+        html.push_str(&format!("<p id=\"p{i}\">n</p>"));
+    }
+    html.push_str("</div>");
+    let mut page = open(&html);
+    assert!(page.settle(200).settled);
+    page.reset_restyle_attribution();
+    let v = page
+        .evaluate(
+            r#"(function () {
+              document.body.appendChild(document.createElement("section"));
+              return getComputedStyle(document.body).display;
+            })()"#,
+        )
+        .unwrap();
+    let attr = page.restyle_attribution();
+    assert_eq!(v, "block", "{v} restyle={attr:?}");
+    assert_eq!(
+        attr.layout_calls, 0,
+        "display is computed, not used: {v} restyle={attr:?}"
+    );
+}
+
+#[test]
 fn window_load_fires_after_a_large_id_tree() {
     let ids: String = (0..800)
         .map(|i| format!(r#"<span id="n{i}">{i}</span>"#))

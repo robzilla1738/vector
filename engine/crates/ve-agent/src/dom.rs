@@ -49,6 +49,35 @@ fn fail(msg: impl Into<String>) -> ScriptError {
     }
 }
 
+/// Used-value CSS that needs layout. `display` / colors stay restyle-only so
+/// jQuery `show()` does not relayout official Complex-DOM Spectrum.
+fn computed_needs_layout(name: &str) -> bool {
+    matches!(
+        name,
+        "width"
+            | "height"
+            | "min-width"
+            | "min-height"
+            | "max-width"
+            | "max-height"
+            | "top"
+            | "right"
+            | "bottom"
+            | "left"
+            | "inset"
+            | "margin"
+            | "margin-top"
+            | "margin-right"
+            | "margin-bottom"
+            | "margin-left"
+            | "padding"
+            | "padding-top"
+            | "padding-right"
+            | "padding-bottom"
+            | "padding-left"
+    )
+}
+
 fn describe_node(page: &Page, id: NodeId) -> Option<JsValue> {
     let node = page.doc.get(id)?;
     let mut map = BTreeMap::new();
@@ -1325,8 +1354,12 @@ pub(crate) fn host_call(
         }
         "computed" => {
             let id = live(page, args, 0)?;
-            page.update();
             let name = arg_str(args, 1);
+            if computed_needs_layout(&name) {
+                page.update();
+            } else {
+                page.restyle_if_needed();
+            }
             if matches!(name.as_str(), "width" | "height") {
                 if let Some(rect) = page.layout_tree().rect_of(id) {
                     let v = if name == "width" {

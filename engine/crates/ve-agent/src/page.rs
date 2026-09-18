@@ -38,6 +38,8 @@ pub struct RestyleAttribution {
     pub last_full: bool,
     /// Mutation journal entries retained after the window.
     pub journal_len: usize,
+    /// `Page::update` layout passes in this window.
+    pub layout_calls: u32,
 }
 
 /// Navigation method.
@@ -460,6 +462,8 @@ pub struct Page {
     last_recomputed: usize,
     /// The last restyle used the full `compute()` path.
     last_restyle_full: bool,
+    /// Gate E: layout passes during the current attribution window.
+    layout_calls: u32,
 }
 
 /// One `IndexedDB` index (VEC-010).
@@ -932,6 +936,7 @@ impl Page {
             restyle_full_calls: 0,
             last_recomputed: 0,
             last_restyle_full: false,
+            layout_calls: 0,
         }
     }
 
@@ -2128,6 +2133,27 @@ impl Page {
         !self.doc.any_dirty(DirtyFlags::LAYOUT | DirtyFlags::TEXT)
     }
 
+    /// Recomputes styles if dirty. Does not flush layout. `getComputedStyle`
+    /// for `display` / colors must not relayout official Complex-DOM Spectrum
+    /// after jQuery `show()` appends a temp node to `body`.
+    pub fn restyle_if_needed(&mut self) {
+        if self.style_clean() {
+            return;
+        }
+        self.style_engine.interaction.set_focus(self.focused, true);
+        let since = self.style_tree.revision();
+        let stats =
+            self.style_engine
+                .restyle_incremental(&mut self.doc, &mut self.style_tree, since);
+        self.restyle_calls += 1;
+        self.last_recomputed = stats.recomputed;
+        self.last_restyle_full = stats.full;
+        if stats.full {
+            self.restyle_full_calls += 1;
+        }
+        self.doc.clear_dirty_all(DirtyFlags::STYLE);
+    }
+
     /// Recomputes styles and layout if anything is dirty. Uses the
     /// incremental restyle/relayout paths (plan A15); they fall back to a
     /// full pass when the journal cannot cover `since`.
@@ -2135,19 +2161,7 @@ impl Page {
         if self.style_clean() && self.layout_clean() {
             return;
         }
-        self.style_engine.interaction.set_focus(self.focused, true);
-        if !self.style_clean() {
-            let since = self.style_tree.revision();
-            let stats =
-                self.style_engine
-                    .restyle_incremental(&mut self.doc, &mut self.style_tree, since);
-            self.restyle_calls += 1;
-            self.last_recomputed = stats.recomputed;
-            self.last_restyle_full = stats.full;
-            if stats.full {
-                self.restyle_full_calls += 1;
-            }
-        }
+        self.restyle_if_needed();
         if !self.layout_clean() {
             let previous = std::mem::replace(&mut self.layout, LayoutTree::blank(self.viewport));
             let (tree, _stats) = self.layout_engine.relayout_incremental(
@@ -2158,6 +2172,7 @@ impl Page {
             );
             self.layout = tree;
             self.layout.apply_sticky(self.scroll);
+            self.layout_calls += 1;
         }
         self.doc.clear_dirty_all(
             DirtyFlags::STYLE | DirtyFlags::LAYOUT | DirtyFlags::TEXT | DirtyFlags::PAINT,
@@ -2173,6 +2188,7 @@ impl Page {
             last_recomputed: self.last_recomputed,
             last_full: self.last_restyle_full,
             journal_len: self.doc.journal().len(),
+            layout_calls: self.layout_calls,
         }
     }
 
@@ -2182,6 +2198,7 @@ impl Page {
         self.restyle_full_calls = 0;
         self.last_recomputed = 0;
         self.last_restyle_full = false;
+        self.layout_calls = 0;
     }
 
     fn apply_css_coverage(&mut self) {
