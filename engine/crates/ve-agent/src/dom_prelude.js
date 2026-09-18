@@ -5007,7 +5007,7 @@
         enumerable: true, configurable: true,
       },
       checkValidity: {
-        value: function checkValidity() { return this.validity.valid !== false; },
+        value: function checkValidity() { return !!D("checkValidity", this.__h); },
         writable: true, enumerable: true, configurable: true,
       },
       reportValidity: {

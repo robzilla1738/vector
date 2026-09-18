@@ -3651,6 +3651,33 @@ fn review_behavior_counterexamples() {
 }
 
 #[test]
+fn required_empty_input_check_validity_is_false() {
+    let mut page =
+        open(r#"<form id="f"><input id="req" required><input id="ok" value="x"></form>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var req = document.getElementById("req");
+              var ok = document.getElementById("ok");
+              var form = document.getElementById("f");
+              var empty = req.checkValidity();
+              req.value = "filled";
+              return {
+                empty: empty,
+                filled: req.checkValidity(),
+                ok: ok.checkValidity(),
+                form: form.checkValidity()
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["empty"], false, "{v}");
+    assert_eq!(v["filled"], true, "{v}");
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(v["form"], true, "{v}");
+}
+
+#[test]
 fn get_computed_style_display_does_not_flush_layout() {
     let mut html = String::from("<div id=\"root\">");
     for i in 0..200 {
