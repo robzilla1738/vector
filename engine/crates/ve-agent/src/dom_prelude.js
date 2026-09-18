@@ -3616,6 +3616,14 @@
       if (arguments.length < 2) {
         throw new TypeError("Failed to execute 'addColorStop' on 'CanvasGradient': 2 arguments required, but only " + arguments.length + " present.");
       }
+      if (!this._stops) this._stops = [];
+      this._stops.push([Number(offset), String(color)]);
+    }
+    toString() {
+      const kind = this._kind || "linear";
+      const coords = (this._coords || [0, 0, 0, 0]).join(",");
+      const stops = (this._stops || []).map((s) => s[0] + "=" + s[1]).join(";");
+      return "ve-grad:" + kind + ":" + coords + ":" + stops;
     }
   }
   Object.defineProperty(CanvasGradient.prototype, Symbol.toStringTag, { value: "CanvasGradient", configurable: true });
@@ -3980,7 +3988,11 @@
     bezierCurveTo() {}
     createLinearGradient(x0, y0, x1, y1) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'createLinearGradient' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
-      return Object.create(CanvasGradient.prototype);
+      const g = Object.create(CanvasGradient.prototype);
+      g._kind = "linear";
+      g._coords = [Number(x0) || 0, Number(y0) || 0, Number(x1) || 0, Number(y1) || 0];
+      g._stops = [];
+      return g;
     }
     createRadialGradient(x0, y0, r0, x1, y1, r1) {
       if (arguments.length < 6) throw new TypeError("Failed to execute 'createRadialGradient' on 'CanvasRenderingContext2D': 6 arguments required, but only " + arguments.length + " present.");

@@ -601,6 +601,120 @@ pub(crate) struct WorkerRecord {
     pub last_message: Option<String>,
 }
 
+/// Fill style for canvas 2D (`fillStyle` colour or linear gradient).
+#[derive(Clone, Debug)]
+enum CanvasStyle {
+    Solid([u8; 4]),
+    Linear {
+        x0: f32,
+        y0: f32,
+        x1: f32,
+        y1: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    },
+}
+
+impl CanvasStyle {
+    fn sample(&self, x: f32, y: f32) -> [u8; 4] {
+        match self {
+            Self::Solid(c) => *c,
+            Self::Linear {
+                x0,
+                y0,
+                x1,
+                y1,
+                stops,
+            } => sample_linear_gradient(*x0, *y0, *x1, *y1, stops, x, y),
+        }
+    }
+}
+
+fn sample_linear_gradient(
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+    stops: &[(f32, [u8; 4])],
+    x: f32,
+    y: f32,
+) -> [u8; 4] {
+    if stops.is_empty() {
+        return [0, 0, 0, 255];
+    }
+    let dx = x1 - x0;
+    let dy = y1 - y0;
+    let len2 = dx * dx + dy * dy;
+    let t = if len2 < 1e-8 {
+        0.0
+    } else {
+        ((x - x0) * dx + (y - y0) * dy) / len2
+    }
+    .clamp(0.0, 1.0);
+    if stops.len() == 1 {
+        return stops[0].1;
+    }
+    let mut ordered = stops.to_vec();
+    ordered.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    if t <= ordered[0].0 {
+        return ordered[0].1;
+    }
+    let last = ordered.len() - 1;
+    if t >= ordered[last].0 {
+        return ordered[last].1;
+    }
+    for w in ordered.windows(2) {
+        if t >= w[0].0 && t <= w[1].0 {
+            let span = w[1].0 - w[0].0;
+            let u = if span < 1e-8 { 0.0 } else { (t - w[0].0) / span };
+            return lerp_rgba(w[0].1, w[1].1, u);
+        }
+    }
+    ordered[last].1
+}
+
+fn lerp_rgba(a: [u8; 4], b: [u8; 4], t: f32) -> [u8; 4] {
+    [
+        (f32::from(a[0]) + (f32::from(b[0]) - f32::from(a[0])) * t).round() as u8,
+        (f32::from(a[1]) + (f32::from(b[1]) - f32::from(a[1])) * t).round() as u8,
+        (f32::from(a[2]) + (f32::from(b[2]) - f32::from(a[2])) * t).round() as u8,
+        (f32::from(a[3]) + (f32::from(b[3]) - f32::from(a[3])) * t).round() as u8,
+    ]
+}
+
+fn parse_canvas_style(s: &str) -> CanvasStyle {
+    let t = s.trim();
+    if let Some(rest) = t.strip_prefix("ve-grad:") {
+        let mut parts = rest.splitn(3, ':');
+        let kind = parts.next().unwrap_or("");
+        let coords = parts.next().unwrap_or("");
+        let stops_s = parts.next().unwrap_or("");
+        if kind == "linear" {
+            let nums: Vec<f32> = coords.split(',').filter_map(|n| n.parse().ok()).collect();
+            if nums.len() == 4 {
+                let mut stops = Vec::new();
+                for stop in stops_s.split(';') {
+                    if stop.is_empty() {
+                        continue;
+                    }
+                    if let Some((off, color)) = stop.split_once('=') {
+                        if let Ok(o) = off.parse::<f32>() {
+                            stops.push((o.clamp(0.0, 1.0), parse_css_color(color)));
+                        }
+                    }
+                }
+                return CanvasStyle::Linear {
+                    x0: nums[0],
+                    y0: nums[1],
+                    x1: nums[2],
+                    y1: nums[3],
+                    stops,
+                };
+            }
+        }
+    }
+    CanvasStyle::Solid(parse_css_color(t))
+}
+
 /// Software 2D canvas backing store.
 #[derive(Clone, Debug)]
 pub(crate) struct CanvasSurface {
@@ -637,7 +751,7 @@ impl CanvasSurface {
         self.fill_rect(x + w - 1, y, 1, h, color);
     }
 
-    fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: [u8; 4]) {
+    fn fill_rect_styled(&mut self, x: i32, y: i32, w: i32, h: i32, style: &CanvasStyle) {
         if w <= 0 || h <= 0 {
             self.ops += 1;
             return;
@@ -651,18 +765,20 @@ impl CanvasSurface {
         let x0 = x0.min(x1);
         let y0 = y0.min(y1);
         for row in y0..y1 {
-            let start = (row * self.width + x0) as usize * 4;
-            let end = (row * self.width + x1) as usize * 4;
-            let mut i = start;
-            while i + 3 < end {
+            for col in x0..x1 {
+                let color = style.sample(col as f32 + 0.5, row as f32 + 0.5);
+                let i = (row * self.width + col) as usize * 4;
                 self.pixels[i] = color[0];
                 self.pixels[i + 1] = color[1];
                 self.pixels[i + 2] = color[2];
                 self.pixels[i + 3] = color[3];
-                i += 4;
             }
         }
         self.ops += 1;
+    }
+
+    fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: [u8; 4]) {
+        self.fill_rect_styled(x, y, w, h, &CanvasStyle::Solid(color));
     }
 
     fn clear_rect(&mut self, x: i32, y: i32, w: i32, h: i32) {
@@ -1375,7 +1491,7 @@ impl Page {
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.fill_rect(x, y, w, h, parse_css_color(color));
+        c.fill_rect_styled(x, y, w, h, &parse_canvas_style(color));
         c.ops
     }
 

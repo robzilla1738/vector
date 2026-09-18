@@ -662,6 +662,38 @@ fn canvas_fillrect_records_ops() {
 }
 
 #[test]
+fn canvas_linear_gradient_fills_pixels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 100;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              var g = ctx.createLinearGradient(0, 0, 100, 0);
+              g.addColorStop(0, "#ff0000");
+              g.addColorStop(1, "#0000ff");
+              ctx.fillStyle = g;
+              ctx.fillRect(0, 0, 100, 8);
+              var left = ctx.getImageData(0, 0, 1, 1).data;
+              var right = ctx.getImageData(99, 0, 1, 1).data;
+              return {
+                lr: left[0], lg: left[1], lb: left[2],
+                rr: right[0], rg: right[1], rb: right[2],
+                encoded: String(g).indexOf("ve-grad:linear:") === 0
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["encoded"], true, "{v}");
+    assert!(v["lr"].as_u64().unwrap_or(0) > 200, "left red: {v}");
+    assert!(v["lb"].as_u64().unwrap_or(99) < 40, "left not blue: {v}");
+    assert!(v["rb"].as_u64().unwrap_or(0) > 200, "right blue: {v}");
+    assert!(v["rr"].as_u64().unwrap_or(99) < 40, "right not red: {v}");
+}
+
+#[test]
 fn canvas_stroke_path_records_ops() {
     let mut page = open(r#"<body></body>"#);
     let v = page
