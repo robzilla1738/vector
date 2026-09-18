@@ -24,7 +24,7 @@
       "path": "html/dom/idlharness.https.html",
       "status": "FAIL",
       "duration_ms": 1580,
-      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. FAIL is missing engine WebIDL surfaces (e.g. HTMLAllCollection), not a fetch/harness 404."
+      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. HTMLAllCollection, HTMLFormControlsCollection, HTMLOptionsCollection, and RadioNodeList are now engine WebIDL surfaces. Remaining HTMLAllCollection FAILs are [[IsHTMLDDA]] (typeof document.all is function, not undefined). The file still FAILs on other HTML interface gaps; this is not an official idlharness PASS."
     }
   ]
 }

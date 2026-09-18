@@ -14,7 +14,10 @@
     "unseen_layout_variant_is_scored_by_outcome_only": "PASS",
     "human_edit_and_agent_observe_the_same_page": "PASS",
     "gui_thread_pump_and_mcp_client_share_one_native_browser": "PASS",
-    "stalled_host_handshake_fails_without_downgrade": "PASS"
+    "stalled_host_handshake_fails_without_downgrade": "PASS",
+    "production_sandbox_runs_inline_script_observe_and_input": "PASS",
+    "production_sandbox_runs_external_js_from_allowlisted_fixture": "PASS",
+    "html_collection_types_match_html_idl": "PASS"
   },
   "exit": {
     "humanEditsField": true,
@@ -28,9 +31,9 @@
     "stalledChildFailsClosed": true
   },
   "remaining": [
-    "Gate A downloaded multi-platform release artifact (CI matrix exists; this host is Linux only)",
+    "Gate A downloaded release artifact on every advertised platform (Linux production sandbox PASS on this host; CI matrix is ubuntu/macOS/windows)",
     "live GPU window plus MCP on a display (pump shares NativeBrowser; no GPU in this environment)",
-    "official html/dom remaining FAILs and idlharness WebIDL gaps",
+    "official html/dom remaining FAILs sanitize-template-element and template-for-empty; idlharness.https.html still FAIL ([[IsHTMLDDA]] plus other HTML interfaces)",
     "full official Speedometer/JetStream/MotionMark suite"
   ]
 }
