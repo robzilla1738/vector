@@ -126,6 +126,36 @@ server.registerTool(
 );
 
 server.registerTool(
+  "vector_page_takeover",
+  {
+    description: "Human takeover: stop subsequent agent dispatch on this page. Resume with vector_page_resume after revalidating page and authorization state.",
+    inputSchema: { pageId: z.string() },
+  },
+  async ({ pageId }) => {
+    try {
+      return text(await rpc("pages.takeover", { pageId }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+server.registerTool(
+  "vector_page_resume",
+  {
+    description: "Release human takeover on a page so an authorized agent can dispatch again.",
+    inputSchema: { pageId: z.string() },
+  },
+  async ({ pageId }) => {
+    try {
+      return text(await rpc("pages.resume", { pageId }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+server.registerTool(
   "vector_page_capture",
   {
     description:

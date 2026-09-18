@@ -1,0 +1,291 @@
+{
+  "arch": "x86_64",
+  "attribution": {
+    "kind": "adapted-workload-phases",
+    "officialFullSuite": false,
+    "phases": [
+      "parse/style/layout(openMs)",
+      "js(jsMs)",
+      "harnessSettle(settleMs)",
+      "unaccounted"
+    ],
+    "source": "speedometer.3.0.TodoMVC-JavaScript-ES5 detail.attribution when present"
+  },
+  "backend": "vector-engine",
+  "chromium": false,
+  "engine_version": "0.0.1",
+  "host_package_energy_uj": null,
+  "os": "linux",
+  "pins": {
+    "jetstream": {
+      "repo": "https://github.com/WebKit/JetStream",
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "tests": [
+        "SunSpider/n-body.js",
+        "SunSpider/crypto-sha1.js"
+      ]
+    },
+    "motionmark": {
+      "note": "Canvas fillRect class on the engine 2D buffer plus MotionMark Multiply-class GPU present through vello present_list (no CPU readback).",
+      "repo": "https://github.com/WebKit/MotionMark",
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "status": "gpu"
+    },
+    "speedometer": {
+      "note": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply.",
+      "repo": "https://github.com/WebKit/Speedometer",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "official-3.0"
+    }
+  },
+  "process_tree_rss_bytes": 142811136,
+  "rss_bytes": 142811136,
+  "security_mode": "developer-offline",
+  "suites": [
+    {
+      "name": "jetstream.n-body",
+      "p50_ms": 6,
+      "p95_ms": 6,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        6
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.crypto-sha1",
+      "p50_ms": 12,
+      "p95_ms": 12,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        12
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "{\"added\":100,\"attribution\":{\"jsMs\":45389,\"label\":\"speedometer.3.0.TodoMVC-JavaScript-ES5\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":53,\"settleMs\":3200},\"kind\":\"todomvc\",\"remaining\":0}",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES5",
+      "p50_ms": 45389,
+      "p95_ms": 45389,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        45389
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES5-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-WebComponents",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-WebComponents-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-React",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-React-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-React-Redux",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-React-Redux-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Backbone",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Backbone-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Angular",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Angular-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Vue",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Vue-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-jQuery",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-jQuery-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Preact",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Preact-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Svelte",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Svelte-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Lit",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.TodoMVC-Lit-Complex-DOM",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.NewsSite-Next",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.NewsSite-Nuxt",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.Editor-CodeMirror",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.Editor-TipTap",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.Charts-observable-plot",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.Charts-chartjs",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.React-Stockcharts-SVG",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "ci gate; not executed",
+      "name": "speedometer.3.0.Perf-Dashboard",
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "status": "NOTRUN"
+    },
+    {
+      "detail": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply.",
+      "name": "speedometer.todomvc-class",
+      "p50_ms": 8,
+      "p95_ms": 8,
+      "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+      "samples_ms": [
+        8
+      ],
+      "status": "PARTIAL"
+    },
+    {
+      "detail": "Canvas fillRect class on the engine 2D buffer plus MotionMark Multiply-class GPU present through vello present_list (no CPU readback).",
+      "name": "motionmark.canvas-class",
+      "p50_ms": 1,
+      "p95_ms": 1,
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "samples_ms": [
+        1
+      ],
+      "status": "PARTIAL"
+    },
+    {
+      "detail": "built without gpu",
+      "name": "motionmark.gpu.multiply",
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "status": "NOTRUN"
+    }
+  ]
+}

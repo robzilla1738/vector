@@ -109,7 +109,8 @@ fn a_runaway_script_is_cut_off_and_the_page_survives() {
         true,
     );
     page.settle(500);
-    // SCRIPT_DEADLINE is 20s; CI macOS V8 terminate can lag. Survival
+    // SCRIPT_DEADLINE is 20s unless VECTOR_SCRIPT_DEADLINE_SECS is set.
+    // CI macOS V8 terminate can lag. Survival
     // assertions below are the behavior gate.
     assert!(
         started.elapsed() < std::time::Duration::from_secs(180),
