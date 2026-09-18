@@ -102,18 +102,41 @@ fn visit(path: &Path, order: &mut Vec<PathBuf>, seen: &mut HashSet<PathBuf>) -> 
 }
 
 fn take_imports(source: &str) -> (Vec<Import>, String) {
-    let mut i = 0;
-    let mut imports = Vec::new();
     let chars: Vec<char> = source.chars().collect();
+    let mut imports = Vec::new();
+    let mut out = String::new();
+    let mut i = 0;
+    let mut depth = 0i32;
     while i < chars.len() {
-        i = skip_ws_and_comments(&chars, i);
-        if i >= chars.len() {
-            break;
+        if starts_with(&chars, i, "//") {
+            let start = i;
+            while i < chars.len() && chars[i] != '\n' {
+                i += 1;
+            }
+            out.extend(chars[start..i].iter());
+            continue;
         }
-        if starts_with(&chars, i, "import")
-            && chars
-                .get(i + 6)
-                .is_some_and(|c| c.is_whitespace() || *c == '"' || *c == '\'' || *c == '{')
+        if starts_with(&chars, i, "/*") {
+            let start = i;
+            i += 2;
+            while i + 1 < chars.len() && !(chars[i] == '*' && chars[i + 1] == '/') {
+                i += 1;
+            }
+            i = (i + 2).min(chars.len());
+            out.extend(chars[start..i].iter());
+            continue;
+        }
+        if matches!(chars[i], '"' | '\'' | '`') {
+            let start = i;
+            i = skip_string(&chars, i);
+            out.extend(chars[start..i].iter());
+            continue;
+        }
+        if depth == 0
+            && starts_with(&chars, i, "import")
+            && chars.get(i + 6).is_some_and(|c| {
+                c.is_whitespace() || *c == '"' || *c == '\'' || *c == '{'
+            })
         {
             if let Some((imp, end)) = parse_import(&chars, i) {
                 imports.push(imp);
@@ -121,9 +144,31 @@ fn take_imports(source: &str) -> (Vec<Import>, String) {
                 continue;
             }
         }
-        break;
+        match chars[i] {
+            '{' | '(' | '[' => depth += 1,
+            '}' | ')' | ']' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+        out.push(chars[i]);
+        i += 1;
     }
-    (imports, chars[i..].iter().collect())
+    (imports, out)
+}
+
+fn skip_string(chars: &[char], start: usize) -> usize {
+    let quote = chars[start];
+    let mut i = start + 1;
+    while i < chars.len() {
+        if chars[i] == '\\' {
+            i += 2;
+            continue;
+        }
+        if chars[i] == quote {
+            return i + 1;
+        }
+        i += 1;
+    }
+    chars.len()
 }
 
 fn parse_import(chars: &[char], start: usize) -> Option<(Import, usize)> {
@@ -431,5 +476,19 @@ export default template;
         assert_eq!(imports[1].named[0].0, "useRouter");
         assert!(rewrite_exports(&body).contains("exports.default = template"));
         assert!(rewrite_exports("export{Rt as TodoApp};").contains("exports.TodoApp = Rt"));
+    }
+
+    #[test]
+    fn lifts_imports_after_helper_vars() {
+        let src = r#"var __defProp = Object.defineProperty;
+import { c as csvParse, a as airports } from "./flights.js";
+var ready = true;
+"#;
+        let (imports, body) = take_imports(src);
+        assert_eq!(imports.len(), 1, "{imports:?}");
+        assert_eq!(imports[0].named[0], ("c".into(), "csvParse".into()));
+        assert!(body.contains("var __defProp"));
+        assert!(body.contains("var ready"));
+        assert!(!body.contains("import "));
     }
 }
