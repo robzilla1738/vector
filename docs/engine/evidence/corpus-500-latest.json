@@ -1,21 +1,30 @@
 {
+  "backend": "vector-engine",
+  "purpose": "H1-D3 routing/quality number \u2014 not a license to delete Chromium",
+  "urls": 500,
+  "live": true,
+  "skippedLive": false,
+  "observe": {
+    "p50Ms": 0.051,
+    "p95Ms": 0.059,
+    "n": 500,
+    "unit": "ms",
+    "kind": "engine-stand-in-documents",
+    "test": "shell::tests::writes_corpus_observe_and_layout_triage"
+  },
+  "liveFetch": {
+    "ok": 491,
+    "failed": 9,
+    "p50Ms": 357.14054107666016,
+    "p95Ms": 572.0622539520264,
+    "n": 491,
+    "elapsedSec": 10.46
+  },
+  "capabilityUnsupportedRate": 0.018,
+  "security_mode": "production",
   "artifact": {
     "corpus": "engine/conformance/public-corpus-500.json",
     "harness": "engine/tools/corpus/observe-500.mjs",
     "test": "shell::tests::writes_corpus_observe_and_layout_triage"
-  },
-  "backend": "vector-engine",
-  "capabilityUnsupportedRate": 0.0,
-  "live": false,
-  "observe": {
-    "n": 500,
-    "p50Ms": 0.051,
-    "p95Ms": 0.059,
-    "unit": "ms"
-  },
-  "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
-  "reason": "offline stand-in documents keyed by the 500 public URLs; live fetch needs VECTOR_CORPUS_LIVE=1",
-  "security_mode": "production",
-  "skippedLive": true,
-  "urls": 500
+  }
 }

@@ -108,7 +108,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H0-B3 | Real `crypto.getRandomValues`, cycle-aware `structuredClone`, `performance.mark/measure` | B | ☑ | prelude + `__ve.randomBytes` |
 | H0-C1 | `format` on `ObservationRequestSchema`; unify `documentEpoch`; structured `delta`; generational-ref parser | C | ☑ | service `observe(params)`; no wire `generation` |
 | H0-C2 | MCP structured errors `{code,message,details,retryable,hint}`; typed `steps` | C | ☑ | `packages/mcp/src/main.ts` |
-| H0-C3 | Native-path stubs throw `capability_unsupported` | C | ☑ | cookies throw; screenshot is real or throws |
+| H0-C3 | Native-path stubs throw `capability_unsupported` | C | ☑ | remaining stubs throw; cookies/storage/screenshot are real (`cookies_storage_contexts_and_events_are_real`) |
 | H0-C4 | `DEFAULT_GRANTS` → read-only; challenge every `done` with delta re-observe | C | ☑ | `tests/unit/verify-done.test.ts` |
 | H0-D1 | Perf gate in `production` profile; corpus p95/per-page gates | D | ☑ | `docs/perf/production-observe-gate.json` (`security_mode: production`) |
 | H0-D2 | CI: drop Windows legs; one rust-cache key per job class; `ci-durations.json` | D | ☑ | `.github/ci-durations.json` |
@@ -137,7 +137,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-C4 | Flattened plan schema for union-less providers | C | ☑ | `McpStepSchema` |
 | H1-D1 | `fixtures/spa-app` with `/api/state` oracle | D | ☑ | `fixtures/spa-app` |
 | H1-D2 | Held-out suite: sealed hash, trials 5, live models, median + IQR + CI | D | ☑ | `tests/held-out/run.mjs`; `docs/engine/evidence/held-out-latest.json` (`skippedLive`, sealedHash `f805b31d…`) |
-| H1-D3 | Public corpus ≥ 500 real URLs | D | ☑ | `docs/engine/evidence/corpus-500-latest.json` (n=500, p50 0.051 ms / p95 0.059 ms, unsupported 0; live fetch skipped); `public-corpus-500.json` |
+| H1-D3 | Public corpus ≥ 500 real URLs | D | ☑ | `docs/engine/evidence/corpus-500-latest.json` (500 URLs; live fetch 491/500, fetch p50 357 ms / p95 572 ms, fail rate 1.8%; engine observe stand-in p50 0.051 ms) |
 | H1-D4 | Layout triage vs Chromium reference boxes | D | ☑ | `docs/engine/evidence/layout-triage-2026-09-18.json` (4 engine pages; Chromium skipped-live) |
 
 ### Horizon 2 — Chrome, essentials, coordinator
@@ -145,7 +145,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | ID | Item | WS | Status | Evidence |
 |---|---|---|---|---|
 | H2-A1 | Split `NativeBrowser` into `Browser` + `Window`; private windows via contexts | A | ☑ | `ve_api::NativeWindow` + `Browser` alias |
-| H2-A2 | `crates/ve-chrome` retained widgets; tokens + `workspace.ts` + `intent.ts` port | A | ☑ | `docs/ui/screenshots/ve-shell-gui.png` (1280×720 chrome+page); `ve-chrome-regions.json`; `03-browsing-sidebar.png` Electron reference; `gui_chrome_typing_scroll_and_screenshot`; `ve-shell --gui` calls `enable_product_chrome` |
+| H2-A2 | `crates/ve-chrome` retained widgets; tokens + `workspace.ts` + `intent.ts` port | A | ☑ | `docs/ui/screenshots/ve-shell-gui.png`; `ve-chrome-regions.json`; `03-browsing-sidebar.png`; Engine/Chromium badge + `route_reason`; `gui_chrome_typing_scroll_and_screenshot`; `chromium_tab_does_not_expose_engine_dom` |
 | H2-A3 | `ve-shell-mac` (objc2): NSWindow, menus, IME, scroll phases, appearance | A | ☑ | `MacWindow::product` + objc2 `NSWindow` on macOS; `test_double_covers_ime_scroll_appearance_menus` elsewhere |
 | H2-A4 | `ve-profile` (SQLite): history, bookmarks, session restore, downloads, find, zoom, cert interstitial, permission sheets | A | ☑ | `session_restore_reopens_tabs_after_restart`; `cert_and_permission_sheets_persist_to_profile`; `Profile::open` rusqlite |
 | H2-C1 | `agent/machine.ts` pure reducer; coordinator &lt; 350 lines; ≥ 25 transition tests | C | ☑ | `coordinator.ts` 305 lines; `runCoordinatorLoop` applies `reduce`; `tests/unit/machine.test.ts` (26) |

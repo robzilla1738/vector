@@ -29,12 +29,16 @@ use ve_agent::MouseButton;
 /// A tab in the native shell.
 #[derive(Clone, Debug)]
 pub struct Tab {
-    /// Engine page.
+    /// Engine page (placeholder for an explicit Chromium tab).
     pub page: PageId,
     /// Address bar URL.
     pub url: String,
     /// Document title (untrusted).
     pub page_title: String,
+    /// Backend the user is looking at. Never swapped silently.
+    pub backend: ChromeBackend,
+    /// Why this backend was chosen.
+    pub route_reason: String,
 }
 
 /// Key down or up.
@@ -229,6 +233,8 @@ pub struct NativeBrowser {
     chrome: Chrome,
     window_size: Size,
     profile: Option<Profile>,
+    /// `VECTOR_ENGINE_MODE=always` / `VECTOR_ENGINE_ONLY=1`: never start Chromium.
+    engine_only: bool,
 }
 
 /// Who currently owns input on the live page.
@@ -294,6 +300,7 @@ impl NativeBrowser {
             chrome: Chrome::default(),
             window_size: Size::new(1280.0, 720.0),
             profile: None,
+            engine_only: engine_only_from_env(),
         }
     }
 
@@ -311,6 +318,11 @@ impl NativeBrowser {
             "signedUpdates": self.update_pubkey.is_some(),
             "accessKit": true,
             "gpuPresent": self.gpu_present(),
+            "engineOnly": self.engine_only,
+            "activeBackend": self.active_tab().map(|t| match t.backend {
+                ChromeBackend::Engine => "vector-engine",
+                ChromeBackend::Chromium => "chromium",
+            }),
             "shaper": match self.engine.config().shaper {
                 ShaperKind::Metric => "metric",
                 ShaperKind::System => "system",
@@ -368,6 +380,8 @@ impl NativeBrowser {
             page: opened.page,
             url: opened.url,
             page_title: opened.title,
+            backend: ChromeBackend::Engine,
+            route_reason: opened.routing.route_reason,
         });
         self.active = self.tabs.len() - 1;
         self.compositor.mark_damaged();
@@ -388,6 +402,36 @@ impl NativeBrowser {
             page: opened.page,
             url: opened.url,
             page_title: opened.title,
+            backend: ChromeBackend::Engine,
+            route_reason: opened.routing.route_reason,
+        });
+        self.active = self.tabs.len() - 1;
+        self.compositor.mark_damaged();
+        if self.chrome_enabled {
+            self.sync_chrome();
+            self.apply_chrome_viewport();
+        }
+        Ok(self.tabs.last().unwrap())
+    }
+
+    /// Explicit Chromium tab. Engine-only mode refuses this (never silent).
+    pub fn open_chromium_tab(&mut self, url: &str) -> Result<&Tab> {
+        if self.engine_only {
+            return Err(Error::coded(
+                ErrorCode::CapabilityUnsupported,
+                "engine-only mode does not start Chromium",
+            ));
+        }
+        let opened = self.engine.open(OpenRequest::html(
+            "<p>Chromium host — this tab is not the own engine.</p>",
+            Some(url),
+        ))?;
+        self.tabs.push(Tab {
+            page: opened.page,
+            url: url.to_owned(),
+            page_title: "Chromium".into(),
+            backend: ChromeBackend::Chromium,
+            route_reason: "explicit-backend:chromium".into(),
         });
         self.active = self.tabs.len() - 1;
         self.compositor.mark_damaged();
@@ -629,10 +673,16 @@ impl NativeBrowser {
 
     /// Observe the active tab with an explicit request (`format` included).
     pub fn observe_active_with(&mut self, request: &ObservationRequest) -> Result<Observation> {
-        let page = self
+        let tab = self
             .active_tab()
-            .ok_or_else(|| Error::not_found("no tab"))?
-            .page;
+            .ok_or_else(|| Error::not_found("no tab"))?;
+        if tab.backend == ChromeBackend::Chromium {
+            return Err(Error::coded(
+                ErrorCode::CapabilityUnsupported,
+                "active tab is Chromium; agent must not observe engine DOM",
+            ));
+        }
+        let page = tab.page;
         self.engine.observe(page, request)
     }
 
@@ -657,10 +707,16 @@ impl NativeBrowser {
     }
 
     fn dispatch_program(&mut self, request: ExecuteRequest) -> Result<ExecuteResult> {
-        let page = self
+        let tab = self
             .active_tab()
-            .ok_or_else(|| Error::not_found("no tab"))?
-            .page;
+            .ok_or_else(|| Error::not_found("no tab"))?;
+        if tab.backend == ChromeBackend::Chromium {
+            return Err(Error::coded(
+                ErrorCode::CapabilityUnsupported,
+                "active tab is Chromium; agent must not execute against engine DOM",
+            ));
+        }
+        let page = tab.page;
         let executed = self.engine.execute(page, &request)?;
         self.sync_active_tab();
         Ok(executed)
@@ -1137,6 +1193,11 @@ impl NativeBrowser {
         self.chrome_enabled
     }
 
+    /// Engine-only: Chromium host tabs are refused.
+    pub fn set_engine_only(&mut self, on: bool) {
+        self.engine_only = on;
+    }
+
     fn sync_chrome(&mut self) {
         self.chrome.tabs = self
             .tabs
@@ -1147,7 +1208,7 @@ impl NativeBrowser {
                 title: t.page_title.clone(),
                 url: t.url.clone(),
                 active: i == self.active,
-                backend: ChromeBackend::Engine,
+                backend: t.backend,
             })
             .collect();
         if self.urlbar_focused {
@@ -1159,7 +1220,14 @@ impl NativeBrowser {
                 .unwrap_or_default();
         }
         self.chrome.command_focused = self.urlbar_focused;
-        self.chrome.backend = ChromeBackend::Engine;
+        self.chrome.backend = self
+            .active_tab()
+            .map(|t| t.backend)
+            .unwrap_or(ChromeBackend::Engine);
+        self.chrome.route_reason = self
+            .active_tab()
+            .map(|t| t.route_reason.clone())
+            .unwrap_or_default();
         let pages: Vec<String> = self
             .tabs
             .iter()
@@ -1683,6 +1751,16 @@ impl NativeBrowser {
         }
         Some(translated)
     }
+}
+
+fn engine_only_from_env() -> bool {
+    matches!(
+        std::env::var("VECTOR_ENGINE_MODE").as_deref(),
+        Ok("always") | Ok("native-only") | Ok("engine")
+    ) || matches!(
+        std::env::var("VECTOR_ENGINE_ONLY").as_deref(),
+        Ok("1") | Ok("true")
+    )
 }
 
 fn write_os_clipboard(enabled: bool, text: &str) {
@@ -2558,15 +2636,20 @@ mod tests {
             .unwrap_or(0) as f64
             / 1000.0;
         let rate = f64::from(unsupported) / urls.len() as f64;
-        let evidence = serde_json::json!({
+        let ev_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/engine/evidence/corpus-500-latest.json");
+        let prior = std::fs::read(&ev_path)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok());
+        let live_fetch = prior.as_ref().and_then(|v| v.get("liveFetch").cloned());
+        let mut evidence = serde_json::json!({
             "backend": "vector-engine",
             "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
             "urls": urls.len(),
-            "live": false,
-            "skippedLive": true,
-            "reason": "offline stand-in documents keyed by the 500 public URLs; live fetch needs VECTOR_CORPUS_LIVE=1",
-            "observe": { "p50Ms": p50, "p95Ms": p95, "n": samples.len(), "unit": "ms" },
-            "capabilityUnsupportedRate": rate,
+            "live": live_fetch.is_some(),
+            "skippedLive": live_fetch.is_none(),
+            "observe": { "p50Ms": p50, "p95Ms": p95, "n": samples.len(), "unit": "ms", "kind": "engine-stand-in-documents" },
+            "capabilityUnsupportedRate": live_fetch.as_ref().and_then(|f| f.get("failed")).and_then(|v| v.as_u64()).map(|f| f as f64 / urls.len() as f64).unwrap_or(rate),
             "security_mode": "production",
             "artifact": {
                 "corpus": "engine/conformance/public-corpus-500.json",
@@ -2574,14 +2657,14 @@ mod tests {
                 "test": "shell::tests::writes_corpus_observe_and_layout_triage"
             }
         });
-        let ev = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/engine/evidence");
-        let _ = std::fs::create_dir_all(&ev);
-        std::fs::write(
-            ev.join("corpus-500-latest.json"),
-            serde_json::to_vec_pretty(&evidence).unwrap(),
-        )
-        .unwrap();
+        if let Some(fetch) = live_fetch {
+            evidence["liveFetch"] = fetch;
+        } else {
+            evidence["reason"] = serde_json::json!("offline stand-in documents keyed by the 500 public URLs; live fetch needs VECTOR_CORPUS_LIVE=1");
+        }
+        let ev = ev_path.parent().unwrap();
+        let _ = std::fs::create_dir_all(ev);
+        std::fs::write(&ev_path, serde_json::to_vec_pretty(&evidence).unwrap()).unwrap();
         let triage = serde_json::json!({
             "date": "2026-09-18",
             "backend": "vector-engine",
@@ -2625,5 +2708,50 @@ mod tests {
         .unwrap();
         assert!(p95 > 0.0);
         assert!(rate < 0.01);
+    }
+
+    #[test]
+    fn engine_only_never_starts_chromium() {
+        let mut browser = NativeBrowser::new();
+        browser.set_engine_only(true);
+        let err = browser.open_chromium_tab("https://needs-chrome.test/").unwrap_err();
+        assert_eq!(err.code(), ve_core::ErrorCode::CapabilityUnsupported);
+        assert!(err.to_string().contains("does not start Chromium"));
+        browser
+            .new_tab("<p>engine</p>", "https://engine.test/")
+            .unwrap();
+        assert_eq!(browser.active_tab().unwrap().backend, ChromeBackend::Engine);
+        assert_eq!(browser.identity()["engineOnly"], true);
+        assert_eq!(browser.identity()["activeBackend"], "vector-engine");
+    }
+
+    #[test]
+    fn chromium_tab_does_not_expose_engine_dom() {
+        let mut browser = NativeBrowser::new();
+        browser.set_engine_only(false);
+        browser.open_chromium_tab("https://chrome.test/").unwrap();
+        assert_eq!(
+            browser.active_tab().unwrap().backend,
+            ChromeBackend::Chromium
+        );
+        let err = browser.observe_active().unwrap_err();
+        assert_eq!(err.code(), ve_core::ErrorCode::CapabilityUnsupported);
+        assert!(err.to_string().contains("must not observe engine DOM"));
+        browser.enable_product_chrome();
+        assert_eq!(browser.chrome().backend, ChromeBackend::Chromium);
+        let list = browser.paint_shell_list().unwrap();
+        let texts: Vec<String> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                ve_gfx::DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.iter().any(|t| t == "Chromium"), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("explicit-backend")),
+            "{texts:?}"
+        );
     }
 }

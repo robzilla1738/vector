@@ -152,6 +152,8 @@ pub struct Chrome {
     pub sheet_title: String,
     /// Sheet body (fingerprint or origin).
     pub sheet_body: String,
+    /// Why the active tab is on this backend (never a silent swap).
+    pub route_reason: String,
 }
 
 impl Default for Chrome {
@@ -179,6 +181,7 @@ impl Default for Chrome {
             download_names: Vec::new(),
             sheet_title: String::new(),
             sheet_body: String::new(),
+            route_reason: String::new(),
         }
     }
 }
@@ -575,6 +578,15 @@ impl Chrome {
             11.0,
             t.engine,
         );
+        if !self.route_reason.is_empty() {
+            self.label(
+                list,
+                Point::new(stage.x() + 12.0, stage.y() + 36.0),
+                &truncate(&self.route_reason, 42),
+                11.0,
+                t.ink_2,
+            );
+        }
     }
 
     fn paint_rail(&self, list: &mut DisplayList, window: Size) {
@@ -799,7 +811,7 @@ mod tests {
 
     #[test]
     fn paints_sidebar_stage_rail_and_text() {
-        let chrome = sample();
+        let mut chrome = sample();
         let window = Size::new(1280.0, 720.0);
         let list = chrome.paint(window);
         let texts: Vec<&str> = list
@@ -813,6 +825,19 @@ mod tests {
         assert!(texts.iter().any(|t| *t == "Personal"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Example"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Vector Engine"), "{texts:?}");
+        chrome.backend = ChromeBackend::Chromium;
+        chrome.route_reason = "explicit-backend:chromium".into();
+        let list = chrome.paint(window);
+        let texts: Vec<&str> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.iter().any(|t| *t == "Chromium"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "explicit-backend:chromium"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Agent"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Open"), "{texts:?}");
         let stage = chrome.stage_rect(window);
