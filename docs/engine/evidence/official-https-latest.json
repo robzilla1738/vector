@@ -24,7 +24,7 @@
       "path": "html/dom/idlharness.https.html",
       "status": "FAIL",
       "duration_ms": 1776,
-      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. HTMLTitle/Link/Body/Media/EventSource/canvas argc and setCustomValidity now exist. Official file still FAIL: document.all [[IsHTMLDDA]] plus remaining reflected attributes. Not an official idlharness PASS."
+      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. Additional official Reflect attrs (iframe allow/loading/sandbox, img sizes/loading/fetchPriority, form rel, details name, dialog closedBy/returnValue, media network/ready/volume, template shadowroot*) now exist. Official file still FAIL: document.all [[IsHTMLDDA]] plus remaining members. Not an official idlharness PASS."
     }
   ]
 }

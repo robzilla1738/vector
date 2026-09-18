@@ -35,7 +35,7 @@
   },
   "remaining": [
     "Gate A downloaded release artifact: copy-to-temp host test + CI job downloaded-artifact (downloads engine-native-{ubuntu,macos,windows} then re-runs production_sandbox). .github/workflows/release.yml publishes ve-host + .node on tag v* for ubuntu/macos/windows. No GitHub Release page exists until a v* tag is pushed.",
-    "official html/dom remaining FAILs sanitize-template-element, template-for-empty, and tentative aria-attribute-reflection-enumerated (contradicts non-tentative string mixin). Official remove-element-unblocks-rendering.optional.html PASS. official idlharness.https.html still FAIL ([[IsHTMLDDA]] plus remaining reflected attributes). Title/link/body/media/EventSource/canvas argc added.",
+    "official html/dom remaining FAILs sanitize-template-element, template-for-empty, and tentative aria-attribute-reflection-enumerated (contradicts non-tentative string mixin). Official remove-element-unblocks-rendering.optional.html PASS. official idlharness.https.html still FAIL ([[IsHTMLDDA]] plus remaining members). More official Reflect attrs and media state added.",
     "full official Speedometer/JetStream/MotionMark published score. Official Speedometer 3.0 names independently verified 32/32. JetStream lab is n-body + sha1. MotionMark is canvas-class + gpu.multiply. Editor-TipTap/CodeMirror official Long/Highlight PASS after late-eval."
   ]
 }

@@ -4774,3 +4774,70 @@ fn official_html_link_media_body_and_eventsource_idl() {
     assert_eq!(v["esClosed"], true, "{v}");
     assert_eq!(v["esTag"], "[object EventSource]", "{v}");
 }
+
+#[test]
+fn official_html_reflect_and_media_state_idl() {
+    let mut page = open(
+        r#"<iframe id=f></iframe><img id=i src="x.png"><form id=fm rel="noopener"><details id=d name=n></details><dialog id=g></dialog><script id=s></script><source id=so width=1><template id=t></template><button id=b command=show-modal></button><video id=v src="m.mp4"></video>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const iframe = document.getElementById("f");
+              const img = document.getElementById("i");
+              const form = document.getElementById("fm");
+              const details = document.getElementById("d");
+              const dialog = document.getElementById("g");
+              const script = document.getElementById("s");
+              const source = document.getElementById("so");
+              const tpl = document.getElementById("t");
+              const btn = document.getElementById("b");
+              const video = document.getElementById("v");
+              dialog.returnValue = "ok";
+              tpl.setAttribute("shadowrootmode", "open");
+              return {
+                sandbox: iframe.sandbox && typeof iframe.sandbox.add === "function",
+                allow: "allow" in HTMLIFrameElement.prototype,
+                loading: iframe.loading,
+                imgSizes: "sizes" in HTMLImageElement.prototype,
+                imgFetch: img.fetchPriority,
+                currentSrc: typeof img.currentSrc === "string",
+                formRel: form.rel,
+                formRelList: form.relList && typeof form.relList.contains === "function",
+                detailsName: details.name,
+                dialogClosedBy: "closedBy" in HTMLDialogElement.prototype,
+                dialogRet: dialog.returnValue,
+                scriptFetch: script.fetchPriority,
+                sourceW: source.width,
+                tplFor: "htmlFor" in HTMLTemplateElement.prototype,
+                tplMode: tpl.shadowRootMode,
+                command: btn.command,
+                net: video.networkState === HTMLMediaElement.NETWORK_IDLE,
+                have: video.readyState === HTMLMediaElement.HAVE_NOTHING,
+                paused: video.paused === true,
+                vol: video.volume === 1,
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sandbox"], true, "{v}");
+    assert_eq!(v["allow"], true, "{v}");
+    assert_eq!(v["loading"], "eager", "{v}");
+    assert_eq!(v["imgSizes"], true, "{v}");
+    assert_eq!(v["imgFetch"], "auto", "{v}");
+    assert_eq!(v["currentSrc"], true, "{v}");
+    assert_eq!(v["formRel"], "noopener", "{v}");
+    assert_eq!(v["formRelList"], true, "{v}");
+    assert_eq!(v["detailsName"], "n", "{v}");
+    assert_eq!(v["dialogClosedBy"], true, "{v}");
+    assert_eq!(v["dialogRet"], "ok", "{v}");
+    assert_eq!(v["scriptFetch"], "auto", "{v}");
+    assert_eq!(v["sourceW"], 1, "{v}");
+    assert_eq!(v["tplFor"], true, "{v}");
+    assert_eq!(v["tplMode"], "open", "{v}");
+    assert_eq!(v["command"], "show-modal", "{v}");
+    assert_eq!(v["net"], true, "{v}");
+    assert_eq!(v["have"], true, "{v}");
+    assert_eq!(v["paused"], true, "{v}");
+    assert_eq!(v["vol"], true, "{v}");
+}

@@ -2848,6 +2848,8 @@
     reset() { D("reset", this.__h); }
     checkValidity() { return !!D("checkValidity", this.__h); }
     reportValidity() { return this.checkValidity(); }
+    get relList() { return this._relTL || (this._relTL = new DOMTokenList(this.__h, "rel")); }
+    set relList(v) { this.setAttribute("rel", v == null ? "" : String(v)); }
     get elements() {
       if (this._elementsCol) return this._elementsCol;
       const form = this;
@@ -2981,6 +2983,7 @@
     get naturalWidth() { return D("box", this.__h, "naturalWidth"); }
     get naturalHeight() { return D("box", this.__h, "naturalHeight"); }
     get complete() { return true; }
+    get currentSrc() { return this.src || ""; }
     get width() { return Number(this.getAttribute("width")) || this.naturalWidth || 0; }
     set width(v) { this.setAttribute("width", String(v | 0)); }
     get height() { return Number(this.getAttribute("height")) || this.naturalHeight || 0; }
@@ -3069,6 +3072,8 @@
     get contentWindow() {
       return frameWindow(this);
     }
+    get sandbox() { return this._sandboxTL || (this._sandboxTL = new DOMTokenList(this.__h, "sandbox")); }
+    set sandbox(v) { this.setAttribute("sandbox", v == null ? "" : String(v)); }
   }
   class HTMLEmbedElement extends HTMLElement {
     get name() { return this.getAttribute("name") || ""; }
@@ -3347,7 +3352,10 @@
   class HTMLFieldSetElement extends HTMLElement {}
   class HTMLMapElement extends HTMLElement {}
   class HTMLMetaElement extends HTMLElement {}
-  class HTMLOutputElement extends HTMLElement {}
+  class HTMLOutputElement extends HTMLElement {
+    get htmlFor() { return this._htmlForTL || (this._htmlForTL = new DOMTokenList(this.__h, "for")); }
+    set htmlFor(v) { this.setAttribute("for", v == null ? "" : String(v)); }
+  }
   class HTMLParamElement extends HTMLElement {}
   class HTMLSlotElement extends HTMLElement {
     assign(...nodes) {
@@ -3372,6 +3380,16 @@
       return reflectedUrl(this, "src");
     }
     set src(v) { this.setAttribute("src", toUSV(v)); }
+    get htmlFor() { return this.getAttribute("for") || ""; }
+    set htmlFor(v) { this.setAttribute("for", v == null ? "" : String(v)); }
+    get shadowRootMode() { return this.getAttribute("shadowrootmode") || ""; }
+    set shadowRootMode(v) { this.setAttribute("shadowrootmode", String(v)); }
+    get shadowRootDelegatesFocus() { return this.hasAttribute("shadowrootdelegatesfocus"); }
+    set shadowRootDelegatesFocus(v) { v ? this.setAttribute("shadowrootdelegatesfocus", "") : this.removeAttribute("shadowrootdelegatesfocus"); }
+    get shadowRootClonable() { return this.hasAttribute("shadowrootclonable"); }
+    set shadowRootClonable(v) { v ? this.setAttribute("shadowrootclonable", "") : this.removeAttribute("shadowrootclonable"); }
+    get shadowRootSerializable() { return this.hasAttribute("shadowrootserializable"); }
+    set shadowRootSerializable(v) { v ? this.setAttribute("shadowrootserializable", "") : this.removeAttribute("shadowrootserializable"); }
   }
   class SVGElement extends Element {}
   class MathMLElement extends Element {}
@@ -3431,6 +3449,12 @@
   const HTMLProgressElement = defHTML("HTMLProgressElement");
   const HTMLMeterElement = defHTML("HTMLMeterElement");
   const HTMLDialogElement = defHTML("HTMLDialogElement");
+  Object.defineProperty(HTMLDialogElement.prototype, "returnValue", {
+    get() { return this._returnValue || ""; },
+    set(v) { this._returnValue = v == null ? "" : String(v); },
+    enumerable: true,
+    configurable: true,
+  });
   const HTMLMenuElement = defHTML("HTMLMenuElement");
   const HTMLDataElement = defHTML("HTMLDataElement");
   const HTMLPictureElement = defHTML("HTMLPictureElement");
@@ -3539,6 +3563,22 @@
     }
     get buffered() { return this._buffered || (this._buffered = emptyTimeRanges()); }
     get textTracks() { return this._textTracks || (this._textTracks = emptyTextTrackList()); }
+    get currentSrc() { return this.src || ""; }
+    get networkState() { return this.src ? HTMLMediaElement.NETWORK_IDLE : HTMLMediaElement.NETWORK_EMPTY; }
+    get readyState() { return HTMLMediaElement.HAVE_NOTHING; }
+    get currentTime() { return this._currentTime || 0; }
+    set currentTime(v) { this._currentTime = Number(v) || 0; }
+    get duration() { return NaN; }
+    get paused() { return this._paused !== false; }
+    get ended() { return false; }
+    get seeking() { return false; }
+    get volume() { return this._volume == null ? 1 : this._volume; }
+    set volume(v) { this._volume = Math.min(1, Math.max(0, Number(v) || 0)); }
+    get muted() { return this.hasAttribute("muted") || !!this._muted; }
+    set muted(v) { this._muted = !!v; }
+    get defaultPlaybackRate() { return 1; }
+    get playbackRate() { return 1; }
+    get preservesPitch() { return true; }
     addTextTrack(kind, label, language) {
       if (arguments.length < 1) throw new TypeError("Failed to execute 'addTextTrack' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
       return this.textTracks._add(makeTextTrack(kind, label, language));
@@ -3552,6 +3592,15 @@
     }
   }
   Object.defineProperty(HTMLMediaElement.prototype, Symbol.toStringTag, { value: "HTMLMediaElement", configurable: true });
+  HTMLMediaElement.NETWORK_EMPTY = 0;
+  HTMLMediaElement.NETWORK_IDLE = 1;
+  HTMLMediaElement.NETWORK_LOADING = 2;
+  HTMLMediaElement.NETWORK_NO_SOURCE = 3;
+  HTMLMediaElement.HAVE_NOTHING = 0;
+  HTMLMediaElement.HAVE_METADATA = 1;
+  HTMLMediaElement.HAVE_CURRENT_DATA = 2;
+  HTMLMediaElement.HAVE_FUTURE_DATA = 3;
+  HTMLMediaElement.HAVE_ENOUGH_DATA = 4;
   const HTMLVideoElement = defHTML("HTMLVideoElement", HTMLMediaElement);
   const HTMLAudioElement = defHTML("HTMLAudioElement", HTMLMediaElement);
   const HTMLTrackElement = defHTML("HTMLTrackElement");
@@ -3876,21 +3925,21 @@
     data: { value: "string" },
     time: { dateTime: "string" },
     br: { clear: "string" },
-    img: { alt: "string", src: "url", srcset: "string", crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, useMap: "string", isMap: "boolean", width: { type: "unsigned long", customGetter: true }, height: { type: "unsigned long", customGetter: true }, referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, decoding: { type: "enum", keywords: ["async", "sync", "auto"], defaultVal: "auto", invalidVal: "auto" }, name: "string", lowsrc: "url", align: "string", hspace: "unsigned long", vspace: "unsigned long", longDesc: "url", border: { type: "string", treatNullAsEmptyString: true } },
-    iframe: { src: "url", srcdoc: "string", name: "string", allowFullscreen: "boolean", width: "string", height: "string", referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, align: "string", scrolling: "string", frameBorder: "string", longDesc: "url", marginHeight: { type: "string", treatNullAsEmptyString: true }, marginWidth: { type: "string", treatNullAsEmptyString: true } },
+    img: { alt: "string", src: "url", srcset: "string", sizes: "string", crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, useMap: "string", isMap: "boolean", controls: "boolean", width: { type: "unsigned long", customGetter: true }, height: { type: "unsigned long", customGetter: true }, referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, decoding: { type: "enum", keywords: ["async", "sync", "auto"], defaultVal: "auto", invalidVal: "auto" }, loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" }, fetchPriority: { type: "enum", keywords: ["high", "low", "auto"], defaultVal: "auto", invalidVal: "auto" }, name: "string", lowsrc: "url", align: "string", hspace: "unsigned long", vspace: "unsigned long", longDesc: "url", border: { type: "string", treatNullAsEmptyString: true } },
+    iframe: { src: "url", srcdoc: "string", name: "string", allow: "string", allowFullscreen: "boolean", width: "string", height: "string", loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" }, referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] }, align: "string", scrolling: "string", frameBorder: "string", longDesc: "url", marginHeight: { type: "string", treatNullAsEmptyString: true }, marginWidth: { type: "string", treatNullAsEmptyString: true } },
     embed: { src: "url", type: "string", width: "string", height: "string", align: "string", name: "string" },
     object: { data: "url", type: "string", name: "string", useMap: "string", width: "string", height: "string", align: "string", archive: "string", code: "string", declare: "boolean", hspace: "unsigned long", standby: "string", vspace: "unsigned long", codeBase: "url", codeType: "string", border: { type: "string", treatNullAsEmptyString: true } },
     param: { name: "string", value: "string", valueType: "string" },
     video: { src: "url", poster: "url", width: { type: "unsigned long", customGetter: true }, height: { type: "unsigned long", customGetter: true }, autoplay: "boolean", loop: "boolean", controls: "boolean", defaultMuted: { type: "boolean", domAttrName: "muted" }, playsInline: "boolean", loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" }, preload: { type: "enum", keywords: ["none", "metadata", "auto"], defaultVal: "metadata", invalidVal: "metadata" }, crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" } },
     audio: { src: "url", autoplay: "boolean", loop: "boolean", controls: "boolean", defaultMuted: { type: "boolean", domAttrName: "muted" }, loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" }, preload: { type: "enum", keywords: ["none", "metadata", "auto"], defaultVal: "metadata", invalidVal: "metadata" }, crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" } },
-    source: { src: "url", type: "string", srcset: "string", sizes: "string", media: "string" },
+    source: { src: "url", type: "string", srcset: "string", sizes: "string", media: "string", width: "unsigned long", height: "unsigned long" },
     track: { kind: { type: "enum", keywords: ["subtitles", "captions", "descriptions", "chapters", "metadata"], defaultVal: "subtitles", invalidVal: "metadata" }, src: "url", srclang: "string", label: "string", default: "boolean" },
-    form: { acceptCharset: { type: "string", domAttrName: "accept-charset" }, action: "url", autocomplete: { type: "enum", keywords: ["on", "off"], defaultVal: "on" }, enctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], defaultVal: "application/x-www-form-urlencoded" }, encoding: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], defaultVal: "application/x-www-form-urlencoded", domAttrName: "enctype" }, method: { type: "enum", keywords: ["get", "post", "dialog"], defaultVal: "get" }, name: "string", noValidate: "boolean", target: "string" },
+    form: { acceptCharset: { type: "string", domAttrName: "accept-charset" }, action: "url", autocomplete: { type: "enum", keywords: ["on", "off"], defaultVal: "on" }, enctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], defaultVal: "application/x-www-form-urlencoded" }, encoding: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], defaultVal: "application/x-www-form-urlencoded", domAttrName: "enctype" }, method: { type: "enum", keywords: ["get", "post", "dialog"], defaultVal: "get" }, name: "string", noValidate: "boolean", target: "string", rel: "string" },
     fieldset: { disabled: "boolean", name: "string" },
     legend: { align: "string" },
     label: { htmlFor: { type: "string", domAttrName: "for" } },
     input: { accept: "string", alt: "string", autocomplete: { type: "string", customGetter: true }, defaultChecked: { type: "boolean", domAttrName: "checked" }, dirName: "string", disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", height: { type: "unsigned long", customGetter: true }, max: "string", maxLength: "limited long", min: "string", minLength: "limited long", multiple: "boolean", name: "string", pattern: "string", placeholder: "string", readOnly: "boolean", required: "boolean", size: { type: "limited unsigned long", defaultVal: 20 }, src: "url", step: "string", type: { type: "enum", keywords: ["hidden", "text", "search", "tel", "url", "email", "password", "date", "time", "datetime-local", "number", "range", "color", "checkbox", "radio", "file", "submit", "image", "reset", "button", "month", "week"], defaultVal: "text" }, width: { type: "unsigned long", customGetter: true }, defaultValue: { type: "string", domAttrName: "value" }, align: "string", useMap: "string" },
-    button: { disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post", "dialog"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", name: "string", type: { type: "enum", keywords: ["submit", "reset", "button"], defaultVal: "submit" }, value: "string" },
+    button: { command: "string", disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post", "dialog"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", name: "string", type: { type: "enum", keywords: ["submit", "reset", "button"], defaultVal: "submit" }, value: "string" },
     select: { autocomplete: { type: "string", customGetter: true }, disabled: "boolean", multiple: "boolean", name: "string", required: "boolean", size: { type: "unsigned long", defaultVal: 0 } },
     optgroup: { disabled: "boolean", label: "string" },
     option: { disabled: "boolean", defaultSelected: { type: "boolean", domAttrName: "selected" } },
@@ -3924,13 +3973,13 @@
     meta: { name: "string", httpEquiv: { type: "string", domAttrName: "http-equiv" }, content: "string", media: "string", scheme: "string" },
     style: { media: "string", type: "string" },
     html: { version: "string" },
-    script: { type: "string", noModule: "boolean", charset: "string", defer: "boolean", crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, integrity: "string", event: "string", htmlFor: { type: "string", domAttrName: "for" } },
+    script: { type: "string", src: "url", noModule: "boolean", charset: "string", defer: "boolean", crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" }, integrity: "string", fetchPriority: { type: "enum", keywords: ["high", "low", "auto"], defaultVal: "auto", invalidVal: "auto" }, event: "string", htmlFor: { type: "string", domAttrName: "for" } },
     slot: { name: "string" },
     ins: { cite: "url", dateTime: "string" },
     del: { cite: "url", dateTime: "string" },
-    details: { open: "boolean" },
+    details: { name: "string", open: "boolean" },
     menu: { compact: "boolean" },
-    dialog: { open: "boolean" },
+    dialog: { open: "boolean", closedBy: { type: "enum", keywords: ["any", "closerequest", "none"], defaultVal: "any", invalidVal: "any" } },
     marquee: { bgColor: "string", height: "string", hspace: "unsigned long", scrollAmount: { type: "unsigned long", defaultVal: 6 }, scrollDelay: { type: "unsigned long", defaultVal: 85 }, trueSpeed: "boolean", vspace: "unsigned long", width: "string" },
     frameset: { cols: "string", rows: "string" },
     frame: { name: "string", scrolling: "string", src: "url", frameBorder: "string", longDesc: "url", noResize: "boolean", marginHeight: { type: "string", treatNullAsEmptyString: true }, marginWidth: { type: "string", treatNullAsEmptyString: true } },
