@@ -4662,3 +4662,61 @@ fn official_html_element_brands_match_idlharness_objects() {
     assert_eq!(v["formData"], true, "{v}");
     assert_eq!(v["trackEv"], true, "{v}");
 }
+
+#[test]
+fn htmlelement_idl_members_match_official_interface() {
+    let mut page = open("<p id=t>x</p>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const el = document.getElementById("t");
+              const proto = HTMLElement.prototype;
+              let datasetThrew = false;
+              try { void proto.dataset; } catch (e) { datasetThrew = e instanceof TypeError; }
+              el.popover = "auto";
+              const opened = el.togglePopover();
+              el.hidePopover();
+              let internalsThrew = false;
+              try { el.attachInternals(); } catch (e) { internalsThrew = e.name === "NotSupportedError"; }
+              return {
+                writing: el.writingSuggestions,
+                writingOnProto: "writingSuggestions" in proto,
+                autocorrect: el.autocorrect,
+                headingOffset: el.headingOffset,
+                headingReset: el.headingReset,
+                attach: typeof proto.attachInternals === "function",
+                show: typeof proto.showPopover === "function",
+                hide: typeof proto.hidePopover === "function",
+                toggle: typeof proto.togglePopover === "function",
+                opened,
+                datasetThrew,
+                datasetOwn: Object.prototype.hasOwnProperty.call(proto, "dataset"),
+                onEnter: proto.onmouseenter,
+                onClickThrew: (function () { try { void proto.onclick; return false; } catch (e) { return e instanceof TypeError; } })(),
+                toggleLen: proto.togglePopover.length,
+                internalsThrew,
+                internalsCtor: typeof ElementInternals === "function",
+                dataset: typeof el.dataset === "object",
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["writing"], "true", "{v}");
+    assert_eq!(v["writingOnProto"], true, "{v}");
+    assert_eq!(v["autocorrect"], true, "{v}");
+    assert_eq!(v["headingOffset"], 0, "{v}");
+    assert_eq!(v["headingReset"], false, "{v}");
+    assert_eq!(v["attach"], true, "{v}");
+    assert_eq!(v["show"], true, "{v}");
+    assert_eq!(v["hide"], true, "{v}");
+    assert_eq!(v["toggle"], true, "{v}");
+    assert_eq!(v["opened"], true, "{v}");
+    assert_eq!(v["datasetThrew"], true, "{v}");
+    assert_eq!(v["datasetOwn"], true, "{v}");
+    assert_eq!(v["onEnter"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["onClickThrew"], true, "{v}");
+    assert_eq!(v["toggleLen"], 0, "{v}");
+    assert_eq!(v["internalsThrew"], true, "{v}");
+    assert_eq!(v["internalsCtor"], true, "{v}");
+    assert_eq!(v["dataset"], true, "{v}");
+}

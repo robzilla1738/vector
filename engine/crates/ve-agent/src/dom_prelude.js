@@ -2169,6 +2169,7 @@
     get scrollLeft() { return D("box", this.__h, "scrollLeft"); }
     set scrollLeft(v) { D("setScroll", this.__h, "x", Number(v) || 0); this.dispatchEvent(new Event("scroll")); }
     get dataset() {
+      if (!this || this.__h == null) throw new TypeError("Illegal invocation");
       if (!(this instanceof HTMLElement) && !(this instanceof SVGElement) && !(this instanceof MathMLElement)) {
         return undefined;
       }
@@ -2599,6 +2600,65 @@
     set popover(v) {
       if (v == null) this.removeAttribute("popover");
       else this.setAttribute("popover", String(v));
+    }
+    get writingSuggestions() {
+      const v = (this.getAttribute("writingsuggestions") || "").toLowerCase();
+      return v === "false" ? "false" : "true";
+    }
+    set writingSuggestions(v) { this.setAttribute("writingsuggestions", String(v)); }
+    get autocorrect() {
+      const v = this.getAttribute("autocorrect");
+      if (v == null) return true;
+      return String(v).toLowerCase() !== "false" && String(v).toLowerCase() !== "off";
+    }
+    set autocorrect(v) {
+      if (v) this.setAttribute("autocorrect", "");
+      else this.removeAttribute("autocorrect");
+    }
+    get headingOffset() {
+      const n = parseInt(this.getAttribute("headingoffset"), 10);
+      if (!isFinite(n) || n < 0) return 0;
+      return n > 8 ? 8 : n;
+    }
+    set headingOffset(v) {
+      let n = Number(v);
+      if (!isFinite(n) || n < 0) n = 0;
+      if (n > 8) n = 8;
+      this.setAttribute("headingoffset", String(n | 0));
+    }
+    get headingReset() { return this.hasAttribute("headingreset"); }
+    set headingReset(v) { v ? this.setAttribute("headingreset", "") : this.removeAttribute("headingreset"); }
+    attachInternals() {
+      if (this._internals) {
+        throw new DOMException("ElementInternals already attached", "NotSupportedError");
+      }
+      const name = String(this.localName || "").toLowerCase();
+      if (!registry.has(name)) {
+        throw new DOMException("attachInternals is only for custom elements", "NotSupportedError");
+      }
+      this._internals = makeElementInternals(this);
+      return this._internals;
+    }
+    showPopover() {
+      if (this.popover == null) {
+        throw new DOMException("Not a popover", "NotSupportedError");
+      }
+      this._popoverOpen = true;
+    }
+    hidePopover() {
+      if (this.popover == null) {
+        throw new DOMException("Not a popover", "NotSupportedError");
+      }
+      this._popoverOpen = false;
+    }
+    togglePopover() {
+      const opts = arguments.length ? arguments[0] : undefined;
+      if (this.popover == null) {
+        throw new DOMException("Not a popover", "NotSupportedError");
+      }
+      const force = opts && typeof opts === "object" ? opts.force : (typeof opts === "boolean" ? opts : undefined);
+      this._popoverOpen = force === undefined ? !this._popoverOpen : !!force;
+      return !!this._popoverOpen;
     }
     get innerText() { return innerTextOf(this); }
     set innerText(v) { setInnerText(this, v); }
@@ -3454,6 +3514,33 @@
   }
   Object.defineProperty(ValidityState.prototype, Symbol.toStringTag, { value: "ValidityState", configurable: true });
   function validityState() { return Object.create(ValidityState.prototype); }
+  class CustomStateSet extends Set {}
+  Object.defineProperty(CustomStateSet.prototype, Symbol.toStringTag, { value: "CustomStateSet", configurable: true });
+  class ElementInternals {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get shadowRoot() { return this._el && this._el.shadowRoot ? this._el.shadowRoot : null; }
+    get form() { return this._el && this._el.form ? this._el.form : null; }
+    get willValidate() { return true; }
+    get validity() { return this._validity || (this._validity = validityState()); }
+    get validationMessage() { return ""; }
+    get labels() { return this._labels || (this._labels = emptyNodeList()); }
+    get states() { return this._states || (this._states = new CustomStateSet()); }
+    setFormValue() {}
+    setValidity() {}
+    checkValidity() { return true; }
+    reportValidity() { return true; }
+  }
+  Object.defineProperty(ElementInternals.prototype, Symbol.toStringTag, { value: "ElementInternals", configurable: true });
+  function makeElementInternals(el) {
+    const internals = Object.create(ElementInternals.prototype);
+    internals._el = el;
+    return internals;
+  }
+  function emptyNodeList() {
+    const out = [];
+    out.item = (i) => out[i] || null;
+    return out;
+  }
   class DOMStringList {
     constructor() { throw new TypeError("Illegal constructor"); }
     item(i) {
@@ -3472,11 +3559,13 @@
       return (this._items || []).indexOf(String(s)) >= 0;
     }
   }
+  const getDOMStringListLength = function () {
+    if (!Object.prototype.hasOwnProperty.call(this, "_items")) throw new TypeError("Illegal invocation");
+    return this._items.length;
+  };
+  Object.defineProperty(getDOMStringListLength, "name", { value: "get length", configurable: true });
   Object.defineProperty(DOMStringList.prototype, "length", {
-    get() {
-      if (!Object.prototype.hasOwnProperty.call(this, "_items")) throw new TypeError("Illegal invocation");
-      return this._items.length;
-    },
+    get: getDOMStringListLength,
     enumerable: true,
     configurable: true,
   });
@@ -4913,6 +5002,7 @@
     HTMLMeterElement, HTMLDialogElement, HTMLMenuElement, HTMLDataElement,
     HTMLVideoElement, HTMLAudioElement, HTMLTrackElement, HTMLPictureElement, HTMLMediaElement,
     MediaError, TimeRanges, TextTrack, TextTrackList, TextTrackCueList, ValidityState, DOMStringList, External,
+    ElementInternals, CustomStateSet,
     Image, Audio, Option, external: windowExternal,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
@@ -5535,7 +5625,13 @@
         const s = desc.set;
         const getter = function () {
           if (!(this instanceof ctor)) {
-            if (name === "onreadystatechange") return undefined;
+            if (
+              name === "onreadystatechange"
+              || name === "onmouseenter"
+              || name === "onmouseleave"
+            ) {
+              return undefined;
+            }
             throw new TypeError("Illegal invocation");
           }
           return g.call(this);
@@ -5546,7 +5642,13 @@
         if (typeof s === "function") {
           const setter = function (v) {
             if (!(this instanceof ctor)) {
-              if (name === "onreadystatechange") return undefined;
+              if (
+                name === "onreadystatechange"
+                || name === "onmouseenter"
+                || name === "onmouseleave"
+              ) {
+                return undefined;
+              }
               throw new TypeError("Illegal invocation");
             }
             return s.call(this, v);
@@ -5568,6 +5670,10 @@
       }
       try { Object.defineProperty(proto, name, desc); } catch (e) {}
     }
+  }
+  {
+    const ds = Object.getOwnPropertyDescriptor(Element.prototype, "dataset");
+    if (ds) Object.defineProperty(HTMLElement.prototype, "dataset", ds);
   }
   brandWrap(Document);
   brandWrap(Node);
