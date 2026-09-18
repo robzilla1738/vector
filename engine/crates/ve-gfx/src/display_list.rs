@@ -6,7 +6,8 @@ use ve_core::{Edges, NodeId, Point, Rect, Size};
 use ve_layout::LayoutTree;
 use ve_style::{
     BackgroundImage, BackgroundPosition, BackgroundRepeat, BackgroundSize, Filter, FontFamily,
-    FontStyle, FontWeight, LengthPercentageAuto, ObjectFit, Rgba, StyleTree, TransformOp,
+    FontStyle, FontWeight, LengthPercentageAuto, ObjectFit, Rgba, StyleTree, TextDecorationLine,
+    TransformOp,
 };
 
 use crate::image::ImageHandle;
@@ -369,6 +370,17 @@ impl DisplayList {
                         style: style.font_style,
                         family: style.font_family.clone(),
                     }));
+                    if style.text_decoration_line == TextDecorationLine::Underline {
+                        list.push(DisplayItem::Rect {
+                            rect: Rect::new(
+                                item.rect.x(),
+                                item.rect.y() + item.baseline + 1.0,
+                                item.rect.width().max(1.0),
+                                1.0,
+                            ),
+                            color: style.color,
+                        });
+                    }
                 }
             } else if !item.rect.is_empty() && style.visibility == ve_style::Visibility::Visible {
                 if !style.box_shadow.is_none() {
@@ -409,7 +421,7 @@ impl DisplayList {
                         } else {
                             (
                                 object_fit_size(style.object_fit),
-                                BackgroundPosition::default(),
+                                style.object_position,
                                 BackgroundRepeat::NoRepeat,
                             )
                         };
@@ -748,6 +760,31 @@ mod tests {
     }
 
     #[test]
+    fn from_layout_emits_text_underline() {
+        let html = "<style>body{margin:0} #t{text-decoration:underline}</style><p id=t>Hi</p>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#t").unwrap()[0];
+        assert_eq!(
+            styles.style(id).text_decoration_line,
+            TextDecorationLine::Underline
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(i, DisplayItem::Rect { .. }))
+                && list
+                    .items()
+                    .iter()
+                    .any(|i| matches!(i, DisplayItem::Text(run) if run.text == "Hi")),
+            "underline missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
     fn from_layout_emits_background_size_cover() {
         let html = "<style>body{margin:0} #g{width:40px;height:20px;background-image:url(\"https://a.test/x.png\");background-size:cover;background-repeat:no-repeat;background-position:center}</style>\
                     <div id=g></div>";
@@ -787,6 +824,42 @@ mod tests {
         assert!((dest.width() - 40.0).abs() < f32::EPSILON);
         assert!((src.height() - 5.0).abs() < f32::EPSILON);
         assert!((src.y() - 2.5).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn from_layout_emits_object_position() {
+        let html = "<style>body{margin:0} img{display:block;width:40px;height:20px;object-fit:none;object-position:right bottom}</style>\
+                    <img id=g>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(
+            styles.style(id).object_position.x,
+            ve_style::LengthPercentage::Percent(100.0)
+        );
+        assert_eq!(
+            styles.style(id).object_position.y,
+            ve_style::LengthPercentage::Percent(100.0)
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image {
+                    position,
+                    repeat: BackgroundRepeat::NoRepeat,
+                    ..
+                } if position.x == ve_style::LengthPercentage::Percent(100.0)
+                    && position.y == ve_style::LengthPercentage::Percent(100.0)
+            )),
+            "object-position missing: {:?}",
+            list.items()
+        );
     }
 
     #[test]

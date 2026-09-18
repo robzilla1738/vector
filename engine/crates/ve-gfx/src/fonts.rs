@@ -131,6 +131,24 @@ impl FontSystem {
     /// paint real glyphs. Safe to call more than once.
     pub fn load_system_fonts(&mut self) {
         self.db.load_system_fonts();
+        self.load_known_ui_fonts();
+    }
+
+    /// Loads Inter Regular from known install paths when the fontconfig
+    /// family name does not resolve (Linux CI without a full Inter family).
+    pub fn load_known_ui_fonts(&mut self) {
+        const CANDIDATES: &[&str] = &[
+            "/usr/share/fonts/truetype/macos/Inter-Regular.ttf",
+            "/usr/share/fonts/truetype/inter/Inter-Regular.ttf",
+            "/usr/share/fonts/truetype/inter/Inter[slnt,wght].ttf",
+            "/Library/Fonts/Inter-Regular.ttf",
+        ];
+        for path in CANDIDATES {
+            if let Ok(bytes) = std::fs::read(path) {
+                self.load_font_data(bytes);
+                break;
+            }
+        }
     }
 
     /// Sets the concrete family used for a generic one (e.g. `sans-serif`).
@@ -266,7 +284,7 @@ impl FontSystem {
         let FontSystem { db, scaler } = self;
         db.with_face_data(id, |bytes, index| {
             let font = FontRef::from_index(bytes, index as usize)?;
-            let mut built = scaler.builder(font).size(size).hint(true).build();
+            let mut built = scaler.builder(font).size(size).hint(false).build();
             let image = Render::new(&[
                 Source::ColorOutline(0),
                 Source::ColorBitmap(StrikeWith::BestFit),

@@ -1381,4 +1381,37 @@ mod tests {
             expected
         );
     }
+
+    #[test]
+    fn aspect_ratio_sizes_auto_axis() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}\
+             #w{width:160px;aspect-ratio:16/9}\
+             #h{display:inline-block;height:90px;aspect-ratio:16/9}</style>\
+             <div id=w></div><div id=h></div>",
+            400.0,
+        );
+        let wide = rect(&tree, &engine, &doc, "#w");
+        assert!(
+            (wide.width() - 160.0).abs() < 0.5,
+            "width stays specified, got {}",
+            wide.width()
+        );
+        assert!(
+            (wide.height() - 90.0).abs() < 0.5,
+            "height from 16/9, got {}",
+            wide.height()
+        );
+        let tall = rect(&tree, &engine, &doc, "#h");
+        assert!(
+            (tall.height() - 90.0).abs() < 0.5,
+            "height stays specified, got {}",
+            tall.height()
+        );
+        assert!(
+            (tall.width() - 160.0).abs() < 0.5,
+            "width from 16/9, got {}",
+            tall.width()
+        );
+    }
 }

@@ -133,7 +133,7 @@ fn paint_text(
             scene
                 .draw_glyphs(&font)
                 .font_size(run.size)
-                .hint(true)
+                .hint(false)
                 .brush(color(run.color))
                 .transform(transform * origin)
                 .draw(

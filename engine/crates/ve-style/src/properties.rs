@@ -372,6 +372,8 @@ enum ValueSyntax {
     GridLine,
     /// The `box-shadow` property.
     BoxShadow,
+    /// `aspect-ratio`.
+    AspectRatio,
     /// `background-size`.
     BackgroundSize,
     /// `background-position`.
@@ -755,6 +757,15 @@ mod conv {
         match v {
             SpecifiedValue::Number(n) if *n >= 0.0 => Some(*n),
             SpecifiedValue::Integer(i) if *i >= 0 => Some(*i as f32),
+            _ => None,
+        }
+    }
+
+    pub fn aspect_ratio(v: &SpecifiedValue, _: &ConvertContext) -> Option<Option<f32>> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
+            SpecifiedValue::Number(n) if *n > 0.0 => Some(Some(*n)),
+            SpecifiedValue::Integer(i) if *i > 0 => Some(Some(*i as f32)),
             _ => None,
         }
     }
@@ -1156,6 +1167,16 @@ property_table! {
     BorderBottomLeftRadius: "border-bottom-left-radius" => border_bottom_left_radius: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
     /// `object-fit`
     ObjectFit: "object-fit" => object_fit: ObjectFit = ObjectFit::Fill, inherited = false, syntax = Single, convert = conv::kw::<ObjectFit>;
+    /// `object-position` (same value space as `background-position`)
+    ObjectPosition: "object-position" => object_position: BackgroundPosition = BackgroundPosition {
+        x: LengthPercentage::Percent(50.0),
+        y: LengthPercentage::Percent(50.0),
+    }, inherited = false, syntax = BackgroundPosition, convert = conv::background_position;
+    /// `transform-origin` (percentages refer to the border box)
+    TransformOrigin: "transform-origin" => transform_origin: BackgroundPosition = BackgroundPosition {
+        x: LengthPercentage::Percent(50.0),
+        y: LengthPercentage::Percent(50.0),
+    }, inherited = false, syntax = BackgroundPosition, convert = conv::background_position;
     /// `box-shadow` (first shadow only)
     BoxShadow: "box-shadow" => box_shadow: BoxShadow = BoxShadow {
         dx: 0.0,
@@ -1199,6 +1220,8 @@ property_table! {
         blur: 0.0,
         color: Rgba::TRANSPARENT,
     }, inherited = false, syntax = BoxShadow, convert = conv::box_shadow;
+    /// `aspect-ratio` (`auto` is `None`)
+    AspectRatio: "aspect-ratio" => aspect_ratio: Option<f32> = None, inherited = false, syntax = AspectRatio, convert = conv::aspect_ratio;
 }
 
 impl ComputedStyle {
@@ -1270,7 +1293,6 @@ impl ComputedStyle {
 /// displayed, where, or whether it is visible. Used by the coverage counter
 /// (see [`crate::coverage`]).
 pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
-    "aspect-ratio",
     "contain",
     "content-visibility",
     "columns",
@@ -1352,7 +1374,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "scroll-snap-align",
     "overscroll-behavior",
     "touch-action",
-    "object-position",
     "image-rendering",
     "quotes",
     "counter-reset",
@@ -1370,7 +1391,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "speak",
     "src",
     "unicode-range",
-    "aspect-ratio",
     "contain",
     "content-visibility",
     "columns",
@@ -1381,7 +1401,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "translate",
     "rotate",
     "scale",
-    "transform-origin",
     "transform-style",
     "transform-box",
     "perspective",
@@ -2114,6 +2133,36 @@ fn specified_lpa(v: &SpecifiedValue) -> Option<LengthPercentageAuto> {
     }
 }
 
+fn parse_aspect_ratio(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    if input
+        .try_parse(|i| i.expect_ident_matching("auto"))
+        .is_ok()
+    {
+        return Some(SpecifiedValue::Keyword("auto".into()));
+    }
+    let width = match input.next().ok()?.clone() {
+        Token::Number { value, .. } => value,
+        _ => return None,
+    };
+    if width <= 0.0 {
+        return None;
+    }
+    if input.is_exhausted() {
+        return Some(SpecifiedValue::Number(width));
+    }
+    if input.expect_delim('/').is_err() {
+        return None;
+    }
+    let height = match input.next().ok()?.clone() {
+        Token::Number { value, .. } => value,
+        _ => return None,
+    };
+    if height <= 0.0 {
+        return None;
+    }
+    Some(SpecifiedValue::Number(width / height))
+}
+
 fn parse_background_size(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     let a = parse_component(input)?;
     if let SpecifiedValue::Keyword(k) = &a {
@@ -2283,6 +2332,9 @@ impl PropertyId {
                 .ok()?,
             ValueSyntax::BackgroundPosition => css_wide(input)
                 .or_else(|()| parse_background_position(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::AspectRatio => css_wide(input)
+                .or_else(|()| parse_aspect_ratio(input).ok_or(()))
                 .ok()?,
         };
         input.expect_exhausted().ok()?;
@@ -3021,6 +3073,13 @@ mod tests {
         ok("background-position", "center");
         ok("background-position", "right 20px");
         ok("background-repeat", "no-repeat");
+        ok("aspect-ratio", "auto");
+        ok("aspect-ratio", "16 / 9");
+        ok("aspect-ratio", "1.5");
+        ok("object-position", "center");
+        ok("object-position", "right 20px");
+        ok("transform-origin", "center");
+        ok("transform-origin", "0 0");
         ok("filter", "blur(4px)");
         ok("filter", "none");
         ok("animation-name", "fade");
@@ -3071,7 +3130,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 113);
+        assert_eq!(PropertyId::ALL.len(), 116);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

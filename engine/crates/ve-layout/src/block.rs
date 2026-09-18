@@ -184,6 +184,16 @@ pub fn layout_box_at(
             }
             // A replaced element with `width: auto` takes its intrinsic width,
             // or the specified height scaled by the intrinsic ratio.
+            None if style.aspect_ratio.is_some() && !style.height.is_auto() => {
+                let ratio = style.aspect_ratio.unwrap_or(1.0);
+                let h = style.height.maybe_resolve(cb.height).unwrap_or(0.0);
+                let h = if style.box_sizing == BoxSizing::BorderBox {
+                    (h - bp_v).max(0.0)
+                } else {
+                    h
+                };
+                clamp_width(&style, h * ratio, cb.width, bp_h)
+            }
             None if bx.replaced.is_some() => {
                 let intrinsic = bx.replaced.unwrap_or_default();
                 let from_height = style
@@ -266,6 +276,10 @@ pub fn layout_box_at(
         (h - bp_v).max(0.0)
     } else {
         let specified = child_cb_height.filter(|_| !style.height.is_auto());
+        let from_ratio = style
+            .aspect_ratio
+            .filter(|_| specified.is_none())
+            .map(|ratio| content_width / ratio.max(f32::EPSILON));
         let replaced_auto = bx
             .replaced
             .filter(|_| specified.is_none())
@@ -278,7 +292,10 @@ pub fn layout_box_at(
                     intrinsic.height
                 }
             });
-        let h = specified.or(replaced_auto).unwrap_or(content_height);
+        let h = specified
+            .or(replaced_auto)
+            .or(from_ratio)
+            .unwrap_or(content_height);
         clamp_height(&style, h, cb.height, bp_v)
     };
 

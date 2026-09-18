@@ -415,7 +415,7 @@ impl Chrome {
         self.label(
             list,
             Point::new(16.0, 30.0),
-            &format!("{space} ▾"),
+            space,
             13.0,
             t.sb_ink_0,
         );
@@ -440,7 +440,7 @@ impl Chrome {
                 let letter = host_of(&pin.url)
                     .chars()
                     .next()
-                    .unwrap_or('·')
+                    .unwrap_or('?')
                     .to_ascii_uppercase()
                     .to_string();
                 self.label(list, Point::new(pin_x + 14.0, 74.0), &letter, 13.0, t.sb_ink_0);
@@ -626,7 +626,7 @@ impl Chrome {
         self.label(
             list,
             Point::new(x + 24.0, window.height - 32.0),
-            "Ask the page…",
+            "Ask the page...",
             12.0,
             t.ink_2,
         );
@@ -711,7 +711,7 @@ impl Chrome {
                 self.label(
                     list,
                     Point::new(card.x() + 20.0, card.y() + 64.0),
-                    &format!("{} bookmarks · {} downloads", self.bookmarks.len(), self.download_names.len()),
+                    &format!("{} bookmarks / {} downloads", self.bookmarks.len(), self.download_names.len()),
                     12.0,
                     t.ink_1,
                 );
@@ -786,7 +786,7 @@ fn truncate(s: &str, max: usize) -> String {
     let mut out = String::new();
     for (i, ch) in s.chars().enumerate() {
         if i >= max {
-            out.push('…');
+            out.push_str("...");
             break;
         }
         out.push(ch);
@@ -832,7 +832,7 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert!(texts.iter().any(|t| t.starts_with("Personal")), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "Personal"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Example"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Vector Engine"), "{texts:?}");
         chrome.backend = ChromeBackend::Chromium;

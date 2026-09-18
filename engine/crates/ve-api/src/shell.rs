@@ -358,6 +358,7 @@ impl NativeBrowser {
             .map(|p| (p.viewport().width, p.viewport().height))
             .unwrap_or((1280.0, 720.0));
         self.resize_surface(w, h);
+        self.presented = false;
     }
 
     /// True after a successful GPU present of the live page.
@@ -811,6 +812,7 @@ impl NativeBrowser {
         }
         if self.chrome_enabled {
             let list = self.paint_shell_list()?;
+            self.resize_surface(self.window_size.width, self.window_size.height);
             let mut renderer = SoftwareRenderer::with_system_fonts();
             self.surface = renderer
                 .render(
@@ -2541,6 +2543,7 @@ mod tests {
             before,
             "wheel under product chrome must not rebuild the display list"
         );
+        browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("shell png");
         assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
