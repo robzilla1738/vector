@@ -161,7 +161,7 @@ const ADD_STEPS: &str = r##"(function () {
   var input = todoInput();
   if (input) {
     kind = "todomvc";
-    var addStarted = performance.now();
+    var addStarted = Date.now();
     for (var i = 0; i < 100; i++) {
       input.focus();
       input.value = "Task-" + i;
@@ -169,7 +169,7 @@ const ADD_STEPS: &str = r##"(function () {
       fire(input, "change");
       enter(input);
     }
-    var addMs = Math.round(performance.now() - addStarted);
+    var addMs = Date.now() - addStarted;
     var added = countTodos();
     window.__veBench = { kind: kind, ok: added >= 100, added: added, remaining: added, addMs: addMs };
     return JSON.stringify(window.__veBench);
@@ -239,14 +239,14 @@ const FINISH_STEPS: &str = r##"(function () {
   var prev = window.__veBench || { kind: "unknown", ok: false };
   var kind = prev.kind || "unknown";
   if (kind === "todomvc") {
-    var finishStarted = performance.now();
+    var finishStarted = Date.now();
     try {
       completeAndDeleteTodos();
     } catch (e) {
       window.__veBench = { kind: kind, added: countTodos(), remaining: countTodos(), err: String(e), addMs: prev.addMs };
       return JSON.stringify(window.__veBench);
     }
-    var finishMs = Math.round(performance.now() - finishStarted);
+    var finishMs = Date.now() - finishStarted;
     var added = prev.added || countTodos();
     var remaining = countTodos();
     window.__veBench = { kind: kind, added: added, remaining: remaining, addMs: prev.addMs, finishMs: finishMs };
