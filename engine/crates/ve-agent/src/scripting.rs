@@ -314,7 +314,9 @@ impl Page {
                 "scripting is not enabled on this page",
             ));
         };
-        if origin != "vector:prelude" && origin != "vector:dom" {
+        // `evaluate()` sets EVALUATE_DEADLINE first. Do not clobber it with
+        // the shorter document-script cutoff.
+        if origin != "vector:prelude" && origin != "vector:dom" && origin != "vector:evaluate" {
             vm.set_call_deadline(Some(script_deadline()));
         }
         let result = vm.eval_with_host(&mut PageHost { page: self }, source, origin);
