@@ -871,6 +871,25 @@ fn run_one(
                 let _ = page.evaluate(js);
             }
             page.settle(3_000);
+            if name.starts_with("NewsSite") {
+                let _ = page.evaluate(
+                    "(function(){ if (!location.hash) location.hash = '#/home'; return location.hash; })()",
+                );
+                for _ in 0..40 {
+                    page.settle(200);
+                    let ready = page
+                        .evaluate("(function(){ return !!document.querySelector('#navbar-dropdown-toggle'); })()")
+                        .ok();
+                    let ready = match ready {
+                        Some(serde_json::Value::Bool(true)) => true,
+                        Some(serde_json::Value::String(s)) if s == "true" => true,
+                        _ => false,
+                    };
+                    if ready {
+                        break;
+                    }
+                }
+            }
         }
         let open_ms = open_started.elapsed().as_millis();
         let started = Instant::now();
