@@ -34,7 +34,8 @@
     "remaining": [
       "Editor-CodeMirror",
       "Editor-TipTap"
-    ]
+    ],
+    "independentlyVerified": "30 of 32 official Speedometer 3.0 names from tests.mjs have add/prepare/render evidence on this host. Editor-CodeMirror and Editor-TipTap OOM. Not a browserbench.org published score."
   },
   "results": [
     { "name": "speedometer.3.0.TodoMVC-JavaScript-ES5", "status": "PASS", "p95_ms": 20209 },
