@@ -785,12 +785,10 @@ pub(crate) fn host_call(
             // Disconnected trees and shadow roots are not gated by the
             // parser insertion point — ARIA idrefs must still resolve.
             let gate = page.in_browsing_tree(root);
-            Ok(std::iter::once(root)
-                .chain(page.doc.descendants(root))
-                .find(|&id| {
-                    (!gate || page.parser_visible(id))
-                        && page.doc.element(id).and_then(|e| e.id()) == Some(want.as_str())
-                })
+            Ok(page
+                .doc
+                .element_by_id_in(root, &want)
+                .filter(|&id| !gate || page.parser_visible(id))
                 .map_or(JsValue::Null, pack))
         }
         "getElementsByTagName" => {

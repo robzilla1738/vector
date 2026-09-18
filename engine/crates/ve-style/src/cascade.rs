@@ -35,6 +35,17 @@ use crate::stylesheet::{
 use crate::ua::UA_STYLESHEET;
 use crate::values::{Content, Direction};
 
+/// `#todo-list` / `#new-todo` without combinators or other simple selectors.
+fn simple_id_selector(selector: &str) -> Option<&str> {
+    let rest = selector.trim().strip_prefix('#')?;
+    if rest.is_empty() {
+        return None;
+    }
+    rest.bytes()
+        .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        .then_some(rest)
+}
+
 fn uses_auto_direction(doc: &Document, id: NodeId) -> bool {
     let Some(el) = doc.element(id) else {
         return false;
@@ -989,6 +1000,13 @@ impl StyleEngine {
         all: bool,
         visible: impl Fn(NodeId) -> bool,
     ) -> Result<Vec<NodeId>> {
+        if let Some(id) = simple_id_selector(selector) {
+            return Ok(doc
+                .element_by_id_in(root, id)
+                .filter(|&hit| hit != root && visible(hit))
+                .into_iter()
+                .collect());
+        }
         let list = parse_selector_list(selector)?;
         let mut caches = SelectorCaches::default();
         let mut ctx = MatchingContext::new(
