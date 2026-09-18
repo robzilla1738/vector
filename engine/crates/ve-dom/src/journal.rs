@@ -270,6 +270,11 @@ pub struct MutationJournal {
     /// Highest revision of a style-relevant entry that was evicted. Style
     /// consumers fall behind only when they need an entry at or below this.
     style_evicted_through: Revision,
+    /// Revisions of retained style-irrelevant entries, oldest first.
+    /// Eviction pops from the back so a full journal of inserts does not
+    /// scan 64k records to drop a trailing `NodeCreated` (Complex-DOM
+    /// `showEntries`).
+    crowd_revs: VecDeque<Revision>,
 }
 
 impl Default for MutationJournal {
@@ -291,6 +296,7 @@ impl MutationJournal {
             capacity: capacity.max(1),
             oldest_retained: Revision::ZERO,
             style_evicted_through: Revision::ZERO,
+            crowd_revs: VecDeque::new(),
         }
     }
 
@@ -309,6 +315,9 @@ impl MutationJournal {
         if self.entries.is_empty() {
             self.oldest_retained = self.revision;
         }
+        if mutation.crowds_out_style() {
+            self.crowd_revs.push_back(self.revision);
+        }
         self.entries.push_back(JournalEntry {
             revision: self.revision,
             mutation,
@@ -317,13 +326,33 @@ impl MutationJournal {
     }
 
     fn evict_one(&mut self) {
-        let idx = self
-            .entries
-            .iter()
-            .position(|e| e.mutation.crowds_out_style())
-            .unwrap_or(0);
+        let idx = if self.crowd_revs.is_empty()
+            || self
+                .entries
+                .front()
+                .is_some_and(|e| e.mutation.crowds_out_style())
+        {
+            0
+        } else if let Some(&rev) = self.crowd_revs.back() {
+            let idx = self.entries.partition_point(|e| e.revision < rev);
+            if idx < self.entries.len() && self.entries[idx].revision == rev {
+                idx
+            } else {
+                0
+            }
+        } else {
+            0
+        };
         if let Some(e) = self.entries.remove(idx) {
-            if !e.mutation.crowds_out_style() && e.revision > self.style_evicted_through {
+            if e.mutation.crowds_out_style() {
+                if self.crowd_revs.back() == Some(&e.revision) {
+                    self.crowd_revs.pop_back();
+                } else if self.crowd_revs.front() == Some(&e.revision) {
+                    self.crowd_revs.pop_front();
+                } else {
+                    self.crowd_revs.retain(|r| *r != e.revision);
+                }
+            } else if e.revision > self.style_evicted_through {
                 self.style_evicted_through = e.revision;
             }
             if idx == 0 {
@@ -399,6 +428,7 @@ impl MutationJournal {
     /// Drops all retained entries without changing the revision.
     pub fn clear(&mut self) {
         self.entries.clear();
+        self.crowd_revs.clear();
         self.oldest_retained = self.revision.next();
     }
 }
@@ -471,6 +501,29 @@ mod tests {
         j.record(attr(3));
         assert!(j.style_entries_since(Revision::ZERO).is_none());
         assert!(j.style_entries_since(first).is_some());
+    }
+
+    #[test]
+    fn evicting_crowd_records_from_a_full_journal_is_not_linear_in_capacity() {
+        let mut j = MutationJournal::with_capacity(8_192);
+        j.record(attr(1));
+        for i in 0..8_191 {
+            j.record(geom(i));
+        }
+        let started = std::time::Instant::now();
+        for i in 0..8_192 {
+            j.record(created(i));
+        }
+        let ms = started.elapsed().as_millis();
+        assert_eq!(j.len(), 8_192);
+        assert!(
+            j.style_entries_since(Revision::ZERO).is_some(),
+            "evicting NodeCreated must keep the leading attribute"
+        );
+        assert!(
+            ms < 200,
+            "8k crowd-out evictions from a full journal took {ms}ms"
+        );
     }
 
     #[test]
