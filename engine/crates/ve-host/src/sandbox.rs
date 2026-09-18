@@ -3,8 +3,8 @@
 //! Production: apply fails closed. Developer: `VECTOR_ENGINE_SANDBOX=0` skips.
 //! macOS uses `sandbox_init` (deny default, no network, no fork/exec). Linux
 //! uses Landlock (filesystem) then seccomp-bpf (no sockets, no exec). Windows
-//! uses a Job Object (no child processes), Low Integrity plus a write-denied
-//! TMP, then a WFP dynamic-session block on this executable. A socket
+//! uses a Job Object (no child processes), a WFP dynamic-session block, then
+//! Low Integrity plus a write-denied TMP. A socket
 //! denylist is not the whole sandbox — filesystem, env, and inherited
 //! descriptors are tightened here too.
 
@@ -425,13 +425,13 @@ fn deny_syscalls() -> Result<(), String> {
     Ok(())
 }
 
-/// Job Object, filesystem confinement, then WFP socket deny. Job Objects do
-/// not confine the filesystem or create sockets.
+/// Job Object, then WFP while the token is still Medium, then filesystem
+/// confinement. Low Integrity cannot open the WFP engine.
 #[cfg(windows)]
 fn windows() -> Result<(), String> {
     windows_job()?;
-    confine_filesystem()?;
-    deny_network()
+    deny_network()?;
+    confine_filesystem()
 }
 
 /// Job Object + child-process mitigation. The job handle is left open so
@@ -794,7 +794,7 @@ fn deny_network() -> Result<(), String> {
                     Anonymous: FWP_CONDITION_VALUE0_0 { byteBlob: app_id },
                 },
             };
-            let mut filter = FWPM_FILTER0 {
+            let filter = FWPM_FILTER0 {
                 displayData: windows_sys::Win32::NetworkManagement::WindowsFilteringPlatform::FWPM_DISPLAY_DATA0 {
                     name: name.as_mut_ptr(),
                     description: std::ptr::null_mut(),
@@ -866,11 +866,11 @@ mod tests {
         let windows_fn = src.find("fn windows()").expect("windows apply");
         let rest = &src[windows_fn..];
         let job = rest.find("windows_job()?").expect("job apply");
+        let net = rest.find("deny_network()?").expect("network apply");
         let fs = rest.find("confine_filesystem()").expect("fs apply");
-        let net = rest.find("deny_network()").expect("network apply");
         assert!(
-            job < fs && fs < net,
-            "Finding 2: Job Object, filesystem, then WFP socket deny"
+            job < net && net < fs,
+            "Finding 2: Job Object, WFP, then Low Integrity — WFP cannot open after IL drop"
         );
     }
 
