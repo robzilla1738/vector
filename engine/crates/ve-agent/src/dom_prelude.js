@@ -447,9 +447,14 @@
   class NodeList {}
   Object.defineProperty(NodeList, Symbol.hasInstance, {
     value(v) {
-      return (Array.isArray(v) && typeof (v && v.item) === "function")
-        || v instanceof LiveNodeList
-        || v instanceof RadioNodeList;
+      if (v == null || (typeof v !== "object" && typeof v !== "function")) return false;
+      if (Array.isArray(v) && typeof v.item === "function") return true;
+      let proto = Object.getPrototypeOf(v);
+      while (proto) {
+        if (proto === NodeList.prototype || proto === LiveNodeList.prototype) return true;
+        proto = Object.getPrototypeOf(proto);
+      }
+      return false;
     },
   });
   class LiveNodeList {
@@ -1065,10 +1070,8 @@
       const named = s ? (t.namedItem || HTMLCollection.prototype.namedItem).call(t, s) : null;
       if (named) return { configurable: true, enumerable: false, writable: false, value: named };
       return Object.getOwnPropertyDescriptor(Object.getPrototypeOf(t), p)
+        || Object.getOwnPropertyDescriptor(Object.prototype, p)
         || Object.getOwnPropertyDescriptor(t, p);
-    },
-    has(t, p) {
-      return htmlCollectionTraps.getOwnPropertyDescriptor(t, p) !== undefined;
     },
   };
 
@@ -1127,20 +1130,23 @@
       });
     }
     get value() {
-      const els = typeof this._fetch === "function" ? this._fetch() : [];
+      if (typeof this._fetch !== "function") throw new TypeError("Illegal invocation");
+      const els = this._fetch();
       for (let i = 0; i < els.length; i++) {
         if (els[i] && els[i].checked) return els[i].value;
       }
       return "";
     }
     set value(v) {
+      if (typeof this._fetch !== "function") throw new TypeError("Illegal invocation");
       const want = String(v);
-      const els = typeof this._fetch === "function" ? this._fetch() : [];
+      const els = this._fetch();
       for (let i = 0; i < els.length; i++) {
         if (els[i]) els[i].checked = els[i].value === want;
       }
     }
   }
+  Object.setPrototypeOf(RadioNodeList, NodeList);
   Object.setPrototypeOf(RadioNodeList.prototype, NodeList.prototype);
   Object.defineProperty(RadioNodeList.prototype, Symbol.toStringTag, { value: "RadioNodeList" });
 
@@ -1157,6 +1163,12 @@
       return new RadioNodeList(IDL_INTERNAL, () => collectionNamedHits(this._fetch(), n));
     }
   }
+  Object.defineProperty(HTMLFormControlsCollection.prototype, "namedItem", {
+    enumerable: true,
+    configurable: true,
+    writable: true,
+    value: HTMLFormControlsCollection.prototype.namedItem,
+  });
   Object.defineProperty(HTMLFormControlsCollection.prototype, Symbol.toStringTag, {
     value: "HTMLFormControlsCollection",
   });
@@ -1226,6 +1238,10 @@
       }
     }
   }
+  for (const k of ["length", "add", "remove", "selectedIndex"]) {
+    const desc = Object.getOwnPropertyDescriptor(HTMLOptionsCollection.prototype, k);
+    if (desc) Object.defineProperty(HTMLOptionsCollection.prototype, k, { ...desc, enumerable: true, configurable: true });
+  }
   Object.defineProperty(HTMLOptionsCollection.prototype, Symbol.toStringTag, {
     value: "HTMLOptionsCollection",
   });
@@ -1271,10 +1287,8 @@
       const named = s ? HTMLAllCollection.prototype.namedItem.call(t, s) : null;
       if (named) return { configurable: true, enumerable: false, writable: false, value: named };
       return Object.getOwnPropertyDescriptor(HTMLAllCollection.prototype, p)
+        || Object.getOwnPropertyDescriptor(Object.prototype, p)
         || Object.getOwnPropertyDescriptor(t, p);
-    },
-    has(t, p) {
-      return htmlAllTraps.getOwnPropertyDescriptor(t, p) !== undefined;
     },
   };
 

@@ -4118,6 +4118,9 @@ fn html_collection_types_match_html_idl() {
                 allNewThrows: (function () { try { new HTMLAllCollection(); return false; } catch (e) { return e instanceof TypeError; } })(),
                 formNewThrows: (function () { try { new HTMLFormControlsCollection(); return false; } catch (e) { return e instanceof TypeError; } })(),
                 radioProto: Object.getPrototypeOf(RadioNodeList.prototype) === NodeList.prototype,
+                radioCtorProto: Object.getPrototypeOf(RadioNodeList) === NodeList,
+                formHasOwn: typeof form.elements.hasOwnProperty === "function",
+                optionsHasOwn: typeof select.options.hasOwnProperty === "function",
                 formTag: Object.prototype.toString.call(form.elements),
                 formIsControls: form.elements instanceof HTMLFormControlsCollection,
                 namedInput: form.elements.namedItem("n") && form.elements.namedItem("n").value === "Ada",
@@ -4145,6 +4148,9 @@ fn html_collection_types_match_html_idl() {
     assert_eq!(v["allNewThrows"], true, "{v}");
     assert_eq!(v["formNewThrows"], true, "{v}");
     assert_eq!(v["radioProto"], true, "{v}");
+    assert_eq!(v["radioCtorProto"], true, "{v}");
+    assert_eq!(v["formHasOwn"], true, "{v}");
+    assert_eq!(v["optionsHasOwn"], true, "{v}");
     assert_eq!(v["formTag"], "[object HTMLFormControlsCollection]", "{v}");
     assert_eq!(v["formIsControls"], true, "{v}");
     assert_eq!(v["namedInput"], true, "{v}");
