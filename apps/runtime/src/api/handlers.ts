@@ -86,12 +86,19 @@ export function makeInvoker(s: Services) {
           y?: number;
           button?: number;
           key?: string;
+          text?: string;
           direction?: "up" | "down" | "top" | "bottom";
           amount?: number;
+          start?: number;
+          end?: number;
+          width?: number;
+          height?: number;
+          name?: string;
         };
         await s.pages.onEngineInput(p.pageId, p);
         return { ok: true };
       }
+      case "pages.scene": return s.pages.scene(params.pageId);
       case "pages.capture": return s.pages.capture(params.pageId, params as never);
       case "pages.find": {
         const p = params as { pageId: string; text: string; forward: boolean; findNext: boolean };

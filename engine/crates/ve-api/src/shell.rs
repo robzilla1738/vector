@@ -129,6 +129,13 @@ pub enum NativeEvent {
         /// Target role or name hint.
         name: String,
     },
+    /// Text selection range on the focused field (character offsets).
+    Select {
+        /// Inclusive start.
+        start: u32,
+        /// Exclusive end.
+        end: u32,
+    },
 }
 
 /// Result of handling one native event.
@@ -168,6 +175,7 @@ pub struct NativeBrowser {
     presented: bool,
     ime_preedit: String,
     last_typed: String,
+    selection: Option<(usize, usize)>,
     os_clipboard: bool,
     update_pubkey: Option<[u8; 32]>,
     controller: NativeController,
@@ -224,6 +232,7 @@ impl NativeBrowser {
             presented: false,
             ime_preedit: String::new(),
             last_typed: String::new(),
+            selection: None,
             os_clipboard: false,
             update_pubkey: None,
             controller: NativeController::None,
@@ -710,6 +719,7 @@ impl NativeBrowser {
         let p = self.engine.page_mut(page)?;
         p.update();
         let list = ve_gfx::DisplayList::from_layout(p.layout_tree(), p.style_tree());
+        let items: Vec<serde_json::Value> = list.items().iter().map(scene_item).collect();
         Ok(serde_json::json!({
             "kind": "displayList",
             "transport": "scene",
@@ -717,6 +727,7 @@ impl NativeBrowser {
             "width": list.size.width,
             "height": list.size.height,
             "itemCount": list.len(),
+            "items": items,
             "page": page.0,
             "controllerEpoch": self.controller_epoch,
             "gpuPresent": self.gpu_present(),
@@ -871,6 +882,9 @@ impl NativeBrowser {
                     self.present_dirty();
                 }
             }
+            NativeEvent::Select { start, end } => {
+                self.selection = Some((start as usize, end as usize));
+            }
             NativeEvent::Paste => {
                 let mut text = self.clipboard.clone();
                 if text.is_empty() {
@@ -914,6 +928,17 @@ impl NativeBrowser {
     }
 
     fn selection_or_typed(&mut self) -> String {
+        let raw = self.selected_source();
+        let Some((start, end)) = self.selection else {
+            return raw;
+        };
+        raw.chars()
+            .skip(start)
+            .take(end.saturating_sub(start))
+            .collect()
+    }
+
+    fn selected_source(&mut self) -> String {
         let Some(page_id) = self.active_tab().map(|t| t.page) else {
             return self.last_typed.clone();
         };
@@ -1061,6 +1086,70 @@ fn paint_page(page: &crate::Page) -> ve_gfx::DisplayList {
 impl Default for NativeBrowser {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+fn css_rgba(c: ve_style::Rgba) -> String {
+    if (c.a - 1.0).abs() < f32::EPSILON {
+        format!("rgb({},{},{})", c.r, c.g, c.b)
+    } else {
+        format!("rgba({},{},{},{})", c.r, c.g, c.b, c.a)
+    }
+}
+
+fn scene_item(item: &ve_gfx::DisplayItem) -> serde_json::Value {
+    match item {
+        ve_gfx::DisplayItem::Rect { rect, color } => serde_json::json!({
+            "kind": "rect",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+            "color": css_rgba(*color),
+        }),
+        ve_gfx::DisplayItem::Border {
+            rect,
+            widths,
+            color,
+        } => serde_json::json!({
+            "kind": "border",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+            "color": css_rgba(*color),
+            "widths": {
+                "top": widths.top,
+                "right": widths.right,
+                "bottom": widths.bottom,
+                "left": widths.left,
+            },
+        }),
+        ve_gfx::DisplayItem::Text(run) => serde_json::json!({
+            "kind": "text",
+            "x": run.origin.x,
+            "y": run.origin.y,
+            "text": run.text,
+            "size": run.size,
+            "color": css_rgba(run.color),
+        }),
+        ve_gfx::DisplayItem::Image { rect, .. } => serde_json::json!({
+            "kind": "image",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+        }),
+        ve_gfx::DisplayItem::PushClip(rect) => serde_json::json!({
+            "kind": "clip",
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+        }),
+        ve_gfx::DisplayItem::PopClip => serde_json::json!({"kind": "popClip"}),
+        ve_gfx::DisplayItem::PushOpacity(a) => serde_json::json!({"kind": "opacity", "a": a}),
+        ve_gfx::DisplayItem::PopOpacity => serde_json::json!({"kind": "popOpacity"}),
     }
 }
 
@@ -1347,6 +1436,39 @@ mod tests {
             .unwrap();
         browser.handle_event(NativeEvent::Copy).unwrap();
         assert_eq!(browser.clipboard(), "hello");
+        browser
+            .handle_event(NativeEvent::Select { start: 1, end: 4 })
+            .unwrap();
+        browser.handle_event(NativeEvent::Copy).unwrap();
+        assert_eq!(browser.clipboard(), "ell");
+    }
+
+    #[test]
+    fn scene_active_exports_display_list_items() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p>hi</p>".into(),
+                url: "https://s.test/".into(),
+            })
+            .unwrap();
+        let scene = browser.scene_active().unwrap();
+        assert_eq!(scene["png"], false);
+        assert_eq!(scene["kind"], "displayList");
+        assert_eq!(scene["transport"], "scene");
+        let items = scene["items"].as_array().expect("items");
+        assert!(!items.is_empty(), "{scene}");
+        assert_eq!(
+            scene["itemCount"].as_u64().unwrap(),
+            items.len() as u64,
+            "{scene}"
+        );
+        assert!(
+            items
+                .iter()
+                .any(|i| { matches!(i["kind"].as_str(), Some("rect" | "text" | "border")) }),
+            "{items:?}"
+        );
     }
 
     #[test]

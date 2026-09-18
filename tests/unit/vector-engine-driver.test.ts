@@ -68,6 +68,16 @@ function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server:
             result = { controller: "none", controllerEpoch: state.controllerEpoch, service: "browser-service" };
           } else if (req.method === "input.event") {
             result = { ok: true, chromium: false, event: req.params };
+          } else if (req.method === "scene.update") {
+            result = {
+              kind: "displayList",
+              transport: "scene",
+              png: false,
+              width: 800,
+              height: 600,
+              itemCount: 1,
+              items: [{ kind: "rect", x: 0, y: 0, w: 800, h: 600, color: "rgb(255,255,255)" }],
+            };
           }
           socket.write(`${JSON.stringify({ jsonrpc: "2.0", id: req.id, result })}\n`);
         }
@@ -391,7 +401,12 @@ describe("VectorEngineDriver", () => {
     const page = await driver.attach(targetId, "page-h");
     await driver.takeover();
     await expect(page.click("css:#t")).rejects.toMatchObject({ code: "conflict" });
+    await page.humanEvent?.({ type: "imePreedit", text: "ni" });
     await page.humanEvent?.({ type: "ime", text: "typed-by-human" });
+    await page.humanEvent?.({ type: "select", start: 0, end: 4 });
+    const scene = await page.scene?.();
+    expect(scene).toMatchObject({ kind: "displayList", png: false, itemCount: 1 });
+    expect(scene?.items?.length).toBeGreaterThan(0);
     const peer = new BrowserServiceClient(owned.addr);
     await peer.connect();
     await expect(peer.call("input.event", { type: "ime", text: "more" })).resolves.toMatchObject({ ok: true });

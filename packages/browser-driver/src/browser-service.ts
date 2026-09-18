@@ -278,6 +278,11 @@ export class ServiceNativeEngine {
     });
   }
 
+  async scene(): Promise<string> {
+    const r = await this.client.call("scene.update", {});
+    return JSON.stringify({ ok: true, ...r });
+  }
+
   async close(_page: number): Promise<string> {
     return JSON.stringify({ ok: true, closed: true });
   }

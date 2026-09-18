@@ -956,6 +956,18 @@ export class PageService {
     if (!this.deps.native.available()) throw new VectorError("backend_unavailable", "zoom requires the desktop shell");
     return this.deps.native.setZoom(pageId, level, delta, reset);
   }
+  /** Display-list scene for the live engine page. Not a PNG. */
+  async scene(pageId: string) {
+    const lp = this.live.get(pageId);
+    if (!lp?.driver || lp.target.backend !== "vector-engine") {
+      throw new VectorError("capability_unsupported", "pages.scene requires vector-engine");
+    }
+    if (lp.driver.scene) return lp.driver.scene();
+    const shot = await lp.driver.screenshot();
+    if (shot.scene) return shot.scene;
+    throw new VectorError("capability_unsupported", "engine did not export a display list");
+  }
+
   async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact" }) {
     const dp = this.driverPageLenient(pageId);
     const shot = await dp.screenshot({ fullPage: opts?.fullPage });
@@ -993,8 +1005,14 @@ export class PageService {
       y?: number;
       button?: number;
       key?: string;
+      text?: string;
       direction?: "up" | "down" | "top" | "bottom";
       amount?: number;
+      start?: number;
+      end?: number;
+      width?: number;
+      height?: number;
+      name?: string;
     },
   ) {
     const lp = this.live.get(pageId);
@@ -1009,13 +1027,25 @@ export class PageService {
             y: input.y ?? 0,
             button: input.button ?? 0,
           });
-        } else if (input.type === "ime" && input.key) {
-          await lp.driver.humanEvent({ type: "ime", text: input.key });
+        } else if (input.type === "imePreedit") {
+          await lp.driver.humanEvent({ type: "imePreedit", text: input.text ?? input.key ?? "" });
+        } else if (input.type === "ime") {
+          await lp.driver.humanEvent({ type: "ime", text: input.text ?? input.key ?? "" });
         } else if (input.type === "key" && input.key) {
           await lp.driver.humanEvent({ type: "key", key: input.key });
         } else if (input.type === "scroll") {
           const dy = input.direction === "up" ? -(input.amount ?? 40) : (input.amount ?? 40);
           await lp.driver.humanEvent({ type: "wheel", dx: 0, dy });
+        } else if (input.type === "select") {
+          await lp.driver.humanEvent({ type: "select", start: input.start ?? 0, end: input.end ?? 0 });
+        } else if (input.type === "resize") {
+          await lp.driver.humanEvent({
+            type: "resize",
+            width: input.width ?? input.x ?? 0,
+            height: input.height ?? input.y ?? 0,
+          });
+        } else if (input.type === "accessKitAction" && (input.name || input.key)) {
+          await lp.driver.humanEvent({ type: "accessKitAction", name: input.name ?? input.key });
         }
       } else if (input.type === "pointerdown" || input.type === "click") {
         await lp.driver.clickPoint(input.x ?? 0, input.y ?? 0);

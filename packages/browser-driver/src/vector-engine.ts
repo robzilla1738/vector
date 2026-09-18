@@ -40,6 +40,7 @@ import type {
   PageIdentity,
   PageRouting,
   ScreenshotResult,
+  SceneUpdate,
   WaitOutcome,
 } from "./types.js";
 
@@ -54,6 +55,7 @@ export interface NativeEngine {
   executeBuf?(page: number, steps: Buffer, options?: Buffer | null): Promise<Buffer>;
   screenshot(page: number, optionsJson?: string | null): Promise<string>;
   screenshotPng?(page: number, fullPage?: boolean | null): Promise<{ width: number; height: number; scale: number; fullPage: boolean; png: Buffer }>;
+  scene?(): Promise<string>;
   close(page: number): Promise<string>;
   getCookies(contextId: number, url?: string | null): Promise<string>;
   setCookies(contextId: number, cookiesJson: string): Promise<string>;
@@ -500,11 +502,39 @@ export class VectorEnginePage implements DriverPage {
       const shot = await this.native.screenshotPng(this.pageNum, opts?.fullPage);
       return { buffer: Buffer.from(shot.png), width: shot.width, height: shot.height, scale: shot.scale };
     }
-    const res = unwrapNative<{ pngBase64?: string; width?: number; height?: number; scale?: number }>(
+    const res = unwrapNative<{
+      pngBase64?: string;
+      width?: number;
+      height?: number;
+      scale?: number;
+      scene?: SceneUpdate;
+      kind?: string;
+      transport?: string;
+      png?: boolean;
+      itemCount?: number;
+      items?: Record<string, unknown>[];
+    }>(
       await this.native.screenshot(this.pageNum, JSON.stringify(opts ?? {})),
     );
-    if (!res.pngBase64) throw new VectorError("capability_unsupported", "screenshot returned no image");
-    return { buffer: Buffer.from(res.pngBase64, "base64"), width: res.width ?? 0, height: res.height ?? 0, scale: res.scale ?? 1 };
+    const scene = res.scene ?? (res.kind === "displayList" ? (res as unknown as SceneUpdate) : undefined);
+    if (!res.pngBase64 && !scene) throw new VectorError("capability_unsupported", "screenshot returned no image");
+    return {
+      buffer: Buffer.from(res.pngBase64 ?? "", "base64"),
+      width: res.width ?? scene?.width ?? 0,
+      height: res.height ?? scene?.height ?? 0,
+      scale: res.scale ?? scene?.scale ?? 1,
+      scene,
+    };
+  }
+
+  async scene(): Promise<SceneUpdate> {
+    this.ensureAttached();
+    if (this.native.scene) {
+      return unwrapNative<SceneUpdate>(await this.native.scene());
+    }
+    const shot = await this.screenshot();
+    if (shot.scene) return shot.scene;
+    throw new VectorError("capability_unsupported", "engine did not export a display list");
   }
 
   async observe(req?: Partial<ObservationRequest>): Promise<ObservationContent> {

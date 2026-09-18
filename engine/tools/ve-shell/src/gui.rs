@@ -129,6 +129,25 @@ impl App {
         let _ = buffer.present();
         window.set_title(NativeBrowser::CHROME_TITLE);
     }
+
+    fn resize_viewport(&mut self, phys_w: u32, phys_h: u32, scale: Option<f32>) {
+        #[cfg(feature = "gpu")]
+        if let Some(gpu) = &mut self.gpu {
+            gpu.resize(phys_w, phys_h);
+        }
+        let scale = scale.unwrap_or_else(|| {
+            self.window
+                .as_ref()
+                .map_or(1.0, |w| w.scale_factor() as f32)
+        });
+        let _ = self.browser_mut().handle_event(NativeEvent::Resize {
+            width: phys_w as f32 / scale.max(0.01),
+            height: phys_h as f32 / scale.max(0.01),
+        });
+        if let Some(w) = &self.window {
+            w.request_redraw();
+        }
+    }
 }
 
 impl ApplicationHandler<AccessKitEvent> for App {
@@ -207,17 +226,12 @@ impl ApplicationHandler<AccessKitEvent> for App {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => self.redraw(),
             WindowEvent::Resized(size) => {
-                #[cfg(feature = "gpu")]
-                if let Some(gpu) = &mut self.gpu {
-                    gpu.resize(size.width, size.height);
-                }
-                let scale = self.window.as_ref().map_or(1.0, |w| w.scale_factor()) as f32;
-                let _ = self.browser_mut().handle_event(NativeEvent::Resize {
-                    width: size.width as f32 / scale.max(0.01),
-                    height: size.height as f32 / scale.max(0.01),
-                });
+                self.resize_viewport(size.width, size.height, None);
+            }
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 if let Some(w) = &self.window {
-                    w.request_redraw();
+                    let size = w.inner_size();
+                    self.resize_viewport(size.width, size.height, Some(scale_factor as f32));
                 }
             }
             WindowEvent::ModifiersChanged(m) => {

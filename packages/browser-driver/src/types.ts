@@ -39,12 +39,26 @@ export interface ExecuteProgramResult extends ProgramResult {
   observation?: ObservationContent;
 }
 
+export interface SceneUpdate {
+  kind: "displayList";
+  transport: "scene";
+  png: false;
+  width: number;
+  height: number;
+  itemCount: number;
+  items: Record<string, unknown>[];
+  page?: string | number;
+  scale?: number;
+}
+
 export interface ScreenshotResult {
   buffer: Buffer;
   width: number;
   height: number;
   /** devicePixelRatio — needed to interpret clickPoint coords. */
   scale: number;
+  /** Finding 1 display list. Present when the transport is scene, not PNG. */
+  scene?: SceneUpdate;
 }
 
 export interface DriverPageEvents {
@@ -131,6 +145,8 @@ export interface DriverPage {
   }): Promise<{ items: Record<string, unknown>[]; collected: number }>;
 
   screenshot(opts?: { fullPage?: boolean }): Promise<ScreenshotResult>;
+  /** Finding 1: display-list scene for the live page. Not a PNG. */
+  scene?(): Promise<SceneUpdate>;
   observe(req?: Partial<ObservationRequest>): Promise<ObservationContent>;
   /**
    * Cheap state fingerprint for the observation cache (plan A6): changes

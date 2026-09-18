@@ -433,6 +433,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           y: Number(pl.y ?? 0),
           button: Number(pl.button ?? 0),
           key: str(pl.key),
+          text: str(pl.text),
+          start: pl.start === undefined ? undefined : Number(pl.start),
+          end: pl.end === undefined ? undefined : Number(pl.end),
+          width: pl.width === undefined ? undefined : Number(pl.width),
+          height: pl.height === undefined ? undefined : Number(pl.height),
+          name: str(pl.name),
         });
         return;
       case "view.downloadStarted":

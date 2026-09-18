@@ -625,7 +625,12 @@ mod tests {
         assert_eq!(scene["kind"], "displayList");
         assert_eq!(scene["transport"], "scene");
         assert!(scene["itemCount"].as_u64().unwrap_or(0) > 0);
+        let items = scene["items"].as_array().expect("scene items");
+        assert!(!items.is_empty(), "{scene}");
         assert_eq!(scene["page"], page);
+        human
+            .call("input.event", json!({"type":"select","start":0,"end":4}))
+            .expect("select");
 
         let id = mcp.call("identity", json!({})).expect("identity");
         assert_eq!(id["chromium"], false);

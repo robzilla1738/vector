@@ -748,11 +748,15 @@ describe("Gate B/F one session without Chromium", () => {
     ).rejects.toMatchObject({ message: /human control/i });
     await pages.onEngineInput(opened.pageId, { type: "click", x: 40, y: 12 });
     await pages.onEngineInput(opened.pageId, { type: "key", key: "a" });
-    await pages.onEngineInput(opened.pageId, { type: "ime", key: "typed-by-human" });
+    await pages.onEngineInput(opened.pageId, { type: "imePreedit", text: "ni" });
+    await pages.onEngineInput(opened.pageId, { type: "ime", text: "typed-by-human" });
+    await pages.onEngineInput(opened.pageId, { type: "select", start: 0, end: 4 });
     expect(human).toEqual([
       { type: "pointerDown", x: 40, y: 12, button: 0 },
       { type: "key", key: "a" },
+      { type: "imePreedit", text: "ni" },
       { type: "ime", text: "typed-by-human" },
+      { type: "select", start: 0, end: 4 },
     ]);
     expect(clicks).toEqual([]);
     expect(keys).toEqual([]);
