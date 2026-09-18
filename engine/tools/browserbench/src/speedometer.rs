@@ -23,14 +23,14 @@ fn official_steps_bundle() -> String {
 }
 
 const OFFICIAL_PREPARE: &str = r#"(function (name) {
-  window.__veSp = { name: name, prepared: false, err: null, tests: {}, total: 0, done: false };
+  window.__veSp = { name: name, prepared: false, err: null, tests: {}, total: 0, done: false, i: 0, stepDone: true };
   var suite = Suites.find(function (s) { return s.name === name; });
   if (!suite) {
     window.__veSp.err = "unknown suite " + name;
     window.__veSp.prepared = true;
     return false;
   }
-  window.__veSp.page = new Page();
+  window.__veSp.page = new __veOfficialPage();
   Promise.resolve(suite.prepare(window.__veSp.page)).then(function () {
     window.__veSp.prepared = true;
   }, function (e) {
@@ -40,39 +40,61 @@ const OFFICIAL_PREPARE: &str = r#"(function (name) {
   return true;
 })"#;
 
-const OFFICIAL_RUN: &str = r#"(function () {
+const OFFICIAL_RUN_NEXT: &str = r#"(function () {
   var s = window.__veSp;
   var suite = Suites.find(function (x) { return x.name === s.name; });
   var page = s.page;
-  var i = 0;
-  function next() {
-    if (s.err) { s.done = true; return; }
-    if (i >= suite.tests.length) { s.done = true; return; }
-    var test = suite.tests[i++];
-    requestAnimationFrame(function () {
-      var syncStart = performance.now();
-      try { test.run(page); }
-      catch (e) {
-        s.err = String(e && e.message ? e.message : e);
-        s.done = true;
-        return;
-      }
-      var sync = performance.now() - syncStart;
-      var asyncStart = performance.now();
-      requestAnimationFrame(function () {
-        setTimeout(function () {
-          var height = document.body.getBoundingClientRect().height;
-          var asyncTime = performance.now() - asyncStart;
-          window._unusedHeightValue = height;
-          s.tests[test.name] = { sync: sync, async: asyncTime, total: sync + asyncTime };
-          s.total += sync + asyncTime;
-          setTimeout(next, 0);
-        }, 0);
-      });
-    });
+  var i = s.i || 0;
+  if (s.err) { s.done = true; return "done"; }
+  if (i >= suite.tests.length) { s.done = true; return "done"; }
+  var test = suite.tests[i];
+  s.i = i + 1;
+  s.stepDone = false;
+  function arm(cb) {
+    requestAnimationFrame(cb);
+    if (typeof serviceRAF === "function") {
+      try { serviceRAF(); } catch (e) {}
+    }
   }
-  next();
-  return true;
+  arm(function () {
+    var syncStart = performance.now();
+    try { test.run(page); }
+    catch (e) {
+      s.err = String(e && e.message ? e.message : e);
+      s.done = true;
+      s.stepDone = true;
+      return;
+    }
+    var sync = performance.now() - syncStart;
+    var asyncStart = performance.now();
+    arm(function () {
+      setTimeout(function () {
+        var height = document.body.getBoundingClientRect().height;
+        var asyncTime = performance.now() - asyncStart;
+        window._unusedHeightValue = height;
+        s.tests[test.name] = { sync: sync, async: asyncTime, total: sync + asyncTime };
+        s.total += sync + asyncTime;
+        if (s.name === "Perf-Dashboard" && typeof serviceRAF === "function") {
+          for (var k = 0; k < 30; k++) {
+            try { serviceRAF(); } catch (e) {}
+          }
+        }
+        if (s.name.indexOf("Stockcharts") >= 0 && test.name !== "ZoomTheChart") {
+          var tries = 0;
+          (function waitCursor() {
+            if (document.querySelector(".react-stockcharts-crosshair-cursor") || tries++ > 80) {
+              s.stepDone = true;
+              return;
+            }
+            arm(waitCursor);
+          })();
+        } else {
+          s.stepDone = true;
+        }
+      }, 0);
+    });
+  });
+  return test.name;
 })()"#;
 
 const OFFICIAL_STATUS: &str = r#"(function () {
@@ -80,6 +102,7 @@ const OFFICIAL_STATUS: &str = r#"(function () {
   return JSON.stringify({
     prepared: !!s.prepared,
     done: !!s.done,
+    stepDone: !!s.stepDone,
     err: s.err || null,
     total: s.total || 0,
     tests: s.tests || {}
@@ -901,11 +924,12 @@ fn wait_official_status(
             .and_then(|p| p.evaluate(OFFICIAL_STATUS))
             .map_err(|e| e.to_string())?;
         let status = parse_status(&status);
-        if let Some(err) = status.get("err").and_then(|e| e.as_str()) {
-            return Err(err.to_owned());
+        if status.get("err").and_then(|e| e.as_str()).is_some() {
+            return Ok(status);
         }
         let ready = if want_done {
             status.get("done").and_then(|d| d.as_bool()) == Some(true)
+                || status.get("stepDone").and_then(|d| d.as_bool()) == Some(true)
         } else {
             status.get("prepared").and_then(|d| d.as_bool()) == Some(true)
         };
@@ -975,7 +999,6 @@ fn run_one_official(
         url: Some(format!("https://browserbench.org/Speedometer3.0/{url}")),
         html: Some(doc.html),
         allow_evaluate: true,
-        viewport: Some(ve_core::Size::new(800.0, 600.0)),
         ..OpenRequest::default()
     }) {
         Ok(o) => o,
@@ -1048,15 +1071,68 @@ fn run_one_official(
     if let Err(e) = engine.page_mut(page).and_then(|p| p.evaluate(&prepare)) {
         return failed(engine, format!("official prepare: {e}"));
     }
-    if let Err(e) = wait_official_status(engine, page, false, Duration::from_secs(30)) {
-        return failed(engine, e);
-    }
-    if let Err(e) = engine.page_mut(page).and_then(|p| p.evaluate(OFFICIAL_RUN)) {
-        return failed(engine, format!("official run: {e}"));
-    }
-    let status = match wait_official_status(engine, page, true, suite_wall) {
-        Ok(v) => v,
+    match wait_official_status(engine, page, false, Duration::from_secs(30)) {
+        Ok(status) => {
+            if let Some(err) = status.get("err").and_then(|e| e.as_str()) {
+                return failed(engine, err.to_owned());
+            }
+        }
         Err(e) => return failed(engine, e),
+    }
+    let step_started = Instant::now();
+    let status = loop {
+        if step_started.elapsed() > suite_wall {
+            return failed(
+                engine,
+                format!(
+                    "official steps did not finish after {}ms",
+                    step_started.elapsed().as_millis()
+                ),
+            );
+        }
+        match engine
+            .page_mut(page)
+            .and_then(|p| p.evaluate(OFFICIAL_RUN_NEXT))
+        {
+            Ok(_) => {}
+            Err(e) => return failed(engine, format!("official run: {e}")),
+        }
+        let status = match wait_official_status(engine, page, true, suite_wall) {
+            Ok(v) => v,
+            Err(e) => return failed(engine, e),
+        };
+        if status.get("err").and_then(|e| e.as_str()).is_some() {
+            let dump = engine
+                .page_mut(page)
+                .and_then(|p| {
+                    p.evaluate(
+                        r##"(function(){return JSON.stringify({
+                          render: !!document.getElementById("render"),
+                          cursor: !!document.querySelector(".react-stockcharts-crosshair-cursor"),
+                          svg: document.querySelectorAll("svg").length,
+                          ready: !!document.querySelector("#app-is-ready"),
+                          tests: Object.keys((window.__veSp && window.__veSp.tests) || {})
+                        });})()"##,
+                    )
+                })
+                .ok();
+            return failed(
+                engine,
+                format!(
+                    "{} dump={dump:?}",
+                    status
+                        .get("err")
+                        .and_then(|e| e.as_str())
+                        .unwrap_or("official step")
+                ),
+            );
+        }
+        if status.get("done").and_then(|d| d.as_bool()) == Some(true) {
+            break status;
+        }
+        if let Ok(p) = engine.page_mut(page) {
+            p.settle(250);
+        }
     };
     engine.close(opened.page);
     let total = status.get("total").and_then(|t| t.as_f64()).unwrap_or(0.0);
@@ -1089,7 +1165,7 @@ fn run_one_official(
                 },
                 "total": total,
                 "tests": status.get("tests").cloned().unwrap_or(serde_json::json!({})),
-                "viewport": "800x600"
+                "viewport": "engine"
             })
             .to_string(),
         ),

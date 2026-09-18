@@ -24,6 +24,13 @@
           let callback = resolveIfReady;
           if (element) callback = () => resolve(element);
           window.requestAnimationFrame(callback);
+          // Perf-Dashboard replaces rAF with a queue flushed by serviceRAF.
+          // Official runner arms rAF on the parent window; we share the page.
+          if (typeof window.serviceRAF === "function") {
+            try {
+              window.serviceRAF();
+            } catch (e) {}
+          }
         };
         resolveIfReady();
       });
@@ -129,7 +136,8 @@
     }
   }
 
-  global.Page = Page;
+  // Perf-Dashboard defines a non-writable global `class Page`. Do not assign it.
+  global.__veOfficialPage = Page;
   global.PageElement = PageElement;
   global.BenchmarkTestStep = BenchmarkTestStep;
 })(globalThis);
