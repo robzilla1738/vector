@@ -45,6 +45,12 @@ pub fn preload_scripting() {
     ve_api::preload_scripting();
 }
 
+/// Create a VM and evaluate `1+1` inside the already-sandboxed host.
+#[must_use]
+pub fn scripting_selftest() -> bool {
+    ve_api::scripting_selftest()
+}
+
 /// Engine version reported to JavaScript.
 #[must_use]
 pub fn version() -> &'static str {

@@ -50,6 +50,9 @@ enum Channel {
         /// Whether the OS sandbox was applied.
         #[serde(default)]
         sandbox: bool,
+        /// Whether this host will attach a JS VM to opened pages.
+        #[serde(default)]
+        scripting: bool,
     },
     /// Handshake or policy failure. The peer must exit.
     Fatal {
@@ -187,7 +190,11 @@ impl ProcessClient {
         )
         .map_err(|e| format!("ve-host init write: {e}"))?;
         match read_msg(&mut stdout) {
-            Ok(Channel::Ready { protocol, sandbox }) if protocol == HOST_PROTOCOL => {
+            Ok(Channel::Ready {
+                protocol,
+                sandbox,
+                scripting: _,
+            }) if protocol == HOST_PROTOCOL => {
                 if production && !sandbox {
                     let _ = child.kill();
                     let _ = child.wait();
@@ -436,11 +443,13 @@ pub fn serve_stdio() {
         });
         return;
     }
+    let scripting = config.scripting;
     let engine = VectorEngine::with_transport(config, Box::new(FnTransport::new(child_fetch)));
     let mut state = HostState::with_engine(engine, context_id);
     let _ = child_write(&Channel::Ready {
         protocol: HOST_PROTOCOL,
         sandbox,
+        scripting,
     });
     loop {
         match child_read() {

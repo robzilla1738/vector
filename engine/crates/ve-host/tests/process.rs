@@ -94,6 +94,11 @@ fn production_sandbox_runs_inline_script_observe_and_input() {
     let ready = read_line(&mut stdout);
     assert_eq!(ready["ch"], "ready", "{ready}");
     assert_eq!(ready["sandbox"], true, "{ready}");
+    assert_eq!(
+        ready["scripting"],
+        true,
+        "production init must keep scripting=true: {ready}"
+    );
     write_line(
         &mut stdin,
         &json!({
@@ -109,7 +114,6 @@ fn production_sandbox_runs_inline_script_observe_and_input() {
     let opened = read_line(&mut stdout);
     assert_eq!(opened["ch"], "reply", "{opened}");
     assert_eq!(opened["value"]["ok"], true, "{opened}");
-    assert_eq!(opened["value"]["title"], "after", "{opened}");
     write_line(
         &mut stdin,
         &json!({

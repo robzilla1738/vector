@@ -63,6 +63,17 @@ pub fn preload_scripting() {
     ve_script::V8Vm::preload();
 }
 
+/// Create a VM and evaluate `1+1`. Used to prove production containment and
+/// V8 initialization work together.
+#[must_use]
+pub fn scripting_selftest() -> bool {
+    let mut vm = ve_script::default_vm();
+    if vm.name() == "null" {
+        return !cfg!(feature = "v8");
+    }
+    matches!(vm.eval("1 + 1", "vector:selftest"), Ok(v) if v.as_f64() == Some(2.0))
+}
+
 /// Production vs trusted-fixture developer execution (VEC-002).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
