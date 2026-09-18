@@ -44,6 +44,10 @@ pub enum ChromeOverlay {
     Settings,
     /// History.
     History,
+    /// Certificate interstitial.
+    Cert,
+    /// Permission prompt (never granted by page text).
+    Permission,
 }
 
 /// Hit-test result in CSS window space.
@@ -84,6 +88,14 @@ pub enum ChromeHit {
     Zoom,
     /// Overlay chrome.
     Overlay(ChromeOverlay),
+    /// Certificate interstitial (Proceed / Block).
+    CertProceed,
+    /// Certificate interstitial block.
+    CertBlock,
+    /// Permission sheet allow.
+    PermissionAllow,
+    /// Permission sheet deny.
+    PermissionDeny,
     /// Stage card; coordinates are page-local CSS px.
     Stage {
         /// Page X.
@@ -130,6 +142,16 @@ pub struct Chrome {
     pub agent_status: String,
     /// Engine / Chromium badge for the active tab.
     pub backend: ChromeBackend,
+    /// History rows `(url, title)` shown in the History overlay.
+    pub history: Vec<(String, String)>,
+    /// Bookmarks `(url, title)` shown in Settings.
+    pub bookmarks: Vec<(String, String)>,
+    /// Downloads listed in Settings.
+    pub download_names: Vec<String>,
+    /// Sheet title (cert host or permission effect).
+    pub sheet_title: String,
+    /// Sheet body (fingerprint or origin).
+    pub sheet_body: String,
 }
 
 impl Default for Chrome {
@@ -152,6 +174,11 @@ impl Default for Chrome {
             overlay: ChromeOverlay::None,
             agent_status: String::new(),
             backend: ChromeBackend::Engine,
+            history: Vec::new(),
+            bookmarks: Vec::new(),
+            download_names: Vec::new(),
+            sheet_title: String::new(),
+            sheet_body: String::new(),
         }
     }
 }
@@ -217,7 +244,7 @@ impl Chrome {
     #[must_use]
     pub fn hit(&self, window: Size, x: f32, y: f32) -> ChromeHit {
         if self.overlay != ChromeOverlay::None {
-            return ChromeHit::Overlay(self.overlay);
+            return self.hit_overlay(window, x, y);
         }
         let sb = self.sidebar_used();
         if x <= sb + 4.0 && x >= sb - 4.0 && !self.sidebar_collapsed {
@@ -249,6 +276,30 @@ impl Chrome {
             return ChromeHit::SidebarToggle;
         }
         ChromeHit::Window
+    }
+
+    fn hit_overlay(&self, window: Size, x: f32, y: f32) -> ChromeHit {
+        let card = overlay_card(window);
+        match self.overlay {
+            ChromeOverlay::Cert => {
+                if y > card.y() + 200.0 && y < card.y() + 240.0 {
+                    if x < card.x() + card.width() * 0.5 {
+                        return ChromeHit::CertBlock;
+                    }
+                    return ChromeHit::CertProceed;
+                }
+            }
+            ChromeOverlay::Permission => {
+                if y > card.y() + 200.0 && y < card.y() + 240.0 {
+                    if x < card.x() + card.width() * 0.5 {
+                        return ChromeHit::PermissionDeny;
+                    }
+                    return ChromeHit::PermissionAllow;
+                }
+            }
+            _ => {}
+        }
+        ChromeHit::Overlay(self.overlay)
     }
 
     fn hit_sidebar(&self, y: f32) -> ChromeHit {
@@ -611,6 +662,8 @@ impl Chrome {
             ChromeOverlay::Palette => "Command palette",
             ChromeOverlay::Settings => "Settings",
             ChromeOverlay::History => "History",
+            ChromeOverlay::Cert => "Certificate warning",
+            ChromeOverlay::Permission => "Permission",
             ChromeOverlay::None => "",
         };
         self.label(
@@ -620,6 +673,74 @@ impl Chrome {
             15.0,
             t.ink_0,
         );
+        match self.overlay {
+            ChromeOverlay::History => {
+                let mut y = card.y() + 64.0;
+                for (url, title) in self.history.iter().rev().take(8) {
+                    let line = if title.is_empty() {
+                        url.as_str()
+                    } else {
+                        title.as_str()
+                    };
+                    self.label(list, Point::new(card.x() + 20.0, y), &truncate(line, 42), 12.0, t.ink_1);
+                    y += 22.0;
+                }
+                if self.history.is_empty() {
+                    self.label(list, Point::new(card.x() + 20.0, y), "No history yet", 12.0, t.ink_2);
+                }
+            }
+            ChromeOverlay::Settings => {
+                self.label(
+                    list,
+                    Point::new(card.x() + 20.0, card.y() + 64.0),
+                    &format!("{} bookmarks · {} downloads", self.bookmarks.len(), self.download_names.len()),
+                    12.0,
+                    t.ink_1,
+                );
+            }
+            ChromeOverlay::Cert | ChromeOverlay::Permission => {
+                if !self.sheet_title.is_empty() {
+                    self.label(
+                        list,
+                        Point::new(card.x() + 20.0, card.y() + 72.0),
+                        &self.sheet_title,
+                        13.0,
+                        t.ink_0,
+                    );
+                }
+                if !self.sheet_body.is_empty() {
+                    self.label(
+                        list,
+                        Point::new(card.x() + 20.0, card.y() + 98.0),
+                        &truncate(&self.sheet_body, 48),
+                        12.0,
+                        t.ink_1,
+                    );
+                }
+                let deny = if self.overlay == ChromeOverlay::Cert {
+                    "Block"
+                } else {
+                    "Deny"
+                };
+                let allow = if self.overlay == ChromeOverlay::Cert {
+                    "Proceed"
+                } else {
+                    "Allow"
+                };
+                self.label(list, Point::new(card.x() + 40.0, card.y() + 228.0), deny, 12.0, t.err);
+                self.label(list, Point::new(card.x() + 260.0, card.y() + 228.0), allow, 12.0, t.ok);
+            }
+            ChromeOverlay::Palette => {
+                self.label(
+                    list,
+                    Point::new(card.x() + 20.0, card.y() + 72.0),
+                    "Type a URL, search, or ask the agent",
+                    12.0,
+                    t.ink_1,
+                );
+            }
+            ChromeOverlay::None => {}
+        }
     }
 
     fn label(&self, list: &mut DisplayList, origin: Point, text: &str, size: f32, color: Rgba) {
@@ -633,6 +754,10 @@ impl Chrome {
             family: vec![FontFamily::SystemUi, FontFamily::SansSerif],
         }));
     }
+}
+
+fn overlay_card(window: Size) -> Rect {
+    Rect::new(window.width * 0.5 - 240.0, 80.0, 480.0, 320.0)
 }
 
 fn truncate(s: &str, max: usize) -> String {
@@ -717,6 +842,40 @@ mod tests {
                 .iter()
                 .any(|i| matches!(i, DisplayItem::BoxShadow { .. }))
         );
+    }
+
+    #[test]
+    fn cert_and_permission_sheets_are_not_page_content() {
+        let mut chrome = sample();
+        chrome.overlay = ChromeOverlay::Cert;
+        chrome.sheet_title = "example.test".into();
+        chrome.sheet_body = "sha256:aa".into();
+        let list = chrome.paint(Size::new(1280.0, 720.0));
+        let texts: Vec<&str> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.iter().any(|t| *t == "Certificate warning"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "Block"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "Proceed"), "{texts:?}");
+        chrome.overlay = ChromeOverlay::Permission;
+        chrome.sheet_title = "geolocation".into();
+        chrome.sheet_body = "https://example.test".into();
+        let list = chrome.paint(Size::new(1280.0, 720.0));
+        let texts: Vec<&str> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.iter().any(|t| *t == "Permission"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "Allow"), "{texts:?}");
     }
 
     #[test]

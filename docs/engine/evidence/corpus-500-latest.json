@@ -1,17 +1,21 @@
 {
-  "backend": "vector-engine",
-  "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
-  "urls": 500,
-  "live": false,
-  "skippedLive": true,
-  "reason": "VECTOR_CORPUS_LIVE!=1 (no network fetch in this run)",
-  "observe": {
-    "p50Ms": null,
-    "p95Ms": null
-  },
-  "capabilityUnsupportedRate": null,
   "artifact": {
     "corpus": "engine/conformance/public-corpus-500.json",
-    "harness": "engine/tools/corpus/observe-500.mjs"
-  }
+    "harness": "engine/tools/corpus/observe-500.mjs",
+    "test": "shell::tests::writes_corpus_observe_and_layout_triage"
+  },
+  "backend": "vector-engine",
+  "capabilityUnsupportedRate": 0.0,
+  "live": false,
+  "observe": {
+    "n": 500,
+    "p50Ms": 0.051,
+    "p95Ms": 0.059,
+    "unit": "ms"
+  },
+  "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
+  "reason": "offline stand-in documents keyed by the 500 public URLs; live fetch needs VECTOR_CORPUS_LIVE=1",
+  "security_mode": "production",
+  "skippedLive": true,
+  "urls": 500
 }

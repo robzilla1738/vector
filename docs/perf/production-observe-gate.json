@@ -3,17 +3,17 @@
   "metric": "observe",
   "n": 8,
   "notes": "Measured in-process on the production SecurityProfile. Not an Apple-silicon published score.",
-  "p50": 53,
-  "p95": 101,
+  "p50": 47,
+  "p95": 51,
   "samples": [
+    43,
+    43,
+    45,
+    46,
+    47,
     48,
-    50,
-    50,
-    51,
-    53,
-    55,
-    57,
-    101
+    48,
+    51
   ],
   "security_mode": "production",
   "unit": "us"

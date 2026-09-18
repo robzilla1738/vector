@@ -226,14 +226,27 @@ fn run_gui(args: &Args) -> Result<()> {
     #[cfg(not(feature = "window"))]
     {
         let _ = pump;
+        let stage = browser.chrome().stage_rect(Size::new(1280.0, 720.0));
+        if let Some(path) = args.screenshot.as_ref() {
+            let png = browser.capture_shell_png()?;
+            std::fs::write(path, png)?;
+        }
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
                 "mode": "headless-native",
                 "rebuildWith": "--features window",
                 "identity": browser.identity(),
+                "chromeEnabled": browser.chrome_enabled(),
                 "chromeAx": browser.chrome_ax(),
                 "chromeTitle": NativeBrowser::CHROME_TITLE,
+                "stage": {
+                    "x": stage.x(),
+                    "y": stage.y(),
+                    "width": stage.width(),
+                    "height": stage.height(),
+                    "radius": browser.chrome().metrics.stage_radius,
+                },
             }))?
         );
         Ok(())

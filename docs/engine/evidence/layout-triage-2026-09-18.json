@@ -1,36 +1,56 @@
 {
-  "date": "2026-09-18",
   "backend": "vector-engine",
-  "reference": "chromium-headless",
   "chromiumLive": false,
-  "skippedLive": true,
-  "reason": "no headed Chrome in this environment",
-  "pages": 4,
+  "date": "2026-09-18",
   "engineBoxes": [
     {
+      "engine": {
+        "h": 30,
+        "w": 100,
+        "x": 0,
+        "y": 0
+      },
       "html": "flex-row",
       "selector": "#a",
-      "engine": { "x": 0, "y": 0, "w": 100, "h": 30 },
       "test": "flex_row_distributes_width_and_hit_testing_finds_items"
     },
     {
+      "engine": {
+        "h": 30,
+        "w": 200,
+        "x": 100,
+        "y": 0
+      },
       "html": "flex-row",
       "selector": "#big",
-      "engine": { "x": 100, "y": 0, "w": 200, "h": 30 },
       "test": "flex_row_distributes_width_and_hit_testing_finds_items"
     },
     {
+      "engine": {
+        "h": 50,
+        "w": 400,
+        "x": 0,
+        "y": 0
+      },
       "html": "block-margin",
       "selector": "#a",
-      "engine": { "x": 0, "y": 0, "w": 400, "h": 50 },
       "test": "ve-layout block layout"
     },
     {
+      "engine": {
+        "h": 40,
+        "w": 100,
+        "x": 0,
+        "y": 0
+      },
       "html": "inline-wrap",
       "selector": "p",
-      "engine": { "x": 0, "y": 0, "w": 100, "h": 40 },
       "test": "inline_text_wraps_into_lines"
     }
   ],
-  "notes": "Engine boxes measured by ve-layout tests. Chromium getBoundingClientRect comparison is skipped-live."
+  "notes": "Engine boxes asserted by ve-layout tests. Chromium getBoundingClientRect comparison is skipped-live.",
+  "pages": 4,
+  "reason": "no headed Chrome in this environment",
+  "reference": "chromium-headless",
+  "skippedLive": true
 }

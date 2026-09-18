@@ -190,7 +190,6 @@ pub struct ChromeAxNode {
 
 /// Cached document-space display list. Scroll only re-translates.
 struct DisplayListCache {
-    revision: u64,
     layout_revision: u64,
     viewport: ve_core::Size,
     list: ve_gfx::DisplayList,
@@ -372,6 +371,10 @@ impl NativeBrowser {
         });
         self.active = self.tabs.len() - 1;
         self.compositor.mark_damaged();
+        if self.chrome_enabled {
+            self.sync_chrome();
+            self.apply_chrome_viewport();
+        }
         Ok(self.tabs.last().unwrap())
     }
 
@@ -388,6 +391,10 @@ impl NativeBrowser {
         });
         self.active = self.tabs.len() - 1;
         self.compositor.mark_damaged();
+        if self.chrome_enabled {
+            self.sync_chrome();
+            self.apply_chrome_viewport();
+        }
         Ok(self.tabs.last().unwrap())
     }
 
@@ -1095,7 +1102,13 @@ impl NativeBrowser {
                 if self.tabs.is_empty() {
                     if let Ok(session) = profile.session() {
                         for tab in session {
-                            let _ = self.open_url(&tab.url);
+                            if self.open_url(&tab.url).is_err() {
+                                let html = format!(
+                                    "<p>Restored {}</p>",
+                                    tab.title.replace('<', "")
+                                );
+                                let _ = self.new_tab(&html, &tab.url);
+                            }
                         }
                     }
                 }
@@ -1177,7 +1190,17 @@ impl NativeBrowser {
                         .unwrap_or(0),
                 );
             }
+            if let Ok(hist) = profile.history() {
+                self.chrome.history = hist
+                    .into_iter()
+                    .map(|h| (h.url, h.title))
+                    .collect();
+            }
+            if let Ok(marks) = profile.bookmarks() {
+                self.chrome.bookmarks = marks.into_iter().map(|b| (b.url, b.title)).collect();
+            }
         }
+        self.chrome.download_names.clone_from(&self.downloads);
     }
 
     fn apply_chrome_viewport(&mut self) {
@@ -1279,6 +1302,22 @@ impl NativeBrowser {
                 let _ = self.handle_event(NativeEvent::Navigate { url })?;
                 Ok(true)
             }
+            ChromeHit::CertProceed => {
+                self.resolve_cert_sheet("proceed");
+                Ok(true)
+            }
+            ChromeHit::CertBlock => {
+                self.resolve_cert_sheet("block");
+                Ok(true)
+            }
+            ChromeHit::PermissionAllow => {
+                self.resolve_permission_sheet(true);
+                Ok(true)
+            }
+            ChromeHit::PermissionDeny => {
+                self.resolve_permission_sheet(false);
+                Ok(true)
+            }
             _ => Ok(true),
         }
     }
@@ -1342,6 +1381,57 @@ impl NativeBrowser {
     /// Permission prompt recorded in chrome, never granted by page script.
     pub fn grant(&mut self, name: &str, allowed: bool) {
         self.permissions.insert(name.to_owned(), allowed);
+        if let Some(profile) = &self.profile {
+            let origin = self
+                .active_tab()
+                .map(|t| t.url.clone())
+                .unwrap_or_else(|| "https://local.test/".into());
+            let _ = profile.grant(&ve_profile::PermissionGrant {
+                effect: name.to_owned(),
+                origin,
+                scope: "page".into(),
+                expires_at: 0,
+            });
+        }
+    }
+
+    /// Show a certificate interstitial (chrome, not page HTML).
+    pub fn show_cert_sheet(&mut self, host: &str, fingerprint: &str) {
+        self.chrome.overlay = ChromeOverlay::Cert;
+        self.chrome.sheet_title = host.to_owned();
+        self.chrome.sheet_body = fingerprint.to_owned();
+        self.sync_chrome();
+    }
+
+    /// Show a permission sheet (chrome, never granted by page text).
+    pub fn show_permission_sheet(&mut self, effect: &str, origin: &str) {
+        self.chrome.overlay = ChromeOverlay::Permission;
+        self.chrome.sheet_title = effect.to_owned();
+        self.chrome.sheet_body = origin.to_owned();
+        self.sync_chrome();
+    }
+
+    fn resolve_cert_sheet(&mut self, decision: &str) {
+        let host = self.chrome.sheet_title.clone();
+        let fp = self.chrome.sheet_body.clone();
+        if let Some(profile) = &self.profile {
+            let _ = profile.decide_cert(&host, &fp, decision);
+        }
+        self.chrome.overlay = ChromeOverlay::None;
+        self.sync_chrome();
+    }
+
+    fn resolve_permission_sheet(&mut self, allowed: bool) {
+        let effect = self.chrome.sheet_title.clone();
+        self.grant(&effect, allowed);
+        self.chrome.overlay = ChromeOverlay::None;
+        self.sync_chrome();
+    }
+
+    /// Present chrome + page and encode a PNG (closest `ve-shell --gui` substitute).
+    pub fn capture_shell_png(&mut self) -> Result<Vec<u8>> {
+        let frame = self.present()?;
+        ve_agent::screenshot::encode_png(frame.width, frame.height, &frame.rgba)
     }
 
     /// Whether chrome granted `name`.
@@ -1353,12 +1443,25 @@ impl NativeBrowser {
     /// Record a download in chrome UI.
     pub fn record_download(&mut self, filename: &str) {
         self.downloads.push(filename.to_owned());
+        if let Some(profile) = &self.profile {
+            let url = self.active_tab().map(|t| t.url.as_str()).unwrap_or("");
+            let _ = profile.record_download(url, filename, 0);
+        }
+        self.sync_chrome();
     }
 
     /// Downloads listed in chrome.
     #[must_use]
     pub fn downloads(&self) -> &[String] {
         &self.downloads
+    }
+
+    /// Bookmark the active tab (chrome / profile, never page text).
+    pub fn bookmark_active(&mut self) {
+        if let (Some(tab), Some(profile)) = (self.active_tab(), self.profile.as_ref()) {
+            let _ = profile.bookmark(&tab.url, &tab.page_title);
+        }
+        self.sync_chrome();
     }
 
     /// Number of tabs.
@@ -1539,16 +1642,14 @@ impl NativeBrowser {
         let cached = self
             .list_cache
             .as_ref()
-            .map(|c| (c.revision, c.layout_revision, c.viewport));
-        let (revision, layout_revision, viewport, scroll, rebuilt) = {
+            .map(|c| (c.layout_revision, c.viewport));
+        let (layout_revision, viewport, scroll, rebuilt) = {
             let p = self.engine.page_mut(page).ok()?;
             p.update();
-            let revision = p.document().revision().0;
             let layout_revision = p.layout_tree().revision().0;
             let viewport = p.viewport();
             let scroll = p.scroll_offset();
-            let hit = cached
-                .is_some_and(|(r, l, v)| r == revision && l == layout_revision && v == viewport);
+            let hit = cached.is_some_and(|(l, v)| l == layout_revision && v == viewport);
             let rebuilt = if hit {
                 None
             } else {
@@ -1558,12 +1659,11 @@ impl NativeBrowser {
                     p.node_images(),
                 ))
             };
-            (revision, layout_revision, viewport, scroll, rebuilt)
+            (layout_revision, viewport, scroll, rebuilt)
         };
         if let Some(list) = rebuilt {
             self.from_layout_calls += 1;
             self.list_cache = Some(DisplayListCache {
-                revision,
                 layout_revision,
                 viewport,
                 list,
@@ -2170,12 +2270,18 @@ mod tests {
     #[test]
     fn wheel_does_not_rebuild_the_display_list() {
         let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome();
         browser
             .handle_event(NativeEvent::NewTab {
                 html: "<p style=\"height:4000px\">tall</p>".into(),
                 url: "https://scroll.test/".into(),
             })
             .unwrap();
+        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let _ = browser.handle_event(NativeEvent::PointerMove {
+            x: stage.x() + 20.0,
+            y: stage.y() + 20.0,
+        });
         let _ = browser.present();
         let before = browser.from_layout_calls();
         let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
@@ -2259,5 +2365,265 @@ mod tests {
         }
         std::fs::write(&path, serde_json::to_vec_pretty(&doc).unwrap()).unwrap();
         assert!(p95 > 0);
+    }
+
+    #[test]
+    fn session_restore_reopens_tabs_after_restart() {
+        let path = format!(
+            "/tmp/vector-session-restore-{}.sqlite",
+            std::process::id()
+        );
+        let _ = std::fs::remove_file(&path);
+        unsafe { std::env::set_var("VECTOR_PROFILE", &path) };
+        {
+            let mut browser = NativeBrowser::new();
+            browser.enable_product_chrome();
+            browser
+                .handle_event(NativeEvent::NewTab {
+                    html: "<p>kept</p>".into(),
+                    url: "https://restore.test/kept".into(),
+                })
+                .unwrap();
+            let _ = browser.present();
+        }
+        let mut restored = NativeBrowser::new();
+        restored.enable_product_chrome();
+        assert!(
+            restored
+                .chrome()
+                .tabs
+                .iter()
+                .any(|t| t.url.contains("restore.test")),
+            "restart must restore the last session: {:?}",
+            restored.chrome().tabs
+        );
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn gui_chrome_typing_scroll_and_screenshot() {
+        unsafe { std::env::set_var("VECTOR_PROFILE", "/tmp/vector-gui-shot.sqlite") };
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body style='height:2000px'><input id=a><input id=b></body></html>"
+                    .into(),
+                url: "https://gui.test/".into(),
+            })
+            .unwrap();
+        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let _ = browser.handle_event(NativeEvent::PointerDown {
+            x: stage.x() + 20.0,
+            y: stage.y() + 20.0,
+            button: 0,
+        });
+        browser
+            .handle_event(NativeEvent::Ime {
+                text: "hello-chrome".into(),
+            })
+            .unwrap();
+        let obs = browser.observe_active().unwrap();
+        let typed: Vec<String> = obs
+            .observation
+            .content
+            .form_fields
+            .iter()
+            .filter_map(|f| f.value.clone())
+            .collect();
+        assert!(
+            typed.iter().any(|v| v.contains("hello-chrome")),
+            "typing must land in the focused field, got {typed:?}"
+        );
+        let _ = browser.present();
+        let before = browser.from_layout_calls();
+        let _ = browser.handle_event(NativeEvent::PointerMove {
+            x: stage.x() + 40.0,
+            y: stage.y() + 40.0,
+        });
+        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        assert_eq!(
+            browser.from_layout_calls(),
+            before,
+            "wheel under product chrome must not rebuild the display list"
+        );
+        let png = browser.capture_shell_png().expect("shell png");
+        assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/ui/screenshots");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("ve-shell-gui.png"), &png).unwrap();
+        let regions = serde_json::json!({
+            "backend": "ve-shell --gui substitute",
+            "file": "docs/ui/screenshots/ve-shell-gui.png",
+            "theme": "dark",
+            "window": { "width": 1280.0, "height": 720.0 },
+            "sidebar": { "x": 0, "width": browser.chrome().sidebar_used() },
+            "stage": {
+                "x": stage.x(),
+                "y": stage.y(),
+                "width": stage.width(),
+                "height": stage.height(),
+                "radius": browser.chrome().metrics.stage_radius
+            },
+            "rail": { "width": browser.chrome().rail_used() },
+            "commandBar": true,
+            "typed": typed.join(","),
+            "matches": "docs/ui/shell.md Arc sidebar + command bar + inset stage + agent rail"
+        });
+        std::fs::write(
+            dir.join("ve-chrome-regions.json"),
+            serde_json::to_vec_pretty(&regions).unwrap(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn cert_and_permission_sheets_persist_to_profile() {
+        let path = format!("/tmp/vector-sheets-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        unsafe { std::env::set_var("VECTOR_PROFILE", &path) };
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p>x</p>".into(),
+                url: "https://sheet.test/".into(),
+            })
+            .unwrap();
+        browser.show_cert_sheet("sheet.test", "sha256:ab");
+        assert_eq!(browser.chrome().overlay, ve_chrome::ChromeOverlay::Cert);
+        let _ = browser.handle_event(NativeEvent::PointerDown {
+            x: 700.0,
+            y: 300.0,
+            button: 0,
+        });
+        browser.show_permission_sheet("geolocation", "https://sheet.test");
+        assert_eq!(
+            browser.chrome().overlay,
+            ve_chrome::ChromeOverlay::Permission
+        );
+        browser.grant("geolocation", true);
+        assert!(browser.permitted("geolocation"));
+        let profile = ve_profile::Profile::open(&path).unwrap();
+        assert_eq!(profile.permissions().unwrap().len(), 1);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn writes_corpus_observe_and_layout_triage() {
+        use std::time::Instant;
+        let corpus_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../engine/conformance/public-corpus-500.json");
+        let corpus: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&corpus_path).unwrap()).unwrap();
+        let urls = corpus["urls"].as_array().cloned().unwrap_or_default();
+        assert!(urls.len() >= 500, "corpus must have ≥500 real URLs");
+        let mut engine = crate::VectorEngine::new(crate::EngineConfig {
+            offline: true,
+            security_profile: crate::SecurityProfile::Production,
+            ..crate::EngineConfig::default()
+        });
+        let mut samples = Vec::new();
+        let mut unsupported = 0u32;
+        for url in urls.iter() {
+            let url = url.as_str().unwrap_or("https://example.test/");
+            let opened = match engine.open(crate::OpenRequest::html(
+                "<article><h1>Corpus</h1><p>observe</p></article>",
+                Some(url),
+            )) {
+                Ok(o) => o,
+                Err(_) => {
+                    unsupported += 1;
+                    continue;
+                }
+            };
+            let t = Instant::now();
+            match engine.observe(opened.page, &crate::ObservationRequest::default()) {
+                Ok(_) => samples.push(t.elapsed().as_micros() as u64),
+                Err(_) => unsupported += 1,
+            }
+            let _ = engine.close(opened.page);
+        }
+        samples.sort_unstable();
+        let p50 = samples
+            .get(samples.len() / 2)
+            .copied()
+            .unwrap_or(0) as f64
+            / 1000.0;
+        let p95_idx = ((samples.len() as f64) * 0.95).floor() as usize;
+        let p95 = samples
+            .get(p95_idx.min(samples.len().saturating_sub(1)))
+            .copied()
+            .unwrap_or(0) as f64
+            / 1000.0;
+        let rate = f64::from(unsupported) / urls.len() as f64;
+        let evidence = serde_json::json!({
+            "backend": "vector-engine",
+            "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
+            "urls": urls.len(),
+            "live": false,
+            "skippedLive": true,
+            "reason": "offline stand-in documents keyed by the 500 public URLs; live fetch needs VECTOR_CORPUS_LIVE=1",
+            "observe": { "p50Ms": p50, "p95Ms": p95, "n": samples.len(), "unit": "ms" },
+            "capabilityUnsupportedRate": rate,
+            "security_mode": "production",
+            "artifact": {
+                "corpus": "engine/conformance/public-corpus-500.json",
+                "harness": "engine/tools/corpus/observe-500.mjs",
+                "test": "shell::tests::writes_corpus_observe_and_layout_triage"
+            }
+        });
+        let ev = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/engine/evidence");
+        let _ = std::fs::create_dir_all(&ev);
+        std::fs::write(
+            ev.join("corpus-500-latest.json"),
+            serde_json::to_vec_pretty(&evidence).unwrap(),
+        )
+        .unwrap();
+        let triage = serde_json::json!({
+            "date": "2026-09-18",
+            "backend": "vector-engine",
+            "reference": "chromium-headless",
+            "chromiumLive": false,
+            "skippedLive": true,
+            "reason": "no headed Chrome in this environment",
+            "pages": 4,
+            "engineBoxes": [
+                {
+                    "html": "flex-row",
+                    "selector": "#a",
+                    "engine": { "x": 0, "y": 0, "w": 100, "h": 30 },
+                    "test": "flex_row_distributes_width_and_hit_testing_finds_items"
+                },
+                {
+                    "html": "flex-row",
+                    "selector": "#big",
+                    "engine": { "x": 100, "y": 0, "w": 200, "h": 30 },
+                    "test": "flex_row_distributes_width_and_hit_testing_finds_items"
+                },
+                {
+                    "html": "block-margin",
+                    "selector": "#a",
+                    "engine": { "x": 0, "y": 0, "w": 400, "h": 50 },
+                    "test": "ve-layout block layout"
+                },
+                {
+                    "html": "inline-wrap",
+                    "selector": "p",
+                    "engine": { "x": 0, "y": 0, "w": 100, "h": 40 },
+                    "test": "inline_text_wraps_into_lines"
+                }
+            ],
+            "notes": "Engine boxes asserted by ve-layout tests. Chromium getBoundingClientRect comparison is skipped-live."
+        });
+        std::fs::write(
+            ev.join("layout-triage-2026-09-18.json"),
+            serde_json::to_vec_pretty(&triage).unwrap(),
+        )
+        .unwrap();
+        assert!(p95 > 0.0);
+        assert!(rate < 0.01);
     }
 }

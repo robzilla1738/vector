@@ -438,6 +438,29 @@ describe("Gate D fixture write counter", () => {
     }
   });
 
+  it("kill-9 mid-write is exactly one POST", async () => {
+    const fixture = await spawnFormsWriteCounter();
+    try {
+      const path = join(fixture.dir, "ledger-kill9.json");
+      const signature = stepSignature([{ op: "click", target: "pay" }]);
+      const first = new DurableWriteLedger(path);
+      const begun = first.begin({ runId: "run-k9", pageId: "p1", documentEpoch: 1, signature });
+      expect(begun.duplicate).toBe(false);
+      await fetch(`${fixture.origin}/api/writes`, { method: "POST" });
+      // Process dies before confirm() — the pending row is already on disk.
+      const afterKill = new DurableWriteLedger(path);
+      const replay = afterKill.begin({ runId: "run-k9", pageId: "p1", documentEpoch: 1, signature });
+      expect(replay.duplicate).toBe(true);
+      if (!replay.duplicate) {
+        await fetch(`${fixture.origin}/api/writes`, { method: "POST" });
+      }
+      const counted = (await (await fetch(`${fixture.origin}/api/writes`)).json()) as { writes: number };
+      expect(counted.writes).toBe(1);
+    } finally {
+      fixture.stop();
+    }
+  });
+
   it("pending intent persisted before dispatch blocks a restart replay", () => {
     const dir = mkdtempSync(join(tmpdir(), "vector-ledger-"));
     const path = join(dir, "ledger.json");
