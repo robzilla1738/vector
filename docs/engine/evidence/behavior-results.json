@@ -12,15 +12,15 @@
       "adapted": "supported testharness.txt plus engine bindings; load/done/virtual-time rewritten"
     },
     "official": {
-      "pass": 27,
-      "fail": 3,
+      "pass": 28,
+      "fail": 2,
       "total": 30,
       "tls": "not run; official tree is http fixture only on this pin",
       "unmodifiedUpstream": true
     },
     "supportedSubset": {
-      "pass": 141,
-      "fail": 3,
+      "pass": 142,
+      "fail": 2,
       "total": 144,
       "note": "same harness run, testharness.txt — adapted regression coverage, not official WPT",
       "unmodifiedUpstream": false
@@ -33,7 +33,6 @@
     ],
     "remainingOfficialFails": [
       "sanitize-template-element.html",
-      "src-streaming.html",
       "template-for-empty.html"
     ]
   },
