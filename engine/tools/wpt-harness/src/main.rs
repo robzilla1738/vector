@@ -444,6 +444,26 @@ const TESTDRIVER_VENDOR_SRC: &[&str] = &[
     r#"<script src=/resources/testdriver-vendor.js></script>"#,
 ];
 
+fn inject_csp_from_sidecar(html: &str, fixture: &Path) -> String {
+    let Some(csp) = http_serve::content_security_policy_for(fixture) else {
+        return html.to_string();
+    };
+    if html.to_ascii_lowercase().contains("content-security-policy") {
+        return html.to_string();
+    }
+    let meta = format!(
+        r#"<meta http-equiv="Content-Security-Policy" content="{}">"#,
+        csp.replace('"', "&quot;")
+    );
+    if let Some(idx) = html.to_ascii_lowercase().find("<head") {
+        if let Some(end) = html[idx..].find('>') {
+            let at = idx + end + 1;
+            return format!("{}{}{}", &html[..at], meta, &html[at..]);
+        }
+    }
+    format!("{meta}{html}")
+}
+
 fn inject_upstream_testharness(html: &str) -> String {
     if !html.contains("testharness.js") {
         return html.to_string();
@@ -592,6 +612,7 @@ fn run_script_test(
     let expect_testharness = html.contains("testharness.js");
     let variant = first_wpt_variant(html).map(str::to_owned);
     let html = inject_relative_scripts(html, dir);
+    let html = inject_csp_from_sidecar(&html, fixture);
     let html = inject_upstream_testharness(&html);
     let html = if let Some((origin, rel)) = wpt_origin_rel(url) {
         http_serve::substitute_wpt_text(&html, &origin, &rel)

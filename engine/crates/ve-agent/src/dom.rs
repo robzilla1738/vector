@@ -423,6 +423,10 @@ pub(crate) fn host_call(
             let id = live(page, args, 0)?;
             Ok(JsValue::from(page.doc.children(id).count() as f64))
         }
+        "realNextSibling" => Ok(live(page, args, 0)
+            .ok()
+            .and_then(|id| page.doc.next_sibling(id))
+            .map_or(JsValue::Null, pack)),
         "appendChild" => {
             let (p, c) = (live(page, args, 0)?, live(page, args, 1)?);
             let ret = crate::idl::LiveDom::new(page, p).append_child(c);
@@ -2399,6 +2403,7 @@ fn append_referrer_query(url: &str, headers_json: &str) -> String {
     }
     let referrer = header_value(headers_json, "referer")
         .or_else(|| header_value(headers_json, "referrer"))
+        .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "NO-REFERER".into());
     if url.contains("referrer=") {
         return url.to_owned();

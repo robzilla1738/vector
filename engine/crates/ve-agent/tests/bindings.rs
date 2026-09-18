@@ -3550,3 +3550,211 @@ fn live_childnodes_has_own_indexes_after_remove() {
     assert_eq!(v["first"], true, "{v}");
     assert_eq!(v["second"], true, "{v}");
 }
+
+#[test]
+fn official_sanitize_boolean_compound_id_descendant() {
+    let mut page = open(
+        r#"<div id="container-no-val">
+             <div id="target-no-val"><?start name="marker-no-val">Original<?end></div>
+             <template for="marker-no-val" sanitize>
+               <script>window.scriptNoVal = true;</script>
+               <span id="ok-no-val">Allowed No Val</span>
+             </template>
+           </div>
+           <div id="container-empty-val">
+             <div id="target-empty-val"><?start name="marker-empty-val">Original<?end></div>
+             <template for="marker-empty-val" sanitize="">
+               <script>window.scriptEmptyVal = true;</script>
+               <span id="ok-empty-val">Allowed Empty Val</span>
+             </template>
+           </div>
+           <div id="container-invalid-val">
+             <div id="target-invalid-val"><?start name="marker-invalid-val">Original<?end></div>
+             <template for="marker-invalid-val" sanitize="invalid">
+               <script>window.scriptInvalidVal = true;</script>
+               <span id="ok-invalid-val">Allowed Invalid Val</span>
+             </template>
+           </div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const noVal = document.querySelector("#target-no-val span");
+              const emptyVal = document.querySelector("#target-empty-val span");
+              const invalidVal = document.querySelector("#target-invalid-val span");
+              const t1 = document.getElementById("target-no-val");
+              const t3 = document.getElementById("target-invalid-val");
+              return {
+                scriptNoVal: !!window.scriptNoVal,
+                scriptEmptyVal: !!window.scriptEmptyVal,
+                scriptInvalidVal: !!window.scriptInvalidVal,
+                noVal: noVal && noVal.textContent,
+                emptyVal: emptyVal && emptyVal.textContent,
+                invalidVal: invalidVal && invalidVal.textContent,
+                byId: document.getElementById("ok-no-val") && document.getElementById("ok-no-val").textContent,
+                okInvalid: document.getElementById("ok-invalid-val") && document.getElementById("ok-invalid-val").textContent,
+                html1: t1 && t1.innerHTML,
+                html3: t3 && t3.innerHTML,
+                tpls: document.querySelectorAll("template").length,
+                compound: document.querySelector("#target-invalid-val span") && document.querySelector("#target-invalid-val span").id
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["scriptNoVal"], false, "{v}");
+    assert_eq!(v["scriptEmptyVal"], false, "{v}");
+    assert_eq!(v["scriptInvalidVal"], true, "{v}");
+    assert_eq!(v["noVal"], "Allowed No Val", "{v}");
+    assert_eq!(v["emptyVal"], "Allowed Empty Val", "{v}");
+    assert_eq!(v["invalidVal"], "Allowed Invalid Val", "{v}");
+    assert_eq!(v["byId"], "Allowed No Val", "{v}");
+}
+
+#[test]
+fn official_streaming_target_marker_removed() {
+    let mut page = open(
+        r#"<div id="target" marker="dest-marker">
+             <?start name="dest-marker">Original Content<?end>
+           </div>
+           <template for="dest-marker">
+             <span id="child1">One</span>
+             <script>
+               const target = document.getElementById("target");
+               for (const child of Array.from(target.childNodes)) {
+                 if (child.nodeType === 7 && child.target === "end") child.remove();
+               }
+             </script>
+             <span id="child2">Two</span>
+           </template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const target = document.getElementById("target");
+              const c1 = target && target.querySelector("#child1");
+              const c2 = target && target.querySelector("#child2");
+              const kids = target ? Array.from(target.childNodes).filter((n) => n.nodeType === 1 && n.tagName.toLowerCase() !== "script") : [];
+              return {
+                t1: c1 && c1.textContent,
+                t2: c2 && c2.textContent,
+                n: kids.length,
+                id0: kids[0] && kids[0].id,
+                id1: kids[1] && kids[1].id,
+                tpl: target && target.querySelector("template")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["t1"], "One", "{v}");
+    assert_eq!(v["t2"], "Two", "{v}");
+    assert_eq!(v["n"], 2, "{v}");
+    assert_eq!(v["id0"], "child1", "{v}");
+    assert_eq!(v["id1"], "child2", "{v}");
+    assert!(v["tpl"].is_null(), "{v}");
+}
+
+#[test]
+fn official_src_streaming_single_quoted_ids() {
+    let mut page = open(
+        r#"<div id="container"><?start name="target">Old<?end></div>
+           <template for="target" src="../resources/chunked-html.py?delay=300&chunk1=%3Cspan%20id='c1'%3EC1%3C/span%3E&chunk2=%3Cspan%20id='c2'%3EC2%3C/span%3E" id="tpl"></template>"#,
+    );
+    assert!(page.settle(500).settled);
+    page.pump_virtual_time(400);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("container");
+              return {
+                c1: document.getElementById("c1") && document.getElementById("c1").textContent,
+                c2: document.getElementById("c2") && document.getElementById("c2").textContent,
+                html: c && c.innerHTML.trim().replace(/\s+/g, " ")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["c1"], "C1", "{v}");
+    assert_eq!(v["c2"], "C2", "{v}");
+}
+
+#[test]
+fn official_src_policy_cors_nonce_sri() {
+    let mut page = open(
+        r#"<div id="cors-ok"><?start name="c-ok">Old<?end></div>
+           <template for="c-ok" src="http://www1.web-platform.test:80/x.py?cors=1&chunk1=CORS_OK"></template>
+           <div id="cors-bad"><?start name="c-bad">Old<?end></div>
+           <template for="c-bad" src="http://www1.web-platform.test:80/x.py?cors=0&chunk1=CORS_FAIL"></template>
+           <div id="sri-ok"><?start name="s-ok">Old<?end></div>
+           <template for="s-ok" src="http://www1.web-platform.test:80/x.py?cors=1&chunk1=SRI_OK" integrity="sha256-B9fOqAtaB7EXwH61rP5cQQlWSqoRukf/UC9TatLkCec="></template>
+           <div id="sri-bad"><?start name="s-bad">Old<?end></div>
+           <template for="s-bad" src="http://www1.web-platform.test:80/x.py?cors=1&chunk1=SRI_OK" integrity="sha256-mismatchedhashmismatchedhashmismatchedhash="></template>"#,
+    );
+    assert!(page.settle(200).settled);
+    page.pump_virtual_time(50);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return {
+                corsOk: document.getElementById("cors-ok").textContent.includes("CORS_OK"),
+                corsBad: document.getElementById("cors-bad").textContent.includes("CORS_FAIL"),
+                sriOk: document.getElementById("sri-ok").textContent.includes("SRI_OK"),
+                sriBad: document.getElementById("sri-bad").textContent.includes("SRI_OK")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["corsOk"], true, "{v}");
+    assert_eq!(v["corsBad"], false, "{v}");
+    assert_eq!(v["sriOk"], true, "{v}");
+    assert_eq!(v["sriBad"], false, "{v}");
+}
+
+#[test]
+fn official_src_policy_nonce() {
+    let mut page = open(
+        r#"<meta http-equiv="Content-Security-Policy" content="script-src 'nonce-correctnonce' 'unsafe-inline';">
+           <div id="ok"><?start name="n-ok">Old<?end></div>
+           <template for="n-ok" nonce="correctnonce" src="/x.py?chunk1=NONCE_OK"></template>
+           <div id="bad"><?start name="n-bad">Old<?end></div>
+           <template for="n-bad" nonce="wrongnonce" src="/x.py?chunk1=NONCE_FAIL"></template>"#,
+    );
+    assert!(page.settle(200).settled);
+    page.pump_virtual_time(50);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return {
+                nonceOk: document.getElementById("ok").textContent.includes("NONCE_OK"),
+                nonceBad: document.getElementById("bad").textContent.includes("NONCE_FAIL")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["nonceOk"], true, "{v}");
+    assert_eq!(v["nonceBad"], false, "{v}");
+}
+
+#[test]
+fn iframe_srcdoc_applies_template_for() {
+    let mut page = open(
+        r#"<iframe id="f" srcdoc="<!DOCTYPE html><div id='target'><?start name='t'>Old<?end></div><template for='t'><span id='child1'>One</span><span id='child2'>Two</span></template>"></iframe>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const f = document.getElementById("f");
+              const d = f && f.contentDocument;
+              const t = d && d.getElementById("target");
+              return {
+                c1: t && t.querySelector("#child1") && t.querySelector("#child1").textContent,
+                c2: t && t.querySelector("#child2") && t.querySelector("#child2").textContent
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["c1"], "One", "{v}");
+    assert_eq!(v["c2"], "Two", "{v}");
+}

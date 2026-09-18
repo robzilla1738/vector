@@ -96,6 +96,10 @@ fn handle_conn(
         serve_buffer_streaming_reflection(&mut stream);
         return;
     }
+    if rel.ends_with("stash-referrer.py") {
+        serve_stash_referrer(&mut stream, query, &req, &stash);
+        return;
+    }
     match resolve(&roots, rel) {
         Some((file, mime)) => {
             if let Ok(bytes) = std::fs::read(&file) {
@@ -320,9 +324,49 @@ fn resolve(roots: &[(String, PathBuf)], rel: &str) -> Option<(PathBuf, &'static 
     None
 }
 
+fn serve_stash_referrer(stream: &mut TcpStream, query: &str, req: &str, stash: &Stash) {
+    let q = query_map(query);
+    let key = q.get("key").cloned().unwrap_or_default();
+    let operation = q.get("operation").map(String::as_str).unwrap_or("");
+    match operation {
+        "put" => {
+            let referrer = q
+                .get("referrer")
+                .cloned()
+                .or_else(|| request_header(req, "referer"))
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| "NO-REFERER".into());
+            if !key.is_empty() {
+                stash_put(stash, &format!("referrer:{key}"), referrer);
+            }
+            write_bytes(stream, "text/plain", b"");
+        }
+        "take" => {
+            let body = stash_get(stash, &format!("referrer:{key}")).unwrap_or_default();
+            write_bytes(stream, "text/plain; charset=utf-8", body.as_bytes());
+        }
+        _ => write_bytes(stream, "text/plain", b""),
+    }
+}
+
+fn request_header(req: &str, name: &str) -> Option<String> {
+    req.lines().skip(1).find_map(|line| {
+        let (k, v) = line.split_once(':')?;
+        k.trim()
+            .eq_ignore_ascii_case(name)
+            .then(|| v.trim().to_owned())
+            .filter(|s| !s.is_empty())
+    })
+}
+
 /// `Last-Modified` from a WPT `.headers` sidecar next to `file`.
 pub fn last_modified_for(file: &Path) -> Option<String> {
     sidecar_header(file, "last-modified")
+}
+
+/// `Content-Security-Policy` from a WPT `.headers` sidecar next to `file`.
+pub fn content_security_policy_for(file: &Path) -> Option<String> {
+    sidecar_header(file, "content-security-policy")
 }
 
 /// First `Content-Language` from a WPT `.headers` sidecar next to `file`.

@@ -4943,10 +4943,11 @@
     node.dispatchEvent(ev);
     return ev.defaultPrevented;
   };
-  function fetchText(url) {
+  function fetchText(url, headers) {
     if (!url) return null;
     try {
-      const id = D("fetchStart", String(url), "GET", "");
+      const headerJson = headers ? JSON.stringify(headers) : "";
+      const id = D("fetchStart", String(url), "GET", headerJson);
       let r = D("fetchPoll", id);
       for (let i = 0; i < 64 && r && r.pending; i++) {
         D("fetchPump");
@@ -5134,6 +5135,9 @@
         buffer: tpl.hasAttribute("buffer"),
         sanitize: tpl.hasAttribute("sanitize") ? String(tpl.getAttribute("sanitize") || "") : null,
         src: tpl.getAttribute("src"),
+        nonce: tpl.getAttribute("nonce") || "",
+        integrity: tpl.getAttribute("integrity") || "",
+        referrerPolicy: tpl.getAttribute("referrerpolicy") || "",
       };
       patchFrozen.set(tpl, rec);
     }
@@ -5141,9 +5145,9 @@
   }
   function piAttrs(data) {
     const out = Object.create(null);
-    const re = /([^\s=]+)="([^"]*)"/g;
+    const re = /([^\s=]+)=(?:"([^"]*)"|'([^']*)')/g;
     let m;
-    while ((m = re.exec(String(data || "")))) out[m[1]] = m[2];
+    while ((m = re.exec(String(data || "")))) out[m[1]] = m[2] != null ? m[2] : m[3];
     return out;
   }
   function walkNodes(root, fn) {
@@ -5363,10 +5367,10 @@
       runOne(node);
     }
   }
-  function srcChunks(href) {
+  function srcQuery(href) {
     try {
       const q = String(href || "").split("?")[1] || "";
-      if (!q) return null;
+      if (!q) return Object.create(null);
       const params = Object.create(null);
       for (const part of q.split("&")) {
         const eq = part.indexOf("=");
@@ -5374,15 +5378,149 @@
         const v = decodeURIComponent((eq < 0 ? "" : part.slice(eq + 1)).replace(/\+/g, " "));
         if (k) params[k] = v;
       }
-      if (params.chunk1 == null && params.chunk2 == null) return null;
-      return {
-        chunk1: params.chunk1 || "",
-        chunk2: params.chunk2 || "",
-        delay: Number(params.delay) || 0,
-      };
+      return params;
     } catch (e) {
-      return null;
+      return Object.create(null);
     }
+  }
+  function srcChunks(href) {
+    const params = srcQuery(href);
+    if (params.chunk1 == null && params.chunk2 == null) return null;
+    return {
+      chunk1: params.chunk1 || "",
+      chunk2: params.chunk2 || "",
+      delay: Number(params.delay) || 0,
+    };
+  }
+  function sha256b64(text) {
+    const encoded = unescape(encodeURIComponent(String(text == null ? "" : text)));
+    const bytes = [];
+    for (let i = 0; i < encoded.length; i++) bytes.push(encoded.charCodeAt(i) & 255);
+    const K = [
+      0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+      0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+      0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+      0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+      0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+      0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+      0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+      0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+    ];
+    function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+    const bitLen = bytes.length * 8;
+    bytes.push(0x80);
+    while ((bytes.length % 64) !== 56) bytes.push(0);
+    bytes.push(0, 0, 0, 0, (bitLen >>> 24) & 255, (bitLen >>> 16) & 255, (bitLen >>> 8) & 255, bitLen & 255);
+    let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
+    let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+    const w = new Array(64);
+    for (let i = 0; i < bytes.length; i += 64) {
+      for (let t = 0; t < 16; t++) {
+        const o = i + t * 4;
+        w[t] = ((bytes[o] << 24) | (bytes[o + 1] << 16) | (bytes[o + 2] << 8) | bytes[o + 3]) >>> 0;
+      }
+      for (let t = 16; t < 64; t++) {
+        const s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+        const s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+        w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;
+      }
+      let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+      for (let t = 0; t < 64; t++) {
+        const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        const ch = (e & f) ^ (~e & g);
+        const t1 = (h + S1 + ch + K[t] + w[t]) >>> 0;
+        const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        const maj = (a & b) ^ (a & c) ^ (b & c);
+        const t2 = (S0 + maj) >>> 0;
+        h = g; g = f; f = e; e = (d + t1) >>> 0;
+        d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      }
+      h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0;
+      h4 = (h4 + e) >>> 0; h5 = (h5 + f) >>> 0; h6 = (h6 + g) >>> 0; h7 = (h7 + h) >>> 0;
+    }
+    const out = [h0, h1, h2, h3, h4, h5, h6, h7];
+    const raw = [];
+    for (const word of out) {
+      raw.push((word >>> 24) & 255, (word >>> 16) & 255, (word >>> 8) & 255, word & 255);
+    }
+    let bin = "";
+    for (const b of raw) bin += String.fromCharCode(b);
+    return btoa(bin);
+  }
+  function sriMatches(body, integrity) {
+    const spec = String(integrity || "").trim();
+    if (!spec) return true;
+    const parts = spec.split(/\s+/);
+    for (const part of parts) {
+      const dash = part.indexOf("-");
+      if (dash < 0) continue;
+      const alg = part.slice(0, dash).toLowerCase();
+      const want = part.slice(dash + 1);
+      if (alg === "sha256") return sha256b64(body) === want;
+    }
+    return false;
+  }
+  function documentCsp() {
+    let csp = "";
+    try {
+      const metas = document.querySelectorAll("meta");
+      for (let i = 0; i < metas.length; i++) {
+        const equiv = String(metas[i].httpEquiv || metas[i].getAttribute("http-equiv") || "").toLowerCase();
+        if (equiv === "content-security-policy") {
+          csp += " " + String(metas[i].content || metas[i].getAttribute("content") || "");
+        }
+      }
+    } catch (e) {}
+    return csp;
+  }
+  function srcResolved(href) {
+    try { return new URL(String(href || ""), location.href).href; } catch (e) { return String(href || ""); }
+  }
+  function srcIsCrossOrigin(href) {
+    try {
+      const a = new URL(srcResolved(href));
+      return a.origin !== location.origin;
+    } catch (e) {
+      return /web-platform\.test/i.test(String(href || ""));
+    }
+  }
+  function srcReferrer(rec) {
+    const p = String(rec && rec.referrerPolicy || "").toLowerCase();
+    if (p === "no-referrer") return "";
+    try {
+      if (p === "origin" || p === "strict-origin") return location.origin + "/";
+      return location.href;
+    } catch (e) {
+      return "";
+    }
+  }
+  function srcPolicyAllows(tpl, rec, href) {
+    const csp = documentCsp();
+    const nonce = rec.nonce || (tpl.getAttribute && tpl.getAttribute("nonce")) || "";
+    const cross = srcIsCrossOrigin(href);
+    if (csp) {
+      const scriptSrcMatch = csp.match(/script-src([^;]*)/i);
+      const scriptSrc = scriptSrcMatch ? scriptSrcMatch[1] : "";
+      if (scriptSrc) {
+        const nonceMatch = scriptSrc.match(/'nonce-([^']+)'/i);
+        if (nonceMatch) {
+          if (nonce !== nonceMatch[1]) return false;
+        } else if (cross && /'self'/.test(scriptSrc) && !/(^|[\s])\*(?:[\s]|$)/.test(scriptSrc.replace(/'[^']*'/g, " "))) {
+          return false;
+        }
+      }
+    }
+    if (cross) {
+      const cors = srcQuery(href).cors;
+      if (cors != null && cors !== "1") return false;
+    }
+    const integrity = rec.integrity || (tpl.getAttribute && tpl.getAttribute("integrity")) || "";
+    if (integrity) {
+      const chunks = srcChunks(href);
+      const body = chunks ? String(chunks.chunk1 || "") + String(chunks.chunk2 || "") : (fetchText(href) || "");
+      if (!sriMatches(body, integrity)) return false;
+    }
+    return true;
   }
   function applyTemplateFor(tpl) {
     if (!tpl || tpl.__vePatched || tpl.__veStreamAborted) return false;
@@ -5395,8 +5533,10 @@
         tpl.__veStreamAborted = true;
         return false;
       }
-      if (tpl.__veStreamEnd === undefined) tpl.__veStreamEnd = tpl.nextSibling;
-      if (tpl.__veStreamEnd !== undefined && tpl.nextSibling !== tpl.__veStreamEnd) {
+      let realNext = null;
+      try { realNext = wrap(D("realNextSibling", tpl.__h)); } catch (e) { realNext = tpl.nextSibling; }
+      if (tpl.__veStreamEnd === undefined) tpl.__veStreamEnd = realNext;
+      if (tpl.__veStreamEnd !== undefined && realNext !== tpl.__veStreamEnd) {
         tpl.__veStreamAborted = true;
         try { tpl.setAttribute("data-ve-stream-aborted", ""); } catch (e) {}
         tpl.__vePatched = true;
@@ -5405,6 +5545,10 @@
     }
     if (rec.src) {
       const href = rec.src;
+      if (!srcPolicyAllows(tpl, rec, href)) {
+        tpl.__vePatched = true;
+        return false;
+      }
       const chunks = srcChunks(href);
       let srcKey = null;
       try {
@@ -5446,7 +5590,9 @@
       }
       const run = () => {
         if (tpl.__vePatched || tpl.__veStreamAborted) return;
-        let html = fetchText(href);
+        const referrer = srcReferrer(rec);
+        const headers = referrer ? { Referer: referrer } : (String(rec.referrerPolicy || "").toLowerCase() === "no-referrer" ? { Referer: "" } : null);
+        let html = fetchText(href, headers);
         if ((html == null || html === "") && chunks) html = (chunks.chunk1 || "") + (chunks.chunk2 || "");
         if (html == null) return;
         applyHtmlPatch(tpl, html, rec, inPlace, false);
@@ -5473,11 +5619,14 @@
     }
     const found = findNamedPatch(rec.forValue, tpl.parentNode || document);
     if (!found || !found.parent) return false;
-    if (!tpl.__veStreamStarted) {
+    const wasStarted = !!tpl.__veStreamStarted;
+    if (!wasStarted) {
       clearPatchRange(found);
       tpl.__veStreamStarted = true;
     }
-    insertPatchNodes(found.parent, found.end || found.open.nextSibling, nodes, rec, true);
+    const endLive = found.end && found.end.parentNode === found.parent ? found.end : null;
+    const before = endLive || (wasStarted && !endLive ? null : found.open.nextSibling);
+    insertPatchNodes(found.parent, before, nodes, rec, true);
     if (!keepOpen) {
       if (found.open.parentNode) found.open.parentNode.removeChild(found.open);
       if (found.end && found.end.parentNode) found.end.parentNode.removeChild(found.end);
@@ -5507,7 +5656,9 @@
         return false;
       }
       insertPatchNodes(parent, tpl, nodes, rec, true);
-      if (!rec.buffer && tpl.__veStreamEnd !== undefined && tpl.nextSibling !== tpl.__veStreamEnd) {
+      let realNext = null;
+      try { realNext = wrap(D("realNextSibling", tpl.__h)); } catch (e) { realNext = tpl.nextSibling; }
+      if (!rec.buffer && tpl.__veStreamEnd !== undefined && realNext !== tpl.__veStreamEnd) {
         tpl.__veStreamAborted = true;
         try { tpl.setAttribute("data-ve-stream-aborted", ""); } catch (e) {}
         tpl.__vePatched = true;
@@ -5521,16 +5672,18 @@
       }
       return nodes.length > 0;
     }
-    const found = findNamedPatch(rec.forValue, document);
+    const found = findNamedPatch(rec.forValue, tpl.parentNode || document);
     if (!found || !found.parent) {
       for (const node of nodes) tpl.content.appendChild(node);
       return false;
     }
-    if (!tpl.__veStreamStarted) {
+    const wasStarted = !!tpl.__veStreamStarted;
+    if (!wasStarted) {
       clearPatchRange(found);
       tpl.__veStreamStarted = true;
     }
-    const before = found.end || found.open.nextSibling;
+    const endLive = found.end && found.end.parentNode === found.parent ? found.end : null;
+    const before = endLive || (wasStarted && !endLive ? null : found.open.nextSibling);
     insertPatchNodes(found.parent, before, nodes, rec, true);
     if (finished) {
       if (found.open.parentNode) found.open.parentNode.removeChild(found.open);
@@ -5541,13 +5694,24 @@
     }
     return nodes.length > 0;
   }
-  function applyAllPartialUpdates() {
-    const seen = [];
-    walkLight(document.documentElement || document, (n) => {
+  function collectPartialTemplates(root, seen) {
+    walkLight(root, (n) => {
       if (n && n.nodeType === 1 && (n.localName || "").toLowerCase() === "template" && n.hasAttribute("for") && !n.__vePatched && !n.__veStreamAborted && !templateInContent(n)) {
         seen.push(n);
       }
     });
+  }
+  function applyAllPartialUpdates() {
+    const seen = [];
+    collectPartialTemplates(document.documentElement || document, seen);
+    try {
+      const iframes = document.querySelectorAll("iframe,frame");
+      for (let i = 0; i < iframes.length; i++) {
+        const frameDoc = iframes[i].contentDocument;
+        if (!frameDoc) continue;
+        collectPartialTemplates(frameDoc.body || frameDoc.documentElement || frameDoc, seen);
+      }
+    } catch (e) {}
     let applied = 0;
     for (const tpl of seen) {
       if (applyTemplateFor(tpl)) applied++;
@@ -5600,6 +5764,12 @@
       if (!raw) continue;
       const doc = wrap(raw);
       if (!doc) continue;
+      const prevDoc = globalThis.document;
+      try {
+        globalThis.document = doc;
+        applyAllPartialUpdates();
+      } catch (e) {}
+      globalThis.document = prevDoc;
       const scriptHandles = D("frameScriptHandles", iframe.__h) || [];
       const scripts = scriptHandles.length
         ? scriptHandles.map((h) => wrap(h)).filter(Boolean)
