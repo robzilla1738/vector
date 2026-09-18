@@ -7673,13 +7673,15 @@
   };
   const windowTarget = new EventTarget();
   windowEventTarget = windowTarget;
+  let windowLoadFired = false;
   globalThis.addEventListener = function (type, fn, opts) {
     const r = EventTarget.prototype.addEventListener.call(windowTarget, type, fn, opts);
     // HTML Window `load` does not retro-fire. Official Speedometer Complex-DOM
-    // registers `$on(window, "load", setView)` after readyState is already
-    // `complete` (the id/upgrade scan used to run first and consume the
-    // deadline). Queue the listener so Controller._activeRoute still binds.
-    if (String(type) === "load" && D("readyState") === "complete") {
+    // registers `$on(window, "load", setView)` after the document `load` already
+    // ran. Queue only in that case so Controller._activeRoute still binds.
+    // Do not retro-fire when `readyState` is `complete` but `__veFireWindowLoad`
+    // has not run yet — that is the one official `load`.
+    if (String(type) === "load" && windowLoadFired) {
       const call = typeof fn === "function" ? fn
         : (fn && typeof fn.handleEvent === "function") ? function (ev) { fn.handleEvent(ev); }
         : null;
@@ -7706,6 +7708,8 @@
     return r;
   };
   globalThis.__veFireWindowLoad = () => {
+    if (windowLoadFired) return;
+    windowLoadFired = true;
     try { window.dispatchEvent(new Event("load")); } catch (e) {}
   };
   globalThis.__veUpgradeTree = () => {
@@ -7736,7 +7740,6 @@
         try { new Function("event", src).call(s, new Event("error")); } catch (e) {}
       }
     } catch (e) {}
-    try { window.dispatchEvent(new Event("load")); } catch (e) {}
     try {
       const t = __ve.now();
       const paints = [
