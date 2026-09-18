@@ -294,8 +294,12 @@ const DEFAULT_JS: &[(&str, &[&str], bool)] = &[
 
 /// Official `AsyncBenchmark` Default JS from `JetStreamDriver.js`.
 const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
-    ("doxbee-promise", &["./simple/doxbee-promise.js"], false, &[
-    ]),
+    (
+        "doxbee-promise",
+        &["./simple/doxbee-promise.js"],
+        false,
+        &[],
+    ),
     ("doxbee-async", &["./simple/doxbee-async.js"], false, &[]),
     (
         "Babylon",
@@ -356,8 +360,12 @@ const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
         false,
         &[],
     ),
-    ("async-fs", &["./generators/async-file-system.js"], true, &[
-    ]),
+    (
+        "async-fs",
+        &["./generators/async-file-system.js"],
+        true,
+        &[],
+    ),
     (
         "mobx-startup",
         &["./utils/StartupBenchmark.js", "./mobx/benchmark.js"],
@@ -1009,30 +1017,33 @@ JetStream.__veRewriteModule = function (src, key) {
   let rewritten = String(src)
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\bimport\.meta\b/g, "__veImportMeta");
+  // Official .NET runtimes put `export{...}` / `export default` after `}` or `;`
+  // on one minified line. Keep a preceding delimiter so `.export` / `jsexport`
+  // identifiers are not rewritten.
   rewritten = rewritten.replace(
-    /^export\s+(async\s+)?function\s+(\w+)/gm,
-    function (_, asyncKw, name) {
+    /(^|[;\n}])\s*export\s+(async\s+)?function\s+(\w+)/gm,
+    function (_, prefix, asyncKw, name) {
       names.push(name);
-      return (asyncKw || "") + "function " + name;
+      return prefix + (asyncKw || "") + "function " + name;
     }
   );
   rewritten = rewritten.replace(
-    /^export\s+class\s+(\w+)/gm,
-    function (_, name) {
+    /(^|[;\n}])\s*export\s+class\s+(\w+)/gm,
+    function (_, prefix, name) {
       names.push(name);
-      return "class " + name;
+      return prefix + "class " + name;
     }
   );
   rewritten = rewritten.replace(
-    /^export\s+(?:const|let|var)\s+(\w+)\s*=/gm,
-    function (_, name) {
+    /(^|[;\n}])\s*export\s+(?:const|let|var)\s+(\w+)\s*=/gm,
+    function (_, prefix, name) {
       names.push(name);
-      return "var " + name + " =";
+      return prefix + "var " + name + " =";
     }
   );
   rewritten = rewritten.replace(
-    /^export\s*\{([^}]+)\};?/gm,
-    function (_, list) {
+    /(^|[;\n}])\s*export\s*\{([^}]+)\};?/gm,
+    function (_, prefix, list) {
       list.split(",").forEach(function (part) {
         const bits = part.trim().split(/\s+as\s+/);
         const from = (bits[0] || "").trim();
@@ -1040,11 +1051,16 @@ JetStream.__veRewriteModule = function (src, key) {
         if (!from || !to) return;
         names.push(bits[1] ? to + ": " + from : to);
       });
-      return "";
+      return prefix;
     }
   );
-  rewritten = rewritten.replace(/^export\s+default\s+/gm, "var __veDefault = ");
-  rewritten = rewritten.replace(/^export\s+/gm, "");
+  rewritten = rewritten.replace(
+    /(^|[;\n}])\s*export\s+default\s+/gm,
+    function (_, prefix) {
+      return prefix + "var __veDefault = ";
+    }
+  );
+  rewritten = rewritten.replace(/(^|[;\n}])\s*export\s+/gm, "$1");
   if (/__veDefault\s*=/.test(rewritten)) names.push("default: __veDefault");
   return (
     "var __veImportMeta = { url: " +
