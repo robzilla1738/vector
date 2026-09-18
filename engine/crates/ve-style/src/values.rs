@@ -1030,6 +1030,22 @@ keyword_enum! {
 }
 
 keyword_enum! {
+    /// The `user-select` property.
+    UserSelect {
+        /// Browser default.
+        Auto = "auto",
+        /// Selection disabled.
+        None = "none",
+        /// Text may be selected.
+        Text = "text",
+        /// Select the whole element.
+        All = "all",
+        /// Contain selection to the element.
+        Contain = "contain",
+    }
+}
+
+keyword_enum! {
     /// The `text-transform` property.
     TextTransform {
         /// As written.

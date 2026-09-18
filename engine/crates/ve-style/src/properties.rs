@@ -28,6 +28,7 @@ use crate::values::{
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
     ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba, SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
+    UserSelect,
     VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
 };
 
@@ -1096,6 +1097,12 @@ property_table! {
     TextIndent: "text-indent" => text_indent: LengthPercentage = LengthPercentage::ZERO, inherited = true, syntax = Single, convert = conv::lp;
     /// `text-decoration-line` (single keyword; `text-decoration` aliases to it)
     TextDecorationLine: "text-decoration-line" => text_decoration_line: TextDecorationLine = TextDecorationLine::None, inherited = false, syntax = Single, convert = conv::kw::<TextDecorationLine>;
+    /// `text-decoration-color`
+    TextDecorationColor: "text-decoration-color" => text_decoration_color: Color = Color::CurrentColor, inherited = false, syntax = Single, convert = conv::color;
+    /// `user-select`
+    UserSelect: "user-select" => user_select: UserSelect = UserSelect::Auto, inherited = false, syntax = Single, convert = conv::kw::<UserSelect>;
+    /// `will-change` (first ident)
+    WillChange: "will-change" => will_change: String = String::from("auto"), inherited = false, syntax = Single, convert = conv::cursor;
     /// `text-transform`
     TextTransform: "text-transform" => text_transform: TextTransform = TextTransform::None, inherited = true, syntax = Single, convert = conv::kw::<TextTransform>;
     /// `text-overflow`
@@ -1355,8 +1362,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "backdrop-filter",
     "mix-blend-mode",
     "isolation",
-    "user-select",
-    "will-change",
     "font-variant",
     "font-variant-ligatures",
     "font-variant-numeric",
@@ -1366,7 +1371,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "font-display",
     "font-optical-sizing",
     "text-rendering",
-    "text-decoration-color",
     "text-decoration-style",
     "text-decoration-thickness",
     "text-underline-offset",
@@ -3087,6 +3091,9 @@ mod tests {
         ok("background-clip", "content-box");
         ok("cursor", "pointer");
         ok("cursor", "auto");
+        ok("user-select", "none");
+        ok("will-change", "transform");
+        ok("text-decoration-color", "red");
         ok("aspect-ratio", "auto");
         ok("aspect-ratio", "16 / 9");
         ok("aspect-ratio", "1.5");
@@ -3144,7 +3151,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 118);
+        assert_eq!(PropertyId::ALL.len(), 121);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

@@ -378,7 +378,7 @@ impl DisplayList {
                                 item.rect.width().max(1.0),
                                 1.0,
                             ),
-                            color: style.color,
+                            color: style.text_decoration_color.resolve(style.color),
                         });
                     }
                 }
