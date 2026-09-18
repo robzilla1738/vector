@@ -18,7 +18,8 @@
     "production_sandbox_runs_inline_script_observe_and_input": "PASS",
     "production_sandbox_runs_external_js_from_allowlisted_fixture": "PASS",
     "downloaded_release_artifact_runs_production_sandbox": "PASS copy-to-temp host (0.29s). CI job downloaded-artifact downloads engine-native-* then re-runs production_sandbox.",
-    "html_collection_types_match_html_idl": "PASS"
+    "html_collection_types_match_html_idl": "PASS",
+    "live_os_window_and_mcp_share_one_page": "PASS DISPLAY=:1 after libxkbcommon-x11 (was panic: Library libxkbcommon-x11.so could not be loaded). IME+observe+agent+takeover+resume+resize+wheel+AccessKit+scene on one NativeBrowser. chromium=false. CI xvfb job added."
   },
   "exit": {
     "humanEditsField": true,
@@ -29,12 +30,12 @@
     "resizeWheelImeAccessKit": true,
     "noChromium": true,
     "guiThreadSameNativeBrowser": true,
+    "liveOsWindowPlusMcp": true,
     "stalledChildFailsClosed": true
   },
   "remaining": [
-    "Gate A downloaded release artifact: copy-to-temp host test + CI job downloaded-artifact (downloads engine-native-{ubuntu,macos,windows} then re-runs production_sandbox). Not a GitHub Release page download.",
-    "live GPU window plus MCP on a display (pump shares NativeBrowser; no GPU in this environment)",
+    "Gate A downloaded release artifact: copy-to-temp host test + CI job downloaded-artifact (downloads engine-native-{ubuntu,macos,windows} then re-runs production_sandbox). .github/workflows/release.yml publishes ve-host + .node on tag v* for ubuntu/macos/windows. No GitHub Release page exists until a v* tag is pushed.",
     "official html/dom remaining FAILs sanitize-template-element, template-for-empty, and tentative aria-attribute-reflection-enumerated (contradicts non-tentative string mixin). Official remove-element-unblocks-rendering.optional.html PASS. idlharness.https.html still FAIL ([[IsHTMLDDA]] plus other HTML interfaces)",
-    "full official Speedometer/JetStream/MotionMark published score. Official Chart.js, Observable Plot, and React-Stockcharts-SVG render/pan/zoom PASS. Official Angular-complex 3-add/finish PASS addMs=9 remaining=0 (was 428s FAIL). Editor-CodeMirror/TipTap OOM this host."
+    "full official Speedometer/JetStream/MotionMark published score. Official Speedometer 3.0 names independently verified 32/32. JetStream lab is n-body + sha1. MotionMark is canvas-class + gpu.multiply. Editor-TipTap/CodeMirror official Long/Highlight PASS after late-eval."
   ]
 }

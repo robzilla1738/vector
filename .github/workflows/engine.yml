@@ -112,6 +112,17 @@ jobs:
       - name: native product shell
         if: runner.os == 'macOS'
         run: cargo clippy -p ve-shell --all-targets --features product -- -D warnings
+      - name: X11 deps for live window
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 xvfb
+      - name: Live OS window + MCP share one page (Gate B)
+        if: runner.os == 'Linux'
+        env:
+          DISPLAY: ":99"
+        run: |
+          Xvfb :99 -screen 0 1280x720x24 &
+          sleep 1
+          cargo test -p ve-shell --features window,v8,gpu --test window -- --nocapture
       - run: cargo test -p ve-net --features http
       - run: cargo test -p ve-script --features quickjs
       - name: V8 backend (prebuilt static lib download)

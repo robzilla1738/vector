@@ -684,6 +684,34 @@ fn remove_attribute_node_clears_named_attr() {
 }
 
 #[test]
+fn get_client_rects_match_bounding_rect() {
+    let mut page = open(r#"<p id="t">hi</p>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const el = document.getElementById("t");
+              const box = el.getBoundingClientRect();
+              const list = el.getClientRects();
+              const range = document.createRange();
+              range.selectNodeContents(el.firstChild);
+              const rlist = range.getClientRects();
+              return {
+                elLen: list.length,
+                elW: list[0] && list[0].width,
+                boxW: box.width,
+                rangeLen: rlist.length,
+                item: typeof list.item === "function"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["elLen"], 1, "{v}");
+    assert_eq!(v["rangeLen"], 1, "{v}");
+    assert_eq!(v["item"], true, "{v}");
+    assert_eq!(v["elW"], v["boxW"], "{v}");
+}
+
+#[test]
 fn canvas_todataurl_is_a_png() {
     let mut page = open(r#"<body></body>"#);
     let v = page

@@ -551,6 +551,16 @@
     return out;
   }
 
+  function clientRectList(r) {
+    const rect = r && typeof r === "object"
+      ? r
+      : { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0 };
+    const out = [rect];
+    out.item = (i) => ((i | 0) === 0 ? rect : null);
+    out.length = 1;
+    return out;
+  }
+
   function DOMStringMap() {}
   function dataAttrName(key) {
     return "data-" + String(key).replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
@@ -2118,6 +2128,7 @@
       return this.insertAdjacentElement(pos, document.createTextNode(text));
     }
     getBoundingClientRect() { return D("boundingRect", this.__h); }
+    getClientRects() { return clientRectList(this.getBoundingClientRect()); }
     get clientWidth() { return D("box", this.__h, "clientWidth"); }
     get clientHeight() { return D("box", this.__h, "clientHeight"); }
     get offsetWidth() { return D("box", this.__h, "offsetWidth"); }
@@ -4538,6 +4549,13 @@
       this.insertNode(newParent);
       this.selectNode(newParent);
     }
+    getBoundingClientRect() {
+      const n = this.startContainer;
+      const el = n && n.nodeType === 1 ? n : (n && n.parentElement);
+      if (el && typeof el.getBoundingClientRect === "function") return el.getBoundingClientRect();
+      return { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0 };
+    }
+    getClientRects() { return clientRectList(this.getBoundingClientRect()); }
     toString() {
       if (this.startContainer === this.endContainer && (this.startContainer.nodeType === 3 || this.startContainer.nodeType === 8)) {
         const start = Math.min(this.startOffset, this.endOffset);
