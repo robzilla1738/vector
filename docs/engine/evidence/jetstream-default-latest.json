@@ -3,15 +3,15 @@
   "attribution": {
     "gate": false,
     "jetstreamSunspider": {
-      "executed": 36,
+      "executed": 39,
       "failed": 0,
-      "note": "Official SunSpider group plus Default JS workloads loaded from --jetstream-dir. Skipped .z/async/wasm and mandreel/pdfjs. Not a JetStream Next geometric-mean published score.",
+      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib-decompressed .z assets (FlightPlanner, json-*-inspector). mandreel/pdfjs and async/wasm stay unexecuted. Not a JetStream Next geometric-mean published score.",
       "officialGroup": 12,
-      "passed": 36
+      "passed": 39
     },
     "kind": "adapted-workload-phases",
     "motionmark13": {
-      "note": "Official MotionMark 1.3 names from resources/runner/tests.js. canvas-class and gpu.multiply are adapted class probes, not a published MotionMark score.",
+      "note": "Official MotionMark 1.3 names from resources/runner/tests.js. Multiply executes official tests/core/multiply.html when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
       "officialNames": 8
     },
     "officialFullSuite": false,
@@ -36,10 +36,10 @@
   "os": "linux",
   "pins": {
     "jetstream": {
-      "note": "Official SunSpider group (12) from JetStreamDriver.js at this pin. Other JetStream Next Default workloads stay unexecuted. Not a published JetStream geometric-mean score.",
+      "note": "Official SunSpider group (12) plus Default JS workloads loaded from --jetstream-dir at this pin. .z assets are zlib-inflated then late-evaluated (FlightPlanner, json-*-inspector). mandreel/pdfjs and async/wasm stay unexecuted. Not a published JetStream geometric-mean score.",
       "repo": "https://github.com/WebKit/JetStream",
       "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "status": "official-sunspider-group",
+      "status": "official-sunspider-and-default-js",
       "tests": [
         "SunSpider/3d-cube.js",
         "SunSpider/3d-raytrace.js",
@@ -56,7 +56,7 @@
       ]
     },
     "motionmark": {
-      "note": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. canvas-class and gpu.multiply are adapted class probes. Not a published MotionMark score.",
+      "note": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. Multiply executes official tests/core/multiply.html when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
       "officialNames": [
         "Multiply",
         "Canvas Arcs",
@@ -69,7 +69,7 @@
       ],
       "repo": "https://github.com/WebKit/MotionMark",
       "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
-      "status": "gpu"
+      "status": "official-html-multiply"
     },
     "speedometer": {
       "note": "Every official Speedometer 3.0 suite from resources/tests.mjs is vendored from release/3.0 and executed. ESM graphs are bundled to classic scripts. Handlebars text/x- templates keep their bodies. PASS/FAIL/PARTIAL is honest; CI merge gate is JetStream + TodoMVC-JavaScript-ES5 + motionmark.gpu.multiply.",
@@ -78,8 +78,8 @@
       "status": "official-3.0"
     }
   },
-  "process_tree_rss_bytes": 1944969216,
-  "rss_bytes": 1944969216,
+  "process_tree_rss_bytes": 160448512,
+  "rss_bytes": 160448512,
   "security_mode": "developer-offline",
   "suites": [
     {
@@ -94,21 +94,21 @@
     },
     {
       "name": "jetstream.3d-raytrace",
-      "p50_ms": 11,
-      "p95_ms": 11,
+      "p50_ms": 12,
+      "p95_ms": 12,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        11
+        12
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.base64",
-      "p50_ms": 7,
-      "p95_ms": 7,
+      "p50_ms": 9,
+      "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        7
+        9
       ],
       "status": "PASS"
     },
@@ -154,11 +154,11 @@
     },
     {
       "name": "jetstream.date-format-xparb",
-      "p50_ms": 9,
-      "p95_ms": 9,
+      "p50_ms": 10,
+      "p95_ms": 10,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        9
+        10
       ],
       "status": "PASS"
     },
@@ -194,11 +194,11 @@
     },
     {
       "name": "jetstream.tagcloud",
-      "p50_ms": 14,
-      "p95_ms": 14,
+      "p50_ms": 13,
+      "p95_ms": 13,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        14
+        13
       ],
       "status": "PASS"
     },
@@ -214,41 +214,41 @@
     },
     {
       "name": "jetstream.Basic",
-      "p50_ms": 9,
-      "p95_ms": 9,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        9
+        8
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.ML",
-      "p50_ms": 42,
-      "p95_ms": 42,
+      "p50_ms": 40,
+      "p95_ms": 40,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        42
+        40
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.cdjs",
-      "p50_ms": 31,
-      "p95_ms": 31,
+      "p50_ms": 30,
+      "p95_ms": 30,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        31
+        30
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.Box2D",
-      "p50_ms": 35,
-      "p95_ms": 35,
+      "p50_ms": 37,
+      "p95_ms": 37,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        35
+        37
       ],
       "status": "PASS"
     },
@@ -284,6 +284,26 @@
     },
     {
       "name": "jetstream.earley-boyer",
+      "p50_ms": 9,
+      "p95_ms": 9,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        9
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.gbemu",
+      "p50_ms": 66,
+      "p95_ms": 66,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        66
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.navier-stokes",
       "p50_ms": 10,
       "p95_ms": 10,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
@@ -293,32 +313,12 @@
       "status": "PASS"
     },
     {
-      "name": "jetstream.gbemu",
-      "p50_ms": 71,
-      "p95_ms": 71,
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "samples_ms": [
-        71
-      ],
-      "status": "PASS"
-    },
-    {
-      "name": "jetstream.navier-stokes",
-      "p50_ms": 11,
-      "p95_ms": 11,
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "samples_ms": [
-        11
-      ],
-      "status": "PASS"
-    },
-    {
       "name": "jetstream.raytrace",
-      "p50_ms": 13,
-      "p95_ms": 13,
+      "p50_ms": 12,
+      "p95_ms": 12,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        13
+        12
       ],
       "status": "PASS"
     },
@@ -344,21 +344,21 @@
     },
     {
       "name": "jetstream.splay",
-      "p50_ms": 20,
-      "p95_ms": 20,
+      "p50_ms": 17,
+      "p95_ms": 17,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        20
+        17
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.OfflineAssembler",
-      "p50_ms": 49,
-      "p95_ms": 49,
+      "p50_ms": 29,
+      "p95_ms": 29,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        49
+        29
       ],
       "status": "PASS"
     },
@@ -374,31 +374,31 @@
     },
     {
       "name": "jetstream.validatorjs",
-      "p50_ms": 39,
-      "p95_ms": 39,
+      "p50_ms": 38,
+      "p95_ms": 38,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        39
+        38
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.hash-map",
-      "p50_ms": 13,
-      "p95_ms": 13,
+      "p50_ms": 12,
+      "p95_ms": 12,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        13
+        12
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.ai-astar",
-      "p50_ms": 58,
-      "p95_ms": 58,
+      "p50_ms": 59,
+      "p95_ms": 59,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        58
+        59
       ],
       "status": "PASS"
     },
@@ -414,11 +414,11 @@
     },
     {
       "name": "jetstream.stanford-crypto-aes",
-      "p50_ms": 19,
-      "p95_ms": 19,
+      "p50_ms": 13,
+      "p95_ms": 13,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        19
+        13
       ],
       "status": "PASS"
     },
@@ -434,16 +434,46 @@
     },
     {
       "name": "jetstream.stanford-crypto-sha256",
-      "p50_ms": 7,
-      "p95_ms": 7,
+      "p50_ms": 6,
+      "p95_ms": 6,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        7
+        6
       ],
       "status": "PASS"
     },
     {
-      "detail": "Octane/mandreel.js is 4.8MB; concat exceeds this runner's 2MiB cap",
+      "name": "jetstream.FlightPlanner",
+      "p50_ms": 8,
+      "p95_ms": 8,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        8
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.json-stringify-inspector",
+      "p50_ms": 8,
+      "p95_ms": 8,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        8
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.json-parse-inspector",
+      "p50_ms": 23,
+      "p95_ms": 23,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        23
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "Octane/mandreel.js is 4.8MB; late-eval of that source is not run in this lab",
       "name": "jetstream.mandreel",
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "status": "NOTRUN"
@@ -453,22 +483,16 @@
       "name": "jetstream.pdfjs",
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "status": "NOTRUN"
-    },
-    {
-      "detail": "RexBench/FlightPlanner uses a .z preload this runner does not decompress",
-      "name": "jetstream.FlightPlanner",
-      "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "status": "NOTRUN"
     }
   ],
   "review": "Vector_Current_Review_60b2d41",
   "officialFullSuite": false,
   "officialJetStreamGeometricMean": false,
-  "note": "Official JetStream Next pin c603c04: SunSpider 12/12 PASS plus Default JS workloads from the checkout (36 PASS, 0 FAIL, 3 NOTRUN). mandreel/pdfjs/FlightPlanner stay NOTRUN. Async/wasm/.z Default tests were not executed. Not a published JetStream geometric-mean score.",
+  "note": "Official JetStream Next pin c603c04: SunSpider 12/12 PASS plus Default JS workloads from the checkout (39 PASS, 0 FAIL, 2 NOTRUN). FlightPlanner and json-*-inspector PASS after zlib inflate + late-eval. mandreel/pdfjs stay NOTRUN. Async/wasm Default tests were not executed. Not a published JetStream geometric-mean score.",
   "counts": {
-    "pass": 36,
+    "pass": 39,
     "fail": 0,
-    "notrun": 3,
-    "total": 39
+    "notrun": 2,
+    "total": 41
   }
 }
