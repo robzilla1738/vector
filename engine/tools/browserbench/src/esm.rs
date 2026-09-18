@@ -80,6 +80,7 @@ pub(crate) fn bundle_inline(source: &str, dir: &Path) -> anyhow::Result<String> 
     result
 }
 
+#[derive(Debug)]
 struct Import {
     spec: String,
     default: Option<String>,
