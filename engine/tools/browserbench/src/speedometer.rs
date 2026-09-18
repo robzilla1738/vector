@@ -738,6 +738,11 @@ fn run_one(
             engine.close(opened.page);
             continue;
         }
+        if started.elapsed() > Duration::from_secs(90) {
+            last = Some("suite wall deadline after add".into());
+            engine.close(opened.page);
+            break;
+        }
         if let Ok(page) = engine.page_mut(opened.page) {
             page.settle(200);
         }

@@ -34,6 +34,6 @@
     "Gate A downloaded release artifact on every advertised platform (Linux production sandbox PASS on this host; CI matrix is ubuntu/macOS/windows)",
     "live GPU window plus MCP on a display (pump shares NativeBrowser; no GPU in this environment)",
     "official html/dom remaining FAILs sanitize-template-element and template-for-empty; idlharness.https.html still FAIL ([[IsHTMLDDA]] plus other HTML interfaces)",
-    "full official Speedometer/JetStream/MotionMark suite"
+    "full official Speedometer/JetStream/MotionMark published score (25 official Speedometer 3.0 names executed this host: 7 PASS / 18 FAIL; Complex-DOM often hits evaluate deadline)"
   ]
 }

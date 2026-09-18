@@ -1,0 +1,52 @@
+{
+  "review": "Vector_Current_Review_60b2d41",
+  "backend": "vector-engine",
+  "chromium": false,
+  "security_mode": "developer-offline",
+  "officialFullSuite": false,
+  "gate": false,
+  "iterations": 1,
+  "note": "Official Speedometer 3.0 suite names executed without --gate. Results transcribed from the live browserbench log while the run continues past NewsSite. Not a browserbench.org published score. Failed attempts stay FAIL. Complex-DOM suites often spend 3+ minutes hitting evaluate deadlines.",
+  "speedometer30": {
+    "executed": 25,
+    "passed": 7,
+    "failed": 18,
+    "inProgress": "NewsSite-Nuxt",
+    "remaining": [
+      "NewsSite-Nuxt",
+      "Editor-CodeMirror",
+      "Editor-TipTap",
+      "Charts-observable-plot",
+      "Charts-chartjs",
+      "React-Stockcharts-SVG",
+      "Perf-Dashboard"
+    ]
+  },
+  "results": [
+    { "name": "speedometer.3.0.TodoMVC-JavaScript-ES5", "status": "PASS", "p95_ms": 20209 },
+    { "name": "speedometer.3.0.TodoMVC-JavaScript-ES5-Complex-DOM", "status": "FAIL", "duration_ms": 186169 },
+    { "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack", "status": "PASS", "p95_ms": 23099 },
+    { "name": "speedometer.3.0.TodoMVC-JavaScript-ES6-Webpack-Complex-DOM", "status": "FAIL", "duration_ms": 96588 },
+    { "name": "speedometer.3.0.TodoMVC-WebComponents", "status": "FAIL", "duration_ms": 83 },
+    { "name": "speedometer.3.0.TodoMVC-WebComponents-Complex-DOM", "status": "FAIL", "duration_ms": 47907 },
+    { "name": "speedometer.3.0.TodoMVC-React", "status": "FAIL", "duration_ms": 64 },
+    { "name": "speedometer.3.0.TodoMVC-React-Complex-DOM", "status": "FAIL", "duration_ms": 187563 },
+    { "name": "speedometer.3.0.TodoMVC-React-Redux", "status": "FAIL", "duration_ms": 79 },
+    { "name": "speedometer.3.0.TodoMVC-React-Redux-Complex-DOM", "status": "FAIL", "duration_ms": 187615 },
+    { "name": "speedometer.3.0.TodoMVC-Backbone", "status": "PASS", "p95_ms": 30434 },
+    { "name": "speedometer.3.0.TodoMVC-Backbone-Complex-DOM", "status": "FAIL", "duration_ms": 230389 },
+    { "name": "speedometer.3.0.TodoMVC-Angular", "status": "PASS", "p95_ms": 121947 },
+    { "name": "speedometer.3.0.TodoMVC-Angular-Complex-DOM", "status": "FAIL", "duration_ms": 428426 },
+    { "name": "speedometer.3.0.TodoMVC-Vue", "status": "FAIL", "duration_ms": 67 },
+    { "name": "speedometer.3.0.TodoMVC-Vue-Complex-DOM", "status": "FAIL", "duration_ms": 175203 },
+    { "name": "speedometer.3.0.TodoMVC-jQuery", "status": "PASS", "p95_ms": 49440 },
+    { "name": "speedometer.3.0.TodoMVC-jQuery-Complex-DOM", "status": "FAIL", "duration_ms": 188735 },
+    { "name": "speedometer.3.0.TodoMVC-Preact", "status": "PASS", "p95_ms": 52711 },
+    { "name": "speedometer.3.0.TodoMVC-Preact-Complex-DOM", "status": "FAIL", "duration_ms": 188158 },
+    { "name": "speedometer.3.0.TodoMVC-Svelte", "status": "PASS", "p95_ms": 61437 },
+    { "name": "speedometer.3.0.TodoMVC-Svelte-Complex-DOM", "status": "FAIL", "duration_ms": 188279 },
+    { "name": "speedometer.3.0.TodoMVC-Lit", "status": "FAIL", "duration_ms": 56 },
+    { "name": "speedometer.3.0.TodoMVC-Lit-Complex-DOM", "status": "FAIL", "duration_ms": 49711 },
+    { "name": "speedometer.3.0.NewsSite-Next", "status": "FAIL", "duration_ms": 137 }
+  ]
+}
