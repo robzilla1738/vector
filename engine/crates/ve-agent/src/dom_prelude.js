@@ -6213,9 +6213,8 @@
     MathMLAnchorElement, CommandEvent, PromiseRejectionEvent, PageSwapEvent, MessageEvent, PopStateEvent,
     ImageData, Path2D, FormDataEvent, TrackEvent, ToggleEvent, StorageEvent, SubmitEvent,
     PageRevealEvent, PageTransitionEvent, BeforeUnloadEvent, HashChangeEvent, DragEvent,
-    DOMParser, Sanitizer, CanvasRenderingContext2D, OffscreenCanvas, ImageBitmap,
-    ImageBitmapRenderingContext, Worklet, TrustedHTML, PerformanceEntry, DOMStringMap,
-    HTMLSelectedContentElement, BarProp,
+    ImageBitmap, ImageBitmapRenderingContext, Worklet, TrustedHTML, PerformanceEntry,
+    DOMStringMap, HTMLSelectedContentElement,
   ]) {
     try {
       Object.defineProperty(C.prototype, Symbol.toStringTag, { value: C.name, configurable: true });
@@ -6677,6 +6676,11 @@
     enumerable: true,
     configurable: true,
   });
+  for (const C of [DOMParser, Sanitizer, CanvasRenderingContext2D, OffscreenCanvas]) {
+    try {
+      Object.defineProperty(C.prototype, Symbol.toStringTag, { value: C.name, configurable: true });
+    } catch (e) {}
+  }
   function Blob(parts, opts) {
     this.size = 0;
     this.type = (opts && opts.type) || "";
@@ -7502,6 +7506,7 @@
     constructor() { throw new TypeError("Illegal constructor"); }
     get visible() { return true; }
   }
+  Object.defineProperty(BarProp.prototype, Symbol.toStringTag, { value: "BarProp", configurable: true });
   const barProp = { visible: true };
   windowProps.Window = Window;
   windowProps.XMLDocument = XMLDocument;
