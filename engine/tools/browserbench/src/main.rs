@@ -44,6 +44,9 @@ struct Args {
     /// Run one family: `all`, `jetstream`, `speedometer`, or `motionmark`.
     #[arg(long, default_value = "all")]
     only: String,
+    /// Official JetStream Next checkout (pin in `pins.json`) for Default JS workloads.
+    #[arg(long)]
+    jetstream_dir: Option<PathBuf>,
 }
 
 #[derive(Serialize)]
@@ -319,7 +322,15 @@ fn main() -> Result<()> {
     let only = args.only.as_str();
     let mut suites = Vec::new();
     if only == "all" || only == "jetstream" {
-        suites.extend(jetstream::run(&mut engine, args.iterations));
+        let jetstream_dir = args
+            .jetstream_dir
+            .clone()
+            .or_else(|| std::env::var_os("VECTOR_JETSTREAM_DIR").map(PathBuf::from));
+        suites.extend(jetstream::run(
+            &mut engine,
+            args.iterations,
+            jetstream_dir.as_deref(),
+        ));
     }
     if only == "all" || only == "speedometer" {
         suites.extend(speedometer::run_official(
@@ -361,7 +372,7 @@ fn main() -> Result<()> {
                 "passed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "PASS").count(),
                 "failed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "FAIL").count(),
                 "officialGroup": 12,
-                "note": "Official SunSpider group from JetStreamDriver.js at the pin. Not a JetStream Next geometric-mean published score."
+                "note": "Official SunSpider group plus Default JS workloads loaded from --jetstream-dir. Skipped .z/async/wasm and mandreel/pdfjs. Not a JetStream Next geometric-mean published score."
             },
             "motionmark13": {
                 "officialNames": 8,
