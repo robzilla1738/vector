@@ -5,13 +5,13 @@
     "jetstreamSunspider": {
       "executed": 0,
       "failed": 0,
-      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib-decompressed .z assets (FlightPlanner, json-*-inspector). mandreel/pdfjs and async/wasm stay unexecuted. Not a JetStream Next geometric-mean published score.",
+      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib-decompressed .z assets and remaining DefaultBenchmark names. mandreel/pdfjs and async/wasm stay unexecuted. Not a JetStream Next geometric-mean published score.",
       "officialGroup": 12,
       "passed": 0
     },
     "kind": "adapted-workload-phases",
     "motionmark13": {
-      "note": "Official MotionMark 1.3 names from resources/runner/tests.js. Multiply executes official tests/core/multiply.html when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
+      "note": "Official MotionMark 1.3 names from resources/runner/tests.js. Official HTML workloads execute when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
       "officialNames": 8
     },
     "officialFullSuite": false,
@@ -36,7 +36,7 @@
   "os": "linux",
   "pins": {
     "jetstream": {
-      "note": "Official SunSpider group (12) plus Default JS workloads loaded from --jetstream-dir at this pin. .z assets are zlib-inflated then late-evaluated (FlightPlanner, json-*-inspector). mandreel/pdfjs and async/wasm stay unexecuted. Not a published JetStream geometric-mean score.",
+      "note": "Official SunSpider group (12) plus Default JS workloads loaded from --jetstream-dir at this pin. .z assets are zlib-inflated then late-evaluated. Remaining DefaultBenchmark names included; mandreel/pdfjs and async/wasm stay unexecuted. Not a published JetStream geometric-mean score.",
       "repo": "https://github.com/WebKit/JetStream",
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "status": "official-sunspider-and-default-js",
@@ -56,7 +56,7 @@
       ]
     },
     "motionmark": {
-      "note": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. Multiply executes official tests/core/multiply.html when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
+      "note": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. Each official HTML workload executes when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
       "officialNames": [
         "Multiply",
         "Canvas Arcs",
@@ -78,71 +78,106 @@
       "status": "official-3.0"
     }
   },
-  "process_tree_rss_bytes": 145014784,
-  "rss_bytes": 145014784,
+  "process_tree_rss_bytes": 146649088,
+  "rss_bytes": 146649088,
   "security_mode": "developer-offline",
   "suites": [
     {
       "detail": "official MotionMark/tests/core/multiply.html initialize+animate. Not a published MotionMark score.",
       "name": "motionmark.1.3.Multiply",
-      "p50_ms": 192,
-      "p95_ms": 192,
+      "p50_ms": 195,
+      "p95_ms": 195,
       "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
       "samples_ms": [
-        192
+        195
       ],
       "status": "PASS"
     },
     {
-      "detail": "official MotionMark 1.3 name recorded; workload HTML not executed. Not a published score.",
+      "detail": "official MotionMark/tests/core/canvas-stage.html initialize+animate. Not a published MotionMark score.",
       "name": "motionmark.1.3.Canvas Arcs",
-      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
-      "status": "NOTRUN"
-    },
-    {
-      "detail": "official MotionMark 1.3 name recorded; workload HTML not executed. Not a published score.",
-      "name": "motionmark.1.3.Leaves",
-      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
-      "status": "NOTRUN"
-    },
-    {
-      "detail": "official MotionMark 1.3 name recorded; workload HTML not executed. Not a published score.",
-      "name": "motionmark.1.3.Paths",
-      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
-      "status": "NOTRUN"
-    },
-    {
-      "detail": "official MotionMark 1.3 name recorded; workload HTML not executed. Not a published score.",
-      "name": "motionmark.1.3.Canvas Lines",
-      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
-      "status": "NOTRUN"
-    },
-    {
-      "detail": "official MotionMark 1.3 name recorded; workload HTML not executed. Not a published score.",
-      "name": "motionmark.1.3.Images",
-      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
-      "status": "NOTRUN"
-    },
-    {
-      "detail": "official MotionMark 1.3 name recorded; workload HTML not executed. Not a published score.",
-      "name": "motionmark.1.3.Design",
-      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
-      "status": "NOTRUN"
-    },
-    {
-      "detail": "official MotionMark 1.3 name recorded; workload HTML not executed. Not a published score.",
-      "name": "motionmark.1.3.Suits",
-      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
-      "status": "NOTRUN"
-    },
-    {
-      "detail": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. Multiply executes official tests/core/multiply.html when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
-      "name": "motionmark.canvas-class",
-      "p50_ms": 10,
-      "p95_ms": 10,
+      "p50_ms": 0,
+      "p95_ms": 0,
       "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
       "samples_ms": [
-        10
+        0
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "official MotionMark/tests/core/leaves.html initialize+animate. Not a published MotionMark score.",
+      "name": "motionmark.1.3.Leaves",
+      "p50_ms": 1,
+      "p95_ms": 1,
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "samples_ms": [
+        1
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "official MotionMark/tests/core/canvas-stage.html initialize+animate. Not a published MotionMark score.",
+      "name": "motionmark.1.3.Paths",
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "samples_ms": [
+        0
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "official MotionMark/tests/core/canvas-stage.html initialize+animate. Not a published MotionMark score.",
+      "name": "motionmark.1.3.Canvas Lines",
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "samples_ms": [
+        0
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "official MotionMark/tests/core/image-data.html initialize+animate. Not a published MotionMark score.",
+      "name": "motionmark.1.3.Images",
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "samples_ms": [
+        0
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "official MotionMark/tests/core/design.html initialize+animate. Not a published MotionMark score.",
+      "name": "motionmark.1.3.Design",
+      "p50_ms": 12,
+      "p95_ms": 12,
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "samples_ms": [
+        12
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "official MotionMark/tests/core/suits.html initialize+animate. Not a published MotionMark score.",
+      "name": "motionmark.1.3.Suits",
+      "p50_ms": 1,
+      "p95_ms": 1,
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "samples_ms": [
+        1
+      ],
+      "status": "PASS"
+    },
+    {
+      "detail": "Official MotionMark 1.3 names from resources/runner/tests.js at this pin. Each official HTML workload executes when --motionmark-dir is set. canvas-class and gpu.multiply remain adapted class probes. Not a published MotionMark score.",
+      "name": "motionmark.canvas-class",
+      "p50_ms": 9,
+      "p95_ms": 9,
+      "revision": "c37b5040d7b07044cb76b5c3917abac4b0951579",
+      "samples_ms": [
+        9
       ],
       "status": "PARTIAL"
     },
@@ -156,12 +191,13 @@
   "review": "Vector_Current_Review_60b2d41",
   "officialFullSuite": false,
   "officialMotionMarkScore": false,
-  "note": "Official MotionMark 1.3 pin c37b504: tests/core/multiply.html PASS (initialize+animate). Other official names NOTRUN. canvas-class PARTIAL; gpu.multiply NOTRUN without --features gpu. Not a published MotionMark score.",
+  "note": "Official MotionMark 1.3 pin c37b504: all 8 official HTML names from resources/runner/tests.js executed (8 PASS). canvas-class PARTIAL; gpu.multiply NOTRUN without --features gpu. Not a published MotionMark score.",
   "counts": {
-    "pass": 1,
+    "pass": 8,
     "fail": 0,
     "partial": 1,
-    "notrun": 8,
-    "total": 10
+    "notrun": 1,
+    "total": 10,
+    "officialHtmlPass": 8
   }
 }
