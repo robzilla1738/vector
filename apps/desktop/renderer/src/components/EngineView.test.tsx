@@ -41,6 +41,7 @@ beforeEach(() => {
   mockedCall.mockImplementation(async (method) => {
     if (method === "pages.scene") return SCENE;
     if (method === "pages.capture") return { dataUrl: PNG, width: 100, height: 80, scale: 1 };
+    if (method === "pages.observe") return { content: { elements: [{ name: "Send", role: "button", tag: "button" }] } };
     return {};
   });
 });
@@ -52,6 +53,7 @@ async function mount(page = makePage(0, { backend: "vector-engine", title: "CNN"
   await act(async () => {
     root!.render(<EngineView page={page} />);
   });
+  await act(async () => {});
   return page;
 }
 
@@ -180,10 +182,58 @@ describe("EngineView", () => {
     });
   });
 
+  it("exposes named page controls as AccessKit actions on the shared path", async () => {
+    const page = await mount();
+    const btn = host!.querySelector("[data-ax-name='Send']") as HTMLButtonElement;
+    expect(btn).toBeTruthy();
+    expect(host!.querySelector("[data-testid=engine-view-ax]")?.getAttribute("aria-label")).toBe("Page");
+    await act(async () => {
+      btn.click();
+    });
+    expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
+      pageId: page.pageId,
+      type: "accessKitAction",
+      name: "Send",
+    });
+  });
+
+  it("resizes the engine viewport when the display scale changes", async () => {
+    const listeners: Array<() => void> = [];
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: (_: string, fn: () => void) => listeners.push(fn),
+      removeEventListener: () => {},
+    })) as typeof window.matchMedia;
+    await mount();
+    const view = host!.querySelector(".engine-view") as HTMLElement;
+    vi.spyOn(view, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 200,
+      bottom: 160,
+      width: 200,
+      height: 160,
+      toJSON: () => ({}),
+    });
+    await act(async () => {
+      listeners[0]?.();
+    });
+    expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
+      pageId: "page-1",
+      type: "resize",
+      width: 200,
+      height: 160,
+    });
+  });
+
   it("falls back to a screenshot when the engine has no display list", async () => {
     mockedCall.mockImplementation(async (method) => {
       if (method === "pages.scene") throw new Error("no scene");
       if (method === "pages.capture") return { dataUrl: PNG, width: 100, height: 80, scale: 1 };
+      if (method === "pages.observe") return { content: { elements: [] } };
       return {};
     });
     await mount();

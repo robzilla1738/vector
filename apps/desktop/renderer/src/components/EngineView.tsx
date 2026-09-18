@@ -31,6 +31,11 @@ interface Shot {
   scale: number;
 }
 
+interface AxNode {
+  name: string;
+  role: string;
+}
+
 function paintScene(canvas: HTMLCanvasElement, scene: Scene) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -84,12 +89,34 @@ function paintScene(canvas: HTMLCanvasElement, scene: Scene) {
 export function EngineView({ page }: { page: PageTarget }) {
   const [scene, setScene] = useState<Scene | null>(null);
   const [shot, setShot] = useState<Shot | null>(null);
+  const [ax, setAx] = useState<AxNode[]>([]);
   const pageRef = useRef(page);
   pageRef.current = page;
   const busy = useRef(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const imeRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const loadAx = async (id: string) => {
+    try {
+      const obs = await call<{
+        content?: { elements?: { name?: string; role?: string; tag?: string; hidden?: boolean }[] };
+      }>("pages.observe", { pageId: id, scope: "full" });
+      if (pageRef.current.pageId !== id) return;
+      const seen = new Set<string>();
+      const named: AxNode[] = [];
+      for (const e of obs.content?.elements ?? []) {
+        const name = e.name?.trim();
+        if (!name || e.hidden || seen.has(name)) continue;
+        seen.add(name);
+        named.push({ name, role: e.role ?? e.tag ?? "generic" });
+        if (named.length >= 24) break;
+      }
+      setAx(named);
+    } catch {
+      if (pageRef.current.pageId === id) setAx([]);
+    }
+  };
 
   const paint = useCallback(async () => {
     const id = pageRef.current.pageId;
@@ -99,6 +126,7 @@ export function EngineView({ page }: { page: PageTarget }) {
       if (s?.items?.length && s.png === false) {
         setScene(s);
         setShot(null);
+        await loadAx(id);
         return;
       }
     } catch {
@@ -108,6 +136,7 @@ export function EngineView({ page }: { page: PageTarget }) {
     if (pageRef.current.pageId !== id || !c.dataUrl) return;
     setScene(null);
     setShot({ dataUrl: c.dataUrl, width: c.width, height: c.height, scale: c.scale ?? 1 });
+    await loadAx(id);
   }, []);
 
   useEffect(() => {
@@ -138,6 +167,14 @@ export function EngineView({ page }: { page: PageTarget }) {
     }
   };
 
+  const sendViewport = () => {
+    const el = hostRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    void run({ type: "resize", width: r.width, height: r.height }, false).catch(() => {});
+  };
+
   useEffect(() => {
     const el = hostRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -148,6 +185,20 @@ export function EngineView({ page }: { page: PageTarget }) {
     });
     ro.observe(el);
     return () => ro.disconnect();
+  }, [scene, shot]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    let mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    if (typeof mq.addEventListener !== "function") return;
+    const onScale = () => {
+      sendViewport();
+      mq.removeEventListener("change", onScale);
+      mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      if (typeof mq.addEventListener === "function") mq.addEventListener("change", onScale);
+    };
+    mq.addEventListener("change", onScale);
+    return () => mq.removeEventListener("change", onScale);
   }, [scene, shot]);
 
   const onClick = (e: MouseEvent<HTMLElement>) => {
@@ -218,6 +269,25 @@ export function EngineView({ page }: { page: PageTarget }) {
         onCompositionUpdate={onCompositionUpdate}
         onCompositionEnd={onCompositionEnd}
       />
+      {ax.length > 0 && (
+        <ul className="engine-view-ax" aria-label="Page" data-testid="engine-view-ax">
+          {ax.map((n) => (
+            <li key={n.name}>
+              <button
+                type="button"
+                data-ax-name={n.name}
+                aria-label={n.name}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void run({ type: "accessKitAction", name: n.name }).catch(() => {});
+                }}
+              >
+                {n.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

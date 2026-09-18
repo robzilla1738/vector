@@ -571,6 +571,17 @@ body.resizing .sidebar { transition: none; }
 
 .engine-view { position: absolute; inset: 0; width: 100%; height: 100%; background: #fff; user-select: none; }
 .engine-view-scene { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; display: block; pointer-events: none; }
+.engine-view-ax {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  white-space: nowrap;
+}
 .engine-view-ime {
   position: absolute;
   inset: 0;
