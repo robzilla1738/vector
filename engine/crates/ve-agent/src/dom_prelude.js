@@ -1,5 +1,14 @@
 (() => {
-  const D = (op, ...a) => __ve.dom(op, ...a);
+  let liveListGen = 0;
+  const STRUCT = new Set([
+    "appendChild", "insertBefore", "removeChild", "replaceChild", "replaceChildren",
+    "setInnerHTML", "setOuterHTML", "adoptNode", "parseHTMLDocument", "remove",
+  ]);
+  const D = (op, ...a) => {
+    const r = __ve.dom(op, ...a);
+    if (STRUCT.has(op)) liveListGen++;
+    return r;
+  };
   const nodes = new Map();
   const nonceMap = new WeakMap();
   const registry = new Map();
@@ -299,9 +308,16 @@
     if (h == null || h === "" || h === false) return null;
     h = String(h);
     if (browsingDocument && h === String(browsingDocument.__h)) return browsingDocument;
+    const cached = nodes.get(h);
+    if (cached) return cached;
+    return wrapWithInfo(h, D("describe", h));
+  }
+  function wrapWithInfo(h, info) {
+    if (h == null || h === "" || h === false) return null;
+    h = String(h);
+    if (browsingDocument && h === String(browsingDocument.__h)) return browsingDocument;
     let n = nodes.get(h);
     if (n) return n;
-    const info = D("describe", h);
     if (!info) return null;
     let proto = Node.prototype;
     if (info.t === 9) proto = Document.prototype;
@@ -332,12 +348,15 @@
       installDocumentLocation(n);
     }
     if (info.t === 1) {
-      upgradeOne(n, false);
-      try { if (n.id) exposeWindowName(n.id); } catch (e) {}
+      if (registry.size) upgradeOne(n, false);
+      if (info.id) {
+        try { exposeWindowName(info.id); } catch (e) {}
+      }
     }
     return n;
   }
   function upgradeTree(n) {
+    if (!registry.size) return;
     if (!n || n.nodeType !== 1) return;
     upgradeOne(n, true);
     const kids = n.children;
@@ -387,35 +406,44 @@
   class LiveNodeList {
     constructor(fetch) {
       this._fetch = fetch;
+      this._gen = -1;
+      this._cur = null;
+      const snap = () => {
+        if (this._gen !== liveListGen || !this._cur) {
+          this._gen = liveListGen;
+          this._cur = fetch();
+        }
+        return this._cur;
+      };
       return new Proxy(this, {
         get(t, p, recv) {
-          const cur = t._fetch();
+          const cur = snap();
           if (p === "length") return cur.length;
           if (p === "item") return (i) => cur[i | 0] || null;
           if (p === "forEach") return (fn, self) => cur.forEach(fn, self);
           if (p === Symbol.iterator) return cur[Symbol.iterator].bind(cur);
-          if (typeof p === "symbol" || p === "_fetch") return Reflect.get(t, p, recv);
+          if (typeof p === "symbol" || p === "_fetch" || p === "_gen" || p === "_cur") return Reflect.get(t, p, recv);
           if (/^\d+$/.test(String(p))) return cur[Number(p)];
           return Reflect.get(t, p, recv);
         },
         has(t, p) {
           if (p === "length" || p === "_fetch") return true;
-          if (/^\d+$/.test(String(p))) return Number(p) < t._fetch().length;
+          if (/^\d+$/.test(String(p))) return Number(p) < snap().length;
           return Reflect.has(t, p);
         },
         ownKeys(t) {
-          const n = t._fetch().length;
+          const n = snap().length;
           const keys = ["length", "_fetch"];
           for (let i = 0; i < n; i++) keys.push(String(i));
           return keys;
         },
         getOwnPropertyDescriptor(t, p) {
           if (p === "length") {
-            return { configurable: true, enumerable: true, writable: false, value: t._fetch().length };
+            return { configurable: true, enumerable: true, writable: false, value: snap().length };
           }
           if (/^\d+$/.test(String(p))) {
             const i = Number(p);
-            const cur = t._fetch();
+            const cur = snap();
             if (i < cur.length) {
               return { configurable: true, enumerable: true, writable: false, value: cur[i] };
             }
@@ -432,6 +460,20 @@
   function list(arr) {
     const out = [];
     if (!arr) return out;
+    const missing = [];
+    for (const h of arr) {
+      if (h == null || h === "" || h === false) continue;
+      const s = String(h);
+      if (nodes.has(s)) continue;
+      if (browsingDocument && s === String(browsingDocument.__h)) continue;
+      missing.push(s);
+    }
+    if (missing.length > 1) {
+      const infos = D("describeMany", ...missing);
+      if (Array.isArray(infos)) {
+        for (let i = 0; i < missing.length; i++) wrapWithInfo(missing[i], infos[i]);
+      }
+    }
     for (const h of arr) {
       const n = wrap(h);
       if (n) out.push(n);
@@ -1200,11 +1242,19 @@
     contains(n) { return !!D("contains", this.__h, handleOf(n)); }
     hasChildNodes() { return this.childNodes.length > 0; }
     replaceChildren(...args) {
-      while (this.firstChild) this.removeChild(this.firstChild);
+      const flat = [];
       for (const a of args) {
         if (a == null) continue;
-        if (typeof a === "string") this.appendChild(document.createTextNode(a));
-        else this.appendChild(a);
+        if (typeof a === "string") flat.push(document.createTextNode(a));
+        else if (a.nodeType === 11) {
+          const kids = a.childNodes;
+          for (let i = 0; i < kids.length; i++) flat.push(kids[i]);
+        } else flat.push(a);
+      }
+      D("replaceChildren", this.__h, ...flat.map(handleOf));
+      for (const n of flat) {
+        if (registry.size) upgradeTree(n);
+        try { prepareInsertedNode(n); } catch (e) { __ve.log("error", String(e)); }
       }
     }
     isEqualNode(n) { return !!(n && n.__h && D("isEqualNode", this.__h, n.__h)); }
@@ -3838,15 +3888,14 @@
   }
   class DOMParser {
     parseFromString(str, type) {
-      const doc = document.implementation.createHTMLDocument("");
       const html = str == null ? "" : String(str);
       if (String(type || "").toLowerCase().includes("xml")) {
+        const doc = document.implementation.createHTMLDocument("");
         doc.body.textContent = html;
         return doc;
       }
       const body = /<body[\s\S]*?>([\s\S]*)<\/body>/i.exec(html);
-      doc.body.innerHTML = body ? body[1] : html;
-      return doc;
+      return wrap(D("parseHTMLDocument", body ? body[1] : html));
     }
   }
   function Blob(parts, opts) {

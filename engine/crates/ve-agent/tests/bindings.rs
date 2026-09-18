@@ -1166,6 +1166,68 @@ fn es5_todomvc_delegate_remove_after_domparser_replace() {
 }
 
 #[test]
+fn live_childnodes_grows_after_append_on_held_list() {
+    let mut page = open(r#"<ul id="list"></ul>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var ul = document.getElementById("list");
+              var held = ul.childNodes;
+              var before = held.length;
+              ul.appendChild(document.createElement("li"));
+              var mid = held.length;
+              var parsed = new DOMParser().parseFromString(
+                "<li id=a>one</li><li>two</li>",
+                "text/html"
+              );
+              ul.replaceChildren.apply(ul, Array.prototype.slice.call(parsed.body.childNodes));
+              return {
+                before: before,
+                mid: mid,
+                after: held.length,
+                named: typeof window.a !== "undefined" && window.a && window.a.id === "a",
+                text: ul.textContent
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["before"], 0, "{v}");
+    assert_eq!(v["mid"], 1, "{v}");
+    assert_eq!(v["after"], 2, "{v}");
+    assert_eq!(v["named"], true, "{v}");
+    assert_eq!(v["text"], "onetwo", "{v}");
+}
+
+#[test]
+fn es5_todomvc_domparser_replace_grows_to_one_hundred() {
+    let mut page = open(r#"<ul class="todo-list"></ul>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var ul = document.querySelector(".todo-list");
+              function item(i) {
+                return "<li data-id=\"" + i + "\"><div class=\"view\"><input class=\"toggle\" type=\"checkbox\"><label>Item " + i + "</label><button class=\"destroy\"></button></div></li>";
+              }
+              for (var n = 1; n <= 100; n++) {
+                var html = "";
+                for (var i = 1; i <= n; i++) html += item(i);
+                var parsed = new DOMParser().parseFromString(html, "text/html");
+                ul.replaceChildren.apply(ul, Array.prototype.slice.call(parsed.body.childNodes));
+              }
+              return {
+                count: ul.childNodes.length,
+                last: ul.lastChild && ul.lastChild.getAttribute("data-id"),
+                labels: ul.querySelectorAll("label").length
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["count"], 100, "{v}");
+    assert_eq!(v["last"], "100", "{v}");
+    assert_eq!(v["labels"], 100, "{v}");
+}
+
+#[test]
 fn element_collections_are_descendants_only_so_html_keeps_delegated_listeners() {
     let mut page = open(r#"<ul id="todo-list"></ul><input type="checkbox" class="toggle">"#);
     let v = page

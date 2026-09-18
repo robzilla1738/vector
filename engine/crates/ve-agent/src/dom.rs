@@ -48,6 +48,30 @@ fn fail(msg: impl Into<String>) -> ScriptError {
         stack: None,
     }
 }
+
+fn describe_node(page: &Page, id: NodeId) -> Option<JsValue> {
+    let node = page.doc.get(id)?;
+    let mut map = BTreeMap::new();
+    map.insert("t".into(), JsValue::Number(f64::from(node.node_type())));
+    if let Some(e) = node.as_element() {
+        map.insert("name".into(), JsValue::from(e.name.as_str()));
+        map.insert("ns".into(), JsValue::from(e.namespace.uri()));
+        if let Some(id_attr) = e.id() {
+            map.insert("id".into(), JsValue::from(id_attr));
+        }
+    }
+    if let NodeKind::ShadowRoot { mode } = node.kind {
+        map.insert("shadow".into(), JsValue::Bool(true));
+        map.insert(
+            "mode".into(),
+            JsValue::from(match mode {
+                ShadowRootMode::Open => "open",
+                ShadowRootMode::Closed => "closed",
+            }),
+        );
+    }
+    Some(JsValue::Object(map))
+}
 fn live(page: &Page, args: &[JsValue], i: usize) -> Result<NodeId, ScriptError> {
     let id = unpack(args.get(i).unwrap_or(&JsValue::Null)).ok_or_else(|| fail("not a node"))?;
     if !page.doc.contains(id) {
@@ -335,27 +359,18 @@ pub(crate) fn host_call(
 ) -> Result<JsValue, ScriptError> {
     match op {
         "documentNode" => Ok(pack(page.doc.root())),
-        "describe" => {
-            let id = live(page, args, 0)?;
-            let node = page.doc.get(id).ok_or_else(|| fail("detached"))?;
-            let mut map = BTreeMap::new();
-            map.insert("t".into(), JsValue::Number(f64::from(node.node_type())));
-            if let Some(e) = node.as_element() {
-                map.insert("name".into(), JsValue::from(e.name.as_str()));
-                map.insert("ns".into(), JsValue::from(e.namespace.uri()));
-            }
-            if let NodeKind::ShadowRoot { mode } = node.kind {
-                map.insert("shadow".into(), JsValue::Bool(true));
-                map.insert(
-                    "mode".into(),
-                    JsValue::from(match mode {
-                        ShadowRootMode::Open => "open",
-                        ShadowRootMode::Closed => "closed",
-                    }),
-                );
-            }
-            Ok(JsValue::Object(map))
-        }
+        "describe" => describe_node(page, live(page, args, 0)?)
+            .ok_or_else(|| fail("detached")),
+        "describeMany" => Ok(JsValue::Array(
+            args.iter()
+                .map(|a| {
+                    unpack(a)
+                        .filter(|id| page.doc.contains(*id))
+                        .and_then(|id| describe_node(page, id))
+                        .unwrap_or(JsValue::Null)
+                })
+                .collect(),
+        )),
         "nodeType" => Ok(live(page, args, 0).ok().map_or(JsValue::Number(0.0), |id| {
             JsValue::Number(f64::from(
                 crate::idl::LiveNode::new(&mut page.doc, id).node_type(),
@@ -454,6 +469,34 @@ pub(crate) fn host_call(
             Ok(pack(
                 crate::idl::LiveDom::new(page, p).replace_child(new, old),
             ))
+        }
+        "replaceChildren" => {
+            let parent = live(page, args, 0)?;
+            let incoming: Vec<NodeId> = args
+                .iter()
+                .skip(1)
+                .filter_map(unpack)
+                .filter(|id| page.doc.contains(*id))
+                .collect();
+            let existing: Vec<NodeId> = page.doc.children(parent).collect();
+            for kid in existing {
+                let _ = crate::idl::LiveDom::new(page, parent).remove_child(kid);
+            }
+            for kid in incoming {
+                let _ = crate::idl::LiveDom::new(page, parent).append_child(kid);
+            }
+            Ok(JsValue::Undefined)
+        }
+        "parseHTMLDocument" => {
+            let html = arg_str(args, 0);
+            let doc = crate::idl::LiveImpl::new(page).create_h_t_m_l_document(Some(String::new()));
+            let body = page
+                .doc
+                .descendants(doc)
+                .find(|&id| page.doc.element(id).is_some_and(|e| e.name == "body"))
+                .ok_or_else(|| fail("no body"))?;
+            crate::idl::LiveDom::new(page, body).set_inner_h_t_m_l(html);
+            Ok(pack(doc))
         }
         "cloneNode" => {
             let id = live(page, args, 0)?;
