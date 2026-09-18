@@ -205,7 +205,7 @@ fn try_handshake(
     tls: bool,
     policy: &NetworkPolicy,
 ) -> Result<WebSocketClient, NetError> {
-    use std::net::TcpStream;
+    use std::net::{TcpStream, ToSocketAddrs};
     use std::time::Duration;
 
     let host = url
@@ -213,11 +213,30 @@ fn try_handshake(
         .ok_or_else(|| NetError::Http("ws host missing".into()))?;
     let default_port = if tls { 443 } else { 80 };
     let port = url.port().unwrap_or(default_port);
-    let stream =
-        TcpStream::connect((host, port)).map_err(|e| NetError::Transport(e.to_string()))?;
-    if let Ok(peer) = stream.peer_addr() {
-        policy.check_resolved(url, peer.ip())?;
+    let addrs: Vec<_> = (host, port)
+        .to_socket_addrs()
+        .map_err(|e| NetError::Transport(format!("dns: {e}")))?
+        .collect();
+    if addrs.is_empty() {
+        return Err(NetError::Transport("dns: no addresses".into()));
     }
+    for addr in &addrs {
+        policy.check_resolved(url, addr.ip())?;
+    }
+    let mut last_err = None;
+    let mut stream = None;
+    for addr in addrs {
+        match TcpStream::connect(addr) {
+            Ok(s) => {
+                stream = Some(s);
+                break;
+            }
+            Err(e) => last_err = Some(e),
+        }
+    }
+    let stream = stream.ok_or_else(|| {
+        NetError::Transport(last_err.map_or_else(|| "connect failed".into(), |e| e.to_string()))
+    })?;
     stream.set_read_timeout(Some(Duration::from_secs(5))).ok();
     stream.set_write_timeout(Some(Duration::from_secs(5))).ok();
     stream.set_nodelay(true).ok();

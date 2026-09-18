@@ -38,6 +38,7 @@ pub mod websocket;
 pub mod wire;
 
 use std::collections::{HashMap, VecDeque};
+use std::net::SocketAddr;
 use std::time::{Instant, SystemTime};
 
 use bytes::Bytes;
@@ -137,6 +138,9 @@ pub struct Request {
     pub origin: Option<Url>,
     /// Background requests (streams, beacons) never block `settle()`.
     pub background: bool,
+    /// Addresses from the policy-time DNS lookup. The transport must connect
+    /// to these instead of resolving again (Finding 2).
+    pub resolved: Option<Vec<SocketAddr>>,
 }
 
 impl Request {
@@ -151,6 +155,7 @@ impl Request {
             initiator: Initiator::Navigation,
             origin: None,
             background: false,
+            resolved: None,
         })
     }
 
@@ -559,7 +564,17 @@ impl NetworkContext {
         let origin = origin_key(&request.url);
         let ep = self.h3_endpoints.get(&origin)?;
         let host = ep.host.as_deref().or_else(|| request.url.host_str())?;
-        let addr = (host, ep.port).to_socket_addrs().ok()?.next()?;
+        let addr = request
+            .resolved
+            .as_ref()
+            .and_then(|addrs| {
+                addrs
+                    .iter()
+                    .copied()
+                    .find(|a| a.port() == ep.port)
+                    .or_else(|| addrs.first().copied())
+            })
+            .or_else(|| (host, ep.port).to_socket_addrs().ok()?.next())?;
         crate::http3::get(request.url.as_str(), host, addr).ok()
     }
 

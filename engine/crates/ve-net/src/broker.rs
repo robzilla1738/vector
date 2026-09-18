@@ -63,6 +63,11 @@ impl NetworkBroker {
 
     /// Performs `job.request` after policy, credential stripping, and resolved-IP checks.
     pub fn fetch(&self, mut job: FetchJob) -> Result<Response, NetError> {
+        self.prepare_job(&mut job)?;
+        self.inner.send(&job.request)
+    }
+
+    fn prepare_job(&self, job: &mut FetchJob) -> Result<(), NetError> {
         if self.context_id != 0 && job.context != self.context_id {
             return Err(NetError::Blocked(format!(
                 "forged context {} (broker owns {})",
@@ -76,11 +81,12 @@ impl NetworkBroker {
             ));
         }
         self.policy.check_request(&job.request)?;
-        self.check_resolved(&job.request)?;
-        self.inner.send(&job.request)
+        self.pin_resolved(&mut job.request)
     }
 
-    fn check_resolved(&self, request: &Request) -> Result<(), NetError> {
+    /// One DNS lookup, policy check, then stamp the same addresses on the
+    /// request so the transport cannot resolve a different set.
+    fn pin_resolved(&self, request: &mut Request) -> Result<(), NetError> {
         match request.url.scheme() {
             "http" | "https" => {}
             _ => return Ok(()),
@@ -89,13 +95,17 @@ impl NetworkBroker {
             return Ok(());
         };
         let port = request.url.port_or_known_default().unwrap_or(80);
-        let addrs = match (host, port).to_socket_addrs() {
-            Ok(a) => a,
-            Err(_) => return Ok(()),
+        let addrs: Vec<_> = match (host, port).to_socket_addrs() {
+            Ok(a) => a.collect(),
+            Err(e) => return Err(NetError::Transport(format!("dns: {e}"))),
         };
-        for addr in addrs {
+        if addrs.is_empty() {
+            return Err(NetError::Transport("dns: no addresses".into()));
+        }
+        for addr in &addrs {
             self.policy.check_resolved(&request.url, addr.ip())?;
         }
+        request.resolved = Some(addrs);
         Ok(())
     }
 }
@@ -109,7 +119,28 @@ impl Transport for NetworkBroker {
     }
 
     fn send_many(&self, requests: &[Request]) -> Vec<Result<Response, NetError>> {
-        requests.iter().map(|r| self.send(r)).collect()
+        let mut results: Vec<Option<Result<Response, NetError>>> =
+            (0..requests.len()).map(|_| None).collect();
+        let mut pending: Vec<(usize, Request)> = Vec::new();
+        for (i, request) in requests.iter().enumerate() {
+            let mut job = FetchJob {
+                context: self.context_id,
+                request: request.clone(),
+            };
+            match self.prepare_job(&mut job) {
+                Ok(()) => pending.push((i, job.request)),
+                Err(e) => results[i] = Some(Err(e)),
+            }
+        }
+        let wire: Vec<Request> = pending.iter().map(|(_, r)| r.clone()).collect();
+        let responses = self.inner.send_many(&wire);
+        for ((i, _), response) in pending.into_iter().zip(responses) {
+            results[i] = Some(response);
+        }
+        results
+            .into_iter()
+            .map(|r| r.unwrap_or_else(|| Err(NetError::Transport("send_many slot".into()))))
+            .collect()
     }
 
     fn name(&self) -> &'static str {
@@ -120,8 +151,8 @@ impl Transport for NetworkBroker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transport::NullTransport;
-    use crate::{Initiator, Request};
+    use crate::transport::{NullTransport, Transport};
+    use crate::{Initiator, NetError, Request, Response};
 
     #[test]
     fn broker_runs_jobs_without_leaking_the_transport() {
@@ -209,11 +240,82 @@ mod tests {
             Err(NetError::Transport("stop".into()))
         });
         let broker = NetworkBroker::with_policy(Box::new(t), NetworkPolicy::permissive(), 1);
-        let request = Request::get("https://user:pass@example.test/x").unwrap();
+        let request = Request::get("https://user:pass@127.0.0.1/x").unwrap();
         let _ = broker.fetch(FetchJob {
             context: 1,
             request,
         });
-        assert_eq!(*seen.borrow(), "https://example.test/x");
+        assert_eq!(*seen.borrow(), "https://127.0.0.1/x");
+    }
+
+    #[test]
+    fn broker_pins_resolved_addrs_used_by_transport() {
+        let seen = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let seen2 = seen.clone();
+        let t = crate::FnTransport::new(move |req: &Request| {
+            *seen2.borrow_mut() = req.resolved.clone();
+            Err(NetError::Transport("stop".into()))
+        });
+        let broker = NetworkBroker::with_policy(Box::new(t), NetworkPolicy::permissive(), 1);
+        let _ = broker.fetch(FetchJob {
+            context: 1,
+            request: Request::get("http://127.0.0.1:9/").unwrap(),
+        });
+        let pinned = seen
+            .borrow()
+            .clone()
+            .expect("transport must see pinned addrs");
+        assert!(
+            pinned.iter().any(|a| a.ip().is_loopback() && a.port() == 9),
+            "{pinned:?}"
+        );
+    }
+
+    #[test]
+    fn broker_send_many_is_one_inner_batch() {
+        use std::cell::Cell;
+        use std::rc::Rc;
+
+        struct CountTransport {
+            sends: Rc<Cell<usize>>,
+            batches: Rc<Cell<usize>>,
+        }
+        impl Transport for CountTransport {
+            fn send(&self, _request: &Request) -> Result<Response, NetError> {
+                self.sends.set(self.sends.get() + 1);
+                Err(NetError::Transport("count".into()))
+            }
+            fn send_many(&self, requests: &[Request]) -> Vec<Result<Response, NetError>> {
+                self.batches.set(self.batches.get() + 1);
+                requests.iter().map(|r| self.send(r)).collect()
+            }
+            fn name(&self) -> &'static str {
+                "count"
+            }
+        }
+
+        let sends = Rc::new(Cell::new(0));
+        let batches = Rc::new(Cell::new(0));
+        let broker = NetworkBroker::with_policy(
+            Box::new(CountTransport {
+                sends: sends.clone(),
+                batches: batches.clone(),
+            }),
+            NetworkPolicy::permissive(),
+            1,
+        );
+        let reqs = vec![
+            Request::get("http://127.0.0.1:9/a").unwrap(),
+            Request::get("http://127.0.0.1:9/b").unwrap(),
+            Request::get("http://127.0.0.1:9/c").unwrap(),
+        ];
+        let out = broker.send_many(&reqs);
+        assert_eq!(out.len(), 3);
+        assert_eq!(
+            batches.get(),
+            1,
+            "Finding 2: broker must not serialize via N send() calls"
+        );
+        assert_eq!(sends.get(), 3);
     }
 }
