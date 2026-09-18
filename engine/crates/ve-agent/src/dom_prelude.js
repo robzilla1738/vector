@@ -152,11 +152,8 @@
     get persisted() { return this._persisted; }
   }
   class BeforeUnloadEvent extends Event {
-    constructor(type) {
-      super(type, arguments[1] || {});
-      this._returnValue = "";
-    }
-    get returnValue() { return this._returnValue; }
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get returnValue() { return this._returnValue || ""; }
     set returnValue(v) { this._returnValue = v == null ? "" : String(v); }
   }
   class StorageEvent extends Event {
@@ -4765,6 +4762,14 @@
     entries() { return (this._items || new Set()).entries(); }
     [Symbol.iterator]() { return this.values(); }
   }
+  for (const name of ["add", "has", "delete", "clear", "forEach", "keys", "values", "entries"]) {
+    Object.defineProperty(CustomStateSet.prototype, name, {
+      value: CustomStateSet.prototype[name],
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
   Object.defineProperty(CustomStateSet.prototype, Symbol.toStringTag, { value: "CustomStateSet", configurable: true });
   class ElementInternals {
     constructor() { throw new TypeError("Illegal constructor"); }
@@ -5926,12 +5931,6 @@
     }
     reload() { D("reload"); }
   }
-  Object.defineProperty(Location.prototype, "toString", {
-    value: Location.prototype.toString,
-    writable: false,
-    enumerable: true,
-    configurable: false,
-  });
 
   class History {
     constructor() { throw new TypeError("Illegal constructor"); }
@@ -7642,6 +7641,11 @@
         return (m && m[name]) || null;
       };
       const set = function (v) {
+        if (globalLoose) {
+          if (this !== undefined && this !== null && this !== globalThis) {
+            if (name === "onmouseenter" || name === "onmouseleave") return undefined;
+          }
+        }
         const t = globalLoose ? windowThis(this) : this;
         let m = handlerStore.get(t);
         if (!m) { m = Object.create(null); handlerStore.set(t, m); }
@@ -7702,6 +7706,9 @@
               || name === "onmouseleave"
             ) {
               return undefined;
+            }
+            if (name === "committed" || name === "finished") {
+              return Promise.reject(new TypeError("Illegal invocation"));
             }
             throw new TypeError("Illegal invocation");
           }
@@ -7881,9 +7888,21 @@
       }
       try { Object.defineProperty(location, name, out); } catch (e) {}
     }
+    const locToString = function toString() {
+      if (!(this instanceof Location)) {
+        throw new TypeError("Illegal invocation");
+      }
+      return D("locationGet", "href");
+    };
     try {
       Object.defineProperty(Location.prototype, "toString", {
-        value: Location.prototype.toString,
+        value: locToString,
+        writable: false,
+        enumerable: true,
+        configurable: false,
+      });
+      Object.defineProperty(location, "toString", {
+        value: locToString,
         writable: false,
         enumerable: true,
         configurable: false,
@@ -7892,14 +7911,15 @@
   }
   Object.defineProperties(External.prototype, {
     AddSearchProvider: {
-      value: External.prototype.AddSearchProvider || function AddSearchProvider() {},
+      value: function AddSearchProvider() {},
       writable: true, enumerable: true, configurable: true,
     },
     IsSearchProviderInstalled: {
-      value: External.prototype.IsSearchProviderInstalled || function IsSearchProviderInstalled() { return 0; },
+      value: function IsSearchProviderInstalled() { return 0; },
       writable: true, enumerable: true, configurable: true,
     },
   });
+  brandWrap(External);
   for (const name of ["parseHTMLUnsafe", "parseHTML"]) {
     const fn = Document[name];
     if (typeof fn === "function") {

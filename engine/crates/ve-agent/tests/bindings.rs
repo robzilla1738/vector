@@ -5038,6 +5038,10 @@ fn official_html_brand_window_and_media_idl() {
                 rangeFrag: typeof Range.prototype.createContextualFragment === "function",
                 imageName: Image.name,
                 audioNew: (function () { try { Audio(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                beforeLen: BeforeUnloadEvent.length,
+                beforeThrew: (function () { try { new BeforeUnloadEvent(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                locStr: (function () { try { Location.prototype.toString.apply(null); return false; } catch (e) { return e instanceof TypeError; } })(),
+                extNull: (function () { try { External.prototype.AddSearchProvider.apply(null); return false; } catch (e) { return e instanceof TypeError; } })(),
               };
             })()"##,
         )
@@ -5110,4 +5114,8 @@ fn official_html_brand_window_and_media_idl() {
     assert_eq!(v["rangeFrag"], true, "{v}");
     assert_eq!(v["imageName"], "Image", "{v}");
     assert_eq!(v["audioNew"], true, "{v}");
+    assert_eq!(v["beforeLen"], 0, "{v}");
+    assert_eq!(v["beforeThrew"], true, "{v}");
+    assert_eq!(v["locStr"], true, "{v}");
+    assert_eq!(v["extNull"], true, "{v}");
 }
