@@ -4720,3 +4720,57 @@ fn htmlelement_idl_members_match_official_interface() {
     assert_eq!(v["internalsCtor"], true, "{v}");
     assert_eq!(v["dataset"], true, "{v}");
 }
+
+#[test]
+fn official_html_link_media_body_and_eventsource_idl() {
+    let mut page =
+        open("<title>Hi</title><link id=l rel=stylesheet><body><video id=v></video></body>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const title = document.querySelector("title");
+              const link = document.getElementById("l");
+              const video = document.getElementById("v");
+              let canPlayThrew = false;
+              try { video.canPlayType(); } catch (e) { canPlayThrew = e instanceof TypeError; }
+              let customThrew = false;
+              try { document.createElement("object").setCustomValidity(); } catch (e) { customThrew = e instanceof TypeError; }
+              let fillThrew = false;
+              try { document.createElement("canvas").getContext("2d").fillRect(); } catch (e) { fillThrew = e instanceof TypeError; }
+              const es = new EventSource("http://invalid");
+              return {
+                titleText: title.text,
+                titleOwn: "text" in HTMLTitleElement.prototype,
+                sizes: link.sizes && typeof link.sizes.add === "function",
+                imageSrcset: "imageSrcset" in HTMLLinkElement.prototype,
+                imageSizes: "imageSizes" in HTMLLinkElement.prototype,
+                fetchPriority: link.fetchPriority,
+                bodyAfter: "onafterprint" in HTMLBodyElement.prototype,
+                canPlay: typeof HTMLMediaElement.prototype.canPlayType === "function",
+                canPlayThrew,
+                customThrew,
+                fillThrew,
+                setHtmlLen: Element.prototype.setHTML.length,
+                esUrl: typeof es.url === "string",
+                esClosed: es.readyState === EventSource.CLOSED,
+                esTag: Object.prototype.toString.call(es),
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["titleText"], "Hi", "{v}");
+    assert_eq!(v["titleOwn"], true, "{v}");
+    assert_eq!(v["sizes"], true, "{v}");
+    assert_eq!(v["imageSrcset"], true, "{v}");
+    assert_eq!(v["imageSizes"], true, "{v}");
+    assert_eq!(v["fetchPriority"], "auto", "{v}");
+    assert_eq!(v["bodyAfter"], true, "{v}");
+    assert_eq!(v["canPlay"], true, "{v}");
+    assert_eq!(v["canPlayThrew"], true, "{v}");
+    assert_eq!(v["customThrew"], true, "{v}");
+    assert_eq!(v["fillThrew"], true, "{v}");
+    assert_eq!(v["setHtmlLen"], 1, "{v}");
+    assert_eq!(v["esUrl"], true, "{v}");
+    assert_eq!(v["esClosed"], true, "{v}");
+    assert_eq!(v["esTag"], "[object EventSource]", "{v}");
+}

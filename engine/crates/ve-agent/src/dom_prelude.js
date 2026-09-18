@@ -2246,7 +2246,11 @@
       for (const k of ckids) sanitizeTree(k, sanitizer);
     }
   }
-  Element.prototype.setHTML = function setHTML(html, options) {
+  Element.prototype.setHTML = function setHTML(html) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'setHTML' on 'Element': 1 argument required, but only 0 present.");
+    }
+    const options = arguments[1];
     const box = document.createElement("template");
     box.innerHTML = html == null ? "" : String(html);
     const sanitizer = (options && options.sanitizer) || new Sanitizer();
@@ -2256,6 +2260,9 @@
     applyAllPartialUpdates();
   };
   Element.prototype.setHTMLUnsafe = function setHTMLUnsafe(html) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'setHTMLUnsafe' on 'Element': 1 argument required, but only 0 present.");
+    }
     const box = document.createElement("template");
     box.innerHTML = html == null ? "" : String(html);
     while (this.firstChild) this.removeChild(this.firstChild);
@@ -2752,6 +2759,21 @@
     set placeholder(v) { this.setAttribute("placeholder", v); }
     checkValidity() { return !!D("checkValidity", this.__h); }
     reportValidity() { return this.checkValidity(); }
+    setCustomValidity(msg) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setCustomValidity' on 'HTMLElement': 1 argument required, but only 0 present.");
+      }
+    }
+    setRangeText(replacement) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setRangeText' on 'HTMLInputElement': 1 argument required, but only 0 present.");
+      }
+    }
+    setSelectionRange(start, end) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'setSelectionRange' on 'HTMLInputElement': 2 arguments required, but only " + arguments.length + " present.");
+      }
+    }
   }
   function reflectName(proto) {
     Object.defineProperty(proto, "name", {
@@ -2939,6 +2961,19 @@
     set media(v) { this.setAttribute("media", v == null ? "" : String(v)); }
     get blocking() { return this._blockingTL || (this._blockingTL = new DOMTokenList(this.__h, "blocking", RENDER_TOKENS)); }
     set blocking(v) { this.blocking.value = v == null ? "" : String(v); }
+    get sizes() { return this._sizesTL || (this._sizesTL = new DOMTokenList(this.__h, "sizes")); }
+    set sizes(v) { this.setAttribute("sizes", v == null ? "" : String(v)); }
+    get imageSrcset() { return this.getAttribute("imagesrcset") || ""; }
+    set imageSrcset(v) { this.setAttribute("imagesrcset", v == null ? "" : String(v)); }
+    get imageSizes() { return this.getAttribute("imagesizes") || ""; }
+    set imageSizes(v) { this.setAttribute("imagesizes", v == null ? "" : String(v)); }
+    get fetchPriority() {
+      const v = (this.getAttribute("fetchpriority") || "").toLowerCase();
+      return v === "high" || v === "low" || v === "auto" ? v : "auto";
+    }
+    set fetchPriority(v) { this.setAttribute("fetchpriority", String(v)); }
+    get disabled() { return this.hasAttribute("disabled"); }
+    set disabled(v) { v ? this.setAttribute("disabled", "") : this.removeAttribute("disabled"); }
   }
   class HTMLImageElement extends HTMLElement {
     get name() { return this.getAttribute("name") || ""; }
@@ -3208,9 +3243,11 @@
       this._path = new Path2D();
     }
     fillRect(x, y, w, h) {
+      if (arguments.length < 4) throw new TypeError("Failed to execute 'fillRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       D("canvasFillRect", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0, String(this.fillStyle));
     }
     clearRect(x, y, w, h) {
+      if (arguments.length < 4) throw new TypeError("Failed to execute 'clearRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       D("canvasClearRect", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0);
     }
     beginPath() { this._path = new Path2D(); }
@@ -3232,7 +3269,10 @@
     setTransform() {}
     resetTransform() { this.setTransform(1, 0, 0, 1, 0, 0); }
     transform() {}
-    setLineDash(d) { this._dash = Array.isArray(d) ? d.slice() : []; }
+    setLineDash(d) {
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'setLineDash' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
+      this._dash = Array.isArray(d) ? d.slice() : [];
+    }
     getLineDash() { return this._dash.slice(); }
     clip() {}
     quadraticCurveTo() {}
@@ -3265,7 +3305,10 @@
   class HTMLHeadElement extends HTMLElement {}
   class HTMLBodyElement extends HTMLElement {}
   class HTMLHtmlElement extends HTMLElement {}
-  class HTMLTitleElement extends HTMLElement {}
+  class HTMLTitleElement extends HTMLElement {
+    get text() { return this.textContent || ""; }
+    set text(v) { this.textContent = v == null ? "" : String(v); }
+  }
   class HTMLScriptElement extends HTMLElement {
     constructor() {
       super();
@@ -3437,8 +3480,16 @@
     set mode(v) { this._mode = String(v); }
     get cues() { return this._cues || (this._cues = emptyCueList()); }
     get activeCues() { return this._activeCues || (this._activeCues = emptyCueList()); }
-    addCue() {}
-    removeCue() {}
+    addCue(cue) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'addCue' on 'TextTrack': 1 argument required, but only 0 present.");
+      }
+    }
+    removeCue(cue) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'removeCue' on 'TextTrack': 1 argument required, but only 0 present.");
+      }
+    }
   }
   Object.defineProperty(TextTrack.prototype, Symbol.toStringTag, { value: "TextTrack", configurable: true });
   function makeTextTrack(kind, label, language) {
@@ -3455,6 +3506,9 @@
     get length() { return this._tracks ? this._tracks.length : 0; }
     item(i) { return (this._tracks && this._tracks[i | 0]) || null; }
     getTrackById(id) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getTrackById' on 'TextTrackList': 1 argument required, but only 0 present.");
+      }
       const tracks = this._tracks || [];
       return tracks.find((t) => t.id === String(id)) || null;
     }
@@ -3486,8 +3540,15 @@
     get buffered() { return this._buffered || (this._buffered = emptyTimeRanges()); }
     get textTracks() { return this._textTracks || (this._textTracks = emptyTextTrackList()); }
     addTextTrack(kind, label, language) {
-      if (kind == null) throw new TypeError("Failed to execute 'addTextTrack' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'addTextTrack' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
       return this.textTracks._add(makeTextTrack(kind, label, language));
+    }
+    canPlayType(type) {
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'canPlayType' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
+      return "";
+    }
+    fastSeek(time) {
+      if (arguments.length < 1) throw new TypeError("Failed to execute 'fastSeek' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
     }
   }
   Object.defineProperty(HTMLMediaElement.prototype, Symbol.toStringTag, { value: "HTMLMediaElement", configurable: true });
@@ -4206,11 +4267,22 @@
   function encodeUSVHref(s) {
     return toUSV(s).replace(/\uFFFD/g, "%EF%BF%BD");
   }
-  function EventSource(url) {
-    this.url = encodeUSVHref(String(url));
-    this.readyState = 2;
-    this.close = function () {};
+  class EventSource extends EventTarget {
+    constructor(url) {
+      super();
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to construct 'EventSource': 1 argument required, but only 0 present.");
+      }
+      this.url = encodeUSVHref(String(url));
+      this.withCredentials = false;
+      this.readyState = EventSource.CLOSED;
+    }
+    close() { this.readyState = EventSource.CLOSED; }
   }
+  EventSource.CONNECTING = 0;
+  EventSource.OPEN = 1;
+  EventSource.CLOSED = 2;
+  Object.defineProperty(EventSource.prototype, Symbol.toStringTag, { value: "EventSource", configurable: true });
   function blankWindow(url) {
     const loc = {
       _href: encodeUSVHref(url == null || url === "" ? "about:blank" : String(url)),
@@ -5611,6 +5683,8 @@
   }
   defineHandlers(Document.prototype, eventHandlerNames, true);
   defineHandlers(HTMLElement.prototype, eventHandlerNames, true);
+  defineHandlers(HTMLBodyElement.prototype, windowHandlerNames, true);
+  defineHandlers(HTMLFrameSetElement.prototype, windowHandlerNames, true);
   defineHandlers(globalThis, eventHandlerNames, true);
   defineHandlers(globalThis, windowHandlerNames, true);
 
@@ -5679,6 +5753,13 @@
   brandWrap(Node);
   brandWrap(Element);
   brandWrap(HTMLElement);
+  brandWrap(HTMLBodyElement);
+  brandWrap(HTMLFrameSetElement);
+  brandWrap(HTMLMediaElement);
+  brandWrap(HTMLLinkElement);
+  brandWrap(HTMLTitleElement);
+  brandWrap(EventSource);
+  brandWrap(CanvasRenderingContext2D);
   brandWrap(EventTarget);
   for (const name of ["parseHTMLUnsafe", "parseHTML"]) {
     const fn = Document[name];
