@@ -156,13 +156,10 @@
   }
 
   function listenerOnPath(type, start) {
-    for (const [node, m] of listeners) {
-      const arr = m.get(type);
-      if (!arr || !arr.length) continue;
-      if (node === start || node === window || node === document) return true;
-      if (start && typeof node.contains === "function") {
-        try { if (node.contains(start)) return true; } catch (e) {}
-      }
+    const path = composedPath(start);
+    for (const node of path) {
+      const arr = listeners.get(node) && listeners.get(node).get(type);
+      if (arr && arr.length) return true;
     }
     return false;
   }

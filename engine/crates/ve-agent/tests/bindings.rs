@@ -853,6 +853,41 @@ fn window_named_id_properties_are_replaceable() {
 }
 
 #[test]
+fn composed_events_cross_shadow_to_the_host() {
+    let mut page = open(r#"<body><host-el></host-el></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              class InnerEl extends HTMLElement {
+                constructor() {
+                  super();
+                  this.attachShadow({ mode: "open" }).innerHTML = "<button id=b>go</button>";
+                  this.shadowRoot.getElementById("b").addEventListener("click", () => {
+                    this.dispatchEvent(new Event("inner-click", { bubbles: true, composed: true }));
+                  });
+                }
+              }
+              class HostEl extends HTMLElement {
+                constructor() {
+                  super();
+                  this.attachShadow({ mode: "open" }).innerHTML = "<inner-el></inner-el>";
+                  this.heard = 0;
+                  this.addEventListener("inner-click", () => { this.heard++; });
+                }
+              }
+              customElements.define("inner-el", InnerEl);
+              customElements.define("host-el", HostEl);
+              const host = document.querySelector("host-el");
+              const inner = host.shadowRoot.querySelector("inner-el");
+              inner.shadowRoot.getElementById("b").click();
+              return { heard: host.heard };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["heard"], 1, "{v}");
+}
+
+#[test]
 fn custom_elements_in_imported_template_upgrade_inside_shadow() {
     let mut page = open(r#"<body><todo-host></todo-host></body>"#);
     let v = page
