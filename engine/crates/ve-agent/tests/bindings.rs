@@ -5006,6 +5006,29 @@ fn official_html_brand_window_and_media_idl() {
                 mediaThrew,
                 playRejected,
                 userAct: navigator.userActivation instanceof UserActivation,
+                msgLen: MessageEvent.length,
+                msgData: Object.getOwnPropertyDescriptor(MessageEvent.prototype, "data") != null,
+                pathLen: Path2D.length,
+                pathAdd: Path2D.prototype.addPath.length,
+                pathMove: Path2D.prototype.moveTo.length,
+                imgDataLen: ImageData.length,
+                imgDataW: Object.getOwnPropertyDescriptor(ImageData.prototype, "width") != null,
+                workerLen: Worker.length,
+                workerPost: Worker.prototype.postMessage.length,
+                sharedLen: SharedWorker.length,
+                xmlLen: XMLSerializer.prototype.serializeToString.length,
+                originThrew: (function () { try { new Origin(); return false; } catch (e) { return e instanceof TypeError; } })(),
+                mathA: Object.getOwnPropertyDescriptor(MathMLAnchorElement.prototype, "href") != null,
+                imageLen: Image.length,
+                audioLen: Audio.length,
+                formLen: Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "length") != null,
+                canvasCtx: HTMLCanvasElement.prototype.getContext.length,
+                canvasBlob: HTMLCanvasElement.prototype.toBlob.length,
+                histGo: History.prototype.go.length,
+                histPush: History.prototype.pushState.length,
+                ceDefine: CustomElementRegistry.prototype.define.length,
+                shadowHTML: typeof ShadowRoot.prototype.getHTML === "function",
+                trStart: TimeRanges.prototype.start.length,
               };
             })()"##,
         )
@@ -5046,4 +5069,27 @@ fn official_html_brand_window_and_media_idl() {
     assert_eq!(v["mediaCross"], true, "{v}");
     assert_eq!(v["mediaThrew"], true, "{v}");
     assert_eq!(v["userAct"], true, "{v}");
+    assert_eq!(v["msgLen"], 1, "{v}");
+    assert_eq!(v["msgData"], true, "{v}");
+    assert_eq!(v["pathLen"], 0, "{v}");
+    assert_eq!(v["pathAdd"], 1, "{v}");
+    assert_eq!(v["pathMove"], 2, "{v}");
+    assert_eq!(v["imgDataLen"], 2, "{v}");
+    assert_eq!(v["imgDataW"], true, "{v}");
+    assert_eq!(v["workerLen"], 1, "{v}");
+    assert_eq!(v["workerPost"], 1, "{v}");
+    assert_eq!(v["sharedLen"], 1, "{v}");
+    assert_eq!(v["xmlLen"], 1, "{v}");
+    assert_eq!(v["originThrew"], true, "{v}");
+    assert_eq!(v["mathA"], true, "{v}");
+    assert_eq!(v["imageLen"], 0, "{v}");
+    assert_eq!(v["audioLen"], 0, "{v}");
+    assert_eq!(v["formLen"], true, "{v}");
+    assert_eq!(v["canvasCtx"], 1, "{v}");
+    assert_eq!(v["canvasBlob"], 1, "{v}");
+    assert_eq!(v["histGo"], 0, "{v}");
+    assert_eq!(v["histPush"], 2, "{v}");
+    assert_eq!(v["ceDefine"], 2, "{v}");
+    assert_eq!(v["shadowHTML"], true, "{v}");
+    assert_eq!(v["trStart"], 1, "{v}");
 }
