@@ -638,7 +638,17 @@ pub(crate) fn run_official(
                     detail: Some("ci gate; not executed".into()),
                 }
             } else {
-                run_one(engine, iterations, &revision, &root, name, url)
+                eprint!("browserbench: start {name} ... ");
+                let _ = std::io::Write::flush(&mut std::io::stderr());
+                let started = Instant::now();
+                let result = run_one(engine, iterations, &revision, &root, name, url);
+                eprintln!(
+                    "{} {}ms {:?}",
+                    result.status,
+                    started.elapsed().as_millis(),
+                    result.p95_ms
+                );
+                result
             }
         })
         .collect()

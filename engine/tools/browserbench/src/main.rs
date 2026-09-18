@@ -349,9 +349,16 @@ fn main() -> Result<()> {
         "suites": suites,
         "attribution": {
             "kind": "adapted-workload-phases",
-            "officialFullSuite": false,
-            "source": "speedometer.3.0.TodoMVC-JavaScript-ES5 detail.attribution when present",
-            "phases": ["parse/style/layout(openMs)", "js(jsMs)", "harnessSettle(settleMs)", "unaccounted"]
+            "officialFullSuite": !args.gate && suites.iter().filter(|s| s.name.starts_with("speedometer.3.0.")).all(|s| s.status != "NOTRUN"),
+            "gate": args.gate,
+            "source": "speedometer.3.0.* plus jetstream n-body/sha1 and MotionMark GPU when executed",
+            "phases": ["parse/style/layout(openMs)", "js(jsMs)", "harnessSettle(settleMs)", "unaccounted"],
+            "speedometer30": {
+                "executed": suites.iter().filter(|s| s.name.starts_with("speedometer.3.0.") && s.status != "NOTRUN").count(),
+                "notrun": suites.iter().filter(|s| s.name.starts_with("speedometer.3.0.") && s.status == "NOTRUN").count(),
+                "failed": suites.iter().filter(|s| s.name.starts_with("speedometer.3.0.") && s.status == "FAIL").count(),
+                "note": "Official Speedometer 3.0 suite names. Vendored workloads execute; missing sources stay NOTRUN. Not a browserbench.org published score."
+            }
         },
     });
     let json = serde_json::to_string_pretty(&report)?;
