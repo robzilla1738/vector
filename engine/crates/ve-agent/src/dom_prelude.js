@@ -4144,9 +4144,47 @@
     get shadowRootCustomElementRegistry() { return this.getAttribute("shadowrootcustomelementregistry") || ""; }
     set shadowRootCustomElementRegistry(v) { this.setAttribute("shadowrootcustomelementregistry", v == null ? "" : String(v)); }
   }
-  class SVGElement extends Element {}
+  class SVGTransform {
+    constructor() {
+      this.type = 0;
+      this.angle = 0;
+    }
+    setRotate(angle, cx, cy) {
+      this.type = 4;
+      this.angle = Number(angle) || 0;
+      this._cx = Number(cx) || 0;
+      this._cy = Number(cy) || 0;
+    }
+  }
+  class SVGTransformList {
+    constructor() {
+      this._items = [];
+      this.numberOfItems = 0;
+    }
+    initialize(item) {
+      this._items = [item];
+      this.numberOfItems = 1;
+      return item;
+    }
+  }
+  class SVGAnimatedTransformList {
+    constructor() {
+      this.baseVal = new SVGTransformList();
+      this.animVal = this.baseVal;
+    }
+  }
+  class SVGElement extends Element {
+    get gradientTransform() {
+      if (!this._veGradientTransform) this._veGradientTransform = new SVGAnimatedTransformList();
+      return this._veGradientTransform;
+    }
+  }
   class MathMLElement extends Element {}
-  class SVGSVGElement extends SVGElement {}
+  class SVGSVGElement extends SVGElement {
+    createSVGTransform() {
+      return new SVGTransform();
+    }
+  }
   class SVGGraphicsElement extends SVGElement {}
   class SVGPathElement extends SVGGraphicsElement {}
   const RENDER_TOKENS = new Set(["render"]);
