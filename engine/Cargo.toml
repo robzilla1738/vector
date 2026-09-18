@@ -55,6 +55,10 @@ ve-gfx = { path = "crates/ve-gfx" }
 ve-agent = { path = "crates/ve-agent" }
 ve-api = { path = "crates/ve-api" }
 ve-replay = { path = "crates/ve-replay" }
+ve-chrome = { path = "crates/ve-chrome" }
+ve-profile = { path = "crates/ve-profile" }
+ve-shell-mac = { path = "crates/ve-shell-mac" }
+rusqlite = { version = "0.32.1", features = ["bundled"] }
 
 # ---- parsing (pure Rust, default) -----------------------------------------
 html5ever = "0.40.1"

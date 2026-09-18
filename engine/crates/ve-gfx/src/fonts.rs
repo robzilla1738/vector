@@ -5,6 +5,30 @@ use swash::zeno::Format;
 use swash::{FontRef, GlyphId};
 use ve_style::{FontFamily, FontStyle, FontWeight};
 
+/// One retained glyph in a run (H1-A6).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlacedGlyph {
+    /// Font glyph id.
+    pub id: u32,
+    /// Pen X, snapped to 1/4 CSS px.
+    pub x: f32,
+    /// Pen Y relative to the baseline.
+    pub y: f32,
+    /// Source character (emoji routing).
+    pub ch: char,
+}
+
+/// Shaped glyph run retained across frames.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RetainedGlyphRun {
+    /// Positioned glyphs.
+    pub glyphs: Vec<PlacedGlyph>,
+    /// Font size.
+    pub size: f32,
+    /// Advance width.
+    pub width: f32,
+}
+
 /// One verb in a scaled glyph outline (y-up, origin at the glyph origin).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GlyphVerb {
@@ -170,6 +194,33 @@ impl FontSystem {
         })
     }
 
+    /// Runs `f` with the face bytes and collection index.
+    pub fn with_face_bytes<T>(&self, id: fontdb::ID, f: impl FnOnce(&[u8], u32) -> T) -> Option<T> {
+        self.db.with_face_data(id, |data, index| f(data, index))
+    }
+
+    /// Retained glyph run: ids and 1/4-px snapped pen positions.
+    #[must_use]
+    pub fn shape_retained(&self, id: fontdb::ID, text: &str, size: f32) -> Option<RetainedGlyphRun> {
+        let mut glyphs = Vec::new();
+        let mut x = 0.0f32;
+        for ch in text.chars() {
+            let Some(gid) = self.glyph_for_char(id, ch) else {
+                continue;
+            };
+            let advance = self.advance(id, gid, size).unwrap_or(size * 0.5);
+            let snapped = (x * 4.0).round() / 4.0;
+            glyphs.push(PlacedGlyph {
+                id: u32::from(gid),
+                x: snapped,
+                y: 0.0,
+                ch,
+            });
+            x += advance;
+        }
+        Some(RetainedGlyphRun { glyphs, size, width: x })
+    }
+
     /// Width of `text` at `size` pixels using simple per-glyph advances (no shaping).
     #[must_use]
     pub fn measure(&self, id: fontdb::ID, text: &str, size: f32) -> Option<f32> {
@@ -292,5 +343,13 @@ mod tests {
             !outline.verbs.is_empty(),
             "glyph outline must contain path verbs"
         );
+        let shaped = fs
+            .shape_retained(id, "Hi", 16.0)
+            .expect("retained run");
+        assert_eq!(shaped.glyphs.len(), 2);
+        for g in &shaped.glyphs {
+            let quarter = (g.x * 4.0).round() / 4.0;
+            assert!((g.x - quarter).abs() < f32::EPSILON);
+        }
     }
 }

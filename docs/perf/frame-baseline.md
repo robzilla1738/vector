@@ -1,18 +1,18 @@
 # Frame baseline
 
-Evidence for H0-A1 / H1-A4. Recorded with `ve-shell --trace-frames` and `perf frames`.
+Evidence for H0-A1 / H1-A4. Measured by `NativeBrowser` unit tests and `paint_page_id` / `DisplayListCache` (`engine/crates/ve-api/src/shell.rs`).
 
-| Sample | from_layout calls | input→paint p95 | notes |
+| Sample | from_layout calls | input→paint | notes |
 |---|---|---|---|
-| wheel scroll (cached display list) | 0 after first paint | compositor translate | H0-A8 |
-| click / key on simple page | 1 (damage) | target ≤ 16 ms | H0-A7 `dispatch_human` |
-| replay fixture | see JSON next to this file | `FrameTrace` | `--replay-input` |
+| wheel scroll after first paint | 0 | compositor translate of cached list | `shell::tests::wheel_does_not_rebuild_the_display_list` |
+| product chrome + page | 1 on first paint | chrome list + translated page | `shell::tests::product_chrome_paints_sidebar_stage_and_rail` |
+| production observe (simple page) | n/a | p50 53 µs / p95 101 µs, n=8 | `docs/perf/production-observe-gate.json` |
 
 Command:
 
 ```
-cargo run -p ve-shell -- --replay-input fixtures/input/scroll.json --trace-frames docs/perf/frame-trace.json
-cargo run -p perf -- frames --input fixtures/input/scroll.json --out docs/perf/frame-trace.json
+cargo test -p ve-api --lib wheel_does_not_rebuild_the_display_list
+cargo test -p ve-api --lib writes_production_profile_observe_gate
 ```
 
-`NativeBrowser::from_layout_calls()` is the gate: scroll-only replay must stay at 0 after the opening paint.
+`NativeBrowser::from_layout_calls()` is the gate: scroll-only replay stays at 0 after the opening paint.

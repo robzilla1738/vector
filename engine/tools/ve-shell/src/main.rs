@@ -186,6 +186,7 @@ fn run_gui(args: &Args) -> Result<()> {
         ..EngineConfig::default()
     });
     browser.enable_os_clipboard();
+    browser.enable_product_chrome();
     let html = args.html.clone();
     if let Some(html) = html {
         browser.handle_event(NativeEvent::NewTab {

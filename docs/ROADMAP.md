@@ -95,7 +95,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 
 | ID | Item | WS | Status | Evidence |
 |---|---|---|---|---|
-| H0-A1 | Frame tracer `ve-shell --trace-frames` + `--replay-input` + `perf frames` | A/D | ☑ | `docs/perf/frame-baseline.md` |
+| H0-A1 | Frame tracer `ve-shell --trace-frames` + `--replay-input` + `perf frames` | A/D | ☑ | `docs/perf/frame-baseline.md`; `wheel_does_not_rebuild_the_display_list` |
 | H0-A2 | HiDPI: `scale_factor()` into `present_list`; CSS px list, physical px surface | A | ☑ | `device_scale` on present |
 | H0-A3 | Images on the GPU path: `ImageCache`/`node_images` on `Page`; `from_layout_with` | A | ☑ | `from_layout_with` + `scene_json` |
 | H0-A4 | Wire `ParleyShaper` behind `EngineConfig::shaper`; identity prints shaper | A | ☑ | System in GUI/corpus/Speedometer |
@@ -110,7 +110,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H0-C2 | MCP structured errors `{code,message,details,retryable,hint}`; typed `steps` | C | ☑ | `packages/mcp/src/main.ts` |
 | H0-C3 | Native-path stubs throw `capability_unsupported` | C | ☑ | cookies throw; screenshot is real or throws |
 | H0-C4 | `DEFAULT_GRANTS` → read-only; challenge every `done` with delta re-observe | C | ☑ | `tests/unit/verify-done.test.ts` |
-| H0-D1 | Perf gate in `production` profile; corpus p95/per-page gates | D | ☑ | `perf` report `security_mode: production` |
+| H0-D1 | Perf gate in `production` profile; corpus p95/per-page gates | D | ☑ | `docs/perf/production-observe-gate.json` (`security_mode: production`) |
 | H0-D2 | CI: drop Windows legs; one rust-cache key per job class; `ci-durations.json` | D | ☑ | `.github/ci-durations.json` |
 | H0-D3 | Evidence hygiene: retire mock held-out; `BENCHMARKS.md`; fix README vs §0 | D | ☑ | `docs/BENCHMARKS.md` |
 | H0-D4 | Delete `ve-vm`; park `--official-score` and `http3.rs`; `.gitignore` `dist/` | B/D | ☑ | crate removed |
@@ -124,7 +124,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-A3 | One scheduler: retire prelude `timers` Map in favour of `ve_script::EventLoop` | B | ☑ | EventLoop owns due times |
 | H1-A4 | Frame loop: vsync → coalesce → dispatch → rAF → update → damage → composite → present; ProMotion via `preferredFrameRateRange` | A | ☑ | frame tracer + cache |
 | H1-A5 | Scroll as transform; tiled display list; trackpad momentum; rubber-band; `prefers-reduced-motion` | A | ☑ | display-list cache translate |
-| H1-A6 | Glyph runs retained; vello `draw_glyphs`; colour emoji; 1/4-px subpixel | A | ☐ | existing vello text path |
+| H1-A6 | Glyph runs retained; vello `draw_glyphs`; colour emoji; 1/4-px subpixel | A | ☑ | `FontSystem::shape_retained`; `Scene::draw_glyphs`; quarter-px snap; COLR/emoji via vello |
 | H1-A7 | Spec pointer/mouse sequence, hover, capture, selection, composition, `contextmenu`; human/agent events-log identical | A | ☑ | `fixtures/events-log` |
 | H1-B1 | Phase-0 bindings memo from dombench; `VECTOR_DOM_BINDINGS=prelude\|native` | B | ☑ | env read; prelude default |
 | H1-B2 | Real ES modules via `v8::Module`; delete `rewriteModule` and Speedometer bundler | B | ☐ | SPA fixture exists; bundler still used |
@@ -132,23 +132,23 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-B4 | Display-list primitives: transform, rounded clip, gradient, box-shadow, image src-rect, per-side border, filter, clip-path | B | ☑ | RoundedClip / PushTransform / BoxShadow |
 | H1-B5 | Cache revalidation; async resolver; `preconnect`/`prefetch`; non-blocking subresource fetch | B | ☑ | `stale_entries_are_revalidated_and_a_304_refreshes_them` |
 | H1-C1 | `protocolVersion`, `agent.capabilities`, token budget + ranking + cursor, `frameChain`/`shadowDepth`/`scrollContainer`/`occludedBy`, `ref_stale`, closed `VectorErrorCode` | C | ☑ | `protocolVersion: 1` on observe list |
-| H1-C2 | Multi-page `BrowserService`: `pages.*`, `contexts.*`, `cookies.*`, `storage.state.*`, real screenshot bytes, `events.subscribe` | C | ☑ | list/close/screenshot; cookies throw |
-| H1-C3 | `EnginePage` replaces `DriverPage`; `packages/browser-driver` → `packages/engine-client` | C | ☑ | `EnginePage` export alias |
+| H1-C2 | Multi-page `BrowserService`: `pages.*`, `contexts.*`, `cookies.*`, `storage.state.*`, real screenshot bytes, `events.subscribe` | C | ☑ | `service::tests::cookies_storage_contexts_and_events_are_real` |
+| H1-C3 | `EnginePage` replaces `DriverPage`; `packages/browser-driver` → `packages/engine-client` | C | ☐ | `EnginePage` is an export alias only |
 | H1-C4 | Flattened plan schema for union-less providers | C | ☑ | `McpStepSchema` |
 | H1-D1 | `fixtures/spa-app` with `/api/state` oracle | D | ☑ | `fixtures/spa-app` |
-| H1-D2 | Held-out suite: sealed hash, trials 5, live models, median + IQR + CI | D | ☐ | mock retired; live rows pending |
+| H1-D2 | Held-out suite: sealed hash, trials 5, live models, median + IQR + CI | D | ☐ | mock retired; live rows / skipped-live evidence pending |
 | H1-D3 | Public corpus ≥ 500 real URLs | D | ☐ | corpus harness exists |
-| H1-D4 | Layout triage vs Chromium reference boxes | D | ☑ | `layout-triage-2026-09-18.json` |
+| H1-D4 | Layout triage vs Chromium reference boxes | D | ☐ | `layout-triage-2026-09-18.json` is a 7-line template (`pages: 0`) |
 
 ### Horizon 2 — Chrome, essentials, coordinator
 
 | ID | Item | WS | Status | Evidence |
 |---|---|---|---|---|
 | H2-A1 | Split `NativeBrowser` into `Browser` + `Window`; private windows via contexts | A | ☑ | `ve_api::NativeWindow` + `Browser` alias |
-| H2-A2 | `crates/ve-chrome` retained widgets; tokens + `workspace.ts` + `intent.ts` port | A | ☑ | `engine/crates/ve-chrome` |
-| H2-A3 | `ve-shell-mac` (objc2): NSWindow, menus, IME, scroll phases, appearance | A | ☑ | headless test double |
-| H2-A4 | `ve-profile` (SQLite): history, bookmarks, session restore, downloads, find, zoom, cert interstitial, permission sheets | A | ☑ | `engine/crates/ve-profile` |
-| H2-C1 | `agent/machine.ts` pure reducer; coordinator &lt; 350 lines; ≥ 25 transition tests | C | ☑ | `tests/unit/machine.test.ts` |
+| H2-A2 | `crates/ve-chrome` retained widgets; tokens + `workspace.ts` + `intent.ts` port | A | ☑ | `docs/ui/screenshots/ve-chrome-regions.json`; `product_chrome_paints_sidebar_stage_and_rail`; `ve-shell --gui` calls `enable_product_chrome` |
+| H2-A3 | `ve-shell-mac` (objc2): NSWindow, menus, IME, scroll phases, appearance | A | ☑ | `MacWindow::product` + objc2 `NSWindow` on macOS; `test_double_covers_ime_scroll_appearance_menus` elsewhere |
+| H2-A4 | `ve-profile` (SQLite): history, bookmarks, session restore, downloads, find, zoom, cert interstitial, permission sheets | A | ☑ | `ve-profile` rusqlite; `Profile::open`; `enable_product_chrome` restores session |
+| H2-C1 | `agent/machine.ts` pure reducer; coordinator &lt; 350 lines; ≥ 25 transition tests | C | ☐ | 26 tests in `tests/unit/machine.test.ts`; loop calls `reduce`; coordinator still ~1150 lines |
 | H2-C2 | Independent completion: verify re-observes; grounded reads; `observed \|\| remoteConfirmed` writes | C | ☑ | `verifyDoneAgainstObservation` |
 | H2-C3 | Repair taxonomy with per-class budgets | C | ☑ | existing repair + machine repairing |
 | H2-C4 | Permissions `{effect, origin, scope, expiresAt}`; page text never grants | C | ☑ | `ve-profile` PermissionGrant |
@@ -162,10 +162,10 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | ID | Item | WS | Status | Evidence |
 |---|---|---|---|---|
 | H3-1 | Remove Chromium fallback and Electron per D5 gates | D | ☑ | gated: `docs/adr/D5-chromium-removal.md` (gates unmet; not deleted) |
-| H3-2 | Native bindings default-on after two weeks green differential CI | B | ☑ | `VECTOR_DOM_BINDINGS`; prelude default until CI window |
-| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☑ | radius/object-fit/transform; SVG/canvas still partial |
-| H3-4 | Per-site process isolation, COOP/COEP | B | ☑ | production `RequireProcess`; COOP/COEP pending |
-| H3-5 | Speedometer as a tracked number, not a target | D | ☑ | `docs/BENCHMARKS.md` |
+| H3-2 | Native bindings default-on after two weeks green differential CI | B | ☐ | `VECTOR_DOM_BINDINGS` switch exists; no two-week differential CI |
+| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☐ | radius/object-fit/transform; SVG/canvas/animations still partial |
+| H3-4 | Per-site process isolation, COOP/COEP | B | ☐ | production `RequireProcess` only; COOP/COEP pending |
+| H3-5 | Speedometer as a tracked number, not a target | D | ☑ | `docs/BENCHMARKS.md` engine + same-machine Chrome tracked rows |
 
 ---
 

@@ -9,13 +9,13 @@
 use std::num::NonZeroUsize;
 
 use ve_core::Rect;
-use vello::kurbo::{Affine, BezPath, Rect as KRect, Stroke};
-use vello::peniko::{Color, Fill, Mix};
-use vello::{AaConfig, AaSupport, RenderParams, RendererOptions, Scene};
+use vello::kurbo::{Affine, Rect as KRect, Stroke};
+use vello::peniko::{Blob, Color, Fill, FontData, Mix};
+use vello::{AaConfig, AaSupport, Glyph, RenderParams, RendererOptions, Scene};
 
 use crate::GfxError;
 use crate::display_list::{DisplayItem, DisplayList};
-use crate::fonts::{FontSystem, GlyphBitmap, GlyphVerb};
+use crate::fonts::FontSystem;
 use crate::image::ImageCache;
 use crate::renderer::{Frame, Renderer};
 
@@ -106,20 +106,6 @@ pub fn build_scene_with(list: &DisplayList, scale: f32, images: Option<&ImageCac
     build_scene_fonts(list, scale, images, None)
 }
 
-fn glyph_to_rgba(bitmap: &GlyphBitmap, c: ve_style::Rgba) -> Vec<u8> {
-    let mut rgba = vec![0u8; bitmap.data.len() * 4];
-    let a0 = (c.a * 255.0).round() as u16;
-    for (i, &cov) in bitmap.data.iter().enumerate() {
-        let a = (u16::from(cov) * a0 / 255) as u8;
-        let o = i * 4;
-        rgba[o] = c.r;
-        rgba[o + 1] = c.g;
-        rgba[o + 2] = c.b;
-        rgba[o + 3] = a;
-    }
-    rgba
-}
-
 fn peniko_rgba(rgba: Vec<u8>, width: u32, height: u32) -> vello::peniko::ImageBrush {
     vello::peniko::ImageBrush::from(vello::peniko::ImageData {
         data: vello::peniko::Blob::from(rgba),
@@ -130,26 +116,6 @@ fn peniko_rgba(rgba: Vec<u8>, width: u32, height: u32) -> vello::peniko::ImageBr
     })
 }
 
-fn outline_to_path(verbs: &[GlyphVerb]) -> BezPath {
-    let mut path = BezPath::new();
-    for verb in verbs {
-        match *verb {
-            GlyphVerb::MoveTo(x, y) => path.move_to((f64::from(x), f64::from(y))),
-            GlyphVerb::LineTo(x, y) => path.line_to((f64::from(x), f64::from(y))),
-            GlyphVerb::QuadTo(cx, cy, x, y) => {
-                path.quad_to((f64::from(cx), f64::from(cy)), (f64::from(x), f64::from(y)));
-            }
-            GlyphVerb::CurveTo(c1x, c1y, c2x, c2y, x, y) => path.curve_to(
-                (f64::from(c1x), f64::from(c1y)),
-                (f64::from(c2x), f64::from(c2y)),
-                (f64::from(x), f64::from(y)),
-            ),
-            GlyphVerb::Close => path.close_path(),
-        }
-    }
-    path
-}
-
 fn paint_text(
     scene: &mut Scene,
     run: &crate::TextRun,
@@ -158,41 +124,28 @@ fn paint_text(
 ) {
     if let Some(fonts) = fonts
         && let Some(face) = fonts.query(&run.family, run.weight, run.style)
+        && let Some(shaped) = fonts.shape_retained(face, &run.text, run.size)
     {
-        let mut x = f64::from(run.origin.x);
-        let baseline = f64::from(run.origin.y);
-        for ch in run.text.chars() {
-            let Some(glyph) = fonts.glyph_for_char(face, ch) else {
-                continue;
-            };
-            let advance = fonts
-                .advance(face, glyph, run.size)
-                .unwrap_or(run.size * 0.5);
-            if let Some(outline) = fonts.outline(face, glyph, run.size)
-                && !outline.verbs.is_empty()
-            {
-                let path = outline_to_path(&outline.verbs);
-                let affine = transform
-                    * Affine::translate((x, baseline))
-                    * Affine::scale_non_uniform(1.0, -1.0);
-                scene.fill(Fill::NonZero, affine, color(run.color), None, &path);
-            } else if let Some(bitmap) = fonts.rasterize(face, glyph, run.size)
-                && bitmap.width > 0
-                && bitmap.height > 0
-                && !bitmap.data.is_empty()
-            {
-                let rgba = glyph_to_rgba(&bitmap, run.color);
-                let image = peniko_rgba(rgba, bitmap.width, bitmap.height);
-                let affine = transform
-                    * Affine::translate((
-                        x + f64::from(bitmap.left),
-                        baseline - f64::from(bitmap.top),
-                    ));
-                scene.draw_image(&image, affine);
-            }
-            x += f64::from(advance);
+        if let Some(font) = fonts.with_face_bytes(face, |bytes, index| {
+            FontData::new(Blob::new(std::sync::Arc::new(bytes.to_vec())), index)
+        }) {
+            let origin = Affine::translate((f64::from(run.origin.x), f64::from(run.origin.y)));
+            scene
+                .draw_glyphs(&font)
+                .font_size(run.size)
+                .hint(true)
+                .brush(color(run.color))
+                .transform(transform * origin)
+                .draw(
+                    Fill::NonZero,
+                    shaped.glyphs.iter().map(|g| Glyph {
+                        id: g.id,
+                        x: g.x,
+                        y: g.y,
+                    }),
+                );
+            return;
         }
-        return;
     }
     let mut x = f64::from(run.origin.x);
     let y = f64::from(run.origin.y) - f64::from(run.size);

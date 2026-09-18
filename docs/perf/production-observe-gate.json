@@ -1,0 +1,20 @@
+{
+  "backend": "vector-engine",
+  "metric": "observe",
+  "n": 8,
+  "notes": "Measured in-process on the production SecurityProfile. Not an Apple-silicon published score.",
+  "p50": 53,
+  "p95": 101,
+  "samples": [
+    48,
+    50,
+    50,
+    51,
+    53,
+    55,
+    57,
+    101
+  ],
+  "security_mode": "production",
+  "unit": "us"
+}

@@ -37,12 +37,15 @@ ve-a11y.workspace = true
 ve-script.workspace = true
 ve-gfx.workspace = true
 ve-agent.workspace = true
+ve-chrome.workspace = true
+ve-profile.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 ed25519-dalek.workspace = true
 accesskit.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 url.workspace = true

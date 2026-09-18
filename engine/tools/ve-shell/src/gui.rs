@@ -179,6 +179,7 @@ impl ApplicationHandler<AccessKitEvent> for App {
             return;
         };
         window.set_ime_allowed(true);
+        let _host = ve_shell_mac::MacWindow::product();
         let adapter = Adapter::with_event_loop_proxy(&window, self.proxy.clone());
         window.set_visible(true);
         let window = Arc::new(window);

@@ -216,6 +216,8 @@ export class BrowserServiceClient {
 
 /** `NativeEngine` adapter so the existing driver talks to the shared service. */
 export class ServiceNativeEngine {
+  private pageIds: number[] = [];
+
   constructor(private readonly client: BrowserServiceClient) {}
 
   newContext(): number {
@@ -234,6 +236,7 @@ export class ServiceNativeEngine {
   async open(_contextId: number, url: string, optionsJson?: string | null): Promise<string> {
     const opts = optionsJson ? (JSON.parse(optionsJson) as { html?: string }) : {};
     const r = await this.client.call("pages.open", { url, html: opts.html });
+    if (typeof r.page === "number") this.pageIds.push(r.page);
     return JSON.stringify({
       ok: true,
       page: r.page,
@@ -292,21 +295,26 @@ export class ServiceNativeEngine {
     return JSON.stringify({ ok: true, ...r });
   }
 
-  async close(_page: number): Promise<string> {
-    const r = await this.client.call("pages.close", {});
+  async close(page: number): Promise<string> {
+    const r = await this.client.call("pages.close", { page });
+    this.pageIds = this.pageIds.filter((id) => id !== page);
     return JSON.stringify({ ok: true, ...r });
   }
 
-  async getCookies(_contextId: number, _url?: string | null): Promise<string> {
-    throw new VectorError("capability_unsupported", "cookies are not available on this BrowserService path");
+  async getCookies(contextId: number, url?: string | null): Promise<string> {
+    const r = await this.client.call("cookies.get", { context: contextId, url: url ?? undefined });
+    return JSON.stringify({ ok: true, ...r });
   }
 
-  async setCookies(_contextId: number, _cookiesJson: string): Promise<string> {
-    throw new VectorError("capability_unsupported", "cookies are not available on this BrowserService path");
+  async setCookies(contextId: number, cookiesJson: string): Promise<string> {
+    const parsed = JSON.parse(cookiesJson) as unknown;
+    const cookies = Array.isArray(parsed) ? parsed : (parsed as { cookies?: unknown }).cookies;
+    const r = await this.client.call("cookies.set", { context: contextId, cookies });
+    return JSON.stringify({ ok: true, ...r });
   }
 
   pages(): number[] {
-    return [];
+    return [...this.pageIds];
   }
 
   shutdown(): void {

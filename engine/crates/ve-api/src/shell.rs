@@ -12,8 +12,13 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
+use ve_chrome::{
+    Chrome, ChromeBackend, ChromeHit, ChromeOverlay, ChromeTab, ChromeTheme, empty_layout,
+    sync_order, sync_spaces,
+};
 use ve_core::{Error, ErrorCode, Point, Result, Size, process_rss_bytes};
-use ve_gfx::{Compositor, Frame};
+use ve_gfx::{Compositor, DisplayItem, DisplayList, Frame, Renderer, SoftwareRenderer};
+use ve_profile::{Profile, SessionTab};
 
 use crate::{
     EngineConfig, ExecuteRequest, ExecuteResult, Observation, ObservationRequest, OpenRequest,
@@ -221,6 +226,10 @@ pub struct NativeBrowser {
     gpu_unavailable: bool,
     #[cfg(feature = "gpu")]
     gpu_presented: bool,
+    chrome_enabled: bool,
+    chrome: Chrome,
+    window_size: Size,
+    profile: Option<Profile>,
 }
 
 /// Who currently owns input on the live page.
@@ -282,6 +291,10 @@ impl NativeBrowser {
             gpu_unavailable: false,
             #[cfg(feature = "gpu")]
             gpu_presented: false,
+            chrome_enabled: false,
+            chrome: Chrome::default(),
+            window_size: Size::new(1280.0, 720.0),
+            profile: None,
         }
     }
 
@@ -733,6 +746,21 @@ impl NativeBrowser {
             self.presented = true;
             return Ok(&self.surface);
         }
+        if self.chrome_enabled {
+            let list = self.paint_shell_list()?;
+            let mut renderer = SoftwareRenderer::with_system_fonts();
+            self.surface = renderer
+                .render(
+                    &list,
+                    self.surface.width,
+                    self.surface.height,
+                    self.device_scale,
+                )
+                .map_err(|e| Error::internal(format!("chrome present: {e}")))?;
+            let _ = self.compositor.take_damage();
+            self.presented = true;
+            return Ok(&self.surface);
+        }
         self.surface = self.engine.page_mut(page)?.present_frame(false)?;
         let _ = self.compositor.take_damage();
         self.presented = true;
@@ -766,7 +794,11 @@ impl NativeBrowser {
         if self.gpu_unavailable && self.gpu.is_none() {
             return None;
         }
-        let list = self.paint_page_id(page)?;
+        let list = if self.chrome_enabled {
+            self.paint_shell_list().ok()?
+        } else {
+            self.paint_page_id(page)?
+        };
         if self.gpu.is_none() {
             match ve_gfx::VelloRenderer::headless() {
                 Ok((renderer, _)) => self.gpu = Some(renderer),
@@ -789,8 +821,16 @@ impl NativeBrowser {
         if self.gpu_unavailable && self.gpu.is_none() {
             return false;
         }
-        let Some(list) = self.paint_page_id(page) else {
-            return false;
+        let list = if self.chrome_enabled {
+            match self.paint_shell_list() {
+                Ok(list) => list,
+                Err(_) => return false,
+            }
+        } else {
+            let Some(list) = self.paint_page_id(page) else {
+                return false;
+            };
+            list
         };
         if self.gpu.is_none() {
             match ve_gfx::VelloRenderer::headless() {
@@ -816,12 +856,7 @@ impl NativeBrowser {
     /// Display list for the active tab (GPU window present without CPU readback).
     #[cfg(feature = "gpu")]
     pub fn display_list_active(&mut self) -> Result<ve_gfx::DisplayList> {
-        let page = self
-            .active_tab()
-            .ok_or_else(|| Error::not_found("no tab"))?
-            .page;
-        self.paint_page_id(page)
-            .ok_or_else(|| Error::internal("paint failed"))
+        self.paint_shell_list()
     }
 
     /// Scene/surface update for native presentation. Not a PNG and not a
@@ -971,7 +1006,11 @@ impl NativeBrowser {
             }
             NativeEvent::PointerDown { x, y, button } => {
                 self.pointer = Point::new(x, y);
-                self.dispatch_human_click(x, y, button)?;
+                if self.chrome_enabled {
+                    let _ = self.handle_chrome_pointer(x, y, button)?;
+                } else {
+                    self.dispatch_human_click(x, y, button)?;
+                }
                 self.present_dirty();
             }
             NativeEvent::PointerUp { x, y, .. } => {
@@ -982,11 +1021,23 @@ impl NativeBrowser {
                 self.copy(&text);
             }
             NativeEvent::Resize { width, height } => {
-                self.set_css_viewport(width, height);
+                self.window_size = Size::new(width, height);
+                if self.chrome_enabled {
+                    self.apply_chrome_viewport();
+                } else {
+                    self.set_css_viewport(width, height);
+                }
                 self.present_dirty();
             }
             NativeEvent::Wheel { dx, dy } => {
-                self.dispatch_human_scroll(dx, dy)?;
+                if self.chrome_enabled {
+                    let p = self.pointer;
+                    if let ChromeHit::Stage { .. } = self.chrome.hit(self.window_size, p.x, p.y) {
+                        self.dispatch_human_scroll(dx, dy)?;
+                    }
+                } else {
+                    self.dispatch_human_scroll(dx, dy)?;
+                }
                 self.present_dirty();
             }
             NativeEvent::AccessKitAction { name } => {
@@ -1027,6 +1078,209 @@ impl NativeBrowser {
     /// Enable writing the chrome clipboard to the OS pasteboard (GUI product).
     pub fn enable_os_clipboard(&mut self) {
         self.os_clipboard = true;
+    }
+
+    /// Product chrome: Arc sidebar, command bar, inset stage, agent rail.
+    /// Also opens the SQLite profile and restores the last session.
+    pub fn enable_product_chrome(&mut self) {
+        self.chrome_enabled = true;
+        self.chrome.set_theme(ChromeTheme::Dark);
+        self.sync_chrome();
+        if self.profile.is_none() {
+            let path = std::env::var("VECTOR_PROFILE").unwrap_or_else(|_| {
+                let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+                format!("{home}/.vector/profile.sqlite")
+            });
+            if let Ok(profile) = Profile::open(path) {
+                if self.tabs.is_empty() {
+                    if let Ok(session) = profile.session() {
+                        for tab in session {
+                            let _ = self.open_url(&tab.url);
+                        }
+                    }
+                }
+                if let Ok(z) = profile.zoom() {
+                    self.chrome.zoom = z;
+                }
+                if let Ok(find) = profile.find() {
+                    self.chrome.find = find;
+                }
+                self.profile = Some(profile);
+            }
+        }
+        self.sync_chrome();
+        self.apply_chrome_viewport();
+    }
+
+    /// Retained chrome (GUI / tests).
+    #[must_use]
+    pub fn chrome(&self) -> &Chrome {
+        &self.chrome
+    }
+
+    /// Whether product chrome is composited around the page.
+    #[must_use]
+    pub fn chrome_enabled(&self) -> bool {
+        self.chrome_enabled
+    }
+
+    fn sync_chrome(&mut self) {
+        self.chrome.tabs = self
+            .tabs
+            .iter()
+            .enumerate()
+            .map(|(i, t)| ChromeTab {
+                page_id: t.page.0.to_string(),
+                title: t.page_title.clone(),
+                url: t.url.clone(),
+                active: i == self.active,
+                backend: ChromeBackend::Engine,
+            })
+            .collect();
+        if self.urlbar_focused {
+            self.chrome.command.clone_from(&self.urlbar);
+        } else {
+            self.chrome.command = self
+                .active_tab()
+                .map(|t| t.url.clone())
+                .unwrap_or_default();
+        }
+        self.chrome.command_focused = self.urlbar_focused;
+        self.chrome.backend = ChromeBackend::Engine;
+        let pages: Vec<String> = self
+            .tabs
+            .iter()
+            .map(|t| t.page.0.to_string())
+            .collect();
+        if self.chrome.layout.spaces.is_empty() {
+            self.chrome.layout = empty_layout();
+        }
+        self.chrome.layout.order = sync_order(&self.chrome.layout.order, &pages);
+        self.chrome.layout = sync_spaces(&self.chrome.layout, &pages);
+        if let Some(profile) = &self.profile {
+            let session: Vec<SessionTab> = self
+                .tabs
+                .iter()
+                .map(|t| SessionTab {
+                    url: t.url.clone(),
+                    title: t.page_title.clone(),
+                })
+                .collect();
+            let _ = profile.save_session(&session);
+            if let Some(tab) = self.active_tab() {
+                let _ = profile.visit(
+                    &tab.url,
+                    &tab.page_title,
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as u64)
+                        .unwrap_or(0),
+                );
+            }
+        }
+    }
+
+    fn apply_chrome_viewport(&mut self) {
+        if !self.chrome_enabled {
+            return;
+        }
+        let window = self.window_size;
+        self.resize_surface(window.width, window.height);
+        let stage = self.chrome.stage_rect(window);
+        if let Some(page) = self.active_tab().map(|t| t.page)
+            && let Ok(p) = self.engine.page_mut(page)
+        {
+            p.set_viewport(Size::new(stage.width().max(1.0), stage.height().max(1.0)));
+            p.set_scale(self.device_scale);
+        }
+        self.list_cache = None;
+    }
+
+    /// Chrome + page display list (what `ve-shell --gui` presents).
+    pub fn paint_shell_list(&mut self) -> Result<DisplayList> {
+        if !self.chrome_enabled {
+            let page = self
+                .active_tab()
+                .ok_or_else(|| Error::not_found("no tab"))?
+                .page;
+            return self
+                .paint_page_id(page)
+                .ok_or_else(|| Error::internal("paint failed"));
+        }
+        self.sync_chrome();
+        let window = self.window_size;
+        let mut list = self.chrome.paint(window);
+        if let Some(tab) = self.active_tab() {
+            let page = tab.page;
+            if let Some(page_list) = self.paint_page_id(page) {
+                let stage = self.chrome.stage_rect(window);
+                list.push(DisplayItem::RoundedClip {
+                    rect: stage,
+                    radius: self.chrome.metrics.stage_radius,
+                });
+                list.append_translated(&page_list, stage.x(), stage.y());
+                list.push(DisplayItem::PopClip);
+            }
+        }
+        Ok(list)
+    }
+
+    fn handle_chrome_pointer(&mut self, x: f32, y: f32, button: u8) -> Result<bool> {
+        if !self.chrome_enabled {
+            return Ok(false);
+        }
+        self.sync_chrome();
+        match self.chrome.hit(self.window_size, x, y) {
+            ChromeHit::Stage { x, y } => {
+                self.dispatch_human_click(x, y, button)?;
+                Ok(true)
+            }
+            ChromeHit::Tab { page_id } => {
+                if let Some(i) = self
+                    .tabs
+                    .iter()
+                    .position(|t| t.page.0.to_string() == page_id)
+                {
+                    self.active = i;
+                    self.urlbar_focused = false;
+                    self.sync_chrome();
+                }
+                Ok(true)
+            }
+            ChromeHit::NewTab => {
+                let _ = self.handle_event(NativeEvent::NewTab {
+                    html: "<body></body>".into(),
+                    url: "about:blank".into(),
+                })?;
+                Ok(true)
+            }
+            ChromeHit::CommandBar => {
+                self.urlbar_focused = true;
+                self.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
+                self.sync_chrome();
+                Ok(true)
+            }
+            ChromeHit::SidebarToggle => {
+                self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
+                self.apply_chrome_viewport();
+                Ok(true)
+            }
+            ChromeHit::RailToggle => {
+                self.chrome.rail_open = !self.chrome.rail_open;
+                self.apply_chrome_viewport();
+                Ok(true)
+            }
+            ChromeHit::Overlay(ChromeOverlay::None) => Ok(true),
+            ChromeHit::Overlay(_) => {
+                self.chrome.overlay = ChromeOverlay::None;
+                Ok(true)
+            }
+            ChromeHit::Pin { url } => {
+                let _ = self.handle_event(NativeEvent::Navigate { url })?;
+                Ok(true)
+            }
+            _ => Ok(true),
+        }
     }
 
     /// Clipboard (chrome-owned).
@@ -1137,6 +1391,21 @@ impl NativeBrowser {
         &self.tabs
     }
 
+    /// Select tab by index.
+    pub fn set_active(&mut self, index: usize) {
+        if index < self.tabs.len() {
+            self.active = index;
+            self.urlbar_focused = false;
+            self.sync_chrome();
+        }
+    }
+
+    /// Engine (cookies / contexts).
+    #[must_use]
+    pub fn engine(&self) -> &VectorEngine {
+        &self.engine
+    }
+
     /// Mutable engine (service screenshot / cookies).
     pub fn engine_mut(&mut self) -> &mut VectorEngine {
         &mut self.engine
@@ -1159,10 +1428,43 @@ impl NativeBrowser {
                 let _ = self.dispatch_human_key("Forward", KeyState::Down);
                 true
             }
-            "f" | "F" => true, // find — chrome owns this
-            "-" => true,       // zoom out
-            "=" | "+" => true, // zoom in
-            "0" => true,       // zoom reset
+            "f" | "F" => {
+                self.chrome.find_open = !self.chrome.find_open;
+                true
+            }
+            "-" => {
+                self.chrome.zoom = (self.chrome.zoom - 0.1).max(0.25);
+                if let Some(p) = &self.profile {
+                    let _ = p.set_zoom(self.chrome.zoom);
+                }
+                true
+            }
+            "=" | "+" => {
+                self.chrome.zoom = (self.chrome.zoom + 0.1).min(3.0);
+                if let Some(p) = &self.profile {
+                    let _ = p.set_zoom(self.chrome.zoom);
+                }
+                true
+            }
+            "0" => {
+                self.chrome.zoom = 1.0;
+                if let Some(p) = &self.profile {
+                    let _ = p.set_zoom(1.0);
+                }
+                true
+            }
+            "k" | "K" => {
+                self.chrome.overlay = ChromeOverlay::Palette;
+                true
+            }
+            "," => {
+                self.chrome.overlay = ChromeOverlay::Settings;
+                true
+            }
+            "y" | "Y" => {
+                self.chrome.overlay = ChromeOverlay::History;
+                true
+            }
             _ => false,
         }
     }
@@ -1883,5 +2185,79 @@ mod tests {
             before,
             "scroll must reuse the cached display list"
         );
+    }
+
+    #[test]
+    fn product_chrome_paints_sidebar_stage_and_rail() {
+        let mut browser = NativeBrowser::new();
+        unsafe { std::env::set_var("VECTOR_PROFILE", "/tmp/vector-test-profile.sqlite") };
+        browser.enable_product_chrome();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p>hello</p>".into(),
+                url: "https://example.test/".into(),
+            })
+            .unwrap();
+        let list = browser.paint_shell_list().unwrap();
+        let texts: Vec<String> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                ve_gfx::DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.iter().any(|t| t == "Personal"), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Agent")), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Engine")), "{texts:?}");
+        assert!(browser.chrome_enabled());
+        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        assert!(stage.x() >= 200.0);
+        assert!(stage.width() < 800.0);
+    }
+
+    #[test]
+    fn writes_production_profile_observe_gate() {
+        use std::time::Instant;
+        let mut samples = Vec::new();
+        for _ in 0..8 {
+            let mut engine = crate::VectorEngine::new(crate::EngineConfig {
+                offline: true,
+                security_profile: crate::SecurityProfile::Production,
+                ..crate::EngineConfig::default()
+            });
+            let opened = engine
+                .open(crate::OpenRequest::html(
+                    "<p>hello <strong>world</strong></p>",
+                    Some("https://gate.test/"),
+                ))
+                .unwrap();
+            let t = Instant::now();
+            let _ = engine
+                .observe(opened.page, &crate::ObservationRequest::default())
+                .unwrap();
+            samples.push(t.elapsed().as_micros() as u64);
+        }
+        samples.sort_unstable();
+        let p50 = samples[samples.len() / 2];
+        let p95 = samples[samples.len() - 1];
+        let doc = serde_json::json!({
+            "backend": "vector-engine",
+            "security_mode": "production",
+            "metric": "observe",
+            "n": samples.len(),
+            "unit": "us",
+            "samples": samples,
+            "p50": p50,
+            "p95": p95,
+            "notes": "Measured in-process on the production SecurityProfile. Not an Apple-silicon published score."
+        });
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/perf/production-observe-gate.json");
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        std::fs::write(&path, serde_json::to_vec_pretty(&doc).unwrap()).unwrap();
+        assert!(p95 > 0);
     }
 }

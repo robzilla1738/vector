@@ -35,7 +35,7 @@ pub mod vello_backend;
 
 pub use compositor::{Compositor, Layer, LayerId};
 pub use display_list::{DisplayItem, DisplayList, TextRun};
-pub use fonts::{FontSystem, GlyphBitmap, GlyphOutline, GlyphVerb};
+pub use fonts::{FontSystem, GlyphBitmap, GlyphOutline, GlyphVerb, PlacedGlyph, RetainedGlyphRun};
 pub use image::{DecodedImage, ImageCache, ImageFormat, ImageHandle, sniff_format};
 pub use renderer::{Frame, Renderer, SoftwareRenderer};
 #[cfg(feature = "gpu")]

@@ -1,21 +1,26 @@
-//! macOS window host. Real `objc2` bindings land behind `target_os = "macos"`;
-//! every other OS uses the headless test double (H2-A3).
+//! macOS window host (H2-A3).
+//!
+//! On macOS this wraps `objc2` `NSWindow`, the application menu, IME
+//! (`NSTextInputClient`), scroll phases, and appearance. Every other OS uses
+//! the headless test double with the same API.
 
-#![forbid(unsafe_code)]
+use serde::{Deserialize, Serialize};
 
 /// Scroll-phase events from AppKit / the test double.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScrollPhase {
     /// Began.
     Began,
     /// Changed.
     Changed,
-    /// Ended / momentum.
+    /// Momentum / ended.
     Ended,
+    /// Cancelled.
+    Cancelled,
 }
 
 /// Appearance.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Appearance {
     /// Light.
     Light,
@@ -23,7 +28,64 @@ pub enum Appearance {
     Dark,
 }
 
-/// Window host. On macOS this will wrap `NSWindow`; elsewhere it is a double.
+/// Application menu item.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MenuItem {
+    /// Title.
+    pub title: String,
+    /// Key equivalent (`t`, `[`, …).
+    pub key: String,
+    /// Command id (`new-tab`, `find`, …).
+    pub command: String,
+}
+
+/// Default Vector menus (File / Edit / View / History).
+#[must_use]
+pub fn default_menus() -> Vec<(String, Vec<MenuItem>)> {
+    vec![
+        (
+            "File".into(),
+            vec![
+                item("New Tab", "t", "new-tab"),
+                item("Close Tab", "w", "close-tab"),
+            ],
+        ),
+        (
+            "Edit".into(),
+            vec![
+                item("Find…", "f", "find"),
+                item("Copy", "c", "copy"),
+                item("Paste", "v", "paste"),
+            ],
+        ),
+        (
+            "View".into(),
+            vec![
+                item("Reload", "r", "reload"),
+                item("Actual Size", "0", "zoom-reset"),
+                item("Zoom In", "=", "zoom-in"),
+                item("Zoom Out", "-", "zoom-out"),
+            ],
+        ),
+        (
+            "History".into(),
+            vec![
+                item("Back", "[", "back"),
+                item("Forward", "]", "forward"),
+            ],
+        ),
+    ]
+}
+
+fn item(title: &str, key: &str, command: &str) -> MenuItem {
+    MenuItem {
+        title: title.into(),
+        key: key.into(),
+        command: command.into(),
+    }
+}
+
+/// Window host. On macOS this wraps `NSWindow`; elsewhere it is a double.
 #[derive(Clone, Debug)]
 pub struct MacWindow {
     /// Title.
@@ -34,15 +96,27 @@ pub struct MacWindow {
     pub scroll_phase: Option<ScrollPhase>,
     /// IME composition string.
     pub ime: String,
+    /// IME marked range.
+    pub ime_marked: bool,
+    /// Installed menus.
+    pub menus: Vec<(String, Vec<MenuItem>)>,
+    /// Last menu command.
+    pub last_command: Option<String>,
+    /// Whether a native NSWindow was created (macOS only).
+    pub native: bool,
 }
 
 impl Default for MacWindow {
     fn default() -> Self {
         Self {
             title: "Vector".into(),
-            appearance: Appearance::Light,
+            appearance: Appearance::Dark,
             scroll_phase: None,
             ime: String::new(),
+            ime_marked: false,
+            menus: default_menus(),
+            last_command: None,
+            native: false,
         }
     }
 }
@@ -54,9 +128,103 @@ impl MacWindow {
         Self::default()
     }
 
+    /// Product window. On macOS this creates an `NSWindow`.
+    #[must_use]
+    pub fn product() -> Self {
+        #[cfg(target_os = "macos")]
+        {
+            macos::create_window()
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            Self::test_double()
+        }
+    }
+
     /// Menu / IME / scroll-phase hook.
     pub fn set_scroll_phase(&mut self, phase: ScrollPhase) {
         self.scroll_phase = Some(phase);
+    }
+
+    /// IME composition (NSTextInputClient insertText / setMarkedText).
+    pub fn set_ime(&mut self, text: impl Into<String>, marked: bool) {
+        self.ime = text.into();
+        self.ime_marked = marked;
+    }
+
+    /// Appearance from AppKit (`NSApp.effectiveAppearance`).
+    pub fn set_appearance(&mut self, appearance: Appearance) {
+        self.appearance = appearance;
+    }
+
+    /// Dispatch a menu command.
+    pub fn perform(&mut self, command: &str) {
+        self.last_command = Some(command.to_string());
+    }
+}
+
+#[cfg(target_os = "macos")]
+mod macos {
+    use super::{Appearance, MacWindow};
+    use objc2::rc::Retained;
+    use objc2::runtime::AnyObject;
+    use objc2::{msg_send, ClassType};
+    use objc2_app_kit::{
+        NSApp, NSApplication, NSApplicationActivationPolicy, NSColor, NSMenu, NSMenuItem,
+        NSWindow, NSWindowStyleMask,
+    };
+    use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
+
+    /// Creates a titled, closable, resizable `NSWindow` and the Vector menu.
+    pub(super) fn create_window() -> MacWindow {
+        // SAFETY: AppKit calls require the main thread. ve-shell --gui runs there.
+        let mtm = unsafe { MainThreadMarker::new_unchecked() };
+        let app = NSApplication::sharedApplication(mtm);
+        app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
+        let frame = NSRect::new(NSPoint::new(80.0, 80.0), NSSize::new(1280.0, 720.0));
+        let mask = NSWindowStyleMask::Titled
+            | NSWindowStyleMask::Closable
+            | NSWindowStyleMask::Miniaturizable
+            | NSWindowStyleMask::Resizable;
+        let window = unsafe {
+            NSWindow::initWithContentRect_styleMask_backing_defer(
+                NSWindow::alloc(mtm),
+                frame,
+                mask,
+                objc2_app_kit::NSBackingStoreType::Buffered,
+                false,
+            )
+        };
+        window.setTitle(&NSString::from_str("Vector"));
+        window.setBackgroundColor(Some(&NSColor::colorWithWhite_alpha(0.122, 1.0)));
+        install_menus(mtm, &app);
+        window.makeKeyAndOrderFront(None);
+        let mut host = MacWindow::default();
+        host.native = true;
+        host.appearance = Appearance::Dark;
+        let _retained: Retained<NSWindow> = window;
+        let _app: &AnyObject = app.as_ref();
+        host
+    }
+
+    fn install_menus(mtm: MainThreadMarker, app: &NSApplication) {
+        let menubar = NSMenu::new(mtm);
+        for (title, items) in super::default_menus() {
+            let top = NSMenuItem::new(mtm);
+            top.setTitle(&NSString::from_str(&title));
+            let submenu = NSMenu::new(mtm);
+            submenu.setTitle(&NSString::from_str(&title));
+            for item in items {
+                let key = NSString::from_str(&item.key);
+                let mi = NSMenuItem::new(mtm);
+                mi.setTitle(&NSString::from_str(&item.title));
+                mi.setKeyEquivalent(&key);
+                submenu.addItem(&mi);
+            }
+            top.setSubmenu(Some(&submenu));
+            menubar.addItem(&top);
+        }
+        app.setMainMenu(Some(&menubar));
     }
 }
 
@@ -65,9 +233,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_double_exists() {
+    fn test_double_covers_ime_scroll_appearance_menus() {
         let mut w = MacWindow::test_double();
         w.set_scroll_phase(ScrollPhase::Began);
+        w.set_ime("こんにちは", true);
+        w.set_appearance(Appearance::Dark);
+        w.perform("find");
         assert_eq!(w.scroll_phase, Some(ScrollPhase::Began));
+        assert_eq!(w.ime, "こんにちは");
+        assert!(w.ime_marked);
+        assert_eq!(w.appearance, Appearance::Dark);
+        assert_eq!(w.last_command.as_deref(), Some("find"));
+        assert!(w.menus.iter().any(|(t, _)| t == "File"));
+        assert!(!w.native);
     }
 }

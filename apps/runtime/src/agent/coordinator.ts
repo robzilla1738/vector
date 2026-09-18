@@ -28,6 +28,7 @@ import { recoverAfterCrash } from "./recovery.js";
 import type { GrantSource } from "./permissions.js";
 import { compileAndAuthorize } from "./action-compiler.js";
 import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "./durable.js";
+import { initialMachine, reduce, type Machine } from "./machine.js";
 
 interface RunControl {
   abort: AbortController;
@@ -388,6 +389,7 @@ export class RunCoordinator {
     this.deps.repo.saveRun({ ...this.get(runId), startedAt });
     run.startedAt = startedAt;
 
+    let machine: Machine = reduce(initialMachine(), { type: "start" });
     const outcomes: StepOutcome[] = [];
     let modelCalls = 0;
     let stepsRun = 0;
@@ -755,6 +757,7 @@ export class RunCoordinator {
         }
 
         if (plan.status === "done") {
+          machine = reduce(machine, { type: "plan", status: "done" });
           // Done declared immediately after a failed action chunk — nothing
           // has been attempted since the failure, so the model may be
           // answering with a link/summary instead of trying the alternative
@@ -771,6 +774,7 @@ export class RunCoordinator {
             verifyObs = obs;
           }
           const verified = verifyDoneAgainstObservation(plan.result, verifyObs, outcomes);
+          machine = reduce(machine, { type: "verified", ok: verified.ok });
           if (!verified.ok && !doneChallenged) {
             doneChallenged = true;
             lastError = `done was not verified against a fresh observation (${verified.reason}) — re-observe and only return done with values that appear on the page`;
@@ -784,6 +788,7 @@ export class RunCoordinator {
           return;
         }
         if (plan.status === "needs_input") {
+          machine = reduce(machine, { type: "plan", status: "needs_input" });
           this.setStatus(runId, "needs_input", plan.question ?? "Needs input");
           const answer = await this.waitForAnswer(c, runId);
           if (c.abort.signal.aborted) return;
@@ -795,6 +800,7 @@ export class RunCoordinator {
             durationMs: 0,
             detail: `human answered: ${answer.slice(0, 120)}`,
           });
+          machine = reduce(machine, { type: "answer" });
           continue;
         }
         const retargeted = !!(plan.pageId && plan.pageId !== activePageId && run.pageIds.includes(plan.pageId));
@@ -868,6 +874,7 @@ export class RunCoordinator {
           }
         }
 
+        machine = reduce(machine, { type: "plan", status: "continue" });
         const compiled = compileAndAuthorize({
           pageId: activePageId,
           documentEpoch: obs.documentEpoch,
@@ -878,6 +885,7 @@ export class RunCoordinator {
           grants: this.deps.grants,
         });
         if ("rejected" in compiled) {
+          machine = reduce(machine, { type: "authorized", ok: false });
           if (early) await early.finish([]);
           lastError = compiled.rejected;
           lastActionFailed = true;
@@ -885,12 +893,14 @@ export class RunCoordinator {
           continue;
         }
         if ("denied" in compiled) {
+          machine = reduce(machine, { type: "authorized", ok: false });
           if (early) await early.finish([]);
           lastError = compiled.denied;
           lastActionFailed = true;
           repairCount++;
           continue;
         }
+        machine = reduce(machine, { type: "authorized", ok: true });
         const write = beginConsequentialWrite(this.durable, {
           runId,
           pageId: activePageId,

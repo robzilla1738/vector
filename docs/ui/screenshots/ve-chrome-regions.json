@@ -1,0 +1,24 @@
+{
+  "backend": "ve-chrome",
+  "commandBar": true,
+  "matches": "docs/ui/shell.md Arc sidebar + command bar + inset stage + agent rail",
+  "rail": {
+    "width": 360.0
+  },
+  "sidebar": {
+    "width": 260.0,
+    "x": 0
+  },
+  "stage": {
+    "height": 704.0,
+    "radius": 16.0,
+    "width": 644.0,
+    "x": 268.0,
+    "y": 8.0
+  },
+  "theme": "dark",
+  "window": {
+    "height": 720.0,
+    "width": 1280.0
+  }
+}

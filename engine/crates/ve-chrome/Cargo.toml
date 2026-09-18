@@ -1,6 +1,6 @@
 [package]
 name = "ve-chrome"
-description = "Retained chrome widgets for ve-shell (tabs, URL bar, find, zoom)."
+description = "Retained chrome widgets for ve-shell (Arc sidebar, command bar, stage, rail)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -18,3 +18,4 @@ ve-gfx.workspace = true
 ve-style.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+url.workspace = true

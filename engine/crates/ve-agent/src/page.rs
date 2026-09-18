@@ -2098,6 +2098,17 @@ impl Page {
         self.focused
     }
 
+    /// Origin-keyed `localStorage` (Playwright `storage.state` origins).
+    #[must_use]
+    pub fn local_storage_map(&self) -> &HashMap<String, HashMap<String, String>> {
+        &self.local_storage
+    }
+
+    /// Mutable origin-keyed `localStorage`.
+    pub fn local_storage_map_mut(&mut self) -> &mut HashMap<String, HashMap<String, String>> {
+        &mut self.local_storage
+    }
+
     /// First `input` / `textarea` / `contenteditable` when nothing is focused.
     #[must_use]
     pub fn first_editable(&self) -> Option<NodeId> {
