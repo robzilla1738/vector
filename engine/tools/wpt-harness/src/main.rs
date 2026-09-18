@@ -46,6 +46,9 @@ struct Args {
     /// Serve fixtures (and optional WPT checkout) over HTTP/1.1.
     #[arg(long)]
     http: bool,
+    /// Also serve fixtures over HTTPS with a generated fixture CA (Finding 6).
+    #[arg(long)]
+    https: bool,
     /// Whole-tree WPT checkout. Combined with `--http` this is the production
     /// testharness path (`/resources/testharness.js`, `/fonts/Ahem.ttf`).
     #[arg(long)]
@@ -121,6 +124,10 @@ struct Report {
     overall_manifest: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     http_origin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    https_origin: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    https: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     tree_family: Option<String>,
     tree_complete: bool,
@@ -830,13 +837,6 @@ fn main() -> Result<()> {
     } else {
         0
     };
-    let mut engine = VectorEngine::new(EngineConfig {
-        viewport: Size::new(800.0, 600.0),
-        offline: !args.http,
-        scripting: cfg!(feature = "v8"),
-        policy: ve_api::NetworkPolicy::permissive(),
-        ..EngineConfig::default()
-    });
     let mut roots = vec![
         (
             "resources".into(),
@@ -849,11 +849,26 @@ fn main() -> Result<()> {
         roots.push((String::new(), wpt.clone()));
     }
     let http = if args.http || args.wpt_dir.is_some() {
-        Some(http_serve::DirServer::start(roots)?)
+        Some(http_serve::DirServer::start(roots.clone())?)
     } else {
         None
     };
+    let (https, extra_tls_roots) = if args.https {
+        let (server, der) = http_serve::DirServer::start_https(roots)?;
+        (Some(server), vec![der])
+    } else {
+        (None, Vec::new())
+    };
+    let mut engine = VectorEngine::new(EngineConfig {
+        viewport: Size::new(800.0, 600.0),
+        offline: http.is_none() && https.is_none(),
+        scripting: cfg!(feature = "v8"),
+        policy: ve_api::NetworkPolicy::permissive(),
+        extra_tls_roots,
+        ..EngineConfig::default()
+    });
     let origin = http.as_ref().map(|s| s.origin.clone());
+    let https_origin = https.as_ref().map(|s| s.origin.clone());
     let timeout = Duration::from_secs(args.timeout_secs);
     let mut results = Vec::new();
     let mut totals = Counts::default();
@@ -879,10 +894,13 @@ fn main() -> Result<()> {
             (Status::NotRun, Some("missing fixture".into()))
         } else {
             let mut html = std::fs::read_to_string(path)?;
-            let url = origin
-                .as_ref()
-                .map_or_else(|| format!("file:///{rel}"), |o| format!("{o}/{rel}"));
-            if let Some(o) = origin.as_ref() {
+            let chosen = if rel.contains(".https.") {
+                https_origin.as_ref().or(origin.as_ref())
+            } else {
+                origin.as_ref().or(https_origin.as_ref())
+            };
+            let url = chosen.map_or_else(|| format!("file:///{rel}"), |o| format!("{o}/{rel}"));
+            if let Some(o) = chosen {
                 html = http_serve::substitute_wpt_text(&html, o, rel);
             }
             let pixel = rel.contains("pixel") || html.contains("data-pixel");
@@ -922,11 +940,16 @@ fn main() -> Result<()> {
     if let Some(s) = http {
         s.stop();
     }
+    if let Some(s) = https {
+        s.stop();
+    }
     let report = Report {
         fixtures: args.fixtures.display().to_string(),
         tested_subset: totals.pass + totals.fail + totals.timeout + totals.crash,
         overall_manifest: geometry + manifest.len(),
         http_origin: origin,
+        https_origin,
+        https: args.https,
         tree_family: args.tree_family.clone(),
         tree_complete: args.tree && args.tree_limit == 0,
         fonts_dir: args.fonts_dir.display().to_string(),
@@ -1265,6 +1288,51 @@ mod tests {
         assert!(ahem.len() > 1000, "{}", ahem.len());
         let idl_bytes = get("/resources/idlharness.js");
         let idl = String::from_utf8_lossy(&idl_bytes);
+        assert!(idl.contains("IdlArray"), "{idl:.200}");
+        server.stop();
+    }
+
+    #[test]
+    fn https_server_serves_idlharness_over_tls() {
+        use rustls::pki_types::{CertificateDer, ServerName};
+        let res = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/resources");
+        let (server, cert) = super::http_serve::DirServer::start_https(vec![(
+            "resources".into(),
+            res.into(),
+        )])
+        .unwrap();
+        let origin = server.origin.clone();
+        assert!(origin.starts_with("https://"), "{origin}");
+        let addr = origin.trim_start_matches("https://").to_owned();
+        let mut roots = rustls::RootCertStore::empty();
+        roots.add(CertificateDer::from(cert)).unwrap();
+        let cfg = rustls::ClientConfig::builder()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+        let name = ServerName::try_from("127.0.0.1").unwrap();
+        let conn = rustls::ClientConnection::new(std::sync::Arc::new(cfg), name).unwrap();
+        let tcp = std::net::TcpStream::connect(&addr).unwrap();
+        tcp.set_read_timeout(Some(std::time::Duration::from_secs(5)))
+            .unwrap();
+        let mut tls = rustls::StreamOwned::new(conn, tcp);
+        tls.write_all(
+            b"GET /resources/idlharness.js HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n",
+        )
+        .unwrap();
+        let mut body = Vec::new();
+        match tls.read_to_end(&mut body) {
+            Ok(_) => {}
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::ConnectionReset
+                        | std::io::ErrorKind::UnexpectedEof
+                        | std::io::ErrorKind::WouldBlock
+                        | std::io::ErrorKind::TimedOut
+                ) => {}
+            Err(e) => panic!("{e}"),
+        }
+        let idl = String::from_utf8_lossy(&body);
         assert!(idl.contains("IdlArray"), "{idl:.200}");
         server.stop();
     }

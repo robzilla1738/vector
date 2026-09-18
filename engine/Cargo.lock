@@ -5517,6 +5517,8 @@ dependencies = [
  "anyhow",
  "clap",
  "png",
+ "rcgen",
+ "rustls",
  "serde",
  "serde_json",
  "ve-api",

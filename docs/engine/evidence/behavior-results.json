@@ -15,7 +15,7 @@
       "pass": 28,
       "fail": 2,
       "total": 30,
-      "tls": "not run; official tree is http fixture only on this pin",
+      "tls": "production hyper+rustls extra-CA path proven (ve-net loopback_https_with_fixture_ca); wpt-harness --https serves fixture CA; official html/dom/partial-updates tree remains HTTP on this pin",
       "unmodifiedUpstream": true
     },
     "supportedSubset": {
@@ -29,7 +29,7 @@
     "exclusions": [
       "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\"",
       "sanitize-template-element.html expects addedNodes SPAN while the inserted span has id ok",
-      "official BrowserBench / TLS / full html/dom tree outside partial-updates"
+      "official BrowserBench / full html/dom tree outside partial-updates; official .https.html WPT files not yet scored over TLS"
     ],
     "remainingOfficialFails": [
       "sanitize-template-element.html",

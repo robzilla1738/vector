@@ -979,6 +979,45 @@ impl StyleEngine {
             .ok_or_else(|| Error::NoMatch(selector.to_owned()))
     }
 
+    /// Descendants of `root` matching `selector`, in tree order.
+    /// `visible` skips nodes the caller does not consider queryable.
+    pub fn select_descendants(
+        &self,
+        doc: &Document,
+        root: NodeId,
+        selector: &str,
+        all: bool,
+        visible: impl Fn(NodeId) -> bool,
+    ) -> Result<Vec<NodeId>> {
+        let list = parse_selector_list(selector)?;
+        let mut caches = SelectorCaches::default();
+        let mut ctx = MatchingContext::new(
+            MatchingMode::Normal,
+            None,
+            &mut caches,
+            Self::quirks(doc),
+            NeedsSelectorFlags::No,
+            MatchingForInvalidation::No,
+        );
+        let mut out = Vec::new();
+        for id in doc.descendants(root) {
+            if !doc.get(id).is_some_and(Node::is_element) || !visible(id) {
+                continue;
+            }
+            if matches_selector_list(
+                &list,
+                &DomElement::new(doc, &self.interaction, id),
+                &mut ctx,
+            ) {
+                out.push(id);
+                if !all {
+                    break;
+                }
+            }
+        }
+        Ok(out)
+    }
+
     /// Returns `true` if element `id` matches `selector`.
     pub fn matches(&self, doc: &Document, id: NodeId, selector: &str) -> Result<bool> {
         if !doc.get(id).is_some_and(Node::is_element) {

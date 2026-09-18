@@ -75,12 +75,20 @@ impl std::fmt::Debug for HyperTransport {
 impl HyperTransport {
     /// Creates a transport trusting the Mozilla root store (`webpki-roots`).
     pub fn new() -> Result<Self, NetError> {
+        Self::with_extra_roots(std::iter::empty::<Vec<u8>>())
+    }
+
+    /// Same as [`Self::new`], plus extra DER certificates for fixture/WPT CAs.
+    pub fn with_extra_roots(extra: impl IntoIterator<Item = Vec<u8>>) -> Result<Self, NetError> {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .map_err(|e| NetError::Transport(format!("tokio runtime: {e}")))?;
         let mut roots = RootCertStore::empty();
         roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+        for der in extra {
+            let _ = roots.add(tokio_rustls::rustls::pki_types::CertificateDer::from(der));
+        }
         // ALPN (h2, http/1.1) is set by the connector builder below
         let config = ClientConfig::builder()
             .with_root_certificates(roots)

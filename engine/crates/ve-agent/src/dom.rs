@@ -92,28 +92,12 @@ fn doc_arg(page: &Page, args: &[JsValue]) -> NodeId {
         .unwrap_or_else(|| page.doc.root())
 }
 fn query(page: &Page, root: NodeId, selector: &str, all: bool) -> Result<Vec<NodeId>, ScriptError> {
-    parse_sel(selector)?;
     if selector.trim().is_empty() {
         return Err(fail("The provided selector is empty."));
     }
-    let mut out = Vec::new();
-    for id in page.doc.descendants(root) {
-        if !page.doc.get(id).is_some_and(|n| n.is_element()) {
-            continue;
-        }
-        if page.parser_visible(id)
-            && page
-                .style_engine
-                .matches(&page.doc, id, selector)
-                .unwrap_or(false)
-        {
-            out.push(id);
-            if !all {
-                break;
-            }
-        }
-    }
-    Ok(out)
+    page.style_engine
+        .select_descendants(&page.doc, root, selector, all, |id| page.parser_visible(id))
+        .map_err(|_| fail("An invalid or illegal string was specified"))
 }
 fn parse_sel(selector: &str) -> Result<(), ScriptError> {
     ve_style::parse_selector_list(selector)

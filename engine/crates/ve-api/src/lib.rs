@@ -135,6 +135,10 @@ pub struct EngineConfig {
     pub security_profile: SecurityProfile,
     /// Process vs in-process placement. Production forces [`IsolationMode::RequireProcess`].
     pub isolation: IsolationMode,
+    /// Extra DER certificates trusted by the production hyper+rustls transport
+    /// (WPT/fixture HTTPS CAs). Empty in ordinary browsing.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extra_tls_roots: Vec<Vec<u8>>,
 }
 
 impl Default for EngineConfig {
@@ -150,6 +154,7 @@ impl Default for EngineConfig {
             hermetic: false,
             security_profile: SecurityProfile::Developer,
             isolation: IsolationMode::Auto,
+            extra_tls_roots: Vec::new(),
         }
     }
 }
@@ -465,7 +470,7 @@ fn make_transport(config: &EngineConfig) -> Box<dyn ve_net::Transport> {
     }
     #[cfg(feature = "http")]
     {
-        match ve_net::HyperTransport::new() {
+        match ve_net::HyperTransport::with_extra_roots(config.extra_tls_roots.clone()) {
             Ok(t) => return Box::new(t),
             Err(e) => tracing::warn!(error = %e, "hyper transport unavailable; running offline"),
         }

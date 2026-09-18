@@ -2,13 +2,15 @@
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
+
+use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 
 type Stash = Arc<Mutex<HashMap<String, String>>>;
 
@@ -61,10 +63,71 @@ impl DirServer {
         let _ = self.stop.send(());
         let _ = self.handle.join();
     }
+
+    /// HTTPS twin of [`Self::start`]. Returns the server and the DER of the
+    /// generated fixture CA so the production rustls client can trust it.
+    pub fn start_https(roots: Vec<(String, PathBuf)>) -> anyhow::Result<(Self, Vec<u8>)> {
+        let certified = rcgen::generate_simple_self_signed(vec![
+            "127.0.0.1".into(),
+            "localhost".into(),
+            "web-platform.test".into(),
+        ])?;
+        let cert_der = certified.cert.der().to_vec();
+        let key_der = certified.key_pair.serialize_der();
+        let mut server_crypto = rustls::ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(
+                vec![CertificateDer::from(cert_der.clone())],
+                PrivatePkcs8KeyDer::from(key_der).into(),
+            )?;
+        server_crypto.alpn_protocols = vec![b"http/1.1".to_vec()];
+        let server_crypto = Arc::new(server_crypto);
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        listener.set_nonblocking(true)?;
+        let addr = listener.local_addr()?;
+        let origin = format!("https://{addr}");
+        let origin_thread = origin.clone();
+        let (tx, rx) = mpsc::channel();
+        let stash: Stash = Arc::new(Mutex::new(HashMap::new()));
+        let uuid_seq = Arc::new(AtomicU64::new(1));
+        let handle = thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_secs(3600);
+            while rx.try_recv().is_err() && Instant::now() < deadline {
+                match listener.accept() {
+                    Ok((stream, _)) => {
+                        let roots = roots.clone();
+                        let origin = origin_thread.clone();
+                        let stash = Arc::clone(&stash);
+                        let uuid_seq = Arc::clone(&uuid_seq);
+                        let tls_cfg = Arc::clone(&server_crypto);
+                        thread::spawn(move || {
+                            let Ok(conn) = rustls::ServerConnection::new(tls_cfg) else {
+                                return;
+                            };
+                            let mut tls = rustls::StreamOwned::new(conn, stream);
+                            handle_conn(&mut tls, roots, origin, stash, uuid_seq);
+                        });
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+        Ok((
+            Self {
+                origin,
+                stop: tx,
+                handle,
+            },
+            cert_der,
+        ))
+    }
 }
 
 fn handle_conn(
-    mut stream: TcpStream,
+    mut stream: impl Read + Write,
     roots: Vec<(String, PathBuf)>,
     origin: String,
     stash: Stash,
@@ -124,17 +187,17 @@ fn handle_conn(
             );
         }
     }
-    let _ = stream.shutdown(std::net::Shutdown::Write);
+    let _ = stream.flush();
 }
 
-fn write_bytes(stream: &mut TcpStream, mime: &str, body: &[u8]) {
+fn write_bytes(stream: &mut impl Write, mime: &str, body: &[u8]) {
     let header = format!(
         "HTTP/1.1 200 OK\r\nContent-Type: {mime}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
         body.len()
     );
     let _ = stream.write_all(header.as_bytes());
     let _ = stream.write_all(body);
-    let _ = stream.shutdown(std::net::Shutdown::Write);
+    let _ = stream.flush();
 }
 
 fn query_map(query: &str) -> HashMap<String, String> {
@@ -186,7 +249,7 @@ fn stash_put(stash: &Stash, key: &str, val: impl Into<String>) {
     }
 }
 
-fn serve_chunked_html(stream: &mut TcpStream, query: &str, stash: &Stash) {
+fn serve_chunked_html(stream: &mut (impl Read + Write), query: &str, stash: &Stash) {
     let q = query_map(query);
     let action = q.get("action").map(String::as_str).unwrap_or("");
     let key = q.get("key").cloned().unwrap_or_default();
@@ -259,18 +322,18 @@ fn serve_chunked_html(stream: &mut TcpStream, query: &str, stash: &Stash) {
                 let _ = write_chunk(stream, chunk2.as_bytes());
                 let _ = stream.write_all(b"0\r\n\r\n");
             }
-            let _ = stream.shutdown(std::net::Shutdown::Write);
+            let _ = stream.flush();
         }
     }
 }
 
-fn write_chunk(stream: &mut TcpStream, data: &[u8]) -> std::io::Result<()> {
+fn write_chunk(stream: &mut impl Write, data: &[u8]) -> std::io::Result<()> {
     write!(stream, "{:x}\r\n", data.len())?;
     stream.write_all(data)?;
     stream.write_all(b"\r\n")
 }
 
-fn serve_buffer_streaming_reflection(stream: &mut TcpStream) {
+fn serve_buffer_streaming_reflection(stream: &mut impl Write) {
     let body = br#"<!DOCTYPE html>
 <meta charset="utf-8">
 <body>
@@ -324,7 +387,7 @@ fn resolve(roots: &[(String, PathBuf)], rel: &str) -> Option<(PathBuf, &'static 
     None
 }
 
-fn serve_stash_referrer(stream: &mut TcpStream, query: &str, req: &str, stash: &Stash) {
+fn serve_stash_referrer(stream: &mut impl Write, query: &str, req: &str, stash: &Stash) {
     let q = query_map(query);
     let key = q.get("key").cloned().unwrap_or_default();
     let operation = q.get("operation").map(String::as_str).unwrap_or("");
