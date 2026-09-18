@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use ve_core::{Edges, NodeId, Point, Rect, Size};
 use ve_layout::LayoutTree;
 use ve_style::{
-    BackgroundImage, BackgroundPosition, BackgroundRepeat, BackgroundSize, Filter, FontFamily,
-    FontStyle, FontWeight, LengthPercentageAuto, ObjectFit, Rgba, StyleTree, TextDecorationLine,
-    TransformOp,
+    BackgroundClip, BackgroundImage, BackgroundPosition, BackgroundRepeat, BackgroundSize,
+    ComputedStyle, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto, ObjectFit,
+    Rgba, StyleTree, TextDecorationLine, TransformOp,
 };
 
 use crate::image::ImageHandle;
@@ -397,36 +397,41 @@ impl DisplayList {
                     let bg = style.background_color.resolve(style.color);
                     if !bg.is_transparent() {
                         list.push(DisplayItem::Rect {
-                            rect: item.rect,
+                            rect: background_clip_rect(item.rect, &style),
                             color: bg,
                         });
                     }
                 }
                 if let BackgroundImage::LinearGradient(stops) = &style.background_image {
+                    let clip = background_clip_rect(item.rect, &style);
                     list.push(DisplayItem::LinearGradient {
-                        rect: item.rect,
-                        start: Point::new(item.rect.x(), item.rect.y()),
-                        end: Point::new(item.rect.x(), item.rect.bottom()),
+                        rect: clip,
+                        start: Point::new(clip.x(), clip.y()),
+                        end: Point::new(clip.x(), clip.bottom()),
                         stops: stops.clone(),
                     });
                 }
                 if let Some(handle) = images.get(&node) {
-                    let (size, position, repeat) =
-                        if matches!(style.background_image, BackgroundImage::Url(_)) {
-                            (
-                                style.background_size,
-                                style.background_position,
-                                style.background_repeat,
-                            )
-                        } else {
-                            (
-                                object_fit_size(style.object_fit),
-                                style.object_position,
-                                BackgroundRepeat::NoRepeat,
-                            )
-                        };
+                    let is_bg = matches!(style.background_image, BackgroundImage::Url(_));
+                    let (size, position, repeat) = if is_bg {
+                        (
+                            style.background_size,
+                            style.background_position,
+                            style.background_repeat,
+                        )
+                    } else {
+                        (
+                            object_fit_size(style.object_fit),
+                            style.object_position,
+                            BackgroundRepeat::NoRepeat,
+                        )
+                    };
                     list.push(DisplayItem::Image {
-                        rect: item.rect,
+                        rect: if is_bg {
+                            background_clip_rect(item.rect, &style)
+                        } else {
+                            item.rect
+                        },
                         handle: *handle,
                         src: None,
                         size,
@@ -488,6 +493,31 @@ impl DisplayList {
         }
         list
     }
+}
+
+fn background_clip_rect(rect: Rect, style: &ComputedStyle) -> Rect {
+    let w = rect.width();
+    let (bt, br, bb, bl) = match style.background_clip {
+        BackgroundClip::BorderBox => return rect,
+        BackgroundClip::PaddingBox => (
+            style.border_top(),
+            style.border_right(),
+            style.border_bottom(),
+            style.border_left(),
+        ),
+        BackgroundClip::ContentBox => (
+            style.border_top() + style.padding_top.resolve(w),
+            style.border_right() + style.padding_right.resolve(w),
+            style.border_bottom() + style.padding_bottom.resolve(w),
+            style.border_left() + style.padding_left.resolve(w),
+        ),
+    };
+    Rect::new(
+        rect.x() + bl,
+        rect.y() + bt,
+        (rect.width() - bl - br).max(0.0),
+        (rect.height() - bt - bb).max(0.0),
+    )
 }
 
 fn object_fit_size(fit: ObjectFit) -> BackgroundSize {
@@ -781,6 +811,36 @@ mod tests {
                     .any(|i| matches!(i, DisplayItem::Text(run) if run.text == "Hi")),
             "underline missing: {:?}",
             list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_clips_background_to_content_box() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;padding:4px;border:2px solid black;background:red;background-clip:content-box}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(styles.style(id).background_clip, BackgroundClip::ContentBox);
+        assert_eq!(styles.style(id).cursor, "auto");
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        let bg = list.items().iter().find_map(|i| match i {
+            DisplayItem::Rect { rect, color } if *color == Rgba::rgb(255, 0, 0) => Some(*rect),
+            _ => None,
+        });
+        let bg = bg.expect("content-box background");
+        assert!(
+            (bg.width() - 40.0).abs() < 0.5,
+            "content width, got {}",
+            bg.width()
+        );
+        assert!(
+            (bg.height() - 20.0).abs() < 0.5,
+            "content height, got {}",
+            bg.height()
         );
     }
 

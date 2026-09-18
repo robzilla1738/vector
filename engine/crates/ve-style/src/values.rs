@@ -834,6 +834,18 @@ impl Default for BackgroundPosition {
 }
 
 keyword_enum! {
+    /// The `background-clip` property.
+    BackgroundClip {
+        /// Clip to the border box.
+        BorderBox = "border-box",
+        /// Clip to the padding box.
+        PaddingBox = "padding-box",
+        /// Clip to the content box.
+        ContentBox = "content-box",
+    }
+}
+
+keyword_enum! {
     /// The `background-repeat` property.
     BackgroundRepeat {
         /// Tile on both axes.

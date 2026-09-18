@@ -18,7 +18,8 @@ use cssparser::{Parser, Token};
 use ve_core::Size;
 
 use crate::values::{
-    AlignItems, BackgroundImage, BackgroundPosition, BackgroundRepeat, BackgroundSize,
+    AlignItems, BackgroundClip, BackgroundImage, BackgroundPosition, BackgroundRepeat,
+    BackgroundSize,
     BorderCollapse, BorderStyle, BoxShadow, BoxSizing, CaptionSide,
     Clear, ClipPath, Color, Content, ContentItem, Direction, Display, Filter, FlexDirection,
     FlexWrap,
@@ -744,6 +745,14 @@ mod conv {
         }
     }
 
+    pub fn cursor(v: &SpecifiedValue, _: &ConvertContext) -> Option<String> {
+        match v {
+            SpecifiedValue::Keyword(k) => Some(k.clone()),
+            SpecifiedValue::Str(s) => Some(s.clone()),
+            _ => None,
+        }
+    }
+
     pub fn ident_name(v: &SpecifiedValue, _: &ConvertContext) -> Option<String> {
         match v {
             SpecifiedValue::Keyword(k) if k == "none" => Some(String::new()),
@@ -1195,6 +1204,10 @@ property_table! {
     }, inherited = false, syntax = BackgroundPosition, convert = conv::background_position;
     /// `background-repeat`
     BackgroundRepeat: "background-repeat" => background_repeat: BackgroundRepeat = BackgroundRepeat::Repeat, inherited = false, syntax = Single, convert = conv::kw::<BackgroundRepeat>;
+    /// `background-clip`
+    BackgroundClip: "background-clip" => background_clip: BackgroundClip = BackgroundClip::BorderBox, inherited = false, syntax = Single, convert = conv::kw::<BackgroundClip>;
+    /// `cursor` (keyword stored as the canonical name)
+    Cursor: "cursor" => cursor: String = String::from("auto"), inherited = true, syntax = Single, convert = conv::cursor;
     /// `filter` (`none` or `blur()`)
     Filter: "filter" => filter: Filter = Filter::None, inherited = false, syntax = Single, convert = conv::filter;
     /// `animation-name` (`none` is empty)
@@ -1336,14 +1349,12 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "background-position-x",
     "background-position-y",
     "background-attachment",
-    "background-clip",
     "background-origin",
     "background-blend-mode",
     "border-image",
     "backdrop-filter",
     "mix-blend-mode",
     "isolation",
-    "cursor",
     "user-select",
     "will-change",
     "font-variant",
@@ -3073,6 +3084,9 @@ mod tests {
         ok("background-position", "center");
         ok("background-position", "right 20px");
         ok("background-repeat", "no-repeat");
+        ok("background-clip", "content-box");
+        ok("cursor", "pointer");
+        ok("cursor", "auto");
         ok("aspect-ratio", "auto");
         ok("aspect-ratio", "16 / 9");
         ok("aspect-ratio", "1.5");
@@ -3130,7 +3144,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 116);
+        assert_eq!(PropertyId::ALL.len(), 118);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
