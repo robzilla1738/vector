@@ -81,6 +81,52 @@ pub fn published_jetstream_ready(iterations: u32, executed_default_names: usize)
     iterations >= DEFAULT_ITERATION_COUNT && executed_default_names >= 72
 }
 
+/// Official Speedometer 3.0 `iterationCount` in `resources/shared/params.mjs`.
+pub const SPEEDOMETER_ITERATION_COUNT: u32 = 10;
+
+/// Official Speedometer 3.0 default suite count (`tests.mjs` default tags).
+pub const SPEEDOMETER_DEFAULT_SUITES: usize = 32;
+
+/// Official `geomeanToScore` in `benchmark-runner.mjs`: `1000 / geomean(ms)`.
+#[must_use]
+pub fn speedometer_geomean_to_score(geomean_ms: f64) -> Option<f64> {
+    if geomean_ms <= 0.0 {
+        return None;
+    }
+    Some(1000.0 / geomean_ms)
+}
+
+/// One official Speedometer iteration: geomean of the 32 suite totals, then
+/// `1000 / geomean`. Displayed Score is the arithmetic mean of 10 of these.
+#[must_use]
+pub fn official_speedometer_iteration_score(suite_totals_ms: &[f64]) -> Option<f64> {
+    if suite_totals_ms.len() < SPEEDOMETER_DEFAULT_SUITES {
+        return None;
+    }
+    if suite_totals_ms.iter().any(|v| *v <= 0.0) {
+        return None;
+    }
+    speedometer_geomean_to_score(geomean(suite_totals_ms)?)
+}
+
+/// True only when 10 iterations of all 32 default suites exist.
+#[must_use]
+pub fn published_speedometer_ready(iterations: u32, executed_default_suites: usize) -> bool {
+    iterations >= SPEEDOMETER_ITERATION_COUNT
+        && executed_default_suites >= SPEEDOMETER_DEFAULT_SUITES
+}
+
+/// Official MotionMark 1.3 default test count (`resources/runner/tests.js`).
+pub const MOTIONMARK_DEFAULT_TESTS: usize = 8;
+
+/// Official MotionMark score is the geomean of per-test ramp-complexity
+/// bootstrap medians (`results.js` ScoreCalculator, controller=`ramp`).
+/// initialize+animate samples are not that.
+#[must_use]
+pub fn published_motionmark_ready(ramp_complexity_scores: usize) -> bool {
+    ramp_complexity_scores >= MOTIONMARK_DEFAULT_TESTS
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -111,5 +157,24 @@ mod tests {
         assert!(official_default_score(&[18], DEFAULT_WORST_CASE_COUNT).is_none());
         assert!(!published_jetstream_ready(1, 72));
         assert!(!published_jetstream_ready(120, 12));
+    }
+
+    #[test]
+    fn speedometer_geomean_to_score_matches_webkit() {
+        assert!((speedometer_geomean_to_score(10.0).unwrap() - 100.0).abs() < 1e-9);
+        assert!(speedometer_geomean_to_score(0.0).is_none());
+        let totals = vec![10.0; SPEEDOMETER_DEFAULT_SUITES];
+        assert!((official_speedometer_iteration_score(&totals).unwrap() - 100.0).abs() < 1e-9);
+        assert!(official_speedometer_iteration_score(&[10.0; 31]).is_none());
+        assert!(!published_speedometer_ready(1, 32));
+        assert!(!published_speedometer_ready(10, 8));
+        assert!(published_speedometer_ready(10, 32));
+    }
+
+    #[test]
+    fn motionmark_initialize_animate_is_not_a_published_score() {
+        assert!(!published_motionmark_ready(0));
+        assert!(!published_motionmark_ready(7));
+        assert!(published_motionmark_ready(8));
     }
 }

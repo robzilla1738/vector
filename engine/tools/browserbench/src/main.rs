@@ -51,9 +51,11 @@ struct Args {
     /// Official MotionMark checkout (pin in `pins.json`) for official HTML workloads.
     #[arg(long)]
     motionmark_dir: Option<PathBuf>,
-    /// Use official JetStream Next scoring (`toScore` / first-average-worst /
-    /// geomean). Defaults iterations to 120 unless `--iterations` is set.
-    /// Does not claim a browserbench.org published score from a lab subset.
+    /// Apply official BrowserBench formulas (JetStream 120-iter first/average/worst,
+    /// Speedometer `1000/geomean` of 32 suite totals over 10 iterations,
+    /// MotionMark ramp-complexity bootstrap). Does not claim a published
+    /// score from a lab subset. JetStream defaults to 120 iterations unless
+    /// `--iterations` is set.
     #[arg(long)]
     official_score: bool,
 }
@@ -535,6 +537,56 @@ fn jetstream_official_attribution(
     })
 }
 
+fn speedometer_official_attribution(
+    suites: &[SuiteResult],
+    official_score: bool,
+    iterations: u32,
+) -> serde_json::Value {
+    let sp: Vec<&SuiteResult> = suites
+        .iter()
+        .filter(|s| s.name.starts_with("speedometer.3.0.") && s.status != "NOTRUN")
+        .collect();
+    let passed = sp.iter().filter(|s| s.status == "PASS").count();
+    let totals: Vec<f64> = sp
+        .iter()
+        .filter(|s| s.status == "PASS")
+        .filter_map(|s| s.p50_ms.map(|ms| ms as f64))
+        .filter(|ms| *ms > 0.0)
+        .collect();
+    let iteration_score = if official_score {
+        score::official_speedometer_iteration_score(&totals)
+    } else {
+        None
+    };
+    let published = official_score
+        && score::published_speedometer_ready(iterations, passed)
+        && iteration_score.is_some()
+        && sp.iter().all(|s| s.status == "PASS");
+    json!({
+        "formula": "Speedometer 3.0 benchmark-runner.mjs geomeanToScore=1000/geomean(suite totals ms); displayed Score is the arithmetic mean of 10 iteration scores",
+        "defaultIterationCount": score::SPEEDOMETER_ITERATION_COUNT,
+        "defaultSuites": score::SPEEDOMETER_DEFAULT_SUITES,
+        "applied": official_score,
+        "iterationsUsed": iterations,
+        "executedSuites": sp.len(),
+        "passedSuites": passed,
+        "iterationScore": iteration_score,
+        "officialSpeedometerScore": published,
+        "note": "A 1-iteration lab p50 set is not a published Score. officialSpeedometerScore is true only when all 32 default suites PASS across 10 official iterations."
+    })
+}
+
+fn motionmark_official_attribution(official_score: bool) -> serde_json::Value {
+    json!({
+        "formula": "MotionMark 1.3 results.js ScoreCalculator: controller=ramp, per-test score is bootstrap median of complexity regression, overall is geomean of those scores then sample mean across iterations",
+        "defaultTests": score::MOTIONMARK_DEFAULT_TESTS,
+        "applied": official_score,
+        "rampComplexityScores": 0,
+        "officialMotionMarkGeometricMean": false,
+        "note": "initialize+animate PASS is not a published MotionMark score. officialMotionMarkGeometricMean stays false until all 8 official names have ramp-complexity bootstrap scores."
+    })
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     let iterations = if args.official_score && !iterations_explicit() {
@@ -617,6 +669,8 @@ fn main() -> Result<()> {
             "kind": "adapted-workload-phases",
             "officialFullSuite": false,
             "officialJetStream": jetstream_official_attribution(&suites, args.official_score, iterations),
+            "officialSpeedometer": speedometer_official_attribution(&suites, args.official_score, iterations),
+            "officialMotionMark": motionmark_official_attribution(args.official_score),
             "gate": args.gate,
             "source": "official JetStream Next SunSpider group (12) plus speedometer.3.0.* and official MotionMark 1.3 names",
             "jetstreamSunspider": {
