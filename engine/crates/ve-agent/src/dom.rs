@@ -59,6 +59,9 @@ fn describe_node(page: &Page, id: NodeId) -> Option<JsValue> {
         if let Some(id_attr) = e.id() {
             map.insert("id".into(), JsValue::from(id_attr));
         }
+        if e.attributes.iter().any(|a| a.name.starts_with("on")) {
+            map.insert("on".into(), JsValue::Bool(true));
+        }
     }
     if let NodeKind::ShadowRoot { mode } = node.kind {
         map.insert("shadow".into(), JsValue::Bool(true));
@@ -392,6 +395,16 @@ pub(crate) fn host_call(
             .ok()
             .and_then(|id| crate::idl::LiveNode::new(&mut page.doc, id).parent_node())
             .map_or(JsValue::Null, pack)),
+        "ancestorPath" => {
+            let id = live(page, args, 0)?;
+            let mut out = Vec::new();
+            let mut cur = Some(id);
+            while let Some(n) = cur {
+                out.push(n);
+                cur = page.doc.parent(n).or_else(|| page.doc.host(n));
+            }
+            Ok(arr(out))
+        }
         "firstChild" => Ok(live(page, args, 0)
             .ok()
             .and_then(|id| page.visible_first_child(id))
@@ -462,12 +475,11 @@ pub(crate) fn host_call(
                 .filter_map(unpack)
                 .filter(|id| page.doc.contains(*id))
                 .collect();
-            let existing: Vec<NodeId> = page.doc.children(parent).collect();
-            for kid in existing {
-                let _ = crate::idl::LiveDom::new(page, parent).remove_child(kid);
-            }
-            for kid in incoming {
-                let _ = crate::idl::LiveDom::new(page, parent).append_child(kid);
+            page.doc
+                .replace_children(parent, &incoming)
+                .map_err(|e| fail(e.to_string()))?;
+            for kid in &incoming {
+                page.maybe_attach_blank_iframe(*kid);
             }
             Ok(JsValue::Undefined)
         }

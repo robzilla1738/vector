@@ -161,17 +161,46 @@ const ADD_STEPS: &str = r##"(function () {
   var input = todoInput();
   if (input) {
     kind = "todomvc";
+    var renderMs = { showEntries: 0, updateElementCount: 0, other: 0 };
+    if (window.app && app.View && app.View.prototype && !app.View.prototype.__veTimed) {
+      var origRender = app.View.prototype.render;
+      app.View.prototype.render = function (cmd, p) {
+        var t = Date.now();
+        var r = origRender.call(this, cmd, p);
+        var d = Date.now() - t;
+        if (cmd === "showEntries") renderMs.showEntries += d;
+        else if (cmd === "updateElementCount") renderMs.updateElementCount += d;
+        else renderMs.other += d;
+        return r;
+      };
+      app.View.prototype.__veTimed = true;
+    }
+    var focusMs = 0, valueMs = 0, inputMs = 0, changeMs = 0, enterMs = 0;
     var addStarted = Date.now();
     for (var i = 0; i < 100; i++) {
+      var t0 = Date.now();
       input.focus();
+      focusMs += Date.now() - t0;
+      t0 = Date.now();
       input.value = "Task-" + i;
+      valueMs += Date.now() - t0;
+      t0 = Date.now();
       fire(input, "input", { bubbles: true, data: "Task-" + i, inputType: "insertText" }, InputEvent);
+      inputMs += Date.now() - t0;
+      t0 = Date.now();
       fire(input, "change");
+      changeMs += Date.now() - t0;
+      t0 = Date.now();
       enter(input);
+      enterMs += Date.now() - t0;
     }
     var addMs = Date.now() - addStarted;
     var added = countTodos();
-    window.__veBench = { kind: kind, ok: added >= 100, added: added, remaining: added, addMs: addMs };
+    window.__veBench = {
+      kind: kind, ok: added >= 100, added: added, remaining: added, addMs: addMs,
+      focusMs: focusMs, valueMs: valueMs, inputMs: inputMs, changeMs: changeMs, enterMs: enterMs,
+      showEntriesMs: renderMs.showEntries, updateElementCountMs: renderMs.updateElementCount, otherRenderMs: renderMs.other
+    };
     return JSON.stringify(window.__veBench);
   }
   var news = document.querySelector("#navbar-dropdown-toggle");
@@ -717,6 +746,20 @@ fn run_one(
                             }
                             if let Some(n) = v.get("finishMs").and_then(serde_json::Value::as_u64) {
                                 obj.insert("finishMs".into(), serde_json::json!(n));
+                            }
+                            for key in [
+                                "focusMs",
+                                "valueMs",
+                                "inputMs",
+                                "changeMs",
+                                "enterMs",
+                                "showEntriesMs",
+                                "updateElementCountMs",
+                                "otherRenderMs",
+                            ] {
+                                if let Some(n) = v.get(key).and_then(serde_json::Value::as_u64) {
+                                    obj.insert(key.into(), serde_json::json!(n));
+                                }
                             }
                         }
                     }

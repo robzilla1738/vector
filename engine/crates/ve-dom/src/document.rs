@@ -612,7 +612,64 @@ impl Document {
         Ok(parent)
     }
 
-    /// Detaches `id` and frees it together with its whole subtree (including
+    /// Replaces `parent`'s children with `incoming` in one splice.
+    ///
+    /// Same tree and journal effects as remove-all then append-each, but
+    /// dirties `parent` once instead of once per child. Used by the DOM
+    /// `replaceChildren` binding (TodoMVC `showEntries`).
+    pub fn replace_children(&mut self, parent: NodeId, incoming: &[NodeId]) -> Result<()> {
+        self.try_get(parent)?;
+        for &kid in incoming {
+            self.check_insertable(parent, kid)?;
+        }
+        let existing: Vec<NodeId> = self.children(parent).collect();
+        for &kid in &existing {
+            let (previous_sibling, next_sibling) = self
+                .get(kid)
+                .map_or((None, None), |n| (n.prev_sibling(), n.next_sibling()));
+            if let Some(old_parent) = self.detach(kid) {
+                self.journal.record(Mutation::NodeRemoved {
+                    node: kid,
+                    parent: old_parent,
+                    previous_sibling,
+                    next_sibling,
+                });
+            }
+        }
+        for &kid in incoming {
+            self.detach(kid);
+            let prev = self.try_get(parent)?.last_child;
+            {
+                let node = self.try_get_mut(kid)?;
+                node.parent = Some(parent);
+                node.prev_sibling = prev;
+                node.next_sibling = None;
+            }
+            match prev {
+                Some(p) => self.try_get_mut(p)?.next_sibling = Some(kid),
+                None => self.try_get_mut(parent)?.first_child = Some(kid),
+            }
+            self.try_get_mut(parent)?.last_child = Some(kid);
+            let (previous_sibling, next_sibling) = self
+                .get(kid)
+                .map_or((None, None), |n| (n.prev_sibling(), n.next_sibling()));
+            self.journal.record(Mutation::NodeInserted {
+                node: kid,
+                parent,
+                previous_sibling,
+                next_sibling,
+            });
+            self.mark_dirty(kid, DirtyFlags::ALL);
+        }
+        self.mark_dirty(
+            parent,
+            DirtyFlags::STYLE | DirtyFlags::LAYOUT | DirtyFlags::A11Y | DirtyFlags::PAINT,
+        );
+        self.dirty_auto_dir_ancestors(parent);
+        Ok(())
+    }
+
+    /// Detaches `id` and frees it together with its whole subtree (including)
     /// shadow trees and template contents). All ids in the subtree become
     /// stale.
     pub fn destroy(&mut self, id: NodeId) -> Result<()> {
@@ -1828,5 +1885,22 @@ mod tests {
         assert_eq!(doc.assigned_nodes(slot_default), vec![def]);
         assert_eq!(doc.containing_shadow_root(slot_title), Some(shadow));
         assert!(doc.assigned_nodes(host).is_empty());
+    }
+
+    #[test]
+    fn replace_children_swaps_the_child_list_and_detaches_the_old() {
+        let mut doc = Document::new();
+        let ul = html(&mut doc, "ul");
+        doc.append_child(doc.root(), ul).unwrap();
+        let old = html(&mut doc, "li");
+        doc.append_child(ul, old).unwrap();
+        let a = html(&mut doc, "li");
+        let b = html(&mut doc, "li");
+        doc.replace_children(ul, &[a, b]).unwrap();
+        let kids: Vec<_> = doc.children(ul).collect();
+        assert_eq!(kids, vec![a, b]);
+        assert_eq!(doc.parent(old), None);
+        assert_eq!(doc.parent(a), Some(ul));
+        assert_eq!(doc.parent(b), Some(ul));
     }
 }

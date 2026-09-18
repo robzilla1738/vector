@@ -153,6 +153,11 @@
   }
 
   function composedPath(start) {
+    if (start && start.__h) {
+      const path = list(D("ancestorPath", start.__h));
+      path.push(window);
+      return path;
+    }
     const path = [];
     let n = start;
     while (n) {
@@ -223,7 +228,7 @@
         if (!cap && typeof prop === "function") {
           try { prop.call(node, ev); } catch (e) { __ve.log("error", String(e)); }
         }
-        if (!cap && node.getAttribute && typeof prop !== "function") {
+        if (!cap && node.__hasOnAttr && node.getAttribute && typeof prop !== "function") {
           const src = node.getAttribute("on" + type);
           if (src) {
             try { new Function("event", src).call(node, ev); } catch (e) { __ve.log("error", String(e)); }
@@ -348,6 +353,7 @@
       installDocumentLocation(n);
     }
     if (info.t === 1) {
+      if (info.on) n.__hasOnAttr = true;
       if (registry.size) upgradeOne(n, false);
       if (info.id) {
         try { exposeWindowName(info.id); } catch (e) {}
@@ -1173,7 +1179,13 @@
     set nodeValue(v) { D("setNodeValue", this.__h, v === null ? "" : String(v)); }
     get textContent() { return D("textContent", this.__h); }
     set textContent(v) { D("setTextContent", this.__h, v == null ? "" : String(v)); }
-    get parentNode() { return wrapDoc(D("parentNode", this.__h)); }
+    get parentNode() {
+      if (this.__pgen === liveListGen) return this.__parent;
+      const p = wrapDoc(D("parentNode", this.__h));
+      this.__parent = p;
+      this.__pgen = liveListGen;
+      return p;
+    }
     get parentElement() {
       const p = this.parentNode;
       return p && p.nodeType === 1 ? p : null;
@@ -2039,6 +2051,7 @@
       const js = attrToJs[String(n).toLowerCase()];
       if (js) delete ariaState(this)[js];
       const lower = String(n).toLowerCase();
+      if (lower.startsWith("on")) this.__hasOnAttr = true;
       if (lower === "id") exposeWindowName(String(v));
       if (lower === "nonce") nonceMap.set(this, String(v));
     };

@@ -3930,6 +3930,23 @@ fn stream_lock_bodyused() {
 }
 
 #[test]
+fn content_onclick_attribute_still_runs() {
+    let mut page = open(r#"<button id="b" onclick="window.__hit = (window.__hit||0)+1">Go</button>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var b = document.getElementById("b");
+              b.click();
+              var ev = new Event("click", { bubbles: true });
+              b.dispatchEvent(ev);
+              return { hit: window.__hit };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hit"], 2, "{v}");
+}
+
+#[test]
 fn todomvc_es5_measured_phases() {
     use std::time::Instant;
     let t0 = Instant::now();
