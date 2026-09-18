@@ -471,6 +471,8 @@ fn official_ramp_start(extras: &[(&str, &str)], interval_secs: u32) -> String {
     "complexity": 1
   }};
 {extra_js}  var b = new window.benchmarkClass(options);
+  var t0 = Date.now();
+  b._getTimestamp = function () {{ return Date.now() - t0; }};
   window.__veMm = {{ bench: b, done: false, err: null, data: null }};
   b.initialize({{}}).then(function () {{
     return b.run();
