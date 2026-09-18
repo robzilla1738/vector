@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
+import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   authorizeProgram,
   attributeTodoMvc,
@@ -106,45 +108,77 @@ describe("Gate D permissions and durable writes", () => {
   });
 });
 
+async function spawnFormsWriteCounter(): Promise<{
+  origin: string;
+  stop: () => void;
+  dir: string;
+}> {
+  const dir = mkdtempSync(join(tmpdir(), "vector-writes-"));
+  const here = dirname(fileURLToPath(import.meta.url));
+  const script = join(here, "../../fixtures/forms-app/serve.ts");
+  const child = spawn(process.execPath, ["--experimental-strip-types", script], {
+    env: {
+      ...process.env,
+      PORT: "0",
+      VECTOR_WRITE_COUNTER_PATH: join(dir, "writes.json"),
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const origin = await new Promise<string>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) reject(new Error("forms-app did not bind"));
+    }, 10_000);
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn();
+    };
+    const onData = (chunk: Buffer) => {
+      const text = chunk.toString("utf8");
+      const m = /http:\/\/127\.0\.0\.1:(\d+)/.exec(text);
+      if (m) finish(() => resolve(`http://127.0.0.1:${m[1]}`));
+    };
+    child.stdout?.on("data", onData);
+    child.stderr?.on("data", onData);
+    child.once("exit", (code) => {
+      finish(() => reject(new Error(`forms-app exited ${code}`)));
+    });
+  });
+  return {
+    origin,
+    dir,
+    stop: () => {
+      child.kill();
+      rmSync(dir, { recursive: true, force: true });
+    },
+  };
+}
+
 describe("Gate D fixture write counter", () => {
   it("lost response does not increment a fixture write counter twice", async () => {
-    const http = await import("node:http");
-    let writes = 0;
-    const server = http.createServer((req, res) => {
-      if (req.url === "/api/writes" && req.method === "POST") {
-        writes += 1;
-        res.end(JSON.stringify({ writes }));
-        return;
+    const fixture = await spawnFormsWriteCounter();
+    try {
+      const path = join(fixture.dir, "ledger.json");
+      const ledger = new DurableWriteLedger(path);
+      const signature = stepSignature([{ op: "click", target: "pay" }]);
+      const first = ledger.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
+      expect(first.duplicate).toBe(false);
+      expect(first.intent.status).toBe("pending");
+      await fetch(`${fixture.origin}/api/writes`, { method: "POST" });
+      ledger.confirm(first.intent.id);
+      const restarted = new DurableWriteLedger(path);
+      const lost = restarted.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
+      expect(lost.duplicate).toBe(true);
+      if (!lost.duplicate) {
+        await fetch(`${fixture.origin}/api/writes`, { method: "POST" });
       }
-      if (req.url === "/api/writes") {
-        res.end(JSON.stringify({ writes }));
-        return;
-      }
-      res.end(String(writes));
-    });
-    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-    const addr = server.address();
-    const port = typeof addr === "object" && addr ? addr.port : 0;
-    const origin = `http://127.0.0.1:${port}`;
-    const dir = mkdtempSync(join(tmpdir(), "vector-ledger-"));
-    const path = join(dir, "ledger.json");
-    const ledger = new DurableWriteLedger(path);
-    const signature = stepSignature([{ op: "click", target: "pay" }]);
-    const first = ledger.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
-    expect(first.duplicate).toBe(false);
-    await fetch(`${origin}/api/writes`, { method: "POST" });
-    ledger.confirm(first.intent.id);
-    const restarted = new DurableWriteLedger(path);
-    const lost = restarted.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
-    expect(lost.duplicate).toBe(true);
-    if (!lost.duplicate) {
-      await fetch(`${origin}/api/writes`, { method: "POST" });
+      const counted = (await (await fetch(`${fixture.origin}/api/writes`)).json()) as { writes: number };
+      expect(counted.writes).toBe(1);
+    } finally {
+      fixture.stop();
     }
-    const counted = await (await fetch(`${origin}/api/writes`)).json() as { writes: number };
-    server.close();
-    rmSync(dir, { recursive: true, force: true });
-    expect(writes).toBe(1);
-    expect(counted.writes).toBe(1);
   });
 
   it("pending intent persisted before dispatch blocks a restart replay", () => {
