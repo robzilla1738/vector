@@ -490,6 +490,15 @@ pub mod bindings {
     }
 }
 
+/// Keep `napi_register_module_v1` reachable from this crate so rustc's
+/// Windows cdylib export list and MSVC `/INCLUDE` can see it.
+#[cfg(all(feature = "napi", target_os = "windows"))]
+#[used]
+static VE_NAPI_REGISTER: unsafe extern "C" fn(
+    napi::sys::napi_env,
+    napi::sys::napi_value,
+) -> napi::sys::napi_value = napi::bindgen_prelude::napi_register_module_v1;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -518,5 +527,18 @@ mod tests {
         assert_eq!(&buf[..4], FERRY_MAGIC);
         assert_eq!(decode_ferry(&buf), json);
         assert_eq!(decode_ferry(json.as_bytes()), json);
+    }
+
+    #[test]
+    fn windows_cdylib_exports_napi_register_module_v1() {
+        let src = include_str!("../build.rs");
+        assert!(
+            src.contains("/EXPORT:napi_register_module_v1"),
+            "Windows Node loads the addon via GetProcAddress(napi_register_module_v1)"
+        );
+        assert!(
+            src.contains("/INCLUDE:napi_register_module_v1"),
+            "MSVC /OPT:REF must not discard the Node entry point"
+        );
     }
 }

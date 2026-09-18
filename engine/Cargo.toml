@@ -102,7 +102,7 @@ image = { version = "0.25.10", default-features = false, features = ["png", "jpe
 pollster = "0.4.0"
 
 # ---- Node bindings (optional; crate ve-napi) --------------------------------
-napi = { version = "3.12.4", default-features = false, features = ["napi8", "serde-json"] }
+napi = { version = "3.12.4", default-features = false, features = ["napi8", "serde-json", "dyn-symbols"] }
 napi-derive = "3.6.5"
 napi-build = "2.4.2"
 
