@@ -469,6 +469,15 @@ const WASM_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
             "./wasm/j2cl-box2d/build/Box2dBenchmark_j2wasm_binary.wasm",
         )],
     ),
+    (
+        "Dart-flute-todomvc-wasm",
+        &["./Dart/benchmark.js"],
+        false,
+        &[
+            ("jsModule", "./Dart/build/flute.todomvc.dart2wasm.mjs"),
+            ("wasmBinary", "./Dart/build/flute.todomvc.dart2wasm.wasm"),
+        ],
+    ),
 ];
 
 const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[];
@@ -755,6 +764,51 @@ JetStream.getBinary = async function (key) {
   const out = new Int8Array(text.length);
   for (let i = 0; i < text.length; i++) out[i] = text.charCodeAt(i) & 0xff;
   return out;
+};
+JetStream.__veRewriteModule = function (src) {
+  const names = [];
+  let rewritten = String(src);
+  rewritten = rewritten.replace(
+    /^export\s+(async\s+)?function\s+(\w+)/gm,
+    function (_, asyncKw, name) {
+      names.push(name);
+      return (asyncKw || "") + "function " + name;
+    }
+  );
+  rewritten = rewritten.replace(
+    /^export\s+class\s+(\w+)/gm,
+    function (_, name) {
+      names.push(name);
+      return "class " + name;
+    }
+  );
+  rewritten = rewritten.replace(
+    /^export\s+(?:const|let|var)\s+(\w+)\s*=/gm,
+    function (_, name) {
+      names.push(name);
+      return "var " + name + " =";
+    }
+  );
+  rewritten = rewritten.replace(
+    /^export\s*\{([^}]+)\};?/gm,
+    function (_, list) {
+      list.split(",").forEach(function (part) {
+        const bits = part.trim().split(/\s+as\s+/);
+        const to = (bits[1] || bits[0] || "").trim();
+        if (to) names.push(to);
+      });
+      return "";
+    }
+  );
+  rewritten = rewritten.replace(/^export\s+default\s+/gm, "var __veDefault = ");
+  if (/__veDefault\s*=/.test(rewritten)) names.push("default: __veDefault");
+  return rewritten + "\nreturn { " + names.join(", ") + " };\n";
+};
+JetStream.dynamicImport = async function (key) {
+  const src = JetStream.__vePreload[key];
+  if (src == null) throw new Error("missing preload " + key);
+  const factory = new Function(JetStream.__veRewriteModule(src));
+  return factory();
 };
 "#,
     );
