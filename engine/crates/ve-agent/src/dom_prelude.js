@@ -4054,12 +4054,17 @@
     set text(v) { this.textContent = v == null ? "" : String(v); }
     get referrerPolicy() { return this.getAttribute("referrerpolicy") || ""; }
     set referrerPolicy(v) { this.setAttribute("referrerpolicy", v == null ? "" : String(v)); }
-    static supports(type) {
+  }
+  {
+    const supports = function supports(type) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'supports' on 'HTMLScriptElement': 1 argument required, but only 0 present.");
       }
       return String(type) === "classic" || String(type) === "module";
-    }
+    };
+    Object.defineProperty(HTMLScriptElement, "supports", {
+      value: supports, writable: true, enumerable: true, configurable: true,
+    });
   }
   class HTMLStyleElement extends HTMLElement {
     get blocking() { return this._blockingTL || (this._blockingTL = new DOMTokenList(this.__h, "blocking", RENDER_TOKENS)); }
@@ -4095,7 +4100,10 @@
     get value() { return this._outputValue == null ? (this.textContent || "") : this._outputValue; }
     set value(v) { this._outputValue = v == null ? "" : String(v); }
   }
-  class HTMLParamElement extends HTMLElement {}
+  class HTMLParamElement extends HTMLElement {
+    get type() { return this.getAttribute("type") || ""; }
+    set type(v) { this.setAttribute("type", v == null ? "" : String(v)); }
+  }
   class HTMLSlotElement extends HTMLElement {
     assign(...nodes) {
       D("slotAssign", this.__h, JSON.stringify(nodes.map((n) => n && n.__h).filter(Boolean)));
@@ -7571,6 +7579,16 @@
   exposeCtor("Image", Image);
   exposeCtor("Audio", Audio);
   exposeCtor("Option", Option);
+  for (const [name, ctor] of [
+    ["BeforeUnloadEvent", BeforeUnloadEvent],
+    ["PageTransitionEvent", PageTransitionEvent],
+    ["PageRevealEvent", PageRevealEvent],
+    ["SubmitEvent", SubmitEvent],
+    ["TrustedHTML", TrustedHTML],
+  ]) {
+    try { delete globalThis[name]; } catch (e) {}
+    exposeCtor(name, ctor);
+  }
   try {
     Object.defineProperty(globalThis, "external", {
       value: windowExternal,
@@ -7863,7 +7881,25 @@
       }
       try { Object.defineProperty(location, name, out); } catch (e) {}
     }
+    try {
+      Object.defineProperty(Location.prototype, "toString", {
+        value: Location.prototype.toString,
+        writable: false,
+        enumerable: true,
+        configurable: false,
+      });
+    } catch (e) {}
   }
+  Object.defineProperties(External.prototype, {
+    AddSearchProvider: {
+      value: External.prototype.AddSearchProvider || function AddSearchProvider() {},
+      writable: true, enumerable: true, configurable: true,
+    },
+    IsSearchProviderInstalled: {
+      value: External.prototype.IsSearchProviderInstalled || function IsSearchProviderInstalled() { return 0; },
+      writable: true, enumerable: true, configurable: true,
+    },
+  });
   for (const name of ["parseHTMLUnsafe", "parseHTML"]) {
     const fn = Document[name];
     if (typeof fn === "function") {
