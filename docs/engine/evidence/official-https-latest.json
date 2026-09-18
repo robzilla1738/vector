@@ -1,13 +1,10 @@
 {
-  "fixtures": "/tmp/wpt",
-  "tested_subset": 2,
-  "overall_manifest": 771,
-  "http_origin": "http://127.0.0.1:33261",
-  "https_origin": "https://127.0.0.1:37077",
+  "review": "Vector_Current_Review_60b2d41",
   "https": true,
-  "tree_complete": false,
-  "fonts_dir": "/workspace/engine/tools/wpt-harness/../../conformance/fonts",
-  "idlharness": true,
+  "httpsOrigin": "https://127.0.0.1:38783",
+  "httpOrigin": "http://127.0.0.1:45985",
+  "unmodifiedUpstream": true,
+  "pin": "7c20438303d2b39c8a2b924ed57dfa6448fd2ed2",
   "totals": {
     "total": 2,
     "pass": 1,
@@ -21,13 +18,13 @@
     {
       "path": "html/dom/usvstring-reflection.https.html",
       "status": "PASS",
-      "duration_ms": 561
+      "duration_ms": 521
     },
     {
       "path": "html/dom/idlharness.https.html",
       "status": "FAIL",
-      "detail": "idl_test setup: 1:promise_test: Unhandled rejection with value: object \"Error fetching /interfaces/html.idl.\"",
-      "duration_ms": 936
+      "duration_ms": 1580,
+      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. FAIL is missing engine WebIDL surfaces (e.g. HTMLAllCollection), not a fetch/harness 404."
     }
   ]
 }

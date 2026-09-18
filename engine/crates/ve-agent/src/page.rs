@@ -362,6 +362,9 @@ pub struct Page {
     /// Parser-inserted script currently running; later nodes are not visible
     /// via `getElementById` until this is cleared (HTML parser script point).
     pub(crate) parser_limit: Option<NodeId>,
+    /// Reused `DOMParser` document when its body has been emptied (TodoMVC
+    /// `showEntries` parses a growing list 100 times).
+    pub(crate) parser_scratch: Option<NodeId>,
     /// Arena length when document scripts started; later ids are script-created.
     pub(crate) parse_hi: u32,
     /// `rel=expect` links whose target has already been seen (stay unblocked).
@@ -864,6 +867,7 @@ impl Page {
             isolated_frames: HashMap::new(),
             document_scripts_pending: false,
             parser_limit: None,
+            parser_scratch: None,
             parse_hi: 0,
             expect_satisfied: HashSet::new(),
             expect_from_head: HashSet::new(),

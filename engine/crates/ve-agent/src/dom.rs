@@ -485,11 +485,28 @@ pub(crate) fn host_call(
         }
         "parseHTMLDocument" => {
             let html = arg_str(args, 0);
-            let doc = crate::idl::LiveImpl::new(page).create_h_t_m_l_document(Some(String::new()));
+            let reusable = page.parser_scratch.filter(|&id| {
+                page.doc.contains(id)
+                    && page
+                        .doc
+                        .body_of(id)
+                        .is_some_and(|b| page.doc.first_child(b).is_none())
+            });
+            let doc = match reusable {
+                Some(id) => id,
+                None => {
+                    crate::idl::LiveImpl::new(page).create_h_t_m_l_document(Some(String::new()))
+                }
+            };
+            page.parser_scratch = Some(doc);
             let body = page
                 .doc
-                .descendants(doc)
-                .find(|&id| page.doc.element(id).is_some_and(|e| e.name == "body"))
+                .body_of(doc)
+                .or_else(|| {
+                    page.doc
+                        .descendants(doc)
+                        .find(|&id| page.doc.element(id).is_some_and(|e| e.name == "body"))
+                })
                 .ok_or_else(|| fail("no body"))?;
             crate::idl::LiveDom::new(page, body).set_inner_h_t_m_l(html);
             Ok(pack(doc))

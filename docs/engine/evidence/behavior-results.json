@@ -15,7 +15,7 @@
       "pass": 28,
       "fail": 2,
       "total": 30,
-      "tls": "official html/dom/usvstring-reflection.https.html PASS over wpt-harness --https (https://127.0.0.1, fixture CA). official html/dom/idlharness.https.html FAIL: Error fetching /interfaces/html.idl (harness/environment, not a new engine counterexample). extra-CA path: ve-net loopback_https_with_fixture_ca.",
+      "tls": "official html/dom/usvstring-reflection.https.html PASS over wpt-harness --https. official html/dom/idlharness.https.html now fetches /interfaces/*.idl over TLS and FAILs on missing engine WebIDL surfaces (HTMLAllCollection and others), not a 404.",
       "unmodifiedUpstream": true
     },
     "supportedSubset": {
@@ -29,7 +29,7 @@
     "exclusions": [
       "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\"",
       "sanitize-template-element.html expects addedNodes SPAN while the inserted span has id ok",
-      "official BrowserBench / full html/dom tree outside partial-updates; idlharness.https.html still FAIL on missing /interfaces/html.idl"
+      "official BrowserBench / full html/dom tree outside partial-updates; idlharness.https.html FAIL is engine WebIDL coverage, scored over TLS"
     ],
     "remainingOfficialFails": [
       "sanitize-template-element.html",

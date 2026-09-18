@@ -822,6 +822,19 @@ fn check_pixel_expectations(html: &str, w: u32, h: u32, rgba: &[u8]) -> Option<S
     None
 }
 
+fn discover_interfaces(wpt: &Path) -> Option<PathBuf> {
+    let mut cands = Vec::new();
+    if let Some(env) = std::env::var_os("VECTOR_WPT_INTERFACES") {
+        cands.push(PathBuf::from(env));
+    }
+    cands.push(wpt.join("interfaces"));
+    if let Some(parent) = wpt.parent() {
+        cands.push(parent.join("wpt-src/wpt/interfaces"));
+    }
+    cands.push(PathBuf::from("/tmp/wpt-src/wpt/interfaces"));
+    cands.into_iter().find(|p| p.is_dir())
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     let manifest = load_manifest(&args.manifest)?;
@@ -847,6 +860,11 @@ fn main() -> Result<()> {
     ];
     if let Some(wpt) = &args.wpt_dir {
         roots.push((String::new(), wpt.clone()));
+        if !wpt.join("interfaces").is_dir() {
+            if let Some(interfaces) = discover_interfaces(wpt) {
+                roots.push(("interfaces".into(), interfaces));
+            }
+        }
     }
     let http = if args.http || args.wpt_dir.is_some() {
         Some(http_serve::DirServer::start(roots.clone())?)

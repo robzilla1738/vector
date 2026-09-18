@@ -783,6 +783,28 @@ fn domparser_replacechildren_and_keycode() {
 }
 
 #[test]
+fn domparser_keeps_an_unmoved_document_when_parsing_again() {
+    let mut page = open(r#"<body><div id="h"></div></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              var p = new DOMParser();
+              var a = p.parseFromString("<p id=a>one</p>", "text/html");
+              var b = p.parseFromString("<p id=b>two</p>", "text/html");
+              return {
+                a: a.body && a.body.textContent,
+                b: b.body && b.body.textContent,
+                same: a === b
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["a"], "one", "{v}");
+    assert_eq!(v["b"], "two", "{v}");
+    assert_eq!(v["same"], false, "{v}");
+}
+
+#[test]
 fn template_content_cssstylesheet_and_import_node() {
     let mut page = open(r#"<body></body>"#);
     let v = page
