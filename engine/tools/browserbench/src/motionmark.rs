@@ -14,6 +14,37 @@ use ve_style::Rgba;
 use crate::percentile;
 use crate::{SuiteResult, pin};
 
+/// Official MotionMark 1.3 names from `resources/runner/tests.js` at the pin.
+pub(crate) const OFFICIAL_NAMES: &[&str] = &[
+    "Multiply",
+    "Canvas Arcs",
+    "Leaves",
+    "Paths",
+    "Canvas Lines",
+    "Images",
+    "Design",
+    "Suits",
+];
+
+pub(crate) fn official_names() -> Vec<SuiteResult> {
+    let revision = pin("motionmark", "revision");
+    OFFICIAL_NAMES
+        .iter()
+        .map(|name| SuiteResult {
+            name: format!("motionmark.1.3.{name}"),
+            status: "NOTRUN",
+            revision: revision.clone(),
+            samples_ms: None,
+            p50_ms: None,
+            p95_ms: None,
+            detail: Some(
+                "official MotionMark 1.3 name recorded; workload HTML not executed. Not a published score."
+                    .into(),
+            ),
+        })
+        .collect()
+}
+
 /// `MotionMark` Multiply-class: many moving rects presented on the GPU with no CPU readback.
 pub(crate) fn run_gpu(iterations: u32) -> SuiteResult {
     let revision = pin("motionmark", "revision");

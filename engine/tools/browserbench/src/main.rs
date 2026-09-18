@@ -1,12 +1,14 @@
 //! Official-suite identity laboratory (VEC-021).
 //!
-//! Runs pinned `JetStream` 3 `SunSpider/n-body` and `crypto-sha1` on V8, every
-//! official `Speedometer` 3.0 suite name (vendored workloads execute; others
-//! `NOTRUN`), a TodoMVC-class DOM mutation, a canvas `fillRect` loop, and
-//! `MotionMark` GPU presentation through vello (`present_list`, no CPU
-//! readback). Scores are never fabricated. Identity is always written.
+//! Runs the official JetStream Next `SunSpider` group (12 named tests) on V8,
+//! every official `Speedometer` 3.0 suite name (vendored workloads execute;
+//! others `NOTRUN`), a TodoMVC-class DOM mutation, a canvas `fillRect` loop,
+//! official MotionMark 1.3 names (Multiply-class GPU present plus the other
+//! seven recorded `NOTRUN`), and `present_list` with no CPU readback. Scores
+//! are never fabricated. Identity is always written.
 
 mod esm;
+mod jetstream;
 mod motionmark;
 mod speedometer;
 
@@ -20,14 +22,6 @@ use serde_json::json;
 use ve_api::{EngineConfig, OpenRequest, VectorEngine};
 use ve_core::Size;
 
-const JETSTREAM_N_BODY: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/vendor/jetstream/n-body.js"
-));
-const JETSTREAM_SHA1: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/vendor/jetstream/crypto-sha1.js"
-));
 const PINS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/pins.json"));
 
 /// Official suite identity lab.
@@ -43,10 +37,13 @@ struct Args {
     /// Timed iterations per runnable suite.
     #[arg(long, default_value_t = 3)]
     iterations: u32,
-    /// Run only the merge-gated suites (`JetStream`, TodoMVC-JavaScript-ES5,
+    /// Run only the merge-gated suites (`JetStream` n-body/sha1, TodoMVC-JavaScript-ES5,
     /// `MotionMark` GPU). Other official Speedometer names are recorded `NOTRUN`.
     #[arg(long)]
     gate: bool,
+    /// Run one family: `all`, `jetstream`, `speedometer`, or `motionmark`.
+    #[arg(long, default_value = "all")]
+    only: String,
 }
 
 #[derive(Serialize)]
@@ -83,10 +80,10 @@ pub(crate) fn pin(suite: &str, field: &str) -> String {
         .to_owned()
 }
 
-fn jetstream(
+pub(crate) fn jetstream(
     engine: &mut VectorEngine,
     iterations: u32,
-    name: &'static str,
+    name: &str,
     source: &str,
     path: &str,
 ) -> SuiteResult {
@@ -319,30 +316,24 @@ fn main() -> Result<()> {
         policy: ve_api::NetworkPolicy::permissive(),
         ..EngineConfig::default()
     });
-    eprintln!("browserbench: start jetstream.n-body");
-    let mut suites = vec![jetstream(
-        &mut engine,
-        args.iterations,
-        "jetstream.n-body",
-        JETSTREAM_N_BODY,
-        "n-body",
-    )];
-    eprintln!("browserbench: start jetstream.crypto-sha1");
-    suites.push(jetstream(
-        &mut engine,
-        args.iterations,
-        "jetstream.crypto-sha1",
-        JETSTREAM_SHA1,
-        "crypto-sha1",
-    ));
-    suites.extend(speedometer::run_official(
-        &mut engine,
-        args.iterations,
-        args.gate,
-    ));
-    suites.push(speedometer_class(&mut engine, args.iterations));
-    suites.push(motionmark_class(&mut engine, args.iterations));
-    suites.push(motionmark::run_gpu(args.iterations));
+    let only = args.only.as_str();
+    let mut suites = Vec::new();
+    if only == "all" || only == "jetstream" {
+        suites.extend(jetstream::run(&mut engine, args.iterations));
+    }
+    if only == "all" || only == "speedometer" {
+        suites.extend(speedometer::run_official(
+            &mut engine,
+            args.iterations,
+            args.gate,
+        ));
+        suites.push(speedometer_class(&mut engine, args.iterations));
+    }
+    if only == "all" || only == "motionmark" {
+        suites.extend(motionmark::official_names());
+        suites.push(motionmark_class(&mut engine, args.iterations));
+        suites.push(motionmark::run_gpu(args.iterations));
+    }
     let report = json!({
         "backend": "vector-engine",
         "chromium": false,
@@ -357,9 +348,25 @@ fn main() -> Result<()> {
         "suites": suites,
         "attribution": {
             "kind": "adapted-workload-phases",
-            "officialFullSuite": !args.gate && suites.iter().filter(|s| s.name.starts_with("speedometer.3.0.")).all(|s| s.status != "NOTRUN"),
+            "officialFullSuite": !args.gate
+                && suites.iter().any(|s| s.name.starts_with("speedometer.3.0."))
+                && suites
+                    .iter()
+                    .filter(|s| s.name.starts_with("speedometer.3.0."))
+                    .all(|s| s.status != "NOTRUN"),
             "gate": args.gate,
-            "source": "speedometer.3.0.* plus jetstream n-body/sha1 and MotionMark GPU when executed",
+            "source": "official JetStream Next SunSpider group (12) plus speedometer.3.0.* and official MotionMark 1.3 names",
+            "jetstreamSunspider": {
+                "executed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status != "NOTRUN").count(),
+                "passed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "PASS").count(),
+                "failed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "FAIL").count(),
+                "officialGroup": 12,
+                "note": "Official SunSpider group from JetStreamDriver.js at the pin. Not a JetStream Next geometric-mean published score."
+            },
+            "motionmark13": {
+                "officialNames": 8,
+                "note": "Official MotionMark 1.3 names from resources/runner/tests.js. canvas-class and gpu.multiply are adapted class probes, not a published MotionMark score."
+            },
             "phases": ["parse/style/layout(openMs)", "js(jsMs)", "harnessSettle(settleMs)", "unaccounted"],
             "speedometer30": {
                 "executed": suites.iter().filter(|s| s.name.starts_with("speedometer.3.0.") && s.status != "NOTRUN").count(),
@@ -383,7 +390,7 @@ fn main() -> Result<()> {
     }
     if suites.iter().any(|s| {
         s.status == "FAIL"
-            && (s.name.starts_with("jetstream.")
+            && (jetstream::GATED.contains(&s.name.as_str())
                 || s.name == "speedometer.3.0.TodoMVC-JavaScript-ES5"
                 || s.name == "motionmark.gpu.multiply")
     }) {
