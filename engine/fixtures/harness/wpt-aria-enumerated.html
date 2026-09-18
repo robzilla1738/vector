@@ -14,15 +14,15 @@ test(function() {
   el.setAttribute("aria-busy", "nope");
   assert_equals(el.ariaBusy, "false");
   el.removeAttribute("aria-busy");
-  assert_equals(el.ariaBusy, "false");
+  assert_equals(el.ariaBusy, null);
   el.setAttribute("aria-busy", "");
   assert_equals(el.ariaBusy, "false");
   el.setAttribute("aria-current", "");
   assert_equals(el.ariaCurrent, "true");
   el.ariaBusy = null;
-  assert_equals(el.ariaBusy, "false");
+  assert_equals(el.ariaBusy, null);
   assert_false(el.hasAttribute("aria-busy"));
   el.removeAttribute("aria-label");
   assert_equals(el.ariaLabel, null);
-}, "enumerated ARIA keywords, invalid/empty defaults, missing-value defaults");
+}, "enumerated ARIA keywords, invalid/empty defaults, missing stays null");
 </script>

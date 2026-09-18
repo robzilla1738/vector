@@ -34,7 +34,7 @@
   "remaining": [
     "Gate A downloaded release artifact: copy-to-temp host test + CI job downloaded-artifact (downloads engine-native-{ubuntu,macos,windows} then re-runs production_sandbox). Not a GitHub Release page download.",
     "live GPU window plus MCP on a display (pump shares NativeBrowser; no GPU in this environment)",
-    "official html/dom remaining FAILs sanitize-template-element and template-for-empty; idlharness.https.html still FAIL ([[IsHTMLDDA]] plus other HTML interfaces)",
+    "official html/dom remaining FAILs sanitize-template-element, template-for-empty, and tentative aria-attribute-reflection-enumerated (contradicts non-tentative string mixin). Official remove-element-unblocks-rendering.optional.html PASS. idlharness.https.html still FAIL ([[IsHTMLDDA]] plus other HTML interfaces)",
     "full official Speedometer/JetStream/MotionMark published score. Official Chart.js, Observable Plot, and React-Stockcharts-SVG render/pan/zoom PASS. Official Angular-complex 3-add/finish PASS addMs=9 remaining=0 (was 428s FAIL). Editor-CodeMirror/TipTap OOM this host."
   ]
 }

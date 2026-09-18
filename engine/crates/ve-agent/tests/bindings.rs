@@ -3377,13 +3377,13 @@ fn aria_enumerated_keywords_and_invalid_defaults() {
     assert_eq!(v["mixed"], "mixed", "{v}");
     assert_eq!(v["canon"], "true", "{v}");
     assert_eq!(v["invalidBusy"], "false", "{v}");
-    assert_eq!(v["missingBusy"], "false", "{v}");
+    assert_eq!(v["missingBusy"], serde_json::Value::Null, "{v}");
     assert_eq!(v["emptyBusy"], "false", "{v}");
-    assert_eq!(v["missingAuto"], "none", "{v}");
+    assert_eq!(v["missingAuto"], serde_json::Value::Null, "{v}");
     assert_eq!(v["missingChecked"], serde_json::Value::Null, "{v}");
     assert_eq!(v["missingLabel"], serde_json::Value::Null, "{v}");
     assert_eq!(v["emptyCurrent"], "true", "{v}");
-    assert_eq!(v["idlNullBusy"], "false", "{v}");
+    assert_eq!(v["idlNullBusy"], serde_json::Value::Null, "{v}");
     assert_eq!(v["idlNullHas"], false, "{v}");
 }
 

@@ -6,7 +6,7 @@
   "officialFullSuite": false,
   "gate": false,
   "iterations": 1,
-    "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. Independently verified after fixes: 30 of 32 official tests.mjs names. Official Chart.js, Observable Plot, React-Stockcharts-SVG render/pan/zoom, and Angular-complex 3-add/finish PASS. Editor-CodeMirror/TipTap OOM this host.",
+    "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. Independently verified after fixes: 30 of 32 official tests.mjs names. Official Chart.js, Observable Plot, React-Stockcharts-SVG render/pan/zoom, and Angular-complex 3-add/finish PASS. Official remove-element-unblocks-rendering.optional.html PASS. Editor-CodeMirror/TipTap OOM this host.",
   "verifiedAfterFixes": {
     "TodoMVC-WebComponents": "PASS add/finish 3 items",
     "TodoMVC-React": "PASS add 3 items",

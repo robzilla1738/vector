@@ -30,12 +30,15 @@
     "exclusions": [
       "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\"",
       "sanitize-template-element.html expects addedNodes SPAN while the inserted span has id ok",
+      "aria-attribute-reflection-enumerated.tentative.html missing-value defaults contradict non-tentative aria-attribute-reflection.html (string mixin null). Keep the non-tentative file.",
       "official BrowserBench / full html/dom tree outside partial-updates; idlharness.https.html FAIL is remaining HTML WebIDL including document.all [[IsHTMLDDA]], scored over TLS. Not the entire web."
     ],
     "remainingOfficialFails": [
       "sanitize-template-element.html",
-      "template-for-empty.html"
-    ]
+      "template-for-empty.html",
+      "aria-attribute-reflection-enumerated.tentative.html"
+    ],
+    "officialRenderBlocking": "html/dom/render-blocking/remove-element-unblocks-rendering.optional.html PASS 173ms (was FAIL in reviewed wpt-tree-latest.json)"
   },
   "counterexamples": [
     {
