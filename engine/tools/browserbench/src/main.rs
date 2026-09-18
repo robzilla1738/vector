@@ -673,15 +673,42 @@ fn speedometer_official_attribution(
     })
 }
 
-fn motionmark_official_attribution(official_score: bool) -> serde_json::Value {
-    let ramp_complexity_scores = 0_usize;
+fn motionmark_official_attribution(
+    suites: &[SuiteResult],
+    official_score: bool,
+    iterations: u32,
+) -> serde_json::Value {
+    let mut per_test = serde_json::Map::new();
+    for s in suites
+        .iter()
+        .filter(|s| s.name.starts_with("motionmark.1.3."))
+    {
+        if let Some(detail) = &s.detail
+            && let Some(score) = motionmark::ramp_score(detail)
+        {
+            let name = s.name.trim_start_matches("motionmark.1.3.");
+            per_test.insert(name.to_owned(), json!(score));
+        }
+    }
+    let scores: Vec<f64> = per_test.values().filter_map(|v| v.as_f64()).collect();
+    let geomean = score::geomean(&scores);
+    let ramp_complexity_scores = scores.len();
     json!({
         "formula": "MotionMark 1.3 results.js ScoreCalculator: controller=ramp, per-test score is bootstrap median of complexity regression, overall is geomean of those scores then sample mean across iterations",
         "defaultTests": score::MOTIONMARK_DEFAULT_TESTS,
+        "defaultIterationCount": score::MOTIONMARK_ITERATION_COUNT,
         "applied": official_score,
+        "clock": score::LAB_MOTIONMARK_CLOCK,
+        "iterationsUsed": iterations,
+        "perTest": per_test,
+        "geomean": geomean,
         "rampComplexityScores": ramp_complexity_scores,
-        "officialMotionMarkGeometricMean": official_score && score::published_motionmark_ready(ramp_complexity_scores),
-        "note": "initialize+animate PASS is not a published MotionMark score. officialMotionMarkGeometricMean stays false until all 8 official names have ramp-complexity bootstrap scores."
+        "officialMotionMarkGeometricMean": official_score
+            && score::published_motionmark_ready_with_clock(
+                ramp_complexity_scores,
+                score::LAB_MOTIONMARK_CLOCK,
+            ),
+        "note": "Ramp ScoreCalculator on Date.now-wall is not official performance.now(). officialMotionMarkGeometricMean stays false until all 8 official names have ramp-complexity bootstrap scores timed with performance.now()."
     })
 }
 
@@ -731,6 +758,11 @@ fn main() -> Result<()> {
     } else {
         args.iterations
     };
+    let motionmark_iterations = if args.official_score && !iterations_explicit() {
+        score::MOTIONMARK_ITERATION_COUNT
+    } else {
+        args.iterations
+    };
     let only = args.only.as_str();
     let mut suites = Vec::new();
     let mut speedometer_iteration_scores = Vec::new();
@@ -771,11 +803,12 @@ fn main() -> Result<()> {
             .or_else(|| std::env::var_os("VECTOR_MOTIONMARK_DIR").map(PathBuf::from));
         suites.extend(motionmark::run(
             &mut engine,
-            iterations,
+            motionmark_iterations,
             motionmark_dir.as_deref(),
+            args.official_score,
         ));
-        suites.push(motionmark_class(&mut engine, iterations));
-        suites.push(motionmark::run_gpu(iterations));
+        suites.push(motionmark_class(&mut engine, motionmark_iterations));
+        suites.push(motionmark::run_gpu(motionmark_iterations));
     }
     let report = json!({
         "backend": "vector-engine",
@@ -799,7 +832,11 @@ fn main() -> Result<()> {
                 speedometer_iterations,
                 &speedometer_iteration_scores,
             ),
-            "officialMotionMark": motionmark_official_attribution(args.official_score),
+            "officialMotionMark": motionmark_official_attribution(
+                &suites,
+                args.official_score,
+                motionmark_iterations,
+            ),
             "gate": args.gate,
             "source": "official JetStream Next SunSpider group (12) plus speedometer.3.0.* and official MotionMark 1.3 names",
             "jetstreamSunspider": {

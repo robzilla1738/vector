@@ -1,7 +1,7 @@
 //! Official `MotionMark` GPU present path (VEC-021).
 
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use ve_api::{OpenRequest, VectorEngine};
 #[cfg(feature = "gpu")]
@@ -80,13 +80,18 @@ pub(crate) fn run(
     engine: &mut VectorEngine,
     iterations: u32,
     dir: Option<&Path>,
+    official_ramp: bool,
 ) -> Vec<SuiteResult> {
     let revision = pin("motionmark", "revision");
     OFFICIAL_HTML
         .iter()
         .map(|spec| {
             if let Some(root) = dir {
-                official_html(engine, iterations, root, spec)
+                if official_ramp {
+                    official_ramp_html(engine, iterations, root, spec)
+                } else {
+                    official_html(engine, iterations, root, spec)
+                }
             } else {
                 notrun(
                     spec.name,
@@ -96,6 +101,15 @@ pub(crate) fn run(
             }
         })
         .collect()
+}
+
+pub(crate) fn ramp_score(detail: &str) -> Option<f64> {
+    let v: serde_json::Value = serde_json::from_str(detail).ok()?;
+    if v.get("controller").and_then(|c| c.as_str()) != Some("ramp") {
+        return None;
+    }
+    let score = v.get("score").and_then(|s| s.as_f64())?;
+    (score > 0.0).then_some(score)
 }
 
 fn notrun(name: &str, revision: &str, detail: &str) -> SuiteResult {
@@ -206,6 +220,309 @@ fn official_html(
         )),
     }
 }
+
+fn ramp_test_interval_secs() -> u32 {
+    std::env::var("VECTOR_MOTIONMARK_TEST_INTERVAL")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .filter(|n: &u32| *n > 0)
+        .unwrap_or(crate::score::MOTIONMARK_TEST_INTERVAL_SECS)
+}
+
+fn official_ramp_html(
+    engine: &mut VectorEngine,
+    iterations: u32,
+    root: &Path,
+    spec: &OfficialHtml,
+) -> SuiteResult {
+    let revision = pin("motionmark", "revision");
+    if !cfg!(feature = "v8") {
+        return notrun(spec.name, &revision, "built without v8");
+    }
+    let html_path = root.join(spec.rel);
+    let html = match inline_official_html(&html_path) {
+        Ok(h) => h,
+        Err(detail) => {
+            return SuiteResult {
+                name: format!("motionmark.1.3.{}", spec.name),
+                status: "NOTRUN",
+                revision,
+                samples_ms: None,
+                p50_ms: None,
+                p95_ms: None,
+                detail: Some(detail),
+            };
+        }
+    };
+    let results_js =
+        match std::fs::read_to_string(root.join("MotionMark/resources/runner/results.js")) {
+            Ok(js) => js,
+            Err(e) => {
+                return notrun(
+                    spec.name,
+                    &revision,
+                    &format!("ScoreCalculator missing: {e}"),
+                );
+            }
+        };
+    let interval = ramp_test_interval_secs();
+    let start_js = official_ramp_start(spec.extras, interval);
+    let mut last_err = None;
+    let mut last_score: Option<f64> = None;
+    let mut wall_ms = Vec::new();
+    for _ in 0..iterations.max(1) {
+        let opened = match engine.open(OpenRequest {
+            url: Some(format!(
+                "https://browserbench.org/MotionMark/1.3/{}",
+                spec.rel.trim_start_matches("MotionMark/")
+            )),
+            html: Some(html.clone()),
+            allow_evaluate: true,
+            ..OpenRequest::default()
+        }) {
+            Ok(o) => o,
+            Err(e) => {
+                last_err = Some(e.to_string());
+                break;
+            }
+        };
+        if let Ok(page) = engine.page_mut(opened.page) {
+            page.settle(1_000);
+        }
+        if let Err(e) = engine
+            .page_mut(opened.page)
+            .and_then(|p| p.evaluate(&start_js))
+        {
+            last_err = Some(e.to_string());
+            engine.close(opened.page);
+            continue;
+        }
+        let started = Instant::now();
+        let deadline = Duration::from_secs(u64::from(interval) + 15);
+        let mut done = false;
+        while started.elapsed() < deadline {
+            if let Ok(page) = engine.page_mut(opened.page) {
+                page.settle(16);
+            }
+            let status = match engine
+                .page_mut(opened.page)
+                .and_then(|p| p.evaluate(RAMP_PUMP))
+            {
+                Ok(v) => v,
+                Err(e) => {
+                    last_err = Some(e.to_string());
+                    break;
+                }
+            };
+            let status = match &status {
+                serde_json::Value::String(s) => serde_json::from_str(s).unwrap_or(status.clone()),
+                other => other.clone(),
+            };
+            if status.get("err").and_then(|e| e.as_str()).is_some() {
+                last_err = status
+                    .get("err")
+                    .and_then(|e| e.as_str())
+                    .map(str::to_owned);
+                break;
+            }
+            if status.get("done").and_then(|d| d.as_bool()) == Some(true) {
+                done = true;
+                break;
+            }
+        }
+        if !done && last_err.is_none() {
+            last_err = Some("ramp run() did not finish".into());
+            engine.close(opened.page);
+            continue;
+        }
+        if last_err.is_some() {
+            engine.close(opened.page);
+            continue;
+        }
+        if let Err(e) = engine
+            .page_mut(opened.page)
+            .and_then(|p| p.evaluate(&results_js))
+        {
+            last_err = Some(format!("ScoreCalculator load: {e}"));
+            engine.close(opened.page);
+            continue;
+        }
+        match engine
+            .page_mut(opened.page)
+            .and_then(|p| p.evaluate(RAMP_SCORE))
+        {
+            Ok(v) => {
+                let v = match &v {
+                    serde_json::Value::String(s) => serde_json::from_str(s).unwrap_or(v.clone()),
+                    other => other.clone(),
+                };
+                if let Some(err) = v.get("err").and_then(|e| e.as_str()) {
+                    last_err = Some(err.to_owned());
+                } else if let Some(score) = v.get("score").and_then(|s| s.as_f64()) {
+                    if score > 0.0 {
+                        last_score = Some(score);
+                        wall_ms
+                            .push(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
+                    } else {
+                        last_err = Some(format!("non-positive ramp score: {v}"));
+                    }
+                } else {
+                    last_err = Some(format!("ScoreCalculator returned {v}"));
+                }
+            }
+            Err(e) => last_err = Some(e.to_string()),
+        }
+        engine.close(opened.page);
+    }
+    if let Some(score) = last_score {
+        return SuiteResult {
+            name: format!("motionmark.1.3.{}", spec.name),
+            status: "PASS",
+            revision,
+            p50_ms: wall_ms.first().copied(),
+            p95_ms: wall_ms.last().copied(),
+            samples_ms: Some(wall_ms),
+            detail: Some(
+                serde_json::json!({
+                    "controller": "ramp",
+                    "clock": crate::score::LAB_MOTIONMARK_CLOCK,
+                    "score": score,
+                    "testInterval": interval,
+                    "rel": spec.rel,
+                    "note": "ScoreCalculator bootstrap median. Date.now-wall is not official performance.now(). Not a published MotionMark score."
+                })
+                .to_string(),
+            ),
+        };
+    }
+    SuiteResult {
+        name: format!("motionmark.1.3.{}", spec.name),
+        status: "FAIL",
+        revision,
+        samples_ms: None,
+        p50_ms: None,
+        p95_ms: None,
+        detail: last_err.or(Some(
+            "official ramp ScoreCalculator did not produce a score. Not a published score.".into(),
+        )),
+    }
+}
+
+fn official_ramp_start(extras: &[(&str, &str)], interval_secs: u32) -> String {
+    let mut extra_js = String::new();
+    for (key, value) in extras {
+        extra_js.push_str(&format!(
+            "  options[{}] = {};\n",
+            serde_json::to_string(key).unwrap_or_else(|_| "\"\"".into()),
+            serde_json::to_string(value).unwrap_or_else(|_| "\"\"".into()),
+        ));
+    }
+    let warmup = if std::env::var_os("VECTOR_MOTIONMARK_TEST_INTERVAL").is_some() {
+        0
+    } else {
+        2000
+    };
+    format!(
+        r#"(function () {{
+  var q = [];
+  window.requestAnimationFrame = function (cb) {{ q.push(cb); return q.length; }};
+  window.cancelAnimationFrame = function () {{}};
+  window.__veRafFire = function () {{
+    var batch = q;
+    q = [];
+    var t = Date.now();
+    for (var i = 0; i < batch.length; i++) batch[i](t);
+    return batch.length;
+  }};
+  var stage = document.getElementById("stage");
+  if (!stage) throw new Error("missing #stage");
+  document.documentElement.style.height = "720px";
+  document.body.style.width = "1280px";
+  document.body.style.height = "720px";
+  stage.style.width = "1280px";
+  stage.style.height = "720px";
+  var proto = HTMLImageElement.prototype;
+  var desc = Object.getOwnPropertyDescriptor(proto, "src");
+  Object.defineProperty(proto, "src", {{
+    configurable: true,
+    enumerable: true,
+    get: function () {{
+      return desc && desc.get ? desc.get.call(this) : (this.getAttribute("src") || "");
+    }},
+    set: function (v) {{
+      if (desc && desc.set) desc.set.call(this, v);
+      else this.setAttribute("src", String(v));
+      var el = this;
+      queueMicrotask(function () {{ el.dispatchEvent(new Event("load")); }});
+    }}
+  }});
+  if (typeof window.benchmarkClass !== "function") {{
+    throw new Error("window.benchmarkClass missing");
+  }}
+  var options = {{
+    "warmup-length": {warmup},
+    "warmup-frame-count": 0,
+    "first-frame-minimum-length": 0,
+    "time-measurement": "date",
+    "test-interval": {interval_secs},
+    "controller": "ramp",
+    "frame-rate": 60,
+    "system-frame-rate": 60,
+    "complexity": 1
+  }};
+{extra_js}  var b = new window.benchmarkClass(options);
+  window.__veMm = {{ bench: b, done: false, err: null, data: null }};
+  b.initialize({{}}).then(function () {{
+    return b.run();
+  }}).then(function (data) {{
+    window.__veMm.data = data;
+    window.__veMm.done = true;
+  }}, function (e) {{
+    window.__veMm.err = String(e && e.message ? e.message : e);
+    window.__veMm.done = true;
+  }});
+  return true;
+}})()"#
+    )
+}
+
+const RAMP_PUMP: &str = r#"(function () {
+  var s = window.__veMm;
+  if (!s) return JSON.stringify({ err: "no __veMm" });
+  if (s.err) return JSON.stringify({ err: s.err, done: true });
+  var n = 0;
+  if (typeof window.__veRafFire === "function") n = window.__veRafFire();
+  return JSON.stringify({ done: !!s.done, fired: n });
+})()"#;
+
+const RAMP_SCORE: &str = r#"(function () {
+  var s = window.__veMm;
+  if (!s) return JSON.stringify({ err: "no __veMm" });
+  if (s.err) return JSON.stringify({ err: s.err });
+  if (!s.data) return JSON.stringify({ err: "ramp produced no samples" });
+  if (typeof ScoreCalculator !== "function" || typeof RunData !== "function") {
+    return JSON.stringify({ err: "ScoreCalculator missing" });
+  }
+  try {
+    s.data.targetFPS = 60;
+    var calc = new ScoreCalculator(new RunData("1.3", {
+      controller: "ramp",
+      "frame-rate": 60,
+      "system-frame-rate": 60,
+      bootstrapIterations: 2500
+    }));
+    calc.calculateScore(s.data);
+    var r = s.data.result || {};
+    if (!(r.score > 0)) return JSON.stringify({ err: "no bootstrap score", result: r });
+    return JSON.stringify({
+      score: r.score,
+      scoreLowerBound: r.scoreLowerBound,
+      scoreUpperBound: r.scoreUpperBound
+    });
+  } catch (e) {
+    return JSON.stringify({ err: String(e && e.message ? e.message : e) });
+  }
+})()"#;
 
 fn official_start(extras: &[(&str, &str)]) -> String {
     let mut extra_js = String::new();
@@ -472,12 +789,37 @@ fn run_gpu_inner(iterations: u32, revision: String) -> SuiteResult {
 
 #[cfg(test)]
 mod tests {
-    use super::{OFFICIAL_HTML, OFFICIAL_NAMES, run_gpu};
+    use super::{OFFICIAL_HTML, OFFICIAL_NAMES, official_ramp_html, run_gpu};
+    use std::path::Path;
 
     #[test]
     fn official_html_matches_runner_names() {
         let names: Vec<&str> = OFFICIAL_HTML.iter().map(|s| s.name).collect();
         assert_eq!(names, OFFICIAL_NAMES);
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn multiply_ramp_produces_a_scorecalculator_score() {
+        unsafe { std::env::set_var("VECTOR_MOTIONMARK_TEST_INTERVAL", "8") };
+        let mut engine = ve_api::VectorEngine::new(ve_api::EngineConfig {
+            viewport: ve_core::Size::new(1280.0, 720.0),
+            offline: true,
+            scripting: true,
+            policy: ve_api::NetworkPolicy::permissive(),
+            ..ve_api::EngineConfig::default()
+        });
+        let dir = Path::new("/tmp/motionmark-src");
+        if !dir.join("MotionMark/tests/core/multiply.html").is_file() {
+            return;
+        }
+        let spec = &OFFICIAL_HTML[0];
+        let result = official_ramp_html(&mut engine, 1, dir, spec);
+        assert_eq!(result.status, "PASS", "{:?}", result.detail);
+        let detail = result.detail.as_deref().unwrap_or("");
+        let v: serde_json::Value = serde_json::from_str(detail).unwrap_or_default();
+        assert_eq!(v["controller"], "ramp", "{detail}");
+        assert!(v["score"].as_f64().unwrap_or(0.0) > 0.0, "{detail}");
     }
 
     #[test]

@@ -215,12 +215,31 @@ pub fn official_speedometer_displayed_score(iteration_scores: &[f64]) -> Option<
 /// Official MotionMark 1.3 default test count (`resources/runner/tests.js`).
 pub const MOTIONMARK_DEFAULT_TESTS: usize = 8;
 
+/// Official MotionMark 1.3 iteration count (`BenchmarkRunnerClient.iterationCount`).
+pub const MOTIONMARK_ITERATION_COUNT: u32 = 1;
+
+/// Official MotionMark `test-interval` seconds (`benchmarkDefaultParameters`).
+pub const MOTIONMARK_TEST_INTERVAL_SECS: u32 = 30;
+
+/// Lab ramp timer. Official MotionMark uses `time-measurement: performance`.
+/// Vector's `performance.now()` is virtual, so this is wall `Date.now()`.
+pub const LAB_MOTIONMARK_CLOCK: &str = "Date.now-wall";
+
+/// Official `time-measurement: performance`.
+pub const OFFICIAL_MOTIONMARK_CLOCK: &str = "performance.now";
+
 /// Official MotionMark score is the geomean of per-test ramp-complexity
 /// bootstrap medians (`results.js` ScoreCalculator, controller=`ramp`).
 /// initialize+animate samples are not that.
 #[must_use]
 pub fn published_motionmark_ready(ramp_complexity_scores: usize) -> bool {
     ramp_complexity_scores >= MOTIONMARK_DEFAULT_TESTS
+}
+
+/// Date.now-wall cannot publish. Official `performance.now()` is required.
+#[must_use]
+pub fn published_motionmark_ready_with_clock(ramp_complexity_scores: usize, clock: &str) -> bool {
+    published_motionmark_ready(ramp_complexity_scores) && clock == OFFICIAL_MOTIONMARK_CLOCK
 }
 
 #[cfg(test)]
@@ -300,5 +319,14 @@ mod tests {
         assert!(!published_motionmark_ready(0));
         assert!(!published_motionmark_ready(7));
         assert!(published_motionmark_ready(8));
+        assert!(!published_motionmark_ready_with_clock(
+            8,
+            LAB_MOTIONMARK_CLOCK
+        ));
+        assert!(published_motionmark_ready_with_clock(
+            8,
+            OFFICIAL_MOTIONMARK_CLOCK
+        ));
+        assert_eq!(LAB_MOTIONMARK_CLOCK, "Date.now-wall");
     }
 }
