@@ -92,6 +92,45 @@ describe("EngineView", () => {
     });
   });
 
+  it("forwards a click while the agent holds the page so takeover can fire", async () => {
+    const page = await mount(makePage(0, { backend: "vector-engine", title: "CNN", controller: "agent" }));
+    const view = host!.querySelector(".engine-view") as HTMLElement;
+    vi.spyOn(view, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 100,
+      bottom: 80,
+      width: 100,
+      height: 80,
+      toJSON: () => ({}),
+    });
+    await act(async () => {
+      view.dispatchEvent(new MouseEvent("click", { clientX: 10, clientY: 10, bubbles: true }));
+    });
+    expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
+      pageId: page.pageId,
+      type: "click",
+      x: 10,
+      y: 10,
+    });
+  });
+
+  it("forwards wheel scrolling on the shared authority path", async () => {
+    const page = await mount(makePage(0, { backend: "vector-engine", title: "CNN", controller: "human" }));
+    const view = host!.querySelector(".engine-view") as HTMLElement;
+    await act(async () => {
+      view.dispatchEvent(new WheelEvent("wheel", { deltaY: 80, bubbles: true, cancelable: true }));
+    });
+    expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
+      pageId: page.pageId,
+      type: "scroll",
+      direction: "down",
+      amount: 80,
+    });
+  });
+
   it("forwards a key so a human can edit a field after takeover", async () => {
     const page = await mount(makePage(0, { backend: "vector-engine", title: "CNN", controller: "human" }));
     const ime = host!.querySelector("textarea.engine-view-ime") as HTMLTextAreaElement;

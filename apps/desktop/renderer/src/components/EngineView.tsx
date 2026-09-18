@@ -126,7 +126,9 @@ export function EngineView({ page }: { page: PageTarget }) {
       : null;
 
   const run = async (input: Record<string, unknown>, refresh = true) => {
-    if (busy.current || pageRef.current.controller === "agent") return;
+    // Gate B/F: a click or key while the agent holds the page must still
+    // reach pages.engineInput so onNativeTakeover can stop dispatch.
+    if (busy.current) return;
     busy.current = true;
     try {
       await call("pages.engineInput", { pageId: pageRef.current.pageId, ...input });
