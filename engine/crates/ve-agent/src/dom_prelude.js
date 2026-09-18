@@ -5171,13 +5171,15 @@
     const open = start || marker;
     if (!open) return null;
     let end = null;
-    let n = open.nextSibling;
-    while (n) {
-      if (n.nodeType === 7 && n.target === "end") {
-        end = n;
-        break;
+    if (open.target === "start") {
+      let n = open.nextSibling;
+      while (n) {
+        if (n.nodeType === 7 && n.target === "end") {
+          end = n;
+          break;
+        }
+        n = n.nextSibling;
       }
-      n = n.nextSibling;
     }
     return { open, end, parent: open.parentNode };
   }
