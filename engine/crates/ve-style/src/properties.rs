@@ -18,7 +18,8 @@ use cssparser::{Parser, Token};
 use ve_core::Size;
 
 use crate::values::{
-    AlignItems, BackgroundImage, BorderCollapse, BorderStyle, BoxShadow, BoxSizing, CaptionSide,
+    AlignItems, BackgroundImage, BackgroundPosition, BackgroundRepeat, BackgroundSize,
+    BorderCollapse, BorderStyle, BoxShadow, BoxSizing, CaptionSide,
     Clear, ClipPath, Color, Content, ContentItem, Direction, Display, Filter, FlexDirection,
     FlexWrap,
     Float, FontFamily,
@@ -279,6 +280,10 @@ pub enum SpecifiedValue {
     ClipInset(Box<[SpecifiedValue; 4]>),
     /// `box-shadow: <offset-x> <offset-y> <blur>? <color>?`.
     BoxShadow(Box<SpecifiedBoxShadow>),
+    /// `background-size`.
+    BackgroundSize(BackgroundSize),
+    /// `background-position`.
+    BackgroundPosition(BackgroundPosition),
     /// A grid line placement.
     GridLine(GridLine),
     /// A function or token the engine does not understand. Never accepted by
@@ -367,6 +372,10 @@ enum ValueSyntax {
     GridLine,
     /// The `box-shadow` property.
     BoxShadow,
+    /// `background-size`.
+    BackgroundSize,
+    /// `background-position`.
+    BackgroundPosition,
     /// Arbitrary token stream (custom properties).
     Raw,
 }
@@ -663,6 +672,26 @@ mod conv {
                     SpecifiedTransform::Scale(x, y) => Some(TransformOp::Scale(*x, *y)),
                 })
                 .collect(),
+            _ => None,
+        }
+    }
+
+    pub fn background_size(v: &SpecifiedValue, _: &ConvertContext) -> Option<BackgroundSize> {
+        match v {
+            SpecifiedValue::BackgroundSize(s) => Some(*s),
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(BackgroundSize::Auto),
+            SpecifiedValue::Keyword(k) if k == "cover" => Some(BackgroundSize::Cover),
+            SpecifiedValue::Keyword(k) if k == "contain" => Some(BackgroundSize::Contain),
+            _ => None,
+        }
+    }
+
+    pub fn background_position(
+        v: &SpecifiedValue,
+        _: &ConvertContext,
+    ) -> Option<BackgroundPosition> {
+        match v {
+            SpecifiedValue::BackgroundPosition(p) => Some(*p),
             _ => None,
         }
     }
@@ -1136,6 +1165,15 @@ property_table! {
     }, inherited = false, syntax = BoxShadow, convert = conv::box_shadow;
     /// `background-image` (`none` or `url(...)`)
     BackgroundImage: "background-image" => background_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
+    /// `background-size`
+    BackgroundSize: "background-size" => background_size: BackgroundSize = BackgroundSize::Auto, inherited = false, syntax = BackgroundSize, convert = conv::background_size;
+    /// `background-position`
+    BackgroundPosition: "background-position" => background_position: BackgroundPosition = BackgroundPosition {
+        x: LengthPercentage::ZERO,
+        y: LengthPercentage::ZERO,
+    }, inherited = false, syntax = BackgroundPosition, convert = conv::background_position;
+    /// `background-repeat`
+    BackgroundRepeat: "background-repeat" => background_repeat: BackgroundRepeat = BackgroundRepeat::Repeat, inherited = false, syntax = Single, convert = conv::kw::<BackgroundRepeat>;
     /// `filter` (`none` or `blur()`)
     Filter: "filter" => filter: Filter = Filter::None, inherited = false, syntax = Single, convert = conv::filter;
     /// `animation-name` (`none` is empty)
@@ -1273,11 +1311,8 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "animation-play-state",
     "transition-delay",
     "transition-timing-function",
-    "background-position",
     "background-position-x",
     "background-position-y",
-    "background-size",
-    "background-repeat",
     "background-attachment",
     "background-clip",
     "background-origin",
@@ -2056,6 +2091,101 @@ fn parse_box_shadow(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     })))
 }
 
+fn specified_lp(v: &SpecifiedValue) -> Option<LengthPercentage> {
+    match v {
+        SpecifiedValue::Length(l) => Some(LengthPercentage::Px(l.to_px(&ConvertContext::DUMMY.lengths()))),
+        SpecifiedValue::Percentage(p) => Some(LengthPercentage::Percent(*p)),
+        SpecifiedValue::Number(n) if *n == 0.0 => Some(LengthPercentage::ZERO),
+        SpecifiedValue::Integer(0) => Some(LengthPercentage::ZERO),
+        _ => None,
+    }
+}
+
+fn specified_lpa(v: &SpecifiedValue) -> Option<LengthPercentageAuto> {
+    match v {
+        SpecifiedValue::Keyword(k) if k == "auto" => Some(LengthPercentageAuto::Auto),
+        SpecifiedValue::Length(l) => {
+            Some(LengthPercentageAuto::Px(l.to_px(&ConvertContext::DUMMY.lengths())))
+        }
+        SpecifiedValue::Percentage(p) => Some(LengthPercentageAuto::Percent(*p)),
+        SpecifiedValue::Number(n) if *n == 0.0 => Some(LengthPercentageAuto::Px(0.0)),
+        SpecifiedValue::Integer(0) => Some(LengthPercentageAuto::Px(0.0)),
+        _ => None,
+    }
+}
+
+fn parse_background_size(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    let a = parse_component(input)?;
+    if let SpecifiedValue::Keyword(k) = &a {
+        if k == "cover" {
+            return Some(SpecifiedValue::BackgroundSize(BackgroundSize::Cover));
+        }
+        if k == "contain" {
+            return Some(SpecifiedValue::BackgroundSize(BackgroundSize::Contain));
+        }
+        if k == "auto" && input.is_exhausted() {
+            return Some(SpecifiedValue::BackgroundSize(BackgroundSize::Auto));
+        }
+    }
+    let width = specified_lpa(&a)?;
+    let height = if input.is_exhausted() {
+        width
+    } else {
+        specified_lpa(&parse_component(input)?)?
+    };
+    Some(SpecifiedValue::BackgroundSize(BackgroundSize::Size {
+        width,
+        height,
+    }))
+}
+
+fn parse_background_position(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    let keyword_x = |k: &str| -> Option<LengthPercentage> {
+        match k {
+            "left" => Some(LengthPercentage::Percent(0.0)),
+            "center" => Some(LengthPercentage::Percent(50.0)),
+            "right" => Some(LengthPercentage::Percent(100.0)),
+            _ => None,
+        }
+    };
+    let keyword_y = |k: &str| -> Option<LengthPercentage> {
+        match k {
+            "top" => Some(LengthPercentage::Percent(0.0)),
+            "center" => Some(LengthPercentage::Percent(50.0)),
+            "bottom" => Some(LengthPercentage::Percent(100.0)),
+            _ => None,
+        }
+    };
+    let a = parse_component(input)?;
+    if input.is_exhausted() {
+        return Some(SpecifiedValue::BackgroundPosition(match &a {
+            SpecifiedValue::Keyword(k) => BackgroundPosition {
+                x: keyword_x(k).or_else(|| keyword_y(k))?,
+                y: if keyword_x(k).is_some() {
+                    LengthPercentage::Percent(50.0)
+                } else {
+                    LengthPercentage::Percent(50.0)
+                },
+            },
+            _ => BackgroundPosition {
+                x: specified_lp(&a)?,
+                y: LengthPercentage::Percent(50.0),
+            },
+        }));
+    }
+    let b = parse_component(input)?;
+    let (x, y) = match (&a, &b) {
+        (SpecifiedValue::Keyword(ka), SpecifiedValue::Keyword(kb)) => (
+            keyword_x(ka).or_else(|| keyword_x(kb))?,
+            keyword_y(kb).or_else(|| keyword_y(ka))?,
+        ),
+        (SpecifiedValue::Keyword(ka), b) => (keyword_x(ka)?, specified_lp(b)?),
+        (a, SpecifiedValue::Keyword(kb)) => (specified_lp(a)?, keyword_y(kb)?),
+        (a, b) => (specified_lp(a)?, specified_lp(b)?),
+    };
+    Some(SpecifiedValue::BackgroundPosition(BackgroundPosition { x, y }))
+}
+
 fn parse_grid_line(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     let mut span = false;
     let mut number: Option<i32> = None;
@@ -2147,6 +2277,12 @@ impl PropertyId {
                 .ok()?,
             ValueSyntax::BoxShadow => css_wide(input)
                 .or_else(|()| parse_box_shadow(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::BackgroundSize => css_wide(input)
+                .or_else(|()| parse_background_size(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::BackgroundPosition => css_wide(input)
+                .or_else(|()| parse_background_position(input).ok_or(()))
                 .ok()?,
         };
         input.expect_exhausted().ok()?;
@@ -2879,6 +3015,12 @@ mod tests {
         ok("background-image", "none");
         ok("background-image", "url(\"https://a.test/x.png\")");
         ok("background-image", "linear-gradient(red, blue)");
+        ok("background-size", "cover");
+        ok("background-size", "contain");
+        ok("background-size", "100px 50%");
+        ok("background-position", "center");
+        ok("background-position", "right 20px");
+        ok("background-repeat", "no-repeat");
         ok("filter", "blur(4px)");
         ok("filter", "none");
         ok("animation-name", "fade");
@@ -2929,7 +3071,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 110);
+        assert_eq!(PropertyId::ALL.len(), 113);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

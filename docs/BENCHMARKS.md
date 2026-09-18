@@ -11,7 +11,7 @@ Every published performance number has a row here. Numbers without a table row a
 | full observation size | 5,917 bytes | engine Compact/Full mix | 5 | README — canonical vs `docs/engine/architecture.md` §0 |
 | `perf --gate m1` observe p95 | see last `perf` JSON | `production` | 200 | `cargo run --release -p perf -- --gate m1` |
 | Speedometer 3.0 displayed | 1.83 | profiling input, not a target | — | `docs/ROADMAP.md` §3 |
-| Speedometer 3.0 Chrome (same machine) | not run on this host | tracked only | — | pair with engine row; not a target |
+| Speedometer 3.0 Chrome (same machine) | not run (Google Chrome 148.0.7778.96 on this host) | tracked only | — | pair with engine row; not a target |
 | Held-out mock 5.32× | retired | MockModelClient, n=1 | 1 | `docs/engine/evidence/held-out-latest.json` (not a published score) |
 
 Architecture §0 previously listed full observation as 13,148 bytes. That row is superseded by the README table (5,917 bytes) until a new `pnpm bench` run is committed.

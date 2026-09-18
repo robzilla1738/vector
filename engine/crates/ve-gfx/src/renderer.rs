@@ -381,14 +381,40 @@ impl SoftwareRenderer {
         rect: Rect,
         handle: crate::image::ImageHandle,
         src: Option<Rect>,
+        size: ve_style::BackgroundSize,
+        position: ve_style::BackgroundPosition,
+        repeat: ve_style::BackgroundRepeat,
     ) {
         let Some(image) = self.images.get(handle) else {
             return;
         };
+        let (dest, resolved_src) = crate::resolve_image_placement(
+            rect,
+            image.width as f32,
+            image.height as f32,
+            size,
+            position,
+        );
+        let src = src.unwrap_or(resolved_src);
+        let clipped = canvas.clip_rect().intersection(&rect).unwrap_or(Rect::ZERO);
+        canvas.clip.push(clipped);
+        for origin in crate::background_tile_origins(rect, dest, repeat) {
+            let tile = Rect::new(origin.x, origin.y, dest.width(), dest.height());
+            self.blit_image(canvas, tile, image, src);
+        }
+        canvas.clip.pop();
+    }
+
+    fn blit_image(
+        &self,
+        canvas: &mut Canvas,
+        rect: Rect,
+        image: &crate::image::DecodedImage,
+        src: Rect,
+    ) {
         let Some(visible) = rect.intersection(&canvas.clip_rect()) else {
             return;
         };
-        let src = src.unwrap_or(Rect::new(0.0, 0.0, image.width as f32, image.height as f32));
         let s = canvas.scale;
         let px0 = (visible.x() * s).floor().max(0.0) as u32;
         let py0 = (visible.y() * s).floor().max(0.0) as u32;
@@ -471,7 +497,18 @@ impl Renderer for SoftwareRenderer {
                     rect,
                     handle,
                     src,
-                } => self.draw_image(&mut canvas, *rect, *handle, *src),
+                    size,
+                    position,
+                    repeat,
+                } => self.draw_image(
+                    &mut canvas,
+                    *rect,
+                    *handle,
+                    *src,
+                    *size,
+                    *position,
+                    *repeat,
+                ),
                 DisplayItem::LinearGradient {
                     rect,
                     start,

@@ -697,6 +697,9 @@ mod tests {
             rect: Rect::new(0.0, 0.0, 8.0, 8.0),
             handle: crate::ImageHandle(1),
             src: None,
+            size: ve_style::BackgroundSize::Auto,
+            position: ve_style::BackgroundPosition::default(),
+            repeat: ve_style::BackgroundRepeat::NoRepeat,
         });
         let empty = DisplayList::new(Size::new(40.0, 20.0));
         let with = build_scene(&list, 1.0);
@@ -757,6 +760,9 @@ mod tests {
             rect: Rect::new(0.0, 0.0, 8.0, 8.0),
             handle: crate::ImageHandle(1),
             src: None,
+            size: ve_style::BackgroundSize::Auto,
+            position: ve_style::BackgroundPosition::default(),
+            repeat: ve_style::BackgroundRepeat::NoRepeat,
         });
         let mut cpu = crate::SoftwareRenderer::new();
         let cpu_frame = cpu.render(&list, 32, 16, 1.0).unwrap();

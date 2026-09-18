@@ -796,6 +796,57 @@ impl BackgroundImage {
     }
 }
 
+/// Computed `background-size`.
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum BackgroundSize {
+    /// `auto` (intrinsic size).
+    #[default]
+    Auto,
+    /// Scale to cover the box.
+    Cover,
+    /// Scale to fit inside the box.
+    Contain,
+    /// Explicit width / height (`auto` on one axis keeps aspect).
+    Size {
+        /// Width.
+        width: LengthPercentageAuto,
+        /// Height.
+        height: LengthPercentageAuto,
+    },
+}
+
+/// Computed `background-position` (`0% 0%` is top-left).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct BackgroundPosition {
+    /// Horizontal offset.
+    pub x: LengthPercentage,
+    /// Vertical offset.
+    pub y: LengthPercentage,
+}
+
+impl Default for BackgroundPosition {
+    fn default() -> Self {
+        Self {
+            x: LengthPercentage::ZERO,
+            y: LengthPercentage::ZERO,
+        }
+    }
+}
+
+keyword_enum! {
+    /// The `background-repeat` property.
+    BackgroundRepeat {
+        /// Tile on both axes.
+        Repeat = "repeat",
+        /// No tiling.
+        NoRepeat = "no-repeat",
+        /// Tile horizontally.
+        RepeatX = "repeat-x",
+        /// Tile vertically.
+        RepeatY = "repeat-y",
+    }
+}
+
 /// Computed `filter` (`none` or `blur(Npx)`).
 #[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub enum Filter {

@@ -4,7 +4,10 @@ use std::collections::HashMap;
 
 use ve_core::{Edges, NodeId, Point, Rect, Size};
 use ve_layout::LayoutTree;
-use ve_style::{BackgroundImage, Filter, FontFamily, FontStyle, FontWeight, Rgba, StyleTree, TransformOp};
+use ve_style::{
+    BackgroundImage, BackgroundPosition, BackgroundRepeat, BackgroundSize, Filter, FontFamily,
+    FontStyle, FontWeight, LengthPercentageAuto, ObjectFit, Rgba, StyleTree, TransformOp,
+};
 
 use crate::image::ImageHandle;
 
@@ -57,6 +60,12 @@ pub enum DisplayItem {
         handle: ImageHandle,
         /// Optional source rectangle in image pixels. `None` uses the full image.
         src: Option<Rect>,
+        /// `background-size` / `object-fit`.
+        size: BackgroundSize,
+        /// `background-position`.
+        position: BackgroundPosition,
+        /// `background-repeat`.
+        repeat: BackgroundRepeat,
     },
     /// Linear gradient fill.
     LinearGradient {
@@ -163,10 +172,20 @@ impl DisplayItem {
                 origin: run.origin.translate(dx, dy),
                 ..run.clone()
             }),
-            Self::Image { rect, handle, src } => Self::Image {
+            Self::Image {
+                rect,
+                handle,
+                src,
+                size,
+                position,
+                repeat,
+            } => Self::Image {
                 rect: rect.translate(dx, dy),
                 handle: *handle,
                 src: *src,
+                size: *size,
+                position: *position,
+                repeat: *repeat,
             },
             Self::LinearGradient {
                 rect,
@@ -380,10 +399,27 @@ impl DisplayList {
                     });
                 }
                 if let Some(handle) = images.get(&node) {
+                    let (size, position, repeat) =
+                        if matches!(style.background_image, BackgroundImage::Url(_)) {
+                            (
+                                style.background_size,
+                                style.background_position,
+                                style.background_repeat,
+                            )
+                        } else {
+                            (
+                                object_fit_size(style.object_fit),
+                                BackgroundPosition::default(),
+                                BackgroundRepeat::NoRepeat,
+                            )
+                        };
                     list.push(DisplayItem::Image {
                         rect: item.rect,
                         handle: *handle,
                         src: None,
+                        size,
+                        position,
+                        repeat,
                     });
                 }
                 if let Filter::Blur(radius) = style.filter {
@@ -440,6 +476,125 @@ impl DisplayList {
         }
         list
     }
+}
+
+fn object_fit_size(fit: ObjectFit) -> BackgroundSize {
+    match fit {
+        ObjectFit::Cover => BackgroundSize::Cover,
+        ObjectFit::Contain | ObjectFit::ScaleDown => BackgroundSize::Contain,
+        ObjectFit::None => BackgroundSize::Auto,
+        ObjectFit::Fill => BackgroundSize::Size {
+            width: LengthPercentageAuto::Percent(100.0),
+            height: LengthPercentageAuto::Percent(100.0),
+        },
+    }
+}
+
+fn resolve_axis(value: LengthPercentageAuto, basis: f32, auto: f32) -> f32 {
+    match value {
+        LengthPercentageAuto::Auto => auto,
+        LengthPercentageAuto::Px(px) => px,
+        LengthPercentageAuto::Percent(p) => basis * p / 100.0,
+        LengthPercentageAuto::Calc { px, percent } => px + basis * percent / 100.0,
+    }
+}
+
+/// Destination and source rectangles for one background / object-fit tile.
+#[must_use]
+pub fn resolve_image_placement(
+    box_rect: Rect,
+    img_w: f32,
+    img_h: f32,
+    size: BackgroundSize,
+    position: BackgroundPosition,
+) -> (Rect, Rect) {
+    let box_w = box_rect.width().max(0.001);
+    let box_h = box_rect.height().max(0.001);
+    let img_w = img_w.max(0.001);
+    let img_h = img_h.max(0.001);
+    let (tile_w, tile_h, src) = match size {
+        BackgroundSize::Cover => {
+            let scale = (box_w / img_w).max(box_h / img_h);
+            let src_w = (box_w / scale).min(img_w);
+            let src_h = (box_h / scale).min(img_h);
+            let extra_x = (img_w - src_w).max(0.0);
+            let extra_y = (img_h - src_h).max(0.0);
+            (
+                box_w,
+                box_h,
+                Rect::new(
+                    position.x.resolve(extra_x),
+                    position.y.resolve(extra_y),
+                    src_w,
+                    src_h,
+                ),
+            )
+        }
+        BackgroundSize::Contain => {
+            let scale = (box_w / img_w).min(box_h / img_h);
+            (
+                img_w * scale,
+                img_h * scale,
+                Rect::new(0.0, 0.0, img_w, img_h),
+            )
+        }
+        BackgroundSize::Auto => (img_w, img_h, Rect::new(0.0, 0.0, img_w, img_h)),
+        BackgroundSize::Size { width, height } => {
+            let tw = resolve_axis(width, box_w, img_w);
+            let th = resolve_axis(height, box_h, img_h);
+            (tw.max(0.001), th.max(0.001), Rect::new(0.0, 0.0, img_w, img_h))
+        }
+    };
+    let dx = position.x.resolve((box_w - tile_w).max(0.0));
+    let dy = position.y.resolve((box_h - tile_h).max(0.0));
+    (
+        Rect::new(box_rect.x() + dx, box_rect.y() + dy, tile_w, tile_h),
+        src,
+    )
+}
+
+/// Tile origins for `background-repeat` inside `box_rect`.
+#[must_use]
+pub fn background_tile_origins(
+    box_rect: Rect,
+    tile: Rect,
+    repeat: BackgroundRepeat,
+) -> Vec<Point> {
+    let mut out = vec![Point::new(tile.x(), tile.y())];
+    let tw = tile.width().max(0.001);
+    let th = tile.height().max(0.001);
+    let repeat_x = matches!(repeat, BackgroundRepeat::Repeat | BackgroundRepeat::RepeatX);
+    let repeat_y = matches!(repeat, BackgroundRepeat::Repeat | BackgroundRepeat::RepeatY);
+    if repeat_x {
+        let mut x = tile.x() - tw;
+        while x + tw > box_rect.x() {
+            out.push(Point::new(x, tile.y()));
+            x -= tw;
+        }
+        let mut x = tile.x() + tw;
+        while x < box_rect.right() {
+            out.push(Point::new(x, tile.y()));
+            x += tw;
+        }
+    }
+    if repeat_y {
+        let row: Vec<Point> = out.clone();
+        let mut y = tile.y() - th;
+        while y + th > box_rect.y() {
+            for p in &row {
+                out.push(Point::new(p.x, y));
+            }
+            y -= th;
+        }
+        let mut y = tile.y() + th;
+        while y < box_rect.bottom() {
+            for p in &row {
+                out.push(Point::new(p.x, y));
+            }
+            y += th;
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -590,6 +745,48 @@ mod tests {
             "text-shadow missing: {:?}",
             list.items()
         );
+    }
+
+    #[test]
+    fn from_layout_emits_background_size_cover() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;background-image:url(\"https://a.test/x.png\");background-size:cover;background-repeat:no-repeat;background-position:center}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(styles.style(id).background_size, BackgroundSize::Cover);
+        assert_eq!(styles.style(id).background_repeat, BackgroundRepeat::NoRepeat);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image {
+                    size: BackgroundSize::Cover,
+                    repeat: BackgroundRepeat::NoRepeat,
+                    ..
+                }
+            )),
+            "cover image missing: {:?}",
+            list.items()
+        );
+        let (dest, src) = resolve_image_placement(
+            Rect::new(0.0, 0.0, 40.0, 20.0),
+            10.0,
+            10.0,
+            BackgroundSize::Cover,
+            BackgroundPosition {
+                x: ve_style::LengthPercentage::Percent(50.0),
+                y: ve_style::LengthPercentage::Percent(50.0),
+            },
+        );
+        assert!((dest.width() - 40.0).abs() < f32::EPSILON);
+        assert!((src.height() - 5.0).abs() < f32::EPSILON);
+        assert!((src.y() - 2.5).abs() < f32::EPSILON);
     }
 
     #[test]
