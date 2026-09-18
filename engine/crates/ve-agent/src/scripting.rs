@@ -492,6 +492,16 @@ impl Page {
         let _ = self.call_script("__veDocumentEvents", &[]);
         let _ = self.call_script("__veExposeIds", &[]);
         self.drain_js_jobs();
+        // Load handlers may restyle a large tree (official Complex-DOM).
+        // Do not leave that work on SCRIPT_DEADLINE; it aborts setView.
+        if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
+            vm.set_call_deadline(Some(evaluate_deadline()));
+        }
+        let _ = self.call_script("__veFireWindowLoad", &[]);
+        if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
+            vm.set_call_deadline(Some(script_deadline()));
+        }
+        self.drain_js_jobs();
         self.pump_timers(TIMER_WINDOW_MS);
     }
 

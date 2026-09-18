@@ -4995,6 +4995,9 @@
     }
     return r;
   };
+  globalThis.__veFireWindowLoad = () => {
+    try { window.dispatchEvent(new Event("load")); } catch (e) {}
+  };
   globalThis.__veUpgradeTree = () => {
     try { customElements.upgrade(globalThis.document || document); } catch (e) {}
   };
