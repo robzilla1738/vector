@@ -38,8 +38,8 @@
       "status": "official-3.0"
     }
   },
-  "process_tree_rss_bytes": 142811136,
-  "rss_bytes": 142811136,
+  "process_tree_rss_bytes": 145539072,
+  "rss_bytes": 145539072,
   "security_mode": "developer-offline",
   "suites": [
     {
@@ -54,22 +54,22 @@
     },
     {
       "name": "jetstream.crypto-sha1",
-      "p50_ms": 12,
-      "p95_ms": 12,
+      "p50_ms": 10,
+      "p95_ms": 10,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        12
+        10
       ],
       "status": "PASS"
     },
     {
-      "detail": "{\"added\":100,\"attribution\":{\"jsMs\":45389,\"label\":\"speedometer.3.0.TodoMVC-JavaScript-ES5\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":53,\"settleMs\":3200},\"kind\":\"todomvc\",\"remaining\":0}",
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":46655,\"finishMs\":4973,\"jsMs\":51641,\"label\":\"speedometer.3.0.TodoMVC-JavaScript-ES5\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":37,\"settleMs\":3200},\"kind\":\"todomvc\",\"remaining\":0}",
       "name": "speedometer.3.0.TodoMVC-JavaScript-ES5",
-      "p50_ms": 45389,
-      "p95_ms": 45389,
+      "p50_ms": 51641,
+      "p95_ms": 51641,
       "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
       "samples_ms": [
-        45389
+        51641
       ],
       "status": "PASS"
     },

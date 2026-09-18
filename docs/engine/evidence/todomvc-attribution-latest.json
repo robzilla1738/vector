@@ -1,5 +1,5 @@
 {
-  "accountedMs": 48642,
+  "accountedMs": 54878,
   "added": 100,
   "remaining": 0,
   "artifact": {
@@ -8,26 +8,30 @@
     "engineVersion": "0.0.1",
     "measured": true,
     "os": "linux",
-    "processTreeRssBytes": 142811136,
+    "processTreeRssBytes": 145539072,
     "review": "Vector_Current_Review_60b2d41",
-    "rssBytes": 142811136,
+    "rssBytes": 145539072,
     "securityMode": "developer-offline",
     "speedometerRevision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
+    "commit": "25d4a70",
     "note": "Official vendored Speedometer 3.0 TodoMVC-JavaScript-ES5 via browserbench --gate --iterations 1. Not a full official suite score. Thirty-one other named Speedometer workloads are NOTRUN in this gate."
   },
-  "bottleneck": "jsMs is add+complete+count. openMs (parse/style/layout/boot) is 53ms. settleMs is harness wait, not engine work.",
+  "bottleneck": "addMs is the 100-item add loop (46.7s). Isolated release DOMParser+replaceChildren of a growing 100-item list is 8.9s. finishMs (complete+delete) is 5.0s. openMs is boot, not the constraint.",
   "errors": [],
   "heldOut": false,
   "label": "speedometer.3.0.TodoMVC-JavaScript-ES5",
   "officialFullSuite": false,
   "officialSuite": true,
   "phases": {
-    "jsMs": 45389,
-    "openMs": 53,
-    "settleMs": 3200
+    "jsMs": 51641,
+    "addMs": 46655,
+    "finishMs": 4973,
+    "openMs": 37,
+    "settleMs": 3200,
+    "isolatedGrowingReplaceMs": 8900
   },
   "retries": 0,
-  "samples_ms": [45389],
+  "samples_ms": [51641],
   "success": true,
   "synthetic": false,
   "unaccountedMs": 0
