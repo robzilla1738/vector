@@ -183,8 +183,13 @@ impl V8Vm {
     }
 
     /// Creates an isolate with the default heap limits.
+    /// `VECTOR_V8_HEAP_MB` raises the isolate max when set (browserbench).
     pub fn new() -> Result<Self, ScriptError> {
-        Self::with_heap_limit(None)
+        let max = std::env::var("VECTOR_V8_HEAP_MB")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .map(|mb| mb.saturating_mul(1024 * 1024));
+        Self::with_heap_limit(max)
     }
 
     /// Creates an isolate whose heap may not exceed `max_bytes`.

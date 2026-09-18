@@ -470,6 +470,10 @@ fn main() -> Result<()> {
     if !args.gate && std::env::var_os("VECTOR_BROWSERBENCH_SUITE_DEADLINE_SECS").is_none() {
         unsafe { std::env::set_var("VECTOR_BROWSERBENCH_SUITE_DEADLINE_SECS", "300") };
     }
+    // Official transformersjs-bert ONNX + leftover suite heap exceeds V8's default ~1.4GB.
+    if std::env::var_os("VECTOR_V8_HEAP_MB").is_none() {
+        unsafe { std::env::set_var("VECTOR_V8_HEAP_MB", "4096") };
+    }
     let mut engine = VectorEngine::new(EngineConfig {
         viewport: Size::new(1280.0, 720.0),
         offline: true,

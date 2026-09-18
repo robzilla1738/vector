@@ -800,7 +800,7 @@ JetStream.__veDecodeB64 = function (b64) {
 "#,
     )];
     for (name, rel) in preloads {
-        chunks.push(preload_one(root, name, rel)?);
+        chunks.extend(preload_one(root, name, rel)?);
     }
     chunks.push(String::from(
         r#"
@@ -880,40 +880,61 @@ JetStream.dynamicImport = async function (key) {
     Ok(chunks)
 }
 
-fn preload_one(root: &std::path::Path, name: &str, rel: &str) -> Result<String, String> {
+fn preload_one(root: &std::path::Path, name: &str, rel: &str) -> Result<Vec<String>, String> {
     let path = root.join(rel.trim_start_matches("./"));
     let key = serde_json::to_string(name).unwrap_or_else(|_| "\"\"".into());
     let resource = serde_json::to_string(rel).unwrap_or_else(|_| "\"\"".into());
-    let mut js = String::new();
-    js.push_str("JetStream.preload[");
-    js.push_str(&key);
-    js.push_str("] = ");
-    js.push_str(&key);
-    js.push_str(";\nJetStream.resources[");
-    js.push_str(&resource);
-    js.push_str("] = ");
-    js.push_str(&key);
-    js.push_str(";\n");
+    let mut head = String::new();
+    head.push_str("JetStream.preload[");
+    head.push_str(&key);
+    head.push_str("] = ");
+    head.push_str(&key);
+    head.push_str(";\nJetStream.resources[");
+    head.push_str(&resource);
+    head.push_str("] = ");
+    head.push_str(&key);
+    head.push_str(";\n");
     if is_binary_preload(rel) {
         let bytes = read_bytes(&path)?;
-        let val = serde_json::to_string(&base64_encode(&bytes))
-            .map_err(|e| format!("encode binary preload {name}: {e}"))?;
-        js.push_str("JetStream.__vePreloadBinary[");
-        js.push_str(&key);
-        js.push_str("] = JetStream.__veDecodeB64(");
-        js.push_str(&val);
-        js.push_str(");\n");
+        const CHUNK: usize = 256 * 1024;
+        if bytes.len() > CHUNK {
+            head.push_str("JetStream.__vePreloadBinary[");
+            head.push_str(&key);
+            head.push_str("] = new Int8Array(");
+            head.push_str(&bytes.len().to_string());
+            head.push_str(");\nJetStream.__vePreloadBinary[");
+            head.push_str(&key);
+            head.push_str(").__veOff = 0;\n");
+            let mut out = vec![head];
+            for part in bytes.chunks(CHUNK) {
+                let val = serde_json::to_string(&base64_encode(part))
+                    .map_err(|e| format!("encode binary preload {name}: {e}"))?;
+                out.push(format!(
+                    "(function () {{ var p = JetStream.__veDecodeB64({val}); var a = JetStream.__vePreloadBinary[{key}]; a.set(p, a.__veOff); a.__veOff += p.length; }})();\n"
+                ));
+            }
+            Ok(out)
+        } else {
+            let val = serde_json::to_string(&base64_encode(&bytes))
+                .map_err(|e| format!("encode binary preload {name}: {e}"))?;
+            head.push_str("JetStream.__vePreloadBinary[");
+            head.push_str(&key);
+            head.push_str("] = JetStream.__veDecodeB64(");
+            head.push_str(&val);
+            head.push_str(");\n");
+            Ok(vec![head])
+        }
     } else {
         let text = read_js(&path)?;
         let val =
             serde_json::to_string(&text).map_err(|e| format!("encode preload {name}: {e}"))?;
-        js.push_str("JetStream.__vePreload[");
-        js.push_str(&key);
-        js.push_str("] = ");
-        js.push_str(&val);
-        js.push_str(";\n");
+        head.push_str("JetStream.__vePreload[");
+        head.push_str(&key);
+        head.push_str("] = ");
+        head.push_str(&val);
+        head.push_str(";\n");
+        Ok(vec![head])
     }
-    Ok(js)
 }
 
 fn is_binary_preload(rel: &str) -> bool {
