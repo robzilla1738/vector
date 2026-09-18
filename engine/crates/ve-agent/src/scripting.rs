@@ -145,6 +145,26 @@ pub const PRELUDE: &str = r#"(() => {
 /// DOM/Web API prelude (plan A14).
 pub const DOM_PRELUDE: &str = include_str!("dom_prelude.js");
 
+/// Official BrowserBench clocks with `performance.now()`. Default `__ve.now()`
+/// is virtual (WPT/settle). `VECTOR_PERFORMANCE_NOW=wall` rebases onto
+/// `Date.now()` so official-score can time with the official API without
+/// changing WPT virtual time. Do not add a host function: `Date.now()` is
+/// already wall and `HOST_FUNCTIONS` indices are a wire contract.
+const WALL_PERFORMANCE_NOW: &str = r#"(() => {
+  const origin = Date.now();
+  globalThis.performance.now = () => Date.now() - origin;
+  globalThis.performance.timeOrigin = origin;
+})();"#;
+
+/// True when this process asked for wall-backed `performance.now()`.
+#[must_use]
+pub fn performance_now_is_wall() -> bool {
+    matches!(
+        std::env::var("VECTOR_PERFORMANCE_NOW").as_deref(),
+        Ok("wall")
+    )
+}
+
 /// A console line captured from the page.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConsoleLine {
@@ -282,6 +302,9 @@ impl Page {
         }
         self.run_script(PRELUDE, "vector:prelude")?;
         self.run_script(DOM_PRELUDE, "vector:dom")?;
+        if performance_now_is_wall() {
+            self.run_script(WALL_PERFORMANCE_NOW, "vector:prelude")?;
+        }
         if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
             vm.set_call_deadline(Some(script_deadline()));
         }

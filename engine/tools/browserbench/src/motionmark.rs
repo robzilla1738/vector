@@ -421,11 +421,15 @@ fn official_ramp_html(
             detail: Some(
                 serde_json::json!({
                     "controller": "ramp",
-                    "clock": crate::score::LAB_MOTIONMARK_CLOCK,
+                    "clock": crate::score::motionmark_clock(),
                     "score": score,
                     "testInterval": interval,
                     "rel": spec.rel,
-                    "note": "ScoreCalculator bootstrap median. Date.now-wall is not official performance.now(). Not a published MotionMark score."
+                    "note": if crate::score::performance_now_is_wall() {
+                        "ScoreCalculator bootstrap median timed with performance.now() (VECTOR_PERFORMANCE_NOW=wall)."
+                    } else {
+                        "ScoreCalculator bootstrap median. Date.now-wall is not official performance.now(). Not a published MotionMark score."
+                    }
                 })
                 .to_string(),
             ),
@@ -458,6 +462,19 @@ fn official_ramp_start(extras: &[(&str, &str)], interval_secs: u32) -> String {
     } else {
         2000
     };
+    let wall = crate::score::performance_now_is_wall();
+    let time_measurement = if wall { "performance" } else { "date" };
+    let raf_stamp = if wall {
+        "performance.now()"
+    } else {
+        "Date.now()"
+    };
+    let timestamp_override = if wall {
+        String::new()
+    } else {
+        "  var t0 = Date.now();\n  b._getTimestamp = function () { return Date.now() - t0; };\n"
+            .to_owned()
+    };
     format!(
         r#"(function () {{
   var q = [];
@@ -466,7 +483,7 @@ fn official_ramp_start(extras: &[(&str, &str)], interval_secs: u32) -> String {
   window.__veRafFire = function () {{
     var batch = q;
     q = [];
-    var t = Date.now();
+    var t = {raf_stamp};
     for (var i = 0; i < batch.length; i++) batch[i](t);
     return batch.length;
   }};
@@ -499,7 +516,7 @@ fn official_ramp_start(extras: &[(&str, &str)], interval_secs: u32) -> String {
     "warmup-length": {warmup},
     "warmup-frame-count": 0,
     "first-frame-minimum-length": 0,
-    "time-measurement": "date",
+    "time-measurement": "{time_measurement}",
     "test-interval": {interval_secs},
     "controller": "ramp",
     "frame-rate": 60,
@@ -507,9 +524,7 @@ fn official_ramp_start(extras: &[(&str, &str)], interval_secs: u32) -> String {
     "complexity": 1
   }};
 {extra_js}  var b = new window.benchmarkClass(options);
-  var t0 = Date.now();
-  b._getTimestamp = function () {{ return Date.now() - t0; }};
-  window.__veMm = {{ bench: b, done: false, err: null, data: null }};
+{timestamp_override}  window.__veMm = {{ bench: b, done: false, err: null, data: null }};
   b.initialize({{}}).then(function () {{
     return b.run();
   }}).then(function (data) {{

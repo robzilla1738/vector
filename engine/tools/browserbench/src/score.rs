@@ -106,8 +106,37 @@ pub fn official_default_score(
 }
 
 /// Official `JetStreamDriver.js` iteration clock. Vector's `performance.now()`
-/// is virtual, so a lab geomean from `Date.now()` is not a published score.
+/// is virtual unless `VECTOR_PERFORMANCE_NOW=wall` rebases it onto `Date.now()`.
 pub const OFFICIAL_ITERATION_CLOCK: &str = "performance.now";
+
+/// True when this process asked for wall-backed `performance.now()`.
+#[must_use]
+pub fn performance_now_is_wall() -> bool {
+    matches!(
+        std::env::var("VECTOR_PERFORMANCE_NOW").as_deref(),
+        Ok("wall")
+    )
+}
+
+/// Clock label for this process: official API when wall-backed, else lab.
+#[must_use]
+pub fn jetstream_iteration_clock() -> &'static str {
+    if performance_now_is_wall() {
+        OFFICIAL_ITERATION_CLOCK
+    } else {
+        LAB_ITERATION_CLOCK
+    }
+}
+
+/// JS expression official runners use to time one iteration.
+#[must_use]
+pub fn jetstream_iteration_now_js() -> &'static str {
+    if performance_now_is_wall() {
+        "performance.now()"
+    } else {
+        "Date.now()"
+    }
+}
 
 /// True only when official scoring ran at the official iteration count for
 /// every executed JetStream name **and** used official `performance.now()`.
@@ -228,6 +257,16 @@ pub const LAB_MOTIONMARK_CLOCK: &str = "Date.now-wall";
 /// Official `time-measurement: performance`.
 pub const OFFICIAL_MOTIONMARK_CLOCK: &str = "performance.now";
 
+/// Clock label for this MotionMark process.
+#[must_use]
+pub fn motionmark_clock() -> &'static str {
+    if performance_now_is_wall() {
+        OFFICIAL_MOTIONMARK_CLOCK
+    } else {
+        LAB_MOTIONMARK_CLOCK
+    }
+}
+
 /// Official MotionMark score is the geomean of per-test ramp-complexity
 /// bootstrap medians (`results.js` ScoreCalculator, controller=`ramp`).
 /// initialize+animate samples are not that.
@@ -290,6 +329,8 @@ mod tests {
             OFFICIAL_ITERATION_CLOCK
         ));
         assert_eq!(LAB_ITERATION_CLOCK, "Date.now-wall");
+        assert_eq!(jetstream_iteration_clock(), LAB_ITERATION_CLOCK);
+        assert_eq!(jetstream_iteration_now_js(), "Date.now()");
     }
 
     #[test]
@@ -328,5 +369,6 @@ mod tests {
             OFFICIAL_MOTIONMARK_CLOCK
         ));
         assert_eq!(LAB_MOTIONMARK_CLOCK, "Date.now-wall");
+        assert_eq!(motionmark_clock(), LAB_MOTIONMARK_CLOCK);
     }
 }

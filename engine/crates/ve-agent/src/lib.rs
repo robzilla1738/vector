@@ -49,6 +49,7 @@ pub use routing::{CssCoverage, RoutingInfo, classify};
 pub use screenshot::Screenshot;
 pub use scripting::{
     ConsoleLine, DOM_PRELUDE, HOST_FUNCTIONS, PRELUDE, SCRIPT_DEADLINE, TIMER_WINDOW_MS,
+    performance_now_is_wall,
 };
 pub use steps::{
     Condition, DialogAction, ExtractField, MouseButton, Program, ProgramResult, ProgramStatus,

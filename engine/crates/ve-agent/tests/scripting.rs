@@ -136,3 +136,24 @@ fn a_runaway_script_is_cut_off_and_the_page_survives() {
     assert_eq!(page.evaluate("ok").unwrap(), serde_json::json!(1));
     assert!(page.document().element_by_id("p").is_some());
 }
+
+#[test]
+fn performance_now_tracks_virtual_time_by_default() {
+    let mut page = open("<title>t</title>", true);
+    let now = page
+        .evaluate("performance.now()")
+        .unwrap()
+        .as_f64()
+        .expect("performance.now number");
+    assert_eq!(now, page.virtual_time_ms() as f64);
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    let later = page
+        .evaluate("performance.now()")
+        .unwrap()
+        .as_f64()
+        .expect("performance.now number");
+    assert_eq!(
+        later, now,
+        "wall sleep must not advance virtual performance.now"
+    );
+}

@@ -148,7 +148,8 @@ pub(crate) fn jetstream_chunks(
         return finish_jetstream(name, revision, Vec::new(), Some(e.to_string()));
     }
     // Official DefaultBenchmark: one load, then runIteration(i) N times.
-    // Date.now() is wall clock. performance.now() is virtual in this engine.
+    // Official JetStreamDriver times with performance.now(). That API is
+    // virtual unless VECTOR_PERFORMANCE_NOW=wall (set by --official-score).
     let n = iterations.max(1);
     let runner = official_default_runner(n);
     let (samples, last_err) = match engine
@@ -166,8 +167,9 @@ pub(crate) fn jetstream_chunks(
 }
 
 /// Official `JetStreamDriver.js` DefaultBenchmark runner body.
-/// Times with `Date.now()` because `performance.now()` is virtual here.
+/// Uses `performance.now()` when `VECTOR_PERFORMANCE_NOW=wall`.
 fn official_default_runner(iterations: u32) -> String {
+    let now = score::jetstream_iteration_now_js();
     format!(
         r#"(function () {{
   var n = {iterations};
@@ -176,9 +178,9 @@ fn official_default_runner(iterations: u32) -> String {
   for (var i = 0; i < n; i++) {{
     if (benchmark.prepareForNextIteration) benchmark.prepareForNextIteration();
     if (Math.random && Math.random.__resetSeed) Math.random.__resetSeed();
-    var start = Date.now();
+    var start = {now};
     benchmark.runIteration(i);
-    var end = Date.now();
+    var end = {now};
     results.push(Math.max(1, end - start));
   }}
   if (benchmark.validate) benchmark.validate(n);
@@ -266,6 +268,7 @@ pub(crate) fn jetstream_async_chunks(
 }
 
 fn official_async_runner(iterations: u32) -> String {
+    let now = score::jetstream_iteration_now_js();
     format!(
         r#"(function () {{
   if (typeof RegExp.escape !== "function") {{
@@ -283,9 +286,9 @@ fn official_async_runner(iterations: u32) -> String {
       for (var i = 0; i < n; i++) {{
         if (benchmark.prepareForNextIteration) await benchmark.prepareForNextIteration();
         if (Math.random && Math.random.__resetSeed) Math.random.__resetSeed();
-        var start = Date.now();
+        var start = {now};
         await benchmark.runIteration(i);
-        var end = Date.now();
+        var end = {now};
         results.push(Math.max(1, end - start));
       }}
       if (benchmark.validate) benchmark.validate(n);
@@ -603,19 +606,16 @@ fn jetstream_official_attribution(
     } else {
         None
     };
+    let clock = score::jetstream_iteration_clock();
     let published = official_score
-        && score::published_jetstream_ready_with_clock(
-            iterations,
-            jet.len(),
-            score::LAB_ITERATION_CLOCK,
-        )
+        && score::published_jetstream_ready_with_clock(iterations, jet.len(), clock)
         && scores.len() == jet.len()
         && jet.iter().all(|s| s.status == "PASS")
         && geomean.is_some();
     json!({
         "formula": "JetStreamDriver.js toScore=5000/max(ms,1); DefaultBenchmark first/average/worst4; overall geomean of per-test scores",
         "runner": "same-page new Benchmark({iterationCount:N}); for i in 0..N runIteration(i)",
-        "clock": score::LAB_ITERATION_CLOCK,
+        "clock": clock,
         "defaultIterationCount": score::DEFAULT_ITERATION_COUNT,
         "defaultWorstCaseCount": score::DEFAULT_WORST_CASE_COUNT,
         "applied": official_score,
@@ -627,7 +627,7 @@ fn jetstream_official_attribution(
         "perTest": per_test,
         "geomean": geomean,
         "officialJetStreamGeometricMean": published,
-        "note": "A 1-iteration lab p50 is not a published score. Date.now() wall is not official performance.now() (virtual in this engine). --official-score uses JetStreamDriver.js per-test iteration/worstCaseCount. officialJetStreamGeometricMean stays false until every official Default name used those counts timed with performance.now()."
+        "note": "A 1-iteration lab p50 is not a published score. --official-score sets VECTOR_PERFORMANCE_NOW=wall so performance.now() is Date.now()-timeOrigin. officialJetStreamGeometricMean stays false until every official Default name used official per-test counts timed with that clock."
     })
 }
 
@@ -693,22 +693,20 @@ fn motionmark_official_attribution(
     let scores: Vec<f64> = per_test.values().filter_map(|v| v.as_f64()).collect();
     let geomean = score::geomean(&scores);
     let ramp_complexity_scores = scores.len();
+    let clock = score::motionmark_clock();
     json!({
         "formula": "MotionMark 1.3 results.js ScoreCalculator: controller=ramp, per-test score is bootstrap median of complexity regression, overall is geomean of those scores then sample mean across iterations",
         "defaultTests": score::MOTIONMARK_DEFAULT_TESTS,
         "defaultIterationCount": score::MOTIONMARK_ITERATION_COUNT,
         "applied": official_score,
-        "clock": score::LAB_MOTIONMARK_CLOCK,
+        "clock": clock,
         "iterationsUsed": iterations,
         "perTest": per_test,
         "geomean": geomean,
         "rampComplexityScores": ramp_complexity_scores,
         "officialMotionMarkGeometricMean": official_score
-            && score::published_motionmark_ready_with_clock(
-                ramp_complexity_scores,
-                score::LAB_MOTIONMARK_CLOCK,
-            ),
-        "note": "Ramp ScoreCalculator on Date.now-wall is not official performance.now(). officialMotionMarkGeometricMean stays false until all 8 official names have ramp-complexity bootstrap scores timed with performance.now()."
+            && score::published_motionmark_ready_with_clock(ramp_complexity_scores, clock),
+        "note": "Ramp ScoreCalculator publishes only when timed with performance.now(). --official-score sets VECTOR_PERFORMANCE_NOW=wall. officialMotionMarkGeometricMean stays false until all 8 official names have ramp-complexity bootstrap scores on that clock."
     })
 }
 
@@ -745,6 +743,11 @@ fn main() -> Result<()> {
     // Official transformersjs-bert ONNX + leftover suite heap exceeds V8's default ~1.4GB.
     if std::env::var_os("VECTOR_V8_HEAP_MB").is_none() {
         unsafe { std::env::set_var("VECTOR_V8_HEAP_MB", "4096") };
+    }
+    // Official JetStreamDriver / MotionMark time-measurement:performance.
+    // Default performance.now() is virtual; wall rebase is official-score only.
+    if args.official_score && std::env::var_os("VECTOR_PERFORMANCE_NOW").is_none() {
+        unsafe { std::env::set_var("VECTOR_PERFORMANCE_NOW", "wall") };
     }
     let mut engine = VectorEngine::new(EngineConfig {
         viewport: Size::new(1280.0, 720.0),
