@@ -24,7 +24,7 @@
       "path": "html/dom/idlharness.https.html",
       "status": "FAIL",
       "duration_ms": 1776,
-      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. After table/input/select IDL the official file still FAIL (2218ms): document.all [[IsHTMLDDA]] plus remaining members. Brand wrap, named table methods, media constants on prototype, Window timer lengths, and missing HTML constructors added next; not recorded as PASS."
+      "detail": "idl_test ran over TLS after serving /interfaces/*.idl. Official file still FAIL: document.all [[IsHTMLDDA]] plus remaining members. Window on* are own on the global (not on Window.prototype). SVG/MathML handlers are branded. Sanitizer get/remove* added. Not recorded as PASS."
     }
   ]
 }
