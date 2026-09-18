@@ -297,21 +297,28 @@ impl TreeSink for DomSink {
 }
 
 /// HTML tokenizes `<?target data>` as a bogus comment whose data is
-/// `?target data` (and `?>` leaves a trailing `?`). Promote those comments
-/// to processing instructions so declarative partial-update markers exist.
+/// `?target data` (and `?>` leaves a trailing `?`). Promote only the
+/// declarative partial-update markers (`start` / `end` / `marker`) to
+/// processing instructions. Lit writes `<?lit$…$>` markers that must stay
+/// comments so `TreeWalker` `whatToShow=129` can find them.
 fn parse_html_pi_comment(text: &str) -> Option<(String, String)> {
     let rest = text.strip_prefix('?')?;
     let rest = rest.strip_suffix('?').unwrap_or(rest);
     if rest.is_empty() {
         return None;
     }
-    match rest.split_once(|c: char| c.is_ascii_whitespace()) {
+    let (target, data) = match rest.split_once(|c: char| c.is_ascii_whitespace()) {
         Some((target, data)) if !target.is_empty() => {
-            Some((target.to_string(), data.trim().to_string()))
+            (target.to_string(), data.trim().to_string())
         }
-        None => Some((rest.to_string(), String::new())),
-        _ => None,
-    }
+        None => (rest.to_string(), String::new()),
+        _ => return None,
+    };
+    matches!(
+        target.to_ascii_lowercase().as_str(),
+        "start" | "end" | "marker"
+    )
+    .then_some((target, data))
 }
 
 #[cfg(test)]
@@ -333,5 +340,7 @@ mod pi_comment_tests {
             Some(("ENd".into(), String::new()))
         );
         assert_eq!(parse_html_pi_comment("not a pi"), None);
+        assert_eq!(parse_html_pi_comment("?lit$123$"), None);
+        assert_eq!(parse_html_pi_comment("?"), None);
     }
 }

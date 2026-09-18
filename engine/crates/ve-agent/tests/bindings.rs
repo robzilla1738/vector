@@ -1206,6 +1206,26 @@ fn node_list_location_hash_and_load_event_match_the_platform() {
     assert!(template["kids"].as_i64().unwrap_or(0) >= 1, "{template}");
     assert_eq!(template["a"], 8, "{template}");
     assert_eq!(template["b"], "DIV", "{template}");
+    let lit_marker = page
+        .evaluate(
+            r#"(function () {
+              const t = document.createElement("template");
+              t.innerHTML = "<?lit$1$><ul class='todo-list'></ul>";
+              const w = document.createTreeWalker(t.content, 129);
+              const a = w.nextNode();
+              const b = w.nextNode();
+              return {
+                a: a && a.nodeType,
+                data: a && a.nodeValue,
+                b: b && b.tagName,
+                kids: t.content.childNodes.length
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(lit_marker["a"], 8, "{lit_marker}");
+    assert_eq!(lit_marker["data"], "?lit$1$", "{lit_marker}");
+    assert_eq!(lit_marker["b"], "UL", "{lit_marker}");
     let script_html = page
         .evaluate(
             r#"(function () {

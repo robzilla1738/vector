@@ -1348,10 +1348,7 @@ mod tests {
                 fails.push(format!("{rel} => {v} err={console:?}"));
                 continue;
             }
-            if v["input"].as_bool() == Some(true)
-                && !rel.contains("/lit/")
-                && add["added"].as_u64().unwrap_or(0) < 3
-            {
+            if v["input"].as_bool() == Some(true) && add["added"].as_u64().unwrap_or(0) < 3 {
                 fails.push(format!("{rel} add => {add} probe={v} err={console:?}"));
             }
         }
