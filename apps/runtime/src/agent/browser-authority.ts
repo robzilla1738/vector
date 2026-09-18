@@ -1,6 +1,8 @@
 /**
  * Shared browser authority (Gate B). Native chrome and the Node planner
- * address the same PageService identity, epoch, and controller.
+ * address the same page identity, epoch, and controller. When
+ * VECTOR_BROWSER_SERVICE is set, PageService/MCP are clients of the Rust
+ * BrowserService that owns NativeBrowser — not a second engine copy.
  */
 import { VectorError, type Observation, type Program, type ProgramResult } from "@vector/contracts";
 import type { PageService, ExecuteResult } from "../services/pages.js";

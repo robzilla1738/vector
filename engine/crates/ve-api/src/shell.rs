@@ -32,7 +32,8 @@ pub struct Tab {
 }
 
 /// Input the OS window (or tests) delivers to chrome + page.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
 pub enum NativeEvent {
     /// Keyboard key (`Enter`, `Tab`, `a`, …).
     Key {
@@ -178,7 +179,8 @@ pub struct NativeBrowser {
 }
 
 /// Who currently owns input on the live page.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum NativeController {
     /// No exclusive owner.
     None,
@@ -415,14 +417,11 @@ impl NativeBrowser {
         });
         let page_tree = self.active_tab().and_then(|tab| {
             self.engine.page(tab.page).ok().map(|page| {
-                ve_a11y::AccessibilityTree::build(
-                    page.document(),
-                    &ve_a11y::BuildOptions {
-                        styles: Some(page.style_tree()),
-                        focused: page.focused(),
-                        ..ve_a11y::BuildOptions::default()
-                    },
-                )
+                ve_a11y::AccessibilityTree::build(page.document(), &ve_a11y::BuildOptions {
+                    styles: Some(page.style_tree()),
+                    focused: page.focused(),
+                    ..ve_a11y::BuildOptions::default()
+                })
             })
         });
         let focus = self
@@ -446,13 +445,10 @@ impl NativeBrowser {
         let Ok(page) = self.engine.page(tab.page) else {
             return Vec::new();
         };
-        let tree = ve_a11y::AccessibilityTree::build(
-            page.document(),
-            &ve_a11y::BuildOptions {
-                styles: Some(page.style_tree()),
-                ..ve_a11y::BuildOptions::default()
-            },
-        );
+        let tree = ve_a11y::AccessibilityTree::build(page.document(), &ve_a11y::BuildOptions {
+            styles: Some(page.style_tree()),
+            ..ve_a11y::BuildOptions::default()
+        });
         tree.root
             .iter()
             .filter(|n| !n.name.is_empty())
@@ -519,13 +515,10 @@ impl NativeBrowser {
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?
             .page;
-        self.engine.execute(
-            page,
-            &ExecuteRequest {
-                program,
-                ..ExecuteRequest::default()
-            },
-        )
+        self.engine.execute(page, &ExecuteRequest {
+            program,
+            ..ExecuteRequest::default()
+        })
     }
 
     /// Human takeover: later agent programs fail until [`Self::resume`].
@@ -678,6 +671,28 @@ impl NativeBrowser {
         let p = self.engine.page_mut(page)?;
         p.update();
         Ok(paint_page(p))
+    }
+
+    /// Scene/surface update for native presentation. Not a PNG and not a
+    /// second copy of the document — clients paint this display list.
+    pub fn scene_active(&mut self) -> Result<serde_json::Value> {
+        let page = self
+            .active_tab()
+            .ok_or_else(|| Error::not_found("no tab"))?
+            .page;
+        let p = self.engine.page_mut(page)?;
+        p.update();
+        let list = ve_gfx::DisplayList::from_layout(p.layout_tree(), p.style_tree());
+        Ok(serde_json::json!({
+            "kind": "displayList",
+            "transport": "scene",
+            "png": false,
+            "width": list.size.width,
+            "height": list.size.height,
+            "itemCount": list.len(),
+            "page": page.0,
+            "controllerEpoch": self.controller_epoch,
+        }))
     }
 
     /// Current framebuffer (after [`Self::present`]).

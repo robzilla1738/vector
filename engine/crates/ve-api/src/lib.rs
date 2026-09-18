@@ -31,6 +31,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod ffi;
+pub mod service;
 pub mod shell;
 pub mod updates;
 
@@ -44,9 +45,8 @@ use serde_json::{Value, json};
 use ve_core::{Error, ErrorCode, Result, Size};
 use ve_net::{Initiator, NetworkContext, Request};
 
-pub use shell::{
-    ChromeAxNode, EventOutcome, NativeBrowser, NativeController, NativeEvent, Tab,
-};
+pub use service::{BrowserClient, BrowserService, BrowserServiceListener};
+pub use shell::{ChromeAxNode, EventOutcome, NativeBrowser, NativeController, NativeEvent, Tab};
 pub use updates::{UpdateKeyPair, verify_update_manifest};
 pub use ve_agent::{
     EngineObservation, ExecuteRequest, ExecuteResult, Format, InFlightSummary, LoadedDocument,
@@ -927,16 +927,13 @@ mod tests {
         ))
         .unwrap();
         let executed = engine
-            .execute(
-                page,
-                &ExecuteRequest {
-                    program,
-                    return_observation: Some(ObservationRequest {
-                        since_revision: Some(obs.observation.revision),
-                        ..ObservationRequest::default()
-                    }),
-                },
-            )
+            .execute(page, &ExecuteRequest {
+                program,
+                return_observation: Some(ObservationRequest {
+                    since_revision: Some(obs.observation.revision),
+                    ..ObservationRequest::default()
+                }),
+            })
             .unwrap();
         assert!(executed.result.ok(), "{:?}", executed.result.error);
         assert_eq!(executed.result.extracted.as_ref().unwrap()["v"], "Ada");
@@ -1198,16 +1195,13 @@ mod tests {
             ))
             .unwrap();
         engine
-            .execute(
-                a.page,
-                &ExecuteRequest {
-                    program: Program::from_value(serde_json::json!([
-                        {"id":"s","op":"scroll","direction":"down"}
-                    ]))
-                    .unwrap(),
-                    return_observation: None,
-                },
-            )
+            .execute(a.page, &ExecuteRequest {
+                program: Program::from_value(serde_json::json!([
+                    {"id":"s","op":"scroll","direction":"down"}
+                ]))
+                .unwrap(),
+                return_observation: None,
+            })
             .unwrap();
         let obs_b = engine
             .observe(b.page, &ObservationRequest::default())
@@ -1225,16 +1219,13 @@ mod tests {
         engine.pump_round_robin(8);
         for i in 0..4 {
             engine
-                .execute(
-                    a.page,
-                    &ExecuteRequest {
-                        program: Program::from_value(serde_json::json!([
-                            {"id": format!("s{i}"), "op": "scroll", "direction": "down"}
-                        ]))
-                        .unwrap(),
-                        return_observation: None,
-                    },
-                )
+                .execute(a.page, &ExecuteRequest {
+                    program: Program::from_value(serde_json::json!([
+                        {"id": format!("s{i}"), "op": "scroll", "direction": "down"}
+                    ]))
+                    .unwrap(),
+                    return_observation: None,
+                })
                 .unwrap();
             let idle = engine
                 .observe(b.page, &ObservationRequest::default())

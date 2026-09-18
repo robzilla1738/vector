@@ -1,0 +1,32 @@
+{
+  "review": "Vector_Current_Review_60b2d41",
+  "finding": 1,
+  "gates": ["B", "F"],
+  "chromium": false,
+  "service": "browser-service",
+  "protocol": "newline-jsonrpc",
+  "sceneTransport": "displayList",
+  "pngAsRegularPresent": false,
+  "tests": {
+    "human_and_mcp_clients_share_one_page_authority": "PASS",
+    "in_process_handle_matches_socket_protocol": "PASS",
+    "concurrency_tail_and_process_tree_memory": "PASS",
+    "unseen_layout_variant_is_scored_by_outcome_only": "PASS",
+    "human_edit_and_agent_observe_the_same_page": "PASS"
+  },
+  "exit": {
+    "humanEditsField": true,
+    "mcpObservesWithoutReopen": true,
+    "agentChangesSamePage": true,
+    "takeoverStopsDispatch": true,
+    "resumeRevalidates": true,
+    "resizeWheelImeAccessKit": true,
+    "noChromium": true
+  },
+  "remaining": [
+    "Gate A downloaded multi-platform release artifact",
+    "live GPU window plus MCP attached to one service process",
+    "official html/dom remaining FAILs and idlharness WebIDL gaps",
+    "full official Speedometer/JetStream/MotionMark suite"
+  ]
+}

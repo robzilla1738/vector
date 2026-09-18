@@ -22,6 +22,7 @@ import {
   type VectorErrorCode,
 } from "@vector/contracts";
 import { RefRegistry } from "./ref-registry.js";
+import { BrowserServiceClient, ServiceNativeEngine, browserServiceAddr } from "./browser-service.js";
 import type {
   BrowserCookie,
   BrowserDriver,
@@ -533,6 +534,8 @@ export interface VectorEngineDriverOptions {
   config?: EngineNativeConfig;
   /** module loader — injectable so unit tests run without the addon */
   load?: () => Promise<NativeModule>;
+  /** Attach to a running BrowserService instead of creating a local engine. */
+  serviceAddr?: string;
 }
 
 /**
@@ -552,6 +555,7 @@ export class VectorEngineDriver implements BrowserDriver {
   private availability: EngineAvailability = { available: false };
   private readonly load: () => Promise<NativeModule>;
   private readonly config: EngineNativeConfig;
+  private readonly serviceAddr?: string;
 
   onDisconnected?: () => void;
   onReconnected?: () => void;
@@ -560,10 +564,23 @@ export class VectorEngineDriver implements BrowserDriver {
   constructor(opts: VectorEngineDriverOptions = {}) {
     this.load = opts.load ?? loadEngineNative;
     this.config = opts.config ?? {};
+    this.serviceAddr = opts.serviceAddr ?? browserServiceAddr();
   }
 
   async connect(): Promise<void> {
     if (this.native) return;
+    if (this.serviceAddr) {
+      const client = new BrowserServiceClient(this.serviceAddr);
+      await client.connect();
+      this.native = new ServiceNativeEngine(client);
+      this.availability = {
+        available: true,
+        version: "browser-service",
+        isolation: "process",
+        capabilities: { screenshot: false, service: true },
+      };
+      return;
+    }
     this.availability = await probeEngineNative(this.load);
     if (!this.availability.available) {
       throw new VectorError("backend_unavailable", `vector-engine native module unavailable: ${this.availability.error}`);

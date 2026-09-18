@@ -174,6 +174,7 @@ const ADD_STEPS: &str = r##"(function () {
         return r;
       };
       app.View.prototype.__veTimed = true;
+      window.__veRenderMs = renderMs;
     }
     var focusMs = 0, valueMs = 0, inputMs = 0, changeMs = 0, enterMs = 0;
     var addStarted = Date.now();
@@ -269,6 +270,9 @@ const FINISH_STEPS: &str = r##"(function () {
   var kind = prev.kind || "unknown";
   if (kind === "todomvc") {
     var finishStarted = Date.now();
+    var beforeShow = (window.__veRenderMs && window.__veRenderMs.showEntries) || 0;
+    var beforeCount = (window.__veRenderMs && window.__veRenderMs.updateElementCount) || 0;
+    var beforeOther = (window.__veRenderMs && window.__veRenderMs.other) || 0;
     try {
       completeAndDeleteTodos();
     } catch (e) {
@@ -278,7 +282,14 @@ const FINISH_STEPS: &str = r##"(function () {
     var finishMs = Date.now() - finishStarted;
     var added = prev.added || countTodos();
     var remaining = countTodos();
-    window.__veBench = Object.assign({}, prev, { kind: kind, added: added, remaining: remaining, finishMs: finishMs });
+    var finishShowEntriesMs = ((window.__veRenderMs && window.__veRenderMs.showEntries) || 0) - beforeShow;
+    var finishUpdateCountMs = ((window.__veRenderMs && window.__veRenderMs.updateElementCount) || 0) - beforeCount;
+    var finishOtherRenderMs = ((window.__veRenderMs && window.__veRenderMs.other) || 0) - beforeOther;
+    window.__veBench = Object.assign({}, prev, {
+      kind: kind, added: added, remaining: remaining, finishMs: finishMs,
+      finishShowEntriesMs: finishShowEntriesMs, finishUpdateCountMs: finishUpdateCountMs,
+      finishOtherRenderMs: finishOtherRenderMs
+    });
     return JSON.stringify(window.__veBench);
   }
   return JSON.stringify({ ok: !!prev.ok, kind: kind, added: prev.ok ? 1 : 0, remaining: 0, reason: prev.reason });
@@ -304,7 +315,10 @@ const COUNT_STEPS: &str = r##"(function () {
       enterMs: prev.enterMs || 0,
       showEntriesMs: prev.showEntriesMs || 0,
       updateElementCountMs: prev.updateElementCountMs || 0,
-      otherRenderMs: prev.otherRenderMs || 0
+      otherRenderMs: prev.otherRenderMs || 0,
+      finishShowEntriesMs: prev.finishShowEntriesMs || 0,
+      finishUpdateCountMs: prev.finishUpdateCountMs || 0,
+      finishOtherRenderMs: prev.finishOtherRenderMs || 0
     });
   }
   return JSON.stringify({ ok: !!prev.ok, kind: kind, added: prev.ok ? 1 : 0, remaining: 0, reason: prev.reason });
@@ -764,6 +778,9 @@ fn run_one(
                                 "showEntriesMs",
                                 "updateElementCountMs",
                                 "otherRenderMs",
+                                "finishShowEntriesMs",
+                                "finishUpdateCountMs",
+                                "finishOtherRenderMs",
                             ] {
                                 if let Some(n) = v.get(key).and_then(serde_json::Value::as_u64) {
                                     obj.insert(key.into(), serde_json::json!(n));

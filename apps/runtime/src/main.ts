@@ -157,6 +157,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       .map((s) => s.trim())
       .filter(Boolean);
     const d = new VectorEngineDriver({
+      serviceAddr: env.VECTOR_BROWSER_SERVICE,
       config: {
         dataDir: config.dataDir,
         scripting: env.VECTOR_ENGINE_SCRIPTING !== "0",
