@@ -575,14 +575,16 @@ fn jetstream_official_attribution(
         .iter()
         .filter_map(|s| {
             let samples = s.samples_ms.as_deref()?;
-            Some(score::official_default_score(samples, score::DEFAULT_WORST_CASE_COUNT)?.score)
+            Some(
+                score::official_default_score(samples, jetstream::official_plan(&s.name).1)?.score,
+            )
         })
         .collect();
     let per_test: serde_json::Map<String, serde_json::Value> = jet
         .iter()
         .filter_map(|s| {
             let samples = s.samples_ms.as_deref()?;
-            let scored = score::official_default_score(samples, score::DEFAULT_WORST_CASE_COUNT)?;
+            let scored = score::official_default_score(samples, jetstream::official_plan(&s.name).1)?;
             Some((
                 s.name.clone(),
                 json!({
@@ -625,7 +627,7 @@ fn jetstream_official_attribution(
         "perTest": per_test,
         "geomean": geomean,
         "officialJetStreamGeometricMean": published,
-        "note": "A 1-iteration lab p50 is not a published score. Date.now() wall is not official performance.now() (virtual in this engine). officialJetStreamGeometricMean stays false until every official Default name ran 120 iterations timed with performance.now()."
+        "note": "A 1-iteration lab p50 is not a published score. Date.now() wall is not official performance.now() (virtual in this engine). --official-score uses JetStreamDriver.js per-test iteration/worstCaseCount. officialJetStreamGeometricMean stays false until every official Default name used those counts timed with performance.now()."
     })
 }
 
@@ -732,6 +734,7 @@ fn main() -> Result<()> {
             &mut engine,
             iterations,
             jetstream_dir.as_deref(),
+            args.official_score && !iterations_explicit(),
         ));
     }
     if only == "all" || only == "speedometer" {

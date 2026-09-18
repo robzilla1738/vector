@@ -805,26 +805,60 @@ globalThis.JetStream = globalThis.JetStream || {};
 JetStream.isInBrowser = true;
 "#;
 
+/// Official `iterations` / `worstCaseCount` from `JetStreamDriver.js`.
+/// Default is `defaultIterationCount` 120 / `defaultWorstCaseCount` 4.
+#[must_use]
+pub(crate) fn official_plan(name: &str) -> (u32, usize) {
+    let name = name.trim_start_matches("jetstream.");
+    match name {
+        "ML" => (60, 4),
+        "cdjs" => (60, 3),
+        "mandreel" | "OfflineAssembler" => (80, 4),
+        "json-stringify-inspector" | "json-parse-inspector" => (20, 2),
+        "bigint-noble-ed25519" => (30, 4),
+        "proxy-mobx" => (360, 12),
+        "mobx-startup" => (30, 3),
+        "jsdom-d3-startup" => (15, 2),
+        "web-ssr" => (30, 4),
+        "typescript-lib" => (1, 0),
+        "async-fs" | "sync-fs" => (80, 6),
+        "tsf-wasm" | "richards-wasm" => (50, 4),
+        "sqlite3-wasm" => (30, 2),
+        "Dart-flute-todomvc-wasm" => (30, 2),
+        "Kotlin-compose-wasm" => (5, 1),
+        "transformersjs-bert-wasm" => (30, 4),
+        "argon2-wasm" => (30, 3),
+        "8bitbench-wasm" => (15, 2),
+        "zlib-wasm" => (40, 4),
+        "dotnet-interp-wasm" => (10, 2),
+        "dotnet-aot-wasm" => (15, 2),
+        "j2cl-box2d-wasm" => (40, 4),
+        _ => (120, 4),
+    }
+}
+
 pub(crate) fn run(
     engine: &mut VectorEngine,
     iterations: u32,
     dir: Option<&std::path::Path>,
+    official_counts: bool,
 ) -> Vec<SuiteResult> {
+    let n = |name: &str| {
+        if official_counts {
+            official_plan(name).0
+        } else {
+            iterations
+        }
+    };
     let mut out = SUNSPIDER
         .iter()
         .filter(|(name, _)| jetstream_wanted(name))
         .map(|(name, source)| {
             eprintln!("browserbench: start jetstream.{name}");
-            crate::jetstream(
-                engine,
-                iterations,
-                &format!("jetstream.{name}"),
-                source,
-                name,
-            )
+            crate::jetstream(engine, n(name), &format!("jetstream.{name}"), source, name)
         })
         .collect::<Vec<_>>();
-    out.extend(run_default_js(engine, iterations, dir));
+    out.extend(run_default_js(engine, iterations, dir, official_counts));
     out
 }
 
@@ -848,6 +882,7 @@ fn run_default_js(
     engine: &mut VectorEngine,
     iterations: u32,
     dir: Option<&std::path::Path>,
+    official_counts: bool,
 ) -> Vec<SuiteResult> {
     let revision = crate::pin("jetstream", "revision");
     let Some(root) = dir else {
@@ -871,6 +906,13 @@ fn run_default_js(
             )
             .collect();
     };
+    let n = |name: &str| {
+        if official_counts {
+            official_plan(name).0
+        } else {
+            iterations
+        }
+    };
     let mut results = Vec::new();
     for (name, files, det_rand) in DEFAULT_JS {
         if !jetstream_wanted(name) {
@@ -880,7 +922,7 @@ fn run_default_js(
         match load_chunks(root, files, *det_rand, &[], false) {
             Ok(chunks) => results.push(crate::jetstream_chunks(
                 engine,
-                iterations,
+                n(name),
                 &format!("jetstream.{name}"),
                 &chunks,
                 name,
@@ -896,7 +938,7 @@ fn run_default_js(
         match load_chunks(root, files, *det_rand, preloads, false) {
             Ok(chunks) => results.push(crate::jetstream_async_chunks(
                 engine,
-                iterations,
+                n(name),
                 &format!("jetstream.{name}"),
                 &chunks,
                 name,
@@ -912,7 +954,7 @@ fn run_default_js(
         match load_wasm_chunks(root, name, files, *det_rand, preloads) {
             Ok(chunks) => results.push(crate::jetstream_async_chunks(
                 engine,
-                iterations,
+                n(name),
                 &format!("jetstream.{name}"),
                 &chunks,
                 name,

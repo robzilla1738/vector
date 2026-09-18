@@ -55,18 +55,45 @@ pub fn official_default_score(
     samples_ms: &[u64],
     worst_case_count: usize,
 ) -> Option<OfficialDefaultScore> {
-    if samples_ms.len() <= worst_case_count {
+    if samples_ms.is_empty() {
         return None;
     }
     let first_ms = samples_ms[0] as f64;
     let first_score = to_score(first_ms);
+    // typescript-lib: iterations=1, worstCaseCount=0. Score is First only.
+    if samples_ms.len() == 1 && worst_case_count == 0 {
+        return Some(OfficialDefaultScore {
+            first_ms,
+            first_score,
+            average_ms: first_ms,
+            average_score: first_score,
+            worst_ms: first_ms,
+            worst_score: first_score,
+            score: first_score,
+        });
+    }
+    if worst_case_count > 0 && samples_ms.len() <= worst_case_count {
+        return None;
+    }
     let mut rest: Vec<f64> = samples_ms[1..].iter().map(|s| *s as f64).collect();
     rest.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
     let average_ms = rest.iter().sum::<f64>() / rest.len() as f64;
     let average_score = to_score(average_ms);
-    let worst_ms = rest[..worst_case_count].iter().sum::<f64>() / worst_case_count as f64;
-    let worst_score = to_score(worst_ms);
-    let score = geomean(&[first_score, worst_score, average_score])?;
+    let (worst_ms, worst_score, score) = if worst_case_count == 0 {
+        (
+            average_ms,
+            average_score,
+            geomean(&[first_score, average_score])?,
+        )
+    } else {
+        let worst_ms = rest[..worst_case_count].iter().sum::<f64>() / worst_case_count as f64;
+        let worst_score = to_score(worst_ms);
+        (
+            worst_ms,
+            worst_score,
+            geomean(&[first_score, worst_score, average_score])?,
+        )
+    };
     Some(OfficialDefaultScore {
         first_ms,
         first_score,
@@ -184,6 +211,12 @@ mod tests {
         assert!((s.average_ms - 11.2).abs() < 1e-9);
         let expected = geomean(&[500.0, 5000.0 / 16.0, 5000.0 / 11.2]).unwrap();
         assert!((s.score - expected).abs() < 1e-9);
+    }
+
+    #[test]
+    fn one_iteration_is_first_only_when_worst_is_zero() {
+        let s = official_default_score(&[20], 0).expect("first-only");
+        assert!((s.score - 250.0).abs() < 1e-9);
     }
 
     #[test]
