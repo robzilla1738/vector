@@ -660,17 +660,16 @@ const SQLITE_POST: &str = r#"(function () {
   globalThis.sqlite3InitModule = function (mod) {
     return Promise.resolve(orig(mod)).then(function (em) {
       if (em && !em.sqlite3 && mod && mod.sqlite3) em.sqlite3 = mod.sqlite3;
-      if (!em || !em.sqlite3) {
-        throw new Error(
-          "sqlite3 missing after init keys=" +
-            Object.keys(em || {}) +
-            " moduleKeys=" +
-            Object.keys(mod || {}) +
-            " err=" +
-            (globalThis.__veSqliteErr || "")
-        );
-      }
       return em;
+    }).catch(function (e) {
+      if (mod && mod.sqlite3) return mod;
+      throw new Error(
+        String(e && e.message ? e.message : e) +
+          " ve=" +
+          (globalThis.__veSqliteErr || "") +
+          " moduleKeys=" +
+          Object.keys(mod || {}).join(",")
+      );
     });
   };
 })();
