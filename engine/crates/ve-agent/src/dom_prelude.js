@@ -3728,10 +3728,12 @@
       m._width = String(t).length * 8;
       return m;
     }
-    createImageData(w, h) {
+    createImageData(imageData) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'createImageData' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
       }
+      const w = imageData;
+      const h = arguments[1];
       if (w && typeof w.width === "number") return new ImageData(w.width, w.height);
       return new ImageData(w, h);
     }
