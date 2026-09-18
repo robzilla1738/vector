@@ -76,6 +76,7 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
     recoveryModel: () => undefined,
     visionModel: () => undefined,
     setMaxWorkers: (n: number) => { maxWorkers = n; },
+    effectGrants: () => ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   } as unknown as SettingsService & { setMaxWorkers(n: number): void };
   const artifacts = { save: () => ({ artifactId: "a1" }) } as unknown as ArtifactStore;
   const runs = new RunService({

@@ -15,18 +15,20 @@ import {
   EventBus,
   markSkillFailed,
   MemoryRouterStore,
+  MockModelClient,
   NullNativeBridge,
   PageService,
   queryPage,
   rebindSteps,
   Repo,
   Router,
+  runMemberAgent,
   openDb,
   stepSignature,
   tryReuseSkill,
   type DriverSet,
 } from "@vector/runtime";
-import type { ObservationContent, Step } from "@vector/contracts";
+import type { ObservationContent, SetMember, Step } from "@vector/contracts";
 import type { BrowserDriver, DriverPage, ExecuteProgramResult } from "@vector/browser-driver";
 
 const obs = (opts?: { ref?: string; name?: string; url?: string }): ObservationContent =>
@@ -87,6 +89,58 @@ describe("Gate F page query and action compiler", () => {
       grants: ["effect:read", "effect:write"],
     });
     expect("program" in ok).toBe(true);
+  });
+
+  it("member-agent compileAndAuthorize rejects stale and denied planner steps before execute", async () => {
+    const member = { memberId: "m1", url: "https://app.test/form", status: "running" } as SetMember;
+    const model = new MockModelClient().always(() => ({
+      status: "continue",
+      message: "click save",
+      steps: [{ id: "c", op: "click", target: "r9" }],
+    }));
+    const deniedPages = {
+      get: () => ({ pageId: "p1", url: "https://app.test/form", documentEpoch: 2 }),
+      observe: async () => ({ pageId: "p1", documentEpoch: 2, content: obs() }),
+      execute: async () => {
+        throw new Error("pages.execute must not run when write is not granted");
+      },
+    } as unknown as PageService;
+    const denied = await runMemberAgent({
+      member,
+      pageId: "p1",
+      goal: "click save",
+      runId: "run-deny",
+      pages: deniedPages,
+      model,
+      modelId: "mock",
+      signal: new AbortController().signal,
+      grants: ["effect:read"],
+    });
+    expect(denied.result.status).toBe("partial");
+    expect(denied.result.error).toMatch(/permission denied/i);
+    expect(denied.executedSteps).toEqual([]);
+
+    const stalePages = {
+      get: () => ({ pageId: "p1", url: "https://app.test/form", documentEpoch: 3 }),
+      observe: async () => ({ pageId: "p1", documentEpoch: 2, content: obs() }),
+      execute: async () => {
+        throw new Error("pages.execute must not run on a stale document epoch");
+      },
+    } as unknown as PageService;
+    const stale = await runMemberAgent({
+      member,
+      pageId: "p1",
+      goal: "click save",
+      runId: "run-stale",
+      pages: stalePages,
+      model,
+      modelId: "mock",
+      signal: new AbortController().signal,
+      grants: ["effect:read", "effect:write"],
+    });
+    expect(stale.result.status).toBe("partial");
+    expect(stale.result.error).toMatch(/epoch/i);
+    expect(stale.executedSteps).toEqual([]);
   });
 
   it("rejects a compiled write when the origin does not match", () => {

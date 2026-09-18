@@ -11,6 +11,8 @@ import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
 import type { SetService } from "../services/sets.js";
+import { compileAndAuthorize } from "../agent/action-compiler.js";
+import type { GrantSource } from "../agent/permissions.js";
 import { WorkerPool } from "./pool.js";
 
 export interface SetRunnerDeps {
@@ -40,6 +42,8 @@ export interface SetRunnerDeps {
    */
   translateSteps: (pageId: string, steps: Step[]) => Step[];
   nativeAvailable?: () => boolean;
+  /** Privilege-independent grants for learned replay (Finding 5 / Gate F). */
+  grants?: GrantSource;
 }
 
 /** A replayable program and where it applies (`*` = every member). */
@@ -57,6 +61,15 @@ const siteKeyOf = (url: string) => {
     return `${u.origin}${u.pathname.replace(/[0-9a-f-]{6,}/g, "*")}`;
   } catch {
     return url;
+  }
+};
+
+const originOfSiteKey = (siteKey: string): string | undefined => {
+  if (!siteKey || siteKey === "*") return undefined;
+  try {
+    return new URL(siteKey).origin;
+  } catch {
+    return undefined;
   }
 };
 
@@ -268,13 +281,18 @@ export class SetRunner {
 
     // replay a validated program when the member's site matches its key
     if (learned && (learned.siteKey === "*" || siteKeyOf(url) === learned.siteKey)) {
-      const program: Program = { pageId, steps: learned.steps, nodes: learned.nodes };
-      const res = await this.deps.pages.execute(program, { runId: opts.runId, signal: opts.signal, allowEval: learned.trusted });
-      // a completed replay is the result; so is any outcome when there is no
-      // agent to fall through to (re-running the same program would only
-      // repeat the failure) or the run was cancelled mid-program
-      if (res.status === "completed" || !opts.goal || opts.signal.aborted) return { result: this.resultOf(m, pageId, res) };
-      // divergence: fall through to the agent for this member
+      const replay = await this.replayLearned(learned, pageId, url, opts);
+      if ("res" in replay) {
+        // a completed replay is the result; so is any outcome when there is no
+        // agent to fall through to (re-running the same program would only
+        // repeat the failure) or the run was cancelled mid-program
+        if (replay.res.status === "completed" || !opts.goal || opts.signal.aborted) {
+          return { result: this.resultOf(m, pageId, replay.res) };
+        }
+        // divergence: fall through to the agent for this member
+      } else if (!opts.goal) {
+        return { result: this.resultOf(m, pageId, { status: "failed", error: replay.blocked }) };
+      }
     }
     if (opts.goal) {
       const agentRes = await this.deps.runAgentForMember(m, pageId, opts.goal, { runId: opts.runId, signal: opts.signal });
@@ -282,11 +300,55 @@ export class SetRunner {
     }
     if (learned) {
       // site key did not match and no goal: replay anyway rather than fail silently
-      const program: Program = { pageId, steps: learned.steps, nodes: learned.nodes };
-      const res = await this.deps.pages.execute(program, { runId: opts.runId, signal: opts.signal, allowEval: learned.trusted });
-      return { result: this.resultOf(m, pageId, res) };
+      const replay = await this.replayLearned(learned, pageId, url, opts);
+      if ("res" in replay) return { result: this.resultOf(m, pageId, replay.res) };
+      return { result: this.resultOf(m, pageId, { status: "failed", error: replay.blocked }) };
     }
     throw new VectorError("invalid_params", "sets.map needs program, programId, or goal");
+  }
+
+  /**
+   * Finding 5: learned replay observes first, then compileAndAuthorize.
+   * Consequential writes do not dispatch on a stale epoch, origin mismatch,
+   * or missing grant.
+   */
+  private async replayLearned(
+    learned: Learned,
+    pageId: string,
+    url: string,
+    opts: { runId: string; signal: AbortSignal },
+  ): Promise<{ res: { status: string; extracted?: Record<string, unknown>; error?: string } } | { blocked: string }> {
+    const obs = await this.deps.pages.observe(pageId, {});
+    const live = this.deps.pages.get(pageId);
+    const origin = originOfSiteKey(learned.siteKey);
+    const href = live.url ?? obs.content.url ?? url;
+    if (origin) {
+      try {
+        if (new URL(href).origin !== origin) {
+          return { blocked: "compiled action origin does not match the live page" };
+        }
+      } catch {
+        return { blocked: "compiled action has an unparseable page URL" };
+      }
+    }
+    const prepared = compileAndAuthorize({
+      pageId,
+      documentEpoch: live.documentEpoch ?? obs.documentEpoch,
+      observedEpoch: obs.documentEpoch,
+      steps: learned.steps ?? [],
+      observation: obs.content,
+      url: href,
+      grants: this.deps.grants,
+    });
+    if ("rejected" in prepared) return { blocked: prepared.rejected };
+    if ("denied" in prepared) return { blocked: prepared.denied };
+    const program: Program = { ...prepared.program, nodes: learned.nodes };
+    const res = await this.deps.pages.execute(program, {
+      runId: opts.runId,
+      signal: opts.signal,
+      allowEval: learned.trusted,
+    });
+    return { res };
   }
 
   private resultOf(m: SetMember, pageId: string, res: { status: string; extracted?: Record<string, unknown>; error?: string }): ResultRecord {

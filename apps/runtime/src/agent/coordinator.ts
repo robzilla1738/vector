@@ -940,11 +940,22 @@ export class RunCoordinator {
               maxOutputTokens: 8192,
             });
             if (repair.object.steps.length) {
-              const r2 = await this.deps.pages.execute({ pageId: activePageId, steps: repair.object.steps }, { runId, signal: c.abort.signal });
-              stepsRun += repair.object.steps.length;
-              if (r2.status === "completed") {
-                lastError = undefined;
-                repairCount = 0;
+              const compiled = compileAndAuthorize({
+                pageId: activePageId,
+                documentEpoch: fresh.documentEpoch,
+                observedEpoch: fresh.documentEpoch,
+                steps: repair.object.steps,
+                observation: fresh.content,
+                url: fresh.content.url,
+                grants: this.deps.grants,
+              });
+              if (!("rejected" in compiled) && !("denied" in compiled)) {
+                const r2 = await this.deps.pages.execute(compiled.program, { runId, signal: c.abort.signal });
+                stepsRun += compiled.program.steps?.length ?? repair.object.steps.length;
+                if (r2.status === "completed") {
+                  lastError = undefined;
+                  repairCount = 0;
+                }
               }
             }
           }

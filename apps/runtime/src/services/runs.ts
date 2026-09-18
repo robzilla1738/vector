@@ -21,6 +21,7 @@ import { join } from "node:path";
 import { RunCoordinator } from "../agent/coordinator.js";
 import { DurableWriteLedger } from "../agent/durable.js";
 import { runMemberAgent } from "../agent/member-agent.js";
+import { DEFAULT_GRANTS } from "../agent/permissions.js";
 import { SetRunner } from "../scheduler/set-runner.js";
 import { WorkerPool } from "../scheduler/pool.js";
 
@@ -153,6 +154,7 @@ export class RunService {
       pool: this.pool,
       nativeAvailable: deps.nativeAvailable,
       translateSteps: deps.translateSteps,
+      grants: () => deps.settings.effectGrants?.() ?? DEFAULT_GRANTS,
       getProgram: (id) => {
         const p = deps.repo.getProgram(id);
         return p ? { stepsJson: p.stepsJson, siteKey: p.siteKey } : undefined;
@@ -198,6 +200,7 @@ export class RunService {
           modelId,
           // the set-run's own signal — runs.cancel stops member model calls
           signal: ctx.signal,
+          grants: () => deps.settings.effectGrants?.() ?? DEFAULT_GRANTS,
           recordModelCall: (c) => this.recordModelCall({ runId: ctx.runId, role: "planner", ...c }),
         });
       },
