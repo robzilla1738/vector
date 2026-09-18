@@ -6749,6 +6749,86 @@
   }
   URL.createObjectURL = () => "blob:vector:0";
   URL.revokeObjectURL = () => {};
+  function utf8Encode(string) {
+    const out = [];
+    for (let i = 0; i < string.length; i++) {
+      let u = string.charCodeAt(i);
+      if (u >= 0xd800 && u <= 0xdbff && i + 1 < string.length) {
+        const extra = string.charCodeAt(i + 1);
+        if (extra >= 0xdc00 && extra <= 0xdfff) {
+          i++;
+          u = 0x10000 + ((u & 0x3ff) << 10) + (extra & 0x3ff);
+        }
+      }
+      if (u < 0x80) out.push(u);
+      else if (u < 0x800) out.push(0xc0 | (u >> 6), 0x80 | (u & 0x3f));
+      else if (u < 0x10000) {
+        out.push(0xe0 | (u >> 12), 0x80 | ((u >> 6) & 0x3f), 0x80 | (u & 0x3f));
+      } else {
+        out.push(
+          0xf0 | (u >> 18),
+          0x80 | ((u >> 12) & 0x3f),
+          0x80 | ((u >> 6) & 0x3f),
+          0x80 | (u & 0x3f)
+        );
+      }
+    }
+    return Uint8Array.from(out);
+  }
+  function utf8Decode(bytes) {
+    let s = "";
+    for (let i = 0; i < bytes.length; ) {
+      const c = bytes[i++];
+      if (c < 0x80) s += String.fromCharCode(c);
+      else if ((c & 0xe0) === 0xc0) {
+        s += String.fromCharCode(((c & 0x1f) << 6) | (bytes[i++] & 0x3f));
+      } else if ((c & 0xf0) === 0xe0) {
+        s += String.fromCharCode(
+          ((c & 0x0f) << 12) | ((bytes[i++] & 0x3f) << 6) | (bytes[i++] & 0x3f)
+        );
+      } else {
+        let u =
+          ((c & 0x07) << 18) |
+          ((bytes[i++] & 0x3f) << 12) |
+          ((bytes[i++] & 0x3f) << 6) |
+          (bytes[i++] & 0x3f);
+        u -= 0x10000;
+        s += String.fromCharCode(0xd800 + (u >> 10), 0xdc00 + (u & 0x3ff));
+      }
+    }
+    return s;
+  }
+  function encodingBytes(input) {
+    if (input == null) return new Uint8Array(0);
+    if (input instanceof Uint8Array) return input;
+    if (input instanceof ArrayBuffer) return new Uint8Array(input);
+    if (ArrayBuffer.isView(input)) {
+      return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+    }
+    return new Uint8Array(input);
+  }
+  function TextDecoder(label, options) {
+    this.encoding = "utf-8";
+    this.fatal = !!(options && options.fatal);
+    this.ignoreBOM = !!(options && options.ignoreBOM);
+  }
+  TextDecoder.prototype.decode = function (input) {
+    let s = utf8Decode(encodingBytes(input));
+    if (this.ignoreBOM && s.charCodeAt(0) === 0xfeff) s = s.slice(1);
+    return s;
+  };
+  function TextEncoder() {
+    this.encoding = "utf-8";
+  }
+  TextEncoder.prototype.encode = function (string) {
+    return utf8Encode(string == null ? "" : String(string));
+  };
+  TextEncoder.prototype.encodeInto = function (string, dest) {
+    const src = utf8Encode(string == null ? "" : String(string));
+    const n = Math.min(src.length, dest ? dest.length : 0);
+    if (dest && n) dest.set(src.subarray(0, n));
+    return { read: String(string == null ? "" : string).length, written: n };
+  };
   const b64tab = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   function atob(s) {
     if (arguments.length < 1) {
@@ -7130,6 +7210,7 @@
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, Range, Sanitizer,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, EventSource, Blob,
+    TextDecoder, TextEncoder,
     createDataChannelPair() {
       const listeners = [[], []];
       function channel(i) {

@@ -5133,3 +5133,32 @@ fn official_html_brand_window_and_media_idl() {
     assert_eq!(v["allInst"], true, "{v}");
     assert_eq!(v["allCallV"], true, "{v}");
 }
+
+#[test]
+fn text_decoder_decodes_utf8_heap_views() {
+    let mut page = open("<title>enc</title>");
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const json = '{"ok":true,"n":2}';
+              const bytes = new TextEncoder().encode(json);
+              const heap = new Uint8Array(64);
+              heap.set(bytes, 8);
+              const view = heap.subarray(8, 8 + bytes.length);
+              const out = new TextDecoder().decode(view);
+              return {
+                ctor: typeof TextDecoder,
+                enc: typeof TextEncoder,
+                round: out === json,
+                parsed: JSON.parse(out).n,
+                empty: new TextDecoder().decode(new Uint8Array()) === ""
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["ctor"], "function", "{v}");
+    assert_eq!(v["enc"], "function", "{v}");
+    assert_eq!(v["round"], true, "{v}");
+    assert_eq!(v["parsed"], 2, "{v}");
+    assert_eq!(v["empty"], true, "{v}");
+}
