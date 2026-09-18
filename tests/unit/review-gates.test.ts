@@ -649,6 +649,7 @@ describe("Gate B/F one session without Chromium", () => {
     let serviceController = "none";
     let serviceEpoch = 0;
     const clicks: string[] = [];
+    const keys: string[] = [];
     const makePage = (pageId: string, url: string): DriverPage => ({
       identity: { pageId, targetId: "engine-t2", backend: "vector-engine" },
       url: () => url,
@@ -664,7 +665,9 @@ describe("Gate B/F one session without Chromium", () => {
       hover: async () => {},
       fill: async () => {},
       typeText: async () => {},
-      press: async () => {},
+      press: async (key) => {
+        keys.push(key);
+      },
       check: async () => {},
       uncheck: async () => {},
       select: async () => {},
@@ -740,7 +743,9 @@ describe("Gate B/F one session without Chromium", () => {
       pages.execute({ pageId: opened.pageId, steps: [{ id: "x", op: "click", target: "r9" }] }),
     ).rejects.toMatchObject({ message: /human control/i });
     await pages.onEngineInput(opened.pageId, { type: "click", x: 40, y: 12 });
+    await pages.onEngineInput(opened.pageId, { type: "key", key: "a" });
     expect(clicks).toEqual(["40,12"]);
+    expect(keys).toEqual(["a"]);
     const seen = await pages.observe(opened.pageId, {});
     expect(seen.content.url).toContain("app.test");
     const resumed = await pages.resume(opened.pageId);

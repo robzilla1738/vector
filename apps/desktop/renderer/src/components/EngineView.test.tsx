@@ -75,4 +75,18 @@ describe("EngineView", () => {
       y: 40,
     });
   });
+
+  it("forwards a key so a human can edit a field after takeover", async () => {
+    const page = await mount(makePage(0, { backend: "vector-engine", title: "CNN", controller: "human" }));
+    const img = host!.querySelector("img.engine-view") as HTMLImageElement;
+    expect(img.tabIndex).toBe(0);
+    await act(async () => {
+      img.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
+    });
+    expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
+      pageId: page.pageId,
+      type: "key",
+      key: "a",
+    });
+  });
 });

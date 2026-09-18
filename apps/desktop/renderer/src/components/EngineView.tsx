@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MouseEvent, type WheelEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type WheelEvent } from "react";
 import type { PageTarget } from "@vector/contracts";
 import { call } from "../store";
 
@@ -31,7 +31,14 @@ export function EngineView({ page }: { page: PageTarget }) {
     void paint().catch(() => {});
   }, [paint, page.pageId, page.url, page.documentEpoch, page.lastRevision, page.loading]);
 
-  const run = async (input: { type: "click" | "scroll"; x?: number; y?: number; direction?: "up" | "down"; amount?: number }) => {
+  const run = async (input: {
+    type: "click" | "scroll" | "key";
+    x?: number;
+    y?: number;
+    direction?: "up" | "down";
+    amount?: number;
+    key?: string;
+  }) => {
     if (busy.current || pageRef.current.controller === "agent") return;
     busy.current = true;
     try {
@@ -44,6 +51,7 @@ export function EngineView({ page }: { page: PageTarget }) {
 
   const onClick = (e: MouseEvent<HTMLImageElement>) => {
     if (!shot) return;
+    e.currentTarget.focus();
     const r = e.currentTarget.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return;
     const x = ((e.clientX - r.left) / r.width) * shot.width / shot.scale;
@@ -58,15 +66,24 @@ export function EngineView({ page }: { page: PageTarget }) {
     void run({ type: "scroll", direction, amount }).catch(() => {});
   };
 
+  const onKeyDown = (e: KeyboardEvent<HTMLImageElement>) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "Shift" || e.key === "Control" || e.key === "Meta" || e.key === "Alt") return;
+    e.preventDefault();
+    void run({ type: "key", key: e.key }).catch(() => {});
+  };
+
   if (!shot) return null;
   return (
     <img
       className="engine-view"
       src={shot.dataUrl}
       alt={page.title || ""}
+      tabIndex={0}
       draggable={false}
       onClick={onClick}
       onWheel={onWheel}
+      onKeyDown={onKeyDown}
     />
   );
 }
