@@ -750,20 +750,16 @@ impl NativeBrowser {
             .page;
         let p = self.engine.page_mut(page)?;
         p.update();
-        let list = ve_gfx::DisplayList::from_layout(p.layout_tree(), p.style_tree());
-        let items: Vec<serde_json::Value> = list.items().iter().map(scene_item).collect();
-        Ok(serde_json::json!({
-            "kind": "displayList",
-            "transport": "scene",
-            "png": false,
-            "width": list.size.width,
-            "height": list.size.height,
-            "itemCount": list.len(),
-            "items": items,
-            "page": page.0,
-            "controllerEpoch": self.controller_epoch,
-            "gpuPresent": self.gpu_present(),
-        }))
+        let mut value = scene_json(p);
+        if let Some(obj) = value.as_object_mut() {
+            obj.insert("page".into(), serde_json::json!(page.0));
+            obj.insert(
+                "controllerEpoch".into(),
+                serde_json::json!(self.controller_epoch),
+            );
+            obj.insert("gpuPresent".into(), serde_json::json!(self.gpu_present()));
+        }
+        Ok(value)
     }
 
     /// Current framebuffer (after [`Self::present`]).
@@ -1145,6 +1141,22 @@ fn css_rgba(c: ve_style::Rgba) -> String {
     } else {
         format!("rgba({},{},{},{})", c.r, c.g, c.b, c.a)
     }
+}
+
+/// Display-list scene for `EngineView`. Not a PNG.
+#[must_use]
+pub fn scene_json(page: &crate::Page) -> serde_json::Value {
+    let list = ve_gfx::DisplayList::from_layout(page.layout_tree(), page.style_tree());
+    let items: Vec<serde_json::Value> = list.items().iter().map(scene_item).collect();
+    serde_json::json!({
+        "kind": "displayList",
+        "transport": "scene",
+        "png": false,
+        "width": list.size.width,
+        "height": list.size.height,
+        "itemCount": list.len(),
+        "items": items,
+    })
 }
 
 fn scene_item(item: &ve_gfx::DisplayItem) -> serde_json::Value {

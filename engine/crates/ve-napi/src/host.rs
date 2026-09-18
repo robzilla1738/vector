@@ -19,7 +19,7 @@ use std::thread;
 use std::time::SystemTime;
 
 use serde_json::{Map, Value, json};
-use ve_api::{BrowserCookie, DEFAULT_CONTEXT, EngineConfig, PageId, VectorEngine};
+use ve_api::{BrowserCookie, DEFAULT_CONTEXT, EngineConfig, PageId, VectorEngine, scene_json};
 
 use crate::errors::ApiError;
 
@@ -684,8 +684,13 @@ impl HostState {
     pub fn screenshot(&mut self, global: u64, options: &Value) -> Value {
         wrap((|| {
             let id = self.engine_page(global)?;
-            engine_reply(&self.engine.screenshot_json(id.0, &options_json(options)))
-                .map(Value::Object)
+            let mut shot =
+                engine_reply(&self.engine.screenshot_json(id.0, &options_json(options)))?;
+            if let Ok(page) = self.engine.page_mut(id) {
+                page.update();
+                shot.insert("scene".into(), scene_json(page));
+            }
+            Ok(Value::Object(shot))
         })())
     }
 
@@ -875,6 +880,12 @@ mod tests {
                 .as_str()
                 .unwrap()
                 .starts_with("iVBORw0KGgo")
+        );
+        assert_eq!(shot["scene"]["kind"], "displayList");
+        assert_eq!(shot["scene"]["png"], false);
+        assert!(
+            shot["scene"]["itemCount"].as_u64().unwrap_or(0) > 0,
+            "{shot}"
         );
 
         assert_eq!(host.call_blocking(|s| s.close(7))["closed"], true);
