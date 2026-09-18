@@ -3049,7 +3049,15 @@
       this.strokeStyle = "#000000";
       this.globalAlpha = 1;
       this.lineWidth = 1;
+      this.lineCap = "butt";
+      this.lineJoin = "miter";
+      this.miterLimit = 10;
+      this.lineDashOffset = 0;
       this.font = "10px sans-serif";
+      this.textAlign = "start";
+      this.textBaseline = "alphabetic";
+      this.globalCompositeOperation = "source-over";
+      this._dash = [];
       this._path = new Path2D();
     }
     fillRect(x, y, w, h) {
@@ -3076,6 +3084,14 @@
     rotate() {}
     setTransform() {}
     resetTransform() { this.setTransform(1, 0, 0, 1, 0, 0); }
+    transform() {}
+    setLineDash(d) { this._dash = Array.isArray(d) ? d.slice() : []; }
+    getLineDash() { return this._dash.slice(); }
+    clip() {}
+    quadraticCurveTo() {}
+    bezierCurveTo() {}
+    createLinearGradient() { return { addColorStop() {} }; }
+    createRadialGradient() { return { addColorStop() {} }; }
     drawImage() {}
     fillText() {}
     strokeText() {}

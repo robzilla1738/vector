@@ -1829,7 +1829,11 @@ mod tests {
         assert!(
             console
                 .iter()
-                .all(|m| !m.contains("Cannot use import") && !m.contains("resetTransform")),
+                .all(|m| {
+                    !m.contains("Cannot use import")
+                        && !m.contains("resetTransform")
+                        && !m.contains("setLineDash")
+                }),
             "chart module still missing canvas/ESM: {v} err={console:?}"
         );
         assert_eq!(v["ok"], true, "{v} err={console:?}");
