@@ -3692,6 +3692,77 @@ fn official_src_streaming_single_quoted_ids() {
 }
 
 #[test]
+fn official_src_streaming_observer_sees_chunk1_before_chunk2() {
+    let mut page = open(
+        r#"<div id="container"><?start name="target">Old<?end></div>
+           <template for="target" src="../resources/chunked-html.py?delay=300&chunk1=%3Cspan%20id='c1'%3EC1%3C/span%3E&chunk2=%3Cspan%20id='c2'%3EC2%3C/span%3E" id="tpl"></template>
+           <script>
+             window.__src = { calls: 0, sawC1: false, sawC2AtC1: false, aborted: false };
+             (function () {
+               const container = document.getElementById("container");
+               const tpl = document.getElementById("tpl");
+               const finish = () => {
+                 window.__src.sawC1 = true;
+                 window.__src.sawC2AtC1 = !!document.getElementById("c2");
+                 window.__src.aborted = !!(tpl && tpl.__veStreamAborted);
+               };
+               if (document.getElementById("c1")) { finish(); return; }
+               const observer = new MutationObserver(() => {
+                 window.__src.calls++;
+                 if (document.getElementById("c1")) {
+                   observer.disconnect();
+                   finish();
+                 }
+               });
+               observer.observe(container, { childList: true, subtree: true });
+             })();
+           </script>"#,
+    );
+    page.pump_virtual_time(50);
+    let early = page
+        .evaluate(
+            r##"(function () {
+              const tpl = document.getElementById("tpl");
+              return {
+                sawC1: !!(window.__src && window.__src.sawC1),
+                sawC2AtC1: !!(window.__src && window.__src.sawC2AtC1),
+                calls: window.__src && window.__src.calls,
+                aborted: !!(window.__src && window.__src.aborted) || !!(tpl && tpl.__veStreamAborted),
+                patched: !!(tpl && tpl.__vePatched),
+                c1: !!(document.getElementById("c1")),
+                c2: !!(document.getElementById("c2"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(early["c1"], true, "chunk1 missing after 50ms: {early}");
+    assert_eq!(early["c2"], false, "chunk2 applied too early: {early}");
+    assert_eq!(early["sawC1"], true, "MutationObserver missed chunk1: {early}");
+    assert_eq!(early["sawC2AtC1"], false, "observer saw chunk2 with chunk1: {early}");
+    assert_eq!(early["aborted"], false, "src stream aborted: {early}");
+    page.pump_virtual_time(400);
+    let late = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("container");
+              return {
+                c1: document.getElementById("c1") && document.getElementById("c1").textContent,
+                c2: document.getElementById("c2") && document.getElementById("c2").textContent,
+                html: c && c.innerHTML.trim().replace(/\s+/g, " ")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(late["c1"], "C1", "{late}");
+    assert_eq!(late["c2"], "C2", "{late}");
+    assert_eq!(
+        late["html"],
+        "<span id=\"c1\">C1</span><span id=\"c2\">C2</span>",
+        "{late}"
+    );
+}
+
+#[test]
 fn official_src_policy_cors_nonce_sri() {
     let mut page = open(
         r#"<div id="cors-ok"><?start name="c-ok">Old<?end></div>

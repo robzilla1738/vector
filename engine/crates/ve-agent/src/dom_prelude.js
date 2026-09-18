@@ -3513,8 +3513,23 @@
     }
     disconnect() { this._on = false; this._opts = []; }
     takeRecords() { return this._drain(); }
+    _inObservedTree(node, o) {
+      if (!node || !o || !o.target) return false;
+      if (node === o.target) return true;
+      if (o.subtree && o.target.contains && o.target.contains(node)) return true;
+      try { if (node.parentNode === o.target) return true; } catch (e) {}
+      return false;
+    }
     _match(target, r, o) {
-      const inScope = target === o.target || (o.subtree && o.target && o.target.contains && o.target.contains(target));
+      const inScope = this._inObservedTree(target, o);
+      if (!inScope && r.type === "childList") {
+        const added = r.added || [];
+        const removed = r.removed || [];
+        for (const h of added.concat(removed)) {
+          if (this._inObservedTree(wrap(h), o)) return o.childList;
+        }
+        return false;
+      }
       if (!inScope) return false;
       if (r.type === "childList") return o.childList;
       if (r.type === "attributes") {
@@ -3532,13 +3547,13 @@
       const recs = [];
       for (const r of raw) {
         const t = wrap(r.target);
-        if (!t) continue;
+        if (!t && r.type !== "childList") continue;
         for (const o of this._opts) {
           if (!this._match(t, r, o)) continue;
           const keepOld = (r.type === "attributes" && o.attributeOldValue) || (r.type === "characterData" && o.characterDataOldValue);
           recs.push({
             type: r.type,
-            target: t,
+            target: t || o.target,
             addedNodes: list(r.added || []),
             removedNodes: list(r.removed || []),
             attributeName: r.attr || null,
@@ -5330,6 +5345,34 @@
       if (typeof globalThis.__veFlushObservers === "function") globalThis.__veFlushObservers();
     } catch (e) {}
   }
+  function notifySubtreeObservers(parent, added) {
+    if (observerHold > 0) return;
+    for (const o of observers) {
+      if (!o._on || typeof o._inObservedTree !== "function") continue;
+      for (const opt of o._opts || []) {
+        if (!opt.childList) continue;
+        let hit = o._inObservedTree(parent, opt);
+        if (!hit) {
+          for (const n of added) {
+            if (o._inObservedTree(n, opt)) { hit = true; break; }
+          }
+        }
+        if (!hit) continue;
+        try {
+          o._cb([{
+            type: "childList",
+            target: parent,
+            addedNodes: added,
+            removedNodes: [],
+            attributeName: null,
+            oldValue: null,
+            previousSibling: null,
+            nextSibling: null,
+          }], o);
+        } catch (e) { __ve.log("error", String(e)); }
+      }
+    }
+  }
   function withHeldObservers(fn) {
     observerHold++;
     try {
@@ -5351,6 +5394,7 @@
       if (before && before.parentNode === parent) parent.insertBefore(node, before);
       else parent.appendChild(node);
       flushObserversNow();
+      notifySubtreeObservers(parent, [node]);
     };
     const runOne = (node) => {
       if (node.nodeType === 1 && (node.localName || "").toLowerCase() === "template" && node.hasAttribute("for")) {
@@ -5535,7 +5579,9 @@
     if (!rec.hasFor) return false;
     const name = rec.forValue;
     const inPlace = name == null || name === "";
-    if (!rec.buffer) {
+    // src is a fetch loader, not a parser-stream cursor. A following
+    // script becoming visible must not cancel the external stream.
+    if (!rec.buffer && !rec.src) {
       if (tpl.hasAttribute && tpl.getAttribute("data-ve-stream-aborted") != null) {
         tpl.__veStreamAborted = true;
         return false;
@@ -5585,17 +5631,25 @@
       if (chunks && !rec.buffer) {
         const run1 = () => {
           if (tpl.__vePatched || tpl.__veStreamAborted || tpl.__veSrc1) return;
-          tpl.__veSrc1 = true;
-          applyHtmlPatch(tpl, chunks.chunk1, rec, inPlace, true);
+          if (applyHtmlPatch(tpl, chunks.chunk1, rec, inPlace, true)) {
+            tpl.__veSrc1 = true;
+            flushObserversNow();
+          }
         };
         const run2 = () => {
           if (tpl.__vePatched || tpl.__veStreamAborted || tpl.__veSrc2) return;
-          tpl.__veSrc2 = true;
-          applyHtmlPatch(tpl, chunks.chunk2, rec, inPlace, false);
+          if (!tpl.__veSrc1) return;
+          if (applyHtmlPatch(tpl, chunks.chunk2, rec, inPlace, false)) {
+            tpl.__veSrc2 = true;
+            flushObserversNow();
+          }
         };
-        queueResource(run1, false, tpl);
-        try { setTimeout(run1, 0); } catch (e) {}
-        try { setTimeout(run2, chunks.delay || 1); } catch (e) { queueResource(run2, false, tpl); }
+        if (!tpl.__veSrcScheduled) {
+          tpl.__veSrcScheduled = true;
+          queueResource(run1, false, tpl);
+          try { setTimeout(run1, 0); } catch (e) {}
+          try { setTimeout(run2, chunks.delay || 1); } catch (e) { queueResource(run2, false, tpl); }
+        }
         return false;
       }
       const run = () => {

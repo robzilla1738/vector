@@ -577,6 +577,7 @@ impl Page {
             if let Err(e) = self.call_script("__veFireTimer", &[JsValue::Number(timer.id as f64)]) {
                 tracing::debug!(error = %e, "timer callback failed");
             }
+            self.drain_js_jobs();
         }
         fired
     }
