@@ -5682,16 +5682,18 @@
     back() { D("historyGo", -1); }
     forward() { D("historyGo", 1); }
     go() { D("historyGo", arguments[0] | 0); }
-    pushState(state, title, url) {
+    pushState(state, title) {
       if (arguments.length < 2) {
         throw new TypeError("Failed to execute 'pushState' on 'History': 2 arguments required, but only " + arguments.length + " present.");
       }
+      const url = arguments[2];
       D("pushState", JSON.stringify(state ?? null), url == null ? "" : String(url));
     }
-    replaceState(state, title, url) {
+    replaceState(state, title) {
       if (arguments.length < 2) {
         throw new TypeError("Failed to execute 'replaceState' on 'History': 2 arguments required, but only " + arguments.length + " present.");
       }
+      const url = arguments[2];
       D("replaceState", JSON.stringify(state ?? null), url == null ? "" : String(url));
     }
   }
