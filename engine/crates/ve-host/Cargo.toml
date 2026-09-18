@@ -25,6 +25,13 @@ v8 = ["ve-napi/v8"]
 ve-napi = { path = "../ve-napi" }
 libc = "0.2"
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_NetworkManagement_WindowsFilteringPlatform",
+    "Win32_Security",
+] }
+
 [dev-dependencies]
 ve-napi = { path = "../ve-napi" }
 serde_json.workspace = true

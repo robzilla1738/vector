@@ -3,9 +3,10 @@
 //! Production: apply fails closed. Developer: `VECTOR_ENGINE_SANDBOX=0` skips.
 //! macOS uses `sandbox_init` (deny default, no network, no fork/exec). Linux
 //! uses Landlock (filesystem) then seccomp-bpf (no sockets, no exec). Windows
-//! uses a Job Object (no child processes) then Low Integrity Level so writes
-//! to Medium+ paths fail. A socket denylist is not the whole sandbox —
-//! filesystem, env, and inherited descriptors are tightened here too.
+//! uses a Job Object (no child processes), Low Integrity plus a write-denied
+//! TMP, then a WFP dynamic-session block on this executable. A socket
+//! denylist is not the whole sandbox — filesystem, env, and inherited
+//! descriptors are tightened here too.
 
 /// Applies the tightest sandbox this OS supports.
 pub fn apply() -> Result<(), String> {
@@ -424,12 +425,13 @@ fn deny_syscalls() -> Result<(), String> {
     Ok(())
 }
 
-/// Job Object first, then Mandatory Integrity Control. Job Objects do not
-/// confine the filesystem; Low Integrity is what denies the `fs` selftest.
+/// Job Object, filesystem confinement, then WFP socket deny. Job Objects do
+/// not confine the filesystem or create sockets.
 #[cfg(windows)]
 fn windows() -> Result<(), String> {
     windows_job()?;
-    confine_filesystem()
+    confine_filesystem()?;
+    deny_network()
 }
 
 /// Job Object + child-process mitigation. The job handle is left open so
@@ -726,6 +728,105 @@ fn drop_integrity_low() -> Result<(), String> {
     Ok(())
 }
 
+/// Block bind/connect for this executable. Dynamic WFP session dies with
+/// the process. Fetch stays on the parent broker (Finding 2).
+#[cfg(windows)]
+fn deny_network() -> Result<(), String> {
+    use windows_sys::Win32::NetworkManagement::WindowsFilteringPlatform::{
+        FWP_ACTION_BLOCK, FWP_BYTE_BLOB, FWP_BYTE_BLOB_TYPE, FWP_CONDITION_VALUE0,
+        FWP_CONDITION_VALUE0_0, FWP_MATCH_EQUAL, FWPM_ACTION0, FWPM_CONDITION_ALE_APP_ID,
+        FWPM_FILTER_CONDITION0, FWPM_FILTER0, FWPM_LAYER_ALE_AUTH_CONNECT_V4,
+        FWPM_LAYER_ALE_AUTH_CONNECT_V6, FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4,
+        FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6, FWPM_LAYER_ALE_RESOURCE_ASSIGNMENT_V4,
+        FWPM_LAYER_ALE_RESOURCE_ASSIGNMENT_V6, FWPM_SESSION_FLAG_DYNAMIC, FWPM_SESSION0,
+        FwpmEngineOpen0, FwpmFilterAdd0, FwpmFreeMemory0, FwpmGetAppIdFromFileName0,
+    };
+
+    const RPC_C_AUTHN_WINNT: u32 = 10;
+
+    let exe = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
+    let exe_w: Vec<u16> = exe
+        .to_string_lossy()
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
+    let mut name: Vec<u16> = "ve-host-deny-network"
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
+
+    // Safety: process start; engine handle stays open so the dynamic session lives.
+    unsafe {
+        let session = FWPM_SESSION0 {
+            flags: FWPM_SESSION_FLAG_DYNAMIC,
+            ..std::mem::zeroed()
+        };
+        let mut engine = std::ptr::null_mut();
+        let err = FwpmEngineOpen0(
+            std::ptr::null(),
+            RPC_C_AUTHN_WINNT,
+            std::ptr::null(),
+            &raw const session,
+            &raw mut engine,
+        );
+        if err != 0 {
+            return Err(format!("FwpmEngineOpen0 failed ({err})"));
+        }
+        let mut app_id: *mut FWP_BYTE_BLOB = std::ptr::null_mut();
+        let err = FwpmGetAppIdFromFileName0(exe_w.as_ptr(), &raw mut app_id);
+        if err != 0 || app_id.is_null() {
+            return Err(format!("FwpmGetAppIdFromFileName0 failed ({err})"));
+        }
+        let layers = [
+            FWPM_LAYER_ALE_RESOURCE_ASSIGNMENT_V4,
+            FWPM_LAYER_ALE_RESOURCE_ASSIGNMENT_V6,
+            FWPM_LAYER_ALE_AUTH_CONNECT_V4,
+            FWPM_LAYER_ALE_AUTH_CONNECT_V6,
+            FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4,
+            FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6,
+        ];
+        for layer in layers {
+            let mut cond = FWPM_FILTER_CONDITION0 {
+                fieldKey: FWPM_CONDITION_ALE_APP_ID,
+                matchType: FWP_MATCH_EQUAL,
+                conditionValue: FWP_CONDITION_VALUE0 {
+                    r#type: FWP_BYTE_BLOB_TYPE,
+                    Anonymous: FWP_CONDITION_VALUE0_0 { byteBlob: app_id },
+                },
+            };
+            let mut filter = FWPM_FILTER0 {
+                displayData: windows_sys::Win32::NetworkManagement::WindowsFilteringPlatform::FWPM_DISPLAY_DATA0 {
+                    name: name.as_mut_ptr(),
+                    description: std::ptr::null_mut(),
+                },
+                layerKey: layer,
+                numFilterConditions: 1,
+                filterCondition: &raw mut cond,
+                action: FWPM_ACTION0 {
+                    r#type: FWP_ACTION_BLOCK,
+                    Anonymous: std::mem::zeroed(),
+                },
+                ..std::mem::zeroed()
+            };
+            let err = FwpmFilterAdd0(
+                engine,
+                &raw const filter,
+                std::ptr::null(),
+                std::ptr::null_mut(),
+            );
+            if err != 0 {
+                let mut freed = app_id.cast::<core::ffi::c_void>();
+                FwpmFreeMemory0(&raw mut freed);
+                return Err(format!("FwpmFilterAdd0 failed ({err})"));
+            }
+        }
+        let mut freed = app_id.cast::<core::ffi::c_void>();
+        FwpmFreeMemory0(&raw mut freed);
+        let _engine_keep_open = engine;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -766,9 +867,19 @@ mod tests {
         let rest = &src[windows_fn..];
         let job = rest.find("windows_job()?").expect("job apply");
         let fs = rest.find("confine_filesystem()").expect("fs apply");
+        let net = rest.find("deny_network()").expect("network apply");
         assert!(
-            job < fs,
-            "Finding 2: Job Object must be applied before Low Integrity"
+            job < fs && fs < net,
+            "Finding 2: Job Object, filesystem, then WFP socket deny"
+        );
+    }
+
+    #[test]
+    fn windows_production_denies_sockets() {
+        let src = include_str!("sandbox.rs");
+        assert!(
+            src.contains("FwpmFilterAdd0") && src.contains("FWPM_LAYER_ALE_RESOURCE_ASSIGNMENT_V4"),
+            "Finding 2: Windows production must deny socket creation, not rely on excluded-port connect"
         );
     }
 }

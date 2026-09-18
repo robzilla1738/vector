@@ -4,7 +4,7 @@
 
 mod sandbox;
 
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
@@ -72,15 +72,16 @@ fn sandbox_selftest(kind: &str, sandbox_applied: bool) {
             std::process::exit(if allowed { 11 } else { 0 });
         }
         "network" => {
+            // Bind is the creation probe. Connect-refused still means socket()
+            // worked. Excluded-port PermissionDenied is not a sandbox.
+            let bound = TcpListener::bind("127.0.0.1:0").is_ok();
             let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 1));
-            match TcpStream::connect_timeout(&addr, Duration::from_millis(200)) {
-                Ok(_) => std::process::exit(12),
-                Err(e) if e.kind() == std::io::ErrorKind::ConnectionRefused => {
-                    // socket() worked; the filter did not deny network creation.
-                    std::process::exit(12);
-                }
-                Err(_) => std::process::exit(0),
-            }
+            let connected = match TcpStream::connect_timeout(&addr, Duration::from_millis(200)) {
+                Ok(_) => true,
+                Err(e) if e.kind() == std::io::ErrorKind::ConnectionRefused => true,
+                Err(_) => false,
+            };
+            std::process::exit(if bound || connected { 12 } else { 0 });
         }
         "thread" => {
             let ok = std::thread::Builder::new()
