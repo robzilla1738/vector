@@ -126,6 +126,7 @@ struct Canvas {
     clip: Vec<Rect>,
     opacity: Vec<f32>,
     scale: f32,
+    translate: Vec<(f32, f32)>,
 }
 
 impl Canvas {
@@ -140,6 +141,22 @@ impl Canvas {
 
     fn alpha(&self) -> f32 {
         self.opacity.iter().product()
+    }
+
+    fn offset(&self) -> (f32, f32) {
+        self.translate
+            .iter()
+            .fold((0.0, 0.0), |(ax, ay), (x, y)| (ax + x, ay + y))
+    }
+
+    fn map_rect(&self, rect: Rect) -> Rect {
+        let (tx, ty) = self.offset();
+        Rect::new(rect.x() + tx, rect.y() + ty, rect.width(), rect.height())
+    }
+
+    fn map_point(&self, p: Point) -> Point {
+        let (tx, ty) = self.offset();
+        Point::new(p.x + tx, p.y + ty)
     }
 
     fn blend(&mut self, x: u32, y: u32, color: Rgba, coverage: f32) {
@@ -166,6 +183,7 @@ impl Canvas {
 
     /// Fills a CSS-pixel rectangle with antialiased edges.
     fn fill_rect(&mut self, rect: Rect, color: Rgba) {
+        let rect = self.map_rect(rect);
         let Some(visible) = rect.intersection(&self.clip_rect()) else {
             return;
         };
@@ -199,6 +217,9 @@ impl Canvas {
         if stops.is_empty() {
             return;
         }
+        let rect = self.map_rect(rect);
+        let start = self.map_point(start);
+        let end = self.map_point(end);
         let Some(visible) = rect.intersection(&self.clip_rect()) else {
             return;
         };
@@ -230,6 +251,7 @@ impl Canvas {
         if r == 0 {
             return;
         }
+        let rect = self.map_rect(rect);
         let Some(visible) = rect.intersection(&self.clip_rect()) else {
             return;
         };
@@ -349,8 +371,9 @@ impl SoftwareRenderer {
             return;
         };
         let size = run.size * canvas.scale;
-        let origin_x = run.origin.x * canvas.scale;
-        let baseline_y = run.origin.y * canvas.scale;
+        let origin = canvas.map_point(run.origin);
+        let origin_x = origin.x * canvas.scale;
+        let baseline_y = origin.y * canvas.scale;
         let Some(shaped) = self.fonts.shape_retained(face, &run.text, size) else {
             return;
         };
@@ -388,6 +411,7 @@ impl SoftwareRenderer {
         let Some(image) = self.images.get(handle) else {
             return;
         };
+        let rect = canvas.map_rect(rect);
         let (dest, resolved_src) = crate::resolve_image_placement(
             rect,
             image.width as f32,
@@ -458,6 +482,7 @@ impl Renderer for SoftwareRenderer {
             clip: Vec::new(),
             opacity: Vec::new(),
             scale: if scale > 0.0 { scale } else { 1.0 },
+            translate: Vec::new(),
         };
         for item in list.items() {
             match item {
@@ -517,7 +542,8 @@ impl Renderer for SoftwareRenderer {
                 } => canvas.fill_linear_gradient(*rect, *start, *end, stops),
                 DisplayItem::FilterBlur { rect, radius } => canvas.blur_rect(*rect, *radius),
                 DisplayItem::PushClip(rect) => {
-                    let clipped = canvas.clip_rect().intersection(rect).unwrap_or(Rect::ZERO);
+                    let mapped = canvas.map_rect(*rect);
+                    let clipped = canvas.clip_rect().intersection(&mapped).unwrap_or(Rect::ZERO);
                     canvas.clip.push(clipped);
                 }
                 DisplayItem::PopClip => {
@@ -528,10 +554,14 @@ impl Renderer for SoftwareRenderer {
                     canvas.opacity.pop();
                 }
                 DisplayItem::RoundedClip { rect, .. } => {
-                    let clipped = canvas.clip_rect().intersection(rect).unwrap_or(Rect::ZERO);
+                    let mapped = canvas.map_rect(*rect);
+                    let clipped = canvas.clip_rect().intersection(&mapped).unwrap_or(Rect::ZERO);
                     canvas.clip.push(clipped);
                 }
-                DisplayItem::PushTransform { .. } | DisplayItem::PopTransform => {}
+                DisplayItem::PushTransform { tx, ty } => canvas.translate.push((*tx, *ty)),
+                DisplayItem::PopTransform => {
+                    canvas.translate.pop();
+                }
                 DisplayItem::BoxShadow {
                     rect,
                     dx,
@@ -648,6 +678,29 @@ mod tests {
         assert!(
             ink > 40,
             "Inter/sans-serif must paint real glyphs, ink={ink}"
+        );
+    }
+
+    #[test]
+    fn software_renderer_applies_push_transform() {
+        let mut list = DisplayList::new(Size::new(20.0, 10.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 20.0, 10.0),
+            color: Rgba::WHITE,
+        });
+        list.push(DisplayItem::PushTransform { tx: 8.0, ty: 0.0 });
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 4.0, 4.0),
+            color: Rgba::rgb(255, 0, 0),
+        });
+        list.push(DisplayItem::PopTransform);
+        let mut renderer = SoftwareRenderer::new();
+        let frame = renderer.render(&list, 20, 10, 1.0).unwrap();
+        assert_eq!(frame.pixel(1, 1), Some([255, 255, 255, 255]), "unshifted");
+        assert_eq!(
+            frame.pixel(9, 1),
+            Some([255, 0, 0, 255]),
+            "translated red"
         );
     }
 }
