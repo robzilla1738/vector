@@ -797,6 +797,13 @@ JetStream.__veDecodeB64 = function (b64) {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 };
+JetStream.__veAppendB64 = function (key, b64) {
+  const part = JetStream.__veDecodeB64(b64);
+  const dest = JetStream.__vePreloadBinary[key];
+  dest.set(part, dest.__veOff);
+  dest.__veOff += part.length;
+  return true;
+};
 "#,
     )];
     for (name, rel) in preloads {
@@ -909,9 +916,7 @@ fn preload_one(root: &std::path::Path, name: &str, rel: &str) -> Result<Vec<Stri
             for part in bytes.chunks(CHUNK) {
                 let val = serde_json::to_string(&base64_encode(part))
                     .map_err(|e| format!("encode binary preload {name}: {e}"))?;
-                out.push(format!(
-                    "(function () {{ var p = JetStream.__veDecodeB64({val}); var a = JetStream.__vePreloadBinary[{key}]; a.set(p, a.__veOff); a.__veOff += p.length; }})();\n"
-                ));
+                out.push(format!("JetStream.__veAppendB64({key}, {val})\n"));
             }
             Ok(out)
         } else {
