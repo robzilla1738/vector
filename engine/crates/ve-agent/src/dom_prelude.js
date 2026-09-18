@@ -1513,7 +1513,10 @@
     return typeof p === "string" && p.length > 2 && p.charCodeAt(0) === 111 && p.charCodeAt(1) === 110;
   }
   function skipNamedProperty(p) {
-    return typeof p !== "string" || p === "__proto__" || p.charCodeAt(0) === 95 || isEventHandlerName(p);
+    // Skip engine internals (`__h`, `__hasOnAttr`). Do not skip `on*` —
+    // `only` is a valid HTML named property, and real event handlers already
+    // win via Reflect.has on the prototype.
+    return typeof p !== "string" || p === "__proto__" || p.charCodeAt(0) === 95;
   }
   documentNamedTraps = {
     get(t, p, recv) {
