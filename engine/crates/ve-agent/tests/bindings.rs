@@ -5146,12 +5146,16 @@ fn text_decoder_decodes_utf8_heap_views() {
               heap.set(bytes, 8);
               const view = heap.subarray(8, 8 + bytes.length);
               const out = new TextDecoder().decode(view);
+              const u16 = new Uint8Array([0x49, 0x00, 0x43, 0x00, 0x55, 0x00]);
+              const utf16 = new TextDecoder("utf-16le").decode(u16);
               return {
                 ctor: typeof TextDecoder,
                 enc: typeof TextEncoder,
                 round: out === json,
                 parsed: JSON.parse(out).n,
-                empty: new TextDecoder().decode(new Uint8Array()) === ""
+                empty: new TextDecoder().decode(new Uint8Array()) === "",
+                utf16le: utf16,
+                utf16enc: new TextDecoder("utf-16le").encoding
               };
             })()"#,
         )
@@ -5161,4 +5165,6 @@ fn text_decoder_decodes_utf8_heap_views() {
     assert_eq!(v["round"], true, "{v}");
     assert_eq!(v["parsed"], 2, "{v}");
     assert_eq!(v["empty"], true, "{v}");
+    assert_eq!(v["utf16le"], "ICU", "{v}");
+    assert_eq!(v["utf16enc"], "utf-16le", "{v}");
 }

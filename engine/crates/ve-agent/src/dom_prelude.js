@@ -6807,14 +6807,38 @@
     }
     return new Uint8Array(input);
   }
+  function encodingName(label) {
+    const enc = String(label == null ? "utf-8" : label)
+      .trim()
+      .toLowerCase()
+      .replace(/[_]/g, "-");
+    if (enc === "utf-16" || enc === "utf-16le" || enc === "unicode") return "utf-16le";
+    if (enc === "utf-16be") return "utf-16be";
+    return "utf-8";
+  }
+  function utf16Decode(bytes, le) {
+    let s = "";
+    const n = bytes.length - (bytes.length % 2);
+    for (let i = 0; i < n; i += 2) {
+      const c = le ? bytes[i] | (bytes[i + 1] << 8) : (bytes[i] << 8) | bytes[i + 1];
+      s += String.fromCharCode(c);
+    }
+    return s;
+  }
   function TextDecoder(label, options) {
-    this.encoding = "utf-8";
+    this.encoding = encodingName(label);
     this.fatal = !!(options && options.fatal);
     this.ignoreBOM = !!(options && options.ignoreBOM);
   }
   TextDecoder.prototype.decode = function (input) {
-    let s = utf8Decode(encodingBytes(input));
-    if (this.ignoreBOM && s.charCodeAt(0) === 0xfeff) s = s.slice(1);
+    const bytes = encodingBytes(input);
+    let s =
+      this.encoding === "utf-16le"
+        ? utf16Decode(bytes, true)
+        : this.encoding === "utf-16be"
+          ? utf16Decode(bytes, false)
+          : utf8Decode(bytes);
+    if (!this.ignoreBOM && s.charCodeAt(0) === 0xfeff) s = s.slice(1);
     return s;
   };
   function TextEncoder() {

@@ -243,7 +243,9 @@ const ASYNC_START: &str = r#"(function () {
     .then(function () { return b.validate && b.validate(1); })
     .then(function () { window.__veJs.done = true; })
     .catch(function (e) {
-      window.__veJs.err = String(e && e.stack ? e.stack : (e && e.message ? e.message : e));
+      var msg = e && e.message ? String(e.message) : String(e);
+      var stack = e && e.stack ? String(e.stack) : "";
+      window.__veJs.err = msg + (stack && stack.indexOf(msg) < 0 ? "\n" + stack : stack ? "\n" + stack : "");
     });
   return true;
 })()"#;
@@ -272,14 +274,41 @@ fn wait_async(engine: &mut VectorEngine, page: ve_api::PageId) -> Result<(), Str
             return Ok(());
         }
         if let Some(err) = text.strip_prefix("err:") {
-            return Err(err.to_owned());
+            return Err(with_console(engine, page, err.to_owned()));
         }
         if let Some(err) = text.strip_prefix("\"err:") {
-            return Err(err.trim_end_matches('"').to_owned());
+            return Err(with_console(
+                engine,
+                page,
+                err.trim_end_matches('"').to_owned(),
+            ));
         }
         std::thread::sleep(std::time::Duration::from_millis(25));
     }
-    Err("async runIteration did not finish".into())
+    Err(with_console(
+        engine,
+        page,
+        "async runIteration did not finish".into(),
+    ))
+}
+
+fn with_console(engine: &mut VectorEngine, page: ve_api::PageId, err: String) -> String {
+    let lines = engine
+        .page_mut(page)
+        .map(|p| {
+            p.console()
+                .iter()
+                .rev()
+                .take(12)
+                .map(|l| format!("{}: {}", l.level, l.message))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    if lines.is_empty() {
+        err
+    } else {
+        format!("{err}\nconsole:\n{}", lines.join("\n"))
+    }
 }
 
 fn finish_jetstream(

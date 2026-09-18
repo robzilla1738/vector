@@ -812,6 +812,7 @@ pub(crate) fn run(
 ) -> Vec<SuiteResult> {
     let mut out = SUNSPIDER
         .iter()
+        .filter(|(name, _)| jetstream_wanted(name))
         .map(|(name, source)| {
             eprintln!("browserbench: start jetstream.{name}");
             crate::jetstream(
@@ -825,6 +826,22 @@ pub(crate) fn run(
         .collect::<Vec<_>>();
     out.extend(run_default_js(engine, iterations, dir));
     out
+}
+
+fn jetstream_wanted(name: &str) -> bool {
+    let Ok(raw) = std::env::var("VECTOR_JETSTREAM_ONLY") else {
+        return true;
+    };
+    let want = raw.trim();
+    if want.is_empty() {
+        return true;
+    }
+    want.split(',').any(|part| {
+        let part = part.trim();
+        name.eq_ignore_ascii_case(part)
+            || name.eq_ignore_ascii_case(part.trim_start_matches("jetstream."))
+            || format!("jetstream.{name}").eq_ignore_ascii_case(part)
+    })
 }
 
 fn run_default_js(
@@ -856,6 +873,9 @@ fn run_default_js(
     };
     let mut results = Vec::new();
     for (name, files, det_rand) in DEFAULT_JS {
+        if !jetstream_wanted(name) {
+            continue;
+        }
         eprintln!("browserbench: start jetstream.{name}");
         match load_chunks(root, files, *det_rand, &[], false) {
             Ok(chunks) => results.push(crate::jetstream_chunks(
@@ -869,6 +889,9 @@ fn run_default_js(
         }
     }
     for (name, files, det_rand, preloads) in ASYNC_JS {
+        if !jetstream_wanted(name) {
+            continue;
+        }
         eprintln!("browserbench: start jetstream.{name}");
         match load_chunks(root, files, *det_rand, preloads, false) {
             Ok(chunks) => results.push(crate::jetstream_async_chunks(
@@ -882,6 +905,9 @@ fn run_default_js(
         }
     }
     for (name, files, det_rand, preloads) in WASM_JS {
+        if !jetstream_wanted(name) {
+            continue;
+        }
         eprintln!("browserbench: start jetstream.{name}");
         match load_wasm_chunks(root, name, files, *det_rand, preloads) {
             Ok(chunks) => results.push(crate::jetstream_async_chunks(
@@ -897,6 +923,7 @@ fn run_default_js(
     results.extend(
         SKIPPED_DEFAULT_JS
             .iter()
+            .filter(|(name, _)| jetstream_wanted(name))
             .map(|(name, why)| notrun(name, &revision, why)),
     );
     results
