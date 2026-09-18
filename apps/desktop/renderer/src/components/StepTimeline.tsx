@@ -1,5 +1,5 @@
 import { memo } from "react";
-import type { StepRecord } from "@vector/contracts";
+import type { ActionReceipt, StepRecord } from "@vector/contracts";
 import { I } from "./icons";
 
 export type StepState = "ok" | "failed" | "skipped" | "running";
@@ -49,6 +49,22 @@ export function opLabel(op: string): string {
   return map[op] ?? op;
 }
 
+/** VEC-016 / Gate F — inspectable effect state. Takeover wins over confirmed. */
+export function receiptKind(receipt: ActionReceipt | undefined): "takeover" | "confirmed" | "uncertain" | "" {
+  if (!receipt) return "";
+  if (receipt.dispatchedBeforeTakeover) return "takeover";
+  if (receipt.remoteConfirmed) return "confirmed";
+  if (receipt.uncertain) return "uncertain";
+  return "";
+}
+
+export function receiptLabel(kind: ReturnType<typeof receiptKind>): string {
+  if (kind === "takeover") return "Takeover-interrupted";
+  if (kind === "confirmed") return "Confirmed";
+  if (kind === "uncertain") return "Uncertain";
+  return "";
+}
+
 export function stepSummary(s: StepRecord): string {
   const inputs = (s.inputs ?? {}) as Record<string, unknown>;
   if (s.outcome?.status === "failed") return s.outcome.error?.message ?? "failed";
@@ -93,6 +109,8 @@ export const StepTimeline = memo(function StepTimeline({
         const state = stepState(s);
         const obsId = (s.inputs as { obsArtifactId?: string } | undefined)?.obsArtifactId;
         const last = i === steps.length - 1;
+        const kind = receiptKind(s.outcome?.receipt);
+        const receipt = receiptLabel(kind);
         return (
           <li key={s.stepId} className={`tl-step ${state}`} aria-current={live && last && state === "running" ? "step" : undefined} data-testid="tl-step">
             <span className="tl-dot">
@@ -105,6 +123,7 @@ export const StepTimeline = memo(function StepTimeline({
               </span>
               <span className="tl-detail" title={stepSummary(s)}>{stepSummary(s)}</span>
               {state === "failed" && s.outcome?.error?.code && <span className="tl-code">{s.outcome.error.code}</span>}
+              {receipt && <span className="tl-receipt" data-testid="tl-receipt" data-receipt={kind}>{receipt}</span>}
             </span>
             {obsId && onInspect && (
               <button className="icon-btn xs tl-obs" title="Show what the agent saw before this step" aria-label="Inspect observation" onClick={() => onInspect(obsId, s)}>

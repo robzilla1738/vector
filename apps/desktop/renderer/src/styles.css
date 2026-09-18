@@ -781,6 +781,9 @@ body.resizing .rail { transition: none; }
 .tl-detail { font-size: var(--fs-xs); color: var(--ink-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
 .tl-step.failed .tl-detail { color: var(--err); white-space: normal; overflow-wrap: anywhere; }
 .tl-code { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--ink-2); }
+.tl-receipt { font-size: var(--fs-2xs); color: var(--ink-2); }
+.tl-receipt[data-receipt="confirmed"] { color: var(--ok); }
+.tl-receipt[data-receipt="uncertain"], .tl-receipt[data-receipt="takeover"] { color: var(--warn); }
 .tl-obs { opacity: 0; margin-top: 2px; }
 .tl-step:hover .tl-obs, .tl-obs:focus-visible { opacity: 1; }
 .timeline.compact .tl-step { padding: 3px 0; }

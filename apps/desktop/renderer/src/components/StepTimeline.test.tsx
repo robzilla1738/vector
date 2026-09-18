@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { StepRecord } from "@vector/contracts";
-import { StepTimeline, fmtMs, opLabel, stepSummary } from "./StepTimeline";
+import { StepTimeline, fmtMs, opLabel, receiptKind, receiptLabel, stepSummary } from "./StepTimeline";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -78,6 +78,29 @@ describe("StepTimeline", () => {
     expect(idle.querySelectorAll("li")).toHaveLength(0);
   });
 
+  it("surfaces outcome receipts so effect state is inspectable", () => {
+    const el = render(
+      <StepTimeline
+        live={false}
+        steps={[
+          step("s1", "click", { durationMs: 10, receipt: { observed: "tab", remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false } }),
+          step("s2", "fill", { durationMs: 10, receipt: { observed: "saved", remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false } }),
+          step("s3", "click", { durationMs: 10, receipt: { observed: "clicked", remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true } }),
+          step("s4", "extract", { durationMs: 10 }),
+        ]}
+      />,
+    );
+    const receipts = el.querySelectorAll("[data-testid=tl-receipt]");
+    expect(receipts).toHaveLength(3);
+    expect(receipts[0]!.getAttribute("data-receipt")).toBe("uncertain");
+    expect(receipts[0]!.textContent).toBe("Uncertain");
+    expect(receipts[1]!.getAttribute("data-receipt")).toBe("confirmed");
+    expect(receipts[1]!.textContent).toBe("Confirmed");
+    expect(receipts[2]!.getAttribute("data-receipt")).toBe("takeover");
+    expect(receipts[2]!.textContent).toBe("Takeover-interrupted");
+    expect(el.querySelectorAll("[data-testid=tl-step]")[3]!.querySelector("[data-testid=tl-receipt]")).toBeNull();
+  });
+
   it("offers an inspect button only for steps that carry an observation artifact", () => {
     const seen: string[] = [];
     const el = render(
@@ -107,6 +130,13 @@ describe("timeline helpers", () => {
     expect(opLabel("navigate")).toBe("Open");
     expect(opLabel("waitFor")).toBe("Wait");
     expect(opLabel("frobnicate")).toBe("frobnicate");
+  });
+
+  it("labels receipts with takeover taking priority over confirmed", () => {
+    expect(receiptKind(undefined)).toBe("");
+    expect(receiptLabel(receiptKind({ remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false }))).toBe("Uncertain");
+    expect(receiptLabel(receiptKind({ remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false }))).toBe("Confirmed");
+    expect(receiptLabel(receiptKind({ remoteConfirmed: true, uncertain: true, dispatchedBeforeTakeover: true }))).toBe("Takeover-interrupted");
   });
 
   it("summarises a step from outcome, expectation, or inputs in that order", () => {
