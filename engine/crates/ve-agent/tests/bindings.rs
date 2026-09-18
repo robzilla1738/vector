@@ -3930,6 +3930,27 @@ fn stream_lock_bodyused() {
 }
 
 #[test]
+fn already_focused_input_does_not_refire_focus() {
+    let mut page = open(r#"<input id="n" autofocus>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var n = document.getElementById("n");
+              n.focus();
+              var hits = 0;
+              n.addEventListener("focus", function () { hits++; });
+              n.addEventListener("focusin", function () { hits++; });
+              n.focus();
+              n.focus();
+              return { hits: hits, active: document.activeElement === n };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hits"], 0, "{v}");
+    assert_eq!(v["active"], true, "{v}");
+}
+
+#[test]
 fn content_onclick_attribute_still_runs() {
     let mut page = open(r#"<button id="b" onclick="window.__hit = (window.__hit||0)+1">Go</button>"#);
     let v = page

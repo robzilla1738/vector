@@ -38,17 +38,17 @@
       "status": "official-3.0"
     }
   },
-  "process_tree_rss_bytes": 145539072,
-  "rss_bytes": 145539072,
+  "process_tree_rss_bytes": 145399808,
+  "rss_bytes": 145399808,
   "security_mode": "developer-offline",
   "suites": [
     {
       "name": "jetstream.n-body",
-      "p50_ms": 6,
-      "p95_ms": 6,
+      "p50_ms": 5,
+      "p95_ms": 5,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        6
+        5
       ],
       "status": "PASS"
     },
@@ -63,13 +63,13 @@
       "status": "PASS"
     },
     {
-      "detail": "{\"added\":100,\"attribution\":{\"addMs\":46655,\"finishMs\":4973,\"jsMs\":51641,\"label\":\"speedometer.3.0.TodoMVC-JavaScript-ES5\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":37,\"settleMs\":3200},\"kind\":\"todomvc\",\"remaining\":0}",
+      "detail": "{\"added\":100,\"attribution\":{\"addMs\":13197,\"changeMs\":13188,\"enterMs\":8,\"finishMs\":4912,\"focusMs\":0,\"inputMs\":1,\"jsMs\":18115,\"label\":\"speedometer.3.0.TodoMVC-JavaScript-ES5\",\"note\":\"openMs covers parse/style/layout/script boot; jsMs is add+complete+count; settleMs is harness wait, not engine work\",\"openMs\":38,\"otherRenderMs\":2,\"settleMs\":3200,\"showEntriesMs\":8154,\"updateElementCountMs\":14,\"valueMs\":0},\"kind\":\"todomvc\",\"remaining\":0}",
       "name": "speedometer.3.0.TodoMVC-JavaScript-ES5",
-      "p50_ms": 51641,
-      "p95_ms": 51641,
+      "p50_ms": 18115,
+      "p95_ms": 18115,
       "revision": "572e9180c4ebc90a78ef8c6dd35aac7ffe0adb51",
       "samples_ms": [
-        51641
+        18115
       ],
       "status": "PASS"
     },

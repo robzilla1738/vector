@@ -13,6 +13,9 @@
   const nonceMap = new WeakMap();
   const registry = new Map();
   const listeners = new Map();
+  const listenerCounts = new Map();
+  let onAttrCount = 0;
+  let handlerPropCount = 0;
   const onReadyStateChange = new WeakMap();
   const trustedEvents = new WeakSet();
   const waiters = new Map();
@@ -35,7 +38,7 @@
       this.target = null;
       this.currentTarget = null;
       this.eventPhase = 0;
-      this.timeStamp = __ve.now();
+      this.timeStamp = Date.now();
       this.clientX = init.clientX || 0;
       this.clientY = init.clientY || 0;
       this.button = init.button || 0;
@@ -152,6 +155,17 @@
     }
   }
 
+  function listenerOnPath(type, start) {
+    for (const [node, m] of listeners) {
+      const arr = m.get(type);
+      if (!arr || !arr.length) continue;
+      if (node === start || node === window || node === document) return true;
+      if (start && typeof node.contains === "function") {
+        try { if (node.contains(start)) return true; } catch (e) {}
+      }
+    }
+    return false;
+  }
   function composedPath(start) {
     if (start && start.__h) {
       const path = list(D("ancestorPath", start.__h));
@@ -198,19 +212,40 @@
       const arr = list.get(type);
       if (arr.some((x) => x.orig === fn && x.cap === cap)) return;
       arr.push({ fn: call, orig: fn, cap, once });
+      listenerCounts.set(type, (listenerCounts.get(type) || 0) + 1);
     }
     removeEventListener(type, fn, opts) {
       const cap = !!(opts && (opts === true || opts.capture));
       const arr = store(this).get(type);
       if (!arr) return;
       const i = arr.findIndex((x) => (x.orig === fn || x.fn === fn) && x.cap === cap);
-      if (i >= 0) arr.splice(i, 1);
+      if (i >= 0) {
+        arr.splice(i, 1);
+        listenerCounts.set(type, Math.max(0, (listenerCounts.get(type) || 0) - 1));
+      }
     }
     dispatchEvent(ev) {
       if (!ev || typeof ev.type !== "string") throw new TypeError("not an Event");
       ev.target = ev.target || this;
-      const path = composedPath(this);
       const type = ev.type;
+      const nListen = listenerCounts.get(type) || 0;
+      const needPath = nListen > 0 || onAttrCount > 0 || handlerPropCount > 0;
+      const fireTargetProp = () => {
+        ev.currentTarget = this;
+        ev.eventPhase = 2;
+        const prop = this["on" + type];
+        if (typeof prop === "function") {
+          try { prop.call(this, ev); } catch (e) { __ve.log("error", String(e)); }
+        }
+        ev.eventPhase = 0;
+        ev.currentTarget = null;
+        return !ev.defaultPrevented;
+      };
+      if (!needPath) return fireTargetProp();
+      if (nListen > 0 && onAttrCount === 0 && handlerPropCount === 0 && !listenerOnPath(type, this)) {
+        return fireTargetProp();
+      }
+      const path = composedPath(this);
       const fire = (node, cap) => {
         if (ev._stopImm) return;
         ev.currentTarget = node;
@@ -220,7 +255,10 @@
           try { l.fn.call(node, ev); } catch (e) { __ve.log("error", "Uncaught (in event) " + (e && e.stack || e)); }
           if (l.once) {
             const i = arr.indexOf(l);
-            if (i >= 0) arr.splice(i, 1);
+            if (i >= 0) {
+              arr.splice(i, 1);
+              listenerCounts.set(type, Math.max(0, (listenerCounts.get(type) || 0) - 1));
+            }
           }
           if (ev._stopImm) return;
         }
@@ -353,7 +391,10 @@
       installDocumentLocation(n);
     }
     if (info.t === 1) {
-      if (info.on) n.__hasOnAttr = true;
+      if (info.on) {
+        n.__hasOnAttr = true;
+        onAttrCount++;
+      }
       if (registry.size) upgradeOne(n, false);
       if (info.id) {
         try { exposeWindowName(info.id); } catch (e) {}
@@ -2051,7 +2092,10 @@
       const js = attrToJs[String(n).toLowerCase()];
       if (js) delete ariaState(this)[js];
       const lower = String(n).toLowerCase();
-      if (lower.startsWith("on")) this.__hasOnAttr = true;
+      if (lower.startsWith("on") && !this.__hasOnAttr) {
+        this.__hasOnAttr = true;
+        onAttrCount++;
+      }
       if (lower === "id") exposeWindowName(String(v));
       if (lower === "nonce") nonceMap.set(this, String(v));
     };
@@ -2223,6 +2267,9 @@
       }
     }
     focus() {
+      try {
+        if (document.activeElement === this) return;
+      } catch (e) {}
       D("focus", this.__h);
       this.dispatchEvent(new Event("focus", { bubbles: false }));
       this.dispatchEvent(new Event("focusin", { bubbles: true }));
@@ -4745,7 +4792,11 @@
       const set = function (v) {
         let m = handlerStore.get(this);
         if (!m) { m = Object.create(null); handlerStore.set(this, m); }
-        m[name] = typeof v === "function" ? v : null;
+        const prev = m[name];
+        const next = typeof v === "function" ? v : null;
+        if (!prev && next) handlerPropCount++;
+        if (prev && !next) handlerPropCount--;
+        m[name] = next;
       };
       Object.defineProperty(get, "name", { value: "get " + name, configurable: true });
       Object.defineProperty(set, "name", { value: "set " + name, configurable: true });

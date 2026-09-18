@@ -272,13 +272,13 @@ const FINISH_STEPS: &str = r##"(function () {
     try {
       completeAndDeleteTodos();
     } catch (e) {
-      window.__veBench = { kind: kind, added: countTodos(), remaining: countTodos(), err: String(e), addMs: prev.addMs };
+      window.__veBench = Object.assign({}, prev, { kind: kind, added: countTodos(), remaining: countTodos(), err: String(e) });
       return JSON.stringify(window.__veBench);
     }
     var finishMs = Date.now() - finishStarted;
     var added = prev.added || countTodos();
     var remaining = countTodos();
-    window.__veBench = { kind: kind, added: added, remaining: remaining, addMs: prev.addMs, finishMs: finishMs };
+    window.__veBench = Object.assign({}, prev, { kind: kind, added: added, remaining: remaining, finishMs: finishMs });
     return JSON.stringify(window.__veBench);
   }
   return JSON.stringify({ ok: !!prev.ok, kind: kind, added: prev.ok ? 1 : 0, remaining: 0, reason: prev.reason });
@@ -296,7 +296,15 @@ const COUNT_STEPS: &str = r##"(function () {
       added: added,
       remaining: remaining,
       addMs: prev.addMs || 0,
-      finishMs: prev.finishMs || 0
+      finishMs: prev.finishMs || 0,
+      focusMs: prev.focusMs || 0,
+      valueMs: prev.valueMs || 0,
+      inputMs: prev.inputMs || 0,
+      changeMs: prev.changeMs || 0,
+      enterMs: prev.enterMs || 0,
+      showEntriesMs: prev.showEntriesMs || 0,
+      updateElementCountMs: prev.updateElementCountMs || 0,
+      otherRenderMs: prev.otherRenderMs || 0
     });
   }
   return JSON.stringify({ ok: !!prev.ok, kind: kind, added: prev.ok ? 1 : 0, remaining: 0, reason: prev.reason });
