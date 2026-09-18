@@ -607,7 +607,7 @@ fn finish_subtree(bx: &mut LayoutBox, inherited_clip: Option<Rect>) {
     propagate_clips(bx, inherited_clip);
 }
 
-/// Applies `transform: translate() / scale()` to boxes (geometry only).
+/// Applies `transform: translate() / scale() / rotate()` to boxes (geometry only).
 fn apply_transforms(bx: &mut LayoutBox) {
     if bx.has_own_edges() && !bx.style.transform.is_empty() {
         let rect = bx.rect;
@@ -618,11 +618,49 @@ fn apply_transforms(bx: &mut LayoutBox) {
                     block::translate_subtree(bx, x.resolve(rect.width()), y.resolve(rect.height()));
                 }
                 TransformOp::Scale(sx, sy) => scale_subtree(bx, center, sx, sy),
+                TransformOp::Rotate(angle) => rotate_subtree(bx, center, angle),
             }
         }
     }
     for child in &mut bx.children {
         apply_transforms(child);
+    }
+}
+
+fn rotate_rect(r: Rect, center: Point, angle: f32) -> Rect {
+    let (c, s) = (angle.cos(), angle.sin());
+    let rot = |p: Point| {
+        let dx = p.x - center.x;
+        let dy = p.y - center.y;
+        Point::new(center.x + dx * c - dy * s, center.y + dx * s + dy * c)
+    };
+    let pts = [
+        rot(Point::new(r.x(), r.y())),
+        rot(Point::new(r.right(), r.y())),
+        rot(Point::new(r.right(), r.bottom())),
+        rot(Point::new(r.x(), r.bottom())),
+    ];
+    let min_x = pts.iter().map(|p| p.x).fold(f32::MAX, f32::min);
+    let min_y = pts.iter().map(|p| p.y).fold(f32::MAX, f32::min);
+    let max_x = pts.iter().map(|p| p.x).fold(f32::MIN, f32::max);
+    let max_y = pts.iter().map(|p| p.y).fold(f32::MIN, f32::max);
+    Rect::from_points(Point::new(min_x, min_y), Point::new(max_x, max_y))
+}
+
+fn rotate_subtree(bx: &mut LayoutBox, center: Point, angle: f32) {
+    bx.rect = rotate_rect(bx.rect, center, angle);
+    bx.content = rotate_rect(bx.content, center, angle);
+    for line in &mut bx.lines {
+        line.rect = rotate_rect(line.rect, center, angle);
+        for f in &mut line.fragments {
+            f.rect = rotate_rect(f.rect, center, angle);
+        }
+    }
+    if let Some(m) = &mut bx.marker_fragment {
+        m.rect = rotate_rect(m.rect, center, angle);
+    }
+    for child in &mut bx.children {
+        rotate_subtree(child, center, angle);
     }
 }
 
@@ -1412,6 +1450,26 @@ mod tests {
             (tall.width() - 160.0).abs() < 0.5,
             "width from 16/9, got {}",
             tall.width()
+        );
+    }
+
+    #[test]
+    fn transform_rotate_expands_axis_aligned_bounds() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #g{width:20px;height:10px;transform:rotate(90deg)}</style>\
+             <div id=g></div>",
+            400.0,
+        );
+        let r = rect(&tree, &engine, &doc, "#g");
+        assert!(
+            (r.width() - 10.0).abs() < 0.5,
+            "90deg swaps sides, width got {}",
+            r.width()
+        );
+        assert!(
+            (r.height() - 20.0).abs() < 0.5,
+            "90deg swaps sides, height got {}",
+            r.height()
         );
     }
 

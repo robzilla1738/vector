@@ -725,6 +725,46 @@ impl Content {
     }
 }
 
+/// CSS 2.1 `clip` (`auto` or `rect()`), used on absolutely positioned boxes.
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum CssClip {
+    /// `clip: auto` — no additional clip.
+    #[default]
+    Auto,
+    /// `clip: rect(top, right, bottom, left)` in border-box coordinates.
+    Rect {
+        /// Offset from the top border edge.
+        top: f32,
+        /// Offset from the left border edge to the right clip edge.
+        right: f32,
+        /// Offset from the top border edge to the bottom clip edge.
+        bottom: f32,
+        /// Offset from the left border edge.
+        left: f32,
+    },
+}
+
+impl CssClip {
+    /// Resolves the clip rectangle in the same space as `border`.
+    #[must_use]
+    pub fn to_rect(self, border: ve_core::Rect) -> Option<ve_core::Rect> {
+        match self {
+            Self::Auto => None,
+            Self::Rect {
+                top,
+                right,
+                bottom,
+                left,
+            } => Some(ve_core::Rect::new(
+                border.x() + left,
+                border.y() + top,
+                (right - left).max(0.0),
+                (bottom - top).max(0.0),
+            )),
+        }
+    }
+}
+
 /// The computed `clip-path` (only `inset()` is understood).
 #[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub enum ClipPath {
@@ -888,6 +928,8 @@ pub enum TransformOp {
     Translate(LengthPercentage, LengthPercentage),
     /// `scale(x, y)` about the transform origin (box centre).
     Scale(f32, f32),
+    /// `rotate(θ)` about the transform origin, radians clockwise-from-x.
+    Rotate(f32),
 }
 
 keyword_enum! {

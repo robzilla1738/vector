@@ -126,7 +126,7 @@ struct Canvas {
     clip: Vec<Rect>,
     opacity: Vec<f32>,
     scale: f32,
-    translate: Vec<(f32, f32, f32, f32)>,
+    translate: Vec<(f32, f32, f32, f32, f32, f32, f32)>,
 }
 
 impl Canvas {
@@ -146,19 +146,33 @@ impl Canvas {
     fn map_point(&self, p: Point) -> Point {
         let mut x = p.x;
         let mut y = p.y;
-        for &(tx, ty, sx, sy) in &self.translate {
-            x = x * sx + tx;
-            y = y * sy + ty;
+        for &(tx, ty, sx, sy, angle, ox, oy) in &self.translate {
+            if angle.abs() > f32::EPSILON {
+                let dx = (x - ox) * sx;
+                let dy = (y - oy) * sy;
+                let (c, s) = (angle.cos(), angle.sin());
+                x = dx * c - dy * s + ox + tx;
+                y = dx * s + dy * c + oy + ty;
+            } else {
+                x = x * sx + tx;
+                y = y * sy + ty;
+            }
         }
         Point::new(x, y)
     }
 
     fn map_rect(&self, rect: Rect) -> Rect {
-        let a = self.map_point(Point::new(rect.x(), rect.y()));
-        let b = self.map_point(Point::new(rect.right(), rect.bottom()));
-        let x0 = a.x.min(b.x);
-        let y0 = a.y.min(b.y);
-        Rect::new(x0, y0, (a.x - b.x).abs(), (a.y - b.y).abs())
+        let corners = [
+            self.map_point(Point::new(rect.x(), rect.y())),
+            self.map_point(Point::new(rect.right(), rect.y())),
+            self.map_point(Point::new(rect.right(), rect.bottom())),
+            self.map_point(Point::new(rect.x(), rect.bottom())),
+        ];
+        let min_x = corners.iter().map(|p| p.x).fold(f32::MAX, f32::min);
+        let min_y = corners.iter().map(|p| p.y).fold(f32::MAX, f32::min);
+        let max_x = corners.iter().map(|p| p.x).fold(f32::MIN, f32::max);
+        let max_y = corners.iter().map(|p| p.y).fold(f32::MIN, f32::max);
+        Rect::new(min_x, min_y, max_x - min_x, max_y - min_y)
     }
 
     fn blend(&mut self, x: u32, y: u32, color: Rgba, coverage: f32) {
@@ -560,8 +574,16 @@ impl Renderer for SoftwareRenderer {
                     let clipped = canvas.clip_rect().intersection(&mapped).unwrap_or(Rect::ZERO);
                     canvas.clip.push(clipped);
                 }
-                DisplayItem::PushTransform { tx, ty, sx, sy } => {
-                    canvas.translate.push((*tx, *ty, *sx, *sy));
+                DisplayItem::PushTransform {
+                    tx,
+                    ty,
+                    sx,
+                    sy,
+                    angle,
+                    ox,
+                    oy,
+                } => {
+                    canvas.translate.push((*tx, *ty, *sx, *sy, *angle, *ox, *oy));
                 }
                 DisplayItem::PopTransform => {
                     canvas.translate.pop();
@@ -697,6 +719,9 @@ mod tests {
             ty: 0.0,
             sx: 1.0,
             sy: 1.0,
+            angle: 0.0,
+            ox: 0.0,
+            oy: 0.0,
         });
         list.push(DisplayItem::Rect {
             rect: Rect::new(0.0, 0.0, 4.0, 4.0),
@@ -725,6 +750,9 @@ mod tests {
             ty: 0.0,
             sx: 2.0,
             sy: 1.0,
+            angle: 0.0,
+            ox: 0.0,
+            oy: 0.0,
         });
         list.push(DisplayItem::Rect {
             rect: Rect::new(0.0, 0.0, 4.0, 4.0),
@@ -739,5 +767,40 @@ mod tests {
             "scaled width covers x=6"
         );
         assert_eq!(frame.pixel(18, 1), Some([255, 255, 255, 255]), "outside scale");
+    }
+
+    #[test]
+    fn software_renderer_applies_push_rotate() {
+        let mut list = DisplayList::new(Size::new(20.0, 20.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 20.0, 20.0),
+            color: Rgba::WHITE,
+        });
+        list.push(DisplayItem::PushTransform {
+            tx: 0.0,
+            ty: 0.0,
+            sx: 1.0,
+            sy: 1.0,
+            angle: std::f32::consts::FRAC_PI_2,
+            ox: 2.0,
+            oy: 0.0,
+        });
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(2.0, 0.0, 8.0, 2.0),
+            color: Rgba::rgb(255, 0, 0),
+        });
+        list.push(DisplayItem::PopTransform);
+        let mut renderer = SoftwareRenderer::new();
+        let frame = renderer.render(&list, 20, 20, 1.0).unwrap();
+        assert_eq!(
+            frame.pixel(1, 4),
+            Some([255, 0, 0, 255]),
+            "90deg stands the bar up"
+        );
+        assert_eq!(
+            frame.pixel(8, 0),
+            Some([255, 255, 255, 255]),
+            "original x extent is empty after rotate"
+        );
     }
 }

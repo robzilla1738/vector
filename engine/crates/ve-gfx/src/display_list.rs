@@ -102,16 +102,23 @@ pub enum DisplayItem {
         radius: f32,
     },
     /// Affine subsequent items until [`DisplayItem::PopTransform`].
-    /// `p' = (p.x * sx + tx, p.y * sy + ty)`.
+    /// With `angle == 0`: `p' = (p.x * sx + tx, p.y * sy + ty)`.
+    /// With rotation: `p' = origin + R * S * (p - origin) + T`.
     PushTransform {
-        /// X translation (includes transform-origin compensation).
+        /// X translation (includes transform-origin compensation when `angle == 0`).
         tx: f32,
-        /// Y translation (includes transform-origin compensation).
+        /// Y translation (includes transform-origin compensation when `angle == 0`).
         ty: f32,
         /// X scale.
         sx: f32,
         /// Y scale.
         sy: f32,
+        /// Rotation in radians (counter-clockwise from +x, CSS `rotate`).
+        angle: f32,
+        /// Transform-origin X used when `angle != 0`.
+        ox: f32,
+        /// Transform-origin Y used when `angle != 0`.
+        oy: f32,
     },
     /// Ends a transform group.
     PopTransform,
@@ -226,11 +233,22 @@ impl DisplayItem {
                 blur: *blur,
                 color: *color,
             },
-            Self::PushTransform { tx, ty, sx, sy } => Self::PushTransform {
+            Self::PushTransform {
+                tx,
+                ty,
+                sx,
+                sy,
+                angle,
+                ox,
+                oy,
+            } => Self::PushTransform {
                 tx: *tx + dx,
                 ty: *ty + dy,
                 sx: *sx,
                 sy: *sy,
+                angle: *angle,
+                ox: *ox + dx,
+                oy: *oy + dy,
             },
             other => other.clone(),
         }
@@ -340,15 +358,25 @@ impl DisplayList {
             } else if let Some(c) = clip {
                 list.push(DisplayItem::PushClip(c));
             }
+            let css_clip = if style.position.is_out_of_flow() {
+                style.clip.to_rect(item.rect)
+            } else {
+                None
+            };
+            if let Some(c) = css_clip {
+                list.push(DisplayItem::PushClip(c));
+            }
             let mut tx = 0.0f32;
             let mut ty = 0.0f32;
             let mut sx = 1.0f32;
             let mut sy = 1.0f32;
+            let mut angle = 0.0f32;
             let mut xformed = false;
             for op in style
                 .transform
                 .iter()
                 .chain(style.translate.iter())
+                .chain(style.rotate.iter())
                 .chain(style.scale.iter())
             {
                 match op {
@@ -362,6 +390,10 @@ impl DisplayList {
                         sy *= *y;
                         xformed = true;
                     }
+                    TransformOp::Rotate(r) => {
+                        angle += *r;
+                        xformed = true;
+                    }
                 }
             }
             if (style.zoom - 1.0).abs() > f32::EPSILON {
@@ -370,13 +402,23 @@ impl DisplayList {
                 xformed = true;
             }
             if xformed {
-                if (sx - 1.0).abs() > f32::EPSILON || (sy - 1.0).abs() > f32::EPSILON {
-                    let ox = item.rect.x() + style.transform_origin.x.resolve(item.rect.width());
-                    let oy = item.rect.y() + style.transform_origin.y.resolve(item.rect.height());
+                let ox = item.rect.x() + style.transform_origin.x.resolve(item.rect.width());
+                let oy = item.rect.y() + style.transform_origin.y.resolve(item.rect.height());
+                if angle.abs() <= f32::EPSILON
+                    && ((sx - 1.0).abs() > f32::EPSILON || (sy - 1.0).abs() > f32::EPSILON)
+                {
                     tx += ox * (1.0 - sx);
                     ty += oy * (1.0 - sy);
                 }
-                list.push(DisplayItem::PushTransform { tx, ty, sx, sy });
+                list.push(DisplayItem::PushTransform {
+                    tx,
+                    ty,
+                    sx,
+                    sy,
+                    angle,
+                    ox,
+                    oy,
+                });
             }
             if faded {
                 list.push(DisplayItem::PushOpacity(style.opacity.clamp(0.0, 1.0)));
@@ -541,6 +583,9 @@ impl DisplayList {
                 list.push(DisplayItem::PopTransform);
             }
             if radius > 0.0 || clip.is_some() {
+                list.push(DisplayItem::PopClip);
+            }
+            if css_clip.is_some() {
                 list.push(DisplayItem::PopClip);
             }
         }
@@ -898,7 +943,7 @@ mod tests {
         assert!(
             list.items()
                 .iter()
-                .any(|i| matches!(i, DisplayItem::PushTransform { tx, ty, sx, sy } if (*tx - 8.0).abs() < 0.1 && (*ty - 4.0).abs() < 0.1 && (*sx - 1.0).abs() < f32::EPSILON && (*sy - 1.0).abs() < f32::EPSILON)),
+                .any(|i| matches!(i, DisplayItem::PushTransform { tx, ty, sx, sy, angle, .. } if (*tx - 8.0).abs() < 0.1 && (*ty - 4.0).abs() < 0.1 && (*sx - 1.0).abs() < f32::EPSILON && (*sy - 1.0).abs() < f32::EPSILON && angle.abs() < f32::EPSILON)),
             "individual translate missing: {:?}",
             list.items()
         );
@@ -923,6 +968,59 @@ mod tests {
                     if (*sx - 2.0).abs() < 0.1 && (*sy - 2.0).abs() < 0.1
             )),
             "individual scale missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_applies_individual_rotate() {
+        let html = "<style>body{margin:0} #g{width:20px;height:10px;background:red;rotate:90deg}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert!(
+            !styles.style(id).rotate.is_empty(),
+            "rotate computed"
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        let half_pi = std::f32::consts::FRAC_PI_2;
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::PushTransform { angle, .. }
+                    if (*angle - half_pi).abs() < 0.01
+            )),
+            "individual rotate missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_applies_css_clip_rect() {
+        let html = "<style>body{margin:0} #g{position:absolute;left:0;top:0;width:40px;height:20px;background:red;clip:rect(0, 20px, 20px, 0)}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        let clip = styles.style(id).clip;
+        assert!(
+            matches!(clip, ve_style::CssClip::Rect { right, .. } if (right - 20.0).abs() < f32::EPSILON),
+            "clip computed: {clip:?}"
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::PushClip(r) if (r.width() - 20.0).abs() < 0.5 && (r.height() - 20.0).abs() < 0.5
+            )),
+            "css clip missing: {:?}",
             list.items()
         );
     }

@@ -249,10 +249,27 @@ pub fn build_scene_fonts(
             DisplayItem::RoundedClip { rect, .. } => {
                 scene.push_clip_layer(Fill::NonZero, transform, &krect(*rect));
             }
-            DisplayItem::PushTransform { tx, ty, sx, sy } => {
-                let shifted = transform
-                    * Affine::translate((f64::from(*tx), f64::from(*ty)))
-                    * Affine::scale_non_uniform(f64::from(*sx), f64::from(*sy));
+            DisplayItem::PushTransform {
+                tx,
+                ty,
+                sx,
+                sy,
+                angle,
+                ox,
+                oy,
+            } => {
+                let shifted = if angle.abs() > f32::EPSILON {
+                    transform
+                        * Affine::translate((f64::from(*ox), f64::from(*oy)))
+                        * Affine::translate((f64::from(*tx), f64::from(*ty)))
+                        * Affine::rotate(f64::from(*angle))
+                        * Affine::scale_non_uniform(f64::from(*sx), f64::from(*sy))
+                        * Affine::translate((-f64::from(*ox), -f64::from(*oy)))
+                } else {
+                    transform
+                        * Affine::translate((f64::from(*tx), f64::from(*ty)))
+                        * Affine::scale_non_uniform(f64::from(*sx), f64::from(*sy))
+                };
                 let everything = KRect::new(
                     0.0,
                     0.0,

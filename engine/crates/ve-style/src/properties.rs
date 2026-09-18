@@ -21,7 +21,7 @@ use crate::values::{
     AlignItems, BackgroundClip, BackgroundImage, BackgroundOrigin, BackgroundPosition,
     BackgroundRepeat, BackgroundSize,
     BorderCollapse, BorderStyle, BoxShadow, BoxSizing, CaptionSide,
-    Clear, ClipPath, Color, Content, ContentItem, Direction, Display, Filter, FlexDirection,
+    Clear, ClipPath, Color, Content, ContentItem, CssClip, Direction, Display, Filter, FlexDirection,
     FlexWrap,
     Float, FontFamily,
     FontStyle, FontWeight, GridLine, JustifyContent, Keyword, Length, LengthContext,
@@ -219,6 +219,8 @@ pub enum SpecifiedTransform {
     Translate(SpecifiedValue, SpecifiedValue),
     /// `scale(x[, y])` / `scaleX` / `scaleY`.
     Scale(f32, f32),
+    /// `rotate(θ)` / `rotateZ(θ)`, radians.
+    Rotate(f32),
 }
 
 /// A `box-shadow` as specified (lengths not yet computed).
@@ -281,6 +283,8 @@ pub enum SpecifiedValue {
     Transform(Vec<SpecifiedTransform>),
     /// `clip-path: inset(top right bottom left)`.
     ClipInset(Box<[SpecifiedValue; 4]>),
+    /// `clip: rect(top, right, bottom, left)`.
+    ClipRect(Box<[SpecifiedValue; 4]>),
     /// `box-shadow: <offset-x> <offset-y> <blur>? <color>?`.
     BoxShadow(Box<SpecifiedBoxShadow>),
     /// `background-size`.
@@ -381,10 +385,14 @@ enum ValueSyntax {
     IndividualTranslate,
     /// Individual `scale` property (`none` | `<number>{1,2}`).
     IndividualScale,
+    /// Individual `rotate` property (`none` | `<angle>`).
+    IndividualRotate,
     /// `background-size`.
     BackgroundSize,
     /// `background-position`.
     BackgroundPosition,
+    /// CSS 2.1 `clip`.
+    Clip,
     /// Arbitrary token stream (custom properties).
     Raw,
 }
@@ -393,6 +401,7 @@ enum ValueSyntax {
 /// valid for the property, which drops the declaration at parse time.
 mod conv {
     use super::*;
+    use crate::values::CssClip;
 
     pub fn kw<T: Keyword>(v: &SpecifiedValue, _: &ConvertContext) -> Option<T> {
         T::from_keyword(v.keyword()?)
@@ -679,6 +688,7 @@ mod conv {
                         Some(TransformOp::Translate(lp(x, ctx)?, lp(y, ctx)?))
                     }
                     SpecifiedTransform::Scale(x, y) => Some(TransformOp::Scale(*x, *y)),
+                    SpecifiedTransform::Rotate(r) => Some(TransformOp::Rotate(*r)),
                 })
                 .collect(),
             _ => None,
@@ -803,6 +813,19 @@ mod conv {
                 right: lp(&sides[1], ctx)?,
                 bottom: lp(&sides[2], ctx)?,
                 left: lp(&sides[3], ctx)?,
+            }),
+            _ => None,
+        }
+    }
+
+    pub fn css_clip(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<CssClip> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(CssClip::Auto),
+            SpecifiedValue::ClipRect(sides) => Some(CssClip::Rect {
+                top: length_px(&sides[0], ctx)?,
+                right: length_px(&sides[1], ctx)?,
+                bottom: length_px(&sides[2], ctx)?,
+                left: length_px(&sides[3], ctx)?,
             }),
             _ => None,
         }
@@ -1090,12 +1113,16 @@ property_table! {
     OverflowY: "overflow-y" => overflow_y: Overflow = Overflow::Visible, inherited = false, syntax = Single, convert = conv::kw::<Overflow>;
     /// `clip-path` (only `inset()`; visibility only)
     ClipPath: "clip-path" => clip_path: ClipPath = ClipPath::None, inherited = false, syntax = ClipPath, convert = conv::clip_path;
+    /// CSS 2.1 `clip` (`auto` / `rect()`), paint-only on out-of-flow boxes
+    Clip: "clip" => clip: CssClip = CssClip::Auto, inherited = false, syntax = Clip, convert = conv::css_clip;
     /// `transform` (`translate` / `scale` only; geometry only)
     Transform: "transform" => transform: Vec<TransformOp> = Vec::new(), inherited = false, syntax = Transform, convert = conv::transform;
     /// Individual `translate` (`none` or one/two lengths)
     Translate: "translate" => translate: Vec<TransformOp> = Vec::new(), inherited = false, syntax = IndividualTranslate, convert = conv::transform;
     /// Individual `scale` (`none` or one/two numbers)
     Scale: "scale" => scale: Vec<TransformOp> = Vec::new(), inherited = false, syntax = IndividualScale, convert = conv::transform;
+    /// Individual `rotate` (`none` or an angle)
+    Rotate: "rotate" => rotate: Vec<TransformOp> = Vec::new(), inherited = false, syntax = IndividualRotate, convert = conv::transform;
     /// `font-size` (pixels)
     FontSize: "font-size" => font_size: f32 = 16.0, inherited = true, syntax = Single, convert = conv::font_size;
     /// `font-weight`
@@ -1343,14 +1370,12 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
     "columns",
     "column-count",
     "column-width",
-    "rotate",
     "offset",
     "offset-path",
     "position-anchor",
     "anchor-name",
     "inset-area",
     "position-area",
-    "clip",
     "container-type",
     "text-orientation",
     "float-offset",
@@ -1432,13 +1457,11 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "column-width",
     "column-rule",
     "column-span",
-    "rotate",
     "transform-style",
     "transform-box",
     "perspective",
     "perspective-origin",
     "backface-visibility",
-    "clip",
     "container-type",
     "container-name",
     "container",
@@ -1519,6 +1542,14 @@ fn parse_component<'i>(input: &mut Parser<'i, '_>) -> Option<SpecifiedValue> {
                 SpecifiedValue::Number(value * 1000.0)
             } else if u == "ms" {
                 SpecifiedValue::Number(value)
+            } else if u == "deg" {
+                SpecifiedValue::Number(value)
+            } else if u == "rad" {
+                SpecifiedValue::Number(value.to_degrees())
+            } else if u == "grad" {
+                SpecifiedValue::Number(value * 0.9)
+            } else if u == "turn" {
+                SpecifiedValue::Number(value * 360.0)
             } else {
                 SpecifiedValue::Length(Length::from_unit(value, &unit)?)
             }
@@ -2048,10 +2079,15 @@ fn parse_transform_list(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
                         1.0,
                         number(y).ok_or_else(|| args.new_error_for_next_token::<()>())?,
                     ),
-                    // Rotations, skews and matrices do not move the box's
+                    ("rotate" | "rotatez", [a]) => {
+                        let deg =
+                            number(a).ok_or_else(|| args.new_error_for_next_token::<()>())?;
+                        SpecifiedTransform::Rotate(deg.to_radians())
+                    }
+                    // 3-D rotations, skews and matrices do not move the box's
                     // axis-aligned centre; treat them as identity.
                     (
-                        "rotate" | "rotatex" | "rotatey" | "rotatez" | "rotate3d" | "skew"
+                        "rotatex" | "rotatey" | "rotate3d" | "skew"
                         | "skewx" | "skewy" | "matrix" | "matrix3d" | "perspective",
                         _,
                     ) => SpecifiedTransform::Scale(1.0, 1.0),
@@ -2097,6 +2133,42 @@ fn parse_clip_path(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
         Token::Function(_) => {
             skip_function(input);
             None
+        }
+        _ => None,
+    }
+}
+
+fn parse_css_clip(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    match input.next().ok()?.clone() {
+        Token::Ident(k) if k.eq_ignore_ascii_case("auto") => {
+            Some(SpecifiedValue::Keyword("auto".into()))
+        }
+        Token::Function(name) if name.eq_ignore_ascii_case("rect") => {
+            let sides = input
+                .parse_nested_block(|args| {
+                    let mut values = Vec::new();
+                    while !args.is_exhausted() && values.len() < 4 {
+                        if args.try_parse(Parser::expect_comma).is_ok() {
+                            continue;
+                        }
+                        let v = parse_component(args)
+                            .ok_or_else(|| args.new_error_for_next_token::<()>())?;
+                        values.push(v);
+                    }
+                    while args.next().is_ok() {}
+                    if values.len() == 4 {
+                        Ok([
+                            values[0].clone(),
+                            values[1].clone(),
+                            values[2].clone(),
+                            values[3].clone(),
+                        ])
+                    } else {
+                        Err(args.new_error_for_next_token())
+                    }
+                })
+                .ok()?;
+            Some(SpecifiedValue::ClipRect(Box::new(sides)))
         }
         _ => None,
     }
@@ -2204,6 +2276,23 @@ fn parse_individual_scale(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> 
         }
     };
     Some(SpecifiedValue::Transform(vec![SpecifiedTransform::Scale(x, y)]))
+}
+
+fn parse_individual_rotate(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    if input
+        .try_parse(|i| i.expect_ident_matching("none"))
+        .is_ok()
+    {
+        return Some(SpecifiedValue::Keyword("none".into()));
+    }
+    let deg = match parse_component(input)? {
+        SpecifiedValue::Number(n) => n,
+        SpecifiedValue::Integer(i) => i as f32,
+        _ => return None,
+    };
+    Some(SpecifiedValue::Transform(vec![SpecifiedTransform::Rotate(
+        deg.to_radians(),
+    )]))
 }
 
 fn parse_aspect_ratio(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
@@ -2414,6 +2503,12 @@ impl PropertyId {
                 .ok()?,
             ValueSyntax::IndividualScale => css_wide(input)
                 .or_else(|()| parse_individual_scale(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::IndividualRotate => css_wide(input)
+                .or_else(|()| parse_individual_rotate(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::Clip => css_wide(input)
+                .or_else(|()| parse_css_clip(input).ok_or(()))
                 .ok()?,
         };
         input.expect_exhausted().ok()?;
@@ -3222,11 +3317,13 @@ mod tests {
         ok("color", "rebeccapurple");
         ok("background-color", "hsla(0 0% 0% / 0.5)");
         ok("--x", "anything at all");
+        ok("rotate", "45deg");
+        ok("clip", "rect(0, 10px, 10px, 0)");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 127);
+        assert_eq!(PropertyId::ALL.len(), 129);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
