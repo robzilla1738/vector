@@ -225,6 +225,21 @@ fn official_start(extras: &[(&str, &str)]) -> String {
   document.body.style.height = "720px";
   stage.style.width = "1280px";
   stage.style.height = "720px";
+  var proto = HTMLImageElement.prototype;
+  var desc = Object.getOwnPropertyDescriptor(proto, "src");
+  Object.defineProperty(proto, "src", {{
+    configurable: true,
+    enumerable: true,
+    get: function () {{
+      return desc && desc.get ? desc.get.call(this) : (this.getAttribute("src") || "");
+    }},
+    set: function (v) {{
+      if (desc && desc.set) desc.set.call(this, v);
+      else this.setAttribute("src", String(v));
+      var el = this;
+      queueMicrotask(function () {{ el.dispatchEvent(new Event("load")); }});
+    }}
+  }});
   if (typeof window.benchmarkClass !== "function") {{
     throw new Error("window.benchmarkClass missing");
   }}
@@ -241,14 +256,18 @@ fn official_start(extras: &[(&str, &str)]) -> String {
 {extra_js}  var b = new window.benchmarkClass(options);
   window.__veMm = {{ bench: b, done: null, err: null }};
   b.initialize({{}}).then(function () {{
-    b.stage.tune(24);
-    b._currentTimestamp = Date.now();
-    b._benchmarkStartTimestamp = Date.now() - 1000;
-    b.stage.animate();
-    window.__veMm.done = {{
-      complexity: b.stage.complexity(),
-      hasStage: !!document.getElementById("stage")
-    }};
+    try {{
+      b.stage.tune(24);
+      b._currentTimestamp = Date.now();
+      b._benchmarkStartTimestamp = Date.now() - 1000;
+      b.stage.animate();
+      window.__veMm.done = {{
+        complexity: b.stage.complexity(),
+        hasStage: !!document.getElementById("stage")
+      }};
+    }} catch (e) {{
+      window.__veMm.err = String(e && e.message ? e.message : e);
+    }}
   }}, function (e) {{
     window.__veMm.err = String(e && e.message ? e.message : e);
   }});
