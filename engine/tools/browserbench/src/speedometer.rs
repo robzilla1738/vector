@@ -337,6 +337,16 @@ const COUNT_STEPS: &str = r##"(function () {
   return JSON.stringify({ ok: !!prev.ok, kind: kind, added: prev.ok ? 1 : 0, remaining: 0, reason: prev.reason });
 })()"##;
 
+fn add_steps(n: u32) -> String {
+    ADD_STEPS
+        .replace("i < 100", &format!("i < {n}"))
+        .replace("added >= 100", &format!("added >= {n}"))
+}
+
+fn count_steps(n: u32) -> String {
+    COUNT_STEPS.replace("added >= 100", &format!("added >= {n}"))
+}
+
 fn workload_path(url: &str) -> &str {
     url.split(['#', '?']).next().unwrap_or(url)
 }
@@ -1507,16 +1517,19 @@ mod tests {
             "perf.webkit.org/public/v3/index.html",
         ];
         let mut fails = Vec::new();
+        let add = with_lib(&add_steps(3));
+        let count = with_lib(&count_steps(3));
         for rel in suites {
+            let started = Instant::now();
             let page_id = open_workload(&mut engine, rel);
             let (finish, console) = {
                 let page = engine.page_mut(page_id).unwrap();
                 page.settle(3_000);
-                page.evaluate(&with_lib(ADD_STEPS)).ok();
+                page.evaluate(&add).ok();
                 page.settle(250);
                 page.evaluate(&with_lib(FINISH_STEPS)).ok();
                 page.settle(250);
-                let finish = page.evaluate(&with_lib(COUNT_STEPS)).unwrap();
+                let finish = page.evaluate(&count).unwrap();
                 let console: Vec<String> = page
                     .console()
                     .iter()
@@ -1533,6 +1546,10 @@ mod tests {
             };
             let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(finish);
             let ok = v.get("ok").and_then(serde_json::Value::as_bool) == Some(true);
+            eprintln!(
+                "remaining-official {rel} ok={ok} {}ms {v} err={console:?}",
+                started.elapsed().as_millis()
+            );
             if !ok {
                 fails.push(format!("{rel} => {v} err={console:?}"));
             }
