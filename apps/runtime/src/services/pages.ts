@@ -1001,7 +1001,23 @@ export class PageService {
     if (!lp?.driver || lp.target.backend !== "vector-engine") return;
     this.onNativeTakeover(pageId);
     try {
-      if (input.type === "pointerdown" || input.type === "click") {
+      if (lp.driver.humanEvent) {
+        if (input.type === "pointerdown" || input.type === "click") {
+          await lp.driver.humanEvent({
+            type: "pointerDown",
+            x: input.x ?? 0,
+            y: input.y ?? 0,
+            button: input.button ?? 0,
+          });
+        } else if (input.type === "ime" && input.key) {
+          await lp.driver.humanEvent({ type: "ime", text: input.key });
+        } else if (input.type === "key" && input.key) {
+          await lp.driver.humanEvent({ type: "key", key: input.key });
+        } else if (input.type === "scroll") {
+          const dy = input.direction === "up" ? -(input.amount ?? 40) : (input.amount ?? 40);
+          await lp.driver.humanEvent({ type: "wheel", dx: 0, dy });
+        }
+      } else if (input.type === "pointerdown" || input.type === "click") {
         await lp.driver.clickPoint(input.x ?? 0, input.y ?? 0);
       } else if (input.type === "key" && input.key) {
         await lp.driver.press(input.key);

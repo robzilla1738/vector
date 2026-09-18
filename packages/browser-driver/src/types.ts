@@ -108,6 +108,11 @@ export interface DriverPage {
   scroll(opts: { target?: string; direction: "up" | "down" | "top" | "bottom"; amount?: number }): Promise<void>;
   dragTo(target: string, to: string, timeoutMs?: number): Promise<void>;
   clickPoint(x: number, y: number, button?: "left" | "right" | "middle"): Promise<void>;
+  /**
+   * Human OS/input event on BrowserService (`input.event`). Survives
+   * takeover. Agent `execute` stays blocked.
+   */
+  humanEvent?(event: Record<string, unknown>): Promise<void>;
   uploadFiles(target: string, files: string[], timeoutMs?: number): Promise<void>;
 
   waitFor(condition: Condition): Promise<WaitOutcome>;

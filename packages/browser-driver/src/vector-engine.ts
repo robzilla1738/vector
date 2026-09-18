@@ -61,6 +61,7 @@ export interface NativeEngine {
   shutdown(): void;
   takeover?(): Promise<string>;
   resume?(): Promise<string>;
+  inputEvent?(event: Record<string, unknown>): Promise<string>;
 }
 
 export interface BrowserServiceHandle {
@@ -441,6 +442,13 @@ export class VectorEnginePage implements DriverPage {
   }
   async clickPoint(x: number, y: number, button?: "left" | "right" | "middle"): Promise<void> {
     await this.one({ op: "clickPoint", x, y, button });
+  }
+
+  async humanEvent(event: Record<string, unknown>): Promise<void> {
+    if (!this.native.inputEvent) {
+      throw new VectorError("capability_unsupported", "humanEvent requires BrowserService input.event");
+    }
+    unwrapNative(await this.native.inputEvent(event));
   }
   async uploadFiles(target: string, files: string[], timeoutMs?: number): Promise<void> {
     await this.one({ op: "upload", target, files, timeoutMs });

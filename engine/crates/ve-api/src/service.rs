@@ -581,6 +581,13 @@ mod tests {
         assert!(blocked.is_err(), "takeover must stop agent dispatch");
         let err = blocked.expect_err("conflict");
         assert_eq!(err.code(), ErrorCode::Conflict);
+        human
+            .call("input.event", json!({"type":"ime","text":"-still"}))
+            .expect("human still types after takeover");
+        assert_eq!(
+            field_value(&mcp.call("pages.observe", json!({})).expect("obs-human")),
+            "typed-by-human-agent-still"
+        );
 
         let resumed = human.call("pages.resume", json!({})).expect("resume");
         assert_eq!(resumed["controller"], "none");
@@ -591,7 +598,7 @@ mod tests {
         .expect("resume execute");
         assert_eq!(
             field_value(&mcp.call("pages.observe", json!({})).expect("obs3")),
-            "typed-by-human-agent-ok"
+            "typed-by-human-agent-still-ok"
         );
 
         human

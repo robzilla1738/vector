@@ -78,7 +78,7 @@ export const PagesCaptureParams = z.object({
 /** Human pointer/key on the engine view. Not pages.execute — takeover must still type. */
 export const PagesEngineInputParams = z.object({
   pageId: id,
-  type: z.enum(["click", "pointerdown", "scroll", "key"]),
+  type: z.enum(["click", "pointerdown", "scroll", "key", "ime"]),
   x: z.number().optional(),
   y: z.number().optional(),
   button: z.number().optional(),

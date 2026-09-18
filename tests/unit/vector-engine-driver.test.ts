@@ -32,7 +32,7 @@ function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server:
           const line = buf.slice(0, nl);
           buf = buf.slice(nl + 1);
           if (!line.trim()) continue;
-          const req = JSON.parse(line) as { id: number; method: string; params?: { url?: string; html?: string } };
+          const req = JSON.parse(line) as { id: number; method: string; params?: Record<string, unknown> };
           if (req.method === "pages.execute" && state.controller === "human") {
             socket.write(
               `${JSON.stringify({
@@ -53,7 +53,7 @@ function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server:
               controllerEpoch: state.controllerEpoch,
             };
           } else if (req.method === "pages.open") {
-            result = { ok: true, page: 1, url: req.params?.url ?? "about:blank", title: "X" };
+            result = { ok: true, page: 1, url: (req.params?.url as string | undefined) ?? "about:blank", title: "X" };
           } else if (req.method === "pages.observe") {
             result = { ok: true, content: content(), documentEpoch: 1 };
           } else if (req.method === "pages.execute") {
@@ -66,6 +66,8 @@ function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server:
             state.controller = "none";
             state.controllerEpoch += 1;
             result = { controller: "none", controllerEpoch: state.controllerEpoch, service: "browser-service" };
+          } else if (req.method === "input.event") {
+            result = { ok: true, chromium: false, event: req.params };
           }
           socket.write(`${JSON.stringify({ jsonrpc: "2.0", id: req.id, result })}\n`);
         }
@@ -374,6 +376,25 @@ describe("VectorEngineDriver", () => {
     await expect(
       peer.call("pages.execute", { program: [{ id: "y", op: "click", target: "css:#n" }] }),
     ).resolves.toMatchObject({ status: "completed" });
+    peer.close();
+    await driver.disconnect();
+  });
+
+  it("Finding 1: human input.event still types after takeover", async () => {
+    const owned = await mockBrowserService();
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+    });
+    await driver.connect();
+    const targetId = await driver.createTarget("https://share.test/");
+    const page = await driver.attach(targetId, "page-h");
+    await driver.takeover();
+    await expect(page.click("css:#t")).rejects.toMatchObject({ code: "conflict" });
+    await page.humanEvent?.({ type: "ime", text: "typed-by-human" });
+    const peer = new BrowserServiceClient(owned.addr);
+    await peer.connect();
+    await expect(peer.call("input.event", { type: "ime", text: "more" })).resolves.toMatchObject({ ok: true });
     peer.close();
     await driver.disconnect();
   });

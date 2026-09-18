@@ -650,6 +650,7 @@ describe("Gate B/F one session without Chromium", () => {
     let serviceEpoch = 0;
     const clicks: string[] = [];
     const keys: string[] = [];
+    const human: Record<string, unknown>[] = [];
     const makePage = (pageId: string, url: string): DriverPage => ({
       identity: { pageId, targetId: "engine-t2", backend: "vector-engine" },
       url: () => url,
@@ -675,6 +676,9 @@ describe("Gate B/F one session without Chromium", () => {
       dragTo: async () => {},
       clickPoint: async (x, y) => {
         clicks.push(`${x},${y}`);
+      },
+      humanEvent: async (event) => {
+        human.push(event);
       },
       uploadFiles: async () => {},
       waitFor: async () => ({ ok: true, timedOut: false }),
@@ -744,8 +748,14 @@ describe("Gate B/F one session without Chromium", () => {
     ).rejects.toMatchObject({ message: /human control/i });
     await pages.onEngineInput(opened.pageId, { type: "click", x: 40, y: 12 });
     await pages.onEngineInput(opened.pageId, { type: "key", key: "a" });
-    expect(clicks).toEqual(["40,12"]);
-    expect(keys).toEqual(["a"]);
+    await pages.onEngineInput(opened.pageId, { type: "ime", key: "typed-by-human" });
+    expect(human).toEqual([
+      { type: "pointerDown", x: 40, y: 12, button: 0 },
+      { type: "key", key: "a" },
+      { type: "ime", text: "typed-by-human" },
+    ]);
+    expect(clicks).toEqual([]);
+    expect(keys).toEqual([]);
     const seen = await pages.observe(opened.pageId, {});
     expect(seen.content.url).toContain("app.test");
     const resumed = await pages.resume(opened.pageId);

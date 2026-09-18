@@ -262,6 +262,11 @@ export class ServiceNativeEngine {
     return JSON.stringify({ ok: true, ...r });
   }
 
+  async inputEvent(event: Record<string, unknown>): Promise<string> {
+    const r = await this.client.call("input.event", event);
+    return JSON.stringify({ ok: true, ...r });
+  }
+
   async screenshot(_page: number, _optionsJson?: string | null): Promise<string> {
     const r = await this.client.call("scene.update", {});
     return JSON.stringify({

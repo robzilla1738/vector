@@ -30,7 +30,7 @@
     "streamed_and_repair_persist_before_dispatch": "PASS beginConsequentialWrite is the shared persist-before-dispatch helper. EarlyDispatcher batches, finished plans, and recovery-model repair all begin intent before pages.execute. Confirmed writes skip.",
     "browser_service_accepted_streams_are_blocking": "PASS accept() sockets from the nonblocking listener are set blocking before serve_client. macOS inherits O_NONBLOCK and otherwise closed the socket on the first read_line WouldBlock (Broken pipe / empty JSON-RPC reply).",
     "outcome_receipts_are_inspectable": "PASS StepTimeline renders receipt.uncertain as Uncertain, remoteConfirmed as Confirmed, and dispatchedBeforeTakeover as Takeover-interrupted (data-testid=tl-receipt). Executor still records the flags; takeover wins over confirmed. Mock run/takeover fixtures carry the same receipts.",
-    "human_engine_input_during_takeover": "PASS EngineView calls pages.engineInput, not pages.execute. After takeover, pages.execute is conflict and onEngineInput still clickPoints and presses on the same vector-engine page. EngineView is focusable and forwards keydown. MCP observe uses the same pageId."
+    "human_engine_input_during_takeover": "PASS EngineView calls pages.engineInput. PageService.onEngineInput prefers DriverPage.humanEvent → BrowserService input.event, not pages.execute. After takeover, execute stays conflict and Ime still types. human_and_mcp_clients_share_one_page_authority observes typed-by-human-agent-still without reopen."
   },
   "exit": {
     "humanEditsField": true,
