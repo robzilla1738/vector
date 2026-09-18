@@ -12,7 +12,8 @@ import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
 import type { SetService } from "../services/sets.js";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
-import type { GrantSource } from "../agent/permissions.js";
+import { DurableWriteLedger, stepSignature } from "../agent/durable.js";
+import { classifyStep, type GrantSource } from "../agent/permissions.js";
 import { WorkerPool } from "./pool.js";
 
 export interface SetRunnerDeps {
@@ -44,6 +45,8 @@ export interface SetRunnerDeps {
   nativeAvailable?: () => boolean;
   /** Privilege-independent grants for learned replay (Finding 5 / Gate F). */
   grants?: GrantSource;
+  /** Shared persist-before-dispatch ledger (Gate D). */
+  durableWrites?: DurableWriteLedger;
 }
 
 /** A replayable program and where it applies (`*` = every member). */
@@ -342,12 +345,40 @@ export class SetRunner {
     });
     if ("rejected" in prepared) return { blocked: prepared.rejected };
     if ("denied" in prepared) return { blocked: prepared.denied };
+    const steps = prepared.program.steps ?? learned.steps ?? [];
+    const writes = steps.some((s) => {
+      const effect = classifyStep(s.op);
+      return effect === "write" || effect === "egress";
+    });
+    let intentId: string | undefined;
+    if (writes && this.deps.durableWrites) {
+      const began = this.deps.durableWrites.begin({
+        runId: opts.runId,
+        pageId,
+        documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
+        signature: stepSignature(
+          steps.map((s) => ({
+            op: s.op,
+            target: "target" in s ? String((s as { target?: string }).target ?? "") : "",
+            value: "value" in s ? String((s as { value?: string }).value ?? "") : "",
+          })),
+        ),
+      });
+      if (began.duplicate) {
+        return { res: { status: "completed", extracted: {} } };
+      }
+      intentId = began.intent.id;
+    }
     const program: Program = { ...prepared.program, nodes: learned.nodes };
     const res = await this.deps.pages.execute(program, {
       runId: opts.runId,
       signal: opts.signal,
       allowEval: learned.trusted,
     });
+    if (intentId && this.deps.durableWrites) {
+      if (res.status === "completed") this.deps.durableWrites.confirm(intentId);
+      else this.deps.durableWrites.fail(intentId);
+    }
     return { res };
   }
 

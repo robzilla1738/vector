@@ -143,6 +143,56 @@ describe("Gate F page query and action compiler", () => {
     expect(stale.executedSteps).toEqual([]);
   });
 
+  it("member-agent persist-before-dispatch skips a duplicate write", async () => {
+    let executes = 0;
+    const pages = {
+      get: () => ({ pageId: "p1", url: "https://app.test/form", documentEpoch: 2 }),
+      observe: async () => ({ pageId: "p1", documentEpoch: 2, content: obs() }),
+      execute: async () => {
+        executes++;
+        return { status: "completed", steps: [] };
+      },
+    } as unknown as PageService;
+    const ledger = new DurableWriteLedger();
+    const member = { memberId: "m1", url: "https://app.test/form", status: "running" } as SetMember;
+    const model = new MockModelClient().scripted([
+      () => ({ status: "continue", message: "click save", steps: [{ id: "c", op: "click", target: "r9" }] }),
+      () => ({ status: "done", message: "done", result: { ok: true } }),
+    ]);
+    const first = await runMemberAgent({
+      member,
+      pageId: "p1",
+      goal: "click save",
+      runId: "run-dup",
+      pages,
+      model,
+      modelId: "mock",
+      signal: new AbortController().signal,
+      grants: ["effect:read", "effect:write"],
+      durable: ledger,
+    });
+    expect(first.result.status).toBe("ok");
+    expect(executes).toBe(1);
+    const replayModel = new MockModelClient().scripted([
+      () => ({ status: "continue", message: "click save", steps: [{ id: "c", op: "click", target: "r9" }] }),
+      () => ({ status: "done", message: "done", result: { ok: true } }),
+    ]);
+    const replay = await runMemberAgent({
+      member,
+      pageId: "p1",
+      goal: "click save",
+      runId: "run-dup",
+      pages,
+      model: replayModel,
+      modelId: "mock",
+      signal: new AbortController().signal,
+      grants: ["effect:read", "effect:write"],
+      durable: ledger,
+    });
+    expect(replay.result.status).toBe("ok");
+    expect(executes).toBe(1);
+  });
+
   it("rejects a compiled write when the origin does not match", () => {
     const result = compileAction({
       pageId: "p1",

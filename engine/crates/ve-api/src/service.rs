@@ -346,10 +346,21 @@ fn accept_loop(listener: TcpListener, jobs: Sender<Job>, stop: Arc<AtomicBool>) 
                     .name("ve-browser-client".into())
                     .spawn(move || serve_client(stream, jobs));
             }
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::WouldBlock
+                        | std::io::ErrorKind::Interrupted
+                        | std::io::ErrorKind::TimedOut
+                ) =>
+            {
                 thread::sleep(Duration::from_millis(5));
             }
-            Err(_) => break,
+            Err(_) if stop.load(Ordering::Relaxed) => break,
+            Err(_) => {
+                // Transient accept errors must not tear down the authority.
+                thread::sleep(Duration::from_millis(10));
+            }
         }
     }
 }

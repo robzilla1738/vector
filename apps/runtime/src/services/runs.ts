@@ -116,6 +116,11 @@ export class RunService {
     };
   }) {
     this.pool = new WorkerPool({ maxWorkers: deps.settings.maxWorkers(), perOrigin: deps.settings.perOrigin() });
+    const durableWrites = new DurableWriteLedger(
+      typeof deps.settings.all === "function" && deps.settings.all().dataDir
+        ? join(deps.settings.all().dataDir, "durable-writes.json")
+        : undefined,
+    );
     this.coordinator = new RunCoordinator({
       repo: deps.repo,
       events: deps.events,
@@ -140,11 +145,7 @@ export class RunService {
         }).artifactId,
       tracer: deps.tracer,
       grants: () => deps.settings.effectGrants(),
-      durableWrites: new DurableWriteLedger(
-        typeof deps.settings.all === "function" && deps.settings.all().dataDir
-          ? join(deps.settings.all().dataDir, "durable-writes.json")
-          : undefined,
-      ),
+      durableWrites,
     });
     this.setRunner = new SetRunner({
       repo: deps.repo,
@@ -155,6 +156,7 @@ export class RunService {
       nativeAvailable: deps.nativeAvailable,
       translateSteps: deps.translateSteps,
       grants: () => deps.settings.effectGrants?.() ?? DEFAULT_GRANTS,
+      durableWrites,
       getProgram: (id) => {
         const p = deps.repo.getProgram(id);
         return p ? { stepsJson: p.stepsJson, siteKey: p.siteKey } : undefined;
@@ -201,6 +203,7 @@ export class RunService {
           // the set-run's own signal — runs.cancel stops member model calls
           signal: ctx.signal,
           grants: () => deps.settings.effectGrants?.() ?? DEFAULT_GRANTS,
+          durable: durableWrites,
           recordModelCall: (c) => this.recordModelCall({ runId: ctx.runId, role: "planner", ...c }),
         });
       },

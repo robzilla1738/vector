@@ -9,8 +9,9 @@ import {
 } from "@vector/contracts";
 import type { PageService } from "../services/pages.js";
 import { compileAndAuthorize } from "./action-compiler.js";
+import { DurableWriteLedger, stepSignature } from "./durable.js";
 import type { ModelClient } from "./model-client.js";
-import type { GrantSource } from "./permissions.js";
+import { classifyStep, type GrantSource } from "./permissions.js";
 import { buildPlannerPrompt, PLANNER_SYSTEM } from "./planner.js";
 
 const MEMBER_MAX_CALLS = 6;
@@ -32,6 +33,8 @@ export async function runMemberAgent(opts: {
   signal: AbortSignal;
   /** Privilege-independent grants. Model text cannot expand them. */
   grants?: GrantSource;
+  /** Persist write intent before dispatch (Gate D). */
+  durable?: DurableWriteLedger;
   recordModelCall?: (c: { modelId: string; durationMs: number; inputTokens?: number; outputTokens?: number }) => void;
 }): Promise<{ result: ResultRecord; executedSteps: Step[] }> {
   const { member, pages, model, modelId, signal, runId } = opts;
@@ -87,10 +90,40 @@ export async function runMemberAgent(opts: {
     });
     if ("rejected" in prepared) return err(member, pageId, obs.content.url, prepared.rejected, executed);
     if ("denied" in prepared) return err(member, pageId, obs.content.url, prepared.denied, executed);
+    const steps = prepared.program.steps ?? plan.steps;
+    const writes = steps.some((s) => {
+      const effect = classifyStep(s.op);
+      return effect === "write" || effect === "egress";
+    });
+    let intentId: string | undefined;
+    if (writes && opts.durable) {
+      const began = opts.durable.begin({
+        runId,
+        pageId,
+        documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
+        signature: stepSignature(
+          steps.map((s) => ({
+            op: s.op,
+            target: "target" in s ? String((s as { target?: string }).target ?? "") : "",
+            value: "value" in s ? String((s as { value?: string }).value ?? "") : "",
+          })),
+        ),
+      });
+      if (began.duplicate) {
+        executed.push(...steps);
+        stepsRun += steps.length;
+        continue;
+      }
+      intentId = began.intent.id;
+    }
     const res = await pages.execute(prepared.program, { runId, signal });
-    executed.push(...(prepared.program.steps ?? plan.steps));
+    if (intentId && opts.durable) {
+      if (res.status === "completed") opts.durable.confirm(intentId);
+      else opts.durable.fail(intentId);
+    }
+    executed.push(...steps);
     outcomes.push(...res.steps);
-    stepsRun += (prepared.program.steps ?? plan.steps).length;
+    stepsRun += steps.length;
     if (res.status === "failed") return err(member, pageId, obs.content.url, res.error ?? "step failed", executed);
     if (res.status === "cancelled") break;
   }
