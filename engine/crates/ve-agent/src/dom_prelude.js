@@ -332,14 +332,14 @@
       installDocumentLocation(n);
     }
     if (info.t === 1) {
-      upgradeOne(n);
+      upgradeOne(n, false);
       try { if (n.id) exposeWindowName(n.id); } catch (e) {}
     }
     return n;
   }
   function upgradeTree(n) {
     if (!n || n.nodeType !== 1) return;
-    upgradeOne(n);
+    upgradeOne(n, true);
     const kids = n.children;
     if (kids) {
       for (let i = 0; i < kids.length; i++) upgradeTree(kids[i]);
@@ -351,8 +351,10 @@
       }
     }
   }
-  function upgradeOne(n) {
+  function upgradeOne(n, force) {
     if (!n || n.nodeType !== 1) return;
+    if (templateInContent(n)) return;
+    if (!force && !n.isConnected) return;
     const name = (n.localName || "").toLowerCase();
     const ctor = registry.get(name);
     if (!ctor) return;
@@ -400,6 +402,25 @@
           if (p === "length" || p === "_fetch") return true;
           if (/^\d+$/.test(String(p))) return Number(p) < t._fetch().length;
           return Reflect.has(t, p);
+        },
+        ownKeys(t) {
+          const n = t._fetch().length;
+          const keys = ["length", "_fetch"];
+          for (let i = 0; i < n; i++) keys.push(String(i));
+          return keys;
+        },
+        getOwnPropertyDescriptor(t, p) {
+          if (p === "length") {
+            return { configurable: true, enumerable: true, writable: false, value: t._fetch().length };
+          }
+          if (/^\d+$/.test(String(p))) {
+            const i = Number(p);
+            const cur = t._fetch();
+            if (i < cur.length) {
+              return { configurable: true, enumerable: true, writable: false, value: cur[i] };
+            }
+          }
+          return Reflect.getOwnPropertyDescriptor(t, p);
         },
       });
     }
@@ -3453,7 +3474,7 @@
       const walk = (n) => {
         if (!n) return;
         if (n.nodeType === 1) {
-          upgradeOne(n);
+          upgradeOne(n, true);
           if (n.shadowRoot) walk(n.shadowRoot);
         }
         const kids = n.childNodes;
@@ -5291,10 +5312,21 @@
       n = next;
     }
   }
+  let observerHold = 0;
   function flushObserversNow() {
+    if (observerHold > 0) return;
     try {
       if (typeof globalThis.__veFlushObservers === "function") globalThis.__veFlushObservers();
     } catch (e) {}
+  }
+  function withHeldObservers(fn) {
+    observerHold++;
+    try {
+      return fn();
+    } finally {
+      observerHold--;
+      flushObserversNow();
+    }
   }
   function insertPatchNodes(parent, before, nodes, rec, runScripts) {
     const safe = sanitizeOn(rec);
@@ -5455,6 +5487,14 @@
     return true;
   }
   function commitTemplateFor(tpl, rec, inPlace) {
+    if (tpl.__veStreamAborted) return false;
+    const finished = templateFinished(tpl);
+    if (rec.buffer && finished) {
+      return withHeldObservers(() => commitTemplateForUnheld(tpl, rec, inPlace));
+    }
+    return commitTemplateForUnheld(tpl, rec, inPlace);
+  }
+  function commitTemplateForUnheld(tpl, rec, inPlace) {
     if (tpl.__veStreamAborted) return false;
     const finished = templateFinished(tpl);
     const all = !!(rec.buffer && finished);

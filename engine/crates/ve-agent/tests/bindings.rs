@@ -3521,3 +3521,32 @@ fn stream_append_replaces_start_without_end() {
         .unwrap();
     assert_eq!(settled["text"], "Green (no span)", "async={v} settled={settled}");
 }
+
+#[test]
+fn live_childnodes_has_own_indexes_after_remove() {
+    let mut page = open(r#"<div id="p"></div>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const parent = document.createElement("div");
+              const node = document.createElement("div");
+              const before = parent.appendChild(document.createComment("before"));
+              parent.appendChild(node);
+              const after = parent.appendChild(document.createComment("after"));
+              node.remove();
+              return {
+                len: parent.childNodes.length,
+                own0: parent.childNodes.hasOwnProperty(0),
+                own1: parent.childNodes.hasOwnProperty(1),
+                first: parent.childNodes[0] === before,
+                second: parent.childNodes[1] === after
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["len"], 2, "{v}");
+    assert_eq!(v["own0"], true, "{v}");
+    assert_eq!(v["own1"], true, "{v}");
+    assert_eq!(v["first"], true, "{v}");
+    assert_eq!(v["second"], true, "{v}");
+}
