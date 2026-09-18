@@ -1,6 +1,7 @@
 /**
  * Node/MCP client of the Rust browser service (Finding 1 / Gate B).
- * Native UI and this planner attach to the same page authority.
+ * Native UI and the Node planner are clients of the same page authority.
+ * The driver starts an owned listener when VECTOR_BROWSER_SERVICE is unset.
  */
 import { createConnection, type Socket } from "node:net";
 import { VectorError, type VectorErrorCode } from "@vector/contracts";

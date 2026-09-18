@@ -440,6 +440,41 @@ pub mod bindings {
         }
     }
 
+    /// Finding 1: Node starts this authority and attaches as a client
+    /// instead of constructing a second in-process `Engine`.
+    #[napi]
+    pub struct BrowserServiceHandle {
+        listener: ve_api::BrowserServiceListener,
+    }
+
+    #[napi]
+    impl BrowserServiceHandle {
+        /// Bind `127.0.0.1:0` by default. `config_json` is `EngineConfig`.
+        #[napi(factory)]
+        pub fn listen(bind: Option<String>, config_json: Option<String>) -> Result<Self> {
+            let config = crate::hub::parse_config(config_json.as_deref().unwrap_or("{}"))
+                .map_err(|e| Error::from_reason(e.to_string()))?;
+            let listener = ve_api::BrowserServiceListener::bind_config(
+                bind.as_deref().unwrap_or("127.0.0.1:0"),
+                config,
+            )
+            .map_err(|e| Error::from_reason(e.to_string()))?;
+            Ok(Self { listener })
+        }
+
+        /// Bound `host:port` for `VECTOR_BROWSER_SERVICE` / `BrowserServiceClient`.
+        #[napi]
+        pub fn addr(&self) -> String {
+            self.listener.addr().to_string()
+        }
+
+        /// Stop accepting. In-flight clients finish their current line.
+        #[napi]
+        pub fn shutdown(&self) {
+            self.listener.shutdown();
+        }
+    }
+
     /// Engine and binding version information (JSON).
     #[napi]
     #[must_use]

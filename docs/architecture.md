@@ -76,7 +76,7 @@ implementations, three of them over Playwright-Core CDP:
 | `VectorElectronDriver` | `vector` | pages hosted in the desktop shell; identity via an injected `__vectorTid` marker so same-URL tabs stay distinct |
 | `StandaloneDriver` | `vector` | runtime without the shell — headless Chromium (system Chrome, `VECTOR_BROWSER_PATH`, or a Playwright `chromium_headless_shell` found by `scripts/chromium.mjs`) for tests/CLI/bench |
 | `AttachedChromeDriver` | `chrome` | the user's Chrome at `--remote-debugging-port`; real CDP target ids, borrowed tabs are never closed |
-| `VectorEngineDriver` (`vector-engine.ts`) | `vector-engine` | the in-process Vector Engine via `@vector/engine-native`; `targetId = "ve-<context>-<page>"`; every `DriverPage` method is a one-step program and `executeProgram(steps, { returnObservation })` runs a whole program plus its observation in one native call |
+| `VectorEngineDriver` (`vector-engine.ts`) | `vector-engine` | Finding 1: client of `BrowserService` (GUI `--service` or an owned listener via `@vector/engine-native`). Injected `load` keeps a local Engine for unit tests. `targetId = "ve-<context>-<page>"`; every `DriverPage` method is a one-step program and `executeProgram(steps, { returnObservation })` runs a whole program plus its observation in one native call |
 
 ## Engine backend and router
 

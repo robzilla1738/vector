@@ -10,6 +10,7 @@
 mod esm;
 mod jetstream;
 mod motionmark;
+mod score;
 mod speedometer;
 
 use std::path::PathBuf;
@@ -50,6 +51,11 @@ struct Args {
     /// Official MotionMark checkout (pin in `pins.json`) for official HTML workloads.
     #[arg(long)]
     motionmark_dir: Option<PathBuf>,
+    /// Use official JetStream Next scoring (`toScore` / first-average-worst /
+    /// geomean). Defaults iterations to 120 unless `--iterations` is set.
+    /// Does not claim a browserbench.org published score from a lab subset.
+    #[arg(long)]
+    official_score: bool,
 }
 
 #[derive(Serialize)]
@@ -483,8 +489,59 @@ fn motionmark_class(engine: &mut VectorEngine, iterations: u32) -> SuiteResult {
     }
 }
 
+fn iterations_explicit() -> bool {
+    std::env::args().any(|a| a == "--iterations" || a.starts_with("--iterations="))
+}
+
+fn jetstream_official_attribution(
+    suites: &[SuiteResult],
+    official_score: bool,
+    iterations: u32,
+) -> serde_json::Value {
+    let jet = suites
+        .iter()
+        .filter(|s| s.name.starts_with("jetstream.") && s.status != "NOTRUN")
+        .collect::<Vec<_>>();
+    let passed = jet.iter().filter(|s| s.status == "PASS").count();
+    let scores: Vec<f64> = jet
+        .iter()
+        .filter_map(|s| {
+            let samples = s.samples_ms.as_deref()?;
+            Some(score::official_default_score(samples, score::DEFAULT_WORST_CASE_COUNT)?.score)
+        })
+        .collect();
+    let geomean = if official_score && scores.len() == jet.len() && !scores.is_empty() {
+        score::geomean(&scores)
+    } else {
+        None
+    };
+    let published = official_score
+        && score::published_jetstream_ready(iterations, jet.len())
+        && scores.len() == jet.len()
+        && jet.iter().all(|s| s.status == "PASS")
+        && geomean.is_some();
+    json!({
+        "formula": "JetStreamDriver.js toScore=5000/max(ms,1); DefaultBenchmark first/average/worst4; overall geomean of per-test scores",
+        "defaultIterationCount": score::DEFAULT_ITERATION_COUNT,
+        "defaultWorstCaseCount": score::DEFAULT_WORST_CASE_COUNT,
+        "applied": official_score,
+        "iterationsUsed": iterations,
+        "scoredTests": scores.len(),
+        "executedTests": jet.len(),
+        "passedTests": passed,
+        "geomean": geomean,
+        "officialJetStreamGeometricMean": published,
+        "note": "A 1-iteration lab p50 is not a published score. officialJetStreamGeometricMean is true only when every official Default name ran 120 iterations with first/average/worst."
+    })
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
+    let iterations = if args.official_score && !iterations_explicit() {
+        score::DEFAULT_ITERATION_COUNT
+    } else {
+        args.iterations
+    };
     // Official TodoMVC-JavaScript-ES5 is the review's 54–68s profiling target.
     // The default 20s script deadline aborts boot before attribution exists.
     if std::env::var_os("VECTOR_SCRIPT_DEADLINE_SECS").is_none() {
@@ -519,17 +576,17 @@ fn main() -> Result<()> {
             .or_else(|| std::env::var_os("VECTOR_JETSTREAM_DIR").map(PathBuf::from));
         suites.extend(jetstream::run(
             &mut engine,
-            args.iterations,
+            iterations,
             jetstream_dir.as_deref(),
         ));
     }
     if only == "all" || only == "speedometer" {
         suites.extend(speedometer::run_official(
             &mut engine,
-            args.iterations,
+            iterations,
             args.gate,
         ));
-        suites.push(speedometer_class(&mut engine, args.iterations));
+        suites.push(speedometer_class(&mut engine, iterations));
     }
     if only == "all" || only == "motionmark" {
         let motionmark_dir = args
@@ -538,11 +595,11 @@ fn main() -> Result<()> {
             .or_else(|| std::env::var_os("VECTOR_MOTIONMARK_DIR").map(PathBuf::from));
         suites.extend(motionmark::run(
             &mut engine,
-            args.iterations,
+            iterations,
             motionmark_dir.as_deref(),
         ));
-        suites.push(motionmark_class(&mut engine, args.iterations));
-        suites.push(motionmark::run_gpu(args.iterations));
+        suites.push(motionmark_class(&mut engine, iterations));
+        suites.push(motionmark::run_gpu(iterations));
     }
     let report = json!({
         "backend": "vector-engine",
@@ -558,12 +615,8 @@ fn main() -> Result<()> {
         "suites": suites,
         "attribution": {
             "kind": "adapted-workload-phases",
-            "officialFullSuite": !args.gate
-                && suites.iter().any(|s| s.name.starts_with("speedometer.3.0."))
-                && suites
-                    .iter()
-                    .filter(|s| s.name.starts_with("speedometer.3.0."))
-                    .all(|s| s.status != "NOTRUN"),
+            "officialFullSuite": false,
+            "officialJetStream": jetstream_official_attribution(&suites, args.official_score, iterations),
             "gate": args.gate,
             "source": "official JetStream Next SunSpider group (12) plus speedometer.3.0.* and official MotionMark 1.3 names",
             "jetstreamSunspider": {

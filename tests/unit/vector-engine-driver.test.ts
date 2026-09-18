@@ -3,6 +3,7 @@
  * one-step programs for DriverPage methods, the zero-IPC executeProgram
  * path, ref registration, events derived from results, and error mapping.
  */
+import { createServer, type AddressInfo, type Server } from "node:net";
 import { describe, it, expect, vi } from "vitest";
 import {
   VectorEngineDriver,
@@ -15,6 +16,48 @@ import {
   type NativeModule,
 } from "@vector/browser-driver";
 import { VectorError, type ObservationContent } from "@vector/contracts";
+
+function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server: Server }> {
+  return new Promise((resolve, reject) => {
+    const server = createServer((socket) => {
+      let buf = "";
+      socket.setEncoding("utf8");
+      socket.on("data", (chunk: string) => {
+        buf += chunk;
+        for (;;) {
+          const nl = buf.indexOf("\n");
+          if (nl < 0) break;
+          const line = buf.slice(0, nl);
+          buf = buf.slice(nl + 1);
+          if (!line.trim()) continue;
+          const req = JSON.parse(line) as { id: number; method: string; params?: { url?: string; html?: string } };
+          let result: Record<string, unknown> = { ok: true };
+          if (req.method === "identity") {
+            result = { engine: "vector-engine", service: "browser-service", chromium: false };
+          } else if (req.method === "pages.open") {
+            result = { ok: true, page: 1, url: req.params?.url ?? "about:blank", title: "X" };
+          } else if (req.method === "pages.observe") {
+            result = { ok: true, content: content(), documentEpoch: 1 };
+          } else if (req.method === "pages.execute") {
+            result = { ok: true, status: "completed", steps: [] };
+          }
+          socket.write(`${JSON.stringify({ jsonrpc: "2.0", id: req.id, result })}\n`);
+        }
+      });
+    });
+    server.listen(0, "127.0.0.1", () => {
+      const port = (server.address() as AddressInfo).port;
+      resolve({
+        addr: `127.0.0.1:${port}`,
+        shutdown: () => {
+          server.close();
+        },
+        server,
+      });
+    });
+    server.once("error", reject);
+  });
+}
 
 const content = (over: Partial<ObservationContent> = {}): ObservationContent => ({
   url: "https://x.test/",
@@ -280,6 +323,25 @@ describe("VectorEngineDriver", () => {
     const driver = new VectorEngineDriver({ load });
     await expect(driver.connect()).rejects.toMatchObject({ code: "backend_unavailable" });
     expect(driver.describe()).toMatchObject({ available: false });
+  });
+
+  it("Finding 1: ownService starts BrowserService and Node attaches as a client", async () => {
+    const owned = await mockBrowserService();
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+    });
+    await driver.connect();
+    expect(driver.describe()).toMatchObject({
+      available: true,
+      version: "browser-service",
+      isolation: "process",
+      capabilities: { service: true },
+    });
+    const targetId = await driver.createTarget("https://x.test/");
+    expect(parseEngineTargetId(targetId)).toEqual({ contextId: 1, page: 1 });
+    await driver.disconnect();
+    expect(driver.isConnected()).toBe(false);
   });
 
   it("unwrapNative maps engine error codes and rejects malformed JSON", () => {

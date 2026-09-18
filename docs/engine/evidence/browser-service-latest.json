@@ -19,7 +19,8 @@
     "production_sandbox_runs_external_js_from_allowlisted_fixture": "PASS",
     "downloaded_release_artifact_runs_production_sandbox": "PASS copy-to-temp host (0.29s). CI job downloaded-artifact downloads engine-native-* then re-runs production_sandbox.",
     "html_collection_types_match_html_idl": "PASS",
-    "live_os_window_and_mcp_share_one_page": "PASS DISPLAY=:1 after libxkbcommon-x11 (was panic: Library libxkbcommon-x11.so could not be loaded). IME+observe+agent+takeover+resume+resize+wheel+AccessKit+scene on one NativeBrowser. chromium=false. CI xvfb job added."
+    "live_os_window_and_mcp_share_one_page": "PASS DISPLAY=:1 after libxkbcommon-x11 (was panic: Library libxkbcommon-x11.so could not be loaded). IME+observe+agent+takeover+resume+resize+wheel+AccessKit+scene on one NativeBrowser. chromium=false. CI xvfb job added.",
+    "node_planner_is_browser_service_client": "PASS VectorEngineDriver ownService starts/attaches to BrowserService; injected load keeps a local Engine for unit tests. VECTOR_BROWSER_SERVICE still wins when the GUI owns the page."
   },
   "exit": {
     "humanEditsField": true,
@@ -36,6 +37,6 @@
   "remaining": [
     "Gate A downloaded release artifact: copy-to-temp host test + CI job downloaded-artifact (downloads engine-native-{ubuntu,macos,windows} then re-runs production_sandbox). .github/workflows/release.yml publishes ve-host + .node on tag v* for ubuntu/macos/windows. No GitHub Release page exists until a v* tag is pushed.",
     "official html/dom remaining FAILs sanitize-template-element, template-for-empty, and tentative aria-attribute-reflection-enumerated (contradicts non-tentative string mixin). Official remove-element-unblocks-rendering.optional.html PASS. official idlharness.https.html PASS 1405ms on pin 7c204383 (0 FAIL subtests after V8 MarkAsUndetectable document.all). That file only, not the entire web.",
-    "full official Speedometer/JetStream/MotionMark published score. Official Speedometer 3.0 names independently verified 32/32. Official JetStream Next pin c603c04: SunSpider 12/12 plus Default JS and wasm through Dart-flute-todomvc/Kotlin-compose/dotnet-interp/dotnet-aot/transformersjs-bert 72 PASS / 0 FAIL / 0 NOTRUN of 72 executed names. Not a geometric-mean published score. Official MotionMark 1.3 HTML 8/8 PASS; canvas-class and gpu.multiply are adapted class probes. Editor-TipTap/CodeMirror official Long/Highlight PASS after late-eval."
+    "full official Speedometer/JetStream/MotionMark published score. browserbench --official-score applies JetStreamDriver.js toScore/first-average-worst/geomean; officialJetStreamGeometricMean stays false until every Default name runs 120 iterations with that split. 1-iteration 72/72 is not a published score. Official MotionMark complexity-ramp geomean and Speedometer warmup geomean are still open."
   ]
 }

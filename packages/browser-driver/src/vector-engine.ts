@@ -55,11 +55,25 @@ export interface NativeEngine {
   shutdown(): void;
 }
 
+export interface BrowserServiceHandle {
+  addr(): string;
+  shutdown(): void;
+}
+
 export interface NativeModule {
   Engine: new (configJson?: string | null) => NativeEngine;
+  BrowserServiceHandle?: {
+    listen(bind?: string | null, configJson?: string | null): BrowserServiceHandle;
+  };
   describe(): string;
   version(): string;
   binaryPath?: string;
+}
+
+/** Local BrowserService started by the Node planner (Finding 1). */
+export interface OwnedBrowserService {
+  addr: string;
+  shutdown(): void;
 }
 
 export interface EngineNativeConfig {
@@ -536,14 +550,22 @@ export interface VectorEngineDriverOptions {
   load?: () => Promise<NativeModule>;
   /** Attach to a running BrowserService instead of creating a local engine. */
   serviceAddr?: string;
+  /**
+   * Finding 1: start a local BrowserService and attach as a client.
+   * Default true unless `load` is injected (unit tests keep a fake Engine).
+   */
+  ownService?: boolean;
+  /** Test hook that starts a BrowserService and returns its bind address. */
+  startService?: () => Promise<OwnedBrowserService>;
 }
 
 /**
- * Driver over the native engine. One `Engine` per driver; pages live in
- * the default context (`DEFAULT_CONTEXT`). `createTarget(url)` performs the
- * navigation (the engine parses and classifies synchronously on its
- * thread) and `attach` wraps the result — the runtime reads
- * `page.routing()` to decide whether to keep the page or fall back.
+ * Driver over the native engine. Finding 1: the Node planner is a client of
+ * BrowserService (GUI `--service` or an owned listener). Injected `load`
+ * keeps a local Engine for unit tests. Pages live in the default context
+ * (`DEFAULT_CONTEXT`). `createTarget(url)` performs the navigation and
+ * `attach` wraps the result — the runtime reads `page.routing()` to decide
+ * whether to keep the page or fall back.
  */
 export class VectorEngineDriver implements BrowserDriver {
   readonly backend = "vector-engine" as const;
@@ -555,7 +577,10 @@ export class VectorEngineDriver implements BrowserDriver {
   private availability: EngineAvailability = { available: false };
   private readonly load: () => Promise<NativeModule>;
   private readonly config: EngineNativeConfig;
-  private readonly serviceAddr?: string;
+  private serviceAddr?: string;
+  private readonly ownService: boolean;
+  private readonly startService?: () => Promise<OwnedBrowserService>;
+  private owned?: OwnedBrowserService;
 
   onDisconnected?: () => void;
   onReconnected?: () => void;
@@ -565,10 +590,18 @@ export class VectorEngineDriver implements BrowserDriver {
     this.load = opts.load ?? loadEngineNative;
     this.config = opts.config ?? {};
     this.serviceAddr = opts.serviceAddr ?? browserServiceAddr();
+    this.ownService = opts.ownService ?? opts.load == null;
+    this.startService = opts.startService;
   }
 
   async connect(): Promise<void> {
     if (this.native) return;
+    if (!this.serviceAddr && this.ownService) {
+      this.owned = this.startService
+        ? await this.startService()
+        : await this.startNativeService();
+      if (this.owned) this.serviceAddr = this.owned.addr;
+    }
     if (this.serviceAddr) {
       const client = new BrowserServiceClient(this.serviceAddr);
       await client.connect();
@@ -613,6 +646,20 @@ export class VectorEngineDriver implements BrowserDriver {
     }
   }
 
+  private async startNativeService(): Promise<OwnedBrowserService | undefined> {
+    this.availability = await probeEngineNative(this.load);
+    if (!this.availability.available) {
+      throw new VectorError(
+        "backend_unavailable",
+        `vector-engine native module unavailable: ${this.availability.error}`,
+      );
+    }
+    this.mod = await this.load();
+    const handle = this.mod.BrowserServiceHandle?.listen("127.0.0.1:0", JSON.stringify(this.config));
+    if (!handle) return undefined;
+    return { addr: handle.addr(), shutdown: () => handle.shutdown() };
+  }
+
   async reconnect(): Promise<void> {
     return this.connect();
   }
@@ -627,6 +674,13 @@ export class VectorEngineDriver implements BrowserDriver {
       /* already down */
     }
     this.native = null;
+    try {
+      this.owned?.shutdown();
+    } catch {
+      /* already down */
+    }
+    if (this.owned) this.serviceAddr = undefined;
+    this.owned = undefined;
   }
 
   isConnected(): boolean {
