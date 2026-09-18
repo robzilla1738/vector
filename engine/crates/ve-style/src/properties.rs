@@ -1146,6 +1146,21 @@ property_table! {
     TransitionProperty: "transition-property" => transition_property: String = String::from("all"), inherited = false, syntax = Single, convert = conv::ident_name;
     /// `transition-duration` in milliseconds
     TransitionDuration: "transition-duration" => transition_duration_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
+    /// `outline-width` (pixels)
+    OutlineWidth: "outline-width" => outline_width: f32 = 0.0, inherited = false, syntax = Single, convert = conv::border_width;
+    /// `outline-style`
+    OutlineStyle: "outline-style" => outline_style: BorderStyle = BorderStyle::None, inherited = false, syntax = Single, convert = conv::kw::<BorderStyle>;
+    /// `outline-color`
+    OutlineColor: "outline-color" => outline_color: Color = Color::CurrentColor, inherited = false, syntax = Single, convert = conv::color;
+    /// `outline-offset` (pixels)
+    OutlineOffset: "outline-offset" => outline_offset: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `text-shadow` (first shadow only)
+    TextShadow: "text-shadow" => text_shadow: BoxShadow = BoxShadow {
+        dx: 0.0,
+        dy: 0.0,
+        blur: 0.0,
+        color: Rgba::TRANSPARENT,
+    }, inherited = false, syntax = BoxShadow, convert = conv::box_shadow;
 }
 
 impl ComputedStyle {
@@ -1268,15 +1283,9 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "background-origin",
     "background-blend-mode",
     "border-image",
-    "text-shadow",
     "backdrop-filter",
     "mix-blend-mode",
     "isolation",
-    "outline",
-    "outline-width",
-    "outline-style",
-    "outline-color",
-    "outline-offset",
     "cursor",
     "user-select",
     "will-change",
@@ -2220,6 +2229,7 @@ pub const SHORTHANDS: &[&str] = &[
     "animation",
     "transition",
     "border-radius",
+    "outline",
 ];
 
 /// Expands a shorthand into longhand `(property, value)` pairs. Returns
@@ -2529,6 +2539,37 @@ pub fn expand_shorthand<'i>(
                 Some(vec![
                     (P::AnimationName, name),
                     (P::AnimationDuration, duration),
+                ])
+            }
+            "outline" => {
+                let values = parse_components(input, 4)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::OutlineWidth, values[0].clone()),
+                        (P::OutlineStyle, values[0].clone()),
+                        (P::OutlineColor, values[0].clone()),
+                    ]);
+                }
+                let mut width = SpecifiedValue::Length(Length::Px(3.0));
+                let mut style = SpecifiedValue::Keyword("none".into());
+                let mut color = SpecifiedValue::Color(Color::CurrentColor);
+                for v in values {
+                    if P::OutlineWidth.accepts(&v)
+                        && !matches!(&v, SpecifiedValue::Keyword(k) if k == "none" || k == "hidden" || k == "solid" || k == "dashed" || k == "dotted" || k == "double")
+                    {
+                        width = v;
+                    } else if P::OutlineStyle.accepts(&v)
+                        && matches!(&v, SpecifiedValue::Keyword(_))
+                    {
+                        style = v;
+                    } else if P::OutlineColor.accepts(&v) {
+                        color = v;
+                    }
+                }
+                Some(vec![
+                    (P::OutlineWidth, width),
+                    (P::OutlineStyle, style),
+                    (P::OutlineColor, color),
                 ])
             }
             "border-radius" => four(
@@ -2844,6 +2885,11 @@ mod tests {
         ok("animation-name", "none");
         ok("animation-duration", "1s");
         ok("animation-duration", "250ms");
+        ok("outline-width", "2px");
+        ok("outline-style", "solid");
+        ok("outline-color", "red");
+        ok("outline-offset", "1px");
+        ok("text-shadow", "1px 2px 3px black");
         ok("transition-property", "opacity");
         ok("transition-duration", "0.2s");
         let anim = expand("animation", "fade 1s").expect("animation shorthand");
@@ -2883,7 +2929,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 105);
+        assert_eq!(PropertyId::ALL.len(), 110);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

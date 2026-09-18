@@ -327,6 +327,20 @@ impl DisplayList {
             }
             if let Some(text) = &item.text {
                 if style.visibility == ve_style::Visibility::Visible {
+                    if !style.text_shadow.is_none() {
+                        list.push(DisplayItem::Text(TextRun {
+                            origin: Point::new(
+                                item.rect.x() + style.text_shadow.dx,
+                                item.rect.y() + item.baseline + style.text_shadow.dy,
+                            ),
+                            text: text.clone(),
+                            size: style.font_size,
+                            color: style.text_shadow.color,
+                            weight: style.font_weight,
+                            style: style.font_style,
+                            family: style.font_family.clone(),
+                        }));
+                    }
                     list.push(DisplayItem::Text(TextRun {
                         origin: Point::new(item.rect.x(), item.rect.y() + item.baseline),
                         text: text.clone(),
@@ -392,6 +406,23 @@ impl DisplayList {
                         list.push(DisplayItem::Border {
                             rect: item.rect,
                             widths,
+                            color,
+                        });
+                    }
+                }
+                if !style.outline_style.is_none() && style.outline_width > 0.0 {
+                    let grow = style.outline_offset + style.outline_width;
+                    let outline = Rect::new(
+                        item.rect.x() - grow,
+                        item.rect.y() - grow,
+                        item.rect.width() + grow * 2.0,
+                        item.rect.height() + grow * 2.0,
+                    );
+                    let color = style.outline_color.resolve(style.color);
+                    if !color.is_transparent() {
+                        list.push(DisplayItem::Border {
+                            rect: outline,
+                            widths: Edges::uniform(style.outline_width),
                             color,
                         });
                     }
@@ -527,6 +558,36 @@ mod tests {
                     && *color == Rgba::BLACK
             )),
             "box-shadow missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_outline_and_text_shadow() {
+        let html = "<style>body{margin:0} #o{width:40px;height:20px;background:red;outline:2px solid blue;outline-offset:1px}\
+                    #t{text-shadow:1px 2px black}</style>\
+                    <div id=o></div><p id=t>Hi</p>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Border { widths, color, .. }
+                    if widths.top == 2.0 && *color == Rgba::rgb(0, 0, 255)
+            )),
+            "outline missing: {:?}",
+            list.items()
+        );
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Text(run) if run.text == "Hi" && run.color == Rgba::BLACK
+            )),
+            "text-shadow missing: {:?}",
             list.items()
         );
     }
