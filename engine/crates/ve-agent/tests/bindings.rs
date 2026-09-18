@@ -3345,3 +3345,179 @@ fn review_behavior_counterexamples() {
     assert_eq!(v["live"], true, "{v}");
     assert_eq!(v["owner"], true, "{v}");
 }
+
+#[test]
+fn nested_sanitize_keeps_inner_template_policy() {
+    let mut page = open(
+        r#"<div id="target1"><?start name="outer-1">Original 1<?end></div>
+           <template for="outer-1" sanitize>
+             <div id="inner-1"><?start name="inner-1">Inner Original 1<?end></div>
+             <template for="inner-1" sanitize="unsafe">
+               <script>window.nestedScript1 = true;</script>
+               <span id="ok1">Allowed 1</span>
+             </template>
+           </template>
+           <div id="target2"><?start name="outer-2">Original 2<?end></div>
+           <template for="outer-2">
+             <div id="inner-2"><?start name="inner-2">Inner Original 2<?end></div>
+             <template for="inner-2" sanitize>
+               <script>window.nestedScript2 = true;</script>
+               <span id="ok2">Allowed 2</span>
+             </template>
+           </template>
+           <div id="target3"><?start name="outer-3">Original 3<?end></div>
+           <template for="outer-3">
+             <div id="inner-3"><?start name="inner-3">Inner Original 3<?end></div>
+             <template for="inner-3">
+               <script>window.nestedScript3 = true;</script>
+               <span id="ok3">Allowed 3</span>
+             </template>
+           </template>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const t1 = document.getElementById("target1");
+              const t2 = document.getElementById("target2");
+              const t3 = document.getElementById("target3");
+              return {
+                s1: !!window.nestedScript1,
+                s2: !!window.nestedScript2,
+                s3: !!window.nestedScript3,
+                span1: !!(t1 && t1.querySelector("span")),
+                orig1: !!(t1 && t1.textContent.includes("Inner Original 1")),
+                ok2: t2 && t2.querySelector("span") && t2.querySelector("span").textContent,
+                ok3: t3 && t3.querySelector("span") && t3.querySelector("span").textContent
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["s1"], false, "{v}");
+    assert_eq!(v["s2"], false, "{v}");
+    assert_eq!(v["s3"], true, "{v}");
+    assert_eq!(v["span1"], false, "{v}");
+    assert_eq!(v["orig1"], true, "{v}");
+    assert_eq!(v["ok2"], "Allowed 2", "{v}");
+    assert_eq!(v["ok3"], "Allowed 3", "{v}");
+}
+
+#[test]
+fn nested_sanitize_template_is_observed_then_applied() {
+    let mut page = open(
+        r#"<div id="container">
+             <div id="target-outer"><?start name="outer-marker">Original Outer<?end></div>
+             <script>
+               window.addedNodes = [];
+               const observer = new MutationObserver((mutations) => {
+                 for (const mutation of mutations) {
+                   for (const node of mutation.addedNodes) {
+                     if (node.nodeType === 1) window.addedNodes.push(node.id || node.nodeName);
+                   }
+                 }
+               });
+               observer.observe(document.getElementById("container"), { childList: true, subtree: true });
+             </script>
+             <template for="outer-marker">
+               <div id="target-inner"><?start name="inner-marker">Original Inner<?end></div>
+               <template id="inner" for="inner-marker" buffer sanitize>
+                 <span id="ok">Inner Allowed</span>
+               </template>
+             </template>
+           </div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              return {
+                added: window.addedNodes,
+                ok: document.getElementById("ok") && document.getElementById("ok").textContent,
+                innerTpl: document.getElementById("inner")
+              };
+            })()"#,
+        )
+        .unwrap();
+    let added = v["added"].to_string();
+    assert!(added.contains("target-inner"), "{v}");
+    assert!(added.contains("inner"), "{v}");
+    assert!(added.contains("ok") || added.contains("SPAN"), "{v}");
+    assert_eq!(v["ok"], "Inner Allowed", "{v}");
+    assert!(v["innerTpl"].is_null(), "{v}");
+}
+
+#[test]
+fn dom_inserted_pi_targets_are_case_sensitive() {
+    let mut page = open(r#"<div id="placeholder"></div>"#);
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const placeholder = document.getElementById("placeholder");
+              placeholder.append(
+                document.createProcessingInstruction("Start", 'name="a"'),
+                document.createProcessingInstruction("End", ""),
+                document.createProcessingInstruction("MARKER", 'name="b"'),
+                document.createProcessingInstruction("marKER", 'name="c"'),
+                document.createProcessingInstruction("marker", 'Name="z"'),
+                document.createProcessingInstruction("marker", 'name="d"'),
+                document.createProcessingInstruction("start", 'name="e"'),
+                document.createProcessingInstruction("end", ""),
+                "f"
+              );
+              const names = ["a", "b", "c", "z", "d", "e"];
+              for (const name of names) {
+                const tpl = document.createElement("template");
+                tpl.setAttribute("for", name);
+                tpl.innerHTML = name;
+                document.body.appendChild(tpl);
+              }
+              __veApplyPartialUpdates();
+              return {
+                html: placeholder.innerHTML,
+                left: document.querySelectorAll("template[for]").length
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(
+        v["html"],
+        "<?Start name=\"a\"?><?End ?><?MARKER name=\"b\"?><?marKER name=\"c\"?><?marker Name=\"z\"?>def",
+        "{v}"
+    );
+    assert_eq!(v["left"], 4, "{v}");
+}
+
+#[test]
+fn stream_append_replaces_start_without_end() {
+    let mut page = open(
+        r#"<div id="container"><?start name="content"?><span class="red">Has red</span></div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r#"(async function () {
+              const container = document.getElementById("container");
+              async function update(html) {
+                const writer = container.streamAppendHTMLUnsafe({ runScripts: true }).getWriter();
+                await writer.write("<template for=content>" + html + "</template>");
+                await writer.close();
+              }
+              await update('<?start name="content"?><span class="blue">Has blue</span>');
+              const first = container.textContent.trim();
+              await update("Green (no span)");
+              return { first, second: container.textContent.trim(), html: container.innerHTML };
+            })()"#,
+        )
+        .unwrap();
+    page.settle(200);
+    let settled = page
+        .evaluate(
+            r#"(function () {
+              const c = document.getElementById("container");
+              return { text: c.textContent.trim(), html: c.innerHTML };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(settled["text"], "Green (no span)", "async={v} settled={settled}");
+}

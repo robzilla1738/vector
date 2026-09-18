@@ -235,7 +235,6 @@ fn sandbox_denies_network_creation() {
 }
 
 #[test]
-#[test]
 fn sandbox_allows_v8_threads_for_javascript() {
     let status = sandbox_selftest("js");
     assert_eq!(

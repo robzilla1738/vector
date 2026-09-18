@@ -5136,6 +5136,21 @@
       walkNodes(root.content, fn);
     }
   }
+  function walkLight(root, fn) {
+    if (!root) return;
+    fn(root);
+    const kids = root.childNodes;
+    if (!kids) return;
+    for (let i = 0; i < kids.length; i++) walkLight(kids[i], fn);
+  }
+  function templateInContent(n) {
+    let p = n && n.parentNode;
+    while (p) {
+      if (p.nodeType === 11) return true;
+      p = p.parentNode;
+    }
+    return false;
+  }
   function findNamedPatch(name, scope) {
     let start = null;
     let marker = null;
@@ -5144,7 +5159,7 @@
     if (document.documentElement) roots.push(document.documentElement);
     if (document.body && roots.indexOf(document.body) < 0) roots.push(document.body);
     for (const root of roots) {
-      walkNodes(root, (n) => {
+      walkLight(root, (n) => {
         if (start || (marker && n === marker)) return;
         if (!n || n.nodeType !== 7) return;
         const attrs = piAttrs(n.data);
@@ -5486,8 +5501,8 @@
   }
   function applyAllPartialUpdates() {
     const seen = [];
-    walkNodes(document.documentElement || document, (n) => {
-      if (n && n.nodeType === 1 && (n.localName || "").toLowerCase() === "template" && n.hasAttribute("for") && !n.__vePatched && !n.__veStreamAborted) {
+    walkLight(document.documentElement || document, (n) => {
+      if (n && n.nodeType === 1 && (n.localName || "").toLowerCase() === "template" && n.hasAttribute("for") && !n.__vePatched && !n.__veStreamAborted && !templateInContent(n)) {
         seen.push(n);
       }
     });
@@ -5504,18 +5519,11 @@
       if (!final && acc.indexOf("</template>") < 0) return;
       const html = acc;
       acc = "";
-      const box = document.createElement("div");
+      const box = document.createElement("template");
       box.innerHTML = html;
-      const tpls = [];
-      walkNodes(box, (n) => {
-        if (n && n.nodeType === 1 && (n.localName || "").toLowerCase() === "template") tpls.push(n);
-      });
-      if (tpls.length) {
-        for (const tpl of tpls) applyTemplateFor(tpl);
-        return;
-      }
-      const kids = Array.from(box.childNodes);
+      const kids = takeTemplateChildren(box);
       for (const k of kids) host.appendChild(k);
+      applyAllPartialUpdates();
     }
     return {
       getWriter() {
