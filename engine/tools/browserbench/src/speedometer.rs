@@ -1520,6 +1520,10 @@ mod tests {
             restyle.full_calls, 0,
             "one add must not full-restyle the Spectrum tree: {v} restyle={restyle:?} err={console:?}"
         );
+        assert!(
+            v["changeMs"].as_u64().unwrap_or(u64::MAX) < 2_000,
+            "change dispatch must not scan the Spectrum tree as named properties: {v} restyle={restyle:?}"
+        );
         eprintln!("complex-dom one-add {v} restyle={restyle:?}");
     }
 
