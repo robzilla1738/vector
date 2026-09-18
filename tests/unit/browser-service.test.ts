@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
@@ -73,6 +73,19 @@ describe("Finding 1 browser service client", () => {
   it("resolveVeShell prefers VECTOR_SHELL when the file exists", () => {
     const bin = fakeShell();
     expect(resolveVeShell({ VECTOR_SHELL: bin } as NodeJS.ProcessEnv)).toBe(bin);
+  });
+
+  it("resolveVeShell finds a packaged Mac Resources/engine/ve-shell", () => {
+    const bin = fakeShell();
+    const resources = mkdtempSync(join(tmpdir(), "vector-res-"));
+    const engineDir = join(resources, "engine");
+    mkdirSync(engineDir, { recursive: true });
+    const staged = join(engineDir, "ve-shell");
+    writeFileSync(staged, "#!/bin/sh\n");
+    expect(
+      resolveVeShell({ VECTOR_RESOURCES: resources } as NodeJS.ProcessEnv, "/no-such-cwd"),
+    ).toBe(staged);
+    expect(resolveVeShell({ VECTOR_SHELL: bin, VECTOR_RESOURCES: resources } as NodeJS.ProcessEnv)).toBe(bin);
   });
 
   it("spawns --service and Node attaches as a client", async () => {

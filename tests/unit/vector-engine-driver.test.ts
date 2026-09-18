@@ -414,6 +414,24 @@ describe("VectorEngineDriver", () => {
     await driver.disconnect();
   });
 
+  it("Gate A: production does not start in-process ve-shell", async () => {
+    let started = false;
+    const driver = new VectorEngineDriver({
+      ownService: true,
+      config: { securityProfile: "production" },
+      startService: async () => {
+        started = true;
+        return { addr: "127.0.0.1:1", shutdown() {} };
+      },
+      load: async () => {
+        throw new Error("addon missing");
+      },
+    });
+    await expect(driver.connect()).rejects.toMatchObject({ code: "backend_unavailable" });
+    expect(started).toBe(false);
+    expect(driver.describe()).toMatchObject({ available: false });
+  });
+
   it("Finding 1: ownService starts BrowserService and Node attaches as a client", async () => {
     const owned = await mockBrowserService();
     const driver = new VectorEngineDriver({

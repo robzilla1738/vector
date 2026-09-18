@@ -638,7 +638,10 @@ export class VectorEngineDriver implements BrowserDriver {
 
   async connect(): Promise<void> {
     if (this.native) return;
-    if (!this.serviceAddr && this.ownService) {
+    // Packaged production uses `Engine` + ve-host (Gate A). In-process
+    // `ve-shell --service` is the developer / native-GUI attach path.
+    const production = this.config.securityProfile === "production";
+    if (!this.serviceAddr && this.ownService && !production) {
       this.owned = this.startService
         ? await this.startService()
         : await this.startNativeService();

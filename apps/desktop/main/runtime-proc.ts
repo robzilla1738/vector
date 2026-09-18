@@ -42,6 +42,8 @@ export function spawnRuntime(opts: {
       cdpPort: opts.cdpPort,
       packaged: app.isPackaged,
       electronVersion: String(process.versions.electron ?? "dev"),
+      resourcesPath: app.isPackaged ? process.resourcesPath : undefined,
+      workspaceRoot: app.isPackaged ? undefined : join(app.getAppPath(), "..", ".."),
     }),
   });
   proc.stdout?.on("data", (d) => process.stdout.write(`[runtime] ${d}`));

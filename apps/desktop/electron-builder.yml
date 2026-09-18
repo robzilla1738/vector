@@ -21,6 +21,10 @@ extraResources:
       - "**/*"
       - "**/node_modules"
       - "**/node_modules/**" # bundled runtime deps — override default exclusion
+  - from: "../../release/.staging/engine"
+    to: "engine"
+    filter:
+      - "**/*"
 
 mac:
   category: public.app-category.productivity

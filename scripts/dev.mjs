@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * `pnpm dev` — native product is ve-shell (no Electron). Fixtures start on
- * :4810–4812, then `ve-shell --gui` opens the records fixture.
+ * :4810–4812, then `ve-shell --gui --service` opens the records fixture
+ * so a human and an authorized agent share one NativeBrowser.
  *
  * Hybrid Electron desktop: VECTOR_ELECTRON=1 pnpm dev
  * (or `pnpm dev:electron`).
@@ -34,10 +35,10 @@ if (process.env.VECTOR_NO_FIXTURES !== "1") {
 
 if (!electron) {
   const url = process.env.VECTOR_DEV_URL || "http://127.0.0.1:4810/records";
-  console.log(`▸ ve-shell --gui ${url} (native product)`);
+  console.log(`▸ ve-shell --gui --service ${url} (native product)`);
   const app = spawn(
     "cargo",
-    ["run", "-p", "ve-shell", "--features", "window,v8,http", "--", "--gui", url],
+    ["run", "-p", "ve-shell", "--features", "window,v8,http", "--", "--gui", "--service", "127.0.0.1:0", url],
     { cwd: join(root, "engine"), stdio: "inherit" },
   );
   procs.push(app);

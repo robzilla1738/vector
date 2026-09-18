@@ -28,14 +28,21 @@ function withExe(path: string): string {
   return process.platform === "win32" && !path.endsWith(".exe") ? `${path}.exe` : path;
 }
 
-/** `VECTOR_SHELL` / `VECTOR_BROWSER_SHELL`, then cargo/release locations. */
+function veName(base: string): string {
+  return process.platform === "win32" && !base.endsWith(".exe") ? `${base}.exe` : base;
+}
+
+/** `VECTOR_SHELL` / `VECTOR_BROWSER_SHELL`, then packaged Resources and cargo/release locations. */
 export function resolveVeShell(env: NodeJS.ProcessEnv = process.env, cwd = process.cwd()): string | undefined {
   const named = (env.VECTOR_SHELL ?? env.VECTOR_BROWSER_SHELL)?.trim();
   if (named && existsSync(named)) return named;
   const here = dirname(fileURLToPath(import.meta.url));
   const root = join(here, "..", "..", "..");
+  const resources = (env.VECTOR_RESOURCES ?? "").trim();
   const candidates = [
     named,
+    resources ? join(resources, "engine", veName("ve-shell")) : undefined,
+    resources ? join(resources, veName("ve-shell")) : undefined,
     join(root, "engine/target/debug/ve-shell"),
     join(root, "engine/target/release/ve-shell"),
     join(root, "release/ve-shell"),
