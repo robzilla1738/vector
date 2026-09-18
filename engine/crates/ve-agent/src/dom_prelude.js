@@ -3940,7 +3940,10 @@
       D("canvasFillPath", this.__h, p._payload(), String(this.fillStyle));
     }
     stroke() {}
-    strokeRect() {}
+    strokeRect(x, y, w, h) {
+      if (arguments.length < 4) throw new TypeError("Failed to execute 'strokeRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
+      D("canvasStrokeRect", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0, String(this.strokeStyle || this.fillStyle));
+    }
     save() {}
     restore() {}
     translate(x, y) {}
@@ -7547,7 +7550,11 @@
     alert(m) { __ve.dom("scriptDialog", "alert", String(m), ""); },
     confirm(m) { return !!__ve.dom("scriptDialog", "confirm", String(m), ""); },
     prompt(m, d) { const r = __ve.dom("scriptDialog", "prompt", String(m), d == null ? "" : String(d)); return r == null ? null : String(r); },
-    open(url) { return blankWindow(url); },
+    open(url) {
+      const r = D("windowOpen", url == null ? "" : String(url));
+      if (r && r.blocked) return null;
+      return blankWindow(url);
+    },
     close() {},
     focus() {},
     blur() {},
@@ -7875,8 +7882,10 @@
   windowProps.stop = function stop() {};
   windowProps.close = function close() { globalThis.closed = true; };
   windowProps.open = function open(url, target, features) {
+    const r = D("windowOpen", url == null ? "" : String(url));
+    if (r && r.blocked) return null;
     if (url == null || url === "") return globalThis;
-    return globalThis;
+    return blankWindow(url);
   };
 
   try { Object.setPrototypeOf(globalThis, Window.prototype); } catch (e) {}

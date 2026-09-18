@@ -624,6 +624,17 @@ impl CanvasSurface {
         *self = Self::new(width, height);
     }
 
+    fn stroke_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: [u8; 4]) {
+        if w <= 0 || h <= 0 {
+            self.ops += 1;
+            return;
+        }
+        self.fill_rect(x, y, w, 1, color);
+        self.fill_rect(x, y + h - 1, w, 1, color);
+        self.fill_rect(x, y, 1, h, color);
+        self.fill_rect(x + w - 1, y, 1, h, color);
+    }
+
     fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: [u8; 4]) {
         if w <= 0 || h <= 0 {
             self.ops += 1;
@@ -1403,6 +1414,23 @@ impl Page {
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
         c.fill_path(rects, polys, parse_css_color(color));
+        c.ops
+    }
+
+    pub(crate) fn canvas_stroke_rect(
+        &mut self,
+        id: NodeId,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+        color: &str,
+    ) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.stroke_rect(x, y, w, h, parse_css_color(color));
         c.ops
     }
 
@@ -2218,6 +2246,18 @@ impl Page {
     pub fn is_cross_origin_isolated(&self) -> bool {
         !matches!(self.coop, CoopPolicy::UnsafeNone)
             && !matches!(self.coep, CoepPolicy::UnsafeNone)
+    }
+
+    /// Whether `window.open(url)` may share this browsing context (COOP).
+    #[must_use]
+    pub fn coop_allows_open(&self, url: &str) -> bool {
+        if matches!(self.coop, CoopPolicy::UnsafeNone) {
+            return true;
+        }
+        if matches!(self.coop, CoopPolicy::SameOriginAllowPopups) {
+            return true;
+        }
+        same_origin_url(&self.url, url)
     }
 
     /// Viewport.

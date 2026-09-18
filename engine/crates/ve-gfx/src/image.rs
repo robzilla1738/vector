@@ -218,6 +218,43 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         }
         rest = &rest[i + tag_end + 1..];
     }
+    rest = text.as_ref();
+    while let Some(i) = rest.find("<circle") {
+        let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
+        let tag = &rest[i..i + tag_end];
+        let cx = svg_attr(tag, "cx").unwrap_or(0.0);
+        let cy = svg_attr(tag, "cy").unwrap_or(0.0);
+        let r = svg_attr(tag, "r").unwrap_or(0.0);
+        let fill = tag
+            .split("fill=")
+            .nth(1)
+            .and_then(|s| {
+                let q = s.chars().next()?;
+                if q == '"' || q == '\'' {
+                    s[1..].split(q).next()
+                } else {
+                    None
+                }
+            })
+            .unwrap_or("#000000");
+        let color = parse_svg_color(fill);
+        let r2 = r * r;
+        let x0 = (cx - r).floor().max(0.0) as u32;
+        let y0 = (cy - r).floor().max(0.0) as u32;
+        let x1 = (cx + r).ceil().min(img.width as f32) as u32;
+        let y1 = (cy + r).ceil().min(img.height as f32) as u32;
+        for yy in y0..y1 {
+            for xx in x0..x1 {
+                let dx = xx as f32 + 0.5 - cx;
+                let dy = yy as f32 + 0.5 - cy;
+                if dx * dx + dy * dy <= r2 {
+                    let idx = ((yy * img.width + xx) * 4) as usize;
+                    img.rgba[idx..idx + 4].copy_from_slice(&color);
+                }
+            }
+        }
+        rest = &rest[i + tag_end + 1..];
+    }
     Ok(img)
 }
 
@@ -330,5 +367,11 @@ mod tests {
         .expect("svg");
         assert_eq!(svg.width, 8);
         assert_eq!(svg.pixel(0, 0), Some([255, 0, 0, 255]));
+        let circle = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><circle cx='4' cy='4' r='3' fill='#00ff00'/></svg>",
+        )
+        .expect("svg circle");
+        assert_eq!(circle.pixel(4, 4), Some([0, 255, 0, 255]));
+        assert_eq!(circle.pixel(0, 0), Some([0, 0, 0, 0]));
     }
 }

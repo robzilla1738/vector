@@ -1,30 +1,36 @@
 {
-  "backend": "vector-engine",
-  "purpose": "H1-D3 routing/quality number \u2014 not a license to delete Chromium",
-  "urls": 500,
-  "live": true,
-  "skippedLive": false,
-  "observe": {
-    "p50Ms": 0.051,
-    "p95Ms": 0.059,
-    "n": 500,
-    "unit": "ms",
-    "kind": "engine-stand-in-documents",
-    "test": "shell::tests::writes_corpus_observe_and_layout_triage"
-  },
-  "liveFetch": {
-    "ok": 491,
-    "failed": 9,
-    "p50Ms": 357.14054107666016,
-    "p95Ms": 572.0622539520264,
-    "n": 491,
-    "elapsedSec": 10.46
-  },
-  "capabilityUnsupportedRate": 0.018,
-  "security_mode": "production",
   "artifact": {
     "corpus": "engine/conformance/public-corpus-500.json",
     "harness": "engine/tools/corpus/observe-500.mjs",
     "test": "shell::tests::writes_corpus_observe_and_layout_triage"
-  }
+  },
+  "backend": "vector-engine",
+  "capabilityUnsupportedRate": 0.018,
+  "live": true,
+  "liveFetch": {
+    "elapsedSec": 10.46,
+    "failed": 9,
+    "n": 491,
+    "ok": 491,
+    "p50Ms": 357.14054107666016,
+    "p95Ms": 572.0622539520264
+  },
+  "observe": {
+    "kind": "engine-stand-in-documents",
+    "liveHtml": {
+      "kind": "fetched-html-bodies",
+      "n": 60,
+      "p50Ms": 16.717,
+      "unsupported": 0
+    },
+    "n": 500,
+    "p50Ms": 0.051,
+    "p95Ms": 0.059,
+    "test": "shell::tests::writes_corpus_observe_and_layout_triage",
+    "unit": "ms"
+  },
+  "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
+  "security_mode": "production",
+  "skippedLive": false,
+  "urls": 500
 }

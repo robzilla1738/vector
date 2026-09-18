@@ -386,6 +386,11 @@ pub(crate) fn host_call(
             page.pending_module_scripts.push(arg_str(args, 0));
             Ok(JsValue::Undefined)
         }
+        "windowOpen" => {
+            let url = arg_str(args, 0);
+            let blocked = !page.coop_allows_open(&url);
+            Ok(obj(&[("blocked", JsValue::Bool(blocked))]))
+        }
         "describe" => describe_node(page, live(page, args, 0)?).ok_or_else(|| fail("detached")),
         "describeMany" => Ok(JsValue::Array(
             args.iter()
@@ -2034,6 +2039,18 @@ pub(crate) fn host_call(
             let id = live(page, args, 0)?;
             page.canvas_resize(id, arg_f64(args, 1) as u32, arg_f64(args, 2) as u32);
             Ok(JsValue::Undefined)
+        }
+        "canvasStrokeRect" => {
+            let id = live(page, args, 0)?;
+            let ops = page.canvas_stroke_rect(
+                id,
+                arg_f64(args, 1) as i32,
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+                arg_f64(args, 4) as i32,
+                &arg_str(args, 5),
+            );
+            Ok(JsValue::Number(ops as f64))
         }
         "canvasFillRect" => {
             let id = live(page, args, 0)?;

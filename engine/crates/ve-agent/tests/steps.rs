@@ -232,6 +232,19 @@ fn documents_are_decoded_with_the_declared_charset() {
     assert_eq!(content.headings, vec!["Crème".to_owned()]);
 }
 
+#[test]
+fn coop_same_origin_blocks_cross_origin_window_open() {
+    let mut loaded = ve_agent::LoadedDocument::html("https://a.test/", "<p>x</p>");
+    loaded.coop = ve_agent::CoopPolicy::SameOrigin;
+    loaded.coep = ve_agent::CoepPolicy::RequireCorp;
+    let page = ve_agent::Page::from_loaded(1, loaded, DEFAULT_VIEWPORT);
+    assert!(page.is_cross_origin_isolated());
+    assert!(!page.coop_allows_open("https://b.test/"));
+    assert!(page.coop_allows_open("https://a.test/other"));
+    let open = ve_agent::Page::from_html(2, "<p>y</p>", Some("https://a.test/"), DEFAULT_VIEWPORT);
+    assert!(open.coop_allows_open("https://b.test/"));
+}
+
 // ---------------------------------------------------------------------------
 // Forms
 // ---------------------------------------------------------------------------

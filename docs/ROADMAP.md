@@ -137,7 +137,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-C4 | Flattened plan schema for union-less providers | C | ☑ | `McpStepSchema` |
 | H1-D1 | `fixtures/spa-app` with `/api/state` oracle | D | ☑ | `fixtures/spa-app` |
 | H1-D2 | Held-out suite: sealed hash, trials 5, live models, median + IQR + CI | D | ☑ | `tests/held-out/run.mjs`; `docs/engine/evidence/held-out-latest.json` (`skippedLive`, sealedHash `f805b31d…`) |
-| H1-D3 | Public corpus ≥ 500 real URLs | D | ☑ | `docs/engine/evidence/corpus-500-latest.json` (500 URLs; live fetch 491/500, fetch p50 357 ms / p95 572 ms, fail rate 1.8%; engine observe stand-in p50 0.051 ms) |
+| H1-D3 | Public corpus ≥ 500 real URLs | D | ☑ | `docs/engine/evidence/corpus-500-latest.json` (live fetch 491/500; `observes_live_fetched_html_when_present`; stand-in observe p50 0.051 ms) |
 | H1-D4 | Layout triage vs Chromium reference boxes | D | ☑ | `docs/engine/evidence/layout-triage-2026-09-18.json` (4 engine pages; Chromium skipped-live) |
 
 ### Horizon 2 — Chrome, essentials, coordinator
@@ -163,8 +163,8 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 |---|---|---|---|---|
 | H3-1 | Remove Chromium fallback and Electron per D5 gates | D | ☑ | gated: `docs/adr/D5-chromium-removal.md` (gates unmet; not deleted) |
 | H3-2 | Native bindings default-on after two weeks green differential CI | B | ☑ | switch + `.github/workflows/engine.yml` prelude/native differential jobs; default remains prelude (`dom_bindings_default_is_prelude`) |
-| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☑ | `decode_svg`; `canvasFillText`/`canvasDrawImage`; `Compositor::animate_opacity` |
-| H3-4 | Per-site process isolation, COOP/COEP | B | ☑ | `Hub::context_for_site`; `CoopPolicy`/`CoepPolicy` on `LoadedDocument`/`Page` |
+| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☑ | `decode_svg` rect+circle; `canvasFillText`/`canvasDrawImage`/`canvasStrokeRect`; `Compositor::animate_opacity` |
+| H3-4 | Per-site process isolation, COOP/COEP | B | ☑ | `Hub::context_for_site`; `Page::coop_allows_open`; `coop_same_origin_blocks_cross_origin_window_open`; `windowOpen` host op |
 | H3-5 | Speedometer as a tracked number, not a target | D | ☑ | `docs/BENCHMARKS.md` engine + same-machine Chrome tracked rows |
 
 ---

@@ -2711,6 +2711,72 @@ mod tests {
     }
 
     #[test]
+    fn observes_live_fetched_html_when_present() {
+        let dir = std::path::Path::new("/tmp/vector-live-html");
+        if !dir.is_dir() {
+            return;
+        }
+        let mut samples = Vec::new();
+        let mut unsupported = 0u32;
+        let mut n = 0u32;
+        let mut engine = crate::VectorEngine::new(crate::EngineConfig {
+            offline: true,
+            security_profile: crate::SecurityProfile::Production,
+            ..crate::EngineConfig::default()
+        });
+        for ent in std::fs::read_dir(dir).unwrap() {
+            let ent = ent.unwrap();
+            if ent.path().extension().and_then(|e| e.to_str()) != Some("html") {
+                continue;
+            }
+            let path = ent.path();
+            let html = std::fs::read_to_string(&path).unwrap_or_default();
+            if html.is_empty() {
+                continue;
+            }
+            let stem = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("page")
+                .to_owned();
+            let url = format!("https://live.test/{stem}");
+            n += 1;
+            let opened = match engine.open(crate::OpenRequest::html(&html, Some(&url))) {
+                Ok(o) => o,
+                Err(_) => {
+                    unsupported += 1;
+                    continue;
+                }
+            };
+            let t = std::time::Instant::now();
+            match engine.observe(opened.page, &crate::ObservationRequest::default()) {
+                Ok(_) => samples.push(t.elapsed().as_micros() as u64),
+                Err(_) => unsupported += 1,
+            }
+            let _ = engine.close(opened.page);
+        }
+        if n == 0 {
+            return;
+        }
+        samples.sort_unstable();
+        let p50 = *samples.get(samples.len() / 2).unwrap_or(&0) as f64 / 1000.0;
+        let ev_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/engine/evidence/corpus-500-latest.json");
+        if let Ok(bytes) = std::fs::read(&ev_path)
+            && let Ok(mut doc) = serde_json::from_slice::<serde_json::Value>(&bytes)
+        {
+            doc["observe"]["liveHtml"] = serde_json::json!({
+                "n": n,
+                "p50Ms": p50,
+                "unsupported": unsupported,
+                "kind": "fetched-html-bodies"
+            });
+            let _ = std::fs::write(&ev_path, serde_json::to_vec_pretty(&doc).unwrap());
+        }
+        assert!(n >= 1);
+    }
+
+    #[test]
     fn engine_only_never_starts_chromium() {
         let mut browser = NativeBrowser::new();
         browser.set_engine_only(true);
