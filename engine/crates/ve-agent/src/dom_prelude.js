@@ -4760,7 +4760,6 @@
     keys() { return (this._items || new Set()).keys(); }
     values() { return (this._items || new Set()).values(); }
     entries() { return (this._items || new Set()).entries(); }
-    [Symbol.iterator]() { return this.values(); }
   }
   for (const name of ["add", "has", "delete", "clear", "forEach", "keys", "values", "entries"]) {
     Object.defineProperty(CustomStateSet.prototype, name, {
@@ -4770,6 +4769,12 @@
       configurable: true,
     });
   }
+  Object.defineProperty(CustomStateSet.prototype, Symbol.iterator, {
+    value: CustomStateSet.prototype.values,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
   Object.defineProperty(CustomStateSet.prototype, Symbol.toStringTag, { value: "CustomStateSet", configurable: true });
   class ElementInternals {
     constructor() { throw new TypeError("Illegal constructor"); }
