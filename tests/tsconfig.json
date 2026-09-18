@@ -5,9 +5,10 @@
     "moduleResolution": "Bundler",
     "types": ["vitest/globals"],
     "noEmit": true,
-    "strict": true
+    "strict": true,
+    "allowJs": true
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "../scripts/browser-service-announce.mjs"],
   "references": [
     { "path": "../packages/contracts" },
     { "path": "../packages/browser-driver" },
