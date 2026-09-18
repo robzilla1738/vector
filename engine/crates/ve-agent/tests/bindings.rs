@@ -4082,3 +4082,67 @@ fn todomvc_es5_measured_phases() {
         let _ = std::fs::write(path, serde_json::to_string_pretty(&json).unwrap());
     }
 }
+
+#[test]
+fn html_collection_types_match_html_idl() {
+    let mut page = open(
+        r#"<form id="f" name="f">
+             <input id="n" name="n" value="Ada">
+             <input type="radio" name="color" value="red" checked>
+             <input type="radio" name="color" value="blue">
+             <select id="s" name="s"><option value="a" selected>A</option><option value="b">B</option></select>
+           </form>
+           <p id="p">x</p>
+           <p id="dup">one</p>
+           <div id="dup">two</div>"#,
+    );
+    assert!(page.settle(200).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const all = document.all;
+              const form = document.getElementById("f");
+              const select = document.getElementById("s");
+              const radios = form.elements.namedItem("color");
+              return {
+                allTag: Object.prototype.toString.call(all),
+                allIsAll: all instanceof HTMLAllCollection,
+                allNotCollection: !(all instanceof HTMLCollection),
+                allLength: all.length > 0,
+                allNamed: all.namedItem("p") && all.namedItem("p").id === "p",
+                allItemIndex: all.item(0) !== null,
+                allCall: typeof all === "function" ? all("p").id === "p" : all.item("p").id === "p",
+                allCtor: typeof HTMLAllCollection === "function",
+                formTag: Object.prototype.toString.call(form.elements),
+                formIsControls: form.elements instanceof HTMLFormControlsCollection,
+                namedInput: form.elements.namedItem("n") && form.elements.namedItem("n").value === "Ada",
+                radioTag: Object.prototype.toString.call(radios),
+                radioIsList: radios instanceof RadioNodeList,
+                radioValue: radios.value,
+                optionsTag: Object.prototype.toString.call(select.options),
+                optionsIsOptions: select.options instanceof HTMLOptionsCollection,
+                optionsLength: select.options.length,
+                optionsSelected: select.options.selectedIndex
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["allTag"], "[object HTMLAllCollection]", "{v}");
+    assert_eq!(v["allIsAll"], true, "{v}");
+    assert_eq!(v["allNotCollection"], true, "{v}");
+    assert_eq!(v["allLength"], true, "{v}");
+    assert_eq!(v["allNamed"], true, "{v}");
+    assert_eq!(v["allItemIndex"], true, "{v}");
+    assert_eq!(v["allCall"], true, "{v}");
+    assert_eq!(v["allCtor"], true, "{v}");
+    assert_eq!(v["formTag"], "[object HTMLFormControlsCollection]", "{v}");
+    assert_eq!(v["formIsControls"], true, "{v}");
+    assert_eq!(v["namedInput"], true, "{v}");
+    assert_eq!(v["radioTag"], "[object RadioNodeList]", "{v}");
+    assert_eq!(v["radioIsList"], true, "{v}");
+    assert_eq!(v["radioValue"], "red", "{v}");
+    assert_eq!(v["optionsTag"], "[object HTMLOptionsCollection]", "{v}");
+    assert_eq!(v["optionsIsOptions"], true, "{v}");
+    assert_eq!(v["optionsLength"], 2, "{v}");
+    assert_eq!(v["optionsSelected"], 0, "{v}");
+}

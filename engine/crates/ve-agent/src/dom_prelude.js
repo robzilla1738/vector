@@ -1011,16 +1011,34 @@
           for (let i = 0; i < els.length; i++) yield els[i];
         };
       }
-      if (typeof p === "symbol" || p === "_fetch") return Reflect.get(t, p, recv);
-      if (p === "length") return t._fetch().length;
-      if (p === "item" || p === "namedItem") return Reflect.get(t, p, recv);
+      if (typeof p === "symbol" || (typeof p === "string" && p.charCodeAt(0) === 95)) {
+        return Reflect.get(t, p, recv);
+      }
+      if (p === "length") {
+        const desc = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(t), "length");
+        if (desc && desc.get) return desc.get.call(t);
+        return t._fetch().length;
+      }
+      if (p === "item" || p === "namedItem" || p === "add" || p === "remove" || p === "selectedIndex") {
+        return Reflect.get(t, p, recv);
+      }
       const s = String(p);
       if (/^\d+$/.test(s)) return t._fetch()[Number(s)];
       if (s) {
-        const named = HTMLCollection.prototype.namedItem.call(t, s);
+        const named = (t.namedItem || HTMLCollection.prototype.namedItem).call(t, s);
         if (named) return named;
       }
       return Reflect.get(t, p, recv);
+    },
+    set(t, p, value, recv) {
+      if (typeof p === "string" && p.charCodeAt(0) === 95) return Reflect.set(t, p, value, recv);
+      if (p === "length" || p === "selectedIndex") return Reflect.set(t, p, value, recv);
+      const s = String(p);
+      if (/^\d+$/.test(s) && typeof t._setIndex === "function") {
+        t._setIndex(Number(s), value);
+        return true;
+      }
+      return Reflect.set(t, p, value, recv);
     },
     ownKeys(t) {
       const els = t._fetch();
@@ -1042,9 +1060,10 @@
         if (v === undefined) return undefined;
         return { configurable: true, enumerable: true, writable: false, value: v };
       }
-      const named = s ? HTMLCollection.prototype.namedItem.call(t, s) : null;
+      const named = s ? (t.namedItem || HTMLCollection.prototype.namedItem).call(t, s) : null;
       if (named) return { configurable: true, enumerable: false, writable: false, value: named };
-      return Object.getOwnPropertyDescriptor(HTMLCollection.prototype, p) || Object.getOwnPropertyDescriptor(t, p);
+      return Object.getOwnPropertyDescriptor(Object.getPrototypeOf(t), p)
+        || Object.getOwnPropertyDescriptor(t, p);
     },
     has(t, p) {
       return htmlCollectionTraps.getOwnPropertyDescriptor(t, p) !== undefined;
@@ -1068,6 +1087,190 @@
     Object.defineProperty(HTMLCollection.prototype, k, { enumerable: true, configurable: true });
   }
   Object.defineProperty(HTMLCollection.prototype, Symbol.toStringTag, { value: "HTMLCollection" });
+
+  function collectionNamedHits(els, name) {
+    const n = String(name);
+    if (!n) return [];
+    return els.filter((el) => el && (el.id === n || (el.getAttribute && el.getAttribute("name") === n)));
+  }
+
+  class RadioNodeList extends LiveNodeList {
+    get value() {
+      const els = typeof this._fetch === "function" ? this._fetch() : [];
+      for (let i = 0; i < els.length; i++) {
+        if (els[i] && els[i].checked) return els[i].value;
+      }
+      return "";
+    }
+    set value(v) {
+      const want = String(v);
+      const els = typeof this._fetch === "function" ? this._fetch() : [];
+      for (let i = 0; i < els.length; i++) {
+        if (els[i]) els[i].checked = els[i].value === want;
+      }
+    }
+  }
+  Object.defineProperty(RadioNodeList.prototype, Symbol.toStringTag, { value: "RadioNodeList" });
+
+  class HTMLFormControlsCollection extends HTMLCollection {
+    namedItem(name) {
+      const hits = collectionNamedHits(this._fetch(), name);
+      if (hits.length === 0) return null;
+      if (hits.length === 1) return hits[0];
+      const n = String(name);
+      return new RadioNodeList(() => collectionNamedHits(this._fetch(), n));
+    }
+  }
+  Object.defineProperty(HTMLFormControlsCollection.prototype, Symbol.toStringTag, {
+    value: "HTMLFormControlsCollection",
+  });
+
+  class HTMLOptionsCollection extends HTMLCollection {
+    get length() { return this._fetch().length; }
+    set length(n) {
+      n = n >>> 0;
+      const select = this._select;
+      if (!select) return;
+      while (this._fetch().length > n) {
+        const last = this._fetch()[this._fetch().length - 1];
+        if (last && last.parentNode) last.parentNode.removeChild(last);
+        else break;
+      }
+      while (this._fetch().length < n) {
+        select.appendChild(document.createElement("option"));
+      }
+    }
+    add(element, before) {
+      const select = this._select;
+      if (!select || !element) return;
+      if (before == null) select.appendChild(element);
+      else if (typeof before === "number") {
+        const ref = this._fetch()[before];
+        if (ref) select.insertBefore(element, ref.parentNode === select ? ref : ref.parentNode);
+        else select.appendChild(element);
+      } else if (before.parentNode) {
+        before.parentNode.insertBefore(element, before);
+      } else {
+        select.appendChild(element);
+      }
+    }
+    remove(index) {
+      const el = this._fetch()[index | 0];
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    }
+    get selectedIndex() {
+      const opts = this._fetch();
+      for (let i = 0; i < opts.length; i++) if (opts[i].selected) return i;
+      return -1;
+    }
+    set selectedIndex(i) {
+      const opts = this._fetch();
+      i = i | 0;
+      for (let j = 0; j < opts.length; j++) opts[j].selected = j === i;
+    }
+    _setIndex(index, option) {
+      const select = this._select;
+      if (!select) return;
+      const opts = this._fetch();
+      if (option == null) {
+        const cur = opts[index];
+        if (cur && cur.parentNode) cur.parentNode.removeChild(cur);
+        return;
+      }
+      if (index < opts.length) {
+        const cur = opts[index];
+        if (cur && cur.parentNode) cur.parentNode.replaceChild(option, cur);
+      } else {
+        while (this._fetch().length < index) select.appendChild(document.createElement("option"));
+        select.appendChild(option);
+      }
+    }
+  }
+  Object.defineProperty(HTMLOptionsCollection.prototype, Symbol.toStringTag, {
+    value: "HTMLOptionsCollection",
+  });
+
+  const htmlAllTraps = {
+    get(t, p, recv) {
+      if (p === Symbol.iterator) {
+        return function* () {
+          const els = t._fetch();
+          for (let i = 0; i < els.length; i++) yield els[i];
+        };
+      }
+      if (typeof p === "symbol" || (typeof p === "string" && p.charCodeAt(0) === 95)) {
+        return Reflect.get(t, p, recv);
+      }
+      if (p === "length") return t._fetch().length;
+      if (p === "item" || p === "namedItem") return Reflect.get(t, p, recv);
+      const s = String(p);
+      if (/^\d+$/.test(s)) return t._fetch()[Number(s)];
+      if (s) {
+        const named = HTMLAllCollection.prototype.namedItem.call(t, s);
+        if (named) return named;
+      }
+      return Reflect.get(t, p, recv);
+    },
+    apply(t, _thisArg, args) {
+      return HTMLAllCollection.prototype.item.call(t, args.length ? args[0] : undefined);
+    },
+    ownKeys(t) {
+      const els = t._fetch();
+      const keys = [];
+      for (let i = 0; i < els.length; i++) keys.push(String(i));
+      return keys;
+    },
+    getOwnPropertyDescriptor(t, p) {
+      if (typeof p === "symbol") return Object.getOwnPropertyDescriptor(t, p);
+      const s = String(p);
+      if (/^\d+$/.test(s)) {
+        const v = t._fetch()[Number(s)];
+        if (v === undefined) return undefined;
+        return { configurable: true, enumerable: true, writable: false, value: v };
+      }
+      const named = s ? HTMLAllCollection.prototype.namedItem.call(t, s) : null;
+      if (named) return { configurable: true, enumerable: false, writable: false, value: named };
+      return Object.getOwnPropertyDescriptor(HTMLAllCollection.prototype, p)
+        || Object.getOwnPropertyDescriptor(t, p);
+    },
+    has(t, p) {
+      return htmlAllTraps.getOwnPropertyDescriptor(t, p) !== undefined;
+    },
+  };
+
+  class HTMLAllCollection {
+    constructor(fetch) {
+      const call = function htmlAll(nameOrIndex) {
+        return HTMLAllCollection.prototype.item.call(call, nameOrIndex);
+      };
+      call._fetch = fetch;
+      Object.setPrototypeOf(call, HTMLAllCollection.prototype);
+      return new Proxy(call, htmlAllTraps);
+    }
+    item(nameOrIndex) {
+      if (arguments.length === 0 || nameOrIndex == null) return null;
+      const s = String(nameOrIndex);
+      if (s === "") return null;
+      if (/^\d+$/.test(s)) return this._fetch()[Number(s)] || null;
+      return this.namedItem(s);
+    }
+    namedItem(name) {
+      const hits = collectionNamedHits(this._fetch(), name).filter((el) => {
+        return (el.localName || "").toLowerCase() !== "applet";
+      });
+      if (hits.length === 0) return null;
+      if (hits.length === 1) return hits[0];
+      const n = String(name);
+      return new HTMLCollection(() => collectionNamedHits(this._fetch(), n).filter((el) => {
+        return (el.localName || "").toLowerCase() !== "applet";
+      }));
+    }
+    get length() { return this._fetch().length; }
+  }
+  for (const k of ["item", "namedItem", "length"]) {
+    Object.defineProperty(HTMLAllCollection.prototype, k, { enumerable: true, configurable: true });
+  }
+  Object.defineProperty(HTMLAllCollection.prototype, Symbol.toStringTag, { value: "HTMLAllCollection" });
 
   function isHtmlNamedElement(el) {
     return el && el.nodeType === 1 && el.namespaceURI === "http://www.w3.org/1999/xhtml";
@@ -2319,16 +2522,27 @@
   defineValueAccessor(HTMLInputElement.prototype);
   defineValueAccessor(HTMLTextAreaElement.prototype);
   class HTMLSelectElement extends HTMLElement {
-    get options() { return this.querySelectorAll("option"); }
-    get selectedIndex() {
-      const opts = this.options;
-      for (let i = 0; i < opts.length; i++) if (opts[i].selected) return i;
-      return -1;
+    get options() {
+      if (this._options) return this._options;
+      const select = this;
+      const col = new HTMLOptionsCollection(() => {
+        const out = [];
+        const walk = (node) => {
+          for (let c = node.firstChild; c; c = c.nextSibling) {
+            const tag = c.tagName;
+            if (tag === "OPTION") out.push(c);
+            else if (tag === "OPTGROUP") walk(c);
+          }
+        };
+        walk(select);
+        return out;
+      });
+      col._select = select;
+      this._options = col;
+      return col;
     }
-    set selectedIndex(i) {
-      const opts = this.options;
-      for (let j = 0; j < opts.length; j++) opts[j].selected = j === i;
-    }
+    get selectedIndex() { return this.options.selectedIndex; }
+    set selectedIndex(i) { this.options.selectedIndex = i; }
   }
   class HTMLOptionElement extends HTMLElement {
     get text() {
@@ -2356,7 +2570,36 @@
     reset() { D("reset", this.__h); }
     checkValidity() { return !!D("checkValidity", this.__h); }
     reportValidity() { return this.checkValidity(); }
-    get elements() { return this.querySelectorAll("input,select,textarea,button"); }
+    get elements() {
+      if (this._elementsCol) return this._elementsCol;
+      const form = this;
+      this._elementsCol = new HTMLFormControlsCollection(() => {
+        const listed = "button,fieldset,input,object,output,select,textarea";
+        const root = form.getRootNode && form.getRootNode();
+        const scope = root && root.querySelectorAll ? root : document;
+        const all = scope.querySelectorAll(listed);
+        const formId = form.id;
+        const out = [];
+        for (let i = 0; i < all.length; i++) {
+          const el = all[i];
+          const owner = el.getAttribute("form");
+          if (owner != null) {
+            if (owner !== "" && owner === formId) out.push(el);
+            continue;
+          }
+          let p = el.parentNode;
+          let owned = false;
+          while (p) {
+            if (p === form) { owned = true; break; }
+            if (p.tagName === "FORM") break;
+            p = p.parentNode;
+          }
+          if (owned) out.push(el);
+        }
+        return out;
+      });
+      return this._elementsCol;
+    }
   }
   function reflectedUrl(el, attr) {
     const raw = el.getAttribute(attr);
@@ -3278,19 +3521,8 @@
     get applets() { return this._applets || (this._applets = new HTMLCollection(() => [])); }
     get all() {
       if (this._all) return this._all;
-      const col = new HTMLCollection(() => list(D("getElementsByTagName", this.__h, "*")));
-      this._all = new Proxy(col, {
-        get(t, p, recv) {
-          if (typeof p === "string" && p !== "length" && !/^\d+$/.test(p)) {
-            const named = HTMLCollection.prototype.namedItem.call(t, p);
-            if (named && (named.localName || "").toLowerCase() === "applet") return undefined;
-            if (named) return named;
-          }
-          const v = Reflect.get(t, p, recv);
-          if (v && v.localName === "applet") return undefined;
-          return v;
-        },
-      });
+      const doc = this;
+      this._all = new HTMLAllCollection(() => list(D("getElementsByTagName", doc.__h, "*")));
       return this._all;
     }
     get defaultView() { return this.__h === D("documentNode") ? window : null; }
@@ -4220,7 +4452,8 @@
     customElements: new CustomElementRegistry(),
     Event, HashChangeEvent, StorageEvent, MouseEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
     Node, NodeList, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment, CharacterData,
-    ProcessingInstruction, DocumentType, HTMLCollection,
+    ProcessingInstruction, DocumentType, HTMLCollection, HTMLAllCollection,
+    HTMLFormControlsCollection, HTMLOptionsCollection, RadioNodeList,
     HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLOptionElement,
     HTMLButtonElement, HTMLFormElement, HTMLAnchorElement, HTMLImageElement, HTMLLinkElement, HTMLUnknownElement, HTMLStyleElement,
     HTMLAreaElement, HTMLBaseElement, HTMLSourceElement, HTMLFrameElement,
