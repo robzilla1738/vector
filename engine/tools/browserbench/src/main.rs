@@ -174,6 +174,8 @@ fn official_default_runner(iterations: u32) -> String {
   var benchmark = new Benchmark({{ iterationCount: n }});
   var results = [];
   for (var i = 0; i < n; i++) {{
+    if (benchmark.prepareForNextIteration) benchmark.prepareForNextIteration();
+    if (Math.random && Math.random.__resetSeed) Math.random.__resetSeed();
     var start = Date.now();
     benchmark.runIteration(i);
     var end = Date.now();
@@ -280,6 +282,7 @@ fn official_async_runner(iterations: u32) -> String {
       var results = [];
       for (var i = 0; i < n; i++) {{
         if (benchmark.prepareForNextIteration) await benchmark.prepareForNextIteration();
+        if (Math.random && Math.random.__resetSeed) Math.random.__resetSeed();
         var start = Date.now();
         await benchmark.runIteration(i);
         var end = Date.now();
