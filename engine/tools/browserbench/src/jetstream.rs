@@ -478,6 +478,40 @@ const WASM_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
             ("wasmBinary", "./Dart/build/flute.todomvc.dart2wasm.wasm"),
         ],
     ),
+    (
+        "Kotlin-compose-wasm",
+        &["./Kotlin-compose/benchmark.js"],
+        false,
+        &[
+            ("skikoJsModule", "./Kotlin-compose/build/skiko.mjs"),
+            ("skikoWasmBinary", "./Kotlin-compose/build/skiko.wasm"),
+            (
+                "composeJsModule",
+                "./Kotlin-compose/build/compose-benchmarks-benchmarks.uninstantiated.mjs",
+            ),
+            (
+                "composeWasmBinary",
+                "./Kotlin-compose/build/compose-benchmarks-benchmarks.wasm",
+            ),
+            (
+                "inputImageCompose",
+                "./Kotlin-compose/build/compose-multiplatform.png",
+            ),
+            ("inputImageCat", "./Kotlin-compose/build/example1_cat.jpg"),
+            (
+                "inputImageComposeCommunity",
+                "./Kotlin-compose/build/example1_compose-community-primary.png",
+            ),
+            (
+                "inputFontItalic",
+                "./Kotlin-compose/build/jetbrainsmono_italic.ttf",
+            ),
+            (
+                "inputFontRegular",
+                "./Kotlin-compose/build/jetbrainsmono_regular.ttf",
+            ),
+        ],
+    ),
 ];
 
 const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[];
@@ -765,9 +799,9 @@ JetStream.getBinary = async function (key) {
   for (let i = 0; i < text.length; i++) out[i] = text.charCodeAt(i) & 0xff;
   return out;
 };
-JetStream.__veRewriteModule = function (src) {
+JetStream.__veRewriteModule = function (src, key) {
   const names = [];
-  let rewritten = String(src);
+  let rewritten = String(src).replace(/\bimport\.meta\b/g, "__veImportMeta");
   rewritten = rewritten.replace(
     /^export\s+(async\s+)?function\s+(\w+)/gm,
     function (_, asyncKw, name) {
@@ -801,13 +835,22 @@ JetStream.__veRewriteModule = function (src) {
     }
   );
   rewritten = rewritten.replace(/^export\s+default\s+/gm, "var __veDefault = ");
+  rewritten = rewritten.replace(/^export\s+/gm, "");
   if (/__veDefault\s*=/.test(rewritten)) names.push("default: __veDefault");
-  return rewritten + "\nreturn { " + names.join(", ") + " };\n";
+  return (
+    "var __veImportMeta = { url: " +
+    JSON.stringify(String(key || "")) +
+    ", resolve: function (p) { return p; } };\n" +
+    rewritten +
+    "\nreturn { " +
+    names.join(", ") +
+    " };\n"
+  );
 };
 JetStream.dynamicImport = async function (key) {
   const src = JetStream.__vePreload[key];
   if (src == null) throw new Error("missing preload " + key);
-  const factory = new Function(JetStream.__veRewriteModule(src));
+  const factory = new Function(JetStream.__veRewriteModule(src, key));
   return factory();
 };
 "#,
@@ -817,7 +860,15 @@ JetStream.dynamicImport = async function (key) {
 
 fn is_binary_preload(rel: &str) -> bool {
     let name = rel.to_ascii_lowercase();
-    name.ends_with(".wasm") || name.ends_with(".wasm.z") || name.ends_with(".bin")
+    name.ends_with(".wasm")
+        || name.ends_with(".wasm.z")
+        || name.ends_with(".bin")
+        || name.ends_with(".png")
+        || name.ends_with(".jpg")
+        || name.ends_with(".jpeg")
+        || name.ends_with(".ttf")
+        || name.ends_with(".onnx")
+        || name.ends_with(".dat")
 }
 
 fn read_bytes(path: &std::path::Path) -> Result<Vec<u8>, String> {
@@ -920,6 +971,13 @@ mod tests {
         assert!(is_binary_preload("./wasm/argon2/build/argon2.wasm.z"));
         assert!(is_binary_preload("./wasm/richards/build/richards.wasm"));
         assert!(is_binary_preload("./8bitbench/build/assets/program.bin"));
+        assert!(is_binary_preload(
+            "./Kotlin-compose/build/compose-multiplatform.png"
+        ));
+        assert!(is_binary_preload("./Kotlin-compose/build/example1_cat.jpg"));
+        assert!(is_binary_preload(
+            "./Kotlin-compose/build/jetbrainsmono_regular.ttf"
+        ));
         assert!(!is_binary_preload(
             "./SeaMonster/inspector-json-payload.js.z"
         ));
