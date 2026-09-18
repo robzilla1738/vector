@@ -577,6 +577,9 @@ impl JsVm for V8Vm {
 
 impl V8Vm {
     fn eval_inner(&mut self, source: &str, origin: &str) -> Result<JsValue, ScriptError> {
+        if origin.starts_with("module:") || looks_like_module(source) {
+            return self.eval_module_inner(source, origin);
+        }
         let source = source.to_owned();
         let origin = origin.to_owned();
         self.run(|scope| {
@@ -601,6 +604,36 @@ impl V8Vm {
         })
     }
 
+    fn eval_module_inner(&mut self, source: &str, origin: &str) -> Result<JsValue, ScriptError> {
+        let source = source.to_owned();
+        let origin = origin.to_owned();
+        self.run(|scope| {
+            let code = v8::String::new(scope, &source)?;
+            let name = v8::String::new(scope, &origin)?;
+            let script_origin = v8::ScriptOrigin::new(
+                scope,
+                name.into(),
+                0,
+                0,
+                false,
+                0,
+                None,
+                false,
+                false,
+                true,
+                None,
+            );
+            let mut module_source = v8::script_compiler::Source::new(code, Some(&script_origin));
+            let module = v8::script_compiler::compile_module(scope, &mut module_source)?;
+            let ok = module.instantiate_module(scope, module_resolve_callback)?;
+            if !ok {
+                return None;
+            }
+            let value = module.evaluate(scope)?;
+            Some(to_js_value(scope, value))
+        })
+    }
+
     fn call_inner(&mut self, function: &str, args: &[JsValue]) -> Result<JsValue, ScriptError> {
         let function = function.to_owned();
         let args = args.to_vec();
@@ -621,6 +654,25 @@ impl V8Vm {
             Some(to_js_value(scope, value))
         })
     }
+}
+
+fn looks_like_module(source: &str) -> bool {
+    source.lines().any(|line| {
+        let t = line.trim_start();
+        t.starts_with("import ")
+            || t.starts_with("export ")
+            || t.starts_with("import\"")
+            || t.starts_with("import'")
+    })
+}
+
+fn module_resolve_callback<'s>(
+    _context: v8::Local<'s, v8::Context>,
+    _specifier: v8::Local<'s, v8::String>,
+    _import_attributes: v8::Local<'s, v8::FixedArray>,
+    _referrer: v8::Local<'s, v8::Module>,
+) -> Option<v8::Local<'s, v8::Module>> {
+    None
 }
 
 unsafe extern "C" {
@@ -1065,6 +1117,21 @@ mod tests {
             }
         }
         panic!("WebAssembly.instantiate did not resolve after platform pump");
+    }
+
+    #[test]
+    fn es_module_export_runs_via_v8_module() {
+        let mut vm = V8Vm::new().unwrap();
+        vm.eval(
+            "globalThis.modRan = 0;\nexport const n = 1;\nglobalThis.modRan = 41;",
+            "module:spa.js",
+        )
+        .unwrap();
+        assert_eq!(vm.eval("modRan", "<t>").unwrap(), JsValue::Number(41.0));
+        let classic = vm
+            .eval("typeof rewriteModule", "<t>")
+            .unwrap();
+        assert_eq!(classic, JsValue::String("undefined".into()));
     }
 
     #[test]

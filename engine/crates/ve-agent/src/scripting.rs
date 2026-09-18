@@ -446,7 +446,18 @@ impl Page {
         if !self.pending_write_scripts.is_empty() {
             self.flush_document_write_scripts();
         }
+        if !self.pending_module_scripts.is_empty() {
+            self.flush_pending_modules();
+        }
         result.map_err(Error::from)
+    }
+
+    fn flush_pending_modules(&mut self) {
+        let batch = std::mem::take(&mut self.pending_module_scripts);
+        for source in batch {
+            let origin = format!("module:{}#inserted", self.url());
+            let _ = self.run_script(&source, &origin);
+        }
     }
 
     fn flush_document_write_scripts(&mut self) {
@@ -498,6 +509,9 @@ impl Page {
         let _ = vm.run_pending_jobs_with_host(&mut PageHost { page: self });
         if let Some(s) = self.scripting.as_mut() {
             s.vm = Some(vm);
+        }
+        if !self.pending_module_scripts.is_empty() {
+            self.flush_pending_modules();
         }
         result.map_err(Error::from)
     }
@@ -650,17 +664,13 @@ impl Page {
             self.drain_js_jobs();
             return;
         }
-        let origin = script
+        let mut origin = script
             .url
             .clone()
             .unwrap_or_else(|| format!("{}#inline", self.url()));
-        let mut source = script.source.clone();
+        let source = script.source.clone();
         if script.module {
-            let rewritten =
-                self.call_script("__veRewriteModule", &[JsValue::from(source.as_str())]);
-            if let Ok(JsValue::String(s)) = rewritten {
-                source = s;
-            }
+            origin = format!("module:{origin}");
         }
         if !script.module {
             let _ = self.call_script("__veSetCurrentScript", &[crate::dom::pack(script.node)]);

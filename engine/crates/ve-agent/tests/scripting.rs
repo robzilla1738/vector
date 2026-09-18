@@ -138,6 +138,37 @@ fn a_runaway_script_is_cut_off_and_the_page_survives() {
 }
 
 #[test]
+fn es_module_spa_runs_without_bundler() {
+    let mut page = open(
+        r#"<div id="root">boot</div>
+           <script type="module">
+             const root = document.getElementById("root");
+             root.textContent = "empty";
+             globalThis.__spaReady = true;
+             export function refresh() { return root.textContent; }
+           </script>"#,
+        true,
+    );
+    page.settle(200);
+    assert_eq!(
+        page.evaluate("document.getElementById('root').textContent").unwrap(),
+        serde_json::json!("empty")
+    );
+    assert_eq!(
+        page.evaluate("globalThis.__spaReady").unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("typeof globalThis.__veRewriteModule").unwrap(),
+        serde_json::json!("undefined")
+    );
+    assert_eq!(
+        page.evaluate("typeof rewriteModule").unwrap(),
+        serde_json::json!("undefined")
+    );
+}
+
+#[test]
 fn performance_now_tracks_virtual_time_by_default() {
     let mut page = open("<title>t</title>", true);
     let now = page

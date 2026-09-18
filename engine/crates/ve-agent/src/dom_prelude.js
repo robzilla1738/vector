@@ -8539,15 +8539,6 @@
       return null;
     }
   }
-  function rewriteModule(source) {
-    return String(source).replace(
-      /^\s*import\s+(?:(?:[\w*{}\s,]+)\s+from\s+)?["']([^"']+)["']\s*;?/gm,
-      (m, url) => {
-        const body = fetchText(url);
-        return body == null ? "/* import failed */" : body + ";\n";
-      },
-    );
-  }
   function fireLoad(el) {
     if (!el || el.__veCancelled) return;
     const ev = new Event("load");
@@ -8569,15 +8560,15 @@
       try { window.onerror(String(err && err.message || err), "", 0, 0, err); } catch (e3) {}
     }
   }
-  globalThis.__veRewriteModule = (source) => rewriteModule(source);
   globalThis.__veEvalScript = (handle, source, isModule) => {
     const el = wrap(handle);
     const prev = currentScriptNode;
     currentScriptNode = isModule ? null : el;
     try {
       let src = source == null ? "" : String(source);
-      if (isModule) src = rewriteModule(src);
-      if (src) (0, eval)(src);
+      if (!src) return;
+      if (isModule) D("queueModuleEval", src);
+      else (0, eval)(src);
     } catch (e) {
       fireError(el, e);
       throw e;

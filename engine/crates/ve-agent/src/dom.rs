@@ -382,6 +382,10 @@ pub(crate) fn host_call(
 ) -> Result<JsValue, ScriptError> {
     match op {
         "documentNode" => Ok(pack(page.doc.root())),
+        "queueModuleEval" => {
+            page.pending_module_scripts.push(arg_str(args, 0));
+            Ok(JsValue::Undefined)
+        }
         "describe" => describe_node(page, live(page, args, 0)?).ok_or_else(|| fail("detached")),
         "describeMany" => Ok(JsValue::Array(
             args.iter()

@@ -414,6 +414,9 @@ pub struct Page {
     /// Evaluated after the writer returns so we can `run_script` (the VM is
     /// borrowed during the host call).
     pub(crate) pending_write_scripts: Vec<(NodeId, String)>,
+    /// Dynamically inserted `type=module` sources, flushed via `v8::Module`
+    /// after the current host call returns the VM.
+    pub(crate) pending_module_scripts: Vec<String>,
     /// Resolved `src` of attached iframes, used for `contentWindow.origin`.
     pub(crate) iframe_urls: HashMap<NodeId, String>,
 
@@ -923,6 +926,7 @@ impl Page {
             expect_body_started: false,
             scripts_executed: HashSet::new(),
             pending_write_scripts: Vec::new(),
+            pending_module_scripts: Vec::new(),
             iframe_urls: HashMap::new(),
             last_modified: None,
             ready_state: "loading",

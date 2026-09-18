@@ -1,0 +1,17 @@
+{
+  "backend": "vector-engine",
+  "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
+  "urls": 500,
+  "live": false,
+  "skippedLive": true,
+  "reason": "VECTOR_CORPUS_LIVE!=1 (no network fetch in this run)",
+  "observe": {
+    "p50Ms": null,
+    "p95Ms": null
+  },
+  "capabilityUnsupportedRate": null,
+  "artifact": {
+    "corpus": "engine/conformance/public-corpus-500.json",
+    "harness": "engine/tools/corpus/observe-500.mjs"
+  }
+}
