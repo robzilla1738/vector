@@ -10,6 +10,7 @@ import {
   VectorEngineDriver,
   parseEngineTargetId,
 } from "@vector/browser-driver";
+import { startRuntime } from "@vector/runtime";
 
 function fakeShell(): string {
   const dir = mkdtempSync(join(tmpdir(), "ve-shell-"));
@@ -153,4 +154,38 @@ describe("Finding 1 browser service client", () => {
     peer.close();
     await driver.disconnect();
   });
+
+  it("pnpm dev path: runtime attaches to VECTOR_BROWSER_SERVICE and shares the page", async () => {
+    const bin = resolveVeShell();
+    if (!bin) return;
+    const owned = await spawnVeShellService(bin);
+    expect(owned?.addr).toMatch(/^127\.0\.0\.1:\d+$/);
+    const dataDir = mkdtempSync(join(tmpdir(), "vector-dev-rt-"));
+    const rt = await startRuntime({
+      ...process.env,
+      VECTOR_DATA_DIR: dataDir,
+      VECTOR_BROWSER_SERVICE: owned!.addr,
+      VECTOR_ENGINE_MODE: "always",
+      VECTOR_ELECTRON_CDP: "",
+      VECTOR_API_TOKEN: "dev-attach",
+    });
+    try {
+      const page = (await rt.invoke("pages.open", {
+        url: "about:blank",
+        background: true,
+      })) as { backend: string; pageId: string };
+      expect(page.backend).toBe("vector-engine");
+      const obs = (await rt.invoke("pages.observe", { pageId: page.pageId })) as {
+        content?: { url?: string };
+      };
+      expect(obs.content?.url).toBeTruthy();
+      const taken = (await rt.invoke("pages.takeover", { pageId: page.pageId })) as {
+        controller?: string;
+      };
+      expect(taken.controller).toBe("human");
+    } finally {
+      await rt.close();
+      owned!.shutdown();
+    }
+  }, 30_000);
 });
