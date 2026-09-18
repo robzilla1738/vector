@@ -3,7 +3,7 @@
 Each package lists the acceptance target, current-tree evidence, and remaining
 gaps. Identity is the native Vector Engine (`vector-engine`), not Chromium.
 
-**Labels follow Vector_Current_Review_60b2d41 Finding 6.** The supported testharness subset is adapted-harness coverage, not unmodified upstream. Official `html/dom/partial-updates` on pin 7c204383: 28 PASS / 2 FAIL of 30 (`sanitize-template-element`, `template-for-empty` — HTML5 contradictions; do not weaken empty-for-streaming). Official `html/dom/idlharness.https.html` fetches IDL over TLS and still FAILs (remaining HTML WebIDL, including `document.all` [[IsHTMLDDA]]). Official `html/dom` tree numbers in `wpt-tree-latest.json` are not a claim that the entire web passes. ve-vm remains research (V8 is production).
+**Labels follow Vector_Current_Review_60b2d41 Finding 6.** The supported testharness subset is adapted-harness coverage, not unmodified upstream. Official `html/dom/partial-updates` on pin 7c204383: 28 PASS / 2 FAIL of 30 (`sanitize-template-element`, `template-for-empty` — HTML5 contradictions; do not weaken empty-for-streaming). Official `html/dom/idlharness.https.html` fetches IDL over TLS and still FAILs (`document.all` [[IsHTMLDDA]] plus remaining HTML WebIDL). Canvas/Navigator/EventSource/Location/HTMLMediaElement proto members are present; that is not an official PASS. Official `html/dom` tree numbers in `wpt-tree-latest.json` are not a claim that the entire web passes. ve-vm remains research (V8 is production).
 
 | Ticket | Evidence file | Status |
 |---|---|---|

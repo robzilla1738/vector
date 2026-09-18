@@ -42,7 +42,9 @@
       this.clientX = init.clientX || 0;
       this.clientY = init.clientY || 0;
       this.button = init.button || 0;
-      this.key = init.key || "";
+      if (typeof StorageEvent !== "function" || !(this instanceof StorageEvent)) {
+        this.key = init.key || "";
+      }
       this.code = init.code || "";
       this.keyCode = init.keyCode != null ? init.keyCode : (this.key === "Enter" ? 13 : this.key === "Escape" ? 27 : 0);
       this.which = init.which != null ? init.which : this.keyCode;
@@ -85,12 +87,16 @@
     }
   }
   class ToggleEvent extends Event {
-    constructor(t, i) {
+    constructor(t) {
+      const i = arguments[1] || {};
       super(t, i);
-      i = i || {};
-      this.oldState = i.oldState == null ? "" : String(i.oldState);
-      this.newState = i.newState == null ? "" : String(i.newState);
+      this._oldState = i.oldState == null ? "" : String(i.oldState);
+      this._newState = i.newState == null ? "" : String(i.newState);
+      this._source = "source" in i ? i.source : null;
     }
+    get oldState() { return this._oldState; }
+    get newState() { return this._newState; }
+    get source() { return this._source == null ? null : this._source; }
   }
   class TrackEvent extends Event {
     constructor(t, i) {
@@ -106,14 +112,30 @@
     }
   }
   class StorageEvent extends Event {
-    constructor(type, init) {
+    constructor(type) {
+      const init = arguments[1] || {};
       super(type, init);
-      init = init || {};
-      this.key = init.key == null ? null : String(init.key);
-      this.oldValue = init.oldValue == null ? null : String(init.oldValue);
-      this.newValue = init.newValue == null ? null : String(init.newValue);
-      this.url = init.url == null ? "" : toUSV(init.url);
-      this.storageArea = init.storageArea || null;
+      this._key = init.key == null ? null : String(init.key);
+      this._oldValue = "oldValue" in init ? (init.oldValue == null ? null : String(init.oldValue)) : null;
+      this._newValue = "newValue" in init ? (init.newValue == null ? null : String(init.newValue)) : null;
+      this._url = init.url == null ? "" : toUSV(init.url);
+      this._storageArea = init.storageArea || null;
+    }
+    get key() { return this._key; }
+    get oldValue() { return this._oldValue; }
+    get newValue() { return this._newValue; }
+    get url() { return this._url; }
+    get storageArea() { return this._storageArea; }
+    initStorageEvent(type) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'initStorageEvent' on 'StorageEvent': 1 argument required, but only 0 present.");
+      }
+      this.initEvent(type, arguments[1], arguments[2]);
+      this._key = arguments[3] == null ? null : String(arguments[3]);
+      this._oldValue = arguments[4] == null ? null : String(arguments[4]);
+      this._newValue = arguments[5] == null ? null : String(arguments[5]);
+      this._url = arguments[6] == null ? "" : String(arguments[6]);
+      this._storageArea = arguments[7] || null;
     }
   }
   class MouseEvent extends Event {
@@ -3014,6 +3036,37 @@
       }));
     }
     get type() { return this.multiple ? "select-multiple" : "select-one"; }
+    get length() { return this.options.length; }
+    set length(v) { this.options.length = v; }
+    get value() {
+      const opts = this.options;
+      for (let i = 0; i < opts.length; i++) if (opts[i].selected) return opts[i].value;
+      return "";
+    }
+    set value(v) {
+      const want = String(v);
+      const opts = this.options;
+      for (let i = 0; i < opts.length; i++) opts[i].selected = opts[i].value === want;
+    }
+    item(i) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'item' on 'HTMLSelectElement': 1 argument required, but only 0 present.");
+      }
+      return this.options.item(i);
+    }
+    namedItem(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'namedItem' on 'HTMLSelectElement': 1 argument required, but only 0 present.");
+      }
+      return this.options.namedItem(name);
+    }
+    remove() {
+      if (arguments.length === 0) {
+        if (this.parentNode) this.parentNode.removeChild(this);
+        return;
+      }
+      this.options.remove(arguments[0]);
+    }
     showPicker() {}
   }
   class HTMLOptionElement extends HTMLElement {
@@ -3033,6 +3086,15 @@
     set selected(v) { v ? this.setAttribute("selected", "") : this.removeAttribute("selected"); }
     get defaultSelected() { return this.hasAttribute("selected"); }
     set defaultSelected(v) { this.selected = v; }
+    get form() { return nearestForm(this); }
+    get index() {
+      const sel = this.parentElement && this.parentElement.tagName === "SELECT" ? this.parentElement
+        : (this.parentElement && this.parentElement.tagName === "OPTGROUP" && this.parentElement.parentElement);
+      if (!sel || !sel.options) return 0;
+      const opts = sel.options;
+      for (let i = 0; i < opts.length; i++) if (opts[i] === this) return i;
+      return 0;
+    }
   }
   class HTMLButtonElement extends HTMLElement {}
   reflectName(HTMLInputElement.prototype);
@@ -3097,6 +3159,8 @@
       if (!u) return part === "protocol" ? ":" : "";
       if (part === "origin") return u.origin;
       if (part === "protocol") return u.protocol;
+      if (part === "username") return u.username;
+      if (part === "password") return u.password;
       if (part === "host") return u.host;
       if (part === "hostname") return u.hostname;
       if (part === "port") return u.port;
@@ -3105,9 +3169,23 @@
       if (part === "hash") return u.hash;
       return "";
     };
-    for (const part of ["origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash"]) {
-      Object.defineProperty(proto, part, { configurable: true, enumerable: true, get: get(part) });
+    const set = (part) => function (v) {
+      const raw = this.getAttribute(attr);
+      try {
+        const u = new URL(toUSV(raw || ""), document.baseURI || location.href);
+        u[part] = v == null ? "" : String(v);
+        this.setAttribute(attr, u.href);
+      } catch (e) {}
+    };
+    for (const part of ["origin", "protocol", "username", "password", "host", "hostname", "port", "pathname", "search", "hash"]) {
+      Object.defineProperty(proto, part, {
+        configurable: true,
+        enumerable: true,
+        get: get(part),
+        set: part === "origin" ? undefined : set(part),
+      });
     }
+    proto.toString = function toString() { return this.href || ""; };
   }
   class HTMLAnchorElement extends HTMLElement {
     get name() { return this.getAttribute("name") || ""; }
@@ -3134,6 +3212,10 @@
     set ping(v) { this.setAttribute("ping", toUSV(v)); }
     get href() { return reflectedUrl(this, "href"); }
     set href(v) { this.setAttribute("href", toUSV(v)); }
+    get rel() { return this.getAttribute("rel") || ""; }
+    set rel(v) { this.setAttribute("rel", String(v)); }
+    get relList() { return this._relTL || (this._relTL = new DOMTokenList(this.__h, "rel")); }
+    set relList(v) { this.setAttribute("rel", v == null ? "" : String(v)); }
   }
   installHyperlinkUtils(HTMLAreaElement.prototype, "href");
   class HTMLBaseElement extends HTMLElement {
@@ -3282,6 +3364,15 @@
   class HTMLObjectElement extends HTMLElement {
     get name() { return this.getAttribute("name") || ""; }
     set name(v) { this.setAttribute("name", v == null ? "" : String(v)); }
+    get contentDocument() {
+      const h = D("frameDocument", this.__h);
+      if (!h) return null;
+      const n = wrap(h);
+      if (n && Document && !(n instanceof Document)) Object.setPrototypeOf(n, Document.prototype);
+      return n;
+    }
+    get contentWindow() { return frameWindow(this); }
+    getSVGDocument() { return this.contentDocument; }
   }
   class HTMLCanvasElement extends HTMLElement {
     get width() {
@@ -3314,7 +3405,53 @@
       return this._ctx2d;
     }
     toDataURL() { return D("canvasToDataURL", this.__h) || "data:,"; }
+    transferControlToOffscreen() {
+      return new OffscreenCanvas(this.width, this.height);
+    }
   }
+  class CanvasGradient {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    addColorStop(offset, color) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'addColorStop' on 'CanvasGradient': 2 arguments required, but only " + arguments.length + " present.");
+      }
+    }
+  }
+  Object.defineProperty(CanvasGradient.prototype, Symbol.toStringTag, { value: "CanvasGradient", configurable: true });
+  class CanvasPattern {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    setTransform() {}
+  }
+  Object.defineProperty(CanvasPattern.prototype, Symbol.toStringTag, { value: "CanvasPattern", configurable: true });
+  class OffscreenCanvas {
+    constructor(width, height) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to construct 'OffscreenCanvas': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      this._width = width >>> 0;
+      this._height = height >>> 0;
+    }
+    get width() { return this._width; }
+    set width(v) { this._width = v >>> 0; }
+    get height() { return this._height; }
+    set height(v) { this._height = v >>> 0; }
+    getContext(type) {
+      if (String(type).toLowerCase() !== "2d") return null;
+      if (!this._ctx) {
+        this._ctx = Object.create(OffscreenCanvasRenderingContext2D.prototype);
+        this._ctx._canvas = this;
+        this._ctx._fillStyle = "#000000";
+        this._ctx._strokeStyle = "#000000";
+        this._ctx._globalAlpha = 1;
+        this._ctx._path = new Path2D();
+        this._ctx._dash = [];
+      }
+      return this._ctx;
+    }
+    transferToImageBitmap() { return {}; }
+    convertToBlob() { return Promise.resolve(new Blob()); }
+  }
+  Object.defineProperty(OffscreenCanvas.prototype, Symbol.toStringTag, { value: "OffscreenCanvas", configurable: true });
   class ImageData {
     constructor(a, b, c) {
       if (a && typeof a.length === "number" && typeof b === "number") {
@@ -3429,24 +3566,95 @@
     }
   }
   class CanvasRenderingContext2D {
-    constructor(canvas) {
-      this.canvas = canvas;
-      this.__h = canvas.__h;
-      this.fillStyle = "#000000";
-      this.strokeStyle = "#000000";
-      this.globalAlpha = 1;
-      this.lineWidth = 1;
-      this.lineCap = "butt";
-      this.lineJoin = "miter";
-      this.miterLimit = 10;
-      this.lineDashOffset = 0;
-      this.font = "10px sans-serif";
-      this.textAlign = "start";
-      this.textBaseline = "alphabetic";
-      this.globalCompositeOperation = "source-over";
+    constructor() {
+      const canvas = arguments[0];
+      this._canvas = canvas || null;
+      this.__h = canvas && canvas.__h;
+      this._fillStyle = "#000000";
+      this._strokeStyle = "#000000";
+      this._globalAlpha = 1;
+      this._lineWidth = 1;
+      this._lineCap = "butt";
+      this._lineJoin = "miter";
+      this._miterLimit = 10;
+      this._lineDashOffset = 0;
+      this._font = "10px sans-serif";
+      this._textAlign = "start";
+      this._textBaseline = "alphabetic";
+      this._globalCompositeOperation = "source-over";
+      this._imageSmoothingEnabled = true;
+      this._imageSmoothingQuality = "low";
+      this._shadowOffsetX = 0;
+      this._shadowOffsetY = 0;
+      this._shadowBlur = 0;
+      this._shadowColor = "rgba(0, 0, 0, 0)";
       this._dash = [];
       this._path = new Path2D();
     }
+    get canvas() { return this._canvas || null; }
+    get fillStyle() { return this._fillStyle; }
+    set fillStyle(v) { this._fillStyle = v; }
+    get strokeStyle() { return this._strokeStyle; }
+    set strokeStyle(v) { this._strokeStyle = v; }
+    get globalAlpha() { return this._globalAlpha; }
+    set globalAlpha(v) { this._globalAlpha = Number(v); }
+    get globalCompositeOperation() { return this._globalCompositeOperation; }
+    set globalCompositeOperation(v) { this._globalCompositeOperation = String(v); }
+    get lineWidth() { return this._lineWidth; }
+    set lineWidth(v) { this._lineWidth = Number(v); }
+    get lineCap() { return this._lineCap; }
+    set lineCap(v) { this._lineCap = String(v); }
+    get lineJoin() { return this._lineJoin; }
+    set lineJoin(v) { this._lineJoin = String(v); }
+    get miterLimit() { return this._miterLimit; }
+    set miterLimit(v) { this._miterLimit = Number(v); }
+    get lineDashOffset() { return this._lineDashOffset; }
+    set lineDashOffset(v) { this._lineDashOffset = Number(v); }
+    get font() { return this._font; }
+    set font(v) { this._font = String(v); }
+    get textAlign() { return this._textAlign; }
+    set textAlign(v) { this._textAlign = String(v); }
+    get textBaseline() { return this._textBaseline; }
+    set textBaseline(v) { this._textBaseline = String(v); }
+    get imageSmoothingEnabled() { return this._imageSmoothingEnabled; }
+    set imageSmoothingEnabled(v) { this._imageSmoothingEnabled = !!v; }
+    get imageSmoothingQuality() { return this._imageSmoothingQuality; }
+    set imageSmoothingQuality(v) { this._imageSmoothingQuality = String(v); }
+    get shadowOffsetX() { return this._shadowOffsetX; }
+    set shadowOffsetX(v) { this._shadowOffsetX = Number(v); }
+    get shadowOffsetY() { return this._shadowOffsetY; }
+    set shadowOffsetY(v) { this._shadowOffsetY = Number(v); }
+    get shadowBlur() { return this._shadowBlur; }
+    set shadowBlur(v) { this._shadowBlur = Number(v); }
+    get shadowColor() { return this._shadowColor; }
+    set shadowColor(v) { this._shadowColor = String(v); }
+    get filter() { return this._filter || "none"; }
+    set filter(v) { this._filter = String(v); }
+    get lang() { return this._lang || "inherit"; }
+    set lang(v) { this._lang = String(v); }
+    get direction() { return this._direction || "inherit"; }
+    set direction(v) { this._direction = String(v); }
+    get letterSpacing() { return this._letterSpacing || "0px"; }
+    set letterSpacing(v) { this._letterSpacing = String(v); }
+    get fontKerning() { return this._fontKerning || "auto"; }
+    set fontKerning(v) { this._fontKerning = String(v); }
+    get fontStretch() { return this._fontStretch || "normal"; }
+    set fontStretch(v) { this._fontStretch = String(v); }
+    get fontVariantCaps() { return this._fontVariantCaps || "normal"; }
+    set fontVariantCaps(v) { this._fontVariantCaps = String(v); }
+    get textRendering() { return this._textRendering || "auto"; }
+    set textRendering(v) { this._textRendering = String(v); }
+    get wordSpacing() { return this._wordSpacing || "0px"; }
+    set wordSpacing(v) { this._wordSpacing = String(v); }
+    getContextAttributes() { return { alpha: true, colorSpace: "srgb", desynchronized: false, willReadFrequently: false }; }
+    reset() {
+      this._fillStyle = "#000000";
+      this._strokeStyle = "#000000";
+      this._globalAlpha = 1;
+      this._path = new Path2D();
+    }
+    isContextLost() { return false; }
+    getTransform() { return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }; }
     fillRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'fillRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       D("canvasFillRect", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0, String(this.fillStyle));
@@ -3461,19 +3669,35 @@
     lineTo(x, y) { this._path.lineTo(x, y); }
     rect(x, y, w, h) { this._path.rect(x, y, w, h); }
     arc(x, y, r, a0, a1) { this._path.arc(x, y, r, a0, a1); }
-    fill(path) {
+    fill() {
+      const path = arguments[0];
       const p = path instanceof Path2D ? path : this._path;
       D("canvasFillPath", this.__h, p._payload(), String(this.fillStyle));
     }
     stroke() {}
+    strokeRect() {}
     save() {}
     restore() {}
-    translate() {}
-    scale() {}
-    rotate() {}
+    translate(x, y) {}
+    scale(x, y) {}
+    rotate(angle) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'rotate' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
+      }
+    }
     setTransform() {}
     resetTransform() { this.setTransform(1, 0, 0, 1, 0, 0); }
     transform() {}
+    drawFocusIfNeeded(element) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'drawFocusIfNeeded' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
+      }
+    }
+    isPointInPath() { return false; }
+    isPointInStroke() { return false; }
+    arcTo() {}
+    roundRect() {}
+    ellipse() {}
     setLineDash(d) {
       if (arguments.length < 1) throw new TypeError("Failed to execute 'setLineDash' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
       this._dash = Array.isArray(d) ? d.slice() : [];
@@ -3482,17 +3706,34 @@
     clip() {}
     quadraticCurveTo() {}
     bezierCurveTo() {}
-    createLinearGradient() { return { addColorStop() {} }; }
-    createRadialGradient() { return { addColorStop() {} }; }
+    createLinearGradient(x0, y0, x1, y1) {
+      if (arguments.length < 4) throw new TypeError("Failed to execute 'createLinearGradient' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
+      return Object.create(CanvasGradient.prototype);
+    }
+    createRadialGradient(x0, y0, r0, x1, y1, r1) {
+      if (arguments.length < 6) throw new TypeError("Failed to execute 'createRadialGradient' on 'CanvasRenderingContext2D': 6 arguments required, but only " + arguments.length + " present.");
+      return Object.create(CanvasGradient.prototype);
+    }
+    createConicGradient(startAngle, x, y) { return Object.create(CanvasGradient.prototype); }
+    createPattern() { return null; }
     drawImage() {}
     fillText() {}
     strokeText() {}
     measureText(t) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'measureText' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
+      }
       const m = Object.create(TextMetrics.prototype);
       m._width = String(t).length * 8;
       return m;
     }
-    createImageData(w, h) { return new ImageData(w, h); }
+    createImageData(w, h) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'createImageData' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
+      }
+      if (w && typeof w.width === "number") return new ImageData(w.width, w.height);
+      return new ImageData(w, h);
+    }
     getImageData(x, y, w, h) {
       const r = D("canvasGetImageData", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0) || {};
       const bin = atob(r.b64 || "");
@@ -3515,7 +3756,12 @@
     delete src.constructor;
     Object.defineProperties(OffscreenCanvasRenderingContext2D.prototype, src);
   }
-  class HTMLUnknownElement extends HTMLElement {}
+  class HTMLUnknownElement extends HTMLElement {
+    constructor() {
+      super();
+      if (new.target === HTMLUnknownElement) throw new TypeError("Illegal constructor");
+    }
+  }
   class HTMLDivElement extends HTMLElement {}
   class HTMLParagraphElement extends HTMLElement {}
   class HTMLSpanElement extends HTMLElement {}
@@ -3660,6 +3906,28 @@
   const HTMLLIElement = defHTML("HTMLLIElement");
   const HTMLDListElement = defHTML("HTMLDListElement");
   const HTMLMarqueeElement = defHTML("HTMLMarqueeElement");
+  Object.defineProperties(HTMLMarqueeElement.prototype, {
+    behavior: {
+      get() { return this.getAttribute("behavior") || "scroll"; },
+      set(v) { this.setAttribute("behavior", String(v)); },
+      enumerable: true, configurable: true,
+    },
+    direction: {
+      get() { return this.getAttribute("direction") || "left"; },
+      set(v) { this.setAttribute("direction", String(v)); },
+      enumerable: true, configurable: true,
+    },
+    loop: {
+      get() {
+        const n = parseInt(this.getAttribute("loop"), 10);
+        return Number.isFinite(n) ? n : -1;
+      },
+      set(v) { this.setAttribute("loop", String(v)); },
+      enumerable: true, configurable: true,
+    },
+    start: { value: function start() {}, writable: true, enumerable: true, configurable: true },
+    stop: { value: function stop() {}, writable: true, enumerable: true, configurable: true },
+  });
   const HTMLFontElement = defHTML("HTMLFontElement");
   const HTMLDirectoryElement = defHTML("HTMLDirectoryElement");
   const HTMLLabelElement = defHTML("HTMLLabelElement");
@@ -3899,16 +4167,14 @@
   const HTMLPictureElement = defHTML("HTMLPictureElement");
   class MediaError {
     constructor() { throw new TypeError("Illegal constructor"); }
+    get code() { return this._code || 0; }
+    get message() { return this._message || ""; }
   }
-  MediaError.MEDIA_ERR_ABORTED = 1;
-  MediaError.MEDIA_ERR_NETWORK = 2;
-  MediaError.MEDIA_ERR_DECODE = 3;
-  MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
   Object.defineProperty(MediaError.prototype, Symbol.toStringTag, { value: "MediaError", configurable: true });
   function makeMediaError(code) {
     const e = Object.create(MediaError.prototype);
-    e.code = code;
-    e.message = "";
+    e._code = code;
+    e._message = "";
     return e;
   }
   class TimeRanges {
@@ -3939,6 +4205,9 @@
     get kind() { return this._kind || "subtitles"; }
     get label() { return this._label || ""; }
     get language() { return this._language || ""; }
+    get id() { return this._id || ""; }
+    set id(v) { this._id = String(v); }
+    get inBandMetadataTrackDispatchType() { return this._inBand || ""; }
     get mode() { return this._mode || "disabled"; }
     set mode(v) { this._mode = String(v); }
     get cues() { return this._cues || (this._cues = emptyCueList()); }
@@ -4004,6 +4273,10 @@
   function emptyAudioTrackList() { return Object.create(AudioTrackList.prototype); }
   function emptyVideoTrackList() { return Object.create(VideoTrackList.prototype); }
   class HTMLMediaElement extends HTMLElement {
+    constructor() {
+      super();
+      if (new.target === HTMLMediaElement) throw new TypeError("Illegal constructor");
+    }
     get src() { return reflectedUrl(this, "src") || this.getAttribute("src") || ""; }
     set src(v) {
       this.setAttribute("src", toUSV(v));
@@ -4031,9 +4304,12 @@
     set volume(v) { this._volume = Math.min(1, Math.max(0, Number(v) || 0)); }
     get muted() { return this.hasAttribute("muted") || !!this._muted; }
     set muted(v) { this._muted = !!v; }
-    get defaultPlaybackRate() { return 1; }
-    get playbackRate() { return 1; }
-    get preservesPitch() { return true; }
+    get defaultPlaybackRate() { return this._defaultPlaybackRate == null ? 1 : this._defaultPlaybackRate; }
+    set defaultPlaybackRate(v) { this._defaultPlaybackRate = Number(v) || 0; }
+    get playbackRate() { return this._playbackRate == null ? 1 : this._playbackRate; }
+    set playbackRate(v) { this._playbackRate = Number(v) || 0; }
+    get preservesPitch() { return this._preservesPitch !== false; }
+    set preservesPitch(v) { this._preservesPitch = !!v; }
     addTextTrack(kind, label, language) {
       if (arguments.length < 1) throw new TypeError("Failed to execute 'addTextTrack' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
       return this.textTracks._add(makeTextTrack(kind, label, language));
@@ -4086,6 +4362,11 @@
   const HTMLTrackElement = defHTML("HTMLTrackElement");
   Object.defineProperty(HTMLTrackElement.prototype, "track", {
     get() { return this._track || (this._track = makeTextTrack("subtitles", "", "")); },
+    configurable: true,
+  });
+  Object.defineProperty(HTMLTrackElement.prototype, "readyState", {
+    get() { return this._readyState || 0; },
+    enumerable: true,
     configurable: true,
   });
   class ValidityState {
@@ -4242,6 +4523,8 @@
   installFormAssociated(HTMLFormElement.prototype);
   installFormAssociated(HTMLFieldSetElement.prototype);
   installFormAssociated(HTMLOutputElement.prototype);
+  installFormAssociated(HTMLObjectElement.prototype);
+  installFormAssociated(HTMLOptionElement.prototype);
   Object.defineProperty(HTMLOutputElement.prototype, "type", {
     get() { return "output"; },
     enumerable: true, configurable: true,
@@ -4526,6 +4809,18 @@
     const spec = REFLECT[tag];
     for (const idl of Object.keys(spec)) reflectAttr(ctor.prototype, idl, spec[idl]);
   }
+  {
+    const mediaReflect = {
+      crossOrigin: { type: "enum", keywords: ["anonymous", "use-credentials"], nonCanon: { "": "anonymous" }, isNullable: true, defaultVal: null, invalidVal: "anonymous" },
+      preload: { type: "enum", keywords: ["none", "metadata", "auto"], defaultVal: "metadata", invalidVal: "metadata" },
+      autoplay: "boolean",
+      loop: "boolean",
+      controls: "boolean",
+      defaultMuted: { type: "boolean", domAttrName: "muted" },
+      loading: { type: "enum", keywords: ["lazy", "eager"], defaultVal: "eager", invalidVal: "eager" },
+    };
+    for (const idl of Object.keys(mediaReflect)) reflectAttr(HTMLMediaElement.prototype, idl, mediaReflect[idl]);
+  }
 
   const SVG = {
     svg: SVGSVGElement, path: SVGPathElement, g: SVGGraphicsElement, circle: SVGGraphicsElement,
@@ -4666,6 +4961,16 @@
         + " " + [date.getHours(), date.getMinutes(), date.getSeconds()].map(p).join(":");
     }
     get applets() { return this._applets || (this._applets = new HTMLCollection(IDL_INTERNAL, () => [])); }
+    get anchors() {
+      return this._anchors || (this._anchors = new HTMLCollection(IDL_INTERNAL, () =>
+        list(D("getElementsByTagName", this.__h, "a")).filter(
+          (el) => el.namespaceURI === "http://www.w3.org/1999/xhtml" && el.hasAttribute("name"),
+        ),
+      ));
+    }
+    clear() {}
+    captureEvents() {}
+    releaseEvents() {}
     get all() {
       if (this._all) return this._all;
       const doc = this;
@@ -4845,13 +5150,90 @@
     s._area = area;
     return s;
   }
+  class UserActivation {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get hasBeenActive() { return true; }
+    get isActive() { return true; }
+  }
+  Object.defineProperty(UserActivation.prototype, Symbol.toStringTag, { value: "UserActivation", configurable: true });
+  class PluginArray {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    item() { return null; }
+    namedItem() { return null; }
+    refresh() {}
+  }
+  Object.defineProperty(PluginArray.prototype, Symbol.toStringTag, { value: "PluginArray", configurable: true });
+  class MimeTypeArray {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    item() { return null; }
+    namedItem() { return null; }
+  }
+  Object.defineProperty(MimeTypeArray.prototype, Symbol.toStringTag, { value: "MimeTypeArray", configurable: true });
+  class Plugin {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get name() { return ""; }
+    get description() { return ""; }
+    get filename() { return ""; }
+    get length() { return 0; }
+    item() { return null; }
+    namedItem() { return null; }
+  }
+  Object.defineProperty(Plugin.prototype, Symbol.toStringTag, { value: "Plugin", configurable: true });
+  class MimeType {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get type() { return ""; }
+    get description() { return ""; }
+    get suffixes() { return ""; }
+    get enabledPlugin() { return null; }
+  }
+  Object.defineProperty(MimeType.prototype, Symbol.toStringTag, { value: "MimeType", configurable: true });
+  const navigatorUserActivation = Object.create(UserActivation.prototype);
+  const navigatorPlugins = Object.create(PluginArray.prototype);
+  const navigatorMimeTypes = Object.create(MimeTypeArray.prototype);
   class Navigator {
     constructor() { throw new TypeError("Illegal constructor"); }
+    get appCodeName() { return "Mozilla"; }
+    get appName() { return "Netscape"; }
+    get appVersion() { return "5.0 (Vector)"; }
+    get platform() { return "vector"; }
+    get product() { return "Gecko"; }
+    get productSub() { return "20030107"; }
+    get userAgent() { return "Vector/0.0.1"; }
+    get vendor() { return ""; }
+    get vendorSub() { return ""; }
+    get oscpu() { return "Linux x86_64"; }
+    get language() { return "en-US"; }
+    get languages() { return Object.freeze(["en-US"]); }
+    get onLine() { return true; }
+    get cookieEnabled() { return true; }
+    get pdfViewerEnabled() { return false; }
+    get hardwareConcurrency() { return 4; }
+    get userActivation() { return navigatorUserActivation; }
+    get plugins() { return navigatorPlugins; }
+    get mimeTypes() { return navigatorMimeTypes; }
+    taintEnabled() { return false; }
+    javaEnabled() { return false; }
+    sendBeacon() { return true; }
+    registerProtocolHandler() {}
+    unregisterProtocolHandler() {}
   }
   Object.defineProperty(Navigator.prototype, Symbol.toStringTag, { value: "Navigator", configurable: true });
   class TextMetrics {
     constructor() { throw new TypeError("Illegal constructor"); }
     get width() { return this._width || 0; }
+    get actualBoundingBoxLeft() { return 0; }
+    get actualBoundingBoxRight() { return this._width || 0; }
+    get fontBoundingBoxAscent() { return 8; }
+    get fontBoundingBoxDescent() { return 2; }
+    get actualBoundingBoxAscent() { return 8; }
+    get actualBoundingBoxDescent() { return 2; }
+    get emHeightAscent() { return 8; }
+    get emHeightDescent() { return 2; }
+    get hangingBaseline() { return 8; }
+    get alphabeticBaseline() { return 0; }
+    get ideographicBaseline() { return -2; }
   }
   Object.defineProperty(TextMetrics.prototype, Symbol.toStringTag, { value: "TextMetrics", configurable: true });
   function defIllegal(name) {
@@ -4860,6 +5242,23 @@
     Object.defineProperty(C.prototype, Symbol.toStringTag, { value: name, configurable: true });
     return C;
   }
+  function idlConstants(ctor, map) {
+    for (const k of Object.keys(map)) {
+      Object.defineProperty(ctor, k, {
+        value: map[k], writable: false, enumerable: true, configurable: false,
+      });
+      Object.defineProperty(ctor.prototype, k, {
+        value: map[k], writable: false, enumerable: true, configurable: false,
+      });
+    }
+  }
+  idlConstants(MediaError, {
+    MEDIA_ERR_ABORTED: 1,
+    MEDIA_ERR_NETWORK: 2,
+    MEDIA_ERR_DECODE: 3,
+    MEDIA_ERR_SRC_NOT_SUPPORTED: 4,
+  });
+  idlConstants(HTMLTrackElement, { NONE: 0, LOADING: 1, LOADED: 2, ERROR: 3 });
 
   function toUSV(s) {
     s = String(s);
@@ -4885,16 +5284,18 @@
       if (arguments.length < 1) {
         throw new TypeError("Failed to construct 'EventSource': 1 argument required, but only 0 present.");
       }
-      this.url = encodeUSVHref(String(url));
-      this.withCredentials = false;
-      this.readyState = EventSource.CLOSED;
+      const init = arguments[1] || {};
+      this._url = encodeUSVHref(String(url));
+      this._withCredentials = !!init.withCredentials;
+      this._readyState = 2;
     }
-    close() { this.readyState = EventSource.CLOSED; }
+    get url() { return this._url; }
+    get withCredentials() { return this._withCredentials; }
+    get readyState() { return this._readyState; }
+    close() { this._readyState = 2; }
   }
-  EventSource.CONNECTING = 0;
-  EventSource.OPEN = 1;
-  EventSource.CLOSED = 2;
   Object.defineProperty(EventSource.prototype, Symbol.toStringTag, { value: "EventSource", configurable: true });
+  idlConstants(EventSource, { CONNECTING: 0, OPEN: 1, CLOSED: 2 });
   function blankWindow(url) {
     const loc = {
       _href: encodeUSVHref(url == null || url === "" ? "about:blank" : String(url)),
@@ -4912,6 +5313,7 @@
     return { location: loc, document: doc, closed: false, close() { this.closed = true; } };
   }
   class Location {
+    constructor() { throw new TypeError("Illegal constructor"); }
     toString() { return D("locationGet", "href"); }
     get href() { return D("locationGet", "href"); }
     set href(v) {
@@ -4941,19 +5343,244 @@
     get ancestorOrigins() {
       return this._ancestorOrigins || (this._ancestorOrigins = emptyStringList());
     }
-    assign(v) { this.href = v; }
-    replace(v) { D("locationSet", "replace", String(v)); }
+    assign(v) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'assign' on 'Location': 1 argument required, but only 0 present.");
+      }
+      this.href = v;
+    }
+    replace(v) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'replace' on 'Location': 1 argument required, but only 0 present.");
+      }
+      D("locationSet", "replace", String(v));
+    }
     reload() { D("reload"); }
   }
 
   class History {
+    constructor() { throw new TypeError("Illegal constructor"); }
     get length() { return D("historyLength"); }
+    get scrollRestoration() { return this._scrollRestoration || "auto"; }
+    set scrollRestoration(v) {
+      const s = String(v);
+      if (s === "auto" || s === "manual") this._scrollRestoration = s;
+    }
     get state() { try { return JSON.parse(D("historyState") || "null"); } catch { return null; } }
     back() { D("historyGo", -1); }
     forward() { D("historyGo", 1); }
     go(n) { D("historyGo", n | 0); }
     pushState(state, title, url) { D("pushState", JSON.stringify(state ?? null), url == null ? "" : String(url)); }
     replaceState(state, title, url) { D("replaceState", JSON.stringify(state ?? null), url == null ? "" : String(url)); }
+  }
+  class NavigationHistoryEntry extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get url() { return D("locationGet", "href"); }
+    get key() { return "current"; }
+    get id() { return "current"; }
+    get index() { return 0; }
+    get sameDocument() { return true; }
+    getState() { return null; }
+  }
+  class NavigationDestination {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get url() { return ""; }
+    get key() { return ""; }
+    get id() { return ""; }
+    get index() { return -1; }
+    get sameDocument() { return false; }
+    getState() { return null; }
+  }
+  class NavigationTransition {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get navigationType() { return "push"; }
+    get from() { return null; }
+    get to() { return null; }
+    get committed() { return Promise.resolve(); }
+    get finished() { return Promise.resolve(); }
+  }
+  class NavigationActivation {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get from() { return null; }
+    get entry() { return null; }
+    get navigationType() { return "push"; }
+  }
+  class NavigationPrecommitController {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    addHandler() {}
+  }
+  class NavigateEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._navigationType = init.navigationType || "push";
+      this._destination = init.destination || Object.create(NavigationDestination.prototype);
+      this._canIntercept = !!init.canIntercept;
+      this._userInitiated = !!init.userInitiated;
+      this._hashChange = !!init.hashChange;
+      this._signal = init.signal || null;
+      this._formData = init.formData || null;
+      this._downloadRequest = init.downloadRequest == null ? null : String(init.downloadRequest);
+      this._info = "info" in init ? init.info : undefined;
+      this._hasUAVisualTransition = !!init.hasUAVisualTransition;
+      this._sourceElement = init.sourceElement || null;
+    }
+    get navigationType() { return this._navigationType; }
+    get destination() { return this._destination; }
+    get canIntercept() { return this._canIntercept; }
+    get userInitiated() { return this._userInitiated; }
+    get hashChange() { return this._hashChange; }
+    get signal() { return this._signal; }
+    get formData() { return this._formData; }
+    get downloadRequest() { return this._downloadRequest; }
+    get info() { return this._info; }
+    get hasUAVisualTransition() { return this._hasUAVisualTransition; }
+    get sourceElement() { return this._sourceElement; }
+    intercept() {}
+    scroll() {}
+  }
+  class NavigationCurrentEntryChangeEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._navigationType = init.navigationType || "push";
+      this._from = init.from || null;
+    }
+    get navigationType() { return this._navigationType; }
+    get from() { return this._from; }
+  }
+  class Navigation extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    entries() { return []; }
+    get currentEntry() { return null; }
+    updateCurrentEntry() {}
+    get transition() { return null; }
+    get activation() { return null; }
+    get canGoBack() { return false; }
+    get canGoForward() { return false; }
+    navigate() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
+    reload() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
+    traverseTo() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
+    back() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
+    forward() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
+  }
+  class BroadcastChannel extends EventTarget {
+    constructor(name) {
+      super();
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to construct 'BroadcastChannel': 1 argument required, but only 0 present.");
+      }
+      this._name = String(name);
+    }
+    get name() { return this._name; }
+    postMessage() {}
+    close() {}
+  }
+  class MessagePort extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    start() {}
+    close() {}
+    postMessage() {}
+  }
+  class MessageChannel {
+    constructor() {
+      this._port1 = Object.create(MessagePort.prototype);
+      this._port2 = Object.create(MessagePort.prototype);
+    }
+    get port1() { return this._port1; }
+    get port2() { return this._port2; }
+  }
+  class ErrorEvent extends Event {
+    constructor(type) {
+      const init = arguments[1] || {};
+      super(type, init);
+      this._message = init.message == null ? "" : String(init.message);
+      this._filename = init.filename == null ? "" : String(init.filename);
+      this._lineno = init.lineno || 0;
+      this._colno = init.colno || 0;
+      this._error = "error" in init ? init.error : null;
+    }
+    get message() { return this._message; }
+    get filename() { return this._filename; }
+    get lineno() { return this._lineno; }
+    get colno() { return this._colno; }
+    get error() { return this._error; }
+  }
+  class CloseWatcher extends EventTarget {
+    constructor() { super(); }
+    requestClose() {}
+    close() {}
+    destroy() {}
+  }
+  class DataTransferItem {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get kind() { return ""; }
+    get type() { return ""; }
+    getAsString() {}
+    getAsFile() { return null; }
+  }
+  class DataTransferItemList {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get length() { return 0; }
+    add() { return null; }
+    remove() {}
+    clear() {}
+  }
+  class DataTransfer {
+    constructor() {
+      this._dropEffect = "none";
+      this._effectAllowed = "none";
+      this._items = Object.create(DataTransferItemList.prototype);
+    }
+    get dropEffect() { return this._dropEffect; }
+    set dropEffect(v) { this._dropEffect = String(v); }
+    get effectAllowed() { return this._effectAllowed; }
+    set effectAllowed(v) { this._effectAllowed = String(v); }
+    get items() { return this._items; }
+    get types() { return []; }
+    get files() { return []; }
+    getData() { return ""; }
+    setData() {}
+    clearData() {}
+    setDragImage() {}
+  }
+  class NotRestoredReasonDetails {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get reason() { return ""; }
+    toJSON() { return { reason: this.reason }; }
+  }
+  class NotRestoredReasons {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get src() { return ""; }
+    get id() { return ""; }
+    get name() { return ""; }
+    get url() { return ""; }
+    get reasons() { return []; }
+    get children() { return []; }
+    toJSON() { return { src: this.src, id: this.id, name: this.name, url: this.url, reasons: this.reasons, children: this.children }; }
+  }
+  class TextTrackCue extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get track() { return null; }
+    get id() { return this._id || ""; }
+    set id(v) { this._id = String(v); }
+    get startTime() { return this._startTime || 0; }
+    set startTime(v) { this._startTime = Number(v) || 0; }
+    get endTime() { return this._endTime || 0; }
+    set endTime(v) { this._endTime = Number(v) || 0; }
+    get pauseOnExit() { return !!this._pauseOnExit; }
+    set pauseOnExit(v) { this._pauseOnExit = !!v; }
+  }
+  for (const C of [
+    Navigation, NavigationHistoryEntry, NavigationDestination, NavigationTransition,
+    NavigationActivation, NavigationPrecommitController, NavigateEvent, NavigationCurrentEntryChangeEvent,
+    BroadcastChannel, MessagePort, MessageChannel, ErrorEvent, CloseWatcher,
+    DataTransfer, DataTransferItem, DataTransferItemList, NotRestoredReasons, NotRestoredReasonDetails,
+    TextTrackCue, Location, History,
+  ]) {
+    try {
+      Object.defineProperty(C.prototype, Symbol.toStringTag, { value: C.name, configurable: true });
+    } catch (e) {}
   }
   function reflectDocColor(js, attr) {
     Object.defineProperty(Document.prototype, js, {
@@ -5384,6 +6011,9 @@
   URL.revokeObjectURL = () => {};
   const b64tab = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   function atob(s) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'atob' on 'Window': 1 argument required, but only 0 present.");
+    }
     s = String(s).replace(/[^A-Za-z0-9+/=]/g, "");
     let out = "";
     const idx = (ch) => {
@@ -5400,6 +6030,9 @@
     return out;
   }
   function btoa(s) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'btoa' on 'Window': 1 argument required, but only 0 present.");
+    }
     s = String(s);
     let out = "";
     for (let i = 0; i < s.length; i += 3) {
@@ -5635,8 +6268,8 @@
 
   const document = wrap(D("documentNode"));
   browsingDocument = document;
-  const location = new Location();
-  const history = new History();
+  const location = Object.create(Location.prototype);
+  const history = Object.create(History.prototype);
   function Image(width, height) {
     const el = document.createElement("img");
     if (arguments.length > 0) el.width = width;
@@ -5659,6 +6292,7 @@
     return el;
   }
   Option.prototype = HTMLOptionElement.prototype;
+  Object.defineProperty(Option, "length", { value: 0, configurable: true });
   const windowExternal = Object.create(External.prototype);
   const windowProps = {
     window: null, self: null, document, location, history, atob, btoa,
@@ -5686,49 +6320,49 @@
     HTMLVideoElement, HTMLAudioElement, HTMLTrackElement, HTMLPictureElement, HTMLMediaElement,
     MediaError, TimeRanges, TextTrack, TextTrackList, TextTrackCueList, AudioTrackList, VideoTrackList, ValidityState, DOMStringList, FileList, External,
     Storage, Navigator, TextMetrics, CustomElementRegistry,
-    OffscreenCanvas: defIllegal("OffscreenCanvas"),
+    OffscreenCanvas,
     OffscreenCanvasRenderingContext2D,
-    DataTransfer: defIllegal("DataTransfer"),
-    DataTransferItem: defIllegal("DataTransferItem"),
-    DataTransferItemList: defIllegal("DataTransferItemList"),
-    MessagePort: defIllegal("MessagePort"),
-    MessageChannel: defIllegal("MessageChannel"),
-    BroadcastChannel: defIllegal("BroadcastChannel"),
-    ErrorEvent: defIllegal("ErrorEvent"),
+    DataTransfer,
+    DataTransferItem,
+    DataTransferItemList,
+    MessagePort,
+    MessageChannel,
+    BroadcastChannel,
+    ErrorEvent,
     SubmitEvent: defIllegal("SubmitEvent"),
     PromiseRejectionEvent: defIllegal("PromiseRejectionEvent"),
     PageTransitionEvent: defIllegal("PageTransitionEvent"),
     BeforeUnloadEvent: defIllegal("BeforeUnloadEvent"),
     CommandEvent: defIllegal("CommandEvent"),
-    Navigation: defIllegal("Navigation"),
-    NavigateEvent: defIllegal("NavigateEvent"),
-    NavigationHistoryEntry: defIllegal("NavigationHistoryEntry"),
-    NavigationDestination: defIllegal("NavigationDestination"),
-    NavigationTransition: defIllegal("NavigationTransition"),
-    TextTrackCue: defIllegal("TextTrackCue"),
+    Navigation,
+    NavigateEvent,
+    NavigationHistoryEntry,
+    NavigationDestination,
+    NavigationTransition,
+    TextTrackCue,
     AudioTrack: defIllegal("AudioTrack"),
     VideoTrack: defIllegal("VideoTrack"),
-    CloseWatcher: defIllegal("CloseWatcher"),
+    CloseWatcher,
     XMLSerializer: defIllegal("XMLSerializer"),
     ImageBitmap: defIllegal("ImageBitmap"),
-    UserActivation: defIllegal("UserActivation"),
-    Plugin: defIllegal("Plugin"),
-    PluginArray: defIllegal("PluginArray"),
-    MimeType: defIllegal("MimeType"),
-    MimeTypeArray: defIllegal("MimeTypeArray"),
+    UserActivation,
+    Plugin,
+    PluginArray,
+    MimeType,
+    MimeTypeArray,
     Origin: defIllegal("Origin"),
-    NotRestoredReasons: defIllegal("NotRestoredReasons"),
-    NotRestoredReasonDetails: defIllegal("NotRestoredReasonDetails"),
+    NotRestoredReasons,
+    NotRestoredReasonDetails,
     MathMLAnchorElement: defIllegal("MathMLAnchorElement"),
     VisibilityStateEntry: defIllegal("VisibilityStateEntry"),
-    NavigationActivation: defIllegal("NavigationActivation"),
+    NavigationActivation,
     ImageBitmapRenderingContext: defIllegal("ImageBitmapRenderingContext"),
-    NavigationPrecommitController: defIllegal("NavigationPrecommitController"),
-    NavigationCurrentEntryChangeEvent: defIllegal("NavigationCurrentEntryChangeEvent"),
+    NavigationPrecommitController,
+    NavigationCurrentEntryChangeEvent,
     PageSwapEvent: defIllegal("PageSwapEvent"),
     PageRevealEvent: defIllegal("PageRevealEvent"),
-    CanvasGradient: defIllegal("CanvasGradient"),
-    CanvasPattern: defIllegal("CanvasPattern"),
+    CanvasGradient,
+    CanvasPattern,
     Worklet: defIllegal("Worklet"),
     HTMLSelectedContentElement: defIllegal("HTMLSelectedContentElement"),
     ElementInternals, CustomStateSet,
@@ -5760,10 +6394,6 @@
       });
     },
     navigator: Object.assign(Object.create(Navigator.prototype), {
-      userAgent: "Vector/0.0.1", language: "en-US", languages: ["en-US"], onLine: true, platform: "vector",
-      sendBeacon() { return true; },
-      registerProtocolHandler() {},
-      unregisterProtocolHandler() {},
       serviceWorker: {
         register(url, opts) {
           const scope = (opts && opts.scope) || "";
@@ -6236,10 +6866,7 @@
   windowProps.originAgentCluster = false;
   windowProps.frameElement = null;
   windowProps.opener = null;
-  windowProps.navigation = Object.assign(Object.create(windowProps.Navigation.prototype), {
-    currentEntry: null,
-    entries() { return []; },
-  });
+  windowProps.navigation = Object.create(windowProps.Navigation.prototype);
   windowProps.length = 0;
   windowProps.alert = function alert(m) { D("scriptDialog", "alert", m == null ? "" : String(m), ""); };
   windowProps.confirm = function confirm(m) { return !!D("scriptDialog", "confirm", m == null ? "" : String(m), ""); };
@@ -6354,6 +6981,16 @@
   defineHandlers(HTMLFrameSetElement.prototype, windowHandlerNames, true);
   defineHandlers(SVGElement.prototype, eventHandlerNames, true);
   defineHandlers(MathMLElement.prototype, eventHandlerNames, true);
+  defineHandlers(SVGSVGElement.prototype, windowHandlerNames, true);
+  defineHandlers(EventSource.prototype, ["onopen", "onmessage", "onerror"], true);
+  defineHandlers(Navigation.prototype, ["onnavigate", "onnavigatesuccess", "onnavigateerror", "oncurrententrychange"], true);
+  defineHandlers(NavigationHistoryEntry.prototype, ["ondispose"], true);
+  defineHandlers(BroadcastChannel.prototype, ["onmessage", "onmessageerror"], true);
+  defineHandlers(MessagePort.prototype, ["onclose", "onmessage", "onmessageerror"], true);
+  defineHandlers(CloseWatcher.prototype, ["oncancel", "onclose"], true);
+  defineHandlers(OffscreenCanvas.prototype, ["oncontextlost", "oncontextrestored"], true);
+  defineHandlers(TextTrack.prototype, ["oncuechange"], true);
+  defineHandlers(TextTrackCue.prototype, ["onenter", "onexit"], true);
   defineHandlers(globalThis, eventHandlerNames, true, true);
   defineHandlers(globalThis, windowHandlerNames, true, true);
 
@@ -6403,7 +7040,12 @@
       } else if (typeof desc.value === "function") {
         const fn = desc.value;
         const wrapped = function (...a) {
-          if (!(this instanceof ctor)) throw new TypeError("Illegal invocation");
+          if (!(this instanceof ctor)) {
+            if (ctor === HTMLMediaElement && name === "play") {
+              return Promise.reject(new TypeError("Illegal invocation"));
+            }
+            throw new TypeError("Illegal invocation");
+          }
           return fn.apply(this, a);
         };
         Object.defineProperty(wrapped, "length", { value: fn.length, configurable: true });
@@ -6416,7 +7058,17 @@
   }
   {
     const ds = Object.getOwnPropertyDescriptor(Element.prototype, "dataset");
-    if (ds) Object.defineProperty(HTMLElement.prototype, "dataset", ds);
+    if (ds) {
+      Object.defineProperty(HTMLElement.prototype, "dataset", ds);
+      Object.defineProperty(SVGElement.prototype, "dataset", ds);
+      Object.defineProperty(MathMLElement.prototype, "dataset", ds);
+    }
+    for (const name of ["nonce", "autofocus", "tabIndex", "focus", "blur"]) {
+      const desc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, name);
+      if (!desc) continue;
+      Object.defineProperty(SVGElement.prototype, name, desc);
+      Object.defineProperty(MathMLElement.prototype, name, desc);
+    }
   }
   brandWrap(Document);
   brandWrap(Node);
@@ -6425,6 +7077,9 @@
   brandWrap(EventSource);
   brandWrap(CanvasRenderingContext2D);
   brandWrap(OffscreenCanvasRenderingContext2D);
+  brandWrap(OffscreenCanvas);
+  brandWrap(CanvasGradient);
+  brandWrap(CanvasPattern);
   brandWrap(SVGElement);
   brandWrap(MathMLElement);
   brandWrap(SVGSVGElement);
@@ -6432,16 +7087,55 @@
   brandWrap(Window);
   brandWrap(Storage);
   brandWrap(Navigator);
+  brandWrap(UserActivation);
+  brandWrap(PluginArray);
+  brandWrap(MimeTypeArray);
+  brandWrap(Plugin);
+  brandWrap(MimeType);
   brandWrap(FileList);
   brandWrap(ValidityState);
   brandWrap(MediaError);
   brandWrap(TimeRanges);
   brandWrap(TextTrack);
   brandWrap(TextTrackList);
+  brandWrap(TextTrackCue);
   brandWrap(AudioTrackList);
   brandWrap(VideoTrackList);
+  brandWrap(Location);
+  brandWrap(History);
+  brandWrap(StorageEvent);
+  brandWrap(ToggleEvent);
+  brandWrap(ErrorEvent);
+  brandWrap(ElementInternals);
+  brandWrap(TextMetrics);
+  brandWrap(Navigation);
+  brandWrap(NavigateEvent);
+  brandWrap(NavigationHistoryEntry);
+  brandWrap(NavigationDestination);
+  brandWrap(NavigationTransition);
+  brandWrap(NavigationActivation);
+  brandWrap(NavigationPrecommitController);
+  brandWrap(NavigationCurrentEntryChangeEvent);
+  brandWrap(BroadcastChannel);
+  brandWrap(MessagePort);
+  brandWrap(MessageChannel);
+  brandWrap(CloseWatcher);
+  brandWrap(DataTransfer);
+  brandWrap(DataTransferItem);
+  brandWrap(DataTransferItemList);
+  brandWrap(NotRestoredReasons);
+  brandWrap(NotRestoredReasonDetails);
   for (const C of Object.values(windowProps)) {
     if (typeof C === "function" && C.prototype && /^HTML/.test(C.name || "")) brandWrap(C);
+  }
+  {
+    const names = ["href", "origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash", "assign", "replace", "reload", "ancestorOrigins", "toString"];
+    for (const name of names) {
+      const desc = Object.getOwnPropertyDescriptor(Location.prototype, name);
+      if (!desc) continue;
+      desc.configurable = false;
+      try { Object.defineProperty(location, name, desc); } catch (e) {}
+    }
   }
   for (const name of ["parseHTMLUnsafe", "parseHTML"]) {
     const fn = Document[name];
@@ -6571,9 +7265,27 @@
     globalThis.setInterval = windowOp(globalThis.setInterval, 1);
     globalThis.clearTimeout = windowOp(globalThis.clearTimeout, 0);
     globalThis.clearInterval = windowOp(globalThis.clearInterval, 0);
-    globalThis.queueMicrotask = windowOp(globalThis.queueMicrotask, 1);
-    globalThis.requestAnimationFrame = windowOp(globalThis.requestAnimationFrame, 1);
-    globalThis.cancelAnimationFrame = windowOp(globalThis.cancelAnimationFrame, 1);
+    const origQ = globalThis.queueMicrotask;
+    const origRaf = globalThis.requestAnimationFrame;
+    const origCaf = globalThis.cancelAnimationFrame;
+    globalThis.queueMicrotask = windowOp(function queueMicrotask(cb) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'queueMicrotask' on 'Window': 1 argument required, but only 0 present.");
+      }
+      return origQ.call(globalThis, cb);
+    }, 1);
+    globalThis.requestAnimationFrame = windowOp(function requestAnimationFrame(cb) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'requestAnimationFrame' on 'Window': 1 argument required, but only 0 present.");
+      }
+      return origRaf.call(globalThis, cb);
+    }, 1);
+    globalThis.cancelAnimationFrame = windowOp(function cancelAnimationFrame(id) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'cancelAnimationFrame' on 'Window': 1 argument required, but only 0 present.");
+      }
+      return origCaf.call(globalThis, id);
+    }, 1);
   }
 
   const origSetProto = Object.setPrototypeOf;
@@ -6611,11 +7323,7 @@
   }
 
   try {
-    Object.defineProperty(globalThis, "origin", {
-      configurable: true,
-      enumerable: true,
-      get() { return D("locationGet", "origin"); },
-    });
+    ownAccessor(globalThis, "origin", () => D("locationGet", "origin"));
     Object.defineProperty(globalThis, "scrollX", { configurable: true, enumerable: true, get() { return D("scrollX") || 0; } });
     Object.defineProperty(globalThis, "scrollY", { configurable: true, enumerable: true, get() { return D("scrollY") || 0; } });
     Object.defineProperty(globalThis, "pageXOffset", { configurable: true, enumerable: true, get() { return D("scrollX") || 0; } });

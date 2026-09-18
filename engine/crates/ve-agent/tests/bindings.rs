@@ -4941,7 +4941,8 @@ fn official_html_table_input_select_and_label_idl() {
 
 #[test]
 fn official_html_brand_window_and_media_idl() {
-    let mut page = open("<video id=v src=m.mp4></video><input id=i>");
+    let mut page =
+        open("<video id=v src=m.mp4></video><input id=i><a name=n href=/></a><canvas id=c>");
     let v = page
         .evaluate(
             r##"(function () {
@@ -4955,6 +4956,18 @@ fn official_html_brand_window_and_media_idl() {
               let sanGet = false;
               try { sanGet = typeof new Sanitizer({}).get === "function"; } catch (e) {}
               const video = document.getElementById("v");
+              const ctx = document.getElementById("c").getContext("2d");
+              let locThrew = false;
+              try { new Location(); } catch (e) { locThrew = e instanceof TypeError; }
+              let mediaThrew = false;
+              try { new HTMLMediaElement(); } catch (e) { mediaThrew = e instanceof TypeError; }
+              let playRejected = false;
+              try {
+                const p = HTMLMediaElement.prototype.play.call({});
+                if (p && typeof p.then === "function") {
+                  p.then(function () {}, function (e) { playRejected = e instanceof TypeError; });
+                }
+              } catch (e) { playRejected = e instanceof TypeError; }
               return {
                 inputAcceptThrew,
                 svgOnclickThrew,
@@ -4976,6 +4989,23 @@ fn official_html_brand_window_and_media_idl() {
                 offscreen: typeof OffscreenCanvasRenderingContext2D === "function",
                 sanLen: Sanitizer.length,
                 sanGet,
+                ctxLen: CanvasRenderingContext2D.length,
+                ctxCanvas: Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "canvas") != null,
+                ctxFill: Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "fillStyle") != null,
+                rotateLen: CanvasRenderingContext2D.prototype.rotate.length,
+                linGradLen: CanvasRenderingContext2D.prototype.createLinearGradient.length,
+                navProtoUA: Object.getOwnPropertyDescriptor(Navigator.prototype, "userAgent") != null,
+                navOwnUA: Object.getOwnPropertyDescriptor(navigator, "userAgent") == null,
+                navUA: navigator.userAgent === "Vector/0.0.1",
+                docAnchors: Object.getOwnPropertyDescriptor(Document.prototype, "anchors") != null && document.anchors.length === 1,
+                locThrew,
+                locOwnHref: Object.prototype.hasOwnProperty.call(window.location, "href"),
+                esProto: Object.getOwnPropertyDescriptor(EventSource.prototype, "url") != null,
+                esConst: EventSource.CONNECTING === 0 && EventSource.prototype.OPEN === 1,
+                mediaCross: Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "crossOrigin") != null,
+                mediaThrew,
+                playRejected,
+                userAct: navigator.userActivation instanceof UserActivation,
               };
             })()"##,
         )
@@ -5000,4 +5030,20 @@ fn official_html_brand_window_and_media_idl() {
     assert_eq!(v["offscreen"], true, "{v}");
     assert_eq!(v["sanLen"], 0, "{v}");
     assert_eq!(v["sanGet"], true, "{v}");
+    assert_eq!(v["ctxLen"], 0, "{v}");
+    assert_eq!(v["ctxCanvas"], true, "{v}");
+    assert_eq!(v["ctxFill"], true, "{v}");
+    assert_eq!(v["rotateLen"], 1, "{v}");
+    assert_eq!(v["linGradLen"], 4, "{v}");
+    assert_eq!(v["navProtoUA"], true, "{v}");
+    assert_eq!(v["navOwnUA"], true, "{v}");
+    assert_eq!(v["navUA"], true, "{v}");
+    assert_eq!(v["docAnchors"], true, "{v}");
+    assert_eq!(v["locThrew"], true, "{v}");
+    assert_eq!(v["locOwnHref"], true, "{v}");
+    assert_eq!(v["esProto"], true, "{v}");
+    assert_eq!(v["esConst"], true, "{v}");
+    assert_eq!(v["mediaCross"], true, "{v}");
+    assert_eq!(v["mediaThrew"], true, "{v}");
+    assert_eq!(v["userAct"], true, "{v}");
 }
