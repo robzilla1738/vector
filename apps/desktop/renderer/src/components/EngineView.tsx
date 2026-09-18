@@ -78,8 +78,8 @@ function paintScene(canvas: HTMLCanvasElement, scene: Scene) {
 
 /**
  * Finding 1: the stage paints the engine display list. PNG is fallback
- * only. Click/wheel/key/IME map through `pages.engineInput` so takeover
- * still types on the same page the agent sees.
+ * only. A textarea is the IME/focus host so composition reaches
+ * `pages.engineInput` on the same page the agent sees.
  */
 export function EngineView({ page }: { page: PageTarget }) {
   const [scene, setScene] = useState<Scene | null>(null);
@@ -88,6 +88,8 @@ export function EngineView({ page }: { page: PageTarget }) {
   pageRef.current = page;
   const busy = useRef(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const imeRef = useRef<HTMLTextAreaElement | null>(null);
 
   const paint = useCallback(async () => {
     const id = pageRef.current.pageId;
@@ -123,21 +125,33 @@ export function EngineView({ page }: { page: PageTarget }) {
       ? { width: shot.width, height: shot.height, scale: shot.scale }
       : null;
 
-  const run = async (input: Record<string, unknown>) => {
+  const run = async (input: Record<string, unknown>, refresh = true) => {
     if (busy.current || pageRef.current.controller === "agent") return;
     busy.current = true;
     try {
       await call("pages.engineInput", { pageId: pageRef.current.pageId, ...input });
-      await paint();
+      if (refresh) await paint();
     } finally {
       busy.current = false;
     }
   };
 
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const box = entries[0]?.contentRect;
+      if (!box?.width || !box.height) return;
+      void run({ type: "resize", width: box.width, height: box.height }, false).catch(() => {});
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scene, shot]);
+
   const onClick = (e: MouseEvent<HTMLElement>) => {
     if (!metrics) return;
-    e.currentTarget.focus();
-    const r = e.currentTarget.getBoundingClientRect();
+    imeRef.current?.focus();
+    const r = (hostRef.current ?? e.currentTarget).getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return;
     const x = ((e.clientX - r.left) / r.width) * metrics.width / metrics.scale;
     const y = ((e.clientY - r.top) / r.height) * metrics.height / metrics.scale;
@@ -165,41 +179,43 @@ export function EngineView({ page }: { page: PageTarget }) {
   };
 
   const onCompositionUpdate = (e: CompositionEvent<HTMLElement>) => {
-    void run({ type: "imePreedit", text: e.data ?? "" }).catch(() => {});
+    void run({ type: "imePreedit", text: e.data ?? "" }, false).catch(() => {});
   };
 
   const onCompositionEnd = (e: CompositionEvent<HTMLElement>) => {
+    if (imeRef.current) imeRef.current.value = "";
     void run({ type: "ime", text: e.data ?? "" }).catch(() => {});
   };
 
-  const hostProps = {
-    className: "engine-view",
-    tabIndex: 0,
-    "data-transport": scene ? "scene" : "png",
-    onClick,
-    onWheel,
-    onKeyDown,
-    onCompositionUpdate,
-    onCompositionEnd,
-  } as const;
+  if (!scene && !shot) return null;
 
-  if (scene) {
-    return (
-      <canvas
-        {...hostProps}
-        ref={canvasRef}
-        role="img"
-        aria-label={page.title || ""}
-      />
-    );
-  }
-  if (!shot) return null;
   return (
-    <img
-      {...hostProps}
-      src={shot.dataUrl}
-      alt={page.title || ""}
-      draggable={false}
-    />
+    <div
+      ref={hostRef}
+      className="engine-view"
+      data-transport={scene ? "scene" : "png"}
+      data-testid="engine-view"
+      onClick={onClick}
+      onWheel={onWheel}
+    >
+      {scene ? (
+        <canvas ref={canvasRef} className="engine-view-scene" role="img" aria-hidden="true" />
+      ) : (
+        <img className="engine-view-scene" src={shot!.dataUrl} alt="" draggable={false} />
+      )}
+      <textarea
+        ref={imeRef}
+        className="engine-view-ime"
+        aria-label={page.title || "Page input"}
+        data-testid="engine-view-ime"
+        tabIndex={0}
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        onKeyDown={onKeyDown}
+        onCompositionUpdate={onCompositionUpdate}
+        onCompositionEnd={onCompositionEnd}
+      />
+    </div>
   );
 }

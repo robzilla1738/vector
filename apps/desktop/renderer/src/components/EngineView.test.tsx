@@ -58,18 +58,19 @@ async function mount(page = makePage(0, { backend: "vector-engine", title: "CNN"
 describe("EngineView", () => {
   it("paints the engine display list, not a PNG", async () => {
     await mount();
-    const canvas = host!.querySelector("canvas.engine-view") as HTMLCanvasElement;
-    expect(canvas).toBeTruthy();
-    expect(canvas.getAttribute("data-transport")).toBe("scene");
-    expect(canvas.getAttribute("aria-label")).toBe("CNN");
+    const view = host!.querySelector(".engine-view") as HTMLElement;
+    expect(view).toBeTruthy();
+    expect(view.getAttribute("data-transport")).toBe("scene");
+    expect(view.querySelector("canvas.engine-view-scene")).toBeTruthy();
+    expect(host!.querySelector("textarea.engine-view-ime")?.getAttribute("aria-label")).toBe("CNN");
     expect(mockedCall).toHaveBeenCalledWith("pages.scene", { pageId: "page-1" });
     expect(mockedCall).not.toHaveBeenCalledWith("pages.capture", expect.anything());
   });
 
   it("maps a click onto clickPoint in page pixels", async () => {
     const page = await mount();
-    const canvas = host!.querySelector("canvas.engine-view") as HTMLCanvasElement;
-    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+    const view = host!.querySelector(".engine-view") as HTMLElement;
+    vi.spyOn(view, "getBoundingClientRect").mockReturnValue({
       x: 0,
       y: 0,
       left: 0,
@@ -81,7 +82,7 @@ describe("EngineView", () => {
       toJSON: () => ({}),
     });
     await act(async () => {
-      canvas.dispatchEvent(new MouseEvent("click", { clientX: 50, clientY: 40, bubbles: true }));
+      view.dispatchEvent(new MouseEvent("click", { clientX: 50, clientY: 40, bubbles: true }));
     });
     expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
       pageId: page.pageId,
@@ -93,10 +94,10 @@ describe("EngineView", () => {
 
   it("forwards a key so a human can edit a field after takeover", async () => {
     const page = await mount(makePage(0, { backend: "vector-engine", title: "CNN", controller: "human" }));
-    const canvas = host!.querySelector("canvas.engine-view") as HTMLCanvasElement;
-    expect(canvas.tabIndex).toBe(0);
+    const ime = host!.querySelector("textarea.engine-view-ime") as HTMLTextAreaElement;
+    expect(ime.tabIndex).toBe(0);
     await act(async () => {
-      canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
+      ime.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
     });
     expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
       pageId: page.pageId,
@@ -105,11 +106,11 @@ describe("EngineView", () => {
     });
   });
 
-  it("forwards IME composition onto the shared authority path", async () => {
+  it("forwards IME composition from the textarea host", async () => {
     const page = await mount(makePage(0, { backend: "vector-engine", title: "CNN", controller: "human" }));
-    const canvas = host!.querySelector("canvas.engine-view") as HTMLCanvasElement;
+    const ime = host!.querySelector("textarea.engine-view-ime") as HTMLTextAreaElement;
     await act(async () => {
-      canvas.dispatchEvent(new CompositionEvent("compositionupdate", { data: "ni", bubbles: true }));
+      ime.dispatchEvent(new CompositionEvent("compositionupdate", { data: "ni", bubbles: true }));
     });
     expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
       pageId: page.pageId,
@@ -117,7 +118,7 @@ describe("EngineView", () => {
       text: "ni",
     });
     await act(async () => {
-      canvas.dispatchEvent(new CompositionEvent("compositionend", { data: "你", bubbles: true }));
+      ime.dispatchEvent(new CompositionEvent("compositionend", { data: "你", bubbles: true }));
     });
     expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
       pageId: page.pageId,
@@ -128,9 +129,9 @@ describe("EngineView", () => {
 
   it("forwards Ctrl+A as a selection range", async () => {
     const page = await mount(makePage(0, { backend: "vector-engine", title: "CNN", controller: "human" }));
-    const canvas = host!.querySelector("canvas.engine-view") as HTMLCanvasElement;
+    const ime = host!.querySelector("textarea.engine-view-ime") as HTMLTextAreaElement;
     await act(async () => {
-      canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "a", ctrlKey: true, bubbles: true }));
+      ime.dispatchEvent(new KeyboardEvent("keydown", { key: "a", ctrlKey: true, bubbles: true }));
     });
     expect(mockedCall).toHaveBeenCalledWith("pages.engineInput", {
       pageId: page.pageId,
@@ -147,9 +148,10 @@ describe("EngineView", () => {
       return {};
     });
     await mount();
-    const img = host!.querySelector("img.engine-view") as HTMLImageElement;
-    expect(img).toBeTruthy();
-    expect(img.getAttribute("data-transport")).toBe("png");
+    const view = host!.querySelector(".engine-view") as HTMLElement;
+    expect(view.getAttribute("data-transport")).toBe("png");
+    const img = view.querySelector("img.engine-view-scene") as HTMLImageElement;
     expect(img.src).toBe(PNG);
+    expect(view.querySelector("textarea.engine-view-ime")).toBeTruthy();
   });
 });
