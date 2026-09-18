@@ -801,7 +801,9 @@ JetStream.getBinary = async function (key) {
 };
 JetStream.__veRewriteModule = function (src, key) {
   const names = [];
-  let rewritten = String(src).replace(/\bimport\.meta\b/g, "__veImportMeta");
+  let rewritten = String(src)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\bimport\.meta\b/g, "__veImportMeta");
   rewritten = rewritten.replace(
     /^export\s+(async\s+)?function\s+(\w+)/gm,
     function (_, asyncKw, name) {
