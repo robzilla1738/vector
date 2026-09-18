@@ -1378,6 +1378,20 @@ mod tests {
                     r##"(function () {
                       var input = todoInput();
                       if (!input) return JSON.stringify({ input: false });
+                      var renderMs = { showEntries: 0, updateElementCount: 0, other: 0 };
+                      if (window.app && app.View && app.View.prototype && !app.View.prototype.__veTimed) {
+                        var origRender = app.View.prototype.render;
+                        app.View.prototype.render = function (cmd, p) {
+                          var t = Date.now();
+                          var r = origRender.call(this, cmd, p);
+                          var d = Date.now() - t;
+                          if (cmd === "showEntries") renderMs.showEntries += d;
+                          else if (cmd === "updateElementCount") renderMs.updateElementCount += d;
+                          else renderMs.other += d;
+                          return r;
+                        };
+                        app.View.prototype.__veTimed = true;
+                      }
                       var t0 = Date.now();
                       input.focus();
                       var focusMs = Date.now() - t0;
@@ -1402,6 +1416,9 @@ mod tests {
                         inputMs: inputMs,
                         changeMs: changeMs,
                         enterMs: enterMs,
+                        showEntriesMs: renderMs.showEntries,
+                        updateCountMs: renderMs.updateElementCount,
+                        renderOtherMs: renderMs.other,
                         nodes: document.getElementsByTagName("*").length
                       });
                     })()"##,
