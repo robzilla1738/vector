@@ -507,7 +507,7 @@ mod tests {
     use crate::VectorEngine;
     use std::thread;
     use std::time::Instant;
-    use ve_core::process_rss_bytes;
+    use ve_core::{process_rss_bytes, process_tree_rss_bytes};
 
     #[test]
     fn human_and_mcp_clients_share_one_page_authority() {
@@ -613,15 +613,29 @@ mod tests {
 
     #[test]
     fn concurrency_tail_and_process_tree_memory() {
+        // Gate E: tail + process-tree RSS on a records-sized tree, not a
+        // one-input warm fixture.
+        let mut html = String::from(
+            "<form><label>Name <input id=n name=n></label><button>Save</button></form><ul id=list>",
+        );
+        for i in 0..400 {
+            html.push_str(&format!(
+                "<li id=\"r{i}\">row {i} <button type=button>act {i}</button></li>"
+            ));
+        }
+        html.push_str("</ul>");
         let svc = BrowserServiceListener::bind("127.0.0.1:0").expect("bind");
         let mut opener = BrowserClient::connect(svc.addr()).expect("open client");
         opener
             .call(
                 "pages.open",
-                json!({"html":"<input id=t value=n>","url":"https://tail.test/"}),
+                json!({"html": html, "url": "https://tail.test/records"}),
             )
             .expect("open");
-        let n = 4;
+        opener
+            .call("pages.observe", json!({}))
+            .expect("warm observe");
+        let n = 16;
         let (tx, rx) = std::sync::mpsc::channel();
         for _ in 0..n {
             let addr = svc.addr();
@@ -629,20 +643,51 @@ mod tests {
             thread::spawn(move || {
                 let mut client = BrowserClient::connect(addr).expect("client");
                 let started = Instant::now();
-                let _ = client.call("pages.observe", json!({}));
-                tx.send(started.elapsed().as_millis() as u64).expect("send");
+                let observed = client.call("pages.observe", json!({}));
+                tx.send((started.elapsed().as_millis() as u64, observed.is_ok()))
+                    .expect("send");
             });
         }
         drop(tx);
         let mut samples = Vec::new();
-        while let Ok(ms) = rx.recv() {
+        let mut ok = 0usize;
+        while let Ok((ms, success)) = rx.recv() {
             samples.push(ms);
+            if success {
+                ok += 1;
+            }
         }
         assert_eq!(samples.len(), n);
+        assert_eq!(ok, n);
         samples.sort_unstable();
-        let p95 = samples[samples.len() - 1];
+        let p50 = samples[samples.len() / 2];
+        let p95 =
+            samples[((samples.len() as f64 * 0.95).ceil() as usize).clamp(1, samples.len()) - 1];
         assert!(p95 > 0);
-        assert!(process_rss_bytes().unwrap_or(1) > 0);
+        let rss = process_rss_bytes().expect("process RSS");
+        let tree = process_tree_rss_bytes().expect("process-tree RSS");
+        assert!(tree >= rss, "tree={tree} rss={rss}");
+        if let Ok(out) = std::env::var("VECTOR_EVIDENCE_OUT") {
+            let report = json!({
+                "review": "Vector_Current_Review_60b2d41",
+                "gate": "E",
+                "test": "concurrency_tail_and_process_tree_memory",
+                "chromium": false,
+                "document": { "rows": 400, "url": "https://tail.test/records" },
+                "concurrency": n,
+                "success": ok,
+                "samplesMs": samples,
+                "p50Ms": p50,
+                "p95Ms": p95,
+                "rss_bytes": rss,
+                "process_tree_rss_bytes": tree,
+                "warmFixture": false,
+            });
+            let _ = std::fs::write(
+                out,
+                format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+            );
+        }
     }
 
     #[test]

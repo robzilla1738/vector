@@ -10,7 +10,7 @@
   "tests": {
     "human_and_mcp_clients_share_one_page_authority": "PASS",
     "in_process_handle_matches_socket_protocol": "PASS",
-    "concurrency_tail_and_process_tree_memory": "PASS",
+    "concurrency_tail_and_process_tree_memory": "PASS 16 concurrent observe on 400-row records tree after one warm observe. Samples and process-tree RSS in concurrency-tail-latest.json. Not a one-input warm fixture.",
     "unseen_layout_variant_is_scored_by_outcome_only": "PASS",
     "human_edit_and_agent_observe_the_same_page": "PASS",
     "gui_thread_pump_and_mcp_client_share_one_native_browser": "PASS",
