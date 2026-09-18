@@ -857,8 +857,10 @@ JetStream.__veRewriteModule = function (src, key) {
     function (_, list) {
       list.split(",").forEach(function (part) {
         const bits = part.trim().split(/\s+as\s+/);
+        const from = (bits[0] || "").trim();
         const to = (bits[1] || bits[0] || "").trim();
-        if (to) names.push(to);
+        if (!from || !to) return;
+        names.push(bits[1] ? to + ": " + from : to);
       });
       return "";
     }
