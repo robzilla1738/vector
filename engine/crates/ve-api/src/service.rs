@@ -121,11 +121,15 @@ impl BrowserService {
             .browser
             .active_tab()
             .ok_or_else(|| Error::not_found("open produced no tab"))?;
+        let meta = self.browser.active_page_meta();
         Ok(json!({
             "ok": true,
             "page": tab.page.0,
             "url": tab.url,
             "title": tab.page_title,
+            "generation": meta.as_ref().map_or(0, |m| m.2),
+            "documentEpoch": meta.as_ref().map_or(0, |m| m.2),
+            "revision": meta.as_ref().map_or(0, |m| m.3),
             "chromium": false,
             "backend": "vector-engine",
         }))
@@ -157,15 +161,20 @@ impl BrowserService {
                     .map_err(|e| Error::invalid_params(format!("returnObservation: {e}")))?,
             ),
         };
+        let before = self.browser.active_page_meta();
         let executed = self.browser.execute_request(ExecuteRequest {
             program: Program::from_value(program)?,
             return_observation,
         })?;
-        self.flatten_execute(executed)
+        self.flatten_execute(executed, before)
     }
 
     /// NAPI `Engine.execute` envelope: top-level `status` / `steps`, not `{ result }`.
-    fn flatten_execute(&self, executed: crate::ExecuteResult) -> Result<Value> {
+    fn flatten_execute(
+        &self,
+        executed: crate::ExecuteResult,
+        before: Option<(String, String, u32, u64)>,
+    ) -> Result<Value> {
         let mut value = serde_json::to_value(&executed.result)
             .map_err(|e| Error::internal(format!("execute encode: {e}")))?;
         let Some(obj) = value.as_object_mut() else {
@@ -173,10 +182,14 @@ impl BrowserService {
         };
         obj.insert("ok".into(), json!(true));
         if let Some((url, title, generation, revision)) = self.browser.active_page_meta() {
+            let navigated = before.as_ref().is_some_and(|(_, _, g, _)| *g != generation);
+            let title_changed = before.as_ref().is_some_and(|(_, t, _, _)| *t != title);
             obj.insert("url".into(), json!(url));
             obj.insert("title".into(), json!(title));
             obj.insert("generation".into(), json!(generation));
             obj.insert("revision".into(), json!(revision));
+            obj.insert("navigated".into(), json!(navigated));
+            obj.insert("titleChanged".into(), json!(title_changed));
         }
         if let Some(obs) = executed.observation {
             obj.insert("observation".into(), observation_envelope(obs)?);
@@ -731,6 +744,30 @@ mod tests {
         assert_eq!(executed["observation"]["ok"], true);
         assert!(executed["observation"]["content"].is_object());
         assert!(executed["generation"].as_u64().is_some());
+        assert_eq!(executed["navigated"], false);
+
+        let opened = svc
+            .handle(
+                "pages.open",
+                &json!({"html":"<p>one</p>","url":"https://t.test/one"}),
+            )
+            .unwrap();
+        let before = opened["generation"].as_u64().unwrap_or(0);
+        let moved = svc
+            .handle(
+                "pages.execute",
+                &json!({
+                    "program": [{"id":"n","op":"navigate","url":"data:text/html,<title>two</title><p>two</p>"}],
+                    "returnObservation": true
+                }),
+            )
+            .unwrap();
+        assert_eq!(moved["status"], "completed", "{moved}");
+        assert_eq!(moved["navigated"], true, "{moved}");
+        assert!(
+            moved["generation"].as_u64().unwrap_or(0) > before,
+            "{moved}"
+        );
     }
 
     #[test]

@@ -369,8 +369,10 @@ export class VectorEnginePage implements DriverPage {
       });
     }
     if (res.url) this.urlValue = res.url;
-    if (res.navigated) {
-      this.generation = res.generation;
+    const navigated =
+      res.navigated || (typeof res.generation === "number" && res.generation !== this.generation);
+    if (navigated) {
+      this.generation = typeof res.generation === "number" ? res.generation : this.generation + 1;
       this.refs.clear(this.identity.pageId);
       this.events.onNavigated?.(this.urlValue, this.generation);
     }

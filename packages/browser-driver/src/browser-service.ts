@@ -240,8 +240,8 @@ export class ServiceNativeEngine {
       context: 1,
       url: r.url ?? url,
       title: r.title ?? "",
-      generation: 1,
-      revision: 1,
+      generation: r.generation ?? r.documentEpoch ?? 0,
+      revision: r.revision ?? 0,
       settled: true,
       routing: { requiresScript: false, reason: "browser-service", kind: "static" },
     });

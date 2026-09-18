@@ -507,6 +507,10 @@ describe("VectorEngineDriver", () => {
     const res = await page.executeProgram!([{ id: "a", op: "click", target: "css:#n" }]);
     expect(res.status).toBe("completed");
     expect(res.steps.map((s) => s.stepId)).toEqual(["a"]);
+    expect(flattenExecuteResult({ ok: true, status: "completed", steps: [], navigated: true, generation: 2, url: "https://share.test/?q=1" })).toMatchObject({
+      navigated: true,
+      generation: 2,
+    });
     await driver.disconnect();
   });
 
