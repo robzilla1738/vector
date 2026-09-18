@@ -21,6 +21,7 @@ v8 = ["dep:v8"]
 
 [build-dependencies]
 thiserror.workspace = true
+cc.workspace = true
 
 [dependencies]
 ve-core.workspace = true

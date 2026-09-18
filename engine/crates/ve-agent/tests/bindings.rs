@@ -4486,7 +4486,10 @@ fn html_collection_types_match_html_idl() {
                 allLength: all.length > 0,
                 allNamed: all.namedItem("p") && all.namedItem("p").id === "p",
                 allItemIndex: all.item(0) !== null,
-                allCall: typeof all === "function" ? all("p").id === "p" : all.item("p").id === "p",
+                allTypeof: typeof all,
+                allLoose: all == null,
+                allStrict: all === undefined,
+                allCall: all("p") && all("p").id === "p",
                 allCtor: typeof HTMLAllCollection === "function",
                 allCtorLen: HTMLAllCollection.length,
                 allItemLen: HTMLAllCollection.prototype.item.length,
@@ -4521,6 +4524,9 @@ fn html_collection_types_match_html_idl() {
     assert_eq!(v["allLength"], true, "{v}");
     assert_eq!(v["allNamed"], true, "{v}");
     assert_eq!(v["allItemIndex"], true, "{v}");
+    assert_eq!(v["allTypeof"], "undefined", "{v}");
+    assert_eq!(v["allLoose"], true, "{v}");
+    assert_eq!(v["allStrict"], false, "{v}");
     assert_eq!(v["allCall"], true, "{v}");
     assert_eq!(v["allCtor"], true, "{v}");
     assert_eq!(v["allCtorLen"], 0, "{v}");
@@ -5042,6 +5048,10 @@ fn official_html_brand_window_and_media_idl() {
                 beforeThrew: (function () { try { new BeforeUnloadEvent(); return false; } catch (e) { return e instanceof TypeError; } })(),
                 locStr: (function () { try { Location.prototype.toString.apply(null); return false; } catch (e) { return e instanceof TypeError; } })(),
                 extNull: (function () { try { External.prototype.AddSearchProvider.apply(null); return false; } catch (e) { return e instanceof TypeError; } })(),
+                allTypeof: typeof document.all,
+                allLoose: document.all == null,
+                allInst: document.all instanceof HTMLAllCollection,
+                allCallV: document.all("v") && document.all("v").id === "v",
               };
             })()"##,
         )
@@ -5118,4 +5128,8 @@ fn official_html_brand_window_and_media_idl() {
     assert_eq!(v["beforeThrew"], true, "{v}");
     assert_eq!(v["locStr"], true, "{v}");
     assert_eq!(v["extNull"], true, "{v}");
+    assert_eq!(v["allTypeof"], "undefined", "{v}");
+    assert_eq!(v["allLoose"], true, "{v}");
+    assert_eq!(v["allInst"], true, "{v}");
+    assert_eq!(v["allCallV"], true, "{v}");
 }

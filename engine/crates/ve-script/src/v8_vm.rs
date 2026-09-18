@@ -140,8 +140,10 @@ fn start_shared_watchdog() {
     // Preload forces the platform + this function to run before seccomp.
     let _ = std::thread::Builder::new()
         .name("ve-v8-watchdog".into())
-        .spawn(|| loop {
-            std::thread::park();
+        .spawn(|| {
+            loop {
+                std::thread::park();
+            }
         });
 }
 
@@ -197,6 +199,10 @@ impl V8Vm {
         let context = {
             v8::scope!(let scope, &mut isolate);
             let context = v8::Context::new(scope, v8::ContextOptions::default());
+            {
+                let scope = &mut v8::ContextScope::new(scope, context);
+                install_html_dda_host(scope);
+            }
             v8::Global::new(scope, context)
         };
         let ord = alloc_ord();
@@ -602,6 +608,156 @@ impl V8Vm {
     }
 }
 
+unsafe extern "C" {
+    fn ve_object_template_mark_as_undetectable(this: *const v8::ObjectTemplate);
+}
+
+fn mark_object_template_undetectable(templ: &v8::ObjectTemplate) {
+    // SAFETY: `templ` is a live Local<ObjectTemplate> in the current handle
+    // scope. The C++ shim matches rusty_v8's ObjectTemplate FFI convention.
+    unsafe {
+        ve_object_template_mark_as_undetectable(templ);
+    }
+}
+
+const HTML_DDA_WRAP: &str = "__veHtmlDdaWrap";
+
+fn install_html_dda_host(scope: &mut v8::PinScope<'_, '_>) {
+    let global = scope.get_current_context().global(scope);
+    let Some(key) = v8::String::new(scope, HTML_DDA_WRAP) else {
+        return;
+    };
+    let templ = v8::FunctionTemplate::builder(html_dda_wrap).build(scope);
+    let Some(func) = templ.get_function(scope) else {
+        return;
+    };
+    let _ = global.set(scope, key.into(), func.into());
+}
+
+fn html_dda_wrap(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    if args.length() < 1 {
+        return;
+    }
+    let Ok(src) = v8::Local::<v8::Object>::try_from(args.get(0)) else {
+        return;
+    };
+    let Some(instance) = new_html_dda_object(scope, src) else {
+        return;
+    };
+    rv.set(instance.into());
+}
+
+fn new_html_dda_object<'s, 'i>(
+    scope: &mut v8::PinScope<'s, 'i>,
+    src: v8::Local<'_, v8::Object>,
+) -> Option<v8::Local<'s, v8::Object>> {
+    let fetch_key = v8::String::new(scope, "_fetch")?;
+    let fetch = src.get(scope, fetch_key.into())?;
+    let proto = src.get_prototype(scope)?;
+    let templ = v8::ObjectTemplate::new(scope);
+    mark_object_template_undetectable(&templ);
+    templ.set_call_as_function_handler(html_all_call, None);
+    templ.set_named_property_handler(
+        v8::NamedPropertyHandlerConfiguration::new().getter(html_all_named_get),
+    );
+    templ.set_indexed_property_handler(
+        v8::IndexedPropertyHandlerConfiguration::new().getter(html_all_indexed_get),
+    );
+    let instance = templ.new_instance(scope)?;
+    instance.set_prototype(scope, proto)?;
+    instance.set(scope, fetch_key.into(), fetch)?;
+    Some(instance)
+}
+
+fn html_all_call(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let this = args.this();
+    let name = if args.length() > 0 {
+        args.get(0)
+    } else {
+        v8::undefined(scope).into()
+    };
+    if let Some(result) = call_collection_item(scope, this, name) {
+        rv.set(result);
+    }
+}
+
+fn html_all_skip_name(name: &str) -> bool {
+    matches!(
+        name,
+        "item"
+            | "namedItem"
+            | "length"
+            | "_fetch"
+            | "constructor"
+            | "toString"
+            | "valueOf"
+            | "toLocaleString"
+    ) || name.starts_with('_')
+}
+
+fn html_all_named_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    key: v8::Local<v8::Name>,
+    args: v8::PropertyCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) -> v8::Intercepted {
+    if !key.is_string() {
+        return v8::Intercepted::kNo;
+    }
+    let name = key.to_rust_string_lossy(scope);
+    if html_all_skip_name(&name) {
+        return v8::Intercepted::kNo;
+    }
+    let this = args.holder();
+    let Some(result) = call_collection_item(scope, this, key.into()) else {
+        return v8::Intercepted::kNo;
+    };
+    if result.is_null() || result.is_undefined() {
+        return v8::Intercepted::kNo;
+    }
+    rv.set(result);
+    v8::Intercepted::kYes
+}
+
+fn html_all_indexed_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    index: u32,
+    args: v8::PropertyCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) -> v8::Intercepted {
+    let this = args.holder();
+    let Some(name) = v8::String::new(scope, &index.to_string()) else {
+        return v8::Intercepted::kNo;
+    };
+    let Some(result) = call_collection_item(scope, this, name.into()) else {
+        return v8::Intercepted::kNo;
+    };
+    if result.is_null() || result.is_undefined() {
+        return v8::Intercepted::kNo;
+    }
+    rv.set(result);
+    v8::Intercepted::kYes
+}
+
+fn call_collection_item<'s, 'i>(
+    scope: &mut v8::PinScope<'s, 'i>,
+    this: v8::Local<'_, v8::Object>,
+    name: v8::Local<'_, v8::Value>,
+) -> Option<v8::Local<'s, v8::Value>> {
+    let key = v8::String::new(scope, "item")?;
+    let item = this.get(scope, key.into())?;
+    let func = v8::Local::<v8::Function>::try_from(item).ok()?;
+    func.call(scope, this.into(), &[name])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -630,6 +786,53 @@ mod tests {
                 _ => Err(ScriptError::Unsupported("nope".into())),
             }
         }
+    }
+
+    #[test]
+    fn html_dda_wrap_is_undetectable_and_callable() {
+        let mut vm = V8Vm::new().unwrap();
+        let got = vm
+            .eval(
+                r#"(function () {
+                  class HTMLAllCollection {
+                    constructor(fetch) { this._fetch = fetch; }
+                    item(name) {
+                      const els = this._fetch();
+                      const s = String(name);
+                      if (/^\d+$/.test(s)) return els[Number(s)] || null;
+                      return els.find((el) => el.id === s) || null;
+                    }
+                  }
+                  const src = new HTMLAllCollection(() => [{id:'p'}, {id:'q'}]);
+                  Object.setPrototypeOf(src, HTMLAllCollection.prototype);
+                  const all = __veHtmlDdaWrap(src);
+                  return {
+                    t: typeof all,
+                    loose: all == null,
+                    strict: all === undefined,
+                    inst: all instanceof HTMLAllCollection,
+                    call: !!(all('p') && all('p').id === 'p'),
+                    item: !!(all.item('q') && all.item('q').id === 'q'),
+                    idx: !!(all[0] && all[0].id === 'p'),
+                    named: !!(all.p && all.p.id === 'p')
+                  };
+                })()"#,
+                "<t>",
+            )
+            .unwrap();
+        assert_eq!(
+            got,
+            JsValue::from(serde_json::json!({
+                "t": "undefined",
+                "loose": true,
+                "strict": false,
+                "inst": true,
+                "call": true,
+                "item": true,
+                "idx": true,
+                "named": true
+            }))
+        );
     }
 
     #[test]

@@ -1513,6 +1513,9 @@
       };
       call._fetch = fetch;
       Object.setPrototypeOf(call, HTMLAllCollection.prototype);
+      if (typeof globalThis.__veHtmlDdaWrap === "function") {
+        return globalThis.__veHtmlDdaWrap(call);
+      }
       return new Proxy(call, htmlAllTraps);
     }
     item(...args) {
@@ -5383,7 +5386,7 @@
     captureEvents() {}
     releaseEvents() {}
     get all() {
-      if (this._all) return this._all;
+      if (this._all !== undefined) return this._all;
       const doc = this;
       this._all = new HTMLAllCollection(IDL_INTERNAL, () => list(D("getElementsByTagName", doc.__h, "*")));
       return this._all;
