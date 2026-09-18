@@ -442,6 +442,41 @@ const WASM_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
         true,
         &[("wasmBinary", "./wasm/argon2/build/argon2.wasm.z")],
     ),
+    (
+        "sqlite3-wasm",
+        &[
+            "./utils/polyfills/fast-text-encoding/1.0.3/text.js",
+            "./sqlite3/benchmark.js",
+            "./sqlite3/build/jswasm/speedtest1.js",
+        ],
+        false,
+        &[("wasmBinary", "./sqlite3/build/jswasm/speedtest1.wasm")],
+    ),
+    (
+        "8bitbench-wasm",
+        &[
+            "./utils/polyfills/fast-text-encoding/1.0.3/text.js",
+            "./8bitbench/build/rust/pkg/emu_bench.js",
+            "./8bitbench/benchmark.js",
+        ],
+        false,
+        &[
+            ("wasmBinary", "./8bitbench/build/rust/pkg/emu_bench_bg.wasm"),
+            ("romBinary", "./8bitbench/build/assets/program.bin"),
+        ],
+    ),
+    (
+        "j2cl-box2d-wasm",
+        &[
+            "./wasm/j2cl-box2d/benchmark.js",
+            "./wasm/j2cl-box2d/build/Box2dBenchmark_j2wasm_entry.js",
+        ],
+        false,
+        &[(
+            "wasmBinary",
+            "./wasm/j2cl-box2d/build/Box2dBenchmark_j2wasm_binary.wasm",
+        )],
+    ),
 ];
 
 const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[];
@@ -458,26 +493,40 @@ const WASM_PRERUN: &str = r#"(function () {
     print: silent,
     printErr: silent
   };
-  if (typeof WebAssembly === "object" && typeof WebAssembly.instantiate === "function") {
-    var instantiate = WebAssembly.instantiate.bind(WebAssembly);
-    WebAssembly.instantiate = function (bytes, imports) {
-      try {
-        if (bytes instanceof WebAssembly.Module) {
+  if (typeof WebAssembly === "object") {
+    if (typeof WebAssembly.instantiate === "function") {
+      var instantiate = WebAssembly.instantiate.bind(WebAssembly);
+      WebAssembly.instantiate = function (bytes, imports) {
+        try {
+          if (bytes instanceof WebAssembly.Module) {
+            return Promise.resolve({
+              module: bytes,
+              instance: new WebAssembly.Instance(bytes, imports)
+            });
+          }
+          var view = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes;
+          var module = new WebAssembly.Module(view);
           return Promise.resolve({
-            module: bytes,
-            instance: new WebAssembly.Instance(bytes, imports)
+            module: module,
+            instance: new WebAssembly.Instance(module, imports)
           });
+        } catch (e) {
+          return instantiate(bytes, imports);
         }
-        var view = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes;
-        var module = new WebAssembly.Module(view);
-        return Promise.resolve({
-          module: module,
-          instance: new WebAssembly.Instance(module, imports)
-        });
-      } catch (e) {
-        return instantiate(bytes, imports);
-      }
-    };
+      };
+    }
+    if (typeof WebAssembly.compile === "function") {
+      var compile = WebAssembly.compile.bind(WebAssembly);
+      WebAssembly.compile = function (bytes, options) {
+        try {
+          return Promise.resolve(
+            options ? new WebAssembly.Module(bytes, options) : new WebAssembly.Module(bytes)
+          );
+        } catch (e) {
+          return compile(bytes, options);
+        }
+      };
+    }
   }
 })();
 "#;
@@ -627,6 +676,12 @@ fn preload_prelude(root: &std::path::Path, preloads: &[(&str, &str)]) -> Result<
 JetStream.preload = JetStream.preload || {};
 JetStream.__vePreload = JetStream.__vePreload || {};
 JetStream.__vePreloadBinary = JetStream.__vePreloadBinary || {};
+JetStream.__veDecodeB64 = function (b64) {
+  const bin = atob(b64);
+  const out = new Int8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+};
 "#,
     );
     for (name, rel) in preloads {
@@ -643,9 +698,9 @@ JetStream.__vePreloadBinary = JetStream.__vePreloadBinary || {};
                 .map_err(|e| format!("encode binary preload {name}: {e}"))?;
             js.push_str("JetStream.__vePreloadBinary[");
             js.push_str(&key);
-            js.push_str("] = ");
+            js.push_str("] = JetStream.__veDecodeB64(");
             js.push_str(&val);
-            js.push_str(";\n");
+            js.push_str(");\n");
         } else {
             let text = read_js(&path)?;
             let val =
@@ -665,16 +720,11 @@ JetStream.getString = async function (key) {
   return v;
 };
 JetStream.getBinary = async function (key) {
-  const b64 = JetStream.__vePreloadBinary[key];
-  if (b64 != null) {
-    const bin = atob(b64);
-    const out = new Int8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  }
-  const v = await JetStream.getString(key);
-  const out = new Int8Array(v.length);
-  for (let i = 0; i < v.length; i++) out[i] = v.charCodeAt(i) & 0xff;
+  const v = JetStream.__vePreloadBinary[key];
+  if (v != null) return v;
+  const text = await JetStream.getString(key);
+  const out = new Int8Array(text.length);
+  for (let i = 0; i < text.length; i++) out[i] = text.charCodeAt(i) & 0xff;
   return out;
 };
 "#,
@@ -684,7 +734,7 @@ JetStream.getBinary = async function (key) {
 
 fn is_binary_preload(rel: &str) -> bool {
     let name = rel.to_ascii_lowercase();
-    name.ends_with(".wasm") || name.ends_with(".wasm.z")
+    name.ends_with(".wasm") || name.ends_with(".wasm.z") || name.ends_with(".bin")
 }
 
 fn read_bytes(path: &std::path::Path) -> Result<Vec<u8>, String> {
@@ -786,6 +836,7 @@ mod tests {
         assert_eq!(read_bytes(&path).unwrap(), wasm);
         assert!(is_binary_preload("./wasm/argon2/build/argon2.wasm.z"));
         assert!(is_binary_preload("./wasm/richards/build/richards.wasm"));
+        assert!(is_binary_preload("./8bitbench/build/assets/program.bin"));
         assert!(!is_binary_preload(
             "./SeaMonster/inspector-json-payload.js.z"
         ));

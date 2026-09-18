@@ -240,6 +240,7 @@ const ASYNC_START: &str = r#"(function () {
     .then(function () { return b.init && b.init(); })
     .then(function () { return b.prepareForNextIteration && b.prepareForNextIteration(); })
     .then(function () { return b.runIteration(0); })
+    .then(function () { return b.validate && b.validate(1); })
     .then(function () { window.__veJs.done = true; })
     .catch(function (e) { window.__veJs.err = String(e && e.message ? e.message : e); });
   return true;
@@ -535,7 +536,7 @@ fn main() -> Result<()> {
                 "passed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "PASS").count(),
                 "failed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "FAIL").count(),
                 "officialGroup": 12,
-                "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, late-eval mandreel/pdfjs, and WasmEMCC Default (richards/zlib/tsf/argon2). Remaining Default wasm stays unexecuted. Not a JetStream Next geometric-mean published score."
+                "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, late-eval mandreel/pdfjs, and WasmEMCC/Default wasm (richards/zlib/tsf/argon2/sqlite3/8bitbench/j2cl-box2d). Remaining Default wasm stays unexecuted. Not a JetStream Next geometric-mean published score."
             },
             "motionmark13": {
                 "officialNames": 8,
