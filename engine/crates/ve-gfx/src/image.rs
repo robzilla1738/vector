@@ -255,7 +255,79 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         }
         rest = &rest[i + tag_end + 1..];
     }
+    rest = text.as_ref();
+    while let Some(i) = rest.find("<ellipse") {
+        let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
+        let tag = &rest[i..i + tag_end];
+        let cx = svg_attr(tag, "cx").unwrap_or(0.0);
+        let cy = svg_attr(tag, "cy").unwrap_or(0.0);
+        let rx = svg_attr(tag, "rx").unwrap_or(0.0);
+        let ry = svg_attr(tag, "ry").unwrap_or(0.0);
+        let color = parse_svg_color(svg_fill(tag));
+        let x0 = (cx - rx).floor().max(0.0) as u32;
+        let y0 = (cy - ry).floor().max(0.0) as u32;
+        let x1 = (cx + rx).ceil().min(img.width as f32) as u32;
+        let y1 = (cy + ry).ceil().min(img.height as f32) as u32;
+        for yy in y0..y1 {
+            for xx in x0..x1 {
+                let nx = (xx as f32 + 0.5 - cx) / rx.max(0.001);
+                let ny = (yy as f32 + 0.5 - cy) / ry.max(0.001);
+                if nx * nx + ny * ny <= 1.0 {
+                    let idx = ((yy * img.width + xx) * 4) as usize;
+                    img.rgba[idx..idx + 4].copy_from_slice(&color);
+                }
+            }
+        }
+        rest = &rest[i + tag_end + 1..];
+    }
+    rest = text.as_ref();
+    while let Some(i) = rest.find("<line") {
+        let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
+        let tag = &rest[i..i + tag_end];
+        let x1 = svg_attr(tag, "x1").unwrap_or(0.0);
+        let y1 = svg_attr(tag, "y1").unwrap_or(0.0);
+        let x2 = svg_attr(tag, "x2").unwrap_or(0.0);
+        let y2 = svg_attr(tag, "y2").unwrap_or(0.0);
+        let color = parse_svg_color(
+            tag.split("stroke=")
+                .nth(1)
+                .and_then(|s| {
+                    let q = s.chars().next()?;
+                    if q == '"' || q == '\'' {
+                        s[1..].split(q).next()
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or("#000000"),
+        );
+        let steps = (x2 - x1).abs().max((y2 - y1).abs()).ceil().max(1.0) as i32;
+        for s in 0..=steps {
+            let t = s as f32 / steps as f32;
+            let xx = (x1 + (x2 - x1) * t).round() as i32;
+            let yy = (y1 + (y2 - y1) * t).round() as i32;
+            if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height {
+                let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
+                img.rgba[idx..idx + 4].copy_from_slice(&color);
+            }
+        }
+        rest = &rest[i + tag_end + 1..];
+    }
     Ok(img)
+}
+
+fn svg_fill(tag: &str) -> &str {
+    tag.split("fill=")
+        .nth(1)
+        .and_then(|s| {
+            let q = s.chars().next()?;
+            if q == '"' || q == '\'' {
+                s[1..].split(q).next()
+            } else {
+                None
+            }
+        })
+        .unwrap_or("#000000")
 }
 
 fn parse_svg_color(s: &str) -> [u8; 4] {
@@ -373,5 +445,17 @@ mod tests {
         .expect("svg circle");
         assert_eq!(circle.pixel(4, 4), Some([0, 255, 0, 255]));
         assert_eq!(circle.pixel(0, 0), Some([0, 0, 0, 0]));
+        let ellipse = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><ellipse cx='4' cy='4' rx='3' ry='2' fill='#0000ff'/></svg>",
+        )
+        .expect("svg ellipse");
+        assert_eq!(ellipse.pixel(4, 4), Some([0, 0, 255, 255]));
+        assert_eq!(ellipse.pixel(0, 0), Some([0, 0, 0, 0]));
+        let line = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><line x1='0' y1='0' x2='7' y2='0' stroke='#ffffff'/></svg>",
+        )
+        .expect("svg line");
+        assert_eq!(line.pixel(0, 0), Some([255, 255, 255, 255]));
+        assert_eq!(line.pixel(7, 0), Some([255, 255, 255, 255]));
     }
 }

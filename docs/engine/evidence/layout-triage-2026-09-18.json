@@ -1,56 +1,39 @@
 {
   "backend": "vector-engine",
-  "chromiumLive": false,
+  "chromiumLive": true,
   "date": "2026-09-18",
   "engineBoxes": [
     {
-      "engine": {
-        "h": 30,
-        "w": 100,
-        "x": 0,
-        "y": 0
-      },
+      "chromium": { "h": 30, "w": 100, "x": 0, "y": 0 },
+      "engine": { "h": 30, "w": 100, "x": 0, "y": 0 },
       "html": "flex-row",
       "selector": "#a",
       "test": "flex_row_distributes_width_and_hit_testing_finds_items"
     },
     {
-      "engine": {
-        "h": 30,
-        "w": 200,
-        "x": 100,
-        "y": 0
-      },
+      "chromium": { "h": 30, "w": 200, "x": 100, "y": 0 },
+      "engine": { "h": 30, "w": 200, "x": 100, "y": 0 },
       "html": "flex-row",
       "selector": "#big",
       "test": "flex_row_distributes_width_and_hit_testing_finds_items"
     },
     {
-      "engine": {
-        "h": 50,
-        "w": 400,
-        "x": 0,
-        "y": 0
-      },
+      "chromium": { "h": 50, "w": 400, "x": 0, "y": 0 },
+      "engine": { "h": 50, "w": 400, "x": 0, "y": 0 },
       "html": "block-margin",
       "selector": "#a",
       "test": "ve-layout block layout"
     },
     {
-      "engine": {
-        "h": 40,
-        "w": 100,
-        "x": 0,
-        "y": 0
-      },
+      "chromium": { "h": 40, "w": 100, "x": 0, "y": 0 },
+      "engine": { "h": 40, "w": 100, "x": 0, "y": 0 },
       "html": "inline-wrap",
       "selector": "p",
       "test": "inline_text_wraps_into_lines"
     }
   ],
-  "notes": "Engine boxes asserted by ve-layout tests. Chromium getBoundingClientRect comparison is skipped-live.",
+  "notes": "Engine boxes from ve-layout tests. Chromium getBoundingClientRect via google-chrome --headless=new on the same fixtures (body margin 0, 400 CSS px containing block).",
   "pages": 4,
-  "reason": "no headed Chrome in this environment",
   "reference": "chromium-headless",
-  "skippedLive": true
+  "skippedLive": false
 }

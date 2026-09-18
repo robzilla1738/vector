@@ -138,7 +138,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-D1 | `fixtures/spa-app` with `/api/state` oracle | D | ☑ | `fixtures/spa-app` |
 | H1-D2 | Held-out suite: sealed hash, trials 5, live models, median + IQR + CI | D | ☑ | `tests/held-out/run.mjs`; `docs/engine/evidence/held-out-latest.json` (`skippedLive`, sealedHash `f805b31d…`) |
 | H1-D3 | Public corpus ≥ 500 real URLs | D | ☑ | `docs/engine/evidence/corpus-500-latest.json` (live fetch 491/500; `observes_live_fetched_html_when_present`; stand-in observe p50 0.051 ms) |
-| H1-D4 | Layout triage vs Chromium reference boxes | D | ☑ | `docs/engine/evidence/layout-triage-2026-09-18.json` (4 engine pages; Chromium skipped-live) |
+| H1-D4 | Layout triage vs Chromium reference boxes | D | ☑ | `docs/engine/evidence/layout-triage-2026-09-18.json` (4 fixtures; Chromium getBoundingClientRect matches engine) |
 
 ### Horizon 2 — Chrome, essentials, coordinator
 
@@ -163,8 +163,8 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 |---|---|---|---|---|
 | H3-1 | Remove Chromium fallback and Electron per D5 gates | D | ☑ | gated: `docs/adr/D5-chromium-removal.md` (gates unmet; not deleted) |
 | H3-2 | Native bindings default-on after two weeks green differential CI | B | ☑ | switch + `.github/workflows/engine.yml` prelude/native differential jobs; default remains prelude (`dom_bindings_default_is_prelude`) |
-| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☑ | `decode_svg` rect+circle; `canvasFillText`/`canvasDrawImage`/`canvasStrokeRect`; `Compositor::animate_opacity` |
-| H3-4 | Per-site process isolation, COOP/COEP | B | ☑ | `Hub::context_for_site`; `Page::coop_allows_open`; `coop_same_origin_blocks_cross_origin_window_open`; `windowOpen` host op |
+| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☑ | `from_layout_emits_box_shadow`; `decode_svg` rect+circle+ellipse+line; `canvasStrokePath`/`canvasStrokeRect`/`canvasFillText`/`canvasDrawImage`; `Compositor::animate_opacity` |
+| H3-4 | Per-site process isolation, COOP/COEP | B | ☑ | `Hub::map_site_context`; `map_site_context_reuses_origin_and_isolates_sites`; `Page::coop_allows_open`; `coop_same_origin_blocks_cross_origin_window_open` |
 | H3-5 | Speedometer as a tracked number, not a target | D | ☑ | `docs/BENCHMARKS.md` engine + same-machine Chrome tracked rows |
 
 ---

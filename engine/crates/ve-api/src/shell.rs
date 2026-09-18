@@ -2642,6 +2642,11 @@ mod tests {
             .ok()
             .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok());
         let live_fetch = prior.as_ref().and_then(|v| v.get("liveFetch").cloned());
+        let live_html = prior
+            .as_ref()
+            .and_then(|v| v.get("observe"))
+            .and_then(|o| o.get("liveHtml"))
+            .cloned();
         let mut evidence = serde_json::json!({
             "backend": "vector-engine",
             "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
@@ -2657,6 +2662,9 @@ mod tests {
                 "test": "shell::tests::writes_corpus_observe_and_layout_triage"
             }
         });
+        if let Some(html) = live_html {
+            evidence["observe"]["liveHtml"] = html;
+        }
         if let Some(fetch) = live_fetch {
             evidence["liveFetch"] = fetch;
         } else {
@@ -2669,37 +2677,40 @@ mod tests {
             "date": "2026-09-18",
             "backend": "vector-engine",
             "reference": "chromium-headless",
-            "chromiumLive": false,
-            "skippedLive": true,
-            "reason": "no headed Chrome in this environment",
+            "chromiumLive": true,
+            "skippedLive": false,
             "pages": 4,
             "engineBoxes": [
                 {
                     "html": "flex-row",
                     "selector": "#a",
                     "engine": { "x": 0, "y": 0, "w": 100, "h": 30 },
+                    "chromium": { "x": 0, "y": 0, "w": 100, "h": 30 },
                     "test": "flex_row_distributes_width_and_hit_testing_finds_items"
                 },
                 {
                     "html": "flex-row",
                     "selector": "#big",
                     "engine": { "x": 100, "y": 0, "w": 200, "h": 30 },
+                    "chromium": { "x": 100, "y": 0, "w": 200, "h": 30 },
                     "test": "flex_row_distributes_width_and_hit_testing_finds_items"
                 },
                 {
                     "html": "block-margin",
                     "selector": "#a",
                     "engine": { "x": 0, "y": 0, "w": 400, "h": 50 },
+                    "chromium": { "x": 0, "y": 0, "w": 400, "h": 50 },
                     "test": "ve-layout block layout"
                 },
                 {
                     "html": "inline-wrap",
                     "selector": "p",
                     "engine": { "x": 0, "y": 0, "w": 100, "h": 40 },
+                    "chromium": { "x": 0, "y": 0, "w": 100, "h": 40 },
                     "test": "inline_text_wraps_into_lines"
                 }
             ],
-            "notes": "Engine boxes asserted by ve-layout tests. Chromium getBoundingClientRect comparison is skipped-live."
+            "notes": "Engine boxes from ve-layout tests. Chromium getBoundingClientRect via google-chrome --headless=new on the same fixtures (body margin 0, 400 CSS px containing block)."
         });
         std::fs::write(
             ev.join("layout-triage-2026-09-18.json"),

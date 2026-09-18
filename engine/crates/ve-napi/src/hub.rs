@@ -183,13 +183,7 @@ impl Hub {
     /// Process context for `url`'s origin. Production isolation gets one
     /// host process per site (H3-4). Callers still pass a context id; a
     /// different origin is remapped onto the site process.
-    fn context_for_site(&mut self, fallback: u32, url: &str) -> Result<u32, ApiError> {
-        if !matches!(
-            self.config.security_profile,
-            ve_api::SecurityProfile::Production
-        ) {
-            return Ok(fallback);
-        }
+    fn map_site_context(&mut self, fallback: u32, url: &str) -> Result<u32, ApiError> {
         let origin = Self::site_origin(url);
         if let Some(&id) = self.site_contexts.get(&origin) {
             return Ok(id);
@@ -201,6 +195,16 @@ impl Hub {
         };
         self.site_contexts.insert(origin, id);
         Ok(id)
+    }
+
+    fn context_for_site(&mut self, fallback: u32, url: &str) -> Result<u32, ApiError> {
+        if !matches!(
+            self.config.security_profile,
+            ve_api::SecurityProfile::Production
+        ) {
+            return Ok(fallback);
+        }
+        self.map_site_context(fallback, url)
     }
 
     /// Opens a page in a context; the reply carries the new page id.
@@ -434,5 +438,28 @@ mod tests {
         assert_eq!(hub.pages(), vec![pb]);
         hub.shutdown();
         assert!(hub.new_context("{}").is_err());
+    }
+
+    #[test]
+    fn map_site_context_reuses_origin_and_isolates_sites() {
+        let mut hub =
+            Hub::from_json(r#"{"offline": true, "viewport": {"width": 800, "height": 600}}"#)
+                .unwrap();
+        let a = hub
+            .map_site_context(DEFAULT_CONTEXT, "https://a.test/x")
+            .unwrap();
+        let a2 = hub
+            .map_site_context(DEFAULT_CONTEXT, "https://a.test/y")
+            .unwrap();
+        let b = hub
+            .map_site_context(DEFAULT_CONTEXT, "https://b.test/")
+            .unwrap();
+        assert_eq!(a, a2);
+        assert_ne!(a, b);
+        assert_eq!(Hub::site_origin("https://a.test/x"), "https://a.test");
+        assert_ne!(
+            Hub::site_origin("https://a.test/"),
+            Hub::site_origin("https://b.test/")
+        );
     }
 }

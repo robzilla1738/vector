@@ -3939,7 +3939,11 @@
       const p = path instanceof Path2D ? path : this._path;
       D("canvasFillPath", this.__h, p._payload(), String(this.fillStyle));
     }
-    stroke() {}
+    stroke() {
+      const path = arguments[0];
+      const p = path instanceof Path2D ? path : this._path;
+      D("canvasStrokePath", this.__h, p._payload(), String(this.strokeStyle || this.fillStyle));
+    }
     strokeRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'strokeRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       D("canvasStrokeRect", this.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0, String(this.strokeStyle || this.fillStyle));

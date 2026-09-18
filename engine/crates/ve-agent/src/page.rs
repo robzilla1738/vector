@@ -763,6 +763,34 @@ impl CanvasSurface {
         self.ops += 1;
     }
 
+    fn stroke_polyline(&mut self, pts: &[[f32; 2]], color: [u8; 4]) {
+        if pts.len() < 2 {
+            return;
+        }
+        for pair in pts.windows(2) {
+            let (a, b) = (pair[0], pair[1]);
+            let dx = b[0] - a[0];
+            let dy = b[1] - a[1];
+            let steps = dx.abs().max(dy.abs()).ceil().max(1.0) as i32;
+            for i in 0..=steps {
+                let t = i as f32 / steps as f32;
+                let x = (a[0] + dx * t).round() as i32;
+                let y = (a[1] + dy * t).round() as i32;
+                self.fill_rect(x, y, 1, 1, color);
+            }
+        }
+    }
+
+    fn stroke_path(&mut self, rects: &[[f32; 4]], polys: &[Vec<[f32; 2]>], color: [u8; 4]) {
+        for r in rects {
+            self.stroke_rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, color);
+        }
+        for poly in polys {
+            self.stroke_polyline(poly, color);
+        }
+        self.ops += 1;
+    }
+
     fn fill_text(&mut self, text: &str, x: i32, y: i32, color: [u8; 4]) {
         // 5×7 bitmap: one filled cell per glyph so fillText is not a no-op.
         let mut cx = x;
@@ -1414,6 +1442,21 @@ impl Page {
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
         c.fill_path(rects, polys, parse_css_color(color));
+        c.ops
+    }
+
+    pub(crate) fn canvas_stroke_path(
+        &mut self,
+        id: NodeId,
+        rects: &[[f32; 4]],
+        polys: &[Vec<[f32; 2]>],
+        color: &str,
+    ) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.stroke_path(rects, polys, parse_css_color(color));
         c.ops
     }
 

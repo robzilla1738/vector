@@ -744,6 +744,38 @@ pub enum ClipPath {
     },
 }
 
+/// One computed `box-shadow` (offset + blur + colour). `none` is the zero value.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct BoxShadow {
+    /// Horizontal offset in CSS pixels.
+    pub dx: f32,
+    /// Vertical offset in CSS pixels.
+    pub dy: f32,
+    /// Blur radius in CSS pixels.
+    pub blur: f32,
+    /// Shadow colour.
+    pub color: Rgba,
+}
+
+impl Default for BoxShadow {
+    fn default() -> Self {
+        Self {
+            dx: 0.0,
+            dy: 0.0,
+            blur: 0.0,
+            color: Rgba::TRANSPARENT,
+        }
+    }
+}
+
+impl BoxShadow {
+    /// `box-shadow: none` or a fully transparent zero shadow.
+    #[must_use]
+    pub fn is_none(self) -> bool {
+        self.color.is_transparent() && self.dx == 0.0 && self.dy == 0.0 && self.blur == 0.0
+    }
+}
+
 /// One `transform` function (only the geometry-affecting subset).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum TransformOp {

@@ -662,6 +662,31 @@ fn canvas_fillrect_records_ops() {
 }
 
 #[test]
+fn canvas_stroke_path_records_ops() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 40;
+              c.height = 20;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.lineTo(10, 0);
+              ctx.stroke();
+              ctx.strokeRect(1, 1, 8, 8);
+              const d = ctx.getImageData(0, 0, 1, 1).data;
+              return { r: d[0], g: d[1], b: d[2], a: d[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["r"], 0, "{v}");
+}
+
+#[test]
 fn remove_attribute_node_clears_named_attr() {
     let mut page = open(r#"<p id="t" class="x"></p>"#);
     let v = page

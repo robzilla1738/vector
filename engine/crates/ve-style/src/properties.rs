@@ -18,8 +18,8 @@ use cssparser::{Parser, Token};
 use ve_core::Size;
 
 use crate::values::{
-    AlignItems, BorderCollapse, BorderStyle, BoxSizing, CaptionSide, Clear, ClipPath, Color,
-    Content, ContentItem, Direction, Display, FlexDirection, FlexWrap, Float, FontFamily,
+    AlignItems, BorderCollapse, BorderStyle, BoxShadow, BoxSizing, CaptionSide, Clear, ClipPath,
+    Color, Content, ContentItem, Direction, Display, FlexDirection, FlexWrap, Float, FontFamily,
     FontStyle, FontWeight, GridLine, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
     ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba, SelfAlignment, TextAlign,
@@ -215,6 +215,19 @@ pub enum SpecifiedTransform {
     Scale(f32, f32),
 }
 
+/// A `box-shadow` as specified (lengths not yet computed).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SpecifiedBoxShadow {
+    /// Horizontal offset.
+    pub dx: SpecifiedValue,
+    /// Vertical offset.
+    pub dy: SpecifiedValue,
+    /// Blur radius.
+    pub blur: SpecifiedValue,
+    /// Shadow colour (`currentcolor` allowed).
+    pub color: Color,
+}
+
 /// A parsed but not yet computed value.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SpecifiedValue {
@@ -256,6 +269,8 @@ pub enum SpecifiedValue {
     Transform(Vec<SpecifiedTransform>),
     /// `clip-path: inset(top right bottom left)`.
     ClipInset(Box<[SpecifiedValue; 4]>),
+    /// `box-shadow: <offset-x> <offset-y> <blur>? <color>?`.
+    BoxShadow(Box<SpecifiedBoxShadow>),
     /// A grid line placement.
     GridLine(GridLine),
     /// A function or token the engine does not understand. Never accepted by
@@ -342,6 +357,8 @@ enum ValueSyntax {
     ClipPath,
     /// `grid-*-start` / `grid-*-end`.
     GridLine,
+    /// The `box-shadow` property.
+    BoxShadow,
     /// Arbitrary token stream (custom properties).
     Raw,
 }
@@ -638,6 +655,22 @@ mod conv {
                     SpecifiedTransform::Scale(x, y) => Some(TransformOp::Scale(*x, *y)),
                 })
                 .collect(),
+            _ => None,
+        }
+    }
+
+    pub fn box_shadow(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<BoxShadow> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(BoxShadow::default()),
+            SpecifiedValue::BoxShadow(s) => Some(BoxShadow {
+                dx: length_px(&s.dx, ctx).unwrap_or(0.0),
+                dy: length_px(&s.dy, ctx).unwrap_or(0.0),
+                blur: length_px(&s.blur, ctx).unwrap_or(0.0).max(0.0),
+                color: match s.color {
+                    Color::Rgba(c) => c,
+                    Color::CurrentColor => ctx.parent_color,
+                },
+            }),
             _ => None,
         }
     }
@@ -1039,6 +1072,13 @@ property_table! {
     BorderBottomLeftRadius: "border-bottom-left-radius" => border_bottom_left_radius: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
     /// `object-fit`
     ObjectFit: "object-fit" => object_fit: ObjectFit = ObjectFit::Fill, inherited = false, syntax = Single, convert = conv::kw::<ObjectFit>;
+    /// `box-shadow` (first shadow only)
+    BoxShadow: "box-shadow" => box_shadow: BoxShadow = BoxShadow {
+        dx: 0.0,
+        dy: 0.0,
+        blur: 0.0,
+        color: Rgba::TRANSPARENT,
+    }, inherited = false, syntax = BoxShadow, convert = conv::box_shadow;
 }
 
 impl ComputedStyle {
@@ -1169,7 +1209,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "background-blend-mode",
     "border-radius",
     "border-image",
-    "box-shadow",
     "text-shadow",
     "filter",
     "backdrop-filter",
@@ -1839,6 +1878,45 @@ fn parse_clip_path(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     }
 }
 
+fn parse_box_shadow(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    let mut lengths = Vec::new();
+    let mut color = Color::Rgba(Rgba::BLACK);
+    while !input.is_exhausted() {
+        let v = parse_component(input)?;
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" && lengths.is_empty() => {
+                return input
+                    .is_exhausted()
+                    .then_some(SpecifiedValue::Keyword("none".into()));
+            }
+            SpecifiedValue::Keyword(k) if k == "inset" => {}
+            SpecifiedValue::Color(c) => color = c,
+            SpecifiedValue::Keyword(k) => {
+                if let Some(rgba) = Rgba::from_name(&k) {
+                    color = Color::Rgba(rgba);
+                } else {
+                    return None;
+                }
+            }
+            other => {
+                if lengths.len() >= 4 {
+                    return None;
+                }
+                lengths.push(other);
+            }
+        }
+    }
+    if lengths.len() < 2 {
+        return None;
+    }
+    Some(SpecifiedValue::BoxShadow(Box::new(SpecifiedBoxShadow {
+        dx: lengths[0].clone(),
+        dy: lengths[1].clone(),
+        blur: lengths.get(2).cloned().unwrap_or(SpecifiedValue::Number(0.0)),
+        color,
+    })))
+}
+
 fn parse_grid_line(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     let mut span = false;
     let mut number: Option<i32> = None;
@@ -1927,6 +2005,9 @@ impl PropertyId {
                 .ok()?,
             ValueSyntax::GridLine => css_wide(input)
                 .or_else(|()| parse_grid_line(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::BoxShadow => css_wide(input)
+                .or_else(|()| parse_box_shadow(input).ok_or(()))
                 .ok()?,
         };
         input.expect_exhausted().ok()?;
@@ -2552,6 +2633,8 @@ mod tests {
         ok("clip-path", "inset(50%)");
         ok("transform", "translate(10px, 20%) scale(2)");
         ok("transform", "none");
+        ok("box-shadow", "0 4px 8px black");
+        ok("box-shadow", "none");
         ok("border-top-style", "dashed");
         ok("pointer-events", "none");
         ok("opacity", "0.5");
@@ -2570,7 +2653,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 98);
+        assert_eq!(PropertyId::ALL.len(), 99);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

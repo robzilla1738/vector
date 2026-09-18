@@ -306,6 +306,15 @@ impl DisplayList {
                         handle: *handle,
                     });
                 }
+                if !style.box_shadow.is_none() {
+                    list.push(DisplayItem::BoxShadow {
+                        rect: item.rect,
+                        dx: style.box_shadow.dx,
+                        dy: style.box_shadow.dy,
+                        blur: style.box_shadow.blur,
+                        color: style.box_shadow.color,
+                    });
+                }
                 // Skip the root box background: it was promoted to the canvas.
                 if Some(node) != layout.root.node {
                     let bg = style.background_color.resolve(style.color);
@@ -435,6 +444,35 @@ mod tests {
                 .iter()
                 .any(|i| matches!(i, DisplayItem::PushClip(_))),
             "overflow clip missing"
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_box_shadow() {
+        let html = "<style>body{margin:0} #s{width:40px;height:20px;background:red;box-shadow:2px 3px 4px black}</style>\
+                    <div id=s></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::BoxShadow {
+                    dx,
+                    dy,
+                    blur,
+                    color,
+                    ..
+                } if (*dx - 2.0).abs() < f32::EPSILON
+                    && (*dy - 3.0).abs() < f32::EPSILON
+                    && (*blur - 4.0).abs() < f32::EPSILON
+                    && *color == Rgba::BLACK
+            )),
+            "box-shadow missing: {:?}",
+            list.items()
         );
     }
 }

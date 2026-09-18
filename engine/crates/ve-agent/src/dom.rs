@@ -2136,7 +2136,7 @@ pub(crate) fn host_call(
             );
             Ok(JsValue::Number(ops as f64))
         }
-        "canvasFillPath" => {
+        "canvasFillPath" | "canvasStrokePath" => {
             let id = live(page, args, 0)?;
             let spec: serde_json::Value =
                 serde_json::from_str(&arg_str(args, 1)).unwrap_or(serde_json::Value::Null);
@@ -2167,12 +2167,16 @@ pub(crate) fn host_call(
                             xy.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
                         ]);
                     }
-                    if out.len() >= 3 {
+                    if out.len() >= 2 {
                         polys.push(out);
                     }
                 }
             }
-            let ops = page.canvas_fill_path(id, &rects, &polys, &arg_str(args, 2));
+            let ops = if op == "canvasStrokePath" {
+                page.canvas_stroke_path(id, &rects, &polys, &arg_str(args, 2))
+            } else {
+                page.canvas_fill_path(id, &rects, &polys, &arg_str(args, 2))
+            };
             Ok(JsValue::Number(ops as f64))
         }
         "mutationsSince" => {
