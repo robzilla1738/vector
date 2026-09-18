@@ -1433,4 +1433,26 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn structural_insert_under_body_restyles_siblings_not_cousins() {
+        let (mut doc, _) = wide_document(50, 20);
+        let mut engine = StyleEngine::new();
+        engine.add_stylesheet("div:nth-child(2n) { outline-style: solid }");
+        engine.add_document_styles(&doc);
+        let (mut tree, _) = engine.compute_and_clear(&mut doc, None);
+        let total = doc.elements().count();
+        let body = doc.body().unwrap();
+        let since = doc.revision();
+        let probe = doc.create_element_with_attrs("span", Namespace::Html, vec![]);
+        doc.append_child(body, probe).unwrap();
+        let stats = engine.restyle_incremental(&mut doc, &mut tree, since);
+        assert!(!stats.full, "structural insert must stay incremental");
+        assert!(
+            stats.recomputed < 80,
+            "body + direct children, not {total} cousins: recomputed={}",
+            stats.recomputed
+        );
+        assert!(tree.styles.contains_key(&probe));
+    }
 }

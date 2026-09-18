@@ -1474,9 +1474,10 @@ mod tests {
             &mut engine,
             "todomvc/architecture-examples/jquery-complex/dist/index.html",
         );
-        let (probe, console) = {
+        let (probe, console, restyle) = {
             let page = engine.page_mut(page_id).unwrap();
             page.settle(3_000);
+            page.reset_restyle_attribution();
             let probe = page
                 .evaluate(&with_lib(
                     r##"(function () {
@@ -1506,6 +1507,7 @@ mod tests {
                     })()"##,
                 ))
                 .expect("jquery complex one add");
+            let restyle = page.restyle_attribution();
             let console: Vec<String> = page
                 .console()
                 .iter()
@@ -1513,7 +1515,7 @@ mod tests {
                 .map(|l| l.message.chars().take(180).collect())
                 .take(4)
                 .collect();
-            (probe, console)
+            (probe, console, restyle)
         };
         engine.close(page_id);
         let text = match &probe {
@@ -1530,11 +1532,15 @@ mod tests {
             v["added"].as_u64().unwrap_or(0) >= 1,
             "jquery Complex-DOM one-add: {v} err={console:?}"
         );
+        assert_eq!(
+            restyle.full_calls, 0,
+            "jquery show() must not full-restyle Spectrum: {v} restyle={restyle:?}"
+        );
         assert!(
             v["enterMs"].as_u64().unwrap_or(u64::MAX) < 2_000,
-            "jquery create/render must not walk the Spectrum tree: {v}"
+            "jquery create/render must not walk the Spectrum tree: {v} restyle={restyle:?}"
         );
-        eprintln!("jquery-complex one-add {v}");
+        eprintln!("jquery-complex one-add {v} restyle={restyle:?}");
     }
 
     #[cfg(feature = "v8")]
@@ -1621,6 +1627,52 @@ mod tests {
             let ok = v.get("ok").and_then(serde_json::Value::as_bool) == Some(true);
             eprintln!(
                 "remaining-official {rel} ok={ok} {}ms {v} err={console:?}",
+                started.elapsed().as_millis()
+            );
+            if !ok {
+                fails.push(format!("{rel} => {v} err={console:?}"));
+            }
+        }
+        assert!(fails.is_empty(), "{}", fails.join("\n"));
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn remaining_official_editor_chart_workloads_boot() {
+        let mut engine = bench_engine();
+        let suites = [
+            "editors/dist/tiptap.html",
+            "charts/dist/observable-plot.html",
+            "charts/dist/chartjs.html",
+            "react-stockcharts/build/index.html?type=svg",
+        ];
+        let mut fails = Vec::new();
+        let add = with_lib(&add_steps(1));
+        for rel in suites {
+            let started = Instant::now();
+            let page_id = open_workload(&mut engine, rel);
+            let (probe, console) = {
+                let page = engine.page_mut(page_id).unwrap();
+                page.settle(3_000);
+                let probe = page.evaluate(&add).unwrap_or(serde_json::Value::Null);
+                let console: Vec<String> = page
+                    .console()
+                    .iter()
+                    .filter(|l| l.level == "error")
+                    .map(|l| l.message.chars().take(180).collect())
+                    .take(2)
+                    .collect();
+                (probe, console)
+            };
+            engine.close(page_id);
+            let text = match &probe {
+                serde_json::Value::String(s) => s.clone(),
+                other => other.to_string(),
+            };
+            let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
+            let ok = v.get("ok").and_then(serde_json::Value::as_bool) == Some(true);
+            eprintln!(
+                "editor-chart {rel} ok={ok} {}ms {v} err={console:?}",
                 started.elapsed().as_millis()
             );
             if !ok {

@@ -288,6 +288,23 @@ struct Effect {
     forced: bool,
 }
 
+/// `:nth-*` / `:empty` / `:first-child` change the parent and its children,
+/// not every cousin under `parent`. Official Complex-DOM Spectrum lives under
+/// `body`; jQuery `show()` appends a temp node there for `getDefaultDisplay`.
+fn mark_structural_siblings(
+    effects: &mut HashMap<NodeId, Effect>,
+    doc: &Document,
+    parent: NodeId,
+) {
+    let p = effects.entry(parent).or_default();
+    p.self_ = true;
+    p.forced = true;
+    let sibs: Vec<NodeId> = doc.children(parent).collect();
+    for sib in sibs {
+        effects.entry(sib).or_default().self_ = true;
+    }
+}
+
 impl InvalidationMap {
     /// Reads the journal entries after `since` and translates them into
     /// `STYLE_SELF` / `STYLE_DESCENDANTS` bits. Attribute changes with no
@@ -300,6 +317,7 @@ impl InvalidationMap {
         };
         let mut effects: HashMap<NodeId, Effect> = HashMap::new();
         let mut parent_descendants: Vec<NodeId> = Vec::new();
+        let mut structural_parents: Vec<NodeId> = Vec::new();
         let mut mark = |effects: &mut HashMap<NodeId, Effect>, node: NodeId, dep: Dependency| {
             let e = effects.entry(node).or_default();
             e.self_ |= dep.self_;
@@ -317,18 +335,12 @@ impl InvalidationMap {
                     e.descendants = true;
                     e.forced = true;
                     if self.structural {
-                        let p = effects.entry(*parent).or_default();
-                        p.descendants = true;
-                        p.self_ = true;
-                        p.forced = true;
+                        structural_parents.push(*parent);
                     }
                 }
                 Mutation::NodeRemoved { parent, .. } => {
                     if self.structural {
-                        let p = effects.entry(*parent).or_default();
-                        p.descendants = true;
-                        p.self_ = true;
-                        p.forced = true;
+                        structural_parents.push(*parent);
                     }
                 }
                 Mutation::AttributeChanged {
@@ -380,6 +392,9 @@ impl InvalidationMap {
                 | Mutation::GeometryChanged { .. }
                 | Mutation::Scrolled { .. } => {}
             }
+        }
+        for parent in structural_parents {
+            mark_structural_siblings(&mut effects, doc, parent);
         }
         if self.has_selector && !effects.is_empty() {
             stats.full = true;
