@@ -1060,18 +1060,19 @@
       return keys;
     },
     getOwnPropertyDescriptor(t, p) {
-      if (typeof p === "symbol") return Object.getOwnPropertyDescriptor(t, p);
+      if (typeof p === "symbol") return undefined;
       const s = String(p);
       if (/^\d+$/.test(s)) {
         const v = t._fetch()[Number(s)];
         if (v === undefined) return undefined;
         return { configurable: true, enumerable: true, writable: false, value: v };
       }
+      if (s === "namedItem" || s === "item" || s === "length" || s === "add" || s === "remove" || s === "selectedIndex") {
+        return undefined;
+      }
       const named = s ? (t.namedItem || HTMLCollection.prototype.namedItem).call(t, s) : null;
       if (named) return { configurable: true, enumerable: false, writable: false, value: named };
-      return Object.getOwnPropertyDescriptor(Object.getPrototypeOf(t), p)
-        || Object.getOwnPropertyDescriptor(Object.prototype, p)
-        || Object.getOwnPropertyDescriptor(t, p);
+      return undefined;
     },
     has(t, p) {
       if (typeof p === "symbol") return false;
@@ -1159,6 +1160,10 @@
   }
   Object.setPrototypeOf(RadioNodeList, NodeList);
   Object.setPrototypeOf(RadioNodeList.prototype, NodeList.prototype);
+  {
+    const desc = Object.getOwnPropertyDescriptor(RadioNodeList.prototype, "value");
+    if (desc) Object.defineProperty(RadioNodeList.prototype, "value", { ...desc, enumerable: true, configurable: true });
+  }
   Object.defineProperty(RadioNodeList.prototype, Symbol.toStringTag, { value: "RadioNodeList" });
 
   class HTMLFormControlsCollection extends HTMLCollection {
@@ -1191,9 +1196,9 @@
     }
     get length() { return this._fetch().length; }
     set length(n) {
-      n = n >>> 0;
       const select = this._select;
-      if (!select) return;
+      if (!select) throw new TypeError("Illegal invocation");
+      n = n >>> 0;
       while (this._fetch().length > n) {
         const last = this._fetch()[this._fetch().length - 1];
         if (last && last.parentNode) last.parentNode.removeChild(last);
@@ -1203,9 +1208,11 @@
         select.appendChild(document.createElement("option"));
       }
     }
-    add(element, before) {
+    add(element, ...rest) {
+      const before = rest[0];
       const select = this._select;
-      if (!select || !element) return;
+      if (!select) throw new TypeError("Illegal invocation");
+      if (!element) return;
       if (before == null) select.appendChild(element);
       else if (typeof before === "number") {
         const ref = this._fetch()[before];
@@ -1288,18 +1295,17 @@
       return keys;
     },
     getOwnPropertyDescriptor(t, p) {
-      if (typeof p === "symbol") return Object.getOwnPropertyDescriptor(t, p);
+      if (typeof p === "symbol") return undefined;
       const s = String(p);
       if (/^\d+$/.test(s)) {
         const v = t._fetch()[Number(s)];
         if (v === undefined) return undefined;
         return { configurable: true, enumerable: true, writable: false, value: v };
       }
+      if (s === "namedItem" || s === "item" || s === "length") return undefined;
       const named = s ? HTMLAllCollection.prototype.namedItem.call(t, s) : null;
       if (named) return { configurable: true, enumerable: false, writable: false, value: named };
-      return Object.getOwnPropertyDescriptor(HTMLAllCollection.prototype, p)
-        || Object.getOwnPropertyDescriptor(Object.prototype, p)
-        || Object.getOwnPropertyDescriptor(t, p);
+      return undefined;
     },
     has(t, p) {
       if (typeof p === "symbol") return false;
