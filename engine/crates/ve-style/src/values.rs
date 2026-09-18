@@ -776,6 +776,24 @@ impl BoxShadow {
     }
 }
 
+/// Computed `background-image` (`none` or `url(...)`).
+#[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum BackgroundImage {
+    /// `none`
+    #[default]
+    None,
+    /// `url(...)`
+    Url(String),
+}
+
+impl BackgroundImage {
+    /// Whether this is `none`.
+    #[must_use]
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
+}
+
 /// One `transform` function (only the geometry-affecting subset).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum TransformOp {

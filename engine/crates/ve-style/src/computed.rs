@@ -457,6 +457,16 @@ mod tests {
         assert_eq!(reset.color, Rgba::BLACK);
         assert_eq!(reset.font_size, 20.0);
         assert_eq!(reset.width, LengthPercentageAuto::Auto);
+
+        let imaged = compute(
+            &initial,
+            "background-image: url(\"https://a.test/x.png\")",
+            false,
+        );
+        assert_eq!(
+            imaged.background_image,
+            crate::values::BackgroundImage::Url("https://a.test/x.png".into())
+        );
     }
 
     #[test]

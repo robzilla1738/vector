@@ -300,12 +300,6 @@ impl DisplayList {
                     }));
                 }
             } else if !item.rect.is_empty() && style.visibility == ve_style::Visibility::Visible {
-                if let Some(handle) = images.get(&node) {
-                    list.push(DisplayItem::Image {
-                        rect: item.rect,
-                        handle: *handle,
-                    });
-                }
                 if !style.box_shadow.is_none() {
                     list.push(DisplayItem::BoxShadow {
                         rect: item.rect,
@@ -324,6 +318,12 @@ impl DisplayList {
                             color: bg,
                         });
                     }
+                }
+                if let Some(handle) = images.get(&node) {
+                    list.push(DisplayItem::Image {
+                        rect: item.rect,
+                        handle: *handle,
+                    });
                 }
                 let widths = Edges::new(
                     style.border_top_width,

@@ -18,8 +18,9 @@ use cssparser::{Parser, Token};
 use ve_core::Size;
 
 use crate::values::{
-    AlignItems, BorderCollapse, BorderStyle, BoxShadow, BoxSizing, CaptionSide, Clear, ClipPath,
-    Color, Content, ContentItem, Direction, Display, FlexDirection, FlexWrap, Float, FontFamily,
+    AlignItems, BackgroundImage, BorderCollapse, BorderStyle, BoxShadow, BoxSizing, CaptionSide,
+    Clear, ClipPath, Color, Content, ContentItem, Direction, Display, FlexDirection, FlexWrap,
+    Float, FontFamily,
     FontStyle, FontWeight, GridLine, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
     ObjectFit, Overflow, OverflowWrap, PointerEvents, Position, Rgba, SelfAlignment, TextAlign,
@@ -257,6 +258,8 @@ pub enum SpecifiedValue {
     Color(Color),
     /// A quoted string.
     Str(String),
+    /// `url(...)`.
+    Url(String),
     /// A font-family list.
     Family(Vec<FontFamily>),
     /// A grid track list.
@@ -655,6 +658,15 @@ mod conv {
                     SpecifiedTransform::Scale(x, y) => Some(TransformOp::Scale(*x, *y)),
                 })
                 .collect(),
+            _ => None,
+        }
+    }
+
+    pub fn background_image(v: &SpecifiedValue, _: &ConvertContext) -> Option<BackgroundImage> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(BackgroundImage::None),
+            SpecifiedValue::Url(u) => Some(BackgroundImage::Url(u.clone())),
+            SpecifiedValue::Str(s) => Some(BackgroundImage::Url(s.clone())),
             _ => None,
         }
     }
@@ -1079,6 +1091,8 @@ property_table! {
         blur: 0.0,
         color: Rgba::TRANSPARENT,
     }, inherited = false, syntax = BoxShadow, convert = conv::box_shadow;
+    /// `background-image` (`none` or `url(...)`)
+    BackgroundImage: "background-image" => background_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
 }
 
 impl ComputedStyle {
@@ -1197,7 +1211,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "transition-duration",
     "transition-delay",
     "transition-timing-function",
-    "background-image",
     "background-position",
     "background-position-x",
     "background-position-y",
@@ -1372,7 +1385,7 @@ fn parse_component<'i>(input: &mut Parser<'i, '_>) -> Option<SpecifiedValue> {
             None => SpecifiedValue::Number(value),
         },
         Token::QuotedString(s) => SpecifiedValue::Str(s.to_string()),
-        Token::UnquotedUrl(_) => SpecifiedValue::Unsupported,
+        Token::UnquotedUrl(u) => SpecifiedValue::Url(u.to_string()),
         Token::Function(name) => {
             let lower = name.to_ascii_lowercase();
             match lower.as_str() {
@@ -1393,6 +1406,24 @@ fn parse_component<'i>(input: &mut Parser<'i, '_>) -> Option<SpecifiedValue> {
                         })
                         .ok()?;
                     SpecifiedValue::Color(Color::Rgba(rgba))
+                }
+                "url" => {
+                    let href = input
+                        .parse_nested_block(|args| {
+                            let tok = args.next()?.clone();
+                            let href = match tok {
+                                Token::QuotedString(s) => s.to_string(),
+                                Token::UnquotedUrl(u) => u.to_string(),
+                                Token::Ident(s) => s.to_string(),
+                                _ => {
+                                    return Err(args.new_error_for_next_token::<()>());
+                                }
+                            };
+                            while args.next().is_ok() {}
+                            Ok::<_, cssparser::ParseError<'_, ()>>(href)
+                        })
+                        .ok()?;
+                    SpecifiedValue::Url(href)
                 }
                 "calc" | "min" | "max" | "clamp" | "-webkit-calc" | "-moz-calc" => {
                     let expr = input
@@ -2635,6 +2666,8 @@ mod tests {
         ok("transform", "none");
         ok("box-shadow", "0 4px 8px black");
         ok("box-shadow", "none");
+        ok("background-image", "none");
+        ok("background-image", "url(\"https://a.test/x.png\")");
         ok("border-top-style", "dashed");
         ok("pointer-events", "none");
         ok("opacity", "0.5");
@@ -2653,7 +2686,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 99);
+        assert_eq!(PropertyId::ALL.len(), 100);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

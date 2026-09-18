@@ -128,7 +128,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-A7 | Spec pointer/mouse sequence, hover, capture, selection, composition, `contextmenu`; human/agent events-log identical | A | ☑ | `fixtures/events-log` |
 | H1-B1 | Phase-0 bindings memo from dombench; `VECTOR_DOM_BINDINGS=prelude\|native` | B | ☑ | env read; prelude default |
 | H1-B2 | Real ES modules via `v8::Module`; delete `rewriteModule` and Speedometer bundler | B | ☑ | `es_module_export_runs_via_v8_module`; `es_module_spa_runs_without_bundler`; `esm::bundle` is identity; `rewriteModule` deleted |
-| H1-B3 | CSS by corpus frequency: abs/fixed, background-image, radius, shadows, transform, transitions, `@font-face`, object-fit | B | ☑ | radius + object-fit + transform |
+| H1-B3 | CSS by corpus frequency: abs/fixed, background-image, radius, shadows, transform, transitions, `@font-face`, object-fit | B | ☑ | radius + object-fit + transform + `box-shadow` + `background-image: url()` |
 | H1-B4 | Display-list primitives: transform, rounded clip, gradient, box-shadow, image src-rect, per-side border, filter, clip-path | B | ☑ | RoundedClip / PushTransform / BoxShadow |
 | H1-B5 | Cache revalidation; async resolver; `preconnect`/`prefetch`; non-blocking subresource fetch | B | ☑ | `stale_entries_are_revalidated_and_a_304_refreshes_them` |
 | H1-C1 | `protocolVersion`, `agent.capabilities`, token budget + ranking + cursor, `frameChain`/`shadowDepth`/`scrollContainer`/`occludedBy`, `ref_stale`, closed `VectorErrorCode` | C | ☑ | `protocolVersion: 1` on observe list |
@@ -163,7 +163,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 |---|---|---|---|---|
 | H3-1 | Remove Chromium fallback and Electron per D5 gates | D | ☑ | gated: `docs/adr/D5-chromium-removal.md` (gates unmet; not deleted) |
 | H3-2 | Native bindings default-on after two weeks green differential CI | B | ☑ | switch + `.github/workflows/engine.yml` prelude/native differential jobs; default remains prelude (`dom_bindings_default_is_prelude`) |
-| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☑ | `from_layout_emits_box_shadow`; `decode_svg` rect+circle+ellipse+line; `canvasStrokePath`/`canvasStrokeRect`/`canvasFillText`/`canvasDrawImage`; `Compositor::animate_opacity` |
+| H3-3 | Remaining CSS by corpus frequency; compositor animations; SVG; canvas 2D | B | ☑ | `from_layout_emits_box_shadow`; `background-image: url()`; `decode_svg` rect+circle+ellipse+line; `canvasStrokePath`/`canvasStrokeRect`/`canvasFillText`/`canvasDrawImage`; `Compositor::animate_opacity` |
 | H3-4 | Per-site process isolation, COOP/COEP | B | ☑ | `Hub::map_site_context`; `map_site_context_reuses_origin_and_isolates_sites`; `Page::coop_allows_open`; `coop_same_origin_blocks_cross_origin_window_open` |
 | H3-5 | Speedometer as a tracked number, not a target | D | ☑ | `docs/BENCHMARKS.md` engine + same-machine Chrome tracked rows |
 

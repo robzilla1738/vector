@@ -16,7 +16,7 @@ use ve_dom::{DirtyFlags, Document, Namespace, Node, NodeKind};
 use ve_gfx::{ImageCache, ImageHandle, SoftwareRenderer};
 use ve_html::DocumentMeta;
 use ve_layout::{LayoutEngine, LayoutTree, ParleyShaper};
-use ve_style::{StyleEngine, StyleTree};
+use ve_style::{BackgroundImage, StyleEngine, StyleTree};
 
 use crate::forms::{self, Enctype, FormMethod};
 use crate::keys::{Chord, Key};
@@ -2520,6 +2520,23 @@ impl Page {
             self.restyle_full_calls += 1;
         }
         self.doc.clear_dirty_all(DirtyFlags::STYLE);
+        self.install_background_images();
+    }
+
+    fn install_background_images(&mut self) {
+        let urls: Vec<(NodeId, String)> = self
+            .doc
+            .elements()
+            .filter_map(|id| match &self.style_tree.style(id).background_image {
+                BackgroundImage::Url(u) if u.starts_with("data:") => Some((id, u.clone())),
+                _ => None,
+            })
+            .collect();
+        for (id, data) in urls {
+            if let Some(bytes) = decode_data_url_bytes(&data) {
+                self.install_image(id, &bytes);
+            }
+        }
     }
 
     /// Recomputes styles and layout if anything is dirty. Uses the
