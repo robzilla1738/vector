@@ -15,7 +15,7 @@
       "pass": 28,
       "fail": 2,
       "total": 30,
-      "tls": "official html/dom/usvstring-reflection.https.html PASS over wpt-harness --https. official html/dom/idlharness.https.html still FAIL: document.all [[IsHTMLDDA]] plus remaining members. More official Reflect attrs and media state added. Not recorded as PASS.",
+      "tls": "official html/dom/usvstring-reflection.https.html PASS over wpt-harness --https. official html/dom/idlharness.https.html still FAIL: document.all [[IsHTMLDDA]] plus remaining members. Official table/input/select/label/progress/map/anchor IDL plus form-associated constraint validation added. Not recorded as PASS.",
       "rerunAfterLitCommentFix": "wpt-harness --http --wpt-dir /tmp/wpt-src/wpt --tree --tree-family html/dom/partial-updates: official tree 28 PASS / 2 FAIL of 30. Same two FAILs.",
       "unmodifiedUpstream": true
     },

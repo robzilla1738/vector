@@ -4841,3 +4841,100 @@ fn official_html_reflect_and_media_state_idl() {
     assert_eq!(v["paused"], true, "{v}");
     assert_eq!(v["vol"], true, "{v}");
 }
+
+#[test]
+fn official_html_table_input_select_and_label_idl() {
+    let mut page = open(
+        r#"<form id=fm><table id=tb><caption>c</caption><thead><tr><th>h</th></tr></thead><tbody><tr><td>d</td></tr></tbody></table><label id=lb for=in>L</label><input id=in type=number value=4 list=dl><select id=sel><option selected>a</option><option>b</option></select><progress id=pr value=2 max=4></progress><map id=mp name=m><area id=ar></map><a id=a href="/">t</a><datalist id=dl><option value=x></datalist><textarea id=ta>hi</textarea></form>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const table = document.getElementById("tb");
+              const row = table.rows[1];
+              const cell = row.cells[0];
+              const input = document.getElementById("in");
+              const select = document.getElementById("sel");
+              const label = document.getElementById("lb");
+              const progress = document.getElementById("pr");
+              const map = document.getElementById("mp");
+              const a = document.getElementById("a");
+              const list = document.getElementById("dl");
+              const ta = document.getElementById("ta");
+              const inserted = table.insertRow();
+              inserted.insertCell();
+              let delRowThrew = false;
+              try { table.deleteRow(); } catch (e) { delRowThrew = e instanceof TypeError; }
+              let rangeThrew = false;
+              try { input.setRangeText(); } catch (e) { rangeThrew = e instanceof TypeError; }
+              input.stepUp();
+              input.select();
+              ta.select();
+              return {
+                caption: table.caption && table.caption.textContent === "c",
+                tHead: table.tHead instanceof HTMLTableSectionElement,
+                tBodies: table.tBodies.length >= 1,
+                rows: table.rows.length >= 3,
+                rowIndex: row.rowIndex,
+                cellIndex: cell.cellIndex,
+                createCap: typeof HTMLTableElement.prototype.createCaption === "function",
+                delRowThrew,
+                filesTag: Object.prototype.toString.call(input.files),
+                filesInst: input.files instanceof FileList,
+                valueAsNumber: typeof input.valueAsNumber === "number",
+                valueAsDate: input.valueAsDate === null,
+                list: input.list === list,
+                selStart: "selectionStart" in HTMLInputElement.prototype,
+                form: input.form === document.getElementById("fm"),
+                will: input.willValidate === true,
+                validity: input.validity instanceof ValidityState,
+                labels: input.labels.length === 1 && input.labels[0] === label,
+                selected: select.selectedOptions.length === 1,
+                selectType: select.type === "select-one",
+                areas: map.areas.length === 1,
+                aText: a.text,
+                listOpts: list.options.length === 1,
+                progressPos: progress.position,
+                labelControl: label.control === input,
+                rangeThrew,
+                showPicker: typeof HTMLInputElement.prototype.showPicker === "function",
+                stepUp: typeof HTMLInputElement.prototype.stepUp === "function",
+                taType: ta.type === "textarea",
+                taLen: ta.textLength,
+                protoOwn: Object.prototype.hasOwnProperty.call(HTMLInputElement.prototype, "setCustomValidity"),
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["caption"], true, "{v}");
+    assert_eq!(v["tHead"], true, "{v}");
+    assert_eq!(v["tBodies"], true, "{v}");
+    assert_eq!(v["rows"], true, "{v}");
+    assert_eq!(v["rowIndex"], 1, "{v}");
+    assert_eq!(v["cellIndex"], 0, "{v}");
+    assert_eq!(v["createCap"], true, "{v}");
+    assert_eq!(v["delRowThrew"], true, "{v}");
+    assert_eq!(v["filesTag"], "[object FileList]", "{v}");
+    assert_eq!(v["filesInst"], true, "{v}");
+    assert_eq!(v["valueAsNumber"], true, "{v}");
+    assert_eq!(v["valueAsDate"], true, "{v}");
+    assert_eq!(v["list"], true, "{v}");
+    assert_eq!(v["selStart"], true, "{v}");
+    assert_eq!(v["form"], true, "{v}");
+    assert_eq!(v["will"], true, "{v}");
+    assert_eq!(v["validity"], true, "{v}");
+    assert_eq!(v["labels"], true, "{v}");
+    assert_eq!(v["selected"], true, "{v}");
+    assert_eq!(v["selectType"], true, "{v}");
+    assert_eq!(v["areas"], true, "{v}");
+    assert_eq!(v["aText"], "t", "{v}");
+    assert_eq!(v["listOpts"], true, "{v}");
+    assert_eq!(v["progressPos"], 0.5, "{v}");
+    assert_eq!(v["labelControl"], true, "{v}");
+    assert_eq!(v["rangeThrew"], true, "{v}");
+    assert_eq!(v["showPicker"], true, "{v}");
+    assert_eq!(v["stepUp"], true, "{v}");
+    assert_eq!(v["taType"], true, "{v}");
+    assert_eq!(v["taLen"], 2, "{v}");
+    assert_eq!(v["protoOwn"], true, "{v}");
+}

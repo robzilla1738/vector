@@ -2783,8 +2783,96 @@
       set(v) { this.setAttribute("name", String(v)); },
     });
   }
-  class HTMLInputElement extends HTMLElement {}
-  class HTMLTextAreaElement extends HTMLElement {}
+  class HTMLInputElement extends HTMLElement {
+    get indeterminate() { return !!this._indeterminate; }
+    set indeterminate(v) { this._indeterminate = !!v; }
+    get files() { return this._files || (this._files = emptyFileList()); }
+    set files(v) { this._files = v; }
+    get valueAsNumber() {
+      const n = parseFloat(this.value);
+      return isFinite(n) ? n : NaN;
+    }
+    set valueAsNumber(v) { this.value = String(v); }
+    get valueAsDate() { return this._valueAsDate == null ? null : this._valueAsDate; }
+    set valueAsDate(v) { this._valueAsDate = v; }
+    get list() {
+      const id = this.getAttribute("list");
+      return id ? document.getElementById(id) : null;
+    }
+    get selectionStart() { return this._selStart || 0; }
+    set selectionStart(v) { this._selStart = v | 0; }
+    get selectionEnd() { return this._selEnd == null ? (this.value || "").length : this._selEnd; }
+    set selectionEnd(v) { this._selEnd = v | 0; }
+    get selectionDirection() { return this._selDir || "none"; }
+    set selectionDirection(v) { this._selDir = String(v); }
+    get popoverTargetElement() {
+      const id = this.getAttribute("popovertarget");
+      return id ? document.getElementById(id) : this._popoverTarget || null;
+    }
+    set popoverTargetElement(v) { this._popoverTarget = v || null; }
+    stepUp(n) {
+      const step = parseFloat(this.getAttribute("step"));
+      const delta = (isFinite(step) && step > 0 ? step : 1) * (arguments.length ? n | 0 : 1);
+      const cur = this.valueAsNumber;
+      this.valueAsNumber = (isFinite(cur) ? cur : 0) + delta;
+    }
+    stepDown(n) { this.stepUp(-(arguments.length ? n | 0 : 1)); }
+    select() {
+      this.selectionStart = 0;
+      this.selectionEnd = (this.value || "").length;
+    }
+    showPicker() {}
+    setRangeText(replacement) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setRangeText' on 'HTMLInputElement': 1 argument required, but only 0 present.");
+      }
+      const start = arguments.length >= 3 ? arguments[1] | 0 : this.selectionStart;
+      const end = arguments.length >= 3 ? arguments[2] | 0 : this.selectionEnd;
+      const cur = this.value || "";
+      this.value = cur.slice(0, start) + String(replacement) + cur.slice(end);
+    }
+    setSelectionRange(start, end) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'setSelectionRange' on 'HTMLInputElement': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      this.selectionStart = start;
+      this.selectionEnd = end;
+      if (arguments.length > 2) this.selectionDirection = arguments[2];
+    }
+  }
+  class HTMLTextAreaElement extends HTMLElement {
+    get type() { return "textarea"; }
+    get defaultValue() { return this.getAttribute("value") || this.textContent || ""; }
+    set defaultValue(v) { this.textContent = v == null ? "" : String(v); }
+    get textLength() { return (this.value || "").length; }
+    get selectionStart() { return this._selStart || 0; }
+    set selectionStart(v) { this._selStart = v | 0; }
+    get selectionEnd() { return this._selEnd == null ? (this.value || "").length : this._selEnd; }
+    set selectionEnd(v) { this._selEnd = v | 0; }
+    get selectionDirection() { return this._selDir || "none"; }
+    set selectionDirection(v) { this._selDir = String(v); }
+    select() {
+      this.selectionStart = 0;
+      this.selectionEnd = (this.value || "").length;
+    }
+    setRangeText(replacement) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setRangeText' on 'HTMLTextAreaElement': 1 argument required, but only 0 present.");
+      }
+      const start = arguments.length >= 3 ? arguments[1] | 0 : this.selectionStart;
+      const end = arguments.length >= 3 ? arguments[2] | 0 : this.selectionEnd;
+      const cur = this.value || "";
+      this.value = cur.slice(0, start) + String(replacement) + cur.slice(end);
+    }
+    setSelectionRange(start, end) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'setSelectionRange' on 'HTMLTextAreaElement': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      this.selectionStart = start;
+      this.selectionEnd = end;
+      if (arguments.length > 2) this.selectionDirection = arguments[2];
+    }
+  }
   function defineValueAccessor(proto) {
     Object.defineProperty(proto, "value", {
       get() { const v = D("formValue", this.__h); return v == null ? "" : v; },
@@ -2795,6 +2883,39 @@
   }
   defineValueAccessor(HTMLInputElement.prototype);
   defineValueAccessor(HTMLTextAreaElement.prototype);
+  class FileList {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    item(i) { return this[i] || null; }
+  }
+  Object.defineProperty(FileList.prototype, Symbol.toStringTag, { value: "FileList", configurable: true });
+  function emptyFileList() {
+    const list = Object.create(FileList.prototype);
+    list.length = 0;
+    list.item = (i) => list[i] || null;
+    return list;
+  }
+  function nearestForm(el) {
+    const id = el.getAttribute && el.getAttribute("form");
+    if (id) return document.getElementById(id);
+    let n = el.parentElement;
+    while (n) {
+      if (n.tagName === "FORM") return n;
+      n = n.parentElement;
+    }
+    return null;
+  }
+  function labeledBy(el) {
+    return new LiveNodeList(() => {
+      const out = [];
+      const id = el.id;
+      const all = document.getElementsByTagName("label");
+      for (let i = 0; i < all.length; i++) {
+        const lab = all[i];
+        if (lab.control === el || (id && (lab.htmlFor === id || lab.getAttribute("for") === id))) out.push(lab);
+      }
+      return out;
+    });
+  }
   class HTMLSelectElement extends HTMLElement {
     get options() {
       if (this._options) return this._options;
@@ -2817,6 +2938,16 @@
     }
     get selectedIndex() { return this.options.selectedIndex; }
     set selectedIndex(i) { this.options.selectedIndex = i; }
+    get selectedOptions() {
+      return this._selectedOptions || (this._selectedOptions = new HTMLCollection(IDL_INTERNAL, () => {
+        const out = [];
+        const opts = this.options;
+        for (let i = 0; i < opts.length; i++) if (opts[i].selected) out.push(opts[i]);
+        return out;
+      }));
+    }
+    get type() { return this.multiple ? "select-multiple" : "select-one"; }
+    showPicker() {}
   }
   class HTMLOptionElement extends HTMLElement {
     get text() {
@@ -2927,6 +3058,8 @@
     set rel(v) { this.setAttribute("rel", String(v)); }
     get relList() { return this._relTL || (this._relTL = new DOMTokenList(this.__h, "rel")); }
     set relList(v) { this.setAttribute("rel", v == null ? "" : String(v)); }
+    get text() { return this.textContent || ""; }
+    set text(v) { this.textContent = v == null ? "" : String(v); }
   }
   installHyperlinkUtils(HTMLAnchorElement.prototype, "href");
   class HTMLAreaElement extends HTMLElement {
@@ -3350,7 +3483,15 @@
   class HTMLFrameSetElement extends HTMLElement {}
   class HTMLDetailsElement extends HTMLElement {}
   class HTMLFieldSetElement extends HTMLElement {}
-  class HTMLMapElement extends HTMLElement {}
+  class HTMLMapElement extends HTMLElement {
+    get areas() {
+      return this._areas || (this._areas = new HTMLCollection(IDL_INTERNAL, () => {
+        const out = [];
+        for (let c = this.firstChild; c; c = c.nextSibling) if (c.tagName === "AREA") out.push(c);
+        return out;
+      }));
+    }
+  }
   class HTMLMetaElement extends HTMLElement {}
   class HTMLOutputElement extends HTMLElement {
     get htmlFor() { return this._htmlForTL || (this._htmlForTL = new DOMTokenList(this.__h, "for")); }
@@ -3454,6 +3595,225 @@
     set(v) { this._returnValue = v == null ? "" : String(v); },
     enumerable: true,
     configurable: true,
+  });
+  function kidsByTag(el, tags) {
+    const want = typeof tags === "string" ? [tags] : tags;
+    return new HTMLCollection(IDL_INTERNAL, () => {
+      const out = [];
+      const walk = (node) => {
+        for (let c = node.firstChild; c; c = c.nextSibling) {
+          if (c.tagName && want.indexOf(c.tagName) >= 0) out.push(c);
+          else if (c.firstChild && c.tagName !== "TABLE") walk(c);
+        }
+      };
+      walk(el);
+      return out;
+    });
+  }
+  Object.defineProperties(HTMLTableElement.prototype, {
+    caption: {
+      get() { return this.querySelector("caption"); },
+      set(v) {
+        const old = this.caption;
+        if (old) this.removeChild(old);
+        if (v) this.insertBefore(v, this.firstChild);
+      },
+      enumerable: true, configurable: true,
+    },
+    tHead: {
+      get() { return this.querySelector("thead"); },
+      enumerable: true, configurable: true,
+    },
+    tFoot: {
+      get() { return this.querySelector("tfoot"); },
+      enumerable: true, configurable: true,
+    },
+    tBodies: {
+      get() { return this._tBodies || (this._tBodies = kidsByTag(this, "TBODY")); },
+      enumerable: true, configurable: true,
+    },
+    rows: {
+      get() { return this._rows || (this._rows = kidsByTag(this, "TR")); },
+      enumerable: true, configurable: true,
+    },
+    createCaption: {
+      value() { return this.caption || this.insertBefore(document.createElement("caption"), this.firstChild); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteCaption: {
+      value() { const c = this.caption; if (c) this.removeChild(c); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    createTHead: {
+      value() { return this.tHead || this.insertBefore(document.createElement("thead"), this.firstChild); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteTHead: {
+      value() { const h = this.tHead; if (h) this.removeChild(h); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    createTFoot: {
+      value() { return this.tFoot || this.appendChild(document.createElement("tfoot")); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteTFoot: {
+      value() { const f = this.tFoot; if (f) this.removeChild(f); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    createTBody: {
+      value() { return this.appendChild(document.createElement("tbody")); },
+      writable: true, enumerable: true, configurable: true,
+    },
+    insertRow: {
+      value(index) {
+        const rows = this.rows;
+        const tr = document.createElement("tr");
+        const i = arguments.length ? index | 0 : -1;
+        if (i === -1 || i >= rows.length) {
+          let body = this.tBodies[this.tBodies.length - 1];
+          if (!body) body = this.createTBody();
+          body.appendChild(tr);
+        } else {
+          rows[i].parentNode.insertBefore(tr, rows[i]);
+        }
+        return tr;
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteRow: {
+      value(index) {
+        if (arguments.length < 1) {
+          throw new TypeError("Failed to execute 'deleteRow' on 'HTMLTableElement': 1 argument required, but only 0 present.");
+        }
+        const row = this.rows[index | 0];
+        if (row) row.parentNode.removeChild(row);
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLTableSectionElement.prototype, {
+    rows: {
+      get() { return this._rows || (this._rows = kidsByTag(this, "TR")); },
+      enumerable: true, configurable: true,
+    },
+    insertRow: {
+      value(index) {
+        const rows = this.rows;
+        const tr = document.createElement("tr");
+        const i = arguments.length ? index | 0 : -1;
+        if (i === -1 || i >= rows.length) this.appendChild(tr);
+        else this.insertBefore(tr, rows[i]);
+        return tr;
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteRow: {
+      value(index) {
+        if (arguments.length < 1) {
+          throw new TypeError("Failed to execute 'deleteRow' on 'HTMLTableSectionElement': 1 argument required, but only 0 present.");
+        }
+        const row = this.rows[index | 0];
+        if (row) this.removeChild(row);
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLTableRowElement.prototype, {
+    cells: {
+      get() { return this._cells || (this._cells = kidsByTag(this, ["TD", "TH"])); },
+      enumerable: true, configurable: true,
+    },
+    insertCell: {
+      value(index) {
+        const cells = this.cells;
+        const td = document.createElement("td");
+        const i = arguments.length ? index | 0 : -1;
+        if (i === -1 || i >= cells.length) this.appendChild(td);
+        else this.insertBefore(td, cells[i]);
+        return td;
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+    deleteCell: {
+      value(index) {
+        if (arguments.length < 1) {
+          throw new TypeError("Failed to execute 'deleteCell' on 'HTMLTableRowElement': 1 argument required, but only 0 present.");
+        }
+        const cell = this.cells[index | 0];
+        if (cell) this.removeChild(cell);
+      },
+      writable: true, enumerable: true, configurable: true,
+    },
+    rowIndex: {
+      get() {
+        const table = this.closest ? this.closest("table") : null;
+        if (!table) return -1;
+        const rows = table.rows;
+        for (let i = 0; i < rows.length; i++) if (rows[i] === this) return i;
+        return -1;
+      },
+      enumerable: true, configurable: true,
+    },
+    sectionRowIndex: {
+      get() {
+        const sec = this.parentElement;
+        if (!sec || !sec.rows) return -1;
+        const rows = sec.rows;
+        for (let i = 0; i < rows.length; i++) if (rows[i] === this) return i;
+        return -1;
+      },
+      enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLTableCellElement.prototype, {
+    cellIndex: {
+      get() {
+        const row = this.parentElement;
+        if (!row || !row.cells) return -1;
+        const cells = row.cells;
+        for (let i = 0; i < cells.length; i++) if (cells[i] === this) return i;
+        return -1;
+      },
+      enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLDataListElement.prototype, {
+    options: {
+      get() { return this._options || (this._options = kidsByTag(this, "OPTION")); },
+      enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLProgressElement.prototype, {
+    value: {
+      get() { const n = parseFloat(this.getAttribute("value")); return isFinite(n) ? n : 0; },
+      set(v) { this.setAttribute("value", String(v)); },
+      enumerable: true, configurable: true,
+    },
+    position: {
+      get() {
+        const max = parseFloat(this.getAttribute("max"));
+        const m = isFinite(max) && max > 0 ? max : 1;
+        return this.value / m;
+      },
+      enumerable: true, configurable: true,
+    },
+    labels: {
+      get() { return this._labels || (this._labels = labeledBy(this)); },
+      enumerable: true, configurable: true,
+    },
+  });
+  Object.defineProperties(HTMLLabelElement.prototype, {
+    form: {
+      get() { return nearestForm(this); },
+      enumerable: true, configurable: true,
+    },
+    control: {
+      get() {
+        const id = this.htmlFor || this.getAttribute("for");
+        return id ? document.getElementById(id) : this.querySelector("input,select,textarea,button");
+      },
+      enumerable: true, configurable: true,
+    },
   });
   const HTMLMenuElement = defHTML("HTMLMenuElement");
   const HTMLDataElement = defHTML("HTMLDataElement");
@@ -3703,16 +4063,69 @@
     IsSearchProviderInstalled() { return 0; }
   }
   Object.defineProperty(External.prototype, Symbol.toStringTag, { value: "External", configurable: true });
-  for (const proto of [
-    HTMLInputElement.prototype, HTMLTextAreaElement.prototype, HTMLSelectElement.prototype,
-    HTMLButtonElement.prototype, HTMLFormElement.prototype, HTMLFieldSetElement.prototype,
-    HTMLOutputElement.prototype,
-  ]) {
-    Object.defineProperty(proto, "validity", {
-      get() { return this._validity || (this._validity = validityState()); },
-      configurable: true,
-    });
+  function installFormAssociated(proto, extra) {
+    const desc = {
+      form: {
+        get() { return nearestForm(this); },
+        enumerable: true, configurable: true,
+      },
+      willValidate: {
+        get() { return true; },
+        enumerable: true, configurable: true,
+      },
+      validity: {
+        get() { return this._validity || (this._validity = validityState()); },
+        enumerable: true, configurable: true,
+      },
+      validationMessage: {
+        get() { return this._validationMessage || ""; },
+        enumerable: true, configurable: true,
+      },
+      labels: {
+        get() { return this._labels || (this._labels = labeledBy(this)); },
+        enumerable: true, configurable: true,
+      },
+      checkValidity: {
+        value() { return this.validity.valid !== false; },
+        writable: true, enumerable: true, configurable: true,
+      },
+      reportValidity: {
+        value() { return this.checkValidity(); },
+        writable: true, enumerable: true, configurable: true,
+      },
+      setCustomValidity: {
+        value(msg) {
+          if (arguments.length < 1) {
+            throw new TypeError("Failed to execute 'setCustomValidity' on '" + proto.constructor.name + "': 1 argument required, but only 0 present.");
+          }
+          this._validationMessage = String(msg);
+        },
+        writable: true, enumerable: true, configurable: true,
+      },
+    };
+    if (extra === "popover") {
+      desc.popoverTargetElement = {
+        get() {
+          const id = this.getAttribute("popovertarget");
+          return id ? document.getElementById(id) : this._popoverTarget || null;
+        },
+        set(v) { this._popoverTarget = v || null; },
+        enumerable: true, configurable: true,
+      };
+    }
+    Object.defineProperties(proto, desc);
   }
+  installFormAssociated(HTMLInputElement.prototype, "popover");
+  installFormAssociated(HTMLTextAreaElement.prototype);
+  installFormAssociated(HTMLSelectElement.prototype);
+  installFormAssociated(HTMLButtonElement.prototype, "popover");
+  installFormAssociated(HTMLFormElement.prototype);
+  installFormAssociated(HTMLFieldSetElement.prototype);
+  installFormAssociated(HTMLOutputElement.prototype);
+  Object.defineProperty(HTMLOutputElement.prototype, "type", {
+    get() { return "output"; },
+    enumerable: true, configurable: true,
+  });
   Object.assign(HTML, {
     q: HTMLQuoteElement, blockquote: HTMLQuoteElement, time: HTMLTimeElement, br: HTMLBRElement,
     ins: HTMLModElement, del: HTMLModElement, table: HTMLTableElement, caption: HTMLTableCaptionElement,
@@ -3938,8 +4351,8 @@
     fieldset: { disabled: "boolean", name: "string" },
     legend: { align: "string" },
     label: { htmlFor: { type: "string", domAttrName: "for" } },
-    input: { accept: "string", alt: "string", autocomplete: { type: "string", customGetter: true }, defaultChecked: { type: "boolean", domAttrName: "checked" }, dirName: "string", disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", height: { type: "unsigned long", customGetter: true }, max: "string", maxLength: "limited long", min: "string", minLength: "limited long", multiple: "boolean", name: "string", pattern: "string", placeholder: "string", readOnly: "boolean", required: "boolean", size: { type: "limited unsigned long", defaultVal: 20 }, src: "url", step: "string", type: { type: "enum", keywords: ["hidden", "text", "search", "tel", "url", "email", "password", "date", "time", "datetime-local", "number", "range", "color", "checkbox", "radio", "file", "submit", "image", "reset", "button", "month", "week"], defaultVal: "text" }, width: { type: "unsigned long", customGetter: true }, defaultValue: { type: "string", domAttrName: "value" }, align: "string", useMap: "string" },
-    button: { command: "string", disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post", "dialog"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", name: "string", type: { type: "enum", keywords: ["submit", "reset", "button"], defaultVal: "submit" }, value: "string" },
+    input: { accept: "string", alpha: "boolean", alt: "string", autocomplete: { type: "string", customGetter: true }, defaultChecked: { type: "boolean", domAttrName: "checked" }, dirName: "string", disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", height: { type: "unsigned long", customGetter: true }, max: "string", maxLength: "limited long", min: "string", minLength: "limited long", multiple: "boolean", name: "string", pattern: "string", placeholder: "string", readOnly: "boolean", required: "boolean", size: { type: "limited unsigned long", defaultVal: 20 }, src: "url", step: "string", type: { type: "enum", keywords: ["hidden", "text", "search", "tel", "url", "email", "password", "date", "time", "datetime-local", "number", "range", "color", "checkbox", "radio", "file", "submit", "image", "reset", "button", "month", "week"], defaultVal: "text" }, width: { type: "unsigned long", customGetter: true }, defaultValue: { type: "string", domAttrName: "value" }, align: "string", useMap: "string", colorSpace: { type: "enum", keywords: ["limited-srgb", "display-p3"], defaultVal: "limited-srgb", invalidVal: "limited-srgb" }, popoverTargetAction: { type: "enum", keywords: ["toggle", "show", "hide"], defaultVal: "toggle", invalidVal: "toggle", domAttrName: "popovertargetaction" } },
+    button: { command: "string", disabled: "boolean", formAction: "url", formEnctype: { type: "enum", keywords: ["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"], invalidVal: "application/x-www-form-urlencoded" }, formMethod: { type: "enum", keywords: ["get", "post", "dialog"], invalidVal: "get" }, formNoValidate: "boolean", formTarget: "string", name: "string", type: { type: "enum", keywords: ["submit", "reset", "button"], defaultVal: "submit" }, value: "string", popoverTargetAction: { type: "enum", keywords: ["toggle", "show", "hide"], defaultVal: "toggle", invalidVal: "toggle", domAttrName: "popovertargetaction" } },
     select: { autocomplete: { type: "string", customGetter: true }, disabled: "boolean", multiple: "boolean", name: "string", required: "boolean", size: { type: "unsigned long", defaultVal: 0 } },
     optgroup: { disabled: "boolean", label: "string" },
     option: { disabled: "boolean", defaultSelected: { type: "boolean", domAttrName: "selected" } },
@@ -5122,7 +5535,7 @@
     HTMLLegendElement, HTMLOptGroupElement, HTMLDataListElement, HTMLProgressElement,
     HTMLMeterElement, HTMLDialogElement, HTMLMenuElement, HTMLDataElement,
     HTMLVideoElement, HTMLAudioElement, HTMLTrackElement, HTMLPictureElement, HTMLMediaElement,
-    MediaError, TimeRanges, TextTrack, TextTrackList, TextTrackCueList, ValidityState, DOMStringList, External,
+    MediaError, TimeRanges, TextTrack, TextTrackList, TextTrackCueList, ValidityState, DOMStringList, FileList, External,
     ElementInternals, CustomStateSet,
     Image, Audio, Option, external: windowExternal,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
