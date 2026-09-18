@@ -3,11 +3,11 @@
   "attribution": {
     "gate": false,
     "jetstreamSunspider": {
-      "executed": 67,
+      "executed": 68,
       "failed": 0,
-      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, late-eval mandreel/pdfjs, and WasmEMCC/Default wasm (richards/zlib/tsf/argon2/sqlite3/8bitbench/j2cl-box2d). Remaining Default wasm stays unexecuted. Not a JetStream Next geometric-mean published score.",
+      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, late-eval mandreel/pdfjs, and WasmEMCC/Default wasm (richards/zlib/tsf/argon2/sqlite3/8bitbench/j2cl-box2d/Dart-flute-todomvc). Remaining Default wasm stays unexecuted. Not a JetStream Next geometric-mean published score.",
       "officialGroup": 12,
-      "passed": 67
+      "passed": 68
     },
     "kind": "adapted-workload-phases",
     "motionmark13": {
@@ -36,7 +36,7 @@
   "os": "linux",
   "pins": {
     "jetstream": {
-      "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and Default wasm richards/zlib/tsf/argon2/sqlite3/8bitbench/j2cl-box2d. Remaining Default wasm stays unexecuted. Not a published JetStream geometric-mean score.",
+      "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and Default wasm richards/zlib/tsf/argon2/sqlite3/8bitbench/j2cl-box2d/Dart-flute-todomvc. Remaining Default wasm (Kotlin-compose, transformersjs-bert, dotnet-*) stays unexecuted. Not a published JetStream geometric-mean score.",
       "repo": "https://github.com/WebKit/JetStream",
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "status": "official-sunspider-default-js-wasmemcc",
@@ -78,8 +78,8 @@
       "status": "official-3.0"
     }
   },
-  "process_tree_rss_bytes": 387338240,
-  "rss_bytes": 387338240,
+  "process_tree_rss_bytes": 388022272,
+  "rss_bytes": 388022272,
   "security_mode": "developer-offline",
   "suites": [
     {
@@ -184,11 +184,11 @@
     },
     {
       "name": "jetstream.string-unpack-code",
-      "p50_ms": 8,
-      "p95_ms": 8,
+      "p50_ms": 9,
+      "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        8
+        9
       ],
       "status": "PASS"
     },
@@ -294,11 +294,11 @@
     },
     {
       "name": "jetstream.gbemu",
-      "p50_ms": 64,
-      "p95_ms": 64,
+      "p50_ms": 68,
+      "p95_ms": 68,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        64
+        68
       ],
       "status": "PASS"
     },
@@ -334,21 +334,21 @@
     },
     {
       "name": "jetstream.richards",
-      "p50_ms": 6,
-      "p95_ms": 6,
+      "p50_ms": 5,
+      "p95_ms": 5,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        6
+        5
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.splay",
-      "p50_ms": 21,
-      "p95_ms": 21,
+      "p50_ms": 22,
+      "p95_ms": 22,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        21
+        22
       ],
       "status": "PASS"
     },
@@ -394,11 +394,11 @@
     },
     {
       "name": "jetstream.ai-astar",
-      "p50_ms": 58,
-      "p95_ms": 58,
+      "p50_ms": 61,
+      "p95_ms": 61,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        58
+        61
       ],
       "status": "PASS"
     },
@@ -444,11 +444,11 @@
     },
     {
       "name": "jetstream.FlightPlanner",
-      "p50_ms": 7,
-      "p95_ms": 7,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        7
+        8
       ],
       "status": "PASS"
     },
@@ -464,11 +464,11 @@
     },
     {
       "name": "jetstream.json-parse-inspector",
-      "p50_ms": 26,
-      "p95_ms": 26,
+      "p50_ms": 27,
+      "p95_ms": 27,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        26
+        27
       ],
       "status": "PASS"
     },
@@ -524,51 +524,51 @@
     },
     {
       "name": "jetstream.threejs",
-      "p50_ms": 503,
-      "p95_ms": 503,
+      "p50_ms": 511,
+      "p95_ms": 511,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        503
+        511
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.pdfjs",
-      "p50_ms": 42,
-      "p95_ms": 42,
+      "p50_ms": 36,
+      "p95_ms": 36,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        42
+        36
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.mandreel",
-      "p50_ms": 60,
-      "p95_ms": 60,
+      "p50_ms": 61,
+      "p95_ms": 61,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        60
+        61
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.doxbee-promise",
-      "p50_ms": 18,
-      "p95_ms": 18,
+      "p50_ms": 19,
+      "p95_ms": 19,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        18
+        19
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.doxbee-async",
-      "p50_ms": 10,
-      "p95_ms": 10,
+      "p50_ms": 12,
+      "p95_ms": 12,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        10
+        12
       ],
       "status": "PASS"
     },
@@ -584,11 +584,11 @@
     },
     {
       "name": "jetstream.first-inspector-code-load",
-      "p50_ms": 20,
-      "p95_ms": 20,
+      "p50_ms": 21,
+      "p95_ms": 21,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        20
+        21
       ],
       "status": "PASS"
     },
@@ -604,11 +604,11 @@
     },
     {
       "name": "jetstream.bigint-noble-ed25519",
-      "p50_ms": 43,
-      "p95_ms": 43,
+      "p50_ms": 44,
+      "p95_ms": 44,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        43
+        44
       ],
       "status": "PASS"
     },
@@ -654,31 +654,31 @@
     },
     {
       "name": "jetstream.web-ssr",
-      "p50_ms": 26,
-      "p95_ms": 26,
+      "p50_ms": 27,
+      "p95_ms": 27,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        26
+        27
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.jsdom-d3-startup",
-      "p50_ms": 322,
-      "p95_ms": 322,
+      "p50_ms": 326,
+      "p95_ms": 326,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        322
+        326
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.typescript-lib",
-      "p50_ms": 1070,
-      "p95_ms": 1070,
+      "p50_ms": 1090,
+      "p95_ms": 1090,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        1070
+        1090
       ],
       "status": "PASS"
     },
@@ -724,31 +724,41 @@
     },
     {
       "name": "jetstream.sqlite3-wasm",
-      "p50_ms": 98,
-      "p95_ms": 98,
+      "p50_ms": 99,
+      "p95_ms": 99,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        98
+        99
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.8bitbench-wasm",
-      "p50_ms": 188,
-      "p95_ms": 188,
+      "p50_ms": 190,
+      "p95_ms": 190,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        188
+        190
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.j2cl-box2d-wasm",
-      "p50_ms": 58,
-      "p95_ms": 58,
+      "p50_ms": 65,
+      "p95_ms": 65,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        58
+        65
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "jetstream.Dart-flute-todomvc-wasm",
+      "p50_ms": 221,
+      "p95_ms": 221,
+      "revision": "c603c04db8505477867974a69789309ded2cc948",
+      "samples_ms": [
+        221
       ],
       "status": "PASS"
     }
@@ -756,11 +766,11 @@
   "review": "Vector_Current_Review_60b2d41",
   "officialFullSuite": false,
   "officialJetStreamGeometricMean": false,
-  "note": "Official JetStream Next pin c603c04: SunSpider 12/12 plus Default JS and wasm including sqlite3-wasm, 8bitbench-wasm, and j2cl-box2d-wasm (67 PASS, 0 FAIL, 0 NOTRUN of executed names). Remaining Default wasm (Dart-flute-todomvc, Kotlin-compose, transformersjs-bert, dotnet-*) stays unexecuted. Not a published JetStream geometric-mean score.",
+  "note": "Official JetStream Next pin c603c04: SunSpider 12/12 plus Default JS and wasm including sqlite3-wasm, 8bitbench-wasm, j2cl-box2d-wasm, and Dart-flute-todomvc-wasm (68 PASS, 0 FAIL, 0 NOTRUN of executed names). Remaining Default wasm (Kotlin-compose, transformersjs-bert, dotnet-*) stays unexecuted. Not a published JetStream geometric-mean score.",
   "counts": {
-    "pass": 67,
+    "pass": 68,
     "fail": 0,
     "notrun": 0,
-    "total": 67
+    "total": 68
   }
 }
