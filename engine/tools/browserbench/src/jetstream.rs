@@ -293,7 +293,6 @@ const DEFAULT_JS: &[(&str, &[&str], bool)] = &[
 ];
 
 /// Official `AsyncBenchmark` Default JS from `JetStreamDriver.js`.
-/// Wasm stays out of this slice.
 const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
     (
         "doxbee-promise",
@@ -410,7 +409,57 @@ const ASYNC_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
     ),
 ];
 
+/// Official `WasmEMCCBenchmark` Default names from `JetStreamDriver.js`.
+/// Start with the smallest emcc builds; larger Default wasm stays later.
+const WASM_JS: &[(&str, &[&str], bool, &[(&str, &str)])] = &[
+    (
+        "richards-wasm",
+        &[
+            "./wasm/richards/build/richards.js",
+            "./wasm/richards/benchmark.js",
+        ],
+        false,
+        &[("wasmBinary", "./wasm/richards/build/richards.wasm")],
+    ),
+    (
+        "zlib-wasm",
+        &["./wasm/zlib/build/zlib.js", "./wasm/zlib/benchmark.js"],
+        false,
+        &[("wasmBinary", "./wasm/zlib/build/zlib.wasm")],
+    ),
+    (
+        "tsf-wasm",
+        &["./wasm/TSF/build/tsf.js", "./wasm/TSF/benchmark.js"],
+        false,
+        &[("wasmBinary", "./wasm/TSF/build/tsf.wasm")],
+    ),
+    (
+        "argon2-wasm",
+        &[
+            "./wasm/argon2/build/argon2.js",
+            "./wasm/argon2/benchmark.js",
+        ],
+        true,
+        &[("wasmBinary", "./wasm/argon2/build/argon2.wasm.z")],
+    ),
+];
+
 const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[];
+
+/// Official `WasmEMCCBenchmark.prerunCode` Module stub (`JetStreamDriver.js`).
+const WASM_PRERUN: &str = r#"(function () {
+  function silent() {}
+  globalThis.abort = globalThis.quit = silent;
+  globalThis.print = globalThis.printErr = silent;
+  globalThis.Module = {
+    preRun: [],
+    postRun: [],
+    noInitialRun: true,
+    print: silent,
+    printErr: silent
+  };
+})();
+"#;
 
 const DETERMINISTIC_RANDOM: &str = r#"(function () {
   const initialSeed = 49734321;
@@ -468,6 +517,11 @@ fn run_default_js(
                     .map(|(name, _, _, _)| notrun(name, &revision, "no --jetstream-dir checkout")),
             )
             .chain(
+                WASM_JS
+                    .iter()
+                    .map(|(name, _, _, _)| notrun(name, &revision, "no --jetstream-dir checkout")),
+            )
+            .chain(
                 SKIPPED_DEFAULT_JS
                     .iter()
                     .map(|(name, why)| notrun(name, &revision, why)),
@@ -477,7 +531,7 @@ fn run_default_js(
     let mut results = Vec::new();
     for (name, files, det_rand) in DEFAULT_JS {
         eprintln!("browserbench: start jetstream.{name}");
-        match load_chunks(root, files, *det_rand, &[]) {
+        match load_chunks(root, files, *det_rand, &[], false) {
             Ok(chunks) => results.push(crate::jetstream_chunks(
                 engine,
                 iterations,
@@ -490,7 +544,20 @@ fn run_default_js(
     }
     for (name, files, det_rand, preloads) in ASYNC_JS {
         eprintln!("browserbench: start jetstream.{name}");
-        match load_chunks(root, files, *det_rand, preloads) {
+        match load_chunks(root, files, *det_rand, preloads, false) {
+            Ok(chunks) => results.push(crate::jetstream_async_chunks(
+                engine,
+                iterations,
+                &format!("jetstream.{name}"),
+                &chunks,
+                name,
+            )),
+            Err(detail) => results.push(failed_load(name, &revision, detail)),
+        }
+    }
+    for (name, files, det_rand, preloads) in WASM_JS {
+        eprintln!("browserbench: start jetstream.{name}");
+        match load_chunks(root, files, *det_rand, preloads, true) {
             Ok(chunks) => results.push(crate::jetstream_async_chunks(
                 engine,
                 iterations,
@@ -514,6 +581,7 @@ fn load_chunks(
     files: &[&str],
     det_rand: bool,
     preloads: &[(&str, &str)],
+    wasm: bool,
 ) -> Result<Vec<String>, String> {
     let mut chunks = vec![DETERMINISTIC_RANDOM.to_owned()];
     if det_rand {
@@ -521,6 +589,9 @@ fn load_chunks(
     }
     if !preloads.is_empty() {
         chunks.push(preload_prelude(root, preloads)?);
+    }
+    if wasm {
+        chunks.push(WASM_PRERUN.to_owned());
     }
     for rel in files {
         let path = root.join(rel.trim_start_matches("./"));
@@ -534,23 +605,36 @@ fn preload_prelude(root: &std::path::Path, preloads: &[(&str, &str)]) -> Result<
         r#"globalThis.JetStream = globalThis.JetStream || {};
 JetStream.preload = JetStream.preload || {};
 JetStream.__vePreload = JetStream.__vePreload || {};
+JetStream.__vePreloadBinary = JetStream.__vePreloadBinary || {};
 "#,
     );
     for (name, rel) in preloads {
         let path = root.join(rel.trim_start_matches("./"));
-        let text = read_js(&path)?;
         let key = serde_json::to_string(name).unwrap_or_else(|_| "\"\"".into());
-        let val =
-            serde_json::to_string(&text).map_err(|e| format!("encode preload {name}: {e}"))?;
         js.push_str("JetStream.preload[");
         js.push_str(&key);
         js.push_str("] = ");
         js.push_str(&key);
-        js.push_str(";\nJetStream.__vePreload[");
-        js.push_str(&key);
-        js.push_str("] = ");
-        js.push_str(&val);
         js.push_str(";\n");
+        if is_binary_preload(rel) {
+            let bytes = read_bytes(&path)?;
+            let val = serde_json::to_string(&base64_encode(&bytes))
+                .map_err(|e| format!("encode binary preload {name}: {e}"))?;
+            js.push_str("JetStream.__vePreloadBinary[");
+            js.push_str(&key);
+            js.push_str("] = ");
+            js.push_str(&val);
+            js.push_str(";\n");
+        } else {
+            let text = read_js(&path)?;
+            let val =
+                serde_json::to_string(&text).map_err(|e| format!("encode preload {name}: {e}"))?;
+            js.push_str("JetStream.__vePreload[");
+            js.push_str(&key);
+            js.push_str("] = ");
+            js.push_str(&val);
+            js.push_str(";\n");
+        }
     }
     js.push_str(
         r#"
@@ -560,6 +644,13 @@ JetStream.getString = async function (key) {
   return v;
 };
 JetStream.getBinary = async function (key) {
+  const b64 = JetStream.__vePreloadBinary[key];
+  if (b64 != null) {
+    const bin = atob(b64);
+    const out = new Int8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
   const v = await JetStream.getString(key);
   const out = new Int8Array(v.length);
   for (let i = 0; i < v.length; i++) out[i] = v.charCodeAt(i) & 0xff;
@@ -568,6 +659,47 @@ JetStream.getBinary = async function (key) {
 "#,
     );
     Ok(js)
+}
+
+fn is_binary_preload(rel: &str) -> bool {
+    let name = rel.to_ascii_lowercase();
+    name.ends_with(".wasm") || name.ends_with(".wasm.z")
+}
+
+fn read_bytes(path: &std::path::Path) -> Result<Vec<u8>, String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    if path.extension().and_then(|e| e.to_str()) == Some("z") {
+        let mut decoder = flate2::read::ZlibDecoder::new(bytes.as_slice());
+        let mut out = Vec::new();
+        std::io::Read::read_to_end(&mut decoder, &mut out)
+            .map_err(|e| format!("inflate {}: {e}", path.display()))?;
+        Ok(out)
+    } else {
+        Ok(bytes)
+    }
+}
+
+fn base64_encode(input: &[u8]) -> String {
+    const TABLE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
+    for chunk in input.chunks(3) {
+        let b0 = chunk[0];
+        let b1 = chunk.get(1).copied().unwrap_or(0);
+        let b2 = chunk.get(2).copied().unwrap_or(0);
+        out.push(TABLE[(b0 >> 2) as usize] as char);
+        out.push(TABLE[(((b0 & 0x03) << 4) | (b1 >> 4)) as usize] as char);
+        if chunk.len() > 1 {
+            out.push(TABLE[(((b1 & 0x0f) << 2) | (b2 >> 6)) as usize] as char);
+        } else {
+            out.push('=');
+        }
+        if chunk.len() > 2 {
+            out.push(TABLE[(b2 & 0x3f) as usize] as char);
+        } else {
+            out.push('=');
+        }
+    }
+    out
 }
 
 fn failed_load(name: &str, revision: &str, detail: String) -> SuiteResult {
@@ -609,7 +741,7 @@ fn notrun(name: &str, revision: &str, detail: &str) -> SuiteResult {
 
 #[cfg(test)]
 mod tests {
-    use super::read_js;
+    use super::{base64_encode, is_binary_preload, read_bytes, read_js};
     use std::io::Write;
 
     #[test]
@@ -620,6 +752,23 @@ mod tests {
         encoder.write_all(b"var payload = 42;\n").unwrap();
         std::fs::write(&path, encoder.finish().unwrap()).unwrap();
         assert_eq!(read_js(&path).unwrap(), "var payload = 42;\n");
+    }
+
+    #[test]
+    fn wasm_z_stays_raw_bytes() {
+        let dir = tempfile_dir();
+        let wasm = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0xff];
+        let path = dir.join("argon2.wasm.z");
+        let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::fast());
+        encoder.write_all(&wasm).unwrap();
+        std::fs::write(&path, encoder.finish().unwrap()).unwrap();
+        assert_eq!(read_bytes(&path).unwrap(), wasm);
+        assert!(is_binary_preload("./wasm/argon2/build/argon2.wasm.z"));
+        assert!(is_binary_preload("./wasm/richards/build/richards.wasm"));
+        assert!(!is_binary_preload(
+            "./SeaMonster/inspector-json-payload.js.z"
+        ));
+        assert_eq!(base64_encode(b"Hello, Vector"), "SGVsbG8sIFZlY3Rvcg==");
     }
 
     fn tempfile_dir() -> std::path::PathBuf {
