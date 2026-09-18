@@ -217,6 +217,11 @@ fn collect_testharness_tree(
         let dir = root.join(fam);
         if dir.is_dir() {
             walk(&dir, root, &mut out, &mut seen, limit)?;
+        } else if dir.is_file() {
+            let rel = fam.replace('\\', "/");
+            if seen.insert(rel.clone()) {
+                out.push((rel, dir));
+            }
         }
         return Ok(out);
     }
@@ -1226,6 +1231,23 @@ mod tests {
             "title must stay first in head so title-06 can remove it: {title_at} vs {th_at}"
         );
         assert!(out.trim_start().starts_with("<!doctype html>"), "{out:.80}");
+    }
+
+    #[test]
+    fn tree_family_accepts_a_single_official_file() {
+        let root = std::env::temp_dir().join(format!(
+            "ve-wpt-family-{}",
+            std::process::id()
+        ));
+        let rel = "html/dom/one.html";
+        let path = root.join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, "<script src=/resources/testharness.js></script>").unwrap();
+        let got = super::collect_testharness_tree(&root, 0, Some(rel)).unwrap();
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(got.len(), 1, "{got:?}");
+        assert_eq!(got[0].0, rel);
+        assert_eq!(got[0].1, path);
     }
 
     #[test]

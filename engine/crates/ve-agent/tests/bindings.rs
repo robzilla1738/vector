@@ -3359,15 +3359,24 @@ fn aria_enumerated_keywords_and_invalid_defaults() {
               const missingBusy = el.ariaBusy;
               el.setAttribute("aria-busy", "");
               const emptyBusy = el.ariaBusy;
-              return { mixed, canon, invalidBusy, missingBusy, emptyBusy };
+              el.removeAttribute("aria-autocomplete");
+              const missingAuto = el.ariaAutoComplete;
+              el.removeAttribute("aria-checked");
+              const missingChecked = el.ariaChecked;
+              el.removeAttribute("aria-label");
+              const missingLabel = el.ariaLabel;
+              return { mixed, canon, invalidBusy, missingBusy, emptyBusy, missingAuto, missingChecked, missingLabel };
             })()"#,
         )
         .unwrap();
     assert_eq!(v["mixed"], "mixed", "{v}");
     assert_eq!(v["canon"], "true", "{v}");
     assert_eq!(v["invalidBusy"], "false", "{v}");
-    assert_eq!(v["missingBusy"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["missingBusy"], "false", "{v}");
     assert_eq!(v["emptyBusy"], "false", "{v}");
+    assert_eq!(v["missingAuto"], "none", "{v}");
+    assert_eq!(v["missingChecked"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["missingLabel"], serde_json::Value::Null, "{v}");
 }
 
 #[test]
