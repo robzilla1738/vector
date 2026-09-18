@@ -1470,6 +1470,10 @@ mod tests {
             "official Complex-DOM 100-add: {v} restyle={restyle:?}"
         );
         assert_eq!(restyle.full_calls, 0, "100-add full restyle: {v} restyle={restyle:?}");
+        assert!(
+            v["showEntriesMs"].as_u64().unwrap_or(u64::MAX) < 4_000,
+            "showEntries must not scan a full mutation journal: {v} restyle={restyle:?}"
+        );
         eprintln!("complex-dom 100-add {v} restyle={restyle:?}");
     }
 
