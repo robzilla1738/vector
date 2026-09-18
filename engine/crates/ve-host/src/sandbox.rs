@@ -545,11 +545,103 @@ fn windows_job() -> Result<(), String> {
     Ok(())
 }
 
-/// Windows filesystem confinement. Low Integrity (`S-1-16-4096`) denies
-/// writes to Medium+ paths, including the process temp directory the `fs`
-/// selftest probes. Job Objects do not implement this (Finding 2).
+/// Windows filesystem confinement. Job Objects do not implement this
+/// (Finding 2). A write-denied TMP/TEMP plus Low Integrity (`S-1-16-4096`)
+/// denies the `fs` selftest and other Medium+ paths.
 #[cfg(windows)]
 fn confine_filesystem() -> Result<(), String> {
+    confine_temp_directory()?;
+    drop_integrity_low()
+}
+
+/// Point TMP/TEMP at a directory whose DACL denies writes. Create the
+/// directory first (Medium), then lock it, then drop integrity.
+#[cfg(windows)]
+fn confine_temp_directory() -> Result<(), String> {
+    const SE_FILE_OBJECT: u32 = 1;
+    const DACL_SECURITY_INFORMATION: u32 = 0x0000_0004;
+    const ACL_REVISION: u8 = 2;
+
+    #[repr(C)]
+    struct Acl {
+        revision: u8,
+        sbz1: u8,
+        size: u16,
+        ace_count: u16,
+        sbz2: u16,
+    }
+
+    #[link(name = "advapi32")]
+    unsafe extern "system" {
+        fn SetNamedSecurityInfoW(
+            name: *const u16,
+            object_type: u32,
+            security_info: u32,
+            owner: *const u8,
+            group: *const u8,
+            dacl: *const Acl,
+            sacl: *const u8,
+        ) -> u32;
+        fn InitializeAcl(acl: *mut Acl, len: u32, revision: u32) -> i32;
+    }
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn SetEnvironmentVariableW(name: *const u16, value: *const u16) -> i32;
+        fn GetLastError() -> u32;
+    }
+
+    fn wide(s: &str) -> Vec<u16> {
+        s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    let dir = std::env::temp_dir().join(format!("ve-host-sandbox-tmp-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).map_err(|e| format!("sandbox temp dir: {e}"))?;
+    let dir_s = dir.to_string_lossy();
+    let dir_w = wide(&dir_s);
+    let mut acl = Acl {
+        revision: 0,
+        sbz1: 0,
+        size: 0,
+        ace_count: 0,
+        sbz2: 0,
+    };
+    // Safety: empty DACL is deny-all; applied only to the sandbox temp dir.
+    unsafe {
+        if InitializeAcl(
+            &raw mut acl,
+            u32::try_from(std::mem::size_of::<Acl>()).unwrap_or(0),
+            u32::from(ACL_REVISION),
+        ) == 0
+        {
+            return Err(format!("InitializeAcl failed ({})", GetLastError()));
+        }
+        let err = SetNamedSecurityInfoW(
+            dir_w.as_ptr(),
+            SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION,
+            core::ptr::null(),
+            core::ptr::null(),
+            &raw const acl,
+            core::ptr::null(),
+        );
+        if err != 0 {
+            return Err(format!("SetNamedSecurityInfoW sandbox temp failed ({err})"));
+        }
+        for name in ["TMP", "TEMP", "TMPDIR"] {
+            if SetEnvironmentVariableW(wide(name).as_ptr(), dir_w.as_ptr()) == 0 {
+                return Err(format!(
+                    "SetEnvironmentVariableW {name} failed ({})",
+                    GetLastError()
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Mandatory Integrity Control at Low so writes to remaining Medium+ paths fail.
+#[cfg(windows)]
+fn drop_integrity_low() -> Result<(), String> {
     const TOKEN_QUERY: u32 = 0x0008;
     const TOKEN_ADJUST_DEFAULT: u32 = 0x0080;
     const TOKEN_INTEGRITY_LEVEL: u32 = 25;
@@ -665,7 +757,9 @@ mod tests {
     fn windows_production_confines_filesystem() {
         let src = include_str!("sandbox.rs");
         assert!(
-            src.contains("S-1-16-4096") && src.contains("TOKEN_INTEGRITY_LEVEL"),
+            src.contains("S-1-16-4096")
+                && src.contains("TOKEN_INTEGRITY_LEVEL")
+                && src.contains("confine_temp_directory"),
             "Finding 2: Windows production must confine filesystem writes, not only Job Object process limits"
         );
         let windows_fn = src.find("fn windows()").expect("windows apply");
