@@ -26,30 +26,74 @@ pub(crate) const OFFICIAL_NAMES: &[&str] = &[
     "Suits",
 ];
 
+struct OfficialHtml {
+    name: &'static str,
+    rel: &'static str,
+    extras: &'static [(&'static str, &'static str)],
+}
+
+/// Official `Suites[0].tests` URLs from `resources/runner/tests.js`.
+const OFFICIAL_HTML: &[OfficialHtml] = &[
+    OfficialHtml {
+        name: "Multiply",
+        rel: "MotionMark/tests/core/multiply.html",
+        extras: &[],
+    },
+    OfficialHtml {
+        name: "Canvas Arcs",
+        rel: "MotionMark/tests/core/canvas-stage.html",
+        extras: &[("pathType", "arcs")],
+    },
+    OfficialHtml {
+        name: "Leaves",
+        rel: "MotionMark/tests/core/leaves.html",
+        extras: &[],
+    },
+    OfficialHtml {
+        name: "Paths",
+        rel: "MotionMark/tests/core/canvas-stage.html",
+        extras: &[("pathType", "linePath")],
+    },
+    OfficialHtml {
+        name: "Canvas Lines",
+        rel: "MotionMark/tests/core/canvas-stage.html",
+        extras: &[("pathType", "line"), ("lineCap", "square")],
+    },
+    OfficialHtml {
+        name: "Images",
+        rel: "MotionMark/tests/core/image-data.html",
+        extras: &[],
+    },
+    OfficialHtml {
+        name: "Design",
+        rel: "MotionMark/tests/core/design.html",
+        extras: &[],
+    },
+    OfficialHtml {
+        name: "Suits",
+        rel: "MotionMark/tests/core/suits.html",
+        extras: &[],
+    },
+];
+
 pub(crate) fn run(
     engine: &mut VectorEngine,
     iterations: u32,
     dir: Option<&Path>,
 ) -> Vec<SuiteResult> {
     let revision = pin("motionmark", "revision");
-    OFFICIAL_NAMES
+    OFFICIAL_HTML
         .iter()
-        .map(|name| {
-            if *name == "Multiply" {
-                if let Some(root) = dir {
-                    return official_multiply(engine, iterations, root);
-                }
-                return notrun(
-                    name,
+        .map(|spec| {
+            if let Some(root) = dir {
+                official_html(engine, iterations, root, spec)
+            } else {
+                notrun(
+                    spec.name,
                     &revision,
-                    "official MotionMark/tests/core/multiply.html needs --motionmark-dir. Not a published score.",
-                );
+                    "official MotionMark HTML needs --motionmark-dir. Not a published score.",
+                )
             }
-            notrun(
-                name,
-                &revision,
-                "official MotionMark 1.3 name recorded; workload HTML not executed. Not a published score.",
-            )
         })
         .collect()
 }
@@ -66,17 +110,22 @@ fn notrun(name: &str, revision: &str, detail: &str) -> SuiteResult {
     }
 }
 
-fn official_multiply(engine: &mut VectorEngine, iterations: u32, root: &Path) -> SuiteResult {
+fn official_html(
+    engine: &mut VectorEngine,
+    iterations: u32,
+    root: &Path,
+    spec: &OfficialHtml,
+) -> SuiteResult {
     let revision = pin("motionmark", "revision");
     if !cfg!(feature = "v8") {
-        return notrun("Multiply", &revision, "built without v8");
+        return notrun(spec.name, &revision, "built without v8");
     }
-    let html_path = root.join("MotionMark/tests/core/multiply.html");
+    let html_path = root.join(spec.rel);
     let html = match inline_official_html(&html_path) {
         Ok(h) => h,
         Err(detail) => {
             return SuiteResult {
-                name: "motionmark.1.3.Multiply".into(),
+                name: format!("motionmark.1.3.{}", spec.name),
                 status: "NOTRUN",
                 revision,
                 samples_ms: None,
@@ -86,11 +135,15 @@ fn official_multiply(engine: &mut VectorEngine, iterations: u32, root: &Path) ->
             };
         }
     };
+    let start_js = official_start(spec.extras);
     let mut samples = Vec::new();
     let mut last_err = None;
     for _ in 0..iterations.max(1) {
         let opened = match engine.open(OpenRequest {
-            url: Some("https://browserbench.org/MotionMark/1.3/tests/core/multiply.html".into()),
+            url: Some(format!(
+                "https://browserbench.org/MotionMark/1.3/{}",
+                spec.rel.trim_start_matches("MotionMark/")
+            )),
             html: Some(html.clone()),
             allow_evaluate: true,
             ..OpenRequest::default()
@@ -106,7 +159,7 @@ fn official_multiply(engine: &mut VectorEngine, iterations: u32, root: &Path) ->
         }
         let start = match engine
             .page_mut(opened.page)
-            .and_then(|p| p.evaluate(MULTIPLY_START))
+            .and_then(|p| p.evaluate(&start_js))
         {
             Ok(_) => Instant::now(),
             Err(e) => {
@@ -120,7 +173,7 @@ fn official_multiply(engine: &mut VectorEngine, iterations: u32, root: &Path) ->
         }
         match engine
             .page_mut(opened.page)
-            .and_then(|p| p.evaluate(MULTIPLY_FINISH))
+            .and_then(|p| p.evaluate(OFFICIAL_FINISH))
         {
             Ok(_) => samples.push(u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX)),
             Err(e) => last_err = Some(e.to_string()),
@@ -129,33 +182,42 @@ fn official_multiply(engine: &mut VectorEngine, iterations: u32, root: &Path) ->
     }
     if samples.is_empty() {
         return SuiteResult {
-            name: "motionmark.1.3.Multiply".into(),
+            name: format!("motionmark.1.3.{}", spec.name),
             status: "FAIL",
             revision,
             samples_ms: None,
             p50_ms: None,
             p95_ms: None,
             detail: last_err.or(Some(
-                "official multiply.html did not complete initialize+animate. Not a published score."
-                    .into(),
+                "official HTML did not complete initialize+animate. Not a published score.".into(),
             )),
         };
     }
     SuiteResult {
-        name: "motionmark.1.3.Multiply".into(),
+        name: format!("motionmark.1.3.{}", spec.name),
         status: "PASS",
         revision,
         p50_ms: Some(percentile(&samples, 0.50)),
         p95_ms: Some(percentile(&samples, 0.95)),
         samples_ms: Some(samples),
-        detail: Some(
-            "official MotionMark/tests/core/multiply.html initialize+animate. Not a published MotionMark score."
-                .into(),
-        ),
+        detail: Some(format!(
+            "official {} initialize+animate. Not a published MotionMark score.",
+            spec.rel
+        )),
     }
 }
 
-const MULTIPLY_START: &str = r#"(function () {
+fn official_start(extras: &[(&str, &str)]) -> String {
+    let mut extra_js = String::new();
+    for (key, value) in extras {
+        extra_js.push_str(&format!(
+            "  options[{}] = {};\n",
+            serde_json::to_string(key).unwrap_or_else(|_| "\"\"".into()),
+            serde_json::to_string(value).unwrap_or_else(|_| "\"\"".into()),
+        ));
+    }
+    format!(
+        r#"(function () {{
   var stage = document.getElementById("stage");
   if (!stage) throw new Error("missing #stage");
   document.documentElement.style.height = "720px";
@@ -163,10 +225,10 @@ const MULTIPLY_START: &str = r#"(function () {
   document.body.style.height = "720px";
   stage.style.width = "1280px";
   stage.style.height = "720px";
-  if (typeof window.benchmarkClass !== "function") {
+  if (typeof window.benchmarkClass !== "function") {{
     throw new Error("window.benchmarkClass missing");
-  }
-  var options = {
+  }}
+  var options = {{
     "warmup-length": 0,
     "warmup-frame-count": 0,
     "first-frame-minimum-length": 0,
@@ -175,31 +237,31 @@ const MULTIPLY_START: &str = r#"(function () {
     "controller": "fixed",
     "frame-rate": 60,
     "complexity": 24
-  };
-  var b = new window.benchmarkClass(options);
-  window.__veMm = { bench: b, done: null, err: null };
-  b.initialize({}).then(function () {
+  }};
+{extra_js}  var b = new window.benchmarkClass(options);
+  window.__veMm = {{ bench: b, done: null, err: null }};
+  b.initialize({{}}).then(function () {{
     b.stage.tune(24);
     b._currentTimestamp = Date.now();
     b._benchmarkStartTimestamp = Date.now() - 1000;
     b.stage.animate();
-    window.__veMm.done = {
-      tiles: b.stage.tiles.length,
+    window.__veMm.done = {{
       complexity: b.stage.complexity(),
-      children: document.getElementById("stage").childNodes.length
-    };
-  }, function (e) {
+      hasStage: !!document.getElementById("stage")
+    }};
+  }}, function (e) {{
     window.__veMm.err = String(e && e.message ? e.message : e);
-  });
+  }});
   return true;
-})()"#;
+}})()"#
+    )
+}
 
-const MULTIPLY_FINISH: &str = r#"(function () {
+const OFFICIAL_FINISH: &str = r#"(function () {
   var s = window.__veMm;
   if (!s) throw new Error("no __veMm");
   if (s.err) throw new Error(s.err);
   if (!s.done) throw new Error("initialize did not finish");
-  if (!s.done.tiles) throw new Error("no tiles: " + JSON.stringify(s.done));
   return true;
 })()"#;
 
@@ -391,7 +453,13 @@ fn run_gpu_inner(iterations: u32, revision: String) -> SuiteResult {
 
 #[cfg(test)]
 mod tests {
-    use super::run_gpu;
+    use super::{OFFICIAL_HTML, OFFICIAL_NAMES, run_gpu};
+
+    #[test]
+    fn official_html_matches_runner_names() {
+        let names: Vec<&str> = OFFICIAL_HTML.iter().map(|s| s.name).collect();
+        assert_eq!(names, OFFICIAL_NAMES);
+    }
 
     #[test]
     fn gpu_multiply_is_honest_without_feature() {

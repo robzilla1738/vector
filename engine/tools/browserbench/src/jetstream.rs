@@ -266,6 +266,28 @@ const DEFAULT_JS: &[(&str, &[&str], bool)] = &[
         ],
         false,
     ),
+    (
+        "raytrace-public-class-fields",
+        &["./class-fields/raytrace-public-class-fields.js"],
+        false,
+    ),
+    (
+        "raytrace-private-class-fields",
+        &["./class-fields/raytrace-private-class-fields.js"],
+        false,
+    ),
+    ("sync-fs", &["./generators/sync-file-system.js"], true),
+    (
+        "lazy-collections",
+        &["./generators/lazy-collections.js"],
+        false,
+    ),
+    ("js-tokens", &["./generators/js-tokens.js"], false),
+    (
+        "threejs",
+        &["./threejs/three.js", "./threejs/benchmark.js"],
+        true,
+    ),
 ];
 
 const SKIPPED_DEFAULT_JS: &[(&str, &str)] = &[
