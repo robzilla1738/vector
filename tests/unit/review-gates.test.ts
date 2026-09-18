@@ -82,6 +82,97 @@ describe("Gate D permissions and durable writes", () => {
     if (!auth.ok) expect(auth.effect).toBe("write");
   });
 
+  it("pages.execute is the permission chokepoint; RPC grants cannot expand it", async () => {
+    const makePage = (pageId: string, url: string): DriverPage => ({
+      identity: { pageId, targetId: "engine-perm", backend: "vector-engine" },
+      url: () => url,
+      title: async () => "form",
+      isAttached: () => true,
+      navigate: async () => {},
+      back: async () => {},
+      forward: async () => {},
+      reload: async () => {},
+      stop: async () => {},
+      click: async () => {
+        throw new Error("click must not dispatch when write is not granted");
+      },
+      dblclick: async () => {},
+      hover: async () => {},
+      fill: async () => {},
+      typeText: async () => {},
+      press: async () => {},
+      check: async () => {},
+      uncheck: async () => {},
+      select: async () => {},
+      scroll: async () => {},
+      dragTo: async () => {},
+      clickPoint: async () => {},
+      uploadFiles: async () => {},
+      waitFor: async () => ({ ok: true, timedOut: false }),
+      waitForDownload: async () => ({ suggestedFilename: "f" }),
+      handleDialog: async () => {},
+      collectScroll: async () => ({ items: [], collected: 0 }),
+      screenshot: async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }),
+      observe: async () => obs({ url }) as unknown as ObservationContent,
+      expandRef: async () => [],
+      extract: async () => ({ t: "ok" }),
+      evaluate: async () => null,
+      setEvents: () => {},
+      dispose: async () => {},
+      executeProgram: async (steps) => {
+        if (steps.some((s) => s.op === "click")) {
+          throw new Error("click must not reach the driver");
+        }
+        return {
+          status: "completed",
+          steps: steps.map((s) => ({
+            stepId: s.id,
+            op: s.op,
+            status: "ok",
+            startedAt: 1,
+            durationMs: 1,
+          })),
+        } as ExecuteProgramResult;
+      },
+    });
+    const driver: BrowserDriver = {
+      backend: "vector-engine",
+      connect: async () => {},
+      disconnect: async () => {},
+      isConnected: () => true,
+      listTargets: async () => [],
+      createTarget: async () => "engine-perm",
+      routingOf: () => ({ requiresScript: false }),
+      attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/form"),
+    };
+    const repo = new Repo(openDb(":memory:"));
+    const pages = new PageService({
+      repo,
+      events: new EventBus(repo),
+      native: new NullNativeBridge(),
+      grants: ["effect:read"],
+      drivers: () => ({ vector: null, chrome: null, engine: driver }),
+      router: new Router({
+        mode: () => "always",
+        engineAvailable: () => true,
+        store: new MemoryRouterStore(),
+      }),
+    });
+    const opened = await pages.open({ url: "https://app.test/form", background: true, ownedByRuntime: true });
+    const read = await pages.execute({
+      pageId: opened.pageId,
+      steps: [{ id: "e", op: "extract", fields: [{ name: "t", selector: "h1" }] }],
+    });
+    expect(read.status).toBe("completed");
+    await expect(
+      pages.execute({
+        pageId: opened.pageId,
+        steps: [{ id: "c", op: "click", target: "r9" }],
+        grants: ["effect:write", "effect:*"],
+      } as never),
+    ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+  });
+
   it("does not dispatch a second write with the same idempotency key", () => {
     const ledger = new DurableWriteLedger();
     const signature = stepSignature([{ op: "click", target: "r1" }]);

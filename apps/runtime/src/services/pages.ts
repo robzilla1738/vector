@@ -20,6 +20,7 @@ import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
 import { executeProgram, type ExecContext } from "../execution/executor.js";
+import { authorizeProgram, DEFAULT_GRANTS } from "../agent/permissions.js";
 import { Router, isFallbackError } from "./router.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 
@@ -87,6 +88,11 @@ export interface PageServiceDeps {
   callOperation?: (name: string, args: Record<string, unknown>, pageId: string) => Promise<unknown>;
   /** Electron hybrid paint for engine pages. Off unless the hybrid desktop opts in. */
   electronEngineView?: () => boolean;
+  /**
+   * Privilege-independent effect grants (Gate D). Model text and RPC
+   * params cannot expand these. Defaults allow the existing test surface.
+   */
+  grants?: readonly string[];
 }
 
 /**
@@ -739,6 +745,9 @@ export class PageService {
       if (!lp?.driver?.isAttached()) throw new VectorError("target_detached", `page ${pageId} is not attached`);
       if (lp.target.controller === "human")
         throw new VectorError("conflict", `page ${pageId} is under human control`);
+      const allSteps = collectSteps(program);
+      const auth = authorizeProgram(allSteps, this.deps.grants ?? DEFAULT_GRANTS);
+      if (!auth.ok) throw new VectorError("permission_denied", auth.denied);
       this.programInflight.add(pageId);
       try {
       lp.target.controller = ctx.runId ? "agent" : lp.target.controller === "none" ? "external" : lp.target.controller;
@@ -746,7 +755,6 @@ export class PageService {
       // pointer/keyboard input only lands on a visible, laid-out native view —
       // mark the page working (rendered offscreen unless focused) while a
       // program with interactive steps runs; no global lease (plan A8)
-      const allSteps = collectSteps(program);
       const needsStage =
         lp.target.backend === "vector" &&
         this.deps.native.available() &&

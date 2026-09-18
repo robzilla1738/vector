@@ -21,7 +21,8 @@
     "html_collection_types_match_html_idl": "PASS",
     "live_os_window_and_mcp_share_one_page": "PASS DISPLAY=:1 after libxkbcommon-x11 (was panic: Library libxkbcommon-x11.so could not be loaded). IME+observe+agent+takeover+resume+resize+wheel+AccessKit+scene on one NativeBrowser. chromium=false. CI xvfb job added.",
     "node_planner_is_browser_service_client": "PASS VectorEngineDriver ownService starts/attaches to BrowserService. Order: VECTOR_BROWSER_SERVICE, NAPI BrowserServiceHandle.listen, then spawn ve-shell --service. Injected load keeps a local Engine for unit tests.",
-    "node_takeover_stops_second_service_client": "PASS VectorEngineDriver.takeover/resume call pages.takeover/pages.resume. PageService forwards vector-engine takeover to the driver. A second BrowserServiceClient execute is conflict until resume. Local-only Engine without takeover stays TS controller only."
+    "node_takeover_stops_second_service_client": "PASS VectorEngineDriver.takeover/resume call pages.takeover/pages.resume. PageService forwards vector-engine takeover to the driver. A second BrowserServiceClient execute is conflict until resume. Local-only Engine without takeover stays TS controller only.",
+    "pages_execute_is_permission_chokepoint": "PASS PageService.execute runs authorizeProgram on collected steps before dispatch. Grants come from PageServiceDeps only. A program/RPC grants field does not expand them. Read extract succeeds under effect:read; click is permission_denied and never reaches the driver."
   },
   "exit": {
     "humanEditsField": true,
