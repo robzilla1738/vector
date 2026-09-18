@@ -4751,7 +4751,6 @@
   function validityState() { return Object.create(ValidityState.prototype); }
   class CustomStateSet {
     constructor() { throw new TypeError("Illegal constructor"); }
-    get size() { return this._items ? this._items.size : 0; }
     add(v) { (this._items || (this._items = new Set())).add(String(v)); return this; }
     has(v) { return !!(this._items && this._items.has(String(v))); }
     delete(v) { return !!(this._items && this._items.delete(String(v))); }
@@ -4760,6 +4759,15 @@
     keys() { return (this._items || new Set()).keys(); }
     values() { return (this._items || new Set()).values(); }
     entries() { return (this._items || new Set()).entries(); }
+  }
+  {
+    const getSize = function () { return this._items ? this._items.size : 0; };
+    Object.defineProperty(getSize, "name", { value: "get size", configurable: true });
+    Object.defineProperty(CustomStateSet.prototype, "size", {
+      get: getSize,
+      enumerable: true,
+      configurable: true,
+    });
   }
   for (const name of ["add", "has", "delete", "clear", "forEach", "keys", "values", "entries"]) {
     Object.defineProperty(CustomStateSet.prototype, name, {
