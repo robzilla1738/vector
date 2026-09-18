@@ -3401,7 +3401,7 @@
     }
     getContext(type) {
       if (String(type).toLowerCase() !== "2d") return null;
-      if (!this._ctx2d) this._ctx2d = new CanvasRenderingContext2D(this);
+      if (!this._ctx2d) this._ctx2d = new CanvasRenderingContext2D(IDL_INTERNAL, this);
       return this._ctx2d;
     }
     toDataURL() { return D("canvasToDataURL", this.__h) || "data:,"; }
@@ -3567,7 +3567,8 @@
   }
   class CanvasRenderingContext2D {
     constructor() {
-      const canvas = arguments[0];
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      const canvas = arguments[1];
       this._canvas = canvas || null;
       this.__h = canvas && canvas.__h;
       this._fillStyle = "#000000";
@@ -3755,6 +3756,32 @@
     const src = Object.getOwnPropertyDescriptors(CanvasRenderingContext2D.prototype);
     delete src.constructor;
     Object.defineProperties(OffscreenCanvasRenderingContext2D.prototype, src);
+  }
+  {
+    const argc = {
+      scale: 2, translate: 2, transform: 6, createConicGradient: 3, createPattern: 2,
+      strokeRect: 4, isPointInPath: 2, isPointInStroke: 2, fillText: 3, strokeText: 3,
+      drawImage: 3, quadraticCurveTo: 4, bezierCurveTo: 6, arcTo: 5, roundRect: 4,
+      ellipse: 7, moveTo: 2, lineTo: 2, rect: 4, arc: 5, getImageData: 4, putImageData: 3,
+    };
+    const wrapArgc = (proto) => {
+      for (const name of Object.keys(argc)) {
+        const fn = proto[name];
+        if (typeof fn !== "function") continue;
+        const n = argc[name];
+        const wrapped = function () {
+          if (arguments.length < n) {
+            throw new TypeError("Failed to execute '" + name + "' on '" + (proto.constructor && proto.constructor.name || "Canvas") + "': " + n + " arguments required, but only " + arguments.length + " present.");
+          }
+          return fn.apply(this, arguments);
+        };
+        Object.defineProperty(wrapped, "length", { value: fn.length > n ? fn.length : n, configurable: true });
+        Object.defineProperty(wrapped, "name", { value: name, configurable: true });
+        proto[name] = wrapped;
+      }
+    };
+    wrapArgc(CanvasRenderingContext2D.prototype);
+    wrapArgc(OffscreenCanvasRenderingContext2D.prototype);
   }
   class HTMLUnknownElement extends HTMLElement {
     constructor() {
@@ -7133,8 +7160,15 @@
     for (const name of names) {
       const desc = Object.getOwnPropertyDescriptor(Location.prototype, name);
       if (!desc) continue;
-      desc.configurable = false;
-      try { Object.defineProperty(location, name, desc); } catch (e) {}
+      const out = { enumerable: true, configurable: false };
+      if (desc.get) {
+        out.get = desc.get;
+        if (desc.set) out.set = desc.set;
+      } else {
+        out.value = desc.value;
+        out.writable = false;
+      }
+      try { Object.defineProperty(location, name, out); } catch (e) {}
     }
   }
   for (const name of ["parseHTMLUnsafe", "parseHTML"]) {
@@ -7260,6 +7294,18 @@
     if (arguments.length < 1) throw new TypeError("Failed to execute 'reportError' on 'Window': 1 argument required, but only 0 present.");
     try { console.error(e); } catch (err) {}
   }, 1);
+  globalThis.createImageBitmap = windowOp(function createImageBitmap(image) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'createImageBitmap' on 'Window': 1 argument required, but only 0 present.");
+    }
+    return Promise.resolve({});
+  }, 1);
+  globalThis.structuredClone = windowOp(function structuredClone(value) {
+    if (arguments.length < 1) {
+      throw new TypeError("Failed to execute 'structuredClone' on 'Window': 1 argument required, but only 0 present.");
+    }
+    return JSON.parse(JSON.stringify(value));
+  }, 1);
   if (typeof globalThis.setTimeout === "function") {
     globalThis.setTimeout = windowOp(globalThis.setTimeout, 1);
     globalThis.setInterval = windowOp(globalThis.setInterval, 1);
@@ -7285,6 +7331,20 @@
         throw new TypeError("Failed to execute 'cancelAnimationFrame' on 'Window': 1 argument required, but only 0 present.");
       }
       return origCaf.call(globalThis, id);
+    }, 1);
+    const origSto = globalThis.setTimeout;
+    const origSiv = globalThis.setInterval;
+    globalThis.setTimeout = windowOp(function setTimeout(handler) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setTimeout' on 'Window': 1 argument required, but only 0 present.");
+      }
+      return origSto.apply(globalThis, arguments);
+    }, 1);
+    globalThis.setInterval = windowOp(function setInterval(handler) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'setInterval' on 'Window': 1 argument required, but only 0 present.");
+      }
+      return origSiv.apply(globalThis, arguments);
     }, 1);
   }
 
@@ -7313,7 +7373,7 @@
       configurable: true,
     });
   }
-  for (const name of ["addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "alert", "confirm", "prompt", "print", "focus", "blur", "stop", "close", "open", "getComputedStyle", "matchMedia", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "btoa", "atob", "fetch", "getSelection", "reportError"]) {
+  for (const name of ["addEventListener", "removeEventListener", "dispatchEvent", "postMessage", "alert", "confirm", "prompt", "print", "focus", "blur", "stop", "close", "open", "getComputedStyle", "matchMedia", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "btoa", "atob", "fetch", "getSelection", "reportError", "createImageBitmap", "structuredClone"]) {
     const fn = globalThis[name];
     if (typeof fn === "function") {
       try {
