@@ -37,6 +37,6 @@
   "remaining": [
     "Gate A downloaded release artifact: copy-to-temp host test + CI job downloaded-artifact (downloads engine-native-{ubuntu,macos,windows} then re-runs production_sandbox). .github/workflows/release.yml publishes ve-host + .node on tag v* for ubuntu/macos/windows. No GitHub Release page exists until a v* tag is pushed.",
     "official html/dom remaining FAILs sanitize-template-element, template-for-empty, and tentative aria-attribute-reflection-enumerated (contradicts non-tentative string mixin). Official remove-element-unblocks-rendering.optional.html PASS. official idlharness.https.html PASS 1405ms on pin 7c204383 (0 FAIL subtests after V8 MarkAsUndetectable document.all). That file only, not the entire web.",
-    "full official Speedometer/JetStream/MotionMark published score. browserbench --official-score applies JetStreamDriver.js toScore/first-average-worst/geomean (120), Speedometer 1000/geomean of 32 suite totals over 10 iterations, and MotionMark ramp-complexity bootstrap. official* published flags stay false until those official conditions are met. initialize+animate and 1-iteration lab p50s are not published scores."
+    "full official Speedometer/JetStream/MotionMark published score. --official-score SunSpider 12/12 at 120 same-page iterations is in jetstream-official-score-latest.json (lab geomean 792.91, Date.now-wall, officialJetStreamGeometricMean false). Speedometer 10-iter Score and MotionMark ramp-complexity remain unpublished. initialize+animate and 1-iteration lab p50s are not published scores."
   ]
 }
