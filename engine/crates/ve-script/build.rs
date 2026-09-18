@@ -100,7 +100,11 @@ fn compile_html_dda() {
     // Linux/macOS: g++ finds cstddef. Windows: rusty_v8 ships MSVC/clang-cl
     // objects; MinGW g++ cannot link MarkAsUndetectable.
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
-    if target_os != "windows" {
+    if target_os == "windows" {
+        // MSVC keeps __cplusplus at 199711L unless this flag is set.
+        // v8config.h rejects that as "C++20 or later required."
+        build.flag("/Zc:__cplusplus");
+    } else {
         build.compiler("g++");
     }
     build.compile("ve_html_dda");
