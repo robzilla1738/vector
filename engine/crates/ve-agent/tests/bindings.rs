@@ -5168,3 +5168,35 @@ fn text_decoder_decodes_utf8_heap_views() {
     assert_eq!(v["utf16le"], "ICU", "{v}");
     assert_eq!(v["utf16enc"], "utf-16le", "{v}");
 }
+
+#[test]
+fn mouse_event_buttons_default_is_zero_and_mouseup_reaches_window() {
+    let mut page = open("<div id=t>x</div>");
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const down = new MouseEvent("mousedown");
+              const up = new MouseEvent("mouseup");
+              const click = new MouseEvent("click", { button: 0 });
+              const pressed = new MouseEvent("mousedown", { button: 0, buttons: 1 });
+              let windowUp = 0;
+              window.addEventListener("mouseup", function () { windowUp++; });
+              document.getElementById("t").dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+              return {
+                downButtons: down.buttons,
+                upButtons: up.buttons,
+                clickButtons: click.buttons,
+                downButton: down.button,
+                pressedButtons: pressed.buttons,
+                windowUp: windowUp
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["downButtons"], 0, "{v}");
+    assert_eq!(v["upButtons"], 0, "{v}");
+    assert_eq!(v["clickButtons"], 0, "{v}");
+    assert_eq!(v["downButton"], 0, "{v}");
+    assert_eq!(v["pressedButtons"], 1, "{v}");
+    assert_eq!(v["windowUp"], 1, "{v}");
+}

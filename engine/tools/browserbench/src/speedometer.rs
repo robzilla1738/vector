@@ -1106,11 +1106,19 @@ fn run_one_official(
                 .page_mut(page)
                 .and_then(|p| {
                     p.evaluate(
-                        r##"(function(){return JSON.stringify({
+                        r##"(function(){
+                          var paneErr = null;
+                          try { if (typeof getChartPane === "function") getChartPane(); }
+                          catch (e) { paneErr = String(e && e.message ? e.message : e); }
+                          return JSON.stringify({
                           render: !!document.getElementById("render"),
                           cursor: !!document.querySelector(".react-stockcharts-crosshair-cursor"),
+                          grabbing: !!document.querySelector(".react-stockcharts-grabbing-cursor"),
                           svg: document.querySelectorAll("svg").length,
                           ready: !!document.querySelector("#app-is-ready"),
+                          hash: String(location.hash || ""),
+                          pageComponent: !!document.querySelector("page-component"),
+                          paneErr: paneErr,
                           tests: Object.keys((window.__veSp && window.__veSp.tests) || {})
                         });})()"##,
                     )
@@ -1476,6 +1484,44 @@ mod tests {
         );
         assert!(v["total"].as_f64().unwrap_or(0.0) > 0.0, "{detail}");
         assert!(v["tests"].get("Adding100Items").is_some(), "{detail}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn official_stockcharts_steps_produce_a_suite_total() {
+        let mut engine = bench_engine();
+        let revision = pin("speedometer", "revision");
+        let result = run_one_official(
+            &mut engine,
+            &revision,
+            &vendor_root(),
+            "React-Stockcharts-SVG".into(),
+            "react-stockcharts/build/index.html?type=svg".into(),
+        );
+        assert_eq!(result.status, "PASS", "{:?}", result.detail);
+        let detail = result.detail.as_deref().unwrap_or("");
+        let v: serde_json::Value = serde_json::from_str(detail).unwrap_or_default();
+        assert!(v["tests"].get("PanTheChart").is_some(), "{detail}");
+        assert!(v["tests"].get("ZoomTheChart").is_some(), "{detail}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn official_perf_dashboard_steps_produce_a_suite_total() {
+        let mut engine = bench_engine();
+        let revision = pin("speedometer", "revision");
+        let result = run_one_official(
+            &mut engine,
+            &revision,
+            &vendor_root(),
+            "Perf-Dashboard".into(),
+            "perf.webkit.org/public/v3/#/charts/?since=1678991819934&paneList=((55-1974-null-null-(5-2.5-500)))".into(),
+        );
+        assert_eq!(result.status, "PASS", "{:?}", result.detail);
+        let detail = result.detail.as_deref().unwrap_or("");
+        let v: serde_json::Value = serde_json::from_str(detail).unwrap_or_default();
+        assert!(v["tests"].get("Render").is_some(), "{detail}");
+        assert!(v["tests"].get("SelectingPoints").is_some(), "{detail}");
     }
 
     #[cfg(feature = "v8")]

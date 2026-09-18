@@ -16,6 +16,13 @@
   const listenerCounts = new Map();
   let onAttrCount = 0;
   let handlerPropCount = 0;
+  // window.addEventListener stores on this object, not globalThis.
+  // Bubbling must look here or Stockcharts never sees mouseup.pan.
+  let windowEventTarget = null;
+  function eventListenNode(node) {
+    if (windowEventTarget && (node === window || node === globalThis)) return windowEventTarget;
+    return node;
+  }
   const onReadyStateChange = new WeakMap();
   const trustedEvents = new WeakSet();
   const waiters = new Map();
@@ -188,7 +195,10 @@
       super(t, i);
       i = i || {};
       this.button = i.button != null ? i.button : 0;
-      this.buttons = i.buttons != null ? i.buttons : (this.button === 0 ? 1 : 0);
+      // UI Events MouseEventInit.buttons default is 0. Official Speedometer
+      // Stockcharts constructs mouseup without buttons; a default of 1 keeps
+      // the chart in grabbing-cursor after Pan.
+      this.buttons = i.buttons != null ? i.buttons : 0;
       this.which = i.which != null ? i.which : (this.button === 0 ? 1 : this.button + 1);
       this.clientX = i.clientX != null ? Number(i.clientX) : 0;
       this.clientY = i.clientY != null ? Number(i.clientY) : 0;
@@ -322,7 +332,7 @@
   function listenerOnPath(type, start) {
     const path = composedPath(start);
     for (const node of path) {
-      const arr = listeners.get(node) && listeners.get(node).get(type);
+      const arr = listeners.get(eventListenNode(node)) && listeners.get(eventListenNode(node)).get(type);
       if (arr && arr.length) return true;
     }
     return false;
@@ -410,7 +420,8 @@
       const fire = (node, cap) => {
         if (ev._stopImm) return;
         ev.currentTarget = node;
-        const arr = (listeners.get(node) && listeners.get(node).get(type)) || [];
+        const listenNode = eventListenNode(node);
+        const arr = (listeners.get(listenNode) && listeners.get(listenNode).get(type)) || [];
         for (const l of arr.slice()) {
           if (l.cap !== cap) continue;
           try { l.fn.call(node, ev); } catch (e) { __ve.log("error", "Uncaught (in event) " + (e && e.stack || e)); }
@@ -7600,6 +7611,7 @@
     MutationRecord: function () {},
   };
   const windowTarget = new EventTarget();
+  windowEventTarget = windowTarget;
   globalThis.addEventListener = function (type, fn, opts) {
     const r = EventTarget.prototype.addEventListener.call(windowTarget, type, fn, opts);
     // HTML Window `load` does not retro-fire. Official Speedometer Complex-DOM
