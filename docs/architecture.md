@@ -84,8 +84,13 @@ implementations, three of them over Playwright-Core CDP:
 present (`VECTOR_ENGINE=0` skips it) and registers a `vector-engine` session
 either `connected` or `disconnected` with the loader's diagnostic. Whether
 pages are *routed* to it is `settings.engineMode`: `off` (Chromium only),
-`auto` (default — engine first, Chromium fallback), `always`; `VECTOR_ENGINE_MODE` is the
-env override.
+`auto` (engine first, Chromium fallback), `always`. `pnpm dev` and the
+desktop shell set `VECTOR_ENGINE_MODE=always`. A stored setting wins.
+Without that env or setting the fallback is `auto`.
+`VECTOR_ENGINE_PROFILE=production` forces `securityProfile: production`,
+`isolation: requireProcess` (`ve-host`), and router `native-only` (no
+Chromium fallback). Unpackaged developer runs stay `engine-always` when
+mode is `always`.
 
 `Router` (`apps/runtime/src/services/router.ts`) decides per `pages.open`
 and returns the decision as `PageTarget.routeReason`:

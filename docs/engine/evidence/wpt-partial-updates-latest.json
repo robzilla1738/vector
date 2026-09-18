@@ -1,11 +1,11 @@
 {
-  "fixtures": "/workspace/engine/tools/wpt-harness/../../fixtures/harness",
+  "fixtures": "/Users/rcourson/Documents/Vibe/web/engine/tools/wpt-harness/../../fixtures/harness",
   "tested_subset": 144,
   "overall_manifest": 883,
-  "http_origin": "http://127.0.0.1:45615",
+  "http_origin": "http://127.0.0.1:60409",
   "tree_family": "html/dom/partial-updates",
   "tree_complete": true,
-  "fonts_dir": "/workspace/engine/tools/wpt-harness/../../conformance/fonts",
+  "fonts_dir": "/Users/rcourson/Documents/Vibe/web/engine/tools/wpt-harness/../../conformance/fonts",
   "idlharness": true,
   "totals": {
     "total": 144,
@@ -20,557 +20,557 @@
     {
       "path": "capabilities.html",
       "status": "PASS",
-      "duration_ms": 41
+      "duration_ms": 58
     },
     {
       "path": "pixel-opacity.html",
       "status": "PASS",
       "detail": "800x600",
-      "duration_ms": 195
+      "duration_ms": 995
     },
     {
       "path": "testharness-dom.html",
       "status": "PASS",
-      "duration_ms": 28
+      "duration_ms": 72
     },
     {
       "path": "idl-element.html",
       "status": "PASS",
-      "duration_ms": 595
+      "duration_ms": 323
     },
     {
       "path": "idb-index.html",
       "status": "PASS",
-      "duration_ms": 28
+      "duration_ms": 46
     },
     {
       "path": "worker-isolate.html",
       "status": "PASS",
-      "duration_ms": 29
+      "duration_ms": 45
     },
     {
       "path": "fetch-data.html",
       "status": "PASS",
-      "duration_ms": 27
+      "duration_ms": 147
     },
     {
       "path": "pixel-text.html",
       "status": "PASS",
       "detail": "800x600",
-      "duration_ms": 130
+      "duration_ms": 880
     },
     {
       "path": "pixel-clip.html",
       "status": "PASS",
       "detail": "800x600",
-      "duration_ms": 130
+      "duration_ms": 1442
     },
     {
       "path": "pixel-paint.html",
       "status": "PASS",
       "detail": "800x600",
-      "duration_ms": 118
+      "duration_ms": 703
     },
     {
       "path": "pixel-image.html",
       "status": "PASS",
       "detail": "800x600",
-      "duration_ms": 129
+      "duration_ms": 650
     },
     {
       "path": "css-supports-compound.html",
       "status": "PASS",
-      "duration_ms": 29
+      "duration_ms": 69
     },
     {
       "path": "matchmedia-listeners.html",
       "status": "PASS",
-      "duration_ms": 28
+      "duration_ms": 91
     },
     {
       "path": "matchmedia-orientation.html",
       "status": "PASS",
-      "duration_ms": 28
+      "duration_ms": 158
     },
     {
       "path": "event-trusted.html",
       "status": "PASS",
-      "duration_ms": 27
+      "duration_ms": 52
     },
     {
       "path": "websocket-close.html",
       "status": "PASS",
-      "duration_ms": 28
+      "duration_ms": 82
     },
     {
       "path": "storage.html",
       "status": "PASS",
-      "duration_ms": 27
+      "duration_ms": 58
     },
     {
       "path": "idb-unique.html",
       "status": "PASS",
-      "duration_ms": 28
+      "duration_ms": 113
     },
     {
       "path": "wpt-document-title.html",
       "status": "PASS",
-      "duration_ms": 505
+      "duration_ms": 340
     },
     {
       "path": "wpt-document-title-03.html",
       "status": "PASS",
-      "duration_ms": 548
+      "duration_ms": 160
     },
     {
       "path": "wpt-document-title-05.html",
       "status": "PASS",
-      "duration_ms": 468
+      "duration_ms": 201
     },
     {
       "path": "wpt-document-head.html",
       "status": "PASS",
-      "duration_ms": 446
+      "duration_ms": 193
     },
     {
       "path": "wpt-document-head-ns.html",
       "status": "PASS",
-      "duration_ms": 446
+      "duration_ms": 191
     },
     {
       "path": "wpt-getelementbyid.html",
       "status": "PASS",
-      "duration_ms": 491
+      "duration_ms": 184
     },
     {
       "path": "wpt-getelementsbyclassname-null-undef.html",
       "status": "PASS",
-      "duration_ms": 442
+      "duration_ms": 200
     },
     {
       "path": "wpt-element-hasattribute.html",
       "status": "PASS",
-      "duration_ms": 449
+      "duration_ms": 185
     },
     {
       "path": "wpt-document-forms.html",
       "status": "PASS",
-      "duration_ms": 435
+      "duration_ms": 210
     },
     {
       "path": "wpt-document-images.html",
       "status": "PASS",
-      "duration_ms": 447
+      "duration_ms": 328
     },
     {
       "path": "wpt-document-links.html",
       "status": "PASS",
-      "duration_ms": 435
+      "duration_ms": 198
     },
     {
       "path": "wpt-document-scripts.html",
       "status": "PASS",
-      "duration_ms": 432
+      "duration_ms": 176
     },
     {
       "path": "wpt-document-body.html",
       "status": "PASS",
-      "duration_ms": 418
+      "duration_ms": 246
     },
     {
       "path": "wpt-element-remove.html",
       "status": "PASS",
-      "duration_ms": 150
+      "duration_ms": 260
     },
     {
       "path": "wpt-id-name.html",
       "status": "PASS",
-      "duration_ms": 149
+      "duration_ms": 208
     },
     {
       "path": "wpt-isconnected.html",
       "status": "PASS",
-      "duration_ms": 173
+      "duration_ms": 256
     },
     {
       "path": "wpt-element-hasattributes.html",
       "status": "PASS",
-      "duration_ms": 456
+      "duration_ms": 222
     },
     {
       "path": "wpt-document-createcomment.html",
       "status": "PASS",
-      "duration_ms": 464
+      "duration_ms": 254
     },
     {
       "path": "wpt-document-createtextnode.html",
       "status": "PASS",
-      "duration_ms": 452
+      "duration_ms": 378
     },
     {
       "path": "wpt-element-childelementcount.html",
       "status": "PASS",
-      "duration_ms": 456
+      "duration_ms": 152
     },
     {
       "path": "wpt-node-nodename.html",
       "status": "PASS",
-      "duration_ms": 462
+      "duration_ms": 240
     },
     {
       "path": "wpt-node-nodevalue.html",
       "status": "PASS",
-      "duration_ms": 446
+      "duration_ms": 417
     },
     {
       "path": "wpt-node-textcontent.html",
       "status": "PASS",
-      "duration_ms": 458
+      "duration_ms": 299
     },
     {
       "path": "wpt-element-firstelementchild.html",
       "status": "PASS",
-      "duration_ms": 437
+      "duration_ms": 188
     },
     {
       "path": "wpt-doctype-literal.html",
       "status": "PASS",
-      "duration_ms": 431
+      "duration_ms": 244
     },
     {
       "path": "wpt-createhtmldocument.html",
       "status": "PASS",
-      "duration_ms": 439
+      "duration_ms": 287
     },
     {
       "path": "wpt-document-createpi.html",
       "status": "PASS",
-      "duration_ms": 433
+      "duration_ms": 272
     },
     {
       "path": "wpt-element-lastelementchild.html",
       "status": "PASS",
-      "duration_ms": 431
+      "duration_ms": 211
     },
     {
       "path": "wpt-element-nextelementsibling.html",
       "status": "PASS",
-      "duration_ms": 431
+      "duration_ms": 266
     },
     {
       "path": "wpt-element-previouselementsibling.html",
       "status": "PASS",
-      "duration_ms": 440
+      "duration_ms": 201
     },
     {
       "path": "wpt-characterdata-data.html",
       "status": "PASS",
-      "duration_ms": 439
+      "duration_ms": 265
     },
     {
       "path": "wpt-documentfragment-constructor.html",
       "status": "PASS",
-      "duration_ms": 433
+      "duration_ms": 240
     },
     {
       "path": "wpt-node-parentnode.html",
       "status": "PASS",
-      "duration_ms": 434
+      "duration_ms": 304
     },
     {
       "path": "wpt-node-contains.html",
       "status": "PASS",
-      "duration_ms": 448
+      "duration_ms": 213
     },
     {
       "path": "wpt-node-haschildnodes.html",
       "status": "PASS",
-      "duration_ms": 442
+      "duration_ms": 181
     },
     {
       "path": "wpt-node-clonenode.html",
       "status": "PASS",
-      "duration_ms": 442
+      "duration_ms": 270
     },
     {
       "path": "wpt-document-createelement.html",
       "status": "PASS",
-      "duration_ms": 439
+      "duration_ms": 280
     },
     {
       "path": "wpt-element-id.html",
       "status": "PASS",
-      "duration_ms": 439
+      "duration_ms": 251
     },
     {
       "path": "wpt-node-appendchild.html",
       "status": "PASS",
-      "duration_ms": 436
+      "duration_ms": 168
     },
     {
       "path": "wpt-node-removechild.html",
       "status": "PASS",
-      "duration_ms": 431
+      "duration_ms": 207
     },
     {
       "path": "wpt-element-tagname.html",
       "status": "PASS",
-      "duration_ms": 425
+      "duration_ms": 196
     },
     {
       "path": "wpt-document-url.html",
       "status": "PASS",
-      "duration_ms": 429
+      "duration_ms": 136
     },
     {
       "path": "wpt-element-matches.html",
       "status": "PASS",
-      "duration_ms": 436
+      "duration_ms": 171
     },
     {
       "path": "wpt-document-getelementsbytagname.html",
       "status": "PASS",
-      "duration_ms": 436
+      "duration_ms": 150
     },
     {
       "path": "wpt-element-closest.html",
       "status": "PASS",
-      "duration_ms": 435
+      "duration_ms": 147
     },
     {
       "path": "wpt-element-classname.html",
       "status": "PASS",
-      "duration_ms": 436
+      "duration_ms": 169
     },
     {
       "path": "wpt-document-charset.html",
       "status": "PASS",
-      "duration_ms": 441
+      "duration_ms": 172
     },
     {
       "path": "wpt-html-validity.html",
       "status": "PASS",
-      "duration_ms": 431
+      "duration_ms": 162
     },
     {
       "path": "wpt-element-toggleattribute.html",
       "status": "PASS",
-      "duration_ms": 435
+      "duration_ms": 164
     },
     {
       "path": "wpt-node-insertbefore.html",
       "status": "PASS",
-      "duration_ms": 429
+      "duration_ms": 171
     },
     {
       "path": "wpt-node-replacechild.html",
       "status": "PASS",
-      "duration_ms": 426
+      "duration_ms": 249
     },
     {
       "path": "wpt-element-queryselector.html",
       "status": "PASS",
-      "duration_ms": 427
+      "duration_ms": 192
     },
     {
       "path": "wpt-element-classlist.html",
       "status": "PASS",
-      "duration_ms": 442
+      "duration_ms": 162
     },
     {
       "path": "wpt-element-hidden.html",
       "status": "PASS",
-      "duration_ms": 434
+      "duration_ms": 174
     },
     {
       "path": "wpt-node-comparedocumentposition.html",
       "status": "PASS",
-      "duration_ms": 428
+      "duration_ms": 159
     },
     {
       "path": "wpt-node-isequalnode.html",
       "status": "PASS",
-      "duration_ms": 444
+      "duration_ms": 189
     },
     {
       "path": "wpt-element-attachshadow.html",
       "status": "PASS",
-      "duration_ms": 451
+      "duration_ms": 175
     },
     {
       "path": "wpt-element-dataset.html",
       "status": "PASS",
-      "duration_ms": 443
+      "duration_ms": 173
     },
     {
       "path": "wpt-element-getattributenames.html",
       "status": "PASS",
-      "duration_ms": 444
+      "duration_ms": 164
     },
     {
       "path": "wpt-node-normalize.html",
       "status": "PASS",
-      "duration_ms": 432
+      "duration_ms": 194
     },
     {
       "path": "wpt-mutationobserver-attributes.html",
       "status": "PASS",
-      "duration_ms": 431
+      "duration_ms": 148
     },
     {
       "path": "wpt-element-scrollintoview.html",
       "status": "PASS",
-      "duration_ms": 430
+      "duration_ms": 179
     },
     {
       "path": "wpt-node-getrootnode.html",
       "status": "PASS",
-      "duration_ms": 428
+      "duration_ms": 219
     },
     {
       "path": "wpt-node-ownerdocument.html",
       "status": "PASS",
-      "duration_ms": 443
+      "duration_ms": 186
     },
     {
       "path": "wpt-node-issamenode.html",
       "status": "PASS",
-      "duration_ms": 436
+      "duration_ms": 204
     },
     {
       "path": "wpt-element-insertadjacent.html",
       "status": "PASS",
-      "duration_ms": 447
+      "duration_ms": 158
     },
     {
       "path": "wpt-document-readystate.html",
       "status": "PASS",
-      "duration_ms": 432
+      "duration_ms": 195
     },
     {
       "path": "wpt-characterdata-methods.html",
       "status": "PASS",
-      "duration_ms": 439
+      "duration_ms": 185
     },
     {
       "path": "wpt-element-queryselectorall.html",
       "status": "PASS",
-      "duration_ms": 443
+      "duration_ms": 203
     },
     {
       "path": "wpt-document-adoptnode.html",
       "status": "PASS",
-      "duration_ms": 437
+      "duration_ms": 309
     },
     {
       "path": "wpt-document-importnode.html",
       "status": "PASS",
-      "duration_ms": 439
+      "duration_ms": 210
     },
     {
       "path": "wpt-node-lookupnamespace.html",
       "status": "PASS",
-      "duration_ms": 444
+      "duration_ms": 185
     },
     {
       "path": "wpt-range-basic.html",
       "status": "PASS",
-      "duration_ms": 446
+      "duration_ms": 173
     },
     {
       "path": "wpt-text-splittext.html",
       "status": "PASS",
-      "duration_ms": 433
+      "duration_ms": 228
     },
     {
       "path": "wpt-mutationobserver-siblings.html",
       "status": "PASS",
-      "duration_ms": 431
+      "duration_ms": 198
     },
     {
       "path": "wpt-element-before-after.html",
       "status": "PASS",
-      "duration_ms": 447
+      "duration_ms": 247
     },
     {
       "path": "wpt-element-outerhtml.html",
       "status": "PASS",
-      "duration_ms": 452
+      "duration_ms": 174
     },
     {
       "path": "wpt-document-elementfrompoint.html",
       "status": "PASS",
-      "duration_ms": 444
+      "duration_ms": 185
     },
     {
       "path": "wpt-document-activeelement.html",
       "status": "PASS",
-      "duration_ms": 438
+      "duration_ms": 178
     },
     {
       "path": "wpt-document-cookie.html",
       "status": "PASS",
-      "duration_ms": 476
+      "duration_ms": 227
     },
     {
       "path": "wpt-document-treewalker.html",
       "status": "PASS",
-      "duration_ms": 467
+      "duration_ms": 239
     },
     {
       "path": "wpt-element-classlist-replace.html",
       "status": "PASS",
-      "duration_ms": 448
+      "duration_ms": 230
     },
     {
       "path": "wpt-selection-range.html",
       "status": "PASS",
-      "duration_ms": 451
+      "duration_ms": 194
     },
     {
       "path": "wpt-document-getelementsbyname.html",
       "status": "PASS",
-      "duration_ms": 446
+      "duration_ms": 147
     },
     {
       "path": "wpt-document-compatmode.html",
       "status": "PASS",
-      "duration_ms": 443
+      "duration_ms": 162
     },
     {
       "path": "wpt-idb-abort.html",
       "status": "PASS",
-      "duration_ms": 453
+      "duration_ms": 197
     },
     {
       "path": "wpt-node-prepend.html",
       "status": "PASS",
-      "duration_ms": 437
+      "duration_ms": 207
     },
     {
       "path": "wpt-node-baseuri.html",
       "status": "PASS",
-      "duration_ms": 452
+      "duration_ms": 235
     },
     {
       "path": "idlharness-load.html",
       "status": "PASS",
-      "duration_ms": 1030
+      "duration_ms": 742
     },
     {
       "path": "wpt-nameditem.html",
       "status": "PASS",
-      "duration_ms": 173
+      "duration_ms": 183
     },
     {
       "path": "wpt-innertext.html",
       "status": "PASS",
-      "duration_ms": 160
+      "duration_ms": 166
     },
     {
       "path": "wpt-outertext.html",
       "status": "PASS",
-      "duration_ms": 150
+      "duration_ms": 235
     },
     {
       "path": "wpt-aria-reflection.html",
@@ -580,198 +580,198 @@
     {
       "path": "wpt-aria-labelledby.html",
       "status": "PASS",
-      "duration_ms": 172
+      "duration_ms": 200
     },
     {
       "path": "wpt-partial-updates.html",
       "status": "PASS",
-      "duration_ms": 155
+      "duration_ms": 241
     },
     {
       "path": "wpt-aria-enumerated.html",
       "status": "PASS",
-      "duration_ms": 146
+      "duration_ms": 260
     },
     {
       "path": "html/dom/partial-updates/tentative/chained-streaming-templates-with-custom-element.html",
       "status": "PASS",
-      "duration_ms": 151,
+      "duration_ms": 202,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/buffer-immutability.html",
       "status": "PASS",
-      "duration_ms": 150,
+      "duration_ms": 184,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/buffer-in-place.html",
       "status": "PASS",
-      "duration_ms": 150,
+      "duration_ms": 177,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/buffer-mutation-observer.html",
       "status": "PASS",
-      "duration_ms": 175,
+      "duration_ms": 188,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/buffer-reflection.html",
       "status": "PASS",
-      "duration_ms": 146,
+      "duration_ms": 156,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/buffer-streaming-reflection.html",
       "status": "PASS",
-      "duration_ms": 151,
+      "duration_ms": 165,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/buffer-targeted.html",
       "status": "PASS",
-      "duration_ms": 149,
+      "duration_ms": 180,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/empty-for-streaming.html",
       "status": "PASS",
-      "duration_ms": 169,
+      "duration_ms": 160,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/sanitize-boolean.html",
       "status": "PASS",
-      "duration_ms": 303,
+      "duration_ms": 234,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/sanitize-default.html",
       "status": "PASS",
-      "duration_ms": 260,
+      "duration_ms": 348,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/sanitize-nested.html",
       "status": "PASS",
-      "duration_ms": 275,
+      "duration_ms": 245,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/sanitize-regular.html",
       "status": "PASS",
-      "duration_ms": 284,
+      "duration_ms": 206,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/sanitize-template-element.html",
       "status": "FAIL",
       "detail": "Template with sanitize attribute should not strip itself when nested: 1:assert_true: inner span should be added, got: [\"TEMPLATE\",\"target-inner\",\"target-inner\",\"inner\",\"inner\",\"ok\"] expected true got false",
-      "duration_ms": 275,
+      "duration_ms": 268,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/sanitize-unsafe.html",
       "status": "PASS",
-      "duration_ms": 268,
+      "duration_ms": 232,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/src-buffered.sub.html",
       "status": "PASS",
-      "duration_ms": 425,
+      "duration_ms": 383,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/src-cancel.html",
       "status": "PASS",
-      "duration_ms": 271,
+      "duration_ms": 169,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/src-csp-cors.sub.html",
       "status": "PASS",
-      "duration_ms": 311,
+      "duration_ms": 220,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/src-csp.sub.html",
       "status": "PASS",
-      "duration_ms": 276,
+      "duration_ms": 156,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/src-nonce.sub.html",
       "status": "PASS",
-      "duration_ms": 287,
+      "duration_ms": 247,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/src-parser-blocking.html",
       "status": "PASS",
-      "duration_ms": 282,
+      "duration_ms": 153,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/src-referrerpolicy.sub.html",
       "status": "PASS",
-      "duration_ms": 304,
+      "duration_ms": 275,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/src-sri.sub.html",
       "status": "PASS",
-      "duration_ms": 264,
+      "duration_ms": 156,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/src-streaming.html",
       "status": "PASS",
-      "duration_ms": 264,
+      "duration_ms": 162,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/fragment/streaming-target-marker-removed.html",
       "status": "PASS",
-      "duration_ms": 275,
+      "duration_ms": 146,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/stream-append-has-invalidation.html",
       "status": "PASS",
-      "duration_ms": 330,
+      "duration_ms": 228,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/stream-append-positional-pseudo-class-invalidation.html",
       "status": "PASS",
-      "duration_ms": 290,
+      "duration_ms": 194,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/stream-append-with-template-for.html",
       "status": "PASS",
-      "duration_ms": 278,
+      "duration_ms": 148,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/template-for-case-sensitive-dom-inserted.html",
       "status": "PASS",
-      "duration_ms": 266,
+      "duration_ms": 180,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/template-for-case-sensitive.html",
       "status": "PASS",
-      "duration_ms": 259,
+      "duration_ms": 172,
       "tree": true
     },
     {
       "path": "html/dom/partial-updates/tentative/template-for-empty.html",
       "status": "FAIL",
       "detail": "A template with an empty for attribute is ignored and attached to the DOM: 1:assert_not_equals: got disallowed value null",
-      "duration_ms": 280,
+      "duration_ms": 145,
       "tree": true
     }
   ]

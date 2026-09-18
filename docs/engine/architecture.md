@@ -94,9 +94,10 @@ by code on `m1/integrate`; anything not listed under *real* is not there.
   `internal`, mid-program migration and
   replay (`ProgramResult.fallback`, `repair: true` when ref-targeted steps
   remain). Visible auto-mode desktop tabs skip the engine
-  (`engine-first:native-view`). `settings.engineMode: "off" | "auto" | "always"` (default
-  `auto`); `pages.open` results carry `routeReason`; `pnpm bench --backend
-  chrome|vector-engine|both`.
+  (`engine-first:native-view`). `settings.engineMode: "off" | "auto" | "always"`
+  (schema fallback `auto`; `pnpm dev` / desktop set `VECTOR_ENGINE_MODE=always`;
+  production profile is `native-only`); `pages.open` results carry
+  `routeReason`; `pnpm bench --backend chrome|vector-engine|both`.
 
 - **Script layer (A13)** — `ve-script::V8Vm` (feature `v8`, decision D1;
   the `napi` addon includes it): one isolate per page, host functions
@@ -164,7 +165,7 @@ acceptance text.
 | Area | In tree | Not yet |
 |---|---|---|
 | M0 identity / containment / broker / CI | `engineMode: always` never selects Chromium; `ve-host` sandbox; `NetworkBroker` honors config allowlists; rustc 1.88 CI including product clippy, wpt-harness tree HTTP, browserbench | — |
-| M1 web execution | V8 DOM, async fetch, frames, IDB unique/compound/versionchange/abort, event loop; testharness + IDL harness + pinned `html/dom` tree (302 PASS / 29 FAIL, 0 timeout/crash; official `idlharness.https.html` PASS); Ahem reftest fonts; Worker `postMessage` on a second V8 isolate thread; Worker `importScripts`; SW install/activate, `importScripts`, `clients.claim`, `clients.matchAll`, `Client.postMessage`, dedicated/shared worker clients, waiting-worker `skipWaiting`; live document named properties; layout-aware innerText/outerText; ARIA string and element reflection | generated IDL for every interface |
+| M1 web execution | V8 DOM, async fetch, frames, IDB unique/compound/versionchange/abort, event loop; testharness + IDL harness + pinned `html/dom` tree (302 PASS / 29 FAIL, 0 timeout/crash; official `idlharness.https.html` PASS); official `html/dom/partial-updates` 28/2 of 30 (Mac 142/2 of 144, keep `sanitize-template-element` and `template-for-empty`); Ahem reftest fonts; Worker `postMessage` on a second V8 isolate thread; Worker `importScripts`; SW install/activate, `importScripts`, `clients.claim`, `clients.matchAll`, `Client.postMessage`, dedicated/shared worker clients, waiting-worker `skipWaiting`; live document named properties; layout-aware innerText/outerText; ARIA string and element reflection | generated IDL for every interface |
 | M2 visual | GPU glyph *outlines*, clips/opacity/`<img>`, `present_list`, `NativeBrowser` + packaged `ve-shell` as the product; GPU swapchain blit when `--features gpu,window`; Ed25519 signed updates; AccessKit winit adapter (`accesskit_winit` 0.23) publishing chrome-then-page | Electron hybrid still exists as a labeled extra; WebGL/WebGPU are an explicit compatibility track (`describe()` false) |
 | M3 agent | receipts, crash recovery, skills, policy, BiDi; held-out p95 vs Chromium measured (5.32× `act+observe`); token-measured stretch `meetsStretch` true (`tokenRatio` 8.35, declared model usage) | — |
 | M4 perf | `perf --gate m1`, RSS, host RAPL, official Speedometer 3.0 / JetStream / MotionMark GPU lab | every Speedometer suite passing (many FAIL honestly) |

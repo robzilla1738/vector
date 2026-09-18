@@ -74,9 +74,11 @@ Engine lab (from `engine/`):
 
 ```bash
 cargo run --release -p wpt-harness --features v8 -- --http
-# merge-blocking subset: engine/conformance/testharness.txt (112 files)
-cargo run --release -p wpt-harness --features v8 -- --http --wpt-dir <pinned-wpt-checkout> --tree --tree-family html/dom
-# official html/dom at wpt-revision.txt = 7c20438…; latest 302 PASS / 29 FAIL (idlharness.https.html PASS)
+# merge-blocking subset: engine/conformance/testharness.txt (114 files)
+cargo run --release -p wpt-harness --features v8 -- --http --wpt-dir <pinned-wpt-checkout> --tree --tree-family html/dom/partial-updates
+# official html/dom/partial-updates pin 7c204383: 28 PASS / 2 FAIL of 30
+# (sanitize-template-element, template-for-empty). Same run 142/2 of 144
+# including the supported subset. Full html/dom tree: wpt-tree-latest.json.
 cargo run --release -p wpt-runner -- --use-reftest-fonts --limit 8 --manifest conformance/reftest-fonts.txt
 cargo run --release -p browserbench --features v8,gpu
 ```

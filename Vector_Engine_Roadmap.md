@@ -7,13 +7,19 @@ Repository: https://github.com/robzilla1738/vector
 Landed revision: GitHub `main` (PR #9). Ticket evidence:
 `docs/engine/evidence/` and `docs/engine/architecture.md` §0.
 
-Latest measured tree (2026-09-17): testharness subset 112 PASS / 0 FAIL;
-official `html/dom` 302 PASS / 29 FAIL at WPT `7c20438…`. Official
-`html/dom/idlharness.https.html` PASS. `describe()`: `serviceWorkers:true`,
-`webgl:false`, `webgpu:false`. ve-vm is research (V8 is production).
-Still-open official `html/dom` FAILs are tentative `partial-updates/**`,
-`aria-attribute-reflection-enumerated.tentative.html`, and optional
-`remove-element-unblocks-rendering.optional.html` (not named in VEC-001–025).
+Latest measured tree (2026-09-18 Mac): `testharness.txt` 114 files;
+official `html/dom/partial-updates` 28 PASS / 2 FAIL of 30 on pin
+`7c204383`; combined tree-family run 142 PASS / 2 FAIL of 144
+(`wpt-partial-updates-latest.json`). Full official `html/dom` tree remains
+302 PASS / 29 FAIL in `wpt-tree-latest.json` (not a Mac re-score of the
+whole family). Official `html/dom/idlharness.https.html` PASS.
+`describe()`: `serviceWorkers:true`, `webgl:false`, `webgpu:false`. ve-vm
+is research (V8 is production). Kept official partial-updates FAILs:
+`sanitize-template-element`, `template-for-empty`. Other still-open
+official `html/dom` FAILs include
+`aria-attribute-reflection-enumerated.tentative.html`.
+`remove-element-unblocks-rendering.optional.html` PASSed on the review
+rerun (see `behavior-results.json`).
 
 ## Objective
 

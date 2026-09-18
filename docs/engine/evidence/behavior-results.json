@@ -16,17 +16,17 @@
       "fail": 2,
       "total": 30,
       "tls": "official html/dom/usvstring-reflection.https.html PASS over wpt-harness --https. official html/dom/idlharness.https.html PASS 1405ms on pin 7c204383 after V8 MarkAsUndetectable document.all (0 FAIL subtests). Not the entire web.",
-      "rerunAfterLitCommentFix": "wpt-harness --http --wpt-dir /tmp/wpt --tree --tree-family html/dom/partial-updates: 142 PASS / 2 FAIL of 144 (supported subset green). Official remaining FAILs stay sanitize-template-element and template-for-empty. Do not weaken.",
+      "rerunAfterLitCommentFix": "Mac wpt-harness --http --wpt-dir /tmp/wpt --tree --tree-family html/dom/partial-updates: 142 PASS / 2 FAIL of 144 (supported subset green). Official remaining FAILs stay sanitize-template-element and template-for-empty. Do not weaken.",
       "unmodifiedUpstream": true
     },
-    "supportedSubset": {
-      "pass": 142,
-      "fail": 2,
-      "total": 144,
-      "note": "same harness run, testharness.txt — adapted regression coverage, not official WPT",
+      "supportedSubset": {
+      "pass": 114,
+      "fail": 0,
+      "total": 114,
+      "note": "testharness.txt on the same Mac tree-family run \u2014 adapted regression coverage, not official WPT",
       "unmodifiedUpstream": false
     },
-    "denominator": "official html/dom/partial-updates (30) plus supported testharness subset (144). These are not the entire web.",
+    "denominator": "official html/dom/partial-updates (30) plus testharness.txt (114) = 144 on the Mac tree-family run (142 PASS / 2 FAIL). These are not the entire web.",
     "exclusions": [
       "template-for-empty.html contradicts empty-for-streaming.html / buffer-in-place.html: HTML5 cannot distinguish for vs for=\"\"",
       "sanitize-template-element.html expects addedNodes SPAN while the inserted span has id ok",

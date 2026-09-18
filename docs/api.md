@@ -61,9 +61,11 @@ The socket also accepts RPC frames `{ "id", "method", "params" }` and answers
 | `chrome` | the user's Chrome attached over CDP (`chrome.attach`); tabs are borrowed |
 | `vector-engine` | the in-process Vector Engine (`@vector/engine-native`, `engine/`); headless, software screenshots |
 
-`settings.engineMode` (`EngineModeSchema`: `"off" | "auto" | "always"`,
-default `auto`; env override `VECTOR_ENGINE_MODE`, the stored setting wins)
-decides where a `backend: "vector"` open lands. The router
+`settings.engineMode` (`EngineModeSchema`: `"off" | "auto" | "always"`)
+decides where a `backend: "vector"` open lands. Schema fallback is `auto`.
+`pnpm dev` and the desktop shell set `VECTOR_ENGINE_MODE=always`. A stored
+setting wins over the env. `VECTOR_ENGINE_PROFILE=production` forces
+process-isolated `ve-host` and `routeReason: native-only`. The router
 (`apps/runtime/src/services/router.ts`) is deterministic and returns the
 decision as `PageTarget.routeReason`:
 
@@ -71,7 +73,9 @@ decision as `PageTarget.routeReason`:
 |---|---|
 | `engine-mode-off` | `engineMode: off` — Chromium |
 | `explicit-backend:chrome` / `explicit-backend:vector-engine` | caller named the backend; no fallback |
-| `engine-always` | `engineMode: always` — engine, no fallback |
+| `engine-always` | `engineMode: always` (developer profile) — engine, no fallback |
+| `native-only` | production profile — engine, no Chromium fallback |
+| `native-only:engine-unavailable` | production profile and the engine did not connect |
 | `engine-unavailable` | `auto`, but the addon is not loaded/connected — Chromium |
 | `unsupported-scheme:<scheme>` / `unparseable-url` | `auto`, URL the engine cannot open (it opens `http:`, `https:`, `file:`, `data:`, `about:`) — Chromium |
 | `needs-chromium-table:<reason>` | `auto`, origin recorded as Chromium-only within the last 24 h — Chromium |

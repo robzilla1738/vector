@@ -163,7 +163,7 @@ UPDATE_GOLDEN=1 cargo test -p ve-api --test golden       # accept new golden Com
 cargo run --release -p wpt-runner -- --wpt-dir ../wpt                       # the M1 subsets, manifest conformance/m1.txt
 cargo run --release -p wpt-runner -- --wpt-dir ../wpt --subdir css/css-flexbox --filter align --progress
 cargo run --release -p wpt-runner -- --wpt-dir ../wpt --update-manifest     # append new passes to the manifest
-cargo run --release -p wpt-harness --features v8 -- --http                  # testharness.txt (112 files, merge-blocking)
+cargo run --release -p wpt-harness --features v8 -- --http                  # testharness.txt (114 files, merge-blocking)
 cargo run --release -p wpt-harness --features v8 -- --http --wpt-dir ../wpt --tree --tree-family html/dom
 
 # Public-page corpus: router accuracy + observation budgets on real pages
@@ -201,7 +201,9 @@ In tree now (not the old M1 “no script” list):
   `waitFor expression`, `javascript:` URLs, dialogs, fetch/XHR, Worker
   `importScripts`, SW `importScripts` + `clients.claim`, IndexedDB abort.
 - **Conformance** — geometry `wpt-runner` (`m1.txt`); testharness +
-  idlharness (`testharness.txt`, 112 files); `--tree --tree-family html/dom`
+  idlharness (`testharness.txt`, 114 files); official
+  `html/dom/partial-updates` 28 PASS / 2 FAIL of 30 (Mac combined
+  tree-family 142/2 of 144); `--tree --tree-family html/dom`
   302 PASS / 29 FAIL (`docs/engine/evidence/wpt-tree-latest.json`).
 - **Product** — `ve-shell` is the product. Electron is a labeled hybrid.
   `describe()`: `websocket:true`, `serviceWorkers:true`, `http3:false`,

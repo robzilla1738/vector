@@ -65,17 +65,33 @@ describeIfEngine("vector-engine backend", () => {
   });
 
   it("runtime.describe reports the engine", async () => {
-    const d = await invoke<{ engine: { available: boolean; version?: string; mode: string; connected: boolean } }>("runtime.describe");
+    const d = await invoke<{
+      engine: {
+        available: boolean;
+        version?: string;
+        mode: string;
+        connected: boolean;
+        securityProfile?: string;
+        isolation?: string;
+        hostPath?: string;
+      };
+    }>("runtime.describe");
     expect(d.engine.available).toBe(true);
     expect(d.engine.connected).toBe(true);
     expect(d.engine.version).toBe(engine.version);
     expect(d.engine.mode).toBe("always");
+    if (process.env.VECTOR_ENGINE_PROFILE === "production" || process.env.VECTOR_ENGINE_PROFILE === "prod") {
+      expect(d.engine.securityProfile).toBe("production");
+      expect(d.engine.isolation).toBe("process");
+      expect(d.engine.hostPath, JSON.stringify(d.engine)).toMatch(/ve-host/);
+    }
   });
 
   it("always: opens a static fixture on the engine, observes refs, runs a program in one native call", async () => {
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
     expect(page.backend).toBe("vector-engine");
-    expect(page.routeReason).toBe("engine-always");
+    // developer always-mode: engine-always. production fail-closed: native-only.
+    expect(["engine-always", "native-only"]).toContain(page.routeReason);
     expect(page.targetId).toMatch(/^ve-\d+-\d+$/);
 
     const obs = await invoke<Observation>("pages.observe", { pageId: page.pageId });

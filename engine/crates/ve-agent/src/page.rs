@@ -2061,10 +2061,44 @@ impl Page {
     }
 
     /// Advances virtual time by up to `ms` and fires due JS timers.
+    /// Then drains fetches and follow-up timers so a later `promise_test`
+    /// `step_timeout` + `fetch()` can finish (official template `src`
+    /// referrerpolicy runs two sequential 500ms waits).
     pub fn pump_virtual_time(&mut self, ms: u64) -> usize {
         self.ensure_document_scripts();
-        let fired = self.pump_timers(ms);
-        self.drain_js_jobs();
+        let start = self.virtual_time_ms();
+        let mut fired = self.pump_timers(ms);
+        let extra_limit = start.saturating_add(ms).saturating_add(2_000);
+        for _ in 0..64 {
+            self.complete_script_fetches();
+            self.drain_js_jobs();
+            let pending_fetch = self
+                .script_fetches
+                .iter()
+                .any(|j| j.result.is_none() && j.error.is_none() && !j.aborted);
+            let (soon, later, micro) = self.script_readiness();
+            if !pending_fetch && !micro && soon == 0 && later == 0 {
+                break;
+            }
+            if self.virtual_time_ms() >= extra_limit && !pending_fetch && !micro && soon == 0 {
+                break;
+            }
+            let now = self.virtual_time_ms();
+            let next_due = self
+                .scripting
+                .as_ref()
+                .and_then(|s| s.event_loop.next_js_timer_due_ms())
+                .unwrap_or(now.saturating_add(crate::scripting::TIMER_WINDOW_MS));
+            let step = next_due
+                .saturating_sub(now)
+                .max(crate::scripting::TIMER_WINDOW_MS)
+                .min(
+                    extra_limit
+                        .saturating_sub(now)
+                        .max(crate::scripting::TIMER_WINDOW_MS),
+                );
+            fired += self.pump_timers(step);
+        }
         fired
     }
 

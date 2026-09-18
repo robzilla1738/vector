@@ -4313,6 +4313,42 @@ fn iframe_srcdoc_applies_template_for() {
 }
 
 #[test]
+fn pump_virtual_time_completes_pending_fetch() {
+    let mut page = open("<p>f</p>");
+    let _ = page.evaluate(
+        r##"(async function () {
+          const t = await (await fetch("data:text/plain,ok")).text();
+          window.__got = t;
+        })()"##,
+    );
+    page.pump_virtual_time(50);
+    let v = page.evaluate("window.__got").unwrap();
+    assert_eq!(
+        v, "ok",
+        "fetch after a timer must finish during pump_virtual_time"
+    );
+}
+
+#[test]
+fn pump_virtual_time_finishes_second_timeout_then_fetch() {
+    let mut page = open("<p>f</p>");
+    let _ = page.evaluate(
+        r##"(async function () {
+          await new Promise((r) => setTimeout(r, 500));
+          window.__a = await (await fetch("data:text/plain,one")).text();
+          await new Promise((r) => setTimeout(r, 500));
+          window.__b = await (await fetch("data:text/plain,two")).text();
+        })()"##,
+    );
+    page.pump_virtual_time(200);
+    let v = page
+        .evaluate(r#"(function(){return {a: window.__a, b: window.__b};})()"#)
+        .unwrap();
+    assert_eq!(v["a"], "one", "{v}");
+    assert_eq!(v["b"], "two", "{v}");
+}
+
+#[test]
 fn stream_lock_bodyused() {
     let mut page = open("<p>s</p>");
     let _ = page.evaluate(
