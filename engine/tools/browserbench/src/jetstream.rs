@@ -458,6 +458,27 @@ const WASM_PRERUN: &str = r#"(function () {
     print: silent,
     printErr: silent
   };
+  if (typeof WebAssembly === "object" && typeof WebAssembly.instantiate === "function") {
+    var instantiate = WebAssembly.instantiate.bind(WebAssembly);
+    WebAssembly.instantiate = function (bytes, imports) {
+      try {
+        if (bytes instanceof WebAssembly.Module) {
+          return Promise.resolve({
+            module: bytes,
+            instance: new WebAssembly.Instance(bytes, imports)
+          });
+        }
+        var view = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes;
+        var module = new WebAssembly.Module(view);
+        return Promise.resolve({
+          module: module,
+          instance: new WebAssembly.Instance(module, imports)
+        });
+      } catch (e) {
+        return instantiate(bytes, imports);
+      }
+    };
+  }
 })();
 "#;
 

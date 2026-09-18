@@ -274,6 +274,7 @@ fn wait_async(engine: &mut VectorEngine, page: ve_api::PageId) -> Result<(), Str
         if let Some(err) = text.strip_prefix("\"err:") {
             return Err(err.trim_end_matches('"').to_owned());
         }
+        std::thread::sleep(std::time::Duration::from_millis(25));
     }
     Err("async runIteration did not finish".into())
 }

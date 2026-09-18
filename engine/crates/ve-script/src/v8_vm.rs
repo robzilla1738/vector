@@ -521,14 +521,24 @@ impl JsVm for V8Vm {
     }
 
     fn run_pending_jobs(&mut self) -> Result<usize, ScriptError> {
-        if !self.maybe_pending {
-            return Ok(0);
-        }
-        for _ in 0..16 {
+        // WebAssembly.instantiate (and other V8 async work) completes on the
+        // default platform queue. Drain it even when no script just ran, or
+        // later settle() calls miss the compile-done task.
+        let platform = v8::V8::get_current_platform();
+        let mut ran = 0usize;
+        for _ in 0..32 {
+            let pumped = v8::Platform::pump_message_loop(&platform, &self.isolate, false);
             self.isolate.perform_microtask_checkpoint();
+            if pumped {
+                ran += 1;
+            } else if !self.maybe_pending {
+                break;
+            } else {
+                self.maybe_pending = false;
+            }
         }
         self.maybe_pending = false;
-        Ok(1)
+        Ok(ran)
     }
 
     fn memory_used(&self) -> Option<usize> {
@@ -1005,5 +1015,37 @@ mod tests {
         vm.set_call_deadline(Some(Duration::from_millis(40)));
         let _ = vm.eval("for(;;) {}", "<t>");
         drop(vm);
+    }
+
+    #[test]
+    fn webassembly_instantiate_resolves_after_platform_pump() {
+        let mut vm = V8Vm::new().unwrap();
+        let kind = vm.eval("typeof WebAssembly", "<t>").unwrap();
+        assert_eq!(kind, JsValue::String("object".into()));
+        vm.eval(
+            r#"
+            globalThis.__veWa = { done: null, err: null };
+            WebAssembly.instantiate(new Uint8Array([0,97,115,109,1,0,0,0])).then(
+              function (r) { globalThis.__veWa.done = !!(r && r.instance); },
+              function (e) { globalThis.__veWa.err = String(e && e.message ? e.message : e); }
+            );
+            "#,
+            "<t>",
+        )
+        .unwrap();
+        for _ in 0..40 {
+            let _ = vm.run_pending_jobs();
+            std::thread::sleep(Duration::from_millis(5));
+            let status = vm.eval("JSON.stringify(globalThis.__veWa)", "<t>").unwrap();
+            if let JsValue::String(s) = status {
+                if s.contains("\"done\":true") {
+                    return;
+                }
+                if s.contains("\"err\":") && !s.contains("\"err\":null") {
+                    panic!("WebAssembly.instantiate rejected: {s}");
+                }
+            }
+        }
+        panic!("WebAssembly.instantiate did not resolve after platform pump");
     }
 }
