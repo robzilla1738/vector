@@ -25,8 +25,8 @@ import { buildFinalAnswerPrompt, buildPlannerPrompt, buildVisionPrompt, extractJ
 import { compileSkill, markSkillFailed, tryReuseSkill, verifySkillPostconditions, type CompiledSkill } from "./skills.js";
 import { promptCannotGrant } from "./policy.js";
 import { recoverAfterCrash } from "./recovery.js";
-import { authorizeProgram, classifyStep, DEFAULT_GRANTS, type GrantSource } from "./permissions.js";
-import { compileAction } from "./action-compiler.js";
+import { classifyStep, type GrantSource } from "./permissions.js";
+import { compileAndAuthorize } from "./action-compiler.js";
 import { DurableWriteLedger, stepSignature } from "./durable.js";
 
 interface RunControl {
@@ -570,12 +570,29 @@ export class RunCoordinator {
           const parser = new PlanStreamParser();
           const epoch = obs.documentEpoch;
           const dispatcher = new EarlyDispatcher(
-            (steps, { first, last }) =>
-              this.deps.pages.execute(
-                { pageId: activePageId!, ...(first ? { documentEpoch: epoch } : {}), steps },
+            (steps, { first, last }) => {
+              const live = this.deps.pages.get(activePageId!);
+              const prepared = compileAndAuthorize({
+                pageId: activePageId!,
+                documentEpoch: live.documentEpoch ?? epoch,
+                observedEpoch: epoch,
+                steps,
+                observation: obs.content,
+                url: live.url ?? obs.content.url,
+                grants: this.deps.grants,
+              });
+              if ("rejected" in prepared) {
+                return Promise.reject(new VectorError("conflict", prepared.rejected));
+              }
+              if ("denied" in prepared) {
+                return Promise.reject(new VectorError("permission_denied", prepared.denied));
+              }
+              return this.deps.pages.execute(
+                { ...prepared.program, ...(first ? { documentEpoch: epoch } : {}) },
                 { runId, signal: c.abort.signal, onStep: onStepRecorded },
                 last ? { returnObservation: nextObserveReq() } : {},
-              ),
+              );
+            },
             24,
           );
           early = dispatcher;
@@ -773,13 +790,14 @@ export class RunCoordinator {
           }
         }
 
-        const compiled = compileAction({
+        const compiled = compileAndAuthorize({
           pageId: activePageId,
           documentEpoch: obs.documentEpoch,
           steps: plan.steps ?? [],
           observation: obs.content,
           url: obs.content.url,
           guards: "skill" in reuse ? reuse.skill.preconditions : undefined,
+          grants: this.deps.grants,
         });
         if ("rejected" in compiled) {
           if (early) await early.finish([]);
@@ -788,10 +806,9 @@ export class RunCoordinator {
           repairCount++;
           continue;
         }
-        const auth = authorizeProgram(compiled.program.steps ?? [], this.deps.grants ?? DEFAULT_GRANTS);
-        if (!auth.ok) {
+        if ("denied" in compiled) {
           if (early) await early.finish([]);
-          lastError = auth.denied;
+          lastError = compiled.denied;
           lastActionFailed = true;
           repairCount++;
           continue;

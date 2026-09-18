@@ -9,6 +9,7 @@ import {
   attributeTodoMvc,
   BrowserAuthority,
   compileAction,
+  compileAndAuthorize,
   compileSkill,
   DurableWriteLedger,
   EventBus,
@@ -55,6 +56,37 @@ describe("Gate F page query and action compiler", () => {
       { role: "button", nameIncludes: "Save" },
     ]);
     expect(rebound[0]).toMatchObject({ op: "click", target: "r9" });
+  });
+
+  it("compileAndAuthorize is required before streamed dispatch", () => {
+    const stale = compileAndAuthorize({
+      pageId: "p1",
+      documentEpoch: 2,
+      observedEpoch: 1,
+      steps: [{ id: "c", op: "click", target: "r9" }],
+      observation: obs(),
+      url: "https://app.test/form",
+      grants: ["effect:read", "effect:write"],
+    });
+    expect("rejected" in stale).toBe(true);
+    const denied = compileAndAuthorize({
+      pageId: "p1",
+      documentEpoch: 2,
+      steps: [{ id: "c", op: "click", target: "r9" }],
+      observation: obs(),
+      url: "https://app.test/form",
+      grants: ["effect:read"],
+    });
+    expect("denied" in denied).toBe(true);
+    const ok = compileAndAuthorize({
+      pageId: "p1",
+      documentEpoch: 2,
+      steps: [{ id: "c", op: "click", target: "r9" }],
+      observation: obs(),
+      url: "https://app.test/form",
+      grants: ["effect:read", "effect:write"],
+    });
+    expect("program" in ok).toBe(true);
   });
 
   it("rejects a compiled write when the origin does not match", () => {

@@ -44,7 +44,7 @@ export { PlanStreamParser } from "./agent/plan-stream.js";
 export { compileSkill, tryReuseSkill, markSkillFailed, guardsHold, verifySkillPostconditions, evaluateHeldOutAdvantage, type CompiledSkill, type SkillGuard, type HeldOutMetrics, type HeldOutAdvantage } from "./agent/skills.js";
 export { redactForModel, agentMayEgress, promptCannotGrant } from "./agent/policy.js";
 export { queryPage, queryAll, type PageQuery, type QueryHit } from "./agent/page-query.js";
-export { compileAction, rebindSteps, type CompileResult } from "./agent/action-compiler.js";
+export { compileAction, compileAndAuthorize, rebindSteps, type CompileResult, type DispatchPrep } from "./agent/action-compiler.js";
 export {
   authorizeProgram,
   classifyStep,

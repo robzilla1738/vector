@@ -5,8 +5,23 @@
 import type { ObservationContent, Program, Step } from "@vector/contracts";
 import { queryPage, type PageQuery } from "./page-query.js";
 import type { SkillGuard } from "./skills.js";
+import { authorizeProgram, type EffectClass, type GrantSource } from "./permissions.js";
 
 export type CompileResult = { program: Program } | { rejected: string };
+export type DispatchPrep =
+  | { program: Program }
+  | { rejected: string }
+  | { denied: string; effect: EffectClass };
+
+export type CompileActionOpts = {
+  pageId: string;
+  documentEpoch: number;
+  steps: Step[];
+  observation: ObservationContent;
+  url: string;
+  guards?: SkillGuard[];
+  observedEpoch?: number;
+};
 
 export function rebindSteps(steps: Step[], obs: ObservationContent, guards: SkillGuard[] = []): Step[] {
   return steps.map((step) => {
@@ -24,15 +39,7 @@ export function rebindSteps(steps: Step[], obs: ObservationContent, guards: Skil
   });
 }
 
-export function compileAction(opts: {
-  pageId: string;
-  documentEpoch: number;
-  steps: Step[];
-  observation: ObservationContent;
-  url: string;
-  guards?: SkillGuard[];
-  observedEpoch?: number;
-}): CompileResult {
+export function compileAction(opts: CompileActionOpts): CompileResult {
   if (opts.observedEpoch != null && opts.observedEpoch !== opts.documentEpoch) {
     return { rejected: "document epoch changed; re-observe before dispatch" };
   }
@@ -60,6 +67,17 @@ export function compileAction(opts: {
       steps,
     },
   };
+}
+
+/** Compiler + privilege check used by streamed and finished dispatch (Gate F). */
+export function compileAndAuthorize(
+  opts: CompileActionOpts & { grants?: GrantSource },
+): DispatchPrep {
+  const compiled = compileAction(opts);
+  if ("rejected" in compiled) return compiled;
+  const auth = authorizeProgram(compiled.program.steps ?? [], opts.grants);
+  if (!auth.ok) return { denied: auth.denied, effect: auth.effect };
+  return compiled;
 }
 
 function guardQuery(g: SkillGuard): PageQuery {
