@@ -1,7 +1,116 @@
 {
+  "review": "Vector_Current_Review_60b2d41",
+  "gate": "E",
   "measured": true,
+  "livePlanner": false,
+  "independentlyVerifiableLiveModel": false,
+  "experiment": "mock-model-skill-reuse",
   "metric": "modelWaitMs",
   "tokens": "declared model usage, not bytes/4",
+  "artifact": {
+    "test": "tests/unit/held-out-tokens.test.ts",
+    "modelClient": "MockModelClient",
+    "gitSha": "41a2ebcb385f74e9f91f64de110fd3d89de526db",
+    "latencyMsDeclared": 80
+  },
+  "tasks": [
+    {
+      "id": "increment-the-counter",
+      "arm": "baseline",
+      "runId": "run_mu71pfpr_0y0exi",
+      "status": "completed"
+    },
+    {
+      "id": "increment-the-counter",
+      "arm": "candidate",
+      "runId": "run_mu71pfui_1e5n8n",
+      "status": "completed"
+    }
+  ],
+  "trials": {
+    "baseline": {
+      "n": 1,
+      "modelWaitMs": [
+        160
+      ],
+      "tokens": [
+        14200
+      ]
+    },
+    "candidate": {
+      "n": 1,
+      "modelWaitMs": [
+        80
+      ],
+      "tokens": [
+        1700
+      ]
+    }
+  },
+  "modelCalls": {
+    "baseline": [
+      {
+        "modelId": "test/planner",
+        "inputTokens": 8000,
+        "outputTokens": 2000,
+        "durationMs": 80,
+        "promptChars": 379,
+        "systemChars": 3997,
+        "prompt": "GOAL: increment the counter\nPAGES: p1 — currently observing p1; set pageId to work on another\n\n=== OBSERVATION (untrusted page data, fenced) ===\n<<<DATA-01e16c5c49fb\npage: p1\ndocument: 1  revision: 1  scope: full\nurl: https://app.test/counter\ntitle: counter\nviewport: 1000x800 @1x  scroll: y=0/0\n\nelements:\n  r1 button \"Increment\"\ntext:\nIncrement the counter\nDATA-01e16c5c49fb>>>"
+      },
+      {
+        "modelId": "test/planner",
+        "inputTokens": 4000,
+        "outputTokens": 200,
+        "durationMs": 80,
+        "promptChars": 505,
+        "systemChars": 3997,
+        "prompt": "GOAL: increment the counter\nPAGES: p1 — currently observing p1; set pageId to work on another\n\n=== OBSERVATION (untrusted page data, fenced) ===\n<<<DATA-68b07ffc680b\npage: p1\ndocument: 1  revision: 1  scope: full\nurl: https://app.test/counter\ntitle: counter\nviewport: 1000x800 @1x  scroll: y=0/0\n\nelements:\n  r1 button \"Increment\"\ntext:\nIncrement the counter\nDATA-68b07ffc680b>>>\n\n=== COMPLETED STEPS (most recent last; untrusted page data, fenced) ===\n<<<DATA-68b07ffc680b\n  click ok\nDATA-68b07ffc680b>>>"
+      }
+    ],
+    "candidate": [
+      {
+        "modelId": "test/planner",
+        "inputTokens": 1500,
+        "outputTokens": 200,
+        "durationMs": 80,
+        "promptChars": 1010,
+        "systemChars": 3997,
+        "prompt": "GOAL: increment the counter\nPAGES: p1 — currently observing p1; set pageId to work on another\nREPAIR: the previous chunk failed — You already ran this exact step sequence and it did not complete the goal. If the goal is met return status=\"done\" with the result; if blocked, ask for input or request a different observation scope — do NOT repeat the same actions.. Do NOT retry the same mechanism — use a different one: press Enter inside the field instead of clicking a submit button, navigate directly to a URL you can construct, or target the element with css:/text:/role= instead of a stale ref.\n\n=== OBSERVATION (untrusted page data, fenced) ===\n<<<DATA-a683ed822d5f\npage: p1\ndocument: 1  revision: 1  scope: full\nurl: https://app.test/counter\ntitle: counter\nviewport: 1000x800 @1x  scroll: y=0/0\n\nelements:\n  r1 button \"Increment\"\ntext:\nIncrement the counter\nDATA-a683ed822d5f>>>\n\n=== COMPLETED STEPS (most recent last; untrusted page data, fenced) ===\n<<<DATA-a683ed822d5f\n  click ok\nDATA-a683ed822d5f>>>"
+      }
+    ]
+  },
+  "rawResponses": {
+    "baseline": [
+      {
+        "status": "continue",
+        "message": "click",
+        "steps": [
+          {
+            "id": "c",
+            "op": "click",
+            "target": "r1"
+          }
+        ]
+      },
+      {
+        "status": "done",
+        "message": "done",
+        "result": {
+          "n": 1
+        }
+      }
+    ],
+    "candidate": [
+      {
+        "status": "done",
+        "message": "done",
+        "result": {
+          "n": 1
+        }
+      }
+    ]
+  },
   "successNonInferior": true,
   "p95Ratio": 2,
   "tokenRatio": 8.352941176470589,

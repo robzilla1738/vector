@@ -149,25 +149,84 @@ describe("VEC-021 token-measured stretch", () => {
     expect(gate.p95Ratio).toBeGreaterThanOrEqual(2);
     expect(gate.meetsStretch).toBe(true);
 
+    const { execSync } = await import("node:child_process");
     const { mkdirSync, writeFileSync } = await import("node:fs");
     const { dirname, join } = await import("node:path");
     const { fileURLToPath } = await import("node:url");
-    const out = join(fileURLToPath(new URL(".", import.meta.url)), "../benchmarks/reports/held-out-latest.json");
-    mkdirSync(dirname(out), { recursive: true });
-    writeFileSync(
-      out,
-      JSON.stringify(
-        {
-          measured: true,
-          metric: "modelWaitMs",
-          tokens: "declared model usage, not bytes/4",
-          ...gate,
-          baseline: { success: 1, p95Ms: gate.p95Ratio * Math.max(modelMs(engine.tokens), 1), tokensPerSuccess: tokensPerSuccess(baseline.tokens, true) },
-          candidate: { success: 1, p95Ms: Math.max(modelMs(engine.tokens), 1), tokensPerSuccess: tokensPerSuccess(engine.tokens, true) },
-        },
-        null,
-        2,
-      ),
-    );
+    const gitSha = (() => {
+      try {
+        return execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+      } catch {
+        return "unknown";
+      }
+    })();
+    const callRecord = (
+      tokens: { input: number; output: number; ms: number }[],
+      calls: { modelId: string; prompt: string; system: string }[],
+    ) =>
+      tokens.map((t, i) => ({
+        modelId: calls[i]?.modelId ?? "test/planner",
+        inputTokens: t.input,
+        outputTokens: t.output,
+        durationMs: t.ms,
+        promptChars: calls[i]?.prompt.length ?? 0,
+        systemChars: calls[i]?.system.length ?? 0,
+        prompt: calls[i]?.prompt ?? "",
+      }));
+    const snapshot = {
+      review: "Vector_Current_Review_60b2d41",
+      gate: "E",
+      measured: true,
+      livePlanner: false,
+      independentlyVerifiableLiveModel: false,
+      experiment: "mock-model-skill-reuse",
+      metric: "modelWaitMs",
+      tokens: "declared model usage, not bytes/4",
+      artifact: {
+        test: "tests/unit/held-out-tokens.test.ts",
+        modelClient: "MockModelClient",
+        gitSha,
+        latencyMsDeclared: 80,
+      },
+      tasks: [
+        { id: "increment-the-counter", arm: "baseline", runId: runA.runId, status: finalA.status },
+        { id: "increment-the-counter", arm: "candidate", runId: runB.runId, status: finalB.status },
+      ],
+      trials: {
+        baseline: { n: 1, modelWaitMs: [modelMs(baseline.tokens)], tokens: [tokensPerSuccess(baseline.tokens, true)] },
+        candidate: { n: 1, modelWaitMs: [modelMs(engine.tokens)], tokens: [tokensPerSuccess(engine.tokens, true)] },
+      },
+      modelCalls: {
+        baseline: callRecord(baseline.tokens, baselineModel.calls),
+        candidate: callRecord(engine.tokens, engineModel.calls),
+      },
+      rawResponses: {
+        baseline: [
+          { status: "continue", message: "click", steps: [{ id: "c", op: "click", target: "r1" }] },
+          { status: "done", message: "done", result: { n: 1 } },
+        ],
+        candidate: [{ status: "done", message: "done", result: { n: 1 } }],
+      },
+      ...gate,
+      baseline: {
+        success: 1,
+        p95Ms: Math.max(modelMs(baseline.tokens), 1),
+        tokensPerSuccess: tokensPerSuccess(baseline.tokens, true),
+      },
+      candidate: {
+        success: 1,
+        p95Ms: Math.max(modelMs(engine.tokens), 1),
+        tokensPerSuccess: tokensPerSuccess(engine.tokens, true),
+      },
+    };
+    const here = fileURLToPath(new URL(".", import.meta.url));
+    const outs = [
+      join(here, "../benchmarks/reports/held-out-latest.json"),
+      join(here, "../../docs/engine/evidence/held-out-latest.json"),
+    ];
+    for (const out of outs) {
+      mkdirSync(dirname(out), { recursive: true });
+      writeFileSync(out, JSON.stringify(snapshot, null, 2) + "\n");
+    }
   });
 });
