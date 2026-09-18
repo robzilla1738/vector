@@ -1437,6 +1437,8 @@ mod tests {
                       pathNodes.target = input;
                       var composed = pathNodes.composedPath();
                       var pathMs = Date.now() - t;
+                      window.__veOnMs = 0;
+                      window.__veFireCalls = 0;
                       var t0 = Date.now();
                       input.focus();
                       var focusMs = Date.now() - t0;
@@ -1474,6 +1476,8 @@ mod tests {
                         composedLen: composed.length,
                         changeListeners: changeListeners,
                         pathListeners: pathListenerCounts,
+                        onMs: window.__veOnMs || 0,
+                        fireCalls: window.__veFireCalls || 0,
                         nodes: document.getElementsByTagName("*").length
                       });
                     })()"##,

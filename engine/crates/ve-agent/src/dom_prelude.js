@@ -247,6 +247,12 @@
         if (ev._stopImm) return;
         ev.currentTarget = node;
         const arr = (listeners.get(node) && listeners.get(node).get(type)) || [];
+        const tOn = Date.now();
+        const onLookup = node && node["on" + type];
+        if (type === "change") {
+          globalThis.__veOnMs = (globalThis.__veOnMs || 0) + (Date.now() - tOn);
+          globalThis.__veFireCalls = (globalThis.__veFireCalls || 0) + 1;
+        }
         for (const l of arr.slice()) {
           if (l.cap !== cap) continue;
           try { l.fn.call(node, ev); } catch (e) { __ve.log("error", "Uncaught (in event) " + (e && e.stack || e)); }
@@ -259,7 +265,7 @@
           }
           if (ev._stopImm) return;
         }
-        const prop = node["on" + type];
+        const prop = onLookup;
         if (!cap && typeof prop === "function") {
           try { prop.call(node, ev); } catch (e) { __ve.log("error", String(e)); }
         }
