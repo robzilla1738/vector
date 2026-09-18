@@ -6362,6 +6362,11 @@
     node.value = v;
     return true;
   };
+  globalThis.__veListenerCount = (type) => listenerCounts.get(String(type)) || 0;
+  globalThis.__veListenerDebug = (node, type) => {
+    const arr = listeners.get(node) && listeners.get(node).get(String(type));
+    return arr ? arr.length : 0;
+  };
   globalThis.__veFlushObservers = () => {
     for (const o of observers) {
       if (!o._on) continue;

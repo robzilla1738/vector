@@ -1421,6 +1421,14 @@ mod tests {
                       var pathLen = 0;
                       for (var n = input; n && pathLen < 64; n = n.parentNode) pathLen++;
                       window.__veNamedLookups = 0;
+                      var changeListeners = typeof __veListenerCount === "function" ? __veListenerCount("change") : -1;
+                      var pathListenerCounts = [];
+                      if (typeof __veListenerDebug === "function") {
+                        for (var n = input; n && pathListenerCounts.length < 16; n = n.parentNode) {
+                          pathListenerCounts.push(__veListenerDebug(n, "change"));
+                        }
+                        pathListenerCounts.push(__veListenerDebug(window, "change"));
+                      }
                       var t = Date.now();
                       input.dispatchEvent(new Event("veprobe", { bubbles: true }));
                       var probeMs = Date.now() - t;
@@ -1464,6 +1472,8 @@ mod tests {
                         probeMs: probeMs,
                         pathMs: pathMs,
                         composedLen: composed.length,
+                        changeListeners: changeListeners,
+                        pathListeners: pathListenerCounts,
                         nodes: document.getElementsByTagName("*").length
                       });
                     })()"##,
