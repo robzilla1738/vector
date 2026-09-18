@@ -1842,6 +1842,37 @@ mod tests {
 
     #[cfg(feature = "v8")]
     #[test]
+    fn official_observable_plot_exposes_prepare() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(&mut engine, "charts/dist/observable-plot.html");
+        let (probe, console) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            let probe = page
+                .evaluate(&with_lib(ADD_STEPS))
+                .unwrap_or(serde_json::Value::Null);
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .filter(|l| l.level == "error")
+                .map(|l| l.message.chars().take(180).collect())
+                .take(2)
+                .collect();
+            (probe, console)
+        };
+        engine.close(page_id);
+        let text = match &probe {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap_or(probe);
+        eprintln!("observable-plot {v} err={console:?}");
+        assert_eq!(v["ok"], true, "{v} err={console:?}");
+        assert_eq!(v["kind"], "chart", "{v}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
     #[ignore = "TipTap/charts/stockcharts OOM this host (same class as Editor-CodeMirror)"]
     fn remaining_official_editor_chart_workloads_boot() {
         let mut engine = bench_engine();
