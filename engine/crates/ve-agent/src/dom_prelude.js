@@ -5636,7 +5636,13 @@
   function templateInContent(n) {
     let p = n && n.parentNode;
     while (p) {
-      if (p.nodeType === 11) return true;
+      if (p.nodeType === 11) {
+        // ShadowRoot is also nodeType 11, but its descendants are live and
+        // must upgrade. Only a non-shadow DocumentFragment (template.content
+        // or an imported clone still sitting in a fragment) is inert.
+        if (p instanceof ShadowRoot) return false;
+        return true;
+      }
       p = p.parentNode;
     }
     return false;

@@ -833,6 +833,79 @@ fn template_content_cssstylesheet_and_import_node() {
 }
 
 #[test]
+fn custom_elements_in_imported_template_upgrade_inside_shadow() {
+    let mut page = open(r#"<body><todo-host></todo-host></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const tpl = document.createElement("template");
+              tpl.innerHTML = "<inner-list></inner-list>";
+              class InnerList extends HTMLElement {
+                constructor() {
+                  super();
+                  this.ready = true;
+                  this.updateElements = function () { return 1; };
+                }
+              }
+              class TodoHost extends HTMLElement {
+                constructor() {
+                  super();
+                  const node = document.importNode(tpl.content, true);
+                  this.list = node.querySelector("inner-list");
+                  this.shadow = this.attachShadow({ mode: "open" });
+                  this.shadow.append(node);
+                }
+                connectedCallback() {
+                  window.__listReady = !!(this.list && this.list.ready);
+                  window.__hasUpdate = typeof this.list.updateElements === "function";
+                }
+              }
+              customElements.define("inner-list", InnerList);
+              customElements.define("todo-host", TodoHost);
+              const host = document.querySelector("todo-host");
+              const list = host && host.shadowRoot && host.shadowRoot.querySelector("inner-list");
+              return {
+                listReady: !!window.__listReady,
+                hasUpdate: !!window.__hasUpdate,
+                same: !!(host && list && host.list === list),
+                ctor: list && list.constructor && list.constructor.name
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["listReady"], true, "{v}");
+    assert_eq!(v["hasUpdate"], true, "{v}");
+    assert_eq!(v["same"], true, "{v}");
+    assert_eq!(v["ctor"], "InnerList", "{v}");
+}
+
+#[test]
+fn custom_elements_stay_inert_in_template_content() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r#"(function () {
+              const tpl = document.createElement("template");
+              tpl.innerHTML = "<kept-el></kept-el>";
+              class KeptEl extends HTMLElement {
+                constructor() { super(); window.__kept = (window.__kept || 0) + 1; }
+              }
+              customElements.define("kept-el", KeptEl);
+              const inside = tpl.content.querySelector("kept-el");
+              return {
+                constructed: window.__kept || 0,
+                name: inside && inside.constructor && inside.constructor.name,
+                upgraded: !!(inside && inside.__upgraded)
+              };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(v["constructed"], 0, "{v}");
+    assert_eq!(v["name"], "HTMLElement", "{v}");
+    assert_eq!(v["upgraded"], false, "{v}");
+}
+
+#[test]
 fn custom_elements_upgrade_runs_connected_callback() {
     let mut page = open(r#"<body></body>"#);
     let v = page

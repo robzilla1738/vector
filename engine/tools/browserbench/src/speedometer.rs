@@ -1,7 +1,7 @@
 //! Official `Speedometer` 3.0 suite runner (VEC-021).
 
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use ve_api::{OpenRequest, VectorEngine};
 
@@ -1112,6 +1112,58 @@ mod tests {
         assert_eq!(add["added"], 3, "{add} err={console:?}");
         assert_eq!(one["remaining"], 2, "{one} err={console:?}");
         assert_eq!(finish["remaining"], 0, "{finish} err={console:?}");
+    }
+
+    #[cfg(feature = "v8")]
+    #[test]
+    fn web_components_workload_registers_and_finds_input() {
+        let mut engine = bench_engine();
+        let page_id = open_workload(
+            &mut engine,
+            "todomvc/vanilla-examples/javascript-web-components/dist/index.html",
+        );
+        let (probe, console) = {
+            let page = engine.page_mut(page_id).unwrap();
+            page.settle(3_000);
+            let probe = page
+                .evaluate(
+                    r#"(function () {
+                      const app = document.querySelector("todo-app");
+                      const input = (function () {
+                        var n = document;
+                        var path = ["todo-app", "todo-topbar"];
+                        for (var i = 0; i < path.length; i++) {
+                          n = n.querySelector(path[i]);
+                          if (!n) return { step: "missing-" + path[i] };
+                          n = n.shadowRoot || n;
+                        }
+                        var el = n.querySelector(".new-todo-input") || n.querySelector(".new-todo");
+                        return el ? { tag: el.tagName, cls: el.className } : { step: "no-input", html: n.innerHTML ? String(n.innerHTML).slice(0, 200) : "" };
+                      })();
+                      return {
+                        defined: !!customElements.get("todo-app"),
+                        topbar: !!customElements.get("todo-topbar"),
+                        app: !!app,
+                        shadow: !!(app && app.shadowRoot),
+                        input: input,
+                        css: typeof CSSStyleSheet === "function"
+                      };
+                    })()"#,
+                )
+                .unwrap();
+            let console: Vec<String> = page
+                .console()
+                .iter()
+                .map(|l| format!("{}:{}", l.level, l.message.chars().take(160).collect::<String>()))
+                .take(8)
+                .collect();
+            (probe, console)
+        };
+        engine.close(page_id);
+        assert_eq!(probe["defined"], true, "{probe} err={console:?}");
+        assert_eq!(probe["topbar"], true, "{probe} err={console:?}");
+        assert_eq!(probe["shadow"], true, "{probe} err={console:?}");
+        assert!(probe["input"]["tag"].is_string(), "{probe} err={console:?}");
     }
 
     #[cfg(feature = "v8")]

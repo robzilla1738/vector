@@ -311,22 +311,22 @@ fn main() -> Result<()> {
         policy: ve_api::NetworkPolicy::permissive(),
         ..EngineConfig::default()
     });
-    let mut suites = vec![
-        jetstream(
-            &mut engine,
-            args.iterations,
-            "jetstream.n-body",
-            JETSTREAM_N_BODY,
-            "n-body",
-        ),
-        jetstream(
-            &mut engine,
-            args.iterations,
-            "jetstream.crypto-sha1",
-            JETSTREAM_SHA1,
-            "crypto-sha1",
-        ),
-    ];
+    eprintln!("browserbench: start jetstream.n-body");
+    let mut suites = vec![jetstream(
+        &mut engine,
+        args.iterations,
+        "jetstream.n-body",
+        JETSTREAM_N_BODY,
+        "n-body",
+    )];
+    eprintln!("browserbench: start jetstream.crypto-sha1");
+    suites.push(jetstream(
+        &mut engine,
+        args.iterations,
+        "jetstream.crypto-sha1",
+        JETSTREAM_SHA1,
+        "crypto-sha1",
+    ));
     suites.extend(speedometer::run_official(
         &mut engine,
         args.iterations,

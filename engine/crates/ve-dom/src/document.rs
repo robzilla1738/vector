@@ -1062,7 +1062,12 @@ impl Document {
         self.element(frame).and_then(|e| e.content_document)
     }
 
-    /// `true` when `id`'s parent chain reaches a document node.
+    /// `true` when `id`'s shadow-including parent chain reaches a document.
+    ///
+    /// HTML treats a node as connected when its shadow-including root is a
+    /// `Document`. Shadow children have no light `parent`; the walk must
+    /// continue through the shadow root's host. Template contents stay
+    /// disconnected: their fragment has neither a parent nor a host.
     #[must_use]
     pub fn is_connected(&self, id: NodeId) -> bool {
         let mut cur = id;
@@ -1070,7 +1075,7 @@ impl Document {
             if self.get(cur).is_some_and(Node::is_document) {
                 return true;
             }
-            match self.parent(cur) {
+            match self.parent(cur).or_else(|| self.host(cur)) {
                 Some(p) => cur = p,
                 None => return false,
             }
@@ -1848,6 +1853,33 @@ mod tests {
         assert!(doc.is_connected(nested));
         assert!(doc.is_connected(body));
         assert!(!doc.is_ancestor_of(doc.root(), body));
+    }
+
+    #[test]
+    fn is_connected_walks_shadow_host_but_not_template_contents() {
+        let mut doc = Document::new();
+        let host = html(&mut doc, "div");
+        doc.append_child(doc.root(), host).unwrap();
+        let shadow = doc.attach_shadow(host, ShadowRootMode::Open).unwrap();
+        let child = html(&mut doc, "span");
+        doc.append_child(shadow, child).unwrap();
+        assert!(doc.is_connected(shadow), "connected host makes the shadow root connected");
+        assert!(doc.is_connected(child), "shadow children are shadow-including connected");
+
+        let template = html(&mut doc, "template");
+        doc.append_child(doc.root(), template).unwrap();
+        let contents = doc.template_contents(template).expect("template contents");
+        let inert = html(&mut doc, "x-el");
+        doc.append_child(contents, inert).unwrap();
+        assert!(doc.is_connected(template));
+        assert!(
+            !doc.is_connected(contents),
+            "template contents fragment is not connected"
+        );
+        assert!(
+            !doc.is_connected(inert),
+            "nodes in template contents stay inert"
+        );
     }
 
     #[test]
