@@ -242,7 +242,9 @@ const ASYNC_START: &str = r#"(function () {
     .then(function () { return b.runIteration(0); })
     .then(function () { return b.validate && b.validate(1); })
     .then(function () { window.__veJs.done = true; })
-    .catch(function (e) { window.__veJs.err = String(e && e.message ? e.message : e); });
+    .catch(function (e) {
+      window.__veJs.err = String(e && e.stack ? e.stack : (e && e.message ? e.message : e));
+    });
   return true;
 })()"#;
 
