@@ -6,7 +6,17 @@
   "officialFullSuite": false,
   "gate": false,
   "iterations": 1,
-  "note": "Official Speedometer 3.0 suite names executed without --gate. Results transcribed from the live browserbench log while the run continues past NewsSite. Not a browserbench.org published score. Failed attempts stay FAIL. Complex-DOM suites often spend 3+ minutes hitting evaluate deadlines.",
+  "note": "Official Speedometer 3.0 suite names executed without --gate. The results array is the killed full-suite log (Nuxt later PASS, CodeMirror SIGKILL). Not a browserbench.org published score. Failed attempts stay FAIL. Complex-DOM suites often spend 3+ minutes hitting evaluate deadlines. Independently rechecked after engine fixes: WebComponents/React/React-Redux/Vue add 3 todos; News-Next exposes the navbar; Lit boots and mutates the model but does not render todo-item nodes.",
+  "verifiedAfterFixes": {
+    "TodoMVC-WebComponents": "PASS add/finish 3 items",
+    "TodoMVC-React": "PASS add 3 items",
+    "TodoMVC-React-Redux": "PASS add 3 items",
+    "TodoMVC-Vue": "PASS add 3 items after microtask recount",
+    "TodoMVC-Lit": "FAIL list render empty after model add",
+    "NewsSite-Next": "PASS navbar present",
+    "NewsSite-Nuxt": "PASS in killed full-suite log",
+    "Editor-CodeMirror": "killed OOM/SIGKILL in full-suite log"
+  },
   "speedometer30": {
     "executed": 25,
     "passed": 7,
