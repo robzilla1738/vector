@@ -4092,6 +4092,7 @@ fn html_collection_types_match_html_idl() {
              <input type="radio" name="color" value="blue">
              <select id="s" name="s"><option value="a" selected>A</option><option value="b">B</option></select>
            </form>
+           <img id="im" alt="i">
            <p id="p">x</p>
            <p id="dup">one</p>
            <div id="dup">two</div>"#,
@@ -4121,6 +4122,8 @@ fn html_collection_types_match_html_idl() {
                 radioCtorProto: Object.getPrototypeOf(RadioNodeList) === NodeList,
                 formHasOwn: typeof form.elements.hasOwnProperty === "function",
                 optionsHasOwn: typeof select.options.hasOwnProperty === "function",
+                imagesIn: document.images.length >= 1 && (0 in document.images)
+                  && [].slice.call(document.images).length === document.images.length,
                 formTag: Object.prototype.toString.call(form.elements),
                 formIsControls: form.elements instanceof HTMLFormControlsCollection,
                 namedInput: form.elements.namedItem("n") && form.elements.namedItem("n").value === "Ada",
@@ -4151,6 +4154,7 @@ fn html_collection_types_match_html_idl() {
     assert_eq!(v["radioCtorProto"], true, "{v}");
     assert_eq!(v["formHasOwn"], true, "{v}");
     assert_eq!(v["optionsHasOwn"], true, "{v}");
+    assert_eq!(v["imagesIn"], true, "{v}");
     assert_eq!(v["formTag"], "[object HTMLFormControlsCollection]", "{v}");
     assert_eq!(v["formIsControls"], true, "{v}");
     assert_eq!(v["namedInput"], true, "{v}");

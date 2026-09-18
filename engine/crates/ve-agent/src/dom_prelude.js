@@ -1073,6 +1073,17 @@
         || Object.getOwnPropertyDescriptor(Object.prototype, p)
         || Object.getOwnPropertyDescriptor(t, p);
     },
+    has(t, p) {
+      if (typeof p === "symbol") return false;
+      if (typeof p === "string" && p.charCodeAt(0) === 95) return true;
+      if (p === "length" || p === "item" || p === "namedItem" || p === "add" || p === "remove" || p === "selectedIndex") {
+        return true;
+      }
+      const s = String(p);
+      if (/^\d+$/.test(s)) return Number(s) < t._fetch().length;
+      if (s && (t.namedItem || HTMLCollection.prototype.namedItem).call(t, s)) return true;
+      return Object.prototype[p] !== undefined || p === "constructor";
+    },
   };
 
   const IDL_INTERNAL = Symbol("idl");
@@ -1289,6 +1300,15 @@
       return Object.getOwnPropertyDescriptor(HTMLAllCollection.prototype, p)
         || Object.getOwnPropertyDescriptor(Object.prototype, p)
         || Object.getOwnPropertyDescriptor(t, p);
+    },
+    has(t, p) {
+      if (typeof p === "symbol") return false;
+      if (typeof p === "string" && p.charCodeAt(0) === 95) return true;
+      if (p === "length" || p === "item" || p === "namedItem") return true;
+      const s = String(p);
+      if (/^\d+$/.test(s)) return Number(s) < t._fetch().length;
+      if (s && HTMLAllCollection.prototype.namedItem.call(t, s)) return true;
+      return Object.prototype[p] !== undefined || p === "constructor";
     },
   };
 
