@@ -12,7 +12,9 @@
     "in_process_handle_matches_socket_protocol": "PASS",
     "concurrency_tail_and_process_tree_memory": "PASS",
     "unseen_layout_variant_is_scored_by_outcome_only": "PASS",
-    "human_edit_and_agent_observe_the_same_page": "PASS"
+    "human_edit_and_agent_observe_the_same_page": "PASS",
+    "gui_thread_pump_and_mcp_client_share_one_native_browser": "PASS",
+    "stalled_host_handshake_fails_without_downgrade": "PASS"
   },
   "exit": {
     "humanEditsField": true,
@@ -21,11 +23,13 @@
     "takeoverStopsDispatch": true,
     "resumeRevalidates": true,
     "resizeWheelImeAccessKit": true,
-    "noChromium": true
+    "noChromium": true,
+    "guiThreadSameNativeBrowser": true,
+    "stalledChildFailsClosed": true
   },
   "remaining": [
-    "Gate A downloaded multi-platform release artifact",
-    "live GPU window plus MCP attached to one service process",
+    "Gate A downloaded multi-platform release artifact (CI matrix exists; this host is Linux only)",
+    "live GPU window plus MCP on a display (pump shares NativeBrowser; no GPU in this environment)",
     "official html/dom remaining FAILs and idlharness WebIDL gaps",
     "full official Speedometer/JetStream/MotionMark suite"
   ]

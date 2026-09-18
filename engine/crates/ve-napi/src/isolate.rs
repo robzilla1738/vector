@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -26,6 +27,9 @@ pub const HOST_PROTOCOL: u32 = 1;
 
 /// Largest JSON line accepted on the control pipe (VEC-002 oversized IPC).
 const MAX_MESSAGE_BYTES: usize = 16 * 1024 * 1024;
+
+/// Gate A: a stalled child must fail visibly instead of hanging the parent.
+const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// JSON line on the control pipe.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -174,41 +178,58 @@ impl ProcessClient {
             .stdin
             .take()
             .ok_or_else(|| "ve-host stdin missing".to_owned())?;
-        let mut stdout = BufReader::new(
-            child
-                .stdout
-                .take()
-                .ok_or_else(|| "ve-host stdout missing".to_owned())?,
-        );
-        write_msg(
-            &mut stdin,
-            &Channel::Init {
-                protocol: HOST_PROTOCOL,
-                config: config.clone(),
-                context_id,
-            },
-        )
+        let stdout_raw = child
+            .stdout
+            .take()
+            .ok_or_else(|| "ve-host stdout missing".to_owned())?;
+        write_msg(&mut stdin, &Channel::Init {
+            protocol: HOST_PROTOCOL,
+            config: config.clone(),
+            context_id,
+        })
         .map_err(|e| format!("ve-host init write: {e}"))?;
-        match read_msg(&mut stdout) {
-            Ok(Channel::Ready {
+        let (hs_tx, hs_rx) = mpsc::channel();
+        thread::Builder::new()
+            .name("ve-host-handshake".into())
+            .spawn(move || {
+                let mut r = BufReader::new(stdout_raw);
+                let msg = read_msg(&mut r);
+                let _ = hs_tx.send((msg, r));
+            })
+            .map_err(|e| format!("spawn handshake: {e}"))?;
+        let (ready, stdout) = match hs_rx.recv_timeout(HANDSHAKE_TIMEOUT) {
+            Ok((Ok(msg), r)) => (msg, r),
+            Ok((Err(e), _)) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("ve-host handshake failed: {e}"));
+            }
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("ve-host handshake stalled".into());
+            }
+        };
+        match ready {
+            Channel::Ready {
                 protocol,
                 sandbox,
                 scripting: _,
-            }) if protocol == HOST_PROTOCOL => {
+            } if protocol == HOST_PROTOCOL => {
                 if production && !sandbox {
                     let _ = child.kill();
                     let _ = child.wait();
                     return Err("ve-host did not apply a production sandbox".into());
                 }
             }
-            Ok(Channel::Ready { protocol, .. }) => {
+            Channel::Ready { protocol, .. } => {
                 let _ = child.kill();
                 let _ = child.wait();
                 return Err(format!(
                     "ve-host protocol mismatch: child={protocol} parent={HOST_PROTOCOL}"
                 ));
             }
-            Ok(Channel::Fatal { message, .. }) => {
+            Channel::Fatal { message, .. } => {
                 let _ = child.kill();
                 let _ = child.wait();
                 return Err(message);
@@ -482,5 +503,44 @@ fn dispatch(state: &mut HostState, op: Op) -> Value {
         Op::Close { global } => state.close(global),
         Op::GetCookies { url } => state.get_cookies(url.as_deref()),
         Op::SetCookies { cookies } => state.set_cookies(&cookies),
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use std::time::Instant;
+    use ve_api::SecurityProfile;
+
+    #[test]
+    fn stalled_host_handshake_fails_without_downgrade() {
+        let script = std::env::temp_dir().join(format!("ve-stall-host-{}.sh", std::process::id()));
+        std::fs::write(&script, "#!/bin/sh\nexec sleep 30\n").expect("write stall script");
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+        let started = Instant::now();
+        let err = match ProcessClient::spawn(
+            &script,
+            EngineConfig {
+                offline: true,
+                security_profile: SecurityProfile::Production,
+                isolation: ve_api::IsolationMode::RequireProcess,
+                ..EngineConfig::default()
+            },
+            1,
+        ) {
+            Ok(_) => panic!("stalled child must fail closed"),
+            Err(e) => e,
+        };
+        let _ = std::fs::remove_file(&script);
+        assert!(
+            err.contains("stalled") || err.contains("handshake"),
+            "{err}"
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(8),
+            "handshake timeout must not hang: {:?}",
+            started.elapsed()
+        );
     }
 }

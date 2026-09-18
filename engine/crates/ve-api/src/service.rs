@@ -9,7 +9,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -47,6 +47,17 @@ impl BrowserService {
     #[must_use]
     pub fn from_browser(browser: NativeBrowser) -> Self {
         Self { browser }
+    }
+
+    /// Live native browser (GUI event loop / tests).
+    #[must_use]
+    pub fn browser(&self) -> &NativeBrowser {
+        &self.browser
+    }
+
+    /// Mutable live native browser (GUI input and present).
+    pub fn browser_mut(&mut self) -> &mut NativeBrowser {
+        &mut self.browser
     }
 
     /// Dispatch one JSON-RPC method. Unknown methods are `invalid_params`.
@@ -248,6 +259,76 @@ impl Drop for BrowserServiceListener {
         }
         drop(self.jobs.take());
         if let Some(join) = self.owner.take() {
+            let _ = join.join();
+        }
+    }
+}
+
+/// Accepts MCP/Node clients; the GUI thread owns [`BrowserService`] and
+/// [`Self::poll`]s it. One `NativeBrowser`, no document copy, no PNG transport.
+pub struct BrowserServicePump {
+    addr: SocketAddr,
+    stop: Arc<AtomicBool>,
+    rx: Receiver<Job>,
+    _keep_tx: Sender<Job>,
+    accept: Option<JoinHandle<()>>,
+}
+
+impl BrowserServicePump {
+    /// Bind `host:port`. The caller must [`Self::poll`] on the GUI/owner thread.
+    pub fn bind(addr: &str) -> Result<Self> {
+        let listener = TcpListener::bind(addr)
+            .map_err(|e| Error::coded(ErrorCode::BackendUnavailable, format!("bind: {e}")))?;
+        listener
+            .set_nonblocking(true)
+            .map_err(|e| Error::internal(format!("nonblocking: {e}")))?;
+        let bound = listener
+            .local_addr()
+            .map_err(|e| Error::internal(format!("local_addr: {e}")))?;
+        let (tx, rx) = mpsc::channel::<Job>();
+        let stop = Arc::new(AtomicBool::new(false));
+        let stop_thread = Arc::clone(&stop);
+        let jobs_accept = tx.clone();
+        let accept = thread::Builder::new()
+            .name("ve-browser-pump".into())
+            .spawn(move || accept_loop(listener, jobs_accept, stop_thread))
+            .map_err(|e| Error::internal(format!("spawn accept: {e}")))?;
+        Ok(Self {
+            addr: bound,
+            stop,
+            rx,
+            _keep_tx: tx,
+            accept: Some(accept),
+        })
+    }
+
+    /// Bound address MCP/Node clients dial.
+    #[must_use]
+    pub fn addr(&self) -> SocketAddr {
+        self.addr
+    }
+
+    /// Run queued client jobs on this thread's [`BrowserService`].
+    pub fn poll(&self, service: &mut BrowserService) -> usize {
+        let mut n = 0;
+        while let Ok(job) = self.rx.try_recv() {
+            job(service);
+            n += 1;
+        }
+        n
+    }
+
+    /// Stop accepting.
+    pub fn shutdown(&self) {
+        self.stop.store(true, Ordering::Relaxed);
+        let _ = TcpStream::connect_timeout(&self.addr, Duration::from_millis(50));
+    }
+}
+
+impl Drop for BrowserServicePump {
+    fn drop(&mut self) {
+        self.shutdown();
+        if let Some(join) = self.accept.take() {
             let _ = join.join();
         }
     }
@@ -600,6 +681,52 @@ mod tests {
                 "evaluator must accept unseen layout {url}"
             );
         }
+    }
+
+    #[test]
+    fn gui_thread_pump_and_mcp_client_share_one_native_browser() {
+        let mut service = BrowserService::new();
+        service
+            .handle(
+                "pages.open",
+                &json!({"html":"<input id=t>","url":"https://gui.test/"}),
+            )
+            .expect("open");
+        service
+            .handle(
+                "input.event",
+                &json!({"type":"ime","text":"typed-by-human"}),
+            )
+            .expect("ime");
+        let page = service.browser().active_tab().expect("tab").page.0;
+        let pump = BrowserServicePump::bind("127.0.0.1:0").expect("pump");
+        let addr = pump.addr();
+        let (tx, rx) = std::sync::mpsc::channel();
+        thread::spawn(move || {
+            let mut mcp = BrowserClient::connect(addr).expect("mcp");
+            let obs = mcp.call("pages.observe", json!({}));
+            let scene = mcp.call("scene.update", json!({}));
+            tx.send((obs, scene)).expect("send");
+        });
+        let started = Instant::now();
+        let mut got = None;
+        while started.elapsed() < Duration::from_secs(3) {
+            pump.poll(&mut service);
+            if let Ok(pair) = rx.try_recv() {
+                got = Some(pair);
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        let (obs, scene) = got.expect("mcp observe");
+        let obs = obs.expect("observe ok");
+        let scene = scene.expect("scene ok");
+        assert_eq!(obs["page"], page);
+        assert_eq!(field_value(&obs), "typed-by-human");
+        assert_eq!(scene["png"], false);
+        assert_eq!(scene["kind"], "displayList");
+        assert_eq!(scene["page"], page);
+        assert!(!service.browser().identity()["chromium"].as_bool().unwrap());
     }
 
     fn field_value(obs: &Value) -> String {

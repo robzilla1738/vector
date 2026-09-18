@@ -45,7 +45,7 @@ use serde_json::{Value, json};
 use ve_core::{Error, ErrorCode, Result, Size};
 use ve_net::{Initiator, NetworkContext, Request};
 
-pub use service::{BrowserClient, BrowserService, BrowserServiceListener};
+pub use service::{BrowserClient, BrowserService, BrowserServiceListener, BrowserServicePump};
 pub use shell::{ChromeAxNode, EventOutcome, NativeBrowser, NativeController, NativeEvent, Tab};
 pub use updates::{UpdateKeyPair, verify_update_manifest};
 pub use ve_agent::{

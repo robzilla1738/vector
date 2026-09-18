@@ -9,8 +9,8 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 use ve_api::{
-    BrowserServiceListener, EngineConfig, NativeBrowser, NativeEvent, OpenRequest,
-    ScreenshotOptions, VectorEngine,
+    BrowserServiceListener, BrowserServicePump, EngineConfig, NativeBrowser, NativeEvent,
+    OpenRequest, ScreenshotOptions, VectorEngine,
 };
 use ve_core::Size;
 
@@ -49,11 +49,11 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    if let Some(bind) = args.service.as_deref() {
-        return run_service(bind, &args);
-    }
     if args.gui {
         return run_gui(&args);
+    }
+    if let Some(bind) = args.service.as_deref() {
+        return run_service(bind, &args);
     }
     let mut engine = VectorEngine::new(EngineConfig {
         viewport: Size::new(1280.0, 720.0),
@@ -146,12 +146,34 @@ fn run_gui(args: &Args) -> Result<()> {
         let _ = browser.present();
     }
     let _ = browser.present();
+    let pump = if let Some(bind) = args.service.as_deref() {
+        let pump = BrowserServicePump::bind(bind)?;
+        println!(
+            "{}",
+            serde_json::json!({
+                "VECTOR_BROWSER_SERVICE": pump.addr().to_string(),
+                "backend": "vector-engine",
+                "chromium": false,
+                "service": "browser-service",
+                "gui": true,
+            })
+        );
+        Some(pump)
+    } else {
+        None
+    };
     #[cfg(feature = "window")]
     {
-        gui::run(browser)
+        match pump {
+            Some(pump) => {
+                gui::run_shared(ve_api::BrowserService::from_browser(browser), Some(pump))
+            }
+            None => gui::run(browser),
+        }
     }
     #[cfg(not(feature = "window"))]
     {
+        let _ = pump;
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({

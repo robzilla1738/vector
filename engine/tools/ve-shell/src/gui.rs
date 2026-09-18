@@ -10,7 +10,7 @@ use std::sync::Arc;
 use accesskit_winit::{Adapter, Event as AccessKitEvent, WindowEvent as AccessKitWindowEvent};
 use anyhow::Result;
 use softbuffer::{Context, Surface};
-use ve_api::{NativeBrowser, NativeEvent};
+use ve_api::{BrowserService, BrowserServicePump, NativeBrowser, NativeEvent};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
@@ -19,10 +19,20 @@ use winit::window::{Window, WindowId};
 
 /// Runs until the window is closed.
 pub fn run(browser: NativeBrowser) -> Result<()> {
+    run_shared(BrowserService::from_browser(browser), None)
+}
+
+/// GUI and MCP share one [`BrowserService`] / [`NativeBrowser`].
+pub fn run_shared(service: BrowserService, pump: Option<BrowserServicePump>) -> Result<()> {
     let event_loop = EventLoop::<AccessKitEvent>::with_user_event().build()?;
-    event_loop.set_control_flow(ControlFlow::Wait);
+    event_loop.set_control_flow(if pump.is_some() {
+        ControlFlow::WaitUntil(std::time::Instant::now() + std::time::Duration::from_millis(16))
+    } else {
+        ControlFlow::Wait
+    });
     let mut app = App {
-        browser,
+        service,
+        pump,
         window: None,
         context: None,
         surface: None,
@@ -37,7 +47,8 @@ pub fn run(browser: NativeBrowser) -> Result<()> {
 }
 
 struct App {
-    browser: NativeBrowser,
+    service: BrowserService,
+    pump: Option<BrowserServicePump>,
     window: Option<Arc<Window>>,
     #[allow(dead_code)]
     context: Option<Context<Arc<Window>>>,
@@ -50,17 +61,32 @@ struct App {
 }
 
 impl App {
+    fn browser(&self) -> &NativeBrowser {
+        self.service.browser()
+    }
+
+    fn browser_mut(&mut self) -> &mut NativeBrowser {
+        self.service.browser_mut()
+    }
+
+    fn drain_service(&mut self) -> bool {
+        let Some(pump) = &self.pump else {
+            return false;
+        };
+        pump.poll(&mut self.service) > 0
+    }
+
     fn redraw(&mut self) {
         let Some(window) = &self.window else {
             return;
         };
-        let tree = self.browser.accesskit_update();
+        let tree = self.browser().accesskit_update();
         if let Some(adapter) = &mut self.adapter {
             adapter.update_if_active(|| tree);
         }
         #[cfg(feature = "gpu")]
         if let Some(gpu) = &mut self.gpu
-            && gpu.present(&mut self.browser).is_ok()
+            && gpu.present(self.service.browser_mut()).is_ok()
         {
             window.set_title(NativeBrowser::CHROME_TITLE);
             return;
@@ -68,8 +94,8 @@ impl App {
         let Some(surface) = &mut self.surface else {
             return;
         };
-        let _ = self.browser.present();
-        let frame = self.browser.framebuffer();
+        let _ = self.service.browser_mut().present();
+        let frame = self.service.browser().framebuffer();
         let size = window.inner_size();
         let Some(w) = NonZeroU32::new(size.width) else {
             return;
@@ -138,17 +164,33 @@ impl ApplicationHandler<AccessKitEvent> for App {
         self.redraw();
     }
 
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        if self.pump.is_none() {
+            return;
+        }
+        if self.drain_service() {
+            if let Some(w) = &self.window {
+                w.request_redraw();
+            }
+        }
+        event_loop.set_control_flow(ControlFlow::WaitUntil(
+            std::time::Instant::now() + std::time::Duration::from_millis(16),
+        ));
+    }
+
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: AccessKitEvent) {
         match event.window_event {
             AccessKitWindowEvent::InitialTreeRequested => {
-                let tree = self.browser.accesskit_update();
+                let tree = self.browser().accesskit_update();
                 if let Some(adapter) = &mut self.adapter {
                     adapter.update_if_active(|| tree);
                 }
             }
             AccessKitWindowEvent::ActionRequested(req) => {
-                let name = self.browser.accesskit_action_name(req.target.0);
-                let _ = self.browser.handle_event(NativeEvent::AccessKitAction { name });
+                let name = self.browser().accesskit_action_name(req.target.0);
+                let _ = self
+                    .browser_mut()
+                    .handle_event(NativeEvent::AccessKitAction { name });
                 if let Some(w) = &self.window {
                     w.request_redraw();
                 }
@@ -169,8 +211,12 @@ impl ApplicationHandler<AccessKitEvent> for App {
                 if let Some(gpu) = &mut self.gpu {
                     gpu.resize(size.width, size.height);
                 }
-                let scale = self.window.as_ref().map(|w| w.scale_factor()).unwrap_or(1.0) as f32;
-                let _ = self.browser.handle_event(NativeEvent::Resize {
+                let scale = self
+                    .window
+                    .as_ref()
+                    .map(|w| w.scale_factor())
+                    .unwrap_or(1.0) as f32;
+                let _ = self.browser_mut().handle_event(NativeEvent::Resize {
                     width: size.width as f32 / scale.max(0.01),
                     height: size.height as f32 / scale.max(0.01),
                 });
@@ -209,17 +255,19 @@ impl ApplicationHandler<AccessKitEvent> for App {
                 } else {
                     NativeEvent::Key { key }
                 };
-                let _ = self.browser.handle_event(ev);
+                let _ = self.browser_mut().handle_event(ev);
                 if let Some(w) = &self.window {
                     w.request_redraw();
                 }
             }
             WindowEvent::Ime(ime) => match ime {
                 winit::event::Ime::Preedit(text, _) => {
-                    let _ = self.browser.handle_event(NativeEvent::ImePreedit { text });
+                    let _ = self
+                        .browser_mut()
+                        .handle_event(NativeEvent::ImePreedit { text });
                 }
                 winit::event::Ime::Commit(text) => {
-                    let _ = self.browser.handle_event(NativeEvent::Ime { text });
+                    let _ = self.browser_mut().handle_event(NativeEvent::Ime { text });
                     if let Some(w) = &self.window {
                         w.request_redraw();
                     }
@@ -227,21 +275,31 @@ impl ApplicationHandler<AccessKitEvent> for App {
                 _ => {}
             },
             WindowEvent::CursorMoved { position, .. } => {
-                let scale = self.window.as_ref().map(|w| w.scale_factor()).unwrap_or(1.0) as f32;
-                let _ = self.browser.handle_event(NativeEvent::PointerMove {
+                let scale = self
+                    .window
+                    .as_ref()
+                    .map(|w| w.scale_factor())
+                    .unwrap_or(1.0) as f32;
+                let _ = self.browser_mut().handle_event(NativeEvent::PointerMove {
                     x: position.x as f32 / scale.max(0.01),
                     y: position.y as f32 / scale.max(0.01),
                 });
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                let scale = self.window.as_ref().map(|w| w.scale_factor()).unwrap_or(1.0) as f32;
+                let scale = self
+                    .window
+                    .as_ref()
+                    .map(|w| w.scale_factor())
+                    .unwrap_or(1.0) as f32;
                 let (dx, dy) = match delta {
                     winit::event::MouseScrollDelta::LineDelta(x, y) => (x * 40.0, -y * 40.0),
                     winit::event::MouseScrollDelta::PixelDelta(p) => {
                         (p.x as f32 / scale.max(0.01), p.y as f32 / scale.max(0.01))
                     }
                 };
-                let _ = self.browser.handle_event(NativeEvent::Wheel { dx, dy });
+                let _ = self
+                    .browser_mut()
+                    .handle_event(NativeEvent::Wheel { dx, dy });
                 if let Some(w) = &self.window {
                     w.request_redraw();
                 }
@@ -251,9 +309,9 @@ impl ApplicationHandler<AccessKitEvent> for App {
                 button,
                 ..
             } => {
-                let p = self.browser.pointer();
+                let p = self.browser().pointer();
                 let b = u8::from(button != MouseButton::Left);
-                let _ = self.browser.handle_event(NativeEvent::PointerDown {
+                let _ = self.browser_mut().handle_event(NativeEvent::PointerDown {
                     x: p.x,
                     y: p.y,
                     button: b,
@@ -267,9 +325,9 @@ impl ApplicationHandler<AccessKitEvent> for App {
                 button,
                 ..
             } => {
-                let p = self.browser.pointer();
+                let p = self.browser().pointer();
                 let b = u8::from(button != MouseButton::Left);
-                let _ = self.browser.handle_event(NativeEvent::PointerUp {
+                let _ = self.browser_mut().handle_event(NativeEvent::PointerUp {
                     x: p.x,
                     y: p.y,
                     button: b,
