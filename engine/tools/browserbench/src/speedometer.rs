@@ -1948,25 +1948,30 @@ mod tests {
             let probe = page
                 .evaluate(&with_lib(
                     r##"(function () {
-                      var cursor = document.querySelector(".react-stockcharts-crosshair-cursor");
-                      if (!cursor) return JSON.stringify({ ok: false, cursor: false });
-                      var x = 150, y = 200;
-                      function coords(i) {
-                        return { clientX: x + i * 10, clientY: y + i * 2, bubbles: true, cancelable: true };
+                      try {
+                        var cursor = document.querySelector(".react-stockcharts-crosshair-cursor");
+                        if (!cursor) return JSON.stringify({ ok: false, cursor: false });
+                        var x = 150, y = 200;
+                        function coords(i) {
+                          return { clientX: x + i * 10, clientY: y + i * 2, bubbles: true, cancelable: true };
+                        }
+                        for (var i = 0; i < 5; i++) {
+                          fire(cursor, "mousedown", coords(0), MouseEvent);
+                          for (var j = 0; j < 10; j++) fire(cursor, "mousemove", coords(j), MouseEvent);
+                          fire(cursor, "mouseup", coords(10), MouseEvent);
+                        }
+                        fire(cursor, "wheel", {
+                          clientX: 200, clientY: 200, deltaMode: 0, delta: -10, deltaY: -10, bubbles: true, cancelable: true
+                        }, typeof WheelEvent === "function" ? WheelEvent : MouseEvent);
+                        return JSON.stringify({
+                          ok: true,
+                          cursor: true,
+                          svg: document.querySelectorAll("svg").length,
+                          wheel: typeof WheelEvent
+                        });
+                      } catch (e) {
+                        return JSON.stringify({ ok: false, err: String(e) });
                       }
-                      for (var i = 0; i < 5; i++) {
-                        fire(cursor, "mousedown", coords(0), MouseEvent);
-                        for (var j = 0; j < 10; j++) fire(cursor, "mousemove", coords(j), MouseEvent);
-                        fire(cursor, "mouseup", coords(10), MouseEvent);
-                      }
-                      fire(cursor, "wheel", {
-                        clientX: 200, clientY: 200, deltaMode: 0, deltaY: -10, bubbles: true, cancelable: true
-                      }, WheelEvent);
-                      return JSON.stringify({
-                        ok: true,
-                        cursor: true,
-                        svg: document.querySelectorAll("svg").length
-                      });
                     })()"##,
                 ))
                 .unwrap_or(serde_json::Value::Null);

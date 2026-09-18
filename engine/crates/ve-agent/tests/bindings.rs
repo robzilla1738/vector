@@ -4240,6 +4240,35 @@ fn already_focused_input_does_not_refire_focus() {
 }
 
 #[test]
+fn wheel_event_exposes_delta_and_client_coords() {
+    let mut page = open("<div id='d'></div>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var ev = new WheelEvent("wheel", {
+                clientX: 200, clientY: 200, deltaMode: 0, delta: -10, deltaY: -10, bubbles: true
+              });
+              return {
+                ctor: ev.constructor.name,
+                type: ev.type,
+                clientX: ev.clientX,
+                clientY: ev.clientY,
+                deltaY: ev.deltaY,
+                deltaMode: ev.deltaMode,
+                bubbles: ev.bubbles
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ctor"], "WheelEvent", "{v}");
+    assert_eq!(v["type"], "wheel", "{v}");
+    assert_eq!(v["clientX"], 200, "{v}");
+    assert_eq!(v["deltaY"], -10, "{v}");
+    assert_eq!(v["deltaMode"], 0, "{v}");
+    assert_eq!(v["bubbles"], true, "{v}");
+}
+
+#[test]
 fn content_onclick_attribute_still_runs() {
     let mut page = open(r#"<button id="b" onclick="window.__hit = (window.__hit||0)+1">Go</button>"#);
     let v = page

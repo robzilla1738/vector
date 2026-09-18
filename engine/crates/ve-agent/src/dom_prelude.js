@@ -96,6 +96,24 @@
       this.button = i.button != null ? i.button : 0;
       this.buttons = i.buttons != null ? i.buttons : (this.button === 0 ? 1 : 0);
       this.which = i.which != null ? i.which : (this.button === 0 ? 1 : this.button + 1);
+      this.clientX = i.clientX != null ? Number(i.clientX) : 0;
+      this.clientY = i.clientY != null ? Number(i.clientY) : 0;
+      this.screenX = i.screenX != null ? Number(i.screenX) : this.clientX;
+      this.screenY = i.screenY != null ? Number(i.screenY) : this.clientY;
+      this.ctrlKey = !!i.ctrlKey;
+      this.shiftKey = !!i.shiftKey;
+      this.altKey = !!i.altKey;
+      this.metaKey = !!i.metaKey;
+    }
+  }
+  class WheelEvent extends MouseEvent {
+    constructor(t, i) {
+      super(t, i);
+      i = i || {};
+      this.deltaX = i.deltaX != null ? Number(i.deltaX) : 0;
+      this.deltaY = i.deltaY != null ? Number(i.deltaY) : (i.delta != null ? Number(i.delta) : 0);
+      this.deltaZ = i.deltaZ != null ? Number(i.deltaZ) : 0;
+      this.deltaMode = i.deltaMode != null ? Number(i.deltaMode) : 0;
     }
   }
   class DragEvent extends MouseEvent {
@@ -4577,7 +4595,7 @@
     onhashchange: null, onpopstate: null,
     localStorage: storage("local"), sessionStorage: storage("session"),
     customElements: new CustomElementRegistry(),
-    Event, HashChangeEvent, StorageEvent, MouseEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
+    Event, HashChangeEvent, StorageEvent, MouseEvent, WheelEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, MessageEvent, EventTarget, DragEvent,
     Node, NodeList, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment, CharacterData,
     ProcessingInstruction, DocumentType, HTMLCollection, HTMLAllCollection,
     HTMLFormControlsCollection, HTMLOptionsCollection, RadioNodeList,
