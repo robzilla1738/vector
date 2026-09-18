@@ -4,10 +4,10 @@
     "gate": false,
     "jetstreamSunspider": {
       "executed": 72,
-      "failed": 1,
-      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, late-eval mandreel/pdfjs, and WasmEMCC/Default wasm through Dart-flute-todomvc, Kotlin-compose, and dotnet-interp/aot. transformersjs-bert-wasm is executed FAIL (onnx wasm shared Memory Not supported). Not a JetStream Next geometric-mean published score.",
+      "failed": 0,
+      "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, late-eval mandreel/pdfjs, and WasmEMCC/Default wasm through Dart-flute-todomvc, Kotlin-compose, dotnet-interp/aot, and transformersjs-bert. 72 PASS / 0 FAIL of 72 executed names. Not a JetStream Next geometric-mean published score.",
       "officialGroup": 12,
-      "passed": 71
+      "passed": 72
     },
     "kind": "adapted-workload-phases",
     "motionmark13": {
@@ -36,7 +36,7 @@
   "os": "linux",
   "pins": {
     "jetstream": {
-      "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and Default wasm through Dart-flute-todomvc, Kotlin-compose, and dotnet-interp/aot. transformersjs-bert-wasm is executed FAIL (onnx wasm shared Memory Not supported). Not a published JetStream geometric-mean score.",
+      "note": "Official SunSpider group (12) plus Default JS from --jetstream-dir at this pin, including late-eval mandreel/pdfjs, zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, and Default wasm through Dart-flute-todomvc, Kotlin-compose, dotnet-interp/aot, and transformersjs-bert. Not a published JetStream geometric-mean score.",
       "repo": "https://github.com/WebKit/JetStream",
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "status": "official-sunspider-default-js-wasmemcc",
@@ -78,8 +78,8 @@
       "status": "official-3.0"
     }
   },
-  "process_tree_rss_bytes": 374312960,
-  "rss_bytes": 374312960,
+  "process_tree_rss_bytes": 372391936,
+  "rss_bytes": 372391936,
   "security_mode": "developer-offline",
   "suites": [
     {
@@ -184,21 +184,21 @@
     },
     {
       "name": "jetstream.string-unpack-code",
-      "p50_ms": 8,
-      "p95_ms": 8,
+      "p50_ms": 9,
+      "p95_ms": 9,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        8
+        9
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.tagcloud",
-      "p50_ms": 13,
-      "p95_ms": 13,
+      "p50_ms": 15,
+      "p95_ms": 15,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        13
+        15
       ],
       "status": "PASS"
     },
@@ -244,11 +244,11 @@
     },
     {
       "name": "jetstream.Box2D",
-      "p50_ms": 33,
-      "p95_ms": 33,
+      "p50_ms": 34,
+      "p95_ms": 34,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        33
+        34
       ],
       "status": "PASS"
     },
@@ -334,21 +334,21 @@
     },
     {
       "name": "jetstream.richards",
-      "p50_ms": 7,
-      "p95_ms": 7,
+      "p50_ms": 5,
+      "p95_ms": 5,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        7
+        5
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.splay",
-      "p50_ms": 22,
-      "p95_ms": 22,
+      "p50_ms": 17,
+      "p95_ms": 17,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        22
+        17
       ],
       "status": "PASS"
     },
@@ -374,31 +374,31 @@
     },
     {
       "name": "jetstream.validatorjs",
-      "p50_ms": 44,
-      "p95_ms": 44,
+      "p50_ms": 38,
+      "p95_ms": 38,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        44
+        38
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.hash-map",
-      "p50_ms": 12,
-      "p95_ms": 12,
+      "p50_ms": 13,
+      "p95_ms": 13,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        12
+        13
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.ai-astar",
-      "p50_ms": 57,
-      "p95_ms": 57,
+      "p50_ms": 54,
+      "p95_ms": 54,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        57
+        54
       ],
       "status": "PASS"
     },
@@ -414,11 +414,11 @@
     },
     {
       "name": "jetstream.stanford-crypto-aes",
-      "p50_ms": 13,
-      "p95_ms": 13,
+      "p50_ms": 12,
+      "p95_ms": 12,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        13
+        12
       ],
       "status": "PASS"
     },
@@ -444,11 +444,11 @@
     },
     {
       "name": "jetstream.FlightPlanner",
-      "p50_ms": 7,
-      "p95_ms": 7,
+      "p50_ms": 8,
+      "p95_ms": 8,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        7
+        8
       ],
       "status": "PASS"
     },
@@ -474,11 +474,11 @@
     },
     {
       "name": "jetstream.raytrace-public-class-fields",
-      "p50_ms": 16,
-      "p95_ms": 16,
+      "p50_ms": 15,
+      "p95_ms": 15,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        16
+        15
       ],
       "status": "PASS"
     },
@@ -494,11 +494,11 @@
     },
     {
       "name": "jetstream.sync-fs",
-      "p50_ms": 19,
-      "p95_ms": 19,
+      "p50_ms": 17,
+      "p95_ms": 17,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        19
+        17
       ],
       "status": "PASS"
     },
@@ -524,21 +524,21 @@
     },
     {
       "name": "jetstream.threejs",
-      "p50_ms": 482,
-      "p95_ms": 482,
+      "p50_ms": 491,
+      "p95_ms": 491,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        482
+        491
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.pdfjs",
-      "p50_ms": 35,
-      "p95_ms": 35,
+      "p50_ms": 37,
+      "p95_ms": 37,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        35
+        37
       ],
       "status": "PASS"
     },
@@ -554,11 +554,11 @@
     },
     {
       "name": "jetstream.doxbee-promise",
-      "p50_ms": 17,
-      "p95_ms": 17,
+      "p50_ms": 16,
+      "p95_ms": 16,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        17
+        16
       ],
       "status": "PASS"
     },
@@ -574,11 +574,11 @@
     },
     {
       "name": "jetstream.Babylon",
-      "p50_ms": 16,
-      "p95_ms": 16,
+      "p50_ms": 15,
+      "p95_ms": 15,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        16
+        15
       ],
       "status": "PASS"
     },
@@ -604,11 +604,11 @@
     },
     {
       "name": "jetstream.bigint-noble-ed25519",
-      "p50_ms": 42,
-      "p95_ms": 42,
+      "p50_ms": 43,
+      "p95_ms": 43,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        42
+        43
       ],
       "status": "PASS"
     },
@@ -644,67 +644,71 @@
     },
     {
       "name": "jetstream.mobx-startup",
-      "p50_ms": 27,
-      "p95_ms": 27,
+      "p50_ms": 28,
+      "p95_ms": 28,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        27
+        28
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.web-ssr",
-      "p50_ms": 27,
-      "p95_ms": 27,
+      "p50_ms": 28,
+      "p95_ms": 28,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        27
+        28
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.jsdom-d3-startup",
-      "p50_ms": 395,
-      "p95_ms": 395,
+      "p50_ms": 416,
+      "p95_ms": 416,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        395
+        416
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.typescript-lib",
-      "p50_ms": 1102,
-      "p95_ms": 1102,
+      "p50_ms": 1141,
+      "p95_ms": 1141,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        1102
+        1141
       ],
       "status": "PASS"
     },
     {
-      "detail": "no available backend found. ERR: [wasm] Error: Not supported\nError: no available backend found. ERR: [wasm] Error: Not supported\n    at Fi (eval at JetStream.dynamicImport (vector:evaluate:80:19), <anonymous>:4208:1826)\n    at async e.create (eval at JetStream.dynamicImport (vector:evaluate:80:19), <anonymous>:4208:19638)\n    at async createInferenceSession (eval at JetStream.dynamicImport (vector:evaluate:80:19), <anonymous>:7176:21)\n    at async eval (eval at JetStream.dynamicImport (vector:evaluate:80:19), <anonymous>:10896:29)\n    at async Promise.all (index 0)\n    at async constructSessions (eval at JetStream.dynamicImport (vector:evaluate:80:19), <anonymous>:10893:31)\n    at async Promise.all (index 0)\n    at async DistilBertForSequenceClassification.from_pretrained (eval at JetStream.dynamicImport (vector:evaluate:80:19), <anonymous>:11689:20)\n    at async AutoModelForSequenceClassification.from_pretrained (eval at JetStream.dynamicImport (vector:evaluate:80:19), <anonymous>:16136:20)\n    at async Promise.all (index 1)",
       "name": "jetstream.transformersjs-bert-wasm",
+      "p50_ms": 543,
+      "p95_ms": 543,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
-      "status": "FAIL"
+      "samples_ms": [
+        543
+      ],
+      "status": "PASS"
     },
     {
       "name": "jetstream.dotnet-interp-wasm",
-      "p50_ms": 562,
-      "p95_ms": 562,
+      "p50_ms": 593,
+      "p95_ms": 593,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        562
+        593
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.dotnet-aot-wasm",
-      "p50_ms": 230,
-      "p95_ms": 230,
+      "p50_ms": 239,
+      "p95_ms": 239,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        230
+        239
       ],
       "status": "PASS"
     },
@@ -720,11 +724,11 @@
     },
     {
       "name": "jetstream.zlib-wasm",
-      "p50_ms": 53,
-      "p95_ms": 53,
+      "p50_ms": 54,
+      "p95_ms": 54,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        53
+        54
       ],
       "status": "PASS"
     },
@@ -750,21 +754,21 @@
     },
     {
       "name": "jetstream.sqlite3-wasm",
-      "p50_ms": 101,
-      "p95_ms": 101,
+      "p50_ms": 98,
+      "p95_ms": 98,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        101
+        98
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.8bitbench-wasm",
-      "p50_ms": 205,
-      "p95_ms": 205,
+      "p50_ms": 192,
+      "p95_ms": 192,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        205
+        192
       ],
       "status": "PASS"
     },
@@ -780,24 +784,24 @@
     },
     {
       "name": "jetstream.Dart-flute-todomvc-wasm",
-      "p50_ms": 206,
-      "p95_ms": 206,
+      "p50_ms": 211,
+      "p95_ms": 211,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        206
+        211
       ],
       "status": "PASS"
     },
     {
       "name": "jetstream.Kotlin-compose-wasm",
-      "p50_ms": 1087,
-      "p95_ms": 1087,
+      "p50_ms": 1185,
+      "p95_ms": 1185,
       "revision": "c603c04db8505477867974a69789309ded2cc948",
       "samples_ms": [
-        1087
+        1185
       ],
       "status": "PASS"
     }
   ],
-  "note": "Official JetStream Next pin c603c04: SunSpider 12/12 plus Default JS and wasm including Dart-flute-todomvc-wasm, Kotlin-compose-wasm, dotnet-interp-wasm, and dotnet-aot-wasm (71 PASS, 1 FAIL, 0 NOTRUN of 72 executed names). transformersjs-bert-wasm FAIL: onnx wasm shared Memory Not supported. Not a published JetStream geometric-mean score."
+  "note": "Official JetStream Next pin c603c04: SunSpider 12/12 plus Default JS and wasm including Dart-flute-todomvc-wasm, Kotlin-compose-wasm, dotnet-interp-wasm, dotnet-aot-wasm, and transformersjs-bert-wasm (72 PASS, 0 FAIL, 0 NOTRUN of 72 executed names). Not a published JetStream geometric-mean score."
 }

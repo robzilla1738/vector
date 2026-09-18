@@ -571,7 +571,7 @@ fn main() -> Result<()> {
                 "passed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "PASS").count(),
                 "failed": suites.iter().filter(|s| s.name.starts_with("jetstream.") && s.status == "FAIL").count(),
                 "officialGroup": 12,
-                "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, late-eval mandreel/pdfjs, and WasmEMCC/Default wasm through Dart-flute-todomvc, Kotlin-compose, and dotnet-interp/aot. transformersjs-bert-wasm is executed FAIL (onnx wasm shared Memory Not supported). Not a JetStream Next geometric-mean published score."
+                "note": "Official SunSpider group plus Default JS from --jetstream-dir, including zlib .z, AsyncBenchmark, startup/SSR/TypeScript-lib, late-eval mandreel/pdfjs, and WasmEMCC/Default wasm through Dart-flute-todomvc, Kotlin-compose, dotnet-interp/aot, and transformersjs-bert. Not a JetStream Next geometric-mean published score."
             },
             "motionmark13": {
                 "officialNames": 8,
