@@ -447,7 +447,9 @@
   class NodeList {}
   Object.defineProperty(NodeList, Symbol.hasInstance, {
     value(v) {
-      return (Array.isArray(v) && typeof (v && v.item) === "function") || v instanceof LiveNodeList;
+      return (Array.isArray(v) && typeof (v && v.item) === "function")
+        || v instanceof LiveNodeList
+        || v instanceof RadioNodeList;
     },
   });
   class LiveNodeList {
@@ -1070,9 +1072,11 @@
     },
   };
 
+  const IDL_INTERNAL = Symbol("idl");
   class HTMLCollection {
-    constructor(fetch) {
-      this._fetch = fetch;
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      this._fetch = arguments[1];
       return new Proxy(this, htmlCollectionTraps);
     }
     item(i) { return this._fetch()[i | 0] || null; }
@@ -1094,7 +1098,34 @@
     return els.filter((el) => el && (el.id === n || (el.getAttribute && el.getAttribute("name") === n)));
   }
 
-  class RadioNodeList extends LiveNodeList {
+  class RadioNodeList {
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      const fetch = arguments[1];
+      this._fetch = fetch;
+      this._gen = -1;
+      this._cur = null;
+      const snap = () => {
+        if (this._gen !== liveListGen || !this._cur) {
+          this._gen = liveListGen;
+          this._cur = fetch();
+        }
+        return this._cur;
+      };
+      return new Proxy(this, {
+        get(t, p, recv) {
+          const cur = snap();
+          if (p === "length") return cur.length;
+          if (p === "item") return (i) => cur[i | 0] || null;
+          if (p === "forEach") return (fn, self) => cur.forEach(fn, self);
+          if (p === "value") return Reflect.get(t, p, recv);
+          if (p === Symbol.iterator) return cur[Symbol.iterator].bind(cur);
+          if (typeof p === "symbol" || p === "_fetch" || p === "_gen" || p === "_cur") return Reflect.get(t, p, recv);
+          if (/^\d+$/.test(String(p))) return cur[Number(p)];
+          return Reflect.get(t, p, recv);
+        },
+      });
+    }
     get value() {
       const els = typeof this._fetch === "function" ? this._fetch() : [];
       for (let i = 0; i < els.length; i++) {
@@ -1110,15 +1141,20 @@
       }
     }
   }
+  Object.setPrototypeOf(RadioNodeList.prototype, NodeList.prototype);
   Object.defineProperty(RadioNodeList.prototype, Symbol.toStringTag, { value: "RadioNodeList" });
 
   class HTMLFormControlsCollection extends HTMLCollection {
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      super(IDL_INTERNAL, arguments[1]);
+    }
     namedItem(name) {
       const hits = collectionNamedHits(this._fetch(), name);
       if (hits.length === 0) return null;
       if (hits.length === 1) return hits[0];
       const n = String(name);
-      return new RadioNodeList(() => collectionNamedHits(this._fetch(), n));
+      return new RadioNodeList(IDL_INTERNAL, () => collectionNamedHits(this._fetch(), n));
     }
   }
   Object.defineProperty(HTMLFormControlsCollection.prototype, Symbol.toStringTag, {
@@ -1126,6 +1162,10 @@
   });
 
   class HTMLOptionsCollection extends HTMLCollection {
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      super(IDL_INTERNAL, arguments[1]);
+    }
     get length() { return this._fetch().length; }
     set length(n) {
       n = n >>> 0;
@@ -1239,17 +1279,19 @@
   };
 
   class HTMLAllCollection {
-    constructor(fetch) {
-      const call = function htmlAll(nameOrIndex) {
-        return HTMLAllCollection.prototype.item.call(call, nameOrIndex);
+    constructor() {
+      if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
+      const fetch = arguments[1];
+      const call = function htmlAll(...args) {
+        return HTMLAllCollection.prototype.item.call(call, args[0]);
       };
       call._fetch = fetch;
       Object.setPrototypeOf(call, HTMLAllCollection.prototype);
       return new Proxy(call, htmlAllTraps);
     }
-    item(nameOrIndex) {
-      if (arguments.length === 0 || nameOrIndex == null) return null;
-      const s = String(nameOrIndex);
+    item(...args) {
+      if (args.length === 0 || args[0] == null) return null;
+      const s = String(args[0]);
       if (s === "") return null;
       if (/^\d+$/.test(s)) return this._fetch()[Number(s)] || null;
       return this.namedItem(s);
@@ -1261,7 +1303,7 @@
       if (hits.length === 0) return null;
       if (hits.length === 1) return hits[0];
       const n = String(name);
-      return new HTMLCollection(() => collectionNamedHits(this._fetch(), n).filter((el) => {
+      return new HTMLCollection(IDL_INTERNAL, () => collectionNamedHits(this._fetch(), n).filter((el) => {
         return (el.localName || "").toLowerCase() !== "applet";
       }));
     }
@@ -1305,7 +1347,7 @@
       namedCollectionCache.set(h, map);
     }
     if (!map.has(name)) {
-      map.set(name, new HTMLCollection(() => namedElementsOf(doc, name)));
+      map.set(name, new HTMLCollection(IDL_INTERNAL, () => namedElementsOf(doc, name)));
     }
     return map.get(name);
   }
@@ -1928,9 +1970,9 @@
     webkitMatchesSelector(s) { return this.matches(s); }
     msMatchesSelector(s) { return this.matches(s); }
     closest(s) { return wrap(D("closest", this.__h, String(s))); }
-    getElementsByTagName(n) { return new HTMLCollection(() => list(D("getElementsByTagName", this.__h, String(n)))); }
+    getElementsByTagName(n) { return new HTMLCollection(IDL_INTERNAL, () => list(D("getElementsByTagName", this.__h, String(n)))); }
     getElementsByTagNameNS(ns, n) {
-      return new HTMLCollection(() => {
+      return new HTMLCollection(IDL_INTERNAL, () => {
         const all = list(D("getElementsByTagName", this.__h, String(n)));
         if (ns === "*") return all;
         const uri = ns == null ? "" : String(ns);
@@ -2525,7 +2567,7 @@
     get options() {
       if (this._options) return this._options;
       const select = this;
-      const col = new HTMLOptionsCollection(() => {
+      const col = new HTMLOptionsCollection(IDL_INTERNAL, () => {
         const out = [];
         const walk = (node) => {
           for (let c = node.firstChild; c; c = c.nextSibling) {
@@ -2573,7 +2615,7 @@
     get elements() {
       if (this._elementsCol) return this._elementsCol;
       const form = this;
-      this._elementsCol = new HTMLFormControlsCollection(() => {
+      this._elementsCol = new HTMLFormControlsCollection(IDL_INTERNAL, () => {
         const listed = "button,fieldset,input,object,output,select,textarea";
         const root = form.getRootNode && form.getRootNode();
         const scope = root && root.querySelectorAll ? root : document;
@@ -3432,20 +3474,20 @@
       else root.appendChild(v);
     }
     get forms() {
-      return new HTMLCollection(() => list(D("getElementsByTagName", this.__h, "form")));
+      return new HTMLCollection(IDL_INTERNAL, () => list(D("getElementsByTagName", this.__h, "form")));
     }
     get images() {
-      return new HTMLCollection(() =>
+      return new HTMLCollection(IDL_INTERNAL, () =>
         list(D("getElementsByTagName", this.__h, "img")).filter(
           (el) => el.namespaceURI === "http://www.w3.org/1999/xhtml",
         ),
       );
     }
     get links() {
-      return new HTMLCollection(() => list(D("documentLinks", this.__h)));
+      return new HTMLCollection(IDL_INTERNAL, () => list(D("documentLinks", this.__h)));
     }
     get scripts() {
-      return new HTMLCollection(() =>
+      return new HTMLCollection(IDL_INTERNAL, () =>
         list(D("getElementsByTagName", this.__h, "script")).filter(
           (el) => el.namespaceURI === "http://www.w3.org/1999/xhtml",
         ),
@@ -3454,7 +3496,7 @@
     get embeds() {
       if (!this._embeds) {
         const doc = this;
-        this._embeds = new HTMLCollection(() =>
+        this._embeds = new HTMLCollection(IDL_INTERNAL, () =>
           list(D("getElementsByTagName", doc.__h, "embed")).filter(
             (el) => el.namespaceURI === "http://www.w3.org/1999/xhtml",
           ),
@@ -3518,11 +3560,11 @@
       return p(date.getMonth() + 1) + "/" + p(date.getDate()) + "/" + date.getFullYear()
         + " " + [date.getHours(), date.getMinutes(), date.getSeconds()].map(p).join(":");
     }
-    get applets() { return this._applets || (this._applets = new HTMLCollection(() => [])); }
+    get applets() { return this._applets || (this._applets = new HTMLCollection(IDL_INTERNAL, () => [])); }
     get all() {
       if (this._all) return this._all;
       const doc = this;
-      this._all = new HTMLAllCollection(() => list(D("getElementsByTagName", doc.__h, "*")));
+      this._all = new HTMLAllCollection(IDL_INTERNAL, () => list(D("getElementsByTagName", doc.__h, "*")));
       return this._all;
     }
     get defaultView() { return this.__h === D("documentNode") ? window : null; }
@@ -3644,16 +3686,16 @@
     }
     querySelector(s) { return wrap(D("querySelector", this.__h, String(s))); }
     querySelectorAll(s) { return list(D("querySelectorAll", this.__h, String(s))); }
-    getElementsByTagName(n) { return new HTMLCollection(() => list(D("getElementsByTagName", this.__h, String(n)))); }
+    getElementsByTagName(n) { return new HTMLCollection(IDL_INTERNAL, () => list(D("getElementsByTagName", this.__h, String(n)))); }
     getElementsByTagNameNS(ns, n) {
-      return new HTMLCollection(() => {
+      return new HTMLCollection(IDL_INTERNAL, () => {
         const all = list(D("getElementsByTagName", this.__h, String(n)));
         if (ns === "*") return all;
         const uri = ns == null ? "" : String(ns);
         return all.filter((el) => el.namespaceURI === uri);
       });
     }
-    getElementsByClassName(n) { return new HTMLCollection(() => list(D("getElementsByClassName", this.__h, String(n)))); }
+    getElementsByClassName(n) { return new HTMLCollection(IDL_INTERNAL, () => list(D("getElementsByClassName", this.__h, String(n)))); }
     getElementsByName(n) {
       if (arguments.length < 1) throw new TypeError("Not enough arguments");
       const want = String(n);
