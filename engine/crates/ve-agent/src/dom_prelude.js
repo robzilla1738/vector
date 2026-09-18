@@ -3375,7 +3375,6 @@
         if (raw == null) {
           return spec.defaultVal === undefined ? (spec.isNullable ? null : "") : spec.defaultVal;
         }
-        if (Object.prototype.hasOwnProperty.call(nonCanon, raw)) return nonCanon[raw];
         const asciiLower = (s) => String(s).replace(/[A-Z]/g, (m) => m.toLowerCase());
         const lower = asciiLower(raw);
         let ret = spec.invalidVal === undefined ? (spec.defaultVal === undefined ? "" : spec.defaultVal) : spec.invalidVal;
