@@ -1267,7 +1267,7 @@ mod tests {
         let mut fails = Vec::new();
         for rel in suites {
             let page_id = open_workload(&mut engine, rel);
-            let (probe, console) = {
+            let (probe, added, console) = {
                 let page = engine.page_mut(page_id).unwrap();
                 page.settle(3_000);
                 let probe = page
@@ -1285,6 +1285,22 @@ mod tests {
                         })()"##,
                     ))
                     .unwrap();
+                let added = page
+                    .evaluate(&with_lib(
+                        r##"(function () {
+                          var input = todoInput();
+                          if (!input) return JSON.stringify({ added: 0, skipped: true });
+                          for (var i = 0; i < 3; i++) {
+                            input.focus();
+                            input.value = "Task-" + i;
+                            fire(input, "input", { bubbles: true, data: "Task-" + i, inputType: "insertText" }, InputEvent);
+                            fire(input, "change");
+                            enter(input);
+                          }
+                          return JSON.stringify({ added: countTodos() });
+                        })()"##,
+                    ))
+                    .unwrap();
                 let console: Vec<String> = page
                     .console()
                     .iter()
@@ -1292,16 +1308,24 @@ mod tests {
                     .map(|l| l.message.chars().take(400).collect())
                     .take(6)
                     .collect();
-                (probe, console)
+                (probe, added, console)
             };
             engine.close(page_id);
             let v: serde_json::Value = match &probe {
                 serde_json::Value::String(s) => serde_json::from_str(s).unwrap_or(probe.clone()),
                 other => other.clone(),
             };
+            let add: serde_json::Value = match &added {
+                serde_json::Value::String(s) => serde_json::from_str(s).unwrap_or(added.clone()),
+                other => other.clone(),
+            };
             let ok = v["input"].as_bool() == Some(true) || v["news"].as_bool() == Some(true);
             if !ok {
                 fails.push(format!("{rel} => {v} err={console:?}"));
+                continue;
+            }
+            if v["input"].as_bool() == Some(true) && add["added"].as_u64().unwrap_or(0) < 3 {
+                fails.push(format!("{rel} add => {add} probe={v} err={console:?}"));
             }
         }
         assert!(fails.is_empty(), "{}", fails.join("\n"));
