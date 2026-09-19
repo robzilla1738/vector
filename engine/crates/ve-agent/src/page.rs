@@ -1099,6 +1099,18 @@ fn sample_linear_gradient(
     ordered[last].1
 }
 
+fn parse_canvas_blur_px(filter: &str) -> i32 {
+    let s = filter.trim();
+    let Some(inner) = s
+        .strip_prefix("blur(")
+        .and_then(|rest| rest.strip_suffix(')'))
+    else {
+        return 0;
+    };
+    let n = inner.trim().trim_end_matches("px").trim();
+    n.parse::<f32>().unwrap_or(0.0).round().clamp(0.0, 16.0) as i32
+}
+
 fn canvas_alpha(color: [u8; 4], alpha: f32) -> [u8; 4] {
     let a = alpha.clamp(0.0, 1.0);
     [
@@ -1283,6 +1295,71 @@ impl CanvasSurface {
         let composite = self.composite;
         *self = Self::new(width, height);
         self.composite = composite;
+    }
+
+    fn blur_rect(&mut self, x: i32, y: i32, w: i32, h: i32, radius: i32) {
+        let r = radius.clamp(1, 16);
+        let x0 = (x - r).max(0);
+        let y0 = (y - r).max(0);
+        let x1 = (x + w + r).min(self.width as i32);
+        let y1 = (y + h + r).min(self.height as i32);
+        if x1 <= x0 || y1 <= y0 {
+            return;
+        }
+        let rw = (x1 - x0) as u32;
+        let rh = (y1 - y0) as u32;
+        let mut src = vec![0u8; (rw * rh * 4) as usize];
+        for row in 0..rh {
+            for col in 0..rw {
+                let px = x0 + col as i32;
+                let py = y0 + row as i32;
+                let si = ((py as u32 * self.width + px as u32) * 4) as usize;
+                let di = ((row * rw + col) * 4) as usize;
+                src[di..di + 4].copy_from_slice(&self.pixels[si..si + 4]);
+            }
+        }
+        let mut dst = src.clone();
+        for row in 0..rh as i32 {
+            for col in 0..rw as i32 {
+                let mut acc = [0u32; 4];
+                let mut n = 0u32;
+                for dy in -r..=r {
+                    for dx in -r..=r {
+                        if dx * dx + dy * dy > r * r {
+                            continue;
+                        }
+                        let nx = col + dx;
+                        let ny = row + dy;
+                        if nx < 0 || ny < 0 || nx >= rw as i32 || ny >= rh as i32 {
+                            continue;
+                        }
+                        let i = ((ny as u32 * rw + nx as u32) * 4) as usize;
+                        acc[0] += u32::from(src[i]);
+                        acc[1] += u32::from(src[i + 1]);
+                        acc[2] += u32::from(src[i + 2]);
+                        acc[3] += u32::from(src[i + 3]);
+                        n += 1;
+                    }
+                }
+                if n == 0 {
+                    continue;
+                }
+                let i = ((row as u32 * rw + col as u32) * 4) as usize;
+                dst[i] = (acc[0] / n) as u8;
+                dst[i + 1] = (acc[1] / n) as u8;
+                dst[i + 2] = (acc[2] / n) as u8;
+                dst[i + 3] = (acc[3] / n) as u8;
+            }
+        }
+        for row in 0..rh {
+            for col in 0..rw {
+                let px = x0 + col as i32;
+                let py = y0 + row as i32;
+                let si = ((row * rw + col) * 4) as usize;
+                let di = ((py as u32 * self.width + px as u32) * 4) as usize;
+                self.pixels[di..di + 4].copy_from_slice(&dst[si..si + 4]);
+            }
+        }
     }
 
     fn stroke_rect_styled(
@@ -2453,6 +2530,7 @@ impl Page {
         shadow_y: i32,
         shadow: &str,
         shadow_blur: i32,
+        filter: &str,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
         let paint_shadow = shadow_x != 0 || shadow_y != 0 || shadow_blur > 0;
@@ -2488,6 +2566,10 @@ impl Page {
             }
         }
         c.fill_rect_styled(x, y, w, h, &style, alpha);
+        let blur = parse_canvas_blur_px(filter);
+        if blur > 0 {
+            c.blur_rect(x, y, w, h, blur);
+        }
         c.ops
     }
 

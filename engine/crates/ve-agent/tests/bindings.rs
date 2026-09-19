@@ -1062,6 +1062,73 @@ fn canvas_source_out_and_destination_out_punch_overlap() {
 }
 
 #[test]
+fn canvas_source_atop_and_destination_atop_keep_overlap() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op) {
+                var c = document.createElement("canvas");
+                c.width = 8;
+                c.height = 8;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.fillRect(0, 0, 4, 8);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = "#00ff00";
+                ctx.fillRect(2, 0, 6, 8);
+                var overlap = ctx.getImageData(3, 3, 1, 1).data;
+                var destOnly = ctx.getImageData(0, 3, 1, 1).data;
+                var srcOnly = ctx.getImageData(6, 3, 1, 1).data;
+                return {
+                  or: overlap[0], og: overlap[1], oa: overlap[3],
+                  da: destOnly[3], dr: destOnly[0],
+                  sa: srcOnly[3]
+                };
+              }
+              return { src: sample("source-atop"), dst: sample("destination-atop") };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["src"]["og"], 255, "source-atop overlap is source: {v}");
+    assert_eq!(v["src"]["oa"], 255, "{v}");
+    assert_eq!(v["src"]["da"], 255, "source-atop dest-only stays: {v}");
+    assert_eq!(v["src"]["sa"], 0, "source-atop src-only vanishes: {v}");
+    assert_eq!(v["dst"]["or"], 255, "destination-atop overlap is dest: {v}");
+    assert_eq!(v["dst"]["oa"], 255, "{v}");
+    assert_eq!(v["dst"]["da"], 255, "unpainted dest-only stays: {v}");
+    assert_eq!(v["dst"]["sa"], 255, "destination-atop src-only stays: {v}");
+}
+
+#[test]
+fn canvas_filter_blur_spills_outside_fill_rect() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.filter = "blur(2px)";
+              ctx.fillRect(6, 6, 4, 4);
+              var mid = ctx.getImageData(8, 8, 1, 1).data;
+              var halo = ctx.getImageData(4, 8, 1, 1).data;
+              ctx.filter = "none";
+              ctx.clearRect(0, 0, 16, 16);
+              ctx.fillRect(6, 6, 4, 4);
+              var sharp = ctx.getImageData(4, 8, 1, 1).data;
+              return { mg: mid[1], ma: mid[3], hg: halo[1], ha: halo[3], sa: sharp[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(v["mg"].as_u64().unwrap_or(0) > 20, "blurred fill keeps center: {v}");
+    assert!(v["ha"].as_u64().unwrap_or(0) > 0, "blur must spill outside the rect: {v}");
+    assert_eq!(v["sa"], 0, "without filter the halo pixel stays empty: {v}");
+}
+
+#[test]
 fn canvas_path2d_ellipse_arc_to_and_round_rect() {
     let mut page = open(r#"<body></body>"#);
     let v = page

@@ -837,6 +837,10 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeCookieSet", cookie_set)?;
+            let split = v8::FunctionTemplate::builder(native_text_split)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeSplitText", split)?;
             Some(())
         })?;
         self.eval(
@@ -1026,6 +1030,14 @@ impl JsVm for V8Vm {
       get: globalThis.__veNativeURL
     });
     def(Document.prototype, "cookie", globalThis.__veNativeCookieGet, globalThis.__veNativeCookieSet);
+    if (typeof Text !== "undefined" && globalThis.__veNativeSplitText) {
+      Text.prototype.splitText = function (offset) {
+        offset |= 0;
+        var len = (this.data || "").length;
+        if (offset < 0 || offset > len) throw new DOMException("The index is not in the allowed range.", "IndexSizeError");
+        return wrapNode(globalThis.__veNativeSplitText.call(this, offset));
+      };
+    }
     Document.prototype.getElementsByTagName = function (s) {
       return wrapList(globalThis.__veNativeGetElementsByTagName.call(this, s));
     };
@@ -1113,7 +1125,7 @@ impl JsVm for V8Vm {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText";
 })()"#,
             "vector:dom-native",
         )?;
@@ -2550,6 +2562,20 @@ fn native_document_cookie_set(
 ) {
     let cookie = native_arg(scope, &args, 0);
     let _ = call_dom_host(scope, &[JsValue::from("setCookie"), cookie]);
+}
+
+fn native_text_split(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let offset = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("splitText"), handle, offset]);
+    native_set_handle_or_null(scope, &mut rv, value);
 }
 
 fn looks_like_module(source: &str) -> bool {

@@ -625,6 +625,26 @@ pub(crate) fn host_call(
                 crate::idl::LiveNode::new(&mut page.doc, id).compare_document_position(other),
             )))
         }
+        "splitText" => {
+            let id = live(page, args, 0)?;
+            let offset = arg_f64(args, 1).max(0.0) as usize;
+            let data = crate::idl::LiveNode::new(&mut page.doc, id)
+                .node_value()
+                .unwrap_or_default();
+            let chars: Vec<char> = data.chars().collect();
+            if offset > chars.len() {
+                return Err(fail("The index is not in the allowed range."));
+            }
+            let prefix: String = chars[..offset].iter().collect();
+            let suffix: String = chars[offset..].iter().collect();
+            crate::idl::LiveNode::new(&mut page.doc, id).set_node_value(Some(prefix));
+            let next = page.doc.create_text(suffix);
+            if let Some(parent) = page.doc.parent(id) {
+                let before = page.doc.next_sibling(id);
+                let _ = crate::idl::LiveDom::new(page, parent).insert_before(next, before);
+            }
+            Ok(pack(next))
+        }
         "normalize" => {
             let id = live(page, args, 0)?;
             crate::idl::LiveNode::new(&mut page.doc, id).normalize();
@@ -2143,6 +2163,7 @@ pub(crate) fn host_call(
                 arg_f64(args, 8) as i32,
                 &arg_str(args, 9),
                 arg_f64(args, 10) as i32,
+                &arg_str(args, 11),
             );
             Ok(JsValue::Number(ops as f64))
         }
