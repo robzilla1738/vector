@@ -5196,6 +5196,89 @@ mod tests {
     }
 
     #[test]
+    fn writes_h3_3_corpus_css_coverage() {
+        let dir = std::path::Path::new("/tmp/vector-live-html");
+        if !dir.is_dir() {
+            return;
+        }
+        let mut engine = crate::VectorEngine::new(crate::EngineConfig {
+            offline: true,
+            security_profile: crate::SecurityProfile::Production,
+            ..crate::EngineConfig::default()
+        });
+        let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("html"))
+            .collect();
+        paths.sort();
+        let cap = if cfg!(debug_assertions) { 50 } else { 100 };
+        if paths.len() > cap {
+            let step = (paths.len() / cap).max(1);
+            paths = paths.into_iter().step_by(step).take(cap).collect();
+        }
+        let mut pages = 0u32;
+        let mut total = 0u64;
+        let mut unknown = 0u64;
+        let mut deferred = 0u64;
+        let mut scripted = 0u32;
+        for path in paths {
+            let html = std::fs::read_to_string(&path).unwrap_or_default();
+            if html.is_empty() {
+                continue;
+            }
+            let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("page");
+            let Ok(opened) = engine.open(crate::OpenRequest::html(
+                &html,
+                Some(&format!("https://live.test/{stem}")),
+            )) else {
+                continue;
+            };
+            let page = engine.page(opened.page).unwrap();
+            if let Some(cov) = &page.routing().css_coverage {
+                pages += 1;
+                total += cov.declarations_total as u64;
+                unknown += cov.unknown as u64;
+                deferred += cov.deferred as u64;
+            }
+            if page.routing().requires_script {
+                scripted += 1;
+            }
+            let _ = engine.close(opened.page);
+        }
+        if pages == 0 {
+            return;
+        }
+        let miss = if total == 0 {
+            0.0
+        } else {
+            (unknown + deferred) as f64 / total as f64
+        };
+        let ev = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/engine/evidence/h3-3-corpus-gaps.json");
+        let doc = serde_json::json!({
+            "backend": "vector-engine",
+            "test": "writes_h3_3_corpus_css_coverage",
+            "corpus": { "dir": "/tmp/vector-live-html", "kind": "fetched-html-bodies" },
+            "pages": pages,
+            "declarations": {
+                "total": total,
+                "unknown": unknown,
+                "deferred": deferred,
+                "missRatio": (miss * 1000.0).round() / 1000.0
+            },
+            "requiresScript": scripted,
+            "profile": if cfg!(debug_assertions) { "debug" } else { "release" },
+            "notes": "CssCoverage on live HTML bodies. H3-3 still has isolated property tests; this is the corpus-frequency ledger, not a claim that remaining CSS is done."
+        });
+        let _ = std::fs::create_dir_all(ev.parent().unwrap());
+        std::fs::write(&ev, serde_json::to_vec_pretty(&doc).unwrap()).unwrap();
+        assert!(pages >= 20, "need ≥20 corpus CSS samples, got {pages}");
+        assert!(total > 0, "corpus pages must declare CSS");
+    }
+
+    #[test]
     fn observes_live_fetched_html_when_present() {
         let dir = std::path::Path::new("/tmp/vector-live-html");
         if !dir.is_dir() {
