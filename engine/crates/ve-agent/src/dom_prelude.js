@@ -5179,25 +5179,51 @@
       enumerable: true,
       configurable: true,
     },
+    open: {
+      get() { return this.hasAttribute("open"); },
+      set(v) {
+        if (v) this.setAttribute("open", "");
+        else this.removeAttribute("open");
+      },
+      enumerable: true,
+      configurable: true,
+    },
     show: {
-      value: function show() { this.setAttribute("open", ""); },
+      value: function show() {
+        this._modalOpen = false;
+        this.setAttribute("open", "");
+      },
       writable: true, enumerable: true, configurable: true,
     },
     showModal: {
-      value: function showModal() { this.setAttribute("open", ""); },
+      value: function showModal() {
+        if (!this.isConnected) {
+          throw new DOMException("Failed to execute 'showModal' on 'HTMLDialogElement': The element is not in a Document.", "InvalidStateError");
+        }
+        if (this._modalOpen) {
+          throw new DOMException("Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a modal.", "InvalidStateError");
+        }
+        this._modalOpen = true;
+        this.setAttribute("open", "");
+      },
       writable: true, enumerable: true, configurable: true,
     },
     close: {
       value: function close() {
-        this.removeAttribute("open");
+        if (!this.hasAttribute("open") && !this._modalOpen) return;
         if (arguments.length) this._returnValue = String(arguments[0]);
+        this.removeAttribute("open");
+        this._modalOpen = false;
+        this.dispatchEvent(new Event("close"));
       },
       writable: true, enumerable: true, configurable: true,
     },
     requestClose: {
       value: function requestClose() {
-        this.removeAttribute("open");
-        if (arguments.length) this._returnValue = String(arguments[0]);
+        if (!this.hasAttribute("open") && !this._modalOpen) return;
+        const ev = new Event("cancel", { cancelable: true });
+        this.dispatchEvent(ev);
+        if (!ev.defaultPrevented) this.close();
       },
       writable: true, enumerable: true, configurable: true,
     },
@@ -9447,8 +9473,183 @@
   Object.defineProperty(IDBFactory.prototype, Symbol.toStringTag, { value: "IDBFactory", configurable: true });
   const idbFactory = Object.create(IDBFactory.prototype);
 
+  function parseAnimNumber(v) {
+    if (v == null || v === "") return null;
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  function parseTranslate(v) {
+    if (v == null) return null;
+    const s = String(v);
+    const m = s.match(/translate\(\s*([-\d.]+)(?:px)?(?:\s*,\s*([-\d.]+)(?:px)?)?\s*\)/i);
+    if (m) return { x: parseFloat(m[1]) || 0, y: parseFloat(m[2]) || 0 };
+    const mx = s.match(/translateX\(\s*([-\d.]+)(?:px)?\s*\)/i);
+    if (mx) return { x: parseFloat(mx[1]) || 0, y: 0 };
+    const my = s.match(/translateY\(\s*([-\d.]+)(?:px)?\s*\)/i);
+    if (my) return { x: 0, y: parseFloat(my[1]) || 0 };
+    return null;
+  }
+  function normalizeKeyframes(frames) {
+    const list = Array.isArray(frames) ? frames : (frames ? [frames] : []);
+    const n = list.length;
+    return list.map((f, i) => {
+      const offset = f && f.offset != null ? Number(f.offset) : (n <= 1 ? 0 : i / (n - 1));
+      return {
+        offset,
+        opacity: f && f.opacity != null ? parseAnimNumber(f.opacity) : null,
+        translate: f && (f.transform || f.translate) ? parseTranslate(f.transform || f.translate) : null,
+      };
+    }).sort((a, b) => a.offset - b.offset);
+  }
+  function mixKeyframes(frames, t) {
+    if (!frames.length) return {};
+    if (t <= frames[0].offset) return frames[0];
+    if (t >= frames[frames.length - 1].offset) return frames[frames.length - 1];
+    let i = 0;
+    while (i + 1 < frames.length && frames[i + 1].offset < t) i++;
+    const a = frames[i];
+    const b = frames[i + 1];
+    const span = (b.offset - a.offset) || 1;
+    const u = (t - a.offset) / span;
+    const out = {};
+    if (a.opacity != null && b.opacity != null) out.opacity = a.opacity + (b.opacity - a.opacity) * u;
+    else if (b.opacity != null) out.opacity = b.opacity;
+    else if (a.opacity != null) out.opacity = a.opacity;
+    if (a.translate && b.translate) {
+      out.translate = {
+        x: a.translate.x + (b.translate.x - a.translate.x) * u,
+        y: a.translate.y + (b.translate.y - a.translate.y) * u,
+      };
+    } else out.translate = b.translate || a.translate;
+    return out;
+  }
+  class KeyframeEffect {
+    constructor(target, keyframes, options) {
+      this.target = target || null;
+      this._frames = normalizeKeyframes(keyframes);
+      if (typeof options === "number") {
+        this._duration = options;
+        this._fill = "none";
+        this._iterations = 1;
+      } else {
+        options = options || {};
+        this._duration = Number(options.duration) || 0;
+        this._fill = options.fill ? String(options.fill) : "none";
+        this._iterations = Number(options.iterations) || 1;
+      }
+    }
+    getTiming() { return { duration: this._duration, fill: this._fill, iterations: this._iterations }; }
+    _apply(t) {
+      const el = this.target;
+      if (!el || !el.style) return;
+      const mixed = mixKeyframes(this._frames, t);
+      if (mixed.opacity != null) el.style.opacity = String(mixed.opacity);
+      if (mixed.translate) el.style.transform = "translate(" + mixed.translate.x + "px, " + mixed.translate.y + "px)";
+    }
+    _clear() {
+      const el = this.target;
+      if (!el || !el.style) return;
+      el.style.opacity = "";
+      el.style.transform = "";
+    }
+  }
+  Object.defineProperty(KeyframeEffect.prototype, Symbol.toStringTag, { value: "KeyframeEffect", configurable: true });
+  class Animation extends EventTarget {
+    constructor(effect, timeline) {
+      super();
+      this.effect = effect || null;
+      this.timeline = timeline || null;
+      this.playState = "idle";
+      this.currentTime = 0;
+      this.playbackRate = 1;
+      this.onfinish = null;
+      this.oncancel = null;
+      this._finished = null;
+      this._resolve = null;
+      this._start = 0;
+      this._timer = 0;
+      this._raf = 0;
+      this._frames = 0;
+    }
+    get finished() {
+      if (!this._finished) {
+        this._finished = new Promise((res) => { this._resolve = res; });
+        if (this.playState === "finished" && this._resolve) this._resolve(this);
+      }
+      return this._finished;
+    }
+    play() {
+      if (this._timer) { clearTimeout(this._timer); this._timer = 0; }
+      if (this._raf) { cancelAnimationFrame(this._raf); this._raf = 0; }
+      this.playState = "running";
+      this._start = performance.now() - (Number(this.currentTime) || 0);
+      this._frames = 0;
+      const tick = (fromRaf) => {
+        if (this.playState !== "running") return;
+        if (fromRaf) this._frames++;
+        const dur = this.effect ? this.effect._duration : 0;
+        const elapsed = Math.max(performance.now() - this._start, this._frames * 16);
+        this.currentTime = elapsed;
+        let t = dur <= 0 ? 1 : Math.min(1, elapsed / dur);
+        if (this.effect) this.effect._apply(t);
+        if (t >= 1) {
+          this.finish();
+          return;
+        }
+        this._raf = requestAnimationFrame(() => tick(true));
+      };
+      tick(false);
+    }
+    pause() {
+      if (this.playState !== "running") return;
+      this.playState = "paused";
+      if (this._timer) { clearTimeout(this._timer); this._timer = 0; }
+      if (this._raf) { cancelAnimationFrame(this._raf); this._raf = 0; }
+    }
+    cancel() {
+      this.playState = "idle";
+      this.currentTime = 0;
+      if (this._timer) { clearTimeout(this._timer); this._timer = 0; }
+      if (this._raf) { cancelAnimationFrame(this._raf); this._raf = 0; }
+      if (this.effect) this.effect._clear();
+      const ev = new Event("cancel");
+      if (typeof this.oncancel === "function") this.oncancel(ev);
+      this.dispatchEvent(ev);
+    }
+    finish() {
+      this.playState = "finished";
+      const dur = this.effect ? this.effect._duration : 0;
+      this.currentTime = dur;
+      if (this._timer) { clearTimeout(this._timer); this._timer = 0; }
+      if (this._raf) { cancelAnimationFrame(this._raf); this._raf = 0; }
+      if (this.effect) {
+        if (this.effect._fill === "forwards" || this.effect._fill === "both") this.effect._apply(1);
+        else this.effect._clear();
+      }
+      const ev = new Event("finish");
+      if (typeof this.onfinish === "function") this.onfinish(ev);
+      this.dispatchEvent(ev);
+      if (this._resolve) this._resolve(this);
+    }
+  }
+  Object.defineProperty(Animation.prototype, Symbol.toStringTag, { value: "Animation", configurable: true });
+  class DocumentTimeline {
+    constructor() {}
+    get currentTime() { return performance.now(); }
+  }
+  Object.defineProperty(DocumentTimeline.prototype, Symbol.toStringTag, { value: "DocumentTimeline", configurable: true });
+  const documentTimeline = new DocumentTimeline();
+  Element.prototype.animate = function (keyframes, options) {
+    const effect = new KeyframeEffect(this, keyframes, options);
+    const anim = new Animation(effect, documentTimeline);
+    anim.play();
+    return anim;
+  };
+  Element.prototype.getAnimations = function () { return []; };
+
   const document = wrap(D("documentNode"));
   browsingDocument = document;
+  document.timeline = documentTimeline;
   const location = Object.create(Location.prototype);
   const history = Object.create(History.prototype);
   function namedCtor(name, proto, construct) {
@@ -9562,6 +9763,7 @@
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Selection, Sanitizer,
+    Animation, KeyframeEffect, DocumentTimeline,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport,
     TextDecoder, TextEncoder,
     createDataChannelPair() {
@@ -10273,6 +10475,9 @@
   brandWrap(Range);
   brandWrap(Selection);
   brandWrap(MutationRecord);
+  brandWrap(Animation);
+  brandWrap(KeyframeEffect);
+  brandWrap(DocumentTimeline);
   brandWrap(IDBFactory);
   brandWrap(IDBDatabase);
   brandWrap(IDBTransaction);

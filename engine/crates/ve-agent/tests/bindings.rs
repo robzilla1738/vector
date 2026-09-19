@@ -4010,6 +4010,98 @@ fn exec_command_selects_inserts_and_deletes() {
 }
 
 #[test]
+fn element_animate_applies_opacity_and_finishes() {
+    let mut page = open(r#"<body><div id="box" style="opacity:0">x</div></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const el = document.getElementById("box");
+              const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 0, fill: "forwards" });
+              return {
+                isAnim: a instanceof Animation,
+                tag: Object.prototype.toString.call(a),
+                state: a.playState,
+                opacity: getComputedStyle(el).opacity,
+                timeline: document.timeline instanceof DocumentTimeline
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["isAnim"], true, "{v}");
+    assert_eq!(v["tag"], "[object Animation]", "{v}");
+    assert_eq!(v["state"], "finished", "{v}");
+    assert_eq!(v["opacity"], "1", "{v}");
+    assert_eq!(v["timeline"], true, "{v}");
+}
+
+#[test]
+fn element_animate_interpolates_opacity_over_time() {
+    let mut page = open(r#"<body><div id="box" style="opacity:0">x</div></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__anim = document.getElementById("box").animate(
+                [{ opacity: 0 }, { opacity: 1 }],
+                { duration: 80, fill: "forwards" }
+              );
+              return {
+                state: window.__anim.playState,
+                opacity: getComputedStyle(document.getElementById("box")).opacity
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started["state"], "running", "{started}");
+    assert_eq!(started["opacity"], "0", "{started}");
+    let _ = page.settle(200);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return {
+                opacity: getComputedStyle(document.getElementById("box")).opacity,
+                state: window.__anim.playState
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["opacity"], "1", "{v}");
+    assert_eq!(v["state"], "finished", "{v}");
+}
+
+#[test]
+fn dialog_show_modal_requires_connected_and_close_fires() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const d = document.createElement("dialog");
+              let disconnected = false;
+              try { d.showModal(); } catch (e) { disconnected = e.name === "InvalidStateError"; }
+              document.body.appendChild(d);
+              d.showModal();
+              let already = false;
+              try { d.showModal(); } catch (e) { already = e.name === "InvalidStateError"; }
+              let closed = 0;
+              d.addEventListener("close", function () { closed++; });
+              d.close("done");
+              return {
+                disconnected,
+                already,
+                closed,
+                ret: d.returnValue,
+                open: d.open
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["disconnected"], true, "{v}");
+    assert_eq!(v["already"], true, "{v}");
+    assert_eq!(v["closed"], 1, "{v}");
+    assert_eq!(v["ret"], "done", "{v}");
+    assert_eq!(v["open"], false, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
