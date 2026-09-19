@@ -521,10 +521,11 @@ fn paint_svg_rect(
     grads: &HashMap<String, SvgGrad>,
 ) {
     let (tx, ty) = svg_translate(tag);
-    let x = (svg_attr(tag, "x").unwrap_or(0.0) + ox + tx).max(0.0) as u32;
-    let y = (svg_attr(tag, "y").unwrap_or(0.0) + oy + ty).max(0.0) as u32;
-    let w = svg_attr(tag, "width").unwrap_or(0.0).max(0.0) as u32;
-    let h = svg_attr(tag, "height").unwrap_or(0.0).max(0.0) as u32;
+    let (sx, sy) = svg_scale(tag);
+    let x = ((svg_attr(tag, "x").unwrap_or(0.0) + ox) * sx + tx).max(0.0) as u32;
+    let y = ((svg_attr(tag, "y").unwrap_or(0.0) + oy) * sy + ty).max(0.0) as u32;
+    let w = (svg_attr(tag, "width").unwrap_or(0.0) * sx).max(0.0) as u32;
+    let h = (svg_attr(tag, "height").unwrap_or(0.0) * sy).max(0.0) as u32;
     let fill = svg_fill(tag);
     for yy in y..(y + h).min(img.height) {
         for xx in x..(x + w).min(img.width) {
@@ -543,9 +544,10 @@ fn paint_svg_circle(
     grads: &HashMap<String, SvgGrad>,
 ) {
     let (tx, ty) = svg_translate(tag);
-    let cx = svg_attr(tag, "cx").unwrap_or(0.0) + ox + tx;
-    let cy = svg_attr(tag, "cy").unwrap_or(0.0) + oy + ty;
-    let r = svg_attr(tag, "r").unwrap_or(0.0);
+    let (sx, sy) = svg_scale(tag);
+    let cx = (svg_attr(tag, "cx").unwrap_or(0.0) + ox) * sx + tx;
+    let cy = (svg_attr(tag, "cy").unwrap_or(0.0) + oy) * sy + ty;
+    let r = svg_attr(tag, "r").unwrap_or(0.0) * sx.min(sy);
     let fill = svg_fill(tag);
     let r2 = r * r;
     let x0 = (cx - r).floor().max(0.0) as u32;
@@ -726,6 +728,24 @@ fn svg_translate(tag: &str) -> (f32, f32) {
         .filter(|s| !s.is_empty());
     let x = nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
     let y = nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+    (x, y)
+}
+
+fn svg_scale(tag: &str) -> (f32, f32) {
+    let Some(raw) = svg_attr_str(tag, "transform") else {
+        return (1.0, 1.0);
+    };
+    let Some(idx) = raw.find("scale") else {
+        return (1.0, 1.0);
+    };
+    let rest = raw[idx + 5..].trim();
+    let rest = rest.trim_start_matches('(');
+    let rest = rest.split(')').next().unwrap_or("").trim();
+    let mut nums = rest
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .filter(|s| !s.is_empty());
+    let x = nums.next().and_then(|s| s.parse().ok()).unwrap_or(1.0);
+    let y = nums.next().and_then(|s| s.parse().ok()).unwrap_or(x);
     (x, y)
 }
 
@@ -1497,5 +1517,17 @@ mod tests {
         .expect("svg translate");
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(5, 5), Some([0, 0, 255, 255]));
+    }
+
+    #[test]
+    fn decode_svg_scale_enlarges_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='1' y='1' width='2' height='2' fill='#ffff00' transform='scale(2)'/></svg>",
+        )
+        .expect("svg scale");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(3, 3), Some([255, 255, 0, 255]));
+        assert_eq!(img.pixel(5, 5), Some([255, 255, 0, 255]));
     }
 }
