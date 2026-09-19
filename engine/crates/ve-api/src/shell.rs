@@ -13,8 +13,8 @@ use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
 use ve_chrome::{
-    Chrome, ChromeBackend, ChromeHit, ChromeOverlay, ChromeTab, ChromeTheme, empty_layout,
-    sync_order, sync_spaces,
+    Chrome, ChromeBackend, ChromeHit, ChromeOverlay, ChromeTab, ChromeTheme, Pin, empty_layout,
+    sync_order, sync_spaces, toggle_pin,
 };
 use ve_core::{Error, ErrorCode, Point, Result, Size, process_rss_bytes};
 use ve_gfx::{Compositor, DisplayItem, DisplayList, Frame, Renderer, SoftwareRenderer};
@@ -1046,7 +1046,7 @@ impl NativeBrowser {
                         }
                     }
                 } else if self.dispatch_chrome_shortcut(&key, modifiers, state) {
-                    // chrome handled
+                    self.present_dirty();
                 } else {
                     if state == KeyState::Down && key.len() == 1 {
                         self.last_typed.push_str(&key);
@@ -1313,7 +1313,7 @@ impl NativeBrowser {
         }
         self.sync_chrome();
         let window = self.window_size;
-        let mut list = self.chrome.paint(window);
+        let mut list = self.chrome.paint_base(window);
         if let Some(tab) = self.active_tab() {
             if !self.chrome.shows_start_page() {
                 let page = tab.page;
@@ -1328,6 +1328,7 @@ impl NativeBrowser {
                 }
             }
         }
+        self.chrome.append_overlay(&mut list, window);
         Ok(list)
     }
 
@@ -1401,8 +1402,74 @@ impl NativeBrowser {
                 self.resolve_permission_sheet(false);
                 Ok(true)
             }
+            ChromeHit::PaletteCommand { id } => {
+                self.apply_palette_command(&id)?;
+                Ok(true)
+            }
+            ChromeHit::HistoryItem { url } => {
+                self.chrome.overlay = ChromeOverlay::None;
+                let _ = self.handle_event(NativeEvent::Navigate { url })?;
+                Ok(true)
+            }
+            ChromeHit::ThemeDark => {
+                self.chrome.set_theme(ChromeTheme::Dark);
+                Ok(true)
+            }
+            ChromeHit::ThemeLight => {
+                self.chrome.set_theme(ChromeTheme::Light);
+                Ok(true)
+            }
             _ => Ok(true),
         }
+    }
+
+    fn apply_palette_command(&mut self, id: &str) -> Result<()> {
+        self.chrome.overlay = ChromeOverlay::None;
+        match id {
+            "new" => {
+                let _ = self.handle_event(NativeEvent::NewTab {
+                    html: "<body></body>".into(),
+                    url: "about:blank".into(),
+                })?;
+            }
+            "rail" => {
+                self.chrome.rail_open = !self.chrome.rail_open;
+                self.apply_chrome_viewport();
+            }
+            "find" => {
+                self.chrome.find_open = true;
+            }
+            "sb" | "hide-sb" => {
+                self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
+                self.apply_chrome_viewport();
+            }
+            "history" => {
+                self.chrome.overlay = ChromeOverlay::History;
+            }
+            "settings" => {
+                self.chrome.overlay = ChromeOverlay::Settings;
+            }
+            "downloads" => {
+                self.chrome.overlay = ChromeOverlay::Downloads;
+            }
+            "bm" => self.bookmark_active(),
+            "reload" | "hard" => {
+                if let Some(url) = self.active_tab().map(|t| t.url.clone()) {
+                    let _ = self.handle_event(NativeEvent::Navigate { url })?;
+                }
+            }
+            "pin" => {
+                if let Some((url, title)) = self
+                    .active_tab()
+                    .map(|t| (t.url.clone(), t.page_title.clone()))
+                {
+                    let space = self.chrome.layout.active_space_id.clone();
+                    self.chrome.layout = toggle_pin(&self.chrome.layout, &space, Pin { url, title });
+                }
+            }
+            _ => {}
+        }
+        Ok(())
     }
 
     /// Clipboard (chrome-owned).
@@ -1649,6 +1716,10 @@ impl NativeBrowser {
             }
             "y" | "Y" => {
                 self.chrome.overlay = ChromeOverlay::History;
+                true
+            }
+            "j" | "J" => {
+                self.chrome.overlay = ChromeOverlay::Downloads;
                 true
             }
             _ => false,
@@ -2645,6 +2716,84 @@ mod tests {
             .join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-start.png"), &png).unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn palette_command_new_tab_and_screenshot() {
+        let path = format!("/tmp/vector-palette-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        unsafe { std::env::set_var("VECTOR_PROFILE", &path) };
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body><p>open</p></body></html>".into(),
+                url: "https://palette.test/".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "k".into(),
+                code: "KeyK".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert_eq!(browser.chrome().overlay, ve_chrome::ChromeOverlay::Palette);
+        let window = ve_core::Size::new(1280.0, 720.0);
+        let list = browser.paint_shell_list().unwrap();
+        let texts: Vec<String> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                ve_gfx::DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            texts.iter().any(|t| t == "New tab"),
+            "palette must list Electron commands: {texts:?}"
+        );
+        browser.set_device_scale(2.0);
+        let png = browser.capture_shell_png().expect("palette png");
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/ui/screenshots");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("ve-shell-palette.png"), &png).unwrap();
+        let mut new_pt = None;
+        'scan: for y in (70..650).step_by(4) {
+            for x in (360..920).step_by(8) {
+                if let ve_chrome::ChromeHit::PaletteCommand { id } =
+                    browser.chrome().hit(window, x as f32, y as f32)
+                    && id == "new"
+                {
+                    new_pt = Some((x as f32, y as f32));
+                    break 'scan;
+                }
+            }
+        }
+        let (x, y) = new_pt.expect("palette New tab hit");
+        let before = browser.tab_count();
+        let _ = browser.handle_event(NativeEvent::PointerDown { x, y, button: 0 });
+        assert!(
+            browser.tab_count() > before,
+            "palette New tab must open a tab"
+        );
+        assert_eq!(browser.chrome().overlay, ve_chrome::ChromeOverlay::None);
+        browser
+            .handle_event(NativeEvent::Key {
+                key: ",".into(),
+                code: "Comma".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert_eq!(browser.chrome().overlay, ve_chrome::ChromeOverlay::Settings);
+        let png = browser.capture_shell_png().expect("settings png");
+        std::fs::write(dir.join("ve-shell-settings.png"), &png).unwrap();
         let _ = std::fs::remove_file(&path);
     }
 

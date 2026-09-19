@@ -44,6 +44,8 @@ pub enum ChromeOverlay {
     Settings,
     /// History.
     History,
+    /// Downloads.
+    Downloads,
     /// Certificate interstitial.
     Cert,
     /// Permission prompt (never granted by page text).
@@ -88,6 +90,20 @@ pub enum ChromeHit {
     Zoom,
     /// Overlay chrome.
     Overlay(ChromeOverlay),
+    /// A command in the ⌘K palette.
+    PaletteCommand {
+        /// Stable command id (`new`, `rail`, `find`, …).
+        id: String,
+    },
+    /// A history row (navigate).
+    HistoryItem {
+        /// URL to open.
+        url: String,
+    },
+    /// Settings theme: dark.
+    ThemeDark,
+    /// Settings theme: light.
+    ThemeLight,
     /// Certificate interstitial (Proceed / Block).
     CertProceed,
     /// Certificate interstitial block.
@@ -297,27 +313,61 @@ impl Chrome {
     }
 
     fn hit_overlay(&self, window: Size, x: f32, y: f32) -> ChromeHit {
-        let card = overlay_card(window);
+        let p = Point::new(x, y);
         match self.overlay {
+            ChromeOverlay::Palette => {
+                let card = palette_card(window);
+                for (id, row) in self.palette_rows(&card) {
+                    if row.contains(p) {
+                        return ChromeHit::PaletteCommand { id };
+                    }
+                }
+                ChromeHit::Overlay(ChromeOverlay::Palette)
+            }
+            ChromeOverlay::History => {
+                let card = palette_card(window);
+                for (url, row) in self.history_rows(&card) {
+                    if row.contains(p) {
+                        return ChromeHit::HistoryItem { url };
+                    }
+                }
+                ChromeHit::Overlay(ChromeOverlay::History)
+            }
+            ChromeOverlay::Settings => {
+                let drawer = settings_drawer(window);
+                let dark = settings_theme_rect(&drawer, true);
+                let light = settings_theme_rect(&drawer, false);
+                if dark.contains(p) {
+                    return ChromeHit::ThemeDark;
+                }
+                if light.contains(p) {
+                    return ChromeHit::ThemeLight;
+                }
+                ChromeHit::Overlay(ChromeOverlay::Settings)
+            }
+            ChromeOverlay::Downloads => ChromeHit::Overlay(ChromeOverlay::Downloads),
             ChromeOverlay::Cert => {
+                let card = overlay_card(window);
                 if y > card.y() + 200.0 && y < card.y() + 240.0 {
                     if x < card.x() + card.width() * 0.5 {
                         return ChromeHit::CertBlock;
                     }
                     return ChromeHit::CertProceed;
                 }
+                ChromeHit::Overlay(ChromeOverlay::Cert)
             }
             ChromeOverlay::Permission => {
+                let card = overlay_card(window);
                 if y > card.y() + 200.0 && y < card.y() + 240.0 {
                     if x < card.x() + card.width() * 0.5 {
                         return ChromeHit::PermissionDeny;
                     }
                     return ChromeHit::PermissionAllow;
                 }
+                ChromeHit::Overlay(ChromeOverlay::Permission)
             }
-            _ => {}
+            ChromeOverlay::None => ChromeHit::Window,
         }
-        ChromeHit::Overlay(self.overlay)
     }
 
     fn hit_sidebar(&self, y: f32) -> ChromeHit {
@@ -383,6 +433,14 @@ impl Chrome {
     /// Paints chrome into a display list sized to `window`.
     #[must_use]
     pub fn paint(&self, window: Size) -> DisplayList {
+        let mut list = self.paint_base(window);
+        self.append_overlay(&mut list, window);
+        list
+    }
+
+    /// Chrome without the overlay layer (page blit goes between).
+    #[must_use]
+    pub fn paint_base(&self, window: Size) -> DisplayList {
         let mut list = DisplayList::new(window);
         let t = &self.tokens;
         list.push(DisplayItem::Rect {
@@ -400,10 +458,14 @@ impl Chrome {
         if self.find_open {
             self.paint_find(&mut list, window);
         }
-        if self.overlay != ChromeOverlay::None {
-            self.paint_overlay(&mut list, window);
-        }
         list
+    }
+
+    /// Overlay scrim + card on top of an existing list.
+    pub fn append_overlay(&self, list: &mut DisplayList, window: Size) {
+        if self.overlay != ChromeOverlay::None {
+            self.paint_overlay(list, window);
+        }
     }
 
     fn paint_sidebar(&self, list: &mut DisplayList, window: Size) {
@@ -843,28 +905,332 @@ impl Chrome {
     }
 
     fn paint_overlay(&self, list: &mut DisplayList, window: Size) {
-        let t = &self.tokens;
         list.push(DisplayItem::Rect {
             rect: Rect::new(0.0, 0.0, window.width, window.height),
             color: Rgba::rgba(0, 0, 0, 0.35),
         });
-        let card = Rect::new(window.width * 0.5 - 240.0, 80.0, 480.0, 320.0);
+        match self.overlay {
+            ChromeOverlay::Palette => self.paint_palette(list, window),
+            ChromeOverlay::Settings => self.paint_settings(list, window),
+            ChromeOverlay::History => self.paint_history(list, window),
+            ChromeOverlay::Downloads => self.paint_downloads(list, window),
+            ChromeOverlay::Cert | ChromeOverlay::Permission => self.paint_sheet(list, window),
+            ChromeOverlay::None => {}
+        }
+    }
+
+    fn paint_palette(&self, list: &mut DisplayList, window: Size) {
+        let t = &self.tokens;
+        let card = palette_card(window);
+        paint_card(list, card, t);
+        let field = Rect::new(card.x() + 16.0, card.y() + 14.0, card.width() - 32.0, 40.0);
         list.push(DisplayItem::RoundedClip {
-            rect: card,
-            radius: 16.0,
+            rect: field,
+            radius: 10.0,
         });
         list.push(DisplayItem::Rect {
-            rect: card,
-            color: t.bg_0,
+            rect: field,
+            color: t.sb_field,
         });
         list.push(DisplayItem::PopClip);
-        let title = match self.overlay {
-            ChromeOverlay::Palette => "Command palette",
-            ChromeOverlay::Settings => "Settings",
-            ChromeOverlay::History => "History",
-            ChromeOverlay::Cert => "Certificate warning",
-            ChromeOverlay::Permission => "Permission",
-            ChromeOverlay::None => "",
+        self.label(
+            list,
+            Point::new(field.x() + 14.0, field.y() + 26.0),
+            "Type a command, address, or a task for the agent…",
+            13.0,
+            t.ink_2,
+        );
+        self.label(
+            list,
+            Point::new(field.right() - 36.0, field.y() + 26.0),
+            "esc",
+            11.0,
+            t.ink_2,
+        );
+        let mut last_section = "";
+        for (cmd, row) in palette_commands(self)
+            .into_iter()
+            .zip(self.palette_rows(&card).into_iter().map(|(_, r)| r))
+        {
+            if cmd.section != last_section {
+                self.label(
+                    list,
+                    Point::new(card.x() + 20.0, row.y() - 6.0),
+                    cmd.section,
+                    11.0,
+                    t.ink_2,
+                );
+                last_section = cmd.section;
+            }
+            self.label(
+                list,
+                Point::new(row.x() + 12.0, row.y() + 21.0),
+                cmd.label,
+                13.0,
+                t.ink_0,
+            );
+            if !cmd.shortcut.is_empty() {
+                self.label(
+                    list,
+                    Point::new(row.right() - 52.0, row.y() + 21.0),
+                    cmd.shortcut,
+                    11.0,
+                    t.ink_2,
+                );
+            }
+        }
+    }
+
+    fn paint_settings(&self, list: &mut DisplayList, window: Size) {
+        let t = &self.tokens;
+        let drawer = settings_drawer(window);
+        paint_card(list, drawer, t);
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 32.0),
+            "Settings",
+            16.0,
+            t.ink_0,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 64.0),
+            "Appearance",
+            11.0,
+            t.ink_2,
+        );
+        let dark = settings_theme_rect(&drawer, true);
+        let light = settings_theme_rect(&drawer, false);
+        let dark_on = self.theme == ChromeTheme::Dark;
+        list.push(DisplayItem::RoundedClip {
+            rect: dark,
+            radius: 8.0,
+        });
+        list.push(DisplayItem::Rect {
+            rect: dark,
+            color: if dark_on { t.sb_selected } else { t.sb_field },
+        });
+        list.push(DisplayItem::PopClip);
+        list.push(DisplayItem::RoundedClip {
+            rect: light,
+            radius: 8.0,
+        });
+        list.push(DisplayItem::Rect {
+            rect: light,
+            color: if dark_on { t.sb_field } else { t.sb_selected },
+        });
+        list.push(DisplayItem::PopClip);
+        self.label(
+            list,
+            Point::new(dark.x() + 16.0, dark.y() + 19.0),
+            "Dark",
+            12.0,
+            t.ink_0,
+        );
+        self.label(
+            list,
+            Point::new(light.x() + 16.0, light.y() + 19.0),
+            "Light",
+            12.0,
+            t.ink_0,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 140.0),
+            "Engine",
+            11.0,
+            t.ink_2,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 164.0),
+            "Vector Engine",
+            13.0,
+            t.ink_0,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 184.0),
+            "Always · own engine for engine tabs",
+            12.0,
+            t.ink_1,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 216.0),
+            "Models",
+            11.0,
+            t.ink_2,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 240.0),
+            "Planner model",
+            13.0,
+            t.ink_0,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 260.0),
+            "Qwen 3.8 27B",
+            12.0,
+            t.ink_1,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 292.0),
+            "Agent effects",
+            11.0,
+            t.ink_2,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 316.0),
+            "Read  Write  Navigate  Evaluate",
+            12.0,
+            t.ink_1,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 348.0),
+            "Browsing",
+            11.0,
+            t.ink_2,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 372.0),
+            "Search engine",
+            13.0,
+            t.ink_0,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 392.0),
+            "https://duckduckgo.com/?q=%s",
+            12.0,
+            t.ink_1,
+        );
+        self.label(
+            list,
+            Point::new(drawer.x() + 20.0, drawer.y() + 428.0),
+            &format!(
+                "{} bookmarks · {} downloads · {:.0}% zoom",
+                self.bookmarks.len(),
+                self.download_names.len(),
+                self.zoom * 100.0
+            ),
+            12.0,
+            t.ink_1,
+        );
+    }
+
+    fn paint_history(&self, list: &mut DisplayList, window: Size) {
+        let t = &self.tokens;
+        let card = palette_card(window);
+        paint_card(list, card, t);
+        let field = Rect::new(card.x() + 16.0, card.y() + 14.0, card.width() - 32.0, 40.0);
+        list.push(DisplayItem::RoundedClip {
+            rect: field,
+            radius: 10.0,
+        });
+        list.push(DisplayItem::Rect {
+            rect: field,
+            color: t.sb_field,
+        });
+        list.push(DisplayItem::PopClip);
+        self.label(
+            list,
+            Point::new(field.x() + 14.0, field.y() + 26.0),
+            "Search history…",
+            13.0,
+            t.ink_2,
+        );
+        self.label(
+            list,
+            Point::new(card.x() + 20.0, card.y() + 80.0),
+            "Today",
+            11.0,
+            t.ink_2,
+        );
+        if self.history.is_empty() {
+            self.label(
+                list,
+                Point::new(card.x() + 20.0, card.y() + 110.0),
+                "No history yet",
+                12.0,
+                t.ink_2,
+            );
+            return;
+        }
+        for (url, row) in self.history_rows(&card) {
+            let title = self
+                .history
+                .iter()
+                .rev()
+                .find(|(u, _)| *u == url)
+                .map(|(_, t)| t.as_str())
+                .unwrap_or("");
+            let line = if title.is_empty() { url.as_str() } else { title };
+            self.label(
+                list,
+                Point::new(row.x() + 12.0, row.y() + 18.0),
+                &truncate(line, 42),
+                13.0,
+                t.ink_0,
+            );
+            self.label(
+                list,
+                Point::new(row.x() + 12.0, row.y() + 34.0),
+                &truncate(&url, 48),
+                11.0,
+                t.ink_2,
+            );
+        }
+    }
+
+    fn paint_downloads(&self, list: &mut DisplayList, window: Size) {
+        let t = &self.tokens;
+        let card = palette_card(window);
+        paint_card(list, card, t);
+        self.label(
+            list,
+            Point::new(card.x() + 20.0, card.y() + 32.0),
+            "Downloads",
+            16.0,
+            t.ink_0,
+        );
+        if self.download_names.is_empty() {
+            self.label(
+                list,
+                Point::new(card.x() + 20.0, card.y() + 72.0),
+                "No downloads yet",
+                12.0,
+                t.ink_2,
+            );
+            return;
+        }
+        let mut y = card.y() + 72.0;
+        for name in self.download_names.iter().rev().take(12) {
+            self.label(
+                list,
+                Point::new(card.x() + 20.0, y),
+                &truncate(name, 42),
+                13.0,
+                t.ink_0,
+            );
+            y += 28.0;
+        }
+    }
+
+    fn paint_sheet(&self, list: &mut DisplayList, window: Size) {
+        let t = &self.tokens;
+        let card = overlay_card(window);
+        paint_card(list, card, t);
+        let title = if self.overlay == ChromeOverlay::Cert {
+            "Certificate warning"
+        } else {
+            "Permission"
         };
         self.label(
             list,
@@ -873,74 +1239,64 @@ impl Chrome {
             15.0,
             t.ink_0,
         );
-        match self.overlay {
-            ChromeOverlay::History => {
-                let mut y = card.y() + 64.0;
-                for (url, title) in self.history.iter().rev().take(8) {
-                    let line = if title.is_empty() {
-                        url.as_str()
-                    } else {
-                        title.as_str()
-                    };
-                    self.label(list, Point::new(card.x() + 20.0, y), &truncate(line, 42), 12.0, t.ink_1);
-                    y += 22.0;
-                }
-                if self.history.is_empty() {
-                    self.label(list, Point::new(card.x() + 20.0, y), "No history yet", 12.0, t.ink_2);
-                }
-            }
-            ChromeOverlay::Settings => {
-                self.label(
-                    list,
-                    Point::new(card.x() + 20.0, card.y() + 64.0),
-                    &format!("{} bookmarks / {} downloads", self.bookmarks.len(), self.download_names.len()),
-                    12.0,
-                    t.ink_1,
-                );
-            }
-            ChromeOverlay::Cert | ChromeOverlay::Permission => {
-                if !self.sheet_title.is_empty() {
-                    self.label(
-                        list,
-                        Point::new(card.x() + 20.0, card.y() + 72.0),
-                        &self.sheet_title,
-                        13.0,
-                        t.ink_0,
-                    );
-                }
-                if !self.sheet_body.is_empty() {
-                    self.label(
-                        list,
-                        Point::new(card.x() + 20.0, card.y() + 98.0),
-                        &truncate(&self.sheet_body, 48),
-                        12.0,
-                        t.ink_1,
-                    );
-                }
-                let deny = if self.overlay == ChromeOverlay::Cert {
-                    "Block"
-                } else {
-                    "Deny"
-                };
-                let allow = if self.overlay == ChromeOverlay::Cert {
-                    "Proceed"
-                } else {
-                    "Allow"
-                };
-                self.label(list, Point::new(card.x() + 40.0, card.y() + 228.0), deny, 12.0, t.err);
-                self.label(list, Point::new(card.x() + 260.0, card.y() + 228.0), allow, 12.0, t.ok);
-            }
-            ChromeOverlay::Palette => {
-                self.label(
-                    list,
-                    Point::new(card.x() + 20.0, card.y() + 72.0),
-                    "Type a URL, search, or ask the agent",
-                    12.0,
-                    t.ink_1,
-                );
-            }
-            ChromeOverlay::None => {}
+        if !self.sheet_title.is_empty() {
+            self.label(
+                list,
+                Point::new(card.x() + 20.0, card.y() + 72.0),
+                &self.sheet_title,
+                13.0,
+                t.ink_0,
+            );
         }
+        if !self.sheet_body.is_empty() {
+            self.label(
+                list,
+                Point::new(card.x() + 20.0, card.y() + 98.0),
+                &truncate(&self.sheet_body, 48),
+                12.0,
+                t.ink_1,
+            );
+        }
+        let deny = if self.overlay == ChromeOverlay::Cert {
+            "Block"
+        } else {
+            "Deny"
+        };
+        let allow = if self.overlay == ChromeOverlay::Cert {
+            "Proceed"
+        } else {
+            "Allow"
+        };
+        self.label(list, Point::new(card.x() + 40.0, card.y() + 228.0), deny, 12.0, t.err);
+        self.label(list, Point::new(card.x() + 260.0, card.y() + 228.0), allow, 12.0, t.ok);
+    }
+
+    fn palette_rows(&self, card: &Rect) -> Vec<(String, Rect)> {
+        let mut y = card.y() + 64.0;
+        let mut last_section = "";
+        let mut out = Vec::new();
+        for cmd in palette_commands(self) {
+            if cmd.section != last_section {
+                y += 22.0;
+                last_section = cmd.section;
+            }
+            out.push((
+                cmd.id.to_string(),
+                Rect::new(card.x() + 8.0, y, card.width() - 16.0, 32.0),
+            ));
+            y += 32.0;
+        }
+        out
+    }
+
+    fn history_rows(&self, card: &Rect) -> Vec<(String, Rect)> {
+        let mut y = card.y() + 90.0;
+        let mut out = Vec::new();
+        for (url, _) in self.history.iter().rev().take(10) {
+            out.push((url.clone(), Rect::new(card.x() + 8.0, y, card.width() - 16.0, 40.0)));
+            y += 40.0;
+        }
+        out
     }
 
     fn label(&self, list: &mut DisplayList, origin: Point, text: &str, size: f32, color: Rgba) {
@@ -979,6 +1335,163 @@ fn current_hour() -> u32 {
 
 fn overlay_card(window: Size) -> Rect {
     Rect::new(window.width * 0.5 - 240.0, 80.0, 480.0, 320.0)
+}
+
+fn palette_card(window: Size) -> Rect {
+    let w = 520.0;
+    let h = 580.0_f32.min(window.height - 96.0);
+    Rect::new(((window.width - w) * 0.5).max(16.0), 72.0, w, h)
+}
+
+fn settings_drawer(window: Size) -> Rect {
+    let w = 400.0;
+    Rect::new(window.width - w - 16.0, 16.0, w, window.height - 32.0)
+}
+
+fn settings_theme_rect(drawer: &Rect, dark: bool) -> Rect {
+    let x = if dark {
+        drawer.x() + 20.0
+    } else {
+        drawer.x() + 100.0
+    };
+    Rect::new(x, drawer.y() + 76.0, 72.0, 28.0)
+}
+
+fn paint_card(list: &mut DisplayList, card: Rect, t: &ChromeTokens) {
+    list.push(DisplayItem::BoxShadow {
+        rect: card,
+        dx: 0.0,
+        dy: 12.0,
+        blur: 40.0,
+        color: Rgba::rgba(0, 0, 0, 0.45),
+    });
+    list.push(DisplayItem::RoundedClip {
+        rect: card,
+        radius: 16.0,
+    });
+    list.push(DisplayItem::Rect {
+        rect: card,
+        color: t.bg_0,
+    });
+    list.push(DisplayItem::PopClip);
+}
+
+struct PaletteCmd {
+    id: &'static str,
+    section: &'static str,
+    label: &'static str,
+    shortcut: &'static str,
+}
+
+fn palette_commands(chrome: &Chrome) -> Vec<PaletteCmd> {
+    let rail = if chrome.rail_open {
+        "Hide agent rail"
+    } else {
+        "Show agent rail"
+    };
+    let hide_sb = if chrome.sidebar_collapsed {
+        "Show sidebar"
+    } else {
+        "Hide sidebar completely"
+    };
+    vec![
+        PaletteCmd {
+            id: "rail",
+            section: "Agent",
+            label: rail,
+            shortcut: "⌘⇧A",
+        },
+        PaletteCmd {
+            id: "obs",
+            section: "Agent",
+            label: "Inspect what the agent sees",
+            shortcut: "",
+        },
+        PaletteCmd {
+            id: "collect",
+            section: "Agent",
+            label: "Collect open tabs into a set",
+            shortcut: "",
+        },
+        PaletteCmd {
+            id: "new",
+            section: "Window",
+            label: "New tab",
+            shortcut: "⌘T",
+        },
+        PaletteCmd {
+            id: "ov",
+            section: "Window",
+            label: "Tab overview",
+            shortcut: "⌘⇧O",
+        },
+        PaletteCmd {
+            id: "reload",
+            section: "Window",
+            label: "Reload page",
+            shortcut: "⌘R",
+        },
+        PaletteCmd {
+            id: "hard",
+            section: "Window",
+            label: "Hard reload",
+            shortcut: "⇧⌘R",
+        },
+        PaletteCmd {
+            id: "find",
+            section: "Window",
+            label: "Find in page",
+            shortcut: "⌘F",
+        },
+        PaletteCmd {
+            id: "sb",
+            section: "Window",
+            label: "Toggle sidebar",
+            shortcut: "⌘S",
+        },
+        PaletteCmd {
+            id: "hide-sb",
+            section: "Window",
+            label: hide_sb,
+            shortcut: "",
+        },
+        PaletteCmd {
+            id: "bm",
+            section: "Window",
+            label: "Bookmark this page",
+            shortcut: "⌘D",
+        },
+        PaletteCmd {
+            id: "pin",
+            section: "Window",
+            label: "Pin this site to the space",
+            shortcut: "",
+        },
+        PaletteCmd {
+            id: "split",
+            section: "Window",
+            label: "Split view with page…",
+            shortcut: "",
+        },
+        PaletteCmd {
+            id: "settings",
+            section: "Window",
+            label: "Settings",
+            shortcut: "⌘,",
+        },
+        PaletteCmd {
+            id: "history",
+            section: "Window",
+            label: "History",
+            shortcut: "⌘Y",
+        },
+        PaletteCmd {
+            id: "downloads",
+            section: "Window",
+            label: "Downloads",
+            shortcut: "⌘⇧J",
+        },
+    ]
 }
 
 fn truncate(s: &str, max: usize) -> String {
@@ -1140,6 +1653,108 @@ mod tests {
             .collect();
         assert!(texts.iter().any(|t| *t == "Permission"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Allow"), "{texts:?}");
+    }
+
+    #[test]
+    fn palette_lists_electron_commands() {
+        let mut chrome = sample();
+        chrome.overlay = ChromeOverlay::Palette;
+        let window = Size::new(1280.0, 720.0);
+        let list = chrome.paint(window);
+        let texts: Vec<&str> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        for expected in [
+            "Type a command, address, or a task for the agent…",
+            "Agent",
+            "Window",
+            "Hide agent rail",
+            "New tab",
+            "Find in page",
+            "Toggle sidebar",
+            "Settings",
+            "History",
+            "Downloads",
+        ] {
+            assert!(texts.iter().any(|t| *t == expected), "missing {expected}: {texts:?}");
+        }
+        let card = palette_card(window);
+        let rows = chrome.palette_rows(&card);
+        let new_tab = rows.iter().find(|(id, _)| id == "new").expect("new");
+        let hit = chrome.hit(window, new_tab.1.x() + 4.0, new_tab.1.y() + 4.0);
+        assert_eq!(
+            hit,
+            ChromeHit::PaletteCommand { id: "new".into() }
+        );
+    }
+
+    #[test]
+    fn settings_drawer_lists_electron_sections() {
+        let mut chrome = sample();
+        chrome.overlay = ChromeOverlay::Settings;
+        let window = Size::new(1280.0, 720.0);
+        let list = chrome.paint(window);
+        let texts: Vec<&str> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        for expected in [
+            "Settings",
+            "Appearance",
+            "Dark",
+            "Light",
+            "Engine",
+            "Vector Engine",
+            "Models",
+            "Planner model",
+            "Agent effects",
+            "Search engine",
+        ] {
+            assert!(texts.iter().any(|t| *t == expected), "missing {expected}: {texts:?}");
+        }
+        let drawer = settings_drawer(window);
+        let dark = settings_theme_rect(&drawer, true);
+        assert_eq!(
+            chrome.hit(window, dark.x() + 4.0, dark.y() + 4.0),
+            ChromeHit::ThemeDark
+        );
+    }
+
+    #[test]
+    fn history_overlay_hits_rows() {
+        let mut chrome = sample();
+        chrome.overlay = ChromeOverlay::History;
+        chrome.history.push(("https://example.test/".into(), "Example".into()));
+        let window = Size::new(1280.0, 720.0);
+        let list = chrome.paint(window);
+        let texts: Vec<&str> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.iter().any(|t| *t == "Search history…"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "Today"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "Example"), "{texts:?}");
+        let card = palette_card(window);
+        let row = chrome.history_rows(&card).remove(0);
+        assert_eq!(
+            chrome.hit(window, row.1.x() + 4.0, row.1.y() + 4.0),
+            ChromeHit::HistoryItem {
+                url: "https://example.test/".into()
+            }
+        );
     }
 
     #[test]
