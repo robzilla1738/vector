@@ -403,6 +403,8 @@ impl ComputedStyle {
             PropertyId::FillRule => self.fill_rule.to_string(),
             PropertyId::StrokeLinecap => self.stroke_linecap.to_string(),
             PropertyId::StrokeLinejoin => self.stroke_linejoin.to_string(),
+            PropertyId::StrokeMiterlimit => format!("{}", self.stroke_miterlimit),
+            PropertyId::StrokeDashoffset => format!("{}", self.stroke_dashoffset),
             _ => String::new(),
         }
     }

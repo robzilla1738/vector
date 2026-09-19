@@ -5115,6 +5115,58 @@ fn webgl_uniform4f_fills_draw_arrays() {
 }
 
 #[test]
+fn computed_style_exposes_stroke_dashoffset() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="stroke-dashoffset:2;stroke-miterlimit:8">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                off: cs.strokeDashoffset === "2" || cs.getPropertyValue("stroke-dashoffset") === "2",
+                miter: cs.strokeMiterlimit === "8" || cs.getPropertyValue("stroke-miterlimit") === "8"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["off"], true, "{v}");
+    assert_eq!(v["miter"], true, "{v}");
+}
+
+#[test]
+fn rtc_add_track_and_transceiver() {
+    let mut page = open("<title>rtctrack</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const pc = new RTCPeerConnection();
+              const track = new MediaStreamTrack();
+              track.kind = "video";
+              const sender = pc.addTrack(track);
+              const tr = pc.addTransceiver("audio");
+              return {
+                senders: pc.getSenders().length,
+                receivers: pc.getReceivers().length,
+                same: sender.track === track,
+                video: pc.getSenders()[0].track.kind === "video",
+                audio: tr.receiver.track.kind === "audio",
+                connecting: pc.connectionState === "connecting"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["senders"], 2, "{v}");
+    assert_eq!(v["receivers"], 1, "{v}");
+    assert_eq!(v["same"], true, "{v}");
+    assert_eq!(v["video"], true, "{v}");
+    assert_eq!(v["audio"], true, "{v}");
+    assert_eq!(v["connecting"], true, "{v}");
+}
+
+#[test]
 fn crypto_subtle_digests_sha512() {
     let mut page = open(r#"<body></body>"#);
     let _ = page

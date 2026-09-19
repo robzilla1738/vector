@@ -551,6 +551,15 @@ mod conv {
         }
     }
 
+    pub fn number(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Number(n) => Some(*n),
+            SpecifiedValue::Integer(i) => Some(*i as f32),
+            SpecifiedValue::Calc(_) => calc(v, ctx)?.as_number(),
+            _ => None,
+        }
+    }
+
     pub fn non_negative_number(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<f32> {
         match v {
             SpecifiedValue::Number(n) if *n >= 0.0 => Some(*n),
@@ -1752,6 +1761,8 @@ property_table! {
     StrokeLinecap: "stroke-linecap" => stroke_linecap: StrokeLinecap = StrokeLinecap::Butt, inherited = true, syntax = Single, convert = conv::kw::<StrokeLinecap>;
     /// `stroke-linejoin`
     StrokeLinejoin: "stroke-linejoin" => stroke_linejoin: StrokeLinejoin = StrokeLinejoin::Miter, inherited = true, syntax = Single, convert = conv::kw::<StrokeLinejoin>;
+    /// `stroke-dashoffset`
+    StrokeDashoffset: "stroke-dashoffset" => stroke_dashoffset: f32 = 0.0, inherited = true, syntax = Single, convert = conv::number;
 }
 
 impl ComputedStyle {
@@ -3866,6 +3877,10 @@ mod tests {
             Some(PropertyId::StrokeLinejoin)
         );
         assert_eq!(
+            PropertyId::from_name("stroke-dashoffset"),
+            Some(PropertyId::StrokeDashoffset)
+        );
+        assert_eq!(
             PropertyId::from_name("overflow-x"),
             Some(PropertyId::OverflowX)
         );
@@ -4140,6 +4155,8 @@ mod tests {
         ok("fill-rule", "evenodd");
         ok("stroke-linecap", "round");
         ok("stroke-linejoin", "bevel");
+        ok("stroke-dashoffset", "2");
+        ok("stroke-dashoffset", "-1");
         ok("-ms-overflow-style", "scrollbar");
         ok("-webkit-box-pack", "justify");
         ok("scroll-padding-inline", "8px");
@@ -4147,7 +4164,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 251);
+        assert_eq!(PropertyId::ALL.len(), 252);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

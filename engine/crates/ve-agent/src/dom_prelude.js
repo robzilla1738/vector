@@ -9447,6 +9447,8 @@
       this.remoteDescription = null;
       this._config = config || {};
       this._channels = [];
+      this._senders = [];
+      this._receivers = [];
     }
     createOffer() {
       return Promise.resolve({
@@ -9476,6 +9478,23 @@
       return Promise.resolve();
     }
     addIceCandidate() { return Promise.resolve(); }
+    addTrack(track) {
+      const sender = { track: track || null };
+      this._senders.push(sender);
+      if (track && this.connectionState === "new") this.connectionState = "connecting";
+      return sender;
+    }
+    getSenders() { return this._senders.slice(); }
+    getReceivers() { return this._receivers.slice(); }
+    addTransceiver(trackOrKind) {
+      const track = typeof trackOrKind === "string"
+        ? Object.assign(new MediaStreamTrack(), { kind: String(trackOrKind) })
+        : (trackOrKind || new MediaStreamTrack());
+      const sender = this.addTrack(track);
+      const receiver = { track };
+      this._receivers.push(receiver);
+      return { sender, receiver, mid: String(this._receivers.length) };
+    }
     createDataChannel(label) {
       const ch = Object.create(RTCDataChannel.prototype);
       ch.label = String(label || "");

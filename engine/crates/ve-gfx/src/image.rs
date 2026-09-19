@@ -251,7 +251,18 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             let width = width * ((world.sx.abs() + world.sy.abs()) * 0.5).max(0.0);
             let dashes = svg_dash(tag);
             let cap = svg_linecap(tag);
-            stroke_line(&mut img, x1, y1, x2, y2, color, width, &dashes, cap);
+            stroke_line(
+                &mut img,
+                x1,
+                y1,
+                x2,
+                y2,
+                color,
+                width,
+                &dashes,
+                cap,
+                svg_dashoffset(tag),
+            );
             paint_svg_markers(&mut img, tag, x1, y1, x2, y2, &markers, &grads, &clips);
         }
         rest = &rest[i + tag_end + 1..];
@@ -306,7 +317,16 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let miter = svg_miterlimit(tag);
         for w in coords.windows(2) {
             stroke_line(
-                &mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width, &dashes, cap,
+                &mut img,
+                w[0].0,
+                w[0].1,
+                w[1].0,
+                w[1].1,
+                color,
+                width,
+                &dashes,
+                cap,
+                svg_dashoffset(tag),
             );
         }
         stroke_joins(&mut img, &coords, color, width, join, miter);
@@ -364,7 +384,16 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 for c in &contours {
                     for w in c.windows(2) {
                         stroke_line(
-                            &mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width, &dashes, cap,
+                            &mut img,
+                            w[0].0,
+                            w[0].1,
+                            w[1].0,
+                            w[1].1,
+                            color,
+                            width,
+                            &dashes,
+                            cap,
+                            svg_dashoffset(tag),
                         );
                     }
                     stroke_joins(&mut img, c, color, width, join, miter);
@@ -1003,10 +1032,11 @@ fn stroke_svg_rect_edges(
     let cap = svg_linecap(tag);
     let x1 = x0 + w;
     let y1 = y0 + h;
-    stroke_line(img, x0, y0, x1, y0, color, width, &dashes, cap);
-    stroke_line(img, x1, y0, x1, y1, color, width, &dashes, cap);
-    stroke_line(img, x1, y1, x0, y1, color, width, &dashes, cap);
-    stroke_line(img, x0, y1, x0, y0, color, width, &dashes, cap);
+    let offset = svg_dashoffset(tag);
+    stroke_line(img, x0, y0, x1, y0, color, width, &dashes, cap, offset);
+    stroke_line(img, x1, y0, x1, y1, color, width, &dashes, cap, offset);
+    stroke_line(img, x1, y1, x0, y1, color, width, &dashes, cap, offset);
+    stroke_line(img, x0, y1, x0, y0, color, width, &dashes, cap, offset);
 }
 
 fn paint_svg_circle(
@@ -1435,7 +1465,11 @@ fn svg_dash(tag: &str) -> Vec<f32> {
         .collect()
 }
 
-fn dash_on(dashes: &[f32], dist: f32) -> bool {
+fn svg_dashoffset(tag: &str) -> f32 {
+    svg_attr(tag, "stroke-dashoffset").unwrap_or(0.0)
+}
+
+fn dash_on(dashes: &[f32], dist: f32, offset: f32) -> bool {
     if dashes.is_empty() {
         return true;
     }
@@ -1443,7 +1477,7 @@ fn dash_on(dashes: &[f32], dist: f32) -> bool {
     if period <= 0.0 {
         return true;
     }
-    let mut d = dist % period;
+    let mut d = (dist + offset) % period;
     if d < 0.0 {
         d += period;
     }
@@ -1477,6 +1511,7 @@ fn stroke_line(
     width: f32,
     dashes: &[f32],
     cap: &str,
+    offset: f32,
 ) {
     let mut dx = x2 - x1;
     let mut dy = y2 - y1;
@@ -1500,7 +1535,7 @@ fn stroke_line(
     let r = radius.ceil() as i32;
     for s in 0..=steps {
         let t = s as f32 / steps as f32;
-        if !dash_on(dashes, t * len) {
+        if !dash_on(dashes, t * len, offset) {
             continue;
         }
         let cx = x1 + dx * t;
@@ -2631,5 +2666,28 @@ mod tests {
         )
         .expect("svg hidden");
         assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_stroke_dashoffset_shifts_gaps() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <line x1='0' y1='4' x2='8' y2='4' stroke='#ff0000' stroke-width='2' stroke-linecap='butt' stroke-dasharray='1 3' stroke-dashoffset='1'/></svg>",
+        )
+        .expect("svg dashoffset");
+        assert_eq!(img.pixel(0, 4), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(3, 4), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_marker_start_paints_at_line_start() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><marker id='s' markerWidth='4' markerHeight='4' refX='2' refY='2'>\
+              <rect x='0' y='0' width='4' height='4' fill='#0000ff'/></marker></defs>\
+              <line x1='2' y1='4' x2='8' y2='4' stroke='#ff0000' stroke-width='1' marker-start='url(#s)'/></svg>",
+        )
+        .expect("svg marker-start");
+        assert_eq!(img.pixel(2, 4), Some([0, 0, 255, 255]));
     }
 }
