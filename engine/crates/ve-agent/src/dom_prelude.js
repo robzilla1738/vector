@@ -4175,7 +4175,16 @@
       g._stops = [];
       return g;
     }
-    createConicGradient(startAngle, x, y) { return Object.create(CanvasGradient.prototype); }
+    createConicGradient(startAngle, x, y) {
+      if (arguments.length < 3) {
+        throw new TypeError("Failed to execute 'createConicGradient' on 'CanvasRenderingContext2D': 3 arguments required, but only " + arguments.length + " present.");
+      }
+      const g = Object.create(CanvasGradient.prototype);
+      g._kind = "conic";
+      g._coords = [Number(startAngle) || 0, Number(x) || 0, Number(y) || 0];
+      g._stops = [];
+      return g;
+    }
     createPattern(img, repetition) {
       if (arguments.length < 2) {
         throw new TypeError("Failed to execute 'createPattern' on 'CanvasRenderingContext2D': 2 arguments required, but only " + arguments.length + " present.");

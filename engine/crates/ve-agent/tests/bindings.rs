@@ -786,6 +786,42 @@ fn canvas_radial_gradient_fills_center() {
 }
 
 #[test]
+fn canvas_conic_gradient_sweeps_around_center() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              var g = ctx.createConicGradient(0, 8, 8);
+              g.addColorStop(0, "#ff0000");
+              g.addColorStop(0.5, "#0000ff");
+              g.addColorStop(1, "#ff0000");
+              ctx.fillStyle = g;
+              ctx.fillRect(0, 0, 16, 16);
+              var right = ctx.getImageData(14, 8, 1, 1).data;
+              var left = ctx.getImageData(2, 8, 1, 1).data;
+              return {
+                encoded: String(g).indexOf("ve-grad:conic:") === 0,
+                rr: right[0], rb: right[2],
+                lr: left[0], lb: left[2]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["encoded"], true, "{v}");
+    assert!(v["rr"].as_f64().unwrap_or(0.0) > 200.0, "right red: {v}");
+    assert!(
+        v["rb"].as_f64().unwrap_or(99.0) < 40.0,
+        "right not blue: {v}"
+    );
+    assert!(v["lb"].as_f64().unwrap_or(0.0) > 200.0, "left blue: {v}");
+    assert!(v["lr"].as_f64().unwrap_or(99.0) < 40.0, "left not red: {v}");
+}
+
+#[test]
 fn canvas_create_pattern_repeats_source_pixels() {
     let mut page = open(r#"<body></body>"#);
     let v = page

@@ -773,6 +773,12 @@ enum CanvasStyle {
         r1: f32,
         stops: Vec<(f32, [u8; 4])>,
     },
+    Conic {
+        start: f32,
+        x: f32,
+        y: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    },
     Pattern {
         width: u32,
         height: u32,
@@ -800,6 +806,12 @@ impl CanvasStyle {
                 r1,
                 stops,
             } => sample_radial_gradient(*x0, *y0, *r0, *x1, *y1, *r1, stops, x, y),
+            Self::Conic {
+                start,
+                x: cx,
+                y: cy,
+                stops,
+            } => sample_conic_gradient(*start, *cx, *cy, stops, x, y),
             Self::Pattern {
                 width,
                 height,
@@ -923,6 +935,19 @@ fn sample_radial_gradient(
     sample_linear_gradient(0.0, 0.0, 1.0, 0.0, stops, t, 0.0)
 }
 
+fn sample_conic_gradient(
+    start: f32,
+    cx: f32,
+    cy: f32,
+    stops: &[(f32, [u8; 4])],
+    x: f32,
+    y: f32,
+) -> [u8; 4] {
+    let ang = (y - cy).atan2(x - cx);
+    let t = (ang - start).rem_euclid(std::f32::consts::TAU) / std::f32::consts::TAU;
+    sample_linear_gradient(0.0, 0.0, 1.0, 0.0, stops, t, 0.0)
+}
+
 fn parse_canvas_style(s: &str) -> CanvasStyle {
     let t = s.trim();
     if let Some(rest) = t.strip_prefix("ve-grad:") {
@@ -949,6 +974,14 @@ fn parse_canvas_style(s: &str) -> CanvasStyle {
                 x1: nums[3],
                 y1: nums[4],
                 r1: nums[5],
+                stops,
+            };
+        }
+        if kind == "conic" && nums.len() == 3 {
+            return CanvasStyle::Conic {
+                start: nums[0],
+                x: nums[1],
+                y: nums[2],
                 stops,
             };
         }
