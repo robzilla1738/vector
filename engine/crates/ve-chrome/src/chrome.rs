@@ -255,11 +255,7 @@ impl Chrome {
     pub fn stage_rect(&self, window: Size) -> Rect {
         let sb = self.sidebar_used();
         let rail = self.rail_used();
-        let toolbar = if self.sidebar_collapsed {
-            self.metrics.toolbar_h
-        } else {
-            0.0
-        };
+        let toolbar = self.metrics.toolbar_h;
         let inset = self.metrics.stage_inset;
         let x = sb + inset;
         let y = toolbar + inset;
@@ -309,11 +305,8 @@ impl Chrome {
         if self.rail_open && x > window.width - self.rail_used() {
             return ChromeHit::RailToggle;
         }
-        if self.sidebar_collapsed && y < self.metrics.toolbar_h {
-            if x < sb + 80.0 {
-                return ChromeHit::CommandBar;
-            }
-            return ChromeHit::SidebarToggle;
+        if y < self.metrics.toolbar_h && x > sb && x < window.width - self.rail_used() {
+            return ChromeHit::CommandBar;
         }
         ChromeHit::Window
     }
@@ -395,11 +388,7 @@ impl Chrome {
                 };
             }
         }
-        let cmd_y = 48.0 + 56.0 + 8.0;
-        if (cmd_y..cmd_y + self.metrics.control_h + 8.0).contains(&y) {
-            return ChromeHit::CommandBar;
-        }
-        let tabs_y = cmd_y + self.metrics.control_h + 16.0;
+        let tabs_y = 48.0 + 56.0 + 8.0;
         if y < tabs_y + self.metrics.row_h {
             return ChromeHit::NewTab;
         }
@@ -454,9 +443,7 @@ impl Chrome {
             color: t.bg_window,
         });
         self.paint_sidebar(&mut list, window);
-        if self.sidebar_collapsed {
-            self.paint_toolbar(&mut list, window);
-        }
+        self.paint_toolbar(&mut list, window);
         self.paint_stage(&mut list, window);
         if self.rail_open {
             self.paint_rail(&mut list, window);
@@ -531,47 +518,7 @@ impl Chrome {
             }
         }
 
-        let cmd_y = 104.0;
-        list.push(DisplayItem::RoundedClip {
-            rect: Rect::new(12.0, cmd_y, sb - 24.0, self.metrics.control_h),
-            radius: 8.0,
-        });
-        list.push(DisplayItem::Rect {
-            rect: Rect::new(12.0, cmd_y, sb - 24.0, self.metrics.control_h),
-            color: t.sb_field,
-        });
-        list.push(DisplayItem::PopClip);
-        let cmd = if self.command.is_empty() {
-            "Search or ask"
-        } else {
-            self.command.as_str()
-        };
-        let cmd_color = if self.command.is_empty() {
-            t.ink_2
-        } else {
-            t.sb_ink_0
-        };
-        self.label(
-            list,
-            Point::new(20.0, cmd_y + 19.0),
-            cmd,
-            12.0,
-            cmd_color,
-        );
-        if self.command_focused && !self.command.is_empty() {
-            let chip = intent_label(&self.intent());
-            if !chip.is_empty() {
-                self.label(
-                    list,
-                    Point::new(sb - 110.0, cmd_y + 19.0),
-                    chip,
-                    11.0,
-                    t.ink_1,
-                );
-            }
-        }
-
-        let mut y = cmd_y + self.metrics.control_h + 16.0;
+        let mut y = 104.0;
         self.label(list, Point::new(16.0, y + 18.0), "+ New Tab", 12.0, t.sb_ink_1);
         y += self.metrics.row_h;
         for tab in self.tabs_for_active_space() {
@@ -612,29 +559,44 @@ impl Chrome {
         let t = &self.tokens;
         let sb = self.sidebar_used();
         let rail = self.rail_used();
+        let main_w = (window.width - sb - rail).max(1.0);
         list.push(DisplayItem::Rect {
-            rect: Rect::new(sb, 0.0, window.width - sb - rail, self.metrics.toolbar_h),
+            rect: Rect::new(sb, 0.0, main_w, self.metrics.toolbar_h),
             color: t.bg_window,
         });
-        let cmd = if self.command.is_empty() {
-            self.tabs
-                .iter()
-                .find(|tab| tab.active)
-                .map(|tab| tab.url.as_str())
-                .unwrap_or("Search or ask")
-        } else {
-            self.command.as_str()
-        };
+        let pill_w = (main_w - 48.0).min(640.0);
+        let pill_x = sb + ((main_w - pill_w) / 2.0).max(16.0);
+        let pill = Rect::new(pill_x, 10.0, pill_w, 32.0);
         list.push(DisplayItem::RoundedClip {
-            rect: Rect::new(sb + 80.0, 12.0, window.width - sb - rail - 160.0, 28.0),
-            radius: 8.0,
+            rect: pill,
+            radius: 16.0,
         });
         list.push(DisplayItem::Rect {
-            rect: Rect::new(sb + 80.0, 12.0, window.width - sb - rail - 160.0, 28.0),
+            rect: pill,
             color: t.sb_field,
         });
         list.push(DisplayItem::PopClip);
-        self.label(list, Point::new(sb + 92.0, 31.0), cmd, 12.0, t.ink_0);
+        let active = self.tabs.iter().find(|tab| tab.active);
+        let cmd = if !self.command.is_empty() {
+            self.command.as_str()
+        } else if active.is_some_and(|tab| !is_start_url(&tab.url)) {
+            active.map(|tab| tab.url.as_str()).unwrap_or("")
+        } else {
+            "Search, enter an address, or ask the agent"
+        };
+        self.label(list, Point::new(pill.x() + 16.0, 31.0), cmd, 12.0, t.ink_2);
+        if self.command_focused && !self.command.is_empty() {
+            let chip = intent_label(&self.intent());
+            if !chip.is_empty() {
+                self.label(
+                    list,
+                    Point::new(pill.right() - 72.0, 31.0),
+                    chip,
+                    11.0,
+                    t.ink_1,
+                );
+            }
+        }
     }
 
     fn paint_stage(&self, list: &mut DisplayList, window: Size) {
@@ -696,17 +658,17 @@ impl Chrome {
         };
         self.label(
             list,
-            Point::new(stage.x() + 48.0, stage.y() + 72.0),
+            Point::new(stage.x() + 48.0, stage.y() + 56.0),
             greeting,
             28.0,
             t.ink_0,
         );
         self.label(
             list,
-            Point::new(stage.x() + 48.0, stage.y() + 100.0),
-            "Type an address, search the web, or tell the agent what to do",
+            Point::new(stage.x() + 48.0, stage.y() + 80.0),
+            &today_label(),
             13.0,
-            t.ink_1,
+            t.ink_2,
         );
         let hero = Rect::new(stage.x() + 48.0, stage.y() + 128.0, (stage.width() - 96.0).min(520.0), 36.0);
         list.push(DisplayItem::RoundedClip {
@@ -1362,6 +1324,24 @@ fn current_hour() -> u32 {
     ((secs / 3600) % 24) as u32
 }
 
+fn today_label() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let days = secs / 86_400;
+    const WDAYS: [&str; 7] = [
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+    ];
+    WDAYS[(days % 7) as usize].to_string()
+}
+
 fn overlay_card(window: Size) -> Rect {
     Rect::new(window.width * 0.5 - 240.0, 80.0, 480.0, 320.0)
 }
@@ -1625,9 +1605,16 @@ mod tests {
         assert!(stage.x() >= 260.0);
         assert!(stage.width() < 1280.0 - 360.0);
         assert!(matches!(
-            chrome.hit(window, 20.0, 120.0),
+            chrome.hit(window, 520.0, 24.0),
             ChromeHit::CommandBar
         ));
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.contains("Search, enter an address, or ask the agent")
+                    || t.contains("example.com")),
+            "{texts:?}"
+        );
         assert!(matches!(
             chrome.hit(window, stage.x() + 10.0, stage.y() + 40.0),
             ChromeHit::Stage { .. }

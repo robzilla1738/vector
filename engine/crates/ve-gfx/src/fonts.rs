@@ -186,9 +186,51 @@ impl FontSystem {
                 FontStyle::Oblique => fontdb::Style::Oblique,
             },
         };
+        let wants_inter = families.iter().any(|f| match f {
+            FontFamily::Named(n) => n.eq_ignore_ascii_case("Inter"),
+            FontFamily::SansSerif | FontFamily::SystemUi => true,
+            _ => false,
+        });
+        if wants_inter && let Some(id) = self.prefer_static_inter(weight) {
+            return Some(id);
+        }
         self.db
             .query(&query)
             .or_else(|| self.db.faces().next().map(|f| f.id))
+    }
+
+    /// Prefer a static Inter face over a variable `Inter[…]` instance.
+    fn prefer_static_inter(&self, weight: FontWeight) -> Option<fontdb::ID> {
+        let want = i32::from(weight.0);
+        let mut best: Option<(i32, fontdb::ID)> = None;
+        for face in self.db.faces() {
+            let path = match &face.source {
+                fontdb::Source::File(p) => p.to_string_lossy().into_owned(),
+                fontdb::Source::Binary(_) => String::new(),
+            };
+            let lower = path.to_ascii_lowercase();
+            if !lower.contains("inter") || path.contains('[') {
+                continue;
+            }
+            let mut score = 0;
+            if lower.contains("inter-regular") && want <= 450 {
+                score += 100;
+            } else if lower.contains("inter-medium") && (451..=599).contains(&want) {
+                score += 100;
+            } else if lower.contains("inter-semibold") && (600..=749).contains(&want) {
+                score += 100;
+            } else if lower.contains("inter-bold") && want >= 750 {
+                score += 100;
+            }
+            if lower.contains("/macos/") {
+                score += 10;
+            }
+            score -= (i32::from(face.weight.0) - want).abs() / 25;
+            if best.is_none_or(|(s, _)| score > s) {
+                best = Some((score, face.id));
+            }
+        }
+        best.filter(|(s, _)| *s > 0).map(|(_, id)| id)
     }
 
     /// Runs `f` with a `swash` font reference for `id`.
@@ -409,5 +451,21 @@ mod tests {
             retina.width > 0 && retina.height > 0,
             "hinted 24px UI glyph must rasterize"
         );
+        if let Some(ui) = fs.query(
+            &[FontFamily::Named("Inter".into())],
+            FontWeight::NORMAL,
+            FontStyle::Normal,
+        ) {
+            let path = match &fs.db.face(ui).expect("face").source {
+                fontdb::Source::File(p) => p.to_string_lossy().into_owned(),
+                fontdb::Source::Binary(_) => String::new(),
+            };
+            if !path.is_empty() {
+                assert!(
+                    !path.contains('['),
+                    "UI Inter must be a static face, got {path}"
+                );
+            }
+        }
     }
 }
