@@ -1058,6 +1058,64 @@ fn canvas_stroke_rect_honours_line_dash() {
 }
 
 #[test]
+fn canvas_fill_rect_paints_shadow_blur() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.shadowBlur = 2;
+              ctx.shadowColor = "#0000ff";
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(4, 4, 4, 4);
+              var src = ctx.getImageData(5, 5, 1, 1).data;
+              var spill = ctx.getImageData(2, 6, 1, 1).data;
+              return { sr: src[0], sa: src[3], sb: spill[2], spa: spill[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sr"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
+    assert!(
+        v["sb"].as_u64().unwrap_or(0) > 0 && v["spa"].as_u64().unwrap_or(0) > 0,
+        "blur must spill blue outside the fill: {v}"
+    );
+}
+
+#[test]
+fn canvas_stroke_path_honours_line_dash() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 4]);
+              ctx.beginPath();
+              ctx.moveTo(1, 3);
+              ctx.lineTo(17, 3);
+              ctx.stroke();
+              var on = ctx.getImageData(1, 3, 1, 1).data;
+              var off = ctx.getImageData(5, 3, 1, 1).data;
+              var on2 = ctx.getImageData(9, 3, 1, 1).data;
+              return { og: on[1], oa: on[3], fa: off[3], o2g: on2[1] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["og"], 255, "{v}");
+    assert_eq!(v["oa"], 255, "{v}");
+    assert_eq!(v["fa"], 0, "{v}");
+    assert_eq!(v["o2g"], 255, "{v}");
+}
+
+#[test]
 fn canvas_is_point_in_path_hits_rect() {
     let mut page = open(r#"<body></body>"#);
     let v = page

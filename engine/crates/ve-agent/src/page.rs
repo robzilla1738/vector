@@ -1397,23 +1397,29 @@ impl CanvasSurface {
         style: &CanvasStyle,
         alpha: f32,
         width: i32,
+        dash: &[i32],
+        dash_offset: i32,
     ) {
         if pts.len() < 2 {
             return;
         }
         let t = width.max(1);
         let o = (t - 1) / 2;
+        let mut dist = 0i32;
         for pair in pts.windows(2) {
             let (a, b) = (pair[0], pair[1]);
             let dx = b[0] - a[0];
             let dy = b[1] - a[1];
             let steps = dx.abs().max(dy.abs()).ceil().max(1.0) as i32;
             for i in 0..=steps {
-                let u = i as f32 / steps as f32;
-                let x = (a[0] + dx * u).round() as i32;
-                let y = (a[1] + dy * u).round() as i32;
-                self.fill_rect_styled(x - o, y - o, t, t, style, alpha);
+                if dash_on(dist + i, dash, dash_offset) {
+                    let u = i as f32 / steps as f32;
+                    let x = (a[0] + dx * u).round() as i32;
+                    let y = (a[1] + dy * u).round() as i32;
+                    self.fill_rect_styled(x - o, y - o, t, t, style, alpha);
+                }
             }
+            dist += steps;
         }
     }
 
@@ -1424,6 +1430,8 @@ impl CanvasSurface {
         style: &CanvasStyle,
         alpha: f32,
         width: i32,
+        dash: &[i32],
+        dash_offset: i32,
     ) {
         for r in rects {
             self.stroke_rect_styled(
@@ -1434,12 +1442,12 @@ impl CanvasSurface {
                 style,
                 alpha,
                 width,
-                &[],
-                0,
+                dash,
+                dash_offset,
             );
         }
         for poly in polys {
-            self.stroke_polyline_styled(poly, style, alpha, width);
+            self.stroke_polyline_styled(poly, style, alpha, width, dash, dash_offset);
         }
         self.ops += 1;
     }
@@ -2037,9 +2045,11 @@ impl Page {
         shadow_x: i32,
         shadow_y: i32,
         shadow: &str,
+        shadow_blur: i32,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
-        let shadow_style = if shadow_x != 0 || shadow_y != 0 {
+        let paint_shadow = shadow_x != 0 || shadow_y != 0 || shadow_blur > 0;
+        let shadow_style = if paint_shadow {
             Some(self.resolve_canvas_style(shadow))
         } else {
             None
@@ -2049,7 +2059,26 @@ impl Page {
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
         if let Some(shadow_style) = shadow_style.as_ref() {
-            c.fill_rect_styled(x + shadow_x, y + shadow_y, w, h, shadow_style, alpha);
+            let r = shadow_blur.max(0);
+            if r == 0 {
+                c.fill_rect_styled(x + shadow_x, y + shadow_y, w, h, shadow_style, alpha);
+            } else {
+                let fade = (alpha / (1.0 + r as f32)).max(0.08);
+                for dy in -r..=r {
+                    for dx in -r..=r {
+                        if dx * dx + dy * dy <= r * r {
+                            c.fill_rect_styled(
+                                x + shadow_x + dx,
+                                y + shadow_y + dy,
+                                w,
+                                h,
+                                shadow_style,
+                                fade,
+                            );
+                        }
+                    }
+                }
+            }
         }
         c.fill_rect_styled(x, y, w, h, &style, alpha);
         c.ops
@@ -2191,13 +2220,15 @@ impl Page {
         polys: &[Vec<[f32; 2]>],
         color: &str,
         width: i32,
+        dash: &[i32],
+        dash_offset: i32,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.stroke_path_styled(rects, polys, &style, 1.0, width);
+        c.stroke_path_styled(rects, polys, &style, 1.0, width, dash, dash_offset);
         c.ops
     }
 

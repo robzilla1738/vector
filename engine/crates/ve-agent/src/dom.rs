@@ -2142,6 +2142,7 @@ pub(crate) fn host_call(
                 arg_f64(args, 7) as i32,
                 arg_f64(args, 8) as i32,
                 &arg_str(args, 9),
+                arg_f64(args, 10) as i32,
             );
             Ok(JsValue::Number(ops as f64))
         }
@@ -2250,12 +2251,18 @@ pub(crate) fn host_call(
                 serde_json::from_str(&arg_str(args, 1)).unwrap_or(serde_json::Value::Null);
             let (rects, polys) = parse_canvas_path(&spec);
             let ops = if op == "canvasStrokePath" {
+                let dash: Vec<i32> = arg_str(args, 4)
+                    .split(',')
+                    .filter_map(|s| s.trim().parse().ok())
+                    .collect();
                 page.canvas_stroke_path(
                     id,
                     &rects,
                     &polys,
                     &arg_str(args, 2),
                     arg_f64(args, 3).max(1.0) as i32,
+                    &dash,
+                    arg_f64(args, 5) as i32,
                 )
             } else {
                 page.canvas_fill_path(id, &rects, &polys, &arg_str(args, 2))

@@ -4198,7 +4198,7 @@
     fillRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'fillRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       const box = this._mapRect(x, y, w, h);
-      D("canvasFillRect", this.__h, box[0], box[1], box[2], box[3], String(this.fillStyle), Number(this._globalAlpha), Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"));
+      D("canvasFillRect", this.__h, box[0], box[1], box[2], box[3], String(this.fillStyle), Number(this._globalAlpha), Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"), Number(this._shadowBlur) || 0);
     }
     clearRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'clearRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
@@ -4219,7 +4219,7 @@
     stroke() {
       const path = arguments[0];
       const p = path instanceof Path2D ? path : this._path;
-      D("canvasStrokePath", this.__h, p._payload(), String(this.strokeStyle || this.fillStyle), Number(this._lineWidth) || 1);
+      D("canvasStrokePath", this.__h, p._payload(), String(this.strokeStyle || this.fillStyle), Number(this._lineWidth) || 1, (this._dash || []).join(","), Number(this._lineDashOffset) || 0);
     }
     strokeRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'strokeRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
