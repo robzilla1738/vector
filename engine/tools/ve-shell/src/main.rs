@@ -66,12 +66,7 @@ fn main() -> Result<()> {
     if let Some(bind) = args.service.as_deref() {
         return run_service(bind, &args);
     }
-    let mut engine = VectorEngine::new(EngineConfig {
-        viewport: Size::new(1280.0, 720.0),
-        offline: args.url.starts_with("data:") || args.html.is_some(),
-        policy: ve_api::NetworkPolicy::permissive(),
-        ..EngineConfig::default()
-    });
+    let mut engine = VectorEngine::new(product_config(&args));
     let opened = engine.open(OpenRequest {
         url: Some(args.url.clone()),
         html: args.html,
@@ -104,8 +99,8 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_replay(args: &Args) -> Result<()> {
-    let mut browser = NativeBrowser::with_config(EngineConfig {
+fn product_config(args: &Args) -> EngineConfig {
+    EngineConfig {
         viewport: Size::new(1280.0, 720.0),
         offline: args.url.starts_with("data:")
             || args.url.starts_with("file:")
@@ -114,7 +109,11 @@ fn run_replay(args: &Args) -> Result<()> {
         shaper: ShaperKind::System,
         policy: ve_api::NetworkPolicy::permissive(),
         ..EngineConfig::default()
-    });
+    }
+}
+
+fn run_replay(args: &Args) -> Result<()> {
+    let mut browser = NativeBrowser::with_config(product_config(args));
     if let Some(html) = &args.html {
         browser.handle_event(NativeEvent::NewTab {
             html: html.clone(),
@@ -140,18 +139,7 @@ fn run_replay(args: &Args) -> Result<()> {
 }
 
 fn run_service(bind: &str, args: &Args) -> Result<()> {
-    let listener = BrowserServiceListener::bind_config(
-        bind,
-        EngineConfig {
-            viewport: Size::new(1280.0, 720.0),
-            offline: args.url.starts_with("data:")
-                || args.url.starts_with("file:")
-                || args.html.is_some(),
-            scripting: cfg!(feature = "v8"),
-            policy: ve_api::NetworkPolicy::permissive(),
-            ..EngineConfig::default()
-        },
-    )?;
+    let listener = BrowserServiceListener::bind_config(bind, product_config(args))?;
     if args.html.is_some() || args.url != "about:blank" {
         let mut client = ve_api::BrowserClient::connect(listener.addr())?;
         let mut params = serde_json::json!({ "url": args.url });
@@ -175,15 +163,8 @@ fn run_service(bind: &str, args: &Args) -> Result<()> {
 
 fn run_gui(args: &Args) -> Result<()> {
     let mut browser = NativeBrowser::with_config(EngineConfig {
-        viewport: Size::new(1280.0, 720.0),
-        offline: args.url.starts_with("data:")
-            || args.url.starts_with("file:")
-            || args.html.is_some(),
-        scripting: cfg!(feature = "v8"),
-        policy: ve_api::NetworkPolicy::permissive(),
-        shaper: ShaperKind::System,
         clock: Clock::Wall,
-        ..EngineConfig::default()
+        ..product_config(args)
     });
     browser.enable_os_clipboard();
     browser.enable_product_chrome();

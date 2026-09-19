@@ -494,6 +494,7 @@ impl BrowserServiceListener {
             EngineConfig {
                 offline: true,
                 policy: crate::NetworkPolicy::permissive(),
+                shaper: crate::ShaperKind::System,
                 ..EngineConfig::default()
             },
         )
@@ -938,6 +939,7 @@ mod tests {
         assert_eq!(id["chromium"], false);
         assert_eq!(id["electron"], false);
         assert_eq!(id["service"], "browser-service");
+        assert_eq!(id["shaper"], "system");
         assert_eq!(id["page"], page);
     }
 
