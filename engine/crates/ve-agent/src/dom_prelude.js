@@ -4972,7 +4972,7 @@
     strokeText(t, x, y) {
       const o = this._textOrigin(t, x, y);
       const p = this._mapPoint(o.x, o.y);
-      D("canvasStrokeText", this.__h, o.text, p[0], p[1], String(this.strokeStyle || this.fillStyle), o.size, Number(this._lineWidth) || 1, Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"));
+      D("canvasStrokeText", this.__h, o.text, p[0], p[1], String(this.strokeStyle || this.fillStyle), o.size, Number(this._lineWidth) || 1, Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"), Number(this._shadowBlur) || 0);
     }
     measureText(t) {
       if (arguments.length < 1) {

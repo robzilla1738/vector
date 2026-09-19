@@ -2792,6 +2792,40 @@ fn canvas_filter_url_saturate_zero_greys_fill_path() {
 }
 
 #[test]
+fn canvas_filter_url_saturate_zero_greys_stroke_path() {
+    let mut page = open(
+        r#"<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+  <filter id="f"><feColorMatrix type="saturate" values="0"/></filter>
+</svg>
+</body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#ff0000";
+              ctx.lineWidth = 6;
+              ctx.filter = "url(#f)";
+              ctx.beginPath();
+              ctx.moveTo(1, 4);
+              ctx.lineTo(7, 4);
+              ctx.stroke();
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["r"], v["g"], "{v}");
+    assert_eq!(v["g"], v["b"], "{v}");
+    assert!(v["r"].as_u64().unwrap_or(0) > 20 && v["r"].as_u64().unwrap_or(0) < 200, "{v}");
+}
+
+#[test]
 fn canvas_fill_text_paints_distinct_glyphs() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -2986,6 +3020,53 @@ fn canvas_stroke_text_paints_shadow_offset() {
     assert!(
         v["sha"].as_u64().unwrap_or(0) > 20,
         "shadow stroke I coverage: {v}"
+    );
+}
+
+#[test]
+fn canvas_stroke_text_paints_shadow_blur() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.font = "16px sans-serif";
+              ctx.lineWidth = 2;
+              ctx.shadowBlur = 4;
+              ctx.shadowColor = "#0000ff";
+              ctx.strokeStyle = "#ff0000";
+              ctx.strokeText("I", 8, 14);
+              var data = ctx.getImageData(0, 0, 24, 16).data;
+              var sr = 0, sa = 0, sb = 0, spa = 0;
+              for (var i = 0; i < data.length; i += 4) {
+                var x = (i / 4) % 24;
+                if (data[i + 3] > 20 && data[i] > data[i + 2] + 40) {
+                  sr = Math.max(sr, data[i]);
+                  sa = Math.max(sa, data[i + 3]);
+                }
+                if (x <= 5 && data[i + 3] > 0 && data[i + 2] > data[i]) {
+                  sb = Math.max(sb, data[i + 2]);
+                  spa = Math.max(spa, data[i + 3]);
+                }
+              }
+              return { sr: sr, sa: sa, sb: sb, spa: spa };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["sr"].as_u64().unwrap_or(0) > 200,
+        "source stroke I stays red-dominant: {v}"
+    );
+    assert!(
+        v["sa"].as_u64().unwrap_or(0) > 20,
+        "source stroke I coverage: {v}"
+    );
+    assert!(
+        v["sb"].as_u64().unwrap_or(0) > 0 && v["spa"].as_u64().unwrap_or(0) > 0,
+        "blur must spill blue outside the stroke: {v}"
     );
 }
 

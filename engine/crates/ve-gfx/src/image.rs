@@ -818,8 +818,8 @@ fn svg_gradient_rotate(tag: &str) -> f32 {
     deg * std::f32::consts::PI / 180.0
 }
 
-fn svg_gradient_scale(tag: &str) -> (f32, f32) {
-    let Some(raw) = svg_attr_str(tag, "gradientTransform") else {
+fn svg_attr_scale(tag: &str, name: &str) -> (f32, f32) {
+    let Some(raw) = svg_attr_str(tag, name) else {
         return (1.0, 1.0);
     };
     let mut sx = 1.0;
@@ -849,6 +849,10 @@ fn svg_gradient_scale(tag: &str) -> (f32, f32) {
         }
     }
     (sx, sy)
+}
+
+fn svg_gradient_scale(tag: &str) -> (f32, f32) {
+    svg_attr_scale(tag, "gradientTransform")
 }
 
 fn svg_spread(tag: &str) -> SvgSpread {
@@ -1095,6 +1099,8 @@ struct SvgPattern {
     object_bbox: bool,
     tx: f32,
     ty: f32,
+    sx: f32,
+    sy: f32,
     color: [u8; 4],
 }
 
@@ -1127,6 +1133,8 @@ fn parse_svg_patterns(text: &str) -> HashMap<String, SvgPattern> {
                             .is_some_and(|s| s.eq_ignore_ascii_case("objectBoundingBox")),
                         tx: svg_attr_translate(tag, "patternTransform").0,
                         ty: svg_attr_translate(tag, "patternTransform").1,
+                        sx: svg_attr_scale(tag, "patternTransform").0,
+                        sy: svg_attr_scale(tag, "patternTransform").1,
                         color: parse_svg_color(svg_fill(rtag)),
                     },
                 );
@@ -2065,8 +2073,8 @@ fn sample_pattern(p: &SvgPattern, x: f32, y: f32, tag: &str) -> [u8; 4] {
     } else {
         (x, y, p.w.max(1.0), p.h.max(1.0))
     };
-    let x = x - p.tx;
-    let y = y - p.ty;
+    let x = (x - p.tx) / p.sx.abs().max(0.001);
+    let y = (y - p.ty) / p.sy.abs().max(0.001);
     let lx = ((x % tw) + tw) % tw;
     let ly = ((y % th) + th) % th;
     if lx >= p.x && lx < p.x + p.cw && ly >= p.y && ly < p.y + p.ch {
@@ -4838,6 +4846,19 @@ mod tests {
         )
         .expect("svg patternTransform");
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(2, 0), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_pattern_transform_scale_stretches_tile() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><pattern id='p' width='4' height='8' patternTransform='scale(2,1)'>\
+              <rect x='0' y='0' width='2' height='8' fill='#ff0000'/></pattern></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#p)'/></svg>",
+        )
+        .expect("svg patternTransform scale");
+        assert_eq!(img.pixel(0, 0), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(2, 0), Some([255, 0, 0, 255]));
     }
 
