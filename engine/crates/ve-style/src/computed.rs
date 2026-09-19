@@ -286,7 +286,11 @@ impl ComputedStyle {
     /// `getComputedStyle`. Unknown names yield the empty string.
     #[must_use]
     pub fn property_css(&self, name: &str) -> String {
-        use crate::values::{LengthPercentage, LengthPercentageAuto, LineHeight, MaxSize, VerticalAlign};
+        use crate::values::{
+            BackgroundImage, BackgroundPosition, BackgroundSize, BoxShadow, ClipPath, Content,
+            ContentItem, CssClip, Filter, GridLine, LengthPercentage, LengthPercentageAuto,
+            LineHeight, MaxSize, OffsetPath, ShapeOutside, TransformOp, VerticalAlign,
+        };
 
         fn px(v: f32) -> String {
             if v == 0.0 {
@@ -325,6 +329,77 @@ impl ComputedStyle {
                 format!("{}s", (v / 1000.0).round())
             } else {
                 format!("{}s", v / 1000.0)
+            }
+        }
+        fn transform_ops(ops: &[TransformOp]) -> String {
+            if ops.is_empty() {
+                return "none".into();
+            }
+            ops.iter()
+                .map(|op| match *op {
+                    TransformOp::Translate(x, y) => format!("translate({}, {})", lp(x), lp(y)),
+                    TransformOp::Scale(x, y) => {
+                        if (x - y).abs() < 1e-6 {
+                            format!("scale({x})")
+                        } else {
+                            format!("scale({x}, {y})")
+                        }
+                    }
+                    TransformOp::Rotate(rad) => format!("rotate({}deg)", rad.to_degrees()),
+                })
+                .collect::<Vec<_>>()
+                .join(" ")
+        }
+        fn bg_image(img: &BackgroundImage) -> String {
+            match img {
+                BackgroundImage::None => "none".into(),
+                BackgroundImage::Url(u) => format!("url(\"{u}\")"),
+                BackgroundImage::LinearGradient(stops) => {
+                    let parts = stops
+                        .iter()
+                        .map(|(_, c)| c.to_css_string())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!("linear-gradient({parts})")
+                }
+            }
+        }
+        fn bg_size(v: BackgroundSize) -> String {
+            match v {
+                BackgroundSize::Auto => "auto".into(),
+                BackgroundSize::Cover => "cover".into(),
+                BackgroundSize::Contain => "contain".into(),
+                BackgroundSize::Size { width, height } => format!("{} {}", lpa(width), lpa(height)),
+            }
+        }
+        fn bg_pos(v: BackgroundPosition) -> String {
+            format!("{} {}", lp(v.x), lp(v.y))
+        }
+        fn box_shadow(v: BoxShadow) -> String {
+            if v.is_none() {
+                "none".into()
+            } else {
+                format!(
+                    "{} {} {} {}",
+                    px(v.dx),
+                    px(v.dy),
+                    px(v.blur),
+                    v.color.to_css_string()
+                )
+            }
+        }
+        fn filter_css(v: Filter) -> String {
+            match v {
+                Filter::None => "none".into(),
+                Filter::Blur(r) => format!("blur({})", px(r)),
+            }
+        }
+        fn grid_line(v: &GridLine) -> String {
+            match v {
+                GridLine::Auto => "auto".into(),
+                GridLine::Line(n) => format!("{n}"),
+                GridLine::Span(n) => format!("span {n}"),
+                GridLine::Named(n) => n.clone(),
             }
         }
 
@@ -676,6 +751,124 @@ impl ComputedStyle {
                 crate::values::Color::Rgba(c) => c.to_css_string(),
                 crate::values::Color::CurrentColor => self.color.to_css_string(),
             },
+            PropertyId::Transform => transform_ops(&self.transform),
+            PropertyId::Translate => transform_ops(&self.translate),
+            PropertyId::Scale => transform_ops(&self.scale),
+            PropertyId::Rotate => transform_ops(&self.rotate),
+            PropertyId::Filter => filter_css(self.filter),
+            PropertyId::BackdropFilter => filter_css(self.backdrop_filter),
+            PropertyId::BackgroundImage => bg_image(&self.background_image),
+            PropertyId::MaskImage => bg_image(&self.mask_image),
+            PropertyId::ListStyleImage => bg_image(&self.list_style_image),
+            PropertyId::BorderImage => bg_image(&self.border_image),
+            PropertyId::BackgroundSize => bg_size(self.background_size),
+            PropertyId::BackgroundPosition => bg_pos(self.background_position),
+            PropertyId::ObjectPosition => bg_pos(self.object_position),
+            PropertyId::TransformOrigin => bg_pos(self.transform_origin),
+            PropertyId::PerspectiveOrigin => bg_pos(self.perspective_origin),
+            PropertyId::BoxShadow => box_shadow(self.box_shadow),
+            PropertyId::TextShadow => box_shadow(self.text_shadow),
+            PropertyId::Clip => match self.clip {
+                CssClip::Auto => "auto".into(),
+                CssClip::Rect {
+                    top,
+                    right,
+                    bottom,
+                    left,
+                } => format!(
+                    "rect({}, {}, {}, {})",
+                    px(top),
+                    px(right),
+                    px(bottom),
+                    px(left)
+                ),
+            },
+            PropertyId::ClipPath => match self.clip_path {
+                ClipPath::None => "none".into(),
+                ClipPath::Inset {
+                    top,
+                    right,
+                    bottom,
+                    left,
+                } => format!(
+                    "inset({} {} {} {})",
+                    lp(top),
+                    lp(right),
+                    lp(bottom),
+                    lp(left)
+                ),
+            },
+            PropertyId::Content => match &self.content {
+                Content::Normal => "normal".into(),
+                Content::None => "none".into(),
+                Content::Text(t) => format!("\"{t}\""),
+                Content::Items(items) => {
+                    if items.is_empty() {
+                        "normal".into()
+                    } else {
+                        items
+                            .iter()
+                            .map(|item| match item {
+                                ContentItem::Text(t) => format!("\"{t}\""),
+                                ContentItem::Attr(n) => format!("attr({n})"),
+                                ContentItem::OpenQuote => "open-quote".into(),
+                                ContentItem::CloseQuote => "close-quote".into(),
+                                ContentItem::NoQuote => "no-open-quote".into(),
+                                ContentItem::Ignored => "none".into(),
+                            })
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    }
+                }
+            },
+            PropertyId::Quotes => {
+                if self.quotes.is_empty() {
+                    "auto".into()
+                } else {
+                    self.quotes.clone()
+                }
+            },
+            PropertyId::OffsetPath => match self.offset_path {
+                OffsetPath::None => "none".into(),
+                OffsetPath::Line { x0, y0, x1, y1 } => {
+                    format!("path(\"M {x0} {y0} L {x1} {y1}\")")
+                }
+            },
+            PropertyId::OffsetDistance => lp(self.offset_distance),
+            PropertyId::ShapeOutside => match self.shape_outside {
+                ShapeOutside::None => "none".into(),
+                ShapeOutside::Inset {
+                    top,
+                    right,
+                    bottom,
+                    left,
+                } => format!(
+                    "inset({} {} {} {})",
+                    lp(top),
+                    lp(right),
+                    lp(bottom),
+                    lp(left)
+                ),
+            },
+            PropertyId::GridRowStart => grid_line(&self.grid_row_start),
+            PropertyId::GridRowEnd => grid_line(&self.grid_row_end),
+            PropertyId::GridColumnStart => grid_line(&self.grid_column_start),
+            PropertyId::GridColumnEnd => grid_line(&self.grid_column_end),
+            PropertyId::AnchorName => {
+                if self.anchor_name.is_empty() {
+                    "none".into()
+                } else {
+                    self.anchor_name.clone()
+                }
+            },
+            PropertyId::PositionAnchor => {
+                if self.position_anchor.is_empty() {
+                    "none".into()
+                } else {
+                    self.position_anchor.clone()
+                }
+            },
+            PropertyId::PositionArea => self.position_area.to_string(),
             _ => String::new(),
         }
     }
@@ -878,5 +1071,33 @@ mod tests {
         assert_eq!(ComputedStyle::initial().property_css("aspect-ratio"), "auto");
         assert_eq!(ComputedStyle::initial().property_css("animation-name"), "none");
         assert_eq!(ComputedStyle::initial().property_css("perspective"), "none");
+    }
+
+    #[test]
+    fn property_css_exposes_transform_filter_clip_and_images() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "transform: translate(10px, 20px) scale(2); filter: blur(4px); \
+             background-image: url(\"https://a.test/x.png\"); background-size: cover; \
+             clip-path: inset(1px 2px 3px 4px); clip: rect(0, 10px, 10px, 0); \
+             content: \"hi\"; box-shadow: 1px 2px 3px red; grid-row-start: 2",
+            false,
+        );
+        assert_eq!(style.property_css("transform"), "translate(10px, 20px) scale(2)");
+        assert_eq!(style.property_css("filter"), "blur(4px)");
+        assert_eq!(
+            style.property_css("background-image"),
+            "url(\"https://a.test/x.png\")"
+        );
+        assert_eq!(style.property_css("background-size"), "cover");
+        assert_eq!(style.property_css("clip-path"), "inset(1px 2px 3px 4px)");
+        assert_eq!(style.property_css("clip"), "rect(0px, 10px, 10px, 0px)");
+        assert_eq!(style.property_css("content"), "\"hi\"");
+        assert!(style.property_css("box-shadow").starts_with("1px 2px 3px"));
+        assert_eq!(style.property_css("grid-row-start"), "2");
+        assert_eq!(ComputedStyle::initial().property_css("transform"), "none");
+        assert_eq!(ComputedStyle::initial().property_css("filter"), "none");
+        assert_eq!(ComputedStyle::initial().property_css("clip"), "auto");
     }
 }

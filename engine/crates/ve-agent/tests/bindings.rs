@@ -2315,6 +2315,36 @@ fn canvas_filter_drop_shadow_paints_offset() {
 }
 
 #[test]
+fn computed_style_exposes_transform_filter_clip_and_images() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="transform:translate(10px, 20px) scale(2);filter:blur(4px);background-image:url(https://a.test/x.png);background-size:cover;clip-path:inset(1px 2px 3px 4px);content:&quot;hi&quot;">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                transform: String(cs.transform || cs.getPropertyValue("transform")),
+                filter: String(cs.filter || cs.getPropertyValue("filter")),
+                image: String(cs.backgroundImage || cs.getPropertyValue("background-image")),
+                size: String(cs.backgroundSize || cs.getPropertyValue("background-size")),
+                clip: String(cs.clipPath || cs.getPropertyValue("clip-path")),
+                content: String(cs.content || cs.getPropertyValue("content"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["transform"], "translate(10px, 20px) scale(2)", "{v}");
+    assert_eq!(v["filter"], "blur(4px)", "{v}");
+    assert!(v["image"].as_str().unwrap_or("").contains("https://a.test/x.png"), "{v}");
+    assert_eq!(v["size"], "cover", "{v}");
+    assert_eq!(v["clip"], "inset(1px 2px 3px 4px)", "{v}");
+    assert_eq!(v["content"], "\"hi\"", "{v}");
+}
+
+#[test]
 fn computed_style_exposes_time_radius_and_columns() {
     let mut page = open(
         r#"<body>
@@ -5872,6 +5902,41 @@ fn webgl_scissor_clips_clear() {
     assert_eq!(v["ir"], 0, "{v}");
     assert_eq!(v["ig"], 255, "{v}");
     assert_eq!(v["ia"], 255, "{v}");
+}
+
+#[test]
+fn webgl_cull_face_skips_back_facing_triangle() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0, 0.5, 0.5, -0.5]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.enable(gl.CULL_FACE);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const culled = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, culled);
+              gl.disable(gl.CULL_FACE);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const shown = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, shown);
+              return { cg: culled[1], ca: culled[3], sg: shown[1], sa: shown[3], cap: gl.CULL_FACE };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 2884, "{v}");
+    assert_eq!(v["cg"], 0, "{v}");
+    assert_eq!(v["ca"], 0, "{v}");
+    assert_eq!(v["sg"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
 }
 
 #[test]

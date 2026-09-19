@@ -9451,9 +9451,14 @@
       this.UNSIGNED_SHORT = 5123;
       this.UNPACK_FLIP_Y_WEBGL = 37440;
       this.UNPACK_PREMULTIPLY_ALPHA_WEBGL = 37441;
+      this.CULL_FACE = 2884;
+      this.FRONT = 1028;
+      this.BACK = 1029;
       this._clear = [0, 0, 0, 0];
       this._flipY = false;
       this._premultiply = false;
+      this._cullOn = false;
+      this._cullFace = 1029;
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
       this._viewport = [0, 0, canvas.width, canvas.height];
@@ -9542,10 +9547,20 @@
     enable(cap) {
       if (cap === this.SCISSOR_TEST) this._scissorOn = true;
       if (cap === this.BLEND) this._blendOn = true;
+      if (cap === this.CULL_FACE) this._cullOn = true;
     }
     disable(cap) {
       if (cap === this.SCISSOR_TEST) this._scissorOn = false;
       if (cap === this.BLEND) this._blendOn = false;
+      if (cap === this.CULL_FACE) this._cullOn = false;
+    }
+    cullFace(mode) {
+      this._cullFace = Number(mode) || this.BACK;
+    }
+    _isCulled(a, b, c) {
+      if (!this._cullOn) return false;
+      const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+      return this._cullFace === this.FRONT ? cross > 0 : cross < 0;
     }
     blendFunc(src, dst) { this._blend = [Number(src) || 0, Number(dst) || 0]; }
     pixelStorei(pname, val) {
@@ -9713,6 +9728,7 @@
             if (p) pts.push(p);
           }
           for (let i = 0; i + 2 < pts.length; i += 3) {
+            if (this._isCulled(pts[i], pts[i + 1], pts[i + 2])) continue;
             this._fillPoly([pts[i], pts[i + 1], pts[i + 2]], this._uniformCss());
           }
           return;
@@ -9743,6 +9759,7 @@
           if (p) pts.push(p);
         }
         for (let i = 0; i + 2 < pts.length; i += 3) {
+          if (this._isCulled(pts[i], pts[i + 1], pts[i + 2])) continue;
           this._fillPoly([pts[i], pts[i + 1], pts[i + 2]], this._uniformCss());
         }
       });
