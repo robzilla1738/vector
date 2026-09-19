@@ -273,7 +273,7 @@ pub const PRELUDE: &str = r#"(() => {
       ov.setUint32(12, h3); ov.setUint32(16, h4);
       return out;
     };
-    const sha512 = (bytes) => {
+    const sha512WithIv = (bytes, iv) => {
       const MASK = 0xffffffffffffffffn;
       const rotr = (x, n) => ((x >> n) | (x << (64n - n))) & MASK;
       const add = (a, b) => (a + b) & MASK;
@@ -307,8 +307,8 @@ pub const PRELUDE: &str = r#"(() => {
       const view = new DataView(m.buffer);
       view.setUint32(pad - 4, Number(bitLen & 0xffffffffn));
       view.setUint32(pad - 8, Number((bitLen >> 32n) & 0xffffffffn));
-      let h0 = 0x6a09e667f3bcc908n, h1 = 0xbb67ae8584caa73bn, h2 = 0x3c6ef372fe94f82bn, h3 = 0xa54ff53a5f1d36f1n;
-      let h4 = 0x510e527fade682d1n, h5 = 0x9b05688c2b3e6c1fn, h6 = 0x1f83d9abfb41bd6bn, h7 = 0x5be0cd19137e2179n;
+      let h0 = iv[0], h1 = iv[1], h2 = iv[2], h3 = iv[3];
+      let h4 = iv[4], h5 = iv[5], h6 = iv[6], h7 = iv[7];
       const w = new Array(80);
       for (let i = 0; i < pad; i += 128) {
         for (let t = 0; t < 16; t++) {
@@ -350,6 +350,14 @@ pub const PRELUDE: &str = r#"(() => {
       }
       return out;
     };
+    const sha512 = (bytes) => sha512WithIv(bytes, [
+      0x6a09e667f3bcc908n, 0xbb67ae8584caa73bn, 0x3c6ef372fe94f82bn, 0xa54ff53a5f1d36f1n,
+      0x510e527fade682d1n, 0x9b05688c2b3e6c1fn, 0x1f83d9abfb41bd6bn, 0x5be0cd19137e2179n
+    ]);
+    const sha384 = (bytes) => sha512WithIv(bytes, [
+      0xcbbb9d5dc1059ed8n, 0x629a292a367cd507n, 0x9159015a3070dd17n, 0x152fecd8f70e5939n,
+      0x67332667ffc00b31n, 0x8eb44a8768581511n, 0xdb0c2e0d64f98fa7n, 0x47b5481dbefa4fa4n
+    ]).subarray(0, 48);
     const hmacSha256 = (key, data) => {
       let k = key;
       if (k.length > 64) k = sha256(k);
@@ -593,6 +601,7 @@ pub const PRELUDE: &str = r#"(() => {
         if (name === "SHA256") digest = sha256(bytes);
         else if (name === "SHA1") digest = sha1(bytes);
         else if (name === "SHA512") digest = sha512(bytes);
+        else if (name === "SHA384") digest = sha384(bytes);
         else return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
         return Promise.resolve(digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength));
       },

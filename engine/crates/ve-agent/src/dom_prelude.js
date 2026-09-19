@@ -8949,6 +8949,34 @@
       }
     }
   }
+  AbortSignal.abort = function (reason) {
+    const s = new AbortSignal();
+    s.aborted = true;
+    s.reason = reason !== undefined ? reason : new DOMException("The operation was aborted.", "AbortError");
+    return s;
+  };
+  AbortSignal.timeout = function (ms) {
+    const c = new AbortController();
+    setTimeout(() => {
+      c.abort(new DOMException("The operation timed out.", "TimeoutError"));
+    }, Number(ms) || 0);
+    return c.signal;
+  };
+  AbortSignal.any = function (signals) {
+    const c = new AbortController();
+    const list = Array.from(signals || []);
+    for (const s of list) {
+      if (!s) continue;
+      if (s.aborted) {
+        c.abort(s.reason);
+        return c.signal;
+      }
+      if (typeof s.addEventListener === "function") {
+        s.addEventListener("abort", () => { if (!c.signal.aborted) c.abort(s.reason); });
+      }
+    }
+    return c.signal;
+  };
   class AbortController {
     constructor() {
       this.signal = new AbortSignal();

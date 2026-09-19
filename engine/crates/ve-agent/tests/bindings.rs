@@ -5134,6 +5134,63 @@ fn navigator_storage_estimates_usage() {
 }
 
 #[test]
+fn crypto_subtle_digests_sha384() {
+    let mut page = open(r#"<body></body>"#);
+    let _ = page
+        .evaluate(
+            r##"(function () {
+              window.__sha384 = null;
+              crypto.subtle.digest("SHA-384", new Uint8Array([97, 98, 99])).then(function (buf) {
+                var u = new Uint8Array(buf);
+                var hex = "";
+                for (var i = 0; i < u.length; i++) hex += u[i].toString(16).padStart(2, "0");
+                window.__sha384 = hex;
+              }).catch(function (e) { window.__sha384 = String(e); });
+              return true;
+            })()"##,
+        )
+        .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page.evaluate("window.__sha384").unwrap();
+    assert_eq!(
+        v,
+        "cb00753f45a35e8bb5a03d699ac650072589c75d83619cb3988121cc3146658fca164e82b0a08bc8858dd3c69a0d8d7b",
+        "{v}"
+    );
+}
+
+#[test]
+fn abort_signal_timeout_and_any() {
+    let mut page = open("<title>ab</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__ab = null;
+          const done = AbortSignal.abort("gone");
+          const c = new AbortController();
+          const any = AbortSignal.any([c.signal]);
+          c.abort("z");
+          const timed = AbortSignal.timeout(5);
+          window.__ab = {
+            abortInst: done instanceof AbortSignal && done.aborted && done.reason === "gone",
+            any: any.aborted && any.reason === "z",
+            timed: false
+          };
+          const check = function () {
+            window.__ab.timed = timed.aborted && timed.reason && timed.reason.name === "TimeoutError";
+          };
+          if (timed.aborted) check();
+          else timed.addEventListener("abort", check);
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__ab").unwrap();
+    assert_eq!(v["abortInst"], true, "{v}");
+    assert_eq!(v["any"], true, "{v}");
+    assert_eq!(v["timed"], true, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

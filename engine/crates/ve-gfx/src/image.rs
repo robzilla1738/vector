@@ -237,20 +237,8 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let y1 = svg_attr(tag, "y1").unwrap_or(0.0);
         let x2 = svg_attr(tag, "x2").unwrap_or(0.0);
         let y2 = svg_attr(tag, "y2").unwrap_or(0.0);
-        let color = parse_svg_color(
-            tag.split("stroke=")
-                .nth(1)
-                .and_then(|s| {
-                    let q = s.chars().next()?;
-                    if q == '"' || q == '\'' {
-                        s[1..].split(q).next()
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or("#000000"),
-        );
-        stroke_line(&mut img, x1, y1, x2, y2, color);
+        let (color, width) = svg_stroke(tag);
+        stroke_line(&mut img, x1, y1, x2, y2, color, width);
         rest = &rest[i + tag_end + 1..];
     }
     rest = text.as_ref();
@@ -264,19 +252,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         let closed = tag.starts_with("<polygon");
-        let color = parse_svg_color(
-            tag.split("stroke=")
-                .nth(1)
-                .and_then(|s| {
-                    let q = s.chars().next()?;
-                    if q == '"' || q == '\'' {
-                        s[1..].split(q).next()
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or_else(|| svg_fill(tag)),
-        );
+        let (color, width) = svg_stroke(tag);
         let mut pts = Vec::new();
         if let Some(raw) = svg_attr_str(tag, "points") {
             for pair in raw.split(|c: char| c == ',' || c.is_whitespace()) {
@@ -306,7 +282,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             });
         }
         for w in coords.windows(2) {
-            stroke_line(&mut img, w[0].0, w[0].1, w[1].0, w[1].1, color);
+            stroke_line(&mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -314,19 +290,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     while let Some(i) = rest.find("<path") {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        let color = parse_svg_color(
-            tag.split("stroke=")
-                .nth(1)
-                .and_then(|s| {
-                    let q = s.chars().next()?;
-                    if q == '"' || q == '\'' {
-                        s[1..].split(q).next()
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or_else(|| svg_fill(tag)),
-        );
+        let (color, width) = svg_stroke(tag);
         if let Some(d) = svg_attr_str(tag, "d") {
             let mut pts = svg_path_points(d);
             let closed = d.bytes().any(|b| b == b'Z' || b == b'z');
@@ -345,7 +309,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             }
             if svg_attr_str(tag, "stroke").is_some() || !closed {
                 for w in pts.windows(2) {
-                    stroke_line(&mut img, w[0].0, w[0].1, w[1].0, w[1].1, color);
+                    stroke_line(&mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width);
                 }
             }
         }
@@ -756,15 +720,46 @@ fn fill_polygon_with(
     }
 }
 
-fn stroke_line(img: &mut DecodedImage, x1: f32, y1: f32, x2: f32, y2: f32, color: [u8; 4]) {
+fn svg_stroke(tag: &str) -> ([u8; 4], f32) {
+    let raw = svg_attr_str(tag, "stroke").unwrap_or_else(|| svg_fill(tag));
+    let mut color = parse_svg_color(raw);
+    let opacity = svg_attr(tag, "stroke-opacity")
+        .or_else(|| svg_attr(tag, "opacity"))
+        .unwrap_or(1.0)
+        .clamp(0.0, 1.0);
+    color[3] = (f32::from(color[3]) * opacity).round() as u8;
+    let width = svg_attr(tag, "stroke-width").unwrap_or(1.0).max(0.0);
+    (color, width)
+}
+
+fn stroke_line(
+    img: &mut DecodedImage,
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+    color: [u8; 4],
+    width: f32,
+) {
     let steps = (x2 - x1).abs().max((y2 - y1).abs()).ceil().max(1.0) as i32;
+    let radius = (width * 0.5).max(0.5);
+    let r = radius.ceil() as i32;
     for s in 0..=steps {
         let t = s as f32 / steps as f32;
-        let xx = (x1 + (x2 - x1) * t).round() as i32;
-        let yy = (y1 + (y2 - y1) * t).round() as i32;
-        if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height {
-            let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
-            img.rgba[idx..idx + 4].copy_from_slice(&color);
+        let cx = (x1 + (x2 - x1) * t).round() as i32;
+        let cy = (y1 + (y2 - y1) * t).round() as i32;
+        for dy in -r..=r {
+            for dx in -r..=r {
+                if (dx as f32).hypot(dy as f32) > radius + 0.25 {
+                    continue;
+                }
+                let xx = cx + dx;
+                let yy = cy + dy;
+                if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height {
+                    let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
+                    img.rgba[idx..idx + 4].copy_from_slice(&color);
+                }
+            }
         }
     }
 }
@@ -1433,5 +1428,20 @@ mod tests {
             pl[0] > pr[0] && pr[2] > pl[2],
             "polygon should sample the gradient: left={pl:?} right={pr:?}"
         );
+    }
+
+    #[test]
+    fn decode_svg_stroke_width_and_opacity() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <line x1='0' y1='3' x2='7' y2='3' stroke='#ff0000' stroke-width='3' stroke-opacity='0.5'/></svg>",
+        )
+        .expect("svg stroke");
+        let mid = img.pixel(3, 3).unwrap();
+        let halo = img.pixel(3, 4).unwrap();
+        let far = img.pixel(3, 1).unwrap();
+        assert_eq!(mid, [255, 0, 0, 128], "{mid:?}");
+        assert_eq!(halo, [255, 0, 0, 128], "{halo:?}");
+        assert_eq!(far, [0, 0, 0, 0], "{far:?}");
     }
 }
