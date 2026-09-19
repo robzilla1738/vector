@@ -275,6 +275,9 @@ pub fn layout_box_at(
         _ if bx.style.writing_mode == WritingMode::VerticalRl => {
             layout_block_flow_vertical_rl(bx, ctx, content_rect, child_cb_height)
         }
+        _ if bx.style.writing_mode == WritingMode::VerticalLr => {
+            layout_block_flow_vertical_lr(bx, ctx, content_rect, child_cb_height)
+        }
         _ => layout_block_flow(bx, ctx, content_rect, child_cb_height),
     };
     if bfc {
@@ -699,6 +702,57 @@ fn layout_block_flow_vertical_rl(
             cursor + margins.left - child.rect.x(),
             content.y() + margins.top - child.rect.y(),
         );
+        max_height = max_height.max(child.rect.height() + margins.vertical());
+    }
+    max_height.max(0.0)
+}
+
+/// Stacks block-level children left-to-right (`writing-mode: vertical-lr`).
+fn layout_block_flow_vertical_lr(
+    bx: &mut LayoutBox,
+    ctx: &mut LayoutCtx<'_>,
+    content: Rect,
+    cb_height: Option<f32>,
+) -> f32 {
+    let cb = ContainingBlock {
+        width: content.width(),
+        height: cb_height,
+    };
+    let mut cursor = content.x();
+    let mut max_height = cb_height.unwrap_or(0.0);
+    for child in &mut bx.children {
+        if child.is_out_of_flow() {
+            child.rect = Rect::new(cursor, content.y(), 0.0, 0.0);
+            continue;
+        }
+        if child.is_float() {
+            layout_float(child, ctx, content, content.y());
+            continue;
+        }
+        let margins = if child.has_own_edges() {
+            resolve_margins(&child.style, cb.width)
+        } else {
+            Edges::ZERO
+        };
+        let forced = Forced {
+            width: None,
+            height: if child.style.height.is_auto() {
+                cb_height
+            } else {
+                None
+            },
+        };
+        layout_box_at(child, ctx, cb, Point::ZERO, forced);
+        if child.style.position == Position::Relative || child.style.position == Position::Sticky {
+            apply_relative_offset(child, cb);
+        }
+        let margin_box_w = child.rect.width() + margins.horizontal();
+        translate_subtree(
+            child,
+            cursor + margins.left - child.rect.x(),
+            content.y() + margins.top - child.rect.y(),
+        );
+        cursor += margin_box_w;
         max_height = max_height.max(child.rect.height() + margins.vertical());
     }
     max_height.max(0.0)

@@ -1988,6 +1988,92 @@ fn canvas_text_align_shifts_fill_text() {
 }
 
 #[test]
+fn canvas_direction_rtl_flips_start_align() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function minX(dir, align) {
+                var c = document.createElement("canvas");
+                c.width = 48;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.direction = dir;
+                ctx.textAlign = align;
+                ctx.fillText("MM", 24, 16);
+                var data = ctx.getImageData(0, 0, 48, 24).data;
+                var min = 48;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 48; x++) {
+                    if (data[(y * 48 + x) * 4 + 3] > 20) min = Math.min(min, x);
+                  }
+                }
+                return min;
+              }
+              return {
+                ltrStart: minX("ltr", "start"),
+                rtlStart: minX("rtl", "start"),
+                ltrEnd: minX("ltr", "end"),
+                rtlEnd: minX("rtl", "end")
+              };
+            })()"##,
+        )
+        .unwrap();
+    let ltr_start = v["ltrStart"].as_u64().unwrap_or(0);
+    let rtl_start = v["rtlStart"].as_u64().unwrap_or(0);
+    let ltr_end = v["ltrEnd"].as_u64().unwrap_or(0);
+    let rtl_end = v["rtlEnd"].as_u64().unwrap_or(0);
+    assert!(
+        ltr_start > rtl_start,
+        "rtl start must sit left of ltr start: {v}"
+    );
+    assert!(
+        rtl_end > ltr_end,
+        "rtl end must sit right of ltr end: {v}"
+    );
+    assert_eq!(ltr_start, rtl_end, "rtl end matches ltr start: {v}");
+    assert_eq!(rtl_start, ltr_end, "rtl start matches ltr end: {v}");
+}
+
+#[test]
+fn canvas_letter_spacing_shifts_second_glyph() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(gap) {
+                var c = document.createElement("canvas");
+                c.width = 64;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.letterSpacing = gap;
+                ctx.fillText("II", 2, 16);
+                var data = ctx.getImageData(0, 0, 64, 24).data;
+                var max = 0;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 64; x++) {
+                    if (data[(y * 64 + x) * 4 + 3] > 20) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { tight: maxX("0px"), wide: maxX("10px") };
+            })()"##,
+        )
+        .unwrap();
+    let tight = v["tight"].as_u64().unwrap_or(0);
+    let wide = v["wide"].as_u64().unwrap_or(0);
+    assert!(
+        wide > tight + 6,
+        "letterSpacing must push the second glyph: {v}"
+    );
+}
+
+#[test]
 fn canvas_fill_text_paints_distinct_glyphs() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -5431,6 +5517,62 @@ fn webgl_draw_elements_and_webgl2_context() {
     assert_eq!(v["b"], 255, "{v}");
     assert_eq!(v["a"], 255, "{v}");
     assert_eq!(v["twoNull"], true, "{v}");
+}
+
+#[test]
+fn webgl_viewport_maps_clip_and_clips_clear() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 0, 0, 1);
+              gl.clear();
+              gl.viewport(2, 2, 4, 4);
+              gl.clearColor(0, 1, 0, 1);
+              gl.clear();
+              const out = new Uint8Array(4);
+              const inn = new Uint8Array(4);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              gl.readPixels(3, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, inn);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 0, 1]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const mid = new Uint8Array(4);
+              const far = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              gl.readPixels(7, 7, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, far);
+              const vp = gl.getParameter(gl.VIEWPORT);
+              return {
+                or: out[0], og: out[1],
+                ir: inn[0], ig: inn[1],
+                mb: mid[2], ma: mid[3],
+                fr: far[0], fg: far[1], fb: far[2],
+                vx: vp[0], vy: vp[1], vw: vp[2], vh: vp[3],
+                cap: gl.VIEWPORT
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 2978, "{v}");
+    assert_eq!(v["vx"], 2, "{v}");
+    assert_eq!(v["vy"], 2, "{v}");
+    assert_eq!(v["vw"], 4, "{v}");
+    assert_eq!(v["vh"], 4, "{v}");
+    assert_eq!(v["or"], 255, "{v}");
+    assert_eq!(v["og"], 0, "{v}");
+    assert_eq!(v["ir"], 0, "{v}");
+    assert_eq!(v["ig"], 255, "{v}");
+    assert_eq!(v["mb"], 255, "{v}");
+    assert_eq!(v["ma"], 255, "{v}");
+    assert_eq!(v["fr"], 255, "{v}");
+    assert_eq!(v["fg"], 0, "{v}");
+    assert_eq!(v["fb"], 0, "{v}");
 }
 
 #[test]

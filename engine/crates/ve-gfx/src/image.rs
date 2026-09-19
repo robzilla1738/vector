@@ -553,6 +553,10 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         {
             y += 7.0 * scale;
         }
+        let vertical = svg_attr_str(tag, "writing-mode")
+            .unwrap_or("")
+            .to_ascii_lowercase()
+            .starts_with("vertical");
         let mut text_w = 0.0_f32;
         let chars: Vec<char> = content.chars().collect();
         for (i, ch) in chars.iter().enumerate() {
@@ -570,7 +574,23 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             "end" => x -= text_w,
             _ => {}
         }
-        paint_svg_text(&mut img, &content, x, y, color, spacing, word_sp, scale);
+        let path_pts = svg_text_path_points(raw, &by_id).map(|pts| {
+            pts.into_iter()
+                .map(|(px, py)| world.map(px, py))
+                .collect::<Vec<_>>()
+        });
+        paint_svg_text(
+            &mut img,
+            &content,
+            x,
+            y,
+            color,
+            spacing,
+            word_sp,
+            scale,
+            vertical,
+            path_pts.as_deref(),
+        );
         let deco = svg_attr_str(tag, "text-decoration")
             .unwrap_or("")
             .to_ascii_lowercase();
@@ -866,6 +886,8 @@ enum SvgFilterKind {
     Erode(i32),
     Dilate(i32),
     Blend { color: [u8; 4], mode: SvgBlendMode },
+    Arithmetic { k2: f32, k4: f32 },
+    Turbulence,
 }
 
 #[derive(Clone, Copy)]
@@ -914,6 +936,21 @@ fn parse_svg_filters(text: &str) -> HashMap<String, SvgFilterKind> {
                         mode,
                     },
                 );
+            } else if let Some(ci) = block.find("<feComposite") {
+                let ce = block[ci..].find('>').unwrap_or(block.len() - ci);
+                let comp = &block[ci..ci + ce];
+                let op = svg_attr_str(comp, "operator").unwrap_or("over");
+                if op.eq_ignore_ascii_case("arithmetic") {
+                    out.insert(
+                        id.to_string(),
+                        SvgFilterKind::Arithmetic {
+                            k2: svg_attr(comp, "k2").unwrap_or(1.0),
+                            k4: svg_attr(comp, "k4").unwrap_or(0.0),
+                        },
+                    );
+                }
+            } else if block.contains("<feTurbulence") {
+                out.insert(id.to_string(), SvgFilterKind::Turbulence);
             } else if let Some(color) = flood_color {
                 out.insert(id.to_string(), SvgFilterKind::Flood { color });
             } else if let Some(ci) = block.find("<feColorMatrix") {
@@ -1068,6 +1105,14 @@ fn apply_svg_filter(
             let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
             blend_decoded_rect(img, bx0, by0, bx1, by1, *color, *mode);
         }
+        SvgFilterKind::Arithmetic { k2, k4 } => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            arithmetic_decoded_rect(img, bx0, by0, bx1, by1, *k2, *k4);
+        }
+        SvgFilterKind::Turbulence => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            turbulence_decoded_rect(img, bx0, by0, bx1, by1);
+        }
         SvgFilterKind::Offset { .. } => {}
     }
 }
@@ -1194,6 +1239,51 @@ fn blend_decoded_rect(
                 };
             }
             img.rgba[i..i + 4].copy_from_slice(&out);
+        }
+    }
+}
+
+fn arithmetic_decoded_rect(
+    img: &mut DecodedImage,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+    k2: f32,
+    k4: f32,
+) {
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if x < 0 || y < 0 {
+                continue;
+            }
+            let i = ((y as u32 * img.width + x as u32) * 4) as usize;
+            if i + 3 >= img.rgba.len() || img.rgba[i + 3] == 0 {
+                continue;
+            }
+            for c in 0..3 {
+                let v = f32::from(img.rgba[i + c]) / 255.0 * k2 + k4;
+                img.rgba[i + c] = (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+            }
+        }
+    }
+}
+
+fn turbulence_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32) {
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if x < 0 || y < 0 {
+                continue;
+            }
+            let i = ((y as u32 * img.width + x as u32) * 4) as usize;
+            if i + 3 >= img.rgba.len() || img.rgba[i + 3] == 0 {
+                continue;
+            }
+            let n = x.wrapping_mul(374_761_393) ^ y.wrapping_mul(668_265_263);
+            let grain = ((n >> 8) & 127) as u8;
+            for c in 0..3 {
+                img.rgba[i + c] = (u16::from(img.rgba[i + c]) / 2 + u16::from(grain) / 2) as u8;
+            }
         }
     }
 }
@@ -1877,7 +1967,10 @@ fn svg_tspan_dx(content: &str) -> f32 {
         .unwrap_or(0.0)
 }
 
-fn svg_text_path_start(content: &str, by_id: &HashMap<String, String>) -> Option<(f32, f32)> {
+fn svg_text_path_points<'a>(
+    content: &str,
+    by_id: &'a HashMap<String, String>,
+) -> Option<Vec<(f32, f32)>> {
     let i = content.find("<textPath")?;
     let tag_end = content[i..].find('>')?;
     let tag = &content[i..i + tag_end];
@@ -1885,9 +1978,42 @@ fn svg_text_path_start(content: &str, by_id: &HashMap<String, String>) -> Option
     let id = href.strip_prefix('#')?;
     let src = by_id.get(id)?;
     let d = svg_attr_str(src, "d")?;
-    svg_path_subpaths(d)
-        .into_iter()
-        .find_map(|c| c.into_iter().next())
+    svg_path_subpaths(d).into_iter().find(|c| c.len() >= 2)
+}
+
+fn svg_text_path_start(content: &str, by_id: &HashMap<String, String>) -> Option<(f32, f32)> {
+    svg_text_path_points(content, by_id)
+        .and_then(|c| c.into_iter().next())
+        .or_else(|| {
+            let i = content.find("<textPath")?;
+            let tag_end = content[i..].find('>')?;
+            let tag = &content[i..i + tag_end];
+            let href = svg_attr_str(tag, "href").or_else(|| svg_attr_str(tag, "xlink:href"))?;
+            let id = href.strip_prefix('#')?;
+            let src = by_id.get(id)?;
+            let d = svg_attr_str(src, "d")?;
+            svg_path_subpaths(d)
+                .into_iter()
+                .find_map(|c| c.into_iter().next())
+        })
+}
+
+fn svg_polyline_at(pts: &[(f32, f32)], dist: f32) -> (f32, f32) {
+    let mut left = dist.max(0.0);
+    for w in pts.windows(2) {
+        let dx = w[1].0 - w[0].0;
+        let dy = w[1].1 - w[0].1;
+        let len = (dx * dx + dy * dy).sqrt();
+        if len <= 0.0 {
+            continue;
+        }
+        if left <= len {
+            let t = left / len;
+            return (w[0].0 + dx * t, w[0].1 + dy * t);
+        }
+        left -= len;
+    }
+    pts.last().copied().unwrap_or((0.0, 0.0))
 }
 
 fn paint_svg_text(
@@ -1899,40 +2025,62 @@ fn paint_svg_text(
     letter_spacing: f32,
     word_spacing: f32,
     scale: f32,
+    vertical: bool,
+    path: Option<&[(f32, f32)]>,
 ) {
-    let mut cx = x.round() as i32;
-    let baseline = y.round() as i32;
-    let gap = letter_spacing.round() as i32;
-    let word = word_spacing.round() as i32;
+    let mut cx = x;
+    let mut cy = y;
+    let mut along = 0.0_f32;
+    let gap = letter_spacing;
+    let word = word_spacing;
     let s = scale.round().max(1.0) as i32;
-    for ch in content.chars() {
+    let step = |ch: char| -> f32 {
         if ch == ' ' {
-            cx += 4 * s + gap + word;
-            continue;
+            4.0 * scale + gap + word
+        } else {
+            6.0 * scale + gap
         }
-        let Some(rows) = glyph_5x7(ch) else {
-            cx += 6 * s + gap;
-            continue;
+    };
+    for ch in content.chars() {
+        let (px, py) = if let Some(pts) = path.filter(|p| p.len() >= 2) {
+            svg_polyline_at(pts, along)
+        } else {
+            (cx, cy)
         };
-        for (row, bits) in rows.iter().enumerate() {
-            for col in 0..5 {
-                if bits & (1 << (4 - col)) == 0 {
-                    continue;
-                }
-                for dy in 0..s {
-                    for dx in 0..s {
-                        let xx = cx + col as i32 * s + dx;
-                        let yy = baseline - 7 * s + row as i32 * s + dy;
-                        if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height
-                        {
-                            let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
-                            img.rgba[idx..idx + 4].copy_from_slice(&color);
+        if ch != ' ' {
+            if let Some(rows) = glyph_5x7(ch) {
+                let origin_x = px.round() as i32;
+                let baseline = py.round() as i32;
+                for (row, bits) in rows.iter().enumerate() {
+                    for col in 0..5 {
+                        if bits & (1 << (4 - col)) == 0 {
+                            continue;
+                        }
+                        for dy in 0..s {
+                            for dx in 0..s {
+                                let xx = origin_x + col as i32 * s + dx;
+                                let yy = baseline - 7 * s + row as i32 * s + dy;
+                                if xx >= 0
+                                    && yy >= 0
+                                    && (xx as u32) < img.width
+                                    && (yy as u32) < img.height
+                                {
+                                    let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
+                                    img.rgba[idx..idx + 4].copy_from_slice(&color);
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-        cx += 6 * s + gap;
+        let adv = step(ch);
+        along += adv;
+        if vertical {
+            cy += adv;
+        } else {
+            cx += adv;
+        }
     }
 }
 
@@ -3708,5 +3856,58 @@ mod tests {
         .expect("svg blend");
         assert_eq!(img.pixel(4, 4), Some([128, 0, 0, 255]));
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_arithmetic_scales_red() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feComposite operator='arithmetic' k2='0.5' k4='0'/></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg arithmetic");
+        assert_eq!(img.pixel(4, 4), Some([128, 0, 0, 255]));
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_turbulence_varies_pixels() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feTurbulence baseFrequency='0.4'/></filter></defs>\
+              <rect x='1' y='1' width='6' height='6' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg turbulence");
+        let a = img.pixel(2, 2).expect("a");
+        let b = img.pixel(5, 5).expect("b");
+        assert_ne!(a, [255, 0, 0, 255]);
+        assert_ne!(a, b);
+        assert_eq!(a[3], 255);
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_text_writing_mode_vertical() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'>\
+              <text x='0' y='7' fill='#ff0000' writing-mode='vertical-rl'>II</text></svg>",
+        )
+        .expect("svg vertical text");
+        assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 9), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(8, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_text_path_follows_vertical_path() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'>\
+              <path id='p' d='M 0 7 V 20' fill='none'/>\
+              <text fill='#ff0000'><textPath href='#p'>II</textPath></text></svg>",
+        )
+        .expect("svg textPath along");
+        assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 9), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(8, 3), Some([0, 0, 0, 0]));
     }
 }

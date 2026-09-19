@@ -1514,6 +1514,31 @@ mod tests {
     }
 
     #[test]
+    fn vertical_lr_stacks_children_rightward() {
+        let (doc, engine, tree) = layout(
+            "<style>html,body{margin:0}\
+             #outer{writing-mode:vertical-lr;width:200px;height:100px}\
+             #a,#b{width:40px;height:50px}</style>\
+             <div id=outer><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            a.x().abs() < 1.0,
+            "first child sits on the left, got a.x={}",
+            a.x()
+        );
+        assert!(
+            (b.x() - 40.0).abs() < 1.0,
+            "second child is to the right of the first, got b.x={}",
+            b.x()
+        );
+        assert!(b.x() > a.x(), "vertical-lr stacks rightward");
+        assert!((a.y() - b.y()).abs() < 1.0);
+    }
+
+    #[test]
     fn rtl_block_places_inline_at_inline_end() {
         let (doc, engine, tree) = layout(
             "<style>html,body{margin:0}\

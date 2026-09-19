@@ -4661,6 +4661,9 @@
         strokeStyle: this._strokeStyle,
         globalAlpha: this._globalAlpha,
         globalCompositeOperation: this._globalCompositeOperation,
+        direction: this._direction,
+        textAlign: this._textAlign,
+        letterSpacing: this._letterSpacing,
         a: this._a, b: this._b, c: this._c, d: this._d, e: this._e, f: this._f
       });
       D("canvasSave", this.__h);
@@ -4672,6 +4675,9 @@
       this._strokeStyle = s.strokeStyle;
       this._globalAlpha = s.globalAlpha;
       this._globalCompositeOperation = s.globalCompositeOperation || "source-over";
+      if (s.direction !== undefined) this._direction = s.direction;
+      if (s.textAlign !== undefined) this._textAlign = s.textAlign;
+      if (s.letterSpacing !== undefined) this._letterSpacing = s.letterSpacing;
       this._a = s.a; this._b = s.b; this._c = s.c; this._d = s.d; this._e = s.e; this._f = s.f;
       D("canvasRestore", this.__h);
     }
@@ -4848,24 +4854,48 @@
       const box = dw || dh ? this._mapRect(dx, dy, dw, dh) : this._mapPoint(dx, dy).concat([0, 0]);
       D("canvasDrawImage", this.__h, img.__h, sx, sy, sw, sh, box[0], box[1], box[2], box[3], this._imageSmoothingEnabled !== false ? 1 : 0);
     }
+    _letterGap() {
+      const n = parseFloat(String(this._letterSpacing || "0"));
+      return Number.isFinite(n) ? n : 0;
+    }
+    _isRtl() {
+      return String(this._direction || "inherit") === "rtl";
+    }
     _textOrigin(t, x, y) {
       const size = Number((/([0-9]*\.?[0-9]+)px/.exec(String(this._font || "")) || [])[1]) || 10;
       const text = String(t == null ? "" : t);
       const align = String(this._textAlign || "start");
       let ax = +x;
       let ay = +y;
-      if (align === "center" || align === "right" || align === "end") {
-        const w = D("canvasMeasureText", this.__h, text, size);
-        const width = typeof w === "number" && w > 0 ? w : text.length * 6;
-        ax = align === "center" ? ax - width / 2 : ax - width;
-      }
+      const w = D("canvasMeasureText", this.__h, text, size);
+      const width = typeof w === "number" && w > 0 ? w : text.length * 6;
+      const rtl = this._isRtl();
+      let shift = 0;
+      if (align === "center") shift = width / 2;
+      else if (align === "right") shift = width;
+      else if (align === "start") shift = rtl ? width : 0;
+      else if (align === "end") shift = rtl ? 0 : width;
+      ax -= shift;
       const base = String(this._textBaseline || "alphabetic");
       if (base === "top" || base === "hanging") ay += size * 0.8;
       else if (base === "middle") ay += size * 0.35;
       else if (base === "bottom" || base === "ideographic") ay -= size * 0.2;
-      return { text, size, x: ax, y: ay };
+      return { text, size, x: ax, y: ay, width };
     }
     fillText(t, x, y) {
+      const gap = this._letterGap();
+      const text = String(t == null ? "" : t);
+      const align = String(this._textAlign || "start");
+      if (gap && text.length > 1 && (align === "start" || align === "left" || !align) && !this._isRtl()) {
+        let cx = +x;
+        for (const ch of text) {
+          const o = this._textOrigin(ch, cx, y);
+          const p = this._mapPoint(o.x, o.y);
+          D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size);
+          cx += (o.width || 6) + gap;
+        }
+        return;
+      }
       const o = this._textOrigin(t, x, y);
       const p = this._mapPoint(o.x, o.y);
       D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size);
@@ -9387,6 +9417,7 @@
       this.COLOR_ATTACHMENT0 = 36064;
       this.TEXTURE_2D = 3553;
       this.SCISSOR_TEST = 3089;
+      this.VIEWPORT = 2978;
       this.ARRAY_BUFFER = 34962;
       this.ELEMENT_ARRAY_BUFFER = 34963;
       this.FLOAT = 5126;
@@ -9395,6 +9426,7 @@
       this._clear = [0, 0, 0, 0];
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
+      this._viewport = [0, 0, canvas.width, canvas.height];
       this._arrayBuf = null;
       this._elemBuf = null;
       this._attribOn = false;
@@ -9405,10 +9437,31 @@
       const s = this._scissor || [0, 0, 0, 0];
       return [Number(s[0]) || 0, Number(s[1]) || 0, Number(s[2]) || 0, Number(s[3]) || 0];
     }
+    _viewportRect() {
+      const v = this._viewport || [0, 0, this.canvas.width, this.canvas.height];
+      return [Number(v[0]) || 0, Number(v[1]) || 0, Number(v[2]) || 0, Number(v[3]) || 0];
+    }
+    _clearRect() {
+      let [x, y, w, h] = this._viewportRect();
+      if (this._scissorOn) {
+        const [sx, sy, sw, sh] = this._scissorRect();
+        const x1 = Math.max(x, sx);
+        const y1 = Math.max(y, sy);
+        const x2 = Math.min(x + w, sx + sw);
+        const y2 = Math.min(y + h, sy + sh);
+        return [x1, y1, Math.max(0, x2 - x1), Math.max(0, y2 - y1)];
+      }
+      return [x, y, w, h];
+    }
+    _isFullClear() {
+      const [x, y, w, h] = this._clearRect();
+      return x === 0 && y === 0 && w === this.canvas.width && h === this.canvas.height;
+    }
     getParameter(p) {
       if (p === this.VERSION) return "WebGL 1.0 (Vector)";
       if (p === this.VENDOR) return "Vector";
       if (p === this.RENDERER) return "Vector Software";
+      if (p === this.VIEWPORT) return this._viewportRect().slice();
       return null;
     }
     getExtension() { return null; }
@@ -9435,8 +9488,8 @@
       if (!c || c.__h == null) return;
       const hex = (n) => Math.max(0, Math.min(255, Math.round(n * 255))).toString(16).padStart(2, "0");
       const css = a >= 1 ? ("#" + hex(r) + hex(g) + hex(b)) : ("rgba(" + Math.round(r * 255) + "," + Math.round(g * 255) + "," + Math.round(b * 255) + "," + a + ")");
-      const [sx, sy, sw, sh] = this._scissorRect();
-      if (!this._scissorOn) D("canvasResize", c.__h, c.width, c.height);
+      const [sx, sy, sw, sh] = this._clearRect();
+      if (this._isFullClear()) D("canvasResize", c.__h, c.width, c.height);
       D("canvasFillRect", c.__h, sx, sy, sw, sh, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
     }
     readPixels(x, y, w, h, _format, _type, dst) {
@@ -9447,7 +9500,9 @@
       const n = Math.min(dst.length, bin.length);
       for (let i = 0; i < n; i++) dst[i] = bin.charCodeAt(i);
     }
-    viewport() {}
+    viewport(x, y, w, h) {
+      this._viewport = [Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0];
+    }
     enable(cap) { if (cap === this.SCISSOR_TEST) this._scissorOn = true; }
     disable(cap) { if (cap === this.SCISSOR_TEST) this._scissorOn = false; }
     scissor(x, y, w, h) { this._scissor = [Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0]; }
@@ -9475,10 +9530,8 @@
     enableVertexAttribArray() { this._attribOn = true; }
     disableVertexAttribArray() { this._attribOn = false; }
     _clipToPx(x, y) {
-      const c = this.canvas;
-      const w = (c && c.width) || 0;
-      const h = (c && c.height) || 0;
-      return [(Number(x) + 1) * 0.5 * w, (Number(y) + 1) * 0.5 * h];
+      const [vx, vy, vw, vh] = this._viewportRect();
+      return [vx + (Number(x) + 1) * 0.5 * vw, vy + (Number(y) + 1) * 0.5 * vh];
     }
     _attribPoint(i) {
       const data = this._arrayBuf && this._arrayBuf._data;
@@ -9546,7 +9599,7 @@
       }
       if (this._uniform) {
         const css = this._uniformCss();
-        const [sx, sy, sw, sh] = this._scissorRect();
+        const [sx, sy, sw, sh] = this._clearRect();
         D("canvasFillRect", c.__h, sx, sy, sw, sh, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
       }
     }
