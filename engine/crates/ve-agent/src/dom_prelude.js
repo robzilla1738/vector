@@ -4533,7 +4533,7 @@
     strokeText(t, x, y) {
       const p = this._mapPoint(x, y);
       const size = Number((/([0-9]*\.?[0-9]+)px/.exec(String(this._font || "")) || [])[1]) || 10;
-      D("canvasFillText", this.__h, String(t == null ? "" : t), p[0], p[1], String(this.strokeStyle || this.fillStyle), size);
+      D("canvasStrokeText", this.__h, String(t == null ? "" : t), p[0], p[1], String(this.strokeStyle || this.fillStyle), size, Number(this._lineWidth) || 1);
     }
     measureText(t) {
       if (arguments.length < 1) {

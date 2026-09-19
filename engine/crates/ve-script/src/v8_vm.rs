@@ -793,6 +793,26 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeInsertAdjacentHTML", adj)?;
+            let document_el = v8::FunctionTemplate::builder(native_document_element)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeDocumentElement", document_el)?;
+            let body = v8::FunctionTemplate::builder(native_document_body)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeBody", body)?;
+            let children = v8::FunctionTemplate::builder(native_element_children)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeChildren", children)?;
+            let by_tag = v8::FunctionTemplate::builder(native_get_elements_by_tag_name)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeGetElementsByTagName", by_tag)?;
+            let by_class = v8::FunctionTemplate::builder(native_get_elements_by_class_name)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeGetElementsByClassName", by_class)?;
             Some(())
         })?;
         self.eval(
@@ -901,7 +921,7 @@ impl JsVm for V8Vm {
   Element.prototype.closest = function (s) {
     return wrapNode(globalThis.__veNativeClosest.call(this, s));
   };
-  if (typeof Document !== "undefined") {
+    if (typeof Document !== "undefined") {
     Document.prototype.querySelector = function (s) {
       return wrapNode(globalThis.__veNativeQuerySelector.call(this, s));
     };
@@ -940,9 +960,41 @@ impl JsVm for V8Vm {
   defEl(Element.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   defEl(Element.prototype, "nextElementSibling", function () { return wrapNode(globalThis.__veNativeNextElementSibling.call(this)); });
   defEl(Element.prototype, "previousElementSibling", function () { return wrapNode(globalThis.__veNativePrevElementSibling.call(this)); });
+  defEl(Element.prototype, "children", function () { return wrapList(globalThis.__veNativeChildren.call(this)); });
+  var childCount = function () {
+    var c = globalThis.__veNativeChildren.call(this);
+    return c ? c.length : 0;
+  };
+  Object.defineProperty(Element.prototype, "childElementCount", {
+    configurable: true,
+    enumerable: true,
+    get: childCount
+  });
+  if (typeof HTMLElement !== "undefined") {
+    defEl(HTMLElement.prototype, "children", function () { return wrapList(globalThis.__veNativeChildren.call(this)); });
+    Object.defineProperty(HTMLElement.prototype, "childElementCount", {
+      configurable: true,
+      enumerable: true,
+      get: childCount
+    });
+  }
+  Element.prototype.getElementsByTagName = function (s) {
+    return wrapList(globalThis.__veNativeGetElementsByTagName.call(this, s));
+  };
+  Element.prototype.getElementsByClassName = function (s) {
+    return wrapList(globalThis.__veNativeGetElementsByClassName.call(this, s));
+  };
   if (typeof Document !== "undefined") {
     defEl(Document.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(Document.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
+    defEl(Document.prototype, "documentElement", function () { return wrapNode(globalThis.__veNativeDocumentElement.call(this)); });
+    defEl(Document.prototype, "body", function () { return wrapNode(globalThis.__veNativeBody.call(this)); });
+    Document.prototype.getElementsByTagName = function (s) {
+      return wrapList(globalThis.__veNativeGetElementsByTagName.call(this, s));
+    };
+    Document.prototype.getElementsByClassName = function (s) {
+      return wrapList(globalThis.__veNativeGetElementsByClassName.call(this, s));
+    };
     Document.prototype.getElementById = function (id) {
       return wrapNode(globalThis.__veNativeGetElementById.call(this, id));
     };
@@ -1024,7 +1076,7 @@ impl JsVm for V8Vm {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName";
 })()"#,
             "vector:dom-native",
         )?;
@@ -2335,6 +2387,72 @@ fn native_element_insert_adjacent_html(
         scope,
         &[JsValue::from("insertAdjacentHTML"), handle, pos, html],
     );
+}
+
+fn native_document_element(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "documentElement", &mut rv);
+}
+
+fn native_document_body(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "body", &mut rv);
+}
+
+fn native_element_children(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &JsValue::Array(Vec::new())));
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("children"), handle])
+        .unwrap_or(JsValue::Array(Vec::new()));
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_get_elements_by_tag_name(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &JsValue::Array(Vec::new())));
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("getElementsByTagName"), handle, name],
+    )
+    .unwrap_or(JsValue::Array(Vec::new()));
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_get_elements_by_class_name(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &JsValue::Array(Vec::new())));
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("getElementsByClassName"), handle, name],
+    )
+    .unwrap_or(JsValue::Array(Vec::new()));
+    rv.set(from_js_value(scope, &value));
 }
 
 fn looks_like_module(source: &str) -> bool {

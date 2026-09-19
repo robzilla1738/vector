@@ -1087,6 +1087,49 @@ fn canvas_alpha(color: [u8; 4], alpha: f32) -> [u8; 4] {
     ]
 }
 
+fn outline_glyph_mask(
+    mask: &[u8],
+    width: u32,
+    height: u32,
+    radius: i32,
+) -> (Vec<u8>, u32, u32, i32, i32) {
+    let r = radius.max(1);
+    let pad = r as u32;
+    let nw = width + pad * 2;
+    let nh = height + pad * 2;
+    let mut out = vec![0u8; (nw * nh) as usize];
+    for y in 0..height as i32 {
+        for x in 0..width as i32 {
+            let cov = mask[(y as u32 * width + x as u32) as usize];
+            if cov == 0 {
+                continue;
+            }
+            for dy in -r..=r {
+                for dx in -r..=r {
+                    if dx * dx + dy * dy > r * r {
+                        continue;
+                    }
+                    let nx = (x + dx + r) as u32;
+                    let ny = (y + dy + r) as u32;
+                    let i = (ny * nw + nx) as usize;
+                    out[i] = out[i].max(cov);
+                }
+            }
+        }
+    }
+    for y in 0..height {
+        for x in 0..width {
+            let src = mask[(y * width + x) as usize];
+            if src == 0 {
+                continue;
+            }
+            let i = ((y + pad) * nw + (x + pad)) as usize;
+            out[i] = 0;
+        }
+    }
+    (out, nw, nh, -r, -r)
+}
+
 fn lerp_rgba(a: [u8; 4], b: [u8; 4], t: f32) -> [u8; 4] {
     [
         (f32::from(a[0]) + (f32::from(b[0]) - f32::from(a[0])) * t).round() as u8,
@@ -1697,6 +1740,44 @@ impl CanvasSurface {
                 for row in 0..7 {
                     if bits & (1 << row) != 0 {
                         self.fill_rect(cx + i as i32, y - 7 + row, 1, 1, color);
+                    }
+                }
+            }
+            cx += 6;
+        }
+        self.ops += 1;
+    }
+
+    fn stroke_text(&mut self, text: &str, x: i32, y: i32, color: [u8; 4], radius: i32) {
+        let mut cx = x;
+        let r = radius.max(1);
+        for ch in text.chars() {
+            let cols = glyph5x7(ch);
+            for (i, bits) in cols.iter().enumerate() {
+                for row in 0..7 {
+                    if bits & (1 << row) == 0 {
+                        continue;
+                    }
+                    for dy in -r..=r {
+                        for dx in -r..=r {
+                            if dx == 0 && dy == 0 {
+                                continue;
+                            }
+                            if dx * dx + dy * dy > r * r {
+                                continue;
+                            }
+                            let nx = i as i32 + dx;
+                            let ny = row + dy;
+                            if nx >= 0
+                                && nx < 5
+                                && ny >= 0
+                                && ny < 7
+                                && cols[nx as usize] & (1 << ny) != 0
+                            {
+                                continue;
+                            }
+                            self.fill_rect(cx + i as i32 + dx, y - 7 + row + dy, 1, 1, color);
+                        }
                     }
                 }
             }
@@ -2606,6 +2687,64 @@ impl Page {
             c.ops += 1;
         } else {
             c.fill_text(text, x, y, color);
+        }
+        c.ops
+    }
+
+    pub(crate) fn canvas_stroke_text(
+        &mut self,
+        id: NodeId,
+        text: &str,
+        x: i32,
+        y: i32,
+        color: &str,
+        size: f32,
+        width: i32,
+    ) -> u64 {
+        let color = parse_css_color(color);
+        let size = if size > 0.0 { size } else { 10.0 };
+        let radius = width.max(1);
+        let blits = {
+            let fonts = self.ensure_canvas_fonts();
+            fonts
+                .query(
+                    &[FontFamily::SansSerif],
+                    FontWeight::NORMAL,
+                    FontStyle::Normal,
+                )
+                .and_then(|face| {
+                    let run = fonts.shape_retained(face, text, size)?;
+                    let mut out = Vec::new();
+                    for glyph in run.glyphs {
+                        if glyph.id == 0 {
+                            continue;
+                        }
+                        let Some(bitmap) = fonts.rasterize_id(glyph.face, glyph.id, size) else {
+                            continue;
+                        };
+                        if bitmap.width == 0 || bitmap.height == 0 || bitmap.color {
+                            continue;
+                        }
+                        let (mask, w, h, ox, oy) =
+                            outline_glyph_mask(&bitmap.data, bitmap.width, bitmap.height, radius);
+                        let dx = x + glyph.x.round() as i32 + bitmap.left + ox;
+                        let dy = y + glyph.y.round() as i32 - bitmap.top + oy;
+                        out.push((dx, dy, w, h, mask));
+                    }
+                    Some(out)
+                })
+        };
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        if let Some(blits) = blits.filter(|b| !b.is_empty()) {
+            for (dx, dy, w, h, mask) in blits {
+                c.blit_glyph_mask(dx, dy, w, h, &mask, color);
+            }
+            c.ops += 1;
+        } else {
+            c.stroke_text(text, x, y, color, radius);
         }
         c.ops
     }

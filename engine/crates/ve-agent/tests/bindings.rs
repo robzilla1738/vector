@@ -1114,6 +1114,52 @@ fn canvas_path2d_ellipse_arc_to_and_round_rect() {
 }
 
 #[test]
+fn canvas_stroke_text_outlines_instead_of_filling() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function pixels(kind) {
+                var c = document.createElement("canvas");
+                c.width = 24;
+                c.height = 28;
+                var ctx = c.getContext("2d");
+                ctx.font = "20px sans-serif";
+                if (kind === "fill") {
+                  ctx.fillStyle = "#00ff00";
+                  ctx.fillText("I", 4, 20);
+                } else {
+                  ctx.strokeStyle = "#00ff00";
+                  ctx.lineWidth = 2;
+                  ctx.strokeText("I", 4, 20);
+                }
+                return ctx.getImageData(0, 0, 24, 28).data;
+              }
+              var fill = pixels("fill");
+              var stroke = pixels("stroke");
+              var fillOnly = 0, strokeOnly = 0, both = 0;
+              for (var i = 0; i < fill.length; i += 4) {
+                var f = fill[i + 3] > 20;
+                var s = stroke[i + 3] > 20;
+                if (f && s) both++;
+                else if (f) fillOnly++;
+                else if (s) strokeOnly++;
+              }
+              return { fillOnly: fillOnly, strokeOnly: strokeOnly, both: both };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["fillOnly"].as_u64().unwrap_or(0) > 0,
+        "fillText must keep an interior strokeText punches out: {v}"
+    );
+    assert!(
+        v["strokeOnly"].as_u64().unwrap_or(0) > 0,
+        "strokeText must paint a halo fillText does not: {v}"
+    );
+}
+
+#[test]
 fn canvas_create_pattern_from_image_data() {
     let mut page = open(r#"<body></body>"#);
     let v = page
