@@ -3857,38 +3857,110 @@ mod tests {
     #[test]
     fn writes_production_profile_observe_gate() {
         use std::time::Instant;
-        let mut samples = Vec::new();
-        for _ in 0..8 {
-            let mut engine = crate::VectorEngine::new(crate::EngineConfig {
-                offline: true,
-                security_profile: crate::SecurityProfile::Production,
-                ..crate::EngineConfig::default()
-            });
-            let opened = engine
-                .open(crate::OpenRequest::html(
-                    "<p>hello <strong>world</strong></p>",
-                    Some("https://gate.test/"),
-                ))
-                .unwrap();
-            let t = Instant::now();
-            let _ = engine
-                .observe(opened.page, &crate::ObservationRequest::default())
-                .unwrap();
-            samples.push(t.elapsed().as_micros() as u64);
+        let dir = std::path::Path::new("/tmp/vector-live-html");
+        assert!(
+            dir.is_dir(),
+            "H0-D1 production observe gate needs /tmp/vector-live-html"
+        );
+        let mut engine = crate::VectorEngine::new(crate::EngineConfig {
+            offline: true,
+            security_profile: crate::SecurityProfile::Production,
+            ..crate::EngineConfig::default()
+        });
+        let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("html"))
+            .collect();
+        paths.sort();
+        let cap = if cfg!(debug_assertions) { 50 } else { 100 };
+        if paths.len() > cap {
+            let step = (paths.len() / cap).max(1);
+            paths = paths.into_iter().step_by(step).take(cap).collect();
         }
-        samples.sort_unstable();
-        let p50 = samples[samples.len() / 2];
-        let p95 = samples[samples.len() - 1];
+        let mut observe_us = Vec::new();
+        let mut open_us = Vec::new();
+        let mut slowest = (0u64, String::new());
+        let mut unsupported = 0u32;
+        for path in paths {
+            let html = std::fs::read_to_string(&path).unwrap_or_default();
+            if html.is_empty() {
+                continue;
+            }
+            let stem = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("page")
+                .to_owned();
+            let url = format!("https://live.test/{stem}");
+            let t_open = Instant::now();
+            let opened = match engine.open(crate::OpenRequest::html(&html, Some(&url))) {
+                Ok(o) => o,
+                Err(_) => {
+                    unsupported += 1;
+                    continue;
+                }
+            };
+            let t_obs = Instant::now();
+            match engine.observe(opened.page, &crate::ObservationRequest::default()) {
+                Ok(_) => {
+                    let obs = t_obs.elapsed().as_micros() as u64;
+                    let opened_us = t_open.elapsed().as_micros() as u64;
+                    observe_us.push(obs);
+                    open_us.push(opened_us);
+                    if opened_us > slowest.0 {
+                        slowest = (opened_us, stem);
+                    }
+                }
+                Err(_) => unsupported += 1,
+            }
+            let _ = engine.close(opened.page);
+        }
+        assert!(
+            observe_us.len() >= 20,
+            "need ≥20 live-body observe samples, got {}",
+            observe_us.len()
+        );
+        observe_us.sort_unstable();
+        open_us.sort_unstable();
+        let pct_ms = |xs: &[u64], p: f64| {
+            let i = ((xs.len() as f64 - 1.0) * p).round() as usize;
+            xs[i.min(xs.len() - 1)] as f64 / 1000.0
+        };
+        let observe_p50 = pct_ms(&observe_us, 0.5);
+        let observe_p95 = pct_ms(&observe_us, 0.95);
+        let open_p50 = pct_ms(&open_us, 0.5);
+        let open_p95 = pct_ms(&open_us, 0.95);
+        let open_max = *open_us.last().unwrap() as f64 / 1000.0;
+        let gates = serde_json::json!({
+            "observeP95Ms": 5,
+            "openP95Ms": 300,
+            "openMaxMs": 1000
+        });
         let doc = serde_json::json!({
             "backend": "vector-engine",
             "security_mode": "production",
+            "appleSilicon": false,
+            "profile": if cfg!(debug_assertions) { "debug" } else { "release" },
             "metric": "observe",
-            "n": samples.len(),
-            "unit": "us",
-            "samples": samples,
-            "p50": p50,
-            "p95": p95,
-            "notes": "Measured in-process on the production SecurityProfile. Not an Apple-silicon published score."
+            "unit": "ms",
+            "n": observe_us.len(),
+            "unsupported": unsupported,
+            "corpus": { "dir": "/tmp/vector-live-html", "kind": "fetched-html-bodies" },
+            "observe": {
+                "p50Ms": observe_p50,
+                "p95Ms": observe_p95
+            },
+            "openToObserve": {
+                "p50Ms": open_p50,
+                "p95Ms": open_p95,
+                "maxMs": open_max,
+                "slowest": slowest.1
+            },
+            "gates": gates,
+            "test": "writes_production_profile_observe_gate",
+            "notes": "Compact observe and open→observe on live HTML bodies under SecurityProfile::Production. Parse stops at 256 KB. Not an Apple-silicon published score."
         });
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../../docs/perf/production-observe-gate.json");
@@ -3896,7 +3968,21 @@ mod tests {
             let _ = std::fs::create_dir_all(parent);
         }
         std::fs::write(&path, serde_json::to_vec_pretty(&doc).unwrap()).unwrap();
-        assert!(p95 > 0);
+        if !cfg!(debug_assertions) {
+            assert!(
+                observe_p95 <= 5.0,
+                "compact observe p95 {observe_p95} ms (target ≤ 5)"
+            );
+            assert!(
+                open_p95 <= 300.0,
+                "open→observe p95 {open_p95} ms (target ≤ 300)"
+            );
+            assert!(
+                open_max <= 1000.0,
+                "open→observe max {open_max} ms on {} (target ≤ 1000)",
+                slowest.1
+            );
+        }
     }
 
     #[test]
@@ -3933,56 +4019,78 @@ mod tests {
 
     #[test]
     fn day_of_browsing_restores_tabs_history_bookmarks_zoom_find() {
+        use std::time::Instant;
         let path = format!("/tmp/vector-day-browse-{}.sqlite", std::process::id());
         let _ = std::fs::remove_file(&path);
+        let mut steps = Vec::new();
+        let mut time_step = |name: &str, f: &mut dyn FnMut()| {
+            let t = Instant::now();
+            f();
+            steps.push(serde_json::json!({
+                "name": name,
+                "ms": (t.elapsed().as_secs_f64() * 1_000_000.0).round() / 1000.0
+            }));
+        };
         {
             let mut browser = NativeBrowser::new();
             browser.enable_product_chrome_at(&path);
-            browser
-                .handle_event(NativeEvent::NewTab {
-                    html: "<p>alpha hello hello</p>".into(),
-                    url: "https://day.test/alpha".into(),
-                })
-                .unwrap();
-            browser
-                .handle_event(NativeEvent::NewTab {
-                    html: "<p>beta hello hello</p>".into(),
-                    url: "https://day.test/beta".into(),
-                })
-                .unwrap();
-            browser.bookmark_active();
-            browser.record_download("report.pdf");
-            browser
-                .handle_event(NativeEvent::Key {
-                    key: "=".into(),
-                    code: "Equal".into(),
-                    modifiers: 4,
-                    repeat: false,
-                    state: KeyState::Down,
-                })
-                .unwrap();
-            browser
-                .handle_event(NativeEvent::Key {
-                    key: "f".into(),
-                    code: "KeyF".into(),
-                    modifiers: 4,
-                    repeat: false,
-                    state: KeyState::Down,
-                })
-                .unwrap();
-            browser
-                .handle_event(NativeEvent::Ime {
-                    text: "hello".into(),
-                })
-                .unwrap();
+            time_step("open-alpha", &mut || {
+                browser
+                    .handle_event(NativeEvent::NewTab {
+                        html: "<p>alpha hello hello</p>".into(),
+                        url: "https://day.test/alpha".into(),
+                    })
+                    .unwrap();
+            });
+            time_step("open-beta", &mut || {
+                browser
+                    .handle_event(NativeEvent::NewTab {
+                        html: "<p>beta hello hello</p>".into(),
+                        url: "https://day.test/beta".into(),
+                    })
+                    .unwrap();
+            });
+            time_step("bookmark", &mut || browser.bookmark_active());
+            time_step("download", &mut || browser.record_download("report.pdf"));
+            time_step("zoom-in", &mut || {
+                browser
+                    .handle_event(NativeEvent::Key {
+                        key: "=".into(),
+                        code: "Equal".into(),
+                        modifiers: 4,
+                        repeat: false,
+                        state: KeyState::Down,
+                    })
+                    .unwrap();
+            });
+            time_step("find-hello", &mut || {
+                browser
+                    .handle_event(NativeEvent::Key {
+                        key: "f".into(),
+                        code: "KeyF".into(),
+                        modifiers: 4,
+                        repeat: false,
+                        state: KeyState::Down,
+                    })
+                    .unwrap();
+                browser
+                    .handle_event(NativeEvent::Ime {
+                        text: "hello".into(),
+                    })
+                    .unwrap();
+            });
             assert!(browser.chrome().find_open);
             assert_eq!(browser.chrome().find, "hello");
             assert_eq!(browser.chrome().find_matches, 2);
             assert!(browser.chrome().zoom > 1.0);
-            let _ = browser.present();
+            time_step("present", &mut || {
+                let _ = browser.present();
+            });
         }
         let mut restored = NativeBrowser::new();
-        restored.enable_product_chrome_at(&path);
+        time_step("restart-restore", &mut || {
+            restored.enable_product_chrome_at(&path);
+        });
         let urls: Vec<String> = restored.chrome().tabs.iter().map(|t| t.url.clone()).collect();
         assert!(
             urls.iter().any(|u| u.contains("alpha")) && urls.iter().any(|u| u.contains("beta")),
@@ -4017,12 +4125,17 @@ mod tests {
             "review": "H2-exit",
             "gate": "day-of-ordinary-browsing",
             "profile": path,
-            "restoredTabs": urls,
-            "bookmarks": restored.chrome().bookmarks.len(),
-            "history": restored.chrome().history.len(),
-            "zoom": restored.chrome().zoom,
-            "find": restored.chrome().find,
-            "test": "day_of_browsing_restores_tabs_history_bookmarks_zoom_find"
+            "steps": steps,
+            "retained": {
+                "tabs": urls,
+                "bookmarks": restored.chrome().bookmarks.len(),
+                "history": restored.chrome().history.len(),
+                "zoom": restored.chrome().zoom,
+                "find": restored.chrome().find,
+                "downloads": restored.chrome().download_names.clone()
+            },
+            "test": "day_of_browsing_restores_tabs_history_bookmarks_zoom_find",
+            "notes": "Session-step wall times on this host, then kill and reopen the SQLite profile. Not an Apple-silicon published score."
         });
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../../docs/engine/evidence");
