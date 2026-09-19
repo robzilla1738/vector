@@ -16,9 +16,9 @@ use taffy::tree::{LayoutInput, LayoutOutput};
 use taffy::{GridTemplateArea, GridTemplateAreas as TaffyGridTemplateAreas};
 use ve_core::{Point, Rect as CoreRect};
 use ve_style::{
-    AlignItems as CssAlign, ComputedStyle, FlexDirection as CssDir, FlexWrap as CssWrap, GridLine,
-    JustifyContent as CssJustify, LengthPercentage as CssLp, LengthPercentageAuto as CssLpa,
-    MaxSize, SelfAlignment, TrackSize,
+    AlignItems as CssAlign, ComputedStyle, FlexDirection as CssDir, FlexWrap as CssWrap,
+    GridAutoFlow as CssGridAutoFlow, GridLine, JustifyContent as CssJustify,
+    LengthPercentage as CssLp, LengthPercentageAuto as CssLpa, MaxSize, SelfAlignment, TrackSize,
 };
 
 use crate::block::{
@@ -287,6 +287,12 @@ fn container_style(
             .copied()
             .map(auto_track)
             .collect(),
+        grid_auto_flow: match style.grid_auto_flow {
+            CssGridAutoFlow::Row => GridAutoFlow::Row,
+            CssGridAutoFlow::Column => GridAutoFlow::Column,
+            CssGridAutoFlow::RowDense => GridAutoFlow::RowDense,
+            CssGridAutoFlow::ColumnDense => GridAutoFlow::ColumnDense,
+        },
         grid_template_areas: (!style.grid_template_areas.is_none()).then(|| {
             let areas = style
                 .grid_template_areas

@@ -26,7 +26,8 @@ use crate::values::{
     Float, FontFamily,
     FontStyle, FontWeight, GridLine, GridTemplateAreas, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
-    Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, ObjectFit, OffsetPath, Overflow, OverflowWrap, PointerEvents, Position, PositionArea, Rgba,
+    AnimationDirection, AnimationFillMode, AnimationPlayState,
+    ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, GridAutoFlow, Isolation, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, PointerEvents, Position, PositionArea, Rgba,
     SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
@@ -815,6 +816,52 @@ mod conv {
         }
     }
 
+    pub fn iteration_count(v: &SpecifiedValue, _: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "infinite" => Some(f32::INFINITY),
+            SpecifiedValue::Number(n) if *n >= 0.0 => Some(*n),
+            SpecifiedValue::Integer(i) if *i >= 0 => Some(*i as f32),
+            _ => None,
+        }
+    }
+
+    pub fn line_clamp(v: &SpecifiedValue, _: &ConvertContext) -> Option<Option<u32>> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(None),
+            SpecifiedValue::Integer(i) if *i >= 1 => Some(Some(*i as u32)),
+            SpecifiedValue::Number(n) if *n >= 1.0 => Some(Some(*n as u32)),
+            _ => None,
+        }
+    }
+
+    pub fn tab_size(v: &SpecifiedValue, _: &ConvertContext) -> Option<u32> {
+        match v {
+            SpecifiedValue::Integer(i) if *i >= 1 => Some(*i as u32),
+            SpecifiedValue::Number(n) if *n >= 1.0 => Some(*n as u32),
+            _ => None,
+        }
+    }
+
+    pub fn decoration_px(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(1.0),
+            _ => length_px(v, ctx),
+        }
+    }
+
+    pub fn grid_auto_flow(v: &SpecifiedValue, _: &ConvertContext) -> Option<GridAutoFlow> {
+        match v {
+            SpecifiedValue::Keyword(k) => match k.to_ascii_lowercase().as_str() {
+                "row" => Some(GridAutoFlow::Row),
+                "column" => Some(GridAutoFlow::Column),
+                "dense" | "row-dense" => Some(GridAutoFlow::RowDense),
+                "column-dense" => Some(GridAutoFlow::ColumnDense),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn aspect_ratio(v: &SpecifiedValue, _: &ConvertContext) -> Option<Option<f32>> {
         match v {
             SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
@@ -949,6 +996,7 @@ macro_rules! property_table {
                     "overflow-block" => Some(Self::OverflowY),
                     "word-wrap" => Some(Self::OverflowWrap),
                     "inset-area" => Some(Self::PositionArea),
+                    "-webkit-line-clamp" => Some(Self::LineClamp),
                     _ if lower.starts_with("--") && lower.len() > 2 => Some(Self::Custom(name.to_owned())),
                     _ => None,
                 }
@@ -1202,6 +1250,10 @@ property_table! {
     TextDecorationLine: "text-decoration-line" => text_decoration_line: TextDecorationLine = TextDecorationLine::None, inherited = false, syntax = Single, convert = conv::kw::<TextDecorationLine>;
     /// `text-decoration-color`
     TextDecorationColor: "text-decoration-color" => text_decoration_color: Color = Color::CurrentColor, inherited = false, syntax = Single, convert = conv::color;
+    /// `text-decoration-thickness` (pixels; `auto` is 1)
+    TextDecorationThickness: "text-decoration-thickness" => text_decoration_thickness: f32 = 1.0, inherited = false, syntax = Single, convert = conv::decoration_px;
+    /// `text-underline-offset` (pixels)
+    TextUnderlineOffset: "text-underline-offset" => text_underline_offset: f32 = 1.0, inherited = false, syntax = Single, convert = conv::decoration_px;
     /// `user-select`
     UserSelect: "user-select" => user_select: UserSelect = UserSelect::Auto, inherited = false, syntax = Single, convert = conv::kw::<UserSelect>;
     /// `will-change` (first ident)
@@ -1212,6 +1264,10 @@ property_table! {
     TextOverflow: "text-overflow" => text_overflow: TextOverflow = TextOverflow::Clip, inherited = false, syntax = Single, convert = conv::kw::<TextOverflow>;
     /// `white-space`
     WhiteSpace: "white-space" => white_space: WhiteSpace = WhiteSpace::Normal, inherited = true, syntax = Single, convert = conv::kw::<WhiteSpace>;
+    /// `tab-size`
+    TabSize: "tab-size" => tab_size: u32 = 8, inherited = true, syntax = Single, convert = conv::tab_size;
+    /// `line-clamp` / `-webkit-line-clamp` (`none` is `None`)
+    LineClamp: "line-clamp" => line_clamp: Option<u32> = None, inherited = false, syntax = Single, convert = conv::line_clamp;
     /// `word-break`
     WordBreak: "word-break" => word_break: WordBreak = WordBreak::Normal, inherited = true, syntax = Single, convert = conv::kw::<WordBreak>;
     /// `overflow-wrap` (`word-wrap` aliases to it)
@@ -1330,10 +1386,30 @@ property_table! {
     AnimationName: "animation-name" => animation_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
     /// `animation-duration` in milliseconds
     AnimationDuration: "animation-duration" => animation_duration_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
+    /// `animation-delay` in milliseconds
+    AnimationDelay: "animation-delay" => animation_delay_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
+    /// `animation-iteration-count` (`infinite` is +∞)
+    AnimationIterationCount: "animation-iteration-count" => animation_iteration_count: f32 = 1.0, inherited = false, syntax = Single, convert = conv::iteration_count;
+    /// `animation-fill-mode`
+    AnimationFillMode: "animation-fill-mode" => animation_fill_mode: AnimationFillMode = AnimationFillMode::None, inherited = false, syntax = Single, convert = conv::kw::<AnimationFillMode>;
+    /// `animation-play-state`
+    AnimationPlayState: "animation-play-state" => animation_play_state: AnimationPlayState = AnimationPlayState::Running, inherited = false, syntax = Single, convert = conv::kw::<AnimationPlayState>;
+    /// `animation-direction`
+    AnimationDirection: "animation-direction" => animation_direction: AnimationDirection = AnimationDirection::Normal, inherited = false, syntax = Single, convert = conv::kw::<AnimationDirection>;
+    /// `animation-timing-function` (first ident)
+    AnimationTimingFunction: "animation-timing-function" => animation_timing_function: String = String::from("ease"), inherited = false, syntax = Single, convert = conv::cursor;
+    /// `isolation`
+    Isolation: "isolation" => isolation: Isolation = Isolation::Auto, inherited = false, syntax = Single, convert = conv::kw::<Isolation>;
+    /// `mix-blend-mode`
+    MixBlendMode: "mix-blend-mode" => mix_blend_mode: MixBlendMode = MixBlendMode::Normal, inherited = false, syntax = Single, convert = conv::kw::<MixBlendMode>;
     /// `transition-property` (`all` default)
     TransitionProperty: "transition-property" => transition_property: String = String::from("all"), inherited = false, syntax = Single, convert = conv::ident_name;
     /// `transition-duration` in milliseconds
     TransitionDuration: "transition-duration" => transition_duration_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
+    /// `transition-delay` in milliseconds
+    TransitionDelay: "transition-delay" => transition_delay_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
+    /// `transition-timing-function` (first ident)
+    TransitionTimingFunction: "transition-timing-function" => transition_timing_function: String = String::from("ease"), inherited = false, syntax = Single, convert = conv::cursor;
     /// `outline-width` (pixels)
     OutlineWidth: "outline-width" => outline_width: f32 = 0.0, inherited = false, syntax = Single, convert = conv::border_width;
     /// `outline-style`
@@ -1361,6 +1437,14 @@ property_table! {
     ColumnCount: "column-count" => column_count: Option<u32> = None, inherited = false, syntax = Single, convert = conv::column_count;
     /// `column-width` (`auto` is `None`)
     ColumnWidth: "column-width" => column_width: Option<f32> = None, inherited = false, syntax = Single, convert = conv::column_width;
+    /// `column-rule-width` (pixels)
+    ColumnRuleWidth: "column-rule-width" => column_rule_width: f32 = 0.0, inherited = false, syntax = Single, convert = conv::border_width;
+    /// `column-rule-color`
+    ColumnRuleColor: "column-rule-color" => column_rule_color: Color = Color::CurrentColor, inherited = false, syntax = Single, convert = conv::color;
+    /// `column-span`
+    ColumnSpan: "column-span" => column_span: ColumnSpan = ColumnSpan::None, inherited = false, syntax = Single, convert = conv::kw::<ColumnSpan>;
+    /// `grid-auto-flow`
+    GridAutoFlow: "grid-auto-flow" => grid_auto_flow: GridAutoFlow = GridAutoFlow::Row, inherited = false, syntax = Single, convert = conv::grid_auto_flow;
     /// `table-layout`
     TableLayout: "table-layout" => table_layout: TableLayout = TableLayout::Auto, inherited = false, syntax = Single, convert = conv::kw::<TableLayout>;
     /// `empty-cells`
@@ -1453,6 +1537,7 @@ impl ComputedStyle {
             )
             || self.display.is_flex()
             || self.display.is_grid()
+            || self.isolation == Isolation::Isolate
     }
 }
 
@@ -1464,21 +1549,11 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[];
 /// Known properties the engine parses names for but does not implement.
 /// Declarations of these count as `deferred` rather than `unknown`.
 pub const DEFERRED_PROPERTIES: &[&str] = &[
-    "animation-delay",
-    "animation-timing-function",
-    "animation-iteration-count",
-    "animation-direction",
-    "animation-fill-mode",
-    "animation-play-state",
-    "transition-delay",
-    "transition-timing-function",
     "background-position-x",
     "background-position-y",
     "background-attachment",
     "background-blend-mode",
     "border-image",
-    "mix-blend-mode",
-    "isolation",
     "font-variant",
     "font-variant-ligatures",
     "font-variant-numeric",
@@ -1489,8 +1564,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "font-optical-sizing",
     "text-rendering",
     "text-decoration-style",
-    "text-decoration-thickness",
-    "text-underline-offset",
     "text-underline-position",
     "text-size-adjust",
     "-webkit-text-size-adjust",
@@ -1510,7 +1583,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "quotes",
     "counter-reset",
     "counter-increment",
-    "tab-size",
     "hyphens",
     "orphans",
     "widows",
@@ -1523,8 +1595,7 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "speak",
     "src",
     "unicode-range",
-    "column-rule",
-    "column-span",
+    "column-rule-style",
     "transform-style",
     "transform-box",
     "perspective",
@@ -1532,7 +1603,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "backface-visibility",
     "container-name",
     "container",
-    "grid-auto-flow",
     "accent-color",
     "color-scheme",
     "forced-color-adjust",
@@ -1541,8 +1611,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "text-align-last",
     "text-justify",
     "hanging-punctuation",
-    "line-clamp",
-    "-webkit-line-clamp",
     "-webkit-box-orient",
     "view-transition-name",
     "text-emphasis",
@@ -3033,27 +3101,71 @@ pub fn expand_shorthand<'i>(
                     return Some(vec![
                         (P::AnimationName, values[0].clone()),
                         (P::AnimationDuration, values[0].clone()),
+                        (P::AnimationDelay, values[0].clone()),
+                        (P::AnimationIterationCount, values[0].clone()),
+                        (P::AnimationFillMode, values[0].clone()),
+                        (P::AnimationPlayState, values[0].clone()),
+                        (P::AnimationDirection, values[0].clone()),
+                        (P::AnimationTimingFunction, values[0].clone()),
                     ]);
                 }
                 let mut name = SpecifiedValue::Keyword("none".into());
                 let mut duration = SpecifiedValue::Number(0.0);
+                let mut delay = SpecifiedValue::Number(0.0);
+                let mut iteration = SpecifiedValue::Number(1.0);
+                let mut fill = SpecifiedValue::Keyword("none".into());
+                let mut play = SpecifiedValue::Keyword("running".into());
+                let mut direction = SpecifiedValue::Keyword("normal".into());
+                let mut timing = SpecifiedValue::Keyword("ease".into());
+                let mut times = 0u8;
                 for v in values {
-                    if matches!(
-                        &v,
-                        SpecifiedValue::Number(n) if *n >= 0.0
-                    ) || matches!(&v, SpecifiedValue::Integer(i) if *i >= 0)
-                    {
-                        duration = v;
-                    } else if matches!(
-                        &v,
-                        SpecifiedValue::Keyword(_) | SpecifiedValue::Str(_)
-                    ) {
-                        name = v;
+                    match &v {
+                        SpecifiedValue::Number(n) if *n >= 0.0 => {
+                            if times == 0 {
+                                duration = v;
+                            } else {
+                                delay = v;
+                            }
+                            times += 1;
+                        }
+                        SpecifiedValue::Integer(i) if *i >= 0 => iteration = v,
+                        SpecifiedValue::Keyword(k)
+                            if matches!(k.as_str(), "forwards" | "backwards" | "both") =>
+                        {
+                            fill = v;
+                        }
+                        SpecifiedValue::Keyword(k) if matches!(k.as_str(), "running" | "paused") => {
+                            play = v;
+                        }
+                        SpecifiedValue::Keyword(k)
+                            if matches!(
+                                k.as_str(),
+                                "normal" | "reverse" | "alternate" | "alternate-reverse"
+                            ) =>
+                        {
+                            direction = v;
+                        }
+                        SpecifiedValue::Keyword(k)
+                            if matches!(
+                                k.as_str(),
+                                "ease" | "linear" | "ease-in" | "ease-out" | "ease-in-out"
+                            ) =>
+                        {
+                            timing = v;
+                        }
+                        SpecifiedValue::Keyword(_) | SpecifiedValue::Str(_) => name = v,
+                        _ => {}
                     }
                 }
                 Some(vec![
                     (P::AnimationName, name),
                     (P::AnimationDuration, duration),
+                    (P::AnimationDelay, delay),
+                    (P::AnimationIterationCount, iteration),
+                    (P::AnimationFillMode, fill),
+                    (P::AnimationPlayState, play),
+                    (P::AnimationDirection, direction),
+                    (P::AnimationTimingFunction, timing),
                 ])
             }
             "outline" => {
@@ -3102,27 +3214,42 @@ pub fn expand_shorthand<'i>(
                     return Some(vec![
                         (P::TransitionProperty, values[0].clone()),
                         (P::TransitionDuration, values[0].clone()),
+                        (P::TransitionDelay, values[0].clone()),
+                        (P::TransitionTimingFunction, values[0].clone()),
                     ]);
                 }
                 let mut property = SpecifiedValue::Keyword("all".into());
                 let mut duration = SpecifiedValue::Number(0.0);
+                let mut delay = SpecifiedValue::Number(0.0);
+                let mut timing = SpecifiedValue::Keyword("ease".into());
+                let mut times = 0u8;
                 for v in values {
-                    if matches!(
-                        &v,
-                        SpecifiedValue::Number(n) if *n >= 0.0
-                    ) || matches!(&v, SpecifiedValue::Integer(i) if *i >= 0)
-                    {
-                        duration = v;
-                    } else if matches!(
-                        &v,
-                        SpecifiedValue::Keyword(_) | SpecifiedValue::Str(_)
-                    ) {
-                        property = v;
+                    match &v {
+                        SpecifiedValue::Number(n) if *n >= 0.0 => {
+                            if times == 0 {
+                                duration = v;
+                            } else {
+                                delay = v;
+                            }
+                            times += 1;
+                        }
+                        SpecifiedValue::Keyword(k)
+                            if matches!(
+                                k.as_str(),
+                                "ease" | "linear" | "ease-in" | "ease-out" | "ease-in-out"
+                            ) =>
+                        {
+                            timing = v;
+                        }
+                        SpecifiedValue::Keyword(_) | SpecifiedValue::Str(_) => property = v,
+                        _ => {}
                     }
                 }
                 Some(vec![
                     (P::TransitionProperty, property),
                     (P::TransitionDuration, duration),
+                    (P::TransitionDelay, delay),
+                    (P::TransitionTimingFunction, timing),
                 ])
             }
             "columns" => {
@@ -3481,24 +3608,22 @@ mod tests {
         ok("transition-property", "opacity");
         ok("transition-duration", "0.2s");
         let anim = expand("animation", "fade 1s").expect("animation shorthand");
-        assert_eq!(
-            anim,
-            vec![
-                (PropertyId::AnimationName, SpecifiedValue::Keyword("fade".into())),
-                (PropertyId::AnimationDuration, SpecifiedValue::Number(1000.0)),
-            ]
-        );
+        assert_eq!(anim[0], (PropertyId::AnimationName, SpecifiedValue::Keyword("fade".into())));
+        assert_eq!(anim[1], (PropertyId::AnimationDuration, SpecifiedValue::Number(1000.0)));
+        assert_eq!(anim.len(), 8);
         let trans = expand("transition", "opacity 200ms").expect("transition shorthand");
         assert_eq!(
-            trans,
-            vec![
-                (
-                    PropertyId::TransitionProperty,
-                    SpecifiedValue::Keyword("opacity".into())
-                ),
-                (PropertyId::TransitionDuration, SpecifiedValue::Number(200.0)),
-            ]
+            trans[0],
+            (
+                PropertyId::TransitionProperty,
+                SpecifiedValue::Keyword("opacity".into())
+            )
         );
+        assert_eq!(
+            trans[1],
+            (PropertyId::TransitionDuration, SpecifiedValue::Number(200.0))
+        );
+        assert_eq!(trans.len(), 4);
         ok("border-top-style", "dashed");
         ok("pointer-events", "none");
         ok("opacity", "0.5");
@@ -3534,11 +3659,31 @@ mod tests {
         ok("position-area", "bottom");
         ok("inset-area", "top");
         ok("backdrop-filter", "blur(4px)");
+        ok("animation-delay", "200ms");
+        ok("animation-iteration-count", "infinite");
+        ok("animation-fill-mode", "forwards");
+        ok("animation-play-state", "paused");
+        ok("animation-direction", "reverse");
+        ok("animation-timing-function", "linear");
+        ok("isolation", "isolate");
+        ok("tab-size", "4");
+        ok("line-clamp", "2");
+        ok("-webkit-line-clamp", "3");
+        ok("text-decoration-thickness", "2px");
+        ok("text-underline-offset", "3px");
+        ok("mix-blend-mode", "multiply");
+        ok("grid-auto-flow", "column");
+        ok("grid-auto-flow", "dense");
+        ok("column-span", "all");
+        ok("column-rule-width", "2px");
+        ok("column-rule-color", "red");
+        ok("transition-delay", "100ms");
+        ok("transition-timing-function", "linear");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 146);
+        assert_eq!(PropertyId::ALL.len(), 164);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

@@ -46,7 +46,9 @@ fn establishes_context(bx: &LayoutBox) -> bool {
     bx.node.is_some()
         && ((bx.style.position.is_positioned() && bx.style.z_index != ZIndex::Auto)
             || bx.style.position == Position::Fixed
-            || bx.style.opacity < 1.0)
+            || bx.style.opacity < 1.0
+            || bx.style.isolation == ve_style::Isolation::Isolate
+            || bx.style.mix_blend_mode != ve_style::MixBlendMode::Normal)
 }
 
 fn is_positioned_auto(bx: &LayoutBox) -> bool {

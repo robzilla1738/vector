@@ -2323,7 +2323,7 @@ impl Page {
     }
 
     fn apply_animations(&mut self) {
-        let animated: Vec<(NodeId, String, f32)> = self
+        let animated: Vec<(NodeId, String, f32, f32, f32, ve_style::AnimationFillMode, ve_style::AnimationPlayState, ve_style::AnimationDirection, String)> = self
             .doc
             .elements()
             .filter_map(|id| {
@@ -2335,6 +2335,12 @@ impl Page {
                         id,
                         style.animation_name.clone(),
                         style.animation_duration_ms,
+                        style.animation_delay_ms,
+                        style.animation_iteration_count,
+                        style.animation_fill_mode,
+                        style.animation_play_state,
+                        style.animation_direction,
+                        style.animation_timing_function.clone(),
                     ))
                 }
             })
@@ -2344,14 +2350,18 @@ impl Page {
         }
         let keyframes = self.style_engine.keyframes();
         let now = self.now_ms() as f32;
-        for (id, name, duration) in animated {
+        for (id, name, duration, delay, iterations, fill, play, direction, timing) in animated {
             let Some(rule) = keyframes
                 .iter()
                 .find(|k| k.name.eq_ignore_ascii_case(&name))
             else {
                 continue;
             };
-            let t = (now / duration).clamp(0.0, 1.0);
+            let Some(t) = animation_progress(
+                now, delay, duration, iterations, fill, play, direction, &timing,
+            ) else {
+                continue;
+            };
             if let Some(opacity) = interpolate_keyframe_opacity(rule, t) {
                 self.style_tree.override_opacity(id, opacity);
             }
@@ -5558,6 +5568,76 @@ fn collect_imports(css: &str) -> Vec<String> {
         }
         rest = after[end + 1..].trim_start();
     }
+}
+
+fn ease_unit(t: f32, timing: &str) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    match timing {
+        "linear" => t,
+        "ease-in" => t * t,
+        "ease-out" => 1.0 - (1.0 - t) * (1.0 - t),
+        _ => t * t * (3.0 - 2.0 * t),
+    }
+}
+
+fn animation_progress(
+    now: f32,
+    delay: f32,
+    duration: f32,
+    iterations: f32,
+    fill: ve_style::AnimationFillMode,
+    play: ve_style::AnimationPlayState,
+    direction: ve_style::AnimationDirection,
+    timing: &str,
+) -> Option<f32> {
+    if duration <= 0.0 {
+        return None;
+    }
+    let paused = play == ve_style::AnimationPlayState::Paused;
+    if now < delay || paused && now <= delay {
+        return if fill.backwards() {
+            Some(ease_unit(
+                match direction {
+                    ve_style::AnimationDirection::Reverse
+                    | ve_style::AnimationDirection::AlternateReverse => 1.0,
+                    _ => 0.0,
+                },
+                timing,
+            ))
+        } else if paused {
+            Some(ease_unit(0.0, timing))
+        } else {
+            None
+        };
+    }
+    let elapsed = if paused { 0.0 } else { now - delay };
+    let total = duration * iterations;
+    if elapsed >= total && total.is_finite() {
+        return if fill.forwards() {
+            let end = match direction {
+                ve_style::AnimationDirection::Reverse => 0.0,
+                ve_style::AnimationDirection::Alternate if iterations as i32 % 2 == 0 => 0.0,
+                ve_style::AnimationDirection::AlternateReverse if iterations as i32 % 2 == 1 => 0.0,
+                _ => 1.0,
+            };
+            Some(ease_unit(end, timing))
+        } else {
+            None
+        };
+    }
+    let cycle = if duration > 0.0 { elapsed / duration } else { 0.0 };
+    let iter = cycle.floor();
+    let mut t = cycle - iter;
+    let reverse = match direction {
+        ve_style::AnimationDirection::Reverse => true,
+        ve_style::AnimationDirection::Alternate => iter as i32 % 2 == 1,
+        ve_style::AnimationDirection::AlternateReverse => iter as i32 % 2 == 0,
+        ve_style::AnimationDirection::Normal => false,
+    };
+    if reverse {
+        t = 1.0 - t;
+    }
+    Some(ease_unit(t, timing))
 }
 
 /// Natural size of a `data:` image without fetching anything.

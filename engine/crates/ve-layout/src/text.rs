@@ -201,7 +201,11 @@ impl MetricShaper {
         let mut width = 0.0;
         let mut chars = 0usize;
         for c in text.chars() {
-            let advance = self.char_advance(c, font_size);
+            let advance = if c == '\t' {
+                style.tab_size.max(1) as f32 * self.char_advance(' ', font_size)
+            } else {
+                self.char_advance(c, font_size)
+            };
             width += advance;
             if advance > 0.0 {
                 chars += 1;

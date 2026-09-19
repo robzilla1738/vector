@@ -189,6 +189,9 @@ pub fn layout_inline(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect)
     flow_children(&mut children, &mut state, align);
     state.finish_line(align);
     bx.lines = state.lines;
+    if let Some(n) = bx.style.line_clamp {
+        bx.lines.truncate(n.max(1) as usize);
+    }
     sync_atomic_boxes(&mut children, &bx.lines);
     bx.children = children;
     bx.lines

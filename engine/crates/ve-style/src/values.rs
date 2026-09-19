@@ -1325,6 +1325,130 @@ keyword_enum! {
 }
 
 keyword_enum! {
+    /// `animation-fill-mode`.
+    AnimationFillMode {
+        /// No fill outside the active interval.
+        None = "none",
+        /// Hold the last keyframe after the animation ends.
+        Forwards = "forwards",
+        /// Apply the first keyframe during delay.
+        Backwards = "backwards",
+        /// Both.
+        Both = "both",
+    }
+}
+
+impl AnimationFillMode {
+    /// Fill during the delay interval.
+    #[must_use]
+    pub fn backwards(self) -> bool {
+        matches!(self, Self::Backwards | Self::Both)
+    }
+
+    /// Fill after the active interval.
+    #[must_use]
+    pub fn forwards(self) -> bool {
+        matches!(self, Self::Forwards | Self::Both)
+    }
+}
+
+keyword_enum! {
+    /// `animation-play-state`.
+    AnimationPlayState {
+        /// Animation progresses with time.
+        Running = "running",
+        /// Animation is frozen.
+        Paused = "paused",
+    }
+}
+
+keyword_enum! {
+    /// `animation-direction`.
+    AnimationDirection {
+        /// Play forwards.
+        Normal = "normal",
+        /// Play backwards.
+        Reverse = "reverse",
+        /// Alternate each iteration.
+        Alternate = "alternate",
+        /// Alternate, starting backwards.
+        AlternateReverse = "alternate-reverse",
+    }
+}
+
+keyword_enum! {
+    /// `isolation`.
+    Isolation {
+        /// Auto stacking.
+        Auto = "auto",
+        /// New stacking context.
+        Isolate = "isolate",
+    }
+}
+
+keyword_enum! {
+    /// `mix-blend-mode`.
+    MixBlendMode {
+        /// Source over, no mixing.
+        Normal = "normal",
+        /// Multiply.
+        Multiply = "multiply",
+        /// Screen.
+        Screen = "screen",
+        /// Overlay.
+        Overlay = "overlay",
+        /// Darken.
+        Darken = "darken",
+        /// Lighten.
+        Lighten = "lighten",
+        /// Color dodge.
+        ColorDodge = "color-dodge",
+        /// Color burn.
+        ColorBurn = "color-burn",
+        /// Hard light.
+        HardLight = "hard-light",
+        /// Soft light.
+        SoftLight = "soft-light",
+        /// Difference.
+        Difference = "difference",
+        /// Exclusion.
+        Exclusion = "exclusion",
+        /// Hue.
+        Hue = "hue",
+        /// Saturation.
+        Saturation = "saturation",
+        /// Color.
+        Color = "color",
+        /// Luminosity.
+        Luminosity = "luminosity",
+    }
+}
+
+keyword_enum! {
+    /// `grid-auto-flow`.
+    GridAutoFlow {
+        /// Fill rows.
+        Row = "row",
+        /// Fill columns.
+        Column = "column",
+        /// Dense row packing (`dense` / `row dense`).
+        RowDense = "dense",
+        /// Dense column packing.
+        ColumnDense = "column-dense",
+    }
+}
+
+keyword_enum! {
+    /// `column-span`.
+    ColumnSpan {
+        /// Stay in one column.
+        None = "none",
+        /// Span the full multicol container.
+        All = "all",
+    }
+}
+
+keyword_enum! {
     /// The `content-visibility` property.
     ContentVisibility {
         /// Paint and lay out normally.

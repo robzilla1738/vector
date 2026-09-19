@@ -241,3 +241,37 @@ fn css_animation_interpolates_opacity_from_keyframes() {
         "mid-animation opacity was {mid}"
     );
 }
+
+#[test]
+fn css_animation_respects_delay_and_fill() {
+    let mut page = Page::from_html(
+        1,
+        r#"<style>
+            @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+            #box { animation: fade 1000ms 500ms both; width: 10px; height: 10px }
+           </style><div id=box>x</div>"#,
+        None,
+        DEFAULT_VIEWPORT,
+    );
+    let id = page.document().element_by_id("box").unwrap();
+    assert!(
+        (page.style_tree().style(id).opacity - 0.0).abs() < 1e-4,
+        "backwards fill uses the from keyframe during delay"
+    );
+    page.pump_virtual_time(500);
+    page.update();
+    assert!(
+        (page.style_tree().style(id).opacity - 0.0).abs() < 0.05,
+        "animation starts after delay"
+    );
+    page.pump_virtual_time(500);
+    page.update();
+    let mid = page.style_tree().style(id).opacity;
+    assert!((mid - 0.5).abs() < 0.08, "mid-active opacity was {mid}");
+    page.pump_virtual_time(2000);
+    page.update();
+    assert!(
+        (page.style_tree().style(id).opacity - 1.0).abs() < 0.05,
+        "forwards fill holds the last keyframe"
+    );
+}

@@ -32,6 +32,27 @@ fn color(c: ve_style::Rgba) -> Color {
     Color::from_rgba8(c.r, c.g, c.b, (c.a * 255.0).round() as u8)
 }
 
+fn mix_blend(mode: ve_style::MixBlendMode) -> Mix {
+    match mode {
+        ve_style::MixBlendMode::Normal => Mix::Normal,
+        ve_style::MixBlendMode::Multiply => Mix::Multiply,
+        ve_style::MixBlendMode::Screen => Mix::Screen,
+        ve_style::MixBlendMode::Overlay => Mix::Overlay,
+        ve_style::MixBlendMode::Darken => Mix::Darken,
+        ve_style::MixBlendMode::Lighten => Mix::Lighten,
+        ve_style::MixBlendMode::ColorDodge => Mix::ColorDodge,
+        ve_style::MixBlendMode::ColorBurn => Mix::ColorBurn,
+        ve_style::MixBlendMode::HardLight => Mix::HardLight,
+        ve_style::MixBlendMode::SoftLight => Mix::SoftLight,
+        ve_style::MixBlendMode::Difference => Mix::Difference,
+        ve_style::MixBlendMode::Exclusion => Mix::Exclusion,
+        ve_style::MixBlendMode::Hue => Mix::Hue,
+        ve_style::MixBlendMode::Saturation => Mix::Saturation,
+        ve_style::MixBlendMode::Color => Mix::Color,
+        ve_style::MixBlendMode::Luminosity => Mix::Luminosity,
+    }
+}
+
 fn is_lost_device(err: &GfxError) -> bool {
     let GfxError::Gpu(s) = err else {
         return false;
@@ -243,9 +264,25 @@ pub fn build_scene_fonts(
                 );
                 scene.push_layer(Fill::NonZero, Mix::Normal, *alpha, transform, &everything);
             }
-            DisplayItem::PopClip | DisplayItem::PopOpacity | DisplayItem::PopTransform => {
-                scene.pop_layer()
+            DisplayItem::PushBlend(mode) => {
+                let everything = KRect::new(
+                    0.0,
+                    0.0,
+                    f64::from(list.size.width),
+                    f64::from(list.size.height),
+                );
+                scene.push_layer(
+                    Fill::NonZero,
+                    mix_blend(*mode),
+                    1.0,
+                    transform,
+                    &everything,
+                );
             }
+            DisplayItem::PopClip
+            | DisplayItem::PopOpacity
+            | DisplayItem::PopTransform
+            | DisplayItem::PopBlend => scene.pop_layer(),
             DisplayItem::RoundedClip { rect, .. } => {
                 scene.push_clip_layer(Fill::NonZero, transform, &krect(*rect));
             }

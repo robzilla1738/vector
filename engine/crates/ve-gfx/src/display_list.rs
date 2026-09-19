@@ -7,8 +7,8 @@ use ve_layout::LayoutTree;
 use ve_style::{
     BackgroundClip, BackgroundImage, BackgroundOrigin, BackgroundPosition, BackgroundRepeat,
     BackgroundSize, ComputedStyle, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto,
-    ContentVisibility, Display, EmptyCells, ObjectFit, Rgba, StyleTree, TextDecorationLine,
-    TransformOp,
+    ContentVisibility, Display, EmptyCells, MixBlendMode, ObjectFit, Rgba, StyleTree,
+    TextDecorationLine, TransformOp,
 };
 
 use crate::image::ImageHandle;
@@ -95,6 +95,10 @@ pub enum DisplayItem {
     PushOpacity(f32),
     /// Ends an opacity group.
     PopOpacity,
+    /// Blend subsequent items with the backdrop until [`DisplayItem::PopBlend`].
+    PushBlend(MixBlendMode),
+    /// Ends a mix-blend group.
+    PopBlend,
     /// Clip to a rounded rectangle until [`DisplayItem::PopClip`].
     RoundedClip {
         /// Bounds.
@@ -160,6 +164,8 @@ impl DisplayItem {
             Self::PopClip
             | Self::PushOpacity(_)
             | Self::PopOpacity
+            | Self::PushBlend(_)
+            | Self::PopBlend
             | Self::PushTransform { .. }
             | Self::PopTransform => None,
         }
@@ -361,6 +367,7 @@ impl DisplayList {
             let style = styles.style(node);
             let clip = layout.clip_of(node);
             let faded = style.opacity < 1.0 - f32::EPSILON;
+            let blended = style.mix_blend_mode != MixBlendMode::Normal;
             let radius = style
                 .border_top_left_radius
                 .max(style.border_top_right_radius)
@@ -439,6 +446,9 @@ impl DisplayList {
             if faded {
                 list.push(DisplayItem::PushOpacity(style.opacity.clamp(0.0, 1.0)));
             }
+            if blended {
+                list.push(DisplayItem::PushBlend(style.mix_blend_mode));
+            }
             if let Some(text) = &item.text {
                 if style.visibility == ve_style::Visibility::Visible
                     && style.content_visibility != ContentVisibility::Hidden
@@ -470,9 +480,9 @@ impl DisplayList {
                         list.push(DisplayItem::Rect {
                             rect: Rect::new(
                                 item.rect.x(),
-                                item.rect.y() + item.baseline + 1.0,
+                                item.rect.y() + item.baseline + style.text_underline_offset,
                                 item.rect.width().max(1.0),
-                                1.0,
+                                style.text_decoration_thickness.max(1.0),
                             ),
                             color: style.text_decoration_color.resolve(style.color),
                         });
@@ -579,6 +589,32 @@ impl DisplayList {
                         });
                     }
                 }
+                if let Some(n) = style.column_count.filter(|n| *n >= 2) {
+                    if style.column_rule_width > 0.0 {
+                        let gap = style.column_gap.resolve(item.rect.width());
+                        let cols = n as f32;
+                        let col_w =
+                            ((item.rect.width() - gap * (cols - 1.0)) / cols).max(0.0);
+                        let color = style.column_rule_color.resolve(style.color);
+                        if !color.is_transparent() {
+                            for i in 0..n - 1 {
+                                let x = item.rect.x()
+                                    + (i as f32 + 1.0) * col_w
+                                    + i as f32 * gap
+                                    + (gap - style.column_rule_width) * 0.5;
+                                list.push(DisplayItem::Rect {
+                                    rect: Rect::new(
+                                        x,
+                                        item.rect.y(),
+                                        style.column_rule_width.max(1.0),
+                                        item.rect.height(),
+                                    ),
+                                    color,
+                                });
+                            }
+                        }
+                    }
+                }
                 if !style.outline_style.is_none() && style.outline_width > 0.0 {
                     let grow = style.outline_offset + style.outline_width;
                     let outline = Rect::new(
@@ -596,6 +632,9 @@ impl DisplayList {
                         });
                     }
                 }
+            }
+            if blended {
+                list.push(DisplayItem::PopBlend);
             }
             if faded {
                 list.push(DisplayItem::PopOpacity);
@@ -923,7 +962,7 @@ mod tests {
 
     #[test]
     fn from_layout_emits_text_underline() {
-        let html = "<style>body{margin:0} #t{text-decoration:underline}</style><p id=t>Hi</p>";
+        let html = "<style>body{margin:0} #t{text-decoration:underline;text-decoration-thickness:4px;text-underline-offset:2px}</style><p id=t>Hi</p>";
         let doc = ve_html::parse_document(html).document;
         let mut engine = StyleEngine::new();
         engine.add_document_styles(&doc);
@@ -933,15 +972,60 @@ mod tests {
             styles.style(id).text_decoration_line,
             TextDecorationLine::Underline
         );
+        assert!((styles.style(id).text_decoration_thickness - 4.0).abs() < f32::EPSILON);
+        assert!((styles.style(id).text_underline_offset - 2.0).abs() < f32::EPSILON);
         let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
         let list = DisplayList::from_layout(&layout, &styles);
+        let underline = list.items().iter().find_map(|i| match i {
+            DisplayItem::Rect { rect, .. } if (rect.height() - 4.0).abs() < 0.1 => Some(*rect),
+            _ => None,
+        });
         assert!(
-            list.items().iter().any(|i| matches!(i, DisplayItem::Rect { .. }))
+            underline.is_some()
                 && list
                     .items()
                     .iter()
                     .any(|i| matches!(i, DisplayItem::Text(run) if run.text == "Hi")),
             "underline missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_mix_blend_mode() {
+        let html = "<style>body{margin:0} #t{mix-blend-mode:multiply;width:10px;height:10px;background:red}</style><div id=t></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::PushBlend(MixBlendMode::Multiply))),
+            "mix-blend-mode missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_column_rule() {
+        let html = "<style>body{margin:0} #c{column-count:2;column-gap:16px;column-rule-width:2px;column-rule-color:blue;width:200px;height:40px}</style>\
+                    <div id=c><div style='height:20px'></div><div style='height:20px'></div></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(400.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Rect { rect, color }
+                    if (rect.width() - 2.0).abs() < 0.5 && *color == Rgba::rgb(0, 0, 255)
+            )),
+            "column-rule missing: {:?}",
             list.items()
         );
     }

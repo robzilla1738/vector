@@ -569,6 +569,7 @@ impl Renderer for SoftwareRenderer {
                 DisplayItem::PopOpacity => {
                     canvas.opacity.pop();
                 }
+                DisplayItem::PushBlend(_) | DisplayItem::PopBlend => {}
                 DisplayItem::RoundedClip { rect, .. } => {
                     let mapped = canvas.map_rect(*rect);
                     let clipped = canvas.clip_rect().intersection(&mapped).unwrap_or(Rect::ZERO);

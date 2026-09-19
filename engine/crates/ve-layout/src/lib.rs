@@ -1696,6 +1696,105 @@ mod tests {
     }
 
     #[test]
+    fn tab_size_widens_pre_tabs() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px}\
+             pre{margin:0;white-space:pre;display:inline-block}\
+             #a{tab-size:2} #b{tab-size:8}</style>\
+             <pre id=a>\t</pre><pre id=b>\t</pre>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.width() - 16.0).abs() < 1.0,
+            "tab-size 2 at 16px / 0.5em space = 16px, got {}",
+            a.width()
+        );
+        assert!(
+            (b.width() - 64.0).abs() < 1.0,
+            "tab-size 8 at 16px / 0.5em space = 64px, got {}",
+            b.width()
+        );
+    }
+
+    #[test]
+    fn line_clamp_truncates_lines() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:80px;font-size:16px;line-height:20px;line-clamp:2;margin:0}</style>\
+             <p id=p>aaaa bbbb cccc dddd eeee ffff</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let lines = &tree.root.find(p).unwrap().lines;
+        assert_eq!(lines.len(), 2, "line-clamp:2, got {:?}", lines.len());
+    }
+
+    #[test]
+    fn isolation_establishes_bfc() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{isolation:isolate;width:200px} #f{float:left;width:40px;height:30px}</style>\
+             <div id=p><div id=f></div></div>",
+            400.0,
+        );
+        let p = rect(&tree, &engine, &doc, "#p");
+        assert!(
+            p.height() >= 30.0,
+            "isolation:isolate contains the float, got height {}",
+            p.height()
+        );
+    }
+
+    #[test]
+    fn grid_auto_flow_column_fills_down_first() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}\
+             .g{display:grid;width:40px;grid-template-columns:20px 20px;grid-template-rows:10px 10px;grid-auto-flow:column}\
+             .g>div{width:20px;height:10px}</style>\
+             <div class=g><div id=a></div><div id=b></div><div id=c></div></div>",
+            400.0,
+        );
+        let gid = engine.select_one(&doc, ".g").unwrap();
+        assert_eq!(
+            tree.root.find(gid).unwrap().style.grid_auto_flow,
+            ve_style::GridAutoFlow::Column,
+            "computed grid-auto-flow"
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        let c = rect(&tree, &engine, &doc, "#c");
+        assert!(
+            (a.x() - b.x()).abs() < 1.0 && b.y() > a.y() + 5.0,
+            "column flow stacks a then b, got a={a:?} b={b:?}"
+        );
+        assert!(
+            c.x() > a.x() + 10.0 && (c.y() - a.y()).abs() < 1.0,
+            "third item starts column 2, got c={c:?}"
+        );
+    }
+
+    #[test]
+    fn column_span_all_uses_full_width() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{column-count:2;column-gap:0;width:200px}\
+             #c>div{height:10px} #s{column-span:all;height:8px}</style>\
+             <div id=c><div id=s></div><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let s = rect(&tree, &engine, &doc, "#s");
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (s.width() - 200.0).abs() < 1.0,
+            "spanner is full width, got {s:?}"
+        );
+        assert!(
+            (a.y() - b.y()).abs() < 0.5 && b.x() > a.x() + 40.0,
+            "later children still columnize, a={a:?} b={b:?}"
+        );
+    }
+
+    #[test]
     fn position_anchor_and_area_place_against_named_box() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0}\

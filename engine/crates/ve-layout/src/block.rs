@@ -5,8 +5,8 @@ use std::collections::HashMap;
 
 use ve_core::{Edges, Point, Rect, Size};
 use ve_style::{
-    BoxSizing, ComputedStyle, Float, LengthPercentage, LengthPercentageAuto, ListStylePosition,
-    Position, PositionArea, PseudoElement, WritingMode,
+    BoxSizing, ColumnSpan, ComputedStyle, Float, LengthPercentage, LengthPercentageAuto,
+    ListStylePosition, Position, PositionArea, PseudoElement, WritingMode,
 };
 
 use crate::box_tree::{BoxKind, Fragment, LayoutBox};
@@ -486,16 +486,40 @@ fn layout_block_flow_columns(
     cols: u32,
 ) -> f32 {
     let cols = cols.max(2) as usize;
-    let gap = 16.0_f32;
+    let gap = bx.style.column_gap.resolve(content.width());
     let col_w = ((content.width() - gap * (cols as f32 - 1.0)) / cols as f32).max(0.0);
     let cb = ContainingBlock {
         width: col_w,
+        height: cb_height,
+    };
+    let full = ContainingBlock {
+        width: content.width(),
         height: cb_height,
     };
     let mut col_y = vec![content.y(); cols];
     let mut i = 0usize;
     for child in &mut bx.children {
         if child.is_out_of_flow() || child.is_float() {
+            continue;
+        }
+        if child.style.column_span == ColumnSpan::All {
+            let y = col_y.iter().copied().fold(content.y(), f32::max);
+            layout_box_at(
+                child,
+                ctx,
+                full,
+                Point::new(content.x(), y),
+                Forced::default(),
+            );
+            if child.style.position == Position::Relative || child.style.position == Position::Sticky
+            {
+                apply_relative_offset(child, full);
+            }
+            let bottom = child.rect.bottom();
+            for slot in &mut col_y {
+                *slot = bottom;
+            }
+            i = 0;
             continue;
         }
         let col = i % cols;

@@ -1900,6 +1900,10 @@ fn scene_item(item: &ve_gfx::DisplayItem) -> serde_json::Value {
         ve_gfx::DisplayItem::PopClip => serde_json::json!({"kind": "popClip"}),
         ve_gfx::DisplayItem::PushOpacity(a) => serde_json::json!({"kind": "opacity", "a": a}),
         ve_gfx::DisplayItem::PopOpacity => serde_json::json!({"kind": "popOpacity"}),
+        ve_gfx::DisplayItem::PushBlend(mode) => {
+            serde_json::json!({"kind": "blend", "mode": mode.to_string()})
+        }
+        ve_gfx::DisplayItem::PopBlend => serde_json::json!({"kind": "popBlend"}),
         ve_gfx::DisplayItem::RoundedClip { rect, radius } => serde_json::json!({
             "kind": "roundedClip",
             "x": rect.x(),
