@@ -575,10 +575,11 @@ fn paint_svg_ellipse(
     grads: &HashMap<String, SvgGrad>,
 ) {
     let (tx, ty) = svg_translate(tag);
-    let cx = svg_attr(tag, "cx").unwrap_or(0.0) + ox + tx;
-    let cy = svg_attr(tag, "cy").unwrap_or(0.0) + oy + ty;
-    let rx = svg_attr(tag, "rx").unwrap_or(0.0);
-    let ry = svg_attr(tag, "ry").unwrap_or(0.0);
+    let (sx, sy) = svg_scale(tag);
+    let cx = (svg_attr(tag, "cx").unwrap_or(0.0) + ox) * sx + tx;
+    let cy = (svg_attr(tag, "cy").unwrap_or(0.0) + oy) * sy + ty;
+    let rx = svg_attr(tag, "rx").unwrap_or(0.0) * sx;
+    let ry = svg_attr(tag, "ry").unwrap_or(0.0) * sy;
     let fill = svg_fill(tag);
     let x0 = (cx - rx).floor().max(0.0) as u32;
     let y0 = (cy - ry).floor().max(0.0) as u32;
