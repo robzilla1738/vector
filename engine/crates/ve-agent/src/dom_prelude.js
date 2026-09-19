@@ -4575,15 +4575,32 @@
       const box = dw || dh ? this._mapRect(dx, dy, dw, dh) : this._mapPoint(dx, dy).concat([0, 0]);
       D("canvasDrawImage", this.__h, img.__h, sx, sy, sw, sh, box[0], box[1], box[2], box[3]);
     }
-    fillText(t, x, y) {
-      const p = this._mapPoint(x, y);
+    _textOrigin(t, x, y) {
       const size = Number((/([0-9]*\.?[0-9]+)px/.exec(String(this._font || "")) || [])[1]) || 10;
-      D("canvasFillText", this.__h, String(t == null ? "" : t), p[0], p[1], String(this.fillStyle), size);
+      const text = String(t == null ? "" : t);
+      const align = String(this._textAlign || "start");
+      let ax = +x;
+      let ay = +y;
+      if (align === "center" || align === "right" || align === "end") {
+        const w = D("canvasMeasureText", this.__h, text, size);
+        const width = typeof w === "number" && w > 0 ? w : text.length * 6;
+        ax = align === "center" ? ax - width / 2 : ax - width;
+      }
+      const base = String(this._textBaseline || "alphabetic");
+      if (base === "top" || base === "hanging") ay += size * 0.8;
+      else if (base === "middle") ay += size * 0.35;
+      else if (base === "bottom" || base === "ideographic") ay -= size * 0.2;
+      return { text, size, x: ax, y: ay };
+    }
+    fillText(t, x, y) {
+      const o = this._textOrigin(t, x, y);
+      const p = this._mapPoint(o.x, o.y);
+      D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size);
     }
     strokeText(t, x, y) {
-      const p = this._mapPoint(x, y);
-      const size = Number((/([0-9]*\.?[0-9]+)px/.exec(String(this._font || "")) || [])[1]) || 10;
-      D("canvasStrokeText", this.__h, String(t == null ? "" : t), p[0], p[1], String(this.strokeStyle || this.fillStyle), size, Number(this._lineWidth) || 1);
+      const o = this._textOrigin(t, x, y);
+      const p = this._mapPoint(o.x, o.y);
+      D("canvasStrokeText", this.__h, o.text, p[0], p[1], String(this.strokeStyle || this.fillStyle), o.size, Number(this._lineWidth) || 1);
     }
     measureText(t) {
       if (arguments.length < 1) {

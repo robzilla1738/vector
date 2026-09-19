@@ -841,6 +841,22 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeSplitText", split)?;
+            let child_nodes = v8::FunctionTemplate::builder(native_node_child_nodes)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeChildNodes", child_nodes)?;
+            let box_metric = v8::FunctionTemplate::builder(native_element_box)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeBox", box_metric)?;
+            let set_scroll = v8::FunctionTemplate::builder(native_element_set_scroll)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeSetScroll", set_scroll)?;
+            let bounding = v8::FunctionTemplate::builder(native_element_bounding_rect)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeBoundingRect", bounding)?;
             Some(())
         })?;
         self.eval(
@@ -946,6 +962,26 @@ impl JsVm for V8Vm {
   Element.prototype.insertAdjacentHTML = function (pos, html) {
     globalThis.__veNativeInsertAdjacentHTML.call(this, pos, html == null ? "" : String(html));
   };
+  Element.prototype.getBoundingClientRect = function () {
+    return globalThis.__veNativeBoundingRect.call(this) || { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0 };
+  };
+  var boxMetric = function (which) {
+    return Number(globalThis.__veNativeBox.call(this, which)) || 0;
+  };
+  def(Element.prototype, "scrollTop", function () { return boxMetric.call(this, "scrollTop"); }, function (v) {
+    globalThis.__veNativeSetScroll.call(this, "y", Number(v) || 0);
+    try { this.dispatchEvent(new Event("scroll")); } catch (e) {}
+  });
+  def(Element.prototype, "scrollLeft", function () { return boxMetric.call(this, "scrollLeft"); }, function (v) {
+    globalThis.__veNativeSetScroll.call(this, "x", Number(v) || 0);
+    try { this.dispatchEvent(new Event("scroll")); } catch (e) {}
+  });
+  Object.defineProperty(Element.prototype, "clientWidth", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "clientWidth"); }
+  });
+  Object.defineProperty(Element.prototype, "clientHeight", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "clientHeight"); }
+  });
   Element.prototype.closest = function (s) {
     return wrapNode(globalThis.__veNativeClosest.call(this, s));
   };
@@ -973,6 +1009,7 @@ impl JsVm for V8Vm {
     });
   };
   defNode("parentNode", function () { return wrapNode(globalThis.__veNativeParentNode.call(this)); });
+  defNode("childNodes", function () { return wrapList(globalThis.__veNativeChildNodes.call(this)); });
   defNode("firstChild", function () { return wrapNode(globalThis.__veNativeFirstChild.call(this)); });
   defNode("lastChild", function () { return wrapNode(globalThis.__veNativeLastChild.call(this)); });
   defNode("nextSibling", function () { return wrapNode(globalThis.__veNativeNextSibling.call(this)); });
@@ -1125,7 +1162,7 @@ impl JsVm for V8Vm {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,getBoundingClientRect";
 })()"#,
             "vector:dom-native",
         )?;
@@ -2576,6 +2613,61 @@ fn native_text_split(
     let offset = native_arg(scope, &args, 0);
     let value = call_dom_host(scope, &[JsValue::from("splitText"), handle, offset]);
     native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_node_child_nodes(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &JsValue::Array(Vec::new())));
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("childNodes"), handle])
+        .unwrap_or(JsValue::Array(Vec::new()));
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_element_box(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        native_set_number(scope, &mut rv, None, 0.0);
+        return;
+    };
+    let which = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("box"), handle, which]);
+    native_set_number(scope, &mut rv, value, 0.0);
+}
+
+fn native_element_set_scroll(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let axis = native_arg(scope, &args, 0);
+    let value = native_arg(scope, &args, 1);
+    let _ = call_dom_host(scope, &[JsValue::from("setScroll"), handle, axis, value]);
+}
+
+fn native_element_bounding_rect(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let empty = JsValue::Object(Default::default());
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &empty));
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("boundingRect"), handle]).unwrap_or(empty);
+    rv.set(from_js_value(scope, &value));
 }
 
 fn looks_like_module(source: &str) -> bool {

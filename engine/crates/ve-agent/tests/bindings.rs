@@ -1309,6 +1309,45 @@ fn canvas_create_pattern_from_image_data() {
 }
 
 #[test]
+fn canvas_text_align_shifts_fill_text() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function minX(align) {
+                var c = document.createElement("canvas");
+                c.width = 48;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.textAlign = align;
+                ctx.fillText("MM", 24, 16);
+                var data = ctx.getImageData(0, 0, 48, 24).data;
+                var min = 48;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 48; x++) {
+                    if (data[(y * 48 + x) * 4 + 3] > 20) min = Math.min(min, x);
+                  }
+                }
+                return min;
+              }
+              return { left: minX("left"), center: minX("center"), right: minX("right"), end: minX("end") };
+            })()"##,
+        )
+        .unwrap();
+    let left = v["left"].as_u64().unwrap_or(0);
+    let center = v["center"].as_u64().unwrap_or(0);
+    let right = v["right"].as_u64().unwrap_or(0);
+    let end = v["end"].as_u64().unwrap_or(0);
+    assert!(
+        left > center && center > right,
+        "textAlign must shift fillText: {v}"
+    );
+    assert_eq!(right, end, "end must match right in ltr: {v}");
+}
+
+#[test]
 fn canvas_fill_text_paints_distinct_glyphs() {
     let mut page = open(r#"<body></body>"#);
     let v = page
