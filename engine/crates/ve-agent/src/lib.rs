@@ -42,7 +42,7 @@ pub use keys::{Chord, Key, Modifiers};
 pub use page::{
     CoepPolicy, CompletedDownload, CoopPolicy, DEFAULT_TIMEOUT_MS, DEFAULT_VIEWPORT,
     EngineObservation, FetchedScript, FnLoader, InFlightSummary, LoadStats, LoadedDocument,
-    LoadedResource, Loader, NavMethod, NavigationRequest, Page, PendingSubresources,
+    LoadedResource, Loader, NavMethod, NavigationRequest, ObservePath, Page, PendingSubresources,
     RestyleAttribution, SETTLE_NAVIGATION_MS, SETTLE_STEP_MS, ScrollState, ShaperKind,
     SubresourceKind, SubresourceRequest, outer_html,
 };

@@ -6,8 +6,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use ve_agent::{
-    DEFAULT_VIEWPORT, ErrorCode, InFlightSummary, LoadedDocument, Loader, NavMethod,
-    NavigationRequest, ObservationRequest, Page, Program, ProgramResult, ProgramStatus, StepStatus,
+    DEFAULT_VIEWPORT, ErrorCode, Format, InFlightSummary, LoadedDocument, Loader, NavMethod,
+    NavigationRequest, ObservationRequest, ObservePath, Page, Program, ProgramResult,
+    ProgramStatus, StepStatus,
 };
 use ve_core::{Error, Result};
 
@@ -947,4 +948,49 @@ fn observe_reports_changes_since_and_epoch_rollover() {
         })
         .unwrap();
     assert!(fourth.changes_since.is_none());
+}
+
+#[test]
+fn incremental_observe_uses_hit_index_for_attribute_patch() {
+    let mut page = Page::from_html(
+        1,
+        r#"<body><button id=b style="width:80px;height:40px">Go</button></body>"#,
+        Some(ORIGIN),
+        DEFAULT_VIEWPORT,
+    );
+    let first = page
+        .observe(&ObservationRequest {
+            format: Format::Full,
+            ..ObservationRequest::default()
+        })
+        .unwrap();
+    let id = page.document().element_by_id("b").unwrap();
+    page.document_mut()
+        .set_attribute(id, "aria-label", "Next")
+        .unwrap();
+    page.update();
+    let patched = page
+        .observe(&ObservationRequest {
+            format: Format::Full,
+            since_revision: Some(first.revision),
+            ..ObservationRequest::default()
+        })
+        .unwrap();
+    assert_eq!(
+        page.last_observe_path(),
+        ObservePath::HitIndexPatch,
+        "attribute change must patch via HitIndex neighbors"
+    );
+    let full = page.observe_now(&ObservationRequest {
+        format: Format::Full,
+        ..ObservationRequest::default()
+    });
+    let name = |obs: &ve_a11y::ObservationContent| {
+        obs.elements
+            .iter()
+            .find(|e| e.tag == "button")
+            .and_then(|e| e.name.clone())
+    };
+    assert_eq!(name(&patched.content), Some("Next".into()));
+    assert_eq!(name(&patched.content), name(&full));
 }

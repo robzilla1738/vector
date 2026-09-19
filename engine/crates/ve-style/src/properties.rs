@@ -31,9 +31,9 @@ use crate::values::{
     LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MathStyle, MaxSize,
     MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, OverscrollBehavior, PointerEvents,
     Position, PositionArea, PreferredColorScheme, PrintColorAdjust, Resize, Rgba, RubyPosition,
-    ScrollBehavior, ScrollSnapAlign, ScrollSnapType, SelfAlignment, ShapeOutside, Speak,
-    TableLayout, TextAlign, TextAlignLast, TextDecorationLine, TextDecorationStyle, TextEmphasis,
-    TextJustify, TextOrientation, TextOverflow, TextRendering, TextTransform,
+    ScrollBehavior, ScrollSnapAlign, ScrollSnapType, ScrollbarWidth, SelfAlignment, ShapeOutside,
+    Speak, TableLayout, TextAlign, TextAlignLast, TextDecorationLine, TextDecorationStyle,
+    TextEmphasis, TextJustify, TextOrientation, TextOverflow, TextRendering, TextTransform,
     TextUnderlinePosition, TextWrap, TouchAction, TrackSize, TransformBox, TransformOp,
     TransformStyle, UnicodeBidi, UserSelect, VectorEffect, VerticalAlign, Visibility, WhiteSpace,
     WordBreak, WritingMode, ZIndex,
@@ -931,6 +931,13 @@ mod conv {
         }
     }
 
+    pub fn contain_intrinsic(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Option<f32>> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" || k == "auto" => Some(None),
+            _ => Some(Some(length_px(v, ctx)?)),
+        }
+    }
+
     pub fn perspective(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<f32> {
         match v {
             SpecifiedValue::Keyword(k) if k == "none" => Some(0.0),
@@ -1055,6 +1062,7 @@ macro_rules! property_table {
                     "-webkit-box-orient" => Some(Self::BoxOrient),
                     "-webkit-tap-highlight-color" => Some(Self::TapHighlightColor),
                     "-webkit-transform" | "-moz-transform" => Some(Self::Transform),
+                    "-webkit-mask-image" => Some(Self::MaskImage),
                     "-webkit-text-decoration" => Some(Self::TextDecorationLine),
                     "-o-object-fit" => Some(Self::ObjectFit),
                     "-webkit-user-select" | "-moz-user-select" | "-ms-user-select" => {
@@ -1452,6 +1460,8 @@ property_table! {
     }, inherited = false, syntax = BoxShadow, convert = conv::box_shadow;
     /// `background-image` (`none` or `url(...)`)
     BackgroundImage: "background-image" => background_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
+    /// `mask-image`
+    MaskImage: "mask-image" => mask_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
     /// `background-size`
     BackgroundSize: "background-size" => background_size: BackgroundSize = BackgroundSize::Auto, inherited = false, syntax = BackgroundSize, convert = conv::background_size;
     /// `background-position`
@@ -1526,6 +1536,12 @@ property_table! {
     Zoom: "zoom" => zoom: f32 = 1.0, inherited = false, syntax = Single, convert = conv::zoom;
     /// `contain`
     Contain: "contain" => contain: Contain = Contain::None, inherited = false, syntax = Single, convert = conv::kw::<Contain>;
+    /// `contain-intrinsic-width` (`none` is `None`)
+    ContainIntrinsicWidth: "contain-intrinsic-width" => contain_intrinsic_width: Option<f32> = None, inherited = false, syntax = Single, convert = conv::contain_intrinsic;
+    /// `contain-intrinsic-height` (`none` is `None`)
+    ContainIntrinsicHeight: "contain-intrinsic-height" => contain_intrinsic_height: Option<f32> = None, inherited = false, syntax = Single, convert = conv::contain_intrinsic;
+    /// `scrollbar-width`
+    ScrollbarWidth: "scrollbar-width" => scrollbar_width: ScrollbarWidth = ScrollbarWidth::Auto, inherited = false, syntax = Single, convert = conv::kw::<ScrollbarWidth>;
     /// `container-type`
     ContainerType: "container-type" => container_type: ContainerType = ContainerType::Normal, inherited = false, syntax = Single, convert = conv::kw::<ContainerType>;
     /// `container-name`
@@ -2921,6 +2937,7 @@ pub const SHORTHANDS: &[&str] = &[
     "border-radius",
     "outline",
     "column-rule",
+    "contain-intrinsic-size",
     "columns",
     "offset",
     "container",
@@ -3448,6 +3465,22 @@ pub fn expand_shorthand<'i>(
                     (P::TransitionTimingFunction, timing),
                 ])
             }
+            "contain-intrinsic-size" => {
+                let values = parse_components(input, 2)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::ContainIntrinsicWidth, values[0].clone()),
+                        (P::ContainIntrinsicHeight, values[0].clone()),
+                    ]);
+                }
+                let a = values.first()?.clone();
+                let b = values.get(1).cloned().unwrap_or_else(|| a.clone());
+                let out = vec![
+                    (P::ContainIntrinsicWidth, a),
+                    (P::ContainIntrinsicHeight, b),
+                ];
+                out.iter().all(|(p, v)| p.accepts(v)).then_some(out)
+            }
             "columns" | "-moz-columns" | "-webkit-columns" => {
                 let values = parse_components(input, 2)?;
                 if values.len() == 1 && values[0].is_css_wide() {
@@ -3930,6 +3963,11 @@ mod tests {
         ok("scroll-padding", "12px");
         ok("scroll-behavior", "smooth");
         ok("overscroll-behavior", "none");
+        ok("contain-intrinsic-width", "200px");
+        ok("contain-intrinsic-height", "none");
+        ok("mask-image", "none");
+        ok("-webkit-mask-image", "none");
+        ok("scrollbar-width", "thin");
         ok("touch-action", "none");
         ok("appearance", "none");
         ok("-webkit-appearance", "none");
@@ -3990,7 +4028,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 233);
+        assert_eq!(PropertyId::ALL.len(), 237);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
@@ -4068,6 +4106,19 @@ mod tests {
                 PropertyId::MarginLeft,
                 SpecifiedValue::Length(Length::Em(2.0))
             )
+        );
+
+        let out = expand("contain-intrinsic-size", "120px 80px").unwrap();
+        assert_eq!(out.len(), 2);
+        assert!(
+            out.iter()
+                .any(|(p, v)| *p == PropertyId::ContainIntrinsicWidth
+                    && *v == SpecifiedValue::Length(Length::Px(120.0)))
+        );
+        assert!(
+            out.iter()
+                .any(|(p, v)| *p == PropertyId::ContainIntrinsicHeight
+                    && *v == SpecifiedValue::Length(Length::Px(80.0)))
         );
 
         let out = expand("column-rule", "2px dotted red").unwrap();

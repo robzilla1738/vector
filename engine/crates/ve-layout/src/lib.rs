@@ -96,6 +96,39 @@ impl HitIndex {
         }
     }
 
+    fn nodes_in_rect(&self, rect: Rect, paint: &[PaintItem]) -> Vec<NodeId> {
+        if self.cells.is_empty() {
+            return paint
+                .iter()
+                .filter(|item| item.hit_testable && item.rect.intersects(&rect))
+                .filter_map(|item| item.element)
+                .collect();
+        }
+        let x0 = (rect.x() / self.cell).floor() as i32;
+        let y0 = (rect.y() / self.cell).floor() as i32;
+        let x1 = (rect.right() / self.cell).floor() as i32;
+        let y1 = (rect.bottom() / self.cell).floor() as i32;
+        let mut out = Vec::new();
+        for y in y0..=y1 {
+            for x in x0..=x1 {
+                let Some(idxs) = self.cells.get(&(x, y)) else {
+                    continue;
+                };
+                for &i in idxs {
+                    let item = &paint[i];
+                    if item.hit_testable
+                        && item.rect.intersects(&rect)
+                        && let Some(id) = item.element
+                        && !out.contains(&id)
+                    {
+                        out.push(id);
+                    }
+                }
+            }
+        }
+        out
+    }
+
     fn query(&self, point: Point, paint: &[PaintItem]) -> Option<NodeId> {
         if self.cells.is_empty() {
             return paint
@@ -213,6 +246,12 @@ impl LayoutTree {
     #[must_use]
     pub fn hit_test(&self, point: Point) -> Option<NodeId> {
         self.hit_index.query(point, &self.paint)
+    }
+
+    /// Hit-testable nodes whose paint rects overlap `rect` (64px cell index).
+    #[must_use]
+    pub fn nodes_overlapping(&self, rect: Rect) -> Vec<NodeId> {
+        self.hit_index.nodes_in_rect(rect, &self.paint)
     }
 
     /// Boxes in paint order (back to front).
@@ -973,6 +1012,10 @@ mod tests {
                 .and_then(|i| i.element),
             "spatial index matches linear paint-order scan"
         );
+        let a = engine.select_one(&doc, "#a").unwrap();
+        let big = engine.select_one(&doc, "#big").unwrap();
+        let near = tree.nodes_overlapping(Rect::new(90.0, 0.0, 20.0, 30.0));
+        assert!(near.contains(&a) && near.contains(&big), "{near:?}");
     }
 
     #[test]
@@ -1668,10 +1711,7 @@ mod tests {
             400.0,
         );
         let f = rect(&tree, &engine, &doc, "#f");
-        assert!(
-            (f.x() - 16.0).abs() < 0.5,
-            "float-offset 16px, got {f:?}"
-        );
+        assert!((f.x() - 16.0).abs() < 0.5, "float-offset 16px, got {f:?}");
     }
 
     #[test]
@@ -1894,10 +1934,7 @@ mod tests {
         assert!(pl.len() >= 2 && ql.len() >= 2, "two lines");
         let px = pl[0].fragments.last().unwrap().rect.x();
         let qx = ql[0].fragments.last().unwrap().rect.x();
-        assert!(
-            px > qx + 2.0,
-            "justified first line spreads, p={px} q={qx}"
-        );
+        assert!(px > qx + 2.0, "justified first line spreads, p={px} q={qx}");
     }
 
     #[test]

@@ -11,7 +11,7 @@ use ve_a11y::{
     ObservationRequest, ObserveInput, Role, Scope, Visibility5, changes_between, compute_name_with,
     observe, parse_ref, parse_ref_parts, ref_for,
 };
-use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
+use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Revision, Size, Stage};
 use ve_dom::{DirtyFlags, Document, Namespace, Node, NodeKind};
 use ve_gfx::{ImageCache, ImageHandle, SoftwareRenderer};
 use ve_html::DocumentMeta;
@@ -544,6 +544,17 @@ pub const FETCH_BLOCKING_AGE_MS: u64 = 2000;
 /// Default actionability timeout.
 pub const DEFAULT_TIMEOUT_MS: u64 = 5000;
 
+/// How [`Page::observe_after_settle`] built the last snapshot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObservePath {
+    /// `since_revision` matched the live document revision.
+    Cache,
+    /// Journal + [`LayoutTree::nodes_overlapping`] patched the previous snapshot.
+    HitIndexPatch,
+    /// Full `observe_now`.
+    Full,
+}
+
 /// A live page.
 pub struct Page {
     id: u64,
@@ -583,6 +594,7 @@ pub struct Page {
     shaper: ShaperKind,
     last_screenshot: Option<Screenshot>,
     last_navigation_error: Option<String>,
+    last_observe_path: ObservePath,
     virtual_time_ms: u64,
     clock: ve_core::Clock,
     wall_origin_ms: u64,
@@ -1293,6 +1305,7 @@ impl Page {
             shaper: ShaperKind::Metric,
             last_screenshot: None,
             last_navigation_error: None,
+            last_observe_path: ObservePath::Full,
             virtual_time_ms: 0,
             clock: ve_core::Clock::Virtual,
             wall_origin_ms: ve_core::Clock::wall_unix_ms(),
@@ -3812,7 +3825,72 @@ impl Page {
             url: &self.url,
             base_url: self.base_url.as_ref().map(url::Url::as_str),
             pending_dialogs: &self.pending_dialogs,
+            restrict: None,
         }
+    }
+
+    /// How the last [`Self::observe`] / [`Self::observe_after_settle`] snapshot
+    /// was produced.
+    #[must_use]
+    pub fn last_observe_path(&self) -> ObservePath {
+        self.last_observe_path
+    }
+
+    fn observe_via_hit_index(
+        &mut self,
+        request: &ObservationRequest,
+        since: u64,
+        previous: &ObservationContent,
+    ) -> Option<ObservationContent> {
+        let since = Revision(since);
+        let entries = self.doc.journal().entries_since(since)?;
+        let mut structural = false;
+        for entry in entries {
+            match &entry.mutation {
+                ve_dom::Mutation::AttributeChanged { .. }
+                | ve_dom::Mutation::FormStateChanged { .. }
+                | ve_dom::Mutation::GeometryChanged { .. }
+                | ve_dom::Mutation::Scrolled { .. } => {}
+                _ => structural = true,
+            }
+        }
+        if structural {
+            return None;
+        }
+        let touched = self.doc.journal().touched_since(since)?;
+        if touched.is_empty() {
+            return None;
+        }
+        let mut restrict = touched;
+        for id in restrict.clone() {
+            if let Some(rect) = self.layout.rect_of(id) {
+                for neighbor in self.layout.nodes_overlapping(rect) {
+                    if !restrict.contains(&neighbor) {
+                        restrict.push(neighbor);
+                    }
+                }
+            }
+        }
+        let mut input = self.observe_input();
+        input.restrict = Some(&restrict);
+        let patch = observe(&input, request);
+        let dirty: HashSet<String> = restrict.iter().map(|id| ref_for(*id)).collect();
+        let mut content = previous.clone();
+        content.elements.retain(|e| !dirty.contains(&e.reference));
+        content.elements.extend(patch.elements);
+        content
+            .form_fields
+            .retain(|e| !dirty.contains(&e.reference));
+        content.form_fields.extend(patch.form_fields);
+        content.links.retain(|e| !dirty.contains(&e.reference));
+        content.links.extend(patch.links);
+        content.url.clone_from(&patch.url);
+        content.title.clone_from(&patch.title);
+        content.viewport = patch.viewport;
+        content.scroll = patch.scroll;
+        content.truncated |= patch.truncated;
+        self.last_observe_path = ObservePath::HitIndexPatch;
+        Some(content)
     }
 
     /// Builds an observation without settling or caching (perf probes).
@@ -3867,8 +3945,25 @@ impl Page {
         });
         // Fast path: nothing changed since the cached observation.
         let content = match cached_same {
-            Some(c) if c.revision == revision => c.content.clone(),
-            _ => self.observe_now(request),
+            Some(c) if c.revision == revision => {
+                self.last_observe_path = ObservePath::Cache;
+                c.content.clone()
+            }
+            Some(prev) => {
+                let prev_rev = prev.revision;
+                let prev_content = prev.content.clone();
+                match self.observe_via_hit_index(request, prev_rev, &prev_content) {
+                    Some(content) => content,
+                    None => {
+                        self.last_observe_path = ObservePath::Full;
+                        self.observe_now(request)
+                    }
+                }
+            }
+            None => {
+                self.last_observe_path = ObservePath::Full;
+                self.observe_now(request)
+            }
         };
         let (changes_since, delta) = match request.since_revision {
             None => (None, None),

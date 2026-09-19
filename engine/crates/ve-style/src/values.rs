@@ -1513,6 +1513,18 @@ keyword_enum! {
 }
 
 keyword_enum! {
+    /// The `scrollbar-width` property.
+    ScrollbarWidth {
+        /// Platform default.
+        Auto = "auto",
+        /// Thin scrollbar.
+        Thin = "thin",
+        /// Hidden scrollbar, element still scrolls.
+        None = "none",
+    }
+}
+
+keyword_enum! {
     /// The `user-select` property.
     UserSelect {
         /// Browser default.

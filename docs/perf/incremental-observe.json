@@ -17,7 +17,7 @@
   "profile": "release",
   "revisionCache": "Page::observe_after_settle returns the cached ObservationContent when since_revision matches the live document revision",
   "security_mode": "production",
-  "spatialHitIndex": "ve_layout::HitIndex 64px cells — LayoutTree::hit_test for observe occlusion, not the incremental-observe fast path",
+  "spatialHitIndex": "ve_layout::HitIndex 64px cells — LayoutTree::hit_test for observe occlusion; nodes_overlapping patches attribute/geometry incremental observe",
   "targetP95Ms": 2,
   "v8HeapCaps": "V8Vm::with_heap_limit / VECTOR_V8_HEAP_MB",
   "v8SnapshotStartup": "V8Vm startup snapshot blob + platform Once"

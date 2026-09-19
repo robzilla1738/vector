@@ -573,6 +573,9 @@ pub struct ObserveInput<'a> {
     pub base_url: Option<&'a str>,
     /// Engine-level pending dialogs (none in M1).
     pub pending_dialogs: &'a [DialogEntry],
+    /// When set, only these nodes are considered as interactive candidates
+    /// (HitIndex incremental observe). Text / headings stay full-tree.
+    pub restrict: Option<&'a [NodeId]>,
 }
 
 /// Per-element visibility classification (architecture §5).
@@ -1119,6 +1122,15 @@ impl<'a> Builder<'a> {
     fn collect_candidates(&mut self) -> Vec<Candidate> {
         let mut out = Vec::new();
         let mut order = 0usize;
+        if let Some(ids) = self.input.restrict {
+            for &id in ids {
+                if self.doc.element(id).is_some() {
+                    self.walk_candidates(id, false, &mut order, &mut out);
+                }
+            }
+            out.retain(|c| ids.contains(&c.id));
+            return out;
+        }
         self.walk_candidates(self.root, true, &mut order, &mut out);
         out
     }
@@ -1861,7 +1873,8 @@ impl<'a> Builder<'a> {
             content.headings.pop();
             truncated = true;
         }
-        while content.rendered_chars_for(scope).div_ceil(4) > max && content.text.chars().count() > 32
+        while content.rendered_chars_for(scope).div_ceil(4) > max
+            && content.text.chars().count() > 32
         {
             let keep = content.text.chars().count().saturating_mul(3) / 4;
             content.text = truncate_chars(&content.text, keep.max(32));
@@ -2048,6 +2061,7 @@ mod tests {
                 url: "https://app.test/records?page=2",
                 base_url: None,
                 pending_dialogs: &[],
+                restrict: None,
             }
         }
 

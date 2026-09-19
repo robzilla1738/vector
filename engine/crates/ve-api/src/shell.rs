@@ -5817,7 +5817,7 @@ mod tests {
                 "ve-api::incremental_observe_p95_under_2ms_on_corpus_sample"
             ],
             "revisionCache": "Page::observe_after_settle returns the cached ObservationContent when since_revision matches the live document revision",
-            "spatialHitIndex": "ve_layout::HitIndex 64px cells — LayoutTree::hit_test for observe occlusion, not the incremental-observe fast path",
+            "spatialHitIndex": "ve_layout::HitIndex 64px cells — LayoutTree::hit_test for observe occlusion; nodes_overlapping patches attribute/geometry incremental observe",
             "v8HeapCaps": "V8Vm::with_heap_limit / VECTOR_V8_HEAP_MB",
             "v8SnapshotStartup": "V8Vm startup snapshot blob + platform Once",
             "corpus": { "dir": "/tmp/vector-live-html", "kind": "fetched-html-bodies" },
