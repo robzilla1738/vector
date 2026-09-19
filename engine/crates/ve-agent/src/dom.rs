@@ -2263,6 +2263,7 @@ pub(crate) fn host_call(
                     arg_f64(args, 3).max(1.0) as i32,
                     &dash,
                     arg_f64(args, 5) as i32,
+                    &arg_str(args, 6),
                 )
             } else {
                 page.canvas_fill_path(id, &rects, &polys, &arg_str(args, 2))

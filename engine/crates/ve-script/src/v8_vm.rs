@@ -733,6 +733,22 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeRemoveChild", remove)?;
+            let replace = v8::FunctionTemplate::builder(native_node_replace_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeReplaceChild", replace)?;
+            let create_el = v8::FunctionTemplate::builder(native_document_create_element)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCreateElement", create_el)?;
+            let create_text = v8::FunctionTemplate::builder(native_document_create_text)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCreateTextNode", create_text)?;
+            let create_comment = v8::FunctionTemplate::builder(native_document_create_comment)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCreateComment", create_comment)?;
             Some(())
         })?;
         self.eval(
@@ -855,6 +871,18 @@ impl JsVm for V8Vm {
     Document.prototype.getElementById = function (id) {
       return wrapNode(globalThis.__veNativeGetElementById.call(this, id));
     };
+    Document.prototype.createElement = function (name) {
+      var el = wrapNode(globalThis.__veNativeCreateElement.call(this, name));
+      if (el && String(name).toLowerCase() === "script") el._scriptCreated = true;
+      if (typeof globalThis.__veConstructCustom === "function") globalThis.__veConstructCustom(el);
+      return el;
+    };
+    Document.prototype.createTextNode = function (data) {
+      return wrapNode(globalThis.__veNativeCreateTextNode.call(this, data == null ? "" : String(data)));
+    };
+    Document.prototype.createComment = function (data) {
+      return wrapNode(globalThis.__veNativeCreateComment.call(this, data == null ? "" : String(data)));
+    };
   }
   defNode("ownerDocument", function () { return wrapNode(globalThis.__veNativeOwnerDocument.call(this)); });
   Node.prototype.appendChild = function (n) {
@@ -882,11 +910,16 @@ impl JsVm for V8Vm {
     globalThis.__veNativeRemoveChild.call(this, n);
     return n;
   };
+  Node.prototype.replaceChild = function (n, old) {
+    globalThis.__veNativeReplaceChild.call(this, n, old);
+    if (typeof globalThis.__veUpgradeOne === "function") globalThis.__veUpgradeOne(n);
+    return old;
+  };
   if (typeof DocumentFragment !== "undefined") {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment";
 })()"#,
             "vector:dom-native",
         )?;
@@ -1998,6 +2031,63 @@ fn native_node_remove_child(
     } else {
         rv.set_null();
     }
+}
+
+fn native_node_replace_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let new_child = native_child_handle(scope, &args, 0);
+    let old_child = native_child_handle(scope, &args, 1);
+    let _ = call_dom_host(
+        scope,
+        &[
+            JsValue::from("replaceChild"),
+            handle,
+            new_child,
+            old_child,
+        ],
+    );
+    if args.length() > 1 {
+        rv.set(args.get(1));
+    } else {
+        rv.set_null();
+    }
+}
+
+fn native_document_create_element(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let name = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("createElement"), name]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_create_text(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let data = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("createTextNode"), data]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_create_comment(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let data = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("createComment"), data]);
+    native_set_handle_or_null(scope, &mut rv, value);
 }
 
 fn looks_like_module(source: &str) -> bool {

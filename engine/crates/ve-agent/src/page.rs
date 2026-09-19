@@ -827,6 +827,24 @@ impl CompositeOp {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum LineCap {
+    #[default]
+    Butt,
+    Square,
+    Round,
+}
+
+impl LineCap {
+    fn parse(s: &str) -> Self {
+        match s {
+            "square" => Self::Square,
+            "round" => Self::Round,
+            _ => Self::Butt,
+        }
+    }
+}
+
 impl CanvasStyle {
     fn sample(&self, x: f32, y: f32) -> [u8; 4] {
         match self {
@@ -1399,6 +1417,7 @@ impl CanvasSurface {
         width: i32,
         dash: &[i32],
         dash_offset: i32,
+        cap: LineCap,
     ) {
         if pts.len() < 2 {
             return;
@@ -1406,7 +1425,8 @@ impl CanvasSurface {
         let t = width.max(1);
         let o = (t - 1) / 2;
         let mut dist = 0i32;
-        for pair in pts.windows(2) {
+        let last = pts.len() - 2;
+        for (seg, pair) in pts.windows(2).enumerate() {
             let (a, b) = (pair[0], pair[1]);
             let dx = b[0] - a[0];
             let dy = b[1] - a[1];
@@ -1416,10 +1436,79 @@ impl CanvasSurface {
                     let u = i as f32 / steps as f32;
                     let x = (a[0] + dx * u).round() as i32;
                     let y = (a[1] + dy * u).round() as i32;
-                    self.fill_rect_styled(x - o, y - o, t, t, style, alpha);
+                    let at_start = seg == 0 && i == 0;
+                    let at_end = seg == last && i == steps;
+                    self.stamp_stroke(x, y, t, o, style, alpha, cap, at_start, at_end, dx, dy);
                 }
             }
             dist += steps;
+        }
+    }
+
+    fn stamp_stroke(
+        &mut self,
+        x: i32,
+        y: i32,
+        t: i32,
+        o: i32,
+        style: &CanvasStyle,
+        alpha: f32,
+        cap: LineCap,
+        at_start: bool,
+        at_end: bool,
+        dx: f32,
+        dy: f32,
+    ) {
+        if matches!(cap, LineCap::Round) && (at_start || at_end) {
+            self.fill_disk(x, y, t, style, alpha);
+            return;
+        }
+        let mut sx = x - o;
+        let mut sy = y - o;
+        let mut sw = t;
+        let mut sh = t;
+        if matches!(cap, LineCap::Butt) && t > 1 && (at_start || at_end) {
+            if at_start {
+                if dx > 0.0 {
+                    sw -= x - sx;
+                    sx = x;
+                } else if dx < 0.0 {
+                    sw = (x + 1 - sx).min(sw);
+                }
+                if dy > 0.0 {
+                    sh -= y - sy;
+                    sy = y;
+                } else if dy < 0.0 {
+                    sh = (y + 1 - sy).min(sh);
+                }
+            }
+            if at_end {
+                if dx > 0.0 {
+                    sw = (x + 1 - sx).min(sw);
+                } else if dx < 0.0 {
+                    sw -= x - sx;
+                    sx = x;
+                }
+                if dy > 0.0 {
+                    sh = (y + 1 - sy).min(sh);
+                } else if dy < 0.0 {
+                    sh -= y - sy;
+                    sy = y;
+                }
+            }
+        }
+        self.fill_rect_styled(sx, sy, sw, sh, style, alpha);
+    }
+
+    fn fill_disk(&mut self, x: i32, y: i32, t: i32, style: &CanvasStyle, alpha: f32) {
+        let r = (t as f32) / 2.0;
+        let ir = r.ceil() as i32;
+        for dy in -ir..=ir {
+            for dx in -ir..=ir {
+                if (dx as f32).mul_add(dx as f32, (dy as f32) * (dy as f32)) <= r * r {
+                    self.fill_rect_styled(x + dx, y + dy, 1, 1, style, alpha);
+                }
+            }
         }
     }
 
@@ -1432,6 +1521,7 @@ impl CanvasSurface {
         width: i32,
         dash: &[i32],
         dash_offset: i32,
+        cap: LineCap,
     ) {
         for r in rects {
             self.stroke_rect_styled(
@@ -1447,7 +1537,7 @@ impl CanvasSurface {
             );
         }
         for poly in polys {
-            self.stroke_polyline_styled(poly, style, alpha, width, dash, dash_offset);
+            self.stroke_polyline_styled(poly, style, alpha, width, dash, dash_offset, cap);
         }
         self.ops += 1;
     }
@@ -2222,13 +2312,23 @@ impl Page {
         width: i32,
         dash: &[i32],
         dash_offset: i32,
+        cap: &str,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.stroke_path_styled(rects, polys, &style, 1.0, width, dash, dash_offset);
+        c.stroke_path_styled(
+            rects,
+            polys,
+            &style,
+            1.0,
+            width,
+            dash,
+            dash_offset,
+            LineCap::parse(cap),
+        );
         c.ops
     }
 

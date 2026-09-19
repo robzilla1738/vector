@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment"
         )
     );
     assert_eq!(
@@ -490,6 +490,27 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("document.body.lastChild.id").unwrap(),
         serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.createTextNode('hi').nodeValue")
+            .unwrap(),
+        serde_json::json!("hi")
+    );
+    assert_eq!(
+        page.evaluate("document.createComment('c').nodeType")
+            .unwrap(),
+        serde_json::json!(8)
+    );
+    assert_eq!(
+        page.evaluate(
+            "document.body.replaceChild(document.createElement('em'), document.getElementById('y')).id"
+        )
+        .unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.tagName").unwrap(),
+        serde_json::json!("EM")
     );
 }
 

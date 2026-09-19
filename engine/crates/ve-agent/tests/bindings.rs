@@ -1058,6 +1058,43 @@ fn canvas_stroke_rect_honours_line_dash() {
 }
 
 #[test]
+fn canvas_stroke_honours_line_cap() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(cap) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = "#00ff00";
+                ctx.lineCap = cap;
+                ctx.beginPath();
+                ctx.moveTo(6, 6);
+                ctx.lineTo(14, 6);
+                ctx.stroke();
+                var beyond = ctx.getImageData(4, 6, 1, 1).data;
+                var on = ctx.getImageData(6, 6, 1, 1).data;
+                var corner = ctx.getImageData(4, 4, 1, 1).data;
+                return { ba: beyond[3], og: on[1], ca: corner[3] };
+              }
+              return { butt: sample("butt"), square: sample("square"), round: sample("round") };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["butt"]["ba"], 0, "{v}");
+    assert_eq!(v["butt"]["og"], 255, "{v}");
+    assert_eq!(v["square"]["ba"], 255, "{v}");
+    assert_eq!(v["square"]["og"], 255, "{v}");
+    assert_eq!(v["square"]["ca"], 255, "{v}");
+    assert_eq!(v["round"]["og"], 255, "{v}");
+    assert_eq!(v["round"]["ba"], 255, "{v}");
+    assert_eq!(v["round"]["ca"], 0, "{v}");
+}
+
+#[test]
 fn canvas_fill_rect_paints_shadow_blur() {
     let mut page = open(r#"<body></body>"#);
     let v = page
