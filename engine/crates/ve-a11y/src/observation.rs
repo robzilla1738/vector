@@ -1034,68 +1034,76 @@ impl<'a> Builder<'a> {
     }
 
     fn collect_candidates(&mut self) -> Vec<Candidate> {
-        let doc = self.doc;
         let mut out = Vec::new();
-        let ids: Vec<NodeId> = if self.request.scope == Scope::Subtree {
-            std::iter::once(self.root)
-                .chain(doc.descendants(self.root))
-                .collect()
-        } else {
-            doc.descendants(self.root).collect()
-        };
-        for (order, id) in ids.into_iter().enumerate() {
-            let Some(e) = doc.element(id) else { continue };
-            let role = Role::for_element(doc, id);
-            if !Self::is_candidate(e, role) || !self.in_scope(e, role) {
-                continue;
-            }
-            if self.request.scope == Scope::Tables && !self.inside_table(id) {
-                continue;
+        let mut order = 0usize;
+        self.walk_candidates(self.root, true, &mut order, &mut out);
+        out
+    }
+
+    fn walk_candidates(
+        &mut self,
+        id: NodeId,
+        is_scope_root: bool,
+        order: &mut usize,
+        out: &mut Vec<Candidate>,
+    ) {
+        let doc = self.doc;
+        if let Some(e) = doc.element(id) {
+            if Self::skip_element(e) {
+                return;
             }
             if !self.input.styles.is_displayed(id) {
-                continue;
+                return;
             }
-            // Skip candidates whose ancestor is skipped (hidden / aria-hidden).
-            if doc
-                .ancestors(id)
-                .any(|a| doc.element(a).is_some_and(Self::skip_element))
-            {
-                continue;
+            let consider = !is_scope_root || self.request.scope == Scope::Subtree;
+            if consider {
+                *order += 1;
+                let role = Role::for_element(doc, id);
+                if Self::is_candidate(e, role)
+                    && self.in_scope(e, role)
+                    && !(self.request.scope == Scope::Tables && !self.inside_table(id))
+                {
+                    let vis = self.visibility(id);
+                    if vis.shown || self.full {
+                        let e = doc.element(id).expect("live element");
+                        let is_link = role == Some(Role::Link);
+                        let form = is_form_control(e);
+                        let form_field = form
+                            || matches!(
+                                role,
+                                Some(Role::TextBox | Role::SearchBox | Role::Checkbox)
+                            );
+                        let in_view_action =
+                            !vis.offscreen && (is_submit_control(e) || role == Some(Role::Button));
+                        let decisive = form_field || in_view_action;
+                        let rank = if !vis.shown {
+                            6
+                        } else if vis.occluded {
+                            5
+                        } else if decisive {
+                            0
+                        } else if !vis.offscreen && !is_link {
+                            1
+                        } else if !vis.offscreen && is_link {
+                            2
+                        } else {
+                            3
+                        };
+                        out.push(Candidate {
+                            id,
+                            rank,
+                            order: *order,
+                            vis,
+                            role,
+                        });
+                    }
+                }
             }
-            let vis = self.visibility(id);
-            if !vis.shown && !self.full {
-                continue;
-            }
-            let e = doc.element(id).expect("live element");
-            let is_link = role == Some(Role::Link);
-            let form = is_form_control(e);
-            let form_field =
-                form || matches!(role, Some(Role::TextBox | Role::SearchBox | Role::Checkbox));
-            let in_view_action =
-                !vis.offscreen && (is_submit_control(e) || role == Some(Role::Button));
-            let decisive = form_field || in_view_action;
-            let rank = if !vis.shown {
-                6
-            } else if vis.occluded {
-                5
-            } else if decisive {
-                0
-            } else if !vis.offscreen && !is_link {
-                1
-            } else if !vis.offscreen && is_link {
-                2
-            } else {
-                3
-            };
-            out.push(Candidate {
-                id,
-                rank,
-                order,
-                vis,
-                role,
-            });
         }
-        out
+        let children: Vec<NodeId> = doc.children(id).collect();
+        for child in children {
+            self.walk_candidates(child, false, order, out);
+        }
     }
 
     /// Choice labels of a `<select>` or an ARIA listbox/menu/radiogroup, capped at 20.
