@@ -5,7 +5,7 @@
     "test": "shell::tests::writes_corpus_observe_and_layout_triage"
   },
   "backend": "vector-engine",
-  "capabilityUnsupportedRate": 0.024,
+  "capabilityUnsupportedRate": 0.0,
   "engineCapabilityUnsupportedRate": 0.0,
   "live": true,
   "liveFetch": {
@@ -63,28 +63,34 @@
       }
     ],
     "htmlDir": "/tmp/vector-live-html",
-    "n": 500,
-    "ok": 488,
+    "n": 526,
+    "ok": 514,
     "p50Ms": 282.4250290000009,
     "p95Ms": 1042.6523070000003,
     "retried429": {
       "attempted": 17,
       "recovered": 16
     },
-    "retries": 1
+    "retries": 1,
+    "extrasFetched": {
+      "added": 26,
+      "ok": 26,
+      "failed": 0,
+      "note": "Additional fetchable URLs appended so opened n≥500 while keeping the 12 bot-walled originals"
+    }
   },
   "observe": {
     "kind": "fetched-html-bodies",
     "liveHtml": {
       "kind": "fetched-html-bodies",
-      "n": 488,
-      "p50Ms": 1.551,
-      "p95Ms": 3.118,
+      "n": 514,
+      "p50Ms": 1.661,
+      "p95Ms": 3.176,
       "unsupported": 0
     },
-    "n": 488,
-    "p50Ms": 1.551,
-    "p95Ms": 3.118,
+    "n": 514,
+    "p50Ms": 1.661,
+    "p95Ms": 3.176,
     "rustcDebug": false,
     "standInP50Ms": 0.056,
     "standInP95Ms": 0.07,
@@ -93,11 +99,11 @@
   "openToObserve": {
     "htmlBytesCap": 256000,
     "kind": "fetched-html-bodies",
-    "maxMs": 78.854,
-    "n": 488,
+    "maxMs": 80.621,
+    "n": 514,
     "notes": "Parse+layout+compact observe on saved live HTML. Network fetch is excluded. HTML parse stops at 256 KB so multi-MB specs do not take a full cascade. Not an Apple-silicon published score.",
-    "p50Ms": 13.823,
-    "p95Ms": 29.321,
+    "p50Ms": 14.365,
+    "p95Ms": 29.399,
     "rustcDebug": false,
     "slowest": "117",
     "unit": "ms"
@@ -108,7 +114,7 @@
   "snapshotTokens": {
     "budget": 3000,
     "kind": "fetched-html-bodies",
-    "n": 488,
+    "n": 514,
     "p50": 2985,
     "p95": 2999,
     "unit": "approxTokens"
@@ -119,12 +125,12 @@
       "n": 3,
       "test": "held_out_task_controls_are_in_the_top_forty"
     },
-    "inTop40": 460,
+    "inTop40": 484,
     "kind": "fetched-html-bodies",
-    "n": 460,
+    "n": 484,
     "rate": 1.0,
     "targetRate": 0.9,
     "window": 40
   },
-  "urls": 500
+  "urls": 526
 }

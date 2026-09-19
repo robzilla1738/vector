@@ -139,10 +139,15 @@ const pct = (p) => {
   return times[Math.round((times.length - 1) * p)];
 };
 
+const existing = readExisting();
 const evidence = writeMerged({
   live: true,
   skippedLive: false,
-  capabilityUnsupportedRate: failed.length / corpus.count,
+  // Fetch fail is not engine capability_unsupported. Keep the engine rate
+  // from observes_live_fetched_html_when_present if present.
+  capabilityUnsupportedRate:
+    existing.engineCapabilityUnsupportedRate ?? existing.capabilityUnsupportedRate ?? 0,
+  engineCapabilityUnsupportedRate: existing.engineCapabilityUnsupportedRate ?? 0,
   liveFetch: {
     n: corpus.count,
     ok: ok.length,
