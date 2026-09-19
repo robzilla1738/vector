@@ -4102,6 +4102,74 @@ fn dialog_show_modal_requires_connected_and_close_fires() {
 }
 
 #[test]
+fn element_get_animations_lists_running_and_finished() {
+    let mut page = open(r#"<body><div id="a">x</div><div id="b">y</div></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const a = document.getElementById("a");
+              const b = document.getElementById("b");
+              const run = a.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 80, fill: "forwards" });
+              const done = b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 0, fill: "forwards" });
+              const listed = a.getAnimations();
+              const all = document.getAnimations();
+              return {
+                runCount: listed.length,
+                runSame: listed[0] === run,
+                runState: listed[0] && listed[0].playState,
+                doneCount: b.getAnimations().length,
+                doneState: b.getAnimations()[0] && b.getAnimations()[0].playState,
+                allCount: all.length,
+                allHasRun: all.indexOf(run) >= 0,
+                allHasDone: all.indexOf(done) >= 0
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["runCount"], 1, "{v}");
+    assert_eq!(v["runSame"], true, "{v}");
+    assert_eq!(v["runState"], "running", "{v}");
+    assert_eq!(v["doneCount"], 1, "{v}");
+    assert_eq!(v["doneState"], "finished", "{v}");
+    assert_eq!(v["allCount"], 2, "{v}");
+    assert_eq!(v["allHasRun"], true, "{v}");
+    assert_eq!(v["allHasDone"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_aes_gcm_round_trips_and_matches_nist() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__aes = null;
+          const keyBytes = new Uint8Array(16);
+          const iv = new Uint8Array(12);
+          const nist = crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new Uint8Array(0)).then(function (empty) {
+              const hex = Array.from(new Uint8Array(empty)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+              return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode("abc")).then(function (ct) {
+                return crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ct).then(function (pt) {
+                  window.__aes = { nist: hex, text: new TextDecoder().decode(pt), ctLen: ct.byteLength };
+                });
+              });
+            });
+          });
+          nist.catch(function (e) { window.__aes = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__aes").unwrap();
+    assert_eq!(
+        v["nist"],
+        "58e2fccefa7e3061367f1d57a4e7455a",
+        "{v}"
+    );
+    assert_eq!(v["text"], "abc", "{v}");
+    assert_eq!(v["ctLen"], 19, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

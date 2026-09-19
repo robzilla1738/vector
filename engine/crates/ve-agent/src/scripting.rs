@@ -287,6 +287,146 @@ pub const PRELUDE: &str = r#"(() => {
       outer.set(o); outer.set(ih, 64);
       return sha256(outer);
     };
+    const AES_SBOX = [
+      0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
+      0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,
+      0xb7,0xfd,0x93,0x26,0x36,0x3f,0xf7,0xcc,0x34,0xa5,0xe5,0xf1,0x71,0xd8,0x31,0x15,
+      0x04,0xc7,0x23,0xc3,0x18,0x96,0x05,0x9a,0x07,0x12,0x80,0xe2,0xeb,0x27,0xb2,0x75,
+      0x09,0x83,0x2c,0x1a,0x1b,0x6e,0x5a,0xa0,0x52,0x3b,0xd6,0xb3,0x29,0xe3,0x2f,0x84,
+      0x53,0xd1,0x00,0xed,0x20,0xfc,0xb1,0x5b,0x6a,0xcb,0xbe,0x39,0x4a,0x4c,0x58,0xcf,
+      0xd0,0xef,0xaa,0xfb,0x43,0x4d,0x33,0x85,0x45,0xf9,0x02,0x7f,0x50,0x3c,0x9f,0xa8,
+      0x51,0xa3,0x40,0x8f,0x92,0x9d,0x38,0xf5,0xbc,0xb6,0xda,0x21,0x10,0xff,0xf3,0xd2,
+      0xcd,0x0c,0x13,0xec,0x5f,0x97,0x44,0x17,0xc4,0xa7,0x7e,0x3d,0x64,0x5d,0x19,0x73,
+      0x60,0x81,0x4f,0xdc,0x22,0x2a,0x90,0x88,0x46,0xee,0xb8,0x14,0xde,0x5e,0x0b,0xdb,
+      0xe0,0x32,0x3a,0x0a,0x49,0x06,0x24,0x5c,0xc2,0xd3,0xac,0x62,0x91,0x95,0xe4,0x79,
+      0xe7,0xc8,0x37,0x6d,0x8d,0xd5,0x4e,0xa9,0x6c,0x56,0xf4,0xea,0x65,0x7a,0xae,0x08,
+      0xba,0x78,0x25,0x2e,0x1c,0xa6,0xb4,0xc6,0xe8,0xdd,0x74,0x1f,0x4b,0xbd,0x8b,0x8a,
+      0x70,0x3e,0xb5,0x66,0x48,0x03,0xf6,0x0e,0x61,0x35,0x57,0xb9,0x86,0xc1,0x1d,0x9e,
+      0xe1,0xf8,0x98,0x11,0x69,0xd9,0x8e,0x94,0x9b,0x1e,0x87,0xe9,0xce,0x55,0x28,0xdf,
+      0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16
+    ];
+    const xtime = (a) => ((a << 1) ^ ((a & 0x80) ? 0x1b : 0)) & 0xff;
+    const aesExpand = (key) => {
+      const w = new Uint8Array(176);
+      w.set(key);
+      let rcon = 1;
+      for (let i = 16; i < 176; i += 4) {
+        let a = w[i - 4], b = w[i - 3], c = w[i - 2], d = w[i - 1];
+        if (i % 16 === 0) {
+          const t = a;
+          a = AES_SBOX[b] ^ rcon; b = AES_SBOX[c]; c = AES_SBOX[d]; d = AES_SBOX[t];
+          rcon = xtime(rcon);
+        }
+        w[i] = w[i - 16] ^ a; w[i + 1] = w[i - 15] ^ b;
+        w[i + 2] = w[i - 14] ^ c; w[i + 3] = w[i - 13] ^ d;
+      }
+      return w;
+    };
+    const aesEncryptBlock = (rk, input) => {
+      const s = new Uint8Array(input);
+      const add = (off) => { for (let i = 0; i < 16; i++) s[i] ^= rk[off + i]; };
+      const sub = () => { for (let i = 0; i < 16; i++) s[i] = AES_SBOX[s[i]]; };
+      const shift = () => {
+        let t = s[1]; s[1] = s[5]; s[5] = s[9]; s[9] = s[13]; s[13] = t;
+        t = s[2]; s[2] = s[10]; s[10] = t; t = s[6]; s[6] = s[14]; s[14] = t;
+        t = s[15]; s[15] = s[11]; s[11] = s[7]; s[7] = s[3]; s[3] = t;
+      };
+      const mix = () => {
+        for (let c = 0; c < 4; c++) {
+          const i = c * 4;
+          const a = s[i], b = s[i + 1], d = s[i + 2], e = s[i + 3];
+          s[i]     = xtime(a) ^ xtime(b) ^ b ^ d ^ e;
+          s[i + 1] = a ^ xtime(b) ^ xtime(d) ^ d ^ e;
+          s[i + 2] = a ^ b ^ xtime(d) ^ xtime(e) ^ e;
+          s[i + 3] = xtime(a) ^ a ^ b ^ d ^ xtime(e);
+        }
+      };
+      add(0);
+      for (let r = 1; r < 10; r++) { sub(); shift(); mix(); add(r * 16); }
+      sub(); shift(); add(160);
+      return s;
+    };
+    const gfMul = (x, y) => {
+      const z = new Uint8Array(16);
+      const v = new Uint8Array(y);
+      for (let i = 0; i < 128; i++) {
+        if (x[i >> 3] & (0x80 >> (i & 7))) {
+          for (let j = 0; j < 16; j++) z[j] ^= v[j];
+        }
+        const lsb = v[15] & 1;
+        for (let j = 15; j > 0; j--) v[j] = (v[j] >> 1) | ((v[j - 1] & 1) << 7);
+        v[0] >>= 1;
+        if (lsb) v[0] ^= 0xe1;
+      }
+      return z;
+    };
+    const ghash = (h, aad, ct) => {
+      let x = new Uint8Array(16);
+      const feed = (buf) => {
+        for (let i = 0; i < buf.length; i += 16) {
+          const block = new Uint8Array(16);
+          block.set(buf.subarray(i, Math.min(i + 16, buf.length)));
+          for (let j = 0; j < 16; j++) block[j] ^= x[j];
+          x = gfMul(block, h);
+        }
+      };
+      feed(aad);
+      feed(ct);
+      const len = new Uint8Array(16);
+      const dv = new DataView(len.buffer);
+      dv.setUint32(4, aad.length * 8);
+      dv.setUint32(12, ct.length * 8);
+      for (let j = 0; j < 16; j++) len[j] ^= x[j];
+      return gfMul(len, h);
+    };
+    const inc32 = (block) => {
+      const out = new Uint8Array(block);
+      for (let i = 15; i >= 12; i--) {
+        out[i] = (out[i] + 1) & 0xff;
+        if (out[i]) break;
+      }
+      return out;
+    };
+    const aesGcmCrypt = (key, iv, aad, data, decrypt) => {
+      if (iv.length !== 12) throw new DOMException("iv must be 12 bytes", "OperationError");
+      const rk = aesExpand(key);
+      const h = aesEncryptBlock(rk, new Uint8Array(16));
+      const j0 = new Uint8Array(16);
+      j0.set(iv); j0[15] = 1;
+      let ctr = inc32(j0);
+      const out = new Uint8Array(data.length);
+      for (let i = 0; i < data.length; i += 16) {
+        const ks = aesEncryptBlock(rk, ctr);
+        const n = Math.min(16, data.length - i);
+        for (let j = 0; j < n; j++) out[i + j] = data[i + j] ^ ks[j];
+        ctr = inc32(ctr);
+      }
+      const tagIn = decrypt ? data : out;
+      const ctForHash = decrypt ? data.subarray(0, data.length) : out;
+      return { out, h, j0, rk, ctForHash };
+    };
+    const aesGcmEncrypt = (key, iv, aad, data) => {
+      const { out, h, j0, rk } = aesGcmCrypt(key, iv, aad, data, false);
+      const s = ghash(h, aad, out);
+      const t = aesEncryptBlock(rk, j0);
+      const tag = new Uint8Array(16);
+      for (let i = 0; i < 16; i++) tag[i] = s[i] ^ t[i];
+      const packed = new Uint8Array(out.length + 16);
+      packed.set(out); packed.set(tag, out.length);
+      return packed;
+    };
+    const aesGcmDecrypt = (key, iv, aad, packed) => {
+      if (packed.length < 16) throw new DOMException("The operation failed for an operation-specific reason", "OperationError");
+      const data = packed.subarray(0, packed.length - 16);
+      const tag = packed.subarray(packed.length - 16);
+      const { out, h, j0, rk } = aesGcmCrypt(key, iv, aad, data, true);
+      const s = ghash(h, aad, data);
+      const t = aesEncryptBlock(rk, j0);
+      let diff = 0;
+      for (let i = 0; i < 16; i++) diff |= tag[i] ^ s[i] ^ t[i];
+      if (diff) throw new DOMException("The operation failed for an operation-specific reason", "OperationError");
+      return out;
+    };
     cryptoObj.subtle = {
       digest(algo, data) {
         const name = String(algo && algo.name ? algo.name : algo).replace(/-/g, "").toUpperCase();
@@ -298,26 +438,66 @@ pub const PRELUDE: &str = r#"(() => {
         return Promise.resolve(digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength));
       },
       importKey(format, keyData, algorithm, extractable, usages) {
-        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).toUpperCase();
-        if (format !== "raw" || name !== "HMAC") {
+        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
+        if (format !== "raw") {
           return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
         }
-        const hash = String(algorithm.hash && algorithm.hash.name ? algorithm.hash.name : algorithm.hash || "SHA-256");
-        return Promise.resolve({
-          type: "secret",
-          extractable: !!extractable,
-          algorithm: { name: "HMAC", hash: { name: hash } },
-          usages: usages || [],
-          _raw: toBytes(keyData),
-        });
+        if (name === "HMAC") {
+          const hash = String(algorithm.hash && algorithm.hash.name ? algorithm.hash.name : algorithm.hash || "SHA-256");
+          return Promise.resolve({
+            type: "secret",
+            extractable: !!extractable,
+            algorithm: { name: "HMAC", hash: { name: hash } },
+            usages: usages || [],
+            _raw: toBytes(keyData),
+          });
+        }
+        if (name === "AESGCM") {
+          const raw = toBytes(keyData);
+          if (raw.length !== 16) {
+            return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+          }
+          return Promise.resolve({
+            type: "secret",
+            extractable: !!extractable,
+            algorithm: { name: "AES-GCM", length: 128 },
+            usages: usages || [],
+            _raw: raw,
+          });
+        }
+        return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
       },
       sign(algorithm, key, data) {
-        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).toUpperCase();
+        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
         if (name !== "HMAC" || !key || !key._raw) {
           return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
         }
         const mac = hmacSha256(key._raw, toBytes(data));
         return Promise.resolve(mac.buffer.slice(mac.byteOffset, mac.byteOffset + mac.byteLength));
+      },
+      encrypt(algorithm, key, data) {
+        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
+        if (name !== "AESGCM" || !key || !key._raw) {
+          return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+        }
+        try {
+          const out = aesGcmEncrypt(key._raw, toBytes(algorithm.iv), algorithm.additionalData ? toBytes(algorithm.additionalData) : new Uint8Array(0), toBytes(data));
+          return Promise.resolve(out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength));
+        } catch (e) {
+          return Promise.reject(e);
+        }
+      },
+      decrypt(algorithm, key, data) {
+        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
+        if (name !== "AESGCM" || !key || !key._raw) {
+          return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+        }
+        try {
+          const out = aesGcmDecrypt(key._raw, toBytes(algorithm.iv), algorithm.additionalData ? toBytes(algorithm.additionalData) : new Uint8Array(0), toBytes(data));
+          return Promise.resolve(out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength));
+        } catch (e) {
+          return Promise.reject(e);
+        }
       },
     };
   }

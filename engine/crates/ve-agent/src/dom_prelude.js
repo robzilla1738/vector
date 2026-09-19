@@ -6776,6 +6776,7 @@
       const view = this.defaultView;
       if (view) view.dispatchEvent(new Event("load"));
     }
+    getAnimations() { return []; }
   }
 
   class Storage {
@@ -9639,13 +9640,24 @@
   }
   Object.defineProperty(DocumentTimeline.prototype, Symbol.toStringTag, { value: "DocumentTimeline", configurable: true });
   const documentTimeline = new DocumentTimeline();
+  const liveAnimations = [];
+  function animationsOf(el) {
+    return liveAnimations.filter(function (a) {
+      return a.playState !== "idle" && a.effect && a.effect.target === el;
+    });
+  }
+  function animationsAll() {
+    return liveAnimations.filter(function (a) { return a.playState !== "idle"; });
+  }
   Element.prototype.animate = function (keyframes, options) {
     const effect = new KeyframeEffect(this, keyframes, options);
     const anim = new Animation(effect, documentTimeline);
+    liveAnimations.push(anim);
     anim.play();
     return anim;
   };
-  Element.prototype.getAnimations = function () { return []; };
+  Element.prototype.getAnimations = function () { return animationsOf(this); };
+  Document.prototype.getAnimations = function () { return animationsAll(); };
 
   const document = wrap(D("documentNode"));
   browsingDocument = document;

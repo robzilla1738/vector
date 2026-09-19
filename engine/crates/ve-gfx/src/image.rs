@@ -196,32 +196,16 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     width = width.min(2048);
     height = height.min(2048);
     let mut img = DecodedImage::solid(width, height, [0, 0, 0, 0]);
-    let mut rest = text.as_ref();
+    let full = text.as_ref();
+    let grads = parse_svg_gradients(full);
+    let by_id = parse_svg_ids(full);
+    let mut rest = full;
     while let Some(i) = rest.find("<rect") {
+        let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        let x = svg_attr(tag, "x").unwrap_or(0.0) as u32;
-        let y = svg_attr(tag, "y").unwrap_or(0.0) as u32;
-        let w = svg_attr(tag, "width").unwrap_or(0.0) as u32;
-        let h = svg_attr(tag, "height").unwrap_or(0.0) as u32;
-        let fill = tag
-            .split("fill=")
-            .nth(1)
-            .and_then(|s| {
-                let q = s.chars().next()?;
-                if q == '"' || q == '\'' {
-                    s[1..].split(q).next()
-                } else {
-                    None
-                }
-            })
-            .unwrap_or("#000000");
-        let color = parse_svg_color(fill);
-        for yy in y..(y + h).min(img.height) {
-            for xx in x..(x + w).min(img.width) {
-                let idx = ((yy * img.width + xx) * 4) as usize;
-                img.rgba[idx..idx + 4].copy_from_slice(&color);
-            }
+        if !svg_in_defs(full, abs) {
+            paint_svg_rect(&mut img, tag, 0.0, 0.0, &grads);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -288,7 +272,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         rest = &rest[i + tag_end + 1..];
     }
     rest = text.as_ref();
-    while let Some(i) = rest.find("<line") {
+    while let Some(i) = find_svg_tag(rest, "line") {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         let x1 = svg_attr(tag, "x1").unwrap_or(0.0);
@@ -383,7 +367,271 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         }
         rest = &rest[i + tag_end + 1..];
     }
+    rest = full;
+    while let Some(i) = rest.find("<use") {
+        let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
+        let tag = &rest[i..i + tag_end];
+        let href = svg_attr_str(tag, "href")
+            .or_else(|| svg_attr_str(tag, "xlink:href"))
+            .unwrap_or("");
+        let id = href.strip_prefix('#').unwrap_or(href);
+        if let Some(src) = by_id.get(id) {
+            let ox = svg_attr(tag, "x").unwrap_or(0.0);
+            let oy = svg_attr(tag, "y").unwrap_or(0.0);
+            if src.starts_with("<rect") {
+                paint_svg_rect(&mut img, src, ox, oy, &grads);
+            } else if src.starts_with("<circle") {
+                paint_svg_circle(&mut img, src, ox, oy);
+            }
+        }
+        rest = &rest[i + tag_end + 1..];
+    }
+    rest = full;
+    while let Some(i) = find_svg_tag(rest, "text") {
+        let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
+        let tag = &rest[i..i + tag_end];
+        let after = &rest[i + tag_end + 1..];
+        let content = after.split("</text>").next().unwrap_or("");
+        let color = parse_svg_color(svg_fill(tag));
+        let x = svg_attr(tag, "x").unwrap_or(0.0);
+        let y = svg_attr(tag, "y").unwrap_or(0.0);
+        paint_svg_text(&mut img, content, x, y, color);
+        rest = after;
+    }
     Ok(img)
+}
+
+struct SvgGrad {
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+    stops: Vec<(f32, [u8; 4])>,
+}
+
+fn find_svg_tag(hay: &str, name: &str) -> Option<usize> {
+    let pat = format!("<{name}");
+    let mut off = 0;
+    let mut rest = hay;
+    while let Some(i) = rest.find(&pat) {
+        let next = rest.as_bytes().get(i + pat.len()).copied().unwrap_or(b'>');
+        if !next.is_ascii_alphabetic() {
+            return Some(off + i);
+        }
+        let skip = i + pat.len();
+        rest = &rest[skip..];
+        off += skip;
+    }
+    None
+}
+
+fn svg_in_defs(full: &str, pos: usize) -> bool {
+    let before = &full[..pos.min(full.len())];
+    match (before.rfind("<defs"), before.rfind("</defs>")) {
+        (Some(o), Some(c)) => o > c,
+        (Some(_), None) => true,
+        _ => false,
+    }
+}
+
+fn parse_url_id(fill: &str) -> Option<&str> {
+    let s = fill.trim();
+    let s = s.strip_prefix("url(")?.trim_end_matches(')').trim();
+    let s = s.trim_matches(|c| c == '"' || c == '\'');
+    s.strip_prefix('#')
+}
+
+fn parse_svg_ids(text: &str) -> HashMap<String, String> {
+    let mut out = HashMap::new();
+    let mut rest = text;
+    while let Some(i) = rest.find('<') {
+        if rest[i..].starts_with("</") {
+            rest = &rest[i + 2..];
+            continue;
+        }
+        let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
+        let tag = &rest[i..i + tag_end];
+        if let Some(id) = svg_attr_str(tag, "id") {
+            out.insert(id.to_string(), tag.to_string());
+        }
+        rest = &rest[i + tag_end + 1..];
+    }
+    out
+}
+
+fn parse_offset(s: &str) -> f32 {
+    let s = s.trim();
+    if let Some(p) = s.strip_suffix('%') {
+        return p.parse::<f32>().unwrap_or(0.0) / 100.0;
+    }
+    s.parse::<f32>().unwrap_or(0.0)
+}
+
+fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
+    let mut out = HashMap::new();
+    let mut rest = text;
+    while let Some(i) = rest.find("<linearGradient") {
+        let after = &rest[i..];
+        let end = after
+            .find("</linearGradient>")
+            .map(|e| e + "</linearGradient>".len())
+            .unwrap_or_else(|| after.find('>').map(|e| e + 1).unwrap_or(after.len()));
+        let block = &after[..end];
+        let tag_end = block.find('>').unwrap_or(block.len());
+        let tag = &block[..tag_end];
+        if let Some(id) = svg_attr_str(tag, "id") {
+            let mut stops = Vec::new();
+            let mut srest = block;
+            while let Some(si) = srest.find("<stop") {
+                let st_end = srest[si..].find('>').unwrap_or(srest.len() - si);
+                let stop = &srest[si..si + st_end];
+                let off = svg_attr_str(stop, "offset")
+                    .map(parse_offset)
+                    .unwrap_or(0.0);
+                let color = parse_svg_color(svg_attr_str(stop, "stop-color").unwrap_or("#000000"));
+                stops.push((off, color));
+                srest = &srest[si + st_end + 1..];
+            }
+            stops.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+            out.insert(
+                id.to_string(),
+                SvgGrad {
+                    x1: svg_attr(tag, "x1").unwrap_or(0.0),
+                    y1: svg_attr(tag, "y1").unwrap_or(0.0),
+                    x2: svg_attr(tag, "x2").unwrap_or(1.0),
+                    y2: svg_attr(tag, "y2").unwrap_or(0.0),
+                    stops,
+                },
+            );
+        }
+        rest = &after[end..];
+    }
+    out
+}
+
+fn sample_grad(g: &SvgGrad, x: f32, y: f32) -> [u8; 4] {
+    if g.stops.is_empty() {
+        return [0, 0, 0, 255];
+    }
+    let dx = g.x2 - g.x1;
+    let dy = g.y2 - g.y1;
+    let len2 = dx * dx + dy * dy;
+    let t = if len2 < 1e-6 {
+        0.0
+    } else {
+        ((x - g.x1) * dx + (y - g.y1) * dy) / len2
+    }
+    .clamp(0.0, 1.0);
+    if t <= g.stops[0].0 {
+        return g.stops[0].1;
+    }
+    let last = g.stops.len() - 1;
+    if t >= g.stops[last].0 {
+        return g.stops[last].1;
+    }
+    let mut i = 0;
+    while i + 1 < g.stops.len() && g.stops[i + 1].0 < t {
+        i += 1;
+    }
+    let (a_t, a_c) = g.stops[i];
+    let (b_t, b_c) = g.stops[i + 1];
+    let u = ((t - a_t) / (b_t - a_t).max(1e-6)).clamp(0.0, 1.0);
+    [
+        (a_c[0] as f32 + (b_c[0] as f32 - a_c[0] as f32) * u) as u8,
+        (a_c[1] as f32 + (b_c[1] as f32 - a_c[1] as f32) * u) as u8,
+        (a_c[2] as f32 + (b_c[2] as f32 - a_c[2] as f32) * u) as u8,
+        255,
+    ]
+}
+
+fn paint_svg_rect(
+    img: &mut DecodedImage,
+    tag: &str,
+    ox: f32,
+    oy: f32,
+    grads: &HashMap<String, SvgGrad>,
+) {
+    let x = (svg_attr(tag, "x").unwrap_or(0.0) + ox).max(0.0) as u32;
+    let y = (svg_attr(tag, "y").unwrap_or(0.0) + oy).max(0.0) as u32;
+    let w = svg_attr(tag, "width").unwrap_or(0.0).max(0.0) as u32;
+    let h = svg_attr(tag, "height").unwrap_or(0.0).max(0.0) as u32;
+    let fill = svg_fill(tag);
+    for yy in y..(y + h).min(img.height) {
+        for xx in x..(x + w).min(img.width) {
+            let color = parse_url_id(fill)
+                .and_then(|id| grads.get(id))
+                .map(|g| sample_grad(g, xx as f32 + 0.5, yy as f32 + 0.5))
+                .unwrap_or_else(|| parse_svg_color(fill));
+            let idx = ((yy * img.width + xx) * 4) as usize;
+            img.rgba[idx..idx + 4].copy_from_slice(&color);
+        }
+    }
+}
+
+fn paint_svg_circle(img: &mut DecodedImage, tag: &str, ox: f32, oy: f32) {
+    let cx = svg_attr(tag, "cx").unwrap_or(0.0) + ox;
+    let cy = svg_attr(tag, "cy").unwrap_or(0.0) + oy;
+    let r = svg_attr(tag, "r").unwrap_or(0.0);
+    let color = parse_svg_color(svg_fill(tag));
+    let r2 = r * r;
+    let x0 = (cx - r).floor().max(0.0) as u32;
+    let y0 = (cy - r).floor().max(0.0) as u32;
+    let x1 = (cx + r).ceil().min(img.width as f32) as u32;
+    let y1 = (cy + r).ceil().min(img.height as f32) as u32;
+    for yy in y0..y1 {
+        for xx in x0..x1 {
+            let dx = xx as f32 + 0.5 - cx;
+            let dy = yy as f32 + 0.5 - cy;
+            if dx * dx + dy * dy <= r2 {
+                let idx = ((yy * img.width + xx) * 4) as usize;
+                img.rgba[idx..idx + 4].copy_from_slice(&color);
+            }
+        }
+    }
+}
+
+fn glyph_5x7(ch: char) -> Option<[u8; 7]> {
+    Some(match ch {
+        'I' => [
+            0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100,
+        ],
+        'X' => [
+            0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b01010, 0b10001,
+        ],
+        'H' => [
+            0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001,
+        ],
+        _ => return None,
+    })
+}
+
+fn paint_svg_text(img: &mut DecodedImage, content: &str, x: f32, y: f32, color: [u8; 4]) {
+    let mut cx = x.round() as i32;
+    let baseline = y.round() as i32;
+    for ch in content.chars() {
+        if ch == ' ' {
+            cx += 4;
+            continue;
+        }
+        let Some(rows) = glyph_5x7(ch) else {
+            cx += 6;
+            continue;
+        };
+        for (row, bits) in rows.iter().enumerate() {
+            for col in 0..5 {
+                if bits & (1 << (4 - col)) == 0 {
+                    continue;
+                }
+                let xx = cx + col as i32;
+                let yy = baseline - 7 + row as i32;
+                if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height {
+                    let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
+                    img.rgba[idx..idx + 4].copy_from_slice(&color);
+                }
+            }
+        }
+        cx += 6;
+    }
 }
 
 fn stroke_line(img: &mut DecodedImage, x1: f32, y1: f32, x2: f32, y2: f32, color: [u8; 4]) {
@@ -898,6 +1146,48 @@ mod tests {
         assert!(
             reds.iter().any(|&(x, y)| x <= 6 && y <= 6),
             "arc should paint the short quarter, reds={reds:?}"
+        );
+    }
+
+    #[test]
+    fn decode_svg_linear_gradient_use_and_text() {
+        let grad = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='8' y2='0'>\
+              <stop offset='0' stop-color='#ff0000'/>\
+              <stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg linearGradient");
+        let left = grad.pixel(0, 0).unwrap();
+        let right = grad.pixel(7, 0).unwrap();
+        assert!(
+            left[0] > 200 && left[2] < 60,
+            "left should be red: {left:?}"
+        );
+        assert!(
+            right[2] > 200 && right[0] < 60,
+            "right should be blue: {right:?}"
+        );
+        let reused = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect id='r' x='0' y='0' width='4' height='8' fill='#00ff00'/>\
+              <use href='#r' x='4' y='0'/></svg>",
+        )
+        .expect("svg use");
+        assert_eq!(reused.pixel(1, 1), Some([0, 255, 0, 255]));
+        assert_eq!(reused.pixel(6, 1), Some([0, 255, 0, 255]));
+        let text = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'>\
+              <text x='1' y='8' fill='#ff0000'>I</text></svg>",
+        )
+        .expect("svg text");
+        assert_eq!(
+            text.pixel(3, 4),
+            Some([255, 0, 0, 255]),
+            "{:?}",
+            text.pixel(3, 4)
         );
     }
 }
