@@ -1426,6 +1426,7 @@ impl NativeBrowser {
         self.chrome.find_open.hash(&mut h);
         self.chrome.zoom.to_bits().hash(&mut h);
         self.chrome.sidebar_collapsed.hash(&mut h);
+        self.chrome.sidebar_hidden.hash(&mut h);
         self.chrome.sidebar_peek.hash(&mut h);
         self.chrome.command_focused.hash(&mut h);
         self.chrome.sidebar_width.to_bits().hash(&mut h);
@@ -1662,8 +1663,19 @@ impl NativeBrowser {
                 self.chrome.find_open = true;
                 self.refresh_find();
             }
-            "sb" | "hide-sb" => {
-                self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
+            "sb" => {
+                if self.chrome.sidebar_hidden {
+                    self.chrome.sidebar_hidden = false;
+                    self.chrome.sidebar_collapsed = false;
+                } else {
+                    self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
+                }
+                self.chrome.sidebar_peek = false;
+                self.apply_chrome_viewport();
+            }
+            "hide-sb" => {
+                self.chrome.sidebar_hidden = !self.chrome.sidebar_hidden;
+                self.chrome.sidebar_collapsed = false;
                 self.chrome.sidebar_peek = false;
                 self.apply_chrome_viewport();
             }
@@ -2022,12 +2034,22 @@ impl NativeBrowser {
                 true
             }
             "s" | "S" => {
-                self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
+                if self.chrome.sidebar_hidden {
+                    self.chrome.sidebar_hidden = false;
+                    self.chrome.sidebar_collapsed = false;
+                } else {
+                    self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
+                }
                 self.chrome.sidebar_peek = false;
                 self.apply_chrome_viewport();
                 true
             }
             "l" | "L" | "e" | "E" => {
+                if self.chrome.sidebar_collapsed {
+                    self.chrome.sidebar_collapsed = false;
+                    self.chrome.sidebar_peek = false;
+                    self.apply_chrome_viewport();
+                }
                 self.urlbar_focused = true;
                 self.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
                 self.urlbar_selected = true;
@@ -3491,6 +3513,10 @@ mod tests {
             "⌘S must collapse the sidebar to the 56px rail"
         );
         assert_eq!(browser.chrome().sidebar_used(), 56.0);
+        assert!(
+            browser.chrome().stage_rect(ve_core::Size::new(1440.0, 900.0)).y() < 16.0,
+            "collapsed rail must not keep a top toolbar"
+        );
         let list = browser.paint_shell_list().unwrap();
         let texts: Vec<String> = list
             .items()

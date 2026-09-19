@@ -155,6 +155,8 @@ pub struct Chrome {
     pub sidebar_collapsed: bool,
     /// Hover-peek of the full sidebar over the collapsed rail (Electron 15).
     pub sidebar_peek: bool,
+    /// Sidebar fully hidden; the top toolbar hosts the command bar (Electron `hidden`).
+    pub sidebar_hidden: bool,
     /// Sidebar width (user-resized).
     pub sidebar_width: f32,
     /// Agent rail width.
@@ -200,6 +202,7 @@ impl Default for Chrome {
             zoom: 1.0,
             sidebar_collapsed: false,
             sidebar_peek: false,
+            sidebar_hidden: false,
             sidebar_width: ChromeMetrics::default().sidebar_w,
             rail_width: ChromeMetrics::default().rail_w,
             rail_open: false,
@@ -224,10 +227,12 @@ impl Chrome {
         self.tokens = ChromeTokens::for_theme(theme);
     }
 
-    /// Sidebar width actually used (rail when collapsed; peek does not resize the stage).
+    /// Sidebar width actually used (0 when hidden; rail when collapsed; peek does not resize the stage).
     #[must_use]
     pub fn sidebar_used(&self) -> f32 {
-        if self.sidebar_collapsed {
+        if self.sidebar_hidden {
+            0.0
+        } else if self.sidebar_collapsed {
             self.metrics.sidebar_rail_w
         } else {
             self.sidebar_width.max(self.metrics.sidebar_rail_w)
@@ -237,10 +242,22 @@ impl Chrome {
     /// Hit-test width: peek panel covers the expanded sidebar without moving the stage.
     #[must_use]
     pub fn sidebar_hit_width(&self) -> f32 {
-        if self.sidebar_collapsed && self.sidebar_peek {
+        if self.sidebar_hidden {
+            0.0
+        } else if self.sidebar_collapsed && self.sidebar_peek {
             self.sidebar_width.max(self.metrics.sidebar_rail_w)
         } else {
             self.sidebar_used()
+        }
+    }
+
+    /// Top toolbar height. Electron paints this only when the sidebar is hidden.
+    #[must_use]
+    pub fn toolbar_used(&self) -> f32 {
+        if self.sidebar_hidden {
+            self.metrics.toolbar_h
+        } else {
+            0.0
         }
     }
 
@@ -274,7 +291,7 @@ impl Chrome {
     pub fn stage_rect(&self, window: Size) -> Rect {
         let sb = self.sidebar_used();
         let rail = self.rail_used();
-        let toolbar = self.metrics.toolbar_h;
+        let toolbar = self.toolbar_used();
         let inset = self.metrics.stage_inset;
         let x = sb + inset;
         let y = toolbar + inset;
@@ -354,19 +371,28 @@ impl Chrome {
         }
     }
 
-    /// Compact top-pill command bar (Electron 01 / 03).
+    /// Command field: sidebar compact when the sidebar is visible, toolbar pill when hidden.
     #[must_use]
     pub fn command_pill_rect(&self, window: Size) -> Rect {
-        let sb = self.sidebar_used();
-        let rail = self.rail_used();
-        let nav = 108.0;
-        let actions = 108.0;
-        let main_left = sb + nav;
-        let main_right = window.width - rail - actions;
-        let avail = (main_right - main_left).max(160.0);
-        let pill_w = avail.min(560.0);
-        let pill_x = main_left + ((avail - pill_w) / 2.0).max(0.0);
-        Rect::new(pill_x, 10.0, pill_w, 32.0)
+        if self.sidebar_hidden {
+            let rail = self.rail_used();
+            let nav = 108.0;
+            let actions = 108.0;
+            let main_left = nav;
+            let main_right = window.width - rail - actions;
+            let avail = (main_right - main_left).max(160.0);
+            let pill_w = avail.min(560.0);
+            let pill_x = main_left + ((avail - pill_w) / 2.0).max(0.0);
+            return Rect::new(pill_x, 10.0, pill_w, 32.0);
+        }
+        let sb = if self.sidebar_collapsed && self.sidebar_peek {
+            self.sidebar_width.max(self.metrics.sidebar_rail_w)
+        } else if self.sidebar_collapsed {
+            self.sidebar_width.max(self.metrics.sidebar_rail_w)
+        } else {
+            self.sidebar_used()
+        };
+        Rect::new(12.0, 44.0, (sb - 24.0).max(80.0), 32.0)
     }
 
     /// Detected intent for the current command field.
@@ -410,7 +436,8 @@ impl Chrome {
         if self.rail_open && x > window.width - self.rail_used() {
             return ChromeHit::RailToggle;
         }
-        if y < self.metrics.toolbar_h && x > sb && x < window.width - self.rail_used() {
+        if self.sidebar_hidden && y < self.metrics.toolbar_h && x < window.width - self.rail_used()
+        {
             let pill = self.command_pill_rect(window);
             if pill.contains(Point::new(x, y)) {
                 return ChromeHit::CommandBar;
@@ -490,20 +517,23 @@ impl Chrome {
         if self.sidebar_collapsed && !self.sidebar_peek {
             return self.hit_sidebar_rail(window, y);
         }
-        if y < 48.0 {
+        if y < 40.0 {
             return ChromeHit::Space {
                 id: self.layout.active_space_id.clone(),
             };
         }
+        if (40.0..84.0).contains(&y) {
+            return ChromeHit::CommandBar;
+        }
         let pin_h = self.pin_band_h();
-        if pin_h > 0.0 && y < 48.0 + pin_h {
+        if pin_h > 0.0 && y < 84.0 + pin_h {
             if let Some(pin) = self.active_pins().first() {
                 return ChromeHit::Pin {
                     url: pin.url.clone(),
                 };
             }
         }
-        let tabs_y = 48.0 + pin_h;
+        let tabs_y = 84.0 + pin_h;
         if y < tabs_y + self.metrics.row_h {
             return ChromeHit::NewTab;
         }
@@ -582,8 +612,12 @@ impl Chrome {
             rect: Rect::new(0.0, 0.0, window.width, window.height),
             color: t.bg_window,
         });
-        self.paint_sidebar(&mut list, window);
-        self.paint_toolbar(&mut list, window);
+        if !self.sidebar_hidden {
+            self.paint_sidebar(&mut list, window);
+        }
+        if self.sidebar_hidden {
+            self.paint_toolbar(&mut list, window);
+        }
         self.paint_stage(&mut list, window);
         if self.rail_open {
             self.paint_rail(&mut list, window);
@@ -694,9 +728,10 @@ impl Chrome {
         let space_color = space.map_or(SpaceColor::Blue, |s| s.color);
         icon_dot(list, 20.0, 22.0, 4.0, space_dot_color(space_color));
         self.label(list, Point::new(32.0, 28.0), space_name, 13.0, t.sb_ink_0);
+        self.paint_command_field(list, self.command_pill_rect(window));
 
         let pins = self.active_pins();
-        let mut y = 48.0;
+        let mut y = 84.0;
         if !pins.is_empty() {
             let gap = 8.0;
             let tile = ((sb - 32.0 - gap * 4.0) / 5.0).clamp(28.0, 40.0);
@@ -797,6 +832,60 @@ impl Chrome {
         rows
     }
 
+    fn paint_command_field(&self, list: &mut DisplayList, pill: Rect) {
+        let t = &self.tokens;
+        fill_round(list, pill, 16.0, t.sb_field);
+        let active = self.tabs.iter().find(|tab| tab.active);
+        let start = active.is_none_or(|tab| is_start_url(&tab.url));
+        let icon_y = pill.y() + pill.height() * 0.5;
+        if start {
+            icon_sparkle(list, pill.x() + 16.0, icon_y, t.ink_2);
+        } else {
+            icon_search(list, pill.x() + 16.0, icon_y, t.ink_2);
+        }
+        let cmd = if !self.command.is_empty() {
+            self.command.as_str()
+        } else if active.is_some_and(|tab| !is_start_url(&tab.url)) {
+            active.map_or("", |tab| tab.url.as_str())
+        } else {
+            "Search, enter an address, or ask the agent"
+        };
+        let chip = if self.command_focused && !self.command.is_empty() {
+            intent_label(&self.intent())
+        } else {
+            ""
+        };
+        let chip_w = if chip.is_empty() {
+            0.0
+        } else {
+            (chip.len() as f32 * 6.6 + 20.0).min(pill.width() * 0.45)
+        };
+        let max_chars = ((pill.width() - 40.0 - chip_w) / 7.0).max(8.0) as usize;
+        self.label(
+            list,
+            Point::new(pill.x() + 32.0, pill.y() + 21.0),
+            &truncate(cmd, max_chars),
+            12.0,
+            t.ink_2,
+        );
+        if !chip.is_empty() {
+            let chip_x = pill.right() - chip_w - 8.0;
+            fill_round(
+                list,
+                Rect::new(chip_x, pill.y() + 5.0, chip_w, 22.0),
+                11.0,
+                t.sb_selected,
+            );
+            self.label(
+                list,
+                Point::new(chip_x + 8.0, pill.y() + 20.0),
+                chip,
+                11.0,
+                t.sb_selected_ink,
+            );
+        }
+    }
+
     fn paint_command_suggestions(&self, list: &mut DisplayList, window: Size) {
         if !self.command_focused || self.command.is_empty() {
             return;
@@ -808,7 +897,8 @@ impl Chrome {
         let t = &self.tokens;
         let pill = self.command_pill_rect(window);
         let h = 12.0 + rows.len() as f32 * 36.0;
-        let card = Rect::new(pill.x(), pill.bottom() + 8.0, pill.width(), h);
+        let pop_w = pill.width().max(360.0).min(window.width - pill.x() - 16.0);
+        let card = Rect::new(pill.x(), pill.bottom() + 8.0, pop_w, h);
         list.push(DisplayItem::BoxShadow {
             rect: card,
             dx: 0.0,
@@ -913,50 +1003,7 @@ impl Chrome {
         icon_chevron_left(list, nav_x + 6.0, 26.0, t.ink_2);
         icon_chevron_right(list, nav_x + 38.0, 26.0, t.ink_2);
         icon_reload(list, nav_x + 70.0, 26.0, t.ink_2, t.bg_window);
-        let pill = self.command_pill_rect(window);
-        fill_round(list, pill, 16.0, t.sb_field);
-        let active = self.tabs.iter().find(|tab| tab.active);
-        let start = active.is_none_or(|tab| is_start_url(&tab.url));
-        if start {
-            icon_sparkle(list, pill.x() + 16.0, 26.0, t.ink_2);
-        } else {
-            icon_search(list, pill.x() + 16.0, 26.0, t.ink_2);
-        }
-        let cmd = if !self.command.is_empty() {
-            self.command.as_str()
-        } else if active.is_some_and(|tab| !is_start_url(&tab.url)) {
-            active.map_or("", |tab| tab.url.as_str())
-        } else {
-            "Search, enter an address, or ask the agent"
-        };
-        let chip = if self.command_focused && !self.command.is_empty() {
-            intent_label(&self.intent())
-        } else {
-            ""
-        };
-        let chip_w = if chip.is_empty() {
-            0.0
-        } else {
-            (chip.len() as f32 * 6.6 + 20.0).min(pill.width() * 0.45)
-        };
-        let max_chars = ((pill.width() - 40.0 - chip_w) / 7.0).max(8.0) as usize;
-        self.label(
-            list,
-            Point::new(pill.x() + 32.0, 31.0),
-            &truncate(cmd, max_chars),
-            12.0,
-            t.ink_2,
-        );
-        if !chip.is_empty() {
-            let chip_x = pill.right() - chip_w - 8.0;
-            fill_round(
-                list,
-                Rect::new(chip_x, 14.0, chip_w, 22.0),
-                11.0,
-                t.sb_selected,
-            );
-            self.label(list, Point::new(chip_x + 8.0, 30.0), chip, 11.0, t.sb_selected_ink);
-        }
+        self.paint_command_field(list, self.command_pill_rect(window));
         let right = window.width - rail - 12.0;
         icon_grid(list, right - 84.0, 26.0, t.ink_2);
         icon_bookmark(list, right - 52.0, 26.0, t.ink_2, t.bg_window);
@@ -2117,7 +2164,8 @@ mod tests {
     #[test]
     fn empty_sidebar_new_tab_sits_under_space_not_a_pin_band() {
         let chrome = Chrome::default();
-        assert!(matches!(chrome.hit(Size::new(1280.0, 720.0), 40.0, 56.0), ChromeHit::NewTab));
+        assert!(matches!(chrome.hit(Size::new(1280.0, 720.0), 40.0, 56.0), ChromeHit::CommandBar));
+        assert!(matches!(chrome.hit(Size::new(1280.0, 720.0), 40.0, 92.0), ChromeHit::NewTab));
     }
 
     #[test]
@@ -2178,9 +2226,10 @@ mod tests {
         assert!(texts.iter().any(|t| *t == "Open"), "{texts:?}");
         let stage = chrome.stage_rect(window);
         assert!(stage.x() >= 260.0);
+        assert!(stage.y() < 16.0, "no top toolbar when sidebar is visible: y={}", stage.y());
         assert!(stage.width() < 1280.0 - 360.0);
         assert!(matches!(
-            chrome.hit(window, 520.0, 24.0),
+            chrome.hit(window, 40.0, 60.0),
             ChromeHit::CommandBar
         ));
         assert!(
@@ -2492,5 +2541,26 @@ mod tests {
             "intent chip: {texts:?}"
         );
         assert_eq!(intent_label(&chrome.intent()), "Ask on this page");
+    }
+
+    #[test]
+    fn toolbar_is_absent_until_sidebar_is_hidden() {
+        let chrome = sample();
+        let window = Size::new(1440.0, 900.0);
+        assert_eq!(chrome.toolbar_used(), 0.0);
+        assert!(chrome.stage_rect(window).y() < 16.0);
+        assert!(matches!(
+            chrome.hit(window, 40.0, 60.0),
+            ChromeHit::CommandBar
+        ));
+        let mut hidden = sample();
+        hidden.sidebar_hidden = true;
+        assert_eq!(hidden.sidebar_used(), 0.0);
+        assert_eq!(hidden.toolbar_used(), 52.0);
+        assert!(hidden.stage_rect(window).y() >= 52.0);
+        assert!(matches!(
+            hidden.hit(window, 520.0, 24.0),
+            ChromeHit::CommandBar
+        ));
     }
 }
