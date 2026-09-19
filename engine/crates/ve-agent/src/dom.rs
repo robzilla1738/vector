@@ -1757,6 +1757,25 @@ pub(crate) fn host_call(
         )),
         "historyGo" => {
             let d = arg_f64(args, 0) as i32;
+            let from = page.history_index;
+            let dest = from as i32 + d;
+            if dest < 0 || dest as usize >= page.history.len() || dest as usize == from {
+                return Ok(JsValue::Undefined);
+            }
+            let to = dest as usize;
+            let same_document =
+                page.history[from].document.bytes == page.history[to].document.bytes;
+            if same_document {
+                if let Some(cur) = page.history.get_mut(from) {
+                    cur.scroll = page.scroll;
+                }
+                page.history_index = to;
+                if let Some(entry) = page.history.get(to) {
+                    page.url.clone_from(&entry.document.url);
+                    page.scroll = entry.scroll;
+                }
+                return Ok(JsValue::Bool(true));
+            }
             match d.cmp(&0) {
                 std::cmp::Ordering::Less => {
                     for _ in 0..(-d) {

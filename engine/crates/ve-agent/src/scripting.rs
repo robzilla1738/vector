@@ -427,6 +427,87 @@ pub const PRELUDE: &str = r#"(() => {
       if (diff) throw new DOMException("The operation failed for an operation-specific reason", "OperationError");
       return out;
     };
+    const AES_INV_SBOX = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) AES_INV_SBOX[AES_SBOX[i]] = i;
+    const aesDecryptBlock = (rk, input) => {
+      const s = new Uint8Array(input);
+      const add = (off) => { for (let i = 0; i < 16; i++) s[i] ^= rk[off + i]; };
+      const invSub = () => { for (let i = 0; i < 16; i++) s[i] = AES_INV_SBOX[s[i]]; };
+      const invShift = () => {
+        let t = s[13]; s[13] = s[9]; s[9] = s[5]; s[5] = s[1]; s[1] = t;
+        t = s[2]; s[2] = s[10]; s[10] = t; t = s[6]; s[6] = s[14]; s[14] = t;
+        t = s[3]; s[3] = s[7]; s[7] = s[11]; s[11] = s[15]; s[15] = t;
+      };
+      const mul = (a, n) => {
+        let r = 0, x = a;
+        while (n) { if (n & 1) r ^= x; x = xtime(x); n >>= 1; }
+        return r & 0xff;
+      };
+      const invMix = () => {
+        for (let c = 0; c < 4; c++) {
+          const i = c * 4;
+          const a = s[i], b = s[i + 1], d = s[i + 2], e = s[i + 3];
+          s[i]     = mul(a, 0x0e) ^ mul(b, 0x0b) ^ mul(d, 0x0d) ^ mul(e, 0x09);
+          s[i + 1] = mul(a, 0x09) ^ mul(b, 0x0e) ^ mul(d, 0x0b) ^ mul(e, 0x0d);
+          s[i + 2] = mul(a, 0x0d) ^ mul(b, 0x09) ^ mul(d, 0x0e) ^ mul(e, 0x0b);
+          s[i + 3] = mul(a, 0x0b) ^ mul(b, 0x0d) ^ mul(d, 0x09) ^ mul(e, 0x0e);
+        }
+      };
+      add(160);
+      for (let r = 9; r >= 1; r--) { invShift(); invSub(); add(r * 16); invMix(); }
+      invShift(); invSub(); add(0);
+      return s;
+    };
+    const aesCbcEncrypt = (key, iv, data) => {
+      if (iv.length !== 16) throw new DOMException("iv must be 16 bytes", "OperationError");
+      if (data.length % 16) throw new DOMException("data must be a multiple of 16 bytes", "OperationError");
+      const rk = aesExpand(key);
+      const out = new Uint8Array(data.length);
+      let prev = iv;
+      for (let i = 0; i < data.length; i += 16) {
+        const block = new Uint8Array(16);
+        block.set(data.subarray(i, i + 16));
+        for (let j = 0; j < 16; j++) block[j] ^= prev[j];
+        const enc = aesEncryptBlock(rk, block);
+        out.set(enc, i);
+        prev = enc;
+      }
+      return out;
+    };
+    const aesCbcDecrypt = (key, iv, data) => {
+      if (iv.length !== 16) throw new DOMException("iv must be 16 bytes", "OperationError");
+      if (data.length % 16) throw new DOMException("data must be a multiple of 16 bytes", "OperationError");
+      const rk = aesExpand(key);
+      const out = new Uint8Array(data.length);
+      let prev = iv;
+      for (let i = 0; i < data.length; i += 16) {
+        const block = data.subarray(i, i + 16);
+        const dec = aesDecryptBlock(rk, block);
+        for (let j = 0; j < 16; j++) out[i + j] = dec[j] ^ prev[j];
+        prev = block;
+      }
+      return out;
+    };
+    const pbkdf2HmacSha256 = (password, salt, iterations, dkLen) => {
+      const out = new Uint8Array(dkLen);
+      const blocks = Math.ceil(dkLen / 32);
+      for (let i = 1; i <= blocks; i++) {
+        const block = new Uint8Array(salt.length + 4);
+        block.set(salt);
+        block[salt.length] = (i >>> 24) & 0xff;
+        block[salt.length + 1] = (i >>> 16) & 0xff;
+        block[salt.length + 2] = (i >>> 8) & 0xff;
+        block[salt.length + 3] = i & 0xff;
+        let u = hmacSha256(password, block);
+        const acc = new Uint8Array(u);
+        for (let c = 1; c < iterations; c++) {
+          u = hmacSha256(password, u);
+          for (let j = 0; j < 32; j++) acc[j] ^= u[j];
+        }
+        out.set(acc.subarray(0, Math.min(32, dkLen - (i - 1) * 32)), (i - 1) * 32);
+      }
+      return out;
+    };
     cryptoObj.subtle = {
       digest(algo, data) {
         const name = String(algo && algo.name ? algo.name : algo).replace(/-/g, "").toUpperCase();
@@ -452,7 +533,7 @@ pub const PRELUDE: &str = r#"(() => {
             _raw: toBytes(keyData),
           });
         }
-        if (name === "AESGCM") {
+        if (name === "AESGCM" || name === "AESCBC") {
           const raw = toBytes(keyData);
           if (raw.length !== 16) {
             return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
@@ -460,9 +541,18 @@ pub const PRELUDE: &str = r#"(() => {
           return Promise.resolve({
             type: "secret",
             extractable: !!extractable,
-            algorithm: { name: "AES-GCM", length: 128 },
+            algorithm: { name: name === "AESCBC" ? "AES-CBC" : "AES-GCM", length: 128 },
             usages: usages || [],
             _raw: raw,
+          });
+        }
+        if (name === "PBKDF2") {
+          return Promise.resolve({
+            type: "secret",
+            extractable: false,
+            algorithm: { name: "PBKDF2" },
+            usages: usages || [],
+            _raw: toBytes(keyData),
           });
         }
         return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
@@ -489,11 +579,18 @@ pub const PRELUDE: &str = r#"(() => {
       },
       encrypt(algorithm, key, data) {
         const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
-        if (name !== "AESGCM" || !key || !key._raw) {
+        if (!key || !key._raw) {
           return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
         }
         try {
-          const out = aesGcmEncrypt(key._raw, toBytes(algorithm.iv), algorithm.additionalData ? toBytes(algorithm.additionalData) : new Uint8Array(0), toBytes(data));
+          let out;
+          if (name === "AESGCM") {
+            out = aesGcmEncrypt(key._raw, toBytes(algorithm.iv), algorithm.additionalData ? toBytes(algorithm.additionalData) : new Uint8Array(0), toBytes(data));
+          } else if (name === "AESCBC") {
+            out = aesCbcEncrypt(key._raw, toBytes(algorithm.iv), toBytes(data));
+          } else {
+            return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+          }
           return Promise.resolve(out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength));
         } catch (e) {
           return Promise.reject(e);
@@ -501,11 +598,39 @@ pub const PRELUDE: &str = r#"(() => {
       },
       decrypt(algorithm, key, data) {
         const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
-        if (name !== "AESGCM" || !key || !key._raw) {
+        if (!key || !key._raw) {
           return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
         }
         try {
-          const out = aesGcmDecrypt(key._raw, toBytes(algorithm.iv), algorithm.additionalData ? toBytes(algorithm.additionalData) : new Uint8Array(0), toBytes(data));
+          let out;
+          if (name === "AESGCM") {
+            out = aesGcmDecrypt(key._raw, toBytes(algorithm.iv), algorithm.additionalData ? toBytes(algorithm.additionalData) : new Uint8Array(0), toBytes(data));
+          } else if (name === "AESCBC") {
+            out = aesCbcDecrypt(key._raw, toBytes(algorithm.iv), toBytes(data));
+          } else {
+            return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+          }
+          return Promise.resolve(out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength));
+        } catch (e) {
+          return Promise.reject(e);
+        }
+      },
+      deriveBits(algorithm, key, length) {
+        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
+        if (name !== "PBKDF2" || !key || !key._raw) {
+          return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+        }
+        const hash = String(algorithm.hash && algorithm.hash.name ? algorithm.hash.name : algorithm.hash || "SHA-256").replace(/-/g, "").toUpperCase();
+        if (hash !== "SHA256") {
+          return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+        }
+        const dkLen = (Number(length) / 8) | 0;
+        const iter = Number(algorithm.iterations) | 0;
+        if (dkLen <= 0 || iter <= 0) {
+          return Promise.reject(new DOMException("The operation failed for an operation-specific reason", "OperationError"));
+        }
+        try {
+          const out = pbkdf2HmacSha256(key._raw, toBytes(algorithm.salt), iter, dkLen);
           return Promise.resolve(out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength));
         } catch (e) {
           return Promise.reject(e);

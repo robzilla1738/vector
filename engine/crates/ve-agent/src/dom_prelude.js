@@ -7464,9 +7464,15 @@
       if (s === "auto" || s === "manual") this._scrollRestoration = s;
     }
     get state() { try { return JSON.parse(D("historyState") || "null"); } catch { return null; } }
-    back() { D("historyGo", -1); }
-    forward() { D("historyGo", 1); }
-    go() { D("historyGo", arguments[0] | 0); }
+    back() { this._traverse(-1); }
+    forward() { this._traverse(1); }
+    go() { this._traverse(arguments[0] | 0); }
+    _traverse(delta) {
+      const popped = D("historyGo", delta | 0);
+      if (popped === true) {
+        window.dispatchEvent(new PopStateEvent("popstate", { state: this.state }));
+      }
+    }
     pushState(state, title) {
       if (arguments.length < 2) {
         throw new TypeError("Failed to execute 'pushState' on 'History': 2 arguments required, but only " + arguments.length + " present.");
@@ -9461,6 +9467,49 @@
   const documentSelection = Object.create(Selection.prototype);
   documentSelection._ranges = [];
 
+  class MediaQueryList extends EventTarget {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get media() { return this._media || ""; }
+    get matches() { return this._eval ? !!this._eval() : false; }
+    addListener(fn) { this.addEventListener("change", fn); }
+    removeListener(fn) { this.removeEventListener("change", fn); }
+  }
+  Object.defineProperty(MediaQueryList.prototype, Symbol.toStringTag, { value: "MediaQueryList", configurable: true });
+
+  class Highlight {
+    constructor() {
+      this._ranges = new Set();
+      for (let i = 0; i < arguments.length; i++) this.add(arguments[i]);
+    }
+    add(range) { this._ranges.add(range); return this; }
+    delete(range) { return this._ranges.delete(range); }
+    has(range) { return this._ranges.has(range); }
+    clear() { this._ranges.clear(); }
+    get size() { return this._ranges.size; }
+    values() { return this._ranges.values(); }
+    keys() { return this._ranges.values(); }
+    entries() { return this._ranges.entries(); }
+    forEach(fn, thisArg) { this._ranges.forEach(fn, thisArg); }
+    [Symbol.iterator]() { return this._ranges.values(); }
+  }
+  Object.defineProperty(Highlight.prototype, Symbol.toStringTag, { value: "Highlight", configurable: true });
+
+  class HighlightRegistry {
+    constructor() { this._map = new Map(); }
+    set(name, highlight) { this._map.set(String(name), highlight); return this; }
+    get(name) { return this._map.get(String(name)); }
+    has(name) { return this._map.has(String(name)); }
+    delete(name) { return this._map.delete(String(name)); }
+    clear() { this._map.clear(); }
+    get size() { return this._map.size; }
+    keys() { return this._map.keys(); }
+    values() { return this._map.values(); }
+    entries() { return this._map.entries(); }
+    forEach(fn, thisArg) { this._map.forEach(fn, thisArg); }
+    [Symbol.iterator]() { return this._map.entries(); }
+  }
+  Object.defineProperty(HighlightRegistry.prototype, Symbol.toStringTag, { value: "HighlightRegistry", configurable: true });
+
   class IDBRequest extends EventTarget {
     constructor() {
       super();
@@ -10023,6 +10072,7 @@
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Selection, Sanitizer,
+    MediaQueryList, Highlight, HighlightRegistry,
     Animation, KeyframeEffect, DocumentTimeline, ViewTransition,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport, Cache, CacheStorage, caches,
     TextDecoder, TextEncoder,
@@ -10169,16 +10219,10 @@
           return false;
         });
       };
-      const ls = [];
-      return {
-        media: q,
-        get matches() { return evalQ(); },
-        addListener(fn) { if (typeof fn === "function") ls.push(fn); },
-        removeListener(fn) { const i = ls.indexOf(fn); if (i >= 0) ls.splice(i, 1); },
-        addEventListener(t, fn) { if (t === "change") this.addListener(fn); },
-        removeEventListener(t, fn) { if (t === "change") this.removeListener(fn); },
-        dispatchEvent(ev) { ls.forEach((fn) => fn(ev || this)); return true; },
-      };
+      const mql = Object.create(MediaQueryList.prototype);
+      mql._media = q;
+      mql._eval = evalQ;
+      return mql;
     },
     getSelection() { return documentSelection; },
     alert(m) { __ve.dom("scriptDialog", "alert", String(m), ""); },
@@ -10284,6 +10328,7 @@
         return D("cssSupports", q) === true;
       },
       _registered: new Map(),
+      highlights: new HighlightRegistry(),
       registerProperty(def) {
         if (!def || def.name == null) {
           throw new TypeError("Failed to execute 'registerProperty' on 'CSS': 1 argument required.");

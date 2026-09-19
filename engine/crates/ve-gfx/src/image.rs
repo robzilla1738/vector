@@ -211,63 +211,21 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     }
     rest = text.as_ref();
     while let Some(i) = rest.find("<circle") {
+        let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        let cx = svg_attr(tag, "cx").unwrap_or(0.0);
-        let cy = svg_attr(tag, "cy").unwrap_or(0.0);
-        let r = svg_attr(tag, "r").unwrap_or(0.0);
-        let fill = tag
-            .split("fill=")
-            .nth(1)
-            .and_then(|s| {
-                let q = s.chars().next()?;
-                if q == '"' || q == '\'' {
-                    s[1..].split(q).next()
-                } else {
-                    None
-                }
-            })
-            .unwrap_or("#000000");
-        let color = parse_svg_color(fill);
-        let r2 = r * r;
-        let x0 = (cx - r).floor().max(0.0) as u32;
-        let y0 = (cy - r).floor().max(0.0) as u32;
-        let x1 = (cx + r).ceil().min(img.width as f32) as u32;
-        let y1 = (cy + r).ceil().min(img.height as f32) as u32;
-        for yy in y0..y1 {
-            for xx in x0..x1 {
-                let dx = xx as f32 + 0.5 - cx;
-                let dy = yy as f32 + 0.5 - cy;
-                if dx * dx + dy * dy <= r2 {
-                    let idx = ((yy * img.width + xx) * 4) as usize;
-                    img.rgba[idx..idx + 4].copy_from_slice(&color);
-                }
-            }
+        if !svg_in_defs(full, abs) {
+            paint_svg_circle(&mut img, tag, 0.0, 0.0, &grads);
         }
         rest = &rest[i + tag_end + 1..];
     }
     rest = text.as_ref();
     while let Some(i) = rest.find("<ellipse") {
+        let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        let cx = svg_attr(tag, "cx").unwrap_or(0.0);
-        let cy = svg_attr(tag, "cy").unwrap_or(0.0);
-        let rx = svg_attr(tag, "rx").unwrap_or(0.0);
-        let ry = svg_attr(tag, "ry").unwrap_or(0.0);
-        let color = parse_svg_color(svg_fill(tag));
-        let x0 = (cx - rx).floor().max(0.0) as u32;
-        let y0 = (cy - ry).floor().max(0.0) as u32;
-        let x1 = (cx + rx).ceil().min(img.width as f32) as u32;
-        let y1 = (cy + ry).ceil().min(img.height as f32) as u32;
-        for yy in y0..y1 {
-            for xx in x0..x1 {
-                let nx = (xx as f32 + 0.5 - cx) / rx.max(0.001);
-                let ny = (yy as f32 + 0.5 - cy) / ry.max(0.001);
-                if nx * nx + ny * ny <= 1.0 {
-                    let idx = ((yy * img.width + xx) * 4) as usize;
-                    img.rgba[idx..idx + 4].copy_from_slice(&color);
-                }
-            }
+        if !svg_in_defs(full, abs) {
+            paint_svg_ellipse(&mut img, tag, 0.0, 0.0, &grads);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -393,7 +351,9 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             if src.starts_with("<rect") {
                 paint_svg_rect(&mut img, src, ox, oy, &grads);
             } else if src.starts_with("<circle") {
-                paint_svg_circle(&mut img, src, ox, oy);
+                paint_svg_circle(&mut img, src, ox, oy, &grads);
+            } else if src.starts_with("<ellipse") {
+                paint_svg_ellipse(&mut img, src, ox, oy, &grads);
             }
         }
         rest = &rest[i + tag_end + 1..];
@@ -605,11 +565,17 @@ fn paint_svg_rect(
     }
 }
 
-fn paint_svg_circle(img: &mut DecodedImage, tag: &str, ox: f32, oy: f32) {
+fn paint_svg_circle(
+    img: &mut DecodedImage,
+    tag: &str,
+    ox: f32,
+    oy: f32,
+    grads: &HashMap<String, SvgGrad>,
+) {
     let cx = svg_attr(tag, "cx").unwrap_or(0.0) + ox;
     let cy = svg_attr(tag, "cy").unwrap_or(0.0) + oy;
     let r = svg_attr(tag, "r").unwrap_or(0.0);
-    let color = parse_svg_color(svg_fill(tag));
+    let fill = svg_fill(tag);
     let r2 = r * r;
     let x0 = (cx - r).floor().max(0.0) as u32;
     let y0 = (cy - r).floor().max(0.0) as u32;
@@ -620,6 +586,42 @@ fn paint_svg_circle(img: &mut DecodedImage, tag: &str, ox: f32, oy: f32) {
             let dx = xx as f32 + 0.5 - cx;
             let dy = yy as f32 + 0.5 - cy;
             if dx * dx + dy * dy <= r2 {
+                let color = parse_url_id(fill)
+                    .and_then(|id| grads.get(id))
+                    .map(|g| sample_grad(g, xx as f32 + 0.5, yy as f32 + 0.5))
+                    .unwrap_or_else(|| parse_svg_color(fill));
+                let idx = ((yy * img.width + xx) * 4) as usize;
+                img.rgba[idx..idx + 4].copy_from_slice(&color);
+            }
+        }
+    }
+}
+
+fn paint_svg_ellipse(
+    img: &mut DecodedImage,
+    tag: &str,
+    ox: f32,
+    oy: f32,
+    grads: &HashMap<String, SvgGrad>,
+) {
+    let cx = svg_attr(tag, "cx").unwrap_or(0.0) + ox;
+    let cy = svg_attr(tag, "cy").unwrap_or(0.0) + oy;
+    let rx = svg_attr(tag, "rx").unwrap_or(0.0);
+    let ry = svg_attr(tag, "ry").unwrap_or(0.0);
+    let fill = svg_fill(tag);
+    let x0 = (cx - rx).floor().max(0.0) as u32;
+    let y0 = (cy - ry).floor().max(0.0) as u32;
+    let x1 = (cx + rx).ceil().min(img.width as f32) as u32;
+    let y1 = (cy + ry).ceil().min(img.height as f32) as u32;
+    for yy in y0..y1 {
+        for xx in x0..x1 {
+            let nx = (xx as f32 + 0.5 - cx) / rx.max(0.001);
+            let ny = (yy as f32 + 0.5 - cy) / ry.max(0.001);
+            if nx * nx + ny * ny <= 1.0 {
+                let color = parse_url_id(fill)
+                    .and_then(|id| grads.get(id))
+                    .map(|g| sample_grad(g, xx as f32 + 0.5, yy as f32 + 0.5))
+                    .unwrap_or_else(|| parse_svg_color(fill));
                 let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
             }
@@ -637,6 +639,27 @@ fn glyph_5x7(ch: char) -> Option<[u8; 7]> {
         ],
         'H' => [
             0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001,
+        ],
+        'A' => [
+            0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001,
+        ],
+        'V' => [
+            0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100,
+        ],
+        'E' => [
+            0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111,
+        ],
+        'C' => [
+            0b01110, 0b10001, 0b10000, 0b10000, 0b10000, 0b10001, 0b01110,
+        ],
+        'T' => [
+            0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100,
+        ],
+        'O' => [
+            0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110,
+        ],
+        'R' => [
+            0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001,
         ],
         _ => return None,
     })
@@ -1309,5 +1332,54 @@ mod tests {
             img.pixel(3, 3)
         );
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]), "{:?}", img.pixel(0, 0));
+    }
+
+    #[test]
+    fn decode_svg_circle_and_ellipse_sample_gradients() {
+        let circle = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='8' y2='0'>\
+              <stop offset='0' stop-color='#ff0000'/>\
+              <stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <circle cx='4' cy='4' r='3' fill='url(#g)'/></svg>",
+        )
+        .expect("svg circle gradient");
+        let left = circle.pixel(2, 4).unwrap();
+        let right = circle.pixel(6, 4).unwrap();
+        assert!(
+            left[0] > right[0] && right[2] > left[2],
+            "circle should sample the gradient: left={left:?} right={right:?}"
+        );
+        let ellipse = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='8' y2='0'>\
+              <stop offset='0' stop-color='#ff0000'/>\
+              <stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <ellipse cx='4' cy='4' rx='3' ry='2' fill='url(#g)'/></svg>",
+        )
+        .expect("svg ellipse gradient");
+        let el = ellipse.pixel(2, 4).unwrap();
+        let er = ellipse.pixel(6, 4).unwrap();
+        assert!(
+            el[0] > er[0] && er[2] > el[2],
+            "ellipse should sample the gradient: left={el:?} right={er:?}"
+        );
+    }
+
+    #[test]
+    fn decode_svg_text_paints_vector_letters() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'>\
+              <text x='1' y='8' fill='#ff0000'>V</text></svg>",
+        )
+        .expect("svg text V");
+        assert_eq!(
+            img.pixel(1, 1),
+            Some([255, 0, 0, 255]),
+            "{:?}",
+            img.pixel(1, 1)
+        );
     }
 }

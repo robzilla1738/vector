@@ -4552,6 +4552,141 @@ fn navigator_share_and_locks_request() {
 }
 
 #[test]
+fn match_media_returns_media_query_list() {
+    let mut page = open("<title>mql</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const mql = matchMedia("(min-width: 1px)");
+              return {
+                inst: mql instanceof MediaQueryList,
+                media: mql.media,
+                matches: mql.matches,
+                tag: Object.prototype.toString.call(mql)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["media"], "(min-width: 1px)", "{v}");
+    assert_eq!(v["matches"], true, "{v}");
+    assert_eq!(v["tag"], "[object MediaQueryList]", "{v}");
+}
+
+#[test]
+fn history_go_after_push_state_fires_popstate() {
+    let mut page = open("<title>hist</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const evs = [];
+              addEventListener("popstate", function (e) {
+                evs.push({
+                  inst: e instanceof PopStateEvent,
+                  state: e.state,
+                  href: location.href
+                });
+              });
+              history.pushState({ n: 1 }, "", "/one");
+              history.pushState({ n: 2 }, "", "/two");
+              const two = history.state;
+              history.back();
+              const one = history.state;
+              history.forward();
+              return { two, one, after: history.state, evs, len: history.length };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["two"]["n"], 2, "{v}");
+    assert_eq!(v["one"]["n"], 1, "{v}");
+    assert_eq!(v["after"]["n"], 2, "{v}");
+    assert_eq!(v["evs"][0]["inst"], true, "{v}");
+    assert_eq!(v["evs"][0]["state"]["n"], 1, "{v}");
+    assert_eq!(v["evs"][1]["inst"], true, "{v}");
+    assert_eq!(v["evs"][1]["state"]["n"], 2, "{v}");
+}
+
+#[test]
+fn css_highlights_registry_stores_ranges() {
+    let mut page = open("<title>hl</title><p>hi</p>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const r = new Range();
+              const h = new Highlight(r);
+              CSS.highlights.set("mark", h);
+              return {
+                inst: h instanceof Highlight,
+                size: h.size,
+                has: CSS.highlights.has("mark"),
+                same: CSS.highlights.get("mark") === h,
+                tag: Object.prototype.toString.call(CSS.highlights)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["size"], 1, "{v}");
+    assert_eq!(v["has"], true, "{v}");
+    assert_eq!(v["same"], true, "{v}");
+    assert_eq!(v["tag"], "[object HighlightRegistry]", "{v}");
+}
+
+#[test]
+fn crypto_subtle_aes_cbc_round_trips_nist() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__cbc = null;
+          const keyBytes = new Uint8Array([0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c]);
+          const iv = new Uint8Array([0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f]);
+          const pt = new Uint8Array([0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a]);
+          const expect = [0x76,0x49,0xab,0xac,0x81,0x19,0xb2,0x46,0xce,0xe9,0x8e,0x9b,0x12,0xe9,0x19,0x7d];
+          crypto.subtle.importKey("raw", keyBytes, { name: "AES-CBC" }, false, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.encrypt({ name: "AES-CBC", iv: iv }, key, pt).then(function (ct) {
+              const got = Array.from(new Uint8Array(ct));
+              return crypto.subtle.decrypt({ name: "AES-CBC", iv: iv }, key, ct).then(function (back) {
+                const plain = Array.from(new Uint8Array(back));
+                window.__cbc = {
+                  nist: expect.every(function (b, i) { return b === got[i]; }),
+                  round: plain.every(function (b, i) { return b === pt[i]; })
+                };
+              });
+            });
+          }).catch(function (e) { window.__cbc = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__cbc").unwrap();
+    assert_eq!(v["nist"], true, "{v}");
+    assert_eq!(v["round"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_pbkdf2_derives_sha256_bits() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__pbk = null;
+          const expect = [0x12,0x0f,0xb6,0xcf,0xfc,0xf8,0xb3,0x2c,0x43,0xe7,0x22,0x52,0x56,0xc4,0xf8,0x37,0xa8,0x65,0x48,0xc9,0x2c,0xcc,0x35,0x48,0x08,0x05,0x98,0x7c,0xb7,0x0b,0xe1,0x7b];
+          const pw = new TextEncoder().encode("password");
+          const salt = new TextEncoder().encode("salt");
+          crypto.subtle.importKey("raw", pw, "PBKDF2", false, ["deriveBits"]).then(function (key) {
+            return crypto.subtle.deriveBits({ name: "PBKDF2", salt: salt, iterations: 1, hash: "SHA-256" }, key, 256).then(function (bits) {
+              const got = Array.from(new Uint8Array(bits));
+              window.__pbk = { ok: expect.every(function (b, i) { return b === got[i]; }), got: got };
+            });
+          }).catch(function (e) { window.__pbk = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__pbk").unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
