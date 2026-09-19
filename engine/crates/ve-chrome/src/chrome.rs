@@ -183,6 +183,28 @@ pub struct Chrome {
     pub route_reason: String,
     /// Sidebar AGENT footer rows `(status, goal)` from the Electron rail home.
     pub recent_runs: Vec<(String, String)>,
+    /// Live run goal shown in the open agent rail (Electron RunPanel).
+    pub run_goal: String,
+    /// Live run steps `(status, title, detail, duration)`.
+    pub run_steps: Vec<(String, String, String, String)>,
+    /// Human takeover banner ("You're in control").
+    pub takeover: bool,
+    /// Needs-input prompt (empty hides the block).
+    pub needs_input: String,
+    /// Elapsed chip (`49s`).
+    pub run_elapsed: String,
+    /// Model-call chip (`3 calls`).
+    pub run_calls: String,
+    /// Status message under the chips.
+    pub run_message: String,
+    /// Open set name (SetPanel). Empty means no set view.
+    pub set_name: String,
+    /// Set members `(label, status)`.
+    pub set_members: Vec<(String, String)>,
+    /// Failed-member line (`Cron · 429 rate limited`).
+    pub set_failed: String,
+    /// Runtime-disconnected banner + empty stage (Electron 14).
+    pub disconnected: bool,
 }
 
 impl Default for Chrome {
@@ -216,6 +238,17 @@ impl Default for Chrome {
             sheet_body: String::new(),
             route_reason: String::new(),
             recent_runs: Vec::new(),
+            run_goal: String::new(),
+            run_steps: Vec::new(),
+            takeover: false,
+            needs_input: String::new(),
+            run_elapsed: String::new(),
+            run_calls: String::new(),
+            run_message: String::new(),
+            set_name: String::new(),
+            set_members: Vec::new(),
+            set_failed: String::new(),
+            disconnected: false,
         }
     }
 }
@@ -351,6 +384,114 @@ impl Chrome {
             ),
             ("failed".into(), "Book the 9:30 slot for Thursday".into()),
         ];
+    }
+
+    /// Seed the Electron 04/05/06 live-run rail (`run`, `takeover`, `needs-input`).
+    pub fn seed_live_run(&mut self, kind: &str) {
+        self.rail_open = true;
+        self.set_name.clear();
+        self.disconnected = false;
+        self.run_goal = "Find every open review comment on this PR that mentions accessibility and summarise what still needs to change".into();
+        self.run_steps = vec![
+            ("ok".into(), "Open".into(), "github.com/…/pull/3/files".into(), "812 ms".into()),
+            ("ok".into(), "Wait".into(), "settled".into(), "340 ms".into()),
+            ("ok".into(), "Click".into(), "tab “Conversation”".into(), "128 ms".into()),
+            ("ok".into(), "Extract".into(), "23 comments".into(), "96 ms".into()),
+            ("failed".into(), "Click".into(), "r41 “Load more…” is off-screen".into(), "2.0 s".into()),
+            ("ok".into(), "Scroll".into(), "↓ 1 viewport".into(), "210 ms".into()),
+        ];
+        self.run_elapsed = "49s".into();
+        self.run_calls = "3 calls".into();
+        match kind {
+            "takeover" => {
+                self.agent_status = "Paused".into();
+                self.takeover = true;
+                self.needs_input.clear();
+                self.run_message = "Paused — you're in control of this page".into();
+                self.run_steps.push((
+                    "ok".into(),
+                    "Click".into(),
+                    "button “Load more…”".into(),
+                    "151 ms".into(),
+                ));
+                self.run_steps.push((
+                    "ok".into(),
+                    "Extract".into(),
+                    "31 comments".into(),
+                    "88 ms".into(),
+                ));
+            }
+            "needs-input" => {
+                self.agent_status = "Needs your answer".into();
+                self.takeover = false;
+                self.needs_input = "Two comment threads are marked resolved but still discuss focus rings. Include resolved threads too?".into();
+                self.run_message.clear();
+            }
+            _ => {
+                self.agent_status = "Working".into();
+                self.takeover = false;
+                self.needs_input.clear();
+                self.run_message = "Reading the second page of review comments".into();
+            }
+        }
+        if !self.recent_runs.iter().any(|(_, g)| g.contains("review comment")) {
+            self.recent_runs.insert(
+                0,
+                ("running".into(), "Find every open review comment".into()),
+            );
+        }
+    }
+
+    /// Seed the Electron 13 set-progress rail.
+    pub fn seed_set_progress(&mut self) {
+        self.rail_open = true;
+        self.disconnected = false;
+        self.run_goal.clear();
+        self.run_steps.clear();
+        self.takeover = false;
+        self.needs_input.clear();
+        self.agent_status = "Working".into();
+        self.set_name = "Competitor pricing pages".into();
+        self.set_members = [
+            "Linear", "Notion", "Figma", "Vercel", "Stripe", "Arc", "Raycast", "Superhuman",
+            "Cron", "Warp", "Zed", "Loom",
+        ]
+        .iter()
+        .enumerate()
+        .map(|(i, label)| {
+            let st = if i < 6 {
+                "completed"
+            } else if i < 8 {
+                "running"
+            } else if i == 8 {
+                "failed"
+            } else {
+                "queued"
+            };
+            ((*label).to_string(), st.to_string())
+        })
+        .collect();
+        self.set_failed = "Cron · 429 rate limited".into();
+        if !self.recent_runs.iter().any(|(_, g)| g.contains("Competitor pricing")) {
+            self.recent_runs.insert(
+                0,
+                ("running".into(), "Competitor pricing pages".into()),
+            );
+        }
+    }
+
+    /// Seed the Electron 14 disconnected empty window.
+    pub fn seed_disconnected(&mut self) {
+        self.disconnected = true;
+        self.rail_open = false;
+        self.sidebar_hidden = false;
+        self.sidebar_collapsed = false;
+        self.command.clear();
+        self.run_goal.clear();
+        self.run_steps.clear();
+        self.set_name.clear();
+        self.recent_runs.clear();
+        self.agent_status = "offline".into();
     }
 
     /// File the first four tabs into a Dev folder (Electron browsing mock).
@@ -619,6 +760,9 @@ impl Chrome {
             self.paint_toolbar(&mut list, window);
         }
         self.paint_stage(&mut list, window);
+        if self.disconnected {
+            self.paint_disconnected(&mut list, window);
+        }
         if self.rail_open {
             self.paint_rail(&mut list, window);
         }
@@ -1201,28 +1345,272 @@ impl Chrome {
             rect: Rect::new(x, 0.0, 1.0, window.height),
             color: t.line,
         });
-        self.label(list, Point::new(x + 16.0, 28.0), "AGENT", 11.0, t.ink_2);
+        let head = if !self.set_name.is_empty() {
+            "Set"
+        } else if !self.run_goal.is_empty() {
+            "Run"
+        } else {
+            "Agent"
+        };
+        self.label(list, Point::new(x + 16.0, 28.0), head, 12.0, t.ink_0);
+        let mut y = 44.0;
+        if !self.set_name.is_empty() {
+            self.paint_set_panel(list, x, w, y, window);
+            return;
+        }
+        if !self.run_goal.is_empty() {
+            for line in wrap_words(&self.run_goal, 36).into_iter().take(3) {
+                self.label_w(
+                    list,
+                    Point::new(x + 16.0, y + 16.0),
+                    &line,
+                    13.0,
+                    t.ink_0,
+                    FontWeight(500),
+                );
+                y += 18.0;
+            }
+            y += 8.0;
+        }
         let status = if self.agent_status.is_empty() {
             "Ready"
         } else {
             self.agent_status.as_str()
         };
-        self.label(list, Point::new(x + 16.0, 52.0), status, 12.0, t.ink_1);
-        list.push(DisplayItem::RoundedClip {
-            rect: Rect::new(x + 12.0, window.height - 56.0, w - 24.0, 36.0),
-            radius: 8.0,
-        });
-        list.push(DisplayItem::Rect {
-            rect: Rect::new(x + 12.0, window.height - 56.0, w - 24.0, 36.0),
-            color: t.sb_field,
-        });
-        list.push(DisplayItem::PopClip);
+        let chip = match status {
+            "Working" => t.ok,
+            "Paused" | "Needs your answer" => t.warn,
+            "Failed" => t.err,
+            _ => t.ink_1,
+        };
+        fill_round(list, Rect::new(x + 16.0, y, 72.0, 18.0), 9.0, chip);
+        self.label(list, Point::new(x + 24.0, y + 13.0), status, 10.0, t.bg_0);
+        let mut cx = x + 96.0;
+        if !self.run_elapsed.is_empty() {
+            self.label(list, Point::new(cx, y + 13.0), &self.run_elapsed, 11.0, t.ink_1);
+            cx += 40.0;
+        }
+        if !self.run_calls.is_empty() {
+            self.label(list, Point::new(cx, y + 13.0), &self.run_calls, 11.0, t.ink_1);
+        }
+        y += 28.0;
+        if self.takeover {
+            fill_round(list, Rect::new(x + 12.0, y, w - 24.0, 72.0), 8.0, t.warn);
+            self.label_w(
+                list,
+                Point::new(x + 24.0, y + 18.0),
+                "You're in control",
+                12.0,
+                t.ink_0,
+                FontWeight(500),
+            );
+            self.label(
+                list,
+                Point::new(x + 24.0, y + 36.0),
+                "The agent paused when you touched",
+                11.0,
+                t.ink_0,
+            );
+            fill_round(list, Rect::new(x + w - 132.0, y + 40.0, 108.0, 22.0), 11.0, t.bg_0);
+            self.label(list, Point::new(x + w - 122.0, y + 55.0), "Return control", 11.0, t.ink_0);
+            y += 84.0;
+        }
+        if !self.needs_input.is_empty() {
+            fill_round(list, Rect::new(x + 12.0, y, w - 24.0, 96.0), 8.0, t.sb_field);
+            self.label(list, Point::new(x + 24.0, y + 18.0), "Needs your answer", 11.0, t.warn);
+            for line in wrap_words(&self.needs_input, 34).into_iter().take(2) {
+                self.label(list, Point::new(x + 24.0, y + 36.0), &line, 12.0, t.ink_0);
+                y += 16.0;
+            }
+            fill_round(list, Rect::new(x + 20.0, y + 44.0, w - 108.0, 24.0), 12.0, t.bg_2);
+            self.label(list, Point::new(x + 32.0, y + 60.0), "Type an answer…", 11.0, t.ink_2);
+            fill_round(list, Rect::new(x + w - 76.0, y + 44.0, 48.0, 24.0), 12.0, t.ok);
+            self.label(list, Point::new(x + w - 64.0, y + 60.0), "Send", 11.0, t.bg_0);
+            y += 108.0;
+        }
+        if !self.run_message.is_empty() {
+            self.label(
+                list,
+                Point::new(x + 16.0, y + 12.0),
+                &truncate(&self.run_message, 38),
+                12.0,
+                t.ink_1,
+            );
+            y += 24.0;
+        }
+        if !self.run_steps.is_empty() {
+            self.label(list, Point::new(x + 16.0, y + 14.0), "STEPS", 10.0, t.ink_2);
+            self.label(
+                list,
+                Point::new(x + 64.0, y + 14.0),
+                &format!("{}", self.run_steps.len()),
+                10.0,
+                t.ink_2,
+            );
+            y += 22.0;
+        }
+        for (st, title, detail, duration) in self.run_steps.iter().take(8) {
+            let color = match st.as_str() {
+                "ok" | "completed" => t.ok,
+                "failed" | "error" => t.err,
+                _ => t.ink_1,
+            };
+            icon_dot(list, x + 22.0, y + 10.0, 3.0, color);
+            self.label(list, Point::new(x + 34.0, y + 14.0), title, 12.0, t.ink_0);
+            if !duration.is_empty() {
+                self.label(
+                    list,
+                    Point::new(x + w - 72.0, y + 14.0),
+                    duration,
+                    11.0,
+                    t.ink_2,
+                );
+            }
+            if !detail.is_empty() {
+                self.label(
+                    list,
+                    Point::new(x + 34.0, y + 30.0),
+                    &truncate(detail, 32),
+                    11.0,
+                    if st == "failed" { t.err } else { t.ink_2 },
+                );
+                y += 40.0;
+            } else {
+                y += 24.0;
+            }
+        }
+        fill_round(
+            list,
+            Rect::new(x + 12.0, window.height - 56.0, w - 24.0, 36.0),
+            8.0,
+            t.sb_field,
+        );
         self.label(
             list,
             Point::new(x + 24.0, window.height - 32.0),
-            "Ask the page...",
+            "Ask about this page, or give a task…",
             12.0,
             t.ink_2,
+        );
+    }
+
+    fn paint_set_panel(&self, list: &mut DisplayList, x: f32, w: f32, mut y: f32, window: Size) {
+        let t = &self.tokens;
+        self.label_w(
+            list,
+            Point::new(x + 16.0, y + 16.0),
+            &self.set_name,
+            14.0,
+            t.ink_0,
+            FontWeight(500),
+        );
+        y += 32.0;
+        let done = self
+            .set_members
+            .iter()
+            .filter(|(_, s)| s == "completed")
+            .count();
+        self.label(
+            list,
+            Point::new(x + 16.0, y + 12.0),
+            "Working",
+            11.0,
+            t.ok,
+        );
+        self.label(
+            list,
+            Point::new(x + 80.0, y + 12.0),
+            &format!("{done}/{n} done", n = self.set_members.len()),
+            11.0,
+            t.ink_1,
+        );
+        y += 28.0;
+        self.label(list, Point::new(x + 16.0, y + 12.0), "MEMBERS", 10.0, t.ink_2);
+        y += 20.0;
+        let col_w = (w - 36.0) / 3.0;
+        for (i, (label, status)) in self.set_members.iter().take(12).enumerate() {
+            let col = i % 3;
+            let row = i / 3;
+            let mx = x + 12.0 + col as f32 * (col_w + 4.0);
+            let my = y + row as f32 * 44.0;
+            fill_round(list, Rect::new(mx, my, col_w - 4.0, 38.0), 8.0, t.bg_2);
+            let color = match status.as_str() {
+                "completed" => t.ok,
+                "failed" => t.err,
+                "running" => t.warn,
+                _ => t.ink_2,
+            };
+            icon_dot(list, mx + 12.0, my + 12.0, 3.0, color);
+            self.label(list, Point::new(mx + 22.0, my + 16.0), label, 11.0, t.ink_0);
+            self.label(
+                list,
+                Point::new(mx + 22.0, my + 30.0),
+                &format!("example-{}.com", i + 1),
+                10.0,
+                t.ink_2,
+            );
+        }
+        y += 4.0 * 44.0 + 8.0;
+        if !self.set_failed.is_empty() {
+            self.label(list, Point::new(x + 16.0, y + 12.0), "FAILED", 10.0, t.err);
+            self.label(
+                list,
+                Point::new(x + 16.0, y + 28.0),
+                &self.set_failed,
+                12.0,
+                t.err,
+            );
+        }
+        fill_round(
+            list,
+            Rect::new(x + 12.0, window.height - 56.0, w - 24.0, 36.0),
+            8.0,
+            t.sb_field,
+        );
+        self.label(
+            list,
+            Point::new(x + 24.0, window.height - 32.0),
+            "Ask about this page, or give a task…",
+            12.0,
+            t.ink_2,
+        );
+    }
+
+    fn paint_disconnected(&self, list: &mut DisplayList, window: Size) {
+        let t = &self.tokens;
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, window.width, 28.0),
+            color: t.warn,
+        });
+        self.label(
+            list,
+            Point::new(16.0, 19.0),
+            "Runtime disconnected — tabs keep working; the agent is paused.",
+            11.0,
+            t.ink_0,
+        );
+        self.label(
+            list,
+            Point::new(window.width - 140.0, 19.0),
+            "Reconnect now",
+            11.0,
+            t.ink_0,
+        );
+        let stage = self.stage_rect(window);
+        self.label_w(
+            list,
+            Point::new(stage.x() + 40.0, stage.y() + stage.height() * 0.45),
+            "Waiting for the runtime",
+            22.0,
+            t.ink_0,
+            FontWeight(500),
+        );
+        self.label(
+            list,
+            Point::new(stage.x() + 40.0, stage.y() + stage.height() * 0.45 + 28.0),
+            "Vector's runtime is not answering yet.",
+            13.0,
+            t.ink_1,
         );
     }
 
@@ -2091,6 +2479,26 @@ fn truncate(s: &str, max: usize) -> String {
     out
 }
 
+fn wrap_words(s: &str, max: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut cur = String::new();
+    for w in s.split_whitespace() {
+        if !cur.is_empty() && cur.chars().count() + 1 + w.chars().count() > max {
+            lines.push(std::mem::take(&mut cur));
+            cur = w.to_string();
+        } else if cur.is_empty() {
+            cur = w.to_string();
+        } else {
+            cur.push(' ');
+            cur.push_str(w);
+        }
+    }
+    if !cur.is_empty() {
+        lines.push(cur);
+    }
+    lines
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2562,5 +2970,43 @@ mod tests {
             hidden.hit(window, 520.0, 24.0),
             ChromeHit::CommandBar
         ));
+    }
+
+    #[test]
+    fn agent_rail_paints_run_goal_failed_step_and_banners() {
+        let mut chrome = sample();
+        chrome.seed_live_run("run");
+        let texts = paint_texts(&chrome);
+        assert!(texts.iter().any(|t| t.contains("review comment")), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "Working"), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "Extract"), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Load more")), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Ask about this page")), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "Run"), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "49s"), "{texts:?}");
+        chrome.seed_live_run("takeover");
+        let texts = paint_texts(&chrome);
+        assert!(texts.iter().any(|t| t.contains("You're in control")), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Return control")), "{texts:?}");
+        chrome.seed_live_run("needs-input");
+        let texts = paint_texts(&chrome);
+        assert!(texts.iter().any(|t| t == "Needs your answer"), "{texts:?}");
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.contains("focus") || t.contains("resolved")),
+            "{texts:?}"
+        );
+        assert!(texts.iter().any(|t| t.contains("Type an answer")), "{texts:?}");
+        chrome.seed_set_progress();
+        let texts = paint_texts(&chrome);
+        assert!(texts.iter().any(|t| t == "Set"), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Competitor pricing")), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "Linear"), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("429")), "{texts:?}");
+        chrome.seed_disconnected();
+        let texts = paint_texts(&chrome);
+        assert!(texts.iter().any(|t| t.contains("Waiting for the runtime")), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Runtime disconnected")), "{texts:?}");
     }
 }

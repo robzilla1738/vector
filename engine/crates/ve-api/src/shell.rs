@@ -1433,6 +1433,24 @@ impl NativeBrowser {
         self.chrome.rail_open.hash(&mut h);
         self.chrome.rail_width.to_bits().hash(&mut h);
         self.chrome.agent_status.hash(&mut h);
+        self.chrome.run_goal.hash(&mut h);
+        self.chrome.takeover.hash(&mut h);
+        self.chrome.needs_input.hash(&mut h);
+        for (st, title, detail, duration) in &self.chrome.run_steps {
+            st.hash(&mut h);
+            title.hash(&mut h);
+            detail.hash(&mut h);
+            duration.hash(&mut h);
+        }
+        self.chrome.run_elapsed.hash(&mut h);
+        self.chrome.run_calls.hash(&mut h);
+        self.chrome.run_message.hash(&mut h);
+        self.chrome.set_name.hash(&mut h);
+        self.chrome.disconnected.hash(&mut h);
+        for (label, status) in &self.chrome.set_members {
+            label.hash(&mut h);
+            status.hash(&mut h);
+        }
         self.chrome.route_reason.hash(&mut h);
         for (url, title) in &self.chrome.history {
             url.hash(&mut h);
@@ -1893,6 +1911,27 @@ impl NativeBrowser {
         });
     }
 
+    /// Seed the Electron RunPanel into the open agent rail.
+    pub fn seed_live_run_chrome(&mut self, kind: &str) {
+        self.sync_chrome();
+        self.chrome.seed_live_run(kind);
+        self.apply_chrome_viewport();
+    }
+
+    /// Seed the Electron set-progress rail.
+    pub fn seed_set_progress_chrome(&mut self) {
+        self.sync_chrome();
+        self.chrome.seed_set_progress();
+        self.apply_chrome_viewport();
+    }
+
+    /// Seed the disconnected empty window.
+    pub fn seed_disconnected_chrome(&mut self) {
+        self.sync_chrome();
+        self.chrome.seed_disconnected();
+        self.apply_chrome_viewport();
+    }
+
     /// Seed Electron screenshot fixtures (pins, favourites, recents) into chrome + profile.
     pub fn seed_design_reference_chrome(&mut self) {
         self.chrome.seed_design_reference();
@@ -2041,6 +2080,11 @@ impl NativeBrowser {
                     self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
                 }
                 self.chrome.sidebar_peek = false;
+                self.apply_chrome_viewport();
+                true
+            }
+            "a" | "A" if modifiers & 8 != 0 => {
+                self.chrome.rail_open = !self.chrome.rail_open;
                 self.apply_chrome_viewport();
                 true
             }
@@ -3422,25 +3466,7 @@ mod tests {
         let _ = std::fs::remove_file(&path);
         let mut browser = NativeBrowser::new();
         browser.enable_product_chrome_at(&path);
-        for (url, title) in ve_chrome::design_reference_sites().iter().take(6) {
-            let html = format!(
-                "<html><head><title>{}</title></head><body><h1>{}</h1></body></html>",
-                title.replace('<', ""),
-                title.replace('<', "")
-            );
-            browser
-                .handle_event(NativeEvent::NewTab {
-                    html,
-                    url: (*url).into(),
-                })
-                .unwrap();
-        }
-        browser.seed_design_reference_chrome();
-        browser.file_open_tabs_in_dev_folder();
-        let _ = browser.handle_event(NativeEvent::Resize {
-            width: 1440.0,
-            height: 900.0,
-        });
+        seed_browsing_tabs(&mut browser);
         let list = browser.paint_shell_list().unwrap();
         let texts: Vec<String> = list
             .items()
@@ -3621,6 +3647,195 @@ mod tests {
             .join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-command.png"), &png).unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    fn write_shell_shot(browser: &mut NativeBrowser, name: &str) -> Vec<String> {
+        let list = browser.paint_shell_list().unwrap();
+        let texts: Vec<String> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                ve_gfx::DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect();
+        browser.set_device_scale(2.0);
+        let png = browser.capture_shell_png().expect(name);
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/ui/screenshots");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join(name), &png).unwrap();
+        texts
+    }
+
+    #[test]
+    fn active_run_screenshot_matches_electron_04() {
+        let path = format!("/tmp/vector-run-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        seed_browsing_tabs(&mut browser);
+        browser.set_active(0);
+        assert!(!browser.chrome().rail_open);
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "a".into(),
+                code: "KeyA".into(),
+                modifiers: 4 | 8,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert!(
+            browser.chrome().rail_open,
+            "⌘⇧A must open the agent rail"
+        );
+        browser.seed_live_run_chrome("run");
+        let texts = write_shell_shot(&mut browser, "ve-shell-run.png");
+        assert!(texts.iter().any(|t| t == "Run"), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "Working"), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Load more")), "{texts:?}");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn takeover_screenshot_matches_electron_05() {
+        let path = format!("/tmp/vector-takeover-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        seed_browsing_tabs(&mut browser);
+        browser.set_active(0);
+        browser.seed_live_run_chrome("takeover");
+        let texts = write_shell_shot(&mut browser, "ve-shell-takeover.png");
+        assert!(texts.iter().any(|t| t.contains("You're in control")), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Return control")), "{texts:?}");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn needs_input_screenshot_matches_electron_06() {
+        let path = format!("/tmp/vector-needs-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        seed_browsing_tabs(&mut browser);
+        browser.set_active(0);
+        browser.seed_live_run_chrome("needs-input");
+        let texts = write_shell_shot(&mut browser, "ve-shell-needs-input.png");
+        assert!(texts.iter().any(|t| t == "Needs your answer"), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Type an answer")), "{texts:?}");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn light_run_screenshot_matches_electron_07() {
+        let path = format!("/tmp/vector-light-run-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        seed_browsing_tabs(&mut browser);
+        browser.set_active(0);
+        browser.set_product_theme(true);
+        browser.seed_live_run_chrome("run");
+        let texts = write_shell_shot(&mut browser, "ve-shell-run-light.png");
+        assert!(texts.iter().any(|t| t == "Working"), "{texts:?}");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn many_tabs_screenshot_matches_electron_09() {
+        let path = format!("/tmp/vector-many-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        for (url, title) in ve_chrome::design_reference_sites() {
+            let html = format!(
+                "<html><head><title>{}</title></head><body><h1>{}</h1></body></html>",
+                title.replace('<', ""),
+                title.replace('<', "")
+            );
+            browser
+                .handle_event(NativeEvent::NewTab {
+                    html,
+                    url: (*url).into(),
+                })
+                .unwrap();
+        }
+        browser.seed_design_reference_chrome();
+        browser.set_active(1);
+        let _ = browser.handle_event(NativeEvent::Resize {
+            width: 1440.0,
+            height: 900.0,
+        });
+        let texts = write_shell_shot(&mut browser, "ve-shell-many-tabs.png");
+        assert!(texts.iter().any(|t| t.contains("ResizeObserver") || t.contains("MDN") || t.contains("Gmail") || t.contains("Calendar") || t.contains("Wikipedia") || t.contains("Are.na") || t.contains("Vercel")), "{texts:?}");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn narrow_run_screenshot_matches_electron_10() {
+        let path = format!("/tmp/vector-narrow-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        seed_browsing_tabs(&mut browser);
+        browser.set_active(0);
+        browser.seed_live_run_chrome("run");
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "s".into(),
+                code: "KeyS".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        let _ = browser.handle_event(NativeEvent::Resize {
+            width: 1100.0,
+            height: 900.0,
+        });
+        let texts = write_shell_shot(&mut browser, "ve-shell-narrow.png");
+        assert!(browser.chrome().sidebar_collapsed);
+        assert!(texts.iter().any(|t| t == "Working"), "{texts:?}");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn set_progress_screenshot_matches_electron_13() {
+        let path = format!("/tmp/vector-set-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        seed_browsing_tabs(&mut browser);
+        browser.seed_set_progress_chrome();
+        let texts = write_shell_shot(&mut browser, "ve-shell-set.png");
+        assert!(texts.iter().any(|t| t == "Set"), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Competitor pricing")), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("429")), "{texts:?}");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn disconnected_screenshot_matches_electron_14() {
+        let path = format!("/tmp/vector-disc-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body></body></html>".into(),
+                url: "about:blank".into(),
+            })
+            .unwrap();
+        browser.seed_disconnected_chrome();
+        let _ = browser.handle_event(NativeEvent::Resize {
+            width: 1440.0,
+            height: 900.0,
+        });
+        let texts = write_shell_shot(&mut browser, "ve-shell-disconnected.png");
+        assert!(texts.iter().any(|t| t.contains("Waiting for the runtime")), "{texts:?}");
         let _ = std::fs::remove_file(&path);
     }
 
