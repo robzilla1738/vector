@@ -4410,6 +4410,8 @@ mod tests {
             return;
         }
         let mut samples = Vec::new();
+        let mut open_to_obs = Vec::new();
+        let mut tokens = Vec::new();
         let mut unsupported = 0u32;
         let mut n = 0u32;
         let mut engine = crate::VectorEngine::new(crate::EngineConfig {
@@ -4434,6 +4436,7 @@ mod tests {
                 .to_owned();
             let url = format!("https://live.test/{stem}");
             n += 1;
+            let t_open = std::time::Instant::now();
             let opened = match engine.open(crate::OpenRequest::html(&html, Some(&url))) {
                 Ok(o) => o,
                 Err(_) => {
@@ -4441,9 +4444,13 @@ mod tests {
                     continue;
                 }
             };
-            let t = std::time::Instant::now();
+            let t_obs = std::time::Instant::now();
             match engine.observe(opened.page, &crate::ObservationRequest::default()) {
-                Ok(_) => samples.push(t.elapsed().as_micros() as u64),
+                Ok(obs) => {
+                    samples.push(t_obs.elapsed().as_micros() as u64);
+                    open_to_obs.push(t_open.elapsed().as_micros() as u64);
+                    tokens.push(obs.observation.content.stats.approx_tokens as u64);
+                }
                 Err(_) => unsupported += 1,
             }
             let _ = engine.close(opened.page);
@@ -4452,17 +4459,34 @@ mod tests {
             return;
         }
         samples.sort_unstable();
-        let p50 = *samples.get(samples.len() / 2).unwrap_or(&0) as f64 / 1000.0;
+        open_to_obs.sort_unstable();
+        tokens.sort_unstable();
+        let pct_ms = |xs: &[u64], p: f64| {
+            if xs.is_empty() {
+                return 0.0;
+            }
+            let i = ((xs.len() as f64 - 1.0) * p).round() as usize;
+            xs[i.min(xs.len() - 1)] as f64 / 1000.0
+        };
+        let pct_u = |xs: &[u64], p: f64| {
+            if xs.is_empty() {
+                return 0u64;
+            }
+            let i = ((xs.len() as f64 - 1.0) * p).round() as usize;
+            xs[i.min(xs.len() - 1)]
+        };
+        let p50 = pct_ms(&samples, 0.5);
+        let p95 = pct_ms(&samples, 0.95);
+        let open_p50 = pct_ms(&open_to_obs, 0.5);
+        let open_p95 = pct_ms(&open_to_obs, 0.95);
+        let open_max = open_to_obs.last().copied().unwrap_or(0) as f64 / 1000.0;
+        let tok_p50 = pct_u(&tokens, 0.5);
+        let tok_p95 = pct_u(&tokens, 0.95);
         let ev_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../../docs/engine/evidence/corpus-500-latest.json");
         if let Ok(bytes) = std::fs::read(&ev_path)
             && let Ok(mut doc) = serde_json::from_slice::<serde_json::Value>(&bytes)
         {
-            let p95 = *samples
-                .get(((samples.len() as f64) * 0.95).floor() as usize)
-                .or(samples.last())
-                .unwrap_or(&0) as f64
-                / 1000.0;
             doc["observe"]["liveHtml"] = serde_json::json!({
                 "n": n,
                 "p50Ms": p50,
@@ -4474,9 +4498,31 @@ mod tests {
             doc["observe"]["p95Ms"] = serde_json::json!(p95);
             doc["observe"]["n"] = serde_json::json!(n);
             doc["observe"]["kind"] = serde_json::json!("fetched-html-bodies");
+            doc["openToObserve"] = serde_json::json!({
+                "n": open_to_obs.len(),
+                "p50Ms": open_p50,
+                "p95Ms": open_p95,
+                "maxMs": open_max,
+                "unit": "ms",
+                "kind": "fetched-html-bodies",
+                "notes": "Parse+layout+compact observe on saved live HTML. Network fetch is excluded. Not an Apple-silicon published score."
+            });
+            doc["snapshotTokens"] = serde_json::json!({
+                "n": tokens.len(),
+                "p50": tok_p50,
+                "p95": tok_p95,
+                "budget": 3000,
+                "unit": "approxTokens",
+                "kind": "fetched-html-bodies"
+            });
             let _ = std::fs::write(&ev_path, serde_json::to_vec_pretty(&doc).unwrap());
         }
         assert!(n >= 1);
+        assert!(
+            open_p95 <= 300.0 && open_max <= 1000.0,
+            "open→observe p95 {open_p95} ms max {open_max} ms"
+        );
+        assert!(tok_p95 <= 3000, "snapshot tokens p95 {tok_p95} over 3000");
     }
 
     #[test]
