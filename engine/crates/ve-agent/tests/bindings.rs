@@ -5605,6 +5605,46 @@ fn analyser_and_biquad_filter_nodes() {
 }
 
 #[test]
+fn media_stream_and_web_audio_graph_nodes() {
+    let mut page = open("<title>ms</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__ms = null;
+          const v = document.createElement("video");
+          document.body.appendChild(v);
+          const stream = v.captureStream();
+          const track = new MediaStreamTrack();
+          stream.addTrack(track);
+          const ctx = new AudioContext();
+          const delay = ctx.createDelay();
+          const comp = ctx.createDynamicsCompressor();
+          const pan = ctx.createStereoPanner();
+          const src = ctx.createMediaStreamSource(stream);
+          const oc = new OffscreenCanvas(4, 4);
+          oc.getContext("2d").fillStyle = "#00ff00";
+          oc.getContext("2d").fillRect(0, 0, 4, 4);
+          oc.convertToBlob().then(function (blob) {
+            window.__ms = {
+              stream: stream instanceof MediaStream && stream.getTracks().length === 1,
+              track: track instanceof MediaStreamTrack && track.readyState === "ended",
+              nodes: delay instanceof DelayNode && comp instanceof DynamicsCompressorNode && pan instanceof StereoPannerNode,
+              src: src instanceof MediaStreamAudioSourceNode && src.mediaStream === stream,
+              blob: blob instanceof Blob && blob.size > 0 && blob.type === "image/png"
+            };
+          }).catch(function (e) { window.__ms = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__ms").unwrap();
+    assert_eq!(v["stream"], true, "{v}");
+    assert_eq!(v["track"], true, "{v}");
+    assert_eq!(v["nodes"], true, "{v}");
+    assert_eq!(v["src"], true, "{v}");
+    assert_eq!(v["blob"], true, "{v}");
+}
+
+#[test]
 fn webgl_tex_image_draw_arrays_blits() {
     let mut page = open("<title>glt</title>");
     let v = page

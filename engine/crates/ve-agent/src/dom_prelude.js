@@ -5711,6 +5711,7 @@
     setSinkId() {
       return Promise.reject(new DOMException("Audio output selection denied", "NotAllowedError"));
     }
+    captureStream() { return new MediaStream(); }
     load() {
       this._currentTime = 0;
       this._paused = true;
@@ -9034,6 +9035,63 @@
       this.gain = { value: 0 };
     }
   }
+  class DelayNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.delayTime = { value: 0 };
+    }
+  }
+  class DynamicsCompressorNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.threshold = { value: -24 };
+      this.knee = { value: 30 };
+      this.ratio = { value: 12 };
+      this.attack = { value: 0.003 };
+      this.release = { value: 0.25 };
+      this.reduction = 0;
+    }
+  }
+  class StereoPannerNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.pan = { value: 0 };
+    }
+  }
+  class MediaStreamTrack extends EventTarget {
+    constructor() {
+      super();
+      this.kind = "audio";
+      this.id = "ve-track";
+      this.label = "";
+      this.enabled = true;
+      this.muted = true;
+      this.readyState = "ended";
+    }
+    stop() { this.readyState = "ended"; }
+    clone() { return new MediaStreamTrack(); }
+  }
+  class MediaStream extends EventTarget {
+    constructor(tracks) {
+      super();
+      this.id = "ve-stream";
+      this.active = false;
+      this._tracks = Array.isArray(tracks) ? tracks.slice() : [];
+    }
+    getTracks() { return this._tracks.slice(); }
+    getAudioTracks() { return this._tracks.filter((t) => t.kind === "audio"); }
+    getVideoTracks() { return this._tracks.filter((t) => t.kind === "video"); }
+    addTrack(t) { if (t && this._tracks.indexOf(t) < 0) this._tracks.push(t); }
+    removeTrack(t) { this._tracks = this._tracks.filter((x) => x !== t); }
+    clone() { return new MediaStream(this._tracks); }
+  }
+  class MediaStreamAudioSourceNode extends AudioNode {
+    constructor(ctx, stream) {
+      super(ctx);
+      this.mediaStream = stream || null;
+      this.numberOfInputs = 0;
+    }
+  }
   class AudioDestinationNode extends AudioNode {
     constructor(ctx) {
       super(ctx);
@@ -9059,6 +9117,10 @@
     createBufferSource() { return new AudioBufferSourceNode(this); }
     createAnalyser() { return new AnalyserNode(this); }
     createBiquadFilter() { return new BiquadFilterNode(this); }
+    createDelay() { return new DelayNode(this); }
+    createDynamicsCompressor() { return new DynamicsCompressorNode(this); }
+    createStereoPanner() { return new StereoPannerNode(this); }
+    createMediaStreamSource(stream) { return new MediaStreamAudioSourceNode(this, stream); }
     decodeAudioData(data) {
       const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : (data && data.buffer ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : new Uint8Array(0));
       const n = Math.max(1, bytes.length);
@@ -11000,6 +11062,7 @@
     ReadableStream, WritableStream, TransformStream, URLPattern,
     AudioContext, webkitAudioContext: AudioContext, OscillatorNode, GainNode, AudioDestinationNode,
     AudioBuffer, AudioBufferSourceNode, AnalyserNode, BiquadFilterNode,
+    DelayNode, DynamicsCompressorNode, StereoPannerNode, MediaStream, MediaStreamTrack, MediaStreamAudioSourceNode,
     WebGLRenderingContext, RTCPeerConnection,
     TextEncoderStream, TextDecoderStream,
     CompressionStream, DecompressionStream, CookieStore, cookieStore, ClipboardItem,
