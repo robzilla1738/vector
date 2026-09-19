@@ -2902,6 +2902,52 @@ fn canvas_fill_text_paints_shadow_offset() {
 }
 
 #[test]
+fn canvas_fill_text_paints_shadow_blur() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.font = "16px sans-serif";
+              ctx.shadowBlur = 4;
+              ctx.shadowColor = "#0000ff";
+              ctx.fillStyle = "#ff0000";
+              ctx.fillText("I", 8, 14);
+              var data = ctx.getImageData(0, 0, 24, 16).data;
+              var sr = 0, sa = 0, sb = 0, spa = 0;
+              for (var i = 0; i < data.length; i += 4) {
+                var x = (i / 4) % 24;
+                if (data[i + 3] > 20 && data[i] > data[i + 2] + 40) {
+                  sr = Math.max(sr, data[i]);
+                  sa = Math.max(sa, data[i + 3]);
+                }
+                if (x <= 5 && data[i + 3] > 0 && data[i + 2] > data[i]) {
+                  sb = Math.max(sb, data[i + 2]);
+                  spa = Math.max(spa, data[i + 3]);
+                }
+              }
+              return { sr: sr, sa: sa, sb: sb, spa: spa };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["sr"].as_u64().unwrap_or(0) > 200,
+        "source I stays red-dominant: {v}"
+    );
+    assert!(
+        v["sa"].as_u64().unwrap_or(0) > 100,
+        "source I coverage: {v}"
+    );
+    assert!(
+        v["sb"].as_u64().unwrap_or(0) > 0 && v["spa"].as_u64().unwrap_or(0) > 0,
+        "blur must spill blue outside the glyph: {v}"
+    );
+}
+
+#[test]
 fn canvas_stroke_text_paints_shadow_offset() {
     let mut page = open(r#"<body></body>"#);
     let v = page

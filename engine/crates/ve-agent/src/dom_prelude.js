@@ -4945,7 +4945,7 @@
           cx += this._kernPair(prev, ch);
           const o = this._textOrigin(ch, cx, y);
           const p = this._mapPoint(o.x, o.y);
-          D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0, this._fontBold() ? 1 : 0, Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"));
+          D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0, this._fontBold() ? 1 : 0, Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"), Number(this._shadowBlur) || 0);
           cx += ((o.width || 6) * stretch) + gap;
           prev = ch;
         }
@@ -4959,7 +4959,7 @@
           const o = this._textOrigin(part, cx, y);
           if (!/^\s+$/.test(part)) {
             const p = this._mapPoint(o.x, o.y);
-            D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0, this._fontBold() ? 1 : 0, Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"));
+            D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0, this._fontBold() ? 1 : 0, Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"), Number(this._shadowBlur) || 0);
           }
           cx += (o.width || (part.length * 6)) + (/^\s+$/.test(part) ? wgap : 0);
         }
@@ -4967,7 +4967,7 @@
       }
       const o = this._textOrigin(t, x, y);
       const p = this._mapPoint(o.x, o.y);
-      D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0, this._fontBold() ? 1 : 0, Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"));
+      D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0, this._fontBold() ? 1 : 0, Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"), Number(this._shadowBlur) || 0);
     }
     strokeText(t, x, y) {
       const o = this._textOrigin(t, x, y);

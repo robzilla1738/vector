@@ -759,11 +759,12 @@ struct SvgGrad {
     ty: f32,
     sx: f32,
     sy: f32,
+    rot: f32,
     stops: Vec<(f32, [u8; 4])>,
 }
 
-fn svg_gradient_translate(tag: &str) -> (f32, f32) {
-    let Some(raw) = svg_attr_str(tag, "gradientTransform") else {
+fn svg_attr_translate(tag: &str, name: &str) -> (f32, f32) {
+    let Some(raw) = svg_attr_str(tag, name) else {
         return (0.0, 0.0);
     };
     let mut x = 0.0;
@@ -793,6 +794,28 @@ fn svg_gradient_translate(tag: &str) -> (f32, f32) {
         }
     }
     (x, y)
+}
+
+fn svg_gradient_translate(tag: &str) -> (f32, f32) {
+    svg_attr_translate(tag, "gradientTransform")
+}
+
+fn svg_gradient_rotate(tag: &str) -> f32 {
+    let Some(raw) = svg_attr_str(tag, "gradientTransform") else {
+        return 0.0;
+    };
+    let Some(idx) = raw.find("rotate") else {
+        return 0.0;
+    };
+    let rest = raw[idx + 6..].trim();
+    let rest = rest.trim_start_matches('(');
+    let rest = rest.split(')').next().unwrap_or("").trim();
+    let deg = rest
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .find(|s| !s.is_empty())
+        .and_then(|s| s.parse::<f32>().ok())
+        .unwrap_or(0.0);
+    deg * std::f32::consts::PI / 180.0
 }
 
 fn svg_gradient_scale(tag: &str) -> (f32, f32) {
@@ -1070,6 +1093,8 @@ struct SvgPattern {
     cw: f32,
     ch: f32,
     object_bbox: bool,
+    tx: f32,
+    ty: f32,
     color: [u8; 4],
 }
 
@@ -1100,6 +1125,8 @@ fn parse_svg_patterns(text: &str) -> HashMap<String, SvgPattern> {
                         ch: svg_attr(rtag, "height").unwrap_or(0.0),
                         object_bbox: svg_attr_str(tag, "patternUnits")
                             .is_some_and(|s| s.eq_ignore_ascii_case("objectBoundingBox")),
+                        tx: svg_attr_translate(tag, "patternTransform").0,
+                        ty: svg_attr_translate(tag, "patternTransform").1,
                         color: parse_svg_color(svg_fill(rtag)),
                     },
                 );
@@ -2038,6 +2065,8 @@ fn sample_pattern(p: &SvgPattern, x: f32, y: f32, tag: &str) -> [u8; 4] {
     } else {
         (x, y, p.w.max(1.0), p.h.max(1.0))
     };
+    let x = x - p.tx;
+    let y = y - p.ty;
     let lx = ((x % tw) + tw) % tw;
     let ly = ((y % th) + th) % th;
     if lx >= p.x && lx < p.x + p.cw && ly >= p.y && ly < p.y + p.ch {
@@ -2220,6 +2249,7 @@ enum SvgClipKind {
 fn clip_units_object_bbox(tag: &str) -> bool {
     svg_attr_str(tag, "clipPathUnits")
         .or_else(|| svg_attr_str(tag, "maskContentUnits"))
+        .or_else(|| svg_attr_str(tag, "maskUnits"))
         .is_some_and(|s| s.eq_ignore_ascii_case("objectBoundingBox"))
 }
 
@@ -2498,6 +2528,7 @@ fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
                         ty: svg_gradient_translate(tag).1,
                         sx: svg_gradient_scale(tag).0,
                         sy: svg_gradient_scale(tag).1,
+                        rot: svg_gradient_rotate(tag),
                         stops: parse_gradient_stops(block),
                     },
                 );
@@ -2553,6 +2584,13 @@ fn sample_grad(g: &SvgGrad, x: f32, y: f32, tag: &str) -> [u8; 4] {
     };
     let x = (x - g.tx) / g.sx.abs().max(0.001);
     let y = (y - g.ty) / g.sy.abs().max(0.001);
+    let (x, y) = if g.rot.abs() > 1e-6 {
+        let c = g.rot.cos();
+        let s = g.rot.sin();
+        (x * c + y * s, -x * s + y * c)
+    } else {
+        (x, y)
+    };
     let raw = if g.r > 0.0 {
         let dx = x - g.cx;
         let dy = y - g.cy;
@@ -4791,6 +4829,19 @@ mod tests {
     }
 
     #[test]
+    fn decode_svg_pattern_transform_shifts_tile() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><pattern id='p' width='4' height='8' patternTransform='translate(2,0)'>\
+              <rect x='0' y='0' width='2' height='8' fill='#ff0000'/></pattern></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#p)'/></svg>",
+        )
+        .expect("svg patternTransform");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(2, 0), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
     fn decode_svg_linear_gradient_object_bbox_spans_rect() {
         let img = decode(
             b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
@@ -4898,6 +4949,28 @@ mod tests {
     }
 
     #[test]
+    fn decode_svg_linear_gradient_rotate_makes_vertical() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='8' y2='0' gradientTransform='rotate(90)'>\
+              <stop offset='0' stop-color='#ff0000'/><stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg gradientTransform rotate");
+        let top = img.pixel(4, 0).unwrap_or([0, 0, 0, 0]);
+        let bot = img.pixel(4, 7).unwrap_or([0, 0, 0, 0]);
+        assert!(
+            top[0] > top[2],
+            "rotate(90) keeps the top redder than blue: {top:?}"
+        );
+        assert!(
+            bot[2] > bot[0],
+            "rotate(90) keeps the bottom bluer than red: {bot:?}"
+        );
+    }
+
+    #[test]
     fn decode_svg_stop_opacity_tints_alpha() {
         let img = decode(
             b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
@@ -4923,6 +4996,19 @@ mod tests {
               <rect x='0' y='0' width='8' height='8' fill='#00ff00' mask='url(#m)'/></svg>",
         )
         .expect("svg mask");
+        assert_eq!(img.pixel(2, 4), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(6, 4), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_mask_units_object_bbox_maps_unit_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><mask id='m' maskUnits='objectBoundingBox'>\
+              <rect x='0' y='0' width='0.5' height='1' fill='#ffffff'/></mask></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='#00ff00' mask='url(#m)'/></svg>",
+        )
+        .expect("svg maskUnits OBB");
         assert_eq!(img.pixel(2, 4), Some([0, 255, 0, 255]));
         assert_eq!(img.pixel(6, 4), Some([0, 0, 0, 0]));
     }

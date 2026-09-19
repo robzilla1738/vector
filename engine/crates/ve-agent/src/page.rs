@@ -3539,9 +3539,10 @@ impl Page {
         shadow_x: i32,
         shadow_y: i32,
         shadow: &str,
+        shadow_blur: i32,
     ) -> u64 {
         let color = parse_css_color(color);
-        let shadow_color = if shadow_x != 0 || shadow_y != 0 {
+        let shadow_color = if shadow_x != 0 || shadow_y != 0 || shadow_blur > 0 {
             Some(parse_css_color(shadow))
         } else {
             None
@@ -3581,8 +3582,12 @@ impl Page {
             .or_insert_with(|| CanvasSurface::new(300, 150));
         if let Some(blits) = blits.filter(|b| !b.is_empty()) {
             if let Some(sc) = shadow_color {
+                let r = shadow_blur.max(0);
                 for (dx, dy, bitmap) in &blits {
-                    if !bitmap.color {
+                    if bitmap.color {
+                        continue;
+                    }
+                    if r == 0 {
                         c.blit_glyph_mask(
                             dx + shadow_x,
                             dy + shadow_y,
@@ -3592,6 +3597,22 @@ impl Page {
                             sc,
                             italic,
                         );
+                    } else {
+                        for sdy in -r..=r {
+                            for sdx in -r..=r {
+                                if sdx * sdx + sdy * sdy <= r * r {
+                                    c.blit_glyph_mask(
+                                        dx + shadow_x + sdx,
+                                        dy + shadow_y + sdy,
+                                        bitmap.width,
+                                        bitmap.height,
+                                        &bitmap.data,
+                                        sc,
+                                        italic,
+                                    );
+                                }
+                            }
+                        }
                     }
                 }
             }
