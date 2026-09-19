@@ -363,7 +363,10 @@ css/css-flexbox/alignment/flow-start-flow-end-reverse-abspos.html
 css/css-flexbox/alignment/flow-start-flow-end-reverse.html
 css/css-flexbox/alignment/flow-start-flow-end-wrap-reverse.html
 css/css-flexbox/anonymous-block.html
-css/css-flexbox/aspect-ratio-intrinsic-size-007.html
+# aspect-ratio-intrinsic-size-007 removed: the runner does not fetch the
+# external SVG used by the img. It previously matched only because both the
+# image and inline-SVG reference painted nothing; inline SVG now exposes that
+# false positive. Restore this after external replaced-image loading lands.
 css/css-flexbox/auto-height-column-with-border-and-padding.html
 css/css-flexbox/auto-height-with-flex.html
 css/css-flexbox/auto-margins-003.html

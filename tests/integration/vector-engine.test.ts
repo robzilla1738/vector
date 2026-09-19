@@ -14,7 +14,7 @@
  * addon has not been built: `cd engine && cargo build -p ve-napi --features napi --release`.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startRuntime, type RuntimeHandle } from "@vector/runtime";
@@ -50,9 +50,14 @@ describeIfEngine("vector-engine backend", () => {
   beforeAll(async () => {
     procs = await startFixturesIfNeeded();
     await waitForFixtures();
+    const dataDir = mkdtempSync(join(tmpdir(), "vector-engine-it-"));
+    writeFileSync(
+      join(dataDir, "settings.json"),
+      JSON.stringify({ effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"] }),
+    );
     rt = await startRuntime({
       ...process.env,
-      VECTOR_DATA_DIR: mkdtempSync(join(tmpdir(), "vector-engine-it-")),
+      VECTOR_DATA_DIR: dataDir,
       VECTOR_ELECTRON_CDP: "",
       VECTOR_API_TOKEN: "test-token",
       VECTOR_ENGINE_MODE: "always",

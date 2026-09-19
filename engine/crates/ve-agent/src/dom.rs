@@ -639,6 +639,7 @@ pub(crate) fn host_call(
             let suffix: String = chars[offset..].iter().collect();
             crate::idl::LiveNode::new(&mut page.doc, id).set_node_value(Some(prefix));
             let next = page.doc.create_text(suffix);
+            page.script_created_nodes.insert(next);
             if let Some(parent) = page.doc.parent(id) {
                 let before = page.doc.next_sibling(id);
                 let _ = crate::idl::LiveDom::new(page, parent).insert_before(next, before);
@@ -1310,9 +1311,9 @@ pub(crate) fn host_call(
             .elements_from_point(arg_f64(args, 0), arg_f64(args, 1)))),
         "createElement" => {
             let name = arg_str(args, 0);
-            Ok(pack(
-                crate::idl::LiveDom::document(page).create_element(name),
-            ))
+            let id = crate::idl::LiveDom::document(page).create_element(name);
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
         }
         "createElementNS" => {
             let ns = arg_str(args, 0);
@@ -1328,28 +1329,40 @@ pub(crate) fn host_call(
             } else {
                 local.to_owned()
             };
-            Ok(pack(page.doc.create_element_qname(name, namespace, prefix)))
+            let id = page.doc.create_element_qname(name, namespace, prefix);
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
         }
-        "createTextNode" => Ok(pack(page.doc.create_text(arg_str(args, 0)))),
-        "createComment" => Ok(pack(page.doc.create_comment(arg_str(args, 0)))),
+        "createTextNode" => {
+            let id = page.doc.create_text(arg_str(args, 0));
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
+        }
+        "createComment" => {
+            let id = page.doc.create_comment(arg_str(args, 0));
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
+        }
         "createProcessingInstruction" => {
             let target = arg_str(args, 0);
             let data = arg_str(args, 1);
             if data.contains("?>") || target.is_empty() {
                 return Err(fail("InvalidCharacterError"));
             }
-            Ok(pack(page.doc.create_processing_instruction(target, data)))
+            let id = page.doc.create_processing_instruction(target, data);
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
         }
         "createDocumentType" => {
             let name = arg_str(args, 0);
             if name.is_empty() || name.chars().any(char::is_whitespace) {
                 return Err(fail("InvalidCharacterError"));
             }
-            Ok(pack(page.doc.create_doctype(
-                name,
-                arg_str(args, 1),
-                arg_str(args, 2),
-            )))
+            let id = page
+                .doc
+                .create_doctype(name, arg_str(args, 1), arg_str(args, 2));
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
         }
         "createDocument" => {
             let ns = arg_str(args, 0);
@@ -1393,7 +1406,11 @@ pub(crate) fn host_call(
             Some(NodeKind::Doctype { system_id, .. }) => JsValue::from(system_id.as_str()),
             _ => JsValue::Null,
         }),
-        "createFragment" => Ok(pack(page.doc.create_fragment())),
+        "createFragment" => {
+            let id = page.doc.create_fragment();
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
+        }
         "attachShadow" => {
             let mode = if arg_str(args, 1) == "closed" {
                 ShadowRootMode::Closed

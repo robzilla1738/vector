@@ -10017,7 +10017,7 @@ fn expect_link_unblocks_when_href_cleared() {
 }
 
 #[test]
-fn canvas_webgl_and_webgpu_are_null() {
+fn canvas_webgl_is_available_and_excludes_other_context_modes() {
     let mut page = open(r#"<body></body>"#);
     let v = page
         .evaluate(
@@ -10031,9 +10031,9 @@ fn canvas_webgl_and_webgpu_are_null() {
             })()"#,
         )
         .unwrap();
-    assert_eq!(v["webgl"], true, "{v}");
+    assert_eq!(v["webgl"], false, "{v}");
     assert_eq!(v["webgpu"], true, "{v}");
-    assert_eq!(v["two"], true, "{v}");
+    assert_eq!(v["two"], false, "{v}");
 }
 
 #[test]
@@ -12831,7 +12831,7 @@ fn official_html_link_media_body_and_eventsource_idl() {
                 fillThrew,
                 setHtmlLen: Element.prototype.setHTML.length,
                 esUrl: typeof es.url === "string",
-                esClosed: es.readyState === EventSource.CLOSED,
+                esConnecting: es.readyState === EventSource.CONNECTING,
                 esTag: Object.prototype.toString.call(es),
               };
             })()"##,
@@ -12850,7 +12850,7 @@ fn official_html_link_media_body_and_eventsource_idl() {
     assert_eq!(v["fillThrew"], true, "{v}");
     assert_eq!(v["setHtmlLen"], 1, "{v}");
     assert_eq!(v["esUrl"], true, "{v}");
-    assert_eq!(v["esClosed"], true, "{v}");
+    assert_eq!(v["esConnecting"], true, "{v}");
     assert_eq!(v["esTag"], "[object EventSource]", "{v}");
 }
 

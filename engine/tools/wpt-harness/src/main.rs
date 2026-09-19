@@ -483,7 +483,13 @@ fn inject_upstream_testharness(html: &str) -> String {
     if !html.contains("testharness.js") {
         return html.to_string();
     }
-    let Ok(th) = std::fs::read_to_string(testharness_path()) else {
+    let wants_idl = html.contains("idlharness.js") || html.contains("WebIDLParser.js");
+    let th_path = if wants_idl {
+        resource_path("testharness.min.js")
+    } else {
+        testharness_path()
+    };
+    let Ok(th) = std::fs::read_to_string(th_path) else {
         return html.to_string();
     };
     let th_tag = format!(
@@ -563,9 +569,11 @@ fn inject_upstream_testharness(html: &str) -> String {
             }
         }
     }
-    if html.contains("idlharness.js") || html.contains("WebIDLParser.js") {
-        let parser = std::fs::read_to_string(resource_path("WebIDLParser.js")).unwrap_or_default();
-        let harness = std::fs::read_to_string(resource_path("idlharness.js")).unwrap_or_default();
+    if wants_idl {
+        let parser =
+            std::fs::read_to_string(resource_path("WebIDLParser.min.js")).unwrap_or_default();
+        let harness =
+            std::fs::read_to_string(resource_path("idlharness.min.js")).unwrap_or_default();
         let parser_tag = format!("<script>\n{}\n</script>", escape_inline_script(&parser));
         let harness_tag = format!("<script>\n{}\n</script>", escape_inline_script(&harness));
         let (next, _) = replace_first(&body, WEBIDL_PARSER_SRC, &parser_tag);
@@ -677,7 +685,13 @@ fn run_script_test(
         if (Array.isArray(window.__tests) && window.__tests.length) {
           return JSON.stringify(window.__tests);
         }
-        return JSON.stringify([]);
+        return JSON.stringify([["testharness bootstrap", false, JSON.stringify({
+          test: typeof test,
+          tests: typeof tests,
+          IdlArray: typeof IdlArray,
+          WebIDL2: typeof WebIDL2,
+          loadError: window.__th_load_error || ""
+        })]]);
       })()"#;
     let result = match engine.page_mut(page)?.evaluate(eval) {
         Ok(raw) => {
@@ -1278,6 +1292,12 @@ mod tests {
         assert!(
             out.contains("WebIDL2") || out.contains("root[\"WebIDL2\"]"),
             "{out:.200}"
+        );
+        assert!(
+            out.len() <= ve_html::HTML_BYTES_CAP,
+            "injected IDL harness must fit the product HTML cap: {} > {}",
+            out.len(),
+            ve_html::HTML_BYTES_CAP
         );
     }
 

@@ -1299,6 +1299,10 @@ impl Page {
                     .ok()
                     .is_some_and(|v| v.is_truthy());
                 if !self.expect_blocking_active() && !pending_blocking {
+                    // Resolve host-backed fetches before zero-delay polling
+                    // timers run; otherwise the bounded timer drain can
+                    // exhaust a poll loop while its response is still queued.
+                    self.complete_script_fetches();
                     self.pump_timers(TIMER_WINDOW_MS);
                 }
             }
@@ -1354,6 +1358,7 @@ impl Page {
             vm.set_call_deadline(Some(script_deadline()));
         }
         self.drain_js_jobs();
+        self.complete_script_fetches();
         self.pump_timers(TIMER_WINDOW_MS);
     }
 

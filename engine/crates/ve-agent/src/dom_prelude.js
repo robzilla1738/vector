@@ -558,20 +558,23 @@
   };
   let exposeWindowName = function () {};
   let browsingDocument = null;
+  const wrapperKey = (h) => String(h);
   function liveWrapper(h) {
-    const cached = nodes.get(h);
+    const key = wrapperKey(h);
+    const cached = nodes.get(key);
     if (!cached) return null;
     if (typeof WeakRef === "function" && cached instanceof WeakRef) {
       const v = cached.deref();
-      if (!v) { nodes.delete(h); return null; }
+      if (!v) { nodes.delete(key); return null; }
       return v;
     }
     return cached;
   }
   function rememberWrapper(h, n, strong) {
-    if (strong || typeof WeakRef !== "function") nodes.set(h, n);
-    else nodes.set(h, new WeakRef(n));
-    if (wrapperRegistry) wrapperRegistry.register(n, h);
+    const key = wrapperKey(h);
+    if (strong || typeof WeakRef !== "function") nodes.set(key, n);
+    else nodes.set(key, new WeakRef(n));
+    if (wrapperRegistry) wrapperRegistry.register(n, key);
   }
   function wrapDoc(h) {
     if (h == null || h === "" || h === false) return null;
@@ -677,9 +680,9 @@
     connectCustomElement(n);
   }
   function handleOf(v) {
-    if (v == null) return 0;
+    if (v == null) return null;
     if (typeof v === "number" || typeof v === "string") return v;
-    return v.__h || 0;
+    return v.__h == null ? null : v.__h;
   }
   globalThis.__veDomProfile = () => ({ nodes: nodes.size });
   globalThis.__veWrap = wrap;
@@ -2027,7 +2030,7 @@
       if (this.__h) return;
       const s = arguments.length === 0 || data === undefined ? "" : String(data);
       this.__h = D("createTextNode", s);
-      nodes.set(this.__h, this);
+      nodes.set(wrapperKey(this.__h), this);
     }
     splitText(offset) {
       offset |= 0;
@@ -2045,7 +2048,7 @@
       if (this.__h) return;
       const s = arguments.length === 0 || data === undefined ? "" : String(data);
       this.__h = D("createComment", s);
-      nodes.set(this.__h, this);
+      nodes.set(wrapperKey(this.__h), this);
     }
   }
   class ProcessingInstruction extends CharacterData {
@@ -2175,7 +2178,7 @@
       super();
       if (this.__h) return;
       this.__h = D("createFragment");
-      nodes.set(this.__h, this);
+      nodes.set(wrapperKey(this.__h), this);
     }
     querySelector(s) { return wrap(D("querySelector", this.__h, String(s))); }
     querySelectorAll(s) { return list(D("querySelectorAll", this.__h, String(s))); }
@@ -2979,7 +2982,7 @@
       }
       if (!name) return;
       this.__h = D("createElement", name);
-      nodes.set(this.__h, this);
+      nodes.set(wrapperKey(this.__h), this);
       this.__constructed = true;
       this.__upgraded = true;
     }
@@ -6620,7 +6623,7 @@
       super();
       if (this.__h) return;
       this.__h = D("createDocument", "", "", null);
-      nodes.set(this.__h, this);
+      nodes.set(wrapperKey(this.__h), this);
       installDocumentLocation(this);
     }
     get onreadystatechange() { return onReadyStateChange.get(this) || null; }
@@ -8434,9 +8437,9 @@
       if (w) { w.res(ctor); waiters.delete(name); }
       const found = D("querySelectorAll", "", name) || [];
       for (const h of found) {
-        const existing = nodes.get(h);
+        const existing = liveWrapper(h);
         if (existing && existing.__upgraded) continue;
-        if (existing) nodes.delete(h);
+        if (existing) nodes.delete(wrapperKey(h));
         wrap(h);
       }
     }

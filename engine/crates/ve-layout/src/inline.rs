@@ -224,7 +224,13 @@ pub fn layout_inline(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect)
     if let Some(n) = bx.style.line_clamp {
         bx.lines.truncate(n.max(1) as usize);
     }
-    if bx.style.text_overflow == TextOverflow::Ellipsis && bx.style.overflow.clips() {
+    // `text-overflow` applies to block containers, not flex containers. Text
+    // directly inside flex containers lives in an anonymous item that shares
+    // the container's computed style, so guard the formatting context here.
+    if !bx.style.display.is_flex()
+        && bx.style.text_overflow == TextOverflow::Ellipsis
+        && bx.style.overflow.clips()
+    {
         apply_text_ellipsis(&mut bx.lines, content.right(), &bx.style, state.ctx.shaper);
     }
     sync_atomic_boxes(&mut children, &bx.lines);

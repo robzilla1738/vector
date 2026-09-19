@@ -167,7 +167,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H3-4 | Per-site process isolation, COOP/COEP | B | ☑ | `Hub::map_site_context` + Production `context_for_site`; `map_site_context_reuses_origin_and_isolates_sites`; `production_two_origins_use_distinct_ve_host_processes` (two origins → two `ve-host` PIDs); `docs/engine/evidence/h3-4-process-isolation.json`; `Page::coop_allows_open`; `coop_same_origin_blocks_cross_origin_window_open`; `Page::coep_allows_resource`; `coep_require_corp_blocks_cross_origin_without_corp`; COOP/COEP/CORP parsed on navigation + subresource fetch |
 | H3-5 | Speedometer as a tracked number, not a target | D | ☑ | `docs/BENCHMARKS.md` engine 1.83 + Chrome 148.0.7778.96 TodoMVC-JavaScript-ES5 11.6 ms (`docs/engine/evidence/speedometer-chrome-tracked.json`; tracked, not official, not a target) |
 
-Additional H3-3 current-tree evidence: `webgl_separate_stencil_state_distinguishes_front_and_back_faces`; `webgl_texture_parameters_and_generated_mipmaps_are_observable`.
+Additional H3-3 current-tree evidence: `webgl_separate_stencil_state_distinguishes_front_and_back_faces`; `webgl_texture_parameters_and_generated_mipmaps_are_observable`; `fixed_table_cell_min_width_contributes_to_column`; `text_overflow_does_not_ellipsis_flex_items`.
 
 ---
 
@@ -198,6 +198,7 @@ Measured on Apple silicon, 1440×900 @2x, production security profile, published
 - Horizon 0 exit: `docs/perf/frame-baseline.md`, `dombench-latest.json`, a production-profile `perf --gate` JSON, and `BENCHMARKS.md` all committed; `pnpm dev` shows real shaped text at correct Retina scale with images, and typing lands in the focused field.
 - Horizon 1 exit: scroll trace shows 0 relayout and 0 `from_layout` calls; events-log fixture byte-identical for human and agent; ES-module SPA fixture runs without the bundler; Full observation reachable over MCP; multi-page native service test green.
 - Horizon 2 exit: MVP M1 gate (a day of ordinary browsing with restart and state retained) — `day_of_browsing_restores_tabs_history_bookmarks_zoom_find` / `docs/engine/evidence/day-of-browsing.json`; lying-model test 0 completed (`lying model cannot complete a run`); kill-9 write test exactly one POST; held-out suite with live GPT 5.6 Luna and competitor rows published (`docs/engine/evidence/held-out-latest.json`, `skippedLive: false`, engine 15/15, competitor 15/15).
+- Current-tree closeout: Rust workspace tests and clippy pass on 1.88.0; the V8 page suite passes with only the named H3-2 manual-slot regression quarantined; the pinned geometry manifest has 0 regressions; supported WPT testharness is 114/114; runtime integration and macOS Electron e2e pass with explicit test-profile grants. H3-1 remains gated and H3-2 remains prelude-default until 2026-10-02.
 
 ---
 

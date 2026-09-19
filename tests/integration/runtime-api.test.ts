@@ -3,7 +3,7 @@
  * fixture servers. Verifies observe → execute → persisted truth.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startRuntime, type RuntimeHandle } from "@vector/runtime";
@@ -28,6 +28,10 @@ beforeAll(async () => {
   procs = await startFixturesIfNeeded();
   await waitForFixtures();
   dataDir = mkdtempSync(join(tmpdir(), "vector-it-"));
+  writeFileSync(
+    join(dataDir, "settings.json"),
+    JSON.stringify({ effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"] }),
+  );
   rt = await startRuntime({
     ...process.env,
     VECTOR_DATA_DIR: dataDir,

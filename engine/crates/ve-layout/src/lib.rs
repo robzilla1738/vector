@@ -1853,6 +1853,39 @@ mod tests {
     }
 
     #[test]
+    fn text_overflow_does_not_ellipsis_flex_items() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{display:flex;width:40px;font-size:16px;line-height:20px;overflow:hidden;text-overflow:ellipsis}</style>\
+             <div id=p>aaaaaaaaaaaa</div>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "#p").unwrap();
+        let text: String = tree
+            .root
+            .find(p)
+            .unwrap()
+            .children
+            .iter()
+            .flat_map(|child| &child.lines)
+            .flat_map(|line| &line.fragments)
+            .filter_map(|fragment| fragment.text.as_deref())
+            .collect();
+        assert_eq!(text, "aaaaaaaaaaaa");
+    }
+
+    #[test]
+    fn fixed_table_cell_min_width_contributes_to_column() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}</style>\
+             <div style='display:table;table-layout:fixed;border-spacing:0'><div style='display:table-row'><div id=cell style='display:table-cell;min-width:96px;height:96px'></div></div></div>",
+            400.0,
+        );
+        let cell = rect(&tree, &engine, &doc, "#cell");
+        assert_eq!(cell.width(), 96.0);
+        assert_eq!(cell.height(), 96.0);
+    }
+
+    #[test]
     fn text_align_last_center_shifts_last_line() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #p{width:72px;font-size:16px;line-height:20px;text-align:left;text-align-last:right;margin:0}</style>\

@@ -201,6 +201,14 @@ fn column_widths_fixed(bx: &LayoutBox, grid: &Grid) -> Columns {
         let cell = cell(bx, gc);
         let (_, padding, border) = box_edges(cell, 0.0);
         let bp_h = padding.horizontal() + border.horizontal();
+        let min_width = cell.style.min_width.resolve(0.0);
+        let min_border_box = if cell.style.box_sizing == BoxSizing::BorderBox {
+            min_width
+        } else {
+            min_width + bp_h
+        };
+        cols.min[gc.col] = cols.min[gc.col].max(min_border_box);
+        cols.max[gc.col] = cols.max[gc.col].max(min_border_box);
         match cell.style.width {
             LengthPercentageAuto::Px(w) => {
                 let border_box = if cell.style.box_sizing == BoxSizing::BorderBox {

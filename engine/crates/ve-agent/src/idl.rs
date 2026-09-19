@@ -357,7 +357,7 @@ fn text_content_of(doc: &Document, id: NodeId) -> Option<String> {
 }
 
 fn pack_id(id: NodeId) -> JsValue {
-    JsValue::String(format!("{}:{}", id.index(), id.generation()))
+    JsValue::Number(id.to_u64() as f64)
 }
 
 fn first_element_child(doc: &Document, id: NodeId) -> Option<NodeId> {

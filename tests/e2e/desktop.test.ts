@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -46,6 +46,10 @@ beforeAll(async () => {
   await waitForFixtures();
 
   dataDir = mkdtempSync(join(tmpdir(), "vector-e2e-"));
+  writeFileSync(
+    join(dataDir, "settings.json"),
+    JSON.stringify({ effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"] }),
+  );
   const { ELECTRON_RUN_AS_NODE: _drop, ...parentEnv } = process.env;
   app = spawn(electronBin, ["."], {
     cwd: desktopDir,

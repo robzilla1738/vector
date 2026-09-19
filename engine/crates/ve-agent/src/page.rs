@@ -619,6 +619,10 @@ pub struct Page {
     pub(crate) parser_scratch: Option<NodeId>,
     /// Arena length when document scripts started; later ids are script-created.
     pub(crate) parse_hi: u32,
+    /// Nodes allocated through script while parser visibility is gated. Arena
+    /// indices can be reused below `parse_hi`, so the high-water mark alone
+    /// cannot distinguish these from not-yet-visible parser nodes.
+    pub(crate) script_created_nodes: HashSet<NodeId>,
     /// `rel=expect` links whose target has already been seen (stay unblocked).
     expect_satisfied: HashSet<NodeId>,
     /// Head `rel=expect` links present at parse; body JS cannot add new ones.
@@ -2792,6 +2796,7 @@ impl Page {
             parser_limit: None,
             parser_scratch: None,
             parse_hi: 0,
+            script_created_nodes: HashSet::new(),
             expect_satisfied: HashSet::new(),
             expect_from_head: HashSet::new(),
             expect_armed: HashSet::new(),
@@ -4163,6 +4168,7 @@ impl Page {
             .set_content_language(loaded.content_language.clone());
         self.parser_limit = None;
         self.parse_hi = 0;
+        self.script_created_nodes.clear();
         self.expect_satisfied.clear();
         self.scripts_executed.clear();
         self.iframe_urls.clear();
@@ -5406,7 +5412,13 @@ impl Page {
         let Some(limit) = self.parser_limit else {
             return true;
         };
-        if id.index() >= self.parse_hi {
+        // A script-created node can reuse an arena slot freed while parsing.
+        // Its non-zero generation still makes it newer than the parser's
+        // snapshot even when the recycled index is below `parse_hi`.
+        if self.script_created_nodes.contains(&id)
+            || id.generation() > 0
+            || id.index() >= self.parse_hi
+        {
             return true;
         }
         // Parse order, not live tree order: a node parsed before the running
