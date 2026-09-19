@@ -454,6 +454,8 @@ pub struct Page {
     overscroll: Point,
     /// Trackpad-style coasting velocity in CSS px / 16 ms (H1-A5).
     scroll_velocity: Point,
+    /// True while a finger/wheel gesture is in Began/Changed (H1-A4).
+    scroll_gesture: bool,
     pub(crate) element_scroll: HashMap<NodeId, Point>,
     files: HashMap<NodeId, Vec<String>>,
     focused: Option<NodeId>,
@@ -1159,6 +1161,7 @@ impl Page {
             scroll: Point::ZERO,
             overscroll: Point::ZERO,
             scroll_velocity: Point::ZERO,
+            scroll_gesture: false,
             element_scroll: HashMap::new(),
             files: HashMap::new(),
             focused: None,
@@ -1796,13 +1799,20 @@ impl Page {
         match phase {
             ve_core::ScrollPhase::Cancelled => {
                 self.scroll_velocity = Point::ZERO;
+                self.scroll_gesture = false;
                 self.doc.record_scrolled(None);
                 return self.scroll_state();
             }
             ve_core::ScrollPhase::Began => {
                 self.scroll_velocity = Point::ZERO;
+                self.scroll_gesture = true;
             }
-            ve_core::ScrollPhase::Changed | ve_core::ScrollPhase::Ended => {}
+            ve_core::ScrollPhase::Changed => {
+                self.scroll_gesture = true;
+            }
+            ve_core::ScrollPhase::Ended => {
+                self.scroll_gesture = false;
+            }
         }
         if dx.abs() > f32::EPSILON {
             let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
@@ -1877,6 +1887,12 @@ impl Page {
     pub fn needs_scroll_frame(&self) -> bool {
         !self.style_engine.media.reduced_motion
             && (self.overscroll.y.abs() > 0.15 || self.scroll_velocity.y.abs() > 0.4)
+    }
+
+    /// True while the user is still in a scroll gesture (not coasting).
+    #[must_use]
+    pub fn scroll_interacting(&self) -> bool {
+        self.scroll_gesture
     }
 
     /// `prefers-reduced-motion` media flag.

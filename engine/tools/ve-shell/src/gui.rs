@@ -213,7 +213,7 @@ impl ApplicationHandler<AccessKitEvent> for App {
         let drained = self.drain_service();
         if self.browser().needs_frame() {
             let range = ve_shell_mac::MacWindow::preferred_frame_rate_range(
-                true,
+                self.browser().interacting(),
                 self.browser().reduced_motion(),
             );
             let dt = (1000.0 / range.preferred.max(10.0)).round() as u64;

@@ -927,6 +927,18 @@ impl NativeBrowser {
             .unwrap_or(false)
     }
 
+    /// True while the visible tab is in a live scroll gesture (not coasting).
+    #[must_use]
+    pub fn interacting(&self) -> bool {
+        let Some(tab) = self.active_tab() else {
+            return false;
+        };
+        self.engine
+            .page(tab.page)
+            .map(Page::scroll_interacting)
+            .unwrap_or(false)
+    }
+
     /// `prefers-reduced-motion` on the visible document.
     #[must_use]
     pub fn reduced_motion(&self) -> bool {
@@ -3580,6 +3592,59 @@ mod tests {
         assert!(
             !browser.needs_frame(),
             "inactive/off-screen tab must not drive the frame loop"
+        );
+    }
+
+    #[test]
+    fn frame_loop_uses_idle_preferred_rate_when_coasting() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body style='height:4000px'><p>tall</p></body></html>".into(),
+                url: "https://scroll.test/coast".into(),
+            })
+            .unwrap();
+        let _ = browser.handle_event(NativeEvent::Wheel {
+            dx: 0.0,
+            dy: 80.0,
+            phase: ScrollPhase::Changed,
+        });
+        assert!(
+            browser.interacting(),
+            "Changed phase is a live gesture"
+        );
+        let preferred = |interacting: bool, reduced: bool| {
+            if reduced {
+                60.0
+            } else if interacting {
+                120.0
+            } else {
+                10.0
+            }
+        };
+        assert_eq!(
+            preferred(browser.interacting(), browser.reduced_motion()),
+            120.0
+        );
+        let _ = browser.handle_event(NativeEvent::Wheel {
+            dx: 0.0,
+            dy: 0.0,
+            phase: ScrollPhase::Ended,
+        });
+        assert!(
+            browser.needs_frame(),
+            "Ended with dy=0 must keep momentum"
+        );
+        assert!(
+            !browser.interacting(),
+            "coasting after Ended is not interacting"
+        );
+        let idle_hz: f32 = preferred(browser.interacting(), browser.reduced_motion());
+        assert_eq!(idle_hz, 10.0);
+        let dt = (1000.0 / idle_hz.max(10.0)).round();
+        assert!(
+            dt >= 80.0,
+            "idle WaitUntil dt must match the 10 Hz preferred rate, got {dt}"
         );
     }
 
