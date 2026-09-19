@@ -4944,52 +4944,255 @@ mod tests {
         let ev = ev_path.parent().unwrap();
         let _ = std::fs::create_dir_all(ev);
         std::fs::write(&ev_path, serde_json::to_vec_pretty(&evidence).unwrap()).unwrap();
-        let triage = serde_json::json!({
-            "date": "2026-09-18",
-            "backend": "vector-engine",
-            "reference": "chromium-headless",
-            "chromiumLive": true,
-            "skippedLive": false,
-            "pages": 4,
-            "engineBoxes": [
-                {
-                    "html": "flex-row",
-                    "selector": "#a",
-                    "engine": { "x": 0, "y": 0, "w": 100, "h": 30 },
-                    "chromium": { "x": 0, "y": 0, "w": 100, "h": 30 },
-                    "test": "flex_row_distributes_width_and_hit_testing_finds_items"
-                },
-                {
-                    "html": "flex-row",
-                    "selector": "#big",
-                    "engine": { "x": 100, "y": 0, "w": 200, "h": 30 },
-                    "chromium": { "x": 100, "y": 0, "w": 200, "h": 30 },
-                    "test": "flex_row_distributes_width_and_hit_testing_finds_items"
-                },
-                {
-                    "html": "block-margin",
-                    "selector": "#a",
-                    "engine": { "x": 0, "y": 0, "w": 400, "h": 50 },
-                    "chromium": { "x": 0, "y": 0, "w": 400, "h": 50 },
-                    "test": "ve-layout block layout"
-                },
-                {
-                    "html": "inline-wrap",
-                    "selector": "p",
-                    "engine": { "x": 0, "y": 0, "w": 100, "h": 40 },
-                    "chromium": { "x": 0, "y": 0, "w": 100, "h": 40 },
-                    "test": "inline_text_wraps_into_lines"
-                }
-            ],
-            "notes": "Engine boxes from ve-layout tests. Chromium getBoundingClientRect via google-chrome --headless=new on the same fixtures (body margin 0, 400 CSS px containing block)."
-        });
-        std::fs::write(
-            ev.join("layout-triage-2026-09-18.json"),
-            serde_json::to_vec_pretty(&triage).unwrap(),
-        )
-        .unwrap();
         assert!(p95 > 0.0);
         assert!(rate < 0.01);
+    }
+
+    #[test]
+    fn layout_triage_measures_engine_and_chromium_boxes() {
+        struct Case {
+            html_name: &'static str,
+            fragment: &'static str,
+            selector: &'static str,
+            test: &'static str,
+        }
+        let cases = [
+            Case {
+                html_name: "flex-row",
+                fragment: "<style>html,body{margin:0;width:400px}.row{display:flex;width:300px}.item{flex:1;height:30px}#big{flex:2}</style><div class=row><div class=item id=a></div><div class=item id=big></div></div>",
+                selector: "#a",
+                test: "flex_row_distributes_width_and_hit_testing_finds_items",
+            },
+            Case {
+                html_name: "flex-row",
+                fragment: "<style>html,body{margin:0;width:400px}.row{display:flex;width:300px}.item{flex:1;height:30px}#big{flex:2}</style><div class=row><div class=item id=a></div><div class=item id=big></div></div>",
+                selector: "#big",
+                test: "flex_row_distributes_width_and_hit_testing_finds_items",
+            },
+            Case {
+                html_name: "block-margin",
+                fragment: "<style>html,body{margin:0;width:400px}div{height:50px}#b{margin-top:10px;padding:5px;width:50%}</style><div id=a></div><div id=b></div>",
+                selector: "#a",
+                test: "blocks_stack_vertically_with_margins_and_padding",
+            },
+            Case {
+                html_name: "block-margin",
+                fragment: "<style>html,body{margin:0;width:400px}div{height:50px}#b{margin-top:10px;padding:5px;width:50%}</style><div id=a></div><div id=b></div>",
+                selector: "#b",
+                test: "blocks_stack_vertically_with_margins_and_padding",
+            },
+            Case {
+                html_name: "grid-place",
+                fragment: "<style>html,body{margin:0;width:400px}.g{display:grid;grid-template-columns:100px 100px;grid-template-rows:20px 20px;width:200px}#a{grid-column:2;grid-row:1}#b{order:1}#c{order:-1}</style><div class=g><div id=a></div><div id=b></div><div id=c></div></div>",
+                selector: "#a",
+                test: "grid_placement_and_order_are_honoured",
+            },
+            Case {
+                html_name: "grid-place",
+                fragment: "<style>html,body{margin:0;width:400px}.g{display:grid;grid-template-columns:100px 100px;grid-template-rows:20px 20px;width:200px}#a{grid-column:2;grid-row:1}#b{order:1}#c{order:-1}</style><div class=g><div id=a></div><div id=b></div><div id=c></div></div>",
+                selector: "#b",
+                test: "grid_placement_and_order_are_honoured",
+            },
+            Case {
+                html_name: "grid-place",
+                fragment: "<style>html,body{margin:0;width:400px}.g{display:grid;grid-template-columns:100px 100px;grid-template-rows:20px 20px;width:200px}#a{grid-column:2;grid-row:1}#b{order:1}#c{order:-1}</style><div class=g><div id=a></div><div id=b></div><div id=c></div></div>",
+                selector: "#c",
+                test: "grid_placement_and_order_are_honoured",
+            },
+            Case {
+                html_name: "grid-areas",
+                fragment: "<style>html,body{margin:0;width:400px}.g{display:grid;width:200px;grid-template-columns:50px 150px;grid-template-rows:20px;grid-template-areas:\"a b\"}#a{grid-area:a}#b{grid-area:b}</style><div class=g><div id=a></div><div id=b></div></div>",
+                selector: "#a",
+                test: "grid_template_areas_place_named_items",
+            },
+            Case {
+                html_name: "grid-areas",
+                fragment: "<style>html,body{margin:0;width:400px}.g{display:grid;width:200px;grid-template-columns:50px 150px;grid-template-rows:20px;grid-template-areas:\"a b\"}#a{grid-area:a}#b{grid-area:b}</style><div class=g><div id=a></div><div id=b></div></div>",
+                selector: "#b",
+                test: "grid_template_areas_place_named_items",
+            },
+            Case {
+                html_name: "positioned",
+                fragment: "<style>html,body{margin:0;width:400px}#rel{position:relative;top:5px;left:5px;height:20px}#abs{position:absolute;top:10px;left:20px;width:50px;height:50px;z-index:5}</style><div id=rel></div><div id=abs></div>",
+                selector: "#rel",
+                test: "positioned_boxes_and_stacking_order",
+            },
+            Case {
+                html_name: "positioned",
+                fragment: "<style>html,body{margin:0;width:400px}#rel{position:relative;top:5px;left:5px;height:20px}#abs{position:absolute;top:10px;left:20px;width:50px;height:50px;z-index:5}</style><div id=rel></div><div id=abs></div>",
+                selector: "#abs",
+                test: "positioned_boxes_and_stacking_order",
+            },
+            Case {
+                html_name: "fixed-box",
+                fragment: "<style>html,body{margin:0;width:400px}#box{width:80px;height:40px;margin:12px}</style><div id=box></div>",
+                selector: "#box",
+                test: "explicit_px_box",
+            },
+            Case {
+                html_name: "percent",
+                fragment: "<style>html,body{margin:0;width:400px}#half{width:50%;height:24px}</style><div id=half></div>",
+                selector: "#half",
+                test: "percentage_width",
+            },
+        ];
+
+        let mut engine = crate::VectorEngine::new(crate::EngineConfig {
+            offline: true,
+            viewport: Size::new(400.0, 600.0),
+            security_profile: crate::SecurityProfile::Production,
+            ..crate::EngineConfig::default()
+        });
+        let mut engine_boxes = Vec::new();
+        for case in &cases {
+            let opened = engine
+                .open(crate::OpenRequest::html(
+                    case.fragment,
+                    Some(&format!("https://triage.test/{}", case.html_name)),
+                ))
+                .expect(case.html_name);
+            {
+                let page = engine.page_mut(opened.page).unwrap();
+                page.update();
+            }
+            let page = engine.page(opened.page).unwrap();
+            let id_name = case.selector.trim_start_matches('#');
+            let node = page
+                .document()
+                .element_by_id(id_name)
+                .unwrap_or_else(|| panic!("engine missing {}", case.selector));
+            let rect = page
+                .layout_tree()
+                .rect_of(node)
+                .unwrap_or_else(|| panic!("no box for {}", case.selector));
+            engine_boxes.push(serde_json::json!({
+                "html": case.html_name,
+                "selector": case.selector,
+                "engine": { "x": rect.x(), "y": rect.y(), "w": rect.width(), "h": rect.height() },
+                "test": case.test
+            }));
+            let _ = engine.close(opened.page);
+        }
+
+        let dir = std::env::temp_dir().join(format!("vector-layout-triage-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let profile = dir.join("chrome-profile");
+        let mut chromium: std::collections::HashMap<(String, String), serde_json::Value> =
+            std::collections::HashMap::new();
+        for case in &cases {
+            let page_html = format!(
+                "<!DOCTYPE html><html><body>{}<script>const el=document.querySelector('{}');const r=el.getBoundingClientRect();document.documentElement.setAttribute('data-box',JSON.stringify({{x:r.x,y:r.y,w:r.width,h:r.height}}));</script></body></html>",
+                case.fragment,
+                case.selector
+            );
+            let path = dir.join(format!(
+                "{}-{}.html",
+                case.html_name,
+                case.selector.trim_start_matches('#')
+            ));
+            std::fs::write(&path, page_html).unwrap();
+            let chrome = std::process::Command::new("timeout")
+                .args([
+                    "12",
+                    "google-chrome",
+                    "--headless=new",
+                    "--disable-gpu",
+                    "--no-sandbox",
+                    "--hide-scrollbars",
+                    "--virtual-time-budget=1000",
+                    "--window-size=400,600",
+                    &format!("--user-data-dir={}", profile.display()),
+                    "--dump-dom",
+                    &format!("file://{}", path.display()),
+                ])
+                .output();
+            if let Ok(out) = chrome {
+                let dom = String::from_utf8_lossy(&out.stdout);
+                if let Some(i) = dom.find("data-box=\"") {
+                    let rest = &dom[i + 10..];
+                    if let Some(end) = rest.find('"') {
+                        let json = rest[..end]
+                            .replace("&quot;", "\"")
+                            .replace("&#34;", "\"");
+                        if let Ok(row) = serde_json::from_str::<serde_json::Value>(&json) {
+                            chromium.insert(
+                                (case.html_name.to_string(), case.selector.to_string()),
+                                row,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        let chromium_live = chromium.len() == cases.len();
+        let pages = cases
+            .iter()
+            .map(|c| c.html_name)
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+
+        let mut matched = 0u32;
+        let mut rows = Vec::new();
+        for (case, eng) in cases.iter().zip(engine_boxes.iter()) {
+            let chrome_row = chromium.get(&(case.html_name.to_string(), case.selector.to_string()));
+            let chrome_box = chrome_row.map(|r| {
+                serde_json::json!({
+                    "x": r["x"], "y": r["y"], "w": r["w"], "h": r["h"]
+                })
+            });
+            let mut match_ok = false;
+            if let Some(c) = chrome_row {
+                let e = &eng["engine"];
+                let dx = (e["x"].as_f64().unwrap_or(0.0) - c["x"].as_f64().unwrap_or(99.0)).abs();
+                let dy = (e["y"].as_f64().unwrap_or(0.0) - c["y"].as_f64().unwrap_or(99.0)).abs();
+                let dw = (e["w"].as_f64().unwrap_or(0.0) - c["w"].as_f64().unwrap_or(99.0)).abs();
+                let dh = (e["h"].as_f64().unwrap_or(0.0) - c["h"].as_f64().unwrap_or(99.0)).abs();
+                match_ok = dx <= 1.0 && dy <= 1.0 && dw <= 1.0 && dh <= 1.0;
+                if match_ok {
+                    matched += 1;
+                }
+            }
+            rows.push(serde_json::json!({
+                "html": case.html_name,
+                "selector": case.selector,
+                "engine": eng["engine"],
+                "chromium": chrome_box,
+                "match": match_ok,
+                "test": case.test
+            }));
+        }
+
+        let ev = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/engine/evidence/layout-triage-2026-09-18.json");
+        let doc = serde_json::json!({
+            "date": "2026-09-19",
+            "backend": "vector-engine",
+            "reference": "chromium-headless",
+            "chromiumLive": chromium_live,
+            "skippedLive": !chromium_live,
+            "pages": pages,
+            "boxes": rows.len(),
+            "matched": matched,
+            "engineBoxes": rows,
+            "viewport": { "width": 400.0, "height": 600.0 },
+            "tolerancePx": 1.0,
+            "test": "layout_triage_measures_engine_and_chromium_boxes",
+            "notes": "Engine LayoutTree::rect_of vs google-chrome --headless=new getBoundingClientRect. Explicit px/flex/grid/abs fixtures; body margin 0; 400×600 CSS viewport."
+        });
+        let _ = std::fs::create_dir_all(ev.parent().unwrap());
+        std::fs::write(&ev, serde_json::to_vec_pretty(&doc).unwrap()).unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(
+            engine_boxes.len() >= 12,
+            "need ≥12 engine boxes, got {}",
+            engine_boxes.len()
+        );
+        assert!(chromium_live, "google-chrome --headless must measure boxes");
+        assert_eq!(
+            matched as usize,
+            rows.len(),
+            "every triage box must match Chromium within 1px: {doc}"
+        );
     }
 
     #[test]

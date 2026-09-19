@@ -138,7 +138,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-D1 | `fixtures/spa-app` with `/api/state` oracle | D | ☑ | `fixtures/spa-app` |
 | H1-D2 | Held-out suite: sealed hash, trials 5, live models, median + IQR + CI | D | ☑ | `tests/held-out/run.mjs` + `tests/held-out/pages/*`; `docs/engine/evidence/held-out-latest.json` (`skippedLive: false`, `livePlanner: true`, `openai/gpt-5.6-luna-fast`, sealedHash `f805b31d…`, 5 trials × 3 tasks; engine verified 15/15 median wait 3159 ms IQR 2882 CI 2691–5601; competitor `vector` 15/15 median 2869 ms; increment/submit/table oracles all 5/5) |
 | H1-D3 | Public corpus ≥ 500 real URLs | D | ☑ | `docs/engine/evidence/corpus-500-latest.json` (live fetch 514/526, 12 bot-wall/timeout kept + 26 extra fetchable URLs; engine `capability_unsupported` 0/514 opened bodies; compact observe p50 1.66 ms / p95 3.18 ms; open→observe p50 14.4 ms / p95 29.4 ms / max 80.6 ms on `117` at 256 KB parse cap + unclosed-style trim; snapshot tokens p95 2999 at `maxTokens: 3000`; taskControlRank 484/484; `ve_html::HTML_BYTES_CAP`; not a D5 deletion license) |
-| H1-D4 | Layout triage vs Chromium reference boxes | D | ☑ | `docs/engine/evidence/layout-triage-2026-09-18.json` (4 fixtures; Chromium getBoundingClientRect matches engine) |
+| H1-D4 | Layout triage vs Chromium reference boxes | D | ☑ | `layout_triage_measures_engine_and_chromium_boxes`; `docs/engine/evidence/layout-triage-2026-09-18.json` (13 boxes / 7 pages; live `google-chrome --headless=new` getBoundingClientRect vs `LayoutTree::rect_of`; 1px tolerance; flex/grid/block/abs/percent) |
 
 ### Horizon 2 — Chrome, essentials, coordinator
 
