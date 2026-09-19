@@ -9487,6 +9487,7 @@
       this.ELEMENT_ARRAY_BUFFER = 34963;
       this.FLOAT = 5126;
       this.TRIANGLES = 4;
+      this.TRIANGLE_STRIP = 5;
       this.UNSIGNED_SHORT = 5123;
       this.UNPACK_FLIP_Y_WEBGL = 37440;
       this.UNPACK_PREMULTIPLY_ALPHA_WEBGL = 37441;
@@ -9791,7 +9792,7 @@
         tex._b64 = btoa(s);
       }
     }
-    drawArrays(_mode, first, count) {
+    drawArrays(mode, first, count) {
       const tex = this._tex;
       const c = this.canvas;
       if (!c || c.__h == null) return;
@@ -9804,9 +9805,14 @@
             const p = this._attribPoint(start + i);
             if (p) pts.push(p);
           }
-          for (let i = 0; i + 2 < pts.length; i += 3) {
-            if (this._isCulled(pts[i], pts[i + 1], pts[i + 2])) continue;
-            this._fillPoly([pts[i], pts[i + 1], pts[i + 2]], this._uniformCss());
+          const strip = mode === this.TRIANGLE_STRIP;
+          const step = strip ? 1 : 3;
+          for (let i = 0; i + 2 < pts.length; i += step) {
+            const tri = strip && (i & 1)
+              ? [pts[i + 1], pts[i], pts[i + 2]]
+              : [pts[i], pts[i + 1], pts[i + 2]];
+            if (this._isCulled(tri[0], tri[1], tri[2])) continue;
+            this._fillPoly(tri, this._uniformCss());
           }
           return;
         }

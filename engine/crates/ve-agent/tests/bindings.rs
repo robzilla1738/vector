@@ -6292,6 +6292,38 @@ fn webgl_cull_face_skips_back_facing_triangle() {
 }
 
 #[test]
+fn webgl_triangle_strip_fills_second_triangle() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+              const left = new Uint8Array(4);
+              const right = new Uint8Array(4);
+              gl.readPixels(1, 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, left);
+              gl.readPixels(6, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, right);
+              return { lg: left[1], la: left[3], rg: right[1], ra: right[3], strip: gl.TRIANGLE_STRIP };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["strip"], 5, "{v}");
+    assert_eq!(v["lg"], 255, "{v}");
+    assert_eq!(v["la"], 255, "{v}");
+    assert_eq!(v["rg"], 255, "{v}");
+    assert_eq!(v["ra"], 255, "{v}");
+}
+
+#[test]
 fn webgl_draw_arrays_fills_vertex_triangle() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page

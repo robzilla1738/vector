@@ -577,7 +577,9 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         } else {
             world.map(
                 svg_attr(tag, "x").unwrap_or(0.0) + svg_tspan_dx(raw),
-                svg_attr(tag, "y").unwrap_or(0.0),
+                svg_attr(tag, "y").unwrap_or(0.0)
+                    + svg_attr(tag, "dy").unwrap_or(0.0)
+                    + svg_tspan_dy(raw),
             )
         };
         let mut spacing = svg_attr(tag, "letter-spacing").unwrap_or(0.0);
@@ -2556,6 +2558,12 @@ fn svg_tspan_dx(content: &str) -> f32 {
         .unwrap_or(0.0)
 }
 
+fn svg_tspan_dy(content: &str) -> f32 {
+    svg_tspan_tag(content)
+        .and_then(|t| svg_attr(t, "dy"))
+        .unwrap_or(0.0)
+}
+
 fn svg_text_path_points<'a>(
     content: &str,
     by_id: &'a HashMap<String, String>,
@@ -4420,6 +4428,17 @@ mod tests {
         assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(12, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(8, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_text_dy_moves_glyph_down() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <text x='0' y='3' fill='#ff0000' dy='4'>I</text></svg>",
+        )
+        .expect("svg dy");
+        assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 7), Some([0, 0, 0, 0]));
     }
 
     #[test]

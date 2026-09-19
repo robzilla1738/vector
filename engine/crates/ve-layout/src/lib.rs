@@ -2078,6 +2078,18 @@ mod tests {
     }
 
     #[test]
+    fn white_space_break_spaces_wraps_trailing_spaces() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;white-space:break-spaces;margin:0}</style>\
+             <p id=p>aa   </p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let n = tree.root.find(p).unwrap().lines.len();
+        assert!(n >= 2, "break-spaces wraps trailing spaces, got {n} lines");
+    }
+
+    #[test]
     fn hyphens_auto_wraps_long_word() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;hyphens:auto;margin:0}</style>\

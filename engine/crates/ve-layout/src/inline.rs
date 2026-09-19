@@ -397,7 +397,7 @@ fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>,
         }
         let mut piece = &text[shaped.range.clone()];
         let mut width = shaped.width;
-        if state.line.is_empty() && piece.starts_with(' ') {
+        if state.line.is_empty() && piece.starts_with(' ') && style.white_space.collapses() {
             // Collapsible whitespace at the start of a line is removed.
             let trimmed = piece.trim_start();
             width -= state
