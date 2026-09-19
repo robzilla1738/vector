@@ -35,6 +35,63 @@ fn host_table_exposes_the_dom_dispatcher() {
 }
 
 #[test]
+fn structured_clone_is_cycle_aware_and_crypto_is_csprng() {
+    let mut page = open("<p>x</p>");
+    let cycle = page
+        .evaluate(
+            r#"(function () {
+              const a = { n: 1 };
+              a.self = a;
+              const c = structuredClone(a);
+              return { n: c.n, same: c.self === c, notOrig: c !== a };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(cycle["n"], 1, "{cycle}");
+    assert_eq!(cycle["same"], true, "{cycle}");
+    assert_eq!(cycle["notOrig"], true, "{cycle}");
+    let date = page
+        .evaluate("structuredClone(new Date(0)) instanceof Date && structuredClone(new Date(0)).getTime() === 0")
+        .unwrap();
+    assert_eq!(date, true, "{date}");
+    let fn_err = page.evaluate(
+        r#"(function () { try { structuredClone(function () {}); return "ok"; } catch (e) { return e.name; } })()"#,
+    );
+    assert_eq!(fn_err.unwrap(), "TypeError");
+    let rand = page
+        .evaluate(
+            r#"(function () {
+              const a = new Uint8Array(16);
+              const b = new Uint8Array(16);
+              crypto.getRandomValues(a);
+              crypto.getRandomValues(b);
+              let diff = 0;
+              for (let i = 0; i < 16; i++) if (a[i] !== b[i]) diff++;
+              return { type: typeof crypto.getRandomValues, diff };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(rand["type"], "function", "{rand}");
+    assert!(
+        rand["diff"].as_u64().unwrap_or(0) >= 1,
+        "two CSPRNG fills must differ: {rand}"
+    );
+    let perf = page
+        .evaluate(
+            r#"(function () {
+              performance.mark("a");
+              performance.mark("b");
+              const m = performance.measure("ab", "a", "b");
+              return { name: m.name, marks: performance.getEntriesByType("mark").length, measured: typeof m.duration };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(perf["name"], "ab", "{perf}");
+    assert_eq!(perf["marks"], 2, "{perf}");
+    assert_eq!(perf["measured"], "number", "{perf}");
+}
+
+#[test]
 fn query_inner_html_events_and_storage_run_on_the_engine() {
     let mut page = open(
         r#"<div id="host"><p class="x">hi</p></div>

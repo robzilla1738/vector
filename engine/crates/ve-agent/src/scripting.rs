@@ -166,8 +166,8 @@ pub const PRELUDE: &str = r#"(() => {
   globalThis.performance.getEntries = () => globalThis.performance.getEntriesByType("mark").concat(measures);
   const cloneSeen = () => new WeakMap();
   const cloneValue = (v, seen) => {
-    if (v == null || typeof v !== "object") return v;
     if (typeof v === "function") throw new TypeError("structuredClone: functions are not cloneable");
+    if (v == null || typeof v !== "object") return v;
     if (seen.has(v)) return seen.get(v);
     if (v instanceof Date) return new Date(v.getTime());
     if (Array.isArray(v)) {

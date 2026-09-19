@@ -7887,7 +7887,11 @@
         { name: "first-paint", entryType: "paint", startTime: t, duration: 0 },
         { name: "first-contentful-paint", entryType: "paint", startTime: t, duration: 0 },
       ];
-      performance.getEntriesByType = (type) => type === "paint" ? paints.slice() : [];
+      const prevEntries = performance.getEntriesByType;
+      performance.getEntriesByType = (type) => {
+        if (type === "paint") return paints.slice();
+        return typeof prevEntries === "function" ? prevEntries.call(performance, type) : [];
+      };
     } catch (e) {}
   };
   globalThis.PerformancePaintTiming = function PerformancePaintTiming() {};
@@ -8456,11 +8460,51 @@
     Object.defineProperty(wrapped, "length", { value: 1, configurable: true });
     return wrapped;
   })();
+  function cloneValue(v, seen) {
+    if (typeof v === "function") throw new TypeError("structuredClone: functions are not cloneable");
+    if (v == null || typeof v !== "object") return v;
+    if (seen.has(v)) return seen.get(v);
+    if (v instanceof Date) return new Date(v.getTime());
+    if (Array.isArray(v)) {
+      const out = [];
+      seen.set(v, out);
+      for (let i = 0; i < v.length; i++) out[i] = cloneValue(v[i], seen);
+      return out;
+    }
+    if (ArrayBuffer.isView(v)) {
+      const Ctor = v.constructor;
+      const out = new Ctor(v.length);
+      out.set(v);
+      seen.set(v, out);
+      return out;
+    }
+    if (typeof ArrayBuffer !== "undefined" && v instanceof ArrayBuffer) {
+      const out = v.slice(0);
+      seen.set(v, out);
+      return out;
+    }
+    if (typeof Map !== "undefined" && v instanceof Map) {
+      const out = new Map();
+      seen.set(v, out);
+      for (const [k, val] of v) out.set(cloneValue(k, seen), cloneValue(val, seen));
+      return out;
+    }
+    if (typeof Set !== "undefined" && v instanceof Set) {
+      const out = new Set();
+      seen.set(v, out);
+      for (const val of v) out.add(cloneValue(val, seen));
+      return out;
+    }
+    const out = {};
+    seen.set(v, out);
+    for (const k of Object.keys(v)) out[k] = cloneValue(v[k], seen);
+    return out;
+  }
   globalThis.structuredClone = windowOp(function structuredClone(value) {
     if (arguments.length < 1) {
       throw new TypeError("Failed to execute 'structuredClone' on 'Window': 1 argument required, but only 0 present.");
     }
-    return JSON.parse(JSON.stringify(value));
+    return cloneValue(value, new WeakMap());
   }, 1);
   if (typeof globalThis.setTimeout === "function") {
     globalThis.setTimeout = windowOp(globalThis.setTimeout, 1);
