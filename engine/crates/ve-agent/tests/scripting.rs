@@ -210,7 +210,9 @@ fn native_bindings_install_element_id_accessor() {
     page.install_native_dom_bindings().unwrap();
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
-        serde_json::json!("element.id,className,tagName,textContent")
+        serde_json::json!(
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute"
+        )
     );
     assert_eq!(
         page.evaluate("document.getElementById('x').id").unwrap(),
@@ -240,6 +242,40 @@ fn native_bindings_install_element_id_accessor() {
         page.evaluate("document.getElementById('y').textContent")
             .unwrap(),
         serde_json::json!("z")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').getAttribute('id')")
+            .unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').getAttribute('missing')")
+            .unwrap(),
+        serde_json::Value::Null
+    );
+    page.evaluate("document.getElementById('y').setAttribute('data-k', '1')")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').hasAttribute('data-k')")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').getAttribute('data-k')")
+            .unwrap(),
+        serde_json::json!("1")
+    );
+    page.evaluate("document.getElementById('y').removeAttribute('data-k')")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').hasAttribute('data-k')")
+            .unwrap(),
+        serde_json::json!(false)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').getAttribute('data-k')")
+            .unwrap(),
+        serde_json::Value::Null
     );
 }
 

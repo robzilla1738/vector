@@ -1772,7 +1772,12 @@ impl Page {
         let src_pixels = self
             .canvases
             .get(&src)
-            .map(|s| (s.width, s.height, s.pixels.clone()));
+            .map(|s| (s.width, s.height, s.pixels.clone()))
+            .or_else(|| {
+                let handle = *self.node_images.get(&src)?;
+                let img = self.images.get(handle)?;
+                Some((img.width, img.height, img.rgba.clone()))
+            });
         let c = self
             .canvases
             .entry(id)

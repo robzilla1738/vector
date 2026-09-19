@@ -377,7 +377,7 @@ fn incremental_update_and_css_coverage_are_wired() {
            <p id="t">hello</p>
            <script>document.getElementById('t').textContent = 'mutated';</script>"#,
     );
-    let cov = page.routing().css_coverage.expect("css coverage");
+    let cov = page.routing().css_coverage.clone().expect("css coverage");
     assert!(cov.declarations_total >= 3, "{cov:?}");
     assert_eq!(
         page.evaluate("document.getElementById('t').textContent")
@@ -748,6 +748,60 @@ fn canvas_linear_gradient_fills_pixels() {
     assert!(v["lb"].as_u64().unwrap_or(99) < 40, "left not blue: {v}");
     assert!(v["rb"].as_u64().unwrap_or(0) > 200, "right blue: {v}");
     assert!(v["rr"].as_u64().unwrap_or(99) < 40, "right not red: {v}");
+}
+
+#[test]
+fn canvas_draw_image_blits_source_pixels() {
+    const RED: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
+    let mut page = open(&format!(
+        r#"<img id="src" src="data:image/png;base64,{RED}"><canvas id="dst"></canvas>"#
+    ));
+    let from_img = page
+        .evaluate(
+            r#"(function () {
+              var img = document.getElementById("src");
+              var c = document.getElementById("dst");
+              c.width = 4;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.drawImage(img, 0, 0);
+              var d = ctx.getImageData(0, 0, 1, 1).data;
+              return { r: d[0], g: d[1], b: d[2], a: d[3] };
+            })()"#,
+        )
+        .unwrap();
+    assert!(
+        from_img["r"].as_u64().unwrap_or(0) > 200,
+        "img drawImage must blit ImageCache pixels: {from_img}"
+    );
+    assert_eq!(from_img["g"], 0, "{from_img}");
+    assert_eq!(from_img["b"], 0, "{from_img}");
+    let from_canvas = page
+        .evaluate(
+            r##"(function () {
+              var src = document.createElement("canvas");
+              src.width = 2;
+              src.height = 2;
+              var sctx = src.getContext("2d");
+              sctx.fillStyle = "#00ff00";
+              sctx.fillRect(0, 0, 2, 2);
+              var dst = document.createElement("canvas");
+              dst.width = 4;
+              dst.height = 4;
+              var dctx = dst.getContext("2d");
+              dctx.drawImage(src, 1, 1);
+              var d = dctx.getImageData(1, 1, 1, 1).data;
+              var empty = dctx.getImageData(0, 0, 1, 1).data;
+              return {
+                r: d[0], g: d[1], b: d[2], a: d[3],
+                er: empty[0], eg: empty[1], eb: empty[2], ea: empty[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(from_canvas["g"], 255, "{from_canvas}");
+    assert_eq!(from_canvas["r"], 0, "{from_canvas}");
+    assert_eq!(from_canvas["ea"], 0, "{from_canvas}");
 }
 
 #[test]

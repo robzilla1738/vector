@@ -569,6 +569,22 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeTextSet", text_set)?;
+            let get_attr = v8::FunctionTemplate::builder(native_element_get_attribute)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeGetAttribute", get_attr)?;
+            let set_attr = v8::FunctionTemplate::builder(native_element_set_attribute)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeSetAttribute", set_attr)?;
+            let remove_attr = v8::FunctionTemplate::builder(native_element_remove_attribute)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeRemoveAttribute", remove_attr)?;
+            let has_attr = v8::FunctionTemplate::builder(native_element_has_attribute)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeHasAttribute", has_attr)?;
             Some(())
         })?;
         self.eval(
@@ -592,7 +608,11 @@ impl JsVm for V8Vm {
   if (typeof Node !== "undefined") {
     def(Node.prototype, "textContent", globalThis.__veNativeTextGet, globalThis.__veNativeTextSet);
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent";
+  Element.prototype.getAttribute = globalThis.__veNativeGetAttribute;
+  Element.prototype.setAttribute = globalThis.__veNativeSetAttribute;
+  Element.prototype.removeAttribute = globalThis.__veNativeRemoveAttribute;
+  Element.prototype.hasAttribute = globalThis.__veNativeHasAttribute;
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute";
 })()"#,
             "vector:dom-native",
         )?;
@@ -1027,6 +1047,81 @@ fn native_node_text_set(
         JsValue::from("")
     };
     let _ = call_dom_host(scope, &[JsValue::from("setTextContent"), handle, value]);
+}
+
+fn native_arg(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: &v8::FunctionCallbackArguments<'_>,
+    i: i32,
+) -> JsValue {
+    if args.length() > i {
+        to_js_value(scope, args.get(i))
+    } else {
+        JsValue::from("")
+    }
+}
+
+fn native_element_get_attribute(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("getAttr"), handle, name]);
+    match value {
+        Some(JsValue::String(s)) => {
+            if let Some(v) = v8::String::new(scope, &s) {
+                rv.set(v.into());
+                return;
+            }
+        }
+        Some(JsValue::Null | JsValue::Undefined) | None => {}
+        _ => {}
+    }
+    rv.set_null();
+}
+
+fn native_element_set_attribute(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let value = native_arg(scope, &args, 1);
+    let _ = call_dom_host(scope, &[JsValue::from("setAttr"), handle, name, value]);
+}
+
+fn native_element_remove_attribute(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("removeAttr"), handle, name]);
+}
+
+fn native_element_has_attribute(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("hasAttr"), handle, name]);
+    rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
 }
 
 fn looks_like_module(source: &str) -> bool {
