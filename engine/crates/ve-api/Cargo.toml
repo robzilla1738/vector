@@ -46,6 +46,7 @@ tracing.workspace = true
 ed25519-dalek.workspace = true
 accesskit.workspace = true
 url.workspace = true
+getrandom.workspace = true
 
 [dev-dependencies]
 url.workspace = true

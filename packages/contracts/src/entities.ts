@@ -47,8 +47,9 @@ export const PageTargetSchema = z.object({
   /**
    * Why the router placed this page on its backend (architecture §11):
    * `engine-mode-off`, `explicit-backend:<b>`, `needs-chromium-table`,
-   * `hybrid:engine-first`, `engine-always`, `engine-unavailable`,
-   * `hybrid:engine-unavailable`, `hybrid:engine-first:native-view`,
+   * `hybrid:chromium-default`, `hybrid:qualified-cohort:<cohort>`,
+   * `hybrid:engine-safe-scheme:<scheme>`, `engine-always`,
+   * `hybrid:engine-unavailable`,
    * `fallback:<reason>` (engine classified/failed → reopened on Chromium).
    */
   routeReason: z.string().optional(),

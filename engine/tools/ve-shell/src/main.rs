@@ -141,7 +141,7 @@ fn run_replay(args: &Args) -> Result<()> {
 fn run_service(bind: &str, args: &Args) -> Result<()> {
     let listener = BrowserServiceListener::bind_config(bind, product_config(args))?;
     if args.html.is_some() || args.url != "about:blank" {
-        let mut client = ve_api::BrowserClient::connect(listener.addr())?;
+        let mut client = ve_api::BrowserClient::connect(listener.addr(), listener.token())?;
         let mut params = serde_json::json!({ "url": args.url });
         if let Some(html) = &args.html {
             params["html"] = serde_json::Value::String(html.clone());
@@ -152,9 +152,11 @@ fn run_service(bind: &str, args: &Args) -> Result<()> {
         "{}",
         serde_json::json!({
             "VECTOR_BROWSER_SERVICE": listener.addr().to_string(),
+            "VECTOR_BROWSER_SERVICE_TOKEN": listener.token(),
             "backend": "vector-engine",
             "chromium": false,
             "service": "browser-service",
+            "protocolVersion": 2,
         })
     );
     listener.wait();
@@ -185,9 +187,11 @@ fn run_gui(args: &Args) -> Result<()> {
             "{}",
             serde_json::json!({
                 "VECTOR_BROWSER_SERVICE": pump.addr().to_string(),
+                "VECTOR_BROWSER_SERVICE_TOKEN": pump.token(),
                 "backend": "vector-engine",
                 "chromium": false,
                 "service": "browser-service",
+                "protocolVersion": 2,
                 "gui": true,
             })
         );

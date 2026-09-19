@@ -21,7 +21,7 @@ import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
 import { executeProgram, type ExecContext } from "../execution/executor.js";
-import { authorizeProgram, DEFAULT_GRANTS, type GrantSource } from "../agent/permissions.js";
+import { authorizeProgram, classifyStep, DEFAULT_GRANTS, type GrantSource } from "../agent/permissions.js";
 import { Router, isFallbackError } from "./router.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 
@@ -214,10 +214,8 @@ export class PageService {
   }
 
   /**
-   * Open a page. `backend: "vector"` (the default) is routable: with
-   * `engineMode: "auto"` the router tries the Vector Engine first and falls
-   * back to Chromium when the engine classifies the document as needing
-   * script, or when the desktop shell needs a native view (architecture §11).
+   * Open a page. An omitted backend is routable. `vector` explicitly selects
+   * embedded Chromium; `vector-engine` explicitly selects the own engine.
    */
   async open(opts: {
     url: string;
@@ -1034,6 +1032,29 @@ export class PageService {
     const reason = `mid-program:${failedStep?.op ?? "step"}:${failedStep?.error?.message ?? "capability_unsupported"}`;
     router.recordNeedsChromium(lp.target.url, reason);
     const plan = router.planReplay(program.steps ?? [], failedAt);
+    const steps = program.steps ?? [];
+    const completedWrite = steps
+      .slice(0, failedAt)
+      .some((step, index) => result.steps[index]?.status === "ok" && classifyStep(step.op) !== "read");
+    const unsafeReplay = plan.remaining.filter((step) => classifyStep(step.op) !== "read");
+    if (completedWrite || unsafeReplay.length) {
+      const unsafeIds = unsafeReplay.map((step) => step.id);
+      return {
+        ...result,
+        status: "failed",
+        error: completedWrite
+          ? "REPAIR: backend changed after a write; re-observe and replan before continuing"
+          : `REPAIR: side-effecting step(s) (${unsafeIds.join(", ")}) require re-observation before Chromium execution`,
+        fallback: {
+          from: "vector-engine",
+          to: "vector",
+          reason,
+          replayedFrom: failedAt,
+          repair: true,
+          refSteps: [...new Set([...plan.refSteps, ...unsafeIds])],
+        },
+      };
+    }
     let dp: DriverPage;
     try {
       dp = await this.migrateToChromium(lp, reason);
@@ -1203,7 +1224,7 @@ export class PageService {
     this.deps.events.emit(EventTypes.PageTakeover, { pageId, controller: "human", controllerEpoch: lp.target.controllerEpoch });
     const engine = this.driverFor(lp.target.backend);
     if (lp.target.backend === "vector-engine" && engine?.takeover) {
-      const remote = await engine.takeover();
+      const remote = await engine.takeover(pageId);
       if (remote.controllerEpoch > 0) lp.target.controllerEpoch = remote.controllerEpoch;
       this.persist(lp);
     }
@@ -1223,7 +1244,7 @@ export class PageService {
         throw new VectorError("target_detached", `page ${pageId} is not attached — resume requires a live page`);
       }
       if (engine?.resume) {
-        const remote = await engine.resume();
+        const remote = await engine.resume(pageId);
         if (remote.controller === "human") {
           throw new VectorError("conflict", `page ${pageId} resume did not release human control`);
         }

@@ -42,6 +42,10 @@ pub struct Tab {
     pub route_reason: String,
     /// Cookie/storage context. Private windows use a distinct id.
     pub context: ContextId,
+    /// Current input owner for this page. Ownership is never browser-global.
+    pub controller: NativeController,
+    /// Bumped whenever this page changes owner.
+    pub controller_epoch: u64,
 }
 
 fn cert_error_parts(url: &str, err: &Error) -> Option<(String, String)> {
@@ -256,8 +260,6 @@ pub struct NativeBrowser {
     selection: Option<(usize, usize)>,
     os_clipboard: bool,
     update_pubkey: Option<[u8; 32]>,
-    controller: NativeController,
-    controller_epoch: u64,
     #[cfg(feature = "gpu")]
     gpu: Option<ve_gfx::VelloRenderer>,
     #[cfg(feature = "gpu")]
@@ -330,8 +332,6 @@ impl NativeBrowser {
             selection: None,
             os_clipboard: false,
             update_pubkey: None,
-            controller: NativeController::None,
-            controller_epoch: 0,
             #[cfg(feature = "gpu")]
             gpu: None,
             #[cfg(feature = "gpu")]
@@ -504,6 +504,8 @@ impl NativeBrowser {
             backend,
             route_reason,
             context: opened.context,
+            controller: NativeController::None,
+            controller_epoch: 0,
         });
         self.active = self.tabs.len() - 1;
         self.window.compositor.mark_damaged();
@@ -790,16 +792,30 @@ impl NativeBrowser {
 
     /// Observe the active tab with an explicit request (`format` included).
     pub fn observe_active_with(&mut self, request: &ObservationRequest) -> Result<Observation> {
-        let tab = self
+        let page = self
             .active_tab()
-            .ok_or_else(|| Error::not_found("no tab"))?;
+            .ok_or_else(|| Error::not_found("no tab"))?
+            .page;
+        self.observe_page_with(page, request)
+    }
+
+    /// Observe one explicitly addressed page without changing the visible tab.
+    pub fn observe_page_with(
+        &mut self,
+        page: PageId,
+        request: &ObservationRequest,
+    ) -> Result<Observation> {
+        let tab = self
+            .tabs
+            .iter()
+            .find(|tab| tab.page == page)
+            .ok_or_else(|| Error::not_found(format!("no page {}", page.0)))?;
         if tab.backend == ChromeBackend::Chromium {
             return Err(Error::coded(
                 ErrorCode::CapabilityUnsupported,
-                "active tab is Chromium; agent must not observe engine DOM",
+                "addressed tab is Chromium; agent must not observe engine DOM",
             ));
         }
-        let page = tab.page;
         self.engine.observe(page, request)
     }
 
@@ -813,35 +829,62 @@ impl NativeBrowser {
 
     /// Agent program, optionally observing in the same round trip.
     pub fn execute_request(&mut self, request: ExecuteRequest) -> Result<ExecuteResult> {
-        if self.controller == NativeController::Human {
+        let page = self
+            .active_tab()
+            .ok_or_else(|| Error::not_found("no tab"))?
+            .page;
+        self.execute_page_request(page, request)
+    }
+
+    /// Execute against one explicitly addressed page without activating it.
+    pub fn execute_page_request(
+        &mut self,
+        page: PageId,
+        request: ExecuteRequest,
+    ) -> Result<ExecuteResult> {
+        let index = self
+            .tabs
+            .iter()
+            .position(|tab| tab.page == page)
+            .ok_or_else(|| Error::not_found(format!("no page {}", page.0)))?;
+        if self.tabs[index].controller == NativeController::Human {
             return Err(Error::coded(
                 ErrorCode::Conflict,
                 "page is under human control — resume first",
             ));
         }
-        self.controller = NativeController::Agent;
-        self.dispatch_program(request)
+        self.tabs[index].controller = NativeController::Agent;
+        self.dispatch_page_program(index, request)
     }
 
-    fn dispatch_program(&mut self, request: ExecuteRequest) -> Result<ExecuteResult> {
+    fn dispatch_page_program(
+        &mut self,
+        tab_index: usize,
+        request: ExecuteRequest,
+    ) -> Result<ExecuteResult> {
         self.program_dispatches = self.program_dispatches.saturating_add(1);
         let tab = self
-            .active_tab()
+            .tabs
+            .get(tab_index)
             .ok_or_else(|| Error::not_found("no tab"))?;
         if tab.backend == ChromeBackend::Chromium {
             return Err(Error::coded(
                 ErrorCode::CapabilityUnsupported,
-                "active tab is Chromium; agent must not execute against engine DOM",
+                "addressed tab is Chromium; agent must not execute against engine DOM",
             ));
         }
         let page = tab.page;
         let executed = self.engine.execute(page, &request)?;
-        self.sync_active_tab();
+        self.sync_tab(tab_index);
         Ok(executed)
     }
 
     fn sync_active_tab(&mut self) {
-        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+        self.sync_tab(self.active);
+    }
+
+    fn sync_tab(&mut self, index: usize) {
+        let Some(page_id) = self.tabs.get(index).map(|t| t.page) else {
             return;
         };
         let Ok(page) = self.engine.page(page_id) else {
@@ -849,7 +892,7 @@ impl NativeBrowser {
         };
         let url = page.url().to_owned();
         let title = page.title();
-        if let Some(tab) = self.tabs.get_mut(self.active) {
+        if let Some(tab) = self.tabs.get_mut(index) {
             tab.url = url;
             tab.page_title = title;
         }
@@ -858,7 +901,14 @@ impl NativeBrowser {
     /// Live document URL, title, generation, and revision.
     #[must_use]
     pub fn active_page_meta(&self) -> Option<(String, String, u32, u64)> {
-        let tab = self.active_tab()?;
+        let page = self.active_tab()?.page;
+        self.page_meta(page)
+    }
+
+    /// URL, title, document epoch, and revision for an explicitly addressed page.
+    #[must_use]
+    pub fn page_meta(&self, page: PageId) -> Option<(String, String, u32, u64)> {
+        let tab = self.tabs.iter().find(|tab| tab.page == page)?;
         let page = self.engine.page(tab.page).ok()?;
         Some((
             page.url().to_owned(),
@@ -870,26 +920,89 @@ impl NativeBrowser {
 
     /// Human takeover: later agent programs fail until [`Self::resume`].
     pub fn takeover(&mut self) {
-        self.controller = NativeController::Human;
-        self.controller_epoch = self.controller_epoch.saturating_add(1);
+        if let Some(page) = self.active_tab().map(|tab| tab.page) {
+            let _ = self.takeover_page(page);
+        }
+    }
+
+    /// Give the human exclusive control of an explicitly addressed page.
+    pub fn takeover_page(&mut self, page: PageId) -> Result<()> {
+        let tab = self
+            .tabs
+            .iter_mut()
+            .find(|tab| tab.page == page)
+            .ok_or_else(|| Error::not_found(format!("no page {}", page.0)))?;
+        tab.controller = NativeController::Human;
+        tab.controller_epoch = tab.controller_epoch.saturating_add(1);
+        Ok(())
     }
 
     /// Return the page to a shared/agent-eligible controller.
     pub fn resume(&mut self) {
-        self.controller = NativeController::None;
-        self.controller_epoch = self.controller_epoch.saturating_add(1);
+        if let Some(page) = self.active_tab().map(|tab| tab.page) {
+            let _ = self.resume_page(page);
+        }
+    }
+
+    /// Release exclusive human control of an explicitly addressed page.
+    pub fn resume_page(&mut self, page: PageId) -> Result<()> {
+        let tab = self
+            .tabs
+            .iter_mut()
+            .find(|tab| tab.page == page)
+            .ok_or_else(|| Error::not_found(format!("no page {}", page.0)))?;
+        tab.controller = NativeController::None;
+        tab.controller_epoch = tab.controller_epoch.saturating_add(1);
+        Ok(())
+    }
+
+    /// Close an explicitly addressed page while preserving the visible tab
+    /// when a background page is removed.
+    pub fn close_page(&mut self, page: PageId) -> Result<()> {
+        let index = self
+            .tabs
+            .iter()
+            .position(|tab| tab.page == page)
+            .ok_or_else(|| Error::not_found(format!("no page {}", page.0)))?;
+        let was_active = index == self.active;
+        let tab = self.tabs.remove(index);
+        let _ = self.engine.close(tab.page);
+        if self.tabs.is_empty() {
+            self.active = 0;
+        } else if index < self.active {
+            self.active -= 1;
+        } else if was_active {
+            self.active = self.active.min(self.tabs.len() - 1);
+        }
+        self.window.urlbar_focused = false;
+        self.window.compositor.mark_damaged();
+        if self.chrome_enabled {
+            self.sync_chrome();
+            self.persist_profile();
+        }
+        Ok(())
     }
 
     /// Current input owner.
     #[must_use]
     pub fn controller(&self) -> NativeController {
-        self.controller
+        self.active_tab()
+            .map_or(NativeController::None, |tab| tab.controller)
     }
 
     /// Bumped on every takeover/resume.
     #[must_use]
     pub fn controller_epoch(&self) -> u64 {
-        self.controller_epoch
+        self.active_tab().map_or(0, |tab| tab.controller_epoch)
+    }
+
+    /// Controller and ownership epoch for an explicitly addressed page.
+    #[must_use]
+    pub fn page_controller(&self, page: PageId) -> Option<(NativeController, u64)> {
+        self.tabs
+            .iter()
+            .find(|tab| tab.page == page)
+            .map(|tab| (tab.controller, tab.controller_epoch))
     }
 
     /// Engine viewport of a live tab, in CSS pixels.
@@ -1112,6 +1225,23 @@ impl NativeBrowser {
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?
             .page;
+        self.scene_page(page)
+    }
+
+    /// Scene update for an explicitly addressed engine page.
+    pub fn scene_page(&mut self, page: PageId) -> Result<serde_json::Value> {
+        let tab = self
+            .tabs
+            .iter()
+            .find(|tab| tab.page == page)
+            .ok_or_else(|| Error::not_found(format!("no page {}", page.0)))?;
+        if tab.backend == ChromeBackend::Chromium {
+            return Err(Error::coded(
+                ErrorCode::CapabilityUnsupported,
+                "addressed tab is Chromium; engine scene is unavailable",
+            ));
+        }
+        let controller_epoch = tab.controller_epoch;
         let p = self.engine.page_mut(page)?;
         p.update();
         let mut value = scene_json(p);
@@ -1119,7 +1249,7 @@ impl NativeBrowser {
             obj.insert("page".into(), serde_json::json!(page.0));
             obj.insert(
                 "controllerEpoch".into(),
-                serde_json::json!(self.controller_epoch),
+                serde_json::json!(controller_epoch),
             );
             obj.insert("gpuPresent".into(), serde_json::json!(self.gpu_present()));
         }
@@ -1146,18 +1276,8 @@ impl NativeBrowser {
                 self.present_dirty();
             }
             NativeEvent::CloseTab => {
-                if !self.tabs.is_empty() {
-                    let tab = self.tabs.remove(self.active);
-                    let _ = self.engine.close(tab.page);
-                    if self.active >= self.tabs.len() {
-                        self.active = self.tabs.len().saturating_sub(1);
-                    }
-                    self.window.urlbar_focused = false;
-                    self.window.compositor.mark_damaged();
-                    if self.chrome_enabled {
-                        self.sync_chrome();
-                        self.persist_profile();
-                    }
+                if let Some(page) = self.active_tab().map(|tab| tab.page) {
+                    self.close_page(page)?;
                 }
             }
             NativeEvent::NextTab => {

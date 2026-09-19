@@ -64,7 +64,6 @@ describe("settings defaults for a real test pass", () => {
       expect(settings.effectGrantsForRun()).toEqual([
         "effect:read",
         "effect:write",
-        "effect:egress",
       ]);
       expect(settings.all().effectGrants).toEqual(settings.effectGrants());
       settings.set({ effectGrants: ["effect:write", "grant-from-model", "effect:*"] });
@@ -79,6 +78,17 @@ describe("settings defaults for a real test pass", () => {
       expect(parsed.effectGrants).toEqual(["effect:read", "effect:write", "effect:egress"]);
       expect(authorizeProgram([{ id: "c", op: "click", target: "r1" }], USER_RUN_GRANTS).ok).toBe(true);
       expect(authorizeProgram([{ id: "c", op: "click", target: "r1" }], settings.effectGrants()).ok).toBe(false);
+      const scopedEgress = [{ effect: "egress" as const, origin: "https://allowed.test", scope: "page", expiresAt: 0 }];
+      expect(authorizeProgram(
+        [{ id: "n", op: "navigate", url: "https://allowed.test/path" }],
+        scopedEgress,
+        "https://current.test",
+      ).ok).toBe(true);
+      expect(authorizeProgram(
+        [{ id: "n", op: "navigate", url: "https://other.test/path" }],
+        scopedEgress,
+        "https://allowed.test",
+      ).ok).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

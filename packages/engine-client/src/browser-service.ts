@@ -18,9 +18,17 @@ export function browserServiceAddr(
   return raw && raw.length > 0 ? raw : undefined;
 }
 
+export function browserServiceToken(
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  const raw = env.VECTOR_BROWSER_SERVICE_TOKEN?.trim();
+  return raw && raw.length > 0 ? raw : undefined;
+}
+
 /** Local BrowserService started by the Node planner (Finding 1). */
 export interface OwnedBrowserService {
   addr: string;
+  token: string;
   shutdown(): void;
 }
 
@@ -101,10 +109,14 @@ export function spawnVeShellService(
         buf = buf.slice(nl + 1);
         if (!line.trim()) continue;
         try {
-          const v = JSON.parse(line) as { VECTOR_BROWSER_SERVICE?: string };
-          if (v.VECTOR_BROWSER_SERVICE) {
+          const v = JSON.parse(line) as {
+            VECTOR_BROWSER_SERVICE?: string;
+            VECTOR_BROWSER_SERVICE_TOKEN?: string;
+          };
+          if (v.VECTOR_BROWSER_SERVICE && v.VECTOR_BROWSER_SERVICE_TOKEN) {
             finish({
               addr: v.VECTOR_BROWSER_SERVICE,
+              token: v.VECTOR_BROWSER_SERVICE_TOKEN,
               shutdown: () => {
                 try {
                   child.kill();
@@ -137,7 +149,14 @@ export class BrowserServiceClient {
     { resolve: (v: unknown) => void; reject: (e: Error) => void }
   >();
 
-  constructor(private readonly addr: string) {}
+  constructor(
+    private readonly addr: string,
+    private readonly token: string,
+  ) {
+    if (!token) {
+      throw new VectorError("permission_denied", "VECTOR_BROWSER_SERVICE_TOKEN is required");
+    }
+  }
 
   async connect(): Promise<void> {
     if (this.socket) return;
@@ -180,7 +199,7 @@ export class BrowserServiceClient {
     const id = this.nextId++;
     const reply = await new Promise<unknown>((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.socket?.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+      this.socket?.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params, token: this.token })}\n`);
     });
     return (reply ?? {}) as Record<string, unknown>;
   }
@@ -250,16 +269,16 @@ export class ServiceNativeEngine {
     });
   }
 
-  async observe(_page: number, optionsJson?: string | null): Promise<string> {
+  async observe(page: number, optionsJson?: string | null): Promise<string> {
     const opts = optionsJson ? (JSON.parse(optionsJson) as Record<string, unknown>) : {};
-    const r = await this.client.call("pages.observe", opts);
+    const r = await this.client.call("pages.observe", { ...opts, page });
     return JSON.stringify({ ok: true, ...r, documentEpoch: r.documentEpoch ?? r.generation ?? 1 });
   }
 
-  async execute(_page: number, stepsJson: string, optionsJson?: string | null): Promise<string> {
+  async execute(page: number, stepsJson: string, optionsJson?: string | null): Promise<string> {
     const program = JSON.parse(stepsJson) as unknown;
     const opts = optionsJson ? (JSON.parse(optionsJson) as { returnObservation?: unknown }) : {};
-    const params: Record<string, unknown> = { program };
+    const params: Record<string, unknown> = { page, program };
     if (opts.returnObservation != null && opts.returnObservation !== false) {
       params.returnObservation = opts.returnObservation;
     }
@@ -267,31 +286,31 @@ export class ServiceNativeEngine {
     return JSON.stringify(flattenExecuteResult(r));
   }
 
-  async takeover(): Promise<string> {
-    const r = await this.client.call("pages.takeover", {});
+  async takeover(page: number): Promise<string> {
+    const r = await this.client.call("pages.takeover", { page });
     return JSON.stringify({ ok: true, ...r });
   }
 
-  async resume(): Promise<string> {
-    const r = await this.client.call("pages.resume", {});
+  async resume(page: number): Promise<string> {
+    const r = await this.client.call("pages.resume", { page });
     return JSON.stringify({ ok: true, ...r });
   }
 
-  async inputEvent(event: Record<string, unknown>): Promise<string> {
-    const r = await this.client.call("input.event", event);
+  async inputEvent(page: number, event: Record<string, unknown>): Promise<string> {
+    const r = await this.client.call("input.event", { ...event, page });
     return JSON.stringify({ ok: true, ...r });
   }
 
-  async screenshot(_page: number, _optionsJson?: string | null): Promise<string> {
-    const r = await this.client.call("pages.screenshot", {});
+  async screenshot(page: number, _optionsJson?: string | null): Promise<string> {
+    const r = await this.client.call("pages.screenshot", { page });
     if (!r.pngBase64) {
       throw new VectorError("capability_unsupported", "screenshot returned no image");
     }
     return JSON.stringify({ ok: true, ...r });
   }
 
-  async scene(): Promise<string> {
-    const r = await this.client.call("scene.update", {});
+  async scene(page: number): Promise<string> {
+    const r = await this.client.call("scene.update", { page });
     return JSON.stringify({ ok: true, ...r });
   }
 

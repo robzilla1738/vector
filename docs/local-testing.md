@@ -65,8 +65,8 @@ node packages/cli/dist/main.js pages
 node packages/cli/dist/main.js observe <pageId>
 ```
 
-Or run the native product: `pnpm dev` (fixtures + `ve-shell --gui`). Hybrid
-Electron: `pnpm dev:electron`. Drive either with the CLI or MCP. Chrome-only
+Run the product with `pnpm dev` (fixtures + desktop hybrid). Run the engine
+development shell with `pnpm dev:native-engine`. Drive either with the CLI or MCP. Chrome-only
 UI work: `pnpm -C apps/desktop dev:mock` serves the renderer at
 `http://127.0.0.1:5197` (see `docs/ui/shell.md` → Mock mode).
 

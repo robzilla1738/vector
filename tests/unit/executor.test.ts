@@ -73,7 +73,7 @@ describe("executeProgram", () => {
     expect(calls).toEqual(["navigate:http://x.test/a", "click:r1", "extract:1"]);
     expect(res.steps[1]?.receipt?.uncertain).toBe(true);
     expect(res.steps[1]?.receipt?.remoteConfirmed).toBe(false);
-    expect(res.steps[0]?.receipt?.uncertain).toBe(false);
+    expect(res.steps[0]?.receipt?.uncertain).toBe(true);
   });
 
   it("stops on failure unless step is optional", async () => {

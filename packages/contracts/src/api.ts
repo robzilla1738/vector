@@ -34,11 +34,10 @@ export const PagesListParams = z.object({
 export const PagesOpenParams = z.object({
   url: z.string().min(1),
   /**
-   * `vector` (default) is routable: with `engineMode: "auto"` the router may
-   * place the page on `vector-engine` and fall back to Chromium.
+   * Omit for routing. `vector` explicitly selects embedded Chromium.
    * `vector-engine` forces the engine (no fallback); `chrome` needs an attached Chrome.
    */
-  backend: BackendSchema.default("vector"),
+  backend: BackendSchema.optional(),
   /** hidden/background pages never steal focus; used for worker pages. */
   background: z.boolean().default(false),
   ownedByRuntime: z.boolean().default(false),
@@ -249,6 +248,8 @@ export const SettingsSetParams = z.object({
   zoomFactor: z.number().optional(),
   /** Vector Engine routing: off (default, Chromium only) | auto (router) | always (engine only). */
   engineMode: EngineModeSchema.optional(),
+  /** Origins/hosts qualified for automatic Vector Engine routing. */
+  engineCohorts: z.array(z.string().min(1)).max(256).optional(),
   /** Privilege-independent effect grants. Model text cannot expand these. */
   effectGrants: z
     .array(

@@ -12,7 +12,7 @@ function fakeBin(dir: string, name: string): string {
 }
 
 describe("Mac desktop runtime env — Gate B / A (macOS)", () => {
-  it("defaults pages to Vector Engine always, without a v* Release", () => {
+  it("defaults pages to compatibility-first hybrid routing", () => {
     const env = desktopRuntimeEnv({
       dataDir: "/tmp/vector-data",
       cdpPort: 9333,
@@ -20,7 +20,7 @@ describe("Mac desktop runtime env — Gate B / A (macOS)", () => {
       electronVersion: "43.0.0",
       env: { PATH: "/usr/bin", HOME: "/tmp" },
     });
-    expect(env.VECTOR_ENGINE_MODE).toBe("always");
+    expect(env.VECTOR_ENGINE_MODE).toBe("auto");
     expect(env.VECTOR_DATA_DIR).toBe("/tmp/vector-data");
     expect(env.VECTOR_ELECTRON_CDP).toBe("http://127.0.0.1:9333");
     expect(env.VECTOR_ENGINE_PROFILE).toBeUndefined();
@@ -44,7 +44,7 @@ describe("Mac desktop runtime env — Gate B / A (macOS)", () => {
       packaged: true,
       env: {},
     });
-    expect(env.VECTOR_ENGINE_MODE).toBe("always");
+    expect(env.VECTOR_ENGINE_MODE).toBe("auto");
     expect(env.VECTOR_ENGINE_PROFILE).toBe("production");
   });
 
@@ -70,7 +70,7 @@ describe("Mac desktop runtime env — Gate B / A (macOS)", () => {
     expect(env.VECTOR_ENGINE_HOST).toBe(host);
     expect(env.VECTOR_RESOURCES).toBe(resources);
     expect(env.VECTOR_ENGINE_PROFILE).toBe("production");
-    expect(env.VECTOR_ENGINE_MODE).toBe("always");
+    expect(env.VECTOR_ENGINE_MODE).toBe("auto");
   });
 
   it("does not override an explicit VECTOR_SHELL", () => {

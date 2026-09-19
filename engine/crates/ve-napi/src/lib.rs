@@ -468,6 +468,12 @@ pub mod bindings {
             self.listener.addr().to_string()
         }
 
+        /// Unpredictable bearer token required by `BrowserServiceClient`.
+        #[napi]
+        pub fn token(&self) -> String {
+            self.listener.token().to_owned()
+        }
+
         /// Stop accepting. In-flight clients finish their current line.
         #[napi]
         pub fn shutdown(&self) {

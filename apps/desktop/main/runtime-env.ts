@@ -71,9 +71,9 @@ export function desktopRuntimeEnv(opts: {
     VECTOR_ELECTRON_CDP: `http://127.0.0.1:${opts.cdpPort}`,
     VECTOR_ELECTRON_VERSION: opts.electronVersion ?? "dev",
   };
-  // One live Vector document. Chromium is not the default page engine.
-  // A saved settings.engineMode still wins over this env default.
-  if (!src.VECTOR_ENGINE_MODE) out.VECTOR_ENGINE_MODE = "always";
+  // Compatibility-first hybrid. Qualified cohorts can use the Vector Engine;
+  // every decision remains visible through PageTarget.routeReason.
+  if (!src.VECTOR_ENGINE_MODE) out.VECTOR_ENGINE_MODE = "auto";
   if (opts.packaged && !src.VECTOR_ENGINE_PROFILE) out.VECTOR_ENGINE_PROFILE = "production";
   if (!src.VECTOR_SHELL && bins.shell) out.VECTOR_SHELL = bins.shell;
   if (!src.VECTOR_ENGINE_HOST && bins.host) out.VECTOR_ENGINE_HOST = bins.host;

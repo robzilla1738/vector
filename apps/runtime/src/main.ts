@@ -143,7 +143,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // ---- Vector Engine (architecture §11) ----
   // The native addon is loaded whenever it is present so `runtime.describe`
   // can report it; whether pages are *routed* to it is the `engineMode`
-  // setting (default "auto" — engine first, Chromium fallback).
+  // setting (default "auto" — Chromium unless the origin is qualified for
+  // the engine, with explicit fallback on qualified engine routes).
   let engineInfo: EngineAvailability = { available: false, error: "not loaded" };
   const engineMode = () => settings.engineMode();
   const routingMode = () =>
@@ -159,6 +160,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       .filter(Boolean);
     const d = new VectorEngineDriver({
       serviceAddr: env.VECTOR_BROWSER_SERVICE,
+      serviceToken: env.VECTOR_BROWSER_SERVICE_TOKEN,
       config: {
         dataDir: config.dataDir,
         scripting: env.VECTOR_ENGINE_SCRIPTING !== "0",
@@ -216,7 +218,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const router = new Router({
     mode: () => settings.engineMode(),
     engineAvailable: () => !!drivers.engine?.isConnected(),
-    nativeOnly: () => env.VECTOR_NATIVE_ONLY === "1" || production,
+    nativeOnly: () => env.VECTOR_NATIVE_ONLY === "1",
+    engineCohorts: () => settings.engineCohorts(),
     store: {
       load: () => repo.loadRouterTable<NeedsChromiumEntry>(),
       save: (entries) => repo.saveRouterTable(entries),

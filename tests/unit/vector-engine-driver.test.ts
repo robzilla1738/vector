@@ -19,7 +19,7 @@ import {
 } from "@vector/engine-client";
 import { VectorError, type ObservationContent } from "@vector/contracts";
 
-function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server: Server }> {
+function mockBrowserService(): Promise<{ addr: string; token: string; shutdown(): void; server: Server }> {
   const state = { controller: "none", controllerEpoch: 0 };
   return new Promise((resolve, reject) => {
     const server = createServer((socket) => {
@@ -88,6 +88,7 @@ function mockBrowserService(): Promise<{ addr: string; shutdown(): void; server:
       const port = (server.address() as AddressInfo).port;
       resolve({
         addr: `127.0.0.1:${port}`,
+        token: "test-token",
         shutdown: () => {
           server.close();
         },
@@ -368,24 +369,25 @@ describe("VectorEngineDriver", () => {
     const owned = await mockBrowserService();
     const driver = new VectorEngineDriver({
       ownService: true,
-      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+      startService: async () => ({ addr: owned.addr, token: owned.token, shutdown: owned.shutdown }),
     });
     await driver.connect();
-    await driver.createTarget("https://share.test/");
-    const peer = new BrowserServiceClient(owned.addr);
+    const targetId = await driver.createTarget("https://share.test/");
+    await driver.attach(targetId, "page-shared");
+    const peer = new BrowserServiceClient(owned.addr, owned.token);
     await peer.connect();
     await expect(
-      peer.call("pages.execute", { program: [{ id: "a", op: "click", target: "css:#n" }] }),
+      peer.call("pages.execute", { page: 1, program: [{ id: "a", op: "click", target: "css:#n" }] }),
     ).resolves.toMatchObject({ status: "completed" });
     const taken = await driver.takeover();
     expect(taken).toMatchObject({ controller: "human", controllerEpoch: 1 });
     await expect(
-      peer.call("pages.execute", { program: [{ id: "x", op: "click", target: "css:#n" }] }),
+      peer.call("pages.execute", { page: 1, program: [{ id: "x", op: "click", target: "css:#n" }] }),
     ).rejects.toMatchObject({ code: "conflict", message: /human control/i });
     const resumed = await driver.resume();
     expect(resumed).toMatchObject({ controller: "none", controllerEpoch: 2 });
     await expect(
-      peer.call("pages.execute", { program: [{ id: "y", op: "click", target: "css:#n" }] }),
+      peer.call("pages.execute", { page: 1, program: [{ id: "y", op: "click", target: "css:#n" }] }),
     ).resolves.toMatchObject({ status: "completed" });
     peer.close();
     await driver.disconnect();
@@ -395,7 +397,7 @@ describe("VectorEngineDriver", () => {
     const owned = await mockBrowserService();
     const driver = new VectorEngineDriver({
       ownService: true,
-      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+      startService: async () => ({ addr: owned.addr, token: owned.token, shutdown: owned.shutdown }),
     });
     await driver.connect();
     const targetId = await driver.createTarget("https://share.test/");
@@ -408,7 +410,7 @@ describe("VectorEngineDriver", () => {
     const scene = await page.scene?.();
     expect(scene).toMatchObject({ kind: "displayList", png: false, itemCount: 1 });
     expect(scene?.items?.length).toBeGreaterThan(0);
-    const peer = new BrowserServiceClient(owned.addr);
+    const peer = new BrowserServiceClient(owned.addr, owned.token);
     await peer.connect();
     await expect(peer.call("input.event", { type: "ime", text: "more" })).resolves.toMatchObject({ ok: true });
     peer.close();
@@ -422,7 +424,7 @@ describe("VectorEngineDriver", () => {
       config: { securityProfile: "production" },
       startService: async () => {
         started = true;
-        return { addr: "127.0.0.1:1", shutdown() {} };
+        return { addr: "127.0.0.1:1", token: "unused", shutdown() {} };
       },
       load: async () => {
         throw new Error("addon missing");
@@ -437,7 +439,7 @@ describe("VectorEngineDriver", () => {
     const owned = await mockBrowserService();
     const driver = new VectorEngineDriver({
       ownService: true,
-      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+      startService: async () => ({ addr: owned.addr, token: owned.token, shutdown: owned.shutdown }),
     });
     await driver.connect();
     expect(driver.describe()).toMatchObject({
@@ -463,7 +465,7 @@ describe("VectorEngineDriver", () => {
         },
       }).steps,
     ).toHaveLength(1);
-    const server = await new Promise<{ addr: string; shutdown(): void }>((resolve, reject) => {
+    const server = await new Promise<{ addr: string; token: string; shutdown(): void }>((resolve, reject) => {
       const s = createServer((socket) => {
         let buf = "";
         socket.setEncoding("utf8");
@@ -494,13 +496,13 @@ describe("VectorEngineDriver", () => {
       });
       s.listen(0, "127.0.0.1", () => {
         const port = (s.address() as AddressInfo).port;
-        resolve({ addr: `127.0.0.1:${port}`, shutdown: () => s.close() });
+        resolve({ addr: `127.0.0.1:${port}`, token: "test-token", shutdown: () => s.close() });
       });
       s.once("error", reject);
     });
     const driver = new VectorEngineDriver({
       ownService: true,
-      startService: async () => ({ addr: server.addr, shutdown: server.shutdown }),
+      startService: async () => ({ addr: server.addr, token: server.token, shutdown: server.shutdown }),
     });
     await driver.connect();
     const page = await driver.attach(await driver.createTarget("https://share.test/"), "p1");
@@ -518,7 +520,7 @@ describe("VectorEngineDriver", () => {
     const owned = await mockBrowserService();
     const driver = new VectorEngineDriver({
       ownService: true,
-      startService: async () => ({ addr: owned.addr, shutdown: owned.shutdown }),
+      startService: async () => ({ addr: owned.addr, token: owned.token, shutdown: owned.shutdown }),
       load: async () =>
         ({
           Engine: class {

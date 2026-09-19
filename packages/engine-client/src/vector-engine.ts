@@ -8,8 +8,8 @@
  * step lists in a single native call (the zero-IPC path). Observations
  * arrive already shaped as `ObservationContent`; refs are `r<index>` and
  * `documentEpoch` is the engine's generation. Anything the engine cannot do
- * in this milestone surfaces as `capability_unsupported`, which the
- * runtime's router turns into a Chromium fallback.
+ * in this milestone surfaces as `capability_unsupported`. The runtime may
+ * migrate qualified auto-routed pages to Chromium when replay is safe.
  */
 import {
   VectorError,
@@ -26,6 +26,7 @@ import {
   BrowserServiceClient,
   ServiceNativeEngine,
   browserServiceAddr,
+  browserServiceToken,
   spawnVeShellService,
   type OwnedBrowserService,
 } from "./browser-service.js";
@@ -55,19 +56,20 @@ export interface NativeEngine {
   executeBuf?(page: number, steps: Buffer, options?: Buffer | null): Promise<Buffer>;
   screenshot(page: number, optionsJson?: string | null): Promise<string>;
   screenshotPng?(page: number, fullPage?: boolean | null): Promise<{ width: number; height: number; scale: number; fullPage: boolean; png: Buffer }>;
-  scene?(): Promise<string>;
+  scene?(page: number): Promise<string>;
   close(page: number): Promise<string>;
   getCookies(contextId: number, url?: string | null): Promise<string>;
   setCookies(contextId: number, cookiesJson: string): Promise<string>;
   pages(): number[];
   shutdown(): void;
-  takeover?(): Promise<string>;
-  resume?(): Promise<string>;
-  inputEvent?(event: Record<string, unknown>): Promise<string>;
+  takeover?(page: number): Promise<string>;
+  resume?(page: number): Promise<string>;
+  inputEvent?(page: number, event: Record<string, unknown>): Promise<string>;
 }
 
 export interface BrowserServiceHandle {
   addr(): string;
+  token(): string;
   shutdown(): void;
 }
 
@@ -307,6 +309,10 @@ export class EnginePage implements DriverPage {
   documentEpoch(): number {
     return this.generation;
   }
+  /** BrowserService page handle used for per-page authority calls. */
+  nativePage(): number {
+    return this.pageNum;
+  }
 
   private ensureAttached() {
     if (!this.attached) throw new VectorError("target_detached", `engine page ${this.identity.pageId} is closed`);
@@ -454,7 +460,7 @@ export class EnginePage implements DriverPage {
     if (!this.native.inputEvent) {
       throw new VectorError("capability_unsupported", "humanEvent requires BrowserService input.event");
     }
-    unwrapNative(await this.native.inputEvent(event));
+    unwrapNative(await this.native.inputEvent(this.pageNum, event));
   }
   async uploadFiles(target: string, files: string[], timeoutMs?: number): Promise<void> {
     await this.one({ op: "upload", target, files, timeoutMs });
@@ -534,7 +540,7 @@ export class EnginePage implements DriverPage {
   async scene(): Promise<SceneUpdate> {
     this.ensureAttached();
     if (this.native.scene) {
-      return unwrapNative<SceneUpdate>(await this.native.scene());
+      return unwrapNative<SceneUpdate>(await this.native.scene(this.pageNum));
     }
     const shot = await this.screenshot();
     if (shot.scene) return shot.scene;
@@ -603,6 +609,8 @@ export interface VectorEngineDriverOptions {
   load?: () => Promise<NativeModule>;
   /** Attach to a running BrowserService instead of creating a local engine. */
   serviceAddr?: string;
+  /** Bearer token for `serviceAddr`; defaults to VECTOR_BROWSER_SERVICE_TOKEN. */
+  serviceToken?: string;
   /**
    * Finding 1: start a local BrowserService and attach as a client.
    * Default true unless `load` is injected (unit tests keep a fake Engine).
@@ -631,6 +639,7 @@ export class VectorEngineDriver implements BrowserDriver {
   private readonly load: () => Promise<NativeModule>;
   private readonly config: EngineNativeConfig;
   private serviceAddr?: string;
+  private serviceToken?: string;
   private readonly ownService: boolean;
   private readonly startService?: () => Promise<OwnedBrowserService>;
   private owned?: OwnedBrowserService;
@@ -643,6 +652,7 @@ export class VectorEngineDriver implements BrowserDriver {
     this.load = opts.load ?? loadEngineNative;
     this.config = opts.config ?? {};
     this.serviceAddr = opts.serviceAddr ?? browserServiceAddr();
+    this.serviceToken = opts.serviceToken ?? browserServiceToken();
     this.ownService = opts.ownService ?? opts.load == null;
     this.startService = opts.startService;
   }
@@ -656,10 +666,19 @@ export class VectorEngineDriver implements BrowserDriver {
       this.owned = this.startService
         ? await this.startService()
         : await this.startNativeService();
-      if (this.owned) this.serviceAddr = this.owned.addr;
+      if (this.owned) {
+        this.serviceAddr = this.owned.addr;
+        this.serviceToken = this.owned.token;
+      }
     }
     if (this.serviceAddr) {
-      const client = new BrowserServiceClient(this.serviceAddr);
+      if (!this.serviceToken) {
+        throw new VectorError(
+          "permission_denied",
+          "VECTOR_BROWSER_SERVICE_TOKEN is required when attaching to a browser service",
+        );
+      }
+      const client = new BrowserServiceClient(this.serviceAddr, this.serviceToken);
       await client.connect();
       this.native = new ServiceNativeEngine(client);
       const probed = this.availability.available
@@ -717,7 +736,11 @@ export class VectorEngineDriver implements BrowserDriver {
         "127.0.0.1:0",
         JSON.stringify(this.config),
       );
-      if (handle) return { addr: handle.addr(), shutdown: () => handle.shutdown() };
+      if (handle) return {
+        addr: handle.addr(),
+        token: handle.token(),
+        shutdown: () => handle.shutdown(),
+      };
     }
     const spawned = await spawnVeShellService();
     if (spawned) return spawned;
@@ -749,7 +772,10 @@ export class VectorEngineDriver implements BrowserDriver {
     } catch {
       /* already down */
     }
-    if (this.owned) this.serviceAddr = undefined;
+    if (this.owned) {
+      this.serviceAddr = undefined;
+      this.serviceToken = undefined;
+    }
     this.owned = undefined;
   }
 
@@ -823,10 +849,11 @@ export class VectorEngineDriver implements BrowserDriver {
    * Human takeover on BrowserService (Finding 1 / Gate B / Gate F).
    * Local-only engines without `takeover` flip nothing on the service.
    */
-  async takeover(): Promise<{ controller: string; controllerEpoch: number }> {
+  async takeover(pageId?: string): Promise<{ controller: string; controllerEpoch: number }> {
     const native = this.engine();
     if (!native.takeover) return { controller: "human", controllerEpoch: 0 };
-    const r = unwrapNative<{ controller?: string; controllerEpoch?: number }>(await native.takeover());
+    const page = this.authorityPage(pageId);
+    const r = unwrapNative<{ controller?: string; controllerEpoch?: number }>(await native.takeover(page));
     return {
       controller: r.controller ?? "human",
       controllerEpoch: r.controllerEpoch ?? 0,
@@ -834,10 +861,11 @@ export class VectorEngineDriver implements BrowserDriver {
   }
 
   /** Resume after takeover. Requires the service to report a non-human controller. */
-  async resume(): Promise<{ controller: string; controllerEpoch: number }> {
+  async resume(pageId?: string): Promise<{ controller: string; controllerEpoch: number }> {
     const native = this.engine();
     if (!native.resume) return { controller: "none", controllerEpoch: 0 };
-    const r = unwrapNative<{ controller?: string; controllerEpoch?: number }>(await native.resume());
+    const page = this.authorityPage(pageId);
+    const r = unwrapNative<{ controller?: string; controllerEpoch?: number }>(await native.resume(page));
     if (r.controller === "human") {
       throw new VectorError("conflict", "resume left the page under human control");
     }
@@ -845,5 +873,20 @@ export class VectorEngineDriver implements BrowserDriver {
       controller: r.controller ?? "none",
       controllerEpoch: r.controllerEpoch ?? 0,
     };
+  }
+
+  private authorityPage(pageId?: string): number {
+    const candidates = [...this.pages.values()].filter(
+      (page) => pageId == null || page.identity.pageId === pageId,
+    );
+    if (candidates.length !== 1) {
+      throw new VectorError(
+        pageId == null ? "invalid_params" : "not_found",
+        pageId == null
+          ? "pageId is required when more than one engine page is open"
+          : `no attached engine page ${pageId}`,
+      );
+    }
+    return candidates[0]!.nativePage();
   }
 }

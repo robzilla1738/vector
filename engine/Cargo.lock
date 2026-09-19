@@ -4608,6 +4608,7 @@ version = "0.0.1"
 dependencies = [
  "accesskit",
  "ed25519-dalek",
+ "getrandom 0.3.4",
  "http",
  "serde",
  "serde_json",

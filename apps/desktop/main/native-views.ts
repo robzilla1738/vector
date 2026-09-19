@@ -26,7 +26,6 @@ const ENGINE_PAINT_HTML = `data:text/html;charset=utf-8,${encodeURIComponent(`<!
 `)}`;
 
 const PROFILE_PARTITION = "persist:vector-default";
-const AGENT_PARTITION = "persist:vector-agent";
 
 /** Inject the Vector target marker into a webContents — every document. */
 export function installMarker(view: WebContentsView, marker: string) {
@@ -62,7 +61,10 @@ export function createPageView(opts: {
   hooks: ViewHooks;
 }): ViewEntry {
   const enginePaint = opts.kind === "engine";
-  const partition = enginePaint ? "persist:vector-engine-paint" : opts.background ? AGENT_PARTITION : PROFILE_PARTITION;
+  // Human and agent tabs share the same browser profile. Control ownership is
+  // enforced by the runtime; changing who drives a page must not change its
+  // cookies, storage, permissions, cache, or service workers.
+  const partition = enginePaint ? "persist:vector-engine-paint" : PROFILE_PARTITION;
   const view = new WebContentsView({
     webPreferences: {
       partition,
@@ -259,7 +261,7 @@ export function profileSession() {
   return session.fromPartition(PROFILE_PARTITION);
 }
 
-/** Isolated partition for background agent workers (plan A22). */
+/** Compatibility alias: agent-driven pages use the shared browsing profile. */
 export function agentSession() {
-  return session.fromPartition(AGENT_PARTITION);
+  return session.fromPartition(PROFILE_PARTITION);
 }

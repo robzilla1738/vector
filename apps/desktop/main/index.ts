@@ -8,7 +8,7 @@
  * stream to the renderer.
  */
 import { app, BaseWindow, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, safeStorage, shell, WebContentsView } from "electron";
-import { mkdirSync, readFileSync, existsSync, writeFileSync, chmodSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, existsSync, writeFileSync, chmodSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { RpcChannel, type Transport } from "@vector/contracts";
@@ -41,6 +41,33 @@ function applyAppearance(theme: "dark" | "light") {
     /* BaseWindow may not expose setBackgroundColor on every build */
   }
   shellView?.setBackgroundColor(bg);
+}
+
+async function loadProfileExtensions() {
+  const configured = (process.env.VECTOR_EXTENSION_PATHS ?? "")
+    .split(process.platform === "win32" ? ";" : ":")
+    .map((path) => path.trim())
+    .filter(Boolean);
+  const managedRoot = join(DATA_DIR, "extensions");
+  mkdirSync(managedRoot, { recursive: true });
+  const managed = readdirSync(managedRoot)
+    .map((name) => join(managedRoot, name))
+    .filter((path) => {
+      try {
+        return statSync(path).isDirectory() && existsSync(join(path, "manifest.json"));
+      } catch {
+        return false;
+      }
+    });
+  const paths = [...new Set([...configured, ...managed])];
+  for (const path of paths) {
+    try {
+      const extension = await profileSession().loadExtension(path, { allowFileAccess: false });
+      log("loaded extension", extension.name, extension.id);
+    } catch (error) {
+      log("extension failed", path, error instanceof Error ? error.message : String(error));
+    }
+  }
 }
 
 // CDP must be enabled before app ready. Port 0 → OS picks; the real port is
@@ -87,8 +114,86 @@ function isWebUrl(u: unknown): u is string {
   }
 }
 
-/** Permissions a page may hold in the shared profile partition. Everything else is denied. */
-const ALLOWED_PAGE_PERMISSIONS = new Set(["clipboard-read", "fullscreen"]);
+const AUTO_PAGE_PERMISSIONS = new Set(["fullscreen"]);
+const PROMPTABLE_PAGE_PERMISSIONS = new Set([
+  "clipboard-read",
+  "clipboard-sanitized-write",
+  "media",
+  "geolocation",
+  "notifications",
+  "display-capture",
+  "pointerLock",
+  "idle-detection",
+]);
+const SITE_PERMISSIONS_FILE = join(DATA_DIR, "site-permissions.json");
+type PermissionDecision = "allow" | "deny";
+let sitePermissions: Record<string, Record<string, PermissionDecision>> = (() => {
+  try {
+    return JSON.parse(readFileSync(SITE_PERMISSIONS_FILE, "utf8")) as Record<string, Record<string, PermissionDecision>>;
+  } catch {
+    return {};
+  }
+})();
+
+function permissionOrigin(url: string): string | undefined {
+  try {
+    const origin = new URL(url).origin;
+    return origin === "null" ? undefined : origin;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveSitePermissions() {
+  writeFileSync(SITE_PERMISSIONS_FILE, JSON.stringify(sitePermissions, null, 2), { mode: 0o600 });
+  try {
+    chmodSync(SITE_PERMISSIONS_FILE, 0o600);
+  } catch {
+    /* non-POSIX fs */
+  }
+}
+
+function configurePagePermissions() {
+  const ses = profileSession();
+  ses.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    if (AUTO_PAGE_PERMISSIONS.has(permission)) {
+      callback(true);
+      return;
+    }
+    const origin = permissionOrigin(details.requestingUrl || webContents.getURL());
+    const saved = origin ? sitePermissions[origin]?.[permission] : undefined;
+    if (saved) {
+      callback(saved === "allow");
+      return;
+    }
+    if (!origin || !PROMPTABLE_PAGE_PERMISSIONS.has(permission) || !win) {
+      callback(false);
+      return;
+    }
+    void dialog.showMessageBox(win, {
+      type: "question",
+      buttons: ["Don’t Allow", "Allow"],
+      defaultId: 0,
+      cancelId: 0,
+      title: "Site permission",
+      message: `${origin} wants permission to use ${permission}.`,
+      detail: "This decision applies to the shared human and agent browsing profile.",
+    }).then(({ response }) => {
+      const decision: PermissionDecision = response === 1 ? "allow" : "deny";
+      sitePermissions = {
+        ...sitePermissions,
+        [origin]: { ...sitePermissions[origin], [permission]: decision },
+      };
+      saveSitePermissions();
+      callback(decision === "allow");
+    }).catch(() => callback(false));
+  });
+  ses.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+    if (AUTO_PAGE_PERMISSIONS.has(permission)) return true;
+    const origin = permissionOrigin(requestingOrigin || webContents?.getURL() || "");
+    return origin ? sitePermissions[origin]?.[permission] === "allow" : false;
+  });
+}
 
 function readCdpPort(): number {
   const f = join(app.getPath("userData"), "DevToolsActivePort");
@@ -545,6 +650,22 @@ function wireRendererIpc() {
     return r.filePath;
   });
   ipcMain.handle("app.dataDir", () => DATA_DIR);
+  ipcMain.handle("app.sitePermissions", () => sitePermissions);
+  ipcMain.handle("app.clearSitePermission", (_e, origin: unknown, permission?: unknown) => {
+    if (typeof origin !== "string" || !sitePermissions[origin]) return false;
+    if (typeof permission === "string") {
+      const next = { ...sitePermissions[origin] };
+      delete next[permission];
+      sitePermissions = { ...sitePermissions, [origin]: next };
+      if (Object.keys(next).length === 0) delete sitePermissions[origin];
+    } else {
+      const next = { ...sitePermissions };
+      delete next[origin];
+      sitePermissions = next;
+    }
+    saveSitePermissions();
+    return true;
+  });
   ipcMain.handle("ui.setAppearance", (_e, theme: unknown) => {
     applyAppearance(theme === "light" ? "light" : "dark");
     return true;
@@ -622,6 +743,8 @@ async function boot() {
     /* non-POSIX fs */
   }
 
+  await loadProfileExtensions();
+
   // spawn the runtime — forked under ELECTRON_RUN_AS_NODE
   const runtime = spawnRuntime({
     dataDir: DATA_DIR,
@@ -689,13 +812,7 @@ async function boot() {
   });
   win.contentView.addChildView(shellView);
 
-  // Page permissions in the shared profile partition: deny by default.
-  // Camera, microphone, geolocation, notifications, MIDI, USB, HID… all
-  // prompt-free denials; clipboard-read and fullscreen stay usable.
-  profileSession().setPermissionRequestHandler((_wc, permission, callback) => {
-    callback(ALLOWED_PAGE_PERMISSIONS.has(permission));
-  });
-  profileSession().setPermissionCheckHandler((_wc, permission) => ALLOWED_PAGE_PERMISSIONS.has(permission));
+  configurePagePermissions();
   const layoutShell = () => {
     if (!win || !shellView) return;
     const { width, height } = win.getContentBounds();

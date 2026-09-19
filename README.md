@@ -1,32 +1,34 @@
 # Vector
 
-A local agent-first browser. The product UI is the native `ve-shell` (no
-Electron, no Chromium). Structured agent interfaces (loopback API, MCP, CLI)
-share the Vector Engine. Chromium remains a labeled hybrid for comparison
-(`pnpm dev:electron`, `pnpm package:electron`).
+A local agent-first browser with one desktop window, workspace, permission
+model, and agent contract. Chromium is the compatibility backend for ordinary
+browsing. Vector's Rust engine is a qualified accelerator for semantic,
+agent-heavy workloads; the active backend and routing reason are always shown.
 
 - **Vector Engine** — Vector's own browser engine in Rust (`engine/`), built
   for agents: the semantic observation, stable refs, batched step execution
   and readiness come from the engine's own trees. V8 runs page scripts.
-- **Chromium (hybrid only)** — Electron `WebContentsView` or headless Chrome,
-  used for M3 comparison and `engineMode: auto` fallback in the hybrid shell.
+- **Chromium** — Electron `WebContentsView` or headless Chrome, used by default
+  for broad web, media, and extension compatibility.
 
-A router (`apps/runtime/src/services/router.ts`) decides per `pages.open` in
-the hybrid runtime. `engineMode`: `off` (Chromium only), `auto` (engine first,
-Chromium fallback), `always` (engine only). Native `ve-shell` is always engine.
+A router (`apps/runtime/src/services/router.ts`) decides per `pages.open`.
+`engineMode`: `off` (Chromium only), `auto` (Chromium by default and Vector
+Engine for qualified cohorts), `always` (engine only). Every decision records
+a `routeReason`. Native `ve-shell` remains an engine development harness.
 
 ## Quickstart
 
 ```bash
 pnpm install
 pnpm build
-pnpm dev            # fixtures + ve-shell --gui (native product)
-pnpm dev:electron   # hybrid Electron desktop
+pnpm dev            # coherent hybrid desktop product
+pnpm dev:native-engine # Vector Engine development shell
 pnpm fixtures       # fixture sites only (http://127.0.0.1:4810–4812)
 pnpm test           # unit + integration suites (engine tests skip without the addon)
 pnpm test:e2e       # Electron hybrid end-to-end
 pnpm bench          # writes held-out p95 vs Chromium when --backend both
-pnpm package:local  # native ve-shell into release/
+pnpm package:local  # hybrid desktop application
+pnpm package:native-engine # engine development shell
 ```
 
 The engine addon (`@vector/engine-native`, `engine/crates/ve-napi`) is not
@@ -37,8 +39,8 @@ cd engine && cargo build -p ve-napi --features napi --release
 # or: pnpm --filter @vector/engine-native build   (napi-rs CLI)
 ```
 
-The product GUI is `pnpm dev` / `cargo run -p ve-shell --features product -- --gui`.
-Electron is `pnpm dev:electron`. Evidence:
+The product GUI is `pnpm dev`. The standalone engine shell is
+`cargo run -p ve-shell --features product -- --gui`. Evidence:
 [docs/engine/evidence](docs/engine/evidence/README.md). Merge-blocking
 `testharness.txt` is 114 files. Official `html/dom/partial-updates` on pin
 `7c204383` is 28 PASS / 2 FAIL of 30. Combined Mac tree-family run is
@@ -50,9 +52,10 @@ and `cargo run --release -p wpt-runner` (geometry; `--use-reftest-fonts` loads A
 
 The runtime loads the addon at startup whenever it is present (set
 `VECTOR_ENGINE=0` to skip it) and reports it in `runtime.describe` →
-`engine`. `pnpm dev` and the desktop shell set `VECTOR_ENGINE_MODE=always`.
-A stored `settings.engineMode` wins. Without that env or setting the
-fallback is `auto`. Pin Chromium with `settings.set { engineMode: "off" }` or
+`engine`. The desktop defaults to `VECTOR_ENGINE_MODE=auto`. A stored
+`settings.engineMode` wins. Auto uses Chromium unless the origin matches
+`settings.engineCohorts` (or `VECTOR_ENGINE_COHORTS`) or the URL is a safe
+`about:`/`data:` document. Pin Chromium with `settings.set { engineMode: "off" }` or
 `VECTOR_ENGINE_MODE=off`. Packaged desktop sets `VECTOR_ENGINE_PROFILE=production`
 (process-isolated `ve-host`). Unpackaged stays developer unless that env is set.
 
@@ -140,7 +143,8 @@ Inter Variable; icons are Lucide. Dark chrome is `#1f1f1f`.
   page you are watching are not a takeover.
 - Run steps in the agent rail carry the exact observation the planner saw;
   results tables sort, filter and export CSV/JSON.
-- Visible auto-mode tabs open on Chromium. Background/CLI engine pages have
+- Auto-mode tabs open on Chromium unless their origin is in the qualified
+  engine cohort. Background/CLI engine pages have
   no `WebContentsView`; the stage paints `pages.capture` (software PNG)
   and maps click/wheel through `pages.execute`.
 
@@ -162,7 +166,7 @@ scripts/                dev, fixtures, Chromium discovery, packaging
 
 ## Docs
 
-- [Architecture](docs/architecture.md) · [Engine architecture](docs/engine/architecture.md) · [Engine README](engine/README.md)
+- [Product architecture](docs/PRODUCT-ARCHITECTURE.md) · [Architecture](docs/architecture.md) · [Engine architecture](docs/engine/architecture.md) · [Engine README](engine/README.md)
 - [Engine roadmap](Vector_Engine_Roadmap.md) · [Engine evidence VEC-001–025](docs/engine/evidence/README.md) · [Containment](docs/engine/containment.md)
 - [Local testing](docs/local-testing.md) · [Desktop shell](docs/ui/shell.md)
 - [Loopback API](docs/api.md) · [CLI](docs/cli.md) · [MCP](docs/mcp.md)

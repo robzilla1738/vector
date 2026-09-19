@@ -16,8 +16,8 @@ export interface PermissionGrant {
 export type GrantInput = string | Partial<PermissionGrant> & { effect: PermissionGrant["effect"] };
 
 export const DEFAULT_GRANTS = ["effect:read"] as const;
-/** User-started `runs.start` is the grant. Page text cannot expand this. */
-export const USER_RUN_GRANTS = ["effect:read", "effect:write", "effect:egress"] as const;
+/** User-started work may edit the current page. Navigation and destructive actions need explicit grants. */
+export const USER_RUN_GRANTS = ["effect:read", "effect:write"] as const;
 export const ALL_EFFECT_GRANTS = ["effect:read", "effect:write", "effect:destructive", "effect:egress"] as const;
 
 export const KNOWN_GRANTS = ["effect:read", "effect:write", "effect:destructive", "effect:egress", "effect:*"] as const;
@@ -89,12 +89,16 @@ const WRITE_OPS = new Set([
   "scroll",
   "dragTo",
   "clickPoint",
+  "upload",
+  "dialog",
+  "stop",
 ]);
 
 const DESTRUCTIVE_OPS = new Set(["evaluate"]);
+const EGRESS_OPS = new Set(["navigate", "back", "forward", "reload"]);
 
 export function classifyStep(op: string): EffectClass {
-  if (op === "navigate") return "egress";
+  if (EGRESS_OPS.has(op)) return "egress";
   if (DESTRUCTIVE_OPS.has(op)) return "destructive";
   if (WRITE_OPS.has(op)) return "write";
   return "read";
@@ -109,7 +113,15 @@ export function authorizeProgram(
   const allowed = sanitizeGrants(resolveGrants(grants)).map(parseGrant).filter((g): g is PermissionGrant => g != null);
   for (const step of steps) {
     const effect = classifyStep(step.op);
-    if (allowed.some((g) => grantAllows(g, effect, origin, now))) continue;
+    let effectOrigin = origin;
+    if (effect === "egress" && "url" in step && typeof step.url === "string") {
+      try {
+        effectOrigin = new URL(step.url, origin || undefined).origin;
+      } catch {
+        return { ok: false, denied: `permission denied for ${step.op} (invalid destination)`, effect };
+      }
+    }
+    if (allowed.some((g) => grantAllows(g, effect, effectOrigin, now))) continue;
     return { ok: false, denied: `permission denied for ${step.op} (effect:${effect})`, effect };
   }
   return { ok: true };

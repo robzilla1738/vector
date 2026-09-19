@@ -125,7 +125,7 @@ function harness(mode: EngineMode, engineOpts: Partial<FakeOpts> = {}, native: N
   const engine = fakeDriver({ backend: "vector-engine", ...engineOpts });
   const drivers: DriverSet = { vector: vector.driver, chrome: null, engine: engine.driver };
   const store = new MemoryRouterStore();
-  const router = new Router({ mode: () => mode, engineAvailable: () => true, store });
+  const router = new Router({ mode: () => mode, engineAvailable: () => true, store, engineCohorts: () => ["*.test"] });
   const pages = new PageService({ repo, events, native, drivers: () => drivers, router, grants: [...USER_RUN_GRANTS] });
   return { repo, events, pages, router, vector, engine, store };
 }
@@ -149,19 +149,19 @@ describe("pages.open routing", () => {
     const h = harness("auto", { execute: okResult });
     const page = await h.pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     expect(page.backend).toBe("vector-engine");
-    expect(page.routeReason).toBe("hybrid:engine-first");
+    expect(page.routeReason).toBe("hybrid:qualified-cohort:*.test");
     expect(page.viewStatus).toBe("background");
     // the engine gets the real URL (it parses on open), no about:blank detour
     expect(h.engine.calls).toEqual(["vector-engine:createTarget:https://a.test/"]);
     expect(h.vector.calls).toEqual([]);
-    expect(h.repo.getPage(page.pageId)?.routeReason).toBe("hybrid:engine-first");
+    expect(h.repo.getPage(page.pageId)?.routeReason).toBe("hybrid:qualified-cohort:*.test");
   });
 
   it("auto: a visible tab in the desktop shell opens on the engine paint view", async () => {
     const h = harness("auto", { execute: okResult }, shellNative());
     const page = await h.pages.open({ url: "https://cnn.test/", background: false, ownedByRuntime: false });
     expect(page.backend).toBe("vector-engine");
-    expect(page.routeReason).toBe("hybrid:engine-first");
+    expect(page.routeReason).toBe("hybrid:qualified-cohort:*.test");
     expect(h.engine.calls).toEqual(["vector-engine:createTarget:https://cnn.test/"]);
     expect(h.vector.calls).toEqual([]);
   });
@@ -251,18 +251,18 @@ describe("engine execution path", () => {
     expect(res2.observation?.revision).toBe(2);
   });
 
-  it("mid-program capability_unsupported (auto): migrates to Chromium, observes, replays selector steps", async () => {
+  it("mid-program capability_unsupported (auto): replays only read-only work on Chromium", async () => {
     const h = harness("auto", {
       execute: (steps) => ({
         status: "failed",
-        error: "unsupported: hover",
+        error: "unsupported: extract",
         steps: steps.map((s, i) => ({
           stepId: s.id,
           op: s.op,
           status: i === 0 ? "ok" : i === 1 ? "failed" : "skipped",
           startedAt: 1,
           durationMs: 1,
-          error: i === 1 ? { code: "capability_unsupported", message: "unsupported: hover" } : undefined,
+          error: i === 1 ? { code: "capability_unsupported", message: "unsupported: extract" } : undefined,
         })),
       }),
     });
@@ -272,28 +272,26 @@ describe("engine execution path", () => {
     const res = await h.pages.execute({
       pageId: page.pageId,
       steps: [
-        { id: "a", op: "fill", target: "css:#q", value: "x" },
-        { id: "b", op: "hover", target: "css:#menu" },
-        { id: "c", op: "click", target: "css:#item" },
-        { id: "d", op: "extract", fields: [{ name: "t", selector: "h1" }], as: "out" },
+        { id: "a", op: "extract", fields: [{ name: "a", selector: "h1" }], as: "first" },
+        { id: "b", op: "extract", fields: [{ name: "b", selector: "h1" }], as: "second" },
+        { id: "c", op: "extract", fields: [{ name: "c", selector: "h1" }], as: "third" },
       ],
     });
     expect(res.status).toBe("completed");
-    expect(res.steps.map((s) => `${s.stepId}:${s.status}`)).toEqual(["a:ok", "b:ok", "c:ok", "d:ok"]);
-    expect(res.extracted).toEqual({ out: { t: "v-t" } });
-    expect(res.fallback).toEqual({ from: "vector-engine", to: "vector", reason: "mid-program:hover:unsupported: hover", replayedFrom: 1, repair: false });
+    expect(res.steps.map((s) => `${s.stepId}:${s.status}`)).toEqual(["a:ok", "b:ok", "c:ok"]);
+    expect(res.extracted).toMatchObject({ second: { b: "v-b" }, third: { c: "v-c" } });
+    expect(res.fallback).toEqual({ from: "vector-engine", to: "vector", reason: "mid-program:extract:unsupported: extract", replayedFrom: 1, repair: false });
     // page now lives on Chromium at the same URL, same pageId, new epoch
     const after = h.pages.get(page.pageId);
     expect(after.backend).toBe("vector");
-    expect(after.routeReason).toBe("fallback:mid-program:hover:unsupported: hover");
+    expect(after.routeReason).toBe("fallback:mid-program:extract:unsupported: extract");
     expect(after.documentEpoch).toBe(1);
     expect(h.vector.calls).toEqual([
       "vector:createTarget:about:blank",
       "vector:navigate:https://a.test/list",
       "vector:observe",
-      "vector:hover:css:#menu",
-      "vector:click:css:#item",
-      "vector:extract:t",
+      "vector:extract:b",
+      "vector:extract:c",
     ]);
     expect(h.engine.calls).toContain("vector-engine:dispose");
     expect(h.router.entries()[0]).toMatchObject({ origin: "https://a.test" });
@@ -324,12 +322,12 @@ describe("engine execution path", () => {
       ],
     });
     expect(res.status).toBe("failed");
-    expect(res.error).toMatch(/^REPAIR: 1 ref-targeted step\(s\) \(a\)/);
-    expect(res.fallback).toMatchObject({ repair: true, refSteps: ["a"], replayedFrom: 0 });
+    expect(res.error).toMatch(/^REPAIR: side-effecting step/);
+    expect(res.fallback).toMatchObject({ repair: true, refSteps: ["a", "b"], replayedFrom: 0 });
     expect(res.steps.map((s) => s.status)).toEqual(["failed", "skipped"]);
-    expect(h.pages.get(page.pageId).backend).toBe("vector");
-    // a fresh observation was taken on Chromium so the planner can REPAIR against it
-    expect(h.vector.calls).toContain("vector:observe");
+    expect(h.pages.get(page.pageId).backend).toBe("vector-engine");
+    // Unsafe work does not switch backends until a planner re-observes and replans.
+    expect(h.vector.calls).not.toContain("vector:observe");
     expect(h.vector.calls.some((c) => c.startsWith("vector:click"))).toBe(false);
   });
 
@@ -401,7 +399,12 @@ describe("native-only product identity", () => {
     const events = new EventBus(repo);
     const vector = fakeDriver({ backend: "vector" });
     const engine = fakeDriver({ backend: "vector-engine", execute: okResult });
-    const router = new Router({ mode: () => "auto", engineAvailable: () => true, store: new MemoryRouterStore() });
+    const router = new Router({
+      mode: () => "auto",
+      engineAvailable: () => true,
+      store: new MemoryRouterStore(),
+      engineCohorts: () => ["*.test"],
+    });
     const pages = new PageService({
       repo,
       events,

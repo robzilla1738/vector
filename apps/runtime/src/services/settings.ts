@@ -21,11 +21,13 @@ export interface Settings {
   dataDir?: string;
   /**
    * Vector Engine routing (architecture §11): "off" — Chromium only;
-   * "auto" — the router tries the engine first and falls back (the default
-   * after A18); "always" — engine only (benchmarks/tests). Env override:
+   * "auto" — Chromium by default with qualified engine cohorts;
+   * "always" — engine only (benchmarks/tests). Env override:
    * VECTOR_ENGINE_MODE.
    */
   engineMode?: EngineMode;
+  /** Origins or host patterns qualified for automatic engine placement. */
+  engineCohorts?: string[];
   /**
    * Privilege-independent agent effect grants (Gate D / Gate F).
    * The person sets these. Model text cannot expand them.
@@ -77,6 +79,7 @@ export class SettingsService {
       theme: (this.get("theme") as "dark" | "light") ?? "dark",
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,
       engineMode: this.engineMode(),
+      engineCohorts: [...this.engineCohorts()],
       effectGrants: [...this.effectGrants()],
       dataDir: this.settingsPath.replace(/\/settings\.json$/, ""),
     };
@@ -103,9 +106,22 @@ export class SettingsService {
     return ENGINE_MODES.includes(v as EngineMode) ? (v as EngineMode) : "auto";
   }
 
+  engineCohorts(): readonly string[] {
+    const configured = this.get("engineCohorts") ?? this.fileSettings.engineCohorts;
+    const raw = Array.isArray(configured)
+      ? configured
+      : (this.env.VECTOR_ENGINE_COHORTS ?? "").split(",");
+    return [...new Set(raw.filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean))];
+  }
+
   set(patch: Settings): { ok: true } {
     const next: Settings = { ...patch };
     if (next.effectGrants !== undefined) next.effectGrants = sanitizeGrants(next.effectGrants);
+    if (next.engineCohorts !== undefined) {
+      next.engineCohorts = [...new Set(next.engineCohorts.map((value) => value.trim().toLowerCase()).filter(Boolean))];
+    }
     for (const [k, v] of Object.entries(next)) {
       if (v === undefined) continue;
       if (k === "gatewayApiKey") {

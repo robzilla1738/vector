@@ -198,4 +198,13 @@ describe("Gate F MCP stdio session", () => {
     const observeCall = [...calls].reverse().find((c) => c.method === "pages.observe");
     expect(observeCall?.params).toMatchObject({ pageId: "p1", format: "full" });
   });
+
+  it("preserves an omitted backend for runtime policy routing", async () => {
+    await mcp.call("tools/call", {
+      name: "vector_page_open",
+      arguments: { url: "https://app.test/auto" },
+    });
+    const openCall = [...calls].reverse().find((c) => c.method === "pages.open");
+    expect(openCall?.params).toEqual({ url: "https://app.test/auto", background: false });
+  });
 });

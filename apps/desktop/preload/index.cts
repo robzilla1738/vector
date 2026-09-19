@@ -55,6 +55,8 @@ const vector = {
   /** file picker for ⌘O — returns a path or null */
   openFile: () => ipcRenderer.invoke("ui.openFile") as Promise<string | null>,
   dataDir: () => ipcRenderer.invoke("app.dataDir") as Promise<string>,
+  sitePermissions: () => ipcRenderer.invoke("app.sitePermissions") as Promise<Record<string, Record<string, "allow" | "deny">>>,
+  clearSitePermission: (origin: string, permission?: string) => ipcRenderer.invoke("app.clearSitePermission", origin, permission) as Promise<boolean>,
   setAppearance: (theme: "dark" | "light") => ipcRenderer.invoke("ui.setAppearance", theme),
 };
 

@@ -14,12 +14,14 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use serde_json::{Value, json};
+use ve_chrome::ChromeBackend;
 use ve_core::{Error, ErrorCode, Result};
 
 use crate::shell::{NativeBrowser, NativeController, NativeEvent};
-use crate::{EngineConfig, ExecuteRequest, ObservationRequest, Program};
+use crate::{EngineConfig, ExecuteRequest, ObservationRequest, PageId, Program};
 
 type Job = Box<dyn FnOnce(&mut BrowserService) + Send>;
+const BROWSER_SERVICE_PROTOCOL: u64 = 2;
 
 /// Owns one [`NativeBrowser`] and applies serialized client requests.
 pub struct BrowserService {
@@ -73,23 +75,17 @@ impl BrowserService {
     /// Dispatch one JSON-RPC method. Unknown methods are `invalid_params`.
     pub fn handle(&mut self, method: &str, params: &Value) -> Result<Value> {
         match method {
-            "identity" => Ok(self.identity()),
+            "identity" => self.identity_for(params),
             "pages.open" => self.open(params),
             "pages.observe" => self.observe(params),
             "pages.execute" => self.execute(params),
-            "pages.takeover" => {
-                self.browser.takeover();
-                Ok(self.identity())
-            }
-            "pages.resume" => {
-                self.browser.resume();
-                Ok(self.identity())
-            }
+            "pages.takeover" => self.takeover(params),
+            "pages.resume" => self.resume(params),
             "input.event" => self.event(params),
-            "scene.update" => self.browser.scene_active(),
+            "scene.update" => self.scene(params),
             "pages.list" => self.list_pages(),
             "pages.close" => self.close_page_params(params),
-            "pages.screenshot" => self.screenshot(),
+            "pages.screenshot" => self.screenshot(params),
             "cookies.get" => self.cookies_get(params),
             "cookies.set" => self.cookies_set(params),
             "storage.state.get" => self.storage_state_get(params),
@@ -128,6 +124,49 @@ impl BrowserService {
         id
     }
 
+    fn identity_for(&self, params: &Value) -> Result<Value> {
+        let Some(raw_page) = params.get("page") else {
+            return Ok(self.identity());
+        };
+        let page = raw_page
+            .as_u64()
+            .ok_or_else(|| Error::invalid_params("page must be an integer"))?;
+        let tab = self
+            .browser
+            .tabs()
+            .iter()
+            .find(|tab| tab.page.0 == page)
+            .ok_or_else(|| Error::not_found(format!("no page {page}")))?;
+        let (controller, controller_epoch) = self
+            .browser
+            .page_controller(tab.page)
+            .ok_or_else(|| Error::not_found(format!("no page {page}")))?;
+        let mut id = self.browser.identity();
+        if let Some(obj) = id.as_object_mut() {
+            obj.insert("service".into(), json!("browser-service"));
+            obj.insert("page".into(), json!(page));
+            obj.insert("url".into(), json!(tab.url));
+            obj.insert(
+                "controller".into(),
+                json!(match controller {
+                    NativeController::None => "none",
+                    NativeController::Agent => "agent",
+                    NativeController::Human => "human",
+                }),
+            );
+            obj.insert("controllerEpoch".into(), json!(controller_epoch));
+        }
+        Ok(id)
+    }
+
+    fn page_param(params: &Value) -> Result<PageId> {
+        params
+            .get("page")
+            .and_then(Value::as_u64)
+            .map(PageId)
+            .ok_or_else(|| Error::invalid_params("page is required"))
+    }
+
     fn open(&mut self, params: &Value) -> Result<Value> {
         let html = params.get("html").and_then(Value::as_str);
         let url = params
@@ -162,14 +201,18 @@ impl BrowserService {
     }
 
     fn observe(&mut self, params: &Value) -> Result<Value> {
-        let request =
-            if params.is_null() || params.as_object().is_some_and(serde_json::Map::is_empty) {
-                ObservationRequest::default()
-            } else {
-                serde_json::from_value(params.clone())
-                    .map_err(|e| Error::invalid_params(format!("observe: {e}")))?
-            };
-        let obs = self.browser.observe_active_with(&request)?;
+        let page = Self::page_param(params)?;
+        let mut options = params.clone();
+        if let Some(obj) = options.as_object_mut() {
+            obj.remove("page");
+        }
+        let request = if options.as_object().is_some_and(serde_json::Map::is_empty) {
+            ObservationRequest::default()
+        } else {
+            serde_json::from_value(options)
+                .map_err(|e| Error::invalid_params(format!("observe: {e}")))?
+        };
+        let obs = self.browser.observe_page_with(page, &request)?;
         let mut value = serde_json::to_value(&obs)
             .map_err(|e| Error::internal(format!("observe encode: {e}")))?;
         if let Some(obj) = value.as_object_mut() {
@@ -181,6 +224,7 @@ impl BrowserService {
     }
 
     fn execute(&mut self, params: &Value) -> Result<Value> {
+        let page = Self::page_param(params)?;
         let program = params
             .get("program")
             .cloned()
@@ -195,17 +239,21 @@ impl BrowserService {
                     .map_err(|e| Error::invalid_params(format!("returnObservation: {e}")))?,
             ),
         };
-        let before = self.browser.active_page_meta();
-        let executed = self.browser.execute_request(ExecuteRequest {
-            program: Program::from_value(program)?,
-            return_observation,
-        })?;
-        self.flatten_execute(executed, before)
+        let before = self.browser.page_meta(page);
+        let executed = self.browser.execute_page_request(
+            page,
+            ExecuteRequest {
+                program: Program::from_value(program)?,
+                return_observation,
+            },
+        )?;
+        self.flatten_execute(page, executed, before)
     }
 
     /// NAPI `Engine.execute` envelope: top-level `status` / `steps`, not `{ result }`.
     fn flatten_execute(
         &self,
+        page: PageId,
         executed: crate::ExecuteResult,
         before: Option<(String, String, u32, u64)>,
     ) -> Result<Value> {
@@ -215,7 +263,7 @@ impl BrowserService {
             return Ok(json!({ "ok": true, "result": value }));
         };
         obj.insert("ok".into(), json!(true));
-        if let Some((url, title, generation, revision)) = self.browser.active_page_meta() {
+        if let Some((url, title, generation, revision)) = self.browser.page_meta(page) {
             let navigated = before.as_ref().is_some_and(|(_, _, g, _)| *g != generation);
             let title_changed = before.as_ref().is_some_and(|(_, t, _, _)| *t != title);
             obj.insert("url".into(), json!(url));
@@ -229,6 +277,18 @@ impl BrowserService {
             obj.insert("observation".into(), observation_envelope(obs)?);
         }
         Ok(value)
+    }
+
+    fn takeover(&mut self, params: &Value) -> Result<Value> {
+        let page = Self::page_param(params)?;
+        self.browser.takeover_page(page)?;
+        self.identity_for(params)
+    }
+
+    fn resume(&mut self, params: &Value) -> Result<Value> {
+        let page = Self::page_param(params)?;
+        self.browser.resume_page(page)?;
+        self.identity_for(params)
     }
 
     fn list_pages(&self) -> Result<Value> {
@@ -246,21 +306,13 @@ impl BrowserService {
                 })
             })
             .collect();
-        Ok(json!({ "ok": true, "pages": tabs, "protocolVersion": 1 }))
+        Ok(json!({ "ok": true, "pages": tabs, "protocolVersion": BROWSER_SERVICE_PROTOCOL }))
     }
 
     fn close_page_params(&mut self, params: &Value) -> Result<Value> {
-        if let Some(page) = params.get("page").and_then(Value::as_u64) {
-            let idx = self
-                .browser
-                .tabs()
-                .iter()
-                .position(|t| t.page.0 == page)
-                .ok_or_else(|| Error::not_found(format!("no page {page}")))?;
-            self.browser.set_active(idx);
-        }
-        self.browser.handle_event(NativeEvent::CloseTab)?;
-        self.push_event("page.closed", json!({}));
+        let page = Self::page_param(params)?;
+        self.browser.close_page(page)?;
+        self.push_event("page.closed", json!({ "page": page.0 }));
         Ok(json!({ "ok": true, "closed": true }))
     }
 
@@ -422,12 +474,20 @@ impl BrowserService {
         Ok(json!({ "ok": true, "events": events, "cursor": self.events.len() }))
     }
 
-    fn screenshot(&mut self) -> Result<Value> {
+    fn screenshot(&mut self, params: &Value) -> Result<Value> {
+        let page = Self::page_param(params)?;
         let tab = self
             .browser
-            .active_tab()
-            .ok_or_else(|| Error::not_found("no active page"))?;
-        let page = tab.page;
+            .tabs()
+            .iter()
+            .find(|tab| tab.page == page)
+            .ok_or_else(|| Error::not_found(format!("no page {}", page.0)))?;
+        if tab.backend == ChromeBackend::Chromium {
+            return Err(Error::coded(
+                ErrorCode::CapabilityUnsupported,
+                "addressed tab is Chromium; engine screenshot is unavailable",
+            ));
+        }
         let shot = self
             .browser
             .engine_mut()
@@ -441,8 +501,23 @@ impl BrowserService {
         }))
     }
 
+    fn scene(&mut self, params: &Value) -> Result<Value> {
+        self.browser.scene_page(Self::page_param(params)?)
+    }
+
     fn event(&mut self, params: &Value) -> Result<Value> {
-        let event: NativeEvent = serde_json::from_value(params.clone())
+        let page = Self::page_param(params)?;
+        if self.browser.active_tab().map(|tab| tab.page) != Some(page) {
+            return Err(Error::coded(
+                ErrorCode::Conflict,
+                "human input is accepted only for the visible page",
+            ));
+        }
+        let mut event_params = params.clone();
+        if let Some(obj) = event_params.as_object_mut() {
+            obj.remove("page");
+        }
+        let event: NativeEvent = serde_json::from_value(event_params)
             .map_err(|e| Error::invalid_params(format!("event: {e}")))?;
         let outcome = self.browser.handle_event(event)?;
         Ok(json!({
@@ -486,6 +561,7 @@ impl Default for BrowserService {
 /// Listening JSON-RPC authority. Dropping it stops accept.
 pub struct BrowserServiceListener {
     addr: SocketAddr,
+    token: String,
     stop: Arc<AtomicBool>,
     jobs: Option<Sender<Job>>,
     accept: Option<JoinHandle<()>>,
@@ -529,12 +605,15 @@ impl BrowserServiceListener {
         let stop = Arc::new(AtomicBool::new(false));
         let stop_thread = Arc::clone(&stop);
         let jobs_accept = jobs.clone();
+        let token = service_token()?;
+        let accept_token = token.clone();
         let accept = thread::Builder::new()
             .name("ve-browser-service".into())
-            .spawn(move || accept_loop(listener, jobs_accept, stop_thread))
+            .spawn(move || accept_loop(listener, jobs_accept, stop_thread, accept_token))
             .map_err(|e| Error::internal(format!("spawn accept: {e}")))?;
         Ok(Self {
             addr: bound,
+            token,
             stop,
             jobs: Some(jobs),
             accept: Some(accept),
@@ -546,6 +625,12 @@ impl BrowserServiceListener {
     #[must_use]
     pub fn addr(&self) -> SocketAddr {
         self.addr
+    }
+
+    /// Unpredictable bearer token required on every request.
+    #[must_use]
+    pub fn token(&self) -> &str {
+        &self.token
     }
 
     /// Block until [`Self::shutdown`] or drop.
@@ -579,6 +664,7 @@ impl Drop for BrowserServiceListener {
 /// [`Self::poll`]s it. One `NativeBrowser`, no document copy, no PNG transport.
 pub struct BrowserServicePump {
     addr: SocketAddr,
+    token: String,
     stop: Arc<AtomicBool>,
     rx: Receiver<Job>,
     _keep_tx: Sender<Job>,
@@ -600,12 +686,15 @@ impl BrowserServicePump {
         let stop = Arc::new(AtomicBool::new(false));
         let stop_thread = Arc::clone(&stop);
         let jobs_accept = tx.clone();
+        let token = service_token()?;
+        let accept_token = token.clone();
         let accept = thread::Builder::new()
             .name("ve-browser-pump".into())
-            .spawn(move || accept_loop(listener, jobs_accept, stop_thread))
+            .spawn(move || accept_loop(listener, jobs_accept, stop_thread, accept_token))
             .map_err(|e| Error::internal(format!("spawn accept: {e}")))?;
         Ok(Self {
             addr: bound,
+            token,
             stop,
             rx,
             _keep_tx: tx,
@@ -617,6 +706,12 @@ impl BrowserServicePump {
     #[must_use]
     pub fn addr(&self) -> SocketAddr {
         self.addr
+    }
+
+    /// Unpredictable bearer token required on every request.
+    #[must_use]
+    pub fn token(&self) -> &str {
+        &self.token
     }
 
     /// Run queued client jobs on this thread's [`BrowserService`].
@@ -645,7 +740,26 @@ impl Drop for BrowserServicePump {
     }
 }
 
-fn accept_loop(listener: TcpListener, jobs: Sender<Job>, stop: Arc<AtomicBool>) {
+fn service_token() -> Result<String> {
+    let mut bytes = [0_u8; 32];
+    getrandom::fill(&mut bytes)
+        .map_err(|e| Error::internal(format!("browser service token: {e}")))?;
+    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
+fn token_matches(expected: &str, supplied: &str) -> bool {
+    let expected = expected.as_bytes();
+    let supplied = supplied.as_bytes();
+    let mut difference = expected.len() ^ supplied.len();
+    for index in 0..expected.len().max(supplied.len()) {
+        let left = expected.get(index).copied().unwrap_or(0);
+        let right = supplied.get(index).copied().unwrap_or(0);
+        difference |= usize::from(left ^ right);
+    }
+    difference == 0
+}
+
+fn accept_loop(listener: TcpListener, jobs: Sender<Job>, stop: Arc<AtomicBool>, token: String) {
     while !stop.load(Ordering::Relaxed) {
         match listener.accept() {
             Ok((stream, _)) => {
@@ -654,9 +768,10 @@ fn accept_loop(listener: TcpListener, jobs: Sender<Job>, stop: Arc<AtomicBool>) 
                 // the socket before the first RPC (Broken pipe / empty reply).
                 let _ = stream.set_nonblocking(false);
                 let jobs = jobs.clone();
+                let token = token.clone();
                 let _ = thread::Builder::new()
                     .name("ve-browser-client".into())
-                    .spawn(move || serve_client(stream, jobs));
+                    .spawn(move || serve_client(stream, jobs, token));
             }
             Err(e)
                 if matches!(
@@ -677,7 +792,7 @@ fn accept_loop(listener: TcpListener, jobs: Sender<Job>, stop: Arc<AtomicBool>) 
     }
 }
 
-fn serve_client(stream: TcpStream, jobs: Sender<Job>) {
+fn serve_client(stream: TcpStream, jobs: Sender<Job>, token: String) {
     let _ = stream.set_nonblocking(false);
     let _ = stream.set_nodelay(true);
     let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
@@ -711,7 +826,7 @@ fn serve_client(stream: TcpStream, jobs: Sender<Job>) {
         if trimmed.is_empty() {
             continue;
         }
-        let reply = dispatch_line(trimmed, &jobs);
+        let reply = dispatch_line(trimmed, &jobs, &token);
         if writeln!(writer, "{reply}").is_err() {
             break;
         }
@@ -721,7 +836,7 @@ fn serve_client(stream: TcpStream, jobs: Sender<Job>) {
     }
 }
 
-fn dispatch_line(line: &str, jobs: &Sender<Job>) -> Value {
+fn dispatch_line(line: &str, jobs: &Sender<Job>, token: &str) -> Value {
     let req: Value = match serde_json::from_str(line) {
         Ok(v) => v,
         Err(e) => {
@@ -733,6 +848,14 @@ fn dispatch_line(line: &str, jobs: &Sender<Job>) -> Value {
         }
     };
     let id = req.get("id").cloned().unwrap_or(Value::Null);
+    let supplied_token = req.get("token").and_then(Value::as_str).unwrap_or("");
+    if !token_matches(token, supplied_token) {
+        return json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "error": { "code": "permission_denied", "message": "invalid browser service token" }
+        });
+    }
     let method = req
         .get("method")
         .and_then(Value::as_str)
@@ -772,12 +895,13 @@ fn dispatch_line(line: &str, jobs: &Sender<Job>) -> Value {
 /// Node/MCP-shaped client of [`BrowserServiceListener`].
 pub struct BrowserClient {
     stream: TcpStream,
+    token: String,
     next_id: u64,
 }
 
 impl BrowserClient {
     /// Dial a running authority.
-    pub fn connect(addr: SocketAddr) -> Result<Self> {
+    pub fn connect(addr: SocketAddr, token: impl Into<String>) -> Result<Self> {
         let stream = TcpStream::connect_timeout(&addr, Duration::from_secs(2))
             .map_err(|e| Error::coded(ErrorCode::BackendUnavailable, format!("connect: {e}")))?;
         let _ = stream.set_nonblocking(false);
@@ -787,14 +911,24 @@ impl BrowserClient {
         stream
             .set_read_timeout(Some(Duration::from_secs(15)))
             .map_err(|e| Error::internal(format!("timeout: {e}")))?;
-        Ok(Self { stream, next_id: 1 })
+        Ok(Self {
+            stream,
+            token: token.into(),
+            next_id: 1,
+        })
     }
 
     /// One JSON-RPC call. Errors are engine taxonomy codes.
     pub fn call(&mut self, method: &str, params: Value) -> Result<Value> {
         let id = self.next_id;
         self.next_id += 1;
-        let req = json!({"jsonrpc":"2.0","id":id,"method":method,"params":params});
+        let req = json!({
+            "jsonrpc":"2.0",
+            "id":id,
+            "method":method,
+            "params":params,
+            "token":self.token,
+        });
         writeln!(self.stream, "{req}")
             .map_err(|e| Error::coded(ErrorCode::BackendUnavailable, format!("write: {e}")))?;
         let mut reader = BufReader::new(
@@ -836,6 +970,7 @@ fn parse_code(code: &str) -> ErrorCode {
         "condition_timeout" => ErrorCode::ConditionTimeout,
         "cancelled" => ErrorCode::Cancelled,
         "conflict" => ErrorCode::Conflict,
+        "permission_denied" => ErrorCode::PermissionDenied,
         _ => ErrorCode::Internal,
     }
 }
@@ -851,8 +986,13 @@ mod tests {
     #[test]
     fn human_and_mcp_clients_share_one_page_authority() {
         let svc = BrowserServiceListener::bind("127.0.0.1:0").expect("bind");
-        let mut human = BrowserClient::connect(svc.addr()).expect("human");
-        let mut mcp = BrowserClient::connect(svc.addr()).expect("mcp");
+        let mut unauthorized = BrowserClient::connect(svc.addr(), "wrong-token").expect("dial");
+        let denied = unauthorized
+            .call("identity", json!({}))
+            .expect_err("auth required");
+        assert_eq!(denied.code(), ErrorCode::PermissionDenied);
+        let mut human = BrowserClient::connect(svc.addr(), svc.token()).expect("human");
+        let mut mcp = BrowserClient::connect(svc.addr(), svc.token()).expect("mcp");
 
         let opened = human
             .call(
@@ -865,71 +1005,99 @@ mod tests {
         let page = opened["page"].as_u64().expect("page id");
 
         human
-            .call("input.event", json!({"type":"ime","text":"typed-by-human"}))
+            .call(
+                "input.event",
+                json!({"page":page,"type":"ime","text":"typed-by-human"}),
+            )
             .expect("ime");
 
-        let obs = mcp.call("pages.observe", json!({})).expect("observe");
+        let obs = mcp
+            .call("pages.observe", json!({"page":page}))
+            .expect("observe");
         assert_eq!(obs["page"], page);
         assert_eq!(field_value(&obs), "typed-by-human");
         assert_eq!(obs["chromium"], false);
 
         mcp.call(
             "pages.execute",
-            json!({"program":[{"id":"a","op":"type","target":"css:input","value":"-agent"}]}),
+            json!({"page":page,"program":[{"id":"a","op":"type","target":"css:input","value":"-agent"}]}),
         )
         .expect("agent type");
-        let after = mcp.call("pages.observe", json!({})).expect("observe2");
+        let after = mcp
+            .call("pages.observe", json!({"page":page}))
+            .expect("observe2");
         assert_eq!(field_value(&after), "typed-by-human-agent");
 
-        let taken = human.call("pages.takeover", json!({})).expect("takeover");
+        let taken = human
+            .call("pages.takeover", json!({"page":page}))
+            .expect("takeover");
         assert_eq!(taken["controller"], "human");
         let blocked = mcp.call(
             "pages.execute",
-            json!({"program":[{"id":"x","op":"type","target":"css:input","value":"blocked"}]}),
+            json!({"page":page,"program":[{"id":"x","op":"type","target":"css:input","value":"blocked"}]}),
         );
         assert!(blocked.is_err(), "takeover must stop agent dispatch");
         let err = blocked.expect_err("conflict");
         assert_eq!(err.code(), ErrorCode::Conflict);
         human
-            .call("input.event", json!({"type":"ime","text":"-still"}))
+            .call(
+                "input.event",
+                json!({"page":page,"type":"ime","text":"-still"}),
+            )
             .expect("human still types after takeover");
         assert_eq!(
-            field_value(&mcp.call("pages.observe", json!({})).expect("obs-human")),
+            field_value(
+                &mcp.call("pages.observe", json!({"page":page}))
+                    .expect("obs-human")
+            ),
             "typed-by-human-agent-still"
         );
 
-        let resumed = human.call("pages.resume", json!({})).expect("resume");
+        let resumed = human
+            .call("pages.resume", json!({"page":page}))
+            .expect("resume");
         assert_eq!(resumed["controller"], "none");
         mcp.call(
             "pages.execute",
-            json!({"program":[{"id":"y","op":"type","target":"css:input","value":"-ok"}]}),
+            json!({"page":page,"program":[{"id":"y","op":"type","target":"css:input","value":"-ok"}]}),
         )
         .expect("resume execute");
         assert_eq!(
-            field_value(&mcp.call("pages.observe", json!({})).expect("obs3")),
+            field_value(
+                &mcp.call("pages.observe", json!({"page":page}))
+                    .expect("obs3")
+            ),
             "typed-by-human-agent-still-ok"
         );
 
         human
             .call(
                 "input.event",
-                json!({"type":"resize","width":800.0,"height":600.0}),
+                json!({"page":page,"type":"resize","width":800.0,"height":600.0}),
             )
             .expect("resize");
         human
-            .call("input.event", json!({"type":"wheel","dx":0.0,"dy":40.0}))
+            .call(
+                "input.event",
+                json!({"page":page,"type":"wheel","dx":0.0,"dy":40.0}),
+            )
             .expect("wheel");
         human
             .call(
                 "input.event",
-                json!({"type":"accessKitAction","name":"urlbar"}),
+                json!({"page":page,"type":"accessKitAction","name":"urlbar"}),
             )
             .expect("a11y");
         human
-            .call("input.event", json!({"type":"imePreedit","text":"ni"}))
+            .call(
+                "input.event",
+                json!({"page":page,"type":"imePreedit","text":"ni"}),
+            )
             .expect("preedit");
 
-        let scene = mcp.call("scene.update", json!({})).expect("scene");
+        let scene = mcp
+            .call("scene.update", json!({"page":page}))
+            .expect("scene");
         assert_eq!(scene["png"], false);
         assert_eq!(scene["kind"], "displayList");
         assert_eq!(scene["transport"], "scene");
@@ -938,7 +1106,10 @@ mod tests {
         assert!(!items.is_empty(), "{scene}");
         assert_eq!(scene["page"], page);
         human
-            .call("input.event", json!({"type":"select","start":0,"end":4}))
+            .call(
+                "input.event",
+                json!({"page":page,"type":"select","start":0,"end":4}),
+            )
             .expect("select");
 
         let id = mcp.call("identity", json!({})).expect("identity");
@@ -947,6 +1118,56 @@ mod tests {
         assert_eq!(id["service"], "browser-service");
         assert_eq!(id["shaper"], "system");
         assert_eq!(id["page"], page);
+    }
+
+    #[test]
+    fn page_addressing_and_takeover_are_isolated_per_tab() {
+        let mut service = BrowserService::new();
+        let first = service
+            .handle(
+                "pages.open",
+                &json!({"html":"<input id=one>","url":"https://one.test/"}),
+            )
+            .expect("first")["page"]
+            .as_u64()
+            .expect("first page");
+        let second = service
+            .handle(
+                "pages.open",
+                &json!({"html":"<input id=two>","url":"https://two.test/"}),
+            )
+            .expect("second")["page"]
+            .as_u64()
+            .expect("second page");
+
+        service
+            .handle("pages.takeover", &json!({"page":first}))
+            .expect("take over first");
+        let blocked = service.handle(
+            "pages.execute",
+            &json!({"page":first,"program":[{"id":"a","op":"fill","target":"css:#one","value":"blocked"}]}),
+        );
+        assert_eq!(
+            blocked.expect_err("first blocked").code(),
+            ErrorCode::Conflict
+        );
+        service
+            .handle(
+                "pages.execute",
+                &json!({"page":second,"program":[{"id":"b","op":"fill","target":"css:#two","value":"ok"}]}),
+            )
+            .expect("second remains agent-controlled");
+        let observed = service
+            .handle("pages.observe", &json!({"page":second}))
+            .expect("observe second");
+        assert_eq!(field_value(&observed), "ok");
+        service
+            .handle("pages.close", &json!({"page":first}))
+            .expect("close background page");
+        assert_eq!(
+            service.browser().active_tab().expect("active").page.0,
+            second
+        );
     }
 
     #[test]
@@ -959,22 +1180,26 @@ mod tests {
             )
             .unwrap();
         assert_eq!(opened["chromium"], false);
-        let scene = svc.handle("scene.update", &json!({})).unwrap();
+        let page = opened["page"].as_u64().unwrap();
+        let scene = svc.handle("scene.update", &json!({"page":page})).unwrap();
         assert_eq!(scene["png"], false);
     }
 
     #[test]
     fn execute_returns_top_level_steps_and_observation() {
         let mut svc = BrowserService::new();
-        svc.handle(
-            "pages.open",
-            &json!({"html":"<input id=t>","url":"https://t.test/"}),
-        )
-        .unwrap();
+        let opened = svc
+            .handle(
+                "pages.open",
+                &json!({"html":"<input id=t>","url":"https://t.test/"}),
+            )
+            .unwrap();
+        let page = opened["page"].as_u64().unwrap();
         let executed = svc
             .handle(
                 "pages.execute",
                 &json!({
+                    "page": page,
                     "program": [{"id":"a","op":"type","target":"css:input","value":"x"}],
                     "returnObservation": true
                 }),
@@ -998,10 +1223,12 @@ mod tests {
             )
             .unwrap();
         let before = opened["generation"].as_u64().unwrap_or(0);
+        let page = opened["page"].as_u64().unwrap();
         let moved = svc
             .handle(
                 "pages.execute",
                 &json!({
+                    "page": page,
                     "program": [{"id":"n","op":"navigate","url":"data:text/html,<title>two</title><p>two</p>"}],
                     "returnObservation": true
                 }),
@@ -1029,25 +1256,27 @@ mod tests {
         }
         html.push_str("</ul>");
         let svc = BrowserServiceListener::bind("127.0.0.1:0").expect("bind");
-        let mut opener = BrowserClient::connect(svc.addr()).expect("open client");
-        opener
+        let mut opener = BrowserClient::connect(svc.addr(), svc.token()).expect("open client");
+        let opened = opener
             .call(
                 "pages.open",
                 json!({"html": html, "url": "https://tail.test/records"}),
             )
             .expect("open");
+        let page = opened["page"].as_u64().expect("page");
         opener
-            .call("pages.observe", json!({}))
+            .call("pages.observe", json!({"page":page}))
             .expect("warm observe");
         let n = 16;
         let (tx, rx) = std::sync::mpsc::channel();
         for _ in 0..n {
             let addr = svc.addr();
+            let token = svc.token().to_owned();
             let tx = tx.clone();
             thread::spawn(move || {
-                let mut client = BrowserClient::connect(addr).expect("client");
+                let mut client = BrowserClient::connect(addr, token).expect("client");
                 let started = Instant::now();
-                let observed = client.call("pages.observe", json!({}));
+                let observed = client.call("pages.observe", json!({"page":page}));
                 tx.send((started.elapsed().as_millis() as u64, observed.is_ok()))
                     .expect("send");
             });
@@ -1151,20 +1380,21 @@ mod tests {
                 &json!({"html":"<input id=t>","url":"https://gui.test/"}),
             )
             .expect("open");
+        let page = service.browser().active_tab().expect("tab").page.0;
         service
             .handle(
                 "input.event",
-                &json!({"type":"ime","text":"typed-by-human"}),
+                &json!({"page":page,"type":"ime","text":"typed-by-human"}),
             )
             .expect("ime");
-        let page = service.browser().active_tab().expect("tab").page.0;
         let pump = BrowserServicePump::bind("127.0.0.1:0").expect("pump");
         let addr = pump.addr();
+        let token = pump.token().to_owned();
         let (tx, rx) = std::sync::mpsc::channel();
         thread::spawn(move || {
-            let mut mcp = BrowserClient::connect(addr).expect("mcp");
-            let obs = mcp.call("pages.observe", json!({}));
-            let scene = mcp.call("scene.update", json!({}));
+            let mut mcp = BrowserClient::connect(addr, token).expect("mcp");
+            let obs = mcp.call("pages.observe", json!({"page":page}));
+            let scene = mcp.call("scene.update", json!({"page":page}));
             tx.send((obs, scene)).expect("send");
         });
         let started = Instant::now();
@@ -1198,12 +1428,16 @@ mod tests {
                 &json!({"html":"<input id=t>","url":"https://gpu.test/"}),
             )
             .expect("open");
+        let page = service.browser().active_tab().expect("tab").page.0;
         let gpu = service
             .browser_mut()
             .present_direct()
             .expect("present_direct");
         service
-            .handle("input.event", &json!({"type":"ime","text":"typed-on-gpu"}))
+            .handle(
+                "input.event",
+                &json!({"page":page,"type":"ime","text":"typed-on-gpu"}),
+            )
             .expect("ime");
         if gpu {
             assert!(
@@ -1211,14 +1445,14 @@ mod tests {
                 "Finding 1: GPU present must mark the live page"
             );
         }
-        let page = service.browser().active_tab().expect("tab").page.0;
         let pump = BrowserServicePump::bind("127.0.0.1:0").expect("pump");
         let addr = pump.addr();
+        let token = pump.token().to_owned();
         let (tx, rx) = std::sync::mpsc::channel();
         thread::spawn(move || {
-            let mut mcp = BrowserClient::connect(addr).expect("mcp");
-            let obs = mcp.call("pages.observe", json!({}));
-            let scene = mcp.call("scene.update", json!({}));
+            let mut mcp = BrowserClient::connect(addr, token).expect("mcp");
+            let obs = mcp.call("pages.observe", json!({"page":page}));
+            let scene = mcp.call("scene.update", json!({"page":page}));
             let id = mcp.call("identity", json!({}));
             tx.send((obs, scene, id)).expect("send");
         });

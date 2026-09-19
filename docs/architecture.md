@@ -1,16 +1,15 @@
 # Architecture
 
-The product GUI is native `ve-shell` (no Electron). The Node **runtime** is
-still the coordinator for MCP, CLI, loopback API, and the labeled Electron
-hybrid.
+The product GUI is the coherent desktop shell in `apps/desktop`. Chromium is
+the compatibility backend and the Vector Engine is a qualified accelerator.
+The Node **runtime** coordinates the UI, MCP, CLI, and loopback API.
 
 Vector is a pnpm monorepo with one authoritative process — the **runtime** —
 and several thin surfaces that talk to it.
 
 ```
             ┌─────────────────────────────────────────────┐
-            │  Product: ve-shell (native, no Chromium)     │
-            │  Hybrid (labeled): Electron shell            │
+            │  Product: desktop hybrid shell               │
             │  BaseWindow ── WebContentsView (per page)    │
             │  React renderer (sidebar, command bar,       │
             │   stage card + engine badge, agent rail)     │
@@ -41,10 +40,10 @@ Two page backends sit under the runtime: **Chromium** (the shell's
 `WebContentsView`, headless Chromium in standalone mode, or the user's
 attached Chrome) and the **Vector Engine** — Vector's own Rust engine
 (`engine/`, design in [engine/architecture.md](engine/architecture.md))
-loaded in-process as the `@vector/engine-native` addon. The engine does the
+loaded through `@vector/engine-native` (process-isolated in production). The engine does the
 agent work natively (semantic observation from its own trees, `r<n>` refs
 that are DOM arena indices, whole programs executed in one native call);
-Chromium is the fallback for pages that need JavaScript.
+Chromium provides the general compatibility floor.
 
 ## Who owns what
 
@@ -84,22 +83,20 @@ implementations, three of them over Playwright-Core CDP:
 present (`VECTOR_ENGINE=0` skips it) and registers a `vector-engine` session
 either `connected` or `disconnected` with the loader's diagnostic. Whether
 pages are *routed* to it is `settings.engineMode`: `off` (Chromium only),
-`auto` (engine first, Chromium fallback), `always`. `pnpm dev` and the
-desktop shell set `VECTOR_ENGINE_MODE=always`. A stored setting wins.
-Without that env or setting the fallback is `auto`.
+`auto` (Chromium by default; qualified engine cohorts), `always`. `pnpm dev`
+and the desktop shell default to `auto`. A stored setting wins.
 `VECTOR_ENGINE_PROFILE=production` forces `securityProfile: production`,
-`isolation: requireProcess` (`ve-host`), and router `native-only` (no
-Chromium fallback). Unpackaged developer runs stay `engine-always` when
-mode is `always`.
+`isolation: requireProcess` (`ve-host`). `VECTOR_NATIVE_ONLY=1` is the only
+setting that disables Chromium fallback.
 
 `Router` (`apps/runtime/src/services/router.ts`) decides per `pages.open`
 and returns the decision as `PageTarget.routeReason`:
 
-1. explicit `backend: "chrome" | "vector-engine"` → that backend, no fallback;
+1. explicit `backend: "vector" | "chrome" | "vector-engine"` → that backend, no fallback;
 2. `off` → Chromium; `always` → engine, no fallback;
-3. `auto` → Chromium if the engine is not connected, the URL scheme is not
-   `http(s):`/`file:`/`data:`/`about:`, or the origin is in the
-   **needs-chromium table** (SQLite kv, 24 h TTL); otherwise engine-first.
+3. `auto` → the engine only for `about:`/`data:` or origins in
+   `settings.engineCohorts`; every other page uses Chromium. The
+   **needs-chromium table** (SQLite kv, 24 h TTL) quarantines cohort failures.
 
 The engine parses and classifies the document on open (`requiresScript` +
 reason, e.g. `empty-root-container: #root`, `body-onload`,
@@ -112,16 +109,14 @@ text, almost nothing painted in the viewport). A mid-program
 (`xpath:` targets, canvas/WebGL, PDF, an engine panic, …)
 migrates the live page to Chromium at its
 current URL — same `pageId`, new target, `documentEpoch` bumped — takes a
-fresh observation, and replays the remaining steps; `ProgramResult.fallback`
-records it, with `repair: true` when ref-targeted steps could not be replayed
-(engine refs do not exist on Chromium) so the coordinator re-observes and
-replans.
+fresh observation, and replays only read-only remaining steps.
+`ProgramResult.fallback` records it. Any completed or pending write, or a
+ref-targeted step, returns `repair: true` so the coordinator re-observes and
+replans without risking a duplicate side effect.
 
-In the desktop shell, an auto-mode tab that will be shown (`background:
-false`) skips the engine and opens on Chromium with
-`routeReason: "engine-first:native-view"`: the stage is a `WebContentsView`,
-and software paint of CSS/JS sites is a blank card. Background/worker pages
-and CLI/MCP opens still go engine-first. The shell paints engine pages with
+In the desktop shell, ordinary Auto-mode tabs open on Chromium with
+`routeReason: "hybrid:chromium-default"`. Qualified engine pages use
+`routeReason: "hybrid:qualified-cohort:<cohort>"`. The shell paints engine pages with
 `EngineView` (`pages.capture` software PNG, clicks/wheel via `pages.execute`).
 
 Decisions are counted in `traces.counters` (`router.decide`,

@@ -60,7 +60,7 @@ function ensureRuntimeBuilt() {
   return entry;
 }
 
-function startRuntimeClient(addr) {
+function startRuntimeClient(addr, token) {
   const entry = ensureRuntimeBuilt();
   console.log(`▸ runtime client of ${addr} (MCP/API, same page)`);
   const rt = spawn(process.execPath, [entry], {
@@ -69,6 +69,7 @@ function startRuntimeClient(addr) {
     env: {
       ...process.env,
       VECTOR_BROWSER_SERVICE: addr,
+      VECTOR_BROWSER_SERVICE_TOKEN: token,
       VECTOR_ENGINE_MODE: process.env.VECTOR_ENGINE_MODE || "always",
       VECTOR_RUNTIME_AUTOSTART: "1",
     },
@@ -95,14 +96,13 @@ if (!electron) {
   let buf = "";
   let attached = false;
   app.stdout?.on("data", (chunk) => {
-    process.stdout.write(chunk);
     if (attached) return;
     const next = consumeBrowserServiceStdout(buf, chunk);
     buf = next.rest;
     if (!next.addr) return;
     attached = true;
     console.log(`▸ VECTOR_BROWSER_SERVICE=${next.addr}`);
-    startRuntimeClient(next.addr);
+    startRuntimeClient(next.addr, next.token);
   });
   app.on("exit", (code) => {
     stop();

@@ -137,19 +137,18 @@ unavailable`.
 ## Pages open on Chromium although the engine is available
 
 `engineMode` falls back to `auto` when neither a stored setting nor
-`VECTOR_ENGINE_MODE` is set. `pnpm dev` and the desktop shell set
-`VECTOR_ENGINE_MODE=always`. Check `runtime.describe` → `engine.mode`;
+`VECTOR_ENGINE_MODE` is set. `pnpm dev` and the desktop shell use that
+compatibility-first default. Check `runtime.describe` → `engine.mode`;
 the stored setting wins over the env. Then read `routeReason` on the
 `pages.open` result:
 
 - `engine-always` — mode is `always` and the profile is developer.
-- `native-only` — `VECTOR_ENGINE_PROFILE=production` (no Chromium fallback).
+- `native-only` — `VECTOR_NATIVE_ONLY=1` (no Chromium fallback).
 - `engine-mode-off` — the setting is `off`.
 - `engine-unavailable` — the addon did not load (section above).
 - `native-only:engine-unavailable` — production profile and the engine did not connect.
-- `engine-first:native-view` — a visible desktop tab. Auto-mode tabs the
-  shell will show open on Chromium so the stage has a `WebContentsView`.
-  Background/CLI opens still go engine-first.
+- `hybrid:chromium-default` — an unqualified Auto-mode origin.
+- `hybrid:qualified-cohort:<cohort>` — an origin explicitly qualified for the engine.
 - `unsupported-scheme:<scheme>` — the engine opens `http(s):`, `file:`,
   `data:`, `about:` only.
 - `needs-chromium-table:<reason>` — this origin fell back within the last
@@ -197,5 +196,5 @@ Chromium backend was connected to fall back to.
 Background/CLI engine pages have no Chromium view. `pages.activate` marks
 the page active; `pages.capture` uses the software renderer (system fonts).
 In the desktop shell the stage paints that PNG (`EngineView`) and maps
-click/wheel through `pages.execute`. Visible auto-mode tabs never land
-here — they open on Chromium (`engine-first:native-view`).
+click/wheel through `pages.execute`. Only safe documents, qualified cohorts,
+or explicit engine requests land here.

@@ -234,6 +234,8 @@ export declare class BrowserServiceHandle {
   static listen(bind?: string | null, configJson?: string | null): BrowserServiceHandle;
   /** Bound `host:port` for `VECTOR_BROWSER_SERVICE`. */
   addr(): string;
+  /** Unpredictable bearer token required by `BrowserServiceClient`. */
+  token(): string;
   shutdown(): void;
 }
 

@@ -360,6 +360,8 @@ export function installMockBridge(q: URLSearchParams) {
     closeWindow: async () => true,
     openFile: async () => null,
     dataDir: async () => "/Users/you/Library/Application Support/Vector",
+    sitePermissions: async () => ({}),
+    clearSitePermission: async () => true,
     setAppearance: async () => true,
   };
   (window as unknown as { vector: VectorBridge; __vectorMock: boolean }).vector = bridge;

@@ -7,7 +7,7 @@ import { describe, it, expect } from "vitest";
 import { Router, MemoryRouterStore, isFallbackError, originOf, stepTargetsRef, NEEDS_CHROMIUM_TTL_MS, type NeedsChromiumEntry } from "@vector/runtime";
 import { VectorError, type EngineMode, type Step } from "@vector/contracts";
 
-function make(opts: { mode?: EngineMode; engine?: boolean; store?: MemoryRouterStore; now?: () => number; ttlMs?: number } = {}) {
+function make(opts: { mode?: EngineMode; engine?: boolean; store?: MemoryRouterStore; now?: () => number; ttlMs?: number; cohorts?: string[] } = {}) {
   let mode: EngineMode = opts.mode ?? "auto";
   let engine = opts.engine ?? true;
   const logs: { message: string; attrs: Record<string, unknown> }[] = [];
@@ -17,6 +17,7 @@ function make(opts: { mode?: EngineMode; engine?: boolean; store?: MemoryRouterS
     store: opts.store,
     now: opts.now,
     ttlMs: opts.ttlMs,
+    engineCohorts: () => opts.cohorts ?? ["*.test"],
     log: (message, attrs) => logs.push({ message, attrs }),
   });
   return { router, logs, setMode: (m: EngineMode) => (mode = m), setEngine: (e: boolean) => (engine = e) };
@@ -26,7 +27,7 @@ describe("Router.decide", () => {
   it("honours explicit backends and the engine mode", () => {
     const { router, setMode, setEngine } = make({ mode: "off" });
     expect(router.decide("https://a.test/", undefined)).toEqual({ backend: "vector", reason: "engine-mode-off", fallbackAllowed: false });
-    expect(router.decide("https://a.test/", "vector")).toMatchObject({ backend: "vector", reason: "engine-mode-off" });
+    expect(router.decide("https://a.test/", "vector")).toMatchObject({ backend: "vector", reason: "explicit-backend:vector" });
     expect(router.decide("https://a.test/", "chrome")).toMatchObject({ backend: "chrome", reason: "explicit-backend:chrome", fallbackAllowed: false });
     // explicit engine wins even when the mode is off — no fallback for an explicit placement
     expect(router.decide("https://a.test/", "vector-engine")).toMatchObject({ backend: "vector-engine", fallbackAllowed: false });
@@ -43,8 +44,8 @@ describe("Router.decide", () => {
     setEngine(true);
 
     setMode("auto");
-    expect(router.decide("https://a.test/", undefined)).toEqual({ backend: "vector-engine", reason: "hybrid:engine-first", fallbackAllowed: true });
-    expect(router.decide("https://a.test/", "vector")).toMatchObject({ backend: "vector-engine", reason: "hybrid:engine-first" });
+    expect(router.decide("https://a.test/", undefined)).toEqual({ backend: "vector-engine", reason: "hybrid:qualified-cohort:*.test", fallbackAllowed: true });
+    expect(router.decide("https://a.test/", "vector")).toMatchObject({ backend: "vector", reason: "explicit-backend:vector" });
     setEngine(false);
     expect(router.decide("https://a.test/", undefined)).toMatchObject({ backend: "vector", reason: "hybrid:engine-unavailable" });
   });
@@ -53,14 +54,30 @@ describe("Router.decide", () => {
     const { router } = make();
     expect(router.decide("chrome://settings", undefined).reason).toBe("unsupported-scheme:chrome:");
     expect(router.decide("not a url", undefined).reason).toBe("unparseable-url");
-    expect(router.decide("file:///tmp/x.html", undefined).backend).toBe("vector-engine");
+    expect(router.decide("file:///tmp/x.html", undefined).backend).toBe("vector");
     expect(router.decide("data:text/html,<p>x</p>", undefined).backend).toBe("vector-engine");
+  });
+
+  it("uses Chromium by default and the engine only for qualified cohorts", () => {
+    const noCohorts = new Router({ mode: () => "auto", engineAvailable: () => true });
+    expect(noCohorts.decide("https://docs.example.com/guide", undefined).reason).toBe("hybrid:chromium-default");
+    const { router } = make({ cohorts: ["docs.example.com", "*.internal.test", "https://exact.test"] });
+    expect(router.decide("https://news.example/", undefined)).toMatchObject({
+      backend: "vector",
+      reason: "hybrid:chromium-default",
+    });
+    expect(router.decide("https://docs.example.com/guide", undefined).reason).toBe(
+      "hybrid:qualified-cohort:docs.example.com",
+    );
+    expect(router.decide("https://build.internal.test/", undefined).backend).toBe("vector-engine");
+    expect(router.decide("https://exact.test/", undefined).backend).toBe("vector-engine");
+    expect(router.decide("about:blank", undefined).reason).toBe("hybrid:engine-safe-scheme:about:");
   });
 
   it("logs every decision with its reason", () => {
     const { router, logs } = make();
     router.decide("https://a.test/", undefined);
-    expect(logs).toEqual([{ message: "router.decide", attrs: expect.objectContaining({ url: "https://a.test/", reason: "hybrid:engine-first" }) }]);
+    expect(logs).toEqual([{ message: "router.decide", attrs: expect.objectContaining({ url: "https://a.test/", reason: "hybrid:qualified-cohort:*.test" }) }]);
   });
 });
 

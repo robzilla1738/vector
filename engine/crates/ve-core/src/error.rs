@@ -41,6 +41,8 @@ pub enum ErrorCode {
     Cancelled,
     /// Concurrent use of the same page.
     Conflict,
+    /// The caller lacks authority for the requested action.
+    PermissionDenied,
     /// Engine panic or bug caught at the boundary.
     Internal,
 }
@@ -61,6 +63,7 @@ impl ErrorCode {
             Self::ConditionTimeout => "condition_timeout",
             Self::Cancelled => "cancelled",
             Self::Conflict => "conflict",
+            Self::PermissionDenied => "permission_denied",
             Self::Internal => "internal",
         }
     }

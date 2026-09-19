@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   browserServiceAddr,
+  browserServiceToken,
   resolveVeShell,
   spawnVeShellService,
   BrowserServiceClient,
@@ -51,6 +52,7 @@ server.listen(0, "127.0.0.1", () => {
   const { port } = server.address();
   console.log(JSON.stringify({
     VECTOR_BROWSER_SERVICE: "127.0.0.1:" + port,
+    VECTOR_BROWSER_SERVICE_TOKEN: "test-token",
     backend: "vector-engine",
     chromium: false,
     service: "browser-service",
@@ -69,6 +71,11 @@ describe("Finding 1 browser service client", () => {
     expect(browserServiceAddr({ VECTOR_BROWSER_SERVICE: "127.0.0.1:9876" } as NodeJS.ProcessEnv)).toBe(
       "127.0.0.1:9876",
     );
+  });
+
+  it("requires a separate browser service bearer token", () => {
+    expect(browserServiceToken({} as NodeJS.ProcessEnv)).toBeUndefined();
+    expect(browserServiceToken({ VECTOR_BROWSER_SERVICE_TOKEN: " secret " } as NodeJS.ProcessEnv)).toBe("secret");
   });
 
   it("resolveVeShell prefers VECTOR_SHELL when the file exists", () => {
@@ -93,7 +100,7 @@ describe("Finding 1 browser service client", () => {
     const bin = fakeShell();
     const owned = await spawnVeShellService(bin);
     expect(owned?.addr).toMatch(/^127\.0\.0\.1:\d+$/);
-    const client = new BrowserServiceClient(owned!.addr);
+    const client = new BrowserServiceClient(owned!.addr, owned!.token);
     await client.connect();
     const opened = await client.call("pages.open", { url: "about:blank" });
     expect(opened).toMatchObject({ ok: true, page: 1, url: "about:blank" });
@@ -113,14 +120,14 @@ describe("Finding 1 browser service client", () => {
     if (!bin) return;
     const owned = await spawnVeShellService(bin);
     expect(owned?.addr).toMatch(/^127\.0\.0\.1:\d+$/);
-    const client = new BrowserServiceClient(owned!.addr);
+    const client = new BrowserServiceClient(owned!.addr, owned!.token);
     await client.connect();
     const opened = await client.call("pages.open", {
       url: "about:blank",
       html: "<title>svc</title><p>ok</p>",
     });
     expect(opened).toMatchObject({ ok: true, chromium: false, backend: "vector-engine" });
-    const obs = await client.call("pages.observe", {});
+    const obs = await client.call("pages.observe", { page: opened.page });
     expect(obs.ok).toBe(true);
     expect(obs.chromium).toBe(false);
     owned!.shutdown();
@@ -137,19 +144,21 @@ describe("Finding 1 browser service client", () => {
       startService: async () => owned!,
     });
     await driver.connect();
-    await driver.createTarget("about:blank");
-    const peer = new BrowserServiceClient(owned!.addr);
+    const targetId = await driver.createTarget("about:blank");
+    await driver.attach(targetId, "live-service-page");
+    const peer = new BrowserServiceClient(owned!.addr, owned!.token);
     await peer.connect();
-    await peer.call("pages.open", { url: "about:blank", html: "<input id=n>" });
+    const listed = await peer.call("pages.list", {});
+    const peerPage = (listed.pages as Array<{ page: number }>)[0]!;
     const taken = await driver.takeover();
     expect(taken.controller).toBe("human");
     await expect(
-      peer.call("pages.execute", { program: [{ id: "x", op: "type", target: "css:#n", value: "blocked" }] }),
+      peer.call("pages.execute", { page: peerPage.page, program: [{ id: "x", op: "type", target: "css:#n", value: "blocked" }] }),
     ).rejects.toMatchObject({ code: "conflict" });
     const resumed = await driver.resume();
     expect(resumed.controller).not.toBe("human");
     await expect(
-      peer.call("pages.execute", { program: [{ id: "y", op: "type", target: "css:#n", value: "ok" }] }),
+      peer.call("pages.execute", { page: peerPage.page, program: [{ id: "y", op: "type", target: "css:#n", value: "ok" }] }),
     ).resolves.toBeTruthy();
     peer.close();
     await driver.disconnect();
@@ -165,6 +174,7 @@ describe("Finding 1 browser service client", () => {
       ...process.env,
       VECTOR_DATA_DIR: dataDir,
       VECTOR_BROWSER_SERVICE: owned!.addr,
+      VECTOR_BROWSER_SERVICE_TOKEN: owned!.token,
       VECTOR_ENGINE_MODE: "always",
       VECTOR_ELECTRON_CDP: "",
       VECTOR_API_TOKEN: "dev-attach",

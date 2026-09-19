@@ -24,7 +24,7 @@ Register it in your MCP client config:
 | Tool | Purpose |
 |---|---|
 | `vector_pages_list` | list open pages |
-| `vector_page_open` | open a page. `backend`: `vector` (default, *routable* — with `engineMode: auto` the runtime may place it on the Vector Engine and fall back to Chromium), `chrome` (adopt an attached Chrome tab), `vector-engine` (force the in-process engine, no fallback); `background`. The result's `routeReason` says where it landed and why (`docs/api.md` → Backends and routing) |
+| `vector_page_open` | open a page. Omit `backend` for policy routing. `vector` forces Vector's embedded Chromium, `chrome` adopts an attached Chrome tab, and `vector-engine` forces the engine without fallback. `background` opens without activation. The result's `routeReason` says where it landed and why (`docs/api.md` → Backends and routing) |
 | `vector_page_observe` | observation → element refs. `format` `compact` (default) returns the rendered text view (one line per ref, ~5–10× smaller than `full` JSON); `scope` (`full`/`forms`/`links`/`tables`/`subtree` + `subtreeRef`), `maxElements`, `maxTextChars` |
 | `vector_page_execute` | run a typed program on a page. `steps` use string targets (`"r3"`, `"css:#save"`); `documentEpoch` fails fast on a navigated page; `returnObservation { scope?, subtreeRef?, format? }` appends the post-action observation to the result so act + observe is one tool call. A trusted source: `evaluate` is allowed here |
 | `vector_page_capture` | screenshot as MCP image content (default), data URL, or stored artifact |

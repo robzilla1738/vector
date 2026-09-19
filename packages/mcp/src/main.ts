@@ -44,16 +44,20 @@ server.registerTool("vector_pages_list", { description: "List open browser pages
 server.registerTool(
   "vector_page_open",
   {
-    description: "Open a new page. Use backend chrome to open a tab in the user's attached Chrome; vector-engine forces the in-process Vector Engine.",
+    description: "Open a new page. Omit backend for policy routing; vector selects Vector's embedded Chromium, chrome adopts an attached Chrome tab, and vector-engine forces the Vector Engine.",
     inputSchema: {
       url: z.string().describe("URL to open"),
-      backend: z.enum(["vector", "chrome", "vector-engine"]).optional().describe("vector (default, routable), chrome, or vector-engine"),
+      backend: z.enum(["vector", "chrome", "vector-engine"]).optional().describe("omit for policy routing; vector, chrome, or vector-engine to force a backend"),
       background: z.boolean().optional().describe("open hidden worker page (no focus steal)"),
     },
   },
   async ({ url, backend, background }) => {
     try {
-      return text(await rpc("pages.open", { url, backend: backend ?? "vector", background: background ?? false }));
+      return text(await rpc("pages.open", {
+        url,
+        ...(backend ? { backend } : {}),
+        background: background ?? false,
+      }));
     } catch (e) {
       return err(e);
     }

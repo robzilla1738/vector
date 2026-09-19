@@ -6,12 +6,12 @@
  * `capability_unsupported`:
  *
  *   1. origin in the needs-chromium table (TTL 24 h, persisted) → Chromium
- *   2. otherwise engine-first; the engine classifies the parsed document
+ *   2. qualified engine cohort → engine-first; the engine classifies the parsed document
  *      (`requiresScript` + reason) → `capability_unsupported` → the runtime
  *      reopens on Chromium and records the origin
- *   3. mid-program `capability_unsupported` → replay the remaining steps on
- *      Chromium after a fresh observation; ref-targeted steps cannot carry
- *      across backends and trigger REPAIR
+ *   3. everything else → Chromium for compatibility
+ *   4. mid-program `capability_unsupported` → replay read-only remaining
+ *      steps on Chromium; writes require a fresh observation and repair
  *
  * Deterministic and side-effect free apart from the table, so it is unit
  * tested with a fake store and a fake clock. Every decision carries a
@@ -73,6 +73,8 @@ export interface RouterOptions {
   log?: (message: string, attrs: Record<string, unknown>) => void;
   /** Independent product: never start or substitute Chromium. */
   nativeOnly?: () => boolean;
+  /** Origins/hosts qualified for automatic Vector Engine placement. Omitted means none. */
+  engineCohorts?: () => readonly string[];
 }
 
 /** Schemes the engine can open in M1 (`http(s)` needs the `http` feature, always on in the addon). */
@@ -169,6 +171,22 @@ export class Router {
     return [...this.table];
   }
 
+  private qualifiedCohort(url: URL): string | undefined {
+    const cohorts = this.opts.engineCohorts?.() ?? [];
+    const host = url.hostname.toLowerCase();
+    const origin = url.origin.toLowerCase();
+    return cohorts.find((raw) => {
+      const cohort = raw.trim().toLowerCase();
+      if (!cohort) return false;
+      if (cohort.includes("://")) return cohort === origin;
+      if (cohort.startsWith("*.")) {
+        const suffix = cohort.slice(2);
+        return host === suffix || host.endsWith(`.${suffix}`);
+      }
+      return cohort === host;
+    });
+  }
+
   // ---- decisions ----
 
   decide(url: string, requested: Backend | undefined): RouteDecision {
@@ -187,6 +205,7 @@ export class Router {
       }
       return done({ backend: "vector-engine", reason: "native-only", fallbackAllowed: false });
     }
+    if (requested === "vector") return done({ backend: "vector", reason: "explicit-backend:vector", fallbackAllowed: false });
     if (requested === "chrome") return done({ backend: "chrome", reason: "explicit-backend:chrome", fallbackAllowed: false });
     if (requested === "vector-engine")
       return done({ backend: "vector-engine", reason: "explicit-backend:vector-engine", fallbackAllowed: false });
@@ -203,18 +222,31 @@ export class Router {
       }
       return done({ backend: "vector-engine", reason: "engine-always", fallbackAllowed: false });
     }
-    // auto = hybrid: engine first, Chromium fallback, separately labeled
+    // auto = compatibility-first hybrid: Chromium by default; only safe
+    // schemes and qualified cohorts enter the engine with fallback enabled.
     if (!this.engineAvailable()) return done({ backend: "vector", reason: "hybrid:engine-unavailable", fallbackAllowed: false });
-    let scheme = "";
+    let parsed: URL;
     try {
-      scheme = new URL(url).protocol;
+      parsed = new URL(url);
     } catch {
       return done({ backend: "vector", reason: "unparseable-url", fallbackAllowed: false });
     }
+    const scheme = parsed.protocol;
     if (!ENGINE_SCHEMES.has(scheme)) return done({ backend: "vector", reason: `unsupported-scheme:${scheme}`, fallbackAllowed: false });
     const hit = this.needsChromium(url);
     if (hit) return done({ backend: "vector", reason: `needs-chromium-table:${hit.reason}`, fallbackAllowed: false });
-    return done({ backend: "vector-engine", reason: "hybrid:engine-first", fallbackAllowed: true });
+    if (scheme === "data:" || scheme === "about:") {
+      return done({ backend: "vector-engine", reason: `hybrid:engine-safe-scheme:${scheme}`, fallbackAllowed: true });
+    }
+    const cohort = this.qualifiedCohort(parsed);
+    if (!cohort) {
+      return done({ backend: "vector", reason: "hybrid:chromium-default", fallbackAllowed: false });
+    }
+    return done({
+      backend: "vector-engine",
+      reason: `hybrid:qualified-cohort:${cohort}`,
+      fallbackAllowed: true,
+    });
   }
 
   /**

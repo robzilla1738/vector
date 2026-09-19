@@ -144,17 +144,26 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
             throw new VectorError("condition_timeout", `expect ${cond.kind} failed: ${res.detail ?? ""}`);
         }
       }
+      const postconditions = (step.expect as Condition[] | undefined) ?? [];
+      const mutating = [
+        "navigate", "back", "forward", "reload", "click", "dblclick", "fill", "type",
+        "press", "select", "check", "uncheck", "submit", "dragTo", "clickPoint", "upload", "dialog",
+      ].includes(step.op);
       const outcome: StepOutcome = {
         stepId: step.id,
         op: step.op,
         status: "ok",
         startedAt,
         durationMs: Date.now() - startedAt,
-        effect: step.expect?.length ? "confirmed" : "observed",
+        effect: postconditions.length ? "observed" : mutating ? "uncertain" : "observed",
         receipt: {
-          observed: undefined,
-          remoteConfirmed: Boolean(step.expect?.length),
-          uncertain: !step.expect?.length && ["click", "fill", "type", "select", "check", "uncheck", "press"].includes(step.op),
+          observed: postconditions.length
+            ? `postconditions satisfied: ${postconditions.map((condition) => condition.kind).join(", ")}`
+            : undefined,
+          // A DOM condition proves browser state. Only explicit backend or
+          // network evidence may claim remote business-system confirmation.
+          remoteConfirmed: false,
+          uncertain: mutating && postconditions.length === 0,
           dispatchedBeforeTakeover: false,
           identity: {
             pageId: page.identity.pageId,

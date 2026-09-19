@@ -8,7 +8,10 @@ export function parseBrowserServiceAnnouncement(line) {
   try {
     const v = JSON.parse(text);
     const addr = typeof v?.VECTOR_BROWSER_SERVICE === "string" ? v.VECTOR_BROWSER_SERVICE.trim() : "";
-    return addr.length > 0 ? addr : undefined;
+    const token = typeof v?.VECTOR_BROWSER_SERVICE_TOKEN === "string"
+      ? v.VECTOR_BROWSER_SERVICE_TOKEN.trim()
+      : "";
+    return addr.length > 0 && token.length > 0 ? { addr, token } : undefined;
   } catch {
     return undefined;
   }
@@ -19,8 +22,8 @@ export function consumeBrowserServiceStdout(buf, chunk) {
   const lines = next.split(/\r?\n/);
   const rest = lines.pop() ?? "";
   for (const line of lines) {
-    const addr = parseBrowserServiceAnnouncement(line);
-    if (addr) return { addr, rest: "" };
+    const service = parseBrowserServiceAnnouncement(line);
+    if (service) return { ...service, rest: "" };
   }
-  return { addr: undefined, rest };
+  return { addr: undefined, token: undefined, rest };
 }

@@ -34,6 +34,8 @@ export interface VectorBridge {
   closeWindow(): Promise<boolean>;
   openFile(): Promise<string | null>;
   dataDir(): Promise<string>;
+  sitePermissions(): Promise<Record<string, Record<string, "allow" | "deny">>>;
+  clearSitePermission(origin: string, permission?: string): Promise<boolean>;
   setAppearance(theme: "dark" | "light"): Promise<boolean>;
 }
 
@@ -60,6 +62,8 @@ const stub: VectorBridge = {
   closeWindow: async () => true,
   openFile: async () => null,
   dataDir: async () => "",
+  sitePermissions: async () => ({}),
+  clearSitePermission: async () => true,
   setAppearance: async () => true,
 };
 

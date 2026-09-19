@@ -1,7 +1,7 @@
-# Vector desktop shell (Electron hybrid)
+# Vector desktop shell
 
-The product GUI is `ve-shell` (`pnpm dev`). This document is the **hybrid**
-Electron chrome (`pnpm dev:electron`).
+This is the product GUI (`pnpm dev`): one native desktop window with embedded
+page views, browser chrome, workspace, and agent rail.
 
 The renderer in `apps/desktop/renderer/src` is the browser chrome around the
 runtime's pages: an Arc-style sidebar, a command bar in that sidebar, an inset
@@ -194,8 +194,8 @@ runtime now emits what the shell reads:
 - `Backend` / `PageTarget.backend` is `"vector" | "chrome" | "vector-engine"`
   (`contracts/ids.ts`, `BackendSchema`) — the badge shows *Chromium*, *Your
   Chrome* or *Vector Engine* from it.
-- `settings.engineMode: "off" | "auto" | "always"` (schema fallback `auto`;
-  `pnpm dev` / desktop set `VECTOR_ENGINE_MODE=always`) is in `SettingsSetParams`
+- `settings.engineMode: "off" | "auto" | "always"` (desktop default `auto`)
+  is in `SettingsSetParams`
   and returned by `settings.get`; the Settings radio writes it through
   `settings.set` and the runtime applies it on the next `pages.open`.
 - `PageTarget.routeReason` is set on every page (`pages.open` result,

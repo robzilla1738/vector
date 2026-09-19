@@ -242,9 +242,9 @@ export interface BrowserDriver {
    * Human takeover on the shared browser authority (Finding 1 / Gate B).
    * Stops subsequent agent dispatch for every client of the same service.
    */
-  takeover?(): Promise<{ controller: string; controllerEpoch: number }>;
+  takeover?(pageId?: string): Promise<{ controller: string; controllerEpoch: number }>;
   /** Release human takeover after revalidating page and authorization state. */
-  resume?(): Promise<{ controller: string; controllerEpoch: number }>;
+  resume?(pageId?: string): Promise<{ controller: string; controllerEpoch: number }>;
 }
 
 export interface ResolvedRef {

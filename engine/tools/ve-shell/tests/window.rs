@@ -35,6 +35,7 @@ fn live_os_window_and_mcp_share_one_page() {
     let stdout = BufReader::new(child.stdout.take().unwrap());
     let started = Instant::now();
     let mut addr = None;
+    let mut token = None;
     for line in stdout.lines() {
         let Ok(line) = line else {
             break;
@@ -45,6 +46,10 @@ fn live_os_window_and_mcp_share_one_page() {
             assert_eq!(v["chromium"], false);
             assert_eq!(v["gui"], true);
             addr = Some(a.to_owned());
+            token = v
+                .get("VECTOR_BROWSER_SERVICE_TOKEN")
+                .and_then(Value::as_str)
+                .map(str::to_owned);
             break;
         }
         if started.elapsed() > Duration::from_secs(8) {
@@ -55,17 +60,21 @@ fn live_os_window_and_mcp_share_one_page() {
         fail_child(&mut child, &display, "did not bind VECTOR_BROWSER_SERVICE");
     };
     let sock: SocketAddr = addr.parse().expect("service addr");
-    let mut mcp = retry_connect(sock).unwrap_or_else(|e| {
+    let token = token.unwrap_or_else(|| fail_child(&mut child, &display, "missing service token"));
+    let mut mcp = retry_connect(sock, &token).unwrap_or_else(|e| {
         fail_child(&mut child, &display, &format!("mcp connect: {e}"));
     });
+    let listed = call_retry(&mut mcp, "pages.list", json!({}))
+        .unwrap_or_else(|e| fail_child(&mut child, &display, &format!("list: {e}")));
+    let page = listed["pages"][0]["page"].as_u64().expect("page id");
 
     call_retry(
         &mut mcp,
         "input.event",
-        json!({"type":"ime","text":"typed-in-window"}),
+        json!({"page":page,"type":"ime","text":"typed-in-window"}),
     )
     .unwrap_or_else(|e| fail_child(&mut child, &display, &format!("ime: {e}")));
-    let obs = call_retry(&mut mcp, "pages.observe", json!({}))
+    let obs = call_retry(&mut mcp, "pages.observe", json!({"page":page}))
         .unwrap_or_else(|e| fail_child(&mut child, &display, &format!("observe: {e}")));
     assert_eq!(obs["chromium"], false);
     assert_eq!(field_value(&obs), "typed-in-window", "{obs}");
@@ -73,61 +82,56 @@ fn live_os_window_and_mcp_share_one_page() {
     call_retry(
         &mut mcp,
         "pages.execute",
-        json!({"program":[{"id":"a","op":"type","target":"css:input","value":"-agent"}]}),
+        json!({"page":page,"program":[{"id":"a","op":"type","target":"css:input","value":"-agent"}]}),
     )
     .unwrap_or_else(|e| fail_child(&mut child, &display, &format!("agent: {e}")));
     assert_eq!(
         field_value(
-            &call_retry(&mut mcp, "pages.observe", json!({})).unwrap_or_else(|e| fail_child(
-                &mut child,
-                &display,
-                &format!("obs2: {e}")
-            ))
+            &call_retry(&mut mcp, "pages.observe", json!({"page":page}))
+                .unwrap_or_else(|e| fail_child(&mut child, &display, &format!("obs2: {e}")))
         ),
         "typed-in-window-agent"
     );
 
-    let taken = call_retry(&mut mcp, "pages.takeover", json!({}))
+    let taken = call_retry(&mut mcp, "pages.takeover", json!({"page":page}))
         .unwrap_or_else(|e| fail_child(&mut child, &display, &format!("takeover: {e}")));
     assert_eq!(taken["controller"], "human");
     let blocked = mcp.call(
         "pages.execute",
-        json!({"program":[{"id":"x","op":"type","target":"css:input","value":"blocked"}]}),
+        json!({"page":page,"program":[{"id":"x","op":"type","target":"css:input","value":"blocked"}]}),
     );
     assert!(blocked.is_err(), "takeover must stop agent dispatch");
 
-    let resumed = call_retry(&mut mcp, "pages.resume", json!({}))
+    let resumed = call_retry(&mut mcp, "pages.resume", json!({"page":page}))
         .unwrap_or_else(|e| fail_child(&mut child, &display, &format!("resume: {e}")));
     assert_eq!(resumed["controller"], "none");
     call_retry(
         &mut mcp,
         "pages.execute",
-        json!({"program":[{"id":"y","op":"type","target":"css:input","value":"-ok"}]}),
+        json!({"page":page,"program":[{"id":"y","op":"type","target":"css:input","value":"-ok"}]}),
     )
     .unwrap_or_else(|e| fail_child(&mut child, &display, &format!("resume execute: {e}")));
     assert_eq!(
         field_value(
-            &call_retry(&mut mcp, "pages.observe", json!({})).unwrap_or_else(|e| fail_child(
-                &mut child,
-                &display,
-                &format!("obs3: {e}")
-            ))
+            &call_retry(&mut mcp, "pages.observe", json!({"page":page}))
+                .unwrap_or_else(|e| fail_child(&mut child, &display, &format!("obs3: {e}")))
         ),
         "typed-in-window-agent-ok"
     );
 
-    for ev in [
+    for mut ev in [
         json!({"type":"resize","width":800.0,"height":600.0}),
         json!({"type":"wheel","dx":0.0,"dy":40.0}),
         json!({"type":"accessKitAction","name":"urlbar"}),
         json!({"type":"imePreedit","text":"ni"}),
     ] {
+        ev["page"] = json!(page);
         call_retry(&mut mcp, "input.event", ev.clone()).unwrap_or_else(|e| {
             fail_child(&mut child, &display, &format!("input {ev}: {e}"));
         });
     }
 
-    let scene = call_retry(&mut mcp, "scene.update", json!({}))
+    let scene = call_retry(&mut mcp, "scene.update", json!({"page":page}))
         .unwrap_or_else(|e| fail_child(&mut child, &display, &format!("scene: {e}")));
     assert_eq!(scene["png"], false);
     assert_eq!(scene["kind"], "displayList");
@@ -139,10 +143,10 @@ fn live_os_window_and_mcp_share_one_page() {
     let _ = child.wait();
 }
 
-fn retry_connect(sock: SocketAddr) -> Result<BrowserClient, String> {
+fn retry_connect(sock: SocketAddr, token: &str) -> Result<BrowserClient, String> {
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
-        match BrowserClient::connect(sock) {
+        match BrowserClient::connect(sock, token) {
             Ok(c) => return Ok(c),
             Err(e) if Instant::now() < deadline => {
                 let _ = e;

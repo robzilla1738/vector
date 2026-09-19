@@ -157,10 +157,10 @@ describeIfEngine("vector-engine backend", () => {
   }, 60_000);
 
   itIfChromium("auto: a mid-program capability_unsupported falls back to Chromium and records the origin", async () => {
-    await invoke("settings.set", { engineMode: "auto" });
+    await invoke("settings.set", { engineMode: "auto", engineCohorts: ["127.0.0.1"] });
     const page = await invoke<PageTarget>("pages.open", { url: `${RECORDS}/records`, background: true });
     expect(page.backend).toBe("vector-engine");
-    expect(page.routeReason).toBe("hybrid:engine-first");
+    expect(page.routeReason).toBe("hybrid:qualified-cohort:127.0.0.1");
 
     const res = await invoke<ProgramResult>("pages.execute", {
       program: {

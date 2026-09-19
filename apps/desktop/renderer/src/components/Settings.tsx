@@ -51,9 +51,11 @@ export function Settings() {
   const [dataDir, setDataDir] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
   const [cookieImport, setCookieImport] = useState<{ busy: boolean; result?: CookieImportResult; error?: string }>({ busy: false });
+  const [sitePermissions, setSitePermissions] = useState<Record<string, Record<string, "allow" | "deny">>>({});
 
   useEffect(() => {
     void bridge.dataDir().then(setDataDir);
+    void bridge.sitePermissions().then(setSitePermissions).catch(() => {});
     void call<{ models: ModelEntry[] }>("models.list")
       .then((r) => setModels(r.models))
       .catch(() => {});
@@ -117,6 +119,16 @@ export function Settings() {
               </button>
             ))}
           </div>
+        </Field>
+        <Field label="Qualified engine sites" hint="Comma-separated origins, hosts, or wildcards such as docs.example.com and *.internal.example. Other sites use Chromium in Auto mode.">
+          <input
+            type="text"
+            defaultValue={Array.isArray(settings.engineCohorts) ? settings.engineCohorts.join(", ") : ""}
+            placeholder="docs.example.com, *.internal.example"
+            onBlur={(event) => void set({
+              engineCohorts: event.currentTarget.value.split(",").map((value) => value.trim()).filter(Boolean),
+            })}
+          />
         </Field>
 
         <div className="drawer-section">Models</div>
@@ -196,9 +208,6 @@ export function Settings() {
             ] as const).map(([key, label, locked]) => {
               const grants = (settings.effectGrants as string[] | undefined) ?? [
                 "effect:read",
-                "effect:write",
-                "effect:destructive",
-                "effect:egress",
               ];
               const on = grants.includes(key) || grants.includes("effect:*");
               return (
@@ -225,6 +234,23 @@ export function Settings() {
         </Field>
 
         <div className="drawer-section">Browsing</div>
+        <Field label="Site permissions" hint="Permissions are shared by human and agent-driven tabs in the same browsing profile.">
+          <div className="settings-list">
+            {Object.entries(sitePermissions).length === 0 && <span className="hint">No saved site decisions.</span>}
+            {Object.entries(sitePermissions).map(([origin, permissions]) => (
+              <div className="row" key={origin}>
+                <span className="grow">{origin} · {Object.entries(permissions).map(([name, decision]) => `${name}: ${decision}`).join(", ")}</span>
+                <button type="button" onClick={() => void bridge.clearSitePermission(origin).then(() => {
+                  setSitePermissions((current) => {
+                    const next = { ...current };
+                    delete next[origin];
+                    return next;
+                  });
+                })}>Reset</button>
+              </div>
+            ))}
+          </div>
+        </Field>
         <Field label="Search engine" hint="URL template — %s is replaced by the query.">
           <input defaultValue={(settings.searchEngine as string) ?? "https://duckduckgo.com/?q=%s"} onBlur={(e) => void set({ searchEngine: e.target.value })} />
         </Field>

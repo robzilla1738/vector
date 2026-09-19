@@ -39,7 +39,7 @@ The socket also accepts RPC frames `{ "id", "method", "params" }` and answers
 | Method | Params | Notes |
 |---|---|---|
 | `pages.list` | `backend?, includeDetached?` | all pages, optionally one backend |
-| `pages.open` | `url, backend?, background?, activate?, targetId?` | `backend: "vector"` (default) `\| "chrome" \| "vector-engine"`. `vector` is *routable*: with `settings.engineMode: "auto"` the router may place the page on the Vector Engine and fall back to Chromium; `vector-engine` forces the engine (no fallback); `chrome` requires `targetId` of an existing attached tab. The result (`PageTarget`) carries `routeReason` — see [Backends and routing](#backends-and-routing) |
+| `pages.open` | `url, backend?, background?, activate?, targetId?` | Omit `backend` for policy routing. Explicit `vector` selects embedded Chromium, `vector-engine` forces the engine (no fallback), and `chrome` requires `targetId` of an existing attached tab. The result (`PageTarget`) carries `routeReason` — see [Backends and routing](#backends-and-routing) |
 | `pages.close` | `pageId` | borrowed chrome tabs are detached, not closed |
 | `pages.activate` / `pages.navigate` / `pages.back` / `pages.forward` / `pages.reload` / `pages.stop` | `pageId` (+`url`) | navigation bumps `documentEpoch`. `pages.activate` on a `vector-engine` page marks it active (no native Chromium view) |
 | `pages.observe` | `pageId, scope?, subtreeRef?, maxElements?, maxTextChars?, format?, sinceRevision?` | structured observation: elements+refs, forms, links, tables, frames, text, headings. `format: "compact"` returns `{ observation: { pageId, url, title, documentEpoch, revision, text, refs: [{ ref, role?, name? }] } }` — the rendered text the planner reads plus a minimal ref list, no selectors/rects (5–10× smaller). Every observe is a full snapshot with a `changesSince` diff computed by the runtime against the previous observation. On Chromium `sinceRevision` is accepted and ignored; on `vector-engine` it is forwarded and the engine's own journal-derived `changesSince` lines come back appended as one extra `refs changed: …` entry |
@@ -64,28 +64,32 @@ The socket also accepts RPC frames `{ "id", "method", "params" }` and answers
 |---|---|
 | `vector` | Vector's own Chromium — the Electron `WebContentsView` in the shell, headless Chromium in standalone mode |
 | `chrome` | the user's Chrome attached over CDP (`chrome.attach`); tabs are borrowed |
-| `vector-engine` | the in-process Vector Engine (`@vector/engine-native`, `engine/`); headless, software screenshots |
+| `vector-engine` | Vector's Rust engine (`@vector/engine-native`, `engine/`); process-isolated in production |
 
 `settings.engineMode` (`EngineModeSchema`: `"off" | "auto" | "always"`)
-decides where a `backend: "vector"` open lands. Schema fallback is `auto`.
-`pnpm dev` and the desktop shell set `VECTOR_ENGINE_MODE=always`. A stored
-setting wins over the env. `VECTOR_ENGINE_PROFILE=production` forces
-process-isolated `ve-host` and `routeReason: native-only`. The router
+decides where an open with no backend lands. `backend: "vector"` explicitly
+selects embedded Chromium. The desktop default is `auto`; a stored setting
+wins over the env. `VECTOR_ENGINE_PROFILE=production` forces process-isolated
+`ve-host`, while `VECTOR_NATIVE_ONLY=1` disables Chromium fallback. In `auto`,
+ordinary HTTP(S) origins stay on Chromium. Origins matched by
+`settings.engineCohorts` (or `VECTOR_ENGINE_COHORTS`) and safe `about:`/`data:`
+documents may use the engine with fallback. The router
 (`apps/runtime/src/services/router.ts`) is deterministic and returns the
 decision as `PageTarget.routeReason`:
 
 | `routeReason` | Meaning |
 |---|---|
 | `engine-mode-off` | `engineMode: off` — Chromium |
-| `explicit-backend:chrome` / `explicit-backend:vector-engine` | caller named the backend; no fallback |
+| `explicit-backend:vector` / `explicit-backend:chrome` / `explicit-backend:vector-engine` | caller named the backend; no fallback |
 | `engine-always` | `engineMode: always` (developer profile) — engine, no fallback |
-| `native-only` | production profile — engine, no Chromium fallback |
+| `native-only` | `VECTOR_NATIVE_ONLY=1` — engine, no Chromium fallback |
 | `native-only:engine-unavailable` | production profile and the engine did not connect |
-| `engine-unavailable` | `auto`, but the addon is not loaded/connected — Chromium |
+| `hybrid:engine-unavailable` | `auto`, but the addon is not loaded/connected — Chromium |
 | `unsupported-scheme:<scheme>` / `unparseable-url` | `auto`, URL the engine cannot open (it opens `http:`, `https:`, `file:`, `data:`, `about:`) — Chromium |
 | `needs-chromium-table:<reason>` | `auto`, origin recorded as Chromium-only within the last 24 h — Chromium |
-| `engine-first` | `auto` — opened on the engine (background/CLI, or `engineMode: always`) |
-| `engine-first:native-view` | `auto` in the desktop shell: a tab that will be shown opens on Chromium so the stage has a `WebContentsView` |
+| `hybrid:chromium-default` | `auto` — unqualified origin, opened on embedded Chromium |
+| `hybrid:qualified-cohort:<cohort>` | `auto` — origin is explicitly qualified for the Vector Engine |
+| `hybrid:engine-safe-scheme:<scheme>` | `auto` — `about:` or `data:` document on the Vector Engine |
 | `engine-always(classified:<reason>)` / `explicit-backend:vector-engine(classified:<reason>)` | the document was classified script-dependent but fallback is not allowed, so the page stays on the engine |
 | `fallback:<reason>` | `auto`: the engine classified the document as script-dependent (`empty-shell`, `empty-root-container: …`, `empty-viewport: …`, `noscript-requires-js`, `meta-refresh-javascript`, `body-onload`, `form-onsubmit`, `template-heavy`, `unsupported-content: …`) or failed mid-program / open (`mid-program:<op>:<message>`, `backend_unavailable`, `internal`); the page was reopened on Chromium and the origin recorded in the needs-chromium table |
 
@@ -94,7 +98,8 @@ Mid-program fallback: when a step on an engine page fails with
 moves the page to Chromium at its
 current URL (same `pageId`, new `targetId`, `documentEpoch` bumped, a
 `page.updated` event with the new `routeReason`), records the origin, takes a
-fresh observation, and replays the remaining steps there. `ProgramResult`
+fresh observation, and replays remaining read-only steps there. A completed
+or pending write stays failed with `repair: true` so it cannot be duplicated. `ProgramResult`
 then carries:
 
 ```json
