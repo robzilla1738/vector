@@ -483,7 +483,9 @@ impl LayoutEngine {
             } else {
                 viewport_rect
             };
-            block::layout_positioned(&mut fresh, &mut ctx, abs_cb, viewport_rect);
+            let mut anchors = std::collections::HashMap::new();
+            block::collect_anchors(&fresh, &mut anchors);
+            block::layout_positioned(&mut fresh, &mut ctx, abs_cb, viewport_rect, &anchors);
             finish_subtree(&mut fresh, inherited_clip);
             if let Some(slot) = tree.root.find_mut(boundary) {
                 *slot = fresh;
@@ -614,6 +616,11 @@ fn apply_transforms(bx: &mut LayoutBox) {
         let (ox, oy) = bx.style.offset_path.translation(bx.style.offset_distance);
         if ox != 0.0 || oy != 0.0 {
             block::translate_subtree(bx, ox, oy);
+        }
+        if !matches!(bx.style.writing_mode, ve_style::WritingMode::HorizontalTb)
+            && bx.style.text_orientation == ve_style::TextOrientation::Sideways
+        {
+            rotate_subtree(bx, bx.rect.center(), std::f32::consts::FRAC_PI_2);
         }
         if !bx.style.transform.is_empty() {
             let rect = bx.rect;
@@ -1650,6 +1657,86 @@ mod tests {
             p.height() >= 30.0,
             "resize:both contains the float, got height {}",
             p.height()
+        );
+    }
+
+    #[test]
+    fn float_offset_shifts_placed_float() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #f{float:left;width:40px;height:20px;float-offset:16px}</style>\
+             <div id=f></div>",
+            400.0,
+        );
+        let f = rect(&tree, &engine, &doc, "#f");
+        assert!(
+            (f.x() - 16.0).abs() < 0.5,
+            "float-offset 16px, got {f:?}"
+        );
+    }
+
+    #[test]
+    fn text_orientation_sideways_rotates_vertical_box() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}\
+             #u{width:20px;height:10px;writing-mode:vertical-rl;text-orientation:upright}\
+             #s{width:20px;height:10px;writing-mode:vertical-rl;text-orientation:sideways}</style>\
+             <div id=u></div><div id=s></div>",
+            400.0,
+        );
+        let u = rect(&tree, &engine, &doc, "#u");
+        let s = rect(&tree, &engine, &doc, "#s");
+        assert!(
+            (u.width() - 20.0).abs() < 0.5 && (u.height() - 10.0).abs() < 0.5,
+            "upright keeps specified size, got {u:?}"
+        );
+        assert!(
+            (s.width() - 10.0).abs() < 1.0 && (s.height() - 20.0).abs() < 1.0,
+            "sideways rotates 90deg, got {s:?}"
+        );
+    }
+
+    #[test]
+    fn position_anchor_and_area_place_against_named_box() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}\
+             #a{width:40px;height:20px;anchor-name:--foo}\
+             #b{position:absolute;width:10px;height:10px;position-anchor:--foo;position-area:bottom}</style>\
+             <div id=a></div><div id=b></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert_eq!(a, Rect::new(0.0, 0.0, 40.0, 20.0));
+        assert!(
+            (b.x() - 0.0).abs() < 0.5 && (b.y() - 20.0).abs() < 0.5,
+            "position-area:bottom against --foo, got {b:?}"
+        );
+    }
+
+    #[test]
+    fn visibility_collapse_zeroes_row_keeps_column_width() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} table{border-spacing:0} td{padding:0}</style>\
+             <table><tr id=vis><td id=a style='height:20px'>xx</td></tr>\
+             <tr id=hid style='visibility:collapse'><td id=b>wwwwwwww</td></tr></table>",
+            400.0,
+        );
+        let hid = rect(&tree, &engine, &doc, "#hid");
+        let table = rect(&tree, &engine, &doc, "table");
+        assert!(
+            hid.height() < 0.5,
+            "collapsed row height is 0, got {}",
+            hid.height()
+        );
+        assert!(
+            table.width() >= 60.0,
+            "collapsed row still contributes column width, table width {}",
+            table.width()
+        );
+        assert!(
+            table.height() >= 19.0 && table.height() < 25.0,
+            "only the visible row counts, table height {}",
+            table.height()
         );
     }
 }

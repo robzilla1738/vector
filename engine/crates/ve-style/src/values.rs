@@ -1295,6 +1295,36 @@ impl ShapeOutside {
 }
 
 keyword_enum! {
+    /// The `text-orientation` property.
+    TextOrientation {
+        /// Mixed upright / sideways in vertical writing modes.
+        Mixed = "mixed",
+        /// Keep glyphs upright.
+        Upright = "upright",
+        /// Rotate glyphs 90 degrees in vertical writing modes.
+        Sideways = "sideways",
+    }
+}
+
+keyword_enum! {
+    /// `position-area` / `inset-area` region around an anchor.
+    PositionArea {
+        /// No area; use insets against the containing block.
+        None = "none",
+        /// Above the anchor.
+        Top = "top",
+        /// Below the anchor.
+        Bottom = "bottom",
+        /// Toward the inline start of the anchor.
+        Left = "left",
+        /// Toward the inline end of the anchor.
+        Right = "right",
+        /// Centered on the anchor.
+        Center = "center",
+    }
+}
+
+keyword_enum! {
     /// The `content-visibility` property.
     ContentVisibility {
         /// Paint and lay out normally.

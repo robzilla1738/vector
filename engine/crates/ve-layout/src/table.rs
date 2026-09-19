@@ -22,6 +22,7 @@
 use ve_core::{Point, Rect, Size};
 use ve_style::{
     BorderCollapse, BoxSizing, CaptionSide, LengthPercentageAuto, TableLayout, VerticalAlign,
+    Visibility,
 };
 
 use crate::block::{
@@ -629,6 +630,11 @@ fn layout_rows(
             - overlap_sum(&row_ov, gc.grid_row, last);
         if h > spanned {
             row_heights[last] += h - spanned;
+        }
+    }
+    for (i, &(g, r)) in grid.rows.iter().enumerate() {
+        if bx.children[g].children[r].style.visibility == Visibility::Collapse {
+            row_heights[i] = 0.0;
         }
     }
 

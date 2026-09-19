@@ -26,11 +26,11 @@ use crate::values::{
     Float, FontFamily,
     FontStyle, FontWeight, GridLine, GridTemplateAreas, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
-    Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, ObjectFit, OffsetPath, Overflow, OverflowWrap, PointerEvents, Position, Rgba,
+    Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, ObjectFit, OffsetPath, Overflow, OverflowWrap, PointerEvents, Position, PositionArea, Rgba,
     SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
-    Resize, ShapeOutside, TableLayout, VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
+    Resize, ShapeOutside, TableLayout, TextOrientation, VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
 };
 
 /// Custom property store: raw token text keyed by `--name`.
@@ -948,6 +948,7 @@ macro_rules! property_table {
                     "overflow-inline" => Some(Self::OverflowX),
                     "overflow-block" => Some(Self::OverflowY),
                     "word-wrap" => Some(Self::OverflowWrap),
+                    "inset-area" => Some(Self::PositionArea),
                     _ if lower.starts_with("--") && lower.len() > 2 => Some(Self::Custom(name.to_owned())),
                     _ => None,
                 }
@@ -1374,6 +1375,16 @@ property_table! {
     OffsetDistance: "offset-distance" => offset_distance: LengthPercentage = LengthPercentage::ZERO, inherited = false, syntax = Single, convert = conv::lp;
     /// `shape-outside` (`none` or `inset()`)
     ShapeOutside: "shape-outside" => shape_outside: ShapeOutside = ShapeOutside::None, inherited = false, syntax = ShapeOutside, convert = conv::shape_outside;
+    /// `text-orientation`
+    TextOrientation: "text-orientation" => text_orientation: TextOrientation = TextOrientation::Mixed, inherited = true, syntax = Single, convert = conv::kw::<TextOrientation>;
+    /// Extra offset after float placement.
+    FloatOffset: "float-offset" => float_offset: LengthPercentage = LengthPercentage::ZERO, inherited = false, syntax = Single, convert = conv::lp;
+    /// `anchor-name` (`none` is empty).
+    AnchorName: "anchor-name" => anchor_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `position-anchor` (`none` is empty).
+    PositionAnchor: "position-anchor" => position_anchor: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `position-area` / `inset-area`.
+    PositionArea: "position-area" => position_area: PositionArea = PositionArea::None, inherited = false, syntax = Single, convert = conv::kw::<PositionArea>;
 }
 
 impl ComputedStyle {
@@ -1446,15 +1457,7 @@ impl ComputedStyle {
 /// Properties whose *unknown or deferred* declarations could change what is
 /// displayed, where, or whether it is visible. Used by the coverage counter
 /// (see [`crate::coverage`]).
-pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
-    "position-anchor",
-    "anchor-name",
-    "inset-area",
-    "position-area",
-    "text-orientation",
-    "float-offset",
-    "visibility-collapse",
-];
+pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[];
 
 /// Known properties the engine parses names for but does not implement.
 /// Declarations of these count as `deferred` rather than `unknown`.
@@ -1540,15 +1543,10 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "line-clamp",
     "-webkit-line-clamp",
     "-webkit-box-orient",
-    "inset-area",
-    "position-area",
-    "position-anchor",
-    "anchor-name",
     "view-transition-name",
     "text-emphasis",
     "ruby-position",
     "caret-color",
-    "text-orientation",
     "font-synthesis",
     "font-language-override",
     "font-palette",
@@ -3528,11 +3526,17 @@ mod tests {
         ok("offset-path", "path(\"M 0 0 L 80 0\")");
         ok("offset-distance", "50%");
         ok("shape-outside", "inset(0 20px 0 0)");
+        ok("text-orientation", "upright");
+        ok("float-offset", "12px");
+        ok("anchor-name", "--foo");
+        ok("position-anchor", "--foo");
+        ok("position-area", "bottom");
+        ok("inset-area", "top");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 140);
+        assert_eq!(PropertyId::ALL.len(), 145);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

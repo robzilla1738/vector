@@ -1,10 +1,12 @@
 //! Block formatting: sizing a box against its containing block and stacking
 //! block-level children vertically, placing floats and honouring `clear`.
 
+use std::collections::HashMap;
+
 use ve_core::{Edges, Point, Rect, Size};
 use ve_style::{
     BoxSizing, ComputedStyle, Float, LengthPercentage, LengthPercentageAuto, ListStylePosition,
-    Position, PseudoElement, WritingMode,
+    Position, PositionArea, PseudoElement, WritingMode,
 };
 
 use crate::box_tree::{BoxKind, Fragment, LayoutBox};
@@ -120,7 +122,19 @@ pub fn layout_root(root: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) {
     };
     layout_box_at(root, ctx, cb, Point::ZERO, Forced::default());
     let viewport = Rect::new(0.0, 0.0, ctx.viewport.width, ctx.viewport.height);
-    layout_positioned(root, ctx, viewport, viewport);
+    let mut anchors = HashMap::new();
+    collect_anchors(root, &mut anchors);
+    layout_positioned(root, ctx, viewport, viewport, &anchors);
+}
+
+/// Records in-flow `anchor-name` boxes for `position-anchor` lookup.
+pub fn collect_anchors(bx: &LayoutBox, out: &mut HashMap<String, Rect>) {
+    if !bx.style.anchor_name.is_empty() {
+        out.insert(bx.style.anchor_name.clone(), bx.rect);
+    }
+    for child in &bx.children {
+        collect_anchors(child, out);
+    }
 }
 
 /// Lays out `bx` with its **margin-box** top-left at `origin`. Sets
@@ -684,6 +698,16 @@ pub fn layout_float(child: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rec
     let origin = ctx
         .floats()
         .place(side, size, y, content.x(), content.right());
+    let extra = child.style.float_offset.resolve(size.width);
+    let origin = Point::new(
+        origin.x
+            + if side == Float::Right {
+                -extra
+            } else {
+                extra
+            },
+        origin.y,
+    );
     let margin_box = Rect::new(origin.x, origin.y, size.width, size.height);
     ctx.floats()
         .set_last_wrap(child.style.shape_outside.wrap_rect(margin_box));
@@ -888,6 +912,7 @@ pub fn layout_positioned(
     ctx: &mut LayoutCtx<'_>,
     abs_cb: Rect,
     viewport: Rect,
+    anchors: &HashMap<String, Rect>,
 ) {
     let own_cb = if bx.has_own_edges() && bx.style.position.is_positioned() {
         // Padding box of this box.
@@ -903,15 +928,25 @@ pub fn layout_positioned(
             } else {
                 own_cb
             };
-            place_absolute(child, ctx, cb_rect);
+            place_absolute(child, ctx, cb_rect, anchors);
         }
-        layout_positioned(child, ctx, own_cb, viewport);
+        layout_positioned(child, ctx, own_cb, viewport, anchors);
     }
 }
 
-fn place_absolute(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, cb_rect: Rect) {
+fn place_absolute(
+    bx: &mut LayoutBox,
+    ctx: &mut LayoutCtx<'_>,
+    mut cb_rect: Rect,
+    anchors: &HashMap<String, Rect>,
+) {
     let style = bx.style.clone();
     let static_pos = bx.rect.origin;
+    if !style.position_anchor.is_empty()
+        && let Some(r) = anchors.get(&style.position_anchor)
+    {
+        cb_rect = *r;
+    }
     let cb = ContainingBlock {
         width: cb_rect.width(),
         height: Some(cb_rect.height()),
@@ -940,16 +975,34 @@ fn place_absolute(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, cb_rect: Rect) {
         },
     );
     let size = bx.rect.size;
-    let x = match (left, right) {
+    let mut x = match (left, right) {
         (Some(l), _) => cb_rect.x() + l + margins.left,
         (None, Some(r)) => cb_rect.right() - r - margins.right - size.width,
         (None, None) => static_pos.x + margins.left,
     };
-    let y = match (top, bottom) {
+    let mut y = match (top, bottom) {
         (Some(t), _) => cb_rect.y() + t + margins.top,
         (None, Some(b)) => cb_rect.bottom() - b - margins.bottom - size.height,
         (None, None) => static_pos.y + margins.top,
     };
+    if left.is_none() && right.is_none() {
+        x = match style.position_area {
+            PositionArea::Left => cb_rect.x() - size.width - margins.right,
+            PositionArea::Right => cb_rect.right() + margins.left,
+            PositionArea::Center => cb_rect.x() + (cb_rect.width() - size.width) / 2.0,
+            PositionArea::Top | PositionArea::Bottom => cb_rect.x() + margins.left,
+            PositionArea::None => x,
+        };
+    }
+    if top.is_none() && bottom.is_none() {
+        y = match style.position_area {
+            PositionArea::Top => cb_rect.y() - size.height - margins.bottom,
+            PositionArea::Bottom => cb_rect.bottom() + margins.top,
+            PositionArea::Center => cb_rect.y() + (cb_rect.height() - size.height) / 2.0,
+            PositionArea::Left | PositionArea::Right => cb_rect.y() + margins.top,
+            PositionArea::None => y,
+        };
+    }
     let forced_height = match (style.height.is_auto(), top, bottom) {
         (true, Some(t), Some(b)) => Some((cb_rect.height() - t - b - margins.vertical()).max(0.0)),
         _ => None,
