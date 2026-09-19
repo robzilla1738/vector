@@ -4583,6 +4583,7 @@ dependencies = [
 name = "ve-agent"
 version = "0.0.1"
 dependencies = [
+ "flate2",
  "imagesize",
  "png",
  "serde",
