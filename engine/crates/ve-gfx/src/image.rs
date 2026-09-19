@@ -608,9 +608,13 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             .unwrap_or("")
             .to_ascii_lowercase()
             .starts_with("vertical");
+        let kern = svg_font_kern(tag);
         let mut text_w = 0.0_f32;
         let chars: Vec<char> = content.chars().collect();
         for (i, ch) in chars.iter().enumerate() {
+            if i > 0 && kern {
+                text_w += svg_pair_kern(chars[i - 1], *ch);
+            }
             text_w += if *ch == ' ' {
                 4.0 * scale + word_sp
             } else {
@@ -666,6 +670,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             italic,
             rotate,
             stretch,
+            kern,
         );
         if svg_font_bold(tag) {
             paint_svg_text(
@@ -682,6 +687,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 italic,
                 rotate,
                 stretch,
+                kern,
             );
         }
         let deco = svg_attr_str(tag, "text-decoration")
@@ -2141,7 +2147,7 @@ fn parse_clip_or_mask_block(block: &str, id: &str, out: &mut HashMap<String, Svg
                 },
             );
         }
-    } else if let Some(gi) = block.find("<polygon") {
+    } else if let Some(gi) = block.find("<polygon").or_else(|| block.find("<polyline")) {
         let ge = block[gi..].find('>').unwrap_or(block.len() - gi);
         let gtag = &block[gi..gi + ge];
         let pts = svg_poly_points(gtag);
@@ -2773,6 +2779,19 @@ fn svg_font_italic(tag: &str) -> bool {
     s.eq_ignore_ascii_case("italic") || s.eq_ignore_ascii_case("oblique")
 }
 
+fn svg_font_kern(tag: &str) -> bool {
+    !svg_attr_str(tag, "font-kerning")
+        .unwrap_or("auto")
+        .eq_ignore_ascii_case("none")
+}
+
+fn svg_pair_kern(a: char, b: char) -> f32 {
+    match (a, b) {
+        ('A', 'V') | ('V', 'A') | ('T', 'o') | ('A', 'W') | ('W', 'A') => -2.0,
+        _ => 0.0,
+    }
+}
+
 fn svg_font_stretch(tag: &str) -> f32 {
     let s = svg_attr_str(tag, "font-stretch").unwrap_or("normal");
     match s.to_ascii_lowercase().as_str() {
@@ -2869,6 +2888,7 @@ fn paint_svg_text(
     italic: bool,
     rotate: f32,
     stretch: f32,
+    kern: bool,
 ) {
     let mut cx = x;
     let mut cy = y;
@@ -2876,6 +2896,7 @@ fn paint_svg_text(
     let gap = letter_spacing;
     let word = word_spacing;
     let s = scale.round().max(1.0) as i32;
+    let mut prev = '\0';
     let step = |ch: char| -> f32 {
         if ch == ' ' {
             4.0 * scale + gap + word
@@ -2884,6 +2905,15 @@ fn paint_svg_text(
         }
     };
     for ch in content.chars() {
+        if kern && prev != '\0' {
+            let k = svg_pair_kern(prev, ch);
+            along += k;
+            if vertical {
+                cy += k;
+            } else {
+                cx += k;
+            }
+        }
         let (px, py) = if let Some(pts) = path.filter(|p| p.len() >= 2) {
             svg_polyline_at(pts, along)
         } else {
@@ -2939,6 +2969,7 @@ fn paint_svg_text(
         } else {
             cx += adv;
         }
+        prev = ch;
     }
 }
 
@@ -4871,6 +4902,36 @@ mod tests {
         )
         .expect("svg display none");
         assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_font_kerning_tightens_av_pair() {
+        let none = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='8'>\
+              <text x='0' y='7' fill='#ff0000' font-kerning='none'>AV</text></svg>",
+        )
+        .expect("svg kern none");
+        let auto = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='8'>\
+              <text x='0' y='7' fill='#ff0000'>AV</text></svg>",
+        )
+        .expect("svg kern auto");
+        assert_eq!(none.pixel(6, 0), Some([255, 0, 0, 255]));
+        assert_eq!(none.pixel(4, 0), Some([0, 0, 0, 0]));
+        assert_eq!(auto.pixel(4, 0), Some([255, 0, 0, 255]));
+        assert_eq!(auto.pixel(6, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_clip_path_polyline_masks_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><clipPath id='c'><polyline points='2,2 6,2 6,6 2,6 2,2'/></clipPath></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000' clip-path='url(#c)'/></svg>",
+        )
+        .expect("svg polyline clip");
+        assert_eq!(img.pixel(4, 4), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(1, 1), Some([0, 0, 0, 0]));
     }
 
     #[test]

@@ -6551,6 +6551,95 @@ fn webgl_blend_func_separate_keeps_rgb_replaces_alpha() {
 }
 
 #[test]
+fn webgl_depth_mask_false_skips_depth_write() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.5, 1, -1, 0.5, -1, 1, 0.5,
+                1, -1, 0.5, 1, 1, 0.5, -1, 1, 0.5
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.depthMask(false);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.2, 1, -1, 0.2, -1, 1, 0.2,
+                1, -1, 0.2, 1, 1, 0.2, -1, 1, 0.2
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.3, 1, -1, 0.3, -1, 1, 0.3,
+                1, -1, 0.3, 1, 1, 0.3, -1, 1, 0.3
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 255, "{v}");
+}
+
+#[test]
+fn webgl_stencil_test_clips_second_draw() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.STENCIL_TEST);
+              gl.stencilFunc(gl.ALWAYS, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0, -1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              gl.stencilFunc(gl.EQUAL, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const left = new Uint8Array(4);
+              const right = new Uint8Array(4);
+              gl.readPixels(1, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, left);
+              gl.readPixels(6, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, right);
+              return { lg: left[1], la: left[3], rg: right[1], ra: right[3], cap: gl.STENCIL_TEST };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 2960, "{v}");
+    assert_eq!(v["lg"], 255, "{v}");
+    assert_eq!(v["la"], 255, "{v}");
+    assert_eq!(v["rg"], 0, "{v}");
+    assert_eq!(v["ra"], 0, "{v}");
+}
+
+#[test]
 fn webgl_get_parameter_reports_line_width() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page

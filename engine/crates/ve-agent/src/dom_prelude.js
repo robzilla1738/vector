@@ -9520,6 +9520,13 @@
       this.NOTEQUAL = 517;
       this.GEQUAL = 518;
       this.ALWAYS = 519;
+      this.STENCIL_TEST = 2960;
+      this.STENCIL_BUFFER_BIT = 1024;
+      this.KEEP = 7680;
+      this.REPLACE = 7681;
+      this.INCR = 7682;
+      this.DECR = 7683;
+      this.INVERT = 5386;
       this.FRONT = 1028;
       this.BACK = 1029;
       this.CCW = 2304;
@@ -9533,6 +9540,15 @@
       this._depthOn = false;
       this._depth = null;
       this._depthFunc = 513;
+      this._depthMask = true;
+      this._stencilOn = false;
+      this._stencil = null;
+      this._stencilFunc = 519;
+      this._stencilRef = 0;
+      this._stencilMask = 255;
+      this._stencilFail = 7680;
+      this._stencilZFail = 7680;
+      this._stencilZPass = 7680;
       this._blendA = [1, 0];
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
@@ -9588,6 +9604,7 @@
     clear(mask) {
       const bits = mask == null ? (this.COLOR_BUFFER_BIT | this.DEPTH_BUFFER_BIT) : (Number(mask) || 0);
       if (bits & this.DEPTH_BUFFER_BIT) this._resetDepth();
+      if (bits & this.STENCIL_BUFFER_BIT) this._resetStencil();
       if (mask != null && !(bits & this.COLOR_BUFFER_BIT)) return;
       const [r, g, b, a] = this._clear;
       if (this._fb && this._fb._tex) {
@@ -9631,12 +9648,14 @@
       if (cap === this.BLEND) this._blendOn = true;
       if (cap === this.CULL_FACE) this._cullOn = true;
       if (cap === this.DEPTH_TEST) this._depthOn = true;
+      if (cap === this.STENCIL_TEST) this._stencilOn = true;
     }
     disable(cap) {
       if (cap === this.SCISSOR_TEST) this._scissorOn = false;
       if (cap === this.BLEND) this._blendOn = false;
       if (cap === this.CULL_FACE) this._cullOn = false;
       if (cap === this.DEPTH_TEST) this._depthOn = false;
+      if (cap === this.STENCIL_TEST) this._stencilOn = false;
     }
     cullFace(mode) {
       this._cullFace = Number(mode) || this.BACK;
@@ -9663,6 +9682,17 @@
     }
     blendEquation(mode) { this._blendEq = Number(mode) || this.FUNC_ADD; }
     depthFunc(fn) { this._depthFunc = Number(fn) || this.LESS; }
+    depthMask(flag) { this._depthMask = flag !== false; }
+    stencilFunc(func, ref, mask) {
+      this._stencilFunc = Number(func) || this.ALWAYS;
+      this._stencilRef = Number(ref) || 0;
+      this._stencilMask = mask == null ? 255 : (Number(mask) || 0);
+    }
+    stencilOp(fail, zfail, zpass) {
+      this._stencilFail = Number(fail) || this.KEEP;
+      this._stencilZFail = Number(zfail) || this.KEEP;
+      this._stencilZPass = Number(zpass) || this.KEEP;
+    }
     lineWidth(w) { this._lineWidth = Math.max(1, Number(w) || 1); }
     pixelStorei(pname, val) {
       if (pname === this.UNPACK_FLIP_Y_WEBGL) this._flipY = !!val;
@@ -9853,6 +9883,35 @@
       this._ensureDepth();
       this._depth.fill(1);
     }
+    _ensureStencil() {
+      const n = (this.canvas.width || 0) * (this.canvas.height || 0);
+      if (!this._stencil || this._stencil.length !== n) {
+        this._stencil = new Uint8Array(n);
+      }
+    }
+    _resetStencil() {
+      this._ensureStencil();
+      this._stencil.fill(0);
+    }
+    _cmp(func, a, b) {
+      if (func === this.NEVER) return false;
+      if (func === this.LESS) return a < b;
+      if (func === this.EQUAL) return a === b;
+      if (func === this.LEQUAL) return a <= b;
+      if (func === this.GREATER) return a > b;
+      if (func === this.NOTEQUAL) return a !== b;
+      if (func === this.GEQUAL) return a >= b;
+      return true;
+    }
+    _applyStencilOp(di, op) {
+      let v = this._stencil[di] || 0;
+      if (op === this.ZERO) v = 0;
+      else if (op === this.REPLACE) v = this._stencilRef & 255;
+      else if (op === this.INCR) v = Math.min(255, v + 1);
+      else if (op === this.DECR) v = Math.max(0, v - 1);
+      else if (op === this.INVERT) v = (~v) & 255;
+      this._stencil[di] = v;
+    }
     _triZ(pts) {
       if (!pts.length) return 0;
       let s = 0;
@@ -9878,11 +9937,12 @@
       const c = this.canvas;
       if (!c || c.__h == null || !pts || pts.length < 3) return;
       const ring = pts.concat([pts[0]]);
-      if (!this._depthOn) {
+      if (!this._depthOn && !this._stencilOn) {
         D("canvasFillPath", c.__h, JSON.stringify({ r: [], p: [ring] }), css, "none");
         return;
       }
-      this._ensureDepth();
+      if (this._depthOn) this._ensureDepth();
+      if (this._stencilOn) this._ensureStencil();
       const [x, y, w, h] = this._polyBBox(pts);
       if (w <= 0 || h <= 0) return;
       const dest = D("canvasGetImageData", c.__h, x, y, w, h) || {};
@@ -9907,13 +9967,28 @@
         const db = destBin.charCodeAt(i + 2) || 0;
         const da = destBin.charCodeAt(i + 3) || 0;
         const painted = sr !== dr || sg !== dg || sb !== db || sa !== da;
-        const pass = painted && this._depthPass(z, this._depth[di] != null ? this._depth[di] : 1);
-        if (pass) this._depth[di] = z;
-        if (painted && !pass) {
-          out += String.fromCharCode(dr, dg, db, da);
-        } else {
+        if (!painted) {
           out += String.fromCharCode(sr, sg, sb, sa);
+          continue;
         }
+        if (this._stencilOn) {
+          const s = (this._stencil[di] || 0) & this._stencilMask;
+          const r = this._stencilRef & this._stencilMask;
+          if (!this._cmp(this._stencilFunc, s, r)) {
+            this._applyStencilOp(di, this._stencilFail);
+            out += String.fromCharCode(dr, dg, db, da);
+            continue;
+          }
+        }
+        const depthPass = !this._depthOn || this._depthPass(z, this._depth[di] != null ? this._depth[di] : 1);
+        if (!depthPass) {
+          if (this._stencilOn) this._applyStencilOp(di, this._stencilZFail);
+          out += String.fromCharCode(dr, dg, db, da);
+          continue;
+        }
+        if (this._stencilOn) this._applyStencilOp(di, this._stencilZPass);
+        if (this._depthOn && this._depthMask !== false) this._depth[di] = z;
+        out += String.fromCharCode(sr, sg, sb, sa);
       }
       D("canvasPutImageData", c.__h, w, h, btoa(out), x, y);
     }

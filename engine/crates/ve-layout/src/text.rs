@@ -163,7 +163,8 @@ impl CharClass {
 /// `0.8em`, descent `0.2em`. See the module documentation.
 ///
 /// Used when no font data is available and in tests. Wrapping is greedy at
-/// spaces; forced `\n` breaks are honoured; `word-break: break-all` and
+/// spaces and CJK ideographs; `word-break: keep-all` keeps CJK unbreakable;
+/// forced `\n` breaks are honoured; `word-break: break-all` and
 /// `overflow-wrap: anywhere|break-word` allow breaking inside words that do
 /// not fit on a line of their own.
 #[derive(Clone, Copy, Debug)]
@@ -287,6 +288,7 @@ fn greedy_wrap(
     hyphenate: bool,
     auto_hyphen: bool,
     break_spaces: bool,
+    split_cjk: bool,
     height: f32,
     baseline: f32,
     width_of: &dyn Fn(&str) -> f32,
@@ -306,7 +308,7 @@ fn greedy_wrap(
         });
     };
 
-    for (idx, word) in split_words(text, hyphenate, auto_hyphen, break_spaces) {
+    for (idx, word) in split_words(text, hyphenate, auto_hyphen, break_spaces, split_cjk) {
         if word == "\n" {
             push_line(line_start, line_end, &mut lines);
             line_start = idx + 1;
@@ -375,6 +377,7 @@ fn split_words(
     hyphenate: bool,
     auto_hyphen: bool,
     break_spaces: bool,
+    split_cjk: bool,
 ) -> Vec<(usize, &str)> {
     let mut raw = Vec::new();
     let mut start: Option<usize> = None;
@@ -398,6 +401,14 @@ fn split_words(
                 start = Some(i);
             }
             in_trailing_space = true;
+        } else if split_cjk && CharClass::of(ch) == CharClass::Ideograph {
+            if in_trailing_space && let Some(s) = start.take() {
+                raw.push((s, &text[s..i]));
+            } else if let Some(s) = start.take() {
+                raw.push((s, &text[s..i]));
+            }
+            raw.push((i, &text[i..i + ch.len_utf8()]));
+            in_trailing_space = false;
         } else {
             if in_trailing_space && let Some(s) = start.take() {
                 raw.push((s, &text[s..i]));
@@ -489,6 +500,7 @@ impl TextShaper for MetricShaper {
             style.hyphens != ve_style::Hyphens::None,
             style.hyphens == ve_style::Hyphens::Auto,
             style.white_space == ve_style::WhiteSpace::BreakSpaces,
+            style.word_break != ve_style::WordBreak::KeepAll,
             height,
             baseline,
             &width_of,

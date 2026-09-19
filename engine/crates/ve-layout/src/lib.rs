@@ -2126,6 +2126,23 @@ mod tests {
     }
 
     #[test]
+    fn word_break_keep_all_keeps_cjk_unbroken() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}\
+             #a,#b{width:24px;font-size:16px;line-height:20px;margin:0}\
+             #b{word-break:keep-all}</style>\
+             <p id=a>你好你好</p><p id=b>你好你好</p>",
+            400.0,
+        );
+        let a = engine.select_one(&doc, "#a").unwrap();
+        let b = engine.select_one(&doc, "#b").unwrap();
+        let an = tree.root.find(a).unwrap().lines.len();
+        let bn = tree.root.find(b).unwrap().lines.len();
+        assert!(an >= 2, "normal wrap splits CJK, got {an} lines");
+        assert_eq!(bn, 1, "keep-all keeps CJK on one line, got {bn}");
+    }
+
+    #[test]
     fn hyphens_manual_breaks_at_soft_hyphen() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #p{width:40px;font-size:16px;line-height:20px;hyphens:manual;margin:0}</style>\
