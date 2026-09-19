@@ -5167,6 +5167,36 @@ fn rtc_add_track_and_transceiver() {
 }
 
 #[test]
+fn midi_display_and_shared_storage_deny() {
+    let mut page = open("<title>midi</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__mds = null;
+          Promise.allSettled([
+            navigator.requestMIDIAccess(),
+            navigator.mediaDevices.getDisplayMedia({ video: true }),
+            navigator.sharedStorage.get("k"),
+            navigator.sharedStorage.set("k", "v")
+          ]).then(function (rows) {
+            window.__mds = {
+              midi: rows[0].status === "rejected" && rows[0].reason.name === "NotAllowedError",
+              display: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError",
+              get: rows[2].status === "rejected" && rows[2].reason.name === "NotAllowedError",
+              set: rows[3].status === "rejected" && rows[3].reason.name === "NotAllowedError"
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__mds").unwrap();
+    assert_eq!(v["midi"], true, "{v}");
+    assert_eq!(v["display"], true, "{v}");
+    assert_eq!(v["get"], true, "{v}");
+    assert_eq!(v["set"], true, "{v}");
+}
+
+#[test]
 fn crypto_subtle_digests_sha512() {
     let mut page = open(r#"<body></body>"#);
     let _ = page

@@ -7089,6 +7089,9 @@
           getUserMedia() {
             return Promise.reject(new DOMException("Permission denied", "NotAllowedError"));
           },
+          getDisplayMedia() {
+            return Promise.reject(new DOMException("Display capture denied", "NotAllowedError"));
+          },
           enumerateDevices() { return Promise.resolve([]); },
         };
       }
@@ -7343,6 +7346,19 @@
         };
       }
       return this._xr;
+    }
+    requestMIDIAccess() {
+      return Promise.reject(new DOMException("MIDI access denied", "NotAllowedError"));
+    }
+    get sharedStorage() {
+      if (!this._sharedStorage) {
+        this._sharedStorage = {
+          get() { return Promise.reject(new DOMException("Shared storage denied", "NotAllowedError")); },
+          set() { return Promise.reject(new DOMException("Shared storage denied", "NotAllowedError")); },
+          delete() { return Promise.reject(new DOMException("Shared storage denied", "NotAllowedError")); },
+        };
+      }
+      return this._sharedStorage;
     }
     registerProtocolHandler(scheme, url) {
       if (arguments.length < 2) {

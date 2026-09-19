@@ -199,6 +199,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     let full = text.as_ref();
     let grads = parse_svg_gradients(full);
     let clips = parse_svg_clips(full);
+    let patterns = parse_svg_patterns(full);
     let markers = parse_svg_markers(full);
     let by_id = parse_svg_ids(full);
     let mut rest = full;
@@ -207,7 +208,14 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) && !svg_hidden(tag) {
-            paint_svg_rect(&mut img, tag, svg_group_offset(full, abs), &grads, &clips);
+            paint_svg_rect(
+                &mut img,
+                tag,
+                svg_group_offset(full, abs),
+                &grads,
+                &clips,
+                &patterns,
+            );
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -217,7 +225,14 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) && !svg_hidden(tag) {
-            paint_svg_circle(&mut img, tag, svg_group_offset(full, abs), &grads, &clips);
+            paint_svg_circle(
+                &mut img,
+                tag,
+                svg_group_offset(full, abs),
+                &grads,
+                &clips,
+                &patterns,
+            );
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -227,7 +242,14 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) && !svg_hidden(tag) {
-            paint_svg_ellipse(&mut img, tag, svg_group_offset(full, abs), &grads, &clips);
+            paint_svg_ellipse(
+                &mut img,
+                tag,
+                svg_group_offset(full, abs),
+                &grads,
+                &clips,
+                &patterns,
+            );
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -305,7 +327,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         if closed && !fill.eq_ignore_ascii_case("none") && coords.len() >= 3 {
             fill_polygon_with(&mut img, &coords, |x, y| {
                 with_opacity(
-                    paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5),
+                    paint_fill_color(tag, fill, &grads, &patterns, x as f32 + 0.5, y as f32 + 0.5),
                     world.opacity,
                 )
             });
@@ -360,7 +382,14 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 if evenodd {
                     fill_contours_with(&mut img, &filled, |x, y| {
                         with_opacity(
-                            paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5),
+                            paint_fill_color(
+                                tag,
+                                fill,
+                                &grads,
+                                &patterns,
+                                x as f32 + 0.5,
+                                y as f32 + 0.5,
+                            ),
                             world.opacity,
                         )
                     });
@@ -368,7 +397,14 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                     for c in &filled {
                         fill_polygon_with(&mut img, c, |x, y| {
                             with_opacity(
-                                paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5),
+                                paint_fill_color(
+                                    tag,
+                                    fill,
+                                    &grads,
+                                    &patterns,
+                                    x as f32 + 0.5,
+                                    y as f32 + 0.5,
+                                ),
                                 world.opacity,
                             )
                         });
@@ -424,11 +460,11 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             }
             .then_tag(tag);
             if src.starts_with("<rect") {
-                paint_svg_rect(&mut img, src, xf, &grads, &clips);
+                paint_svg_rect(&mut img, src, xf, &grads, &clips, &patterns);
             } else if src.starts_with("<circle") {
-                paint_svg_circle(&mut img, src, xf, &grads, &clips);
+                paint_svg_circle(&mut img, src, xf, &grads, &clips, &patterns);
             } else if src.starts_with("<ellipse") {
-                paint_svg_ellipse(&mut img, src, xf, &grads, &clips);
+                paint_svg_ellipse(&mut img, src, xf, &grads, &clips, &patterns);
             }
         }
         rest = &rest[i + tag_end + 1..];
@@ -456,6 +492,18 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             _ => {}
         }
         paint_svg_text(&mut img, content, x, y, color);
+        if svg_attr_str(tag, "text-decoration")
+            .unwrap_or("")
+            .to_ascii_lowercase()
+            .contains("underline")
+        {
+            let x0 = x.round() as i32;
+            let y0 = y.round() as i32;
+            let x1 = x0 + text_w.round() as i32;
+            for xx in x0..x1 {
+                plot_px(&mut img, xx, y0, color);
+            }
+        }
         rest = after;
     }
     Ok(img)
@@ -622,6 +670,61 @@ struct SvgMarker {
     child: String,
 }
 
+struct SvgPattern {
+    w: f32,
+    h: f32,
+    x: f32,
+    y: f32,
+    cw: f32,
+    ch: f32,
+    color: [u8; 4],
+}
+
+fn parse_svg_patterns(text: &str) -> HashMap<String, SvgPattern> {
+    let mut out = HashMap::new();
+    let mut rest = text;
+    while let Some(i) = rest.find("<pattern") {
+        let after = &rest[i..];
+        let end = after
+            .find("</pattern>")
+            .map(|e| e + 10)
+            .unwrap_or_else(|| after.find('>').map(|e| e + 1).unwrap_or(after.len()));
+        let block = &after[..end];
+        let tag_end = block.find('>').unwrap_or(block.len());
+        let tag = &block[..tag_end];
+        if let Some(id) = svg_attr_str(tag, "id") {
+            if let Some(ri) = block.find("<rect") {
+                let re = block[ri..].find('>').unwrap_or(block.len() - ri);
+                let rtag = &block[ri..ri + re];
+                out.insert(
+                    id.to_string(),
+                    SvgPattern {
+                        w: svg_attr(tag, "width").unwrap_or(4.0).max(1.0),
+                        h: svg_attr(tag, "height").unwrap_or(4.0).max(1.0),
+                        x: svg_attr(rtag, "x").unwrap_or(0.0),
+                        y: svg_attr(rtag, "y").unwrap_or(0.0),
+                        cw: svg_attr(rtag, "width").unwrap_or(0.0),
+                        ch: svg_attr(rtag, "height").unwrap_or(0.0),
+                        color: parse_svg_color(svg_fill(rtag)),
+                    },
+                );
+            }
+        }
+        rest = &after[end..];
+    }
+    out
+}
+
+fn sample_pattern(p: &SvgPattern, x: f32, y: f32) -> [u8; 4] {
+    let lx = ((x % p.w) + p.w) % p.w;
+    let ly = ((y % p.h) + p.h) % p.h;
+    if lx >= p.x && lx < p.x + p.cw && ly >= p.y && ly < p.y + p.ch {
+        p.color
+    } else {
+        [0, 0, 0, 0]
+    }
+}
+
 fn parse_svg_markers(text: &str) -> HashMap<String, SvgMarker> {
     let mut out = HashMap::new();
     let mut rest = text;
@@ -688,11 +791,11 @@ fn paint_one_marker(
         opacity: 1.0,
     };
     if m.child.starts_with("<rect") {
-        paint_svg_rect(img, &m.child, xf, grads, clips);
+        paint_svg_rect(img, &m.child, xf, grads, clips, &HashMap::new());
     } else if m.child.starts_with("<circle") {
-        paint_svg_circle(img, &m.child, xf, grads, clips);
+        paint_svg_circle(img, &m.child, xf, grads, clips, &HashMap::new());
     } else if m.child.starts_with("<ellipse") {
-        paint_svg_ellipse(img, &m.child, xf, grads, clips);
+        paint_svg_ellipse(img, &m.child, xf, grads, clips, &HashMap::new());
     }
 }
 
@@ -743,63 +846,70 @@ enum SvgClip {
     Ellipse { cx: f32, cy: f32, rx: f32, ry: f32 },
 }
 
+fn parse_clip_or_mask_block(block: &str, id: &str, out: &mut HashMap<String, SvgClip>) {
+    if let Some(ri) = block.find("<rect") {
+        let re = block[ri..].find('>').unwrap_or(block.len() - ri);
+        let rtag = &block[ri..ri + re];
+        out.insert(
+            id.to_string(),
+            SvgClip::Rect {
+                x: svg_attr(rtag, "x").unwrap_or(0.0),
+                y: svg_attr(rtag, "y").unwrap_or(0.0),
+                w: svg_attr(rtag, "width").unwrap_or(0.0),
+                h: svg_attr(rtag, "height").unwrap_or(0.0),
+            },
+        );
+    } else if let Some(ci) = block.find("<circle") {
+        let ce = block[ci..].find('>').unwrap_or(block.len() - ci);
+        let ctag = &block[ci..ci + ce];
+        out.insert(
+            id.to_string(),
+            SvgClip::Circle {
+                cx: svg_attr(ctag, "cx").unwrap_or(0.0),
+                cy: svg_attr(ctag, "cy").unwrap_or(0.0),
+                r: svg_attr(ctag, "r").unwrap_or(0.0),
+            },
+        );
+    } else if let Some(ei) = block.find("<ellipse") {
+        let ee = block[ei..].find('>').unwrap_or(block.len() - ei);
+        let etag = &block[ei..ei + ee];
+        out.insert(
+            id.to_string(),
+            SvgClip::Ellipse {
+                cx: svg_attr(etag, "cx").unwrap_or(0.0),
+                cy: svg_attr(etag, "cy").unwrap_or(0.0),
+                rx: svg_attr(etag, "rx").unwrap_or(0.0),
+                ry: svg_attr(etag, "ry").unwrap_or(0.0),
+            },
+        );
+    }
+}
+
 fn parse_svg_clips(text: &str) -> HashMap<String, SvgClip> {
     let mut out = HashMap::new();
-    let mut rest = text;
-    while let Some(i) = rest.find("<clipPath") {
-        let after = &rest[i..];
-        let end = after
-            .find("</clipPath>")
-            .map(|e| e + 11)
-            .unwrap_or_else(|| after.find('>').map(|e| e + 1).unwrap_or(after.len()));
-        let block = &after[..end];
-        let tag_end = block.find('>').unwrap_or(block.len());
-        let tag = &block[..tag_end];
-        if let Some(id) = svg_attr_str(tag, "id") {
-            if let Some(ri) = block.find("<rect") {
-                let re = block[ri..].find('>').unwrap_or(block.len() - ri);
-                let rtag = &block[ri..ri + re];
-                out.insert(
-                    id.to_string(),
-                    SvgClip::Rect {
-                        x: svg_attr(rtag, "x").unwrap_or(0.0),
-                        y: svg_attr(rtag, "y").unwrap_or(0.0),
-                        w: svg_attr(rtag, "width").unwrap_or(0.0),
-                        h: svg_attr(rtag, "height").unwrap_or(0.0),
-                    },
-                );
-            } else if let Some(ci) = block.find("<circle") {
-                let ce = block[ci..].find('>').unwrap_or(block.len() - ci);
-                let ctag = &block[ci..ci + ce];
-                out.insert(
-                    id.to_string(),
-                    SvgClip::Circle {
-                        cx: svg_attr(ctag, "cx").unwrap_or(0.0),
-                        cy: svg_attr(ctag, "cy").unwrap_or(0.0),
-                        r: svg_attr(ctag, "r").unwrap_or(0.0),
-                    },
-                );
-            } else if let Some(ei) = block.find("<ellipse") {
-                let ee = block[ei..].find('>').unwrap_or(block.len() - ei);
-                let etag = &block[ei..ei + ee];
-                out.insert(
-                    id.to_string(),
-                    SvgClip::Ellipse {
-                        cx: svg_attr(etag, "cx").unwrap_or(0.0),
-                        cy: svg_attr(etag, "cy").unwrap_or(0.0),
-                        rx: svg_attr(etag, "rx").unwrap_or(0.0),
-                        ry: svg_attr(etag, "ry").unwrap_or(0.0),
-                    },
-                );
+    for (open, close) in [("<clipPath", "</clipPath>"), ("<mask", "</mask>")] {
+        let mut rest = text;
+        while let Some(i) = rest.find(open) {
+            let after = &rest[i..];
+            let end = after
+                .find(close)
+                .map(|e| e + close.len())
+                .unwrap_or_else(|| after.find('>').map(|e| e + 1).unwrap_or(after.len()));
+            let block = &after[..end];
+            let tag_end = block.find('>').unwrap_or(block.len());
+            let tag = &block[..tag_end];
+            if let Some(id) = svg_attr_str(tag, "id") {
+                parse_clip_or_mask_block(block, id, &mut out);
             }
+            rest = &after[end..];
         }
-        rest = &after[end..];
     }
     out
 }
 
 fn clip_allows(tag: &str, clips: &HashMap<String, SvgClip>, x: f32, y: f32) -> bool {
-    let Some(raw) = svg_attr_str(tag, "clip-path") else {
+    let raw = svg_attr_str(tag, "clip-path").or_else(|| svg_attr_str(tag, "mask"));
+    let Some(raw) = raw else {
         return true;
     };
     let Some(id) = parse_url_id(raw) else {
@@ -911,6 +1021,7 @@ fn paint_svg_rect(
     g: SvgXform,
     grads: &HashMap<String, SvgGrad>,
     clips: &HashMap<String, SvgClip>,
+    patterns: &HashMap<String, SvgPattern>,
 ) {
     let (esx, esy) = svg_scale(tag);
     let (etx, ety) = svg_translate(tag);
@@ -940,7 +1051,14 @@ fn paint_svg_rect(
                         continue;
                     }
                     let color = with_opacity(
-                        paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
+                        paint_fill_color(
+                            tag,
+                            fill,
+                            grads,
+                            patterns,
+                            xx as f32 + 0.5,
+                            yy as f32 + 0.5,
+                        ),
                         g.opacity,
                     );
                     let idx = ((yy * img.width + xx) * 4) as usize;
@@ -1002,7 +1120,14 @@ fn paint_svg_rect(
                 }
                 if !fill.eq_ignore_ascii_case("none") {
                     let color = with_opacity(
-                        paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
+                        paint_fill_color(
+                            tag,
+                            fill,
+                            grads,
+                            patterns,
+                            xx as f32 + 0.5,
+                            yy as f32 + 0.5,
+                        ),
                         g.opacity,
                     );
                     let idx = ((yy * img.width + xx) * 4) as usize;
@@ -1045,6 +1170,7 @@ fn paint_svg_circle(
     g: SvgXform,
     grads: &HashMap<String, SvgGrad>,
     clips: &HashMap<String, SvgClip>,
+    patterns: &HashMap<String, SvgPattern>,
 ) {
     let world = g.then_tag(tag);
     let (cx, cy) = world.map(
@@ -1085,7 +1211,7 @@ fn paint_svg_circle(
             }
             if in_fill {
                 let color = with_opacity(
-                    paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
+                    paint_fill_color(tag, fill, grads, patterns, xx as f32 + 0.5, yy as f32 + 0.5),
                     world.opacity,
                 );
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
@@ -1103,6 +1229,7 @@ fn paint_svg_ellipse(
     g: SvgXform,
     grads: &HashMap<String, SvgGrad>,
     clips: &HashMap<String, SvgClip>,
+    patterns: &HashMap<String, SvgPattern>,
 ) {
     let world = g.then_tag(tag);
     let (cx, cy) = world.map(
@@ -1142,7 +1269,7 @@ fn paint_svg_ellipse(
             }
             if in_fill {
                 let color = with_opacity(
-                    paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
+                    paint_fill_color(tag, fill, grads, patterns, xx as f32 + 0.5, yy as f32 + 0.5),
                     world.opacity,
                 );
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
@@ -1415,13 +1542,21 @@ fn paint_fill_color(
     tag: &str,
     fill: &str,
     grads: &HashMap<String, SvgGrad>,
+    patterns: &HashMap<String, SvgPattern>,
     x: f32,
     y: f32,
 ) -> [u8; 4] {
-    let color = parse_url_id(fill)
-        .and_then(|id| grads.get(id))
-        .map(|g| sample_grad(g, x, y))
-        .unwrap_or_else(|| parse_svg_color(fill));
+    let color = if let Some(id) = parse_url_id(fill) {
+        if let Some(p) = patterns.get(id) {
+            sample_pattern(p, x, y)
+        } else if let Some(g) = grads.get(id) {
+            sample_grad(g, x, y)
+        } else {
+            parse_svg_color(fill)
+        }
+    } else {
+        parse_svg_color(fill)
+    };
     with_opacity(color, svg_opacity_attr(tag, "fill-opacity"))
 }
 
@@ -2718,5 +2853,42 @@ mod tests {
         )
         .expect("svg marker-start");
         assert_eq!(img.pixel(2, 4), Some([0, 0, 255, 255]));
+    }
+
+    #[test]
+    fn decode_svg_pattern_tiles_rect_fill() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><pattern id='p' width='4' height='4'>\
+              <rect x='0' y='0' width='2' height='2' fill='#ff0000'/></pattern></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#p)'/></svg>",
+        )
+        .expect("svg pattern");
+        assert_eq!(img.pixel(0, 0), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(4, 0), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_mask_hides_unmasked_pixels() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><mask id='m'><rect x='0' y='0' width='4' height='8' fill='#ffffff'/></mask></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='#00ff00' mask='url(#m)'/></svg>",
+        )
+        .expect("svg mask");
+        assert_eq!(img.pixel(2, 4), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(6, 4), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_text_decoration_underline_paints_baseline() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <text x='0' y='7' fill='#ff0000' text-decoration='underline'>I</text></svg>",
+        )
+        .expect("svg underline");
+        assert_eq!(img.pixel(2, 7), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
     }
 }
