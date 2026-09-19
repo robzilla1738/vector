@@ -5874,6 +5874,38 @@ fn performance_navigation_timing_entry() {
 }
 
 #[test]
+fn performance_resource_timing_records_fetch() {
+    let mut page = open("<title>rest</title>");
+    page.evaluate(
+        r##"(function () {
+          fetch("data:text/plain,hi").then(function (r) { return r.text(); }).then(function (t) {
+            const res = performance.getEntriesByType("resource");
+            const all = performance.getEntries();
+            const hit = res.find(function (e) { return e.name.indexOf("data:text/plain,hi") === 0; });
+            window.__res = {
+              text: t,
+              n: res.length,
+              type: !!(hit && hit.entryType === "resource"),
+              initiator: !!(hit && hit.initiatorType === "fetch"),
+              size: !!(hit && hit.encodedBodySize === 2 && hit.transferSize === 2),
+              listed: all.some(function (e) { return e.entryType === "resource" && e.name.indexOf("data:") === 0; }),
+              lcp: performance.getEntriesByType("largest-contentful-paint").length === 1
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(80).settled);
+    let v = page.evaluate("window.__res").unwrap();
+    assert_eq!(v["text"], "hi", "{v}");
+    assert_eq!(v["type"], true, "{v}");
+    assert_eq!(v["initiator"], true, "{v}");
+    assert_eq!(v["size"], true, "{v}");
+    assert_eq!(v["listed"], true, "{v}");
+    assert_eq!(v["lcp"], true, "{v}");
+}
+
+#[test]
 fn webgl_tex_image_draw_arrays_blits() {
     let mut page = open("<title>glt</title>");
     let v = page

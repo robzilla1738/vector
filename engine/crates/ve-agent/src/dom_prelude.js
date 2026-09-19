@@ -7582,6 +7582,14 @@
     get startTime() { return 0; }
     get duration() { return 0; }
   }
+  class PerformanceResourceTiming extends PerformanceEntry {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get entryType() { return "resource"; }
+    get initiatorType() { return this._initiatorType || "fetch"; }
+    get transferSize() { return this._transferSize || 0; }
+    get encodedBodySize() { return this._encodedBodySize || 0; }
+    get decodedBodySize() { return this._decodedBodySize || 0; }
+  }
   class TrustedHTML {
     constructor() { throw new TypeError("Illegal constructor"); }
     toString() { return this._html || ""; }
@@ -8227,7 +8235,7 @@
     MathMLAnchorElement, CommandEvent, PromiseRejectionEvent, PageSwapEvent, MessageEvent, PopStateEvent,
     ImageData, Path2D, FormDataEvent, TrackEvent, ToggleEvent, StorageEvent, SubmitEvent,
     PageRevealEvent, PageTransitionEvent, BeforeUnloadEvent, HashChangeEvent, DragEvent,
-    ImageBitmap, ImageBitmapRenderingContext, Worklet, TrustedHTML, PerformanceEntry,
+    ImageBitmap, ImageBitmapRenderingContext, Worklet, TrustedHTML, PerformanceEntry, PerformanceResourceTiming,
     DOMStringMap, HTMLSelectedContentElement,
   ]) {
     try {
@@ -9541,8 +9549,27 @@
     return u;
   }
   function revokeBlobObjectURL(u) { blobUrls.delete(String(u)); }
+  function recordFetchResource(url, init, bodyLen, start) {
+    const end = (performance.now && performance.now()) || 0;
+    const entry = {
+      name: String(url),
+      entryType: "resource",
+      initiatorType: init && init.initiatorType ? String(init.initiatorType) : "fetch",
+      startTime: start,
+      duration: Math.max(0, end - start),
+      transferSize: bodyLen,
+      encodedBodySize: bodyLen,
+      decodedBodySize: bodyLen,
+      fetchStart: start,
+      responseEnd: end,
+    };
+    if (performance._resources) performance._resources.push(entry);
+    offerPerfEntry(entry);
+    return entry;
+  }
   function fetchImpl(url, init) {
     init = init || {};
+    const started = (performance.now && performance.now()) || 0;
     if (init.signal && init.signal.aborted) {
       return Promise.reject(new DOMException("The operation was aborted.", "AbortError"));
     }
@@ -9562,6 +9589,7 @@
         try { body = decodeURIComponent(payload); } catch (e) { body = payload; }
       }
       const mime = (meta.replace(/;base64/i, "").split(";")[0] || "text/plain").trim() || "text/plain";
+      recordFetchResource(rawUrl, init, body.length, started);
       return Promise.resolve(responseFrom({
         status: 200,
         statusText: "OK",
@@ -9581,6 +9609,7 @@
       for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
       let text = bin;
       try { text = decodeURIComponent(escape(bin)); } catch (e) {}
+      recordFetchResource(rawUrl, init, bytes.length, started);
       return Promise.resolve(responseFrom({
         status: 200,
         statusText: "OK",
@@ -9607,6 +9636,8 @@
             if (!r || r.pending) { setTimeout(tick, 0); return; }
             if (r.error) reject(new TypeError(r.error));
             else {
+              const n = r.body != null ? String(r.body).length : 0;
+              recordFetchResource(rawUrl, init, n, started);
               resolve(responseFrom(r));
               queueMicrotask(drainSwClientPosts);
             }
@@ -11209,6 +11240,7 @@
     HTMLSelectedContentElement,
     TrustedHTML,
     PerformanceEntry,
+    PerformanceResourceTiming,
     ElementInternals, CustomStateSet,
     Image, Audio, Option, external: windowExternal,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
@@ -11637,10 +11669,25 @@
         { name: "first-paint", entryType: "paint", startTime: t, duration: 0 },
         { name: "first-contentful-paint", entryType: "paint", startTime: t, duration: 0 },
       ];
+      const lcp = [{
+        name: "largest-contentful-paint",
+        entryType: "largest-contentful-paint",
+        startTime: t,
+        duration: 0,
+        size: 0,
+        id: "",
+        url: "",
+      }];
       const prevEntries = performance.getEntriesByType;
+      const prevAll = performance.getEntries;
       performance.getEntriesByType = (type) => {
         if (type === "paint") return paints.slice();
+        if (type === "largest-contentful-paint") return lcp.slice();
         return typeof prevEntries === "function" ? prevEntries.call(performance, type) : [];
+      };
+      performance.getEntries = () => {
+        const base = typeof prevAll === "function" ? prevAll.call(performance) : [];
+        return paints.concat(lcp, base);
       };
     } catch (e) {}
   };
@@ -12020,6 +12067,7 @@
   brandWrap(Worklet);
   brandWrap(TrustedHTML);
   brandWrap(PerformanceEntry);
+  brandWrap(PerformanceResourceTiming);
   brandWrap(HTMLSelectedContentElement);
   brandWrap(Range);
   brandWrap(Selection);

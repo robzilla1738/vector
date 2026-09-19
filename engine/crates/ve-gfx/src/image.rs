@@ -247,7 +247,8 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let (color, width) = svg_stroke(tag);
         let width = width * ((world.sx.abs() + world.sy.abs()) * 0.5).max(0.0);
         let dashes = svg_dash(tag);
-        stroke_line(&mut img, x1, y1, x2, y2, color, width, &dashes);
+        let cap = svg_linecap(tag);
+        stroke_line(&mut img, x1, y1, x2, y2, color, width, &dashes, cap);
         rest = &rest[i + tag_end + 1..];
     }
     rest = text.as_ref();
@@ -291,9 +292,10 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             });
         }
         let dashes = svg_dash(tag);
+        let cap = svg_linecap(tag);
         for w in coords.windows(2) {
             stroke_line(
-                &mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width, &dashes,
+                &mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width, &dashes, cap,
             );
         }
         rest = &rest[i + tag_end + 1..];
@@ -324,9 +326,10 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             }
             if svg_attr_str(tag, "stroke").is_some() || !closed {
                 let dashes = svg_dash(tag);
+                let cap = svg_linecap(tag);
                 for w in pts.windows(2) {
                     stroke_line(
-                        &mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width, &dashes,
+                        &mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width, &dashes, cap,
                     );
                 }
             }
@@ -1136,6 +1139,17 @@ fn paint_fill_color(
     with_opacity(color, svg_opacity_attr(tag, "fill-opacity"))
 }
 
+fn svg_linecap(tag: &str) -> &'static str {
+    let raw = svg_attr_str(tag, "stroke-linecap").unwrap_or("round");
+    if raw.eq_ignore_ascii_case("butt") {
+        "butt"
+    } else if raw.eq_ignore_ascii_case("square") {
+        "square"
+    } else {
+        "round"
+    }
+}
+
 fn svg_dash(tag: &str) -> Vec<f32> {
     let Some(raw) = svg_attr_str(tag, "stroke-dasharray") else {
         return Vec::new();
@@ -1184,32 +1198,65 @@ fn svg_stroke(tag: &str) -> ([u8; 4], f32) {
 
 fn stroke_line(
     img: &mut DecodedImage,
-    x1: f32,
-    y1: f32,
-    x2: f32,
-    y2: f32,
+    mut x1: f32,
+    mut y1: f32,
+    mut x2: f32,
+    mut y2: f32,
     color: [u8; 4],
     width: f32,
     dashes: &[f32],
+    cap: &str,
 ) {
-    let steps = (x2 - x1).abs().max((y2 - y1).abs()).ceil().max(1.0) as i32;
-    let len = (x2 - x1).hypot(y2 - y1);
+    let mut dx = x2 - x1;
+    let mut dy = y2 - y1;
+    let mut len = dx.hypot(dy);
     let radius = (width * 0.5).max(0.5);
+    let round = !cap.eq_ignore_ascii_case("butt") && !cap.eq_ignore_ascii_case("square");
+    if cap.eq_ignore_ascii_case("square") && len > 0.0 {
+        let ux = dx / len;
+        let uy = dy / len;
+        x1 -= ux * radius;
+        y1 -= uy * radius;
+        x2 += ux * radius;
+        y2 += uy * radius;
+        dx = x2 - x1;
+        dy = y2 - y1;
+        len = dx.hypot(dy);
+    }
+    let nx = if len > 0.0 { -dy / len } else { 0.0 };
+    let ny = if len > 0.0 { dx / len } else { 1.0 };
+    let steps = dx.abs().max(dy.abs()).ceil().max(1.0) as i32;
     let r = radius.ceil() as i32;
     for s in 0..=steps {
         let t = s as f32 / steps as f32;
         if !dash_on(dashes, t * len) {
             continue;
         }
-        let cx = (x1 + (x2 - x1) * t).round() as i32;
-        let cy = (y1 + (y2 - y1) * t).round() as i32;
-        for dy in -r..=r {
-            for dx in -r..=r {
-                if (dx as f32).hypot(dy as f32) > radius + 0.25 {
+        let cx = x1 + dx * t;
+        let cy = y1 + dy * t;
+        if round {
+            let cxi = cx.round() as i32;
+            let cyi = cy.round() as i32;
+            for oy in -r..=r {
+                for ox in -r..=r {
+                    if (ox as f32).hypot(oy as f32) > radius + 0.25 {
+                        continue;
+                    }
+                    let xx = cxi + ox;
+                    let yy = cyi + oy;
+                    if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height {
+                        let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
+                        img.rgba[idx..idx + 4].copy_from_slice(&color);
+                    }
+                }
+            }
+        } else {
+            for k in -r..=r {
+                if (k as f32).abs() > radius + 0.25 {
                     continue;
                 }
-                let xx = cx + dx;
-                let yy = cy + dy;
+                let xx = (cx + nx * k as f32).round() as i32;
+                let yy = (cy + ny * k as f32).round() as i32;
                 if xx >= 0 && yy >= 0 && (xx as u32) < img.width && (yy as u32) < img.height {
                     let idx = ((yy as u32 * img.width + xx as u32) * 4) as usize;
                     img.rgba[idx..idx + 4].copy_from_slice(&color);
@@ -2074,5 +2121,27 @@ mod tests {
         .expect("svg text-anchor");
         assert_eq!(img.pixel(4, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(7, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_stroke_linecap_butt_keeps_end_empty() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <line x1='2' y1='4' x2='6' y2='4' stroke='#ff0000' stroke-width='4' stroke-linecap='butt'/></svg>",
+        )
+        .expect("svg linecap butt");
+        assert_eq!(img.pixel(0, 4), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(4, 4), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_stroke_linecap_square_extends_end() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <line x1='2' y1='4' x2='6' y2='4' stroke='#00ff00' stroke-width='4' stroke-linecap='square'/></svg>",
+        )
+        .expect("svg linecap square");
+        assert_eq!(img.pixel(0, 4), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(4, 4), Some([0, 255, 0, 255]));
     }
 }

@@ -123,7 +123,9 @@ pub const PRELUDE: &str = r#"(() => {
   };
   const marks = new Map();
   const measures = [];
+  const resources = [];
   globalThis.performance = globalThis.performance || {};
+  globalThis.performance._resources = resources;
   globalThis.performance.now = () => __ve.now();
   globalThis.performance.timeOrigin = 0;
   globalThis.performance.mark = (name) => { marks.set(String(name), __ve.now()); return { name: String(name), entryType: "mark", startTime: marks.get(String(name)), duration: 0 }; };
@@ -139,9 +141,11 @@ pub const PRELUDE: &str = r#"(() => {
     if (name == null) measures.length = 0;
     else { for (let i = measures.length - 1; i >= 0; i--) if (measures[i].name === String(name)) measures.splice(i, 1); }
   };
+  globalThis.performance.clearResourceTimings = () => { resources.length = 0; };
   globalThis.performance.getEntriesByType = (type) => {
     if (type === "mark") return [...marks.entries()].map(([name, startTime]) => ({ name, entryType: "mark", startTime, duration: 0 }));
     if (type === "measure") return measures.slice();
+    if (type === "resource") return resources.slice();
     if (type === "navigation") {
       return [{
         name: (globalThis.location && globalThis.location.href) || "",
@@ -158,7 +162,7 @@ pub const PRELUDE: &str = r#"(() => {
     return [];
   };
   globalThis.performance.getEntriesByName = (name, type) => globalThis.performance.getEntriesByType(type || "measure").filter((e) => e.name === name);
-  globalThis.performance.getEntries = () => globalThis.performance.getEntriesByType("mark").concat(measures).concat(globalThis.performance.getEntriesByType("navigation"));
+  globalThis.performance.getEntries = () => globalThis.performance.getEntriesByType("mark").concat(measures).concat(globalThis.performance.getEntriesByType("navigation")).concat(resources);
   const cloneSeen = () => new WeakMap();
   const cloneValue = (v, seen) => {
     if (typeof v === "function") throw new TypeError("structuredClone: functions are not cloneable");
