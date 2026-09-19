@@ -46,7 +46,7 @@ pub mod stylesheet;
 pub mod ua;
 pub mod values;
 
-pub use cascade::{RestyleStats, RuleSet, StyleEngine, StyleTree};
+pub use cascade::{CSS_BYTES_CAP, RestyleStats, RuleSet, StyleEngine, StyleTree};
 pub use computed::{ComputeContext, ComputedStyle, CustomProperties};
 pub use coverage::CssCoverage;
 pub use element::{DomElement, ElementState, InteractionState};

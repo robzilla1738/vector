@@ -35,6 +35,10 @@ use crate::stylesheet::{
 use crate::ua::UA_STYLESHEET;
 use crate::values::{Content, Direction};
 
+/// Author stylesheet parse budget. Atomic CSS dumps (Atlassian, etc.) otherwise
+/// dominate open→observe on an otherwise small document.
+pub const CSS_BYTES_CAP: usize = 64_000;
+
 /// `#todo-list` / `#new-todo` without combinators or other simple selectors.
 fn simple_id_selector(selector: &str) -> Option<&str> {
     let rest = selector.trim().strip_prefix('#')?;
@@ -460,6 +464,15 @@ impl StyleEngine {
 
     /// Adds an author stylesheet from source text.
     pub fn add_stylesheet(&mut self, css: &str) {
+        let css = if css.len() > CSS_BYTES_CAP {
+            let mut n = CSS_BYTES_CAP.min(css.len());
+            while n > 0 && !css.is_char_boundary(n) {
+                n -= 1;
+            }
+            &css[..n]
+        } else {
+            css
+        };
         self.author.push(parse_stylesheet(css, Origin::Author));
         self.generation += 1;
         self.rules.replace(None);

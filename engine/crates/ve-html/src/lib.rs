@@ -317,7 +317,7 @@ pub fn parse_document_bytes_with(
     while limit > 0 && !text.is_char_boundary(limit) {
         limit -= 1;
     }
-    let text = &text[..limit];
+    let text = trim_unclosed_raw_text(&text[..limit]);
     let chunk_size = options.chunk_size.max(1);
     let mut start = 0;
     while start < text.len() {
@@ -329,6 +329,22 @@ pub fn parse_document_bytes_with(
         start = end;
     }
     (parser.finish(), decoded)
+}
+
+/// Drops a trailing unclosed `<style>` / `<script>` so a byte cap that lands
+/// inside a 200 KB atomic CSS dump does not become a cascade.
+fn trim_unclosed_raw_text(text: &str) -> &str {
+    let lower = text.to_ascii_lowercase();
+    let mut cut = text.len();
+    for (open, close) in [("<style", "</style>"), ("<script", "</script>")] {
+        if let Some(start) = lower.rfind(open) {
+            let rest = &lower[start.saturating_add(open.len())..];
+            if !rest.contains(close) {
+                cut = cut.min(start);
+            }
+        }
+    }
+    &text[..cut]
 }
 
 #[cfg(test)]
@@ -407,6 +423,38 @@ mod tests {
             },
         );
         assert!(full.document.element_by_id("tail").is_some());
+    }
+
+    #[test]
+    fn max_bytes_drops_an_unclosed_style_blob() {
+        let mut html = String::from("<!doctype html><title>x</title><style>");
+        html.push_str(&".x{color:red}".repeat(8_000));
+        html.push_str("</style><p id=keep>after</p>");
+        let (capped, _) = parse_document_bytes_with(
+            html.as_bytes(),
+            None,
+            ParseOptions {
+                scripting_enabled: false,
+                chunk_size: 16 * 1024,
+                max_bytes: Some(8_000),
+            },
+        );
+        let styles: Vec<_> = capped
+            .document
+            .elements()
+            .filter(|&id| capped.document.element(id).is_some_and(|e| e.is_html("style")))
+            .collect();
+        assert!(styles.is_empty(), "unclosed style at the byte cap is dropped");
+        let (full, _) = parse_document_bytes_with(
+            html.as_bytes(),
+            None,
+            ParseOptions {
+                scripting_enabled: false,
+                chunk_size: 16 * 1024,
+                max_bytes: None,
+            },
+        );
+        assert!(full.document.element_by_id("keep").is_some());
     }
 
     #[test]
