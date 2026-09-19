@@ -5004,7 +5004,7 @@ fn crypto_subtle_hkdf_matches_rfc5869() {
     let v = page.evaluate("window.__hkdf").unwrap();
     assert_eq!(
         v,
-        "3cb25f25faacd57a90435c47e6259ebefdcadc9d5a999fbc3f9732269a0dda08f42cab9d4cf71007",
+        "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865",
         "{v}"
     );
 }
