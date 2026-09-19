@@ -5821,6 +5821,59 @@ fn web_audio_factory_nodes() {
 }
 
 #[test]
+fn crypto_subtle_imports_jwk_oct_key() {
+    let mut page = open("<title>jwk</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__jwk = null;
+          const iv = new Uint8Array(12);
+          const pt = new TextEncoder().encode("abc");
+          crypto.subtle.generateKey({ name: "AES-GCM" }, true, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.exportKey("jwk", key).then(function (jwk) {
+              return crypto.subtle.importKey("jwk", jwk, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]).then(function (imported) {
+                return Promise.all([
+                  crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, pt),
+                  crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, imported, pt)
+                ]).then(function (cts) {
+                  const a = new Uint8Array(cts[0]);
+                  const b = new Uint8Array(cts[1]);
+                  let same = a.length === b.length;
+                  for (let i = 0; i < a.length && same; i++) same = a[i] === b[i];
+                  window.__jwk = { same: same, kty: jwk.kty === "oct" && typeof jwk.k === "string" };
+                });
+              });
+            });
+          }).catch(function (e) { window.__jwk = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(80).settled);
+    let v = page.evaluate("window.__jwk").unwrap();
+    assert_eq!(v["same"], true, "{v}");
+    assert_eq!(v["kty"], true, "{v}");
+}
+
+#[test]
+fn performance_navigation_timing_entry() {
+    let mut page = open("<title>navt</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const nav = performance.getEntriesByType("navigation");
+              const all = performance.getEntries();
+              return {
+                one: nav.length === 1 && nav[0].entryType === "navigation" && nav[0].type === "navigate",
+                listed: all.some(function (e) { return e.entryType === "navigation"; }),
+                paint: performance.getEntriesByType("paint").length >= 0
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["one"], true, "{v}");
+    assert_eq!(v["listed"], true, "{v}");
+}
+
+#[test]
 fn webgl_tex_image_draw_arrays_blits() {
     let mut page = open("<title>glt</title>");
     let v = page

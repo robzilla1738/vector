@@ -142,10 +142,23 @@ pub const PRELUDE: &str = r#"(() => {
   globalThis.performance.getEntriesByType = (type) => {
     if (type === "mark") return [...marks.entries()].map(([name, startTime]) => ({ name, entryType: "mark", startTime, duration: 0 }));
     if (type === "measure") return measures.slice();
+    if (type === "navigation") {
+      return [{
+        name: (globalThis.location && globalThis.location.href) || "",
+        entryType: "navigation",
+        initiatorType: "navigation",
+        startTime: 0,
+        duration: __ve.now(),
+        type: "navigate",
+        transferSize: 0,
+        encodedBodySize: 0,
+        decodedBodySize: 0,
+      }];
+    }
     return [];
   };
   globalThis.performance.getEntriesByName = (name, type) => globalThis.performance.getEntriesByType(type || "measure").filter((e) => e.name === name);
-  globalThis.performance.getEntries = () => globalThis.performance.getEntriesByType("mark").concat(measures);
+  globalThis.performance.getEntries = () => globalThis.performance.getEntriesByType("mark").concat(measures).concat(globalThis.performance.getEntriesByType("navigation"));
   const cloneSeen = () => new WeakMap();
   const cloneValue = (v, seen) => {
     if (typeof v === "function") throw new TypeError("structuredClone: functions are not cloneable");
@@ -623,6 +636,28 @@ pub const PRELUDE: &str = r#"(() => {
       },
       importKey(format, keyData, algorithm, extractable, usages) {
         const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
+        if (format === "jwk") {
+          const tab = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+          const k = keyData && keyData.k != null ? String(keyData.k).replace(/=+$/, "") : "";
+          if (!keyData || String(keyData.kty) !== "oct" || !k) {
+            return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+          }
+          const out = [];
+          let buf = 0;
+          let bits = 0;
+          for (let i = 0; i < k.length; i++) {
+            const v = tab.indexOf(k[i]);
+            if (v < 0) continue;
+            buf = (buf << 6) | v;
+            bits += 6;
+            if (bits >= 8) {
+              bits -= 8;
+              out.push((buf >> bits) & 0xff);
+            }
+          }
+          keyData = new Uint8Array(out);
+          format = "raw";
+        }
         if (format !== "raw") {
           return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
         }
