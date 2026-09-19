@@ -27,7 +27,7 @@ use crate::values::{
     FontStyle, FontWeight, GridLine, GridTemplateAreas, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
     AnimationDirection, AnimationFillMode, AnimationPlayState,
-    ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, GridAutoFlow, Isolation, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, PointerEvents, Position, PositionArea, Rgba,
+    BackgroundAttachment, ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, GridAutoFlow, Isolation, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, PointerEvents, Position, PositionArea, Rgba, TextDecorationStyle,
     SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
@@ -519,6 +519,13 @@ mod conv {
             SpecifiedValue::Color(c) => Some(*c),
             SpecifiedValue::Keyword(k) => Rgba::from_name(k).map(Color::Rgba),
             _ => None,
+        }
+    }
+
+    pub fn fill_color(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Color> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(Color::Rgba(Rgba::TRANSPARENT)),
+            _ => color(v, ctx),
         }
     }
 
@@ -1254,6 +1261,8 @@ property_table! {
     TextDecorationThickness: "text-decoration-thickness" => text_decoration_thickness: f32 = 1.0, inherited = false, syntax = Single, convert = conv::decoration_px;
     /// `text-underline-offset` (pixels)
     TextUnderlineOffset: "text-underline-offset" => text_underline_offset: f32 = 1.0, inherited = false, syntax = Single, convert = conv::decoration_px;
+    /// `text-decoration-style`
+    TextDecorationStyle: "text-decoration-style" => text_decoration_style: TextDecorationStyle = TextDecorationStyle::Solid, inherited = false, syntax = Single, convert = conv::kw::<TextDecorationStyle>;
     /// `user-select`
     UserSelect: "user-select" => user_select: UserSelect = UserSelect::Auto, inherited = false, syntax = Single, convert = conv::kw::<UserSelect>;
     /// `will-change` (first ident)
@@ -1376,6 +1385,8 @@ property_table! {
     BackgroundClip: "background-clip" => background_clip: BackgroundClip = BackgroundClip::BorderBox, inherited = false, syntax = Single, convert = conv::kw::<BackgroundClip>;
     /// `background-origin`
     BackgroundOrigin: "background-origin" => background_origin: BackgroundOrigin = BackgroundOrigin::PaddingBox, inherited = false, syntax = Single, convert = conv::kw::<BackgroundOrigin>;
+    /// `background-attachment`
+    BackgroundAttachment: "background-attachment" => background_attachment: BackgroundAttachment = BackgroundAttachment::Scroll, inherited = false, syntax = Single, convert = conv::kw::<BackgroundAttachment>;
     /// `cursor` (keyword stored as the canonical name)
     Cursor: "cursor" => cursor: String = String::from("auto"), inherited = true, syntax = Single, convert = conv::cursor;
     /// `filter` (`none` or `blur()`)
@@ -1441,8 +1452,16 @@ property_table! {
     ColumnRuleWidth: "column-rule-width" => column_rule_width: f32 = 0.0, inherited = false, syntax = Single, convert = conv::border_width;
     /// `column-rule-color`
     ColumnRuleColor: "column-rule-color" => column_rule_color: Color = Color::CurrentColor, inherited = false, syntax = Single, convert = conv::color;
+    /// `column-rule-style`
+    ColumnRuleStyle: "column-rule-style" => column_rule_style: TextDecorationStyle = TextDecorationStyle::Solid, inherited = false, syntax = Single, convert = conv::kw::<TextDecorationStyle>;
     /// `column-span`
     ColumnSpan: "column-span" => column_span: ColumnSpan = ColumnSpan::None, inherited = false, syntax = Single, convert = conv::kw::<ColumnSpan>;
+    /// `fill` (`none` is transparent)
+    Fill: "fill" => fill: Color = Color::CurrentColor, inherited = true, syntax = Single, convert = conv::fill_color;
+    /// `stroke` (`none` is transparent)
+    Stroke: "stroke" => stroke: Color = Color::Rgba(Rgba::TRANSPARENT), inherited = true, syntax = Single, convert = conv::fill_color;
+    /// `stroke-width` (pixels)
+    StrokeWidth: "stroke-width" => stroke_width: f32 = 1.0, inherited = true, syntax = Single, convert = conv::length_px;
     /// `grid-auto-flow`
     GridAutoFlow: "grid-auto-flow" => grid_auto_flow: GridAutoFlow = GridAutoFlow::Row, inherited = false, syntax = Single, convert = conv::grid_auto_flow;
     /// `table-layout`
@@ -1551,7 +1570,6 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[];
 pub const DEFERRED_PROPERTIES: &[&str] = &[
     "background-position-x",
     "background-position-y",
-    "background-attachment",
     "background-blend-mode",
     "border-image",
     "font-variant",
@@ -1563,7 +1581,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "font-display",
     "font-optical-sizing",
     "text-rendering",
-    "text-decoration-style",
     "text-underline-position",
     "text-size-adjust",
     "-webkit-text-size-adjust",
@@ -1595,7 +1612,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "speak",
     "src",
     "unicode-range",
-    "column-rule-style",
     "transform-style",
     "transform-box",
     "perspective",
@@ -1624,9 +1640,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "list-style-image",
     "marker-offset",
     "vector-effect",
-    "fill",
-    "stroke",
-    "stroke-width",
 ];
 
 // ---------------------------------------------------------------------------
@@ -3679,11 +3692,17 @@ mod tests {
         ok("column-rule-color", "red");
         ok("transition-delay", "100ms");
         ok("transition-timing-function", "linear");
+        ok("text-decoration-style", "dashed");
+        ok("background-attachment", "fixed");
+        ok("column-rule-style", "dotted");
+        ok("fill", "none");
+        ok("stroke", "red");
+        ok("stroke-width", "2px");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 164);
+        assert_eq!(PropertyId::ALL.len(), 170);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

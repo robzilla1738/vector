@@ -7,8 +7,8 @@ use ve_layout::LayoutTree;
 use ve_style::{
     BackgroundClip, BackgroundImage, BackgroundOrigin, BackgroundPosition, BackgroundRepeat,
     BackgroundSize, ComputedStyle, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto,
-    ContentVisibility, Display, EmptyCells, MixBlendMode, ObjectFit, Rgba, StyleTree,
-    TextDecorationLine, TransformOp,
+    BackgroundAttachment, Color, ContentVisibility, Display, EmptyCells, MixBlendMode, ObjectFit,
+    Rgba, StyleTree, TextDecorationLine, TextDecorationStyle, TransformOp,
 };
 
 use crate::image::ImageHandle;
@@ -68,6 +68,8 @@ pub enum DisplayItem {
         position: BackgroundPosition,
         /// `background-repeat`.
         repeat: BackgroundRepeat,
+        /// `background-attachment: fixed` — do not scroll with the list.
+        fixed: bool,
     },
     /// Linear gradient fill.
     LinearGradient {
@@ -79,6 +81,8 @@ pub enum DisplayItem {
         end: Point,
         /// Colour stops as (offset 0–1, colour).
         stops: Vec<(f32, Rgba)>,
+        /// `background-attachment: fixed`.
+        fixed: bool,
     },
     /// Blur the pixels already in `rect` (filter: blur).
     FilterBlur {
@@ -199,24 +203,28 @@ impl DisplayItem {
                 size,
                 position,
                 repeat,
+                fixed,
             } => Self::Image {
-                rect: rect.translate(dx, dy),
+                rect: if *fixed { *rect } else { rect.translate(dx, dy) },
                 handle: *handle,
                 src: *src,
                 size: *size,
                 position: *position,
                 repeat: *repeat,
+                fixed: *fixed,
             },
             Self::LinearGradient {
                 rect,
                 start,
                 end,
                 stops,
+                fixed,
             } => Self::LinearGradient {
-                rect: rect.translate(dx, dy),
-                start: start.translate(dx, dy),
-                end: end.translate(dx, dy),
+                rect: if *fixed { *rect } else { rect.translate(dx, dy) },
+                start: if *fixed { *start } else { start.translate(dx, dy) },
+                end: if *fixed { *end } else { end.translate(dx, dy) },
                 stops: stops.clone(),
+                fixed: *fixed,
             },
             Self::FilterBlur { rect, radius } => Self::FilterBlur {
                 rect: rect.translate(dx, dy),
@@ -477,15 +485,15 @@ impl DisplayList {
                         family: style.font_family.clone(),
                     }));
                     if style.text_decoration_line == TextDecorationLine::Underline {
-                        list.push(DisplayItem::Rect {
-                            rect: Rect::new(
-                                item.rect.x(),
-                                item.rect.y() + item.baseline + style.text_underline_offset,
-                                item.rect.width().max(1.0),
-                                style.text_decoration_thickness.max(1.0),
-                            ),
-                            color: style.text_decoration_color.resolve(style.color),
-                        });
+                        push_line_decoration(
+                            &mut list,
+                            item.rect.x(),
+                            item.rect.y() + item.baseline + style.text_underline_offset,
+                            item.rect.width().max(1.0),
+                            style.text_decoration_thickness.max(1.0),
+                            style.text_decoration_color.resolve(style.color),
+                            style.text_decoration_style,
+                        );
                     }
                 }
             } else if !item.rect.is_empty()
@@ -513,6 +521,23 @@ impl DisplayList {
                             color: bg,
                         });
                     }
+                    if !matches!(style.fill, Color::CurrentColor) {
+                        let fill = style.fill.resolve(style.color);
+                        if !fill.is_transparent() {
+                            list.push(DisplayItem::Rect {
+                                rect: item.rect,
+                                color: fill,
+                            });
+                        }
+                    }
+                    let stroke = style.stroke.resolve(style.color);
+                    if !stroke.is_transparent() && style.stroke_width > 0.0 {
+                        list.push(DisplayItem::Border {
+                            rect: item.rect,
+                            widths: Edges::uniform(style.stroke_width),
+                            color: stroke,
+                        });
+                    }
                 }
                 if let BackgroundImage::LinearGradient(stops) = &style.background_image {
                     let clip = background_clip_rect(item.rect, &style);
@@ -521,6 +546,7 @@ impl DisplayList {
                         start: Point::new(clip.x(), clip.y()),
                         end: Point::new(clip.x(), clip.bottom()),
                         stops: stops.clone(),
+                        fixed: style.background_attachment == BackgroundAttachment::Fixed,
                     });
                 }
                 if let Some(handle) = images.get(&node) {
@@ -558,6 +584,8 @@ impl DisplayList {
                         size,
                         position,
                         repeat,
+                        fixed: is_bg
+                            && style.background_attachment == BackgroundAttachment::Fixed,
                     });
                     if clip.is_some() {
                         list.push(DisplayItem::PopClip);
@@ -602,15 +630,15 @@ impl DisplayList {
                                     + (i as f32 + 1.0) * col_w
                                     + i as f32 * gap
                                     + (gap - style.column_rule_width) * 0.5;
-                                list.push(DisplayItem::Rect {
-                                    rect: Rect::new(
-                                        x,
-                                        item.rect.y(),
-                                        style.column_rule_width.max(1.0),
-                                        item.rect.height(),
-                                    ),
+                                push_column_rule(
+                                    &mut list,
+                                    x,
+                                    item.rect.y(),
+                                    style.column_rule_width.max(1.0),
+                                    item.rect.height(),
                                     color,
-                                });
+                                    style.column_rule_style,
+                                );
                             }
                         }
                     }
@@ -689,6 +717,102 @@ fn inset_box(rect: Rect, style: &ComputedStyle, kind: BackgroundClip) -> Rect {
         (rect.width() - bl - br).max(0.0),
         (rect.height() - bt - bb).max(0.0),
     )
+}
+
+fn push_line_decoration(
+    list: &mut DisplayList,
+    x: f32,
+    y: f32,
+    width: f32,
+    thickness: f32,
+    color: Rgba,
+    style: TextDecorationStyle,
+) {
+    match style {
+        TextDecorationStyle::Solid | TextDecorationStyle::Wavy => {
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x, y, width, thickness),
+                color,
+            });
+        }
+        TextDecorationStyle::Double => {
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x, y, width, thickness),
+                color,
+            });
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x, y + thickness + 1.0, width, thickness),
+                color,
+            });
+        }
+        TextDecorationStyle::Dashed => {
+            let dash = (thickness * 3.0).max(4.0);
+            let mut cx = x;
+            while cx < x + width {
+                let w = dash.min(x + width - cx);
+                list.push(DisplayItem::Rect {
+                    rect: Rect::new(cx, y, w, thickness),
+                    color,
+                });
+                cx += dash * 2.0;
+            }
+        }
+        TextDecorationStyle::Dotted => {
+            let mut cx = x;
+            while cx < x + width {
+                list.push(DisplayItem::Rect {
+                    rect: Rect::new(cx, y, thickness, thickness),
+                    color,
+                });
+                cx += thickness * 2.0;
+            }
+        }
+    }
+}
+
+fn push_column_rule(
+    list: &mut DisplayList,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    color: Rgba,
+    style: TextDecorationStyle,
+) {
+    match style {
+        TextDecorationStyle::Solid | TextDecorationStyle::Wavy => {
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x, y, width, height),
+                color,
+            });
+        }
+        TextDecorationStyle::Double => {
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x, y, width, height),
+                color,
+            });
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x + width + 1.0, y, width, height),
+                color,
+            });
+        }
+        TextDecorationStyle::Dashed | TextDecorationStyle::Dotted => {
+            let dash = if style == TextDecorationStyle::Dotted {
+                width
+            } else {
+                (width * 3.0).max(4.0)
+            };
+            let mut cy = y;
+            while cy < y + height {
+                let h = dash.min(y + height - cy);
+                list.push(DisplayItem::Rect {
+                    rect: Rect::new(x, cy, width, h),
+                    color,
+                });
+                cy += dash * 2.0;
+            }
+        }
+    }
 }
 
 fn object_fit_size(fit: ObjectFit) -> BackgroundSize {
@@ -1385,6 +1509,80 @@ mod tests {
                 .any(|i| matches!(i, DisplayItem::FilterBlur { radius, .. } if *radius >= 3.0)),
             "backdrop-filter blur missing: {:?}",
             list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_dashed_underline() {
+        let html = "<style>body{margin:0} #t{text-decoration:underline;text-decoration-style:dashed;text-decoration-thickness:2px}</style><p id=t>Hi</p>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        let dashes = list
+            .items()
+            .iter()
+            .filter(|i| matches!(i, DisplayItem::Rect { rect, .. } if (rect.height() - 2.0).abs() < 0.1))
+            .count();
+        assert!(
+            dashes >= 2,
+            "dashed underline should emit multiple rects, got {dashes}: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_fill_and_stroke() {
+        let html = "<style>body{margin:0} #s{width:20px;height:10px;fill:red;stroke:blue;stroke-width:2px}</style><div id=s></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Rect { color, .. } if *color == Rgba::rgb(255, 0, 0)
+            )),
+            "fill missing: {:?}",
+            list.items()
+        );
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Border { widths, color, .. }
+                    if widths.top == 2.0 && *color == Rgba::rgb(0, 0, 255)
+            )),
+            "stroke missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn fixed_background_does_not_translate() {
+        let item = DisplayItem::Image {
+            rect: Rect::new(10.0, 20.0, 8.0, 8.0),
+            handle: ImageHandle(1),
+            src: None,
+            size: BackgroundSize::Auto,
+            position: BackgroundPosition {
+                x: ve_style::LengthPercentage::ZERO,
+                y: ve_style::LengthPercentage::ZERO,
+            },
+            repeat: BackgroundRepeat::NoRepeat,
+            fixed: true,
+        };
+        let moved = item.translated(5.0, 7.0);
+        assert!(
+            matches!(
+                moved,
+                DisplayItem::Image { rect, fixed: true, .. }
+                    if (rect.x() - 10.0).abs() < f32::EPSILON && (rect.y() - 20.0).abs() < f32::EPSILON
+            ),
+            "fixed background must stay put: {moved:?}"
         );
     }
 }

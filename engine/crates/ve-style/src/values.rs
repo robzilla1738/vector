@@ -1449,6 +1449,34 @@ keyword_enum! {
 }
 
 keyword_enum! {
+    /// `text-decoration-style` / `column-rule-style`.
+    TextDecorationStyle {
+        /// Single solid line.
+        Solid = "solid",
+        /// Two parallel lines.
+        Double = "double",
+        /// Dots.
+        Dotted = "dotted",
+        /// Dashes.
+        Dashed = "dashed",
+        /// Wave.
+        Wavy = "wavy",
+    }
+}
+
+keyword_enum! {
+    /// `background-attachment`.
+    BackgroundAttachment {
+        /// Scroll with the element.
+        Scroll = "scroll",
+        /// Fixed to the viewport.
+        Fixed = "fixed",
+        /// Scroll with the element's ancestor padding box.
+        Local = "local",
+    }
+}
+
+keyword_enum! {
     /// The `content-visibility` property.
     ContentVisibility {
         /// Paint and lay out normally.

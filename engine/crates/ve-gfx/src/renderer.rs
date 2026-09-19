@@ -541,6 +541,7 @@ impl Renderer for SoftwareRenderer {
                     size,
                     position,
                     repeat,
+                    ..
                 } => self.draw_image(
                     &mut canvas,
                     *rect,
@@ -555,6 +556,7 @@ impl Renderer for SoftwareRenderer {
                     start,
                     end,
                     stops,
+                    ..
                 } => canvas.fill_linear_gradient(*rect, *start, *end, stops),
                 DisplayItem::FilterBlur { rect, radius } => canvas.blur_rect(*rect, *radius),
                 DisplayItem::PushClip(rect) => {
