@@ -5339,6 +5339,38 @@ fn computed_style_exposes_fill_rule_and_stroke_joins() {
 }
 
 #[test]
+fn computed_style_exposes_break_and_scroll_keywords() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="text-align-last:center;word-break:break-all;overflow-wrap:anywhere;scroll-behavior:smooth;appearance:none;orphans:3;widows:4">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                last: String(cs.textAlignLast || cs.getPropertyValue("text-align-last")),
+                word: String(cs.wordBreak || cs.getPropertyValue("word-break")),
+                wrap: String(cs.overflowWrap || cs.getPropertyValue("overflow-wrap")),
+                scroll: String(cs.scrollBehavior || cs.getPropertyValue("scroll-behavior")),
+                appearance: String(cs.appearance || cs.getPropertyValue("appearance")),
+                orphans: String(cs.orphans || cs.getPropertyValue("orphans")),
+                widows: String(cs.widows || cs.getPropertyValue("widows"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["last"], "center", "{v}");
+    assert_eq!(v["word"], "break-all", "{v}");
+    assert_eq!(v["wrap"], "anywhere", "{v}");
+    assert_eq!(v["scroll"], "smooth", "{v}");
+    assert_eq!(v["appearance"], "none", "{v}");
+    assert_eq!(v["orphans"], "3", "{v}");
+    assert_eq!(v["widows"], "4", "{v}");
+}
+
+#[test]
 fn computed_style_exposes_spacing_and_ui() {
     let mut page = open(
         r#"<body>

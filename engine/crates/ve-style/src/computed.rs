@@ -473,6 +473,15 @@ impl ComputedStyle {
             },
             PropertyId::Hyphens => self.hyphens.to_string(),
             PropertyId::TextIndent => lp(self.text_indent),
+            PropertyId::TextAlignLast => self.text_align_last.to_string(),
+            PropertyId::WordBreak => self.word_break.to_string(),
+            PropertyId::OverflowWrap => self.overflow_wrap.to_string(),
+            PropertyId::ScrollBehavior => self.scroll_behavior.to_string(),
+            PropertyId::OverscrollBehavior => self.overscroll_behavior.to_string(),
+            PropertyId::Appearance => self.appearance.to_string(),
+            PropertyId::Orphans => format!("{}", self.orphans),
+            PropertyId::Widows => format!("{}", self.widows),
+            PropertyId::AnimationTimingFunction => self.animation_timing_function.clone(),
             _ => String::new(),
         }
     }
@@ -597,5 +606,26 @@ mod tests {
         assert_eq!(style.property_css("text-indent"), "16px");
         assert_eq!(ComputedStyle::initial().property_css("letter-spacing"), "normal");
         assert_eq!(ComputedStyle::initial().property_css("line-height"), "normal");
+    }
+
+    #[test]
+    fn property_css_exposes_break_and_scroll_keywords() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "text-align-last: center; word-break: break-all; overflow-wrap: anywhere; \
+             scroll-behavior: smooth; overscroll-behavior: none; appearance: none; \
+             orphans: 3; widows: 4; animation-timing-function: linear",
+            false,
+        );
+        assert_eq!(style.property_css("text-align-last"), "center");
+        assert_eq!(style.property_css("word-break"), "break-all");
+        assert_eq!(style.property_css("overflow-wrap"), "anywhere");
+        assert_eq!(style.property_css("scroll-behavior"), "smooth");
+        assert_eq!(style.property_css("overscroll-behavior"), "none");
+        assert_eq!(style.property_css("appearance"), "none");
+        assert_eq!(style.property_css("orphans"), "3");
+        assert_eq!(style.property_css("widows"), "4");
+        assert_eq!(style.property_css("animation-timing-function"), "linear");
     }
 }

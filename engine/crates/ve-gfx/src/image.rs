@@ -339,35 +339,51 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         }
         stroke_joins(&mut img, &coords, color, width, join, miter);
         if !coords.is_empty() {
+            let start_deg = if coords.len() >= 2 {
+                segment_deg(coords[0].0, coords[0].1, coords[1].0, coords[1].1)
+            } else {
+                0.0
+            };
             paint_one_marker(
                 &mut img,
                 tag,
                 "marker-start",
                 coords[0].0,
                 coords[0].1,
+                start_deg,
                 &markers,
                 &grads,
                 &clips,
             );
             let last = coords[coords.len() - 1];
+            let end_deg = if coords.len() >= 2 {
+                let prev = coords[coords.len() - 2];
+                segment_deg(prev.0, prev.1, last.0, last.1)
+            } else {
+                0.0
+            };
             paint_one_marker(
                 &mut img,
                 tag,
                 "marker-end",
                 last.0,
                 last.1,
+                end_deg,
                 &markers,
                 &grads,
                 &clips,
             );
             if coords.len() >= 3 {
-                for p in &coords[1..coords.len() - 1] {
+                for i in 1..coords.len() - 1 {
+                    let p = coords[i];
+                    let prev = coords[i - 1];
                     paint_one_marker(
                         &mut img,
                         tag,
                         "marker-mid",
                         p.0,
                         p.1,
+                        segment_deg(prev.0, prev.1, p.0, p.1),
                         &markers,
                         &grads,
                         &clips,
@@ -838,6 +854,8 @@ fn svg_stroke_first(tag: &str) -> bool {
 struct SvgMarker {
     ref_x: f32,
     ref_y: f32,
+    orient: f32,
+    auto_orient: bool,
     child: String,
 }
 
@@ -1572,11 +1590,14 @@ fn parse_svg_markers(text: &str) -> HashMap<String, SvgMarker> {
                 })
                 .unwrap_or_default();
             if !child.is_empty() {
+                let (orient, auto_orient) = parse_marker_orient(tag);
                 out.insert(
                     id.to_string(),
                     SvgMarker {
                         ref_x: svg_attr(tag, "refX").unwrap_or(0.0),
                         ref_y: svg_attr(tag, "refY").unwrap_or(0.0),
+                        orient,
+                        auto_orient,
                         child,
                     },
                 );
@@ -1587,12 +1608,40 @@ fn parse_svg_markers(text: &str) -> HashMap<String, SvgMarker> {
     out
 }
 
+fn parse_marker_orient(tag: &str) -> (f32, bool) {
+    let Some(raw) = svg_attr_str(tag, "orient") else {
+        return (0.0, false);
+    };
+    let t = raw.trim();
+    if t.eq_ignore_ascii_case("auto") || t.eq_ignore_ascii_case("auto-start-reverse") {
+        return (0.0, true);
+    }
+    let n = t
+        .trim_end_matches("deg")
+        .trim()
+        .parse::<f32>()
+        .unwrap_or(0.0);
+    (n, false)
+}
+
+fn segment_deg(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
+    (y2 - y1).atan2(x2 - x1).to_degrees()
+}
+
+fn marker_child_with_orient(child: &str, deg: f32, rcx: f32, rcy: f32) -> String {
+    if deg.abs() < 0.001 {
+        return child.to_string();
+    }
+    format!("{child} transform='rotate({deg}, {rcx}, {rcy})'")
+}
+
 fn paint_one_marker(
     img: &mut DecodedImage,
     tag: &str,
     attr: &str,
     x: f32,
     y: f32,
+    tangent_deg: f32,
     markers: &HashMap<String, SvgMarker>,
     grads: &HashMap<String, SvgGrad>,
     clips: &HashMap<String, SvgClip>,
@@ -1606,6 +1655,8 @@ fn paint_one_marker(
     let Some(m) = markers.get(id) else {
         return;
     };
+    let deg = if m.auto_orient { tangent_deg } else { m.orient };
+    let child = marker_child_with_orient(&m.child, deg, m.ref_x, m.ref_y);
     let xf = SvgXform {
         ox: x - m.ref_x,
         oy: y - m.ref_y,
@@ -1614,12 +1665,12 @@ fn paint_one_marker(
         opacity: 1.0,
         clip: None,
     };
-    if m.child.starts_with("<rect") {
-        paint_svg_rect(img, &m.child, xf, grads, clips, &HashMap::new());
-    } else if m.child.starts_with("<circle") {
-        paint_svg_circle(img, &m.child, xf, grads, clips, &HashMap::new());
-    } else if m.child.starts_with("<ellipse") {
-        paint_svg_ellipse(img, &m.child, xf, grads, clips, &HashMap::new());
+    if child.starts_with("<rect") {
+        paint_svg_rect(img, &child, xf, grads, clips, &HashMap::new());
+    } else if child.starts_with("<circle") {
+        paint_svg_circle(img, &child, xf, grads, clips, &HashMap::new());
+    } else if child.starts_with("<ellipse") {
+        paint_svg_ellipse(img, &child, xf, grads, clips, &HashMap::new());
     }
 }
 
@@ -1634,8 +1685,9 @@ fn paint_svg_markers(
     grads: &HashMap<String, SvgGrad>,
     clips: &HashMap<String, SvgClip>,
 ) {
-    paint_one_marker(img, tag, "marker-start", x1, y1, markers, grads, clips);
-    paint_one_marker(img, tag, "marker-end", x2, y2, markers, grads, clips);
+    let deg = segment_deg(x1, y1, x2, y2);
+    paint_one_marker(img, tag, "marker-start", x1, y1, deg, markers, grads, clips);
+    paint_one_marker(img, tag, "marker-end", x2, y2, deg, markers, grads, clips);
 }
 
 fn parse_offset(s: &str) -> f32 {
@@ -3749,6 +3801,32 @@ mod tests {
         .expect("svg stroke fill paint-order");
         assert_eq!(fill_first.pixel(1, 4), Some([255, 0, 0, 255]));
         assert_eq!(stroke_first.pixel(1, 4), Some([0, 0, 255, 255]));
+    }
+
+    #[test]
+    fn decode_svg_marker_orient_rotates_end_marker() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><marker id='m' markerWidth='6' markerHeight='6' refX='0' refY='1' orient='90'>\
+              <rect x='0' y='0' width='4' height='2' fill='#00ff00'/></marker></defs>\
+              <line x1='0' y1='4' x2='2' y2='4' stroke='#000000' stroke-width='1' marker-end='url(#m)'/></svg>",
+        )
+        .expect("svg marker-orient");
+        assert_eq!(img.pixel(2, 6), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(5, 4), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_marker_orient_auto_follows_vertical_line() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><marker id='m' markerWidth='6' markerHeight='6' refX='0' refY='1' orient='auto'>\
+              <rect x='0' y='0' width='4' height='2' fill='#00ff00'/></marker></defs>\
+              <line x1='2' y1='0' x2='2' y2='2' stroke='#000000' stroke-width='1' marker-end='url(#m)'/></svg>",
+        )
+        .expect("svg marker-orient auto");
+        assert_eq!(img.pixel(2, 5), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(5, 2), Some([0, 0, 0, 0]));
     }
 
     #[test]
