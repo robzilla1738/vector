@@ -1410,19 +1410,21 @@ fn parse_canvas_blur_px(filter: &str) -> i32 {
     n.parse::<f32>().unwrap_or(0.0).round().clamp(0.0, 16.0) as i32
 }
 
-fn parse_canvas_grayscale(filter: &str) -> f32 {
+fn parse_canvas_filter_fn(filter: &str, name: &str) -> Option<f32> {
     let s = filter.trim();
-    let Some(inner) = s
-        .strip_prefix("grayscale(")
-        .and_then(|rest| rest.strip_suffix(')'))
-    else {
-        return 0.0;
-    };
+    let prefix = format!("{name}(");
+    let inner = s.strip_prefix(prefix.as_str())?.strip_suffix(')')?;
     let t = inner.trim();
     if let Some(p) = t.strip_suffix('%') {
-        return p.parse::<f32>().unwrap_or(0.0).clamp(0.0, 100.0) / 100.0;
+        return Some(p.parse::<f32>().unwrap_or(0.0).clamp(0.0, 100.0) / 100.0);
     }
-    t.parse::<f32>().unwrap_or(0.0).clamp(0.0, 1.0)
+    Some(t.parse::<f32>().unwrap_or(0.0))
+}
+
+fn parse_canvas_grayscale(filter: &str) -> f32 {
+    parse_canvas_filter_fn(filter, "grayscale")
+        .unwrap_or(0.0)
+        .clamp(0.0, 1.0)
 }
 
 fn canvas_path_bounds(rects: &[[f32; 4]], polys: &[Vec<[f32; 2]>]) -> Option<(i32, i32, i32, i32)> {
@@ -1606,6 +1608,13 @@ fn parse_canvas_style(s: &str) -> CanvasStyle {
     CanvasStyle::Solid(parse_css_color(t))
 }
 
+#[derive(Clone, Copy)]
+enum CanvasColorFilter {
+    Grayscale(f32),
+    Invert(f32),
+    Brightness(f32),
+}
+
 /// Software 2D canvas backing store.
 #[derive(Clone, Debug)]
 pub(crate) struct CanvasSurface {
@@ -1707,8 +1716,11 @@ impl CanvasSurface {
     }
 
     fn grayscale_rect(&mut self, x: i32, y: i32, w: i32, h: i32, amount: f32) {
-        let amount = amount.clamp(0.0, 1.0);
-        if amount <= 0.0 || w <= 0 || h <= 0 {
+        self.color_filter_rect(x, y, w, h, CanvasColorFilter::Grayscale(amount));
+    }
+
+    fn color_filter_rect(&mut self, x: i32, y: i32, w: i32, h: i32, kind: CanvasColorFilter) {
+        if w <= 0 || h <= 0 {
             return;
         }
         let x0 = x.max(0);
@@ -1724,10 +1736,28 @@ impl CanvasSurface {
                 let r = f32::from(self.pixels[i]);
                 let g = f32::from(self.pixels[i + 1]);
                 let b = f32::from(self.pixels[i + 2]);
-                let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                self.pixels[i] = (r + (y - r) * amount).round().clamp(0.0, 255.0) as u8;
-                self.pixels[i + 1] = (g + (y - g) * amount).round().clamp(0.0, 255.0) as u8;
-                self.pixels[i + 2] = (b + (y - b) * amount).round().clamp(0.0, 255.0) as u8;
+                let (nr, ng, nb) = match kind {
+                    CanvasColorFilter::Grayscale(amount) => {
+                        let amount = amount.clamp(0.0, 1.0);
+                        let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                        (r + (y - r) * amount, g + (y - g) * amount, b + (y - b) * amount)
+                    }
+                    CanvasColorFilter::Invert(amount) => {
+                        let amount = amount.clamp(0.0, 1.0);
+                        (
+                            r * (1.0 - amount) + (255.0 - r) * amount,
+                            g * (1.0 - amount) + (255.0 - g) * amount,
+                            b * (1.0 - amount) + (255.0 - b) * amount,
+                        )
+                    }
+                    CanvasColorFilter::Brightness(amount) => {
+                        let amount = amount.max(0.0);
+                        (r * amount, g * amount, b * amount)
+                    }
+                };
+                self.pixels[i] = nr.round().clamp(0.0, 255.0) as u8;
+                self.pixels[i + 1] = ng.round().clamp(0.0, 255.0) as u8;
+                self.pixels[i + 2] = nb.round().clamp(0.0, 255.0) as u8;
             }
         }
     }
@@ -2956,6 +2986,12 @@ impl Page {
         let gray = parse_canvas_grayscale(filter);
         if gray > 0.0 {
             c.grayscale_rect(x, y, w, h, gray);
+        }
+        if let Some(inv) = parse_canvas_filter_fn(filter, "invert") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Invert(inv));
+        }
+        if let Some(br) = parse_canvas_filter_fn(filter, "brightness") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Brightness(br));
         }
         c.ops
     }

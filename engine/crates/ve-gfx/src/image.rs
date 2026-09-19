@@ -891,6 +891,8 @@ enum SvgFilterKind {
     Out,
     Tile { x: f32, y: f32, w: f32, h: f32 },
     Component { slope: f32 },
+    Convolve([f32; 9]),
+    Displace { scale: f32 },
 }
 
 #[derive(Clone, Copy)]
@@ -973,6 +975,30 @@ fn parse_svg_filters(text: &str) -> HashMap<String, SvgFilterKind> {
                     1.0
                 };
                 out.insert(id.to_string(), SvgFilterKind::Component { slope });
+            } else if let Some(ci) = block.find("<feConvolveMatrix") {
+                let ce = block[ci..].find('>').unwrap_or(block.len() - ci);
+                let conv = &block[ci..ci + ce];
+                let mut kernel = [0.0_f32, -1.0, 0.0, -1.0, 4.0, -1.0, 0.0, -1.0, 0.0];
+                if let Some(raw) = svg_attr_str(conv, "kernelMatrix") {
+                    let mut nums = raw
+                        .split(|c: char| c == ',' || c.is_whitespace())
+                        .filter_map(|s| s.parse().ok());
+                    for slot in kernel.iter_mut() {
+                        if let Some(n) = nums.next() {
+                            *slot = n;
+                        }
+                    }
+                }
+                out.insert(id.to_string(), SvgFilterKind::Convolve(kernel));
+            } else if let Some(di) = block.find("<feDisplacementMap") {
+                let de = block[di..].find('>').unwrap_or(block.len() - di);
+                let disp = &block[di..di + de];
+                out.insert(
+                    id.to_string(),
+                    SvgFilterKind::Displace {
+                        scale: svg_attr(disp, "scale").unwrap_or(0.0),
+                    },
+                );
             } else if block.contains("<feTurbulence") {
                 out.insert(id.to_string(), SvgFilterKind::Turbulence);
             } else if let Some(color) = flood_color {
@@ -1150,6 +1176,14 @@ fn apply_svg_filter(
             let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
             component_decoded_rect(img, bx0, by0, bx1, by1, *slope);
         }
+        SvgFilterKind::Convolve(kernel) => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 1);
+            convolve_decoded_rect(img, bx0, by0, bx1, by1, kernel);
+        }
+        SvgFilterKind::Displace { scale } => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            displace_decoded_rect(img, bx0, by0, bx1, by1, *scale);
+        }
         SvgFilterKind::Offset { .. } => {}
     }
 }
@@ -1182,6 +1216,82 @@ fn component_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1:
             }
             let v = f32::from(img.rgba[i]) / 255.0 * slope;
             img.rgba[i] = (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+        }
+    }
+}
+
+fn convolve_decoded_rect(
+    img: &mut DecodedImage,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+    kernel: &[f32; 9],
+) {
+    let mut src = vec![[0u8; 4]; ((x1 - x0).max(0) * (y1 - y0).max(0)) as usize];
+    let tw = (x1 - x0).max(0);
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = ((y - y0) * tw + (x - x0)) as usize;
+            if x >= 0 && y >= 0 {
+                if let Some(px) = img.pixel(x as u32, y as u32) {
+                    src[i] = px;
+                }
+            }
+        }
+    }
+    let sample = |x: i32, y: i32| -> [u8; 4] {
+        if x < x0 || y < y0 || x >= x1 || y >= y1 {
+            return [0, 0, 0, 0];
+        }
+        src[((y - y0) * tw + (x - x0)) as usize]
+    };
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let mut acc = [0.0_f32; 4];
+            for ky in -1..=1 {
+                for kx in -1..=1 {
+                    let k = kernel[((ky + 1) * 3 + (kx + 1)) as usize];
+                    let p = sample(x + kx, y + ky);
+                    for c in 0..4 {
+                        acc[c] += f32::from(p[c]) * k;
+                    }
+                }
+            }
+            let out = [
+                acc[0].round().clamp(0.0, 255.0) as u8,
+                acc[1].round().clamp(0.0, 255.0) as u8,
+                acc[2].round().clamp(0.0, 255.0) as u8,
+                acc[3].round().clamp(0.0, 255.0) as u8,
+            ];
+            plot_px(img, x, y, out);
+        }
+    }
+}
+
+fn displace_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32, scale: f32) {
+    let dx = scale.round() as i32;
+    if dx == 0 {
+        return;
+    }
+    let tw = (x1 - x0).max(0);
+    let th = (y1 - y0).max(0);
+    let mut src = vec![[0u8; 4]; (tw * th) as usize];
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = ((y - y0) * tw + (x - x0)) as usize;
+            if x >= 0 && y >= 0 {
+                if let Some(px) = img.pixel(x as u32, y as u32) {
+                    src[i] = px;
+                }
+            }
+            plot_px(img, x, y, [0, 0, 0, 0]);
+        }
+    }
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = ((y - y0) * tw + (x - x0)) as usize;
+            plot_px(img, x + dx, y, src[i]);
         }
     }
 }
@@ -4042,6 +4152,31 @@ mod tests {
         )
         .expect("svg component");
         assert_eq!(img.pixel(4, 4), Some([128, 0, 0, 255]));
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_convolve_zeros_interior() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feConvolveMatrix order='3' kernelMatrix='0 -1 0 -1 4 -1 0 -1 0'/></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg convolve");
+        assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(2, 2), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_filter_displace_shifts_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feDisplacementMap scale='2'/></filter></defs>\
+              <rect x='1' y='2' width='2' height='2' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg displace");
+        assert_eq!(img.pixel(1, 2), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(3, 2), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
     }
 }

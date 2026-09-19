@@ -9438,6 +9438,7 @@
       this.TEXTURE_2D = 3553;
       this.SCISSOR_TEST = 3089;
       this.VIEWPORT = 2978;
+      this.COLOR_WRITEMASK = 3107;
       this.BLEND = 3042;
       this.ONE = 1;
       this.ZERO = 0;
@@ -9454,6 +9455,7 @@
       this._viewport = [0, 0, canvas.width, canvas.height];
       this._blendOn = false;
       this._blend = [1, 0];
+      this._colorMask = [true, true, true, true];
       this._arrayBuf = null;
       this._elemBuf = null;
       this._attribOn = false;
@@ -9489,6 +9491,7 @@
       if (p === this.VENDOR) return "Vector";
       if (p === this.RENDERER) return "Vector Software";
       if (p === this.VIEWPORT) return this._viewportRect().slice();
+      if (p === this.COLOR_WRITEMASK) return this._colorMask.slice();
       return null;
     }
     getExtension() { return null; }
@@ -9516,8 +9519,10 @@
       const hex = (n) => Math.max(0, Math.min(255, Math.round(n * 255))).toString(16).padStart(2, "0");
       const css = a >= 1 ? ("#" + hex(r) + hex(g) + hex(b)) : ("rgba(" + Math.round(r * 255) + "," + Math.round(g * 255) + "," + Math.round(b * 255) + "," + a + ")");
       const [sx, sy, sw, sh] = this._clearRect();
-      if (this._isFullClear()) D("canvasResize", c.__h, c.width, c.height);
-      D("canvasFillRect", c.__h, sx, sy, sw, sh, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
+      if (this._isFullClear() && this._maskEnabled()) D("canvasResize", c.__h, c.width, c.height);
+      this._applyColorMask(sx, sy, sw, sh, () => {
+        D("canvasFillRect", c.__h, sx, sy, sw, sh, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
+      });
     }
     readPixels(x, y, w, h, _format, _type, dst) {
       const c = this.canvas;
@@ -9539,6 +9544,45 @@
       if (cap === this.BLEND) this._blendOn = false;
     }
     blendFunc(src, dst) { this._blend = [Number(src) || 0, Number(dst) || 0]; }
+    colorMask(r, g, b, a) {
+      this._colorMask = [!!r, !!g, !!b, a == null ? true : !!a];
+    }
+    _maskEnabled() {
+      const m = this._colorMask || [true, true, true, true];
+      return m[0] && m[1] && m[2] && m[3];
+    }
+    _applyColorMask(x, y, w, h, draw) {
+      const c = this.canvas;
+      if (!c || c.__h == null || this._maskEnabled()) {
+        draw();
+        return;
+      }
+      const dest = D("canvasGetImageData", c.__h, x, y, w, h) || {};
+      const destBin = atob(dest.b64 || "");
+      draw();
+      const src = D("canvasGetImageData", c.__h, x, y, w, h) || {};
+      const srcBin = atob(src.b64 || "");
+      const m = this._colorMask;
+      let out = "";
+      const n = Math.max(destBin.length, srcBin.length);
+      for (let i = 0; i < n; i += 4) {
+        const sr = srcBin.charCodeAt(i) || 0;
+        const sg = srcBin.charCodeAt(i + 1) || 0;
+        const sb = srcBin.charCodeAt(i + 2) || 0;
+        const sa = srcBin.charCodeAt(i + 3) || 0;
+        const dr = destBin.charCodeAt(i) || 0;
+        const dg = destBin.charCodeAt(i + 1) || 0;
+        const db = destBin.charCodeAt(i + 2) || 0;
+        const da = destBin.charCodeAt(i + 3) || 0;
+        out += String.fromCharCode(
+          m[0] ? sr : dr,
+          m[1] ? sg : dg,
+          m[2] ? sb : db,
+          m[3] ? sa : da
+        );
+      }
+      D("canvasPutImageData", c.__h, w, h, btoa(out), x, y);
+    }
     _withBlend(fn) {
       const c = this.canvas;
       const add = this._blendOn && this._blend && this._blend[0] === this.ONE && this._blend[1] === this.ONE;
