@@ -833,6 +833,10 @@ enum CompositeOp {
     Exclusion,
     ColorDodge,
     ColorBurn,
+    Hue,
+    Saturation,
+    Color,
+    Luminosity,
 }
 
 impl CompositeOp {
@@ -851,6 +855,10 @@ impl CompositeOp {
             "exclusion" => Self::Exclusion,
             "color-dodge" => Self::ColorDodge,
             "color-burn" => Self::ColorBurn,
+            "hue" => Self::Hue,
+            "saturation" => Self::Saturation,
+            "color" => Self::Color,
+            "luminosity" => Self::Luminosity,
             "source-in" => Self::SourceIn,
             "destination-in" => Self::DestinationIn,
             "source-out" => Self::SourceOut,
@@ -1087,6 +1095,89 @@ fn glyph5x7(ch: char) -> [u8; 5] {
     }
 }
 
+fn lum(c: [f32; 3]) -> f32 {
+    0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+}
+
+fn sat(c: [f32; 3]) -> f32 {
+    c[0].max(c[1]).max(c[2]) - c[0].min(c[1]).min(c[2])
+}
+
+fn clip_color(mut c: [f32; 3]) -> [f32; 3] {
+    let l = lum(c);
+    let n = c[0].min(c[1]).min(c[2]);
+    let x = c[0].max(c[1]).max(c[2]);
+    if n < 0.0 {
+        let denom = l - n;
+        if denom > 1e-8 {
+            for v in &mut c {
+                *v = l + (*v - l) * l / denom;
+            }
+        }
+    }
+    if x > 1.0 {
+        let denom = x - l;
+        if denom > 1e-8 {
+            for v in &mut c {
+                *v = l + (*v - l) * (1.0 - l) / denom;
+            }
+        }
+    }
+    c
+}
+
+fn set_lum(c: [f32; 3], l: f32) -> [f32; 3] {
+    let d = l - lum(c);
+    clip_color([c[0] + d, c[1] + d, c[2] + d])
+}
+
+fn set_sat(c: [f32; 3], s: f32) -> [f32; 3] {
+    let mut idx = [0usize, 1, 2];
+    idx.sort_by(|&a, &b| c[a].partial_cmp(&c[b]).unwrap_or(std::cmp::Ordering::Equal));
+    let (imin, imid, imax) = (idx[0], idx[1], idx[2]);
+    let mut out = c;
+    if c[imax] > c[imin] {
+        out[imid] = ((c[imid] - c[imin]) * s) / (c[imax] - c[imin]);
+        out[imax] = s;
+        out[imin] = 0.0;
+    } else {
+        out = [0.0, 0.0, 0.0];
+    }
+    out
+}
+
+fn rgb01(px: [u8; 4]) -> [f32; 3] {
+    [
+        f32::from(px[0]) / 255.0,
+        f32::from(px[1]) / 255.0,
+        f32::from(px[2]) / 255.0,
+    ]
+}
+
+fn rgb_u8(c: [f32; 3], a: u8) -> [u8; 4] {
+    [
+        (c[0].clamp(0.0, 1.0) * 255.0).round() as u8,
+        (c[1].clamp(0.0, 1.0) * 255.0).round() as u8,
+        (c[2].clamp(0.0, 1.0) * 255.0).round() as u8,
+        a,
+    ]
+}
+
+fn blend_nonseparable(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
+    let cb = rgb01(dst);
+    let cs = rgb01(src);
+    let out = match op {
+        CompositeOp::Hue => set_lum(set_sat(cs, sat(cb)), lum(cb)),
+        CompositeOp::Saturation => set_lum(set_sat(cb, sat(cs)), lum(cb)),
+        CompositeOp::Color => set_lum(cs, lum(cb)),
+        CompositeOp::Luminosity => set_lum(cb, lum(cs)),
+        _ => cs,
+    };
+    let a =
+        (u32::from(src[3]) + u32::from(dst[3]) * (255 - u32::from(src[3])) / 255).min(255) as u8;
+    rgb_u8(out, a)
+}
+
 fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
     let sa = u32::from(src[3]);
     let da = u32::from(dst[3]);
@@ -1240,6 +1331,12 @@ fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
                 ch(src[2], dst[2]),
                 a.min(255) as u8,
             ];
+        }
+        CompositeOp::Hue
+        | CompositeOp::Saturation
+        | CompositeOp::Color
+        | CompositeOp::Luminosity => {
+            return blend_nonseparable(dst, src, op);
         }
     };
     let out_a = fs + fd;

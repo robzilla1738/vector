@@ -1502,6 +1502,52 @@ fn canvas_color_dodge_and_color_burn_blend_channels() {
 }
 
 #[test]
+fn canvas_hue_saturation_color_and_luminosity_blend() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op, dest, src) {
+                var c = document.createElement("canvas");
+                c.width = 4;
+                c.height = 4;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = dest;
+                ctx.fillRect(0, 0, 4, 4);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = src;
+                ctx.fillRect(0, 0, 4, 4);
+                var p = ctx.getImageData(1, 1, 1, 1).data;
+                return { r: p[0], g: p[1], b: p[2], a: p[3] };
+              }
+              return {
+                hue: sample("hue", "#ff0000", "#00ff00"),
+                color: sample("color", "#808080", "#ff0000"),
+                lum: sample("luminosity", "#ff0000", "#ffffff"),
+                sat: sample("saturation", "#808000", "#ff0000")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["hue"]["g"].as_u64().unwrap_or(0) > v["hue"]["r"].as_u64().unwrap_or(0) + 50,
+        "hue takes the source hue: {v}"
+    );
+    assert!(
+        v["color"]["r"].as_u64().unwrap_or(0) > 200
+            && v["color"]["g"].as_u64().unwrap_or(255) < 120,
+        "color tints dest with source chroma: {v}"
+    );
+    assert_eq!(v["lum"]["r"], 255, "{v}");
+    assert_eq!(v["lum"]["g"], 255, "{v}");
+    assert_eq!(v["lum"]["b"], 255, "{v}");
+    assert!(
+        v["sat"]["r"].as_u64().unwrap_or(0) > 80 && v["sat"]["b"].as_u64().unwrap_or(255) < 20,
+        "saturation boosts dest chroma: {v}"
+    );
+}
+
+#[test]
 fn canvas_filter_blur_spills_outside_stroke_path() {
     let mut page = open(r#"<body></body>"#);
     let v = page
