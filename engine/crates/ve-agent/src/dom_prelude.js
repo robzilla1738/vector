@@ -3845,12 +3845,15 @@
       return JSON.stringify({ r: this._r, p: this._p });
     }
     _svg(d) {
-      const re = /([MmLlHhVvZzQqCcAa])|(-?\d*\.?\d+(?:e[-+]?\d+)?)/g;
+      const re = /([MmLlHhVvZzQqCcAaSsTt])|(-?\d*\.?\d+(?:e[-+]?\d+)?)/g;
       let cmd = "M";
       let x = 0;
       let y = 0;
       let sx = 0;
       let sy = 0;
+      let lastCpx = 0;
+      let lastCpy = 0;
+      let lastCurve = "";
       const nums = [];
       const flushNums = () => {
         const rel = cmd === cmd.toLowerCase();
@@ -3865,6 +3868,7 @@
             x = nx; y = ny;
             if (C === "M") { sx = x; sy = y; cmd = rel ? "l" : "L"; }
           }
+          lastCurve = "";
         } else if (C === "H") {
           while (nums.length) {
             let nx = nums.shift();
@@ -3872,6 +3876,7 @@
             this.lineTo(nx, y);
             x = nx;
           }
+          lastCurve = "";
         } else if (C === "V") {
           while (nums.length) {
             let ny = nums.shift();
@@ -3879,6 +3884,7 @@
             this.lineTo(x, ny);
             y = ny;
           }
+          lastCurve = "";
         } else if (C === "Q") {
           while (nums.length >= 4) {
             let cpx = nums.shift();
@@ -3887,6 +3893,7 @@
             let ny = nums.shift();
             if (rel) { cpx += x; cpy += y; nx += x; ny += y; }
             this.quadraticCurveTo(cpx, cpy, nx, ny);
+            lastCpx = cpx; lastCpy = cpy; lastCurve = "Q";
             x = nx; y = ny;
           }
         } else if (C === "C") {
@@ -3899,6 +3906,31 @@
             let ny = nums.shift();
             if (rel) { x1 += x; y1 += y; x2 += x; y2 += y; nx += x; ny += y; }
             this.bezierCurveTo(x1, y1, x2, y2, nx, ny);
+            lastCpx = x2; lastCpy = y2; lastCurve = "C";
+            x = nx; y = ny;
+          }
+        } else if (C === "S") {
+          while (nums.length >= 4) {
+            let x2 = nums.shift();
+            let y2 = nums.shift();
+            let nx = nums.shift();
+            let ny = nums.shift();
+            if (rel) { x2 += x; y2 += y; nx += x; ny += y; }
+            const x1 = (lastCurve === "C" || lastCurve === "S") ? 2 * x - lastCpx : x;
+            const y1 = (lastCurve === "C" || lastCurve === "S") ? 2 * y - lastCpy : y;
+            this.bezierCurveTo(x1, y1, x2, y2, nx, ny);
+            lastCpx = x2; lastCpy = y2; lastCurve = "S";
+            x = nx; y = ny;
+          }
+        } else if (C === "T") {
+          while (nums.length >= 2) {
+            let nx = nums.shift();
+            let ny = nums.shift();
+            if (rel) { nx += x; ny += y; }
+            const cpx = (lastCurve === "Q" || lastCurve === "T") ? 2 * x - lastCpx : x;
+            const cpy = (lastCurve === "Q" || lastCurve === "T") ? 2 * y - lastCpy : y;
+            this.quadraticCurveTo(cpx, cpy, nx, ny);
+            lastCpx = cpx; lastCpy = cpy; lastCurve = "T";
             x = nx; y = ny;
           }
         } else if (C === "A") {
@@ -3912,6 +3944,7 @@
             let ny = nums.shift();
             if (rel) { nx += x; ny += y; }
             sampleSvgArc(this, x, y, rx, ry, rot, large, sweep, nx, ny);
+            lastCurve = "";
             x = nx; y = ny;
           }
         }
@@ -3925,6 +3958,7 @@
           if (cmd === "Z" || cmd === "z") {
             this.closePath();
             x = sx; y = sy;
+            lastCurve = "";
           }
         } else if (m[2]) nums.push(Number(m[2]));
       }
@@ -4181,12 +4215,12 @@
     stroke() {
       const path = arguments[0];
       const p = path instanceof Path2D ? path : this._path;
-      D("canvasStrokePath", this.__h, p._payload(), String(this.strokeStyle || this.fillStyle));
+      D("canvasStrokePath", this.__h, p._payload(), String(this.strokeStyle || this.fillStyle), Number(this._lineWidth) || 1);
     }
     strokeRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'strokeRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       const box = this._mapRect(x, y, w, h);
-      D("canvasStrokeRect", this.__h, box[0], box[1], box[2], box[3], String(this.strokeStyle || this.fillStyle));
+      D("canvasStrokeRect", this.__h, box[0], box[1], box[2], box[3], String(this.strokeStyle || this.fillStyle), Number(this._lineWidth) || 1);
     }
     save() {
       this._stack.push({

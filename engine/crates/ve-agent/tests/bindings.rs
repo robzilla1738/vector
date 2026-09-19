@@ -961,6 +961,95 @@ fn canvas_path2d_parses_svg_quad_cubic_and_arc() {
 }
 
 #[test]
+fn canvas_fill_path_uses_linear_gradient() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              var g = ctx.createLinearGradient(0, 0, 16, 0);
+              g.addColorStop(0, "#ff0000");
+              g.addColorStop(1, "#0000ff");
+              ctx.fillStyle = g;
+              ctx.beginPath();
+              ctx.rect(0, 0, 16, 8);
+              ctx.fill();
+              var left = ctx.getImageData(0, 4, 1, 1).data;
+              var right = ctx.getImageData(15, 4, 1, 1).data;
+              return { lr: left[0], lb: left[2], rr: right[0], rb: right[2] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(v["lr"].as_f64().unwrap_or(0.0) > 200.0, "left red: {v}");
+    assert!(
+        v["lb"].as_f64().unwrap_or(99.0) < 40.0,
+        "left not blue: {v}"
+    );
+    assert!(v["rb"].as_f64().unwrap_or(0.0) > 200.0, "right blue: {v}");
+    assert!(
+        v["rr"].as_f64().unwrap_or(99.0) < 40.0,
+        "right not red: {v}"
+    );
+}
+
+#[test]
+fn canvas_stroke_respects_line_width() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.lineWidth = 5;
+              ctx.strokeStyle = "#00ff00";
+              ctx.beginPath();
+              ctx.moveTo(0, 8);
+              ctx.lineTo(16, 8);
+              ctx.stroke();
+              var mid = ctx.getImageData(8, 8, 1, 1).data;
+              var thick = ctx.getImageData(8, 6, 1, 1).data;
+              var empty = ctx.getImageData(8, 0, 1, 1).data;
+              return { mg: mid[1], tg: thick[1], ea: empty[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["mg"], 255, "{v}");
+    assert_eq!(v["tg"], 255, "{v}");
+    assert_eq!(v["ea"], 0, "{v}");
+}
+
+#[test]
+fn canvas_path2d_parses_smooth_s_and_t() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.lineWidth = 2;
+              var t = new Path2D("M0 7 Q8 0 8 7 T 16 7");
+              var s = new Path2D("M0 15 C0 0 8 0 8 8 S 16 16 16 8");
+              return {
+                tMid: ctx.isPointInStroke(t, 10, 10),
+                tEnd: ctx.isPointInStroke(t, 16, 7),
+                sEnd: ctx.isPointInStroke(s, 16, 8)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["tMid"], true, "{v}");
+    assert_eq!(v["tEnd"], true, "{v}");
+    assert_eq!(v["sEnd"], true, "{v}");
+}
+
+#[test]
 fn canvas_rotate_maps_fill_rect() {
     let mut page = open(r#"<body></body>"#);
     let v = page

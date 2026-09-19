@@ -1018,15 +1018,25 @@ impl CanvasSurface {
         *self = Self::new(width, height);
     }
 
-    fn stroke_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: [u8; 4]) {
+    fn stroke_rect_styled(
+        &mut self,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+        style: &CanvasStyle,
+        alpha: f32,
+        width: i32,
+    ) {
         if w <= 0 || h <= 0 {
             self.ops += 1;
             return;
         }
-        self.fill_rect(x, y, w, 1, color);
-        self.fill_rect(x, y + h - 1, w, 1, color);
-        self.fill_rect(x, y, 1, h, color);
-        self.fill_rect(x + w - 1, y, 1, h, color);
+        let t = width.max(1);
+        self.fill_rect_styled(x, y, w, t.min(h), style, alpha);
+        self.fill_rect_styled(x, y + h - t.min(h), w, t.min(h), style, alpha);
+        self.fill_rect_styled(x, y, t.min(w), h, style, alpha);
+        self.fill_rect_styled(x + w - t.min(w), y, t.min(w), h, style, alpha);
     }
 
     fn fill_rect_styled(
@@ -1158,7 +1168,7 @@ impl CanvasSurface {
         self.ops += 1;
     }
 
-    fn fill_polygon(&mut self, pts: &[[f32; 2]], color: [u8; 4]) {
+    fn fill_polygon_styled(&mut self, pts: &[[f32; 2]], style: &CanvasStyle, alpha: f32) {
         if pts.len() < 3 {
             return;
         }
@@ -1188,45 +1198,81 @@ impl CanvasSurface {
                 }
                 let x0 = pair[0].floor() as i32;
                 let x1 = pair[1].ceil() as i32;
-                self.fill_rect(x0, y, (x1 - x0).max(0), 1, color);
+                self.fill_rect_styled(x0, y, (x1 - x0).max(0), 1, style, alpha);
             }
         }
     }
 
-    fn fill_path(&mut self, rects: &[[f32; 4]], polys: &[Vec<[f32; 2]>], color: [u8; 4]) {
+    fn fill_path_styled(
+        &mut self,
+        rects: &[[f32; 4]],
+        polys: &[Vec<[f32; 2]>],
+        style: &CanvasStyle,
+        alpha: f32,
+    ) {
         for r in rects {
-            self.fill_rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, color);
+            self.fill_rect_styled(
+                r[0] as i32,
+                r[1] as i32,
+                r[2] as i32,
+                r[3] as i32,
+                style,
+                alpha,
+            );
         }
         for poly in polys {
-            self.fill_polygon(poly, color);
+            self.fill_polygon_styled(poly, style, alpha);
         }
         self.ops += 1;
     }
 
-    fn stroke_polyline(&mut self, pts: &[[f32; 2]], color: [u8; 4]) {
+    fn stroke_polyline_styled(
+        &mut self,
+        pts: &[[f32; 2]],
+        style: &CanvasStyle,
+        alpha: f32,
+        width: i32,
+    ) {
         if pts.len() < 2 {
             return;
         }
+        let t = width.max(1);
+        let o = (t - 1) / 2;
         for pair in pts.windows(2) {
             let (a, b) = (pair[0], pair[1]);
             let dx = b[0] - a[0];
             let dy = b[1] - a[1];
             let steps = dx.abs().max(dy.abs()).ceil().max(1.0) as i32;
             for i in 0..=steps {
-                let t = i as f32 / steps as f32;
-                let x = (a[0] + dx * t).round() as i32;
-                let y = (a[1] + dy * t).round() as i32;
-                self.fill_rect(x, y, 1, 1, color);
+                let u = i as f32 / steps as f32;
+                let x = (a[0] + dx * u).round() as i32;
+                let y = (a[1] + dy * u).round() as i32;
+                self.fill_rect_styled(x - o, y - o, t, t, style, alpha);
             }
         }
     }
 
-    fn stroke_path(&mut self, rects: &[[f32; 4]], polys: &[Vec<[f32; 2]>], color: [u8; 4]) {
+    fn stroke_path_styled(
+        &mut self,
+        rects: &[[f32; 4]],
+        polys: &[Vec<[f32; 2]>],
+        style: &CanvasStyle,
+        alpha: f32,
+        width: i32,
+    ) {
         for r in rects {
-            self.stroke_rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, color);
+            self.stroke_rect_styled(
+                r[0] as i32,
+                r[1] as i32,
+                r[2] as i32,
+                r[3] as i32,
+                style,
+                alpha,
+                width,
+            );
         }
         for poly in polys {
-            self.stroke_polyline(poly, color);
+            self.stroke_polyline_styled(poly, style, alpha, width);
         }
         self.ops += 1;
     }
@@ -1916,11 +1962,12 @@ impl Page {
         polys: &[Vec<[f32; 2]>],
         color: &str,
     ) -> u64 {
+        let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.fill_path(rects, polys, parse_css_color(color));
+        c.fill_path_styled(rects, polys, &style, 1.0);
         c.ops
     }
 
@@ -1930,12 +1977,14 @@ impl Page {
         rects: &[[f32; 4]],
         polys: &[Vec<[f32; 2]>],
         color: &str,
+        width: i32,
     ) -> u64 {
+        let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.stroke_path(rects, polys, parse_css_color(color));
+        c.stroke_path_styled(rects, polys, &style, 1.0, width);
         c.ops
     }
 
@@ -1947,12 +1996,14 @@ impl Page {
         w: i32,
         h: i32,
         color: &str,
+        width: i32,
     ) -> u64 {
+        let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.stroke_rect(x, y, w, h, parse_css_color(color));
+        c.stroke_rect_styled(x, y, w, h, &style, 1.0, width);
         c.ops
     }
 
