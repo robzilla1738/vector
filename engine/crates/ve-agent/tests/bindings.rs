@@ -5538,6 +5538,73 @@ fn device_apis_and_screen_orientation_deny() {
 }
 
 #[test]
+fn storage_access_and_picture_in_picture_deny() {
+    let mut page = open("<title>pip</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__pip = null;
+          const v = document.createElement("video");
+          document.body.appendChild(v);
+          Promise.allSettled([
+            document.requestStorageAccess(),
+            v.requestPictureInPicture(),
+            document.exitPictureInPicture(),
+            v.setSinkId("default"),
+            navigator.keyboard.lock(["KeyA"])
+          ]).then(function (rows) {
+            window.__pip = {
+              storage: rows[0].status === "rejected" && rows[0].reason.name === "NotAllowedError",
+              pip: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError",
+              exit: rows[2].status === "rejected" && rows[2].reason.name === "InvalidStateError",
+              sink: rows[3].status === "rejected" && rows[3].reason.name === "NotAllowedError",
+              keys: rows[4].status === "rejected" && rows[4].reason.name === "NotAllowedError",
+              enabled: document.pictureInPictureEnabled === false && document.pictureInPictureElement === null
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__pip").unwrap();
+    assert_eq!(v["storage"], true, "{v}");
+    assert_eq!(v["pip"], true, "{v}");
+    assert_eq!(v["exit"], true, "{v}");
+    assert_eq!(v["sink"], true, "{v}");
+    assert_eq!(v["keys"], true, "{v}");
+    assert_eq!(v["enabled"], true, "{v}");
+}
+
+#[test]
+fn analyser_and_biquad_filter_nodes() {
+    let mut page = open("<title>an</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const ctx = new AudioContext();
+              const an = ctx.createAnalyser();
+              const bq = ctx.createBiquadFilter();
+              const bins = new Uint8Array(an.frequencyBinCount);
+              an.getByteFrequencyData(bins);
+              const wave = new Uint8Array(an.fftSize);
+              an.getByteTimeDomainData(wave);
+              return {
+                inst: an instanceof AnalyserNode && bq instanceof BiquadFilterNode,
+                bins: an.frequencyBinCount === 1024 && bins[0] === 0,
+                wave: wave[0] === 128,
+                type: bq.type === "lowpass" && bq.frequency.value === 350,
+                time: typeof ctx.currentTime === "number"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["bins"], true, "{v}");
+    assert_eq!(v["wave"], true, "{v}");
+    assert_eq!(v["type"], true, "{v}");
+    assert_eq!(v["time"], true, "{v}");
+}
+
+#[test]
 fn webgl_tex_image_draw_arrays_blits() {
     let mut page = open("<title>glt</title>");
     let v = page

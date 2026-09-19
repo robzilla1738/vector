@@ -39,6 +39,7 @@
   const liveIntersectionObservers = new Set();
   const liveResizeObservers = new Set();
   let documentFullscreenElement = null;
+  let documentPictureInPictureElement = null;
   function notifyGeometryObservers() {
     for (const o of liveIntersectionObservers) o._fire();
     for (const o of liveResizeObservers) o._fire();
@@ -5707,6 +5708,9 @@
     get audioTracks() { return this._audioTracks || (this._audioTracks = emptyAudioTrackList()); }
     get videoTracks() { return this._videoTracks || (this._videoTracks = emptyVideoTrackList()); }
     getStartDate() { return new Date(NaN); }
+    setSinkId() {
+      return Promise.reject(new DOMException("Audio output selection denied", "NotAllowedError"));
+    }
     load() {
       this._currentTime = 0;
       this._paused = true;
@@ -5746,6 +5750,13 @@
   Object.defineProperties(HTMLVideoElement.prototype, {
     videoWidth: { get() { return this.width || 0; }, enumerable: true, configurable: true },
     videoHeight: { get() { return this.height || 0; }, enumerable: true, configurable: true },
+    requestPictureInPicture: {
+      value() {
+        return Promise.reject(new DOMException("Picture-in-picture denied", "NotAllowedError"));
+      },
+      enumerable: true,
+      configurable: true,
+    },
   });
   const HTMLAudioElement = defHTML("HTMLAudioElement", HTMLMediaElement);
   const HTMLTrackElement = defHTML("HTMLTrackElement");
@@ -6645,7 +6656,18 @@
     set designMode(v) { this._designMode = String(v).toLowerCase() === "on" ? "on" : "off"; }
     hasFocus() { return this.__h === D("documentNode"); }
     hasStorageAccess() { return Promise.resolve(false); }
-    requestStorageAccess() { return Promise.resolve(); }
+    requestStorageAccess() {
+      return Promise.reject(new DOMException("Storage access denied", "NotAllowedError"));
+    }
+    get pictureInPictureEnabled() { return false; }
+    get pictureInPictureElement() { return documentPictureInPictureElement; }
+    exitPictureInPicture() {
+      if (!documentPictureInPictureElement) {
+        return Promise.reject(new DOMException("No picture-in-picture element", "InvalidStateError"));
+      }
+      documentPictureInPictureElement = null;
+      return Promise.resolve();
+    }
     get fullscreenEnabled() { return true; }
     get fullscreenElement() { return documentFullscreenElement; }
     get fullscreen() { return !!documentFullscreenElement; }
@@ -7256,6 +7278,16 @@
     get hid() {
       if (!this._hid) this._hid = denyDeviceRequest("HID");
       return this._hid;
+    }
+    get keyboard() {
+      if (!this._keyboard) {
+        this._keyboard = {
+          lock() { return Promise.reject(new DOMException("Keyboard lock denied", "NotAllowedError")); },
+          unlock() {},
+          getLayoutMap() { return Promise.resolve(new Map()); },
+        };
+      }
+      return this._keyboard;
     }
     registerProtocolHandler(scheme, url) {
       if (arguments.length < 2) {
@@ -8979,6 +9011,29 @@
       this.gain = { value: 1 };
     }
   }
+  class AnalyserNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.fftSize = 2048;
+      this.minDecibels = -100;
+      this.maxDecibels = -30;
+      this.smoothingTimeConstant = 0.8;
+    }
+    get frequencyBinCount() { return this.fftSize >>> 1; }
+    getByteFrequencyData(arr) { if (arr) arr.fill(0); }
+    getByteTimeDomainData(arr) { if (arr) arr.fill(128); }
+    getFloatFrequencyData(arr) { if (arr) arr.fill(this.minDecibels); }
+    getFloatTimeDomainData(arr) { if (arr) arr.fill(0); }
+  }
+  class BiquadFilterNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.type = "lowpass";
+      this.frequency = { value: 350 };
+      this.Q = { value: 1 };
+      this.gain = { value: 0 };
+    }
+  }
   class AudioDestinationNode extends AudioNode {
     constructor(ctx) {
       super(ctx);
@@ -9002,6 +9057,8 @@
       return new AudioBuffer({ numberOfChannels: channels, length: length, sampleRate: sampleRate });
     }
     createBufferSource() { return new AudioBufferSourceNode(this); }
+    createAnalyser() { return new AnalyserNode(this); }
+    createBiquadFilter() { return new BiquadFilterNode(this); }
     decodeAudioData(data) {
       const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : (data && data.buffer ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : new Uint8Array(0));
       const n = Math.max(1, bytes.length);
@@ -10942,7 +10999,7 @@
     MediaQueryList, Highlight, HighlightRegistry,
     ReadableStream, WritableStream, TransformStream, URLPattern,
     AudioContext, webkitAudioContext: AudioContext, OscillatorNode, GainNode, AudioDestinationNode,
-    AudioBuffer, AudioBufferSourceNode,
+    AudioBuffer, AudioBufferSourceNode, AnalyserNode, BiquadFilterNode,
     WebGLRenderingContext, RTCPeerConnection,
     TextEncoderStream, TextDecoderStream,
     CompressionStream, DecompressionStream, CookieStore, cookieStore, ClipboardItem,
