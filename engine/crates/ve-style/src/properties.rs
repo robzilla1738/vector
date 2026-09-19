@@ -22,21 +22,22 @@ use crate::values::{
     BackfaceVisibility, BackgroundAttachment, BackgroundClip, BackgroundImage, BackgroundOrigin,
     BackgroundPosition, BackgroundRepeat, BackgroundSize, BorderCollapse, BorderStyle, BoxOrient,
     BoxShadow, BoxSizing, BreakBefore, BreakInside, CaptionSide, Clear, ClipPath, Color,
-    ColumnSpan, Contain, ContainerType, Content, ContentItem, ContentVisibility, CssClip,
-    Direction, Display, EmptyCells, FieldSizing, Filter, FlexDirection, FlexWrap, Float,
-    FontDisplay, FontFamily, FontKerning, FontOpticalSizing, FontSmoothing, FontStretch, FontStyle,
-    FontSynthesis, FontVariant, FontVariantLigatures, FontVariantNumeric, FontWeight,
-    ForcedColorAdjust, GridAutoFlow, GridLine, GridTemplateAreas, HangingPunctuation, Hyphens,
-    ImageRendering, Isolation, JustifyContent, Keyword, Length, LengthContext, LengthPercentage,
-    LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MathStyle, MaxSize,
-    MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, OverscrollBehavior, PointerEvents,
-    Position, PositionArea, PreferredColorScheme, PrintColorAdjust, Resize, Rgba, RubyPosition,
-    ScrollBehavior, ScrollSnapAlign, ScrollSnapType, ScrollbarWidth, SelfAlignment, ShapeOutside,
-    Speak, TableLayout, TextAlign, TextAlignLast, TextDecorationLine, TextDecorationStyle,
-    TextEmphasis, TextJustify, TextOrientation, TextOverflow, TextRendering, TextTransform,
-    TextUnderlinePosition, TextWrap, TouchAction, TrackSize, TransformBox, TransformOp,
-    TransformStyle, UnicodeBidi, UserSelect, VectorEffect, VerticalAlign, Visibility, WhiteSpace,
-    WordBreak, WritingMode, ZIndex,
+    ColorInterpolationFilters, ColumnSpan, Contain, ContainerType, Content, ContentItem,
+    ContentVisibility, CssClip, Direction, Display, EmptyCells, FieldSizing, Filter, FlexDirection,
+    FlexWrap, Float, FontDisplay, FontFamily, FontKerning, FontOpticalSizing, FontSmoothing,
+    FontStretch, FontStyle, FontSynthesis, FontVariant, FontVariantEastAsian, FontVariantLigatures,
+    FontVariantNumeric, FontWeight, ForcedColorAdjust, GridAutoFlow, GridLine, GridTemplateAreas,
+    HangingPunctuation, Hyphens, ImageRendering, Isolation, JustifyContent, Keyword, Length,
+    LengthContext, LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition,
+    ListStyleType, MaskComposite, MathStyle, MaxSize, MixBlendMode, ObjectFit, OffsetPath,
+    Overflow, OverflowScrolling, OverflowWrap, OverscrollBehavior, PointerEvents, Position,
+    PositionArea, PreferredColorScheme, PrintColorAdjust, Resize, Rgba, RubyPosition,
+    ScrollBehavior, ScrollSnapAlign, ScrollSnapStop, ScrollSnapType, ScrollbarWidth, SelfAlignment,
+    ShapeOutside, Speak, TableLayout, TextAlign, TextAlignLast, TextDecorationLine,
+    TextDecorationStyle, TextEmphasis, TextJustify, TextOrientation, TextOverflow, TextRendering,
+    TextTransform, TextUnderlinePosition, TextWrap, TouchAction, TouchCallout, TrackSize,
+    TransformBox, TransformOp, TransformStyle, UnicodeBidi, UserSelect, VectorEffect,
+    VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
 };
 
 /// Custom property store: raw token text keyed by `--name`.
@@ -829,6 +830,17 @@ mod conv {
         }
     }
 
+    pub fn ident_or_number(v: &SpecifiedValue, _: &ConvertContext) -> Option<String> {
+        match v {
+            SpecifiedValue::Keyword(k) => Some(k.clone()),
+            SpecifiedValue::Str(s) => Some(s.clone()),
+            SpecifiedValue::Number(n) => Some(n.to_string()),
+            SpecifiedValue::Integer(i) => Some(i.to_string()),
+            SpecifiedValue::Percentage(p) => Some(format!("{p}%")),
+            _ => None,
+        }
+    }
+
     pub fn zoom(v: &SpecifiedValue, _: &ConvertContext) -> Option<f32> {
         match v {
             SpecifiedValue::Keyword(k) if k == "normal" => Some(1.0),
@@ -1078,10 +1090,16 @@ macro_rules! property_table {
                     "-webkit-background-clip" => Some(Self::BackgroundClip),
                     "-webkit-justify-content" => Some(Self::JustifyContent),
                     "-webkit-forced-color-adjust" => Some(Self::ForcedColorAdjust),
-                    "-o-border-image" => Some(Self::BorderImage),
+                    "-o-border-image" | "border-image-source" => Some(Self::BorderImage),
                     "overscroll-behavior-x" | "overscroll-behavior-y" => {
                         Some(Self::OverscrollBehavior)
                     }
+                    "-ms-overflow-style" => Some(Self::ScrollbarWidth),
+                    "-webkit-box-pack" => Some(Self::JustifyContent),
+                    "-webkit-overflow-scrolling" => Some(Self::OverflowScrolling),
+                    "-webkit-touch-callout" => Some(Self::TouchCallout),
+                    "-webkit-mask-composite" => Some(Self::MaskComposite),
+                    "scroll-padding-inline" | "scroll-padding-block" => Some(Self::ScrollPadding),
                     _ if lower.starts_with("--") && lower.len() > 2 => Some(Self::Custom(name.to_owned())),
                     _ => None,
                 }
@@ -1705,6 +1723,28 @@ property_table! {
     FontPalette: "font-palette" => font_palette: String = String::from("normal"), inherited = true, syntax = Single, convert = conv::cursor;
     /// `border-image` (`none` or `url(...)`)
     BorderImage: "border-image" => border_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
+    /// `-webkit-overflow-scrolling`
+    OverflowScrolling: "overflow-scrolling" => overflow_scrolling: OverflowScrolling = OverflowScrolling::Auto, inherited = false, syntax = Single, convert = conv::kw::<OverflowScrolling>;
+    /// `-webkit-touch-callout`
+    TouchCallout: "touch-callout" => touch_callout: TouchCallout = TouchCallout::Default, inherited = false, syntax = Single, convert = conv::kw::<TouchCallout>;
+    /// `animation-range` (first ident)
+    AnimationRange: "animation-range" => animation_range: String = String::from("normal"), inherited = false, syntax = Single, convert = conv::cursor;
+    /// `animation-timeline` (first ident)
+    AnimationTimeline: "animation-timeline" => animation_timeline: String = String::from("auto"), inherited = false, syntax = Single, convert = conv::cursor;
+    /// `view-timeline` (first ident)
+    ViewTimeline: "view-timeline" => view_timeline: String = String::from("none"), inherited = false, syntax = Single, convert = conv::cursor;
+    /// `border-image-slice` (first ident or number)
+    BorderImageSlice: "border-image-slice" => border_image_slice: String = String::from("100%"), inherited = false, syntax = Single, convert = conv::ident_or_number;
+    /// `color-interpolation-filters`
+    ColorInterpolationFilters: "color-interpolation-filters" => color_interpolation_filters: ColorInterpolationFilters = ColorInterpolationFilters::Auto, inherited = false, syntax = Single, convert = conv::kw::<ColorInterpolationFilters>;
+    /// `font-variant-east-asian`
+    FontVariantEastAsian: "font-variant-east-asian" => font_variant_east_asian: FontVariantEastAsian = FontVariantEastAsian::Normal, inherited = true, syntax = Single, convert = conv::kw::<FontVariantEastAsian>;
+    /// `mask-composite`
+    MaskComposite: "mask-composite" => mask_composite: MaskComposite = MaskComposite::Add, inherited = false, syntax = Single, convert = conv::kw::<MaskComposite>;
+    /// `scroll-snap-stop`
+    ScrollSnapStop: "scroll-snap-stop" => scroll_snap_stop: ScrollSnapStop = ScrollSnapStop::Normal, inherited = false, syntax = Single, convert = conv::kw::<ScrollSnapStop>;
+    /// `stroke-miterlimit`
+    StrokeMiterlimit: "stroke-miterlimit" => stroke_miterlimit: f32 = 4.0, inherited = true, syntax = Single, convert = conv::non_negative_number;
 }
 
 impl ComputedStyle {
@@ -2939,6 +2979,8 @@ pub const SHORTHANDS: &[&str] = &[
     "column-rule",
     "contain-intrinsic-size",
     "columns",
+    "-moz-columns",
+    "-webkit-columns",
     "offset",
     "container",
 ];
@@ -3765,6 +3807,46 @@ mod tests {
             Some(PropertyId::ColumnGap)
         );
         assert_eq!(
+            PropertyId::from_name("-ms-overflow-style"),
+            Some(PropertyId::ScrollbarWidth)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-box-pack"),
+            Some(PropertyId::JustifyContent)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-overflow-scrolling"),
+            Some(PropertyId::OverflowScrolling)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-touch-callout"),
+            Some(PropertyId::TouchCallout)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-mask-composite"),
+            Some(PropertyId::MaskComposite)
+        );
+        assert_eq!(
+            PropertyId::from_name("border-image-source"),
+            Some(PropertyId::BorderImage)
+        );
+        assert_eq!(
+            PropertyId::from_name("scroll-padding-inline"),
+            Some(PropertyId::ScrollPadding)
+        );
+        assert_eq!(
+            PropertyId::from_name("animation-range"),
+            Some(PropertyId::AnimationRange)
+        );
+        assert_eq!(
+            PropertyId::from_name("mask-composite"),
+            Some(PropertyId::MaskComposite)
+        );
+        assert_eq!(
+            PropertyId::from_name("stroke-miterlimit"),
+            Some(PropertyId::StrokeMiterlimit)
+        );
+        assert_eq!(
             PropertyId::from_name("overflow-x"),
             Some(PropertyId::OverflowX)
         );
@@ -4024,11 +4106,26 @@ mod tests {
         ok("font-language-override", "normal");
         ok("font-palette", "normal");
         ok("border-image", "none");
+        ok("-webkit-overflow-scrolling", "touch");
+        ok("-webkit-touch-callout", "none");
+        ok("animation-range", "cover");
+        ok("animation-timeline", "auto");
+        ok("view-timeline", "none");
+        ok("border-image-slice", "30");
+        ok("color-interpolation-filters", "srgb");
+        ok("font-variant-east-asian", "jis78");
+        ok("mask-composite", "exclude");
+        ok("-webkit-mask-composite", "source-over");
+        ok("scroll-snap-stop", "always");
+        ok("stroke-miterlimit", "4");
+        ok("-ms-overflow-style", "scrollbar");
+        ok("-webkit-box-pack", "justify");
+        ok("scroll-padding-inline", "8px");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 237);
+        assert_eq!(PropertyId::ALL.len(), 248);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
@@ -4277,6 +4374,9 @@ mod tests {
                 SpecifiedValue::Keyword("auto".into())
             )
         );
+        let moz = expand("-moz-columns", "2").unwrap();
+        assert_eq!(moz[0].0, PropertyId::ColumnCount);
+        assert_eq!(moz[1].0, PropertyId::ColumnWidth);
 
         let mut input = cssparser::ParserInput::new("1px");
         let mut parser = Parser::new(&mut input);

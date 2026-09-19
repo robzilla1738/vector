@@ -190,7 +190,7 @@ fn justify(v: CssJustify) -> Option<JustifyContent> {
         CssJustify::Start | CssJustify::Left => JustifyContent::START,
         CssJustify::End | CssJustify::Right => JustifyContent::END,
         CssJustify::Center => JustifyContent::CENTER,
-        CssJustify::SpaceBetween => JustifyContent::SPACE_BETWEEN,
+        CssJustify::SpaceBetween | CssJustify::Justify => JustifyContent::SPACE_BETWEEN,
         CssJustify::SpaceAround => JustifyContent::SPACE_AROUND,
         CssJustify::SpaceEvenly => JustifyContent::SPACE_EVENLY,
         CssJustify::Stretch => JustifyContent::STRETCH,

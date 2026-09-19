@@ -6,79 +6,14 @@
   },
   "declarations": {
     "deferred": 0,
-    "missRatio": 0.001,
+    "missRatio": 0.0,
     "total": 24280,
-    "unknown": 19
+    "unknown": 0
   },
   "notes": "CssCoverage on live HTML bodies. H3-3 still has isolated property tests; this is the corpus-frequency ledger, not a claim that remaining CSS is done.",
   "pages": 100,
   "profile": "release",
   "requiresScript": 1,
   "test": "writes_h3_3_corpus_css_coverage",
-  "topUnknown": [
-    {
-      "count": 3,
-      "name": "-webkit-overflow-scrolling"
-    },
-    {
-      "count": 1,
-      "name": "-moz-columns"
-    },
-    {
-      "count": 1,
-      "name": "-ms-overflow-style"
-    },
-    {
-      "count": 1,
-      "name": "-webkit-box-pack"
-    },
-    {
-      "count": 1,
-      "name": "-webkit-mask-composite"
-    },
-    {
-      "count": 1,
-      "name": "-webkit-touch-callout"
-    },
-    {
-      "count": 1,
-      "name": "animation-range"
-    },
-    {
-      "count": 1,
-      "name": "animation-timeline"
-    },
-    {
-      "count": 1,
-      "name": "border-image-slice"
-    },
-    {
-      "count": 1,
-      "name": "border-image-source"
-    },
-    {
-      "count": 1,
-      "name": "color-interpolation-filters"
-    },
-    {
-      "count": 1,
-      "name": "font-variant-east-asian"
-    },
-    {
-      "count": 1,
-      "name": "mask-composite"
-    },
-    {
-      "count": 1,
-      "name": "scroll-padding-inline"
-    },
-    {
-      "count": 1,
-      "name": "scroll-snap-stop"
-    },
-    {
-      "count": 1,
-      "name": "stroke-miterlimit"
-    }
-  ]
+  "topUnknown": []
 }

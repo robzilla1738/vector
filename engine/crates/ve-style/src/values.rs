@@ -1047,6 +1047,8 @@ keyword_enum! {
         Right = "right",
         /// Baseline (treated as `start` for content distribution).
         Baseline = "baseline",
+        /// Legacy `-webkit-box-pack: justify`.
+        Justify = "justify",
     }
 }
 
@@ -1521,6 +1523,10 @@ keyword_enum! {
         Thin = "thin",
         /// Hidden scrollbar, element still scrolls.
         None = "none",
+        /// Legacy `-ms-overflow-style: scrollbar`.
+        Scrollbar = "scrollbar",
+        /// Legacy `-ms-overflow-style: -ms-autohiding-scrollbar`.
+        MsAutohiding = "-ms-autohiding-scrollbar",
     }
 }
 
@@ -2841,5 +2847,91 @@ mod tests {
             Display::from_keyword("INLINE-block"),
             Some(Display::InlineBlock)
         );
+    }
+}
+
+keyword_enum! {
+    /// `-webkit-overflow-scrolling`.
+    OverflowScrolling {
+        /// Platform default scrolling.
+        Auto = "auto",
+        /// Momentum scrolling.
+        Touch = "touch",
+    }
+}
+
+keyword_enum! {
+    /// `-webkit-touch-callout`.
+    TouchCallout {
+        /// Show the callout.
+        Default = "default",
+        /// Suppress the callout.
+        None = "none",
+    }
+}
+
+keyword_enum! {
+    /// `mask-composite` / `-webkit-mask-composite`.
+    MaskComposite {
+        /// Source over destination.
+        Add = "add",
+        /// Source minus destination.
+        Subtract = "subtract",
+        /// Intersection.
+        Intersect = "intersect",
+        /// Symmetric difference.
+        Exclude = "exclude",
+        /// Legacy source-over.
+        SourceOver = "source-over",
+        /// Legacy xor.
+        Xor = "xor",
+    }
+}
+
+keyword_enum! {
+    /// `color-interpolation-filters`.
+    ColorInterpolationFilters {
+        /// User-agent default.
+        Auto = "auto",
+        /// sRGB.
+        Srgb = "srgb",
+        /// Linear RGB.
+        LinearRgb = "linearrgb",
+    }
+}
+
+keyword_enum! {
+    /// `font-variant-east-asian` (first keyword).
+    FontVariantEastAsian {
+        /// No east-asian variant.
+        Normal = "normal",
+        /// JIS78 glyphs.
+        Jis78 = "jis78",
+        /// JIS83 glyphs.
+        Jis83 = "jis83",
+        /// JIS90 glyphs.
+        Jis90 = "jis90",
+        /// JIS04 glyphs.
+        Jis04 = "jis04",
+        /// Simplified Chinese.
+        Simplified = "simplified",
+        /// Traditional Chinese.
+        Traditional = "traditional",
+        /// Full-width forms.
+        FullWidth = "full-width",
+        /// Proportional-width forms.
+        ProportionalWidth = "proportional-width",
+        /// Ruby variants.
+        Ruby = "ruby",
+    }
+}
+
+keyword_enum! {
+    /// `scroll-snap-stop`.
+    ScrollSnapStop {
+        /// Pass through snap points.
+        Normal = "normal",
+        /// Always stop at the snap point.
+        Always = "always",
     }
 }
