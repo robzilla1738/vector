@@ -795,7 +795,7 @@ impl Chrome {
 
     fn paint_start_page(&self, list: &mut DisplayList, stage: Rect) {
         let t = &self.tokens;
-        let inner_w = (stage.width() - 80.0).clamp(280.0, 640.0);
+        let inner_w = (stage.width() - 80.0).clamp(280.0, 720.0);
         let x0 = stage.x() + ((stage.width() - inner_w) / 2.0).max(24.0);
         let hour = current_hour();
         let greeting = if hour < 5 {
@@ -835,17 +835,6 @@ impl Chrome {
             t.ink_2,
         );
         y += 52.0;
-        let prompts = [
-            "Summarise the open review comments on this PR",
-            "Find the cheapest plan with SSO across these pricing pages",
-            "Collect every talk title on this schedule into a table",
-        ];
-        for prompt in prompts {
-            icon_sparkle(list, x0 + 10.0, y + 16.0, t.ink_2);
-            self.label(list, Point::new(x0 + 28.0, y + 20.0), prompt, 12.0, t.ink_1);
-            y += 32.0;
-        }
-        y += 12.0;
         let pins = self.active_pins();
         let favs: Vec<(String, String)> = if pins.is_empty() {
             self.bookmarks.iter().take(5).cloned().collect()
@@ -885,8 +874,15 @@ impl Chrome {
         if !self.history.is_empty() {
             self.label(list, Point::new(x0, y + 12.0), "RECENT", 11.0, t.ink_2);
             y += 28.0;
-            for (url, title) in self.history.iter().take(5) {
-                self.tile_face(list, x0, y + 4.0, 20.0, 6.0, url);
+            let gap = 16.0;
+            let col_w = ((inner_w - gap) / 2.0).max(160.0);
+            for (i, (url, title)) in self.history.iter().take(6).enumerate() {
+                let col = i % 2;
+                let row = i / 2;
+                let x = x0 + col as f32 * (col_w + gap);
+                let yy = y + row as f32 * 36.0;
+                fill_round(list, Rect::new(x, yy, col_w, 32.0), 16.0, t.bg_2);
+                self.tile_face(list, x + 6.0, yy + 6.0, 20.0, 6.0, url);
                 let label = if title.is_empty() {
                     host_of(url)
                 } else {
@@ -894,20 +890,40 @@ impl Chrome {
                 };
                 self.label(
                     list,
-                    Point::new(x0 + 28.0, y + 14.0),
-                    &truncate(&label, 36),
+                    Point::new(x + 32.0, yy + 20.0),
+                    &truncate(&label, 22),
                     12.0,
                     t.ink_0,
                 );
-                self.label(
-                    list,
-                    Point::new(x0 + inner_w - 140.0, y + 14.0),
-                    &truncate(&host_of(url), 18),
-                    11.0,
-                    t.ink_2,
-                );
-                y += 32.0;
             }
+            y += ((self.history.len().min(6) + 1) / 2) as f32 * 36.0 + 8.0;
+        }
+        let prompts = [
+            "Summarise the open review comments on this PR",
+            "Fill in this form from my last order",
+            "Find the cheapest plan with SSO across these pricing pages",
+            "Collect every talk title on this schedule into a table",
+            "Stripe · compare pricing modes",
+            "GitHub · unresolved review threads",
+        ];
+        self.label(list, Point::new(x0, y + 12.0), "TRY ASKING", 11.0, t.ink_2);
+        y += 28.0;
+        let gap = 16.0;
+        let col_w = ((inner_w - gap) / 2.0).max(160.0);
+        for (i, prompt) in prompts.iter().enumerate() {
+            let col = i % 2;
+            let row = i / 2;
+            let x = x0 + col as f32 * (col_w + gap);
+            let yy = y + row as f32 * 36.0;
+            fill_round(list, Rect::new(x, yy, col_w, 32.0), 16.0, t.bg_2);
+            icon_sparkle(list, x + 14.0, yy + 16.0, t.ink_2);
+            self.label(
+                list,
+                Point::new(x + 28.0, yy + 20.0),
+                &truncate(prompt, 28),
+                12.0,
+                t.ink_1,
+            );
         }
     }
 
@@ -1860,11 +1876,12 @@ mod tests {
         assert!(
             texts
                 .iter()
-                .any(|t| t.contains("Summarise the open review comments")),
+                .any(|t| t.contains("Summarise the open review")),
             "{texts:?}"
         );
         assert!(texts.iter().any(|t| *t == "PINNED" || *t == "FAVOURITES"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "RECENT"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "TRY ASKING"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "G" || *t == "L" || *t == "Y"), "{texts:?}");
         assert!(texts.iter().any(|t| t.contains("Hacker News")), "{texts:?}");
         assert!(texts.iter().any(|t| t.contains("github.com")), "{texts:?}");

@@ -3259,6 +3259,7 @@ mod tests {
             "{texts:?}"
         );
         assert!(texts.iter().any(|t| t == "RECENT"), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "TRY ASKING"), "{texts:?}");
         assert!(
             texts
                 .iter()
