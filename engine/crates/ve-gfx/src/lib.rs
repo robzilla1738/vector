@@ -27,6 +27,7 @@
 
 pub mod compositor;
 pub mod display_list;
+pub mod tiles;
 pub mod fonts;
 pub mod image;
 pub mod renderer;
@@ -34,6 +35,7 @@ pub mod renderer;
 pub mod vello_backend;
 
 pub use compositor::{Compositor, Layer, LayerId};
+pub use tiles::{TILE_PX, TileGrid};
 pub use display_list::{
     DisplayItem, DisplayList, TextRun, background_tile_origins, resolve_image_placement,
 };

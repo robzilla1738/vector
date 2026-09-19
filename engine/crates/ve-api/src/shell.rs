@@ -17,7 +17,9 @@ use ve_chrome::{
     sync_order, sync_spaces, toggle_pin,
 };
 use ve_core::{Error, ErrorCode, Point, Result, ScrollPhase, Size, process_rss_bytes};
-use ve_gfx::{DisplayItem, DisplayList, Frame, ImageCache, Renderer, SoftwareRenderer};
+use ve_gfx::{
+    DisplayItem, DisplayList, Frame, ImageCache, Renderer, SoftwareRenderer, TileGrid,
+};
 use ve_profile::{Profile, SessionTab};
 
 use crate::{
@@ -249,6 +251,8 @@ pub struct NativeBrowser {
     page_layer: Option<Frame>,
     /// Layout revision the page layer was painted at.
     page_layer_rev: u64,
+    /// Physical tile grid backing `page_layer` (H1-A5).
+    page_tiles: Option<TileGrid>,
     /// Agent `dispatch_program` calls. Human input must stay at zero.
     program_dispatches: u64,
 }
@@ -315,6 +319,7 @@ impl NativeBrowser {
             chrome_base_sig: 0,
             page_layer: None,
             page_layer_rev: 0,
+            page_tiles: None,
             program_dispatches: 0,
         }
     }
@@ -539,8 +544,7 @@ impl NativeBrowser {
             p.set_scale(self.window.device_scale);
         }
         self.list_cache = None;
-        self.page_layer = None;
-        self.page_layer_rev = 0;
+        self.drop_page_raster();
     }
 
     fn resize_surface(&mut self, css_w: f32, css_h: f32) {
@@ -1505,8 +1509,7 @@ impl NativeBrowser {
         self.list_cache = None;
         self.chrome_base = None;
         self.chrome_base_sig = 0;
-        self.page_layer = None;
-        self.page_layer_rev = 0;
+        self.drop_page_raster();
     }
 
     fn chrome_base_sig(&self) -> u64 {
@@ -2264,8 +2267,7 @@ impl NativeBrowser {
         let _ = page.dispatch_key(key, state == KeyState::Down, repeat, mods);
         self.sync_active_tab();
         self.list_cache = None;
-        self.page_layer = None;
-        self.page_layer_rev = 0;
+        self.drop_page_raster();
         Ok(())
     }
 
@@ -2280,8 +2282,7 @@ impl NativeBrowser {
         }
         self.sync_active_tab();
         self.list_cache = None;
-        self.page_layer = None;
-        self.page_layer_rev = 0;
+        self.drop_page_raster();
         Ok(())
     }
 
@@ -2365,15 +2366,43 @@ impl NativeBrowser {
                 viewport,
                 list,
             });
-            self.page_layer = None;
-            self.page_layer_rev = 0;
+            self.drop_page_raster();
         }
         let _ = content_h;
         Some((viewport, scroll))
     }
 
+    fn drop_page_raster(&mut self) {
+        self.page_layer = None;
+        self.page_layer_rev = 0;
+        self.page_tiles = None;
+    }
+
+    /// Tile grid backing the page layer (H1-A5).
+    #[must_use]
+    pub fn page_tile_stats(&self) -> Option<(u32, u32, u64, usize)> {
+        self.page_tiles
+            .as_ref()
+            .map(|t| (t.cols(), t.rows(), t.rebuilds(), t.dirty_count()))
+    }
+
+    /// Marks page-layer tiles that intersect `css` dirty (document space).
+    pub fn invalidate_page_tiles(&mut self, css: ve_core::Rect) {
+        let scale = self.window.device_scale;
+        if let Some(tiles) = &mut self.page_tiles {
+            tiles.invalidate_rect(ve_core::Rect::new(
+                css.x() * scale,
+                css.y() * scale,
+                css.width() * scale,
+                css.height() * scale,
+            ));
+        }
+        self.window.compositor.mark_damaged();
+        self.window.presented = false;
+    }
+
     /// Rasterizes the untranslated page list once per layout revision, then
-    /// blits the visible viewport (compositor scroll).
+    /// blits the visible viewport (compositor scroll). Dirty tiles only.
     fn present_page_layer(
         &mut self,
         page: PageId,
@@ -2396,30 +2425,39 @@ impl NativeBrowser {
             .unwrap_or(viewport.height);
         let pw = (viewport.width * scale).round().max(1.0) as u32;
         let ph = (content_h.max(viewport.height) * scale).round().max(1.0) as u32;
-        let reuse = self.page_layer.as_ref().is_some_and(|f| {
+        let size_ok = self.page_layer.as_ref().is_some_and(|f| {
             self.page_layer_rev == rev && f.width == pw && f.height == ph
         });
-        if !reuse {
-            let list = self
-                .list_cache
-                .as_ref()
-                .ok_or_else(|| Error::internal("no page list"))?
-                .list
-                .clone();
-            let images = self
-                .engine
-                .page(page)
-                .ok()
-                .map(|p| p.image_cache().clone())
-                .unwrap_or_default();
-            let renderer = self.sw.as_mut().expect("software renderer");
-            renderer.images.extend_from(&images);
-            let frame = renderer
-                .render(&list, pw, ph, scale)
-                .map_err(|e| Error::internal(format!("page layer: {e}")))?;
-            self.page_layer = Some(frame);
+        if !size_ok {
+            self.page_layer = Some(Frame::filled(pw, ph, [255, 255, 255, 255]));
             self.page_layer_rev = rev;
+            self.page_tiles = Some(TileGrid::new(pw, ph));
         }
+        let list = self
+            .list_cache
+            .as_ref()
+            .ok_or_else(|| Error::internal("no page list"))?
+            .list
+            .clone();
+        let images = self
+            .engine
+            .page(page)
+            .ok()
+            .map(|p| p.image_cache().clone())
+            .unwrap_or_default();
+        let renderer = self.sw.as_mut().expect("software renderer");
+        renderer.images.extend_from(&images);
+        let tiles = self
+            .page_tiles
+            .as_mut()
+            .ok_or_else(|| Error::internal("no page tiles"))?;
+        let dest = self
+            .page_layer
+            .as_mut()
+            .ok_or_else(|| Error::internal("no page layer"))?;
+        tiles
+            .rasterize_dirty_into(dest, renderer, &list, scale)
+            .map_err(|e| Error::internal(format!("page tiles: {e}")))?;
         if let Some(layer) = &self.page_layer {
             self.window.surface.blit_region(
                 layer,
@@ -3369,6 +3407,44 @@ mod tests {
             "wheel must blit the cached page layer"
         );
         assert!(browser.page_layer.is_some());
+    }
+
+    #[test]
+    fn page_tiles_survive_scroll_and_local_damage() {
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(format!(
+            "/tmp/vector-page-tiles-{}.sqlite",
+            std::process::id()
+        ));
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body style='height:2400px'><p>top</p><p style='margin-top:2000px'>bottom</p></body></html>".into(),
+                url: "https://tiles.test/".into(),
+            })
+            .unwrap();
+        let _ = browser.present();
+        let (cols, rows, first, dirty) = browser.page_tile_stats().expect("tiles");
+        assert!(
+            cols >= 2 || rows >= 2,
+            "tall page must span multiple tiles {cols}x{rows}"
+        );
+        assert_eq!(dirty, 0);
+        assert!(first > 1, "first present rasters every tile: {first}");
+        let _ = browser.handle_event(NativeEvent::Wheel {
+            dx: 0.0,
+            dy: 80.0,
+            phase: ScrollPhase::Changed,
+        });
+        let _ = browser.present();
+        let (_, _, after_scroll, dirty) = browser.page_tile_stats().unwrap();
+        assert_eq!(after_scroll, first, "scroll must not rebuild tiles");
+        assert_eq!(dirty, 0);
+        browser.invalidate_page_tiles(ve_core::Rect::new(0.0, 0.0, 16.0, 16.0));
+        assert_eq!(browser.page_tile_stats().unwrap().3, 1);
+        let _ = browser.present();
+        let (_, _, after_local, dirty) = browser.page_tile_stats().unwrap();
+        assert_eq!(dirty, 0);
+        assert_eq!(after_local, first + 1, "local damage rebuilds one tile");
     }
 
     #[test]
