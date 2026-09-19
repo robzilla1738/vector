@@ -433,3 +433,20 @@ fn page_starts_subresource_io_before_data_images() {
         "start_subresources ran during open"
     );
 }
+
+#[test]
+fn inline_svg_paints_rect_pixels() {
+    let mut page = Page::from_html(
+        1,
+        r##"<body style="margin:0"><svg width="8" height="8"><rect x="0" y="0" width="8" height="8" fill="#ff0000"/></svg></body>"##,
+        None,
+        ve_core::Size::new(32.0, 32.0),
+    );
+    let frame = page.present_frame(false).unwrap();
+    assert_eq!(
+        frame.pixel(2, 2),
+        Some([255, 0, 0, 255]),
+        "inline svg rect must paint: {:?}",
+        frame.pixel(2, 2)
+    );
+}

@@ -8,7 +8,7 @@
 use std::rc::Rc;
 
 use ve_core::{NodeId, Point, Rect, Size};
-use ve_dom::{Document, NodeKind};
+use ve_dom::{Document, Namespace, NodeKind};
 
 use crate::block::{ContainingBlock, Forced};
 use ve_style::{
@@ -381,11 +381,14 @@ fn replaced_size(doc: &Document, id: NodeId) -> Option<Size> {
             && doc
                 .attribute(id, "type")
                 .is_some_and(|t| t.eq_ignore_ascii_case("image")));
+    let is_svg =
+        e.name == "svg" && (e.namespace == Namespace::Svg || e.namespace == Namespace::Html);
     let embedded = e.is_html("iframe")
         || e.is_html("video")
         || e.is_html("canvas")
         || e.is_html("embed")
-        || e.is_html("object");
+        || e.is_html("object")
+        || is_svg;
     if !is_img && !embedded {
         return None;
     }

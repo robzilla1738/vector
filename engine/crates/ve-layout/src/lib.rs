@@ -944,6 +944,15 @@ mod tests {
     }
 
     #[test]
+    fn inline_svg_is_a_replaced_box_from_width_height() {
+        let html = "<style>body{margin:0} svg{display:block}</style>\
+             <svg id=s width=40 height=20></svg>";
+        let (doc, engine, tree) = layout(html, 200.0);
+        let r = rect(&tree, &engine, &doc, "#s");
+        assert_eq!(r.size, Size::new(40.0, 20.0), "{r:?}");
+    }
+
+    #[test]
     fn blocks_stack_vertically_with_margins_and_padding() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} div{height:50px} #b{margin-top:10px;padding:5px;width:50%}</style>\

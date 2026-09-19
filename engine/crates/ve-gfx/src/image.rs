@@ -180,6 +180,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         if let Some(vb) = tag
             .split("viewBox=\"")
             .nth(1)
+            .or_else(|| tag.split("viewbox=\"").nth(1))
             .and_then(|s| s.split('"').next())
         {
             let nums: Vec<f32> = vb

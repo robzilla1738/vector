@@ -4726,6 +4726,29 @@ impl Page {
         self.apply_animations();
     }
 
+    fn install_inline_svgs(&mut self) {
+        let ids: Vec<NodeId> = self
+            .doc
+            .elements()
+            .filter(|&id| is_svg_root(&self.doc, id) && !self.node_images.contains_key(&id))
+            .collect();
+        for id in ids {
+            let markup = serialize_svg(&self.doc, id);
+            if let Ok(decoded) = ve_gfx::image::decode(markup.as_bytes()) {
+                let w = decoded.width.max(1);
+                let h = decoded.height.max(1);
+                let _ = self.doc.set_natural_size(id, w, h);
+                let handle = self.images.insert(decoded.clone());
+                self.node_images.insert(id, handle);
+                let renderer = self
+                    .renderer
+                    .get_or_insert_with(SoftwareRenderer::with_system_fonts);
+                let handle = renderer.images.insert(decoded);
+                renderer.node_images.insert(id, handle);
+            }
+        }
+    }
+
     fn install_background_images(&mut self) {
         let urls: Vec<(NodeId, String)> = self
             .doc
@@ -4750,6 +4773,7 @@ impl Page {
             self.apply_animations();
             return;
         }
+        self.install_inline_svgs();
         self.restyle_if_needed();
         if !self.layout_clean() {
             let previous = std::mem::replace(&mut self.layout, LayoutTree::blank(self.viewport));
@@ -8131,6 +8155,64 @@ fn decode_data_url_bytes(data_url: &str) -> Option<Vec<u8>> {
         base64_decode(payload)
     } else {
         Some(percent_decode(payload).into_bytes())
+    }
+}
+
+fn is_svg_element(el: &ve_dom::ElementData) -> bool {
+    el.name == "svg" && (el.namespace == Namespace::Svg || el.namespace == Namespace::Html)
+}
+
+fn is_svg_root(doc: &Document, id: NodeId) -> bool {
+    let Some(el) = doc.element(id) else {
+        return false;
+    };
+    if !is_svg_element(el) {
+        return false;
+    }
+    match doc.parent(id).and_then(|p| doc.element(p)) {
+        Some(parent) if parent.name == "svg" => false,
+        _ => true,
+    }
+}
+
+fn escape_xml(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+fn serialize_svg(doc: &Document, id: NodeId) -> String {
+    let mut out = String::new();
+    write_svg_node(doc, id, &mut out);
+    out
+}
+
+fn write_svg_node(doc: &Document, id: NodeId, out: &mut String) {
+    if let Some(el) = doc.element(id) {
+        out.push('<');
+        out.push_str(&el.name);
+        if el.name == "svg" && el.attr("xmlns").is_none() {
+            out.push_str(" xmlns=\"http://www.w3.org/2000/svg\"");
+        }
+        for a in &el.attributes {
+            out.push(' ');
+            out.push_str(&a.name);
+            out.push_str("=\"");
+            out.push_str(&escape_xml(&a.value));
+            out.push('"');
+        }
+        out.push('>');
+        for c in doc.children(id) {
+            write_svg_node(doc, c, out);
+        }
+        out.push_str("</");
+        out.push_str(&el.name);
+        out.push('>');
+        return;
+    }
+    if let Some(NodeKind::Text(t)) = doc.get(id).map(|n| &n.kind) {
+        out.push_str(&escape_xml(t));
     }
 }
 

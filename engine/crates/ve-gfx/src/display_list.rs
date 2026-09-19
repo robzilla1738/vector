@@ -1801,6 +1801,30 @@ mod tests {
     }
 
     #[test]
+    fn from_layout_emits_inline_svg_image() {
+        let html = "<style>body{margin:0} svg{display:block}</style>\
+                    <svg id=s width=8 height=8></svg>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#s").unwrap()[0];
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(7));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image { handle, rect, .. }
+                    if handle.0 == 7 && (rect.width() - 8.0).abs() < 0.5
+            )),
+            "inline svg image missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
     fn fixed_background_does_not_translate() {
         let item = DisplayItem::Image {
             rect: Rect::new(10.0, 20.0, 8.0, 8.0),
