@@ -263,7 +263,7 @@ impl FontSystem {
             let mut built = scaler
                 .builder(font)
                 .size(size)
-                .hint(size <= 18.0)
+                .hint(size <= 36.0)
                 .build();
             let outline = built.scale_outline(glyph)?;
             let mut verbs = Vec::new();
@@ -285,13 +285,27 @@ impl FontSystem {
 
     /// Rasterises a glyph to an alpha mask.
     pub fn rasterize(&mut self, id: fontdb::ID, glyph: GlyphId, size: f32) -> Option<GlyphBitmap> {
+        self.rasterize_hinted(id, glyph, size, size <= 36.0)
+    }
+
+    /// Rasterises a glyph, with explicit hinter control.
+    ///
+    /// Chrome UI is 11–16 CSS px. At Retina (`scale=2`) that is 22–32 physical
+    /// px; hinting only below 18 left those glyphs unhinted.
+    pub fn rasterize_hinted(
+        &mut self,
+        id: fontdb::ID,
+        glyph: GlyphId,
+        size: f32,
+        hint: bool,
+    ) -> Option<GlyphBitmap> {
         let FontSystem { db, scaler } = self;
         db.with_face_data(id, |bytes, index| {
             let font = FontRef::from_index(bytes, index as usize)?;
             let mut built = scaler
                 .builder(font)
                 .size(size)
-                .hint(size <= 18.0)
+                .hint(hint)
                 .build();
             let image = Render::new(&[
                 Source::ColorOutline(0),
@@ -387,6 +401,13 @@ mod tests {
         assert!(
             tofu.glyphs.is_empty(),
             "unmapped characters must not emit glyph 0"
+        );
+        let retina = fs
+            .rasterize_hinted(id, glyph, 24.0, true)
+            .expect("Retina 12 CSS px is 24 physical");
+        assert!(
+            retina.width > 0 && retina.height > 0,
+            "hinted 24px UI glyph must rasterize"
         );
     }
 }

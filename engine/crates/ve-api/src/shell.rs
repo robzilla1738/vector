@@ -235,6 +235,8 @@ pub struct NativeBrowser {
     profile: Option<Profile>,
     /// `VECTOR_ENGINE_MODE=always` / `VECTOR_ENGINE_ONLY=1`: never start Chromium.
     engine_only: bool,
+    /// Reused software renderer (system fonts loaded once).
+    sw: Option<SoftwareRenderer>,
 }
 
 /// Who currently owns input on the live page.
@@ -301,6 +303,7 @@ impl NativeBrowser {
             window_size: Size::new(1280.0, 720.0),
             profile: None,
             engine_only: engine_only_from_env(),
+            sw: None,
         }
     }
 
@@ -813,7 +816,10 @@ impl NativeBrowser {
         if self.chrome_enabled {
             let list = self.paint_shell_list()?;
             self.resize_surface(self.window_size.width, self.window_size.height);
-            let mut renderer = SoftwareRenderer::with_system_fonts();
+            if self.sw.is_none() {
+                self.sw = Some(SoftwareRenderer::with_system_fonts());
+            }
+            let renderer = self.sw.as_mut().expect("software renderer");
             self.surface = renderer
                 .render(
                     &list,
@@ -2593,6 +2599,75 @@ mod tests {
         let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
         assert!(stage.x() >= 200.0);
         assert!(stage.width() < 800.0);
+    }
+
+    #[test]
+    fn writes_section_6_human_timings() {
+        use std::time::Instant;
+        unsafe { std::env::set_var("VECTOR_PROFILE", "/tmp/vector-s6-timing.sqlite") };
+        let mut input_ms = Vec::new();
+        let mut scroll_ms = Vec::new();
+        let mut repaint_ms = Vec::new();
+        let mut browser = NativeBrowser::with_config(crate::EngineConfig {
+            offline: true,
+            security_profile: crate::SecurityProfile::Production,
+            ..crate::EngineConfig::default()
+        });
+        browser.enable_product_chrome();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body style='height:2400px'><input id=a value=x><p>news</p></body></html>"
+                    .into(),
+                url: "https://s6.test/".into(),
+            })
+            .unwrap();
+        let _ = browser.present();
+        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let _ = browser.handle_event(NativeEvent::PointerDown {
+            x: stage.x() + 16.0,
+            y: stage.y() + 16.0,
+            button: 0,
+        });
+        for _ in 0..8 {
+            let t0 = Instant::now();
+            browser.compositor.mark_damaged();
+            let _ = browser.present();
+            repaint_ms.push(t0.elapsed().as_secs_f64() * 1000.0);
+            let t1 = Instant::now();
+            let _ = browser.handle_event(NativeEvent::Ime {
+                text: "k".into(),
+            });
+            input_ms.push(t1.elapsed().as_secs_f64() * 1000.0);
+            let t2 = Instant::now();
+            let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 40.0 });
+            scroll_ms.push(t2.elapsed().as_secs_f64() * 1000.0);
+        }
+        let pct = |mut xs: Vec<f64>, p: f64| {
+            xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let i = ((xs.len() as f64 - 1.0) * p).round() as usize;
+            xs[i.min(xs.len() - 1)]
+        };
+        let doc = serde_json::json!({
+            "review": "ROADMAP §6",
+            "host": std::env::consts::ARCH,
+            "os": std::env::consts::OS,
+            "security_mode": "production",
+            "n": 8,
+            "unit": "ms",
+            "appleSilicon": false,
+            "notes": "Measured on this host, production profile, product chrome. Not an Apple-silicon published score.",
+            "inputToPaint": { "p50": pct(input_ms.clone(), 0.5), "p95": pct(input_ms.clone(), 0.95), "samples": input_ms },
+            "wheelScroll": { "p50": pct(scroll_ms.clone(), 0.5), "p95": pct(scroll_ms.clone(), 0.95), "samples": scroll_ms },
+            "fullRepaint": { "p50": pct(repaint_ms.clone(), 0.5), "p95": pct(repaint_ms.clone(), 0.95), "samples": repaint_ms },
+            "test": "writes_section_6_human_timings"
+        });
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/perf/section-6-this-host.json");
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        std::fs::write(&path, serde_json::to_vec_pretty(&doc).unwrap()).unwrap();
+        assert!(doc["inputToPaint"]["p50"].as_f64().unwrap() > 0.0);
     }
 
     #[test]

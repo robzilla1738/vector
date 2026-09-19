@@ -1,0 +1,53 @@
+{
+  "appleSilicon": false,
+  "fullRepaint": {
+    "p50": 501.537168,
+    "p95": 512.561381,
+    "samples": [
+      501.915616,
+      501.537168,
+      495.229425,
+      499.336883,
+      496.147163,
+      483.28775,
+      512.561381,
+      502.14227
+    ]
+  },
+  "host": "x86_64",
+  "inputToPaint": {
+    "p50": 503.715013,
+    "p95": 505.291833,
+    "samples": [
+      499.088833,
+      497.19774,
+      498.962665,
+      503.817906,
+      503.715013,
+      503.725321,
+      493.711012,
+      505.291833
+    ]
+  },
+  "n": 8,
+  "notes": "Measured on this host, production profile, product chrome. Not an Apple-silicon published score.",
+  "os": "linux",
+  "review": "ROADMAP §6",
+  "security_mode": "production",
+  "test": "writes_section_6_human_timings",
+  "unit": "ms",
+  "wheelScroll": {
+    "p50": 507.87991600000004,
+    "p95": 523.523432,
+    "samples": [
+      508.751427,
+      507.87991600000004,
+      511.21582200000006,
+      496.24820400000004,
+      523.523432,
+      495.630779,
+      505.972377,
+      503.913534
+    ]
+  }
+}

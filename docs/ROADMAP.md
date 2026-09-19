@@ -95,7 +95,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 
 | ID | Item | WS | Status | Evidence |
 |---|---|---|---|---|
-| H0-A1 | Frame tracer `ve-shell --trace-frames` + `--replay-input` + `perf frames` | A/D | ☑ | `docs/perf/frame-baseline.md`; `wheel_does_not_rebuild_the_display_list` |
+| H0-A1 | Frame tracer `ve-shell --trace-frames` + `--replay-input` + `perf frames` | A/D | ☑ | `docs/perf/frame-baseline.md`; `docs/perf/section-6-this-host.json`; `writes_section_6_human_timings`; `wheel_does_not_rebuild_the_display_list` |
 | H0-A2 | HiDPI: `scale_factor()` into `present_list`; CSS px list, physical px surface | A | ☑ | `device_scale` on present |
 | H0-A3 | Images on the GPU path: `ImageCache`/`node_images` on `Page`; `from_layout_with` | A | ☑ | `from_layout_with` + `scene_json` |
 | H0-A4 | Wire `ParleyShaper` behind `EngineConfig::shaper`; identity prints shaper | A | ☑ | System in GUI/corpus/Speedometer |
@@ -124,7 +124,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-A3 | One scheduler: retire prelude `timers` Map in favour of `ve_script::EventLoop` | B | ☑ | EventLoop owns due times |
 | H1-A4 | Frame loop: vsync → coalesce → dispatch → rAF → update → damage → composite → present; ProMotion via `preferredFrameRateRange` | A | ☑ | frame tracer + cache |
 | H1-A5 | Scroll as transform; tiled display list; trackpad momentum; rubber-band; `prefers-reduced-motion` | A | ☑ | display-list cache translate |
-| H1-A6 | Glyph runs retained; vello `draw_glyphs`; colour emoji; 1/4-px subpixel | A | ☑ | `FontSystem::shape_retained`; `Scene::draw_glyphs`; quarter-px snap; COLR/emoji via vello |
+| H1-A6 | Glyph runs retained; vello `draw_glyphs`; colour emoji; 1/4-px subpixel | A | ☑ | `FontSystem::shape_retained`; `Scene::draw_glyphs`; quarter-px snap; COLR/emoji via vello; `rasterize_hinted` (CSS size ≤ 18, including Retina 2×); `system_fonts_paint_inter_ui_text` |
 | H1-A7 | Spec pointer/mouse sequence, hover, capture, selection, composition, `contextmenu`; human/agent events-log identical | A | ☑ | `fixtures/events-log` |
 | H1-B1 | Phase-0 bindings memo from dombench; `VECTOR_DOM_BINDINGS=prelude\|native` | B | ☑ | env read; prelude default |
 | H1-B2 | Real ES modules via `v8::Module`; delete `rewriteModule` and Speedometer bundler | B | ☑ | `es_module_export_runs_via_v8_module`; `es_module_spa_runs_without_bundler`; `esm::bundle` is identity; `rewriteModule` deleted |
@@ -171,7 +171,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 
 ## 6. Targets and budgets
 
-Measured on Apple silicon, 1440×900 @2x, production security profile, published as median / p95 with n and CI.
+Measured on Apple silicon, 1440×900 @2x, production security profile, published as median / p95 with n and CI. This host’s software-present numbers are in `docs/perf/section-6-this-host.json` (`appleSilicon: false`).
 
 | Area | Metric | Target |
 |---|---|---|

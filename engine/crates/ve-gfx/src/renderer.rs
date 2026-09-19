@@ -397,7 +397,9 @@ impl SoftwareRenderer {
             if glyph.id == 0 {
                 continue;
             }
-            if let Some(bitmap) = self.fonts.rasterize(face, glyph.id as u16, size)
+            if let Some(bitmap) =
+                self.fonts
+                    .rasterize_hinted(face, glyph.id as u16, size, run.size <= 18.0)
                 && bitmap.width > 0
             {
                 let left = (origin_x + glyph.x).round() as i32 + bitmap.left;
@@ -707,6 +709,16 @@ mod tests {
         assert!(
             ink > 40,
             "Inter/sans-serif must paint real glyphs, ink={ink}"
+        );
+        let hi = renderer.render(&list, 400, 80, 2.0).unwrap();
+        let hi_ink = hi
+            .rgba
+            .chunks_exact(4)
+            .filter(|px| px[0] < 200 && px[3] > 0)
+            .count();
+        assert!(
+            hi_ink > 80,
+            "Retina Inter UI text must stay hinted, ink={hi_ink}"
         );
     }
 
