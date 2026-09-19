@@ -1266,7 +1266,7 @@ fn canvas_offscreen_and_image_bitmap_round_trip() {
               dst.width = 4;
               dst.height = 4;
               dst.getContext("2d").drawImage(bmp, 0, 0);
-              var copied = dst.getImageData(1, 1, 1, 1).data;
+              var copied = dst.getContext("2d").getImageData(1, 1, 1, 1).data;
               var cleared = ctx.getImageData(1, 1, 1, 1).data;
               return {
                 pg: painted[1], pa: painted[3],
@@ -1301,7 +1301,7 @@ fn canvas_create_image_bitmap_draws() {
             dst.width = 4;
             dst.height = 4;
             dst.getContext("2d").drawImage(bmp, 0, 0);
-            var p = dst.getImageData(1, 1, 1, 1).data;
+            var p = dst.getContext("2d").getImageData(1, 1, 1, 1).data;
             window.__ib = { w: bmp.width, inst: bmp instanceof ImageBitmap, b: p[2], a: p[3] };
           });
         })()"##,
