@@ -786,6 +786,114 @@ fn canvas_radial_gradient_fills_center() {
 }
 
 #[test]
+fn canvas_create_pattern_repeats_source_pixels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var src = document.createElement("canvas");
+              src.width = 2;
+              src.height = 2;
+              var sctx = src.getContext("2d");
+              sctx.fillStyle = "#00ff00";
+              sctx.fillRect(0, 0, 2, 2);
+              var dst = document.createElement("canvas");
+              dst.width = 8;
+              dst.height = 8;
+              var ctx = dst.getContext("2d");
+              var pat = ctx.createPattern(src, "repeat");
+              ctx.fillStyle = pat;
+              ctx.fillRect(0, 0, 8, 8);
+              var a = ctx.getImageData(0, 0, 1, 1).data;
+              var b = ctx.getImageData(3, 5, 1, 1).data;
+              var c = ctx.getImageData(7, 7, 1, 1).data;
+              return {
+                encoded: String(pat).indexOf("ve-pat:") === 0,
+                ag: a[1], aa: a[3],
+                bg: b[1], ba: b[3],
+                cg: c[1], ca: c[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["encoded"], true, "{v}");
+    assert_eq!(v["ag"], 255, "{v}");
+    assert_eq!(v["aa"], 255, "{v}");
+    assert_eq!(v["bg"], 255, "{v}");
+    assert_eq!(v["ba"], 255, "{v}");
+    assert_eq!(v["cg"], 255, "{v}");
+    assert_eq!(v["ca"], 255, "{v}");
+}
+
+#[test]
+fn canvas_is_point_in_path_hits_rect() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.beginPath();
+              ctx.rect(2, 2, 6, 6);
+              var path = new Path2D();
+              path.moveTo(0, 8);
+              path.lineTo(8, 8);
+              path.lineTo(4, 16);
+              path.closePath();
+              return {
+                inside: ctx.isPointInPath(4, 4),
+                outside: ctx.isPointInPath(12, 4),
+                polyIn: ctx.isPointInPath(path, 4, 11),
+                polyOut: ctx.isPointInPath(path, 0, 0)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inside"], true, "{v}");
+    assert_eq!(v["outside"], false, "{v}");
+    assert_eq!(v["polyIn"], true, "{v}");
+    assert_eq!(v["polyOut"], false, "{v}");
+}
+
+#[test]
+fn canvas_rotate_maps_fill_rect() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.rotate(Math.PI / 2);
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, -4, 4, 4);
+              var hit = ctx.getImageData(2, 2, 1, 1).data;
+              var miss = ctx.getImageData(6, 2, 1, 1).data;
+              var t = ctx.getTransform();
+              return {
+                hg: hit[1], ha: hit[3],
+                ma: miss[3],
+                a: Math.round(t.a * 1000) / 1000,
+                b: Math.round(t.b * 1000) / 1000,
+                c: Math.round(t.c * 1000) / 1000,
+                d: Math.round(t.d * 1000) / 1000
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hg"], 255, "{v}");
+    assert_eq!(v["ha"], 255, "{v}");
+    assert_eq!(v["ma"], 0, "{v}");
+    assert!((v["a"].as_f64().unwrap_or(99.0)).abs() < 0.01, "{v}");
+    assert!((v["b"].as_f64().unwrap_or(0.0) - 1.0).abs() < 0.01, "{v}");
+    assert!((v["c"].as_f64().unwrap_or(0.0) + 1.0).abs() < 0.01, "{v}");
+    assert!((v["d"].as_f64().unwrap_or(99.0)).abs() < 0.01, "{v}");
+}
+
+#[test]
 fn canvas_draw_image_blits_source_pixels() {
     const RED: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
     let mut page = open(&format!(

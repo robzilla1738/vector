@@ -696,6 +696,9 @@ pub struct Page {
     pub(crate) sw_client_posts: Vec<String>,
     /// Per-canvas 2D pixel buffers (VEC-008).
     pub(crate) canvases: HashMap<NodeId, CanvasSurface>,
+    /// `createPattern` pixel tiles keyed by id.
+    canvas_patterns: HashMap<u64, (u32, u32, Vec<u8>)>,
+    next_canvas_pattern: u64,
     /// Gate E: restyle passes during the current attribution window.
     restyle_calls: u32,
     /// Gate E: restyle passes that fell back to a full document compute.
@@ -770,6 +773,11 @@ enum CanvasStyle {
         r1: f32,
         stops: Vec<(f32, [u8; 4])>,
     },
+    Pattern {
+        width: u32,
+        height: u32,
+        pixels: Vec<u8>,
+    },
 }
 
 impl CanvasStyle {
@@ -792,8 +800,26 @@ impl CanvasStyle {
                 r1,
                 stops,
             } => sample_radial_gradient(*x0, *y0, *r0, *x1, *y1, *r1, stops, x, y),
+            Self::Pattern {
+                width,
+                height,
+                pixels,
+            } => sample_pattern(*width, *height, pixels, x, y),
         }
     }
+}
+
+fn sample_pattern(width: u32, height: u32, pixels: &[u8], x: f32, y: f32) -> [u8; 4] {
+    if width == 0 || height == 0 {
+        return [0, 0, 0, 0];
+    }
+    let px = ((x.floor() as i32).rem_euclid(width as i32)) as u32;
+    let py = ((y.floor() as i32).rem_euclid(height as i32)) as u32;
+    let i = ((py * width + px) * 4) as usize;
+    pixels
+        .get(i..i + 4)
+        .and_then(|s| s.try_into().ok())
+        .unwrap_or([0, 0, 0, 0])
 }
 
 fn sample_linear_gradient(
@@ -979,6 +1005,16 @@ impl CanvasSurface {
         style: &CanvasStyle,
         alpha: f32,
     ) {
+        let (x, y, w, h) = if w < 0 {
+            (x.saturating_add(w), y, -w, h)
+        } else {
+            (x, y, w, h)
+        };
+        let (x, y, w, h) = if h < 0 {
+            (x, y.saturating_add(h), w, -h)
+        } else {
+            (x, y, w, h)
+        };
         if w <= 0 || h <= 0 {
             self.ops += 1;
             return;
@@ -1459,6 +1495,8 @@ impl Page {
             next_worker: 0,
             sw_client_posts: Vec::new(),
             canvases: HashMap::new(),
+            canvas_patterns: HashMap::new(),
+            next_canvas_pattern: 0,
             restyle_calls: 0,
             restyle_full_calls: 0,
             last_recomputed: 0,
@@ -1745,12 +1783,44 @@ impl Page {
         color: &str,
         alpha: f32,
     ) -> u64 {
+        let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.fill_rect_styled(x, y, w, h, &parse_canvas_style(color), alpha);
+        c.fill_rect_styled(x, y, w, h, &style, alpha);
         c.ops
+    }
+
+    fn resolve_canvas_style(&self, s: &str) -> CanvasStyle {
+        if let Some(rest) = s.strip_prefix("ve-pat:") {
+            if let Ok(id) = rest.trim().parse::<u64>() {
+                if let Some((w, h, px)) = self.canvas_patterns.get(&id) {
+                    return CanvasStyle::Pattern {
+                        width: *w,
+                        height: *h,
+                        pixels: px.clone(),
+                    };
+                }
+            }
+        }
+        parse_canvas_style(s)
+    }
+
+    pub(crate) fn canvas_create_pattern(&mut self, src: NodeId) -> Option<u64> {
+        let tile = self
+            .canvases
+            .get(&src)
+            .map(|s| (s.width, s.height, s.pixels.clone()))
+            .or_else(|| {
+                let handle = *self.node_images.get(&src)?;
+                let img = self.images.get(handle)?;
+                Some((img.width, img.height, img.rgba.clone()))
+            })?;
+        self.next_canvas_pattern += 1;
+        let id = self.next_canvas_pattern;
+        self.canvas_patterns.insert(id, tile);
+        Some(id)
     }
 
     pub(crate) fn canvas_clear_rect(&mut self, id: NodeId, x: i32, y: i32, w: i32, h: i32) -> u64 {

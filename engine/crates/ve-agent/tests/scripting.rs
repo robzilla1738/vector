@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode"
         )
     );
     assert_eq!(
@@ -336,6 +336,16 @@ fn native_bindings_install_element_id_accessor() {
         page.evaluate("document.body.contains(document.getElementById('y'))")
             .unwrap(),
         serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').isEqualNode(document.getElementById('y'))")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').isEqualNode(document.body)")
+            .unwrap(),
+        serde_json::json!(false)
     );
 }
 

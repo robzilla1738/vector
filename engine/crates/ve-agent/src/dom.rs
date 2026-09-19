@@ -2190,6 +2190,12 @@ pub(crate) fn host_call(
             );
             Ok(JsValue::Number(ops as f64))
         }
+        "canvasCreatePattern" => {
+            let src = live(page, args, 0)?;
+            Ok(page
+                .canvas_create_pattern(src)
+                .map_or(JsValue::Null, |id| JsValue::Number(id as f64)))
+        }
         "canvasDrawImage" => {
             let id = live(page, args, 0)?;
             let src = live(page, args, 1)?;

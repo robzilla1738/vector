@@ -3673,6 +3673,7 @@
   class CanvasPattern {
     constructor() { throw new TypeError("Illegal constructor"); }
     setTransform() {}
+    toString() { return "ve-pat:" + (this._id || 0); }
   }
   Object.defineProperty(CanvasPattern.prototype, Symbol.toStringTag, { value: "CanvasPattern", configurable: true });
   class OffscreenCanvas extends EventTarget {
@@ -3895,6 +3896,35 @@
       flushNums();
     }
   }
+  function pointInCanvasPoly(x, y, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = Number(poly[i][0]) || 0;
+      const yi = Number(poly[i][1]) || 0;
+      const xj = Number(poly[j][0]) || 0;
+      const yj = Number(poly[j][1]) || 0;
+      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-12) + xi)) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+  function pointInCanvasPath(x, y, rects, polys) {
+    let hits = 0;
+    for (const r of rects || []) {
+      const rx = Number(r[0]) || 0;
+      const ry = Number(r[1]) || 0;
+      const rw = Number(r[2]) || 0;
+      const rh = Number(r[3]) || 0;
+      const x0 = rw < 0 ? rx + rw : rx;
+      const y0 = rh < 0 ? ry + rh : ry;
+      if (x >= x0 && x < x0 + Math.abs(rw) && y >= y0 && y < y0 + Math.abs(rh)) hits++;
+    }
+    for (const poly of polys || []) {
+      if (poly && poly.length && pointInCanvasPoly(x, y, poly)) hits++;
+    }
+    return (hits % 2) === 1;
+  }
   class CanvasRenderingContext2D {
     constructor() {
       if (arguments[0] !== IDL_INTERNAL) throw new TypeError("Illegal constructor");
@@ -3996,9 +4026,19 @@
       return [this._a * x + this._c * y + this._e, this._b * x + this._d * y + this._f];
     }
     _mapRect(x, y, w, h) {
-      const p = this._mapPoint(x, y);
-      const q = this._mapPoint((Number(x) || 0) + (Number(w) || 0), (Number(y) || 0) + (Number(h) || 0));
-      return [p[0], p[1], q[0] - p[0], q[1] - p[1]];
+      x = Number(x) || 0;
+      y = Number(y) || 0;
+      w = Number(w) || 0;
+      h = Number(h) || 0;
+      const p0 = this._mapPoint(x, y);
+      const p1 = this._mapPoint(x + w, y);
+      const p2 = this._mapPoint(x, y + h);
+      const p3 = this._mapPoint(x + w, y + h);
+      const xs = [p0[0], p1[0], p2[0], p3[0]];
+      const ys = [p0[1], p1[1], p2[1], p3[1]];
+      const x0 = Math.min(xs[0], xs[1], xs[2], xs[3]);
+      const y0 = Math.min(ys[0], ys[1], ys[2], ys[3]);
+      return [x0, y0, Math.max(xs[0], xs[1], xs[2], xs[3]) - x0, Math.max(ys[0], ys[1], ys[2], ys[3]) - y0];
     }
     fillRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'fillRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
@@ -4064,6 +4104,15 @@
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'rotate' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
       }
+      const t = Number(angle) || 0;
+      const c = Math.cos(t);
+      const s = Math.sin(t);
+      const a = this._a;
+      const b = this._b;
+      this._a = a * c + this._c * s;
+      this._b = b * c + this._d * s;
+      this._c = -a * s + this._c * c;
+      this._d = -b * s + this._d * c;
     }
     setTransform(a, b, c, d, e, f) {
       if (arguments.length < 6) {
@@ -4080,8 +4129,21 @@
         throw new TypeError("Failed to execute 'drawFocusIfNeeded' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
       }
     }
-    isPointInPath() { return false; }
-    isPointInStroke() { return false; }
+    isPointInPath(a, b) {
+      let path = this._path;
+      let x = a;
+      let y = b;
+      if (a instanceof Path2D) {
+        path = a;
+        x = b;
+        y = arguments[2];
+      }
+      const spec = JSON.parse(path._payload() || "{}");
+      return pointInCanvasPath(Number(x) || 0, Number(y) || 0, spec.r || [], spec.p || []);
+    }
+    isPointInStroke(a, b) {
+      return this.isPointInPath(a, b);
+    }
     arcTo(x1, y1, x2, y2, radius) { this._path.arcTo(x1, y1, x2, y2, radius); }
     roundRect(x, y, w, h) { this._path.roundRect(x, y, w, h); }
     ellipse(x, y, rx, ry, rotation, a0, a1) { this._path.ellipse(x, y, rx, ry, rotation, a0, a1); }
@@ -4114,7 +4176,18 @@
       return g;
     }
     createConicGradient(startAngle, x, y) { return Object.create(CanvasGradient.prototype); }
-    createPattern() { return null; }
+    createPattern(img, repetition) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'createPattern' on 'CanvasRenderingContext2D': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      if (!img || img.__h == null) return null;
+      const id = D("canvasCreatePattern", img.__h);
+      if (id == null) return null;
+      const p = Object.create(CanvasPattern.prototype);
+      p._id = id;
+      p._repetition = String(repetition || "repeat");
+      return p;
+    }
     drawImage(img, dx, dy) {
       if (img && img.__h != null) {
         const p = this._mapPoint(dx, dy);
@@ -5484,7 +5557,6 @@
     dir: { compact: "boolean" },
     font: { color: { type: "string", treatNullAsEmptyString: true }, face: "string", size: "string" },
     area: { alt: "string", coords: "string", shape: "string", target: "string", download: "string", ping: "string", rel: "string", hreflang: "string", type: "string", noHref: "boolean", referrerPolicy: { type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"] } },
-    canvas: { width: { type: "unsigned long", defaultVal: 300 }, height: { type: "unsigned long", defaultVal: 150 } },
   };
   for (const tag of Object.keys(REFLECT)) {
     const ctor = HTML[tag] || HTMLElement;
