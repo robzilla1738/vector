@@ -213,6 +213,21 @@ impl Chrome {
         }
     }
 
+    /// True when `url` is a new-tab / start document (no live page to composite).
+    #[must_use]
+    pub fn is_start_url(url: &str) -> bool {
+        is_start_url(url)
+    }
+
+    /// True when the active tab is a new-tab / start page (no live document).
+    #[must_use]
+    pub fn shows_start_page(&self) -> bool {
+        self.tabs
+            .iter()
+            .find(|t| t.active)
+            .map_or(true, |t| is_start_url(&t.url))
+    }
+
     /// Stage card in window CSS px (inset rounded page host).
     #[must_use]
     pub fn stage_rect(&self, window: Size) -> Rect {
@@ -573,6 +588,10 @@ impl Chrome {
             color: t.stage_bg,
         });
         list.push(DisplayItem::PopClip);
+        if self.shows_start_page() {
+            self.paint_start_page(list, stage);
+            return;
+        }
         let badge = match self.backend {
             ChromeBackend::Engine => "Vector Engine",
             ChromeBackend::Chromium => "Chromium",
@@ -581,7 +600,7 @@ impl Chrome {
             list,
             Point::new(stage.x() + 12.0, stage.y() + 18.0),
             badge,
-            11.0,
+            12.0,
             t.engine,
         );
         if !self.route_reason.is_empty() {
@@ -589,9 +608,172 @@ impl Chrome {
                 list,
                 Point::new(stage.x() + 12.0, stage.y() + 36.0),
                 &truncate(&self.route_reason, 42),
-                11.0,
+                12.0,
                 t.ink_2,
             );
+        }
+    }
+
+    fn paint_start_page(&self, list: &mut DisplayList, stage: Rect) {
+        let t = &self.tokens;
+        let hour = current_hour();
+        let greeting = if hour < 5 {
+            "Late night."
+        } else if hour < 12 {
+            "Good morning."
+        } else if hour < 18 {
+            "Good afternoon."
+        } else {
+            "Good evening."
+        };
+        self.label(
+            list,
+            Point::new(stage.x() + 48.0, stage.y() + 72.0),
+            greeting,
+            28.0,
+            t.ink_0,
+        );
+        self.label(
+            list,
+            Point::new(stage.x() + 48.0, stage.y() + 100.0),
+            "Type an address, search the web, or tell the agent what to do",
+            13.0,
+            t.ink_1,
+        );
+        let hero = Rect::new(stage.x() + 48.0, stage.y() + 128.0, (stage.width() - 96.0).min(520.0), 36.0);
+        list.push(DisplayItem::RoundedClip {
+            rect: hero,
+            radius: 18.0,
+        });
+        list.push(DisplayItem::Rect {
+            rect: hero,
+            color: t.sb_field,
+        });
+        list.push(DisplayItem::PopClip);
+        let hero_text = if self.command.is_empty() || is_start_url(&self.command) {
+            "Search, enter an address, or ask the agent"
+        } else {
+            self.command.as_str()
+        };
+        self.label(
+            list,
+            Point::new(hero.x() + 16.0, hero.y() + 24.0),
+            hero_text,
+            13.0,
+            t.ink_2,
+        );
+        let prompts = [
+            "Summarise the open review comments on this PR",
+            "Find the cheapest plan with SSO across these pricing pages",
+            "Collect every talk title on this schedule into a table",
+        ];
+        let mut y = hero.y() + 56.0;
+        for prompt in prompts {
+            list.push(DisplayItem::RoundedClip {
+                rect: Rect::new(hero.x(), y, hero.width(), 28.0),
+                radius: 8.0,
+            });
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(hero.x(), y, hero.width(), 28.0),
+                color: t.bg_0,
+            });
+            list.push(DisplayItem::PopClip);
+            self.label(
+                list,
+                Point::new(hero.x() + 12.0, y + 19.0),
+                prompt,
+                12.0,
+                t.ink_1,
+            );
+            y += 34.0;
+        }
+        y += 16.0;
+        let pins = self
+            .layout
+            .pins
+            .iter()
+            .find(|(id, _)| id == &self.layout.active_space_id)
+            .map(|(_, p)| p.as_slice())
+            .unwrap_or(&[]);
+        let favs: Vec<(String, String)> = if pins.is_empty() {
+            self.bookmarks.iter().take(5).cloned().collect()
+        } else {
+            pins.iter()
+                .take(5)
+                .map(|p| (p.url.clone(), p.title.clone()))
+                .collect()
+        };
+        if !favs.is_empty() {
+            self.label(
+                list,
+                Point::new(stage.x() + 48.0, y + 14.0),
+                if pins.is_empty() {
+                    "Favourites"
+                } else {
+                    "Pinned"
+                },
+                12.0,
+                t.ink_2,
+            );
+            y += 28.0;
+            let mut x = stage.x() + 48.0;
+            for (url, title) in favs {
+                list.push(DisplayItem::RoundedClip {
+                    rect: Rect::new(x, y, 56.0, 56.0),
+                    radius: 14.0,
+                });
+                list.push(DisplayItem::Rect {
+                    rect: Rect::new(x, y, 56.0, 56.0),
+                    color: t.sb_pin_face,
+                });
+                list.push(DisplayItem::PopClip);
+                let letter = host_of(&url)
+                    .chars()
+                    .next()
+                    .unwrap_or('?')
+                    .to_ascii_uppercase()
+                    .to_string();
+                self.label(list, Point::new(x + 20.0, y + 36.0), &letter, 16.0, t.ink_0);
+                let tile = if title.is_empty() {
+                    host_of(&url)
+                } else {
+                    title
+                };
+                self.label(
+                    list,
+                    Point::new(x, y + 76.0),
+                    &truncate(&tile, 12),
+                    11.0,
+                    t.ink_1,
+                );
+                x += 72.0;
+            }
+            y += 96.0;
+        }
+        if !self.history.is_empty() {
+            self.label(
+                list,
+                Point::new(stage.x() + 48.0, y + 14.0),
+                "Recent",
+                12.0,
+                t.ink_2,
+            );
+            y += 32.0;
+            for (url, title) in self.history.iter().take(4) {
+                let label = if title.is_empty() {
+                    host_of(url)
+                } else {
+                    title.clone()
+                };
+                self.label(
+                    list,
+                    Point::new(stage.x() + 48.0, y),
+                    &truncate(&label, 42),
+                    12.0,
+                    t.ink_0,
+                );
+                y += 22.0;
+            }
         }
     }
 
@@ -778,6 +960,23 @@ impl Chrome {
     }
 }
 
+fn is_start_url(url: &str) -> bool {
+    let u = url.trim();
+    u.is_empty()
+        || u.eq_ignore_ascii_case("about:blank")
+        || u.eq_ignore_ascii_case("about:newtab")
+        || u.starts_with("vector://new")
+}
+
+fn current_hour() -> u32 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    ((secs / 3600) % 24) as u32
+}
+
 fn overlay_card(window: Size) -> Rect {
     Rect::new(window.width * 0.5 - 240.0, 80.0, 480.0, 320.0)
 }
@@ -817,6 +1016,36 @@ mod tests {
         c.command_focused = true;
         c.agent_status = "Idle".into();
         c
+    }
+
+    #[test]
+    fn start_page_paints_greeting_and_prompts() {
+        let chrome = Chrome::default();
+        let list = chrome.paint(Size::new(1280.0, 720.0));
+        let texts: Vec<&str> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            texts.iter().any(|t| t.starts_with("Good ") || *t == "Late night."),
+            "{texts:?}"
+        );
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.contains("Search, enter an address")),
+            "{texts:?}"
+        );
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.contains("Summarise the open review comments")),
+            "{texts:?}"
+        );
     }
 
     #[test]

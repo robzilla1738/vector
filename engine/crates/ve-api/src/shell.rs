@@ -1207,7 +1207,14 @@ impl NativeBrowser {
             .enumerate()
             .map(|(i, t)| ChromeTab {
                 page_id: t.page.0.to_string(),
-                title: t.page_title.clone(),
+                title: if Chrome::is_start_url(&t.url)
+                    && (t.page_title.is_empty()
+                        || t.page_title.eq_ignore_ascii_case("about:blank"))
+                {
+                    "New Tab".into()
+                } else {
+                    t.page_title.clone()
+                },
                 url: t.url.clone(),
                 active: i == self.active,
                 backend: t.backend,
@@ -1218,6 +1225,7 @@ impl NativeBrowser {
         } else {
             self.chrome.command = self
                 .active_tab()
+                .filter(|t| !Chrome::is_start_url(&t.url))
                 .map(|t| t.url.clone())
                 .unwrap_or_default();
         }
@@ -1251,18 +1259,21 @@ impl NativeBrowser {
                 .collect();
             let _ = profile.save_session(&session);
             if let Some(tab) = self.active_tab() {
-                let _ = profile.visit(
-                    &tab.url,
-                    &tab.page_title,
-                    std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map(|d| d.as_millis() as u64)
-                        .unwrap_or(0),
-                );
+                if !Chrome::is_start_url(&tab.url) {
+                    let _ = profile.visit(
+                        &tab.url,
+                        &tab.page_title,
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_millis() as u64)
+                            .unwrap_or(0),
+                    );
+                }
             }
             if let Ok(hist) = profile.history() {
                 self.chrome.history = hist
                     .into_iter()
+                    .filter(|h| !Chrome::is_start_url(&h.url))
                     .map(|h| (h.url, h.title))
                     .collect();
             }
@@ -1304,15 +1315,17 @@ impl NativeBrowser {
         let window = self.window_size;
         let mut list = self.chrome.paint(window);
         if let Some(tab) = self.active_tab() {
-            let page = tab.page;
-            if let Some(page_list) = self.paint_page_id(page) {
-                let stage = self.chrome.stage_rect(window);
-                list.push(DisplayItem::RoundedClip {
-                    rect: stage,
-                    radius: self.chrome.metrics.stage_radius,
-                });
-                list.append_translated(&page_list, stage.x(), stage.y());
-                list.push(DisplayItem::PopClip);
+            if !self.chrome.shows_start_page() {
+                let page = tab.page;
+                if let Some(page_list) = self.paint_page_id(page) {
+                    let stage = self.chrome.stage_rect(window);
+                    list.push(DisplayItem::RoundedClip {
+                        rect: stage,
+                        radius: self.chrome.metrics.stage_radius,
+                    });
+                    list.append_translated(&page_list, stage.x(), stage.y());
+                    list.push(DisplayItem::PopClip);
+                }
             }
         }
         Ok(list)
@@ -2594,6 +2607,45 @@ mod tests {
             serde_json::to_vec_pretty(&regions).unwrap(),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn start_page_is_composited_instead_of_blank_document() {
+        let path = format!("/tmp/vector-start-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        unsafe { std::env::set_var("VECTOR_PROFILE", &path) };
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body></body></html>".into(),
+                url: "about:blank".into(),
+            })
+            .unwrap();
+        assert!(
+            browser.chrome().shows_start_page(),
+            "about:blank must show the Electron start page"
+        );
+        let list = browser.paint_shell_list().unwrap();
+        let texts: Vec<String> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                ve_gfx::DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            texts.iter().any(|t| t.contains("Search, enter an address")),
+            "{texts:?}"
+        );
+        browser.set_device_scale(2.0);
+        let png = browser.capture_shell_png().expect("start png");
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/ui/screenshots");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("ve-shell-start.png"), &png).unwrap();
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

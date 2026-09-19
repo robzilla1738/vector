@@ -260,7 +260,11 @@ impl FontSystem {
         let FontSystem { db, scaler } = self;
         db.with_face_data(id, |bytes, index| {
             let font = FontRef::from_index(bytes, index as usize)?;
-            let mut built = scaler.builder(font).size(size).hint(false).build();
+            let mut built = scaler
+                .builder(font)
+                .size(size)
+                .hint(size <= 18.0)
+                .build();
             let outline = built.scale_outline(glyph)?;
             let mut verbs = Vec::new();
             for cmd in outline.path().commands() {
@@ -284,7 +288,11 @@ impl FontSystem {
         let FontSystem { db, scaler } = self;
         db.with_face_data(id, |bytes, index| {
             let font = FontRef::from_index(bytes, index as usize)?;
-            let mut built = scaler.builder(font).size(size).hint(false).build();
+            let mut built = scaler
+                .builder(font)
+                .size(size)
+                .hint(size <= 18.0)
+                .build();
             let image = Render::new(&[
                 Source::ColorOutline(0),
                 Source::ColorBitmap(StrikeWith::BestFit),
