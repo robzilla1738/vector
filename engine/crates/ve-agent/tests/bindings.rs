@@ -934,6 +934,46 @@ fn canvas_destination_over_keeps_dst() {
 }
 
 #[test]
+fn canvas_source_in_and_destination_in_clip_to_overlap() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op) {
+                var c = document.createElement("canvas");
+                c.width = 8;
+                c.height = 8;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.fillRect(0, 0, 4, 8);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = "#00ff00";
+                ctx.fillRect(2, 0, 6, 8);
+                var overlap = ctx.getImageData(3, 3, 1, 1).data;
+                var destOnly = ctx.getImageData(0, 3, 1, 1).data;
+                var srcOnly = ctx.getImageData(6, 3, 1, 1).data;
+                return {
+                  or: overlap[0], og: overlap[1], oa: overlap[3],
+                  da: destOnly[3], sa: srcOnly[3]
+                };
+              }
+              return { src: sample("source-in"), dst: sample("destination-in") };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["src"]["og"], 255, "{v}");
+    assert_eq!(v["src"]["or"], 0, "{v}");
+    assert_eq!(v["src"]["oa"], 255, "{v}");
+    assert_eq!(v["src"]["da"], 255, "{v}");
+    assert_eq!(v["src"]["sa"], 0, "{v}");
+    assert_eq!(v["dst"]["or"], 255, "{v}");
+    assert_eq!(v["dst"]["og"], 0, "{v}");
+    assert_eq!(v["dst"]["oa"], 255, "{v}");
+    assert_eq!(v["dst"]["da"], 255, "{v}");
+    assert_eq!(v["dst"]["sa"], 0, "{v}");
+}
+
+#[test]
 fn canvas_create_pattern_from_image_data() {
     let mut page = open(r#"<body></body>"#);
     let v = page

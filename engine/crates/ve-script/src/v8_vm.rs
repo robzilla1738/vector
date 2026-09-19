@@ -785,6 +785,10 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeAttrNames", attr_names)?;
+            let remove = v8::FunctionTemplate::builder(native_element_remove)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeRemove", remove)?;
             Some(())
         })?;
         self.eval(
@@ -883,6 +887,9 @@ impl JsVm for V8Vm {
   };
   Element.prototype.getAttributeNames = function () {
     return globalThis.__veNativeAttrNames.call(this) || [];
+  };
+  Element.prototype.remove = function () {
+    globalThis.__veNativeRemove.call(this);
   };
   Element.prototype.closest = function (s) {
     return wrapNode(globalThis.__veNativeClosest.call(this, s));
@@ -1010,7 +1017,7 @@ impl JsVm for V8Vm {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove";
 })()"#,
             "vector:dom-native",
         )?;
@@ -2294,6 +2301,17 @@ fn native_element_attr_names(
     let value = call_dom_host(scope, &[JsValue::from("attrNames"), handle])
         .unwrap_or(JsValue::Array(Vec::new()));
     rv.set(from_js_value(scope, &value));
+}
+
+fn native_element_remove(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let _ = call_dom_host(scope, &[JsValue::from("remove"), handle]);
 }
 
 fn looks_like_module(source: &str) -> bool {

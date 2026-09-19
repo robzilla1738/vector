@@ -814,6 +814,8 @@ enum CompositeOp {
     Copy,
     DestinationOver,
     Xor,
+    SourceIn,
+    DestinationIn,
 }
 
 impl CompositeOp {
@@ -822,6 +824,8 @@ impl CompositeOp {
             "copy" => Self::Copy,
             "destination-over" => Self::DestinationOver,
             "xor" => Self::Xor,
+            "source-in" => Self::SourceIn,
+            "destination-in" => Self::DestinationIn,
             _ => Self::SourceOver,
         }
     }
@@ -997,6 +1001,8 @@ fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
         CompositeOp::SourceOver => (sa, da * (255 - sa) / 255),
         CompositeOp::DestinationOver => (sa * (255 - da) / 255, da),
         CompositeOp::Xor => (sa * (255 - da) / 255, da * (255 - sa) / 255),
+        CompositeOp::SourceIn => (sa * da / 255, 0),
+        CompositeOp::DestinationIn => (0, da * sa / 255),
     };
     let out_a = fs + fd;
     if out_a == 0 {
