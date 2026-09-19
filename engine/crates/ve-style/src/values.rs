@@ -2935,3 +2935,37 @@ keyword_enum! {
         Always = "always",
     }
 }
+
+keyword_enum! {
+    /// `fill-rule`.
+    FillRule {
+        /// Non-zero winding.
+        Nonzero = "nonzero",
+        /// Even-odd.
+        Evenodd = "evenodd",
+    }
+}
+
+keyword_enum! {
+    /// `stroke-linecap`.
+    StrokeLinecap {
+        /// Flat ends.
+        Butt = "butt",
+        /// Semicircle ends.
+        Round = "round",
+        /// Square projection.
+        Square = "square",
+    }
+}
+
+keyword_enum! {
+    /// `stroke-linejoin`.
+    StrokeLinejoin {
+        /// Extended outer edges.
+        Miter = "miter",
+        /// Circular join.
+        Round = "round",
+        /// Cut corner.
+        Bevel = "bevel",
+    }
+}

@@ -400,6 +400,9 @@ impl ComputedStyle {
             PropertyId::FlexWrap => self.flex_wrap.to_string(),
             PropertyId::JustifyContent => self.justify_content.to_string(),
             PropertyId::AlignItems => self.align_items.to_string(),
+            PropertyId::FillRule => self.fill_rule.to_string(),
+            PropertyId::StrokeLinecap => self.stroke_linecap.to_string(),
+            PropertyId::StrokeLinejoin => self.stroke_linejoin.to_string(),
             _ => String::new(),
         }
     }

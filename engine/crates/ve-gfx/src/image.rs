@@ -904,25 +904,39 @@ fn paint_svg_circle(
     );
     let r = svg_attr(tag, "r").unwrap_or(0.0) * world.sx.abs().min(world.sy.abs());
     let fill = svg_fill(tag);
+    let (stroke_color, stroke_w) = svg_stroke(tag);
+    let stroke_color = with_opacity(stroke_color, world.opacity);
+    let has_stroke = svg_attr_str(tag, "stroke").is_some_and(|s| !s.eq_ignore_ascii_case("none"));
+    let pad = if has_stroke {
+        (stroke_w * 0.5).max(0.5)
+    } else {
+        0.0
+    };
     let r2 = r * r;
-    let x0 = (cx - r).floor().max(0.0) as u32;
-    let y0 = (cy - r).floor().max(0.0) as u32;
-    let x1 = (cx + r).ceil().min(img.width as f32) as u32;
-    let y1 = (cy + r).ceil().min(img.height as f32) as u32;
+    let x0 = (cx - r - pad).floor().max(0.0) as u32;
+    let y0 = (cy - r - pad).floor().max(0.0) as u32;
+    let x1 = (cx + r + pad).ceil().min(img.width as f32) as u32;
+    let y1 = (cy + r + pad).ceil().min(img.height as f32) as u32;
+    let inner = (r - pad).max(0.0);
+    let outer = r + pad;
     for yy in y0..y1 {
         for xx in x0..x1 {
             let dx = xx as f32 + 0.5 - cx;
             let dy = yy as f32 + 0.5 - cy;
-            if dx * dx + dy * dy <= r2 {
-                if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
-                    continue;
-                }
+            let dist = dx.hypot(dy);
+            if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
+                continue;
+            }
+            let idx = ((yy * img.width + xx) * 4) as usize;
+            if !fill.eq_ignore_ascii_case("none") && dist * dist <= r2 {
                 let color = with_opacity(
                     paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
                     world.opacity,
                 );
-                let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
+            }
+            if has_stroke && dist >= inner && dist <= outer {
+                img.rgba[idx..idx + 4].copy_from_slice(&stroke_color);
             }
         }
     }
@@ -943,24 +957,37 @@ fn paint_svg_ellipse(
     let rx = svg_attr(tag, "rx").unwrap_or(0.0) * world.sx.abs();
     let ry = svg_attr(tag, "ry").unwrap_or(0.0) * world.sy.abs();
     let fill = svg_fill(tag);
-    let x0 = (cx - rx).floor().max(0.0) as u32;
-    let y0 = (cy - ry).floor().max(0.0) as u32;
-    let x1 = (cx + rx).ceil().min(img.width as f32) as u32;
-    let y1 = (cy + ry).ceil().min(img.height as f32) as u32;
+    let (stroke_color, stroke_w) = svg_stroke(tag);
+    let stroke_color = with_opacity(stroke_color, world.opacity);
+    let has_stroke = svg_attr_str(tag, "stroke").is_some_and(|s| !s.eq_ignore_ascii_case("none"));
+    let pad = if has_stroke {
+        (stroke_w * 0.5).max(0.5)
+    } else {
+        0.0
+    };
+    let x0 = (cx - rx - pad).floor().max(0.0) as u32;
+    let y0 = (cy - ry - pad).floor().max(0.0) as u32;
+    let x1 = (cx + rx + pad).ceil().min(img.width as f32) as u32;
+    let y1 = (cy + ry + pad).ceil().min(img.height as f32) as u32;
+    let scale = rx.abs().min(ry.abs()).max(0.001);
     for yy in y0..y1 {
         for xx in x0..x1 {
             let nx = (xx as f32 + 0.5 - cx) / rx.max(0.001);
             let ny = (yy as f32 + 0.5 - cy) / ry.max(0.001);
-            if nx * nx + ny * ny <= 1.0 {
-                if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
-                    continue;
-                }
+            let n = (nx * nx + ny * ny).sqrt();
+            if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
+                continue;
+            }
+            let idx = ((yy * img.width + xx) * 4) as usize;
+            if !fill.eq_ignore_ascii_case("none") && n <= 1.0 {
                 let color = with_opacity(
                     paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
                     world.opacity,
                 );
-                let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
+            }
+            if has_stroke && (n - 1.0).abs() * scale <= pad {
+                img.rgba[idx..idx + 4].copy_from_slice(&stroke_color);
             }
         }
     }
@@ -2412,5 +2439,27 @@ mod tests {
         .expect("svg rect stroke");
         assert_eq!(img.pixel(2, 4), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_circle_stroke_keeps_center_empty() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <circle cx='4' cy='4' r='3' fill='none' stroke='#ff0000' stroke-width='2'/></svg>",
+        )
+        .expect("svg circle stroke");
+        assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(4, 1), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_ellipse_stroke_keeps_center_empty() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <ellipse cx='4' cy='4' rx='3' ry='2' fill='none' stroke='#00ff00' stroke-width='2'/></svg>",
+        )
+        .expect("svg ellipse stroke");
+        assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(1, 4), Some([0, 255, 0, 255]));
     }
 }

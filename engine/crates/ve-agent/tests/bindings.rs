@@ -4997,6 +4997,30 @@ fn rtc_data_channel_opens_after_offer_answer() {
 }
 
 #[test]
+fn computed_style_exposes_fill_rule_and_stroke_joins() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:bevel">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                rule: cs.fillRule === "evenodd" || cs.getPropertyValue("fill-rule") === "evenodd",
+                cap: cs.strokeLinecap === "round" || cs.getPropertyValue("stroke-linecap") === "round",
+                join: cs.strokeLinejoin === "bevel" || cs.getPropertyValue("stroke-linejoin") === "bevel"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["rule"], true, "{v}");
+    assert_eq!(v["cap"], true, "{v}");
+    assert_eq!(v["join"], true, "{v}");
+}
+
+#[test]
 fn match_media_change_fires_on_resize() {
     let mut page = open("<title>mq</title>");
     let v = page

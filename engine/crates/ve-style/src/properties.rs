@@ -24,7 +24,7 @@ use crate::values::{
     BoxShadow, BoxSizing, BreakBefore, BreakInside, CaptionSide, Clear, ClipPath, Color,
     ColorInterpolationFilters, ColumnSpan, Contain, ContainerType, Content, ContentItem,
     ContentVisibility, CssClip, Direction, Display, EmptyCells, FieldSizing, Filter, FlexDirection,
-    FlexWrap, Float, FontDisplay, FontFamily, FontKerning, FontOpticalSizing, FontSmoothing,
+    FillRule, FlexWrap, Float, FontDisplay, FontFamily, FontKerning, FontOpticalSizing, FontSmoothing,
     FontStretch, FontStyle, FontSynthesis, FontVariant, FontVariantEastAsian, FontVariantLigatures,
     FontVariantNumeric, FontWeight, ForcedColorAdjust, GridAutoFlow, GridLine, GridTemplateAreas,
     HangingPunctuation, Hyphens, ImageRendering, Isolation, JustifyContent, Keyword, Length,
@@ -33,7 +33,8 @@ use crate::values::{
     Overflow, OverflowScrolling, OverflowWrap, OverscrollBehavior, PointerEvents, Position,
     PositionArea, PreferredColorScheme, PrintColorAdjust, Resize, Rgba, RubyPosition,
     ScrollBehavior, ScrollSnapAlign, ScrollSnapStop, ScrollSnapType, ScrollbarWidth, SelfAlignment,
-    ShapeOutside, Speak, TableLayout, TextAlign, TextAlignLast, TextDecorationLine,
+    ShapeOutside, Speak, StrokeLinecap, StrokeLinejoin, TableLayout, TextAlign, TextAlignLast,
+    TextDecorationLine,
     TextDecorationStyle, TextEmphasis, TextJustify, TextOrientation, TextOverflow, TextRendering,
     TextTransform, TextUnderlinePosition, TextWrap, TouchAction, TouchCallout, TrackSize,
     TransformBox, TransformOp, TransformStyle, UnicodeBidi, UserSelect, VectorEffect,
@@ -1745,6 +1746,12 @@ property_table! {
     ScrollSnapStop: "scroll-snap-stop" => scroll_snap_stop: ScrollSnapStop = ScrollSnapStop::Normal, inherited = false, syntax = Single, convert = conv::kw::<ScrollSnapStop>;
     /// `stroke-miterlimit`
     StrokeMiterlimit: "stroke-miterlimit" => stroke_miterlimit: f32 = 4.0, inherited = true, syntax = Single, convert = conv::non_negative_number;
+    /// `fill-rule`
+    FillRule: "fill-rule" => fill_rule: FillRule = FillRule::Nonzero, inherited = true, syntax = Single, convert = conv::kw::<FillRule>;
+    /// `stroke-linecap`
+    StrokeLinecap: "stroke-linecap" => stroke_linecap: StrokeLinecap = StrokeLinecap::Butt, inherited = true, syntax = Single, convert = conv::kw::<StrokeLinecap>;
+    /// `stroke-linejoin`
+    StrokeLinejoin: "stroke-linejoin" => stroke_linejoin: StrokeLinejoin = StrokeLinejoin::Miter, inherited = true, syntax = Single, convert = conv::kw::<StrokeLinejoin>;
 }
 
 impl ComputedStyle {
@@ -3847,6 +3854,18 @@ mod tests {
             Some(PropertyId::StrokeMiterlimit)
         );
         assert_eq!(
+            PropertyId::from_name("fill-rule"),
+            Some(PropertyId::FillRule)
+        );
+        assert_eq!(
+            PropertyId::from_name("stroke-linecap"),
+            Some(PropertyId::StrokeLinecap)
+        );
+        assert_eq!(
+            PropertyId::from_name("stroke-linejoin"),
+            Some(PropertyId::StrokeLinejoin)
+        );
+        assert_eq!(
             PropertyId::from_name("overflow-x"),
             Some(PropertyId::OverflowX)
         );
@@ -4118,6 +4137,9 @@ mod tests {
         ok("-webkit-mask-composite", "source-over");
         ok("scroll-snap-stop", "always");
         ok("stroke-miterlimit", "4");
+        ok("fill-rule", "evenodd");
+        ok("stroke-linecap", "round");
+        ok("stroke-linejoin", "bevel");
         ok("-ms-overflow-style", "scrollbar");
         ok("-webkit-box-pack", "justify");
         ok("scroll-padding-inline", "8px");
@@ -4125,7 +4147,7 @@ mod tests {
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 248);
+        assert_eq!(PropertyId::ALL.len(), 251);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
