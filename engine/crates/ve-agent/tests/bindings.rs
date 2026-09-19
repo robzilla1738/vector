@@ -1186,6 +1186,104 @@ fn canvas_lighter_adds_overlapping_channels() {
 }
 
 #[test]
+fn canvas_multiply_and_screen_blend_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op, dest, src) {
+                var c = document.createElement("canvas");
+                c.width = 4;
+                c.height = 4;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = dest;
+                ctx.fillRect(0, 0, 4, 4);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = src;
+                ctx.fillRect(0, 0, 4, 4);
+                var p = ctx.getImageData(1, 1, 1, 1).data;
+                return { r: p[0], g: p[1], b: p[2], a: p[3] };
+              }
+              return {
+                mul: sample("multiply", "#ff0000", "#808080"),
+                screen: sample("screen", "#000000", "#00ff00")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["mul"]["r"], 128, "{v}");
+    assert_eq!(v["mul"]["g"], 0, "{v}");
+    assert_eq!(v["mul"]["b"], 0, "{v}");
+    assert_eq!(v["screen"]["g"], 255, "{v}");
+    assert_eq!(v["screen"]["r"], 0, "{v}");
+}
+
+#[test]
+fn canvas_text_baseline_shifts_fill_text() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function minY(base) {
+                var c = document.createElement("canvas");
+                c.width = 24;
+                c.height = 32;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.textBaseline = base;
+                ctx.fillText("I", 4, 12);
+                var data = ctx.getImageData(0, 0, 24, 32).data;
+                var min = 32;
+                for (var y = 0; y < 32; y++) {
+                  for (var x = 0; x < 24; x++) {
+                    if (data[(y * 24 + x) * 4 + 3] > 20) min = Math.min(min, y);
+                  }
+                }
+                return min;
+              }
+              return { alphabetic: minY("alphabetic"), top: minY("top") };
+            })()"##,
+        )
+        .unwrap();
+    let alpha = v["alphabetic"].as_u64().unwrap_or(32);
+    let top = v["top"].as_u64().unwrap_or(32);
+    assert!(
+        top > alpha,
+        "top baseline must paint lower than alphabetic: {v}"
+    );
+}
+
+#[test]
+fn canvas_bezier_curve_paints_off_the_chord() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(1, 14);
+              ctx.bezierCurveTo(1, 1, 14, 1, 14, 14);
+              ctx.stroke();
+              var peak = ctx.getImageData(8, 2, 1, 1).data;
+              var chord = ctx.getImageData(8, 14, 1, 1).data;
+              return { pg: peak[1], pa: peak[3], ca: chord[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["pa"].as_u64().unwrap_or(0) > 20,
+        "cubic must paint above the chord: {v}"
+    );
+    assert_eq!(v["ca"], 0, "the straight chord must stay empty: {v}");
+}
+
+#[test]
 fn canvas_image_smoothing_blends_scaled_pixels() {
     let mut page = open(r#"<body></body>"#);
     let v = page

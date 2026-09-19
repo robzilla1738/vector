@@ -990,6 +990,24 @@ impl JsVm for V8Vm {
   Object.defineProperty(Element.prototype, "clientHeight", {
     configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "clientHeight"); }
   });
+  Object.defineProperty(Element.prototype, "offsetWidth", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "offsetWidth"); }
+  });
+  Object.defineProperty(Element.prototype, "offsetHeight", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "offsetHeight"); }
+  });
+  Object.defineProperty(Element.prototype, "offsetTop", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "offsetTop"); }
+  });
+  Object.defineProperty(Element.prototype, "offsetLeft", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "offsetLeft"); }
+  });
+  Object.defineProperty(Element.prototype, "scrollWidth", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "scrollWidth"); }
+  });
+  Object.defineProperty(Element.prototype, "scrollHeight", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "scrollHeight"); }
+  });
   Object.defineProperty(Element.prototype, "dataset", {
     configurable: true,
     enumerable: true,
@@ -1197,7 +1215,7 @@ impl JsVm for V8Vm {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,getBoundingClientRect,dataset";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,offsetWidth,offsetHeight,offsetTop,offsetLeft,scrollWidth,scrollHeight,getBoundingClientRect,dataset";
 })()"#,
             "vector:dom-native",
         )?;

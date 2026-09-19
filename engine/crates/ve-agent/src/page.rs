@@ -824,6 +824,8 @@ enum CompositeOp {
     DestinationOut,
     SourceAtop,
     DestinationAtop,
+    Multiply,
+    Screen,
 }
 
 impl CompositeOp {
@@ -833,6 +835,8 @@ impl CompositeOp {
             "destination-over" => Self::DestinationOver,
             "xor" => Self::Xor,
             "lighter" => Self::Lighter,
+            "multiply" => Self::Multiply,
+            "screen" => Self::Screen,
             "source-in" => Self::SourceIn,
             "destination-in" => Self::DestinationIn,
             "source-out" => Self::SourceOut,
@@ -1091,6 +1095,24 @@ fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
         CompositeOp::DestinationOut => (0, da * (255 - sa) / 255),
         CompositeOp::SourceAtop => (sa * da / 255, da * (255 - sa) / 255),
         CompositeOp::DestinationAtop => (sa * (255 - da) / 255, da * sa / 255),
+        CompositeOp::Multiply => {
+            let a = sa + da * (255 - sa) / 255;
+            return [
+                ((u32::from(src[0]) * u32::from(dst[0])) / 255) as u8,
+                ((u32::from(src[1]) * u32::from(dst[1])) / 255) as u8,
+                ((u32::from(src[2]) * u32::from(dst[2])) / 255) as u8,
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::Screen => {
+            let a = sa + da * (255 - sa) / 255;
+            return [
+                (255 - ((255 - u32::from(src[0])) * (255 - u32::from(dst[0])) / 255)) as u8,
+                (255 - ((255 - u32::from(src[1])) * (255 - u32::from(dst[1])) / 255)) as u8,
+                (255 - ((255 - u32::from(src[2])) * (255 - u32::from(dst[2])) / 255)) as u8,
+                a.min(255) as u8,
+            ];
+        }
     };
     let out_a = fs + fd;
     if out_a == 0 {
