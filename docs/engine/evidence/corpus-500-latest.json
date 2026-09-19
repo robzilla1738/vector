@@ -78,13 +78,13 @@
     "liveHtml": {
       "kind": "fetched-html-bodies",
       "n": 488,
-      "p50Ms": 1.564,
-      "p95Ms": 3.15,
+      "p50Ms": 1.551,
+      "p95Ms": 3.118,
       "unsupported": 0
     },
     "n": 488,
-    "p50Ms": 1.564,
-    "p95Ms": 3.15,
+    "p50Ms": 1.551,
+    "p95Ms": 3.118,
     "rustcDebug": false,
     "standInP50Ms": 0.056,
     "standInP95Ms": 0.07,
@@ -93,11 +93,11 @@
   "openToObserve": {
     "htmlBytesCap": 256000,
     "kind": "fetched-html-bodies",
-    "maxMs": 78.834,
+    "maxMs": 78.854,
     "n": 488,
     "notes": "Parse+layout+compact observe on saved live HTML. Network fetch is excluded. HTML parse stops at 256 KB so multi-MB specs do not take a full cascade. Not an Apple-silicon published score.",
-    "p50Ms": 13.929,
-    "p95Ms": 29.296,
+    "p50Ms": 13.823,
+    "p95Ms": 29.321,
     "rustcDebug": false,
     "slowest": "117",
     "unit": "ms"
@@ -112,6 +112,19 @@
     "p50": 2985,
     "p95": 2999,
     "unit": "approxTokens"
+  },
+  "taskControlRank": {
+    "heldOut": {
+      "inTop40": 3,
+      "n": 3,
+      "test": "held_out_task_controls_are_in_the_top_forty"
+    },
+    "inTop40": 460,
+    "kind": "fetched-html-bodies",
+    "n": 460,
+    "rate": 1.0,
+    "targetRate": 0.9,
+    "window": 40
   },
   "urls": 500
 }
