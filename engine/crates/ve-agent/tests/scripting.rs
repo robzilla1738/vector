@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild"
         )
     );
     assert_eq!(
@@ -476,6 +476,20 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("document.ownerDocument").unwrap(),
         serde_json::Value::Null
+    );
+    assert_eq!(
+        page.evaluate("document.body.appendChild(document.createElement('i')).tagName")
+            .unwrap(),
+        serde_json::json!("I")
+    );
+    assert_eq!(
+        page.evaluate("document.body.removeChild(document.body.lastChild).tagName")
+            .unwrap(),
+        serde_json::json!("I")
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.id").unwrap(),
+        serde_json::json!("y")
     );
 }
 

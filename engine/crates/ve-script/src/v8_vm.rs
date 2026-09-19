@@ -721,6 +721,18 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeOwnerDocument", owner)?;
+            let append = v8::FunctionTemplate::builder(native_node_append_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeAppendChild", append)?;
+            let insert = v8::FunctionTemplate::builder(native_node_insert_before)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeInsertBefore", insert)?;
+            let remove = v8::FunctionTemplate::builder(native_node_remove_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeRemoveChild", remove)?;
             Some(())
         })?;
         self.eval(
@@ -845,11 +857,36 @@ impl JsVm for V8Vm {
     };
   }
   defNode("ownerDocument", function () { return wrapNode(globalThis.__veNativeOwnerDocument.call(this)); });
+  Node.prototype.appendChild = function (n) {
+    if (n && n.nodeType === 11) {
+      while (n.firstChild) this.appendChild(n.firstChild);
+      return n;
+    }
+    globalThis.__veNativeAppendChild.call(this, n);
+    if (typeof globalThis.__veUpgradeOne === "function") globalThis.__veUpgradeOne(n);
+    if (typeof globalThis.__vePrepareInserted === "function") globalThis.__vePrepareInserted(n);
+    return n;
+  };
+  Node.prototype.insertBefore = function (n, ref) {
+    if (n && n.nodeType === 11) {
+      while (n.firstChild) this.insertBefore(n.firstChild, ref);
+      return n;
+    }
+    globalThis.__veNativeInsertBefore.call(this, n, ref);
+    if (typeof globalThis.__veUpgradeOne === "function") globalThis.__veUpgradeOne(n);
+    if (typeof globalThis.__vePrepareInserted === "function") globalThis.__vePrepareInserted(n);
+    return n;
+  };
+  Node.prototype.removeChild = function (n) {
+    try { if (typeof globalThis.__veCancelPending === "function") globalThis.__veCancelPending(n); } catch (e) {}
+    globalThis.__veNativeRemoveChild.call(this, n);
+    return n;
+  };
   if (typeof DocumentFragment !== "undefined") {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild";
 })()"#,
             "vector:dom-native",
         )?;
@@ -1889,6 +1926,78 @@ fn native_node_owner_document(
     mut rv: v8::ReturnValue<'_, v8::Value>,
 ) {
     native_node_walk(scope, &args, "ownerDocument", &mut rv);
+}
+
+fn native_child_handle(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: &v8::FunctionCallbackArguments<'_>,
+    i: i32,
+) -> JsValue {
+    if args.length() <= i {
+        return JsValue::Null;
+    }
+    args.get(i)
+        .to_object(scope)
+        .and_then(|obj| object_handle(scope, obj))
+        .unwrap_or(JsValue::Null)
+}
+
+fn native_node_append_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let child = native_child_handle(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("appendChild"), handle, child]);
+    if args.length() > 0 {
+        rv.set(args.get(0));
+    } else {
+        rv.set_null();
+    }
+}
+
+fn native_node_insert_before(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let child = native_child_handle(scope, &args, 0);
+    let before = native_child_handle(scope, &args, 1);
+    let _ = call_dom_host(
+        scope,
+        &[JsValue::from("insertBefore"), handle, child, before],
+    );
+    if args.length() > 0 {
+        rv.set(args.get(0));
+    } else {
+        rv.set_null();
+    }
+}
+
+fn native_node_remove_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let child = native_child_handle(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("removeChild"), handle, child]);
+    if args.length() > 0 {
+        rv.set(args.get(0));
+    } else {
+        rv.set_null();
+    }
 }
 
 fn looks_like_module(source: &str) -> bool {

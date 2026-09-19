@@ -671,6 +671,10 @@
   }
   globalThis.__veDomProfile = () => ({ nodes: nodes.size });
   globalThis.__veWrap = wrap;
+  globalThis.__veUpgradeOne = upgradeTree;
+  globalThis.__vePrepareInserted = function (n) {
+    try { prepareInsertedNode(n); } catch (e) { __ve.log("error", String(e)); }
+  };
   class NodeList {}
   Object.defineProperty(NodeList, Symbol.hasInstance, {
     value(v) {
