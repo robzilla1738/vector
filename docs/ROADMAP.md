@@ -137,7 +137,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-C4 | Flattened plan schema for union-less providers | C | ☑ | `McpStepSchema` |
 | H1-D1 | `fixtures/spa-app` with `/api/state` oracle | D | ☑ | `fixtures/spa-app` |
 | H1-D2 | Held-out suite: sealed hash, trials 5, live models, median + IQR + CI | D | ☑ | `tests/held-out/run.mjs` + `tests/held-out/pages/*`; `docs/engine/evidence/held-out-latest.json` (`skippedLive: false`, `livePlanner: true`, `openai/gpt-5.6-luna-fast`, sealedHash `f805b31d…`, 5 trials × 3 tasks; engine verified 15/15 median wait 3159 ms IQR 2882 CI 2691–5601; competitor `vector` 15/15 median 2869 ms; increment/submit/table oracles all 5/5) |
-| H1-D3 | Public corpus ≥ 500 real URLs | D | ☑ | `docs/engine/evidence/corpus-500-latest.json` (live fetch 491/500; published observe p50 16.6 ms / p95 20.4 ms on 60 fetched HTML bodies via `observes_live_fetched_html_when_present`; stand-in kept as `standInP50Ms`; unsupported 1.8% is a routing number, not a D5 deletion license) |
+| H1-D3 | Public corpus ≥ 500 real URLs | D | ☑ | `docs/engine/evidence/corpus-500-latest.json` (live fetch 491/500; published compact observe p50 1.84 ms / p95 2.19 ms on 60 fetched HTML bodies via `observes_live_fetched_html_when_present` after subtree-skip walk; stand-in kept as `standInP50Ms`; unsupported 1.8% is a routing number, not a D5 deletion license) |
 | H1-D4 | Layout triage vs Chromium reference boxes | D | ☑ | `docs/engine/evidence/layout-triage-2026-09-18.json` (4 fixtures; Chromium getBoundingClientRect matches engine) |
 
 ### Horizon 2 — Chrome, essentials, coordinator

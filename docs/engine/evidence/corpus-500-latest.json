@@ -20,13 +20,13 @@
     "liveHtml": {
       "kind": "fetched-html-bodies",
       "n": 60,
-      "p50Ms": 16.612,
-      "p95Ms": 20.401,
+      "p50Ms": 1.839,
+      "p95Ms": 2.189,
       "unsupported": 0
     },
     "n": 60,
-    "p50Ms": 16.612,
-    "p95Ms": 20.401,
+    "p50Ms": 1.839,
+    "p95Ms": 2.189,
     "standInP50Ms": 0.056,
     "standInP95Ms": 0.07,
     "unit": "ms"
