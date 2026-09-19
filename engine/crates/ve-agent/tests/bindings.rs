@@ -3729,6 +3729,25 @@ fn visual_viewport_tracks_inner_size_and_scroll() {
 }
 
 #[test]
+fn window_scroll_y_tracks_document_element_scroll_top() {
+    let mut page = open(r#"<body style="height:2000px">x</body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              scrollTo(0, 80);
+              return {
+                y: scrollY,
+                x: scrollX,
+                top: document.documentElement.scrollTop
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["y"], 80.0, "{v}");
+    assert_eq!(v["top"], 80.0, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

@@ -8209,13 +8209,30 @@ fn percent_decode(input: &str) -> String {
 
 impl Page {
     pub(crate) fn set_element_scroll_axis(&mut self, id: NodeId, axis: &str, value: f32) {
+        let value = value.max(0.0);
+        if self.doc.document_element() == Some(id) || self.doc.body() == Some(id) {
+            self.set_viewport_scroll_axis(axis, value);
+        }
         let cur = self.element_scroll.entry(id).or_default();
         if axis == "x" {
-            cur.x = value.max(0.0);
+            cur.x = value;
         } else {
-            cur.y = value.max(0.0);
+            cur.y = value;
         }
         self.doc.record_scrolled(Some(id));
+    }
+
+    /// Clamp and store viewport scroll for `window.scrollX` / `scrollY`.
+    pub(crate) fn set_viewport_scroll_axis(&mut self, axis: &str, value: f32) {
+        self.update();
+        let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+        let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
+        if axis == "x" {
+            self.scroll.x = value.min(max_x);
+        } else {
+            self.scroll.y = value.min(max_y);
+        }
+        self.doc.record_scrolled(None);
     }
 }
 
