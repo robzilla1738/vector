@@ -28,6 +28,7 @@ fn rubber_band_overshoots_then_springs_back() {
         "expected rubber-band, overscroll={:?}",
         page.overscroll_offset()
     );
+    assert!(page.needs_scroll_frame());
     page.tick_scroll_physics(240.0);
     assert!(
         page.overscroll_offset().y.abs() < 0.5,

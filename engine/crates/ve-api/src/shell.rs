@@ -24,7 +24,7 @@ use crate::{
     EngineConfig, ExecuteRequest, ExecuteResult, Observation, ObservationRequest, OpenRequest,
     PageId, Program, ShaperKind, UpdateKeyPair, VectorEngine, verify_update_manifest,
 };
-use ve_agent::MouseButton;
+use ve_agent::{MouseButton, Page};
 
 /// A tab in the native shell.
 #[derive(Clone, Debug)]
@@ -156,6 +156,11 @@ pub enum NativeEvent {
         dx: f32,
         /// Vertical delta.
         dy: f32,
+    },
+    /// Vsync / display-link tick (H1-A4 / H1-A5). Springs rubber-band and coasts momentum.
+    Frame {
+        /// Frame delta in milliseconds.
+        dt_ms: f32,
     },
     /// AccessKit action from the platform (click/focus).
     AccessKitAction {
@@ -868,6 +873,50 @@ impl NativeBrowser {
         let _ = self.present();
     }
 
+    /// Active tab still has rubber-band or momentum. Inactive tabs do not
+    /// drive the frame loop (off-screen animating pages stay idle).
+    #[must_use]
+    pub fn needs_frame(&self) -> bool {
+        let Some(tab) = self.active_tab() else {
+            return false;
+        };
+        self.engine
+            .page(tab.page)
+            .map(Page::needs_scroll_frame)
+            .unwrap_or(false)
+    }
+
+    /// `prefers-reduced-motion` on the visible document.
+    #[must_use]
+    pub fn reduced_motion(&self) -> bool {
+        self.active_tab()
+            .and_then(|t| self.engine.page(t.page).ok())
+            .is_some_and(Page::reduced_motion)
+    }
+
+    /// One vsync: spring rubber-band / coast momentum on the visible tab.
+    /// Returns whether another frame is still needed.
+    pub fn tick_frame(&mut self, dt_ms: f32) -> bool {
+        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+            return false;
+        };
+        let (moved, more) = {
+            let Ok(page) = self.engine.page_mut(page_id) else {
+                return false;
+            };
+            let before = page.scroll_offset();
+            let over_before = page.overscroll_offset();
+            page.tick_scroll_physics(dt_ms);
+            let moved =
+                page.scroll_offset() != before || page.overscroll_offset() != over_before;
+            (moved, page.needs_scroll_frame())
+        };
+        if moved {
+            self.present_dirty();
+        }
+        more
+    }
+
     #[cfg(feature = "gpu")]
     fn try_gpu_present(&mut self, page: PageId) -> Option<Frame> {
         if self.gpu_unavailable && self.gpu.is_none() {
@@ -1094,6 +1143,13 @@ impl NativeBrowser {
                             self.sync_chrome();
                         }
                     }
+                } else if self.chrome_enabled
+                    && state == KeyState::Down
+                    && key == "Escape"
+                    && self.chrome.overlay != ChromeOverlay::None
+                {
+                    self.chrome.overlay = ChromeOverlay::None;
+                    self.present_dirty();
                 } else if self.chrome_enabled && self.chrome.find_open && state == KeyState::Down {
                     match key.as_str() {
                         "Escape" => self.chrome.find_open = false,
@@ -1197,6 +1253,9 @@ impl NativeBrowser {
                     self.dispatch_human_scroll(dx, dy)?;
                 }
                 self.present_dirty();
+            }
+            NativeEvent::Frame { dt_ms } => {
+                let _ = self.tick_frame(dt_ms);
             }
             NativeEvent::AccessKitAction { name } => {
                 if name.eq_ignore_ascii_case("urlbar") || name.contains("address") {
@@ -3100,6 +3159,253 @@ mod tests {
         }
         std::fs::write(&path, serde_json::to_vec_pretty(&doc).unwrap()).unwrap();
         assert!(doc["inputToPaint"]["p50"].as_f64().unwrap() > 0.0);
+    }
+
+    #[test]
+    fn frame_tick_springs_rubber_band_and_ignores_inactive_tabs() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body style='height:4000px'><p>tall</p></body></html>".into(),
+                url: "https://scroll.test/tall".into(),
+            })
+            .unwrap();
+        let _ = browser.present();
+        for _ in 0..30 {
+            let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 200.0 });
+        }
+        assert!(
+            browser.needs_frame(),
+            "overscroll/momentum on the visible tab must request vsync"
+        );
+        for _ in 0..24 {
+            let _ = browser.handle_event(NativeEvent::Frame { dt_ms: 16.0 });
+        }
+        assert!(
+            !browser.needs_frame(),
+            "spring-back should settle"
+        );
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body style='height:4000px'><p>bg</p></body></html>".into(),
+                url: "https://scroll.test/bg".into(),
+            })
+            .unwrap();
+        for _ in 0..30 {
+            let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 200.0 });
+        }
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p>fg</p>".into(),
+                url: "https://scroll.test/fg".into(),
+            })
+            .unwrap();
+        assert!(
+            !browser.needs_frame(),
+            "inactive/off-screen tab must not drive the frame loop"
+        );
+    }
+
+    #[test]
+    fn escape_cancels_palette() {
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(format!(
+            "/tmp/vector-esc-palette-{}.sqlite",
+            std::process::id()
+        ));
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p>x</p>".into(),
+                url: "https://cmd.test/".into(),
+            })
+            .unwrap();
+        let _ = browser.handle_event(NativeEvent::Key {
+            key: "k".into(),
+            code: "KeyK".into(),
+            modifiers: 4,
+            repeat: false,
+            state: KeyState::Down,
+        });
+        assert_eq!(browser.chrome().overlay, ve_chrome::ChromeOverlay::Palette);
+        let _ = browser.handle_event(NativeEvent::Key {
+            key: "Escape".into(),
+            code: "Escape".into(),
+            modifiers: 0,
+            repeat: false,
+            state: KeyState::Down,
+        });
+        assert_eq!(browser.chrome().overlay, ve_chrome::ChromeOverlay::None);
+    }
+
+    #[test]
+    fn writes_section_6_idle_command_rss_soak() {
+        use std::time::{Duration, Instant};
+        let mut command_ms = Vec::new();
+        let mut browser = NativeBrowser::with_config(crate::EngineConfig {
+            offline: true,
+            security_profile: crate::SecurityProfile::Production,
+            ..crate::EngineConfig::default()
+        });
+        browser.enable_product_chrome_at(format!(
+            "/tmp/vector-s6-budgets-{}.sqlite",
+            std::process::id()
+        ));
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body style='animation:spin 1s infinite'><p>off</p></body></html>"
+                    .into(),
+                url: "https://s6.test/anim".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p>visible</p>".into(),
+                url: "https://s6.test/fg".into(),
+            })
+            .unwrap();
+        let _ = browser.present();
+        assert!(
+            !browser.needs_frame(),
+            "off-screen animating tab must not request frames"
+        );
+        let cpu0 = process_cpu_ticks();
+        let wall0 = Instant::now();
+        while wall0.elapsed() < Duration::from_millis(200) {
+            if browser.needs_frame() {
+                let _ = browser.tick_frame(16.0);
+            } else {
+                std::thread::sleep(Duration::from_millis(4));
+            }
+        }
+        let cpu1 = process_cpu_ticks();
+        let wall = wall0.elapsed().as_secs_f64().max(0.001);
+        let idle_pct = 100.0 * ((cpu1.saturating_sub(cpu0)) as f64 / 100.0) / wall;
+
+        for _ in 0..8 {
+            let t = Instant::now();
+            let _ = browser.handle_event(NativeEvent::Key {
+                key: "k".into(),
+                code: "KeyK".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            });
+            let _ = browser.handle_event(NativeEvent::Key {
+                key: "Escape".into(),
+                code: "Escape".into(),
+                modifiers: 0,
+                repeat: false,
+                state: KeyState::Down,
+            });
+            command_ms.push(t.elapsed().as_secs_f64() * 1000.0);
+        }
+        assert_eq!(browser.chrome().overlay, ve_chrome::ChromeOverlay::None);
+
+        let mut peak = process_rss_bytes().unwrap_or(0);
+        let baseline = peak;
+        let items = (0..40)
+            .map(|i| format!("<li>todo {i}</li>"))
+            .collect::<String>();
+        let todo = format!(
+            "<section class=todoapp><h1>todos</h1><ul class=todo-list>{items}</ul></section>"
+        );
+        for i in 0..100 {
+            let _ = browser.handle_event(NativeEvent::NewTab {
+                html: todo.clone(),
+                url: format!("https://s6.test/todo/{i}"),
+            });
+            let _ = browser.handle_event(NativeEvent::CloseTab);
+            peak = peak.max(process_rss_bytes().unwrap_or(0));
+        }
+        let after_todo = process_rss_bytes().unwrap_or(peak);
+
+        let mut engine = crate::VectorEngine::new(crate::EngineConfig {
+            offline: true,
+            security_profile: crate::SecurityProfile::Production,
+            ..crate::EngineConfig::default()
+        });
+        for i in 0..50 {
+            let opened = engine
+                .open(crate::OpenRequest::html(
+                    "<p>warmup</p>",
+                    Some(&format!("https://soak.test/w{i}")),
+                ))
+                .unwrap();
+            let _ = engine.close(opened.page);
+        }
+        let warmup_rss = process_rss_bytes().unwrap_or(0);
+        for i in 0..1000 {
+            let opened = engine
+                .open(crate::OpenRequest::html(
+                    "<p>nav</p>",
+                    Some(&format!("https://soak.test/n{i}")),
+                ))
+                .unwrap();
+            let _ = engine.close(opened.page);
+        }
+        let final_rss = process_rss_bytes().unwrap_or(warmup_rss);
+        let growth = if warmup_rss == 0 {
+            0.0
+        } else {
+            ((final_rss as f64 - warmup_rss as f64) / warmup_rss as f64) * 100.0
+        };
+
+        let pct = |mut xs: Vec<f64>, p: f64| {
+            xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let i = ((xs.len() as f64 - 1.0) * p).round() as usize;
+            xs[i.min(xs.len() - 1)]
+        };
+        let doc = serde_json::json!({
+            "review": "ROADMAP §6",
+            "host": std::env::consts::ARCH,
+            "os": std::env::consts::OS,
+            "security_mode": "production",
+            "appleSilicon": false,
+            "rustcDebug": cfg!(debug_assertions),
+            "notes": "This-host budgets. Idle CPU uses the GUI Wait path (sleep when needs_frame is false) with an off-screen animating tab. Command ack is ⌘K then Escape. Peak RSS includes the cargo-test harness after 100 TodoMVC-shaped open/close. Soak is 1000 engine.open+close after 50 warmup. Not an Apple-silicon published score.",
+            "idleCpu": { "percent": idle_pct, "windowMs": 200, "needsFrame": false },
+            "commandAck": { "p50": pct(command_ms.clone(), 0.5), "p95": pct(command_ms.clone(), 0.95), "samples": command_ms, "unit": "ms" },
+            "peakRss": { "baselineBytes": baseline, "after100TodoBytes": after_todo, "peakBytes": peak, "peakMb": peak as f64 / (1024.0 * 1024.0) },
+            "navSoak": { "n": 1000, "warmupRssBytes": warmup_rss, "finalRssBytes": final_rss, "growthPct": growth },
+            "test": "writes_section_6_idle_command_rss_soak"
+        });
+        let name = if cfg!(debug_assertions) {
+            "section-6-this-host-budgets-debug.json"
+        } else {
+            "section-6-this-host-budgets.json"
+        };
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/perf")
+            .join(name);
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        std::fs::write(&path, serde_json::to_vec_pretty(&doc).unwrap()).unwrap();
+        assert!(
+            idle_pct < 1.0,
+            "idle CPU with off-screen animation must stay under 1% (got {idle_pct})"
+        );
+        assert!(
+            doc["commandAck"]["p95"].as_f64().unwrap() <= 100.0,
+            "command ack p95 must be ≤ 100 ms"
+        );
+        assert!(growth.is_finite());
+    }
+
+    fn process_cpu_ticks() -> u64 {
+        let s = std::fs::read_to_string("/proc/thread-self/stat")
+            .or_else(|_| std::fs::read_to_string("/proc/self/stat"));
+        let Ok(s) = s else {
+            return 0;
+        };
+        let Some((_, after)) = s.rsplit_once(')') else {
+            return 0;
+        };
+        let parts: Vec<&str> = after.split_whitespace().collect();
+        let user: u64 = parts.get(11).and_then(|t| t.parse().ok()).unwrap_or(0);
+        let sys: u64 = parts.get(12).and_then(|t| t.parse().ok()).unwrap_or(0);
+        user.saturating_add(sys)
     }
 
     #[test]

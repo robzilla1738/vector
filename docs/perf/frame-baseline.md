@@ -16,7 +16,11 @@ cargo test -p ve-api --lib wheel_does_not_rebuild_the_display_list
 cargo test -p ve-api --lib gui_chrome_typing_scroll_and_screenshot
 cargo test -p ve-api --lib writes_production_profile_observe_gate
 cargo test -p ve-api --lib writes_section_6_human_timings
+cargo test -p ve-api --lib writes_section_6_idle_command_rss_soak
+cargo test -p ve-api --lib frame_tick_springs_rubber_band_and_ignores_inactive_tabs
 ```
+
+Idle CPU, command-ack, peak RSS, and 1000-nav soak live in `docs/perf/section-6-this-host-budgets.json` (`appleSilicon: false`). The GUI uses `ControlFlow::Wait` unless `needs_frame()` is true (rubber-band / momentum on the visible tab). `MacWindow::preferred_frame_rate_range` is 80–120 Hz while interacting.
 
 `NativeBrowser::from_layout_calls()` is the gate: scroll-only replay stays at 0 after the opening paint. Screenshot: `docs/ui/screenshots/ve-shell-gui.png`.
 Software present reuses one `SoftwareRenderer` (system fonts loaded once). Hinting uses CSS size ≤ 18 px, including Retina 2x physical sizes.

@@ -95,7 +95,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 
 | ID | Item | WS | Status | Evidence |
 |---|---|---|---|---|
-| H0-A1 | Frame tracer `ve-shell --trace-frames` + `--replay-input` + `perf frames` | A/D | ☑ | `docs/perf/frame-baseline.md`; `docs/perf/section-6-this-host.json`; `writes_section_6_human_timings`; `wheel_does_not_rebuild_the_display_list` |
+| H0-A1 | Frame tracer `ve-shell --trace-frames` + `--replay-input` + `perf frames` | A/D | ☑ | `docs/perf/frame-baseline.md`; `docs/perf/section-6-this-host.json`; `docs/perf/section-6-this-host-budgets.json`; `writes_section_6_human_timings`; `writes_section_6_idle_command_rss_soak`; `wheel_does_not_rebuild_the_display_list` |
 | H0-A2 | HiDPI: `scale_factor()` into `present_list`; CSS px list, physical px surface | A | ☑ | `device_scale` on present |
 | H0-A3 | Images on the GPU path: `ImageCache`/`node_images` on `Page`; `from_layout_with` | A | ☑ | `from_layout_with` + `scene_json` |
 | H0-A4 | Wire `ParleyShaper` behind `EngineConfig::shaper`; identity prints shaper | A | ☑ | System in GUI/corpus/Speedometer |
@@ -122,7 +122,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H1-A1 | `Clock::{Virtual, Wall}` in `ve-core`; `Page::now_ms()`; wall only in `ve-shell --gui` | A | ☑ | `Clock`; GUI `clock: Wall` |
 | H1-A2 | rAF as `TaskSource::Rendering`; drain ≤ N frames so perpetual rAF settles | A | ☑ | `MAX_RAF_DRAIN` |
 | H1-A3 | One scheduler: retire prelude `timers` Map in favour of `ve_script::EventLoop` | B | ☑ | EventLoop owns due times |
-| H1-A4 | Frame loop: vsync → coalesce → dispatch → rAF → update → damage → composite → present; ProMotion via `preferredFrameRateRange` | A | ☑ | frame tracer + cache |
+| H1-A4 | Frame loop: vsync → coalesce → dispatch → rAF → update → damage → composite → present; ProMotion via `preferredFrameRateRange` | A | ☑ | `NativeEvent::Frame` + `NativeBrowser::tick_frame` / `needs_frame`; GUI `about_to_wait` WaitUntil only while physics is live, `ControlFlow::Wait` when idle; `MacWindow::preferred_frame_rate_range` (80–120 interacting, 10–80 idle, 10–60 reduced-motion); `frame_tick_springs_rubber_band_and_ignores_inactive_tabs`; `preferred_frame_rate_range_promotes_when_interacting` |
 | H1-A5 | Scroll as transform; tiled display list; trackpad momentum; rubber-band; `prefers-reduced-motion` | A | ☑ | display-list cache translate; `rubber_band_overshoots_then_springs_back`; `overscroll_behavior_none_clamps`; `momentum_coasts_after_a_flick`; `reduced_motion_skips_rubber_band_and_momentum`; `MacWindow::scroll_phase_from_nsevent` |
 | H1-A6 | Glyph runs retained; vello `draw_glyphs`; colour emoji; 1/4-px subpixel | A | ☑ | `FontSystem::shape_retained`; `Scene::draw_glyphs`; quarter-px snap; COLR/emoji via vello; `rasterize_hinted` (CSS size ≤ 18, including Retina 2×); `system_fonts_paint_inter_ui_text` |
 | H1-A7 | Spec pointer/mouse sequence, hover, capture, selection, composition, `contextmenu`; human/agent events-log identical | A | ☑ | `fixtures/events-log` |

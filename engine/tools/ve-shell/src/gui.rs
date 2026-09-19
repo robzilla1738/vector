@@ -203,17 +203,37 @@ impl ApplicationHandler<AccessKitEvent> for App {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if self.pump.is_none() {
+        let drained = self.drain_service();
+        if self.browser().needs_frame() {
+            let range = ve_shell_mac::MacWindow::preferred_frame_rate_range(
+                true,
+                self.browser().reduced_motion(),
+            );
+            let dt = (1000.0 / range.preferred.max(10.0)).round() as u64;
+            let dt = dt.clamp(8, 100);
+            let _ = self
+                .browser_mut()
+                .handle_event(NativeEvent::Frame { dt_ms: dt as f32 });
+            if let Some(w) = &self.window {
+                w.request_redraw();
+            }
+            event_loop.set_control_flow(ControlFlow::WaitUntil(
+                std::time::Instant::now() + std::time::Duration::from_millis(dt),
+            ));
             return;
         }
-        if self.drain_service() {
+        if drained {
             if let Some(w) = &self.window {
                 w.request_redraw();
             }
         }
-        event_loop.set_control_flow(ControlFlow::WaitUntil(
-            std::time::Instant::now() + std::time::Duration::from_millis(16),
-        ));
+        if self.pump.is_some() {
+            event_loop.set_control_flow(ControlFlow::WaitUntil(
+                std::time::Instant::now() + std::time::Duration::from_millis(16),
+            ));
+        } else {
+            event_loop.set_control_flow(ControlFlow::Wait);
+        }
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: AccessKitEvent) {

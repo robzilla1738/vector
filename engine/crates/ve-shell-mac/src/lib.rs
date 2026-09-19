@@ -19,6 +19,17 @@ pub enum ScrollPhase {
     Cancelled,
 }
 
+/// `CADisplayLink.preferredFrameRateRange` (H1-A4 ProMotion).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FrameRateRange {
+    /// Lowest acceptable Hz.
+    pub minimum: f32,
+    /// Highest acceptable Hz (120 on ProMotion).
+    pub maximum: f32,
+    /// Preferred Hz.
+    pub preferred: f32,
+}
+
 /// Appearance.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Appearance {
@@ -150,6 +161,31 @@ impl MacWindow {
             (4, _) | (8, _) => ScrollPhase::Cancelled,
             (_, 1 | 2 | 4) => ScrollPhase::Ended,
             _ => ScrollPhase::Ended,
+        }
+    }
+
+    /// ProMotion `preferredFrameRateRange`: 80–120 Hz while interacting,
+    /// 10–80 Hz idle, 10–60 Hz when `prefers-reduced-motion`.
+    #[must_use]
+    pub fn preferred_frame_rate_range(interacting: bool, reduced_motion: bool) -> FrameRateRange {
+        if reduced_motion {
+            FrameRateRange {
+                minimum: 10.0,
+                maximum: 60.0,
+                preferred: 60.0,
+            }
+        } else if interacting {
+            FrameRateRange {
+                minimum: 80.0,
+                maximum: 120.0,
+                preferred: 120.0,
+            }
+        } else {
+            FrameRateRange {
+                minimum: 10.0,
+                maximum: 80.0,
+                preferred: 10.0,
+            }
         }
     }
 
@@ -287,5 +323,18 @@ mod tests {
             MacWindow::appearance_from_ns_name("NSAppearanceNameAqua"),
             Appearance::Light
         );
+    }
+
+    #[test]
+    fn preferred_frame_rate_range_promotes_when_interacting() {
+        let interact = MacWindow::preferred_frame_rate_range(true, false);
+        assert_eq!(interact.minimum, 80.0);
+        assert_eq!(interact.maximum, 120.0);
+        assert_eq!(interact.preferred, 120.0);
+        let idle = MacWindow::preferred_frame_rate_range(false, false);
+        assert_eq!(idle.preferred, 10.0);
+        assert!(idle.maximum <= 80.0);
+        let reduce = MacWindow::preferred_frame_rate_range(true, true);
+        assert!(reduce.maximum <= 60.0);
     }
 }

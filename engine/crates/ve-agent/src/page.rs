@@ -1826,6 +1826,19 @@ impl Page {
         self.doc.record_scrolled(None);
     }
 
+    /// True while rubber-band or momentum still needs a vsync tick.
+    #[must_use]
+    pub fn needs_scroll_frame(&self) -> bool {
+        !self.style_engine.media.reduced_motion
+            && (self.overscroll.y.abs() > 0.15 || self.scroll_velocity.y.abs() > 0.4)
+    }
+
+    /// `prefers-reduced-motion` media flag.
+    #[must_use]
+    pub fn reduced_motion(&self) -> bool {
+        self.style_engine.media.reduced_motion
+    }
+
     /// Sets the device pixel ratio used for screenshots and `viewport.scale`.
     pub fn set_scale(&mut self, scale: f32) {
         self.scale = scale;
