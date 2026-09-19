@@ -2074,6 +2074,71 @@ fn canvas_letter_spacing_shifts_second_glyph() {
 }
 
 #[test]
+fn canvas_word_spacing_shifts_second_word() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(gap) {
+                var c = document.createElement("canvas");
+                c.width = 80;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.wordSpacing = gap;
+                ctx.fillText("I I", 2, 16);
+                var data = ctx.getImageData(0, 0, 80, 24).data;
+                var max = 0;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 80; x++) {
+                    if (data[(y * 80 + x) * 4 + 3] > 20) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { tight: maxX("0px"), wide: maxX("12px") };
+            })()"##,
+        )
+        .unwrap();
+    let tight = v["tight"].as_u64().unwrap_or(0);
+    let wide = v["wide"].as_u64().unwrap_or(0);
+    assert!(
+        wide > tight + 6,
+        "wordSpacing must push the second word: {v}"
+    );
+}
+
+#[test]
+fn canvas_filter_grayscale_equalizes_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "grayscale(1)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              var o = ctx.getImageData(0, 0, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3], oa: o[3] };
+            })()"##,
+        )
+        .unwrap();
+    let r = v["r"].as_u64().unwrap_or(0);
+    let g = v["g"].as_u64().unwrap_or(0);
+    let b = v["b"].as_u64().unwrap_or(0);
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+    assert_eq!(r, g, "grayscale must equalize r/g: {v}");
+    assert_eq!(g, b, "grayscale must equalize g/b: {v}");
+    assert!(r > 20 && r < 200, "grayscale red is mid gray: {v}");
+}
+
+#[test]
 fn canvas_fill_text_paints_distinct_glyphs() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -5573,6 +5638,35 @@ fn webgl_viewport_maps_clip_and_clips_clear() {
     assert_eq!(v["fr"], 255, "{v}");
     assert_eq!(v["fg"], 0, "{v}");
     assert_eq!(v["fb"], 0, "{v}");
+}
+
+#[test]
+fn webgl_blend_additive_keeps_both_channels() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 1);
+              gl.clear();
+              gl.enable(gl.BLEND);
+              gl.blendFunc(gl.ONE, gl.ONE);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(2, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], a: px[3], on: gl._blendOn === true, cap: gl.BLEND };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["on"], true, "{v}");
+    assert_eq!(v["cap"], 3042, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
 }
 
 #[test]

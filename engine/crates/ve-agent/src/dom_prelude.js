@@ -4858,6 +4858,10 @@
       const n = parseFloat(String(this._letterSpacing || "0"));
       return Number.isFinite(n) ? n : 0;
     }
+    _wordGap() {
+      const n = parseFloat(String(this._wordSpacing || "0"));
+      return Number.isFinite(n) ? n : 0;
+    }
     _isRtl() {
       return String(this._direction || "inherit") === "rtl";
     }
@@ -4884,15 +4888,31 @@
     }
     fillText(t, x, y) {
       const gap = this._letterGap();
+      const wgap = this._wordGap();
       const text = String(t == null ? "" : t);
       const align = String(this._textAlign || "start");
-      if (gap && text.length > 1 && (align === "start" || align === "left" || !align) && !this._isRtl()) {
+      const simple = (align === "start" || align === "left" || !align) && !this._isRtl();
+      if (gap && text.length > 1 && simple) {
         let cx = +x;
         for (const ch of text) {
           const o = this._textOrigin(ch, cx, y);
           const p = this._mapPoint(o.x, o.y);
           D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size);
           cx += (o.width || 6) + gap;
+        }
+        return;
+      }
+      if (wgap && text.includes(" ") && simple) {
+        let cx = +x;
+        const parts = text.split(/(\s+)/);
+        for (const part of parts) {
+          if (!part) continue;
+          const o = this._textOrigin(part, cx, y);
+          if (!/^\s+$/.test(part)) {
+            const p = this._mapPoint(o.x, o.y);
+            D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size);
+          }
+          cx += (o.width || (part.length * 6)) + (/^\s+$/.test(part) ? wgap : 0);
         }
         return;
       }
@@ -9418,6 +9438,11 @@
       this.TEXTURE_2D = 3553;
       this.SCISSOR_TEST = 3089;
       this.VIEWPORT = 2978;
+      this.BLEND = 3042;
+      this.ONE = 1;
+      this.ZERO = 0;
+      this.SRC_ALPHA = 770;
+      this.ONE_MINUS_SRC_ALPHA = 771;
       this.ARRAY_BUFFER = 34962;
       this.ELEMENT_ARRAY_BUFFER = 34963;
       this.FLOAT = 5126;
@@ -9427,6 +9452,8 @@
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
       this._viewport = [0, 0, canvas.width, canvas.height];
+      this._blendOn = false;
+      this._blend = [1, 0];
       this._arrayBuf = null;
       this._elemBuf = null;
       this._attribOn = false;
@@ -9503,8 +9530,25 @@
     viewport(x, y, w, h) {
       this._viewport = [Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0];
     }
-    enable(cap) { if (cap === this.SCISSOR_TEST) this._scissorOn = true; }
-    disable(cap) { if (cap === this.SCISSOR_TEST) this._scissorOn = false; }
+    enable(cap) {
+      if (cap === this.SCISSOR_TEST) this._scissorOn = true;
+      if (cap === this.BLEND) this._blendOn = true;
+    }
+    disable(cap) {
+      if (cap === this.SCISSOR_TEST) this._scissorOn = false;
+      if (cap === this.BLEND) this._blendOn = false;
+    }
+    blendFunc(src, dst) { this._blend = [Number(src) || 0, Number(dst) || 0]; }
+    _withBlend(fn) {
+      const c = this.canvas;
+      const add = this._blendOn && this._blend && this._blend[0] === this.ONE && this._blend[1] === this.ONE;
+      if (add && c && c.__h != null) {
+        D("canvasSetComposite", c.__h, "lighter");
+        try { fn(); } finally { D("canvasSetComposite", c.__h, "source-over"); }
+        return;
+      }
+      fn();
+    }
     scissor(x, y, w, h) { this._scissor = [Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0]; }
     createBuffer() { return { _buf: true, _data: null }; }
     bindBuffer(target, buf) {
@@ -9580,45 +9624,49 @@
       const tex = this._tex;
       const c = this.canvas;
       if (!c || c.__h == null) return;
-      if (this._attribOn && this._arrayBuf && this._arrayBuf._data) {
-        const start = Number(first) || 0;
-        const n = Number(count) || 0;
-        const pts = [];
-        for (let i = 0; i < n; i++) {
-          const p = this._attribPoint(start + i);
-          if (p) pts.push(p);
+      this._withBlend(() => {
+        if (this._attribOn && this._arrayBuf && this._arrayBuf._data) {
+          const start = Number(first) || 0;
+          const n = Number(count) || 0;
+          const pts = [];
+          for (let i = 0; i < n; i++) {
+            const p = this._attribPoint(start + i);
+            if (p) pts.push(p);
+          }
+          for (let i = 0; i + 2 < pts.length; i += 3) {
+            this._fillPoly([pts[i], pts[i + 1], pts[i + 2]], this._uniformCss());
+          }
+          return;
         }
-        for (let i = 0; i + 2 < pts.length; i += 3) {
-          this._fillPoly([pts[i], pts[i + 1], pts[i + 2]], this._uniformCss());
+        if (tex && tex._b64) {
+          D("canvasPutImageData", c.__h, tex._w, tex._h, tex._b64, 0, 0);
+          return;
         }
-        return;
-      }
-      if (tex && tex._b64) {
-        D("canvasPutImageData", c.__h, tex._w, tex._h, tex._b64, 0, 0);
-        return;
-      }
-      if (this._uniform) {
-        const css = this._uniformCss();
-        const [sx, sy, sw, sh] = this._clearRect();
-        D("canvasFillRect", c.__h, sx, sy, sw, sh, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
-      }
+        if (this._uniform) {
+          const css = this._uniformCss();
+          const [sx, sy, sw, sh] = this._clearRect();
+          D("canvasFillRect", c.__h, sx, sy, sw, sh, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
+        }
+      });
     }
     drawElements(_mode, count, _type, offset) {
       const c = this.canvas;
       if (!c || c.__h == null) return;
       const idx = this._elemBuf && this._elemBuf._data;
       if (!idx || !this._attribOn) return;
-      const start = (Number(offset) || 0) / 2;
-      const n = Number(count) || 0;
-      const pts = [];
-      for (let i = 0; i < n; i++) {
-        const vi = idx[start + i];
-        const p = this._attribPoint(vi);
-        if (p) pts.push(p);
-      }
-      for (let i = 0; i + 2 < pts.length; i += 3) {
-        this._fillPoly([pts[i], pts[i + 1], pts[i + 2]], this._uniformCss());
-      }
+      this._withBlend(() => {
+        const start = (Number(offset) || 0) / 2;
+        const n = Number(count) || 0;
+        const pts = [];
+        for (let i = 0; i < n; i++) {
+          const vi = idx[start + i];
+          const p = this._attribPoint(vi);
+          if (p) pts.push(p);
+        }
+        for (let i = 0; i + 2 < pts.length; i += 3) {
+          this._fillPoly([pts[i], pts[i + 1], pts[i + 2]], this._uniformCss());
+        }
+      });
     }
     createShader() { return { _sh: true, _src: "", _ok: false }; }
     shaderSource(sh, src) { if (sh) sh._src = String(src || ""); }

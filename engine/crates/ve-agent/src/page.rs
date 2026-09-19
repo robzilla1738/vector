@@ -1410,6 +1410,21 @@ fn parse_canvas_blur_px(filter: &str) -> i32 {
     n.parse::<f32>().unwrap_or(0.0).round().clamp(0.0, 16.0) as i32
 }
 
+fn parse_canvas_grayscale(filter: &str) -> f32 {
+    let s = filter.trim();
+    let Some(inner) = s
+        .strip_prefix("grayscale(")
+        .and_then(|rest| rest.strip_suffix(')'))
+    else {
+        return 0.0;
+    };
+    let t = inner.trim();
+    if let Some(p) = t.strip_suffix('%') {
+        return p.parse::<f32>().unwrap_or(0.0).clamp(0.0, 100.0) / 100.0;
+    }
+    t.parse::<f32>().unwrap_or(0.0).clamp(0.0, 1.0)
+}
+
 fn canvas_path_bounds(rects: &[[f32; 4]], polys: &[Vec<[f32; 2]>]) -> Option<(i32, i32, i32, i32)> {
     let mut min_x = f32::MAX;
     let mut min_y = f32::MAX;
@@ -1687,6 +1702,32 @@ impl CanvasSurface {
                 let si = ((row * rw + col) * 4) as usize;
                 let di = ((py as u32 * self.width + px as u32) * 4) as usize;
                 self.pixels[di..di + 4].copy_from_slice(&dst[si..si + 4]);
+            }
+        }
+    }
+
+    fn grayscale_rect(&mut self, x: i32, y: i32, w: i32, h: i32, amount: f32) {
+        let amount = amount.clamp(0.0, 1.0);
+        if amount <= 0.0 || w <= 0 || h <= 0 {
+            return;
+        }
+        let x0 = x.max(0);
+        let y0 = y.max(0);
+        let x1 = (x + w).min(self.width as i32);
+        let y1 = (y + h).min(self.height as i32);
+        for py in y0..y1 {
+            for px in x0..x1 {
+                let i = ((py as u32 * self.width + px as u32) * 4) as usize;
+                if i + 3 >= self.pixels.len() || self.pixels[i + 3] == 0 {
+                    continue;
+                }
+                let r = f32::from(self.pixels[i]);
+                let g = f32::from(self.pixels[i + 1]);
+                let b = f32::from(self.pixels[i + 2]);
+                let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                self.pixels[i] = (r + (y - r) * amount).round().clamp(0.0, 255.0) as u8;
+                self.pixels[i + 1] = (g + (y - g) * amount).round().clamp(0.0, 255.0) as u8;
+                self.pixels[i + 2] = (b + (y - b) * amount).round().clamp(0.0, 255.0) as u8;
             }
         }
     }
@@ -2911,6 +2952,10 @@ impl Page {
         let blur = parse_canvas_blur_px(filter);
         if blur > 0 {
             c.blur_rect(x, y, w, h, blur);
+        }
+        let gray = parse_canvas_grayscale(filter);
+        if gray > 0.0 {
+            c.grayscale_rect(x, y, w, h, gray);
         }
         c.ops
     }

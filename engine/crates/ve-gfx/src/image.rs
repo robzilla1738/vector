@@ -888,6 +888,9 @@ enum SvgFilterKind {
     Blend { color: [u8; 4], mode: SvgBlendMode },
     Arithmetic { k2: f32, k4: f32 },
     Turbulence,
+    Out,
+    Tile { x: f32, y: f32, w: f32, h: f32 },
+    Component { slope: f32 },
 }
 
 #[derive(Clone, Copy)]
@@ -948,7 +951,28 @@ fn parse_svg_filters(text: &str) -> HashMap<String, SvgFilterKind> {
                             k4: svg_attr(comp, "k4").unwrap_or(0.0),
                         },
                     );
+                } else if op.eq_ignore_ascii_case("out") {
+                    out.insert(id.to_string(), SvgFilterKind::Out);
                 }
+            } else if block.contains("<feTile") {
+                out.insert(
+                    id.to_string(),
+                    SvgFilterKind::Tile {
+                        x: svg_attr(tag, "x").unwrap_or(0.0),
+                        y: svg_attr(tag, "y").unwrap_or(0.0),
+                        w: svg_attr(tag, "width").unwrap_or(8.0),
+                        h: svg_attr(tag, "height").unwrap_or(8.0),
+                    },
+                );
+            } else if let Some(ci) = block.find("<feComponentTransfer") {
+                let rest = &block[ci..];
+                let slope = if let Some(fi) = rest.find("<feFuncR") {
+                    let fe = rest[fi..].find('>').unwrap_or(rest.len() - fi);
+                    svg_attr(&rest[fi..fi + fe], "slope").unwrap_or(1.0)
+                } else {
+                    1.0
+                };
+                out.insert(id.to_string(), SvgFilterKind::Component { slope });
             } else if block.contains("<feTurbulence") {
                 out.insert(id.to_string(), SvgFilterKind::Turbulence);
             } else if let Some(color) = flood_color {
@@ -1113,6 +1137,19 @@ fn apply_svg_filter(
             let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
             turbulence_decoded_rect(img, bx0, by0, bx1, by1);
         }
+        SvgFilterKind::Out => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            clear_decoded_rect(img, bx0, by0, bx1, by1);
+        }
+        SvgFilterKind::Tile { x, y, w, h } => {
+            let (sx0, sy0, sx1, sy1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            let (dx0, dy0, dx1, dy1) = clip_decoded_bbox(img, *x, *y, *x + *w, *y + *h, 0);
+            tile_decoded_rect(img, sx0, sy0, sx1, sy1, dx0, dy0, dx1, dy1);
+        }
+        SvgFilterKind::Component { slope } => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            component_decoded_rect(img, bx0, by0, bx1, by1, *slope);
+        }
         SvgFilterKind::Offset { .. } => {}
     }
 }
@@ -1121,6 +1158,65 @@ fn fill_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32,
     for y in y0..y1 {
         for x in x0..x1 {
             plot_px(img, x, y, color);
+        }
+    }
+}
+
+fn clear_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32) {
+    for y in y0..y1 {
+        for x in x0..x1 {
+            plot_px(img, x, y, [0, 0, 0, 0]);
+        }
+    }
+}
+
+fn component_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32, slope: f32) {
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if x < 0 || y < 0 {
+                continue;
+            }
+            let i = ((y as u32 * img.width + x as u32) * 4) as usize;
+            if i + 3 >= img.rgba.len() || img.rgba[i + 3] == 0 {
+                continue;
+            }
+            let v = f32::from(img.rgba[i]) / 255.0 * slope;
+            img.rgba[i] = (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+        }
+    }
+}
+
+fn tile_decoded_rect(
+    img: &mut DecodedImage,
+    sx0: i32,
+    sy0: i32,
+    sx1: i32,
+    sy1: i32,
+    dx0: i32,
+    dy0: i32,
+    dx1: i32,
+    dy1: i32,
+) {
+    let sw = sx1 - sx0;
+    let sh = sy1 - sy0;
+    if sw <= 0 || sh <= 0 {
+        return;
+    }
+    let mut tile = vec![[0u8; 4]; (sw * sh) as usize];
+    for y in sy0..sy1 {
+        for x in sx0..sx1 {
+            let i = ((y - sy0) * sw + (x - sx0)) as usize;
+            if let Some(px) = img.pixel(x as u32, y as u32) {
+                tile[i] = px;
+            }
+        }
+    }
+    for y in dy0..dy1 {
+        for x in dx0..dx1 {
+            let tx = (x - sx0).rem_euclid(sw);
+            let ty = (y - sy0).rem_euclid(sh);
+            let i = (ty * sw + tx) as usize;
+            plot_px(img, x, y, tile[i]);
         }
     }
 }
@@ -3909,5 +4005,43 @@ mod tests {
         assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(2, 9), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(8, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_composite_out_punches_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feComposite operator='out'/></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg composite out");
+        assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_tile_repeats_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f' x='0' y='0' width='8' height='8'><feTile/></filter></defs>\
+              <rect x='0' y='0' width='2' height='2' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg tile");
+        assert_eq!(img.pixel(0, 0), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 0), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(4, 2), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(6, 6), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_filter_component_scales_red() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feComponentTransfer><feFuncR type='linear' slope='0.5'/></feComponentTransfer></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg component");
+        assert_eq!(img.pixel(4, 4), Some([128, 0, 0, 255]));
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
     }
 }
