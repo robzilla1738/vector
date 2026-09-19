@@ -3876,8 +3876,10 @@
         this.__h = this._el.__h;
       }
       if (!this._ctx) {
-        this._ctx = this._el.getContext("2d");
-        this._ctx._canvas = this;
+        const html = this._el.getContext("2d");
+        Object.setPrototypeOf(html, OffscreenCanvasRenderingContext2D.prototype);
+        html._canvas = this;
+        this._ctx = html;
       }
       return this._ctx;
     }
@@ -6204,6 +6206,93 @@
     stop: SVGElement, title: SVGElement, desc: SVGElement, tspan: SVGGraphicsElement,
   };
 
+  class FontFace {
+    constructor(family, source, desc) {
+      this.family = String(family);
+      this._source = source;
+      desc = desc || {};
+      this.weight = desc.weight == null ? "normal" : String(desc.weight);
+      this.style = desc.style == null ? "normal" : String(desc.style);
+      this.stretch = desc.stretch == null ? "normal" : String(desc.stretch);
+      this.unicodeRange = desc.unicodeRange == null ? "U+0-10FFFF" : String(desc.unicodeRange);
+      this.display = desc.display == null ? "auto" : String(desc.display);
+      this.status = "unloaded";
+      const self = this;
+      this.loaded = new Promise((resolve) => { self._resolveLoaded = resolve; });
+    }
+    load() {
+      if (this.status === "loaded") return this.loaded;
+      this.status = "loading";
+      const self = this;
+      queueMicrotask(() => {
+        self.status = "loaded";
+        if (self._resolveLoaded) self._resolveLoaded(self);
+      });
+      return this.loaded;
+    }
+  }
+  class FontFaceSet extends EventTarget {
+    constructor() {
+      super();
+      this._faces = [];
+      this.status = "loaded";
+      this.ready = Promise.resolve(this);
+      this.onloading = null;
+      this.onloadingdone = null;
+      this.onloadingerror = null;
+    }
+    get size() { return this._faces.length; }
+    add(face) {
+      if (face && this._faces.indexOf(face) < 0) this._faces.push(face);
+      return this;
+    }
+    delete(face) {
+      const i = this._faces.indexOf(face);
+      if (i < 0) return false;
+      this._faces.splice(i, 1);
+      return true;
+    }
+    clear() { this._faces.length = 0; }
+    has(face) { return this._faces.indexOf(face) >= 0; }
+    check(font) {
+      const spec = String(font || "");
+      const match = this._faces.filter((f) => spec.indexOf(f.family) >= 0);
+      if (!match.length) return true;
+      return match.every((f) => f.status === "loaded");
+    }
+    load(font) {
+      const spec = String(font || "");
+      const match = this._faces.filter((f) => spec.indexOf(f.family) >= 0);
+      return Promise.all(match.map((f) => f.load()));
+    }
+    forEach(fn, thisArg) { this._faces.forEach(fn, thisArg); }
+    values() { return this._faces.slice()[Symbol.iterator](); }
+    [Symbol.iterator]() { return this._faces[Symbol.iterator](); }
+  }
+  class Notification extends EventTarget {
+    static permission = "default";
+    static requestPermission() {
+      Notification.permission = "denied";
+      return Promise.resolve("denied");
+    }
+    constructor(title, opts) {
+      super();
+      this.title = String(title);
+      opts = opts || {};
+      this.body = opts.body == null ? "" : String(opts.body);
+      this.icon = opts.icon == null ? "" : String(opts.icon);
+      this.tag = opts.tag == null ? "" : String(opts.tag);
+      this.onclick = null;
+      this.onclose = null;
+      this.onerror = null;
+      this.onshow = null;
+    }
+    close() {
+      const ev = new Event("close");
+      if (typeof this.onclose === "function") this.onclose(ev);
+      this.dispatchEvent(ev);
+    }
+  }
   class Document extends Node {
     constructor() {
       super();
@@ -6219,6 +6308,10 @@
     }
     get onvisibilitychange() { return this._onvisibilitychange || null; }
     set onvisibilitychange(v) { this._onvisibilitychange = typeof v === "function" ? v : null; }
+    get fonts() {
+      if (!this._fonts) this._fonts = new FontFaceSet();
+      return this._fonts;
+    }
     get documentElement() { return wrap(D("documentElement", this.__h)); }
     get dir() {
       const de = this.documentElement;
@@ -8957,7 +9050,7 @@
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Sanitizer,
-    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader,
+    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification,
     TextDecoder, TextEncoder,
     createDataChannelPair() {
       const listeners = [[], []];

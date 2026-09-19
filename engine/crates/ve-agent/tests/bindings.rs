@@ -3513,6 +3513,115 @@ fn navigator_clipboard_round_trips_and_geolocation_denies() {
 }
 
 #[test]
+fn offscreen_canvas_context_is_offscreen_2d() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var off = new OffscreenCanvas(4, 4);
+              var ctx = off.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 4, 4);
+              var px = ctx.getImageData(1, 1, 1, 1).data;
+              return {
+                inst: ctx instanceof OffscreenCanvasRenderingContext2D,
+                notHtml: !(ctx instanceof CanvasRenderingContext2D) || ctx instanceof OffscreenCanvasRenderingContext2D,
+                canvas: ctx.canvas === off,
+                r: px[0],
+                a: px[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["canvas"], true, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn document_fonts_tracks_font_face_load() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              var face = new FontFace("VeTest", "local(Arial)", { weight: "400" });
+              window.__ff = { before: document.fonts.check("16px VeTest"), after: null, size: 0, status: face.status };
+              document.fonts.add(face);
+              window.__ff.size = document.fonts.size;
+              window.__ff.mid = document.fonts.check("16px VeTest");
+              face.load();
+              return face.status;
+            })()"##,
+        )
+        .unwrap();
+    assert!(started == "loading" || started == "loaded", "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              window.__ff.after = document.fonts.check("16px VeTest");
+              window.__ff.loaded = document.fonts.check("16px VeTest") && [...document.fonts][0].status === "loaded";
+              return window.__ff;
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], true, "unregistered family uses system fonts: {v}");
+    assert_eq!(v["mid"], false, "added unloaded face must fail check: {v}");
+    assert_eq!(v["size"], 1, "{v}");
+    assert_eq!(v["after"], true, "{v}");
+    assert_eq!(v["loaded"], true, "{v}");
+}
+
+#[test]
+fn notification_request_permission_denies() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__n = { before: Notification.permission, after: null };
+              Notification.requestPermission().then(function (p) { window.__n.after = p; });
+              return window.__n.before;
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started, "default", "{started}");
+    assert!(page.settle(20).settled);
+    let v = page.evaluate("window.__n").unwrap();
+    assert_eq!(v["after"], "denied", "{v}");
+    assert_eq!(
+        page.evaluate("Notification.permission").unwrap(),
+        "denied"
+    );
+}
+
+#[test]
+fn crypto_subtle_digests_sha256() {
+    let mut page = open(r#"<body></body>"#);
+    let _ = page
+        .evaluate(
+            r##"(function () {
+              window.__digest = null;
+              crypto.subtle.digest("SHA-256", new Uint8Array([97, 98, 99])).then(function (buf) {
+                var u = new Uint8Array(buf);
+                var hex = "";
+                for (var i = 0; i < u.length; i++) hex += u[i].toString(16).padStart(2, "0");
+                window.__digest = hex;
+              });
+              return true;
+            })()"##,
+        )
+        .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page.evaluate("window.__digest").unwrap();
+    assert_eq!(
+        v,
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "{v}"
+    );
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
