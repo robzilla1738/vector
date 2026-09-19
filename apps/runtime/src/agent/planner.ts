@@ -55,7 +55,8 @@ Rules:
 - After a submit/save, include an expect or waitFor that proves the outcome (e.g. textVisible "Saved").
 - For extract, choose stable selectors you can see in the observation.
 - Completion means a checked state, not a plausible claim: if you changed a record, read it back.
-- When a step fails, change the MECHANISM — never retry the same action: press Enter instead of clicking a button, navigate directly to a URL you can construct (search results, pagination, item pages), or target with css:/text:/role= instead of a stale ref.
+- When a step fails, change the MECHANISM — never retry the same failed action: press Enter instead of clicking a button, navigate directly to a URL you can construct (search results, pagination, item pages), or target with css:/text:/role= instead of a stale ref.
+- When the goal requires repeating a working control until an observed value is reached (counters, steppers), keep clicking that same latest-observation ref until the observation shows the target. That is not a failed-step retry.
 - If you can write the URL that satisfies the goal, navigate to it — never finish with "here is the link" for a page you could have opened. done means the answer is already in the observation or completed steps.
 - Check COMPLETED STEPS before planning: if they already satisfy the goal, return status="done" with the result — never re-run steps that already succeeded.
 - The OBSERVATION reflects the current page, including shadow-DOM content. If it already shows the data the goal asks for, answer from it — extract only for data beyond what the observation shows.
@@ -65,6 +66,8 @@ ${UNTRUSTED_DATA_RULE}
 Examples of finishing (note: done takes NO steps):
 - GOAL "click Increment once and report the counter", OBSERVATION shows "shadow-counter: Increment 1", COMPLETED STEPS shows "click ok" →
   {"status":"done","message":"Counter is 1","result":{"counter":"1"}}
+- GOAL "Increment the counter until it shows 3", OBSERVATION "Count: 1", COMPLETED STEPS one Increment click ok →
+  {"status":"continue","message":"Counter is 1","steps":[{"id":"c2","op":"click","target":"r12"},{"id":"c3","op":"click","target":"r12"}]}
 - GOAL "list the section headings", OBSERVATION headings line already lists them →
   {"status":"done","message":"Found 3 headings","result":{"headings":["Intro","Pricing","FAQ"]}}
 

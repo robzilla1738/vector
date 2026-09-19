@@ -194,7 +194,14 @@ async function runTrial(rpc, task, url) {
   const started = Date.now();
   let pageId;
   try {
-    const page = await rpc("pages.open", { url, background: true });
+    let page;
+    try {
+      page = await rpc("pages.open", { url, background: true });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/transport|SendRequest|network/i.test(msg)) throw e;
+      page = await rpc("pages.open", { url, background: true });
+    }
     pageId = page.pageId ?? page.page?.pageId ?? page.id;
     const run = await rpc("runs.start", {
       goal: task.goal,

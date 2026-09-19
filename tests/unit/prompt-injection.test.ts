@@ -154,6 +154,7 @@ describe("prompt fencing", () => {
     expect(prompt).toContain("<<<DATA-fin");
     expect(prompt).toContain("\\=== COMPLETED STEPS");
     expect(PLANNER_SYSTEM).toContain(UNTRUSTED_DATA_RULE);
+    expect(PLANNER_SYSTEM).toContain("Increment the counter until it shows 3");
   });
 
   it("tokens are random per prompt and a page echoing the token cannot close the fence", () => {

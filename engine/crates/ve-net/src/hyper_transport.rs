@@ -194,36 +194,60 @@ impl HyperTransport {
 
 /// One exchange on a cloned client handle (so several can run as spawned
 /// tasks on the transport's runtime).
+fn build_http_request(request: &Request) -> Result<HttpRequest<Full<Bytes>>, NetError> {
+    let uri: Uri = request
+        .url
+        .as_str()
+        .parse()
+        .map_err(|e| NetError::Http(format!("uri: {e}")))?;
+    let mut builder = HttpRequest::builder()
+        .method(request.method.clone())
+        .uri(uri);
+    let mut wants_encoding = true;
+    for (name, value) in &request.headers {
+        if name == ACCEPT_ENCODING {
+            wants_encoding = false;
+        }
+        builder = builder.header(name, value);
+    }
+    if wants_encoding {
+        builder = builder.header(
+            ACCEPT_ENCODING,
+            HeaderValue::from_static("gzip, deflate, br"),
+        );
+    }
+    let body = Full::new(request.body.clone().unwrap_or_default());
+    builder
+        .body(body)
+        .map_err(|e| NetError::Http(e.to_string()))
+}
+
+fn idempotent(method: &str) -> bool {
+    method.eq_ignore_ascii_case("GET") || method.eq_ignore_ascii_case("HEAD")
+}
+
 async fn exchange(client: PooledClient, request: Request) -> Result<Response, NetError> {
     {
         let url = &request.url;
-        let uri: Uri = url
-            .as_str()
-            .parse()
-            .map_err(|e| NetError::Http(format!("uri: {e}")))?;
-        let mut builder = HttpRequest::builder()
-            .method(request.method.clone())
-            .uri(uri);
-        let mut wants_encoding = true;
-        for (name, value) in &request.headers {
-            if name == ACCEPT_ENCODING {
-                wants_encoding = false;
+        let req = build_http_request(&request)?;
+        let res = match client.request(req).await {
+            Ok(res) => res,
+            Err(first) if idempotent(request.method.as_str()) => {
+                let retry = build_http_request(&request)?;
+                client.request(retry).await.map_err(|e| {
+                    NetError::Transport(format!(
+                        "request {}: {e} (after {first})",
+                        url.host_str().unwrap_or("?")
+                    ))
+                })?
             }
-            builder = builder.header(name, value);
-        }
-        if wants_encoding {
-            builder = builder.header(
-                ACCEPT_ENCODING,
-                HeaderValue::from_static("gzip, deflate, br"),
-            );
-        }
-        let body = Full::new(request.body.clone().unwrap_or_default());
-        let req = builder
-            .body(body)
-            .map_err(|e| NetError::Http(e.to_string()))?;
-        let res = client.request(req).await.map_err(|e| {
-            NetError::Transport(format!("request {}: {e}", url.host_str().unwrap_or("?")))
-        })?;
+            Err(e) => {
+                return Err(NetError::Transport(format!(
+                    "request {}: {e}",
+                    url.host_str().unwrap_or("?")
+                )));
+            }
+        };
         let (mut parts, body) = res.into_parts();
         let raw = body
             .collect()
