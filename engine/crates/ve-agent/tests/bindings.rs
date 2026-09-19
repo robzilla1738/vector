@@ -3694,6 +3694,41 @@ fn speech_synthesis_speak_fires_start_and_end() {
 }
 
 #[test]
+fn visual_viewport_tracks_inner_size_and_scroll() {
+    let mut page = open(r#"<body style="height:2000px">x</body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__vv = 0;
+              visualViewport.addEventListener("scroll", function () { window.__vv++; });
+              return {
+                inst: visualViewport instanceof VisualViewport,
+                w: visualViewport.width,
+                h: visualViewport.height,
+                innerW: innerWidth,
+                innerH: innerHeight,
+                top0: visualViewport.pageTop
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started["inst"], true, "{started}");
+    assert_eq!(started["w"], started["innerW"], "{started}");
+    assert_eq!(started["h"], started["innerH"], "{started}");
+    assert_eq!(started["top0"], 0.0, "{started}");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              scrollTo(0, 80);
+              return { top: visualViewport.pageTop, left: visualViewport.pageLeft, hits: window.__vv };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["top"], 80.0, "{v}");
+    assert!(v["hits"].as_u64().unwrap_or(0) >= 1, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

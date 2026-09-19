@@ -1157,6 +1157,18 @@ impl JsVm for V8Vm {
     Document.prototype.createDocumentFragment = function () {
       return wrapNode(globalThis.__veNativeCreateFragment.call(this));
     };
+    Document.prototype.createAttribute = function (name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'createAttribute' on 'Document': 1 argument required, but only 0 present.");
+      }
+      return globalThis.__veMakeAttr(String(name), "", null, null);
+    };
+    Document.prototype.createAttributeNS = function (ns, name) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'createAttributeNS' on 'Document': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      return globalThis.__veMakeAttr(String(name), "", null, ns);
+    };
     Document.prototype.importNode = function (n, deep) {
       return wrapNode(globalThis.__veNativeImportNode.call(this, n, !!deep));
     };
@@ -1215,7 +1227,7 @@ impl JsVm for V8Vm {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,offsetWidth,offsetHeight,offsetTop,offsetLeft,scrollWidth,scrollHeight,getBoundingClientRect,dataset";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,offsetWidth,offsetHeight,offsetTop,offsetLeft,scrollWidth,scrollHeight,getBoundingClientRect,dataset,createAttribute,createAttributeNS";
 })()"#,
             "vector:dom-native",
         )?;

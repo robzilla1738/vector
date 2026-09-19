@@ -211,13 +211,26 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,offsetWidth,offsetHeight,offsetTop,offsetLeft,scrollWidth,scrollHeight,getBoundingClientRect,dataset"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,offsetWidth,offsetHeight,offsetTop,offsetLeft,scrollWidth,scrollHeight,getBoundingClientRect,dataset,createAttribute,createAttributeNS"
         )
     );
     assert_eq!(
         page.evaluate("document.getElementById('x').id").unwrap(),
         serde_json::json!("x")
     );
+    let attr = page
+        .evaluate(
+            r#"(function () {
+              var a = document.createAttribute("data-k");
+              a.value = "1";
+              return { name: a.name, type: a.nodeType, inst: a instanceof Attr, value: a.value };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(attr["name"], "data-k", "{attr}");
+    assert_eq!(attr["type"], 2, "{attr}");
+    assert_eq!(attr["inst"], true, "{attr}");
+    assert_eq!(attr["value"], "1", "{attr}");
     page.evaluate("document.getElementById('x').id = 'y'")
         .unwrap();
     assert_eq!(

@@ -1818,6 +1818,7 @@
     });
     return attr;
   }
+  globalThis.__veMakeAttr = makeAttr;
   class Node extends EventTarget {
     get nodeType() { return D("nodeType", this.__h); }
     get nodeName() { return D("nodeName", this.__h); }
@@ -6335,6 +6336,25 @@
     resume() { this.paused = false; }
   }
   const speechSynthesis = new SpeechSynthesis();
+  class VisualViewport extends EventTarget {
+    constructor() { super(); this.onresize = null; this.onscroll = null; }
+    get offsetLeft() { return 0; }
+    get offsetTop() { return 0; }
+    get pageLeft() {
+      const root = document.documentElement;
+      const fromRoot = root ? Number(root.scrollLeft) : 0;
+      return fromRoot || Number(window.scrollX) || 0;
+    }
+    get pageTop() {
+      const root = document.documentElement;
+      const fromRoot = root ? Number(root.scrollTop) : 0;
+      return fromRoot || Number(window.scrollY) || 0;
+    }
+    get width() { return Number(window.innerWidth) || 0; }
+    get height() { return Number(window.innerHeight) || 0; }
+    get scale() { return Number(window.devicePixelRatio) || 1; }
+  }
+  const visualViewport = new VisualViewport();
   class Document extends Node {
     constructor() {
       super();
@@ -9137,7 +9157,7 @@
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Sanitizer,
-    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis,
+    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport,
     TextDecoder, TextEncoder,
     createDataChannelPair() {
       const listeners = [[], []];
@@ -9290,7 +9310,17 @@
     close() {},
     focus() {},
     blur() {},
-    scrollTo(x, y) { if (typeof x === "object") { y = x.top; x = x.left; } document.documentElement.scrollTop = y || 0; document.documentElement.scrollLeft = x || 0; },
+    scrollTo(x, y) {
+      if (typeof x === "object") { y = x.top; x = x.left; }
+      document.documentElement.scrollTop = y || 0;
+      document.documentElement.scrollLeft = x || 0;
+      const vv = globalThis.visualViewport;
+      if (vv) {
+        const ev = new Event("scroll");
+        if (typeof vv.onscroll === "function") vv.onscroll(ev);
+        vv.dispatchEvent(ev);
+      }
+    },
     scroll(x, y) { window.scrollTo(x, y); },
     scrollBy(x, y) {
       const dx = typeof x === "object" ? (x.left || 0) : (x || 0);
