@@ -475,6 +475,18 @@ pub const PRELUDE: &str = r#"(() => {
         const mac = hmacSha256(key._raw, toBytes(data));
         return Promise.resolve(mac.buffer.slice(mac.byteOffset, mac.byteOffset + mac.byteLength));
       },
+      verify(algorithm, key, signature, data) {
+        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
+        if (name !== "HMAC" || !key || !key._raw) {
+          return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+        }
+        const mac = hmacSha256(key._raw, toBytes(data));
+        const sig = toBytes(signature);
+        if (mac.length !== sig.length) return Promise.resolve(false);
+        let diff = 0;
+        for (let i = 0; i < mac.length; i++) diff |= mac[i] ^ sig[i];
+        return Promise.resolve(diff === 0);
+      },
       encrypt(algorithm, key, data) {
         const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
         if (name !== "AESGCM" || !key || !key._raw) {

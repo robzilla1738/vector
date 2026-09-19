@@ -3447,6 +3447,7 @@
     }
   }
   class HTMLButtonElement extends HTMLElement {
+    get form() { return nearestForm(this); }
     get commandForElement() {
       const id = this.getAttribute("commandfor");
       return id ? document.getElementById(id) : this._commandFor || null;
@@ -3465,7 +3466,20 @@
     checkValidity() { return !!D("checkValidity", this.__h); }
     reportValidity() { return this.checkValidity(); }
     get length() { return this.elements.length; }
-    requestSubmit() { this.submit(); }
+    requestSubmit(submitter) {
+      if (arguments.length > 0 && submitter != null) {
+        if (!submitter || typeof submitter !== "object") {
+          throw new TypeError("Failed to execute 'requestSubmit' on 'HTMLFormElement': parameter 1 is not of type 'HTMLElement'.");
+        }
+        const form = submitter.form;
+        if (form !== this) {
+          throw new DOMException("The specified element is not owned by this form element.", "NotFoundError");
+        }
+      }
+      const ev = new SubmitEvent("submit", { bubbles: true, cancelable: true, submitter: submitter || null });
+      if (!this.dispatchEvent(ev)) return;
+      this.submit();
+    }
     get relList() { return this._relTL || (this._relTL = new DOMTokenList(this.__h, "rel")); }
     set relList(v) { this.setAttribute("rel", v == null ? "" : String(v)); }
     get elements() {
@@ -9718,6 +9732,41 @@
   };
   Element.prototype.getAnimations = function () { return animationsOf(this); };
   Document.prototype.getAnimations = function () { return animationsAll(); };
+  class ViewTransition {
+    constructor() {
+      this._skipped = false;
+      this.updateCallbackDone = new Promise((res) => { this._upd = res; });
+      this.ready = new Promise((res) => { this._ready = res; });
+      this.finished = new Promise((res) => { this._fin = res; });
+    }
+    skipTransition() { this._skipped = true; }
+  }
+  Object.defineProperty(ViewTransition.prototype, Symbol.toStringTag, { value: "ViewTransition", configurable: true });
+  Document.prototype.startViewTransition = function (callback) {
+    const vt = new ViewTransition();
+    const run = () => {
+      let ret;
+      try {
+        ret = typeof callback === "function" ? callback() : undefined;
+      } catch (e) {
+        if (vt._upd) vt._upd();
+        if (vt._ready) vt._ready();
+        if (vt._fin) vt._fin();
+        return;
+      }
+      Promise.resolve(ret).then(function () {
+        if (vt._upd) vt._upd();
+        if (vt._ready) vt._ready();
+        if (vt._fin) vt._fin();
+      }, function () {
+        if (vt._upd) vt._upd();
+        if (vt._ready) vt._ready();
+        if (vt._fin) vt._fin();
+      });
+    };
+    queueMicrotask(run);
+    return vt;
+  };
 
   const document = wrap(D("documentNode"));
   browsingDocument = document;
@@ -9835,7 +9884,7 @@
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Selection, Sanitizer,
-    Animation, KeyframeEffect, DocumentTimeline,
+    Animation, KeyframeEffect, DocumentTimeline, ViewTransition,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport,
     TextDecoder, TextEncoder,
     createDataChannelPair() {
@@ -9931,11 +9980,26 @@
       const h = handleOf(el);
       return new Proxy({}, {
         get(_, p) {
-          if (p === "getPropertyValue") return (n) => D("computed", h, String(n)) || "";
+          if (p === "getPropertyValue") return (n) => {
+            const name = String(n);
+            const v = D("computed", h, name) || "";
+            if (v) return v;
+            if (name.slice(0, 2) === "--" && globalThis.CSS && globalThis.CSS._registered) {
+              const r = globalThis.CSS._registered.get(name);
+              if (r) return r.initialValue;
+            }
+            return "";
+          };
           if (typeof p === "string") {
             if (p === "cssFloat") p = "float";
             const name = p.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
-            return D("computed", h, name) || "";
+            const v = D("computed", h, name) || "";
+            if (v) return v;
+            if (name.slice(0, 2) === "--" && globalThis.CSS && globalThis.CSS._registered) {
+              const r = globalThis.CSS._registered.get(name);
+              if (r) return r.initialValue;
+            }
+            return "";
           }
         },
       });
@@ -10079,6 +10143,39 @@
       supports(a, b) {
         const q = b == null ? String(a) : "(" + a + ": " + b + ")";
         return D("cssSupports", q) === true;
+      },
+      _registered: new Map(),
+      registerProperty(def) {
+        if (!def || def.name == null) {
+          throw new TypeError("Failed to execute 'registerProperty' on 'CSS': 1 argument required.");
+        }
+        const name = String(def.name);
+        if (name.slice(0, 2) !== "--") {
+          throw new DOMException("Custom property names must start with --", "SyntaxError");
+        }
+        if (this._registered.has(name)) {
+          throw new DOMException("Name is already registered", "InvalidModificationError");
+        }
+        this._registered.set(name, {
+          syntax: def.syntax == null ? "*" : String(def.syntax),
+          inherits: !!def.inherits,
+          initialValue: def.initialValue == null ? "" : String(def.initialValue),
+        });
+      },
+    },
+    scheduler: {
+      postTask(callback, options) {
+        if (typeof callback !== "function") {
+          return Promise.reject(new TypeError("Failed to execute 'postTask' on 'Scheduler': parameter 1 is not of type 'Function'."));
+        }
+        const delay = options && options.delay != null ? Number(options.delay) : 0;
+        return new Promise((res, rej) => {
+          const run = () => {
+            try { res(callback()); } catch (e) { rej(e); }
+          };
+          if (delay > 0) setTimeout(run, delay);
+          else queueMicrotask(run);
+        });
       },
     },
     Image: HTMLImageElement,

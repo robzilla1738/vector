@@ -361,8 +361,20 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 .unwrap_or_else(|| svg_fill(tag)),
         );
         if let Some(d) = svg_attr_str(tag, "d") {
-            for w in svg_path_points(d).windows(2) {
-                stroke_line(&mut img, w[0].0, w[0].1, w[1].0, w[1].1, color);
+            let mut pts = svg_path_points(d);
+            let closed = d.bytes().any(|b| b == b'Z' || b == b'z');
+            if closed && pts.len() >= 2 && pts.first() != pts.last() {
+                let first = pts[0];
+                pts.push(first);
+            }
+            let fill = svg_fill(tag);
+            if closed && !fill.eq_ignore_ascii_case("none") && pts.len() >= 3 {
+                fill_polygon(&mut img, &pts, parse_svg_color(fill));
+            }
+            if svg_attr_str(tag, "stroke").is_some() || !closed {
+                for w in pts.windows(2) {
+                    stroke_line(&mut img, w[0].0, w[0].1, w[1].0, w[1].1, color);
+                }
             }
         }
         rest = &rest[i + tag_end + 1..];
@@ -656,6 +668,50 @@ fn paint_svg_text(img: &mut DecodedImage, content: &str, x: f32, y: f32, color: 
             }
         }
         cx += 6;
+    }
+}
+
+fn fill_polygon(img: &mut DecodedImage, pts: &[(f32, f32)], color: [u8; 4]) {
+    if pts.len() < 3 {
+        return;
+    }
+    let mut min_y = i32::MAX;
+    let mut max_y = i32::MIN;
+    for p in pts {
+        let y = p.1.round() as i32;
+        min_y = min_y.min(y);
+        max_y = max_y.max(y);
+    }
+    min_y = min_y.max(0);
+    max_y = max_y.min(img.height as i32 - 1);
+    for y in min_y..=max_y {
+        let mut xs = Vec::new();
+        for w in pts.windows(2) {
+            let (x0, y0) = w[0];
+            let (x1, y1) = w[1];
+            let yf = y as f32 + 0.5;
+            if (y0 <= yf && y1 > yf) || (y1 <= yf && y0 > yf) {
+                let t = (yf - y0) / (y1 - y0);
+                xs.push(x0 + t * (x1 - x0));
+            }
+        }
+        xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        for pair in xs.chunks(2) {
+            if pair.len() < 2 {
+                continue;
+            }
+            let x0 = pair[0].ceil().max(0.0) as u32;
+            let x1 = pair[1].floor().min(img.width.saturating_sub(1) as f32) as u32;
+            if x0 > x1 {
+                continue;
+            }
+            for x in x0..=x1 {
+                let idx = ((y as u32 * img.width + x) * 4) as usize;
+                if idx + 3 < img.rgba.len() {
+                    img.rgba[idx..idx + 4].copy_from_slice(&color);
+                }
+            }
+        }
     }
 }
 
@@ -1237,5 +1293,21 @@ mod tests {
             corner[2] > 200 && corner[0] < 60,
             "corner should be blue: {corner:?}"
         );
+    }
+
+    #[test]
+    fn decode_svg_closed_path_fills_interior() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <path d='M1 1 H6 V6 H1 Z' fill='#ff0000'/></svg>",
+        )
+        .expect("svg path fill");
+        assert_eq!(
+            img.pixel(3, 3),
+            Some([255, 0, 0, 255]),
+            "{:?}",
+            img.pixel(3, 3)
+        );
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]), "{:?}", img.pixel(0, 0));
     }
 }

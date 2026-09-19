@@ -4310,6 +4310,129 @@ fn element_check_visibility_honours_display_and_opacity() {
 }
 
 #[test]
+fn form_request_submit_fires_cancelable_submit() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const form = document.createElement("form");
+              const btn = document.createElement("button");
+              form.appendChild(btn);
+              document.body.appendChild(form);
+              let count = 0;
+              let submitterOk = false;
+              form.addEventListener("submit", function (e) {
+                count++;
+                submitterOk = e.submitter === btn && e instanceof SubmitEvent;
+                e.preventDefault();
+              });
+              form.requestSubmit(btn);
+              let notFound = false;
+              const other = document.createElement("button");
+              document.body.appendChild(other);
+              try { form.requestSubmit(other); } catch (e) { notFound = e.name === "NotFoundError"; }
+              return { count, submitterOk, notFound };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["count"], 1, "{v}");
+    assert_eq!(v["submitterOk"], true, "{v}");
+    assert_eq!(v["notFound"], true, "{v}");
+}
+
+#[test]
+fn document_start_view_transition_runs_callback() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__vt = null;
+          const vt = document.startViewTransition(function () { window.__ran = true; });
+          window.__inst = vt instanceof ViewTransition;
+          window.__tag = Object.prototype.toString.call(vt);
+          Promise.all([vt.updateCallbackDone, vt.ready, vt.finished]).then(function () {
+            window.__vt = { ran: !!window.__ran, inst: window.__inst, tag: window.__tag };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__vt").unwrap();
+    assert_eq!(v["ran"], true, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["tag"], "[object ViewTransition]", "{v}");
+}
+
+#[test]
+fn css_register_property_supplies_initial_value() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              CSS.registerProperty({ name: "--ve-x", syntax: "<number>", inherits: false, initialValue: "4" });
+              let dup = false;
+              try { CSS.registerProperty({ name: "--ve-x", syntax: "*", inherits: false, initialValue: "1" }); }
+              catch (e) { dup = e.name === "InvalidModificationError"; }
+              let bad = false;
+              try { CSS.registerProperty({ name: "color", syntax: "*", inherits: false, initialValue: "red" }); }
+              catch (e) { bad = e.name === "SyntaxError"; }
+              return {
+                initial: getComputedStyle(document.body).getPropertyValue("--ve-x"),
+                dup,
+                bad
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["initial"], "4", "{v}");
+    assert_eq!(v["dup"], true, "{v}");
+    assert_eq!(v["bad"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_verifies_hmac() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__ver = null;
+          const keyBytes = new TextEncoder().encode("key");
+          const msg = new TextEncoder().encode("The quick brown fox jumps over the lazy dog");
+          crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]).then(function (key) {
+            return crypto.subtle.sign("HMAC", key, msg).then(function (sig) {
+              return Promise.all([
+                crypto.subtle.verify("HMAC", key, sig, msg),
+                crypto.subtle.verify("HMAC", key, new Uint8Array(32), msg)
+              ]).then(function (ok) {
+                window.__ver = { good: ok[0], bad: ok[1] };
+              });
+            });
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__ver").unwrap();
+    assert_eq!(v["good"], true, "{v}");
+    assert_eq!(v["bad"], false, "{v}");
+}
+
+#[test]
+fn scheduler_post_task_runs_callback() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__sched = null;
+          scheduler.postTask(function () { return 7; }).then(function (v) {
+            window.__sched = v;
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__sched").unwrap();
+    assert_eq!(v, 7, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
