@@ -4889,6 +4889,10 @@
     _fontItalic() {
       return /italic|oblique/i.test(String(this._font || ""));
     }
+    _fontBold() {
+      const f = String(this._font || "");
+      return /bold/i.test(f) || /(?:^|[\s\/])(?:[7-9]00)(?:\s|$)/.test(f);
+    }
     _capsText(t) {
       let text = String(t == null ? "" : t);
       if (String(this._fontVariantCaps || "normal") === "small-caps") {
@@ -4935,7 +4939,7 @@
           cx += this._kernPair(prev, ch);
           const o = this._textOrigin(ch, cx, y);
           const p = this._mapPoint(o.x, o.y);
-          D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0);
+          D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0, this._fontBold() ? 1 : 0);
           cx += ((o.width || 6) * stretch) + gap;
           prev = ch;
         }
@@ -4949,7 +4953,7 @@
           const o = this._textOrigin(part, cx, y);
           if (!/^\s+$/.test(part)) {
             const p = this._mapPoint(o.x, o.y);
-            D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0);
+            D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0, this._fontBold() ? 1 : 0);
           }
           cx += (o.width || (part.length * 6)) + (/^\s+$/.test(part) ? wgap : 0);
         }
@@ -4957,7 +4961,7 @@
       }
       const o = this._textOrigin(t, x, y);
       const p = this._mapPoint(o.x, o.y);
-      D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0);
+      D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0, this._fontBold() ? 1 : 0);
     }
     strokeText(t, x, y) {
       const o = this._textOrigin(t, x, y);
@@ -9489,6 +9493,7 @@
       this.ARRAY_BUFFER = 34962;
       this.ELEMENT_ARRAY_BUFFER = 34963;
       this.FLOAT = 5126;
+      this.LINE_STRIP = 3;
       this.TRIANGLES = 4;
       this.TRIANGLE_STRIP = 5;
       this.TRIANGLE_FAN = 6;
@@ -9765,6 +9770,11 @@
       const ring = pts.concat([pts[0]]);
       D("canvasFillPath", c.__h, JSON.stringify({ r: [], p: [ring] }), css, "none");
     }
+    _strokePoly(pts, css) {
+      const c = this.canvas;
+      if (!c || c.__h == null || !pts || pts.length < 2) return;
+      D("canvasStrokePath", c.__h, JSON.stringify({ r: [], p: [pts] }), css, 2, "", 0, "butt", "miter", 10, "none");
+    }
     _uniformCss() {
       const u = this._uniform;
       if (!u) return "#000000";
@@ -9808,6 +9818,10 @@
           for (let i = 0; i < n; i++) {
             const p = this._attribPoint(start + i);
             if (p) pts.push(p);
+          }
+          if (mode === this.LINE_STRIP && pts.length >= 2) {
+            this._strokePoly(pts, this._uniformCss());
+            return;
           }
           if (mode === this.TRIANGLE_FAN) {
             for (let i = 1; i + 1 < pts.length; i++) {

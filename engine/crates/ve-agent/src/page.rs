@@ -2352,7 +2352,7 @@ impl CanvasSurface {
         self.ops += 1;
     }
 
-    fn fill_text(&mut self, text: &str, x: i32, y: i32, color: [u8; 4], italic: bool) {
+    fn fill_text(&mut self, text: &str, x: i32, y: i32, color: [u8; 4], italic: bool, bold: bool) {
         let mut cx = x;
         for ch in text.chars() {
             let cols = glyph5x7(ch);
@@ -2361,6 +2361,9 @@ impl CanvasSurface {
                     if bits & (1 << row) != 0 {
                         let shear = if italic && row < 3 { 1 } else { 0 };
                         self.fill_rect(cx + i as i32 + shear, y - 7 + row, 1, 1, color);
+                        if bold {
+                            self.fill_rect(cx + i as i32 + shear + 1, y - 7 + row, 1, 1, color);
+                        }
                     }
                 }
             }
@@ -3427,6 +3430,7 @@ impl Page {
         color: &str,
         size: f32,
         italic: bool,
+        bold: bool,
     ) -> u64 {
         let color = parse_css_color(color);
         let size = if size > 0.0 { size } else { 10.0 };
@@ -3476,11 +3480,22 @@ impl Page {
                         color,
                         italic,
                     );
+                    if bold {
+                        c.blit_glyph_mask(
+                            dx + 1,
+                            dy,
+                            bitmap.width,
+                            bitmap.height,
+                            &bitmap.data,
+                            color,
+                            italic,
+                        );
+                    }
                 }
             }
             c.ops += 1;
         } else {
-            c.fill_text(text, x, y, color, italic);
+            c.fill_text(text, x, y, color, italic, bold);
         }
         c.ops
     }

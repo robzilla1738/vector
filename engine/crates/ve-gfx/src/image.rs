@@ -638,6 +638,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 .map(|(px, py)| world.map(px, py))
                 .collect::<Vec<_>>()
         });
+        let italic = svg_font_italic(tag);
         paint_svg_text(
             &mut img,
             &content,
@@ -649,6 +650,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             scale,
             vertical,
             path_pts.as_deref(),
+            italic,
         );
         if svg_font_bold(tag) {
             paint_svg_text(
@@ -662,6 +664,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 scale,
                 vertical,
                 path_pts.as_deref(),
+                italic,
             );
         }
         let deco = svg_attr_str(tag, "text-decoration")
@@ -2575,6 +2578,11 @@ fn svg_font_bold(tag: &str) -> bool {
         || w.parse::<f32>().is_ok_and(|n| n >= 700.0)
 }
 
+fn svg_font_italic(tag: &str) -> bool {
+    let s = svg_attr_str(tag, "font-style").unwrap_or("");
+    s.eq_ignore_ascii_case("italic") || s.eq_ignore_ascii_case("oblique")
+}
+
 fn svg_tspan_dx(content: &str) -> f32 {
     svg_tspan_tag(content)
         .and_then(|t| svg_attr(t, "dx"))
@@ -2647,6 +2655,7 @@ fn paint_svg_text(
     scale: f32,
     vertical: bool,
     path: Option<&[(f32, f32)]>,
+    italic: bool,
 ) {
     let mut cx = x;
     let mut cy = y;
@@ -2678,7 +2687,8 @@ fn paint_svg_text(
                         }
                         for dy in 0..s {
                             for dx in 0..s {
-                                let xx = origin_x + col as i32 * s + dx;
+                                let shear = if italic && row < 3 { 1 } else { 0 };
+                                let xx = origin_x + col as i32 * s + dx + shear;
                                 let yy = baseline - 7 * s + row as i32 * s + dy;
                                 if xx >= 0
                                     && yy >= 0
@@ -4462,6 +4472,17 @@ mod tests {
         .expect("svg dx");
         assert_eq!(img.pixel(4, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(2, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_font_style_italic_shears_glyph() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <text x='0' y='7' fill='#ff0000' font-style='italic'>I</text></svg>",
+        )
+        .expect("svg italic");
+        assert_eq!(img.pixel(3, 0), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 6), Some([255, 0, 0, 255]));
     }
 
     #[test]

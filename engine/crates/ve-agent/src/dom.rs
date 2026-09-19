@@ -2272,6 +2272,7 @@ pub(crate) fn host_call(
                 &arg_str(args, 4),
                 arg_f64(args, 5) as f32,
                 arg_f64(args, 6) as i32 != 0,
+                arg_f64(args, 7) as i32 != 0,
             );
             Ok(JsValue::Number(ops as f64))
         }
