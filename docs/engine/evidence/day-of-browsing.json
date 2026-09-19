@@ -1,14 +1,54 @@
 {
-  "bookmarks": 1,
-  "find": "hello",
   "gate": "day-of-ordinary-browsing",
-  "history": 5,
-  "profile": "/tmp/vector-day-browse-147964.sqlite",
-  "restoredTabs": [
-    "https://day.test/alpha",
-    "https://day.test/beta"
-  ],
+  "notes": "Session-step wall times on this host, then kill and reopen the SQLite profile. Not an Apple-silicon published score.",
+  "profile": "/tmp/vector-day-browse-285608.sqlite",
+  "retained": {
+    "bookmarks": 1,
+    "downloads": [
+      "report.pdf"
+    ],
+    "find": "hello",
+    "history": 5,
+    "tabs": [
+      "https://day.test/alpha",
+      "https://day.test/beta"
+    ],
+    "zoom": 1.100000023841858
+  },
   "review": "H2-exit",
-  "test": "day_of_browsing_restores_tabs_history_bookmarks_zoom_find",
-  "zoom": 1.100000023841858
+  "steps": [
+    {
+      "ms": 67.203,
+      "name": "open-alpha"
+    },
+    {
+      "ms": 60.899,
+      "name": "open-beta"
+    },
+    {
+      "ms": 22.637,
+      "name": "bookmark"
+    },
+    {
+      "ms": 3.11,
+      "name": "download"
+    },
+    {
+      "ms": 29.12,
+      "name": "zoom-in"
+    },
+    {
+      "ms": 63.574,
+      "name": "find-hello"
+    },
+    {
+      "ms": 0.0,
+      "name": "present"
+    },
+    {
+      "ms": 10.478,
+      "name": "restart-restore"
+    }
+  ],
+  "test": "day_of_browsing_restores_tabs_history_bookmarks_zoom_find"
 }
