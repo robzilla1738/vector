@@ -534,24 +534,32 @@ impl JsVm for V8Vm {
     fn install_native_dom_bindings(&mut self) -> Result<(), ScriptError> {
         self.run(|scope| {
             let global = scope.get_current_context().global(scope);
-            let element_key = v8::String::new(scope, "Element")?;
-            let element = global.get(scope, element_key.into())?;
-            let element_fn: v8::Local<v8::Function> = element.try_into().ok()?;
-            let proto_key = v8::String::new(scope, "prototype")?;
-            let proto = element_fn.get(scope, proto_key.into())?;
-            let proto_obj: v8::Local<v8::Object> = proto.try_into().ok()?;
-            let name = v8::String::new(scope, "id")?;
-            proto_obj.set_accessor_with_setter(
-                scope,
-                name.into(),
-                native_element_id_getter,
-                native_element_id_setter,
-            )?;
-            let flag = v8::String::new(scope, "__veNativeBindings")?;
-            let mode = v8::String::new(scope, "element.id")?;
-            global.set(scope, flag.into(), mode.into())?;
+            let getter = v8::FunctionTemplate::builder(native_element_id_get)
+                .build(scope)
+                .get_function(scope)?;
+            let setter = v8::FunctionTemplate::builder(native_element_id_set)
+                .build(scope)
+                .get_function(scope)?;
+            let get_key = v8::String::new(scope, "__veNativeIdGet")?;
+            let set_key = v8::String::new(scope, "__veNativeIdSet")?;
+            global.set(scope, get_key.into(), getter.into())?;
+            global.set(scope, set_key.into(), setter.into())?;
             Some(())
-        })
+        })?;
+        self.eval(
+            r#"(function () {
+  if (typeof Element === "undefined") return;
+  Object.defineProperty(Element.prototype, "id", {
+    configurable: true,
+    enumerable: true,
+    get: globalThis.__veNativeIdGet,
+    set: globalThis.__veNativeIdSet
+  });
+  globalThis.__veNativeBindings = "element.id";
+})()"#,
+            "vector:dom-native",
+        )?;
+        Ok(())
     }
 
     fn call(&mut self, function: &str, args: &[JsValue]) -> Result<JsValue, ScriptError> {
@@ -845,10 +853,9 @@ fn object_handle(
     Some(to_js_value(scope, value))
 }
 
-fn native_element_id_getter(
+fn native_element_id_get(
     scope: &mut v8::PinScope<'_, '_>,
-    _key: v8::Local<'_, v8::Name>,
-    args: v8::PropertyCallbackArguments<'_>,
+    args: v8::FunctionCallbackArguments<'_>,
     mut rv: v8::ReturnValue<'_, v8::Value>,
 ) {
     let this = args.this();
@@ -872,16 +879,19 @@ fn native_element_id_getter(
     rv.set_empty_string();
 }
 
-fn native_element_id_setter(
+fn native_element_id_set(
     scope: &mut v8::PinScope<'_, '_>,
-    _key: v8::Local<'_, v8::Name>,
-    value: v8::Local<'_, v8::Value>,
-    args: v8::PropertyCallbackArguments<'_>,
-    _rv: v8::ReturnValue<'_, ()>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
 ) {
     let this = args.this();
     let Some(handle) = object_handle(scope, this) else {
         return;
+    };
+    let value = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::from("")
     };
     let _ = call_dom_host(
         scope,
@@ -889,7 +899,7 @@ fn native_element_id_setter(
             JsValue::from("setAttr"),
             handle,
             JsValue::from("id"),
-            to_js_value(scope, value),
+            value,
         ],
     );
 }
