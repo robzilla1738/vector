@@ -560,7 +560,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 svg_attr(tag, "y").unwrap_or(0.0),
             )
         };
-        let spacing = svg_attr(tag, "letter-spacing").unwrap_or(0.0);
+        let mut spacing = svg_attr(tag, "letter-spacing").unwrap_or(0.0);
         let word_sp = svg_attr(tag, "word-spacing").unwrap_or(0.0);
         let scale = (svg_attr(tag, "font-size").unwrap_or(7.0) / 7.0).max(0.5);
         if svg_attr_str(tag, "dominant-baseline")
@@ -583,6 +583,13 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             };
             if i + 1 < chars.len() {
                 text_w += spacing;
+            }
+        }
+        if let Some(target) = svg_attr(tag, "textLength") {
+            if target > 0.0 && chars.len() > 1 {
+                let gaps = (chars.len() - 1) as f32;
+                spacing += (target - text_w) / gaps;
+                text_w = target;
             }
         }
         match svg_attr_str(tag, "text-anchor").unwrap_or("start") {
@@ -4118,6 +4125,18 @@ mod tests {
         .expect("svg overflow");
         assert_eq!(img.pixel(3, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(6, 6), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_text_length_stretches_glyphs() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='8'>\
+              <text x='0' y='7' fill='#ff0000' textLength='16'>II</text></svg>",
+        )
+        .expect("svg textLength");
+        assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(12, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(8, 3), Some([0, 0, 0, 0]));
     }
 
     #[test]

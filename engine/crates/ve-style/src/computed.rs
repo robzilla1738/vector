@@ -288,8 +288,9 @@ impl ComputedStyle {
     pub fn property_css(&self, name: &str) -> String {
         use crate::values::{
             BackgroundImage, BackgroundPosition, BackgroundSize, BoxShadow, ClipPath, Content,
-            ContentItem, CssClip, Filter, GridLine, LengthPercentage, LengthPercentageAuto,
-            LineHeight, MaxSize, OffsetPath, ShapeOutside, TransformOp, VerticalAlign,
+            ContentItem, CssClip, Filter, GridLine, GridTemplateAreas, LengthPercentage,
+            LengthPercentageAuto, LineHeight, MaxSize, OffsetPath, ShapeOutside, TrackSize,
+            TransformOp, VerticalAlign,
         };
 
         fn px(v: f32) -> String {
@@ -402,7 +403,45 @@ impl ComputedStyle {
                 GridLine::Named(n) => n.clone(),
             }
         }
+        fn track_size(v: TrackSize) -> String {
+            match v {
+                TrackSize::Px(v) => px(v),
+                TrackSize::Percent(p) => format!("{p}%"),
+                TrackSize::Fr(n) => format!("{n}fr"),
+                TrackSize::Auto => "auto".into(),
+                TrackSize::MinContent => "min-content".into(),
+                TrackSize::MaxContent => "max-content".into(),
+            }
+        }
+        fn tracks(list: &[TrackSize]) -> String {
+            if list.is_empty() {
+                "none".into()
+            } else {
+                list.iter().copied().map(track_size).collect::<Vec<_>>().join(" ")
+            }
+        }
+        fn grid_areas(v: &GridTemplateAreas) -> String {
+            if v.is_none() {
+                "none".into()
+            } else {
+                v.rows
+                    .iter()
+                    .map(|row| format!("\"{}\"", row.join(" ")))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            }
+        }
 
+        if name.eq_ignore_ascii_case("border-spacing") {
+            if (self.border_spacing_x - self.border_spacing_y).abs() < 1e-4 {
+                return px(self.border_spacing_x);
+            }
+            return format!(
+                "{} {}",
+                px(self.border_spacing_x),
+                px(self.border_spacing_y)
+            );
+        }
         if name.starts_with("--") {
             return self
                 .custom_properties
@@ -869,6 +908,48 @@ impl ComputedStyle {
                 }
             },
             PropertyId::PositionArea => self.position_area.to_string(),
+            PropertyId::BorderSpacingX => px(self.border_spacing_x),
+            PropertyId::BorderSpacingY => px(self.border_spacing_y),
+            PropertyId::GridTemplateColumns => tracks(&self.grid_template_columns),
+            PropertyId::GridTemplateRows => tracks(&self.grid_template_rows),
+            PropertyId::GridTemplateAreas => grid_areas(&self.grid_template_areas),
+            PropertyId::GridAutoColumns => {
+                if self.grid_auto_columns.is_empty() {
+                    "auto".into()
+                } else {
+                    tracks(&self.grid_auto_columns)
+                }
+            }
+            PropertyId::GridAutoRows => {
+                if self.grid_auto_rows.is_empty() {
+                    "auto".into()
+                } else {
+                    tracks(&self.grid_auto_rows)
+                }
+            }
+            PropertyId::BackgroundPositionX => match self.background_position_x {
+                Some(v) => lp(v),
+                None => lp(self.background_position.x),
+            },
+            PropertyId::BackgroundPositionY => match self.background_position_y {
+                Some(v) => lp(v),
+                None => lp(self.background_position.y),
+            },
+            PropertyId::CounterReset => {
+                if self.counter_reset == 0 {
+                    "none".into()
+                } else {
+                    format!("{}", self.counter_reset)
+                }
+            }
+            PropertyId::CounterIncrement => {
+                if self.counter_increment == 0 {
+                    "none".into()
+                } else {
+                    format!("{}", self.counter_increment)
+                }
+            }
+            PropertyId::FloatOffset => lp(self.float_offset),
             _ => String::new(),
         }
     }
@@ -1099,5 +1180,28 @@ mod tests {
         assert_eq!(ComputedStyle::initial().property_css("transform"), "none");
         assert_eq!(ComputedStyle::initial().property_css("filter"), "none");
         assert_eq!(ComputedStyle::initial().property_css("clip"), "auto");
+    }
+
+    #[test]
+    fn property_css_exposes_grid_tracks_spacing_and_counters() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "grid-template-columns: 1fr 2fr; grid-template-areas: \"a b\" \"a c\"; \
+             border-spacing: 4px; counter-reset: 1; float-offset: 12px; \
+             background-position-x: 25%",
+            false,
+        );
+        assert_eq!(style.property_css("grid-template-columns"), "1fr 2fr");
+        assert_eq!(style.property_css("grid-template-areas"), "\"a b\" \"a c\"");
+        assert_eq!(style.property_css("border-spacing"), "4px");
+        assert_eq!(style.property_css("counter-reset"), "1");
+        assert_eq!(style.property_css("counter-increment"), "none");
+        assert_eq!(style.property_css("float-offset"), "12px");
+        assert_eq!(style.property_css("background-position-x"), "25%");
+        assert_eq!(
+            ComputedStyle::initial().property_css("grid-template-columns"),
+            "none"
+        );
     }
 }

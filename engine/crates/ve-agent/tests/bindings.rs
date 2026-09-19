@@ -2315,6 +2315,32 @@ fn canvas_filter_drop_shadow_paints_offset() {
 }
 
 #[test]
+fn computed_style_exposes_grid_tracks_spacing_and_counters() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="grid-template-columns:1fr 2fr;border-spacing:4px;counter-reset:1;background-position-x:25%">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                cols: String(cs.gridTemplateColumns || cs.getPropertyValue("grid-template-columns")),
+                spacing: String(cs.borderSpacing || cs.getPropertyValue("border-spacing")),
+                reset: String(cs.counterReset || cs.getPropertyValue("counter-reset")),
+                bx: String(cs.backgroundPositionX || cs.getPropertyValue("background-position-x"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cols"], "1fr 2fr", "{v}");
+    assert_eq!(v["spacing"], "4px", "{v}");
+    assert_eq!(v["reset"], "1", "{v}");
+    assert_eq!(v["bx"], "25%", "{v}");
+}
+
+#[test]
 fn computed_style_exposes_transform_filter_clip_and_images() {
     let mut page = open(
         r#"<body>
@@ -5902,6 +5928,42 @@ fn webgl_scissor_clips_clear() {
     assert_eq!(v["ir"], 0, "{v}");
     assert_eq!(v["ig"], 255, "{v}");
     assert_eq!(v["ia"], 255, "{v}");
+}
+
+#[test]
+fn webgl_front_face_cw_flips_culling() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0.5, -0.5, 0, 0.5]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.enable(gl.CULL_FACE);
+              gl.frontFace(gl.CW);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const culled = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, culled);
+              gl.frontFace(gl.CCW);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const shown = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, shown);
+              return { cg: culled[1], ca: culled[3], sg: shown[1], sa: shown[3], cw: gl.CW };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cw"], 2305, "{v}");
+    assert_eq!(v["cg"], 0, "{v}");
+    assert_eq!(v["ca"], 0, "{v}");
+    assert_eq!(v["sg"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
 }
 
 #[test]

@@ -9454,11 +9454,14 @@
       this.CULL_FACE = 2884;
       this.FRONT = 1028;
       this.BACK = 1029;
+      this.CCW = 2304;
+      this.CW = 2305;
       this._clear = [0, 0, 0, 0];
       this._flipY = false;
       this._premultiply = false;
       this._cullOn = false;
       this._cullFace = 1029;
+      this._frontFace = 2304;
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
       this._viewport = [0, 0, canvas.width, canvas.height];
@@ -9557,10 +9560,15 @@
     cullFace(mode) {
       this._cullFace = Number(mode) || this.BACK;
     }
+    frontFace(mode) {
+      this._frontFace = Number(mode) || this.CCW;
+    }
     _isCulled(a, b, c) {
       if (!this._cullOn) return false;
       const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
-      return this._cullFace === this.FRONT ? cross > 0 : cross < 0;
+      const ccwFront = this._frontFace !== this.CW;
+      const isFront = ccwFront ? cross > 0 : cross < 0;
+      return this._cullFace === this.FRONT ? isFront : !isFront;
     }
     blendFunc(src, dst) { this._blend = [Number(src) || 0, Number(dst) || 0]; }
     pixelStorei(pname, val) {
