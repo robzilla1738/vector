@@ -6990,6 +6990,20 @@
       }
       return this._wakeLock;
     }
+    get credentials() {
+      if (!this._credentials) {
+        this._credentials = {
+          get() {
+            return Promise.reject(new DOMException("Credential access denied", "NotAllowedError"));
+          },
+          create() {
+            return Promise.reject(new DOMException("Credential access denied", "NotAllowedError"));
+          },
+          preventSilentAccess() { return Promise.resolve(); },
+        };
+      }
+      return this._credentials;
+    }
     get mediaDevices() {
       if (!this._mediaDevices) {
         this._mediaDevices = {
@@ -10694,6 +10708,26 @@
       }
     }
   }
+  class PaymentRequest {
+    constructor(methods, details) {
+      this.id = "ve-payment";
+      this.shippingAddress = null;
+      this.shippingOption = null;
+      this.shippingType = null;
+      this._methods = methods;
+      this._details = details;
+    }
+    show() {
+      return Promise.reject(new DOMException("Payment request denied", "NotAllowedError"));
+    }
+    abort() { return Promise.resolve(); }
+    canMakePayment() { return Promise.resolve(false); }
+  }
+  class PublicKeyCredential {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    static isUserVerifyingPlatformAuthenticatorAvailable() { return Promise.resolve(false); }
+    static isConditionalMediationAvailable() { return Promise.resolve(false); }
+  }
   const windowProps = {
     window: null, self: null, document, location, history, atob, btoa,
     localStorage: storage("local"), sessionStorage: storage("session"),
@@ -10779,6 +10813,7 @@
     WebGLRenderingContext, RTCPeerConnection,
     TextEncoderStream, TextDecoderStream,
     CompressionStream, DecompressionStream, CookieStore, cookieStore, ClipboardItem,
+    PaymentRequest, PublicKeyCredential,
     Animation, KeyframeEffect, DocumentTimeline, ViewTransition,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport, Cache, CacheStorage, caches,
     TextDecoder, TextEncoder,

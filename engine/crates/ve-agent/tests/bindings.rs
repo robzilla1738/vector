@@ -5415,6 +5415,42 @@ fn file_pickers_and_wake_lock_deny() {
 }
 
 #[test]
+fn credentials_and_payment_request_deny() {
+    let mut page = open("<title>cred</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__cred = null;
+          const pay = new PaymentRequest([{ supportedMethods: "basic-card" }], { total: { label: "t", amount: { currency: "USD", value: "1.00" } } });
+          Promise.allSettled([
+            navigator.credentials.get({ password: true }),
+            navigator.credentials.create({ password: { id: "u", password: "p" } }),
+            pay.show(),
+            pay.canMakePayment(),
+            PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+          ]).then(function (rows) {
+            window.__cred = {
+              get: rows[0].status === "rejected" && rows[0].reason.name === "NotAllowedError",
+              create: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError",
+              show: rows[2].status === "rejected" && rows[2].reason.name === "NotAllowedError",
+              canPay: rows[3].status === "fulfilled" && rows[3].value === false,
+              pk: rows[4].status === "fulfilled" && rows[4].value === false,
+              inst: pay instanceof PaymentRequest && typeof PublicKeyCredential === "function"
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__cred").unwrap();
+    assert_eq!(v["get"], true, "{v}");
+    assert_eq!(v["create"], true, "{v}");
+    assert_eq!(v["show"], true, "{v}");
+    assert_eq!(v["canPay"], true, "{v}");
+    assert_eq!(v["pk"], true, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+}
+
+#[test]
 fn webgl_tex_image_draw_arrays_blits() {
     let mut page = open("<title>glt</title>");
     let v = page
