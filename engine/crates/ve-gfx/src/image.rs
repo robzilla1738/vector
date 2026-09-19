@@ -464,6 +464,15 @@ impl ImageCache {
     pub fn is_empty(&self) -> bool {
         self.images.is_empty()
     }
+
+    /// Copies every entry from `other`, preserving handles so a display list
+    /// built with [`Page::node_images`] can paint on a different renderer.
+    pub fn extend_from(&mut self, other: &Self) {
+        for (handle, image) in &other.images {
+            self.images.insert(*handle, image.clone());
+            self.next = self.next.max(handle.0);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -496,6 +505,11 @@ mod tests {
         assert_eq!(cache.get(h).unwrap().pixel(2, 0), None);
         assert!(DecodedImage::from_rgba(2, 2, vec![0; 3]).is_none());
         assert!(cache.remove(h).is_some() && cache.is_empty());
+        let mut a = ImageCache::new();
+        let ha = a.insert(DecodedImage::solid(1, 1, [9, 8, 7, 255]));
+        let mut b = ImageCache::new();
+        b.extend_from(&a);
+        assert_eq!(b.get(ha).unwrap().pixel(0, 0), Some([9, 8, 7, 255]));
         if cfg!(not(feature = "images")) {
             assert!(matches!(
                 decode(b"\x89PNG\r\n\x1a\n"),

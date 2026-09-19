@@ -81,10 +81,11 @@ impl GpuWindow {
     /// Presents the live page without a CPU readback.
     pub fn present(&mut self, browser: &mut NativeBrowser, scale: f32) -> Result<(), String> {
         let list = browser.display_list_active().map_err(|e| e.to_string())?;
+        let images = browser.active_images().cloned();
         let width = self.config.width.max(1);
         let height = self.config.height.max(1);
         self.renderer
-            .present_list(&list, width, height, scale.max(0.01))
+            .present_list_with(&list, width, height, scale.max(0.01), images.as_ref())
             .map_err(|e| e.to_string())?;
         let frame = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t)

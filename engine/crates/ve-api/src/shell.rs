@@ -17,7 +17,7 @@ use ve_chrome::{
     sync_order, sync_spaces, toggle_pin,
 };
 use ve_core::{Error, ErrorCode, Point, Result, Size, process_rss_bytes};
-use ve_gfx::{Compositor, DisplayItem, DisplayList, Frame, Renderer, SoftwareRenderer};
+use ve_gfx::{Compositor, DisplayItem, DisplayList, Frame, ImageCache, Renderer, SoftwareRenderer};
 use ve_profile::{Profile, SessionTab};
 
 use crate::{
@@ -936,10 +936,11 @@ impl NativeBrowser {
                 }
             }
         }
+        let images = self.active_images().cloned();
         let gpu = self.gpu.as_mut()?;
         let width = self.surface.width;
         let height = self.surface.height;
-        gpu.present_list(&list, width, height, self.device_scale)
+        gpu.present_list_with(&list, width, height, self.device_scale, images.as_ref())
             .ok()?;
         gpu.readback_present_target().ok()
     }
@@ -969,14 +970,16 @@ impl NativeBrowser {
                 }
             }
         }
+        let images = self.active_images().cloned();
         let Some(gpu) = self.gpu.as_mut() else {
             return false;
         };
-        gpu.present_list(
+        gpu.present_list_with(
             &list,
             self.surface.width,
             self.surface.height,
             self.device_scale,
+            images.as_ref(),
         )
         .is_ok()
     }
@@ -985,6 +988,16 @@ impl NativeBrowser {
     #[cfg(feature = "gpu")]
     pub fn display_list_active(&mut self) -> Result<ve_gfx::DisplayList> {
         self.paint_shell_list()
+    }
+
+    /// Decoded images for the active engine tab. Chromium tabs have none.
+    #[must_use]
+    pub fn active_images(&self) -> Option<&ImageCache> {
+        let tab = self.active_tab()?;
+        if tab.backend != ChromeBackend::Engine {
+            return None;
+        }
+        self.engine.page(tab.page).ok().map(Page::image_cache)
     }
 
     /// Scene/surface update for native presentation. Not a PNG and not a
@@ -2327,7 +2340,14 @@ impl NativeBrowser {
                 .ok_or_else(|| Error::internal("no page list"))?
                 .list
                 .clone();
+            let images = self
+                .engine
+                .page(page)
+                .ok()
+                .map(|p| p.image_cache().clone())
+                .unwrap_or_default();
             let renderer = self.sw.as_mut().expect("software renderer");
+            renderer.images.extend_from(&images);
             let frame = renderer
                 .render(&list, pw, ph, scale)
                 .map_err(|e| Error::internal(format!("page layer: {e}")))?;
@@ -2683,6 +2703,32 @@ mod tests {
         assert!(
             px[0] > 200 && px[1] < 40 && px[2] < 40,
             "expected red page pixels, got {px:?}"
+        );
+    }
+
+    #[test]
+    fn product_chrome_present_paints_page_images() {
+        // 1×1 red PNG.
+        const RED: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome();
+        browser
+            .new_tab(
+                &format!(
+                    "<style>html,body{{margin:0;background:#fff}}img{{display:block;width:32px;height:32px}}</style>\
+                     <img src='data:image/png;base64,{RED}'>"
+                ),
+                "https://img.test/",
+            )
+            .unwrap();
+        let _ = browser.present().unwrap();
+        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let x = (stage.x() + 8.0) as u32;
+        let y = (stage.y() + 8.0) as u32;
+        let px = browser.present().unwrap().pixel(x, y).expect("pixel in stage");
+        assert!(
+            px[0] > 200 && px[0] > px[1] && px[0] > px[2] && px[2] < 200,
+            "expected reddish <img> (not white/magenta), got {px:?} at ({x},{y})"
         );
     }
 
