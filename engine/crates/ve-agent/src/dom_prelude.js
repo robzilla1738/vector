@@ -10903,6 +10903,11 @@
     },
     CSS: {
       escape(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, (c) => "\\" + c); },
+      number(n) { return { value: Number(n), unit: "number", toString() { return String(this.value); } }; },
+      px(n) { return { value: Number(n), unit: "px", toString() { return this.value + "px"; } }; },
+      percent(n) { return { value: Number(n), unit: "%", toString() { return this.value + "%"; } }; },
+      deg(n) { return { value: Number(n), unit: "deg", toString() { return this.value + "deg"; } }; },
+      em(n) { return { value: Number(n), unit: "em", toString() { return this.value + "em"; } }; },
       supports(a, b) {
         const q = b == null ? String(a) : "(" + a + ": " + b + ")";
         return D("cssSupports", q) === true;
@@ -10928,6 +10933,7 @@
       },
     },
     scheduler: {
+      yield() { return new Promise((res) => queueMicrotask(res)); },
       postTask(callback, options) {
         if (typeof callback !== "function") {
           return Promise.reject(new TypeError("Failed to execute 'postTask' on 'Scheduler': parameter 1 is not of type 'Function'."));

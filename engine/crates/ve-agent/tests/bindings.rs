@@ -5222,6 +5222,33 @@ fn readable_stream_from_enqueues_iterable() {
 }
 
 #[test]
+fn css_typed_units_and_scheduler_yield() {
+    let mut page = open("<title>cssu</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__cu = null;
+          scheduler.yield().then(function () {
+            window.__cu = {
+              px: CSS.px(12).toString(),
+              num: CSS.number(3).toString(),
+              pct: CSS.percent(50).toString(),
+              deg: CSS.deg(90).toString(),
+              yielded: true
+            };
+          }).catch(function (e) { window.__cu = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__cu").unwrap();
+    assert_eq!(v["px"], "12px", "{v}");
+    assert_eq!(v["num"], "3", "{v}");
+    assert_eq!(v["pct"], "50%", "{v}");
+    assert_eq!(v["deg"], "90deg", "{v}");
+    assert_eq!(v["yielded"], true, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

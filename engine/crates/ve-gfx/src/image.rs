@@ -520,8 +520,9 @@ fn paint_svg_rect(
     oy: f32,
     grads: &HashMap<String, SvgGrad>,
 ) {
-    let x = (svg_attr(tag, "x").unwrap_or(0.0) + ox).max(0.0) as u32;
-    let y = (svg_attr(tag, "y").unwrap_or(0.0) + oy).max(0.0) as u32;
+    let (tx, ty) = svg_translate(tag);
+    let x = (svg_attr(tag, "x").unwrap_or(0.0) + ox + tx).max(0.0) as u32;
+    let y = (svg_attr(tag, "y").unwrap_or(0.0) + oy + ty).max(0.0) as u32;
     let w = svg_attr(tag, "width").unwrap_or(0.0).max(0.0) as u32;
     let h = svg_attr(tag, "height").unwrap_or(0.0).max(0.0) as u32;
     let fill = svg_fill(tag);
@@ -541,8 +542,9 @@ fn paint_svg_circle(
     oy: f32,
     grads: &HashMap<String, SvgGrad>,
 ) {
-    let cx = svg_attr(tag, "cx").unwrap_or(0.0) + ox;
-    let cy = svg_attr(tag, "cy").unwrap_or(0.0) + oy;
+    let (tx, ty) = svg_translate(tag);
+    let cx = svg_attr(tag, "cx").unwrap_or(0.0) + ox + tx;
+    let cy = svg_attr(tag, "cy").unwrap_or(0.0) + oy + ty;
     let r = svg_attr(tag, "r").unwrap_or(0.0);
     let fill = svg_fill(tag);
     let r2 = r * r;
@@ -570,8 +572,9 @@ fn paint_svg_ellipse(
     oy: f32,
     grads: &HashMap<String, SvgGrad>,
 ) {
-    let cx = svg_attr(tag, "cx").unwrap_or(0.0) + ox;
-    let cy = svg_attr(tag, "cy").unwrap_or(0.0) + oy;
+    let (tx, ty) = svg_translate(tag);
+    let cx = svg_attr(tag, "cx").unwrap_or(0.0) + ox + tx;
+    let cy = svg_attr(tag, "cy").unwrap_or(0.0) + oy + ty;
     let rx = svg_attr(tag, "rx").unwrap_or(0.0);
     let ry = svg_attr(tag, "ry").unwrap_or(0.0);
     let fill = svg_fill(tag);
@@ -703,6 +706,27 @@ fn fill_polygon_with(
             }
         }
     }
+}
+
+fn svg_translate(tag: &str) -> (f32, f32) {
+    let Some(raw) = svg_attr_str(tag, "transform") else {
+        return (0.0, 0.0);
+    };
+    let trimmed = raw.trim();
+    let Some(rest) = trimmed.strip_prefix("translate") else {
+        return (0.0, 0.0);
+    };
+    let rest = rest
+        .trim()
+        .trim_start_matches('(')
+        .trim_end_matches(')')
+        .trim();
+    let mut nums = rest
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .filter(|s| !s.is_empty());
+    let x = nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+    let y = nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+    (x, y)
 }
 
 fn svg_opacity_attr(tag: &str, name: &str) -> f32 {
@@ -1462,5 +1486,16 @@ mod tests {
         )
         .expect("svg fill opacity");
         assert_eq!(img.pixel(2, 2), Some([0, 255, 0, 128]));
+    }
+
+    #[test]
+    fn decode_svg_translate_moves_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='0' y='0' width='3' height='3' fill='#0000ff' transform='translate(4, 4)'/></svg>",
+        )
+        .expect("svg translate");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(5, 5), Some([0, 0, 255, 255]));
     }
 }
