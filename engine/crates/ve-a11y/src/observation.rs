@@ -392,6 +392,23 @@ pub struct DialogEntry {
     pub message: String,
 }
 
+/// A captured `console.*` line.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConsoleEntry {
+    /// `log`, `info`, `warn`, `error`, `debug`.
+    pub level: String,
+    /// Message text.
+    pub message: String,
+    /// Virtual or wall time when logged, milliseconds.
+    #[serde(default, skip_serializing_if = "is_zero_u64")]
+    pub at_ms: u64,
+}
+
+fn is_zero_u64(n: &u64) -> bool {
+    *n == 0
+}
+
 /// `viewport`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ViewportInfo {
@@ -457,6 +474,9 @@ pub struct ObservationContent {
     pub links: Vec<LinkEntry>,
     /// Open dialogs.
     pub dialogs: Vec<DialogEntry>,
+    /// Page `console.*` lines captured since the last navigation.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub console: Vec<ConsoleEntry>,
     /// A budget was tripped.
     pub truncated: bool,
     /// Counters.
@@ -1801,6 +1821,7 @@ impl<'a> Builder<'a> {
             tables,
             links,
             dialogs,
+            console: Vec::new(),
             truncated: self.truncated,
             stats: Stats::default(),
         };

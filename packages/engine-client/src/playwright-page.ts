@@ -59,6 +59,7 @@ export class PlaywrightDriverPage implements DriverPage {
   private documentEpoch = 0;
   private dialogHandler: { action: "accept" | "dismiss"; promptText?: string } | null = null;
   private lastDialog: { type: string; message: string } | null = null;
+  private consoleLines: { level: string; message: string; atMs: number }[] = [];
   private externalDownloadWaiters: {
     resolve: (v: { suggestedFilename: string; path?: string }) => void;
     reject: (e: Error) => void;
@@ -111,6 +112,12 @@ export class PlaywrightDriverPage implements DriverPage {
     });
     this.page.on("dialog", (dialog) => {
       void this.onDialog(dialog);
+    });
+    this.page.on("console", (msg) => {
+      const info = { level: msg.type(), message: msg.text() };
+      this.consoleLines.push({ ...info, atMs: Date.now() });
+      if (this.consoleLines.length > 200) this.consoleLines.splice(0, this.consoleLines.length - 200);
+      this.events.onConsole?.(info);
     });
     this.page.on("download", (download) => {
       const info = { suggestedFilename: download.suggestedFilename(), path: undefined as string | undefined };
@@ -607,6 +614,10 @@ export class PlaywrightDriverPage implements DriverPage {
     }, 30_000);
   }
 
+  async console(): Promise<{ level: string; message: string; atMs?: number }[]> {
+    return this.consoleLines.slice();
+  }
+
   // ---------- observation ----------
 
   async screenshot(opts?: { fullPage?: boolean }): Promise<ScreenshotResult> {
@@ -753,6 +764,7 @@ export class PlaywrightDriverPage implements DriverPage {
       tables,
       links,
       dialogs: this.lastDialog ? [this.lastDialog] : [],
+      console: this.consoleLines.slice(),
       truncated,
       stats: {
         elementsTotal,

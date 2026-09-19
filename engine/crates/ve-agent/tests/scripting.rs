@@ -73,6 +73,9 @@ fn document_scripts_run_in_order_and_timers_fire_inside_settle() {
     assert_eq!(page.console().len(), 2, "{:?}", page.console());
     assert_eq!(page.console()[0].message, r#"hello {"x":1}"#);
     assert!(page.console()[1].message.contains("boom"));
+    let observed = page.observe_now(&Default::default());
+    assert_eq!(observed.console.len(), 2, "{:?}", observed.console);
+    assert_eq!(observed.console[0].message, r#"hello {"x":1}"#);
 
     let order = page.evaluate("order.join(',')").unwrap();
     // classic scripts in order (microtasks drain after each), then `defer`;

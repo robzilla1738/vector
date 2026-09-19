@@ -615,24 +615,98 @@ server.registerTool(
   "vector_console",
   {
     description: "Read page console lines.",
-    inputSchema: { pageId: z.string() },
+    inputSchema: { pageId: z.string(), since: z.number().optional(), limit: z.number().int().positive().optional() },
   },
-  async ({ pageId }) => {
+  async ({ pageId, since, limit }) => {
     try {
-      return text(await rpc("pages.console", { pageId }));
+      return text(await rpc("pages.console", { pageId, since, limit }));
     } catch (e) {
       return err(e);
     }
   },
 );
 
+server.registerTool(
+  "vector_dialog",
+  {
+    description: "List or accept/dismiss the current page dialog (alert/confirm/prompt).",
+    inputSchema: {
+      pageId: z.string(),
+      action: z.enum(["list", "accept", "dismiss"]).optional(),
+      promptText: z.string().optional(),
+    },
+  },
+  async ({ pageId, action, promptText }) => {
+    try {
+      return text(await rpc("pages.dialog", { pageId, action: action ?? "list", promptText }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+server.registerTool(
+  "vector_network",
+  {
+    description: "List captured HTTP responses for a page (url, status, type, timing).",
+    inputSchema: {
+      pageId: z.string(),
+      since: z.number().optional(),
+      urlIncludes: z.string().optional(),
+      limit: z.number().int().positive().optional(),
+    },
+  },
+  async ({ pageId, since, urlIncludes, limit }) => {
+    try {
+      return text(await rpc("pages.network", { pageId, since, urlIncludes, limit }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+async function activePageId(): Promise<string | null> {
+  const ws = (await rpc("workspace.get")) as { activePageId?: string | null };
+  return ws.activePageId ?? null;
+}
+
 server.registerResource(
   "vector://page/observation",
   "vector://page/observation",
   { description: "Latest compact observation for the active page." },
-  async () => ({
-    contents: [{ uri: "vector://page/observation", text: JSON.stringify(await rpc("pages.observe", { format: "compact" })) }],
-  }),
+  async () => {
+    const pageId = await activePageId();
+    if (!pageId) return { contents: [{ uri: "vector://page/observation", text: JSON.stringify({ error: "no active page" }) }] };
+    return {
+      contents: [{ uri: "vector://page/observation", text: JSON.stringify(await rpc("pages.observe", { pageId, format: "compact" })) }],
+    };
+  },
+);
+
+server.registerResource(
+  "vector://page/console",
+  "vector://page/console",
+  { description: "Console lines for the active page." },
+  async () => {
+    const pageId = await activePageId();
+    if (!pageId) return { contents: [{ uri: "vector://page/console", text: JSON.stringify({ lines: [] }) }] };
+    return {
+      contents: [{ uri: "vector://page/console", text: JSON.stringify(await rpc("pages.console", { pageId })) }],
+    };
+  },
+);
+
+server.registerResource(
+  "vector://page/network",
+  "vector://page/network",
+  { description: "Captured HTTP responses for the active page." },
+  async () => {
+    const pageId = await activePageId();
+    if (!pageId) return { contents: [{ uri: "vector://page/network", text: "[]" }] };
+    return {
+      contents: [{ uri: "vector://page/network", text: JSON.stringify(await rpc("pages.network", { pageId })) }],
+    };
+  },
 );
 
 const transport = new StdioServerTransport();

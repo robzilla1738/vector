@@ -59,6 +59,7 @@ describe("API schemas", () => {
   it("has all versioned methods from the roadmap", () => {
     for (const m of [
       "pages.list", "pages.open", "pages.observe", "pages.execute", "pages.capture",
+      "pages.extract", "pages.waitFor", "pages.console", "pages.dialog", "pages.network",
       "sets.create", "sets.map", "sets.results",
       "runs.start", "runs.pause", "runs.resume", "runs.cancel", "runs.events",
       "artifacts.list", "artifacts.read",

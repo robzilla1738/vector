@@ -7,9 +7,9 @@ use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 use ve_a11y::{
-    DialogEntry, Format, LabelIndex, ObservationContent, ObservationDelta, ObservationRequest,
-    ObserveInput, Role, Scope, Visibility5, changes_between, compute_name_with, observe, parse_ref,
-    parse_ref_parts, ref_for,
+    ConsoleEntry, DialogEntry, Format, LabelIndex, ObservationContent, ObservationDelta,
+    ObservationRequest, ObserveInput, Role, Scope, Visibility5, changes_between, compute_name_with,
+    observe, parse_ref, parse_ref_parts, ref_for,
 };
 use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
 use ve_dom::{DirtyFlags, Document, Namespace, Node, NodeKind};
@@ -3569,6 +3569,15 @@ impl Page {
     #[must_use]
     pub fn observe_now(&self, request: &ObservationRequest) -> ObservationContent {
         let mut content = observe(&self.observe_input(), request);
+        content.console = self
+            .console()
+            .iter()
+            .map(|line| ConsoleEntry {
+                level: line.level.clone(),
+                message: line.message.clone(),
+                at_ms: line.at_ms,
+            })
+            .collect();
         for e in &mut content.elements {
             if e.type_.as_deref() == Some("file")
                 && let Some(files) = parse_ref(&e.reference)

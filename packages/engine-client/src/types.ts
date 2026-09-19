@@ -67,6 +67,7 @@ export interface DriverPageEvents {
   onLoading?: (loading: boolean) => void;
   onDestroyed?: (reason: "closed" | "crashed" | "detached") => void;
   onDialog?: (info: { type: string; message: string }) => void;
+  onConsole?: (info: { level: string; message: string }) => void;
   onDownload?: (info: { suggestedFilename: string; path?: string }) => void;
   onPopup?: (targetId: string | null, url: string) => void;
   /** passive response capture — fired for every completed HTTP response. */
@@ -159,6 +160,8 @@ export interface DriverPage {
   expandRef(ref: string, maxElements?: number): Promise<ElementRef[]>;
   extract(fields: { name: string; selector?: string; attribute?: string; all?: boolean }[]): Promise<Record<string, unknown>>;
   evaluate(expression: string): Promise<unknown>;
+  /** Page `console.*` lines when the backend keeps a buffer. */
+  console?(): Promise<{ level: string; message: string; atMs?: number }[]>;
 
   /**
    * Zero-IPC path (architecture §11): run a whole flat step list in one

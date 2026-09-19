@@ -274,6 +274,7 @@ export class EnginePage implements DriverPage {
   private generation: number;
   private routingValue: PageRouting;
   private stepCounter = 0;
+  private lastConsole: { level: string; message: string; atMs?: number }[] = [];
 
   constructor(
     private readonly native: NativeEngine,
@@ -549,6 +550,7 @@ export class EnginePage implements DriverPage {
     this.urlValue = res.content.url;
     this.titleValue = res.content.title;
     this.refs.register(this.identity.pageId, res.content.elements);
+    this.lastConsole = res.content.console ?? [];
     // engine metadata the runtime may read without a second call
     return Object.assign(res.content, { engine: { revision: res.revision, generation: res.generation, settled: res.settled, changed: res.changed ?? undefined } });
   }
@@ -565,6 +567,12 @@ export class EnginePage implements DriverPage {
   async extract(fields: { name: string; selector?: string; attribute?: string; all?: boolean }[]): Promise<Record<string, unknown>> {
     const outcome = await this.one({ op: "extract", fields });
     return (outcome.extracted ?? {}) as Record<string, unknown>;
+  }
+
+  async console(): Promise<{ level: string; message: string; atMs?: number }[]> {
+    if (this.lastConsole.length) return this.lastConsole;
+    const content = await this.observe({});
+    return content.console ?? this.lastConsole;
   }
 
   async evaluate(expression?: string): Promise<unknown> {

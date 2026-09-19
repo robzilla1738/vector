@@ -31,10 +31,10 @@ pub mod tree;
 pub use accname::{LabelIndex, compute_description, compute_name, compute_name_with};
 pub use diff::{FieldChange, ObservationDelta, ObservationSubscription, TextOp, changes_between};
 pub use observation::{
-    DialogEntry, ElementRef, FormField, Format, FrameInfo, LinkEntry, ObservationContent,
-    ObservationRequest, ObserveInput, RectJson, RoleSelector, Scope, ScrollInfo, SelectorStrategy,
-    Stats, TableBlock, ViewportInfo, Visibility5, classify, observe, parse_ref, parse_ref_parts,
-    ref_for,
+    ConsoleEntry, DialogEntry, ElementRef, FormField, Format, FrameInfo, LinkEntry,
+    ObservationContent, ObservationRequest, ObserveInput, RectJson, RoleSelector, Scope,
+    ScrollInfo, SelectorStrategy, Stats, TableBlock, ViewportInfo, Visibility5, classify, observe,
+    parse_ref, parse_ref_parts, ref_for,
 };
 pub use os::{
     TABLIST_ID, URLBAR_ID, WEB_ID, WINDOW_ID, page_node_id, page_tree_update, shell_tree_update,

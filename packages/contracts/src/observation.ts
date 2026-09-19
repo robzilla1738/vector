@@ -111,6 +111,10 @@ export const ObservationContentSchema = z.object({
   tables: z.array(TableBlockSchema),
   links: z.array(z.object({ ref: z.string(), text: z.string(), href: z.string() })),
   dialogs: z.array(z.object({ type: z.string(), message: z.string() })),
+  /** Page `console.*` lines captured since the last navigation. */
+  console: z
+    .array(z.object({ level: z.string(), message: z.string(), atMs: z.number().optional() }))
+    .optional(),
   /** True when content was cut to fit the budget. */
   truncated: z.boolean(),
   stats: z.object({

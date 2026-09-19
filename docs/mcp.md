@@ -19,7 +19,7 @@ Register it in your MCP client config:
 } } }
 ```
 
-## Tools (29)
+## Tools (34)
 
 | Tool | Purpose |
 |---|---|
@@ -52,6 +52,11 @@ Register it in your MCP client config:
 | `vector_program_validate` | validate a program without executing it |
 | `vector_program_run` | replay a saved program; `parameters` fill `{{name}}` placeholders (missing → `invalid_params`) |
 | `vector_traces` | structured execution spans |
+| `vector_extract` | structured fields from the current observation (`pages.extract`) |
+| `vector_wait_for` | wait until a condition holds (`pages.waitFor`) |
+| `vector_console` | page console lines (`pages.console`) |
+| `vector_dialog` | list or accept/dismiss a page dialog (`pages.dialog`) |
+| `vector_network` | captured HTTP responses (`pages.network`) |
 
 `vector_page_execute` step shape (the same `StepSchema` the API validates):
 
@@ -105,3 +110,6 @@ Things an MCP client should expect:
   result then carries `fallback { from, to, reason, replayedFrom, repair,
   refSteps }`. `repair: true` means ref-targeted steps could not be replayed
   — re-observe and retry with fresh refs.
+
+Resources: `vector://page/observation`, `vector://page/console`, and
+`vector://page/network` read the active page (`workspace.get.activePageId`).
