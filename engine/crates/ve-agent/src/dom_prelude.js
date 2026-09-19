@@ -3850,9 +3850,15 @@
         return this._bitmapCtx;
       }
       if (kind === "webgl" || kind === "experimental-webgl") {
-        if (this._ctx2d || this._bitmapCtx) return null;
+        if (this._ctx2d || this._bitmapCtx || this._webgl2) return null;
         if (!this._webgl) this._webgl = new WebGLRenderingContext(this);
         return this._webgl;
+      }
+      if (kind === "webgl2") {
+        if (this._ctx2d || this._bitmapCtx || (this._webgl && !this._webgl2)) return null;
+        if (!this._webgl2) this._webgl2 = new WebGL2RenderingContext(this);
+        this._webgl = this._webgl2;
+        return this._webgl2;
       }
       return null;
     }
@@ -9381,9 +9387,18 @@
       this.COLOR_ATTACHMENT0 = 36064;
       this.TEXTURE_2D = 3553;
       this.SCISSOR_TEST = 3089;
+      this.ARRAY_BUFFER = 34962;
+      this.ELEMENT_ARRAY_BUFFER = 34963;
+      this.FLOAT = 5126;
+      this.TRIANGLES = 4;
+      this.UNSIGNED_SHORT = 5123;
       this._clear = [0, 0, 0, 0];
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
+      this._arrayBuf = null;
+      this._elemBuf = null;
+      this._attribOn = false;
+      this._attrib = { size: 2, stride: 0, offset: 0 };
     }
     _scissorRect() {
       if (!this._scissorOn) return [0, 0, this.canvas.width, this.canvas.height];
@@ -9436,9 +9451,57 @@
     enable(cap) { if (cap === this.SCISSOR_TEST) this._scissorOn = true; }
     disable(cap) { if (cap === this.SCISSOR_TEST) this._scissorOn = false; }
     scissor(x, y, w, h) { this._scissor = [Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0]; }
-    createBuffer() { return { _buf: true }; }
-    bindBuffer() {}
-    bufferData() {}
+    createBuffer() { return { _buf: true, _data: null }; }
+    bindBuffer(target, buf) {
+      if (target === this.ELEMENT_ARRAY_BUFFER) this._elemBuf = buf || null;
+      else this._arrayBuf = buf || null;
+    }
+    bufferData(target, data) {
+      const buf = target === this.ELEMENT_ARRAY_BUFFER ? this._elemBuf : this._arrayBuf;
+      if (!buf || data == null) return;
+      if (target === this.ELEMENT_ARRAY_BUFFER) {
+        buf._data = data instanceof Uint16Array ? data : new Uint16Array(data);
+      } else {
+        buf._data = data instanceof Float32Array ? data : new Float32Array(data);
+      }
+    }
+    vertexAttribPointer(_idx, size, _type, _norm, stride, offset) {
+      this._attrib = {
+        size: Number(size) || 2,
+        stride: Number(stride) || 0,
+        offset: Number(offset) || 0,
+      };
+    }
+    enableVertexAttribArray() { this._attribOn = true; }
+    disableVertexAttribArray() { this._attribOn = false; }
+    _clipToPx(x, y) {
+      const c = this.canvas;
+      const w = (c && c.width) || 0;
+      const h = (c && c.height) || 0;
+      return [(Number(x) + 1) * 0.5 * w, (Number(y) + 1) * 0.5 * h];
+    }
+    _attribPoint(i) {
+      const data = this._arrayBuf && this._arrayBuf._data;
+      const a = this._attrib || { size: 2, stride: 0, offset: 0 };
+      if (!data) return null;
+      const size = a.size || 2;
+      const strideF = a.stride ? a.stride / 4 : size;
+      const base = (a.offset || 0) / 4 + i * strideF;
+      if (base + 1 >= data.length) return null;
+      return this._clipToPx(data[base], data[base + 1]);
+    }
+    _fillPoly(pts, css) {
+      const c = this.canvas;
+      if (!c || c.__h == null || !pts || pts.length < 3) return;
+      const ring = pts.concat([pts[0]]);
+      D("canvasFillPath", c.__h, JSON.stringify({ r: [], p: [ring] }), css, "none");
+    }
+    _uniformCss() {
+      const u = this._uniform;
+      if (!u) return "#000000";
+      const hex = (n) => Math.max(0, Math.min(255, Math.round(n * 255))).toString(16).padStart(2, "0");
+      return u[3] >= 1 ? ("#" + hex(u[0]) + hex(u[1]) + hex(u[2])) : ("rgba(" + Math.round(u[0] * 255) + "," + Math.round(u[1] * 255) + "," + Math.round(u[2] * 255) + "," + u[3] + ")");
+    }
     createTexture() { return { _tex: true, _w: 0, _h: 0, _b64: "" }; }
     bindTexture(_target, tex) { if (tex) this._tex = tex; }
     texImage2D() {
@@ -9460,20 +9523,48 @@
         tex._b64 = btoa(s);
       }
     }
-    drawArrays() {
+    drawArrays(_mode, first, count) {
       const tex = this._tex;
       const c = this.canvas;
       if (!c || c.__h == null) return;
+      if (this._attribOn && this._arrayBuf && this._arrayBuf._data) {
+        const start = Number(first) || 0;
+        const n = Number(count) || 0;
+        const pts = [];
+        for (let i = 0; i < n; i++) {
+          const p = this._attribPoint(start + i);
+          if (p) pts.push(p);
+        }
+        for (let i = 0; i + 2 < pts.length; i += 3) {
+          this._fillPoly([pts[i], pts[i + 1], pts[i + 2]], this._uniformCss());
+        }
+        return;
+      }
       if (tex && tex._b64) {
         D("canvasPutImageData", c.__h, tex._w, tex._h, tex._b64, 0, 0);
         return;
       }
-      const u = this._uniform;
-      if (u) {
-        const hex = (n) => Math.max(0, Math.min(255, Math.round(n * 255))).toString(16).padStart(2, "0");
-        const css = u[3] >= 1 ? ("#" + hex(u[0]) + hex(u[1]) + hex(u[2])) : ("rgba(" + Math.round(u[0] * 255) + "," + Math.round(u[1] * 255) + "," + Math.round(u[2] * 255) + "," + u[3] + ")");
+      if (this._uniform) {
+        const css = this._uniformCss();
         const [sx, sy, sw, sh] = this._scissorRect();
         D("canvasFillRect", c.__h, sx, sy, sw, sh, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
+      }
+    }
+    drawElements(_mode, count, _type, offset) {
+      const c = this.canvas;
+      if (!c || c.__h == null) return;
+      const idx = this._elemBuf && this._elemBuf._data;
+      if (!idx || !this._attribOn) return;
+      const start = (Number(offset) || 0) / 2;
+      const n = Number(count) || 0;
+      const pts = [];
+      for (let i = 0; i < n; i++) {
+        const vi = idx[start + i];
+        const p = this._attribPoint(vi);
+        if (p) pts.push(p);
+      }
+      for (let i = 0; i + 2 < pts.length; i += 3) {
+        this._fillPoly([pts[i], pts[i + 1], pts[i + 2]], this._uniformCss());
       }
     }
     createShader() { return { _sh: true, _src: "", _ok: false }; }
@@ -9503,6 +9594,8 @@
     }
   }
   Object.defineProperty(WebGLRenderingContext.prototype, Symbol.toStringTag, { value: "WebGLRenderingContext", configurable: true });
+  class WebGL2RenderingContext extends WebGLRenderingContext {}
+  Object.defineProperty(WebGL2RenderingContext.prototype, Symbol.toStringTag, { value: "WebGL2RenderingContext", configurable: true });
 
   class RTCDataChannel extends EventTarget {
     constructor() { throw new TypeError("Illegal constructor"); }
@@ -11451,7 +11544,7 @@
     AudioBuffer, AudioBufferSourceNode, AnalyserNode, BiquadFilterNode,
     DelayNode, DynamicsCompressorNode, StereoPannerNode, MediaStream, MediaStreamTrack, MediaStreamAudioSourceNode,
     PeriodicWave, ConstantSourceNode, ChannelMergerNode, ChannelSplitterNode, WaveShaperNode, ConvolverNode, PannerNode, IIRFilterNode,
-    WebGLRenderingContext, RTCPeerConnection, RTCDataChannel,
+    WebGLRenderingContext, WebGL2RenderingContext, RTCPeerConnection, RTCDataChannel,
     TextEncoderStream, TextDecoderStream,
     CompressionStream, DecompressionStream, CookieStore, cookieStore, ClipboardItem,
     PaymentRequest, PublicKeyCredential, PresentationRequest, EyeDropper, BarcodeDetector, IdleDetector,

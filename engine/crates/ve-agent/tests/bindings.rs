@@ -5360,6 +5360,80 @@ fn webgl_scissor_clips_clear() {
 }
 
 #[test]
+fn webgl_draw_arrays_fills_vertex_triangle() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0.5, -0.5, 0, 0.5]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const inr = new Uint8Array(4);
+              const out = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, inr);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              return { g: inr[1], a: inr[3], og: out[1], oa: out[3], n: buf._data.length };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["n"], 6, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["og"], 0, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+}
+
+#[test]
+fn webgl_draw_elements_and_webgl2_context() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const two = c.getContext("webgl2");
+              const inst = two instanceof WebGL2RenderingContext;
+              two.clearColor(0, 0, 0, 0);
+              two.clear();
+              two.uniform4f(null, 0, 0, 1, 1);
+              const vb = two.createBuffer();
+              two.bindBuffer(two.ARRAY_BUFFER, vb);
+              two.bufferData(two.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0.5, -0.5, 0, 0.5]));
+              const ib = two.createBuffer();
+              two.bindBuffer(two.ELEMENT_ARRAY_BUFFER, ib);
+              two.bufferData(two.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2]));
+              two.enableVertexAttribArray(0);
+              two.vertexAttribPointer(0, 2, two.FLOAT, false, 0, 0);
+              two.drawElements(two.TRIANGLES, 3, two.UNSIGNED_SHORT, 0);
+              const px = new Uint8Array(4);
+              two.readPixels(4, 3, 1, 1, two.RGBA, two.UNSIGNED_BYTE, px);
+              const blocked = document.createElement("canvas");
+              blocked.getContext("2d");
+              return {
+                inst: inst,
+                tag: Object.prototype.toString.call(two),
+                b: px[2],
+                a: px[3],
+                twoNull: blocked.getContext("webgl2") === null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["tag"], "[object WebGL2RenderingContext]", "{v}");
+    assert_eq!(v["b"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["twoNull"], true, "{v}");
+}
+
+#[test]
 fn document_hidden_tracks_visibility_state() {
     let mut page = open(r#"<body></body>"#);
     let v = page
