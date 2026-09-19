@@ -9,7 +9,9 @@
 //! [`FloatContext`]: crate::floats::FloatContext
 
 use ve_core::{NodeId, Point, Rect};
-use ve_style::{ComputedStyle, Direction, TextAlign, TextAlignLast, TextWrap};
+use ve_style::{
+    ComputedStyle, Direction, HangingPunctuation, TextAlign, TextAlignLast, TextWrap,
+};
 
 use crate::block::{
     ContainingBlock, Forced, LayoutCtx, layout_box_at, layout_float, resolve_margins,
@@ -368,7 +370,17 @@ fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>,
             continue;
         }
         let pen = state.pen();
-        let rect = Rect::new(pen.x, pen.y, width.max(0.0), shaped.height);
+        let mut x = pen.x;
+        if style.hanging_punctuation == HangingPunctuation::First
+            && state.line.is_empty()
+            && piece.starts_with(|c: char| matches!(c, '"' | '\'' | '“' | '‘' | '«' | '('))
+        {
+            if let Some(mark) = piece.chars().next() {
+                let mut buf = [0u8; 4];
+                x -= state.ctx.shaper.measure(mark.encode_utf8(&mut buf), style);
+            }
+        }
+        let rect = Rect::new(x, pen.y, width.max(0.0), shaped.height);
         union = union.union(&rect);
         state.push_fragment(Fragment {
             node: child.node,

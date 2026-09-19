@@ -352,8 +352,8 @@ fn place_marker(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) {
         |l| l.rect.height(),
     );
     let x = match marker.position {
-        ListStylePosition::Outside => bx.content.x() - width,
-        ListStylePosition::Inside => bx.content.x(),
+        ListStylePosition::Outside => bx.content.x() - width - style.marker_offset,
+        ListStylePosition::Inside => bx.content.x() + style.marker_offset,
     };
     let rect = Rect::new(x, bx.content.y(), width, line_height);
     bx.marker_fragment = Some(Fragment {

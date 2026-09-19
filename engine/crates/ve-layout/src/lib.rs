@@ -1822,6 +1822,78 @@ mod tests {
     }
 
     #[test]
+    fn text_size_adjust_doubles_advance() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:inline-block}\
+             #a{text-size-adjust:100%} #b{text-size-adjust:200%}</style>\
+             <span id=a>aaaa</span><span id=b>aaaa</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (b.width() - a.width() * 2.0).abs() < 1.0,
+            "200% is double, a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn hanging_punctuation_shifts_first_quote() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{width:200px;margin:0}\
+             #b{hanging-punctuation:first}</style>\
+             <p id=a>\"aaaa</p><p id=b>\"aaaa</p>",
+            400.0,
+        );
+        let a = engine.select_one(&doc, "#a").unwrap();
+        let b = engine.select_one(&doc, "#b").unwrap();
+        let ax = tree.root.find(a).unwrap().lines[0].fragments[0].rect.x();
+        let bx = tree.root.find(b).unwrap().lines[0].fragments[0].rect.x();
+        assert!(
+            bx < ax - 1.0,
+            "hanging quote sits left of the line box, a={ax} b={bx}"
+        );
+    }
+
+    #[test]
+    fn marker_offset_shifts_outside_marker() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:list-item;list-style-position:outside}\
+             #b{marker-offset:20px}</style>\
+             <div id=a>a</div><div id=b>b</div>",
+            400.0,
+        );
+        let a = engine.select_one(&doc, "#a").unwrap();
+        let b = engine.select_one(&doc, "#b").unwrap();
+        let am = tree.root.find(a).unwrap().marker_fragment.as_ref().unwrap();
+        let bm = tree.root.find(b).unwrap().marker_fragment.as_ref().unwrap();
+        assert!(
+            bm.rect.x() < am.rect.x() - 10.0,
+            "marker-offset moves the marker left, a={} b={}",
+            am.rect.x(),
+            bm.rect.x()
+        );
+    }
+
+    #[test]
+    fn box_orient_vertical_stacks_flex_children() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{display:flex;box-orient:vertical;width:100px}\
+             #c>div{width:40px;height:10px}</style>\
+             <div id=c><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.x() - b.x()).abs() < 1.0 && b.y() > a.y() + 5.0,
+            "box-orient:vertical stacks, a={a:?} b={b:?}"
+        );
+    }
+
+    #[test]
     fn break_before_column_starts_new_row() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #c{column-count:2;column-gap:0;width:200px}\

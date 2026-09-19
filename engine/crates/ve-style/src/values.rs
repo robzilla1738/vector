@@ -1880,6 +1880,106 @@ keyword_enum! {
     }
 }
 
+keyword_enum! {
+    /// `hanging-punctuation`.
+    HangingPunctuation {
+        /// No hanging.
+        None = "none",
+        /// Hang the first mark.
+        First = "first",
+        /// Hang the last mark.
+        Last = "last",
+    }
+}
+
+keyword_enum! {
+    /// `text-emphasis` (first keyword).
+    TextEmphasis {
+        /// No marks.
+        None = "none",
+        /// Filled dot.
+        Dot = "dot",
+        /// Filled circle.
+        Filled = "filled",
+        /// Circle.
+        Circle = "circle",
+    }
+}
+
+keyword_enum! {
+    /// `-webkit-box-orient`.
+    BoxOrient {
+        /// Row.
+        Horizontal = "horizontal",
+        /// Column.
+        Vertical = "vertical",
+        /// Inline axis.
+        InlineAxis = "inline-axis",
+        /// Block axis.
+        BlockAxis = "block-axis",
+    }
+}
+
+keyword_enum! {
+    /// `transform-box`.
+    TransformBox {
+        /// Border box.
+        BorderBox = "border-box",
+        /// Fill / content box.
+        FillBox = "fill-box",
+        /// Content box.
+        ContentBox = "content-box",
+        /// Stroke box.
+        StrokeBox = "stroke-box",
+        /// View box.
+        ViewBox = "view-box",
+    }
+}
+
+keyword_enum! {
+    /// `vector-effect`.
+    VectorEffect {
+        /// Scale with transforms.
+        None = "none",
+        /// Keep stroke width constant.
+        NonScalingStroke = "non-scaling-stroke",
+    }
+}
+
+keyword_enum! {
+    /// `speak`.
+    Speak {
+        /// Speak.
+        Normal = "normal",
+        /// Silent.
+        None = "none",
+        /// Spell out.
+        SpellOut = "spell-out",
+    }
+}
+
+keyword_enum! {
+    /// `forced-color-adjust`.
+    ForcedColorAdjust {
+        /// Allow forced colors.
+        Auto = "auto",
+        /// Keep author colors.
+        None = "none",
+    }
+}
+
+impl TextEmphasis {
+    /// Mark drawn above each character, if any.
+    #[must_use]
+    pub fn mark(self) -> Option<char> {
+        match self {
+            Self::None => None,
+            Self::Dot | Self::Filled => Some('•'),
+            Self::Circle => Some('◦'),
+        }
+    }
+}
+
 /// A specified length with its unit. Absolute units are normalised to pixels
 /// at parse time; relative units are resolved during computation.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

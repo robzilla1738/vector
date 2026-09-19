@@ -503,6 +503,21 @@ impl DisplayList {
                         style: style.font_style,
                         family: style.font_family.clone(),
                     }));
+                    if let Some(mark) = style.text_emphasis.mark() {
+                        let marks: String = text.chars().map(|_| mark).collect();
+                        list.push(DisplayItem::Text(TextRun {
+                            origin: Point::new(
+                                item.rect.x(),
+                                item.rect.y() + item.baseline - style.font_size * 0.55,
+                            ),
+                            text: marks,
+                            size: style.font_size * 0.45,
+                            color: style.color,
+                            weight: style.font_weight,
+                            style: style.font_style,
+                            family: style.font_family.clone(),
+                        }));
+                    }
                     if style.text_decoration_line == TextDecorationLine::Underline {
                         let under = if style.text_underline_position
                             == ve_style::TextUnderlinePosition::Under
@@ -557,10 +572,17 @@ impl DisplayList {
                         }
                     }
                     let stroke = style.stroke.resolve(style.color);
-                    if !stroke.is_transparent() && style.stroke_width > 0.0 {
+                    let stroke_width = if style.vector_effect
+                        == ve_style::VectorEffect::NonScalingStroke
+                    {
+                        style.stroke_width / style.zoom.max(0.01)
+                    } else {
+                        style.stroke_width
+                    };
+                    if !stroke.is_transparent() && stroke_width > 0.0 {
                         list.push(DisplayItem::Border {
                             rect: item.rect,
-                            widths: Edges::uniform(style.stroke_width),
+                            widths: Edges::uniform(stroke_width),
                             color: stroke,
                         });
                     }
@@ -1220,6 +1242,45 @@ mod tests {
                 DisplayItem::Rect { color, .. } if *color == Rgba::rgb(255, 0, 0)
             )),
             "back face should be hidden: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_text_emphasis_marks() {
+        let html = "<style>body{margin:0;font-size:16px} #t{text-emphasis:dot}</style><p id=t>Hi</p>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#t").unwrap()[0];
+        assert_eq!(styles.style(id).text_emphasis, ve_style::TextEmphasis::Dot);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::Text(run) if run.text.contains('•'))),
+            "text-emphasis marks missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_non_scaling_stroke_ignores_zoom() {
+        let html = "<style>body{margin:0} #t{width:10px;height:10px;stroke:red;stroke-width:4px;zoom:2;vector-effect:non-scaling-stroke}</style><div id=t></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Border { widths, .. } if (widths.top - 2.0).abs() < 0.1
+            )),
+            "non-scaling stroke should be 4/2=2, got {:?}",
             list.items()
         );
     }

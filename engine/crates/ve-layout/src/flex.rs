@@ -244,11 +244,14 @@ fn container_style(
             width: length(content_width),
             height: content_height.map_or(auto(), length),
         },
-        flex_direction: match style.flex_direction {
-            CssDir::Row => FlexDirection::Row,
-            CssDir::RowReverse => FlexDirection::RowReverse,
-            CssDir::Column => FlexDirection::Column,
-            CssDir::ColumnReverse => FlexDirection::ColumnReverse,
+        flex_direction: match (style.box_orient, style.flex_direction) {
+            (ve_style::BoxOrient::Vertical | ve_style::BoxOrient::BlockAxis, _) => {
+                FlexDirection::Column
+            }
+            (_, CssDir::Row) => FlexDirection::Row,
+            (_, CssDir::RowReverse) => FlexDirection::RowReverse,
+            (_, CssDir::Column) => FlexDirection::Column,
+            (_, CssDir::ColumnReverse) => FlexDirection::ColumnReverse,
         },
         flex_wrap: match style.flex_wrap {
             CssWrap::NoWrap => FlexWrap::NoWrap,

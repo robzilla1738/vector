@@ -27,7 +27,7 @@ use crate::values::{
     FontStyle, FontWeight, GridLine, GridTemplateAreas, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
     AnimationDirection, AnimationFillMode, AnimationPlayState,
-    Appearance, BackfaceVisibility, BackgroundAttachment, BreakBefore, BreakInside, ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, FontKerning, FontSmoothing, FontStretch, FontVariant, FontVariantLigatures, FontVariantNumeric, GridAutoFlow, Hyphens, ImageRendering, Isolation, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, OverscrollBehavior, PointerEvents, Position, PositionArea, PreferredColorScheme, Rgba, ScrollBehavior, ScrollSnapAlign, ScrollSnapType, TextAlignLast, TextDecorationStyle, TextRendering, TextUnderlinePosition, TextWrap, TouchAction, TransformStyle,
+    Appearance, BackfaceVisibility, BackgroundAttachment, BoxOrient, BreakBefore, BreakInside, ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, FontKerning, FontSmoothing, FontStretch, FontVariant, FontVariantLigatures, FontVariantNumeric, ForcedColorAdjust, GridAutoFlow, HangingPunctuation, Hyphens, ImageRendering, Isolation, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, OverscrollBehavior, PointerEvents, Position, PositionArea, PreferredColorScheme, Rgba, ScrollBehavior, ScrollSnapAlign, ScrollSnapType, Speak, TextAlignLast, TextDecorationStyle, TextEmphasis, TextRendering, TextUnderlinePosition, TextWrap, TouchAction, TransformBox, TransformStyle, VectorEffect,
     SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
@@ -933,6 +933,16 @@ mod conv {
         }
     }
 
+    pub fn text_size_adjust(v: &SpecifiedValue, _: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Keyword(k) if matches!(k.as_str(), "none" | "auto") => Some(1.0),
+            SpecifiedValue::Percentage(p) if *p > 0.0 => Some(*p / 100.0),
+            SpecifiedValue::Number(n) if *n > 0.0 => Some(*n),
+            SpecifiedValue::Integer(i) if *i > 0 => Some(*i as f32),
+            _ => None,
+        }
+    }
+
     pub fn offset_path(v: &SpecifiedValue, _: &ConvertContext) -> Option<OffsetPath> {
         match v {
             SpecifiedValue::Keyword(k) if k == "none" => Some(OffsetPath::None),
@@ -1036,6 +1046,9 @@ macro_rules! property_table {
                     "page-break-before" => Some(Self::BreakBefore),
                     "page-break-inside" => Some(Self::BreakInside),
                     "page-break-after" => Some(Self::BreakAfter),
+                    "-webkit-text-size-adjust" => Some(Self::TextSizeAdjust),
+                    "-webkit-box-orient" => Some(Self::BoxOrient),
+                    "-webkit-tap-highlight-color" => Some(Self::TapHighlightColor),
                     _ if lower.starts_with("--") && lower.len() > 2 => Some(Self::Custom(name.to_owned())),
                     _ => None,
                 }
@@ -1600,6 +1613,30 @@ property_table! {
     Perspective: "perspective" => perspective: f32 = 0.0, inherited = false, syntax = Single, convert = conv::perspective;
     /// `backface-visibility`
     BackfaceVisibility: "backface-visibility" => backface_visibility: BackfaceVisibility = BackfaceVisibility::Visible, inherited = false, syntax = Single, convert = conv::kw::<BackfaceVisibility>;
+    /// `text-size-adjust` (scale; `none`/`auto` are 1)
+    TextSizeAdjust: "text-size-adjust" => text_size_adjust: f32 = 1.0, inherited = true, syntax = Single, convert = conv::text_size_adjust;
+    /// `hanging-punctuation`
+    HangingPunctuation: "hanging-punctuation" => hanging_punctuation: HangingPunctuation = HangingPunctuation::None, inherited = true, syntax = Single, convert = conv::kw::<HangingPunctuation>;
+    /// `marker-offset` (pixels)
+    MarkerOffset: "marker-offset" => marker_offset: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `text-emphasis`
+    TextEmphasis: "text-emphasis" => text_emphasis: TextEmphasis = TextEmphasis::None, inherited = true, syntax = Single, convert = conv::kw::<TextEmphasis>;
+    /// `-webkit-box-orient`
+    BoxOrient: "box-orient" => box_orient: BoxOrient = BoxOrient::Horizontal, inherited = false, syntax = Single, convert = conv::kw::<BoxOrient>;
+    /// `transform-box`
+    TransformBox: "transform-box" => transform_box: TransformBox = TransformBox::BorderBox, inherited = false, syntax = Single, convert = conv::kw::<TransformBox>;
+    /// `vector-effect`
+    VectorEffect: "vector-effect" => vector_effect: VectorEffect = VectorEffect::None, inherited = false, syntax = Single, convert = conv::kw::<VectorEffect>;
+    /// `font-feature-settings` (first ident)
+    FontFeatureSettings: "font-feature-settings" => font_feature_settings: String = String::from("normal"), inherited = true, syntax = Single, convert = conv::cursor;
+    /// `-webkit-tap-highlight-color`
+    TapHighlightColor: "tap-highlight-color" => tap_highlight_color: Color = Color::CurrentColor, inherited = true, syntax = Single, convert = conv::color;
+    /// `speak`
+    Speak: "speak" => speak: Speak = Speak::Normal, inherited = true, syntax = Single, convert = conv::kw::<Speak>;
+    /// `forced-color-adjust`
+    ForcedColorAdjust: "forced-color-adjust" => forced_color_adjust: ForcedColorAdjust = ForcedColorAdjust::Auto, inherited = false, syntax = Single, convert = conv::kw::<ForcedColorAdjust>;
+    /// `view-transition-name` (`none` is empty)
+    ViewTransitionName: "view-transition-name" => view_transition_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
 }
 
 impl ComputedStyle {
@@ -1679,32 +1716,19 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[];
 /// Declarations of these count as `deferred` rather than `unknown`.
 pub const DEFERRED_PROPERTIES: &[&str] = &[
     "border-image",
-    "font-feature-settings",
     "font-display",
     "font-optical-sizing",
-    "text-size-adjust",
-    "-webkit-text-size-adjust",
-    "-webkit-tap-highlight-color",
-    "speak",
     "src",
     "unicode-range",
-    "transform-box",
     "perspective-origin",
-    "forced-color-adjust",
     "print-color-adjust",
     "text-justify",
-    "hanging-punctuation",
-    "-webkit-box-orient",
-    "view-transition-name",
-    "text-emphasis",
     "ruby-position",
     "font-synthesis",
     "font-language-override",
     "font-palette",
     "math-style",
     "math-depth",
-    "marker-offset",
-    "vector-effect",
 ];
 
 // ---------------------------------------------------------------------------
@@ -3834,11 +3858,24 @@ mod tests {
         ok("perspective", "500px");
         ok("perspective", "none");
         ok("backface-visibility", "hidden");
+        ok("text-size-adjust", "200%");
+        ok("-webkit-text-size-adjust", "none");
+        ok("hanging-punctuation", "first");
+        ok("marker-offset", "8px");
+        ok("text-emphasis", "dot");
+        ok("-webkit-box-orient", "vertical");
+        ok("transform-box", "fill-box");
+        ok("vector-effect", "non-scaling-stroke");
+        ok("font-feature-settings", "normal");
+        ok("-webkit-tap-highlight-color", "red");
+        ok("speak", "none");
+        ok("forced-color-adjust", "none");
+        ok("view-transition-name", "card");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 209);
+        assert_eq!(PropertyId::ALL.len(), 221);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
