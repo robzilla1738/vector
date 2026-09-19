@@ -38,6 +38,12 @@ fn arg_bool(args: &[JsValue], i: usize) -> bool {
 fn arg_f64(args: &[JsValue], i: usize) -> f64 {
     args.get(i).and_then(JsValue::as_f64).unwrap_or(0.0)
 }
+fn arg_alpha(args: &[JsValue], i: usize) -> f32 {
+    args.get(i)
+        .and_then(JsValue::as_f64)
+        .unwrap_or(1.0)
+        .clamp(0.0, 1.0) as f32
+}
 fn obj(pairs: &[(&str, JsValue)]) -> JsValue {
     JsValue::Object(
         pairs
@@ -2083,6 +2089,7 @@ pub(crate) fn host_call(
                 arg_f64(args, 3) as i32,
                 arg_f64(args, 4) as i32,
                 &arg_str(args, 5),
+                arg_alpha(args, 6),
             );
             Ok(JsValue::Number(ops as f64))
         }
@@ -2150,12 +2157,8 @@ pub(crate) fn host_call(
         "canvasDrawImage" => {
             let id = live(page, args, 0)?;
             let src = live(page, args, 1)?;
-            let ops = page.canvas_draw_image(
-                id,
-                src,
-                arg_f64(args, 2) as i32,
-                arg_f64(args, 3) as i32,
-            );
+            let ops =
+                page.canvas_draw_image(id, src, arg_f64(args, 2) as i32, arg_f64(args, 3) as i32);
             Ok(JsValue::Number(ops as f64))
         }
         "canvasFillPath" | "canvasStrokePath" => {

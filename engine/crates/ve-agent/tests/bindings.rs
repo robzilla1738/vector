@@ -805,6 +805,46 @@ fn canvas_draw_image_blits_source_pixels() {
 }
 
 #[test]
+fn canvas_save_restore_translate_and_global_alpha() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.globalAlpha = 0.5;
+              ctx.save();
+              ctx.translate(4, 0);
+              ctx.globalAlpha = 1;
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 2, 2);
+              ctx.restore();
+              ctx.fillRect(0, 0, 2, 2);
+              var left = ctx.getImageData(0, 0, 1, 1).data;
+              var right = ctx.getImageData(4, 0, 1, 1).data;
+              var mid = ctx.getImageData(2, 0, 1, 1).data;
+              return {
+                la: left[3], lr: left[0],
+                rg: right[1], ra: right[3],
+                ma: mid[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["lr"], 255, "{v}");
+    assert!(
+        v["la"].as_u64().unwrap_or(0) > 100 && v["la"].as_u64().unwrap_or(0) < 160,
+        "half alpha: {v}"
+    );
+    assert_eq!(v["rg"], 255, "{v}");
+    assert_eq!(v["ra"], 255, "{v}");
+    assert_eq!(v["ma"], 0, "{v}");
+}
+
+#[test]
 fn canvas_stroke_path_records_ops() {
     let mut page = open(r#"<body></body>"#);
     let v = page

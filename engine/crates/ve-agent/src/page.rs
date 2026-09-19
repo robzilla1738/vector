@@ -825,6 +825,16 @@ fn sample_linear_gradient(
     ordered[last].1
 }
 
+fn canvas_alpha(color: [u8; 4], alpha: f32) -> [u8; 4] {
+    let a = alpha.clamp(0.0, 1.0);
+    [
+        color[0],
+        color[1],
+        color[2],
+        (f32::from(color[3]) * a).round() as u8,
+    ]
+}
+
 fn lerp_rgba(a: [u8; 4], b: [u8; 4], t: f32) -> [u8; 4] {
     [
         (f32::from(a[0]) + (f32::from(b[0]) - f32::from(a[0])) * t).round() as u8,
@@ -904,7 +914,15 @@ impl CanvasSurface {
         self.fill_rect(x + w - 1, y, 1, h, color);
     }
 
-    fn fill_rect_styled(&mut self, x: i32, y: i32, w: i32, h: i32, style: &CanvasStyle) {
+    fn fill_rect_styled(
+        &mut self,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+        style: &CanvasStyle,
+        alpha: f32,
+    ) {
         if w <= 0 || h <= 0 {
             self.ops += 1;
             return;
@@ -919,7 +937,7 @@ impl CanvasSurface {
         let y0 = y0.min(y1);
         for row in y0..y1 {
             for col in x0..x1 {
-                let color = style.sample(col as f32 + 0.5, row as f32 + 0.5);
+                let color = canvas_alpha(style.sample(col as f32 + 0.5, row as f32 + 0.5), alpha);
                 let i = (row * self.width + col) as usize * 4;
                 self.pixels[i] = color[0];
                 self.pixels[i + 1] = color[1];
@@ -931,7 +949,7 @@ impl CanvasSurface {
     }
 
     fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: [u8; 4]) {
-        self.fill_rect_styled(x, y, w, h, &CanvasStyle::Solid(color));
+        self.fill_rect_styled(x, y, w, h, &CanvasStyle::Solid(color), 1.0);
     }
 
     fn clear_rect(&mut self, x: i32, y: i32, w: i32, h: i32) {
@@ -1643,12 +1661,13 @@ impl Page {
         w: i32,
         h: i32,
         color: &str,
+        alpha: f32,
     ) -> u64 {
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.fill_rect_styled(x, y, w, h, &parse_canvas_style(color));
+        c.fill_rect_styled(x, y, w, h, &parse_canvas_style(color), alpha);
         c.ops
     }
 
