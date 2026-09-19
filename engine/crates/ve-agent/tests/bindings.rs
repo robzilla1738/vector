@@ -4687,6 +4687,127 @@ fn crypto_subtle_pbkdf2_derives_sha256_bits() {
 }
 
 #[test]
+fn streams_and_url_pattern_are_real_classes() {
+    let mut page = open("<title>st</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__st = null;
+          const t = new TransformStream({
+            transform(chunk, ctrl) { ctrl.enqueue(chunk + 1); }
+          });
+          const w = t.writable.getWriter();
+          const r = t.readable.getReader();
+          w.write(2).then(function () { return w.close(); }).then(function () {
+            return r.read();
+          }).then(function (v) {
+            const p = new URLPattern({ pathname: "/books/:id" });
+            window.__st = {
+              stream: new ReadableStream() instanceof ReadableStream,
+              writable: t.writable instanceof WritableStream,
+              transform: t instanceof TransformStream,
+              out: v.value,
+              url: p.test("https://s.test/books/7") && p.exec("https://s.test/books/7").pathname.input === "/books/7"
+            };
+          }).catch(function (e) { window.__st = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__st").unwrap();
+    assert_eq!(v["stream"], true, "{v}");
+    assert_eq!(v["writable"], true, "{v}");
+    assert_eq!(v["transform"], true, "{v}");
+    assert_eq!(v["out"], 3, "{v}");
+    assert_eq!(v["url"], true, "{v}");
+}
+
+#[test]
+fn audio_context_creates_oscillator_and_gain() {
+    let mut page = open("<title>au</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain).connect(ctx.destination);
+              osc.start();
+              return {
+                inst: ctx instanceof AudioContext,
+                osc: osc instanceof OscillatorNode,
+                type: osc.type,
+                freq: osc.frequency.value,
+                dest: osc._dest === gain && gain._dest === ctx.destination,
+                state: ctx.state,
+                tag: Object.prototype.toString.call(ctx)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["osc"], true, "{v}");
+    assert_eq!(v["type"], "sine", "{v}");
+    assert_eq!(v["freq"], 440, "{v}");
+    assert_eq!(v["dest"], true, "{v}");
+    assert_eq!(v["state"], "running", "{v}");
+    assert_eq!(v["tag"], "[object AudioContext]", "{v}");
+}
+
+#[test]
+fn canvas_get_context_webgl_reports_version() {
+    let mut page = open("<title>gl</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.createElement("canvas");
+              const gl = c.getContext("webgl");
+              return {
+                inst: gl instanceof WebGLRenderingContext,
+                version: gl.getParameter(gl.VERSION),
+                vendor: gl.getParameter(gl.VENDOR),
+                again: c.getContext("webgl") === gl,
+                two: c.getContext("2d") === null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["version"], "WebGL 1.0 (Vector)", "{v}");
+    assert_eq!(v["vendor"], "Vector", "{v}");
+    assert_eq!(v["again"], true, "{v}");
+    assert_eq!(v["two"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_generate_key_round_trips_aes_cbc() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__gen = null;
+          const iv = new Uint8Array(16);
+          const pt = new Uint8Array(16);
+          for (let i = 0; i < 16; i++) pt[i] = i + 1;
+          crypto.subtle.generateKey({ name: "AES-CBC" }, false, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.encrypt({ name: "AES-CBC", iv: iv }, key, pt).then(function (ct) {
+              return crypto.subtle.decrypt({ name: "AES-CBC", iv: iv }, key, ct).then(function (back) {
+                const plain = new Uint8Array(back);
+                window.__gen = {
+                  type: key.type,
+                  round: Array.from(plain).every(function (b, i) { return b === pt[i]; })
+                };
+              });
+            });
+          }).catch(function (e) { window.__gen = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__gen").unwrap();
+    assert_eq!(v["type"], "secret", "{v}");
+    assert_eq!(v["round"], true, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

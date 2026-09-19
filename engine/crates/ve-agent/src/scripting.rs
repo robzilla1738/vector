@@ -557,6 +557,34 @@ pub const PRELUDE: &str = r#"(() => {
         }
         return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
       },
+      generateKey(algorithm, extractable, usages) {
+        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
+        const rand = (n) => {
+          const a = new Uint8Array(n);
+          cryptoObj.getRandomValues(a);
+          return a;
+        };
+        if (name === "AESGCM" || name === "AESCBC") {
+          return Promise.resolve({
+            type: "secret",
+            extractable: !!extractable,
+            algorithm: { name: name === "AESCBC" ? "AES-CBC" : "AES-GCM", length: 128 },
+            usages: usages || [],
+            _raw: rand(16),
+          });
+        }
+        if (name === "HMAC") {
+          const hash = String(algorithm.hash && algorithm.hash.name ? algorithm.hash.name : algorithm.hash || "SHA-256");
+          return Promise.resolve({
+            type: "secret",
+            extractable: !!extractable,
+            algorithm: { name: "HMAC", hash: { name: hash } },
+            usages: usages || [],
+            _raw: rand(32),
+          });
+        }
+        return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+      },
       sign(algorithm, key, data) {
         const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).replace(/-/g, "").toUpperCase();
         if (name !== "HMAC" || !key || !key._raw) {

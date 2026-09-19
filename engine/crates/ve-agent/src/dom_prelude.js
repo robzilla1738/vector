@@ -3823,7 +3823,7 @@
       }
       const kind = String(type).toLowerCase();
       if (kind === "2d") {
-        if (this._bitmapCtx) return null;
+        if (this._bitmapCtx || this._webgl) return null;
         if (!this._ctx2d) this._ctx2d = new CanvasRenderingContext2D(IDL_INTERNAL, this);
         return this._ctx2d;
       }
@@ -3834,6 +3834,11 @@
           this._bitmapCtx._canvas = this;
         }
         return this._bitmapCtx;
+      }
+      if (kind === "webgl" || kind === "experimental-webgl") {
+        if (this._ctx2d || this._bitmapCtx) return null;
+        if (!this._webgl) this._webgl = new WebGLRenderingContext(this);
+        return this._webgl;
       }
       return null;
     }
@@ -8523,6 +8528,254 @@
   }
   XMLHttpRequest.UNSENT = 0; XMLHttpRequest.OPENED = 1; XMLHttpRequest.HEADERS_RECEIVED = 2; XMLHttpRequest.LOADING = 3; XMLHttpRequest.DONE = 4;
 
+  class ReadableStream {
+    constructor(underlyingSource) {
+      this._locked = false;
+      this._queue = [];
+      this._closed = false;
+      this._error = null;
+      this._waiters = [];
+      this._onRead = null;
+      const self = this;
+      const ctrl = {
+        enqueue(chunk) {
+          if (self._waiters.length) self._waiters.shift().res({ done: false, value: chunk });
+          else self._queue.push(chunk);
+        },
+        close() {
+          self._closed = true;
+          while (self._waiters.length) self._waiters.shift().res({ done: true, value: undefined });
+        },
+        error(err) {
+          self._error = err;
+          while (self._waiters.length) self._waiters.shift().rej(err);
+        },
+      };
+      if (underlyingSource && typeof underlyingSource.start === "function") {
+        underlyingSource.start(ctrl);
+      }
+    }
+    get locked() { return this._locked; }
+    getReader() {
+      if (this._locked) throw new TypeError("ReadableStream is locked");
+      this._locked = true;
+      const self = this;
+      return {
+        read() {
+          if (typeof self._onRead === "function") self._onRead();
+          if (self._error) return Promise.reject(self._error);
+          if (self._queue.length) return Promise.resolve({ done: false, value: self._queue.shift() });
+          if (self._closed) return Promise.resolve({ done: true, value: undefined });
+          return new Promise((res, rej) => self._waiters.push({ res, rej }));
+        },
+        cancel() {
+          if (typeof self._onRead === "function") self._onRead();
+          self._closed = true;
+          self._queue.length = 0;
+          return Promise.resolve();
+        },
+        releaseLock() { self._locked = false; },
+      };
+    }
+    cancel() {
+      this._closed = true;
+      this._queue.length = 0;
+      return Promise.resolve();
+    }
+  }
+  Object.defineProperty(ReadableStream.prototype, Symbol.toStringTag, { value: "ReadableStream", configurable: true });
+
+  class WritableStream {
+    constructor(underlyingSink) {
+      this._sink = underlyingSink || {};
+      this._locked = false;
+      this._closed = false;
+      this._chunks = [];
+    }
+    get locked() { return this._locked; }
+    getWriter() {
+      if (this._locked) throw new TypeError("WritableStream is locked");
+      this._locked = true;
+      const self = this;
+      return {
+        write(chunk) {
+          self._chunks.push(chunk);
+          if (typeof self._sink.write === "function") return Promise.resolve(self._sink.write(chunk));
+          return Promise.resolve();
+        },
+        close() {
+          self._closed = true;
+          if (typeof self._sink.close === "function") return Promise.resolve(self._sink.close());
+          return Promise.resolve();
+        },
+        abort() {
+          self._closed = true;
+          if (typeof self._sink.abort === "function") return Promise.resolve(self._sink.abort());
+          return Promise.resolve();
+        },
+        releaseLock() { self._locked = false; },
+      };
+    }
+  }
+  Object.defineProperty(WritableStream.prototype, Symbol.toStringTag, { value: "WritableStream", configurable: true });
+
+  class TransformStream {
+    constructor(transformer) {
+      const t = transformer || {};
+      let readableCtrl;
+      this.readable = new ReadableStream({
+        start(c) { readableCtrl = c; },
+      });
+      this.writable = new WritableStream({
+        write(chunk) {
+          if (typeof t.transform === "function") {
+            t.transform(chunk, { enqueue(v) { readableCtrl.enqueue(v); } });
+          } else {
+            readableCtrl.enqueue(chunk);
+          }
+        },
+        close() {
+          if (typeof t.flush === "function") {
+            t.flush({ enqueue(v) { readableCtrl.enqueue(v); } });
+          }
+          readableCtrl.close();
+        },
+      });
+    }
+  }
+  Object.defineProperty(TransformStream.prototype, Symbol.toStringTag, { value: "TransformStream", configurable: true });
+
+  class URLPattern {
+    constructor(input, baseURL) {
+      if (input && typeof input === "object") {
+        this.protocol = input.protocol == null ? "*" : String(input.protocol);
+        this.hostname = input.hostname == null ? "*" : String(input.hostname);
+        this.pathname = input.pathname == null ? "*" : String(input.pathname);
+        this.search = input.search == null ? "*" : String(input.search);
+        this.hash = input.hash == null ? "*" : String(input.hash);
+      } else {
+        this.protocol = "*";
+        this.hostname = "*";
+        this.pathname = "*";
+        this.search = "*";
+        this.hash = "*";
+        try {
+          const u = new URL(String(input || "*"), baseURL || undefined);
+          this.protocol = u.protocol.replace(":", "") || "*";
+          this.hostname = u.hostname || "*";
+          this.pathname = u.pathname || "*";
+          this.search = u.search || "*";
+          this.hash = u.hash || "*";
+        } catch (e) {
+          this.pathname = String(input || "*");
+        }
+      }
+    }
+    _glob(pat) {
+      const s = String(pat == null ? "*" : pat);
+      const esc = s.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/:([A-Za-z0-9_]+)/g, "([^/]+)");
+      return new RegExp("^" + esc + "$");
+    }
+    test(input, baseURL) { return this.exec(input, baseURL) != null; }
+    exec(input, baseURL) {
+      let u;
+      try {
+        if (typeof input === "string") u = new URL(input, baseURL || undefined);
+        else if (input && typeof input === "object") u = new URL(String(input.pathname || "/"), "https://" + (input.hostname || "example.com"));
+        else return null;
+      } catch (e) { return null; }
+      const proto = u.protocol.replace(":", "");
+      if (this.protocol !== "*" && this.protocol !== proto) return null;
+      if (!this._glob(this.hostname).test(u.hostname)) return null;
+      if (!this._glob(this.pathname).test(u.pathname)) return null;
+      return {
+        protocol: { input: proto, groups: {} },
+        hostname: { input: u.hostname, groups: {} },
+        pathname: { input: u.pathname, groups: {} },
+        search: { input: u.search, groups: {} },
+        hash: { input: u.hash, groups: {} },
+      };
+    }
+  }
+  Object.defineProperty(URLPattern.prototype, Symbol.toStringTag, { value: "URLPattern", configurable: true });
+
+  class AudioNode {
+    constructor(ctx) {
+      this.context = ctx;
+      this.numberOfInputs = 1;
+      this.numberOfOutputs = 1;
+    }
+    connect(dest) { this._dest = dest; return dest; }
+    disconnect() { this._dest = null; }
+  }
+  class OscillatorNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.type = "sine";
+      this.frequency = { value: 440 };
+      this._started = false;
+    }
+    start() { this._started = true; }
+    stop() { this._started = false; }
+  }
+  class GainNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.gain = { value: 1 };
+    }
+  }
+  class AudioDestinationNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.maxChannelCount = 2;
+      this.numberOfInputs = 1;
+      this.numberOfOutputs = 0;
+    }
+  }
+  class AudioContext extends EventTarget {
+    constructor() {
+      super();
+      this.state = "running";
+      this.sampleRate = 44100;
+      this.currentTime = 0;
+      this.destination = new AudioDestinationNode(this);
+    }
+    createOscillator() { return new OscillatorNode(this); }
+    createGain() { return new GainNode(this); }
+    resume() { this.state = "running"; return Promise.resolve(); }
+    suspend() { this.state = "suspended"; return Promise.resolve(); }
+    close() { this.state = "closed"; return Promise.resolve(); }
+  }
+  Object.defineProperty(AudioContext.prototype, Symbol.toStringTag, { value: "AudioContext", configurable: true });
+
+  class WebGLRenderingContext {
+    constructor(canvas) {
+      this.canvas = canvas;
+      this.drawingBufferWidth = canvas.width;
+      this.drawingBufferHeight = canvas.height;
+      this.COLOR_BUFFER_BIT = 16384;
+      this.DEPTH_BUFFER_BIT = 256;
+      this.VERSION = 7938;
+      this.VENDOR = 7936;
+      this.RENDERER = 7937;
+      this._clear = [0, 0, 0, 0];
+    }
+    getParameter(p) {
+      if (p === this.VERSION) return "WebGL 1.0 (Vector)";
+      if (p === this.VENDOR) return "Vector";
+      if (p === this.RENDERER) return "Vector Software";
+      return null;
+    }
+    getExtension() { return null; }
+    getSupportedExtensions() { return []; }
+    clearColor(r, g, b, a) { this._clear = [r, g, b, a]; }
+    clear() {}
+    viewport() {}
+    enable() {}
+    disable() {}
+  }
+  Object.defineProperty(WebGLRenderingContext.prototype, Symbol.toStringTag, { value: "WebGLRenderingContext", configurable: true });
+
   function responseFrom(r) {
     let bodyUsed = false;
     const textBody = r.body;
@@ -8565,6 +8818,7 @@
         };
       },
     };
+    try { Object.setPrototypeOf(stream, ReadableStream.prototype); } catch (e) {}
     return {
       ok: r.status >= 200 && r.status < 300,
       status: r.status,
@@ -8574,12 +8828,12 @@
       get bodyUsed() { return bodyUsed; },
       get body() { return stream; },
       headers: { get(n) { n = String(n).toLowerCase(); return (r.headers && r.headers[n]) || null; }, has(n) { return this.get(n) != null; } },
-      text() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(textBody); },
-      json() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(JSON.parse(textBody || "null")); },
-      arrayBuffer() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(bytes().buffer); },
-      blob() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(new Blob([bytes()])); },
+      text() { if (stream.locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(textBody); },
+      json() { if (stream.locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(JSON.parse(textBody || "null")); },
+      arrayBuffer() { if (stream.locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(bytes().buffer); },
+      blob() { if (stream.locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(new Blob([bytes()])); },
       clone() {
-        if (bodyUsed || locked) throw new TypeError("body already used");
+        if (bodyUsed || stream.locked) throw new TypeError("body already used");
         return responseFrom(r);
       },
     };
@@ -8635,6 +8889,30 @@
       return Promise.reject(new DOMException("The operation was aborted.", "AbortError"));
     }
     const rawUrl = String(url && url.url ? url.url : url);
+    if (rawUrl.indexOf("data:") === 0) {
+      const comma = rawUrl.indexOf(",");
+      if (comma < 0) return Promise.reject(new TypeError("Failed to fetch"));
+      const meta = rawUrl.slice(5, comma);
+      const payload = rawUrl.slice(comma + 1);
+      const isB64 = /;base64/i.test(meta);
+      let body = payload;
+      let bodyB64 = "";
+      if (isB64) {
+        bodyB64 = payload;
+        try { body = atob(payload); } catch (e) { body = payload; }
+      } else {
+        try { body = decodeURIComponent(payload); } catch (e) { body = payload; }
+      }
+      const mime = (meta.replace(/;base64/i, "").split(";")[0] || "text/plain").trim() || "text/plain";
+      return Promise.resolve(responseFrom({
+        status: 200,
+        statusText: "OK",
+        url: rawUrl,
+        body,
+        bodyB64,
+        headers: { "content-type": mime },
+      }));
+    }
     if (rawUrl.indexOf("blob:") === 0) {
       const blob = blobUrls.get(rawUrl);
       if (!blob) {
@@ -8666,13 +8944,15 @@
           });
         }
         const tick = () => {
-          const r = D("fetchPoll", id);
-          if (!r || r.pending) { setTimeout(tick, 0); return; }
-          if (r.error) reject(new TypeError(r.error));
-          else {
-            resolve(responseFrom(r));
-            queueMicrotask(drainSwClientPosts);
-          }
+          try {
+            const r = D("fetchPoll", id);
+            if (!r || r.pending) { setTimeout(tick, 0); return; }
+            if (r.error) reject(new TypeError(r.error));
+            else {
+              resolve(responseFrom(r));
+              queueMicrotask(drainSwClientPosts);
+            }
+          } catch (e) { reject(e); }
         };
         queueMicrotask(tick);
       } catch (e) { reject(e); }
@@ -10073,6 +10353,9 @@
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Selection, Sanitizer,
     MediaQueryList, Highlight, HighlightRegistry,
+    ReadableStream, WritableStream, TransformStream, URLPattern,
+    AudioContext, webkitAudioContext: AudioContext, OscillatorNode, GainNode, AudioDestinationNode,
+    WebGLRenderingContext,
     Animation, KeyframeEffect, DocumentTimeline, ViewTransition,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport, Cache, CacheStorage, caches,
     TextDecoder, TextEncoder,
