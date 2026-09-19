@@ -8622,6 +8622,15 @@
     }
   }
   Object.defineProperty(ReadableStream.prototype, Symbol.toStringTag, { value: "ReadableStream", configurable: true });
+  ReadableStream.from = function (iterable) {
+    const items = Array.from(iterable || []);
+    return new ReadableStream({
+      start(ctrl) {
+        for (const item of items) ctrl.enqueue(item);
+        ctrl.close();
+      },
+    });
+  };
 
   class WritableStream {
     constructor(underlyingSink) {

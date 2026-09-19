@@ -5191,6 +5191,37 @@ fn abort_signal_timeout_and_any() {
 }
 
 #[test]
+fn readable_stream_from_enqueues_iterable() {
+    let mut page = open("<title>rs</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__rs = null;
+          const s = ReadableStream.from(["a", "b"]);
+          const r = s.getReader();
+          r.read().then(function (first) {
+            return r.read().then(function (second) {
+              return r.read().then(function (end) {
+                window.__rs = {
+                  inst: s instanceof ReadableStream,
+                  first: first.value,
+                  second: second.value,
+                  done: end.done
+                };
+              });
+            });
+          }).catch(function (e) { window.__rs = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__rs").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["first"], "a", "{v}");
+    assert_eq!(v["second"], "b", "{v}");
+    assert_eq!(v["done"], true, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

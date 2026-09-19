@@ -275,10 +275,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let fill = svg_fill(tag);
         if closed && !fill.eq_ignore_ascii_case("none") && coords.len() >= 3 {
             fill_polygon_with(&mut img, &coords, |x, y| {
-                parse_url_id(fill)
-                    .and_then(|id| grads.get(id))
-                    .map(|g| sample_grad(g, x as f32 + 0.5, y as f32 + 0.5))
-                    .unwrap_or_else(|| parse_svg_color(fill))
+                paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5)
             });
         }
         for w in coords.windows(2) {
@@ -301,10 +298,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             let fill = svg_fill(tag);
             if closed && !fill.eq_ignore_ascii_case("none") && pts.len() >= 3 {
                 fill_polygon_with(&mut img, &pts, |x, y| {
-                    parse_url_id(fill)
-                        .and_then(|id| grads.get(id))
-                        .map(|g| sample_grad(g, x as f32 + 0.5, y as f32 + 0.5))
-                        .unwrap_or_else(|| parse_svg_color(fill))
+                    paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5)
                 });
             }
             if svg_attr_str(tag, "stroke").is_some() || !closed {
@@ -533,10 +527,7 @@ fn paint_svg_rect(
     let fill = svg_fill(tag);
     for yy in y..(y + h).min(img.height) {
         for xx in x..(x + w).min(img.width) {
-            let color = parse_url_id(fill)
-                .and_then(|id| grads.get(id))
-                .map(|g| sample_grad(g, xx as f32 + 0.5, yy as f32 + 0.5))
-                .unwrap_or_else(|| parse_svg_color(fill));
+            let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
             let idx = ((yy * img.width + xx) * 4) as usize;
             img.rgba[idx..idx + 4].copy_from_slice(&color);
         }
@@ -564,10 +555,7 @@ fn paint_svg_circle(
             let dx = xx as f32 + 0.5 - cx;
             let dy = yy as f32 + 0.5 - cy;
             if dx * dx + dy * dy <= r2 {
-                let color = parse_url_id(fill)
-                    .and_then(|id| grads.get(id))
-                    .map(|g| sample_grad(g, xx as f32 + 0.5, yy as f32 + 0.5))
-                    .unwrap_or_else(|| parse_svg_color(fill));
+                let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
                 let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
             }
@@ -596,10 +584,7 @@ fn paint_svg_ellipse(
             let nx = (xx as f32 + 0.5 - cx) / rx.max(0.001);
             let ny = (yy as f32 + 0.5 - cy) / ry.max(0.001);
             if nx * nx + ny * ny <= 1.0 {
-                let color = parse_url_id(fill)
-                    .and_then(|id| grads.get(id))
-                    .map(|g| sample_grad(g, xx as f32 + 0.5, yy as f32 + 0.5))
-                    .unwrap_or_else(|| parse_svg_color(fill));
+                let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
                 let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
             }
@@ -720,14 +705,38 @@ fn fill_polygon_with(
     }
 }
 
-fn svg_stroke(tag: &str) -> ([u8; 4], f32) {
-    let raw = svg_attr_str(tag, "stroke").unwrap_or_else(|| svg_fill(tag));
-    let mut color = parse_svg_color(raw);
-    let opacity = svg_attr(tag, "stroke-opacity")
+fn svg_opacity_attr(tag: &str, name: &str) -> f32 {
+    svg_attr(tag, name)
         .or_else(|| svg_attr(tag, "opacity"))
         .unwrap_or(1.0)
-        .clamp(0.0, 1.0);
+        .clamp(0.0, 1.0)
+}
+
+fn with_opacity(mut color: [u8; 4], opacity: f32) -> [u8; 4] {
     color[3] = (f32::from(color[3]) * opacity).round() as u8;
+    color
+}
+
+fn paint_fill_color(
+    tag: &str,
+    fill: &str,
+    grads: &HashMap<String, SvgGrad>,
+    x: f32,
+    y: f32,
+) -> [u8; 4] {
+    let color = parse_url_id(fill)
+        .and_then(|id| grads.get(id))
+        .map(|g| sample_grad(g, x, y))
+        .unwrap_or_else(|| parse_svg_color(fill));
+    with_opacity(color, svg_opacity_attr(tag, "fill-opacity"))
+}
+
+fn svg_stroke(tag: &str) -> ([u8; 4], f32) {
+    let raw = svg_attr_str(tag, "stroke").unwrap_or_else(|| svg_fill(tag));
+    let color = with_opacity(
+        parse_svg_color(raw),
+        svg_opacity_attr(tag, "stroke-opacity"),
+    );
     let width = svg_attr(tag, "stroke-width").unwrap_or(1.0).max(0.0);
     (color, width)
 }
@@ -1443,5 +1452,15 @@ mod tests {
         assert_eq!(mid, [255, 0, 0, 128], "{mid:?}");
         assert_eq!(halo, [255, 0, 0, 128], "{halo:?}");
         assert_eq!(far, [0, 0, 0, 0], "{far:?}");
+    }
+
+    #[test]
+    fn decode_svg_fill_opacity_tints_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='0' y='0' width='8' height='8' fill='#00ff00' fill-opacity='0.5'/></svg>",
+        )
+        .expect("svg fill opacity");
+        assert_eq!(img.pixel(2, 2), Some([0, 255, 0, 128]));
     }
 }
