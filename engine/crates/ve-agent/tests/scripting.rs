@@ -202,10 +202,15 @@ fn dom_bindings_default_is_prelude() {
 #[test]
 fn native_bindings_install_element_id_accessor() {
     let mut page = open("<p id=x>t</p>", true);
+    let expected_before = if std::env::var("VECTOR_DOM_BINDINGS").as_deref() == Ok("native") {
+        "string"
+    } else {
+        "undefined"
+    };
     assert_eq!(
         page.evaluate("typeof globalThis.__veNativeBindings")
             .unwrap(),
-        serde_json::json!("undefined")
+        serde_json::json!(expected_before)
     );
     page.install_native_dom_bindings().unwrap();
     assert_eq!(
