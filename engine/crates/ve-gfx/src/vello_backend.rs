@@ -147,24 +147,43 @@ fn paint_text(
         && let Some(face) = fonts.query(&run.family, run.weight, run.style)
         && let Some(shaped) = fonts.shape_retained(face, &run.text, run.size)
     {
-        if let Some(font) = fonts.with_face_bytes(face, |bytes, index| {
-            FontData::new(Blob::new(std::sync::Arc::new(bytes.to_vec())), index)
-        }) {
-            let origin = Affine::translate((f64::from(run.origin.x), f64::from(run.origin.y)));
+        let origin = Affine::translate((f64::from(run.origin.x), f64::from(run.origin.y)));
+        let outline: Vec<Glyph> = shaped
+            .glyphs
+            .iter()
+            .filter(|g| g.face == face)
+            .map(|g| Glyph {
+                id: g.id,
+                x: g.x,
+                y: g.y,
+            })
+            .collect();
+        if !outline.is_empty()
+            && let Some(font) = fonts.with_face_bytes(face, |bytes, index| {
+                FontData::new(Blob::new(std::sync::Arc::new(bytes.to_vec())), index)
+            })
+        {
             scene
                 .draw_glyphs(&font)
                 .font_size(run.size)
                 .hint(run.size <= 18.0)
                 .brush(color(run.color))
                 .transform(transform * origin)
-                .draw(
-                    Fill::NonZero,
-                    shaped.glyphs.iter().map(|g| Glyph {
-                        id: g.id,
-                        x: g.x,
-                        y: g.y,
-                    }),
-                );
+                .draw(Fill::NonZero, outline.into_iter());
+        }
+        for g in shaped.glyphs.iter().filter(|g| g.face != face) {
+            let Some(bmp) = fonts.rasterize_hinted(g.face, g.id as u16, run.size, false) else {
+                continue;
+            };
+            if !bmp.color || bmp.width == 0 || bmp.height == 0 {
+                continue;
+            }
+            let image = peniko_rgba(bmp.data, bmp.width, bmp.height);
+            let x = f64::from(run.origin.x + g.x) + f64::from(bmp.left);
+            let y = f64::from(run.origin.y + g.y) - f64::from(bmp.top);
+            scene.draw_image(&image, transform * Affine::translate((x, y)));
+        }
+        if !shaped.glyphs.is_empty() {
             return;
         }
     }

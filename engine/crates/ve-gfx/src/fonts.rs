@@ -16,6 +16,8 @@ pub struct PlacedGlyph {
     pub y: f32,
     /// Source character (emoji routing).
     pub ch: char,
+    /// Face used for this glyph (UI face or colour-emoji fallback).
+    pub face: fontdb::ID,
 }
 
 /// Shaped glyph run retained across frames.
@@ -62,8 +64,10 @@ pub struct GlyphBitmap {
     pub left: i32,
     /// Vertical offset from the baseline to the top edge (positive = up).
     pub top: i32,
-    /// Coverage, row-major, one byte per pixel.
+    /// Coverage, row-major. Alpha mask unless [`Self::color`].
     pub data: Vec<u8>,
+    /// `true` when `data` is RGBA8 (COLR / CBDT colour emoji).
+    pub color: bool,
 }
 
 /// Font database plus rasteriser. Fonts are registered from bytes so the
@@ -149,6 +153,49 @@ impl FontSystem {
                 break;
             }
         }
+        self.load_emoji_fonts();
+    }
+
+    /// Colour-emoji faces used when the UI font has no (or monochrome) glyph.
+    pub fn load_emoji_fonts(&mut self) {
+        const EMOJI: &[&str] = &[
+            "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
+            "/usr/share/fonts/truetype/noto-color-emoji/NotoColorEmoji.ttf",
+            "/System/Library/Fonts/Apple Color Emoji.ttc",
+            "/Library/Fonts/Apple Color Emoji.ttc",
+        ];
+        for path in EMOJI {
+            if let Ok(bytes) = std::fs::read(path) {
+                self.load_font_data(bytes);
+            }
+        }
+    }
+
+    /// Best installed colour-emoji face.
+    #[must_use]
+    pub fn emoji_face(&self) -> Option<fontdb::ID> {
+        let families = [
+            fontdb::Family::Name("Noto Color Emoji"),
+            fontdb::Family::Name("Apple Color Emoji"),
+            fontdb::Family::Name("Segoe UI Emoji"),
+        ];
+        let query = fontdb::Query {
+            families: &families,
+            weight: fontdb::Weight::NORMAL,
+            stretch: fontdb::Stretch::Normal,
+            style: fontdb::Style::Normal,
+        };
+        if let Some(id) = self.db.query(&query) {
+            return Some(id);
+        }
+        self.db.faces().find_map(|face| {
+            let path = match &face.source {
+                fontdb::Source::File(p) => p.to_string_lossy().into_owned(),
+                fontdb::Source::Binary(_) => String::new(),
+            };
+            let lower = path.to_ascii_lowercase();
+            (lower.contains("emoji") || lower.contains("noto-color")).then_some(face.id)
+        })
     }
 
     /// Sets the concrete family used for a generic one (e.g. `sans-serif`).
@@ -259,25 +306,48 @@ impl FontSystem {
         self.db.with_face_data(id, |data, index| f(data, index))
     }
 
+    /// Face + glyph for `ch`, preferring a colour-emoji face for emoji.
+    #[must_use]
+    pub fn glyph_face(&self, primary: fontdb::ID, ch: char) -> Option<(fontdb::ID, GlyphId)> {
+        let emoji = self.emoji_face();
+        if is_emoji_char(ch)
+            && let Some(eid) = emoji
+            && let Some(gid) = self.glyph_for_char(eid, ch)
+            && gid != 0
+        {
+            return Some((eid, gid));
+        }
+        if let Some(gid) = self.glyph_for_char(primary, ch)
+            && gid != 0
+        {
+            return Some((primary, gid));
+        }
+        if let Some(eid) = emoji
+            && let Some(gid) = self.glyph_for_char(eid, ch)
+            && gid != 0
+        {
+            return Some((eid, gid));
+        }
+        None
+    }
+
     /// Retained glyph run: ids and 1/4-px snapped pen positions.
     #[must_use]
     pub fn shape_retained(&self, id: fontdb::ID, text: &str, size: f32) -> Option<RetainedGlyphRun> {
         let mut glyphs = Vec::new();
         let mut x = 0.0f32;
         for ch in text.chars() {
-            let Some(gid) = self.glyph_for_char(id, ch) else {
+            let Some((face, gid)) = self.glyph_face(id, ch) else {
                 continue;
             };
-            if gid == 0 {
-                continue;
-            }
-            let advance = self.advance(id, gid, size).unwrap_or(size * 0.5);
+            let advance = self.advance(face, gid, size).unwrap_or(size * 0.5);
             let snapped = (x * 4.0).round() / 4.0;
             glyphs.push(PlacedGlyph {
                 id: u32::from(gid),
                 x: snapped,
                 y: 0.0,
                 ch,
+                face,
             });
             x += advance;
         }
@@ -287,13 +357,16 @@ impl FontSystem {
     /// Width of `text` at `size` pixels using simple per-glyph advances (no shaping).
     #[must_use]
     pub fn measure(&self, id: fontdb::ID, text: &str, size: f32) -> Option<f32> {
-        self.with_font(id, |font| {
-            let charmap = font.charmap();
-            let metrics = font.glyph_metrics(&[]).scale(size);
+        self.with_font(id, |_| ())?;
+        Some(
             text.chars()
-                .map(|c| metrics.advance_width(charmap.map(c)))
-                .sum()
-        })
+                .map(|ch| {
+                    self.glyph_face(id, ch)
+                        .and_then(|(face, gid)| self.advance(face, gid, size))
+                        .unwrap_or(size * 0.5)
+                })
+                .sum(),
+        )
     }
 
     /// Scaled outline for `glyph` (empty if the face has no outline).
@@ -362,10 +435,49 @@ impl FontSystem {
                 left: image.placement.left,
                 top: image.placement.top,
                 data: image.data,
+                color: image.content == swash::scale::image::Content::Color,
             })
         })
         .flatten()
     }
+}
+
+/// Emoji presentation / pictograph ranges (H1-A6 colour emoji).
+#[must_use]
+pub fn is_emoji_char(ch: char) -> bool {
+    matches!(
+        ch as u32,
+        0x00A9
+            | 0x00AE
+            | 0x203C
+            | 0x2049
+            | 0x2122
+            | 0x2139
+            | 0x2194..=0x2199
+            | 0x21A9..=0x21AA
+            | 0x231A..=0x231B
+            | 0x2328
+            | 0x23CF
+            | 0x23E9..=0x23F3
+            | 0x23F8..=0x23FA
+            | 0x24C2
+            | 0x25AA..=0x25AB
+            | 0x25B6
+            | 0x25C0
+            | 0x25FB..=0x25FE
+            | 0x2600..=0x27BF
+            | 0x2934..=0x2935
+            | 0x2B05..=0x2B07
+            | 0x2B1B..=0x2B1C
+            | 0x2B50
+            | 0x2B55
+            | 0x3030
+            | 0x303D
+            | 0x3297
+            | 0x3299
+            | 0xFE0F
+            | 0x1F000..=0x1FAFF
+    )
 }
 
 #[cfg(test)]
@@ -467,5 +579,42 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn colour_emoji_routes_to_noto_and_rasterizes_rgba() {
+        let mut fs = FontSystem::new();
+        fs.load_system_fonts();
+        let Some(ui) = fs.query(
+            &[FontFamily::SansSerif],
+            FontWeight::NORMAL,
+            FontStyle::Normal,
+        ) else {
+            return;
+        };
+        let Some(emoji) = fs.emoji_face() else {
+            return;
+        };
+        let shaped = fs
+            .shape_retained(ui, "😀", 32.0)
+            .expect("emoji run");
+        assert_eq!(shaped.glyphs.len(), 1, "grinning face must not be skipped");
+        let g = &shaped.glyphs[0];
+        assert_eq!(g.face, emoji, "emoji must use the colour-emoji face");
+        assert_ne!(g.id, 0);
+        let bmp = fs
+            .rasterize_hinted(g.face, g.id as u16, 32.0, false)
+            .expect("Noto Color Emoji CBDT must rasterize");
+        assert!(bmp.color, "colour emoji must be RGBA, not an alpha mask");
+        assert_eq!(
+            bmp.data.len(),
+            (bmp.width * bmp.height * 4) as usize,
+            "RGBA8 payload"
+        );
+        let colorful = bmp.data.chunks_exact(4).any(|px| {
+            px[3] > 32 && (px[0] as i16 - px[1] as i16).abs() > 20
+                || (px[1] as i16 - px[2] as i16).abs() > 20
+        });
+        assert!(colorful, "emoji pixels must not be monochrome");
     }
 }

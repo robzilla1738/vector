@@ -425,6 +425,44 @@ impl Canvas {
             }
         }
     }
+
+    fn blit_rgba(&mut self, left: i32, top: i32, width: u32, height: u32, data: &[u8]) {
+        let clip = self.clip_rect();
+        for row in 0..height {
+            for col in 0..width {
+                let i = ((row * width + col) * 4) as usize;
+                if i + 3 >= data.len() {
+                    continue;
+                }
+                let a = f32::from(data[i + 3]) / 255.0;
+                if a <= 0.0 {
+                    continue;
+                }
+                let x = left + col as i32;
+                let y = top + row as i32;
+                if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
+                    continue;
+                }
+                if !clip.contains(ve_core::Point::new(
+                    x as f32 / self.scale,
+                    y as f32 / self.scale,
+                )) {
+                    continue;
+                }
+                self.blend(
+                    x as u32,
+                    y as u32,
+                    Rgba {
+                        r: data[i],
+                        g: data[i + 1],
+                        b: data[i + 2],
+                        a,
+                    },
+                    1.0,
+                );
+            }
+        }
+    }
 }
 
 impl SoftwareRenderer {
@@ -488,11 +526,13 @@ impl SoftwareRenderer {
                 continue;
             }
             let hint = run.size <= 18.0;
-            let key = (face, glyph.id as u16, size.to_bits(), hint);
+            let key = (glyph.face, glyph.id as u16, size.to_bits(), hint);
             let bitmap = if let Some(hit) = self.glyph_cache.get(&key) {
                 Some(hit.clone())
             } else {
-                let built = self.fonts.rasterize_hinted(face, glyph.id as u16, size, hint);
+                let built = self
+                    .fonts
+                    .rasterize_hinted(glyph.face, glyph.id as u16, size, hint);
                 if let Some(ref b) = built {
                     self.glyph_cache.insert(key, b.clone());
                 }
@@ -503,14 +543,18 @@ impl SoftwareRenderer {
             {
                 let left = (origin_x + glyph.x).round() as i32 + bitmap.left;
                 let top = (baseline_y + glyph.y).round() as i32 - bitmap.top;
-                canvas.blit_alpha(
-                    left,
-                    top,
-                    bitmap.width,
-                    bitmap.height,
-                    &bitmap.data,
-                    run.color,
-                );
+                if bitmap.color {
+                    canvas.blit_rgba(left, top, bitmap.width, bitmap.height, &bitmap.data);
+                } else {
+                    canvas.blit_alpha(
+                        left,
+                        top,
+                        bitmap.width,
+                        bitmap.height,
+                        &bitmap.data,
+                        run.color,
+                    );
+                }
             }
         }
     }
@@ -818,6 +862,38 @@ mod tests {
         assert!(
             hi_ink > 80,
             "Retina Inter UI text must stay hinted, ink={hi_ink}"
+        );
+    }
+
+    #[test]
+    fn software_paints_colour_emoji() {
+        let mut list = DisplayList::new(Size::new(64.0, 64.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 64.0, 64.0),
+            color: Rgba::WHITE,
+        });
+        list.push(DisplayItem::Text(TextRun {
+            origin: ve_core::Point::new(8.0, 48.0),
+            text: "😀".into(),
+            size: 32.0,
+            color: Rgba::BLACK,
+            weight: ve_style::FontWeight::NORMAL,
+            style: ve_style::FontStyle::Normal,
+            family: vec![ve_style::FontFamily::SansSerif],
+        }));
+        let mut renderer = SoftwareRenderer::with_system_fonts();
+        if renderer.fonts.emoji_face().is_none() {
+            return;
+        }
+        let frame = renderer.render(&list, 64, 64, 1.0).unwrap();
+        let colorful = frame.rgba.chunks_exact(4).any(|px| {
+            px[3] > 32
+                && ((px[0] as i16 - px[1] as i16).abs() > 20
+                    || (px[1] as i16 - px[2] as i16).abs() > 20)
+        });
+        assert!(
+            colorful,
+            "software present must paint colour emoji, not a tinted alpha mask"
         );
     }
 
