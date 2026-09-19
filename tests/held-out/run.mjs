@@ -57,8 +57,11 @@ if (!live) {
     sealedHash: sealed,
     trialsRequested: trials,
     tasks: tasks.map((t) => t.id),
+    competitorRows: [],
+    competitorSkipped: true,
+    competitorReason: "Chromium adapter comparison needs the same live keys",
     artifact: { harness: "tests/held-out/run.mjs" },
-    notes: "Harness exists. Live rows are required when keys are present. Mock is not used.",
+    notes: "Harness exists. Live rows and competitor rows are required when keys are present. Mock is not used.",
   };
   writeFileSync(outPath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(JSON.stringify({ ok: true, skippedLive: true, out: outPath, sealedHash: sealed }));

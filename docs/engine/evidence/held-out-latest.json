@@ -12,8 +12,11 @@
     "submit-name",
     "find-in-table"
   ],
+  "competitorRows": [],
+  "competitorSkipped": true,
+  "competitorReason": "Chromium adapter comparison needs the same live keys",
   "artifact": {
     "harness": "tests/held-out/run.mjs"
   },
-  "notes": "Harness exists. Live rows are required when keys are present. Mock is not used."
+  "notes": "Harness exists. Live rows and competitor rows are required when keys are present. Mock is not used."
 }
