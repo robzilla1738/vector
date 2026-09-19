@@ -1263,20 +1263,24 @@ impl NativeBrowser {
                     self.chrome.overlay = ChromeOverlay::None;
                     self.present_dirty();
                 } else if self.chrome_enabled && self.chrome.find_open && state == KeyState::Down {
-                    match key.as_str() {
-                        "Escape" => self.chrome.find_open = false,
-                        "Backspace" => {
-                            self.chrome.find.pop();
-                            self.refresh_find();
+                    if self.dispatch_chrome_shortcut(&key, modifiers, state) {
+                        self.present_dirty();
+                    } else {
+                        match key.as_str() {
+                            "Escape" => self.chrome.find_open = false,
+                            "Backspace" => {
+                                self.chrome.find.pop();
+                                self.refresh_find();
+                            }
+                            "Enter" => self.advance_find(true),
+                            k if k.len() == 1 && modifiers & (2 | 4) == 0 => {
+                                self.chrome.find.push_str(k);
+                                self.refresh_find();
+                            }
+                            _ => {}
                         }
-                        "Enter" => self.advance_find(true),
-                        k if k.len() == 1 && modifiers & (2 | 4) == 0 => {
-                            self.chrome.find.push_str(k);
-                            self.refresh_find();
-                        }
-                        _ => {}
+                        self.present_dirty();
                     }
-                    self.present_dirty();
                 } else if self.dispatch_chrome_shortcut(&key, modifiers, state) {
                     self.present_dirty();
                 } else {
@@ -3069,6 +3073,77 @@ mod tests {
             )
             .unwrap_or_default();
         assert_ne!(value, "late", "100ms timer must not fire on the human path");
+    }
+
+    #[test]
+    fn chrome_find_and_zoom_chords_toggle_find_and_scale() {
+        let path = format!("/tmp/vector-chrome-chords-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p>hello hello</p>".into(),
+                url: "https://chords.test/".into(),
+            })
+            .unwrap();
+        assert!(!browser.chrome().find_open);
+        assert!((browser.chrome().zoom - 1.0).abs() < 1e-6);
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "f".into(),
+                code: "KeyF".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert!(browser.chrome().find_open, "⌘F must open find");
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "=".into(),
+                code: "Equal".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert!(browser.chrome().zoom > 1.0, "⌘+ must zoom in");
+        let zoomed = browser.chrome().zoom;
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "-".into(),
+                code: "Minus".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert!(browser.chrome().zoom < zoomed, "⌘- must zoom out");
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "0".into(),
+                code: "Digit0".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert!(
+            (browser.chrome().zoom - 1.0).abs() < 1e-6,
+            "⌘0 must reset zoom"
+        );
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "f".into(),
+                code: "KeyF".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert!(!browser.chrome().find_open, "⌘F again must close find");
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

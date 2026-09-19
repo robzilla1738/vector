@@ -974,6 +974,146 @@ fn canvas_source_in_and_destination_in_clip_to_overlap() {
 }
 
 #[test]
+fn canvas_source_out_and_destination_out_punch_overlap() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op) {
+                var c = document.createElement("canvas");
+                c.width = 8;
+                c.height = 8;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.fillRect(0, 0, 4, 8);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = "#00ff00";
+                ctx.fillRect(2, 0, 6, 8);
+                var overlap = ctx.getImageData(3, 3, 1, 1).data;
+                var destOnly = ctx.getImageData(0, 3, 1, 1).data;
+                var srcOnly = ctx.getImageData(6, 3, 1, 1).data;
+                return {
+                  or: overlap[0], og: overlap[1], oa: overlap[3],
+                  da: destOnly[3], dr: destOnly[0],
+                  sa: srcOnly[3], sg: srcOnly[1]
+                };
+              }
+              return { src: sample("source-out"), dst: sample("destination-out") };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["src"]["oa"], 0, "source-out overlap must vanish: {v}");
+    assert_eq!(v["src"]["da"], 255, "source-out dest-only stays: {v}");
+    assert_eq!(v["src"]["sa"], 255, "source-out src-only stays: {v}");
+    assert_eq!(v["src"]["sg"], 255, "{v}");
+    assert_eq!(
+        v["dst"]["oa"], 0,
+        "destination-out overlap must vanish: {v}"
+    );
+    assert_eq!(v["dst"]["da"], 255, "destination-out dest-only stays: {v}");
+    assert_eq!(v["dst"]["dr"], 255, "{v}");
+    assert_eq!(v["dst"]["sa"], 0, "destination-out src-only vanishes: {v}");
+}
+
+#[test]
+fn canvas_path2d_ellipse_arc_to_and_round_rect() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.beginPath();
+              ctx.ellipse(8, 8, 6, 2, 0, 0, Math.PI * 2);
+              ctx.fill();
+              var flat = {
+                mid: ctx.getImageData(8, 8, 1, 1).data[1],
+                east: ctx.getImageData(13, 8, 1, 1).data[1],
+                south: ctx.getImageData(8, 13, 1, 1).data[3],
+                aabbOut: ctx.getImageData(12, 10, 1, 1).data[3]
+              };
+              ctx.clearRect(0, 0, 16, 16);
+              ctx.beginPath();
+              ctx.ellipse(8, 8, 6, 2, Math.PI / 2, 0, Math.PI * 2);
+              ctx.fill();
+              var rot = {
+                mid: ctx.getImageData(8, 8, 1, 1).data[1],
+                east: ctx.getImageData(13, 8, 1, 1).data[3],
+                south: ctx.getImageData(8, 13, 1, 1).data[1]
+              };
+              ctx.clearRect(0, 0, 16, 16);
+              ctx.beginPath();
+              ctx.roundRect(1, 1, 14, 14, 6);
+              ctx.fill();
+              var round = {
+                mid: ctx.getImageData(8, 8, 1, 1).data[1],
+                corner: ctx.getImageData(1, 1, 1, 1).data[3],
+                edge: ctx.getImageData(8, 1, 1, 1).data[1]
+              };
+              ctx.clearRect(0, 0, 16, 16);
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(0, 8);
+              ctx.arcTo(8, 8, 8, 0, 4);
+              ctx.stroke();
+              return {
+                flat: flat,
+                rot: rot,
+                round: round,
+                arcCorner: ctx.isPointInStroke(8, 8),
+                arcH: ctx.isPointInStroke(4, 8),
+                arcV: ctx.isPointInStroke(8, 4)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["flat"]["mid"].as_u64().unwrap_or(0) > 200,
+        "ellipse center: {v}"
+    );
+    assert!(
+        v["flat"]["east"].as_u64().unwrap_or(0) > 200,
+        "ellipse east: {v}"
+    );
+    assert_eq!(v["flat"]["south"], 0, "flat ellipse must miss south: {v}");
+    assert_eq!(
+        v["flat"]["aabbOut"], 0,
+        "flat ellipse must miss AABB corner: {v}"
+    );
+    assert!(
+        v["rot"]["mid"].as_u64().unwrap_or(0) > 200,
+        "rotated center: {v}"
+    );
+    assert_eq!(v["rot"]["east"], 0, "rotated ellipse must miss east: {v}");
+    assert!(
+        v["rot"]["south"].as_u64().unwrap_or(0) > 200,
+        "rotated south: {v}"
+    );
+    assert!(
+        v["round"]["mid"].as_u64().unwrap_or(0) > 200,
+        "roundRect center: {v}"
+    );
+    assert_eq!(
+        v["round"]["corner"], 0,
+        "roundRect must leave the sharp corner empty: {v}"
+    );
+    assert!(
+        v["round"]["edge"].as_u64().unwrap_or(0) > 200,
+        "roundRect edge: {v}"
+    );
+    assert_eq!(
+        v["arcCorner"], false,
+        "arcTo must bend away from the corner: {v}"
+    );
+    assert_eq!(v["arcH"], true, "arcTo must keep the incoming tangent: {v}");
+    assert_eq!(v["arcV"], true, "arcTo must keep the outgoing tangent: {v}");
+}
+
+#[test]
 fn canvas_create_pattern_from_image_data() {
     let mut page = open(r#"<body></body>"#);
     let v = page

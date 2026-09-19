@@ -3820,23 +3820,155 @@
         );
       }
     }
+    _ellipse(x, y, rx, ry, rotation, a0, a1, anticlockwise, connect) {
+      rx = Math.abs(+rx);
+      ry = Math.abs(+ry);
+      rotation = +rotation || 0;
+      a0 = +a0;
+      a1 = +a1;
+      let delta = a1 - a0;
+      if (anticlockwise) {
+        if (delta >= 0) delta -= Math.PI * 2;
+      } else if (delta <= 0) {
+        delta += Math.PI * 2;
+      }
+      if (rx < 1e-6 && ry < 1e-6) {
+        if (connect && this._c.length) this.lineTo(x, y);
+        else this.moveTo(x, y);
+        return;
+      }
+      const cosR = Math.cos(rotation);
+      const sinR = Math.sin(rotation);
+      const steps = Math.max(16, Math.ceil(Math.abs(delta) / (Math.PI / 12)));
+      for (let i = 0; i <= steps; i++) {
+        const t = a0 + delta * (i / steps);
+        const cx = rx * Math.cos(t);
+        const cy = ry * Math.sin(t);
+        const px = x + cx * cosR - cy * sinR;
+        const py = y + cx * sinR + cy * cosR;
+        if (i === 0 && !(connect && this._c.length)) this.moveTo(px, py);
+        else this.lineTo(px, py);
+      }
+    }
     arcTo(x1, y1, x2, y2, radius) {
       if (arguments.length < 5) {
         throw new TypeError("Failed to execute 'arcTo' on 'Path2D': 5 arguments required, but only " + arguments.length + " present.");
       }
-      this.lineTo(x2, y2);
+      radius = +radius;
+      if (radius < 0) {
+        throw new DOMException("The radius provided is negative.", "IndexSizeError");
+      }
+      const cur = this._c.length ? this._c[this._c.length - 1] : [+x1, +y1];
+      const x0 = cur[0];
+      const y0 = cur[1];
+      x1 = +x1;
+      y1 = +y1;
+      x2 = +x2;
+      y2 = +y2;
+      let dx1 = x0 - x1;
+      let dy1 = y0 - y1;
+      let dx2 = x2 - x1;
+      let dy2 = y2 - y1;
+      const len1 = Math.hypot(dx1, dy1);
+      const len2 = Math.hypot(dx2, dy2);
+      if (radius === 0 || len1 < 1e-6 || len2 < 1e-6) {
+        this.lineTo(x1, y1);
+        return;
+      }
+      dx1 /= len1;
+      dy1 /= len1;
+      dx2 /= len2;
+      dy2 /= len2;
+      let cosA = dx1 * dx2 + dy1 * dy2;
+      cosA = Math.max(-1, Math.min(1, cosA));
+      const angle = Math.acos(cosA);
+      if (angle < 1e-6 || Math.abs(Math.PI - angle) < 1e-6) {
+        this.lineTo(x1, y1);
+        return;
+      }
+      const dist = radius / Math.tan(angle / 2);
+      const t1x = x1 + dx1 * dist;
+      const t1y = y1 + dy1 * dist;
+      const t2x = x1 + dx2 * dist;
+      const t2y = y1 + dy2 * dist;
+      const bx = dx1 + dx2;
+      const by = dy1 + dy2;
+      const blen = Math.hypot(bx, by);
+      const cx = x1 + (bx / blen) * (radius / Math.sin(angle / 2));
+      const cy = y1 + (by / blen) * (radius / Math.sin(angle / 2));
+      const aStart = Math.atan2(t1y - cy, t1x - cx);
+      const aEnd = Math.atan2(t2y - cy, t2x - cx);
+      const cross = dx1 * dy2 - dy1 * dx2;
+      this.lineTo(t1x, t1y);
+      this._ellipse(cx, cy, radius, radius, 0, aStart, aEnd, cross > 0, true);
     }
     roundRect(x, y, w, h) {
       if (arguments.length < 4) {
         throw new TypeError("Failed to execute 'roundRect' on 'Path2D': 4 arguments required, but only " + arguments.length + " present.");
       }
-      this.rect(x, y, w, h);
+      x = +x;
+      y = +y;
+      w = +w;
+      h = +h;
+      const radii = arguments[4];
+      let tl = 0;
+      let tr = 0;
+      let br = 0;
+      let bl = 0;
+      const rad = (r) => Math.max(0, +(r && r.x != null ? r.x : r));
+      if (typeof radii === "number") {
+        tl = tr = br = bl = rad(radii);
+      } else if (Array.isArray(radii)) {
+        if (radii.length === 1) tl = tr = br = bl = rad(radii[0]);
+        else if (radii.length === 2) {
+          tl = br = rad(radii[0]);
+          tr = bl = rad(radii[1]);
+        } else if (radii.length === 3) {
+          tl = rad(radii[0]);
+          tr = bl = rad(radii[1]);
+          br = rad(radii[2]);
+        } else if (radii.length >= 4) {
+          tl = rad(radii[0]);
+          tr = rad(radii[1]);
+          br = rad(radii[2]);
+          bl = rad(radii[3]);
+        }
+      }
+      const hw = Math.abs(w) / 2;
+      const hh = Math.abs(h) / 2;
+      const scale = Math.min(
+        1,
+        hw / Math.max(tl, bl, 1e-6),
+        hw / Math.max(tr, br, 1e-6),
+        hh / Math.max(tl, tr, 1e-6),
+        hh / Math.max(bl, br, 1e-6)
+      );
+      tl *= scale;
+      tr *= scale;
+      br *= scale;
+      bl *= scale;
+      const x1 = x + w;
+      const y1 = y + h;
+      this.moveTo(x + tl, y);
+      this.lineTo(x1 - tr, y);
+      if (tr > 0) this._ellipse(x1 - tr, y + tr, tr, tr, 0, -Math.PI / 2, 0, false, true);
+      else this.lineTo(x1, y);
+      this.lineTo(x1, y1 - br);
+      if (br > 0) this._ellipse(x1 - br, y1 - br, br, br, 0, 0, Math.PI / 2, false, true);
+      else this.lineTo(x1, y1);
+      this.lineTo(x + bl, y1);
+      if (bl > 0) this._ellipse(x + bl, y1 - bl, bl, bl, 0, Math.PI / 2, Math.PI, false, true);
+      else this.lineTo(x, y1);
+      this.lineTo(x, y + tl);
+      if (tl > 0) this._ellipse(x + tl, y + tl, tl, tl, 0, Math.PI, Math.PI * 1.5, false, true);
+      else this.lineTo(x, y);
+      this.closePath();
     }
     ellipse(x, y, rx, ry, rotation, a0, a1) {
       if (arguments.length < 7) {
         throw new TypeError("Failed to execute 'ellipse' on 'Path2D': 7 arguments required, but only " + arguments.length + " present.");
       }
-      this.arc(x, y, rx, a0, a1);
+      this._ellipse(x, y, rx, ry, rotation, a0, a1, arguments[7], true);
     }
     _flush(close) {
       if (this._c.length >= 2) {
@@ -4329,8 +4461,8 @@
       return pointInCanvasStroke(Number(x) || 0, Number(y) || 0, spec.r || [], spec.p || [], this._lineWidth);
     }
     arcTo(x1, y1, x2, y2, radius) { this._path.arcTo(x1, y1, x2, y2, radius); }
-    roundRect(x, y, w, h) { this._path.roundRect(x, y, w, h); }
-    ellipse(x, y, rx, ry, rotation, a0, a1) { this._path.ellipse(x, y, rx, ry, rotation, a0, a1); }
+    roundRect(x, y, w, h) { this._path.roundRect(x, y, w, h, arguments[4]); }
+    ellipse(x, y, rx, ry, rotation, a0, a1) { this._path.ellipse(x, y, rx, ry, rotation, a0, a1, arguments[7]); }
     setLineDash(d) {
       if (arguments.length < 1) throw new TypeError("Failed to execute 'setLineDash' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
       this._dash = Array.isArray(d) ? d.slice() : [];

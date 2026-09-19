@@ -818,6 +818,10 @@ enum CompositeOp {
     Xor,
     SourceIn,
     DestinationIn,
+    SourceOut,
+    DestinationOut,
+    SourceAtop,
+    DestinationAtop,
 }
 
 impl CompositeOp {
@@ -828,6 +832,10 @@ impl CompositeOp {
             "xor" => Self::Xor,
             "source-in" => Self::SourceIn,
             "destination-in" => Self::DestinationIn,
+            "source-out" => Self::SourceOut,
+            "destination-out" => Self::DestinationOut,
+            "source-atop" => Self::SourceAtop,
+            "destination-atop" => Self::DestinationAtop,
             _ => Self::SourceOver,
         }
     }
@@ -1005,6 +1013,10 @@ fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
         CompositeOp::Xor => (sa * (255 - da) / 255, da * (255 - sa) / 255),
         CompositeOp::SourceIn => (sa * da / 255, 0),
         CompositeOp::DestinationIn => (0, da * sa / 255),
+        CompositeOp::SourceOut => (sa * (255 - da) / 255, 0),
+        CompositeOp::DestinationOut => (0, da * (255 - sa) / 255),
+        CompositeOp::SourceAtop => (sa * da / 255, da * (255 - sa) / 255),
+        CompositeOp::DestinationAtop => (sa * (255 - da) / 255, da * sa / 255),
     };
     let out_a = fs + fd;
     if out_a == 0 {
