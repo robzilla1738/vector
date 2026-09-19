@@ -39,6 +39,7 @@ pub fn run_shared(service: BrowserService, pump: Option<BrowserServicePump>) -> 
         mods: ModifiersState::default(),
         adapter: None,
         proxy: event_loop.create_proxy(),
+        host: None,
         #[cfg(feature = "gpu")]
         gpu: None,
     };
@@ -56,6 +57,7 @@ struct App {
     mods: ModifiersState,
     adapter: Option<Adapter>,
     proxy: EventLoopProxy<AccessKitEvent>,
+    host: Option<ve_shell_mac::MacWindow>,
     #[cfg(feature = "gpu")]
     gpu: Option<crate::gpu_window::GpuWindow>,
 }
@@ -179,7 +181,12 @@ impl ApplicationHandler<AccessKitEvent> for App {
             return;
         };
         window.set_ime_allowed(true);
-        let _host = ve_shell_mac::MacWindow::product();
+        let mut host = ve_shell_mac::MacWindow::product();
+        host.set_appearance(match self.browser().chrome().theme {
+            ve_chrome::ChromeTheme::Light => ve_shell_mac::Appearance::Light,
+            ve_chrome::ChromeTheme::Dark => ve_shell_mac::Appearance::Dark,
+        });
+        self.host = Some(host);
         let adapter = Adapter::with_event_loop_proxy(&window, self.proxy.clone());
         window.set_visible(true);
         let window = Arc::new(window);
@@ -347,11 +354,17 @@ impl ApplicationHandler<AccessKitEvent> for App {
             }
             WindowEvent::Ime(ime) => match ime {
                 winit::event::Ime::Preedit(text, _) => {
+                    if let Some(host) = &mut self.host {
+                        host.set_ime(&text, true);
+                    }
                     let _ = self
                         .browser_mut()
                         .handle_event(NativeEvent::ImePreedit { text });
                 }
                 winit::event::Ime::Commit(text) => {
+                    if let Some(host) = &mut self.host {
+                        host.set_ime(&text, false);
+                    }
                     let _ = self.browser_mut().handle_event(NativeEvent::Ime { text });
                     if let Some(w) = &self.window {
                         w.request_redraw();
@@ -366,7 +379,15 @@ impl ApplicationHandler<AccessKitEvent> for App {
                     y: position.y as f32 / scale.max(0.01),
                 });
             }
-            WindowEvent::MouseWheel { delta, .. } => {
+            WindowEvent::MouseWheel { delta, phase, .. } => {
+                if let Some(host) = &mut self.host {
+                    host.set_scroll_phase(match phase {
+                        winit::event::TouchPhase::Started => ve_shell_mac::ScrollPhase::Began,
+                        winit::event::TouchPhase::Moved => ve_shell_mac::ScrollPhase::Changed,
+                        winit::event::TouchPhase::Ended => ve_shell_mac::ScrollPhase::Ended,
+                        winit::event::TouchPhase::Cancelled => ve_shell_mac::ScrollPhase::Cancelled,
+                    });
+                }
                 let scale = self.window.as_ref().map_or(1.0, |w| w.scale_factor()) as f32;
                 let (dx, dy) = match delta {
                     winit::event::MouseScrollDelta::LineDelta(x, y) => (x * 40.0, -y * 40.0),

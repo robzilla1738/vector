@@ -294,6 +294,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn product_host_forwards_ime_scroll_and_appearance() {
+        let mut w = MacWindow::product();
+        w.set_ime("你", true);
+        w.set_scroll_phase(MacWindow::scroll_phase_from_nsevent(2, 0));
+        w.set_appearance(MacWindow::appearance_from_ns_name("NSAppearanceNameAqua"));
+        assert_eq!(w.ime, "你");
+        assert!(w.ime_marked);
+        assert_eq!(w.scroll_phase, Some(ScrollPhase::Changed));
+        assert_eq!(w.appearance, Appearance::Light);
+        w.set_ime("你好", false);
+        w.set_scroll_phase(MacWindow::scroll_phase_from_nsevent(0, 2));
+        assert_eq!(w.ime, "你好");
+        assert!(!w.ime_marked);
+        assert_eq!(w.scroll_phase, Some(ScrollPhase::Ended));
+    }
+
+    #[test]
     fn test_double_covers_ime_scroll_appearance_menus() {
         let mut w = MacWindow::test_double();
         w.set_scroll_phase(ScrollPhase::Began);
