@@ -9480,6 +9480,8 @@
       this.ZERO = 0;
       this.SRC_ALPHA = 770;
       this.ONE_MINUS_SRC_ALPHA = 771;
+      this.FUNC_ADD = 32774;
+      this.FUNC_SUBTRACT = 32778;
       this.ARRAY_BUFFER = 34962;
       this.ELEMENT_ARRAY_BUFFER = 34963;
       this.FLOAT = 5126;
@@ -9503,6 +9505,7 @@
       this._viewport = [0, 0, canvas.width, canvas.height];
       this._blendOn = false;
       this._blend = [1, 0];
+      this._blendEq = 32774;
       this._colorMask = [true, true, true, true];
       this._arrayBuf = null;
       this._elemBuf = null;
@@ -9607,6 +9610,7 @@
       return this._cullFace === this.FRONT ? isFront : !isFront;
     }
     blendFunc(src, dst) { this._blend = [Number(src) || 0, Number(dst) || 0]; }
+    blendEquation(mode) { this._blendEq = Number(mode) || this.FUNC_ADD; }
     pixelStorei(pname, val) {
       if (pname === this.UNPACK_FLIP_Y_WEBGL) this._flipY = !!val;
       if (pname === this.UNPACK_PREMULTIPLY_ALPHA_WEBGL) this._premultiply = !!val;
@@ -9678,6 +9682,28 @@
       const src = this._blend && this._blend[0];
       const dst = this._blend && this._blend[1];
       if (this._blendOn && src === this.ZERO && dst === this.ONE) {
+        return;
+      }
+      if (this._blendOn && this._blendEq === this.FUNC_SUBTRACT && c && c.__h != null) {
+        const [x, y, w, h] = this._clearRect();
+        const dest = D("canvasGetImageData", c.__h, x, y, w, h) || {};
+        const destBin = atob(dest.b64 || "");
+        D("canvasSetComposite", c.__h, "copy");
+        try { fn(); } finally { D("canvasSetComposite", c.__h, "source-over"); }
+        const drawn = D("canvasGetImageData", c.__h, x, y, w, h) || {};
+        const srcBin = atob(drawn.b64 || "");
+        let out = "";
+        const n = Math.max(destBin.length, srcBin.length);
+        for (let i = 0; i < n; i += 4) {
+          const sub = (d, s) => Math.max(0, (d || 0) - (s || 0));
+          out += String.fromCharCode(
+            sub(destBin.charCodeAt(i), srcBin.charCodeAt(i)),
+            sub(destBin.charCodeAt(i + 1), srcBin.charCodeAt(i + 1)),
+            sub(destBin.charCodeAt(i + 2), srcBin.charCodeAt(i + 2)),
+            destBin.charCodeAt(i + 3) || 0
+          );
+        }
+        D("canvasPutImageData", c.__h, w, h, btoa(out), x, y);
         return;
       }
       const add = this._blendOn && src === this.ONE && dst === this.ONE;

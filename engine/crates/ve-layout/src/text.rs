@@ -285,6 +285,7 @@ fn greedy_wrap(
     wrap: bool,
     break_words: bool,
     hyphenate: bool,
+    auto_hyphen: bool,
     height: f32,
     baseline: f32,
     width_of: &dyn Fn(&str) -> f32,
@@ -304,7 +305,7 @@ fn greedy_wrap(
         });
     };
 
-    for (idx, word) in split_words(text, hyphenate) {
+    for (idx, word) in split_words(text, hyphenate, auto_hyphen) {
         if word == "\n" {
             push_line(line_start, line_end, &mut lines);
             line_start = idx + 1;
@@ -359,23 +360,23 @@ fn greedy_wrap(
 
 /// Splits into `(byte_offset, word)` where a word is a maximal run of
 /// non-space characters plus the following spaces, or a lone `"\n"`.
-fn split_words(text: &str, hyphenate: bool) -> Vec<(usize, &str)> {
-    let mut out = Vec::new();
+fn split_words(text: &str, hyphenate: bool, auto_hyphen: bool) -> Vec<(usize, &str)> {
+    let mut raw = Vec::new();
     let mut start: Option<usize> = None;
     let mut in_trailing_space = false;
     for (i, ch) in text.char_indices() {
         if hyphenate && ch == '\u{00AD}' {
             if let Some(s) = start.take() {
-                out.push((s, &text[s..i]));
+                raw.push((s, &text[s..i]));
             }
             in_trailing_space = false;
             continue;
         }
         if ch == '\n' {
             if let Some(s) = start.take() {
-                out.push((s, &text[s..i]));
+                raw.push((s, &text[s..i]));
             }
-            out.push((i, "\n"));
+            raw.push((i, "\n"));
             in_trailing_space = false;
         } else if ch == ' ' {
             if start.is_none() {
@@ -384,7 +385,7 @@ fn split_words(text: &str, hyphenate: bool) -> Vec<(usize, &str)> {
             in_trailing_space = true;
         } else {
             if in_trailing_space && let Some(s) = start.take() {
-                out.push((s, &text[s..i]));
+                raw.push((s, &text[s..i]));
             }
             in_trailing_space = false;
             if start.is_none() {
@@ -393,7 +394,36 @@ fn split_words(text: &str, hyphenate: bool) -> Vec<(usize, &str)> {
         }
     }
     if let Some(s) = start {
-        out.push((s, &text[s..]));
+        raw.push((s, &text[s..]));
+    }
+    if !auto_hyphen {
+        return raw;
+    }
+    let mut out = Vec::new();
+    for (idx, word) in raw {
+        if word == "\n" || word.chars().all(|c| c == ' ') {
+            out.push((idx, word));
+            continue;
+        }
+        let letters: Vec<(usize, char)> = word
+            .char_indices()
+            .filter(|(_, ch)| *ch != ' ')
+            .collect();
+        if letters.len() <= 3 {
+            out.push((idx, word));
+            continue;
+        }
+        let mut start_b = 0usize;
+        for (n, (ci, ch)) in letters.iter().enumerate() {
+            if n > 0 && n % 3 == 0 {
+                out.push((idx + start_b, &word[start_b..*ci]));
+                start_b = *ci;
+            }
+            let _ = ch;
+        }
+        if start_b < word.len() {
+            out.push((idx + start_b, &word[start_b..]));
+        }
     }
     out
 }
@@ -418,6 +448,7 @@ impl TextShaper for MetricShaper {
             wrap,
             breaks_words(style),
             style.hyphens != ve_style::Hyphens::None,
+            style.hyphens == ve_style::Hyphens::Auto,
             height,
             baseline,
             &width_of,

@@ -978,6 +978,7 @@ enum SvgFilterKind {
     DropShadow { dx: f32, dy: f32, color: [u8; 4] },
     HueRotate(f32),
     LuminanceToAlpha,
+    Matrix([f32; 20]),
 }
 
 #[derive(Clone, Copy)]
@@ -1124,6 +1125,23 @@ fn parse_svg_filters(text: &str) -> HashMap<String, SvgFilterKind> {
                         .and_then(|s| s.split_whitespace().next()?.parse().ok())
                         .unwrap_or(1.0);
                     out.insert(id.to_string(), SvgFilterKind::Saturate(amount));
+                } else if kind.eq_ignore_ascii_case("matrix") {
+                    let mut m = [0.0_f32; 20];
+                    m[0] = 1.0;
+                    m[6] = 1.0;
+                    m[12] = 1.0;
+                    m[18] = 1.0;
+                    if let Some(raw) = svg_attr_str(cm, "values") {
+                        let mut nums = raw
+                            .split(|c: char| c == ',' || c.is_whitespace())
+                            .filter_map(|s| s.parse().ok());
+                        for slot in m.iter_mut() {
+                            if let Some(n) = nums.next() {
+                                *slot = n;
+                            }
+                        }
+                    }
+                    out.insert(id.to_string(), SvgFilterKind::Matrix(m));
                 } else if kind.eq_ignore_ascii_case("hueRotate") {
                     let deg = svg_attr_str(cm, "values")
                         .and_then(|s| s.split_whitespace().next()?.parse().ok())
@@ -1338,6 +1356,43 @@ fn apply_svg_filter(
         SvgFilterKind::LuminanceToAlpha => {
             let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
             luminance_to_alpha_decoded_rect(img, bx0, by0, bx1, by1);
+        }
+        SvgFilterKind::Matrix(m) => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            matrix_decoded_rect(img, bx0, by0, bx1, by1, m);
+        }
+    }
+}
+
+fn matrix_decoded_rect(
+    img: &mut DecodedImage,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+    m: &[f32; 20],
+) {
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if x < 0 || y < 0 {
+                continue;
+            }
+            let Some([r, g, b, a]) = img.pixel(x as u32, y as u32) else {
+                continue;
+            };
+            if a == 0 {
+                continue;
+            }
+            let rf = f32::from(r);
+            let gf = f32::from(g);
+            let bf = f32::from(b);
+            let af = f32::from(a);
+            let row = |o: usize| {
+                (m[o] * rf + m[o + 1] * gf + m[o + 2] * bf + m[o + 3] * af + m[o + 4] * 255.0)
+                    .round()
+                    .clamp(0.0, 255.0) as u8
+            };
+            plot_px(img, x, y, [row(0), row(5), row(10), row(15)]);
         }
     }
 }
@@ -4612,6 +4667,19 @@ mod tests {
         assert_eq!(px[3], 255, "{px:?}");
         assert!(px[1] > 200, "{px:?}");
         assert!(px[0] < 40, "{px:?}");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_matrix_swaps_red_to_green() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feColorMatrix type='matrix' values='\
+              0 0 0 0 0  1 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg matrix");
+        assert_eq!(img.pixel(4, 4), Some([0, 255, 0, 255]));
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
     }
 

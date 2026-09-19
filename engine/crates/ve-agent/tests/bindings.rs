@@ -6176,6 +6176,33 @@ fn webgl_front_face_cw_flips_culling() {
 }
 
 #[test]
+fn webgl_blend_equation_subtract_removes_src() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 1, 0, 1);
+              gl.clear();
+              gl.enable(gl.BLEND);
+              gl.blendFunc(gl.ONE, gl.ONE);
+              gl.blendEquation(gl.FUNC_SUBTRACT);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], a: px[3], sub: gl.FUNC_SUBTRACT };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sub"], 32778, "{v}");
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+}
+
+#[test]
 fn webgl_blend_zero_one_keeps_dest() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page
