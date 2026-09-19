@@ -219,6 +219,16 @@ describe("Gate D permissions and durable writes", () => {
     if (!auth.ok) expect(auth.effect).toBe("write");
   });
 
+  it("honours origin and expiresAt on structured grants (H2-C4)", () => {
+    const click = [{ id: "c", op: "click", target: "r1" }];
+    const scoped = [{ effect: "write" as const, origin: "https://app.test", scope: "*", expiresAt: 0 }];
+    expect(authorizeProgram(click, scoped, "https://app.test").ok).toBe(true);
+    expect(authorizeProgram(click, scoped, "https://evil.test").ok).toBe(false);
+    const expired = [{ effect: "write" as const, origin: "*", scope: "*", expiresAt: 1 }];
+    expect(authorizeProgram(click, expired, "https://app.test", 2).ok).toBe(false);
+    expect(authorizeProgram(click, ["effect:write"], "https://anywhere.test").ok).toBe(true);
+  });
+
   it("pages.execute is the permission chokepoint; RPC grants cannot expand it", async () => {
     const makePage = (pageId: string, url: string): DriverPage => ({
       identity: { pageId, targetId: "engine-perm", backend: "vector-engine" },

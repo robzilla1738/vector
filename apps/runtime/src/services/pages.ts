@@ -866,7 +866,13 @@ export class PageService {
       const grants = ctx.runId
         ? (this.deps.grantsForRun ?? this.deps.grants ?? DEFAULT_GRANTS)
         : (this.deps.grants ?? DEFAULT_GRANTS);
-      const auth = authorizeProgram(allSteps, grants);
+      let origin = "";
+      try {
+        origin = lp.target.url ? new URL(lp.target.url).origin : "";
+      } catch {
+        origin = "";
+      }
+      const auth = authorizeProgram(allSteps, grants, origin);
       if (!auth.ok) throw new VectorError("permission_denied", auth.denied);
       this.programInflight.add(pageId);
       try {

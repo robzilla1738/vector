@@ -49,6 +49,8 @@ export { compileAction, compileAndAuthorize, rebindSteps, type CompileResult, ty
 export {
   authorizeProgram,
   classifyStep,
+  parseGrant,
+  grantAllows,
   DEFAULT_GRANTS,
   USER_RUN_GRANTS,
   KNOWN_GRANTS,
@@ -56,6 +58,8 @@ export {
   sanitizeGrants,
   type EffectClass,
   type GrantSource,
+  type GrantInput,
+  type PermissionGrant,
 } from "./agent/permissions.js";
 export { DurableWriteLedger, stepSignature, beginConsequentialWrite, settleWrite, type WriteIntent } from "./agent/durable.js";
 export {

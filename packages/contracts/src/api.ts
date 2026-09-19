@@ -250,7 +250,19 @@ export const SettingsSetParams = z.object({
   /** Vector Engine routing: off (default, Chromium only) | auto (router) | always (engine only). */
   engineMode: EngineModeSchema.optional(),
   /** Privilege-independent effect grants. Model text cannot expand these. */
-  effectGrants: z.array(z.string()).optional(),
+  effectGrants: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          effect: z.enum(["read", "write", "destructive", "egress", "*"]),
+          origin: z.string().optional(),
+          scope: z.string().optional(),
+          expiresAt: z.number().int().nonnegative().optional(),
+        }),
+      ]),
+    )
+    .optional(),
 });
 export const SettingsGetParams = z.object({});
 
