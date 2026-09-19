@@ -1129,6 +1129,134 @@ fn canvas_filter_blur_spills_outside_fill_rect() {
 }
 
 #[test]
+fn canvas_filter_blur_spills_outside_fill_path() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.filter = "blur(2px)";
+              ctx.beginPath();
+              ctx.rect(6, 6, 4, 4);
+              ctx.fill();
+              var mid = ctx.getImageData(8, 8, 1, 1).data;
+              var halo = ctx.getImageData(4, 8, 1, 1).data;
+              return { mg: mid[1], ma: mid[3], ha: halo[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["mg"].as_u64().unwrap_or(0) > 20,
+        "blurred path fill keeps center: {v}"
+    );
+    assert!(
+        v["ha"].as_u64().unwrap_or(0) > 0,
+        "path blur must spill outside the rect: {v}"
+    );
+}
+
+#[test]
+fn canvas_lighter_adds_overlapping_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 4;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 4, 4);
+              ctx.globalCompositeOperation = "lighter";
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 4, 4);
+              var p = ctx.getImageData(1, 1, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_image_smoothing_blends_scaled_pixels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(smooth) {
+                var src = document.createElement("canvas");
+                src.width = 2;
+                src.height = 1;
+                var sctx = src.getContext("2d");
+                sctx.fillStyle = "#ff0000";
+                sctx.fillRect(0, 0, 1, 1);
+                sctx.fillStyle = "#0000ff";
+                sctx.fillRect(1, 0, 1, 1);
+                var dst = document.createElement("canvas");
+                dst.width = 8;
+                dst.height = 1;
+                var dctx = dst.getContext("2d");
+                dctx.imageSmoothingEnabled = smooth;
+                dctx.drawImage(src, 0, 0, 2, 1, 0, 0, 8, 1);
+                var mid = dctx.getImageData(3, 0, 1, 1).data;
+                return { r: mid[0], b: mid[2] };
+              }
+              return { on: sample(true), off: sample(false) };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["on"]["r"].as_u64().unwrap_or(0) > 0 && v["on"]["b"].as_u64().unwrap_or(0) > 0,
+        "smoothing must blend the red/blue boundary: {v}"
+    );
+    assert!(
+        v["off"]["r"].as_u64().unwrap_or(255) == 255 && v["off"]["b"].as_u64().unwrap_or(255) == 0
+            || v["off"]["r"].as_u64().unwrap_or(0) == 0
+                && v["off"]["b"].as_u64().unwrap_or(0) == 255,
+        "nearest neighbour stays a source color: {v}"
+    );
+}
+
+#[test]
+fn create_attribute_returns_attr_node() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var a = document.createAttribute("data-k");
+              a.value = "1";
+              var prev = document.body.setAttributeNode(a);
+              var got = document.body.getAttributeNode("data-k");
+              return {
+                type: a.nodeType,
+                inst: a instanceof Attr,
+                name: a.name,
+                value: document.body.getAttribute("data-k"),
+                owner: a.ownerElement === document.body,
+                same: got === a || (got && got.value === "1"),
+                prevNull: prev == null,
+                ctorThrew: false
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["type"], 2, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["name"], "data-k", "{v}");
+    assert_eq!(v["value"], "1", "{v}");
+    assert_eq!(v["owner"], true, "{v}");
+    assert_eq!(v["same"], true, "{v}");
+}
+
+#[test]
 fn canvas_path2d_ellipse_arc_to_and_round_rect() {
     let mut page = open(r#"<body></body>"#);
     let v = page

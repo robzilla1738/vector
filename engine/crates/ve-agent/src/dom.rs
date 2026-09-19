@@ -2273,6 +2273,7 @@ pub(crate) fn host_call(
                 arg_f64(args, 7) as i32,
                 arg_f64(args, 8) as i32,
                 arg_f64(args, 9) as i32,
+                arg_f64(args, 10) != 0.0,
             );
             Ok(JsValue::Number(ops as f64))
         }
@@ -2316,7 +2317,7 @@ pub(crate) fn host_call(
                     arg_f64(args, 8) as f32,
                 )
             } else {
-                page.canvas_fill_path(id, &rects, &polys, &arg_str(args, 2))
+                page.canvas_fill_path(id, &rects, &polys, &arg_str(args, 2), &arg_str(args, 3))
             };
             Ok(JsValue::Number(ops as f64))
         }

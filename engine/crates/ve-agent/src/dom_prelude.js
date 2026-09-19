@@ -1780,6 +1780,50 @@
     },
   };
 
+  class Attr {
+    constructor() {
+      throw new TypeError("Illegal constructor");
+    }
+  }
+  function makeAttr(name, value, owner, ns) {
+    const attr = Object.create(Attr.prototype);
+    let _value = value == null ? "" : String(value);
+    const _name = String(name);
+    const _ns = ns == null || ns === "" ? null : String(ns);
+    const colon = _name.lastIndexOf(":");
+    Object.defineProperties(attr, {
+      name: { configurable: true, enumerable: true, get() { return _name; } },
+      nodeName: { configurable: true, enumerable: true, get() { return _name; } },
+      specified: { configurable: true, enumerable: true, get() { return true; } },
+      localName: { configurable: true, enumerable: true, get() { return colon < 0 ? _name : _name.slice(colon + 1); } },
+      prefix: { configurable: true, enumerable: true, get() { return colon < 0 ? null : _name.slice(0, colon); } },
+      namespaceURI: { configurable: true, enumerable: true, get() { return _ns; } },
+      nodeType: { configurable: true, enumerable: true, get() { return 2; } },
+      ownerElement: { configurable: true, enumerable: true, writable: true, value: owner || null },
+      value: {
+        configurable: true,
+        enumerable: true,
+        get() { return _value; },
+        set(v) {
+          _value = String(v);
+          if (this.ownerElement) D("setAttrNS", this.ownerElement.__h, _ns || "", _name, _value);
+        }
+      },
+      nodeValue: {
+        configurable: true,
+        enumerable: true,
+        get() { return this.value; },
+        set(v) { this.value = v; }
+      },
+      textContent: {
+        configurable: true,
+        enumerable: true,
+        get() { return this.value; },
+        set(v) { this.value = v; }
+      }
+    });
+    return attr;
+  }
   class Node extends EventTarget {
     get nodeType() { return D("nodeType", this.__h); }
     get nodeName() { return D("nodeName", this.__h); }
@@ -2257,12 +2301,22 @@
       const name = String(n);
       const recs = D("attrs", this.__h) || [];
       for (let i = 0; i < recs.length; i++) {
-        if (recs[i].name === name) return this.attributes[i] || this.attributes.getNamedItem(name);
+        if (recs[i].name === name) return this.attributes.getNamedItem(name);
       }
       return null;
     }
+    setAttributeNode(attr) {
+      if (!attr || attr.nodeType !== 2) {
+        throw new TypeError("Failed to execute 'setAttributeNode' on 'Element': parameter 1 is not of type 'Attr'.");
+      }
+      const prev = this.getAttributeNode(attr.name);
+      this.setAttribute(attr.name, attr.value);
+      attr.ownerElement = this;
+      if (prev && prev !== attr) prev.ownerElement = null;
+      return prev;
+    }
     removeAttributeNode(attr) {
-      if (!attr || typeof attr.name !== "string") {
+      if (!attr || attr.nodeType !== 2) {
         throw new TypeError("Failed to execute 'removeAttributeNode' on 'Element': parameter 1 is not of type 'Attr'.");
       }
       const name = attr.name;
@@ -2282,32 +2336,13 @@
       return !!D("toggleAttribute", this.__h, String(n), omitted ? null : !!force);
     }
     get attributes() {
-      const h = this.__h;
-      const recs = D("attrs", h) || [];
+      const recs = D("attrs", this.__h) || [];
       const map = [];
       for (let i = 0; i < recs.length; i++) {
         const rec = recs[i];
         const name = rec.name;
         const ns = rec.ns == null || rec.ns === "" ? null : rec.ns;
-        const colon = name.lastIndexOf(":");
-        const attr = {
-          name,
-          nodeName: name,
-          specified: true,
-          localName: colon < 0 ? name : name.slice(colon + 1),
-          prefix: colon < 0 ? null : name.slice(0, colon),
-          namespaceURI: ns,
-          ownerElement: this,
-          get value() { return rec.value; },
-          set value(v) {
-            rec.value = String(v);
-            D("setAttrNS", h, ns || "", name, rec.value);
-          },
-          get nodeValue() { return rec.value; },
-          set nodeValue(v) { this.value = v; },
-          get textContent() { return rec.value; },
-          set textContent(v) { this.value = v; },
-        };
+        const attr = makeAttr(name, rec.value, this, ns);
         map.push(attr);
         map[name] = attr;
       }
@@ -4377,7 +4412,7 @@
     fill() {
       const path = arguments[0];
       const p = path instanceof Path2D ? path : this._path;
-      D("canvasFillPath", this.__h, p._payload(), String(this.fillStyle));
+      D("canvasFillPath", this.__h, p._payload(), String(this.fillStyle), String(this._filter || "none"));
     }
     stroke() {
       const path = arguments[0];
@@ -4573,7 +4608,7 @@
         }
       }
       const box = dw || dh ? this._mapRect(dx, dy, dw, dh) : this._mapPoint(dx, dy).concat([0, 0]);
-      D("canvasDrawImage", this.__h, img.__h, sx, sy, sw, sh, box[0], box[1], box[2], box[3]);
+      D("canvasDrawImage", this.__h, img.__h, sx, sy, sw, sh, box[0], box[1], box[2], box[3], this._imageSmoothingEnabled !== false ? 1 : 0);
     }
     _textOrigin(t, x, y) {
       const size = Number((/([0-9]*\.?[0-9]+)px/.exec(String(this._font || "")) || [])[1]) || 10;
@@ -6160,11 +6195,17 @@
     queryCommandSupported(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
     queryCommandValue(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return ""; }
     createAttribute(name) {
-      const el = this.createElement("span");
-      el.setAttribute(String(name), "");
-      return el.getAttributeNode ? el.getAttributeNode(String(name)) : { name: String(name), value: "" };
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'createAttribute' on 'Document': 1 argument required, but only 0 present.");
+      }
+      return makeAttr(String(name), "", null, null);
     }
-    createAttributeNS(ns, name) { return this.createAttribute(name); }
+    createAttributeNS(ns, name) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'createAttributeNS' on 'Document': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      return makeAttr(String(name), "", null, ns);
+    }
     open() { return this; }
     close() {}
     static parseHTMLUnsafe(html) {
@@ -7949,7 +7990,7 @@
     localStorage: storage("local"), sessionStorage: storage("session"),
     customElements: new CustomElementRegistry(),
     Event, HashChangeEvent, PopStateEvent, ToggleEvent, TrackEvent, FormDataEvent, StorageEvent, MouseEvent, PointerEvent, WheelEvent, KeyboardEvent, CustomEvent, UIEvent, InputEvent, CompositionEvent, MessageEvent, EventTarget, DragEvent,
-    Node, NodeList, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment, CharacterData,
+    Node, NodeList, Attr, Element, HTMLElement, Document, DocumentFragment, ShadowRoot, Text, Comment, CharacterData,
     ProcessingInstruction, DocumentType, HTMLCollection, HTMLAllCollection,
     HTMLFormControlsCollection, HTMLOptionsCollection, RadioNodeList,
     HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement, HTMLOptionElement,
@@ -8738,6 +8779,7 @@
   }
   brandWrap(Document);
   brandWrap(Node);
+  brandWrap(Attr);
   brandWrap(Element);
   brandWrap(EventTarget);
   brandWrap(EventSource);

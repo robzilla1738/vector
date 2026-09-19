@@ -817,6 +817,7 @@ enum CompositeOp {
     Copy,
     DestinationOver,
     Xor,
+    Lighter,
     SourceIn,
     DestinationIn,
     SourceOut,
@@ -831,6 +832,7 @@ impl CompositeOp {
             "copy" => Self::Copy,
             "destination-over" => Self::DestinationOver,
             "xor" => Self::Xor,
+            "lighter" => Self::Lighter,
             "source-in" => Self::SourceIn,
             "destination-in" => Self::DestinationIn,
             "source-out" => Self::SourceOut,
@@ -1015,6 +1017,48 @@ fn dash_on(dist: i32, dash: &[i32], offset: i32) -> bool {
     true
 }
 
+fn sample_bilinear(
+    src: &[u8],
+    src_w: u32,
+    src_h: u32,
+    sx: u32,
+    sy: u32,
+    x1: u32,
+    y1: u32,
+    fx: f32,
+    fy: f32,
+) -> [u8; 4] {
+    let clamp_x = |x: i32| x.clamp(sx as i32, x1 as i32);
+    let clamp_y = |y: i32| y.clamp(sy as i32, y1 as i32);
+    let x0 = clamp_x(fx.floor() as i32);
+    let y0 = clamp_y(fy.floor() as i32);
+    let x1i = clamp_x(x0 + 1);
+    let y1i = clamp_y(y0 + 1);
+    let tx = (fx - x0 as f32).clamp(0.0, 1.0);
+    let ty = (fy - y0 as f32).clamp(0.0, 1.0);
+    let pix = |x: i32, y: i32| {
+        if x < 0 || y < 0 || x >= src_w as i32 || y >= src_h as i32 {
+            return [0u8; 4];
+        }
+        let si = (y as u32 * src_w + x as u32) as usize * 4;
+        if si + 3 >= src.len() {
+            return [0u8; 4];
+        }
+        [src[si], src[si + 1], src[si + 2], src[si + 3]]
+    };
+    let p00 = pix(x0, y0);
+    let p10 = pix(x1i, y0);
+    let p01 = pix(x0, y1i);
+    let p11 = pix(x1i, y1i);
+    let mut out = [0u8; 4];
+    for i in 0..4 {
+        let top = f32::from(p00[i]) + (f32::from(p10[i]) - f32::from(p00[i])) * tx;
+        let bot = f32::from(p01[i]) + (f32::from(p11[i]) - f32::from(p01[i])) * tx;
+        out[i] = (top + (bot - top) * ty).round() as u8;
+    }
+    out
+}
+
 fn glyph5x7(ch: char) -> [u8; 5] {
     match ch {
         ' ' | '\t' => [0, 0, 0, 0, 0],
@@ -1030,6 +1074,14 @@ fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
     let da = u32::from(dst[3]);
     let (fs, fd) = match op {
         CompositeOp::Copy => return src,
+        CompositeOp::Lighter => {
+            return [
+                src[0].saturating_add(dst[0]),
+                src[1].saturating_add(dst[1]),
+                src[2].saturating_add(dst[2]),
+                src[3].saturating_add(dst[3]),
+            ];
+        }
         CompositeOp::SourceOver => (sa, da * (255 - sa) / 255),
         CompositeOp::DestinationOver => (sa * (255 - da) / 255, da),
         CompositeOp::Xor => (sa * (255 - da) / 255, da * (255 - sa) / 255),
@@ -1109,6 +1161,36 @@ fn parse_canvas_blur_px(filter: &str) -> i32 {
     };
     let n = inner.trim().trim_end_matches("px").trim();
     n.parse::<f32>().unwrap_or(0.0).round().clamp(0.0, 16.0) as i32
+}
+
+fn canvas_path_bounds(rects: &[[f32; 4]], polys: &[Vec<[f32; 2]>]) -> Option<(i32, i32, i32, i32)> {
+    let mut min_x = f32::MAX;
+    let mut min_y = f32::MAX;
+    let mut max_x = f32::MIN;
+    let mut max_y = f32::MIN;
+    for r in rects {
+        min_x = min_x.min(r[0]);
+        min_y = min_y.min(r[1]);
+        max_x = max_x.max(r[0] + r[2]);
+        max_y = max_y.max(r[1] + r[3]);
+    }
+    for poly in polys {
+        for p in poly {
+            min_x = min_x.min(p[0]);
+            min_y = min_y.min(p[1]);
+            max_x = max_x.max(p[0]);
+            max_y = max_y.max(p[1]);
+        }
+    }
+    if min_x > max_x || min_y > max_y {
+        return None;
+    }
+    Some((
+        min_x.floor() as i32,
+        min_y.floor() as i32,
+        (max_x - min_x).ceil() as i32,
+        (max_y - min_y).ceil() as i32,
+    ))
 }
 
 fn canvas_alpha(color: [u8; 4], alpha: f32) -> [u8; 4] {
@@ -1909,7 +1991,7 @@ impl CanvasSurface {
     }
 
     fn blit(&mut self, src: &[u8], sw: u32, sh: u32, dx: i32, dy: i32) {
-        self.blit_scaled(src, sw, sh, 0, 0, sw, sh, dx, dy, sw, sh);
+        self.blit_scaled(src, sw, sh, 0, 0, sw, sh, dx, dy, sw, sh, false);
     }
 
     fn blit_scaled(
@@ -1925,31 +2007,44 @@ impl CanvasSurface {
         dy: i32,
         dw: u32,
         dh: u32,
+        smooth: bool,
     ) {
         if sw == 0 || sh == 0 || dw == 0 || dh == 0 {
             return;
         }
+        let x1 = sx
+            .saturating_add(sw)
+            .saturating_sub(1)
+            .min(src_w.saturating_sub(1));
+        let y1 = sy
+            .saturating_add(sh)
+            .saturating_sub(1)
+            .min(src_h.saturating_sub(1));
         for row in 0..dh {
-            let src_y = sy + row * sh / dh;
-            if src_y >= src_h {
-                continue;
-            }
             for col in 0..dw {
-                let src_x = sx + col * sw / dw;
-                if src_x >= src_w {
-                    continue;
-                }
-                let si = (src_y * src_w + src_x) as usize * 4;
-                if si + 3 >= src.len() {
-                    continue;
-                }
                 let x = dx + col as i32;
                 let y = dy + row as i32;
                 if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
                     continue;
                 }
                 let di = (y as u32 * self.width + x as u32) as usize * 4;
-                self.pixels[di..di + 4].copy_from_slice(&src[si..si + 4]);
+                let px = if smooth && (dw != sw || dh != sh) {
+                    let fx = sx as f32 + (col as f32 + 0.5) * sw as f32 / dw as f32 - 0.5;
+                    let fy = sy as f32 + (row as f32 + 0.5) * sh as f32 / dh as f32 - 0.5;
+                    sample_bilinear(src, src_w, src_h, sx, sy, x1, y1, fx, fy)
+                } else {
+                    let src_y = sy + row * sh / dh;
+                    let src_x = sx + col * sw / dw;
+                    if src_y >= src_h || src_x >= src_w {
+                        continue;
+                    }
+                    let si = (src_y * src_w + src_x) as usize * 4;
+                    if si + 3 >= src.len() {
+                        continue;
+                    }
+                    [src[si], src[si + 1], src[si + 2], src[si + 3]]
+                };
+                self.pixels[di..di + 4].copy_from_slice(&px);
             }
         }
         self.ops += 1;
@@ -2700,6 +2795,7 @@ impl Page {
         rects: &[[f32; 4]],
         polys: &[Vec<[f32; 2]>],
         color: &str,
+        filter: &str,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
         let c = self
@@ -2707,6 +2803,12 @@ impl Page {
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
         c.fill_path_styled(rects, polys, &style, 1.0);
+        let blur = parse_canvas_blur_px(filter);
+        if blur > 0 {
+            if let Some((x, y, w, h)) = canvas_path_bounds(rects, polys) {
+                c.blur_rect(x, y, w, h, blur);
+            }
+        }
         c.ops
     }
 
@@ -2916,6 +3018,7 @@ impl Page {
         dy: i32,
         dw: i32,
         dh: i32,
+        smooth: bool,
     ) -> u64 {
         let src_pixels = self
             .canvases
@@ -2945,7 +3048,7 @@ impl Page {
             };
             let dw = if dw <= 0 { sw } else { dw as u32 };
             let dh = if dh <= 0 { sh } else { dh as u32 };
-            c.blit_scaled(&px, w, h, sx, sy, sw, sh, dx, dy, dw, dh);
+            c.blit_scaled(&px, w, h, sx, sy, sw, sh, dx, dy, dw, dh, smooth);
         }
         c.ops
     }
