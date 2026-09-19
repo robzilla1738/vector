@@ -9450,8 +9450,10 @@
       this.TRIANGLES = 4;
       this.UNSIGNED_SHORT = 5123;
       this.UNPACK_FLIP_Y_WEBGL = 37440;
+      this.UNPACK_PREMULTIPLY_ALPHA_WEBGL = 37441;
       this._clear = [0, 0, 0, 0];
       this._flipY = false;
+      this._premultiply = false;
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
       this._viewport = [0, 0, canvas.width, canvas.height];
@@ -9548,6 +9550,21 @@
     blendFunc(src, dst) { this._blend = [Number(src) || 0, Number(dst) || 0]; }
     pixelStorei(pname, val) {
       if (pname === this.UNPACK_FLIP_Y_WEBGL) this._flipY = !!val;
+      if (pname === this.UNPACK_PREMULTIPLY_ALPHA_WEBGL) this._premultiply = !!val;
+    }
+    _premultiplyBytes(bytes) {
+      if (!bytes) return bytes;
+      let out = "";
+      for (let i = 0; i < bytes.length; i += 4) {
+        const a = (bytes.charCodeAt(i + 3) || 0) / 255;
+        out += String.fromCharCode(
+          Math.round((bytes.charCodeAt(i) || 0) * a),
+          Math.round((bytes.charCodeAt(i + 1) || 0) * a),
+          Math.round((bytes.charCodeAt(i + 2) || 0) * a),
+          bytes.charCodeAt(i + 3) || 0
+        );
+      }
+      return out;
     }
     _flipRows(bytes, w, h) {
       const stride = w * 4;
@@ -9668,6 +9685,7 @@
         tex._w = last.width;
         tex._h = last.height;
         if (this._flipY) s = this._flipRows(s, tex._w, tex._h);
+        if (this._premultiply) s = this._premultiplyBytes(s);
         tex._b64 = btoa(s);
       } else if (last instanceof Uint8Array || last instanceof Uint8ClampedArray) {
         const w = Number(arguments[3]) || 0;
@@ -9677,6 +9695,7 @@
         tex._w = w;
         tex._h = h;
         if (this._flipY) s = this._flipRows(s, w, h);
+        if (this._premultiply) s = this._premultiplyBytes(s);
         tex._b64 = btoa(s);
       }
     }

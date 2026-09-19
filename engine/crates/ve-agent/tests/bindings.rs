@@ -2235,6 +2235,54 @@ fn canvas_filter_sepia_tints_red() {
 }
 
 #[test]
+fn canvas_filter_hue_rotate_shifts_red_to_green() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "hue-rotate(120deg)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_filter_opacity_scales_alpha() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "opacity(0.5)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 128, "{v}");
+}
+
+#[test]
 fn canvas_filter_saturate_zero_greys_red() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -5291,6 +5339,46 @@ fn computed_style_exposes_fill_rule_and_stroke_joins() {
 }
 
 #[test]
+fn computed_style_exposes_spacing_and_ui() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="letter-spacing:4px;word-spacing:8px;line-height:2;tab-size:4;user-select:none;cursor:pointer;outline-width:2px;outline-style:solid;vertical-align:middle;hyphens:none;text-indent:16px">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                letter: String(cs.letterSpacing || cs.getPropertyValue("letter-spacing")),
+                word: String(cs.wordSpacing || cs.getPropertyValue("word-spacing")),
+                line: String(cs.lineHeight || cs.getPropertyValue("line-height")),
+                tab: String(cs.tabSize || cs.getPropertyValue("tab-size")),
+                user: String(cs.userSelect || cs.getPropertyValue("user-select")),
+                cursor: String(cs.cursor || cs.getPropertyValue("cursor")),
+                outlineW: String(cs.outlineWidth || cs.getPropertyValue("outline-width")),
+                outlineS: String(cs.outlineStyle || cs.getPropertyValue("outline-style")),
+                valign: String(cs.verticalAlign || cs.getPropertyValue("vertical-align")),
+                hyphens: String(cs.hyphens || cs.getPropertyValue("hyphens")),
+                indent: String(cs.textIndent || cs.getPropertyValue("text-indent"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["letter"], "4px", "{v}");
+    assert_eq!(v["word"], "8px", "{v}");
+    assert_eq!(v["line"], "2", "{v}");
+    assert_eq!(v["tab"], "4", "{v}");
+    assert_eq!(v["user"], "none", "{v}");
+    assert_eq!(v["cursor"], "pointer", "{v}");
+    assert_eq!(v["outlineW"], "2px", "{v}");
+    assert_eq!(v["outlineS"], "solid", "{v}");
+    assert_eq!(v["valign"], "middle", "{v}");
+    assert_eq!(v["hyphens"], "none", "{v}");
+    assert_eq!(v["indent"], "16px", "{v}");
+}
+
+#[test]
 fn computed_style_exposes_accent_and_caret_color() {
     let mut page = open(
         r#"<body>
@@ -5877,6 +5965,37 @@ fn webgl_unpack_flip_y_reverses_texture_rows() {
     assert_eq!(v["tg"], 255, "{v}");
     assert_eq!(v["br"], 255, "{v}");
     assert_eq!(v["bg"], 0, "{v}");
+}
+
+#[test]
+fn webgl_unpack_premultiply_alpha_scales_rgb() {
+    let mut page = open(r#"<body><canvas id="c" width="2" height="2"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              const pixels = new Uint8Array([
+                255, 0, 0, 128, 255, 0, 0, 128,
+                255, 0, 0, 128, 255, 0, 0, 128
+              ]);
+              const tex = gl.createTexture();
+              gl.bindTexture(gl.TEXTURE_2D, tex);
+              gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
+              gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const p = new Uint8Array(4);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, p);
+              return { r: p[0], g: p[1], b: p[2], a: p[3], cap: gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, on: gl._premultiply === true };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 37441, "{v}");
+    assert_eq!(v["on"], true, "{v}");
+    assert_eq!(v["r"], 128, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 128, "{v}");
 }
 
 #[test]

@@ -286,7 +286,7 @@ impl ComputedStyle {
     /// `getComputedStyle`. Unknown names yield the empty string.
     #[must_use]
     pub fn property_css(&self, name: &str) -> String {
-        use crate::values::{LengthPercentage, LengthPercentageAuto, MaxSize};
+        use crate::values::{LengthPercentage, LengthPercentageAuto, LineHeight, MaxSize, VerticalAlign};
 
         fn px(v: f32) -> String {
             if v == 0.0 {
@@ -413,6 +413,66 @@ impl ComputedStyle {
                 crate::values::Color::Rgba(c) => c.to_css_string(),
                 crate::values::Color::CurrentColor => self.color.to_css_string(),
             },
+            PropertyId::LetterSpacing => {
+                if self.letter_spacing == 0.0 {
+                    "normal".into()
+                } else {
+                    px(self.letter_spacing)
+                }
+            }
+            PropertyId::WordSpacing => {
+                if self.word_spacing == 0.0 {
+                    "normal".into()
+                } else {
+                    px(self.word_spacing)
+                }
+            }
+            PropertyId::LineHeight => match self.line_height {
+                LineHeight::Normal => "normal".into(),
+                LineHeight::Number(n) => format!("{n}"),
+                LineHeight::Px(v) => px(v),
+            },
+            PropertyId::TabSize => format!("{}", self.tab_size),
+            PropertyId::UserSelect => self.user_select.to_string(),
+            PropertyId::Cursor => self.cursor.clone(),
+            PropertyId::WillChange => self.will_change.clone(),
+            PropertyId::OutlineWidth => px(self.outline_width),
+            PropertyId::OutlineStyle => self.outline_style.to_string(),
+            PropertyId::OutlineColor => match self.outline_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::OutlineOffset => px(self.outline_offset),
+            PropertyId::BorderTopColor => match self.border_top_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::BorderRightColor => match self.border_right_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::BorderBottomColor => match self.border_bottom_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::BorderLeftColor => match self.border_left_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::VerticalAlign => match self.vertical_align {
+                VerticalAlign::Baseline => "baseline".into(),
+                VerticalAlign::Sub => "sub".into(),
+                VerticalAlign::Super => "super".into(),
+                VerticalAlign::Top => "top".into(),
+                VerticalAlign::TextTop => "text-top".into(),
+                VerticalAlign::Middle => "middle".into(),
+                VerticalAlign::Bottom => "bottom".into(),
+                VerticalAlign::TextBottom => "text-bottom".into(),
+                VerticalAlign::Length(v) => px(v),
+                VerticalAlign::Percent(p) => format!("{p}%"),
+            },
+            PropertyId::Hyphens => self.hyphens.to_string(),
+            PropertyId::TextIndent => lp(self.text_indent),
             _ => String::new(),
         }
     }
@@ -507,5 +567,35 @@ mod tests {
             Display::Inline,
             "invalid at computed-value time -> initial"
         );
+    }
+
+    #[test]
+    fn property_css_exposes_spacing_and_ui() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "letter-spacing: 4px; word-spacing: 8px; line-height: 2; tab-size: 4; \
+             user-select: none; cursor: pointer; will-change: transform; \
+             outline-width: 2px; outline-style: solid; outline-color: red; outline-offset: 1px; \
+             border-top-color: blue; vertical-align: middle; hyphens: none; text-indent: 16px",
+            false,
+        );
+        assert_eq!(style.property_css("letter-spacing"), "4px");
+        assert_eq!(style.property_css("word-spacing"), "8px");
+        assert_eq!(style.property_css("line-height"), "2");
+        assert_eq!(style.property_css("tab-size"), "4");
+        assert_eq!(style.property_css("user-select"), "none");
+        assert_eq!(style.property_css("cursor"), "pointer");
+        assert_eq!(style.property_css("will-change"), "transform");
+        assert_eq!(style.property_css("outline-width"), "2px");
+        assert_eq!(style.property_css("outline-style"), "solid");
+        assert!(style.property_css("outline-color").contains("255, 0, 0"));
+        assert_eq!(style.property_css("outline-offset"), "1px");
+        assert!(style.property_css("border-top-color").contains("0, 0, 255"));
+        assert_eq!(style.property_css("vertical-align"), "middle");
+        assert_eq!(style.property_css("hyphens"), "none");
+        assert_eq!(style.property_css("text-indent"), "16px");
+        assert_eq!(ComputedStyle::initial().property_css("letter-spacing"), "normal");
+        assert_eq!(ComputedStyle::initial().property_css("line-height"), "normal");
     }
 }

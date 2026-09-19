@@ -1427,6 +1427,58 @@ fn parse_canvas_grayscale(filter: &str) -> f32 {
         .clamp(0.0, 1.0)
 }
 
+fn parse_canvas_hue_rotate(filter: &str) -> Option<f32> {
+    let s = filter.trim();
+    let inner = s.strip_prefix("hue-rotate(")?.strip_suffix(')')?;
+    let t = inner.trim().to_ascii_lowercase();
+    if let Some(n) = t.strip_suffix("turn") {
+        return Some(n.trim().parse::<f32>().unwrap_or(0.0) * 360.0);
+    }
+    if let Some(n) = t.strip_suffix("rad") {
+        return Some(n.trim().parse::<f32>().unwrap_or(0.0) * 180.0 / std::f32::consts::PI);
+    }
+    let n = t.strip_suffix("deg").unwrap_or(t.as_str()).trim();
+    Some(n.parse::<f32>().unwrap_or(0.0))
+}
+
+fn canvas_rgb_to_hsv(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let d = max - min;
+    let s = if max == 0.0 { 0.0 } else { d / max };
+    let h = if d == 0.0 {
+        0.0
+    } else if (max - r).abs() < f32::EPSILON {
+        60.0 * (((g - b) / d) % 6.0)
+    } else if (max - g).abs() < f32::EPSILON {
+        60.0 * ((b - r) / d + 2.0)
+    } else {
+        60.0 * ((r - g) / d + 4.0)
+    };
+    (if h < 0.0 { h + 360.0 } else { h }, s, max)
+}
+
+fn canvas_hsv_to_rgb(h: f32, s: f32, v: f32) -> (f32, f32, f32) {
+    let h = ((h % 360.0) + 360.0) % 360.0;
+    let c = v * s;
+    let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+    let m = v - c;
+    let (r, g, b) = if h < 60.0 {
+        (c, x, 0.0)
+    } else if h < 120.0 {
+        (x, c, 0.0)
+    } else if h < 180.0 {
+        (0.0, c, x)
+    } else if h < 240.0 {
+        (0.0, x, c)
+    } else if h < 300.0 {
+        (x, 0.0, c)
+    } else {
+        (c, 0.0, x)
+    };
+    (r + m, g + m, b + m)
+}
+
 fn canvas_path_bounds(rects: &[[f32; 4]], polys: &[Vec<[f32; 2]>]) -> Option<(i32, i32, i32, i32)> {
     let mut min_x = f32::MAX;
     let mut min_y = f32::MAX;
@@ -1616,6 +1668,8 @@ enum CanvasColorFilter {
     Contrast(f32),
     Sepia(f32),
     Saturate(f32),
+    HueRotate(f32),
+    Opacity(f32),
 }
 
 /// Software 2D canvas backing store.
@@ -1739,6 +1793,11 @@ impl CanvasSurface {
                 let r = f32::from(self.pixels[i]);
                 let g = f32::from(self.pixels[i + 1]);
                 let b = f32::from(self.pixels[i + 2]);
+                if let CanvasColorFilter::Opacity(amount) = kind {
+                    let a = f32::from(self.pixels[i + 3]) * amount.clamp(0.0, 1.0);
+                    self.pixels[i + 3] = a.round().clamp(0.0, 255.0) as u8;
+                    continue;
+                }
                 let (nr, ng, nb) = match kind {
                     CanvasColorFilter::Grayscale(amount) => {
                         let amount = amount.clamp(0.0, 1.0);
@@ -1778,6 +1837,11 @@ impl CanvasSurface {
                         let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
                         (y + (r - y) * amount, y + (g - y) * amount, y + (b - y) * amount)
                     }
+                    CanvasColorFilter::HueRotate(deg) => {
+                        let (h, s, v) = canvas_rgb_to_hsv(r, g, b);
+                        canvas_hsv_to_rgb(h + deg, s, v)
+                    }
+                    CanvasColorFilter::Opacity(_) => unreachable!(),
                 };
                 self.pixels[i] = nr.round().clamp(0.0, 255.0) as u8;
                 self.pixels[i + 1] = ng.round().clamp(0.0, 255.0) as u8;
@@ -3025,6 +3089,12 @@ impl Page {
         }
         if let Some(sat) = parse_canvas_filter_fn(filter, "saturate") {
             c.color_filter_rect(x, y, w, h, CanvasColorFilter::Saturate(sat));
+        }
+        if let Some(deg) = parse_canvas_hue_rotate(filter) {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::HueRotate(deg));
+        }
+        if let Some(op) = parse_canvas_filter_fn(filter, "opacity") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Opacity(op));
         }
         c.ops
     }
