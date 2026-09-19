@@ -251,6 +251,8 @@ pub struct NativeBrowser {
     page_layer: Option<Frame>,
     /// Layout revision the page layer was painted at.
     page_layer_rev: u64,
+    /// Agent `dispatch_program` calls. Human input must stay at zero.
+    program_dispatches: u64,
 }
 
 /// Who currently owns input on the live page.
@@ -323,6 +325,7 @@ impl NativeBrowser {
             chrome_base_sig: 0,
             page_layer: None,
             page_layer_rev: 0,
+            program_dispatches: 0,
         }
     }
 
@@ -737,6 +740,7 @@ impl NativeBrowser {
     }
 
     fn dispatch_program(&mut self, request: ExecuteRequest) -> Result<ExecuteResult> {
+        self.program_dispatches = self.program_dispatches.saturating_add(1);
         let tab = self
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?;
@@ -1110,14 +1114,8 @@ impl NativeBrowser {
                 }
             }
             NativeEvent::Navigate { url } => {
-                if let Some(tab) = self.tabs.get_mut(self.active) {
-                    tab.url.clone_from(&url);
-                    let _ = self.dispatch_program(ExecuteRequest {
-                        program: Program::from_value(serde_json::json!([
-                            {"id":"n","op":"navigate","url":url}
-                        ]))?,
-                        return_observation: None,
-                    });
+                if self.active_tab().is_some() {
+                    self.navigate_active(&url)?;
                     self.present_dirty();
                 }
             }
@@ -1274,12 +1272,7 @@ impl NativeBrowser {
                 if name.eq_ignore_ascii_case("urlbar") || name.contains("address") {
                     let _ = self.handle_event(NativeEvent::FocusUrlbar)?;
                 } else {
-                    let _ = self.dispatch_program(ExecuteRequest {
-                        program: Program::from_value(serde_json::json!([
-                            {"id":"ak","op":"click","target": format!("text:{name}")}
-                        ]))?,
-                        return_observation: None,
-                    });
+                    self.dispatch_human_accesskit_click(&name)?;
                     self.present_dirty();
                 }
             }
@@ -2176,6 +2169,42 @@ impl NativeBrowser {
         }
     }
 
+    fn navigate_active(&mut self, url: &str) -> Result<()> {
+        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+            return Ok(());
+        };
+        let page = self.engine.page_mut(page_id)?;
+        page.navigate(url)?;
+        page.commit_navigation()?;
+        self.sync_active_tab();
+        Ok(())
+    }
+
+    fn dispatch_human_accesskit_click(&mut self, name: &str) -> Result<()> {
+        let Some(page_id) = self.active_tab().map(|t| t.page) else {
+            return Ok(());
+        };
+        let page = self.engine.page_mut(page_id)?;
+        let _ = page.click_target(&format!("text:{name}"));
+        self.sync_active_tab();
+        Ok(())
+    }
+
+    /// Agent program executions on this window (human paths must stay at 0).
+    #[must_use]
+    pub fn program_dispatches(&self) -> u64 {
+        self.program_dispatches
+    }
+
+    /// Virtual clock of the active page (human input must not jump `SETTLE_STEP_MS`).
+    #[must_use]
+    pub fn active_virtual_time_ms(&self) -> u64 {
+        self.active_tab()
+            .and_then(|t| self.engine.page(t.page).ok())
+            .map(Page::virtual_time_ms)
+            .unwrap_or(0)
+    }
+
     fn dispatch_human_key(
         &mut self,
         key: &str,
@@ -2798,6 +2827,128 @@ mod tests {
             .handle_event(NativeEvent::AccessKitAction { name: mapped })
             .unwrap();
         assert!(browser.urlbar_focused());
+    }
+
+    #[test]
+    fn dispatch_human_wheel_does_not_execute_program() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p style=\"height:2000px\">tall</p>".into(),
+                url: "https://human-wheel.test/".into(),
+            })
+            .unwrap();
+        assert_eq!(browser.program_dispatches(), 0);
+        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        assert_eq!(browser.program_dispatches(), 0);
+        assert_eq!(browser.active_virtual_time_ms(), 0);
+    }
+
+    #[test]
+    fn dispatch_human_key_and_ime_skip_agent_settle() {
+        let mut browser = NativeBrowser::with_config(crate::EngineConfig {
+            offline: true,
+            policy: ve_net::NetworkPolicy::permissive(),
+            scripting: true,
+            ..crate::EngineConfig::default()
+        });
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: r#"<input id="q"><script>setTimeout(() => { document.getElementById("q").value = "late"; }, 100);</script>"#.into(),
+                url: "https://human-key.test/".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::Ime {
+                text: "hi".into(),
+            })
+            .unwrap();
+        let _ = browser.handle_event(NativeEvent::Key {
+            key: "a".into(),
+            code: "KeyA".into(),
+            modifiers: 0,
+            repeat: false,
+            state: KeyState::Down,
+        });
+        let _ = browser.handle_event(NativeEvent::Key {
+            key: "a".into(),
+            code: "KeyA".into(),
+            modifiers: 0,
+            repeat: false,
+            state: KeyState::Up,
+        });
+        assert_eq!(browser.program_dispatches(), 0);
+        assert!(
+            browser.active_virtual_time_ms() < 500,
+            "human key/ime must not run settle(500), got {}ms",
+            browser.active_virtual_time_ms()
+        );
+        let value = browser
+            .engine
+            .page(browser.active_tab().unwrap().page)
+            .unwrap()
+            .document()
+            .form_value(
+                browser
+                    .engine
+                    .page(browser.active_tab().unwrap().page)
+                    .unwrap()
+                    .document()
+                    .element_by_id("q")
+                    .expect("#q"),
+            )
+            .unwrap_or_default();
+        assert_ne!(value, "late", "100ms timer must not fire on the human path");
+    }
+
+    #[test]
+    fn dispatch_human_url_navigation_skips_program() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p>start</p>".into(),
+                url: "https://human-nav.test/start".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::Navigate {
+                url: "data:text/html,<p id=n>next</p>".into(),
+            })
+            .unwrap();
+        assert_eq!(browser.program_dispatches(), 0);
+        let url = browser.active_tab().unwrap().url.clone();
+        assert!(
+            url.starts_with("data:text/html"),
+            "human navigate must load without Program, got {url}"
+        );
+        let title_or_text = browser.active_page_meta().map(|(_, title, _, _)| title);
+        assert!(title_or_text.is_some());
+    }
+
+    #[test]
+    fn dispatch_human_accesskit_click_skips_program() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: r#"<label><input type="checkbox" id="c"> Toggle</label>"#.into(),
+                url: "https://human-ak.test/".into(),
+            })
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::AccessKitAction {
+                name: "Toggle".into(),
+            })
+            .unwrap();
+        assert_eq!(browser.program_dispatches(), 0);
+        let page = browser
+            .engine
+            .page(browser.active_tab().unwrap().page)
+            .unwrap();
+        let id = page.document().element_by_id("c").expect("#c");
+        assert!(
+            page.document().is_checked(id),
+            "AccessKit click must toggle without Program"
+        );
     }
 
     #[test]

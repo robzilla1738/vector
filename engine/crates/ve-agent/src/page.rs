@@ -3480,7 +3480,20 @@ impl Page {
     // Navigation
     // ---------------------------------------------------------------------
 
-    /// Requests a navigation (completed by [`Self::settle`]).
+    /// Applies a queued navigation without the agent `settle(500)` budget.
+    pub fn commit_navigation(&mut self) -> Result<()> {
+        if self.pending_navigation.is_none() {
+            return Ok(());
+        }
+        if let Err(e) = self.perform_navigation() {
+            self.last_navigation_error = Some(e.to_string());
+            return Err(e);
+        }
+        self.update();
+        Ok(())
+    }
+
+    /// Requests a navigation (completed by [`Self::settle`] or [`Self::commit_navigation`]).
     pub fn navigate(&mut self, url: &str) -> Result<()> {
         let resolved = self
             .resolve_url(url)
