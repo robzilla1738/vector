@@ -482,6 +482,126 @@ impl ComputedStyle {
             PropertyId::Orphans => format!("{}", self.orphans),
             PropertyId::Widows => format!("{}", self.widows),
             PropertyId::AnimationTimingFunction => self.animation_timing_function.clone(),
+            PropertyId::TextWrap => self.text_wrap.to_string(),
+            PropertyId::FontVariant => self.font_variant.to_string(),
+            PropertyId::TextOverflow => self.text_overflow.to_string(),
+            PropertyId::UnicodeBidi => self.unicode_bidi.to_string(),
+            PropertyId::ListStyleType => self.list_style_type.to_string(),
+            PropertyId::ListStylePosition => self.list_style_position.to_string(),
+            PropertyId::FlexGrow => format!("{}", self.flex_grow),
+            PropertyId::FlexShrink => format!("{}", self.flex_shrink),
+            PropertyId::FlexBasis => lpa(self.flex_basis),
+            PropertyId::Order => format!("{}", self.order),
+            PropertyId::AlignContent => self.align_content.to_string(),
+            PropertyId::JustifyItems => self.justify_items.to_string(),
+            PropertyId::AlignSelf => self.align_self.to_string(),
+            PropertyId::JustifySelf => self.justify_self.to_string(),
+            PropertyId::RowGap => lp(self.row_gap),
+            PropertyId::ColumnGap => lp(self.column_gap),
+            PropertyId::Isolation => self.isolation.to_string(),
+            PropertyId::MixBlendMode => self.mix_blend_mode.to_string(),
+            PropertyId::AnimationFillMode => self.animation_fill_mode.to_string(),
+            PropertyId::AnimationPlayState => self.animation_play_state.to_string(),
+            PropertyId::AnimationDirection => self.animation_direction.to_string(),
+            PropertyId::AnimationName => {
+                if self.animation_name.is_empty() {
+                    "none".into()
+                } else {
+                    self.animation_name.clone()
+                }
+            }
+            PropertyId::TransitionProperty => self.transition_property.clone(),
+            PropertyId::TransitionTimingFunction => self.transition_timing_function.clone(),
+            PropertyId::Contain => self.contain.to_string(),
+            PropertyId::ScrollbarWidth => self.scrollbar_width.to_string(),
+            PropertyId::ContainerType => self.container_type.to_string(),
+            PropertyId::TouchAction => self.touch_action.to_string(),
+            PropertyId::ImageRendering => self.image_rendering.to_string(),
+            PropertyId::PreferredColorScheme => self.color_scheme.to_string(),
+            PropertyId::ColumnSpan => self.column_span.to_string(),
+            PropertyId::TableLayout => self.table_layout.to_string(),
+            PropertyId::EmptyCells => self.empty_cells.to_string(),
+            PropertyId::ContentVisibility => self.content_visibility.to_string(),
+            PropertyId::FieldSizing => self.field_sizing.to_string(),
+            PropertyId::Resize => self.resize.to_string(),
+            PropertyId::TextOrientation => self.text_orientation.to_string(),
+            PropertyId::BackgroundBlendMode => self.background_blend_mode.to_string(),
+            PropertyId::FontStretch => self.font_stretch.to_string(),
+            PropertyId::FontVariantLigatures => self.font_variant_ligatures.to_string(),
+            PropertyId::FontVariantNumeric => self.font_variant_numeric.to_string(),
+            PropertyId::FontKerning => self.font_kerning.to_string(),
+            PropertyId::ScrollSnapType => self.scroll_snap_type.to_string(),
+            PropertyId::ScrollSnapAlign => self.scroll_snap_align.to_string(),
+            PropertyId::BreakBefore => self.break_before.to_string(),
+            PropertyId::BreakAfter => self.break_after.to_string(),
+            PropertyId::BreakInside => self.break_inside.to_string(),
+            PropertyId::TextRendering => self.text_rendering.to_string(),
+            PropertyId::FontSmoothing => self.font_smoothing.to_string(),
+            PropertyId::TransformStyle => self.transform_style.to_string(),
+            PropertyId::BackfaceVisibility => self.backface_visibility.to_string(),
+            PropertyId::HangingPunctuation => self.hanging_punctuation.to_string(),
+            PropertyId::TextEmphasis => self.text_emphasis.to_string(),
+            PropertyId::BoxOrient => self.box_orient.to_string(),
+            PropertyId::TransformBox => self.transform_box.to_string(),
+            PropertyId::VectorEffect => self.vector_effect.to_string(),
+            PropertyId::Speak => self.speak.to_string(),
+            PropertyId::ForcedColorAdjust => self.forced_color_adjust.to_string(),
+            PropertyId::TextJustify => self.text_justify.to_string(),
+            PropertyId::PrintColorAdjust => self.print_color_adjust.to_string(),
+            PropertyId::FontDisplay => self.font_display.to_string(),
+            PropertyId::FontOpticalSizing => self.font_optical_sizing.to_string(),
+            PropertyId::FontSynthesis => self.font_synthesis.to_string(),
+            PropertyId::RubyPosition => self.ruby_position.to_string(),
+            PropertyId::MathStyle => self.math_style.to_string(),
+            PropertyId::OverflowScrolling => self.overflow_scrolling.to_string(),
+            PropertyId::TouchCallout => self.touch_callout.to_string(),
+            PropertyId::ColorInterpolationFilters => self.color_interpolation_filters.to_string(),
+            PropertyId::FontVariantEastAsian => self.font_variant_east_asian.to_string(),
+            PropertyId::MaskComposite => self.mask_composite.to_string(),
+            PropertyId::ScrollSnapStop => self.scroll_snap_stop.to_string(),
+            PropertyId::BorderCollapse => self.border_collapse.to_string(),
+            PropertyId::CaptionSide => self.caption_side.to_string(),
+            PropertyId::TextDecorationStyle => self.text_decoration_style.to_string(),
+            PropertyId::TextUnderlinePosition => self.text_underline_position.to_string(),
+            PropertyId::ColumnRuleStyle => self.column_rule_style.to_string(),
+            PropertyId::ObjectFit => self.object_fit.to_string(),
+            PropertyId::BackgroundRepeat => self.background_repeat.to_string(),
+            PropertyId::BackgroundClip => self.background_clip.to_string(),
+            PropertyId::BackgroundOrigin => self.background_origin.to_string(),
+            PropertyId::BackgroundAttachment => self.background_attachment.to_string(),
+            PropertyId::GridAutoFlow => self.grid_auto_flow.to_string(),
+            PropertyId::Zoom => format!("{}", self.zoom),
+            PropertyId::StrokeWidth => px(self.stroke_width),
+            PropertyId::ScrollMargin => px(self.scroll_margin),
+            PropertyId::ScrollPadding => px(self.scroll_padding),
+            PropertyId::TextDecorationThickness => px(self.text_decoration_thickness),
+            PropertyId::TextUnderlineOffset => px(self.text_underline_offset),
+            PropertyId::ColumnRuleWidth => px(self.column_rule_width),
+            PropertyId::MarkerOffset => px(self.marker_offset),
+            PropertyId::MathDepth => format!("{}", self.math_depth),
+            PropertyId::FontFeatureSettings => self.font_feature_settings.clone(),
+            PropertyId::FontLanguageOverride => self.font_language_override.clone(),
+            PropertyId::FontPalette => self.font_palette.clone(),
+            PropertyId::AnimationRange => self.animation_range.clone(),
+            PropertyId::AnimationTimeline => self.animation_timeline.clone(),
+            PropertyId::ViewTimeline => self.view_timeline.clone(),
+            PropertyId::BorderImageSlice => self.border_image_slice.clone(),
+            PropertyId::TextDecorationColor => match self.text_decoration_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::ColumnRuleColor => match self.column_rule_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::Fill => match self.fill {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::Stroke => match self.stroke {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
             _ => String::new(),
         }
     }
@@ -627,5 +747,36 @@ mod tests {
         assert_eq!(style.property_css("orphans"), "3");
         assert_eq!(style.property_css("widows"), "4");
         assert_eq!(style.property_css("animation-timing-function"), "linear");
+    }
+
+    #[test]
+    fn property_css_exposes_flex_list_and_paint_keywords() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "flex-grow: 2; flex-shrink: 0; order: 3; list-style-type: decimal; \
+             text-overflow: ellipsis; isolation: isolate; mix-blend-mode: multiply; \
+             object-fit: cover; table-layout: fixed; empty-cells: hide; \
+             content-visibility: hidden; resize: both; vector-effect: non-scaling-stroke; \
+             fill: red; stroke: blue; stroke-width: 3px; zoom: 2",
+            false,
+        );
+        assert_eq!(style.property_css("flex-grow"), "2");
+        assert_eq!(style.property_css("flex-shrink"), "0");
+        assert_eq!(style.property_css("order"), "3");
+        assert_eq!(style.property_css("list-style-type"), "decimal");
+        assert_eq!(style.property_css("text-overflow"), "ellipsis");
+        assert_eq!(style.property_css("isolation"), "isolate");
+        assert_eq!(style.property_css("mix-blend-mode"), "multiply");
+        assert_eq!(style.property_css("object-fit"), "cover");
+        assert_eq!(style.property_css("table-layout"), "fixed");
+        assert_eq!(style.property_css("empty-cells"), "hide");
+        assert_eq!(style.property_css("content-visibility"), "hidden");
+        assert_eq!(style.property_css("resize"), "both");
+        assert_eq!(style.property_css("vector-effect"), "non-scaling-stroke");
+        assert!(style.property_css("fill").contains("255, 0, 0"));
+        assert!(style.property_css("stroke").contains("0, 0, 255"));
+        assert_eq!(style.property_css("stroke-width"), "3px");
+        assert_eq!(style.property_css("zoom"), "2");
     }
 }

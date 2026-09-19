@@ -2283,6 +2283,70 @@ fn canvas_filter_opacity_scales_alpha() {
 }
 
 #[test]
+fn canvas_filter_drop_shadow_paints_offset() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "drop-shadow(3px 0 0 #00ff00)";
+              ctx.fillRect(1, 1, 3, 3);
+              var src = ctx.getImageData(2, 2, 1, 1).data;
+              var sh = ctx.getImageData(5, 2, 1, 1).data;
+              var empty = ctx.getImageData(0, 2, 1, 1).data;
+              return {
+                r: src[0], g: src[1], b: src[2], a: src[3],
+                sr: sh[0], sg: sh[1], sb: sh[2], sa: sh[3],
+                ea: empty[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["sr"], 0, "{v}");
+    assert_eq!(v["sg"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
+    assert_eq!(v["ea"], 0, "{v}");
+}
+
+#[test]
+fn computed_style_exposes_flex_list_and_paint_keywords() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="flex-grow:2;list-style-type:decimal;text-overflow:ellipsis;isolation:isolate;object-fit:cover;table-layout:fixed;zoom:2">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                grow: String(cs.flexGrow || cs.getPropertyValue("flex-grow")),
+                list: String(cs.listStyleType || cs.getPropertyValue("list-style-type")),
+                overflow: String(cs.textOverflow || cs.getPropertyValue("text-overflow")),
+                isolation: String(cs.isolation || cs.getPropertyValue("isolation")),
+                fit: String(cs.objectFit || cs.getPropertyValue("object-fit")),
+                table: String(cs.tableLayout || cs.getPropertyValue("table-layout")),
+                zoom: String(cs.zoom || cs.getPropertyValue("zoom"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["grow"], "2", "{v}");
+    assert_eq!(v["list"], "decimal", "{v}");
+    assert_eq!(v["overflow"], "ellipsis", "{v}");
+    assert_eq!(v["isolation"], "isolate", "{v}");
+    assert_eq!(v["fit"], "cover", "{v}");
+    assert_eq!(v["table"], "fixed", "{v}");
+    assert_eq!(v["zoom"], "2", "{v}");
+}
+
+#[test]
 fn canvas_filter_saturate_zero_greys_red() {
     let mut page = open(r#"<body></body>"#);
     let v = page

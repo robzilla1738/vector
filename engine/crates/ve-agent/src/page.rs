@@ -1427,6 +1427,39 @@ fn parse_canvas_grayscale(filter: &str) -> f32 {
         .clamp(0.0, 1.0)
 }
 
+fn parse_canvas_drop_shadow(filter: &str) -> Option<(i32, i32, i32, String)> {
+    let s = filter.trim();
+    let inner = s.strip_prefix("drop-shadow(")?.strip_suffix(')')?;
+    let mut rest = inner.trim();
+    let mut nums = Vec::new();
+    for _ in 0..3 {
+        let t = rest.trim_start();
+        if t.is_empty() {
+            break;
+        }
+        let (tok, after) = t.split_once(char::is_whitespace).unwrap_or((t, ""));
+        let Ok(n) = tok.trim_end_matches("px").parse::<f32>() else {
+            break;
+        };
+        nums.push(n.round() as i32);
+        rest = after;
+    }
+    if nums.len() < 2 {
+        return None;
+    }
+    let color = rest.trim();
+    Some((
+        nums[0],
+        nums[1],
+        if nums.len() >= 3 { nums[2] } else { 0 },
+        if color.is_empty() {
+            "#000000".into()
+        } else {
+            color.to_string()
+        },
+    ))
+}
+
 fn parse_canvas_hue_rotate(filter: &str) -> Option<f32> {
     let s = filter.trim();
     let inner = s.strip_prefix("hue-rotate(")?.strip_suffix(')')?;
@@ -3040,6 +3073,8 @@ impl Page {
         } else {
             None
         };
+        let drop_shadow = parse_canvas_drop_shadow(filter)
+            .map(|(dx, dy, br, col)| (dx, dy, br, self.resolve_canvas_style(&col)));
         let c = self
             .canvases
             .entry(id)
@@ -3061,6 +3096,20 @@ impl Page {
                                 shadow_style,
                                 fade,
                             );
+                        }
+                    }
+                }
+            }
+        }
+        if let Some((dx, dy, br, ds)) = drop_shadow.as_ref() {
+            if *br <= 0 {
+                c.fill_rect_styled(x + dx, y + dy, w, h, ds, alpha);
+            } else {
+                let fade = (alpha / (1.0 + *br as f32)).max(0.08);
+                for sdy in -br..=*br {
+                    for sdx in -br..=*br {
+                        if sdx * sdx + sdy * sdy <= *br * *br {
+                            c.fill_rect_styled(x + dx + sdx, y + dy + sdy, w, h, ds, fade);
                         }
                     }
                 }
