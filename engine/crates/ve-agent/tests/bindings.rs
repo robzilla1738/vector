@@ -4170,6 +4170,91 @@ fn crypto_subtle_aes_gcm_round_trips_and_matches_nist() {
 }
 
 #[test]
+fn slot_assigned_nodes_match_named_and_manual() {
+    let mut page = open(r#"<body><div id="host"><span id="a" slot="s">A</span><span id="b">B</span></div></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const host = document.getElementById("host");
+              const shadow = host.attachShadow({ mode: "open" });
+              shadow.innerHTML = "<slot name=\"s\"></slot><slot></slot>";
+              const named = shadow.querySelector("slot[name=s]");
+              const def = shadow.querySelector("slot:not([name])");
+              const a = document.getElementById("a");
+              const namedNodes = named.assignedNodes();
+              const defEls = def.assignedElements();
+              return {
+                namedCount: namedNodes.length,
+                namedSame: namedNodes[0] === a,
+                namedEls: named.assignedElements().length,
+                defCount: defEls.length,
+                defTag: defEls[0] && defEls[0].id,
+                aSlot: a.assignedSlot === named
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["namedCount"], 1, "{v}");
+    assert_eq!(v["namedSame"], true, "{v}");
+    assert_eq!(v["namedEls"], 1, "{v}");
+    assert_eq!(v["defCount"], 1, "{v}");
+    assert_eq!(v["defTag"], "b", "{v}");
+    assert_eq!(v["aSlot"], true, "{v}");
+}
+
+#[test]
+fn speech_synthesis_exposes_a_default_voice() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const voices = speechSynthesis.getVoices();
+              return {
+                count: voices.length,
+                isVoice: voices[0] instanceof SpeechSynthesisVoice,
+                tag: Object.prototype.toString.call(voices[0]),
+                name: voices[0] && voices[0].name,
+                lang: voices[0] && voices[0].lang,
+                def: voices[0] && voices[0].default
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["count"], 1, "{v}");
+    assert_eq!(v["isVoice"], true, "{v}");
+    assert_eq!(v["tag"], "[object SpeechSynthesisVoice]", "{v}");
+    assert_eq!(v["name"], "Vector", "{v}");
+    assert_eq!(v["lang"], "en-US", "{v}");
+    assert_eq!(v["def"], true, "{v}");
+}
+
+#[test]
+fn data_transfer_files_from_item_add() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const dt = new DataTransfer();
+              const file = new File(["hi"], "x.txt", { type: "text/plain" });
+              const item = dt.items.add(file);
+              return {
+                len: dt.files.length,
+                name: dt.files[0] && dt.files[0].name,
+                kind: item && item.kind,
+                asFile: item && item.getAsFile() && item.getAsFile().name,
+                listTag: Object.prototype.toString.call(dt.files)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["len"], 1, "{v}");
+    assert_eq!(v["name"], "x.txt", "{v}");
+    assert_eq!(v["kind"], "file", "{v}");
+    assert_eq!(v["asFile"], "x.txt", "{v}");
+    assert_eq!(v["listTag"], "[object FileList]", "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

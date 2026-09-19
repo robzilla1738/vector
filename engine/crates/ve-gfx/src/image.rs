@@ -406,6 +406,9 @@ struct SvgGrad {
     y1: f32,
     x2: f32,
     y2: f32,
+    cx: f32,
+    cy: f32,
+    r: f32,
     stops: Vec<(f32, [u8; 4])>,
 }
 
@@ -467,44 +470,60 @@ fn parse_offset(s: &str) -> f32 {
     s.parse::<f32>().unwrap_or(0.0)
 }
 
+fn parse_gradient_stops(block: &str) -> Vec<(f32, [u8; 4])> {
+    let mut stops = Vec::new();
+    let mut srest = block;
+    while let Some(si) = srest.find("<stop") {
+        let st_end = srest[si..].find('>').unwrap_or(srest.len() - si);
+        let stop = &srest[si..si + st_end];
+        let off = svg_attr_str(stop, "offset")
+            .map(parse_offset)
+            .unwrap_or(0.0);
+        let color = parse_svg_color(svg_attr_str(stop, "stop-color").unwrap_or("#000000"));
+        stops.push((off, color));
+        srest = &srest[si + st_end + 1..];
+    }
+    stops.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    stops
+}
+
 fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
     let mut out = HashMap::new();
-    let mut rest = text;
-    while let Some(i) = rest.find("<linearGradient") {
-        let after = &rest[i..];
-        let end = after
-            .find("</linearGradient>")
-            .map(|e| e + "</linearGradient>".len())
-            .unwrap_or_else(|| after.find('>').map(|e| e + 1).unwrap_or(after.len()));
-        let block = &after[..end];
-        let tag_end = block.find('>').unwrap_or(block.len());
-        let tag = &block[..tag_end];
-        if let Some(id) = svg_attr_str(tag, "id") {
-            let mut stops = Vec::new();
-            let mut srest = block;
-            while let Some(si) = srest.find("<stop") {
-                let st_end = srest[si..].find('>').unwrap_or(srest.len() - si);
-                let stop = &srest[si..si + st_end];
-                let off = svg_attr_str(stop, "offset")
-                    .map(parse_offset)
-                    .unwrap_or(0.0);
-                let color = parse_svg_color(svg_attr_str(stop, "stop-color").unwrap_or("#000000"));
-                stops.push((off, color));
-                srest = &srest[si + st_end + 1..];
+    for (open, close, radial) in [
+        ("<linearGradient", "</linearGradient>", false),
+        ("<radialGradient", "</radialGradient>", true),
+    ] {
+        let mut rest = text;
+        while let Some(i) = rest.find(open) {
+            let after = &rest[i..];
+            let end = after
+                .find(close)
+                .map(|e| e + close.len())
+                .unwrap_or_else(|| after.find('>').map(|e| e + 1).unwrap_or(after.len()));
+            let block = &after[..end];
+            let tag_end = block.find('>').unwrap_or(block.len());
+            let tag = &block[..tag_end];
+            if let Some(id) = svg_attr_str(tag, "id") {
+                out.insert(
+                    id.to_string(),
+                    SvgGrad {
+                        x1: svg_attr(tag, "x1").unwrap_or(0.0),
+                        y1: svg_attr(tag, "y1").unwrap_or(0.0),
+                        x2: svg_attr(tag, "x2").unwrap_or(1.0),
+                        y2: svg_attr(tag, "y2").unwrap_or(0.0),
+                        cx: svg_attr(tag, "cx").unwrap_or(0.0),
+                        cy: svg_attr(tag, "cy").unwrap_or(0.0),
+                        r: if radial {
+                            svg_attr(tag, "r").unwrap_or(1.0)
+                        } else {
+                            0.0
+                        },
+                        stops: parse_gradient_stops(block),
+                    },
+                );
             }
-            stops.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-            out.insert(
-                id.to_string(),
-                SvgGrad {
-                    x1: svg_attr(tag, "x1").unwrap_or(0.0),
-                    y1: svg_attr(tag, "y1").unwrap_or(0.0),
-                    x2: svg_attr(tag, "x2").unwrap_or(1.0),
-                    y2: svg_attr(tag, "y2").unwrap_or(0.0),
-                    stops,
-                },
-            );
+            rest = &after[end..];
         }
-        rest = &after[end..];
     }
     out
 }
@@ -513,13 +532,19 @@ fn sample_grad(g: &SvgGrad, x: f32, y: f32) -> [u8; 4] {
     if g.stops.is_empty() {
         return [0, 0, 0, 255];
     }
-    let dx = g.x2 - g.x1;
-    let dy = g.y2 - g.y1;
-    let len2 = dx * dx + dy * dy;
-    let t = if len2 < 1e-6 {
-        0.0
+    let t = if g.r > 0.0 {
+        let dx = x - g.cx;
+        let dy = y - g.cy;
+        ((dx * dx + dy * dy).sqrt() / g.r).clamp(0.0, 1.0)
     } else {
-        ((x - g.x1) * dx + (y - g.y1) * dy) / len2
+        let dx = g.x2 - g.x1;
+        let dy = g.y2 - g.y1;
+        let len2 = dx * dx + dy * dy;
+        if len2 < 1e-6 {
+            0.0
+        } else {
+            ((x - g.x1) * dx + (y - g.y1) * dy) / len2
+        }
     }
     .clamp(0.0, 1.0);
     if t <= g.stops[0].0 {
@@ -1188,6 +1213,29 @@ mod tests {
             Some([255, 0, 0, 255]),
             "{:?}",
             text.pixel(3, 4)
+        );
+    }
+
+    #[test]
+    fn decode_svg_radial_gradient_is_white_at_center() {
+        let grad = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><radialGradient id='g' cx='4' cy='4' r='4'>\
+              <stop offset='0' stop-color='#ffffff'/>\
+              <stop offset='1' stop-color='#0000ff'/>\
+              </radialGradient></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg radialGradient");
+        let center = grad.pixel(4, 4).unwrap();
+        let corner = grad.pixel(0, 0).unwrap();
+        assert!(
+            center[0] > 200 && center[1] > 200,
+            "center should be white: {center:?}"
+        );
+        assert!(
+            corner[2] > 200 && corner[0] < 60,
+            "corner should be blue: {corner:?}"
         );
     }
 }

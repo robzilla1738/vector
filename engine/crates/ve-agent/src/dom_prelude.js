@@ -2502,7 +2502,7 @@
     }
     get style() { return styleProxy(this.__h); }
     set style(v) { D("setAttr", this.__h, "style", String(v)); }
-    get assignedSlot() { return null; }
+    get assignedSlot() { return wrap(D("assignedSlot", this.__h)); }
     scrollTo(x, y) {
       if (x && typeof x === "object") {
         if (x.left != null) this.scrollLeft = x.left;
@@ -4963,8 +4963,10 @@
     assign(...nodes) {
       D("slotAssign", this.__h, JSON.stringify(nodes.map((n) => n && n.__h).filter(Boolean)));
     }
-    assignedNodes() { return []; }
-    assignedElements() { return []; }
+    assignedNodes() { return list(D("assignedNodes", this.__h)); }
+    assignedElements() {
+      return this.assignedNodes().filter(function (n) { return n && n.nodeType === 1; });
+    }
   }
   reflectName(HTMLFieldSetElement.prototype);
   reflectName(HTMLMapElement.prototype);
@@ -6347,6 +6349,24 @@
       this.onmark = null;
     }
   }
+  class SpeechSynthesisVoice {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get voiceURI() { return this._uri || ""; }
+    get name() { return this._name || ""; }
+    get lang() { return this._lang || ""; }
+    get localService() { return this._local !== false; }
+    get default() { return !!this._default; }
+  }
+  Object.defineProperty(SpeechSynthesisVoice.prototype, Symbol.toStringTag, { value: "SpeechSynthesisVoice", configurable: true });
+  function defaultSpeechVoice() {
+    const v = Object.create(SpeechSynthesisVoice.prototype);
+    v._uri = "vector:default";
+    v._name = "Vector";
+    v._lang = "en-US";
+    v._local = true;
+    v._default = true;
+    return v;
+  }
   class SpeechSynthesis extends EventTarget {
     constructor() {
       super();
@@ -6354,7 +6374,7 @@
       this.speaking = false;
       this.paused = false;
     }
-    getVoices() { return []; }
+    getVoices() { return [defaultSpeechVoice()]; }
     speak(utterance) {
       if (!utterance) return;
       this.pending = false;
@@ -7664,7 +7684,7 @@
       }
       if (typeof callback === "function") callback(String(data));
     };
-    item.getAsFile = function () { return null; };
+    item.getAsFile = function () { return kind === "file" ? data : null; };
     return item;
   }
   class DataTransferItem {
@@ -7705,6 +7725,12 @@
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'add' on 'DataTransferItemList': 1 argument required, but only 0 present.");
       }
+      if (typeof File !== "undefined" && data instanceof File) {
+        owner._fileItems = owner._fileItems || [];
+        owner._fileItems.push(data);
+        owner._refreshFiles();
+        return makeDataTransferItem("file", data.type || "", data);
+      }
       const type = arguments.length > 1 ? String(arguments[1]) : "text/plain";
       owner.setData(type, data);
       return owner._item(type);
@@ -7730,7 +7756,15 @@
       this._dropEffect = "none";
       this._effectAllowed = "none";
       this._store = Object.create(null);
+      this._fileItems = [];
+      this._fileList = emptyFileList();
       this._items = makeDataTransferItemList(this);
+    }
+    _refreshFiles() {
+      const list = emptyFileList();
+      (this._fileItems || []).forEach(function (f, i) { list[i] = f; });
+      list.length = (this._fileItems || []).length;
+      this._fileList = list;
     }
     _keys() { return Object.keys(this._store); }
     _item(type) {
@@ -7742,7 +7776,7 @@
     set effectAllowed(v) { this._effectAllowed = String(v); }
     get items() { return this._items; }
     get types() { return this._keys(); }
-    get files() { return []; }
+    get files() { return this._fileList || (this._fileList = emptyFileList()); }
     getData(format) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'getData' on 'DataTransfer': 1 argument required, but only 0 present.");
@@ -9776,7 +9810,7 @@
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Selection, Sanitizer,
     Animation, KeyframeEffect, DocumentTimeline,
-    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport,
+    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport,
     TextDecoder, TextEncoder,
     createDataChannelPair() {
       const listeners = [[], []];

@@ -1404,6 +1404,11 @@ pub(crate) fn host_call(
             page.doc.assign_slot(slot, nodes);
             Ok(JsValue::Undefined)
         }
+        "assignedNodes" => Ok(arr(page.doc.assigned_nodes(live(page, args, 0)?))),
+        "assignedSlot" => Ok(live(page, args, 0)
+            .ok()
+            .and_then(|id| page.doc.assigned_slot(id))
+            .map_or(JsValue::Null, pack)),
         "shadowRoot" => {
             let Some(root) = page.doc.shadow_root(live(page, args, 0)?) else {
                 return Ok(JsValue::Null);
