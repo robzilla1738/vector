@@ -536,6 +536,7 @@ fn parse_gradient_stops(block: &str) -> Vec<(f32, [u8; 4])> {
 enum SvgClip {
     Rect { x: f32, y: f32, w: f32, h: f32 },
     Circle { cx: f32, cy: f32, r: f32 },
+    Ellipse { cx: f32, cy: f32, rx: f32, ry: f32 },
 }
 
 fn parse_svg_clips(text: &str) -> HashMap<String, SvgClip> {
@@ -574,6 +575,18 @@ fn parse_svg_clips(text: &str) -> HashMap<String, SvgClip> {
                         r: svg_attr(ctag, "r").unwrap_or(0.0),
                     },
                 );
+            } else if let Some(ei) = block.find("<ellipse") {
+                let ee = block[ei..].find('>').unwrap_or(block.len() - ei);
+                let etag = &block[ei..ei + ee];
+                out.insert(
+                    id.to_string(),
+                    SvgClip::Ellipse {
+                        cx: svg_attr(etag, "cx").unwrap_or(0.0),
+                        cy: svg_attr(etag, "cy").unwrap_or(0.0),
+                        rx: svg_attr(etag, "rx").unwrap_or(0.0),
+                        ry: svg_attr(etag, "ry").unwrap_or(0.0),
+                    },
+                );
             }
         }
         rest = &after[end..];
@@ -596,6 +609,11 @@ fn clip_allows(tag: &str, clips: &HashMap<String, SvgClip>, x: f32, y: f32) -> b
             let dx = x - *cx;
             let dy = y - *cy;
             dx * dx + dy * dy <= *r * *r
+        }
+        Some(SvgClip::Ellipse { cx, cy, rx, ry }) => {
+            let nx = (x - *cx) / rx.max(0.001);
+            let ny = (y - *cy) / ry.max(0.001);
+            nx * nx + ny * ny <= 1.0
         }
         None => true,
     }
@@ -1961,6 +1979,20 @@ mod tests {
         .expect("svg circle clip");
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(4, 4), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(7, 7), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_clip_path_ellipse_masks_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><clipPath id='c'><ellipse cx='4' cy='4' rx='3' ry='2'/></clipPath></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='#0000ff' clip-path='url(#c)'/></svg>",
+        )
+        .expect("svg ellipse clip");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(4, 4), Some([0, 0, 255, 255]));
+        assert_eq!(img.pixel(6, 4), Some([0, 0, 255, 255]));
         assert_eq!(img.pixel(7, 7), Some([0, 0, 0, 0]));
     }
 }

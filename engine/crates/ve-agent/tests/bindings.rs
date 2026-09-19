@@ -5739,6 +5739,88 @@ fn xr_and_presentation_request_deny() {
 }
 
 #[test]
+fn media_can_play_type_and_ready_state() {
+    let mut page = open("<title>cpt</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__cpt = null;
+          const video = document.createElement("video");
+          const img = document.createElement("img");
+          let loaded = false;
+          img.addEventListener("load", function () { loaded = true; });
+          const maybe = video.canPlayType("video/mp4");
+          const none = video.canPlayType("text/plain");
+          video.src = "https://s.test/a.mp4";
+          video.play();
+          const afterPlay = video.readyState;
+          video.load();
+          img.decode().then(function () {
+            const pos = document.caretPositionFromPoint(1, 1);
+            const range = document.caretRangeFromPoint(1, 1);
+            window.__cpt = {
+              maybe: maybe === "maybe",
+              none: none === "",
+              playReady: afterPlay === HTMLMediaElement.HAVE_ENOUGH_DATA,
+              loadReady: video.readyState === HTMLMediaElement.HAVE_NOTHING,
+              decode: loaded,
+              caret: !!(range && range.collapsed && pos && pos.offsetNode)
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__cpt").unwrap();
+    assert_eq!(v["maybe"], true, "{v}");
+    assert_eq!(v["none"], true, "{v}");
+    assert_eq!(v["playReady"], true, "{v}");
+    assert_eq!(v["loadReady"], true, "{v}");
+    assert_eq!(v["decode"], true, "{v}");
+    assert_eq!(v["caret"], true, "{v}");
+}
+
+#[test]
+fn web_audio_factory_nodes() {
+    let mut page = open("<title>wan</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const ctx = new AudioContext();
+              const wave = ctx.createPeriodicWave(new Float32Array([0, 0]), new Float32Array([0, 1]));
+              const csrc = ctx.createConstantSource();
+              const merge = ctx.createChannelMerger(2);
+              const split = ctx.createChannelSplitter(2);
+              const shape = ctx.createWaveShaper();
+              const conv = ctx.createConvolver();
+              const pan = ctx.createPanner();
+              const iir = ctx.createIIRFilter([1], [1]);
+              pan.setPosition(1, 2, 3);
+              const mag = new Float32Array(1);
+              iir.getFrequencyResponse(new Float32Array([440]), mag, new Float32Array(1));
+              return {
+                wave: wave instanceof PeriodicWave,
+                csrc: csrc instanceof ConstantSourceNode && csrc.offset.value === 1,
+                merge: merge instanceof ChannelMergerNode && merge.numberOfInputs === 2,
+                split: split instanceof ChannelSplitterNode && split.numberOfOutputs === 2,
+                shape: shape instanceof WaveShaperNode,
+                conv: conv instanceof ConvolverNode && conv.normalize === true,
+                pan: pan instanceof PannerNode && pan.positionX.value === 1,
+                iir: iir instanceof IIRFilterNode && mag[0] === 1
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["wave"], true, "{v}");
+    assert_eq!(v["csrc"], true, "{v}");
+    assert_eq!(v["merge"], true, "{v}");
+    assert_eq!(v["split"], true, "{v}");
+    assert_eq!(v["shape"], true, "{v}");
+    assert_eq!(v["conv"], true, "{v}");
+    assert_eq!(v["pan"], true, "{v}");
+    assert_eq!(v["iir"], true, "{v}");
+}
+
+#[test]
 fn webgl_tex_image_draw_arrays_blits() {
     let mut page = open("<title>glt</title>");
     let v = page

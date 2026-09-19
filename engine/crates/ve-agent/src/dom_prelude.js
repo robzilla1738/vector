@@ -3682,7 +3682,10 @@
     get naturalHeight() { return D("box", this.__h, "naturalHeight"); }
     get complete() { return true; }
     get currentSrc() { return this.src || ""; }
-    decode() { return Promise.resolve(); }
+    decode() {
+      this.dispatchEvent(new Event("load"));
+      return Promise.resolve();
+    }
     get width() { return Number(this.getAttribute("width")) || this.naturalWidth || 0; }
     set width(v) { this.setAttribute("width", String(v | 0)); }
     get height() { return Number(this.getAttribute("height")) || this.naturalHeight || 0; }
@@ -5670,7 +5673,9 @@
     get textTracks() { return this._textTracks || (this._textTracks = emptyTextTrackList()); }
     get currentSrc() { return this.src || ""; }
     get networkState() { return this.src ? HTMLMediaElement.NETWORK_IDLE : HTMLMediaElement.NETWORK_EMPTY; }
-    get readyState() { return HTMLMediaElement.HAVE_NOTHING; }
+    get readyState() {
+      return this._readyState == null ? HTMLMediaElement.HAVE_NOTHING : this._readyState;
+    }
     get currentTime() { return this._currentTime || 0; }
     set currentTime(v) { this._currentTime = Number(v) || 0; }
     get duration() { return NaN; }
@@ -5695,6 +5700,9 @@
     }
     canPlayType(type) {
       if (arguments.length < 1) throw new TypeError("Failed to execute 'canPlayType' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
+      const t = String(type || "").toLowerCase();
+      if (!t) return "";
+      if (t.indexOf("video/") === 0 || t.indexOf("audio/") === 0) return "maybe";
       return "";
     }
     fastSeek(time) {
@@ -5715,12 +5723,14 @@
     load() {
       this._currentTime = 0;
       this._paused = true;
+      this._readyState = HTMLMediaElement.HAVE_NOTHING;
       this.dispatchEvent(new Event("emptied"));
       this.dispatchEvent(new Event("abort"));
       if (this.src) this.dispatchEvent(new Event("loadstart"));
     }
     play() {
       this._paused = false;
+      this._readyState = HTMLMediaElement.HAVE_ENOUGH_DATA;
       this.dispatchEvent(new Event("play"));
       this.dispatchEvent(new Event("playing"));
       return Promise.resolve();
@@ -6818,6 +6828,32 @@
     }
     elementFromPoint(x, y) { return wrap(D("elementFromPoint", Number(x) || 0, Number(y) || 0)); }
     elementsFromPoint(x, y) { return list(D("elementsFromPoint", Number(x) || 0, Number(y) || 0)); }
+    caretRangeFromPoint(x, y) {
+      const el = this.elementFromPoint(x, y) || this.body || this.documentElement;
+      if (!el) return null;
+      const range = this.createRange();
+      let node = el;
+      if (el.childNodes && el.childNodes.length) {
+        for (let i = 0; i < el.childNodes.length; i++) {
+          if (el.childNodes[i].nodeType === 3) { node = el.childNodes[i]; break; }
+        }
+      }
+      try {
+        if (node.nodeType === 3) range.setStart(node, 0);
+        else range.selectNodeContents(node);
+        range.collapse(true);
+      } catch (e) { return null; }
+      return range;
+    }
+    caretPositionFromPoint(x, y) {
+      const range = this.caretRangeFromPoint(x, y);
+      if (!range) return null;
+      return {
+        offsetNode: range.startContainer,
+        offset: range.startOffset,
+        getClientRect() { return null; },
+      };
+    }
     getSelection() { return window.getSelection(); }
     get currentScript() { return currentScriptNode; }
     get adoptedStyleSheets() { return this._adopted || (this._adopted = []); }
@@ -9076,6 +9112,82 @@
       this.pan = { value: 0 };
     }
   }
+  class PeriodicWave {
+    constructor(ctx, opts) {
+      this._ctx = ctx;
+      this._real = opts && opts.real ? opts.real : [0, 0];
+      this._imag = opts && opts.imag ? opts.imag : [0, 1];
+    }
+  }
+  class ConstantSourceNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.offset = { value: 1 };
+      this.numberOfInputs = 0;
+    }
+    start() { this._started = true; }
+    stop() { this._started = false; }
+  }
+  class ChannelMergerNode extends AudioNode {
+    constructor(ctx, opts) {
+      super(ctx);
+      this.numberOfInputs = (opts && opts.numberOfInputs) || 6;
+      this.numberOfOutputs = 1;
+    }
+  }
+  class ChannelSplitterNode extends AudioNode {
+    constructor(ctx, opts) {
+      super(ctx);
+      this.numberOfInputs = 1;
+      this.numberOfOutputs = (opts && opts.numberOfOutputs) || 6;
+    }
+  }
+  class WaveShaperNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.curve = null;
+      this.oversample = "none";
+    }
+  }
+  class ConvolverNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.buffer = null;
+      this.normalize = true;
+    }
+  }
+  class PannerNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.panningModel = "equalpower";
+      this.distanceModel = "inverse";
+      this.refDistance = 1;
+      this.maxDistance = 10000;
+      this.rolloffFactor = 1;
+      this.coneInnerAngle = 360;
+      this.coneOuterAngle = 360;
+      this.coneOuterGain = 0;
+      this.positionX = { value: 0 };
+      this.positionY = { value: 0 };
+      this.positionZ = { value: 0 };
+    }
+    setPosition(x, y, z) {
+      this.positionX.value = Number(x) || 0;
+      this.positionY.value = Number(y) || 0;
+      this.positionZ.value = Number(z) || 0;
+    }
+  }
+  class IIRFilterNode extends AudioNode {
+    constructor(ctx, opts) {
+      super(ctx);
+      this._feedforward = opts && opts.feedforward ? opts.feedforward : [1];
+      this._feedback = opts && opts.feedback ? opts.feedback : [1];
+    }
+    getFrequencyResponse(freq, mag, phase) {
+      if (mag) mag.fill(1);
+      if (phase) phase.fill(0);
+    }
+  }
   class MediaStreamTrack extends EventTarget {
     constructor() {
       super();
@@ -9139,6 +9251,14 @@
     createDynamicsCompressor() { return new DynamicsCompressorNode(this); }
     createStereoPanner() { return new StereoPannerNode(this); }
     createMediaStreamSource(stream) { return new MediaStreamAudioSourceNode(this, stream); }
+    createPeriodicWave(real, imag) { return new PeriodicWave(this, { real: real, imag: imag }); }
+    createConstantSource() { return new ConstantSourceNode(this); }
+    createChannelMerger(n) { return new ChannelMergerNode(this, { numberOfInputs: n || 6 }); }
+    createChannelSplitter(n) { return new ChannelSplitterNode(this, { numberOfOutputs: n || 6 }); }
+    createWaveShaper() { return new WaveShaperNode(this); }
+    createConvolver() { return new ConvolverNode(this); }
+    createPanner() { return new PannerNode(this); }
+    createIIRFilter(feedforward, feedback) { return new IIRFilterNode(this, { feedforward: feedforward, feedback: feedback }); }
     decodeAudioData(data) {
       const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : (data && data.buffer ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : new Uint8Array(0));
       const n = Math.max(1, bytes.length);
@@ -11099,6 +11219,7 @@
     AudioContext, webkitAudioContext: AudioContext, OscillatorNode, GainNode, AudioDestinationNode,
     AudioBuffer, AudioBufferSourceNode, AnalyserNode, BiquadFilterNode,
     DelayNode, DynamicsCompressorNode, StereoPannerNode, MediaStream, MediaStreamTrack, MediaStreamAudioSourceNode,
+    PeriodicWave, ConstantSourceNode, ChannelMergerNode, ChannelSplitterNode, WaveShaperNode, ConvolverNode, PannerNode, IIRFilterNode,
     WebGLRenderingContext, RTCPeerConnection,
     TextEncoderStream, TextDecoderStream,
     CompressionStream, DecompressionStream, CookieStore, cookieStore, ClipboardItem,
