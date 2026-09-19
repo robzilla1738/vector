@@ -211,6 +211,7 @@ pub struct NativeBrowser {
     pointer: Point,
     urlbar: String,
     urlbar_focused: bool,
+    urlbar_selected: bool,
     compositor: Compositor,
     presented: bool,
     device_scale: f32,
@@ -288,6 +289,7 @@ impl NativeBrowser {
             pointer: Point::ZERO,
             urlbar: String::new(),
             urlbar_focused: false,
+            urlbar_selected: false,
             compositor: Compositor::new(),
             presented: false,
             device_scale,
@@ -1008,16 +1010,31 @@ impl NativeBrowser {
             NativeEvent::FocusUrlbar => {
                 self.urlbar_focused = true;
                 self.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
+                self.urlbar_selected = true;
+                if self.chrome_enabled {
+                    self.sync_chrome();
+                }
             }
             NativeEvent::BlurUrlbar => {
                 self.urlbar_focused = false;
+                self.urlbar_selected = false;
             }
             NativeEvent::UrlbarType { text } => {
                 if self.urlbar_focused {
                     if text == "Backspace" {
-                        self.urlbar.pop();
+                        if self.urlbar_selected {
+                            self.urlbar.clear();
+                        } else {
+                            self.urlbar.pop();
+                        }
+                    } else if self.urlbar_selected {
+                        self.urlbar.clone_from(&text);
                     } else {
                         self.urlbar.push_str(&text);
+                    }
+                    self.urlbar_selected = false;
+                    if self.chrome_enabled {
+                        self.sync_chrome();
                     }
                 }
             }
@@ -1055,10 +1072,26 @@ impl NativeBrowser {
                             let _ = self.handle_event(NativeEvent::UrlbarSubmit)?;
                         } else if key == "Escape" {
                             self.urlbar_focused = false;
+                            self.urlbar_selected = false;
                         } else if key == "Backspace" {
-                            self.urlbar.pop();
-                        } else if key.len() == 1 {
-                            self.urlbar.push_str(&key);
+                            if self.urlbar_selected {
+                                self.urlbar.clear();
+                            } else {
+                                self.urlbar.pop();
+                            }
+                            self.urlbar_selected = false;
+                        } else if key.len() == 1 && modifiers & (2 | 4) == 0 {
+                            if self.urlbar_selected {
+                                self.urlbar.clone_from(&key);
+                            } else {
+                                self.urlbar.push_str(&key);
+                            }
+                            self.urlbar_selected = false;
+                        } else if self.dispatch_chrome_shortcut(&key, modifiers, state) {
+                            // ⌘S / ⌘K while the command bar is focused.
+                        }
+                        if self.chrome_enabled {
+                            self.sync_chrome();
                         }
                     }
                 } else if self.chrome_enabled && self.chrome.find_open && state == KeyState::Down {
@@ -1089,7 +1122,18 @@ impl NativeBrowser {
                 }
             }
             NativeEvent::Ime { text } => {
-                if self.chrome_enabled && self.chrome.find_open {
+                if self.urlbar_focused {
+                    if self.urlbar_selected {
+                        self.urlbar.clone_from(&text);
+                        self.urlbar_selected = false;
+                    } else {
+                        self.urlbar.push_str(&text);
+                    }
+                    if self.chrome_enabled {
+                        self.sync_chrome();
+                    }
+                    self.present_dirty();
+                } else if self.chrome_enabled && self.chrome.find_open {
                     self.chrome.find.push_str(&text);
                     self.refresh_find();
                     self.present_dirty();
@@ -1105,6 +1149,18 @@ impl NativeBrowser {
             }
             NativeEvent::PointerMove { x, y } => {
                 self.pointer = Point::new(x, y);
+                if self.chrome_enabled && self.chrome.sidebar_collapsed {
+                    let peek_w = if self.chrome.sidebar_peek {
+                        self.chrome.sidebar_width
+                    } else {
+                        self.chrome.sidebar_used()
+                    };
+                    let next = x < peek_w;
+                    if next != self.chrome.sidebar_peek {
+                        self.chrome.sidebar_peek = next;
+                        self.present_dirty();
+                    }
+                }
             }
             NativeEvent::PointerDown { x, y, button } => {
                 self.pointer = Point::new(x, y);
@@ -1370,6 +1426,8 @@ impl NativeBrowser {
         self.chrome.find_open.hash(&mut h);
         self.chrome.zoom.to_bits().hash(&mut h);
         self.chrome.sidebar_collapsed.hash(&mut h);
+        self.chrome.sidebar_peek.hash(&mut h);
+        self.chrome.command_focused.hash(&mut h);
         self.chrome.sidebar_width.to_bits().hash(&mut h);
         self.chrome.rail_open.hash(&mut h);
         self.chrome.rail_width.to_bits().hash(&mut h);
@@ -1526,11 +1584,13 @@ impl NativeBrowser {
             ChromeHit::CommandBar => {
                 self.urlbar_focused = true;
                 self.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
+                self.urlbar_selected = true;
                 self.sync_chrome();
                 Ok(true)
             }
             ChromeHit::SidebarToggle => {
                 self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
+                self.chrome.sidebar_peek = false;
                 self.apply_chrome_viewport();
                 Ok(true)
             }
@@ -1604,6 +1664,7 @@ impl NativeBrowser {
             }
             "sb" | "hide-sb" => {
                 self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
+                self.chrome.sidebar_peek = false;
                 self.apply_chrome_viewport();
             }
             "history" => {
@@ -1958,6 +2019,19 @@ impl NativeBrowser {
             }
             "j" | "J" => {
                 self.chrome.overlay = ChromeOverlay::Downloads;
+                true
+            }
+            "s" | "S" => {
+                self.chrome.sidebar_collapsed = !self.chrome.sidebar_collapsed;
+                self.chrome.sidebar_peek = false;
+                self.apply_chrome_viewport();
+                true
+            }
+            "l" | "L" | "e" | "E" => {
+                self.urlbar_focused = true;
+                self.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
+                self.urlbar_selected = true;
+                self.sync_chrome();
                 true
             }
             _ => false,
@@ -3370,6 +3444,156 @@ mod tests {
             .join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-browse.png"), &png).unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    fn seed_browsing_tabs(browser: &mut NativeBrowser) {
+        for (url, title) in ve_chrome::design_reference_sites().iter().take(6) {
+            let html = format!(
+                "<html><head><title>{}</title></head><body><h1>{}</h1></body></html>",
+                title.replace('<', ""),
+                title.replace('<', "")
+            );
+            browser
+                .handle_event(NativeEvent::NewTab {
+                    html,
+                    url: (*url).into(),
+                })
+                .unwrap();
+        }
+        browser.seed_design_reference_chrome();
+        browser.file_open_tabs_in_dev_folder();
+        let _ = browser.handle_event(NativeEvent::Resize {
+            width: 1440.0,
+            height: 900.0,
+        });
+    }
+
+    #[test]
+    fn collapsed_rail_screenshot_matches_electron_02() {
+        let path = format!("/tmp/vector-rail-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        seed_browsing_tabs(&mut browser);
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "s".into(),
+                code: "KeyS".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert!(
+            browser.chrome().sidebar_collapsed,
+            "⌘S must collapse the sidebar to the 56px rail"
+        );
+        assert_eq!(browser.chrome().sidebar_used(), 56.0);
+        let list = browser.paint_shell_list().unwrap();
+        let texts: Vec<String> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                ve_gfx::DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            !texts.iter().any(|t| t == "Personal" || t == "AGENT" || t == "New Tab"),
+            "collapsed rail must not paint expanded labels: {texts:?}"
+        );
+        assert!(
+            texts.iter().any(|t| t == "G" || t == "L" || t == "S" || t == "Y"),
+            "rail tiles must show host letters: {texts:?}"
+        );
+        browser.set_device_scale(2.0);
+        let png = browser.capture_shell_png().expect("rail png");
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/ui/screenshots");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("ve-shell-rail.png"), &png).unwrap();
+        let _ = browser.handle_event(NativeEvent::PointerMove { x: 20.0, y: 120.0 });
+        assert!(
+            browser.chrome().sidebar_peek,
+            "hovering the rail must peek the full sidebar"
+        );
+        let peek_list = browser.paint_shell_list().unwrap();
+        let peek_texts: Vec<String> = peek_list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                ve_gfx::DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(peek_texts.iter().any(|t| t == "Personal"), "{peek_texts:?}");
+        assert!(peek_texts.iter().any(|t| t == "Dev"), "{peek_texts:?}");
+        assert!(peek_texts.iter().any(|t| t == "AGENT"), "{peek_texts:?}");
+        browser.set_device_scale(2.0);
+        let peek_png = browser.capture_shell_png().expect("peek png");
+        std::fs::write(dir.join("ve-shell-peek.png"), &peek_png).unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn command_bar_typing_screenshot_matches_electron_11() {
+        let path = format!("/tmp/vector-command-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        seed_browsing_tabs(&mut browser);
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "l".into(),
+                code: "KeyL".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert!(browser.urlbar_focused());
+        for ch in "find every review comment that mentions accessibility".chars() {
+            browser
+                .handle_event(NativeEvent::Key {
+                    key: ch.to_string(),
+                    code: String::new(),
+                    modifiers: 0,
+                    repeat: false,
+                    state: KeyState::Down,
+                })
+                .unwrap();
+        }
+        assert_eq!(
+            browser.urlbar(),
+            "find every review comment that mentions accessibility"
+        );
+        assert_eq!(
+            ve_chrome::intent_label(&browser.chrome().intent()),
+            "Ask on this page"
+        );
+        let list = browser.paint_shell_list().unwrap();
+        let texts: Vec<String> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                ve_gfx::DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.contains("find every review") || t.contains("accessibility")),
+            "{texts:?}"
+        );
+        assert!(texts.iter().any(|t| t == "Ask on this page"), "{texts:?}");
+        browser.set_device_scale(2.0);
+        let png = browser.capture_shell_png().expect("command png");
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/ui/screenshots");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("ve-shell-command.png"), &png).unwrap();
         let _ = std::fs::remove_file(&path);
     }
 

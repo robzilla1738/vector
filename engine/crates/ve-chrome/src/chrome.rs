@@ -153,6 +153,8 @@ pub struct Chrome {
     pub zoom: f32,
     /// Sidebar collapsed to a rail.
     pub sidebar_collapsed: bool,
+    /// Hover-peek of the full sidebar over the collapsed rail (Electron 15).
+    pub sidebar_peek: bool,
     /// Sidebar width (user-resized).
     pub sidebar_width: f32,
     /// Agent rail width.
@@ -197,6 +199,7 @@ impl Default for Chrome {
             find_matches: 0,
             zoom: 1.0,
             sidebar_collapsed: false,
+            sidebar_peek: false,
             sidebar_width: ChromeMetrics::default().sidebar_w,
             rail_width: ChromeMetrics::default().rail_w,
             rail_open: false,
@@ -221,13 +224,23 @@ impl Chrome {
         self.tokens = ChromeTokens::for_theme(theme);
     }
 
-    /// Sidebar width actually used (rail when collapsed).
+    /// Sidebar width actually used (rail when collapsed; peek does not resize the stage).
     #[must_use]
     pub fn sidebar_used(&self) -> f32 {
         if self.sidebar_collapsed {
             self.metrics.sidebar_rail_w
         } else {
             self.sidebar_width.max(self.metrics.sidebar_rail_w)
+        }
+    }
+
+    /// Hit-test width: peek panel covers the expanded sidebar without moving the stage.
+    #[must_use]
+    pub fn sidebar_hit_width(&self) -> f32 {
+        if self.sidebar_collapsed && self.sidebar_peek {
+            self.sidebar_width.max(self.metrics.sidebar_rail_w)
+        } else {
+            self.sidebar_used()
         }
     }
 
@@ -374,7 +387,7 @@ impl Chrome {
         if self.overlay != ChromeOverlay::None {
             return self.hit_overlay(window, x, y);
         }
-        let sb = self.sidebar_used();
+        let sb = self.sidebar_hit_width();
         if x <= sb + 4.0 && x >= sb - 4.0 && !self.sidebar_collapsed {
             return ChromeHit::SidebarResize;
         }
@@ -385,7 +398,7 @@ impl Chrome {
             }
         }
         if x < sb {
-            return self.hit_sidebar(y);
+            return self.hit_sidebar(window, y);
         }
         let stage = self.stage_rect(window);
         if stage.contains(Point::new(x, y)) {
@@ -473,7 +486,10 @@ impl Chrome {
         }
     }
 
-    fn hit_sidebar(&self, y: f32) -> ChromeHit {
+    fn hit_sidebar(&self, window: Size, y: f32) -> ChromeHit {
+        if self.sidebar_collapsed && !self.sidebar_peek {
+            return self.hit_sidebar_rail(window, y);
+        }
         if y < 48.0 {
             return ChromeHit::Space {
                 id: self.layout.active_space_id.clone(),
@@ -507,6 +523,48 @@ impl Chrome {
         ChromeHit::Window
     }
 
+    fn hit_sidebar_rail(&self, window: Size, y: f32) -> ChromeHit {
+        if y < self.metrics.toolbar_h {
+            return ChromeHit::SidebarToggle;
+        }
+        for (page_id, rect) in self.rail_tab_rects() {
+            if (rect.y()..rect.bottom()).contains(&y) {
+                return ChromeHit::Tab { page_id };
+            }
+        }
+        let plus = self.rail_new_tab_rect();
+        if (plus.y()..plus.bottom()).contains(&y) {
+            return ChromeHit::NewTab;
+        }
+        if y > window.height - 48.0 {
+            return ChromeHit::CommandBar;
+        }
+        ChromeHit::Window
+    }
+
+    fn rail_tile_metrics() -> (f32, f32, f32) {
+        const SIZE: f32 = 32.0;
+        const GAP: f32 = 4.0;
+        (SIZE, GAP, (56.0 - SIZE) * 0.5)
+    }
+
+    fn rail_tab_rects(&self) -> Vec<(String, Rect)> {
+        let (size, gap, x) = Self::rail_tile_metrics();
+        let mut y = self.metrics.toolbar_h + 4.0;
+        let mut out = Vec::new();
+        for tab in self.tabs.iter().take(40) {
+            out.push((tab.page_id.clone(), Rect::new(x, y, size, size)));
+            y += size + gap;
+        }
+        out
+    }
+
+    fn rail_new_tab_rect(&self) -> Rect {
+        let (size, gap, x) = Self::rail_tile_metrics();
+        let n = self.tabs.len().min(40) as f32;
+        Rect::new(x, self.metrics.toolbar_h + 4.0 + n * (size + gap), size, size)
+    }
+
     /// Paints chrome into a display list sized to `window`.
     #[must_use]
     pub fn paint(&self, window: Size) -> DisplayList {
@@ -533,6 +591,7 @@ impl Chrome {
         if self.find_open {
             self.paint_find(&mut list, window);
         }
+        self.paint_command_suggestions(&mut list, window);
         list
     }
 
@@ -544,7 +603,18 @@ impl Chrome {
     }
 
     fn paint_sidebar(&self, list: &mut DisplayList, window: Size) {
-        let sb = self.sidebar_used();
+        if self.sidebar_collapsed {
+            self.paint_sidebar_rail(list, window);
+            if self.sidebar_peek {
+                self.paint_sidebar_peek(list, window);
+            }
+            return;
+        }
+        self.paint_sidebar_expanded(list, window, self.sidebar_used());
+    }
+
+    fn paint_sidebar_rail(&self, list: &mut DisplayList, window: Size) {
+        let sb = self.metrics.sidebar_rail_w;
         let t = &self.tokens;
         list.push(DisplayItem::Rect {
             rect: Rect::new(0.0, 0.0, sb, window.height),
@@ -554,10 +624,61 @@ impl Chrome {
             rect: Rect::new(sb - 1.0, 0.0, 1.0, window.height),
             color: t.line,
         });
-        if self.sidebar_collapsed {
-            self.label(list, Point::new(18.0, 32.0), "V", 15.0, t.sb_ink_0);
-            return;
+        icon_sidebar(list, sb * 0.5, 26.0, t.sb_ink_1);
+        for (page_id, rect) in self.rail_tab_rects() {
+            let Some(tab) = self.tabs.iter().find(|tab| tab.page_id == page_id) else {
+                continue;
+            };
+            if tab.active {
+                fill_round(
+                    list,
+                    Rect::new(rect.x() - 2.0, rect.y() - 2.0, rect.width() + 4.0, rect.height() + 4.0),
+                    10.0,
+                    t.sb_selected,
+                );
+            }
+            self.tile_face(list, rect.x(), rect.y(), rect.width(), 8.0, &tab.url);
         }
+        let plus = self.rail_new_tab_rect();
+        fill_round(list, plus, 8.0, t.sb_field);
+        icon_plus(
+            list,
+            plus.x() + plus.width() * 0.5,
+            plus.y() + plus.height() * 0.5,
+            10.0,
+            t.sb_ink_1,
+        );
+        icon_search(list, sb * 0.5, window.height - 24.0, t.sb_ink_1);
+    }
+
+    fn paint_sidebar_peek(&self, list: &mut DisplayList, window: Size) {
+        let sb = self.sidebar_width.max(self.metrics.sidebar_rail_w);
+        let peek = Rect::new(0.0, 0.0, sb, window.height);
+        list.push(DisplayItem::BoxShadow {
+            rect: peek,
+            dx: 10.0,
+            dy: 0.0,
+            blur: 28.0,
+            color: Rgba::rgba(0, 0, 0, 0.35),
+        });
+        list.push(DisplayItem::RoundedClip {
+            rect: peek,
+            radius: 16.0,
+        });
+        self.paint_sidebar_expanded(list, window, sb);
+        list.push(DisplayItem::PopClip);
+    }
+
+    fn paint_sidebar_expanded(&self, list: &mut DisplayList, window: Size, sb: f32) {
+        let t = &self.tokens;
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, sb, window.height),
+            color: t.sb_bg,
+        });
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(sb - 1.0, 0.0, 1.0, window.height),
+            color: t.line,
+        });
         let space = self
             .layout
             .spaces
@@ -670,6 +791,79 @@ impl Chrome {
         rows
     }
 
+    fn paint_command_suggestions(&self, list: &mut DisplayList, window: Size) {
+        if !self.command_focused || self.command.is_empty() {
+            return;
+        }
+        let rows = self.command_suggestion_rows();
+        if rows.is_empty() {
+            return;
+        }
+        let t = &self.tokens;
+        let pill = self.command_pill_rect(window);
+        let h = 12.0 + rows.len() as f32 * 36.0;
+        let card = Rect::new(pill.x(), pill.bottom() + 8.0, pill.width(), h);
+        list.push(DisplayItem::BoxShadow {
+            rect: card,
+            dx: 0.0,
+            dy: 10.0,
+            blur: 28.0,
+            color: Rgba::rgba(0, 0, 0, 0.4),
+        });
+        fill_round(list, card, 12.0, t.bg_0);
+        let mut y = card.y() + 10.0;
+        for (i, (title, detail)) in rows.iter().enumerate() {
+            if i == 0 {
+                fill_round(
+                    list,
+                    Rect::new(card.x() + 6.0, y, card.width() - 12.0, 32.0),
+                    8.0,
+                    t.sb_selected,
+                );
+            }
+            self.label(list, Point::new(card.x() + 16.0, y + 20.0), title, 12.0, t.ink_0);
+            if !detail.is_empty() && detail != title {
+                self.label(
+                    list,
+                    Point::new(card.x() + card.width() * 0.45, y + 20.0),
+                    &truncate(detail, 28),
+                    11.0,
+                    t.ink_2,
+                );
+            }
+            y += 36.0;
+        }
+    }
+
+    fn command_suggestion_rows(&self) -> Vec<(String, String)> {
+        let chip = intent_label(&self.intent());
+        let mut rows = Vec::new();
+        if !chip.is_empty() {
+            rows.push((chip.to_string(), self.command.clone()));
+        }
+        let q = self.command.to_ascii_lowercase();
+        if q.len() >= 2 {
+            for tab in &self.tabs {
+                let title = if tab.title.is_empty() {
+                    host_of(&tab.url)
+                } else {
+                    tab.title.clone()
+                };
+                if title.to_ascii_lowercase().contains(&q) || tab.url.to_ascii_lowercase().contains(&q)
+                {
+                    rows.push((title, tab.url.clone()));
+                }
+            }
+            for (url, title) in &self.history {
+                if title.to_ascii_lowercase().contains(&q) || url.to_ascii_lowercase().contains(&q) {
+                    rows.push((title.clone(), url.clone()));
+                }
+            }
+        }
+        rows.truncate(6);
+        rows
+    }
+
     fn paint_tab_row(&self, list: &mut DisplayList, tab: &ChromeTab, sb: f32, y: f32) {
         let t = &self.tokens;
         if tab.active {
@@ -729,18 +923,33 @@ impl Chrome {
         } else {
             "Search, enter an address, or ask the agent"
         };
-        self.label(list, Point::new(pill.x() + 32.0, 31.0), cmd, 12.0, t.ink_2);
-        if self.command_focused && !self.command.is_empty() {
-            let chip = intent_label(&self.intent());
-            if !chip.is_empty() {
-                self.label(
-                    list,
-                    Point::new(pill.right() - 72.0, 31.0),
-                    chip,
-                    11.0,
-                    t.ink_1,
-                );
-            }
+        let chip = if self.command_focused && !self.command.is_empty() {
+            intent_label(&self.intent())
+        } else {
+            ""
+        };
+        let chip_w = if chip.is_empty() {
+            0.0
+        } else {
+            (chip.len() as f32 * 6.6 + 20.0).min(pill.width() * 0.45)
+        };
+        let max_chars = ((pill.width() - 40.0 - chip_w) / 7.0).max(8.0) as usize;
+        self.label(
+            list,
+            Point::new(pill.x() + 32.0, 31.0),
+            &truncate(cmd, max_chars),
+            12.0,
+            t.ink_2,
+        );
+        if !chip.is_empty() {
+            let chip_x = pill.right() - chip_w - 8.0;
+            fill_round(
+                list,
+                Rect::new(chip_x, 14.0, chip_w, 22.0),
+                11.0,
+                t.sb_selected,
+            );
+            self.label(list, Point::new(chip_x + 8.0, 30.0), chip, 11.0, t.sb_selected_ink);
         }
         let right = window.width - rail - 12.0;
         icon_grid(list, right - 84.0, 26.0, t.ink_2);
@@ -1537,6 +1746,11 @@ fn icon_panel(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba, cutout: Rgb
     fill_rect(list, cx + 2.0, cy - 5.0, 4.0, 10.0, cutout);
 }
 
+fn icon_sidebar(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+    fill_round(list, Rect::new(cx - 7.0, cy - 6.0, 14.0, 12.0), 2.0, color);
+    fill_rect(list, cx - 6.0, cy - 5.0, 4.0, 10.0, Rgba::rgba(0, 0, 0, 0.35));
+}
+
 fn space_dot_color(color: SpaceColor) -> Rgba {
     match color {
         SpaceColor::Blue => Rgba::rgb(0x8a, 0x8a, 0x86),
@@ -2181,5 +2395,96 @@ mod tests {
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-chrome-regions.json"), serde_json::to_vec_pretty(&doc).unwrap())
             .unwrap();
+    }
+
+    fn paint_texts(chrome: &Chrome) -> Vec<String> {
+        chrome
+            .paint(Size::new(1440.0, 900.0))
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn collapsed_rail_paints_tab_tiles_not_a_lone_v() {
+        let mut chrome = sample();
+        chrome.tabs.push(ChromeTab {
+            page_id: "2".into(),
+            title: "Linear".into(),
+            url: "https://linear.app/VEC-142".into(),
+            active: false,
+            backend: ChromeBackend::Engine,
+        });
+        chrome.sidebar_collapsed = true;
+        chrome.rail_open = false;
+        let window = Size::new(1440.0, 900.0);
+        let texts = paint_texts(&chrome);
+        assert!(
+            !texts.iter().any(|t| t == "Personal" || t == "New Tab"),
+            "rail must not paint expanded labels: {texts:?}"
+        );
+        assert!(texts.iter().any(|t| t == "E"), "host letter for example.test: {texts:?}");
+        assert!(texts.iter().any(|t| t == "L"), "host letter for linear.app: {texts:?}");
+        assert_eq!(chrome.sidebar_used(), 56.0);
+        assert!(matches!(
+            chrome.hit(window, 20.0, 20.0),
+            ChromeHit::SidebarToggle
+        ));
+        assert!(matches!(
+            chrome.hit(window, 28.0, 60.0),
+            ChromeHit::Tab { .. }
+        ));
+        let plus = chrome.rail_new_tab_rect();
+        assert!(matches!(
+            chrome.hit(window, plus.x() + 8.0, plus.y() + 8.0),
+            ChromeHit::NewTab
+        ));
+        assert!(matches!(
+            chrome.hit(window, 28.0, 880.0),
+            ChromeHit::CommandBar
+        ));
+    }
+
+    #[test]
+    fn peek_paints_full_sidebar_over_rail() {
+        let mut chrome = sample();
+        chrome.file_open_tabs_in_dev_folder();
+        chrome.sidebar_collapsed = true;
+        chrome.sidebar_peek = true;
+        let window = Size::new(1440.0, 900.0);
+        let texts = paint_texts(&chrome);
+        assert!(texts.iter().any(|t| t == "Personal"), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "Dev"), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "New Tab"), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "AGENT"), "{texts:?}");
+        assert_eq!(chrome.sidebar_used(), 56.0);
+        assert_eq!(chrome.sidebar_hit_width(), chrome.sidebar_width);
+        assert!(matches!(
+            chrome.hit(window, 40.0, 20.0),
+            ChromeHit::Space { .. }
+        ));
+    }
+
+    #[test]
+    fn command_bar_shows_typed_query_and_intent_chip() {
+        let mut chrome = sample();
+        chrome.command = "find every review comment that mentions accessibility".into();
+        chrome.command_focused = true;
+        let texts = paint_texts(&chrome);
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.contains("find every review") || t.contains("accessibility")),
+            "{texts:?}"
+        );
+        assert!(
+            texts.iter().any(|t| t == "Ask on this page"),
+            "intent chip: {texts:?}"
+        );
+        assert_eq!(intent_label(&chrome.intent()), "Ask on this page");
     }
 }
