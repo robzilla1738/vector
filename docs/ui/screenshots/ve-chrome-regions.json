@@ -1,7 +1,6 @@
 {
-  "backend": "ve-shell --gui substitute",
+  "backend": "ve-chrome",
   "commandBar": true,
-  "file": "docs/ui/screenshots/ve-shell-gui.png",
   "matches": "docs/ui/shell.md Arc sidebar + command bar + inset stage + agent rail",
   "rail": {
     "width": 360.0
@@ -18,7 +17,6 @@
     "y": 60.0
   },
   "theme": "dark",
-  "typed": "hello-chrome,",
   "window": {
     "height": 720.0,
     "width": 1280.0

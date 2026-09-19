@@ -106,6 +106,42 @@ pub fn empty_layout() -> Layout {
     }
 }
 
+/// Electron mock sites from `apps/desktop/renderer/src/mock/fixtures.ts` (01 / 03).
+#[must_use]
+pub fn design_reference_sites() -> &'static [(&'static str, &'static str)] {
+    &[
+        (
+            "https://github.com/vector-browser/vector/pull/3",
+            "Vector Engine M0 — agent-first browser engine foundation",
+        ),
+        (
+            "https://linear.app/vector/issue/VEC-142/unified-command-bar",
+            "VEC-142 Unified command bar",
+        ),
+        (
+            "https://stripe.com/docs/api/checkout/sessions/create",
+            "Create a Checkout Session",
+        ),
+        (
+            "https://www.notion.so/vector/Shell-redesign-notes",
+            "Shell redesign notes",
+        ),
+        ("https://news.ycombinator.com/", "Hacker News"),
+        (
+            "https://www.figma.com/design/vector-shell/Vector-Shell?node-id=12-4",
+            "Vector Shell – Figma",
+        ),
+        (
+            "https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver",
+            "ResizeObserver - Web APIs | MDN",
+        ),
+        (
+            "https://www.are.na/vector/browser-references",
+            "Browser references — Are.na",
+        ),
+    ]
+}
+
 /// Host without `www.` — tiles, pins, start page.
 #[must_use]
 pub fn host_of(url: &str) -> String {

@@ -1375,6 +1375,18 @@ impl NativeBrowser {
         self.chrome.rail_width.to_bits().hash(&mut h);
         self.chrome.agent_status.hash(&mut h);
         self.chrome.route_reason.hash(&mut h);
+        for (url, title) in &self.chrome.history {
+            url.hash(&mut h);
+            title.hash(&mut h);
+        }
+        for (url, title) in &self.chrome.bookmarks {
+            url.hash(&mut h);
+            title.hash(&mut h);
+        }
+        for pin in self.chrome.active_pins() {
+            pin.url.hash(&mut h);
+            pin.title.hash(&mut h);
+        }
         (self.chrome.theme == ve_chrome::ChromeTheme::Dark).hash(&mut h);
         self.chrome.shows_start_page().hash(&mut h);
         self.window_size.width.to_bits().hash(&mut h);
@@ -1779,6 +1791,18 @@ impl NativeBrowser {
         } else {
             cur - 1
         };
+    }
+
+    /// Seed Electron screenshot fixtures (pins, favourites, recents) into chrome + profile.
+    pub fn seed_design_reference_chrome(&mut self) {
+        self.chrome.seed_design_reference();
+        if let Some(profile) = &self.profile {
+            for (url, title) in ve_chrome::design_reference_sites() {
+                let _ = profile.bookmark(url, title);
+                let _ = profile.visit(url, title, 1);
+            }
+        }
+        self.persist_profile();
     }
 
     /// Bookmark the active tab (chrome / profile, never page text).
@@ -2785,7 +2809,10 @@ mod tests {
             })
             .collect();
         assert!(texts.iter().any(|t| t == "Personal"), "{texts:?}");
-        assert!(texts.iter().any(|t| t.contains("Agent")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.eq_ignore_ascii_case("agent")),
+            "{texts:?}"
+        );
         assert!(texts.iter().any(|t| t.contains("Engine")), "{texts:?}");
         assert!(browser.chrome_enabled());
         let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
@@ -3181,6 +3208,7 @@ mod tests {
             browser.chrome().shows_start_page(),
             "about:blank must show the Electron start page"
         );
+        browser.seed_design_reference_chrome();
         let list = browser.paint_shell_list().unwrap();
         let texts: Vec<String> = list
             .items()
@@ -3194,6 +3222,11 @@ mod tests {
             texts.iter().any(|t| t.contains("Search, enter an address")),
             "{texts:?}"
         );
+        assert!(
+            texts.iter().any(|t| t == "PINNED" || t == "FAVOURITES"),
+            "{texts:?}"
+        );
+        assert!(texts.iter().any(|t| t == "RECENT"), "{texts:?}");
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("start png");
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

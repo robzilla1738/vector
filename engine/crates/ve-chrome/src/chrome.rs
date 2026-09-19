@@ -6,7 +6,7 @@ use ve_style::{FontFamily, FontStyle, FontWeight, Rgba};
 
 use crate::intent::{detect_intent, intent_label, Intent, IntentContext};
 use crate::tokens::{ChromeMetrics, ChromeTheme, ChromeTokens};
-use crate::workspace::{host_of, Layout};
+use crate::workspace::{design_reference_sites, host_of, Layout, Pin, SpaceColor};
 
 /// One sidebar / stage tab.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -247,7 +247,7 @@ impl Chrome {
         self.tabs
             .iter()
             .find(|t| t.active)
-            .map_or(true, |t| is_start_url(&t.url))
+            .is_none_or(|t| is_start_url(&t.url))
     }
 
     /// Stage card in window CSS px (inset rounded page host).
@@ -262,6 +262,59 @@ impl Chrome {
         let w = (window.width - sb - rail - inset * 2.0).max(1.0);
         let h = (window.height - toolbar - inset * 2.0).max(1.0);
         Rect::new(x, y, w, h)
+    }
+
+    /// Pins for the active space (cap 5).
+    #[must_use]
+    pub fn active_pins(&self) -> &[Pin] {
+        self.layout
+            .pins
+            .iter()
+            .find(|(id, _)| id == &self.layout.active_space_id)
+            .map_or(&[], |(_, p)| p.as_slice())
+    }
+
+    /// Seed bookmarks / recents / pins from the Electron screenshot fixtures.
+    pub fn seed_design_reference(&mut self) {
+        let sites = design_reference_sites();
+        self.bookmarks = sites
+            .iter()
+            .take(5)
+            .map(|(u, t)| ((*u).to_string(), (*t).to_string()))
+            .collect();
+        self.history = sites
+            .iter()
+            .map(|(u, t)| ((*u).to_string(), (*t).to_string()))
+            .collect();
+        if let Some((_, pins)) = self
+            .layout
+            .pins
+            .iter_mut()
+            .find(|(id, _)| id == &self.layout.active_space_id)
+        {
+            pins.clear();
+            for (url, title) in sites.iter().take(5) {
+                pins.push(Pin {
+                    url: (*url).to_string(),
+                    title: (*title).to_string(),
+                });
+            }
+        }
+    }
+
+    /// Compact top-pill command bar (Electron 01 / 03).
+    #[must_use]
+    pub fn command_pill_rect(&self, window: Size) -> Rect {
+        let sb = self.sidebar_used();
+        let rail = self.rail_used();
+        let nav = 108.0;
+        let actions = 108.0;
+        let main_left = sb + nav;
+        let main_right = window.width - rail - actions;
+        let avail = (main_right - main_left).max(160.0);
+        let pill_w = avail.min(560.0);
+        let pill_x = main_left + ((avail - pill_w) / 2.0).max(0.0);
+        Rect::new(pill_x, 10.0, pill_w, 32.0)
     }
 
     /// Detected intent for the current command field.
@@ -306,7 +359,11 @@ impl Chrome {
             return ChromeHit::RailToggle;
         }
         if y < self.metrics.toolbar_h && x > sb && x < window.width - self.rail_used() {
-            return ChromeHit::CommandBar;
+            let pill = self.command_pill_rect(window);
+            if pill.contains(Point::new(x, y)) {
+                return ChromeHit::CommandBar;
+            }
+            return ChromeHit::Window;
         }
         ChromeHit::Window
     }
@@ -369,26 +426,29 @@ impl Chrome {
         }
     }
 
+    fn pin_band_h(&self) -> f32 {
+        if self.active_pins().is_empty() {
+            0.0
+        } else {
+            56.0
+        }
+    }
+
     fn hit_sidebar(&self, y: f32) -> ChromeHit {
         if y < 48.0 {
             return ChromeHit::Space {
                 id: self.layout.active_space_id.clone(),
             };
         }
-        if y < 48.0 + 56.0 {
-            if let Some((_, pins)) = self
-                .layout
-                .pins
-                .iter()
-                .find(|(id, _)| id == &self.layout.active_space_id)
-                && let Some(pin) = pins.first()
-            {
+        let pin_h = self.pin_band_h();
+        if pin_h > 0.0 && y < 48.0 + pin_h {
+            if let Some(pin) = self.active_pins().first() {
                 return ChromeHit::Pin {
                     url: pin.url.clone(),
                 };
             }
         }
-        let tabs_y = 48.0 + 56.0 + 8.0;
+        let tabs_y = 48.0 + pin_h;
         if y < tabs_y + self.metrics.row_h {
             return ChromeHit::NewTab;
         }
@@ -480,58 +540,36 @@ impl Chrome {
             .layout
             .spaces
             .iter()
-            .find(|s| s.id == self.layout.active_space_id)
-            .map_or("Personal", |s| s.name.as_str());
-        self.label(
-            list,
-            Point::new(16.0, 30.0),
-            space,
-            13.0,
-            t.sb_ink_0,
-        );
+            .find(|s| s.id == self.layout.active_space_id);
+        let space_name = space.map_or("Personal", |s| s.name.as_str());
+        let space_color = space.map_or(SpaceColor::Blue, |s| s.color);
+        icon_dot(list, 20.0, 22.0, 4.0, space_dot_color(space_color));
+        self.label(list, Point::new(32.0, 28.0), space_name, 13.0, t.sb_ink_0);
 
-        let mut pin_x = 16.0;
-        if let Some((_, pins)) = self
-            .layout
-            .pins
-            .iter()
-            .find(|(id, _)| id == &self.layout.active_space_id)
-        {
+        let pins = self.active_pins();
+        let mut y = 48.0;
+        if !pins.is_empty() {
+            let gap = 8.0;
+            let tile = ((sb - 32.0 - gap * 4.0) / 5.0).clamp(28.0, 40.0);
+            let mut pin_x = 16.0;
             for pin in pins.iter().take(5) {
-                list.push(DisplayItem::RoundedClip {
-                    rect: Rect::new(pin_x, 48.0, 40.0, 40.0),
-                    radius: 10.0,
-                });
-                list.push(DisplayItem::Rect {
-                    rect: Rect::new(pin_x, 48.0, 40.0, 40.0),
-                    color: t.sb_pin_face,
-                });
-                list.push(DisplayItem::PopClip);
-                let letter = host_of(&pin.url)
-                    .chars()
-                    .next()
-                    .unwrap_or('?')
-                    .to_ascii_uppercase()
-                    .to_string();
-                self.label(list, Point::new(pin_x + 14.0, 74.0), &letter, 13.0, t.sb_ink_0);
-                pin_x += 48.0;
+                self.tile_face(list, pin_x, y, tile, 8.0, &pin.url);
+                pin_x += tile + gap;
             }
+            y += 56.0;
         }
 
-        let mut y = 104.0;
-        self.label(list, Point::new(16.0, y + 18.0), "+ New Tab", 12.0, t.sb_ink_1);
+        icon_plus(list, 22.0, y + 16.0, 10.0, t.sb_ink_1);
+        self.label(list, Point::new(36.0, y + 20.0), "New Tab", 12.0, t.sb_ink_1);
         y += self.metrics.row_h;
         for tab in self.tabs_for_active_space() {
             if tab.active {
-                list.push(DisplayItem::RoundedClip {
-                    rect: Rect::new(8.0, y, sb - 16.0, self.metrics.row_h),
-                    radius: 8.0,
-                });
-                list.push(DisplayItem::Rect {
-                    rect: Rect::new(8.0, y, sb - 16.0, self.metrics.row_h),
-                    color: t.sb_selected,
-                });
-                list.push(DisplayItem::PopClip);
+                fill_round(
+                    list,
+                    Rect::new(8.0, y, sb - 16.0, self.metrics.row_h),
+                    8.0,
+                    t.sb_selected,
+                );
             }
             let title = if tab.title.is_empty() {
                 host_of(&tab.url)
@@ -543,7 +581,14 @@ impl Chrome {
             } else {
                 t.sb_ink_0
             };
-            self.label(list, Point::new(16.0, y + 20.0), &truncate(&title, 28), 12.0, ink);
+            self.tile_face(list, 14.0, y + 8.0, 16.0, 4.0, &tab.url);
+            self.label(
+                list,
+                Point::new(36.0, y + 20.0),
+                &truncate(&title, 24),
+                12.0,
+                ink,
+            );
             y += self.metrics.row_h;
         }
         self.label(
@@ -564,27 +609,27 @@ impl Chrome {
             rect: Rect::new(sb, 0.0, main_w, self.metrics.toolbar_h),
             color: t.bg_window,
         });
-        let pill_w = (main_w - 48.0).min(640.0);
-        let pill_x = sb + ((main_w - pill_w) / 2.0).max(16.0);
-        let pill = Rect::new(pill_x, 10.0, pill_w, 32.0);
-        list.push(DisplayItem::RoundedClip {
-            rect: pill,
-            radius: 16.0,
-        });
-        list.push(DisplayItem::Rect {
-            rect: pill,
-            color: t.sb_field,
-        });
-        list.push(DisplayItem::PopClip);
+        let nav_x = sb + 12.0;
+        icon_chevron_left(list, nav_x + 6.0, 26.0, t.ink_2);
+        icon_chevron_right(list, nav_x + 38.0, 26.0, t.ink_2);
+        icon_reload(list, nav_x + 70.0, 26.0, t.ink_2);
+        let pill = self.command_pill_rect(window);
+        fill_round(list, pill, 16.0, t.sb_field);
         let active = self.tabs.iter().find(|tab| tab.active);
+        let start = active.is_none_or(|tab| is_start_url(&tab.url));
+        if start {
+            icon_sparkle(list, pill.x() + 16.0, 26.0, t.ink_2);
+        } else {
+            icon_search(list, pill.x() + 16.0, 26.0, t.ink_2);
+        }
         let cmd = if !self.command.is_empty() {
             self.command.as_str()
         } else if active.is_some_and(|tab| !is_start_url(&tab.url)) {
-            active.map(|tab| tab.url.as_str()).unwrap_or("")
+            active.map_or("", |tab| tab.url.as_str())
         } else {
             "Search, enter an address, or ask the agent"
         };
-        self.label(list, Point::new(pill.x() + 16.0, 31.0), cmd, 12.0, t.ink_2);
+        self.label(list, Point::new(pill.x() + 32.0, 31.0), cmd, 12.0, t.ink_2);
         if self.command_focused && !self.command.is_empty() {
             let chip = intent_label(&self.intent());
             if !chip.is_empty() {
@@ -597,6 +642,10 @@ impl Chrome {
                 );
             }
         }
+        let right = window.width - rail - 12.0;
+        icon_grid(list, right - 84.0, 26.0, t.ink_2);
+        icon_bookmark(list, right - 52.0, 26.0, t.ink_2);
+        icon_panel(list, right - 20.0, 26.0, t.ink_2);
     }
 
     fn paint_stage(&self, list: &mut DisplayList, window: Size) {
@@ -646,6 +695,8 @@ impl Chrome {
 
     fn paint_start_page(&self, list: &mut DisplayList, stage: Rect) {
         let t = &self.tokens;
+        let inner_w = (stage.width() - 80.0).clamp(280.0, 640.0);
+        let x0 = stage.x() + ((stage.width() - inner_w) / 2.0).max(24.0);
         let hour = current_hour();
         let greeting = if hour < 5 {
             "Late night."
@@ -656,30 +707,21 @@ impl Chrome {
         } else {
             "Good evening."
         };
-        self.label(
+        let mut y = stage.y() + 40.0;
+        self.label_w(
             list,
-            Point::new(stage.x() + 48.0, stage.y() + 56.0),
+            Point::new(x0, y + 28.0),
             greeting,
-            28.0,
+            22.0,
             t.ink_0,
+            FontWeight(500),
         );
-        self.label(
-            list,
-            Point::new(stage.x() + 48.0, stage.y() + 80.0),
-            &today_label(),
-            13.0,
-            t.ink_2,
-        );
-        let hero = Rect::new(stage.x() + 48.0, stage.y() + 128.0, (stage.width() - 96.0).min(520.0), 36.0);
-        list.push(DisplayItem::RoundedClip {
-            rect: hero,
-            radius: 18.0,
-        });
-        list.push(DisplayItem::Rect {
-            rect: hero,
-            color: t.sb_field,
-        });
-        list.push(DisplayItem::PopClip);
+        y += 36.0;
+        self.label(list, Point::new(x0, y + 16.0), &today_label(), 13.0, t.ink_2);
+        y += 36.0;
+        let hero = Rect::new(x0, y, inner_w, 40.0);
+        fill_round(list, hero, 20.0, t.sb_field);
+        icon_sparkle(list, hero.x() + 18.0, hero.y() + 20.0, t.ink_2);
         let hero_text = if self.command.is_empty() || is_start_url(&self.command) {
             "Search, enter an address, or ask the agent"
         } else {
@@ -687,44 +729,24 @@ impl Chrome {
         };
         self.label(
             list,
-            Point::new(hero.x() + 16.0, hero.y() + 24.0),
+            Point::new(hero.x() + 36.0, hero.y() + 26.0),
             hero_text,
             13.0,
             t.ink_2,
         );
+        y += 52.0;
         let prompts = [
             "Summarise the open review comments on this PR",
             "Find the cheapest plan with SSO across these pricing pages",
             "Collect every talk title on this schedule into a table",
         ];
-        let mut y = hero.y() + 56.0;
         for prompt in prompts {
-            list.push(DisplayItem::RoundedClip {
-                rect: Rect::new(hero.x(), y, hero.width(), 28.0),
-                radius: 8.0,
-            });
-            list.push(DisplayItem::Rect {
-                rect: Rect::new(hero.x(), y, hero.width(), 28.0),
-                color: t.bg_0,
-            });
-            list.push(DisplayItem::PopClip);
-            self.label(
-                list,
-                Point::new(hero.x() + 12.0, y + 19.0),
-                prompt,
-                12.0,
-                t.ink_1,
-            );
-            y += 34.0;
+            icon_sparkle(list, x0 + 10.0, y + 16.0, t.ink_2);
+            self.label(list, Point::new(x0 + 28.0, y + 20.0), prompt, 12.0, t.ink_1);
+            y += 32.0;
         }
-        y += 16.0;
-        let pins = self
-            .layout
-            .pins
-            .iter()
-            .find(|(id, _)| id == &self.layout.active_space_id)
-            .map(|(_, p)| p.as_slice())
-            .unwrap_or(&[]);
+        y += 12.0;
+        let pins = self.active_pins();
         let favs: Vec<(String, String)> = if pins.is_empty() {
             self.bookmarks.iter().take(5).cloned().collect()
         } else {
@@ -736,60 +758,35 @@ impl Chrome {
         if !favs.is_empty() {
             self.label(
                 list,
-                Point::new(stage.x() + 48.0, y + 14.0),
+                Point::new(x0, y + 12.0),
                 if pins.is_empty() {
-                    "Favourites"
+                    "FAVOURITES"
                 } else {
-                    "Pinned"
+                    "PINNED"
                 },
-                12.0,
+                11.0,
                 t.ink_2,
             );
-            y += 28.0;
-            let mut x = stage.x() + 48.0;
-            for (url, title) in favs {
-                list.push(DisplayItem::RoundedClip {
-                    rect: Rect::new(x, y, 56.0, 56.0),
-                    radius: 14.0,
-                });
-                list.push(DisplayItem::Rect {
-                    rect: Rect::new(x, y, 56.0, 56.0),
-                    color: t.sb_pin_face,
-                });
-                list.push(DisplayItem::PopClip);
-                let letter = host_of(&url)
-                    .chars()
-                    .next()
-                    .unwrap_or('?')
-                    .to_ascii_uppercase()
-                    .to_string();
-                self.label(list, Point::new(x + 20.0, y + 36.0), &letter, 16.0, t.ink_0);
-                let tile = if title.is_empty() {
-                    host_of(&url)
-                } else {
-                    title
-                };
+            y += 24.0;
+            let mut x = x0;
+            for (url, _title) in &favs {
+                self.tile_face(list, x + 8.0, y, 36.0, 10.0, url);
                 self.label(
                     list,
-                    Point::new(x, y + 76.0),
-                    &truncate(&tile, 12),
+                    Point::new(x, y + 54.0),
+                    &truncate(&host_of(url), 10),
                     11.0,
                     t.ink_1,
                 );
-                x += 72.0;
+                x += 80.0;
             }
-            y += 96.0;
+            y += 76.0;
         }
         if !self.history.is_empty() {
-            self.label(
-                list,
-                Point::new(stage.x() + 48.0, y + 14.0),
-                "Recent",
-                12.0,
-                t.ink_2,
-            );
-            y += 32.0;
-            for (url, title) in self.history.iter().take(4) {
+            self.label(list, Point::new(x0, y + 12.0), "RECENT", 11.0, t.ink_2);
+            y += 28.0;
+            for (url, title) in self.history.iter().take(5) {
+                self.tile_face(list, x0, y + 4.0, 20.0, 6.0, url);
                 let label = if title.is_empty() {
                     host_of(url)
                 } else {
@@ -797,12 +794,19 @@ impl Chrome {
                 };
                 self.label(
                     list,
-                    Point::new(stage.x() + 48.0, y),
-                    &truncate(&label, 42),
+                    Point::new(x0 + 28.0, y + 14.0),
+                    &truncate(&label, 36),
                     12.0,
                     t.ink_0,
                 );
-                y += 22.0;
+                self.label(
+                    list,
+                    Point::new(x0 + inner_w - 140.0, y + 14.0),
+                    &truncate(&host_of(url), 18),
+                    11.0,
+                    t.ink_2,
+                );
+                y += 32.0;
             }
         }
     }
@@ -819,7 +823,7 @@ impl Chrome {
             rect: Rect::new(x, 0.0, 1.0, window.height),
             color: t.line,
         });
-        self.label(list, Point::new(x + 16.0, 28.0), "Agent", 13.0, t.ink_0);
+        self.label(list, Point::new(x + 16.0, 28.0), "AGENT", 11.0, t.ink_2);
         let status = if self.agent_status.is_empty() {
             "Ready"
         } else {
@@ -924,9 +928,10 @@ impl Chrome {
             color: t.sb_field,
         });
         list.push(DisplayItem::PopClip);
+        icon_search(list, field.x() + 16.0, field.y() + 20.0, t.ink_2);
         self.label(
             list,
-            Point::new(field.x() + 14.0, field.y() + 26.0),
+            Point::new(field.x() + 32.0, field.y() + 26.0),
             "Type a command, address, or a task for the agent…",
             13.0,
             t.ink_2,
@@ -1291,12 +1296,24 @@ impl Chrome {
     }
 
     fn label(&self, list: &mut DisplayList, origin: Point, text: &str, size: f32, color: Rgba) {
+        self.label_w(list, origin, text, size, color, FontWeight::NORMAL);
+    }
+
+    fn label_w(
+        &self,
+        list: &mut DisplayList,
+        origin: Point,
+        text: &str,
+        size: f32,
+        color: Rgba,
+        weight: FontWeight,
+    ) {
         list.push(DisplayItem::Text(TextRun {
             origin,
             text: text.to_string(),
             size,
             color,
-            weight: FontWeight::NORMAL,
+            weight,
             style: FontStyle::Normal,
             family: vec![
                 FontFamily::Named("Inter".into()),
@@ -1305,6 +1322,148 @@ impl Chrome {
             ],
         }));
     }
+
+    fn tile_face(&self, list: &mut DisplayList, x: f32, y: f32, size: f32, radius: f32, url: &str) {
+        let (face, ink) = tile_colors(url).unwrap_or((self.tokens.bg_2, self.tokens.ink_0));
+        fill_round(list, Rect::new(x, y, size, size), radius, face);
+        let letter = host_letter(url);
+        let fs = (size * 0.45).clamp(9.0, 16.0);
+        self.label(
+            list,
+            Point::new(x + size * 0.32, y + size * 0.68),
+            &letter,
+            fs,
+            ink,
+        );
+    }
+}
+
+fn fill_round(list: &mut DisplayList, rect: Rect, radius: f32, color: Rgba) {
+    list.push(DisplayItem::RoundedClip { rect, radius });
+    list.push(DisplayItem::Rect { rect, color });
+    list.push(DisplayItem::PopClip);
+}
+
+fn fill_rect(list: &mut DisplayList, x: f32, y: f32, w: f32, h: f32, color: Rgba) {
+    list.push(DisplayItem::Rect {
+        rect: Rect::new(x, y, w, h),
+        color,
+    });
+}
+
+fn icon_dot(list: &mut DisplayList, cx: f32, cy: f32, r: f32, color: Rgba) {
+    fill_round(
+        list,
+        Rect::new(cx - r, cy - r, r * 2.0, r * 2.0),
+        r,
+        color,
+    );
+}
+
+fn icon_plus(list: &mut DisplayList, cx: f32, cy: f32, size: f32, color: Rgba) {
+    let t = 1.5;
+    fill_rect(list, cx - size / 2.0, cy - t / 2.0, size, t, color);
+    fill_rect(list, cx - t / 2.0, cy - size / 2.0, t, size, color);
+}
+
+fn icon_search(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+    fill_round(list, Rect::new(cx - 5.0, cy - 5.0, 8.0, 8.0), 4.0, color);
+    fill_rect(list, cx + 2.0, cy + 2.0, 5.0, 1.5, color);
+}
+
+fn icon_sparkle(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+    fill_rect(list, cx - 5.0, cy - 1.0, 10.0, 2.0, color);
+    fill_rect(list, cx - 1.0, cy - 5.0, 2.0, 10.0, color);
+    fill_rect(list, cx - 3.0, cy - 3.0, 6.0, 1.2, color);
+}
+
+fn icon_chevron_left(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+    fill_rect(list, cx - 3.0, cy - 1.0, 8.0, 2.0, color);
+    fill_rect(list, cx - 3.0, cy - 5.0, 2.0, 6.0, color);
+}
+
+fn icon_chevron_right(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+    fill_rect(list, cx - 5.0, cy - 1.0, 8.0, 2.0, color);
+    fill_rect(list, cx + 1.0, cy - 5.0, 2.0, 6.0, color);
+}
+
+fn icon_reload(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+    fill_round(list, Rect::new(cx - 6.0, cy - 6.0, 12.0, 12.0), 6.0, color);
+    fill_round(
+        list,
+        Rect::new(cx - 3.5, cy - 3.5, 7.0, 7.0),
+        3.5,
+        Rgba::rgb(0x1f, 0x1f, 0x1f),
+    );
+    fill_rect(list, cx + 2.0, cy - 6.0, 4.0, 3.0, color);
+}
+
+fn icon_grid(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+    for i in 0..2 {
+        for j in 0..2 {
+            fill_round(
+                list,
+                Rect::new(cx - 5.0 + i as f32 * 6.0, cy - 5.0 + j as f32 * 6.0, 4.0, 4.0),
+                1.0,
+                color,
+            );
+        }
+    }
+}
+
+fn icon_bookmark(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+    fill_round(list, Rect::new(cx - 4.0, cy - 6.0, 8.0, 12.0), 2.0, color);
+    fill_rect(list, cx - 2.0, cy + 1.0, 4.0, 3.0, Rgba::rgb(0x1f, 0x1f, 0x1f));
+}
+
+fn icon_panel(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+    fill_round(list, Rect::new(cx - 7.0, cy - 6.0, 14.0, 12.0), 2.0, color);
+    fill_rect(list, cx + 2.0, cy - 5.0, 4.0, 10.0, Rgba::rgb(0x1f, 0x1f, 0x1f));
+}
+
+fn space_dot_color(color: SpaceColor) -> Rgba {
+    match color {
+        SpaceColor::Blue => Rgba::rgb(0x8a, 0x8a, 0x86),
+        SpaceColor::Violet => Rgba::rgb(0x7a, 0x7a, 0x76),
+        SpaceColor::Pink => Rgba::rgb(0x6e, 0x6e, 0x6a),
+        SpaceColor::Orange => Rgba::rgb(0x94, 0x94, 0x90),
+        SpaceColor::Green => Rgba::rgb(0x5c, 0x5c, 0x58),
+        SpaceColor::Teal => Rgba::rgb(0xa8, 0xa8, 0xa4),
+        SpaceColor::Slate => Rgba::rgb(0x84, 0x84, 0x80),
+    }
+}
+
+fn host_letter(url: &str) -> String {
+    host_of(url)
+        .chars()
+        .next()
+        .unwrap_or('?')
+        .to_ascii_uppercase()
+        .to_string()
+}
+
+fn tile_colors(url: &str) -> Option<(Rgba, Rgba)> {
+    let host = host_of(url);
+    let face = if host.contains("github") {
+        Rgba::rgb(0x24, 0x29, 0x2f)
+    } else if host.contains("linear") {
+        Rgba::rgb(0x5e, 0x6a, 0xd2)
+    } else if host.contains("stripe") {
+        Rgba::rgb(0x63, 0x5b, 0xff)
+    } else if host.contains("notion") {
+        Rgba::rgb(0x11, 0x11, 0x11)
+    } else if host.contains("ycombinator") {
+        Rgba::rgb(0xff, 0x66, 0x00)
+    } else if host.contains("figma") {
+        Rgba::rgb(0xa2, 0x59, 0xff)
+    } else if host.contains("mozilla") {
+        Rgba::rgb(0x1b, 0x1b, 0x1b)
+    } else if host.contains("are.na") {
+        Rgba::rgb(0x4a, 0x4a, 0x4a)
+    } else {
+        return None;
+    };
+    Some((face, Rgba::rgb(0xf5, 0xf5, 0xf3)))
 }
 
 fn is_start_url(url: &str) -> bool {
@@ -1339,7 +1498,41 @@ fn today_label() -> String {
         "Tuesday",
         "Wednesday",
     ];
-    WDAYS[(days % 7) as usize].to_string()
+    const MONTHS: [&str; 12] = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ];
+    let (_, m, d) = civil_from_days(days as i64);
+    format!(
+        "{}, {} {}",
+        WDAYS[(days % 7) as usize],
+        MONTHS[(m as usize).saturating_sub(1).min(11)],
+        d
+    )
+}
+
+fn civil_from_days(z: i64) -> (i32, u32, u32) {
+    let z = z + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = (z - era * 146_097) as u32;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = i64::from(yoe) + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    (y as i32, m, d)
 }
 
 fn overlay_card(window: Size) -> Rect {
@@ -1542,7 +1735,8 @@ mod tests {
 
     #[test]
     fn start_page_paints_greeting_and_prompts() {
-        let chrome = Chrome::default();
+        let mut chrome = Chrome::default();
+        chrome.seed_design_reference();
         let list = chrome.paint(Size::new(1280.0, 720.0));
         let texts: Vec<&str> = list
             .items()
@@ -1568,6 +1762,17 @@ mod tests {
                 .any(|t| t.contains("Summarise the open review comments")),
             "{texts:?}"
         );
+        assert!(texts.iter().any(|t| *t == "PINNED" || *t == "FAVOURITES"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "RECENT"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "G" || *t == "L" || *t == "Y"), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Hacker News")), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("github.com")), "{texts:?}");
+    }
+
+    #[test]
+    fn empty_sidebar_new_tab_sits_under_space_not_a_pin_band() {
+        let chrome = Chrome::default();
+        assert!(matches!(chrome.hit(Size::new(1280.0, 720.0), 40.0, 56.0), ChromeHit::NewTab));
     }
 
     #[test]
@@ -1599,7 +1804,7 @@ mod tests {
             .collect();
         assert!(texts.iter().any(|t| *t == "Chromium"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "explicit-backend:chromium"), "{texts:?}");
-        assert!(texts.iter().any(|t| *t == "Agent"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "AGENT"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Open"), "{texts:?}");
         let stage = chrome.stage_rect(window);
         assert!(stage.x() >= 260.0);

@@ -62,6 +62,8 @@ pub struct ChromeTokens {
     pub bg_window: Rgba,
     /// Lifted surface.
     pub bg_0: Rgba,
+    /// Tile / chip face (`--bg-2`).
+    pub bg_2: Rgba,
     /// Stage card fill.
     pub stage_bg: Rgba,
     /// Stage gutter (same as window).
@@ -110,6 +112,7 @@ impl ChromeTokens {
             ChromeTheme::Dark => Self {
                 bg_window: hex(0x1f1f1f),
                 bg_0: hex(0x242426),
+                bg_2: hex(0x343438),
                 stage_bg: hex(0x242426),
                 stage_frame: hex(0x1f1f1f),
                 ink_0: hex(0xf5f5f3),
@@ -133,6 +136,7 @@ impl ChromeTokens {
             ChromeTheme::Light => Self {
                 bg_window: hex(0xeeeeec),
                 bg_0: hex(0xececea),
+                bg_2: hex(0xfafaf8),
                 stage_bg: hex(0xfafaf8),
                 stage_frame: hex(0xeeeeec),
                 ink_0: hex(0x141413),
