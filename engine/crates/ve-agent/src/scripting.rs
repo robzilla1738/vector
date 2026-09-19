@@ -836,6 +836,16 @@ pub const PRELUDE: &str = r#"(() => {
           return Promise.reject(e);
         }
       },
+      wrapKey(format, key, wrappingKey, wrapAlgorithm) {
+        return cryptoObj.subtle.exportKey(format, key).then((raw) => {
+          return cryptoObj.subtle.encrypt(wrapAlgorithm, wrappingKey, raw);
+        });
+      },
+      unwrapKey(format, wrappedKey, wrappingKey, unwrapAlgorithm, unwrappedKeyAlgorithm, extractable, usages) {
+        return cryptoObj.subtle.decrypt(unwrapAlgorithm, wrappingKey, wrappedKey).then((raw) => {
+          return cryptoObj.subtle.importKey(format, raw, unwrappedKeyAlgorithm, extractable, usages);
+        });
+      },
     };
   }
   globalThis.crypto = cryptoObj;

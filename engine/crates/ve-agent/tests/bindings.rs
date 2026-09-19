@@ -5645,6 +5645,100 @@ fn media_stream_and_web_audio_graph_nodes() {
 }
 
 #[test]
+fn crypto_subtle_wraps_and_unwraps_aes_key() {
+    let mut page = open("<title>wrap</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__wrap = null;
+          const iv = new Uint8Array(12);
+          const civ = new Uint8Array(12);
+          const pt = new TextEncoder().encode("abc");
+          crypto.subtle.generateKey({ name: "AES-GCM" }, true, ["wrapKey", "unwrapKey", "encrypt", "decrypt"]).then(function (wrapping) {
+            return crypto.subtle.generateKey({ name: "AES-GCM" }, true, ["encrypt", "decrypt"]).then(function (key) {
+              return crypto.subtle.wrapKey("raw", key, wrapping, { name: "AES-GCM", iv: iv }).then(function (wrapped) {
+                return crypto.subtle.unwrapKey("raw", wrapped, wrapping, { name: "AES-GCM", iv: iv }, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]).then(function (unwrapped) {
+                  return Promise.all([
+                    crypto.subtle.encrypt({ name: "AES-GCM", iv: civ }, key, pt),
+                    crypto.subtle.encrypt({ name: "AES-GCM", iv: civ }, unwrapped, pt)
+                  ]).then(function (cts) {
+                    const a = new Uint8Array(cts[0]);
+                    const b = new Uint8Array(cts[1]);
+                    let same = a.length === b.length;
+                    for (let i = 0; i < a.length && same; i++) same = a[i] === b[i];
+                    window.__wrap = { same: same, wrapped: wrapped.byteLength > 16 };
+                  });
+                });
+              });
+            });
+          }).catch(function (e) { window.__wrap = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(80).settled);
+    let v = page.evaluate("window.__wrap").unwrap();
+    assert_eq!(v["same"], true, "{v}");
+    assert_eq!(v["wrapped"], true, "{v}");
+}
+
+#[test]
+fn media_play_fires_play_and_playing() {
+    let mut page = open("<title>play</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const video = document.createElement("video");
+              const ev = [];
+              video.addEventListener("play", function () { ev.push("play"); });
+              video.addEventListener("playing", function () { ev.push("playing"); });
+              video.addEventListener("pause", function () { ev.push("pause"); });
+              video.play();
+              const afterPlay = { paused: video.paused, ev: ev.slice() };
+              video.pause();
+              return { afterPlay: afterPlay, paused: video.paused, ev: ev.slice() };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["afterPlay"]["paused"], false, "{v}");
+    assert_eq!(v["afterPlay"]["ev"][0], "play", "{v}");
+    assert_eq!(v["afterPlay"]["ev"][1], "playing", "{v}");
+    assert_eq!(v["paused"], true, "{v}");
+    assert_eq!(v["ev"][2], "pause", "{v}");
+}
+
+#[test]
+fn xr_and_presentation_request_deny() {
+    let mut page = open("<title>xr</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__xr = null;
+          const req = new PresentationRequest("https://s.test/slides");
+          Promise.allSettled([
+            navigator.xr.isSessionSupported("inline"),
+            navigator.xr.requestSession("immersive-vr"),
+            req.start(),
+            req.getAvailability()
+          ]).then(function (rows) {
+            window.__xr = {
+              supported: rows[0].status === "fulfilled" && rows[0].value === false,
+              session: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError",
+              start: rows[2].status === "rejected" && rows[2].reason.name === "NotAllowedError",
+              avail: rows[3].status === "fulfilled" && rows[3].value.value === false,
+              inst: req instanceof PresentationRequest
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__xr").unwrap();
+    assert_eq!(v["supported"], true, "{v}");
+    assert_eq!(v["session"], true, "{v}");
+    assert_eq!(v["start"], true, "{v}");
+    assert_eq!(v["avail"], true, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+}
+
+#[test]
 fn webgl_tex_image_draw_arrays_blits() {
     let mut page = open("<title>glt</title>");
     let v = page

@@ -532,7 +532,13 @@ fn parse_gradient_stops(block: &str) -> Vec<(f32, [u8; 4])> {
     stops
 }
 
-fn parse_svg_clips(text: &str) -> HashMap<String, (f32, f32, f32, f32)> {
+#[derive(Clone, Copy)]
+enum SvgClip {
+    Rect { x: f32, y: f32, w: f32, h: f32 },
+    Circle { cx: f32, cy: f32, r: f32 },
+}
+
+fn parse_svg_clips(text: &str) -> HashMap<String, SvgClip> {
     let mut out = HashMap::new();
     let mut rest = text;
     while let Some(i) = rest.find("<clipPath") {
@@ -550,12 +556,23 @@ fn parse_svg_clips(text: &str) -> HashMap<String, (f32, f32, f32, f32)> {
                 let rtag = &block[ri..ri + re];
                 out.insert(
                     id.to_string(),
-                    (
-                        svg_attr(rtag, "x").unwrap_or(0.0),
-                        svg_attr(rtag, "y").unwrap_or(0.0),
-                        svg_attr(rtag, "width").unwrap_or(0.0),
-                        svg_attr(rtag, "height").unwrap_or(0.0),
-                    ),
+                    SvgClip::Rect {
+                        x: svg_attr(rtag, "x").unwrap_or(0.0),
+                        y: svg_attr(rtag, "y").unwrap_or(0.0),
+                        w: svg_attr(rtag, "width").unwrap_or(0.0),
+                        h: svg_attr(rtag, "height").unwrap_or(0.0),
+                    },
+                );
+            } else if let Some(ci) = block.find("<circle") {
+                let ce = block[ci..].find('>').unwrap_or(block.len() - ci);
+                let ctag = &block[ci..ci + ce];
+                out.insert(
+                    id.to_string(),
+                    SvgClip::Circle {
+                        cx: svg_attr(ctag, "cx").unwrap_or(0.0),
+                        cy: svg_attr(ctag, "cy").unwrap_or(0.0),
+                        r: svg_attr(ctag, "r").unwrap_or(0.0),
+                    },
                 );
             }
         }
@@ -564,17 +581,24 @@ fn parse_svg_clips(text: &str) -> HashMap<String, (f32, f32, f32, f32)> {
     out
 }
 
-fn clip_allows(tag: &str, clips: &HashMap<String, (f32, f32, f32, f32)>, x: f32, y: f32) -> bool {
+fn clip_allows(tag: &str, clips: &HashMap<String, SvgClip>, x: f32, y: f32) -> bool {
     let Some(raw) = svg_attr_str(tag, "clip-path") else {
         return true;
     };
     let Some(id) = parse_url_id(raw) else {
         return true;
     };
-    let Some((cx, cy, cw, ch)) = clips.get(id) else {
-        return true;
-    };
-    x >= *cx && x < *cx + *cw && y >= *cy && y < *cy + *ch
+    match clips.get(id) {
+        Some(SvgClip::Rect { x: cx, y: cy, w, h }) => {
+            x >= *cx && x < *cx + *w && y >= *cy && y < *cy + *h
+        }
+        Some(SvgClip::Circle { cx, cy, r }) => {
+            let dx = x - *cx;
+            let dy = y - *cy;
+            dx * dx + dy * dy <= *r * *r
+        }
+        None => true,
+    }
 }
 
 fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
@@ -664,7 +688,7 @@ fn paint_svg_rect(
     tag: &str,
     g: SvgXform,
     grads: &HashMap<String, SvgGrad>,
-    clips: &HashMap<String, (f32, f32, f32, f32)>,
+    clips: &HashMap<String, SvgClip>,
 ) {
     let (esx, esy) = svg_scale(tag);
     let (etx, ety) = svg_translate(tag);
@@ -755,7 +779,7 @@ fn paint_svg_circle(
     tag: &str,
     g: SvgXform,
     grads: &HashMap<String, SvgGrad>,
-    clips: &HashMap<String, (f32, f32, f32, f32)>,
+    clips: &HashMap<String, SvgClip>,
 ) {
     let world = g.then_tag(tag);
     let (cx, cy) = world.map(
@@ -790,7 +814,7 @@ fn paint_svg_ellipse(
     tag: &str,
     g: SvgXform,
     grads: &HashMap<String, SvgGrad>,
-    clips: &HashMap<String, (f32, f32, f32, f32)>,
+    clips: &HashMap<String, SvgClip>,
 ) {
     let world = g.then_tag(tag);
     let (cx, cy) = world.map(
@@ -1924,6 +1948,19 @@ mod tests {
         .expect("svg clip");
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(3, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(7, 7), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_clip_path_circle_masks_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><clipPath id='c'><circle cx='4' cy='4' r='2'/></clipPath></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='#00ff00' clip-path='url(#c)'/></svg>",
+        )
+        .expect("svg circle clip");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(4, 4), Some([0, 255, 0, 255]));
         assert_eq!(img.pixel(7, 7), Some([0, 0, 0, 0]));
     }
 }

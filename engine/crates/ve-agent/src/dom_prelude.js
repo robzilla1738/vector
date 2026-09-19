@@ -5719,8 +5719,17 @@
       this.dispatchEvent(new Event("abort"));
       if (this.src) this.dispatchEvent(new Event("loadstart"));
     }
-    play() { this._paused = false; return Promise.resolve(); }
-    pause() { this._paused = true; }
+    play() {
+      this._paused = false;
+      this.dispatchEvent(new Event("play"));
+      this.dispatchEvent(new Event("playing"));
+      return Promise.resolve();
+    }
+    pause() {
+      if (this._paused) return;
+      this._paused = true;
+      this.dispatchEvent(new Event("pause"));
+    }
   }
   Object.defineProperty(HTMLMediaElement.prototype, Symbol.toStringTag, { value: "HTMLMediaElement", configurable: true });
   HTMLMediaElement.NETWORK_EMPTY = 0;
@@ -7289,6 +7298,15 @@
         };
       }
       return this._keyboard;
+    }
+    get xr() {
+      if (!this._xr) {
+        this._xr = {
+          isSessionSupported() { return Promise.resolve(false); },
+          requestSession() { return Promise.reject(new DOMException("WebXR denied", "NotAllowedError")); },
+        };
+      }
+      return this._xr;
     }
     registerProtocolHandler(scheme, url) {
       if (arguments.length < 2) {
@@ -10962,6 +10980,24 @@
     static isUserVerifyingPlatformAuthenticatorAvailable() { return Promise.resolve(false); }
     static isConditionalMediationAvailable() { return Promise.resolve(false); }
   }
+  class PresentationRequest {
+    constructor(url) {
+      this.url = url;
+      this.reconnect = function () {
+        return Promise.reject(new DOMException("Presentation not found", "NotFoundError"));
+      };
+    }
+    start() {
+      return Promise.reject(new DOMException("Presentation denied", "NotAllowedError"));
+    }
+    getAvailability() {
+      return Promise.resolve({
+        value: false,
+        addEventListener() {},
+        removeEventListener() {},
+      });
+    }
+  }
   class EyeDropper {
     open() {
       return Promise.reject(new DOMException("The user aborted a request.", "AbortError"));
@@ -11066,7 +11102,7 @@
     WebGLRenderingContext, RTCPeerConnection,
     TextEncoderStream, TextDecoderStream,
     CompressionStream, DecompressionStream, CookieStore, cookieStore, ClipboardItem,
-    PaymentRequest, PublicKeyCredential, EyeDropper, BarcodeDetector, IdleDetector,
+    PaymentRequest, PublicKeyCredential, PresentationRequest, EyeDropper, BarcodeDetector, IdleDetector,
     Animation, KeyframeEffect, DocumentTimeline, ViewTransition,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport, Cache, CacheStorage, caches,
     TextDecoder, TextEncoder,
