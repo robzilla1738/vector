@@ -198,6 +198,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     let mut img = DecodedImage::solid(width, height, [0, 0, 0, 0]);
     let full = text.as_ref();
     let grads = parse_svg_gradients(full);
+    let clips = parse_svg_clips(full);
     let by_id = parse_svg_ids(full);
     let mut rest = full;
     while let Some(i) = rest.find("<rect") {
@@ -205,7 +206,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) {
-            paint_svg_rect(&mut img, tag, svg_group_offset(full, abs), &grads);
+            paint_svg_rect(&mut img, tag, svg_group_offset(full, abs), &grads, &clips);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -215,7 +216,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) {
-            paint_svg_circle(&mut img, tag, svg_group_offset(full, abs), &grads);
+            paint_svg_circle(&mut img, tag, svg_group_offset(full, abs), &grads, &clips);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -225,7 +226,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) {
-            paint_svg_ellipse(&mut img, tag, svg_group_offset(full, abs), &grads);
+            paint_svg_ellipse(&mut img, tag, svg_group_offset(full, abs), &grads, &clips);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -346,11 +347,11 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             }
             .then_tag(tag);
             if src.starts_with("<rect") {
-                paint_svg_rect(&mut img, src, xf, &grads);
+                paint_svg_rect(&mut img, src, xf, &grads, &clips);
             } else if src.starts_with("<circle") {
-                paint_svg_circle(&mut img, src, xf, &grads);
+                paint_svg_circle(&mut img, src, xf, &grads, &clips);
             } else if src.starts_with("<ellipse") {
-                paint_svg_ellipse(&mut img, src, xf, &grads);
+                paint_svg_ellipse(&mut img, src, xf, &grads, &clips);
             }
         }
         rest = &rest[i + tag_end + 1..];
@@ -531,6 +532,51 @@ fn parse_gradient_stops(block: &str) -> Vec<(f32, [u8; 4])> {
     stops
 }
 
+fn parse_svg_clips(text: &str) -> HashMap<String, (f32, f32, f32, f32)> {
+    let mut out = HashMap::new();
+    let mut rest = text;
+    while let Some(i) = rest.find("<clipPath") {
+        let after = &rest[i..];
+        let end = after
+            .find("</clipPath>")
+            .map(|e| e + 11)
+            .unwrap_or_else(|| after.find('>').map(|e| e + 1).unwrap_or(after.len()));
+        let block = &after[..end];
+        let tag_end = block.find('>').unwrap_or(block.len());
+        let tag = &block[..tag_end];
+        if let Some(id) = svg_attr_str(tag, "id") {
+            if let Some(ri) = block.find("<rect") {
+                let re = block[ri..].find('>').unwrap_or(block.len() - ri);
+                let rtag = &block[ri..ri + re];
+                out.insert(
+                    id.to_string(),
+                    (
+                        svg_attr(rtag, "x").unwrap_or(0.0),
+                        svg_attr(rtag, "y").unwrap_or(0.0),
+                        svg_attr(rtag, "width").unwrap_or(0.0),
+                        svg_attr(rtag, "height").unwrap_or(0.0),
+                    ),
+                );
+            }
+        }
+        rest = &after[end..];
+    }
+    out
+}
+
+fn clip_allows(tag: &str, clips: &HashMap<String, (f32, f32, f32, f32)>, x: f32, y: f32) -> bool {
+    let Some(raw) = svg_attr_str(tag, "clip-path") else {
+        return true;
+    };
+    let Some(id) = parse_url_id(raw) else {
+        return true;
+    };
+    let Some((cx, cy, cw, ch)) = clips.get(id) else {
+        return true;
+    };
+    x >= *cx && x < *cx + *cw && y >= *cy && y < *cy + *ch
+}
+
 fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
     let mut out = HashMap::new();
     for (open, close, radial) in [
@@ -618,6 +664,7 @@ fn paint_svg_rect(
     tag: &str,
     g: SvgXform,
     grads: &HashMap<String, SvgGrad>,
+    clips: &HashMap<String, (f32, f32, f32, f32)>,
 ) {
     let (esx, esy) = svg_scale(tag);
     let (etx, ety) = svg_translate(tag);
@@ -638,6 +685,9 @@ fn paint_svg_rect(
         let hh = h.max(0.0) as u32;
         for yy in y..(y + hh).min(img.height) {
             for xx in x..(x + ww).min(img.width) {
+                if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
+                    continue;
+                }
                 let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
                 let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
@@ -689,6 +739,9 @@ fn paint_svg_rect(
             let (rx, ry) = svg_rotate_pt(px, py, -rad, rcx, rcy);
             let (ux, uy) = svg_unskew_pt(rx, ry, kx, ky);
             if ux >= lx && ux < lx + lw && uy >= ly && uy < ly + lh {
+                if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
+                    continue;
+                }
                 let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
                 let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
@@ -702,6 +755,7 @@ fn paint_svg_circle(
     tag: &str,
     g: SvgXform,
     grads: &HashMap<String, SvgGrad>,
+    clips: &HashMap<String, (f32, f32, f32, f32)>,
 ) {
     let world = g.then_tag(tag);
     let (cx, cy) = world.map(
@@ -720,6 +774,9 @@ fn paint_svg_circle(
             let dx = xx as f32 + 0.5 - cx;
             let dy = yy as f32 + 0.5 - cy;
             if dx * dx + dy * dy <= r2 {
+                if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
+                    continue;
+                }
                 let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
                 let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
@@ -733,6 +790,7 @@ fn paint_svg_ellipse(
     tag: &str,
     g: SvgXform,
     grads: &HashMap<String, SvgGrad>,
+    clips: &HashMap<String, (f32, f32, f32, f32)>,
 ) {
     let world = g.then_tag(tag);
     let (cx, cy) = world.map(
@@ -751,6 +809,9 @@ fn paint_svg_ellipse(
             let nx = (xx as f32 + 0.5 - cx) / rx.max(0.001);
             let ny = (yy as f32 + 0.5 - cy) / ry.max(0.001);
             if nx * nx + ny * ny <= 1.0 {
+                if !clip_allows(tag, clips, xx as f32 + 0.5, yy as f32 + 0.5) {
+                    continue;
+                }
                 let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
                 let idx = ((yy * img.width + xx) * 4) as usize;
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
@@ -1851,5 +1912,18 @@ mod tests {
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(1, 2), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(3, 3), Some([255, 136, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_clip_path_masks_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><clipPath id='c'><rect x='2' y='2' width='4' height='4'/></clipPath></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000' clip-path='url(#c)'/></svg>",
+        )
+        .expect("svg clip");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(3, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(7, 7), Some([0, 0, 0, 0]));
     }
 }
