@@ -6,7 +6,10 @@ use ve_style::{FontFamily, FontStyle, FontWeight, Rgba};
 
 use crate::intent::{detect_intent, intent_label, Intent, IntentContext};
 use crate::tokens::{ChromeMetrics, ChromeTheme, ChromeTokens};
-use crate::workspace::{design_reference_sites, host_of, Layout, Pin, SpaceColor};
+use crate::workspace::{
+    design_reference_sites, folders_in_space, host_of, tabs_in_folder, unfiled_tabs, Folder, Layout,
+    Pin, SpaceColor,
+};
 
 /// One sidebar / stage tab.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -320,6 +323,24 @@ impl Chrome {
         ];
     }
 
+    /// File the first four tabs into a Dev folder (Electron browsing mock).
+    pub fn file_open_tabs_in_dev_folder(&mut self) {
+        let space = self.layout.active_space_id.clone();
+        self.layout.folders.retain(|f| f.id != "folder-dev");
+        self.layout.folders.push(Folder {
+            id: "folder-dev".into(),
+            name: "Dev".into(),
+            space_id: space,
+            collapsed: false,
+        });
+        self.layout.tab_folder.retain(|(_, f)| f != "folder-dev");
+        for tab in self.tabs.iter().take(4) {
+            self.layout
+                .tab_folder
+                .push((tab.page_id.clone(), "folder-dev".into()));
+        }
+    }
+
     /// Compact top-pill command bar (Electron 01 / 03).
     #[must_use]
     pub fn command_pill_rect(&self, window: Size) -> Rect {
@@ -471,10 +492,11 @@ impl Chrome {
             return ChromeHit::NewTab;
         }
         let mut row = tabs_y + self.metrics.row_h;
-        for tab in self.tabs_for_active_space() {
+        for item in self.sidebar_content_rows() {
             if (row..row + self.metrics.row_h).contains(&y) {
-                return ChromeHit::Tab {
-                    page_id: tab.page_id.clone(),
+                return match item {
+                    SideRow::Folder { .. } => ChromeHit::Window,
+                    SideRow::Tab { page_id } => ChromeHit::Tab { page_id },
                 };
             }
             row += self.metrics.row_h;
@@ -483,24 +505,6 @@ impl Chrome {
             return ChromeHit::SidebarToggle;
         }
         ChromeHit::Window
-    }
-
-    fn tabs_for_active_space(&self) -> Vec<&ChromeTab> {
-        let space = &self.layout.active_space_id;
-        let assigned: Vec<&str> = self
-            .layout
-            .tab_space
-            .iter()
-            .filter(|(_, s)| s == space)
-            .map(|(id, _)| id.as_str())
-            .collect();
-        if assigned.is_empty() {
-            return self.tabs.iter().collect();
-        }
-        self.tabs
-            .iter()
-            .filter(|t| assigned.iter().any(|id| *id == t.page_id))
-            .collect()
     }
 
     /// Paints chrome into a display list sized to `window`.
@@ -581,36 +585,21 @@ impl Chrome {
         self.label(list, Point::new(36.0, y + 20.0), "New Tab", 12.0, t.sb_ink_1);
         y += self.metrics.row_h;
         let foot = self.agent_footer_top(window);
-        for tab in self.tabs_for_active_space() {
+        for row in self.sidebar_content_rows() {
             if y + self.metrics.row_h > foot {
                 break;
             }
-            if tab.active {
-                fill_round(
-                    list,
-                    Rect::new(8.0, y, sb - 16.0, self.metrics.row_h),
-                    8.0,
-                    t.sb_selected,
-                );
+            match row {
+                SideRow::Folder { name } => {
+                    self.label(list, Point::new(16.0, y + 20.0), "📁", 12.0, t.sb_ink_1);
+                    self.label(list, Point::new(36.0, y + 20.0), &name, 12.0, t.sb_ink_1);
+                }
+                SideRow::Tab { page_id } => {
+                    if let Some(tab) = self.tabs.iter().find(|t| t.page_id == page_id) {
+                        self.paint_tab_row(list, tab, sb, y);
+                    }
+                }
             }
-            let title = if tab.title.is_empty() {
-                host_of(&tab.url)
-            } else {
-                tab.title.clone()
-            };
-            let ink = if tab.active {
-                t.sb_selected_ink
-            } else {
-                t.sb_ink_0
-            };
-            self.tile_face(list, 14.0, y + 8.0, 16.0, 4.0, &tab.url);
-            self.label(
-                list,
-                Point::new(36.0, y + 20.0),
-                &truncate(&title, 24),
-                12.0,
-                ink,
-            );
             y += self.metrics.row_h;
         }
         self.label(list, Point::new(16.0, foot + 16.0), "AGENT", 11.0, t.sb_ink_1);
@@ -661,6 +650,56 @@ impl Chrome {
         window.height - (48.0 + runs * 26.0 + 24.0)
     }
 
+    fn sidebar_content_rows(&self) -> Vec<SideRow> {
+        let pages: Vec<String> = self.tabs.iter().map(|t| t.page_id.clone()).collect();
+        let space = self.layout.active_space_id.as_str();
+        let mut rows = Vec::new();
+        for folder in folders_in_space(&self.layout, space) {
+            rows.push(SideRow::Folder {
+                name: folder.name.clone(),
+            });
+            if !folder.collapsed {
+                for id in tabs_in_folder(&self.layout, &pages, &folder.id) {
+                    rows.push(SideRow::Tab { page_id: id });
+                }
+            }
+        }
+        for id in unfiled_tabs(&self.layout, &pages, space) {
+            rows.push(SideRow::Tab { page_id: id });
+        }
+        rows
+    }
+
+    fn paint_tab_row(&self, list: &mut DisplayList, tab: &ChromeTab, sb: f32, y: f32) {
+        let t = &self.tokens;
+        if tab.active {
+            fill_round(
+                list,
+                Rect::new(8.0, y, sb - 16.0, self.metrics.row_h),
+                8.0,
+                t.sb_selected,
+            );
+        }
+        let title = if tab.title.is_empty() {
+            host_of(&tab.url)
+        } else {
+            tab.title.clone()
+        };
+        let ink = if tab.active {
+            t.sb_selected_ink
+        } else {
+            t.sb_ink_0
+        };
+        self.tile_face(list, 14.0, y + 8.0, 16.0, 4.0, &tab.url);
+        self.label(
+            list,
+            Point::new(36.0, y + 20.0),
+            &truncate(&title, 24),
+            12.0,
+            ink,
+        );
+    }
+
     fn paint_toolbar(&self, list: &mut DisplayList, window: Size) {
         let t = &self.tokens;
         let sb = self.sidebar_used();
@@ -673,7 +712,7 @@ impl Chrome {
         let nav_x = sb + 12.0;
         icon_chevron_left(list, nav_x + 6.0, 26.0, t.ink_2);
         icon_chevron_right(list, nav_x + 38.0, 26.0, t.ink_2);
-        icon_reload(list, nav_x + 70.0, 26.0, t.ink_2);
+        icon_reload(list, nav_x + 70.0, 26.0, t.ink_2, t.bg_window);
         let pill = self.command_pill_rect(window);
         fill_round(list, pill, 16.0, t.sb_field);
         let active = self.tabs.iter().find(|tab| tab.active);
@@ -705,8 +744,8 @@ impl Chrome {
         }
         let right = window.width - rail - 12.0;
         icon_grid(list, right - 84.0, 26.0, t.ink_2);
-        icon_bookmark(list, right - 52.0, 26.0, t.ink_2);
-        icon_panel(list, right - 20.0, 26.0, t.ink_2);
+        icon_bookmark(list, right - 52.0, 26.0, t.ink_2, t.bg_window);
+        icon_panel(list, right - 20.0, 26.0, t.ink_2, t.bg_window);
     }
 
     fn paint_stage(&self, list: &mut DisplayList, window: Size) {
@@ -1399,6 +1438,11 @@ impl Chrome {
     }
 }
 
+enum SideRow {
+    Folder { name: String },
+    Tab { page_id: String },
+}
+
 fn fill_round(list: &mut DisplayList, rect: Rect, radius: f32, color: Rgba) {
     list.push(DisplayItem::RoundedClip { rect, radius });
     list.push(DisplayItem::Rect { rect, color });
@@ -1448,14 +1492,9 @@ fn icon_chevron_right(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
     fill_rect(list, cx + 1.0, cy - 5.0, 2.0, 6.0, color);
 }
 
-fn icon_reload(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+fn icon_reload(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba, cutout: Rgba) {
     fill_round(list, Rect::new(cx - 6.0, cy - 6.0, 12.0, 12.0), 6.0, color);
-    fill_round(
-        list,
-        Rect::new(cx - 3.5, cy - 3.5, 7.0, 7.0),
-        3.5,
-        Rgba::rgb(0x1f, 0x1f, 0x1f),
-    );
+    fill_round(list, Rect::new(cx - 3.5, cy - 3.5, 7.0, 7.0), 3.5, cutout);
     fill_rect(list, cx + 2.0, cy - 6.0, 4.0, 3.0, color);
 }
 
@@ -1472,14 +1511,14 @@ fn icon_grid(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
     }
 }
 
-fn icon_bookmark(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+fn icon_bookmark(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba, cutout: Rgba) {
     fill_round(list, Rect::new(cx - 4.0, cy - 6.0, 8.0, 12.0), 2.0, color);
-    fill_rect(list, cx - 2.0, cy + 1.0, 4.0, 3.0, Rgba::rgb(0x1f, 0x1f, 0x1f));
+    fill_rect(list, cx - 2.0, cy + 1.0, 4.0, 3.0, cutout);
 }
 
-fn icon_panel(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
+fn icon_panel(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba, cutout: Rgba) {
     fill_round(list, Rect::new(cx - 7.0, cy - 6.0, 14.0, 12.0), 2.0, color);
-    fill_rect(list, cx + 2.0, cy - 5.0, 4.0, 10.0, Rgba::rgb(0x1f, 0x1f, 0x1f));
+    fill_rect(list, cx + 2.0, cy - 5.0, 4.0, 10.0, cutout);
 }
 
 fn space_dot_color(color: SpaceColor) -> Rgba {
@@ -1842,6 +1881,31 @@ mod tests {
     fn empty_sidebar_new_tab_sits_under_space_not_a_pin_band() {
         let chrome = Chrome::default();
         assert!(matches!(chrome.hit(Size::new(1280.0, 720.0), 40.0, 56.0), ChromeHit::NewTab));
+    }
+
+    #[test]
+    fn sidebar_paints_dev_folder_then_unfiled_tabs() {
+        let mut chrome = sample();
+        chrome.tabs.push(ChromeTab {
+            page_id: "2".into(),
+            title: "Second".into(),
+            url: "https://second.test/".into(),
+            active: false,
+            backend: ChromeBackend::Engine,
+        });
+        chrome.file_open_tabs_in_dev_folder();
+        let list = chrome.paint(Size::new(1280.0, 720.0));
+        let texts: Vec<&str> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                DisplayItem::Text(run) => Some(run.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.iter().any(|t| *t == "Dev"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "Example"), "{texts:?}");
+        assert!(texts.iter().any(|t| *t == "Second"), "{texts:?}");
     }
 
     #[test]

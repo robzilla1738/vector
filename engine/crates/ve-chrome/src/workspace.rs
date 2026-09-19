@@ -142,6 +142,55 @@ pub fn design_reference_sites() -> &'static [(&'static str, &'static str)] {
     ]
 }
 
+/// Folders in one space, in stored order.
+#[must_use]
+pub fn folders_in_space<'a>(layout: &'a Layout, space_id: &str) -> Vec<&'a Folder> {
+    layout
+        .folders
+        .iter()
+        .filter(|f| f.space_id == space_id)
+        .collect()
+}
+
+/// Page ids filed in `folder_id`, in space order.
+#[must_use]
+pub fn tabs_in_folder(layout: &Layout, pages: &[String], folder_id: &str) -> Vec<String> {
+    let space = layout
+        .folders
+        .iter()
+        .find(|f| f.id == folder_id)
+        .map(|f| f.space_id.as_str())
+        .unwrap_or("");
+    tabs_in_space(layout, pages, space)
+        .into_iter()
+        .filter(|id| {
+            layout
+                .tab_folder
+                .iter()
+                .any(|(p, f)| p == id && f == folder_id)
+        })
+        .collect()
+}
+
+/// Tabs in a space that are not in a live folder.
+#[must_use]
+pub fn unfiled_tabs(layout: &Layout, pages: &[String], space_id: &str) -> Vec<String> {
+    let live: std::collections::HashSet<&str> = folders_in_space(layout, space_id)
+        .into_iter()
+        .map(|f| f.id.as_str())
+        .collect();
+    tabs_in_space(layout, pages, space_id)
+        .into_iter()
+        .filter(|id| {
+            layout
+                .tab_folder
+                .iter()
+                .find(|(p, _)| p == id)
+                .is_none_or(|(_, f)| !live.contains(f.as_str()))
+        })
+        .collect()
+}
+
 /// Host without `www.` — tiles, pins, start page.
 #[must_use]
 pub fn host_of(url: &str) -> String {
@@ -299,5 +348,25 @@ mod tests {
         }
         let n = layout.pins[0].1.len();
         assert_eq!(n, MAX_PINS);
+    }
+
+    #[test]
+    fn folders_split_filed_and_unfiled_tabs() {
+        let mut layout = empty_layout();
+        let space = layout.active_space_id.clone();
+        layout.folders.push(Folder {
+            id: "folder-dev".into(),
+            name: "Dev".into(),
+            space_id: space.clone(),
+            collapsed: false,
+        });
+        layout.tab_folder.push(("1".into(), "folder-dev".into()));
+        layout.tab_folder.push(("2".into(), "folder-dev".into()));
+        let pages = vec!["1".into(), "2".into(), "3".into()];
+        assert_eq!(
+            tabs_in_folder(&layout, &pages, "folder-dev"),
+            vec!["1".to_string(), "2".to_string()]
+        );
+        assert_eq!(unfiled_tabs(&layout, &pages, &space), vec!["3".to_string()]);
     }
 }

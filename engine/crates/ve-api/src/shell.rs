@@ -1391,6 +1391,14 @@ impl NativeBrowser {
             status.hash(&mut h);
             goal.hash(&mut h);
         }
+        for folder in &self.chrome.layout.folders {
+            folder.id.hash(&mut h);
+            folder.collapsed.hash(&mut h);
+        }
+        for pair in &self.chrome.layout.tab_folder {
+            pair.0.hash(&mut h);
+            pair.1.hash(&mut h);
+        }
         (self.chrome.theme == ve_chrome::ChromeTheme::Dark).hash(&mut h);
         self.chrome.shows_start_page().hash(&mut h);
         self.window_size.width.to_bits().hash(&mut h);
@@ -1795,6 +1803,21 @@ impl NativeBrowser {
         } else {
             cur - 1
         };
+    }
+
+    /// File the first four tabs into a Dev folder (Electron browsing sidebar).
+    pub fn file_open_tabs_in_dev_folder(&mut self) {
+        self.sync_chrome();
+        self.chrome.file_open_tabs_in_dev_folder();
+    }
+
+    /// Product appearance (settings drawer / light-start screenshot).
+    pub fn set_product_theme(&mut self, light: bool) {
+        self.chrome.set_theme(if light {
+            ChromeTheme::Light
+        } else {
+            ChromeTheme::Dark
+        });
     }
 
     /// Seed Electron screenshot fixtures (pins, favourites, recents) into chrome + profile.
@@ -3256,6 +3279,47 @@ mod tests {
     }
 
     #[test]
+    fn light_start_page_screenshot_matches_electron_08() {
+        let path = format!("/tmp/vector-start-light-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<html><body></body></html>".into(),
+                url: "about:blank".into(),
+            })
+            .unwrap();
+        browser.seed_design_reference_chrome();
+        browser.set_product_theme(true);
+        assert_eq!(browser.chrome().theme, ChromeTheme::Light);
+        let _ = browser.handle_event(NativeEvent::Resize {
+            width: 1440.0,
+            height: 900.0,
+        });
+        let list = browser.paint_shell_list().unwrap();
+        let texts: Vec<String> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                ve_gfx::DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            texts.iter().any(|t| t.starts_with("Good ") || t == "Late night."),
+            "{texts:?}"
+        );
+        browser.set_device_scale(2.0);
+        let png = browser.capture_shell_png().expect("light start png");
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/ui/screenshots");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("ve-shell-start-light.png"), &png).unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn browsing_sidebar_screenshot_matches_electron_03() {
         let path = format!("/tmp/vector-browse-shot-{}.sqlite", std::process::id());
         let _ = std::fs::remove_file(&path);
@@ -3275,6 +3339,7 @@ mod tests {
                 .unwrap();
         }
         browser.seed_design_reference_chrome();
+        browser.file_open_tabs_in_dev_folder();
         let _ = browser.handle_event(NativeEvent::Resize {
             width: 1440.0,
             height: 900.0,
@@ -3288,6 +3353,7 @@ mod tests {
                 _ => None,
             })
             .collect();
+        assert!(texts.iter().any(|t| t == "Dev"), "{texts:?}");
         assert!(texts.iter().any(|t| t.contains("VEC-142")), "{texts:?}");
         assert!(texts.iter().any(|t| t.contains("Hacker News")), "{texts:?}");
         assert!(texts.iter().any(|t| t == "AGENT"), "{texts:?}");
