@@ -786,6 +786,7 @@ enum CanvasStyle {
         height: u32,
         pixels: Vec<u8>,
         repeat: PatternRepeat,
+        transform: [f32; 6],
     },
 }
 
@@ -926,9 +927,28 @@ impl CanvasStyle {
                 height,
                 pixels,
                 repeat,
-            } => sample_pattern(*width, *height, pixels, *repeat, x, y),
+                transform,
+            } => sample_pattern(*width, *height, pixels, *repeat, *transform, x, y),
         }
     }
+}
+
+fn invert_affine(m: [f32; 6], x: f32, y: f32) -> (f32, f32) {
+    let [a, b, c, d, e, f] = m;
+    let det = a.mul_add(d, -b * c);
+    if det.abs() < 1e-8 {
+        return (x, y);
+    }
+    let ia = d / det;
+    let ib = -b / det;
+    let ic = -c / det;
+    let id = a / det;
+    let ie = (c * f - d * e) / det;
+    let iff = (b * e - a * f) / det;
+    (
+        ia.mul_add(x, ic.mul_add(y, ie)),
+        ib.mul_add(x, id.mul_add(y, iff)),
+    )
 }
 
 fn sample_pattern(
@@ -936,12 +956,14 @@ fn sample_pattern(
     height: u32,
     pixels: &[u8],
     repeat: PatternRepeat,
+    transform: [f32; 6],
     x: f32,
     y: f32,
 ) -> [u8; 4] {
     if width == 0 || height == 0 {
         return [0, 0, 0, 0];
     }
+    let (x, y) = invert_affine(transform, x, y);
     let fx = x.floor();
     let fy = y.floor();
     let in_x = fx >= 0.0 && fx < width as f32;
@@ -2471,10 +2493,17 @@ impl Page {
 
     fn resolve_canvas_style(&self, s: &str) -> CanvasStyle {
         if let Some(rest) = s.strip_prefix("ve-pat:") {
-            let (id_s, mode) = match rest.split_once(':') {
-                Some((id, mode)) => (id, PatternRepeat::parse(mode)),
-                None => (rest, PatternRepeat::Repeat),
-            };
+            let mut parts = rest.splitn(3, ':');
+            let id_s = parts.next().unwrap_or("");
+            let mode = PatternRepeat::parse(parts.next().unwrap_or("repeat"));
+            let mut transform = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+            if let Some(xf) = parts.next() {
+                for (i, n) in xf.split(',').take(6).enumerate() {
+                    if let Ok(v) = n.parse::<f32>() {
+                        transform[i] = v;
+                    }
+                }
+            }
             if let Ok(id) = id_s.trim().parse::<u64>() {
                 if let Some((w, h, px)) = self.canvas_patterns.get(&id) {
                     return CanvasStyle::Pattern {
@@ -2482,6 +2511,7 @@ impl Page {
                         height: *h,
                         pixels: px.clone(),
                         repeat: mode,
+                        transform,
                     };
                 }
             }

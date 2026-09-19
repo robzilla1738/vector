@@ -862,6 +862,52 @@ fn canvas_create_pattern_repeats_source_pixels() {
 }
 
 #[test]
+fn canvas_pattern_set_transform_shifts_tile() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var src = document.createElement("canvas");
+              src.width = 2;
+              src.height = 1;
+              var sctx = src.getContext("2d");
+              sctx.fillStyle = "#ff0000";
+              sctx.fillRect(0, 0, 1, 1);
+              sctx.fillStyle = "#0000ff";
+              sctx.fillRect(1, 0, 1, 1);
+              var dst = document.createElement("canvas");
+              dst.width = 4;
+              dst.height = 2;
+              var ctx = dst.getContext("2d");
+              var pat = ctx.createPattern(src, "repeat");
+              ctx.fillStyle = pat;
+              ctx.fillRect(0, 0, 4, 2);
+              var before = ctx.getImageData(0, 0, 1, 1).data;
+              pat.setTransform({ a: 1, b: 0, c: 0, d: 1, e: 1, f: 0 });
+              ctx.fillRect(0, 0, 4, 2);
+              var after = ctx.getImageData(0, 0, 1, 1).data;
+              return {
+                br: before[0], bb: before[2],
+                ar: after[0], ab: after[2],
+                encoded: String(pat).indexOf("1,0,0,1,1,0") >= 0
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["br"].as_u64().unwrap_or(0) > 200,
+        "identity samples red: {v}"
+    );
+    assert_eq!(v["bb"], 0, "{v}");
+    assert_eq!(
+        v["ar"], 0,
+        "translate(1,0) must sample the blue column: {v}"
+    );
+    assert!(v["ab"].as_u64().unwrap_or(0) > 200, "{v}");
+    assert_eq!(v["encoded"], true, "{v}");
+}
+
+#[test]
 fn canvas_create_pattern_no_repeat_stays_in_tile() {
     let mut page = open(r#"<body></body>"#);
     let v = page

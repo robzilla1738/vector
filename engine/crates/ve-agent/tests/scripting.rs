@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie"
         )
     );
     assert_eq!(
@@ -633,6 +633,23 @@ fn native_bindings_install_element_id_accessor() {
         )
         .unwrap(),
         serde_json::json!(1)
+    );
+    assert_eq!(
+        page.evaluate("document.head.tagName").unwrap(),
+        serde_json::json!("HEAD")
+    );
+    page.evaluate("document.title = 'native-title'").unwrap();
+    assert_eq!(
+        page.evaluate("document.title").unwrap(),
+        serde_json::json!("native-title")
+    );
+    assert!(
+        page.evaluate("document.URL")
+            .unwrap()
+            .as_str()
+            .unwrap_or("")
+            .contains("s.test"),
+        "native URL must come from the document host"
     );
 }
 

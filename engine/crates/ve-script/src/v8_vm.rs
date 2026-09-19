@@ -813,6 +813,30 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeGetElementsByClassName", by_class)?;
+            let title_get = v8::FunctionTemplate::builder(native_document_title_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeTitleGet", title_get)?;
+            let title_set = v8::FunctionTemplate::builder(native_document_title_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeTitleSet", title_set)?;
+            let head = v8::FunctionTemplate::builder(native_document_head)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeHead", head)?;
+            let url = v8::FunctionTemplate::builder(native_document_url)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeURL", url)?;
+            let cookie_get = v8::FunctionTemplate::builder(native_document_cookie_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCookieGet", cookie_get)?;
+            let cookie_set = v8::FunctionTemplate::builder(native_document_cookie_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCookieSet", cookie_set)?;
             Some(())
         })?;
         self.eval(
@@ -989,6 +1013,19 @@ impl JsVm for V8Vm {
     defEl(Document.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
     defEl(Document.prototype, "documentElement", function () { return wrapNode(globalThis.__veNativeDocumentElement.call(this)); });
     defEl(Document.prototype, "body", function () { return wrapNode(globalThis.__veNativeBody.call(this)); });
+    defEl(Document.prototype, "head", function () { return wrapNode(globalThis.__veNativeHead.call(this)); });
+    def(Document.prototype, "title", globalThis.__veNativeTitleGet, globalThis.__veNativeTitleSet);
+    Object.defineProperty(Document.prototype, "URL", {
+      configurable: true,
+      enumerable: true,
+      get: globalThis.__veNativeURL
+    });
+    Object.defineProperty(Document.prototype, "documentURI", {
+      configurable: true,
+      enumerable: true,
+      get: globalThis.__veNativeURL
+    });
+    def(Document.prototype, "cookie", globalThis.__veNativeCookieGet, globalThis.__veNativeCookieSet);
     Document.prototype.getElementsByTagName = function (s) {
       return wrapList(globalThis.__veNativeGetElementsByTagName.call(this, s));
     };
@@ -1076,7 +1113,7 @@ impl JsVm for V8Vm {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie";
 })()"#,
             "vector:dom-native",
         )?;
@@ -2453,6 +2490,66 @@ fn native_get_elements_by_class_name(
     )
     .unwrap_or(JsValue::Array(Vec::new()));
     rv.set(from_js_value(scope, &value));
+}
+
+fn native_document_title_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("title"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_document_title_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let title = native_arg(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("setTitle"), handle, title]);
+}
+
+fn native_document_head(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "head", &mut rv);
+}
+
+fn native_document_url(
+    scope: &mut v8::PinScope<'_, '_>,
+    _args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let value = call_dom_host(scope, &[JsValue::from("url")]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_document_cookie_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    _args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let value = call_dom_host(scope, &[JsValue::from("cookie")]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_document_cookie_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let cookie = native_arg(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("setCookie"), cookie]);
 }
 
 fn looks_like_module(source: &str) -> bool {

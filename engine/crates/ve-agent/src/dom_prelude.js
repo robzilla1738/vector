@@ -3678,8 +3678,34 @@
   Object.defineProperty(CanvasGradient.prototype, Symbol.toStringTag, { value: "CanvasGradient", configurable: true });
   class CanvasPattern {
     constructor() { throw new TypeError("Illegal constructor"); }
-    setTransform() {}
-    toString() { return "ve-pat:" + (this._id || 0) + ":" + (this._repetition || "repeat"); }
+    setTransform(m) {
+      let a = 1, b = 0, c = 0, d = 1, e = 0, f = 0;
+      if (m && typeof m === "object") {
+        a = Number(m.a); if (!isFinite(a)) a = 1;
+        b = Number(m.b); if (!isFinite(b)) b = 0;
+        c = Number(m.c); if (!isFinite(c)) c = 0;
+        d = Number(m.d); if (!isFinite(d)) d = 1;
+        e = Number(m.e); if (!isFinite(e)) e = 0;
+        f = Number(m.f); if (!isFinite(f)) f = 0;
+      } else if (arguments.length >= 6) {
+        a = Number(arguments[0]) || 0;
+        b = Number(arguments[1]) || 0;
+        c = Number(arguments[2]) || 0;
+        d = Number(arguments[3]) || 0;
+        e = Number(arguments[4]) || 0;
+        f = Number(arguments[5]) || 0;
+      }
+      this._a = a; this._b = b; this._c = c; this._d = d; this._e = e; this._f = f;
+    }
+    toString() {
+      const a = this._a == null ? 1 : this._a;
+      const b = this._b == null ? 0 : this._b;
+      const c = this._c == null ? 0 : this._c;
+      const d = this._d == null ? 1 : this._d;
+      const e = this._e == null ? 0 : this._e;
+      const f = this._f == null ? 0 : this._f;
+      return "ve-pat:" + (this._id || 0) + ":" + (this._repetition || "repeat") + ":" + [a, b, c, d, e, f].join(",");
+    }
   }
   Object.defineProperty(CanvasPattern.prototype, Symbol.toStringTag, { value: "CanvasPattern", configurable: true });
   class OffscreenCanvas extends EventTarget {
