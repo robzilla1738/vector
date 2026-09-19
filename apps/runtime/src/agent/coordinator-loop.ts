@@ -24,12 +24,12 @@ import { recoverAfterCrash } from "./recovery.js";
 import { compileAndAuthorize } from "./action-compiler.js";
 import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "./durable.js";
 import { initialMachine, reduce, type Machine } from "./machine.js";
+import { emptyRepairState, noteRepair, type RepairState } from "./repair.js";
 import type { CoordinatorDeps } from "./coordinator.js";
 
 const TERMINAL_STATUSES: ReadonlySet<Run["status"]> = new Set(["completed", "partially_completed", "failed", "cancelled", "interrupted"]);
 const DEFAULT_MAX_STEPS = 60;
 const DEFAULT_MAX_MODEL_CALLS = 40;
-const MAX_REPAIRS = 3;
 const NO_PROGRESS_LIMIT = 3;
 const PLAN_REPEAT_LIMIT = 3;
 const MODEL_ERROR_LIMIT = 3;
@@ -222,7 +222,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     const outcomes: StepOutcome[] = [];
     let modelCalls = 0;
     let stepsRun = 0;
-    let repairCount = 0;
+    let repairState: RepairState = emptyRepairState();
     let lastObsSig = "";
     let noProgress = 0;
     let outcomeCursor = 0;
@@ -335,11 +335,22 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
       noProgress = 0;
       repeatCount = 0;
       modelErrorCount = 0;
-      repairCount = 0;
+      repairState = emptyRepairState();
       lastPlanSig = "";
       lastError = undefined;
       lastActionFailed = false;
       doneChallenged = false;
+    };
+
+    const giveUpRepair = (error?: string) => {
+      const partial = outcomes.some((o) => o.status === "ok" && (o.extracted !== undefined || o.detail !== undefined));
+      self.finish(
+        runId,
+        partial ? "partially_completed" : "failed",
+        partial ? harvestResults(outcomes) : undefined,
+        error,
+        partial ? "Couldn't fully finish — here's what I found" : undefined,
+      );
     };
 
     try {
@@ -715,7 +726,10 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
           if (early) await early.finish([]);
           lastError = compiled.rejected;
           lastActionFailed = true;
-          repairCount++;
+          if (!noteRepair(repairState, compiled.rejected).allowed) {
+            giveUpRepair(lastError);
+            return;
+          }
           continue;
         }
         if ("denied" in compiled) {
@@ -723,7 +737,10 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
           if (early) await early.finish([]);
           lastError = compiled.denied;
           lastActionFailed = true;
-          repairCount++;
+          if (!noteRepair(repairState, compiled.denied).allowed) {
+            giveUpRepair(lastError);
+            return;
+          }
           continue;
         }
         machine = reduce(machine, { type: "authorized", ok: true });
@@ -803,28 +820,21 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
 
         if (result.status === "cancelled") return;
         if (result.status !== "failed") {
-          repairCount = 0;
+          repairState = emptyRepairState();
         }
         if (result.status === "failed") {
           lastError = result.error;
           lastActionFailed = true;
           // recovery ladder: re-observe happens naturally at loop top;
           // vision fallback, then recovery model, then give up.
-          repairCount++;
+          const decision = noteRepair(repairState, result.error);
           if (!visionUsed) visionPending = true;
-          if (repairCount > MAX_REPAIRS) {
-            const partial = outcomes.some((o) => o.status === "ok" && (o.extracted !== undefined || o.detail !== undefined));
-            self.finish(
-              runId,
-              partial ? "partially_completed" : "failed",
-              partial ? harvestResults(outcomes) : undefined,
-              lastError,
-              partial ? "Couldn't fully finish — here's what I found" : undefined,
-            );
+          if (!decision.allowed) {
+            giveUpRepair(lastError);
             return;
           }
           const recoveryModelId = self.deps.recoveryModel();
-          if (repairCount === MAX_REPAIRS && recoveryModelId && recoveryModelId !== modelId) {
+          if (decision.recover && recoveryModelId && recoveryModelId !== modelId) {
             // one stronger-model repair attempt before surrendering
             const fresh = await self.deps.pages.observe(activePageId, {});
             const repair = await structuredCall<RepairChunk>("repair", {
@@ -858,7 +868,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
                   stepsRun += compiled.program.steps?.length ?? repair.object.steps.length;
                   if (r2.status === "completed") {
                     lastError = undefined;
-                    repairCount = 0;
+                    repairState = emptyRepairState();
                   }
                 }
               }
