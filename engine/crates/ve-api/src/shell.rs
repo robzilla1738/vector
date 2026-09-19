@@ -4251,6 +4251,27 @@ mod tests {
             texts.iter().any(|t| t == "G" || t == "L" || t == "S" || t == "Y"),
             "rail tiles must show host letters: {texts:?}"
         );
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                ve_gfx::DisplayItem::Rect { rect, .. }
+                    if rect.x().abs() < 0.51
+                        && (rect.width() - 56.0).abs() < 0.51
+                        && (rect.height() - 900.0).abs() < 0.51
+            )),
+            "paint_shell_list must include the 56px CSS rail"
+        );
+        let stage = browser.chrome().stage_rect(ve_core::Size::new(1440.0, 900.0));
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                ve_gfx::DisplayItem::RoundedClip { rect, radius }
+                    if (rect.x() - stage.x()).abs() < 0.51
+                        && (rect.y() - stage.y()).abs() < 0.51
+                        && (*radius - browser.chrome().metrics.stage_radius).abs() < 0.51
+            )),
+            "stage clip in paint_shell_list stays CSS px"
+        );
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("rail png");
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -4274,6 +4295,15 @@ mod tests {
         assert!(peek_texts.iter().any(|t| t == "Personal"), "{peek_texts:?}");
         assert!(peek_texts.iter().any(|t| t == "Dev"), "{peek_texts:?}");
         assert!(peek_texts.iter().any(|t| t == "AGENT"), "{peek_texts:?}");
+        let peek_w = browser.chrome().sidebar_width;
+        assert!(
+            peek_list.items().iter().any(|i| matches!(
+                i,
+                ve_gfx::DisplayItem::RoundedClip { rect, .. }
+                    if (rect.width() - peek_w).abs() < 0.51 && rect.x().abs() < 0.51
+            )),
+            "peek overlay width must be the expanded sidebar in CSS px"
+        );
         browser.set_device_scale(2.0);
         let peek_png = browser.capture_shell_png().expect("peek png");
         std::fs::write(dir.join("ve-shell-peek.png"), &peek_png).unwrap();
@@ -4341,6 +4371,108 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
+    #[test]
+    fn chrome_shell_list_uses_electron_css_geometry() {
+        let path = format!("/tmp/vector-chrome-geom-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        seed_browsing_tabs(&mut browser);
+        let window = ve_core::Size::new(1440.0, 900.0);
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "s".into(),
+                code: "KeyS".into(),
+                modifiers: 4,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert_eq!(browser.chrome().sidebar_used(), 56.0);
+        let collapsed = browser.paint_shell_list().unwrap();
+        let stage = browser.chrome().stage_rect(window);
+        assert!(
+            collapsed.items().iter().any(|i| matches!(
+                i,
+                ve_gfx::DisplayItem::Rect { rect, .. }
+                    if rect.x().abs() < 0.51
+                        && (rect.width() - 56.0).abs() < 0.51
+                        && (rect.height() - 900.0).abs() < 0.51
+            )),
+            "collapsed 56px rail"
+        );
+        assert!(
+            collapsed.items().iter().any(|i| matches!(
+                i,
+                ve_gfx::DisplayItem::RoundedClip { rect, radius }
+                    if (rect.x() - stage.x()).abs() < 0.51
+                        && (*radius - browser.chrome().metrics.stage_radius).abs() < 0.51
+            )),
+            "stage RoundedClip CSS"
+        );
+
+        let _ = browser.handle_event(NativeEvent::PointerMove { x: 20.0, y: 120.0 });
+        assert!(browser.chrome().sidebar_peek);
+        let peek = browser.paint_shell_list().unwrap();
+        let peek_w = browser.chrome().sidebar_width;
+        assert!(
+            peek.items().iter().any(|i| matches!(
+                i,
+                ve_gfx::DisplayItem::RoundedClip { rect, .. }
+                    if (rect.width() - peek_w).abs() < 0.51 && rect.x().abs() < 0.51
+            )),
+            "peek overlay {peek_w}px"
+        );
+
+        browser
+            .handle_event(NativeEvent::Key {
+                key: "a".into(),
+                code: "KeyA".into(),
+                modifiers: 4 | 8,
+                repeat: false,
+                state: KeyState::Down,
+            })
+            .unwrap();
+        assert!(browser.chrome().rail_open);
+        let rail_list = browser.paint_shell_list().unwrap();
+        let rail_w = browser.chrome().rail_used();
+        assert!(
+            rail_list.items().iter().any(|i| matches!(
+                i,
+                ve_gfx::DisplayItem::Rect { rect, .. }
+                    if (rect.x() - (1440.0 - rail_w)).abs() < 0.51
+                        && (rect.width() - rail_w).abs() < 0.51
+            )),
+            "agent rail {rail_w}px at the right edge"
+        );
+
+        let doc = serde_json::json!({
+            "backend": "ve-shell paint_shell_list",
+            "window": { "width": 1440.0, "height": 900.0 },
+            "units": "css-px",
+            "collapsedRail": { "x": 0.0, "width": 56.0, "height": 900.0 },
+            "stage": {
+                "x": stage.x(),
+                "y": stage.y(),
+                "width": stage.width(),
+                "height": stage.height(),
+                "radius": browser.chrome().metrics.stage_radius
+            },
+            "peek": { "x": 0.0, "width": peek_w },
+            "agentRail": { "x": 1440.0 - rail_w, "width": rail_w, "height": 900.0 },
+            "toolbarWhileSidebarOpen": 0.0
+        });
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/ui/screenshots");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(
+            dir.join("ve-chrome-geometry.json"),
+            serde_json::to_vec_pretty(&doc).unwrap(),
+        )
+        .unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
     fn write_shell_shot(browser: &mut NativeBrowser, name: &str) -> Vec<String> {
         let list = browser.paint_shell_list().unwrap();
         let texts: Vec<String> = list
@@ -4384,6 +4516,18 @@ mod tests {
         );
         browser.seed_live_run_chrome("run");
         let texts = write_shell_shot(&mut browser, "ve-shell-run.png");
+        let rail_list = browser.paint_shell_list().unwrap();
+        let rail_w = browser.chrome().rail_used();
+        assert!(
+            rail_list.items().iter().any(|i| matches!(
+                i,
+                ve_gfx::DisplayItem::Rect { rect, .. }
+                    if (rect.x() - (1440.0 - rail_w)).abs() < 0.51
+                        && (rect.width() - rail_w).abs() < 0.51
+                        && (rect.height() - 900.0).abs() < 0.51
+            )),
+            "agent rail must occupy the right CSS strip in paint_shell_list"
+        );
         assert!(texts.iter().any(|t| t == "Run"), "{texts:?}");
         assert!(texts.iter().any(|t| t == "Working"), "{texts:?}");
         assert!(texts.iter().any(|t| t.contains("Load more")), "{texts:?}");

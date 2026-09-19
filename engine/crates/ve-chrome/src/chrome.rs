@@ -2872,6 +2872,18 @@ mod tests {
             .collect()
     }
 
+    fn list_has_css_rect(list: &DisplayList, x: f32, y: f32, w: f32, h: f32) -> bool {
+        list.items().iter().any(|i| match i {
+            DisplayItem::Rect { rect, .. } => {
+                (rect.x() - x).abs() < 0.51
+                    && (rect.y() - y).abs() < 0.51
+                    && (rect.width() - w).abs() < 0.51
+                    && (rect.height() - h).abs() < 0.51
+            }
+            _ => false,
+        })
+    }
+
     #[test]
     fn collapsed_rail_paints_tab_tiles_not_a_lone_v() {
         let mut chrome = sample();
@@ -2910,6 +2922,33 @@ mod tests {
             chrome.hit(window, 28.0, 880.0),
             ChromeHit::CommandBar
         ));
+        let list = chrome.paint(window);
+        assert!(
+            list_has_css_rect(&list, 0.0, 0.0, 56.0, 900.0),
+            "collapsed rail must paint a 56px CSS strip"
+        );
+        let stage = chrome.stage_rect(window);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::RoundedClip { rect, radius }
+                    if (rect.x() - stage.x()).abs() < 0.51
+                        && (rect.y() - stage.y()).abs() < 0.51
+                        && (rect.width() - stage.width()).abs() < 0.51
+                        && (*radius - chrome.metrics.stage_radius).abs() < 0.51
+            )),
+            "stage card clip stays in CSS px"
+        );
+        assert!(
+            !list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Rect { rect, .. }
+                    if rect.y().abs() < 0.51
+                        && (rect.height() - chrome.metrics.toolbar_h).abs() < 0.51
+                        && rect.x() > 56.0
+            )),
+            "collapsed rail must not paint a top toolbar"
+        );
     }
 
     #[test]
@@ -2930,6 +2969,23 @@ mod tests {
             chrome.hit(window, 40.0, 20.0),
             ChromeHit::Space { .. }
         ));
+        let list = chrome.paint(window);
+        let peek_w = chrome.sidebar_width;
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::RoundedClip { rect, .. }
+                    if (rect.width() - peek_w).abs() < 0.51 && rect.x().abs() < 0.51
+            )),
+            "peek overlays the full sidebar width in CSS px"
+        );
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::BoxShadow { rect, .. } if (rect.width() - peek_w).abs() < 0.51
+            )),
+            "peek drop shadow uses the expanded CSS width"
+        );
     }
 
     #[test]
@@ -2970,12 +3026,36 @@ mod tests {
             hidden.hit(window, 520.0, 24.0),
             ChromeHit::CommandBar
         ));
+        let open_list = chrome.paint(window);
+        assert!(
+            !open_list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Rect { rect, .. }
+                    if rect.y().abs() < 0.51
+                        && (rect.height() - 52.0).abs() < 0.51
+                        && rect.x() > 200.0
+            )),
+            "sidebar-open paint must omit the 52px toolbar strip"
+        );
+        let hidden_list = hidden.paint(window);
+        let toolbar_w = (1440.0 - hidden.rail_used()).max(1.0);
+        assert!(
+            list_has_css_rect(&hidden_list, 0.0, 0.0, toolbar_w, 52.0),
+            "hidden sidebar paints a 52px CSS toolbar"
+        );
     }
 
     #[test]
     fn agent_rail_paints_run_goal_failed_step_and_banners() {
         let mut chrome = sample();
         chrome.seed_live_run("run");
+        let window = Size::new(1440.0, 900.0);
+        let list = chrome.paint(window);
+        let rail_w = chrome.rail_used();
+        assert!(
+            list_has_css_rect(&list, 1440.0 - rail_w, 0.0, rail_w, 900.0),
+            "agent rail occupies the right CSS strip ({rail_w}px)"
+        );
         let texts = paint_texts(&chrome);
         assert!(texts.iter().any(|t| t.contains("review comment")), "{texts:?}");
         assert!(texts.iter().any(|t| t == "Working"), "{texts:?}");
