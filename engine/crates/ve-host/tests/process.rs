@@ -504,3 +504,93 @@ fn production_sandbox_runs_external_js_from_allowlisted_fixture() {
     }
     let _ = child.wait();
 }
+
+#[test]
+fn production_two_origins_use_distinct_ve_host_processes() {
+    use ve_napi::hub::{Hub, DEFAULT_CONTEXT};
+
+    let bin = host_bin();
+    // Safety: this test binary owns VECTOR_ENGINE_HOST for Hub::try_spawn.
+    unsafe {
+        std::env::set_var("VECTOR_ENGINE_HOST", &bin);
+    }
+    let mut hub = Hub::from_json(
+        r#"{"offline":true,"securityProfile":"production","isolation":"requireProcess","policy":{"blockLoopback":false}}"#,
+    )
+    .expect("production hub must spawn ve-host");
+    assert_eq!(hub.identity()["isolation"], "process", "{}", hub.identity());
+    assert_eq!(hub.identity()["sandbox"], true, "{}", hub.identity());
+
+    let a = hub
+        .open(
+            DEFAULT_CONTEXT,
+            "https://a.test/",
+            r#"{"html":"<title>A</title><p>a</p>"}"#,
+        )
+        .recv()
+        .unwrap();
+    let b = hub
+        .open(
+            DEFAULT_CONTEXT,
+            "https://b.test/",
+            r#"{"html":"<title>B</title><p>b</p>"}"#,
+        )
+        .recv()
+        .unwrap();
+    assert_eq!(a["ok"], true, "{a}");
+    assert_eq!(b["ok"], true, "{b}");
+    let ctx_a = a["context"].as_u64().expect("context a") as u32;
+    let ctx_b = b["context"].as_u64().expect("context b") as u32;
+    assert_ne!(ctx_a, ctx_b, "sites must not share a context: {a} {b}");
+
+    let a2 = hub
+        .open(
+            DEFAULT_CONTEXT,
+            "https://a.test/other",
+            r#"{"html":"<title>A2</title><p>a2</p>"}"#,
+        )
+        .recv()
+        .unwrap();
+    assert_eq!(a2["ok"], true, "{a2}");
+    assert_eq!(
+        a2["context"].as_u64().unwrap() as u32,
+        ctx_a,
+        "same origin reuses the site process: {a2}"
+    );
+
+    let pid_a = hub
+        .context_process_id(ctx_a)
+        .expect("a.test must be a ve-host process");
+    let pid_b = hub
+        .context_process_id(ctx_b)
+        .expect("b.test must be a ve-host process");
+    assert_ne!(pid_a, pid_b, "H3-4: one ve-host process per site");
+    assert_ne!(pid_a, std::process::id());
+    assert_ne!(pid_b, std::process::id());
+
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../docs/engine/evidence/h3-4-process-isolation.json");
+    let evidence = json!({
+        "test": "production_two_origins_use_distinct_ve_host_processes",
+        "securityProfile": "production",
+        "isolation": "process",
+        "sandbox": true,
+        "origins": ["https://a.test", "https://b.test"],
+        "contexts": [ctx_a, ctx_b],
+        "pids": [pid_a, pid_b],
+        "isolatedProcesses": true,
+        "appleSilicon": false,
+        "os": std::env::consts::OS,
+        "arch": std::env::consts::ARCH,
+        "notAPublishedScore": true
+    });
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    std::fs::write(
+        &path,
+        format!("{}\n", serde_json::to_string_pretty(&evidence).unwrap()),
+    )
+    .unwrap();
+    hub.shutdown();
+}

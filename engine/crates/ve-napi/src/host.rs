@@ -101,6 +101,15 @@ impl Host {
         }
     }
 
+    /// OS pid of the `ve-host` child, when this context is out-of-process.
+    #[must_use]
+    pub fn process_id(&self) -> Option<u32> {
+        match &self.inner {
+            HostInner::Process(c) => Some(c.pid()),
+            HostInner::Thread { .. } => None,
+        }
+    }
+
     fn spawn_thread(config: EngineConfig, context_id: u32) -> Self {
         let (tx, rx) = mpsc::channel::<Job>();
         thread::Builder::new()

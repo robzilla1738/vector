@@ -166,6 +166,18 @@ impl Hub {
             .ok_or_else(|| ApiError::new("not_found", format!("no such context {id}")))
     }
 
+    /// OS pid of a context's `ve-host` child, when isolated in-process is off.
+    #[must_use]
+    pub fn context_process_id(&self, id: u32) -> Option<u32> {
+        self.contexts.get(&id).and_then(Host::process_id)
+    }
+
+    /// Context that owns `page`.
+    #[must_use]
+    pub fn page_context_id(&self, page: u64) -> Option<u32> {
+        self.pages.get(&page).copied()
+    }
+
     fn host_of(&self, page: u64) -> Result<&Host, ApiError> {
         let ctx = self
             .pages

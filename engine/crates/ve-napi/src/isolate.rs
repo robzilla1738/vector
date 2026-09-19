@@ -137,6 +137,7 @@ pub enum Op {
 /// Handle that forwards [`Op`]s to a `ve-host` child.
 pub struct ProcessClient {
     tx: Sender<ProcessJob>,
+    pid: u32,
 }
 
 struct ProcessJob {
@@ -243,12 +244,19 @@ impl ProcessClient {
                 return Err(format!("ve-host handshake failed: {other:?}"));
             }
         }
+        let pid = child.id();
         let (tx, rx) = mpsc::channel::<ProcessJob>();
         thread::Builder::new()
             .name(format!("ve-host-io-{context_id}"))
             .spawn(move || parent_loop(child, stdin, stdout, config, context_id, rx))
             .map_err(|e| format!("spawn ve-host io: {e}"))?;
-        Ok(Self { tx })
+        Ok(Self { tx, pid })
+    }
+
+    /// OS pid of the `ve-host` child.
+    #[must_use]
+    pub fn pid(&self) -> u32 {
+        self.pid
     }
 
     /// Queues `op`; the receiver yields the child's JSON reply.
