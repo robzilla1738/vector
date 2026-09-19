@@ -894,6 +894,73 @@ fn canvas_is_point_in_path_hits_rect() {
 }
 
 #[test]
+fn canvas_is_point_in_stroke_hits_line() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(0, 8);
+              ctx.lineTo(16, 8);
+              var path = new Path2D("M0 8 L16 8");
+              return {
+                on: ctx.isPointInStroke(8, 8),
+                off: ctx.isPointInStroke(8, 14),
+                filled: ctx.isPointInPath(8, 8),
+                pathOn: ctx.isPointInStroke(path, 8, 8),
+                pathOff: ctx.isPointInStroke(path, 8, 14)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["on"], true, "{v}");
+    assert_eq!(v["off"], false, "{v}");
+    assert_eq!(v["filled"], false, "{v}");
+    assert_eq!(v["pathOn"], true, "{v}");
+    assert_eq!(v["pathOff"], false, "{v}");
+}
+
+#[test]
+fn canvas_path2d_parses_svg_quad_cubic_and_arc() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.lineWidth = 2;
+              var quad = new Path2D("M0 7 Q8 0 15 7");
+              var cubic = new Path2D("M0 15 C0 0 15 0 15 15");
+              var arc = new Path2D("M0 8 A8 8 0 0 0 8 0");
+              ctx.strokeStyle = "#00ff00";
+              ctx.stroke(arc);
+              var arcHit = false;
+              for (var i = 1; i <= 6; i++) {
+                if (ctx.isPointInStroke(arc, i, i)) arcHit = true;
+              }
+              return {
+                quad: ctx.isPointInStroke(quad, 8, 4),
+                cubic: ctx.isPointInStroke(cubic, 8, 4),
+                arc: arcHit,
+                arcEnd: ctx.isPointInStroke(arc, 8, 0)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["quad"], true, "{v}");
+    assert_eq!(v["cubic"], true, "{v}");
+    assert_eq!(v["arc"], true, "{v}");
+    assert_eq!(v["arcEnd"], true, "{v}");
+}
+
+#[test]
 fn canvas_rotate_maps_fill_rect() {
     let mut page = open(r#"<body></body>"#);
     let v = page

@@ -29,6 +29,8 @@ pub struct Layer {
     pub translate: Point,
     /// Compositor-only scale about the layer origin (no relayout).
     pub scale: Point,
+    /// Compositor-only rotation in radians about the layer origin (no relayout).
+    pub rotate: f32,
     /// Content in layer-local coordinates (origin = `rect.origin`).
     pub content: DisplayList,
 }
@@ -74,6 +76,7 @@ impl Compositor {
             opacity: 1.0,
             translate: Point::ZERO,
             scale: Point::new(1.0, 1.0),
+            rotate: 0.0,
             content,
         });
         self.damaged = true;
@@ -207,6 +210,21 @@ impl Compositor {
         true
     }
 
+    /// Compositor-only animation: lerp rotation from `from` to `to` at `t` in `0..=1`.
+    pub fn animate_rotate_at(&mut self, id: LayerId, from: f32, to: f32, t: f32) -> bool {
+        self.animate_rotate(id, from + (to - from) * t.clamp(0.0, 1.0))
+    }
+
+    /// Compositor-only animation: rotate a layer without relayout.
+    pub fn animate_rotate(&mut self, id: LayerId, angle: f32) -> bool {
+        let Some(layer) = self.layer_mut(id) else {
+            return false;
+        };
+        layer.rotate = angle;
+        self.damaged = true;
+        true
+    }
+
     /// Flattens all layers into one root-space display list for a surface of `size`.
     #[must_use]
     pub fn composite(&self, size: Size) -> DisplayList {
@@ -222,13 +240,14 @@ impl Compositor {
             out.push(DisplayItem::PushClip(layer.rect));
             let scaled = (layer.scale.x - 1.0).abs() > f32::EPSILON
                 || (layer.scale.y - 1.0).abs() > f32::EPSILON;
-            if scaled {
+            let rotated = layer.rotate.abs() > f32::EPSILON;
+            if scaled || rotated {
                 out.push(DisplayItem::PushTransform {
                     tx: 0.0,
                     ty: 0.0,
                     sx: layer.scale.x,
                     sy: layer.scale.y,
-                    angle: 0.0,
+                    angle: layer.rotate,
                     ox: layer.rect.x(),
                     oy: layer.rect.y(),
                 });
@@ -238,7 +257,7 @@ impl Compositor {
                 layer.rect.x() - layer.scroll.x + layer.translate.x,
                 layer.rect.y() - layer.scroll.y + layer.translate.y,
             );
-            if scaled {
+            if scaled || rotated {
                 out.push(DisplayItem::PopTransform);
             }
             out.push(DisplayItem::PopClip);
@@ -300,6 +319,8 @@ mod tests {
         assert!((comp.layer(id).unwrap().translate.x - 10.0).abs() < f32::EPSILON);
         assert!(comp.animate_scale_at(id, Point::new(1.0, 1.0), Point::new(2.0, 2.0), 0.5));
         assert!((comp.layer(id).unwrap().scale.x - 1.5).abs() < f32::EPSILON);
+        assert!(comp.animate_rotate_at(id, 0.0, std::f32::consts::PI, 0.5));
+        assert!((comp.layer(id).unwrap().rotate - std::f32::consts::FRAC_PI_2).abs() < 0.01);
         let scaled = comp.composite(Size::new(200.0, 200.0));
         assert!(
             scaled.items().iter().any(|item| matches!(
@@ -308,6 +329,15 @@ mod tests {
                     if (*sx - 1.5).abs() < f32::EPSILON && (*sy - 1.5).abs() < f32::EPSILON
             )),
             "composite emits PushTransform for layer scale: {:?}",
+            scaled.items()
+        );
+        assert!(
+            scaled.items().iter().any(|item| matches!(
+                item,
+                DisplayItem::PushTransform { angle, .. }
+                    if (*angle - std::f32::consts::FRAC_PI_2).abs() < 0.01
+            )),
+            "composite emits PushTransform angle for layer rotate: {:?}",
             scaled.items()
         );
         assert!(comp.take_damage());

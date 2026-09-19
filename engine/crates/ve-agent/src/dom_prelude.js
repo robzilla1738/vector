@@ -3845,7 +3845,7 @@
       return JSON.stringify({ r: this._r, p: this._p });
     }
     _svg(d) {
-      const re = /([MmLlHhVvZz])|(-?\d*\.?\d+(?:e[-+]?\d+)?)/g;
+      const re = /([MmLlHhVvZzQqCcAa])|(-?\d*\.?\d+(?:e[-+]?\d+)?)/g;
       let cmd = "M";
       let x = 0;
       let y = 0;
@@ -3878,6 +3878,41 @@
             if (rel) ny += y;
             this.lineTo(x, ny);
             y = ny;
+          }
+        } else if (C === "Q") {
+          while (nums.length >= 4) {
+            let cpx = nums.shift();
+            let cpy = nums.shift();
+            let nx = nums.shift();
+            let ny = nums.shift();
+            if (rel) { cpx += x; cpy += y; nx += x; ny += y; }
+            this.quadraticCurveTo(cpx, cpy, nx, ny);
+            x = nx; y = ny;
+          }
+        } else if (C === "C") {
+          while (nums.length >= 6) {
+            let x1 = nums.shift();
+            let y1 = nums.shift();
+            let x2 = nums.shift();
+            let y2 = nums.shift();
+            let nx = nums.shift();
+            let ny = nums.shift();
+            if (rel) { x1 += x; y1 += y; x2 += x; y2 += y; nx += x; ny += y; }
+            this.bezierCurveTo(x1, y1, x2, y2, nx, ny);
+            x = nx; y = ny;
+          }
+        } else if (C === "A") {
+          while (nums.length >= 7) {
+            const rx = nums.shift();
+            const ry = nums.shift();
+            const rot = nums.shift();
+            const large = nums.shift();
+            const sweep = nums.shift();
+            let nx = nums.shift();
+            let ny = nums.shift();
+            if (rel) { nx += x; ny += y; }
+            sampleSvgArc(this, x, y, rx, ry, rot, large, sweep, nx, ny);
+            x = nx; y = ny;
           }
         }
         nums.length = 0;
@@ -3924,6 +3959,88 @@
       if (poly && poly.length && pointInCanvasPoly(x, y, poly)) hits++;
     }
     return (hits % 2) === 1;
+  }
+  function distToCanvasSeg(x, y, x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len2 = dx * dx + dy * dy;
+    if (len2 < 1e-12) return Math.hypot(x - x1, y - y1);
+    let t = ((x - x1) * dx + (y - y1) * dy) / len2;
+    if (t < 0) t = 0;
+    else if (t > 1) t = 1;
+    return Math.hypot(x - (x1 + t * dx), y - (y1 + t * dy));
+  }
+  function pointInCanvasStroke(x, y, rects, polys, width) {
+    const r = Math.max(Number(width) || 1, 1) / 2 + 0.51;
+    for (const rec of rects || []) {
+      const x0 = Number(rec[0]) || 0;
+      const y0 = Number(rec[1]) || 0;
+      const w = Number(rec[2]) || 0;
+      const h = Number(rec[3]) || 0;
+      const segs = [
+        [x0, y0, x0 + w, y0],
+        [x0 + w, y0, x0 + w, y0 + h],
+        [x0 + w, y0 + h, x0, y0 + h],
+        [x0, y0 + h, x0, y0]
+      ];
+      for (const s of segs) {
+        if (distToCanvasSeg(x, y, s[0], s[1], s[2], s[3]) <= r) return true;
+      }
+    }
+    for (const poly of polys || []) {
+      for (let i = 1; i < (poly || []).length; i++) {
+        if (distToCanvasSeg(x, y, Number(poly[i - 1][0]) || 0, Number(poly[i - 1][1]) || 0, Number(poly[i][0]) || 0, Number(poly[i][1]) || 0) <= r) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  function sampleSvgArc(path, x0, y0, rx, ry, phiDeg, large, sweep, x, y) {
+    rx = Math.abs(Number(rx) || 0);
+    ry = Math.abs(Number(ry) || 0);
+    if (rx < 1e-6 || ry < 1e-6) {
+      path.lineTo(x, y);
+      return;
+    }
+    const phi = (Number(phiDeg) || 0) * Math.PI / 180;
+    const cosP = Math.cos(phi);
+    const sinP = Math.sin(phi);
+    const dx = (x0 - x) / 2;
+    const dy = (y0 - y) / 2;
+    const x1 = cosP * dx + sinP * dy;
+    const y1 = -sinP * dx + cosP * dy;
+    let lambda = (x1 * x1) / (rx * rx) + (y1 * y1) / (ry * ry);
+    if (lambda > 1) {
+      const s = Math.sqrt(lambda);
+      rx *= s;
+      ry *= s;
+    }
+    const num = rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1;
+    const den = rx * rx * y1 * y1 + ry * ry * x1 * x1;
+    const sq = Math.sqrt(Math.max(0, num / (den || 1e-12)));
+    const sign = (Number(large) ? 1 : 0) === (Number(sweep) ? 1 : 0) ? -1 : 1;
+    const cx1 = sign * sq * rx * y1 / ry;
+    const cy1 = sign * sq * -ry * x1 / rx;
+    const cx = cosP * cx1 - sinP * cy1 + (x0 + x) / 2;
+    const cy = sinP * cx1 + cosP * cy1 + (y0 + y) / 2;
+    const angle = (ux, uy, vx, vy) => {
+      const n = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+      let a = Math.acos(Math.max(-1, Math.min(1, (ux * vx + uy * vy) / (n || 1e-12))));
+      if (ux * vy - uy * vx < 0) a = -a;
+      return a;
+    };
+    const theta1 = angle(1, 0, (x1 - cx1) / rx, (y1 - cy1) / ry);
+    let dtheta = angle((x1 - cx1) / rx, (y1 - cy1) / ry, (-x1 - cx1) / rx, (-y1 - cy1) / ry);
+    if (!Number(sweep) && dtheta > 0) dtheta -= Math.PI * 2;
+    if (Number(sweep) && dtheta < 0) dtheta += Math.PI * 2;
+    const steps = 16;
+    for (let i = 1; i <= steps; i++) {
+      const th = theta1 + dtheta * (i / steps);
+      const px = rx * Math.cos(th);
+      const py = ry * Math.sin(th);
+      path.lineTo(cosP * px - sinP * py + cx, sinP * px + cosP * py + cy);
+    }
   }
   class CanvasRenderingContext2D {
     constructor() {
@@ -4155,7 +4272,16 @@
       return pointInCanvasPath(Number(x) || 0, Number(y) || 0, spec.r || [], spec.p || []);
     }
     isPointInStroke(a, b) {
-      return this.isPointInPath(a, b);
+      let path = this._path;
+      let x = a;
+      let y = b;
+      if (a instanceof Path2D) {
+        path = a;
+        x = b;
+        y = arguments[2];
+      }
+      const spec = JSON.parse(path._payload() || "{}");
+      return pointInCanvasStroke(Number(x) || 0, Number(y) || 0, spec.r || [], spec.p || [], this._lineWidth);
     }
     arcTo(x1, y1, x2, y2, radius) { this._path.arcTo(x1, y1, x2, y2, radius); }
     roundRect(x, y, w, h) { this._path.roundRect(x, y, w, h); }

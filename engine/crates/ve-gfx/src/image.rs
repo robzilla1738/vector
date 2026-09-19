@@ -548,6 +548,36 @@ fn svg_path_points(d: &str) -> Vec<(f32, f32)> {
                     ni += 6;
                 }
             }
+            'A' => {
+                while ni + 6 < next_cmd_at {
+                    let rx = nums[ni];
+                    let ry = nums[ni + 1];
+                    let phi = nums[ni + 2];
+                    let large = nums[ni + 3];
+                    let sweep = nums[ni + 4];
+                    let mut x = nums[ni + 5];
+                    let mut y = nums[ni + 6];
+                    if rel {
+                        x += cx;
+                        y += cy;
+                    }
+                    sample_arc(
+                        &mut out,
+                        cx,
+                        cy,
+                        rx,
+                        ry,
+                        phi,
+                        large != 0.0,
+                        sweep != 0.0,
+                        x,
+                        y,
+                    );
+                    cx = x;
+                    cy = y;
+                    ni += 7;
+                }
+            }
             _ => {}
         }
     }
@@ -565,6 +595,79 @@ fn sample_quad(out: &mut Vec<(f32, f32)>, x0: f32, y0: f32, x1: f32, y1: f32, x2
             u * u * x0 + 2.0 * u * t * x1 + t * t * x2,
             u * u * y0 + 2.0 * u * t * y1 + t * t * y2,
         ));
+    }
+}
+
+fn sample_arc(
+    out: &mut Vec<(f32, f32)>,
+    x0: f32,
+    y0: f32,
+    mut rx: f32,
+    mut ry: f32,
+    phi_deg: f32,
+    large: bool,
+    sweep: bool,
+    x: f32,
+    y: f32,
+) {
+    rx = rx.abs();
+    ry = ry.abs();
+    if rx < 1e-6 || ry < 1e-6 {
+        if out.last() != Some(&(x0, y0)) {
+            out.push((x0, y0));
+        }
+        out.push((x, y));
+        return;
+    }
+    let phi = phi_deg.to_radians();
+    let (cos_p, sin_p) = (phi.cos(), phi.sin());
+    let dx = (x0 - x) / 2.0;
+    let dy = (y0 - y) / 2.0;
+    let x1 = cos_p * dx + sin_p * dy;
+    let y1 = -sin_p * dx + cos_p * dy;
+    let lambda = (x1 * x1) / (rx * rx) + (y1 * y1) / (ry * ry);
+    if lambda > 1.0 {
+        let s = lambda.sqrt();
+        rx *= s;
+        ry *= s;
+    }
+    let num = rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1;
+    let den = rx * rx * y1 * y1 + ry * ry * x1 * x1;
+    let sq = (num / den.max(1e-12)).max(0.0).sqrt();
+    let sign = if large == sweep { -1.0 } else { 1.0 };
+    let cx1 = sign * sq * rx * y1 / ry;
+    let cy1 = sign * sq * -ry * x1 / rx;
+    let ccx = cos_p * cx1 - sin_p * cy1 + (x0 + x) / 2.0;
+    let ccy = sin_p * cx1 + cos_p * cy1 + (y0 + y) / 2.0;
+    let vec_angle = |ux: f32, uy: f32, vx: f32, vy: f32| {
+        let n = (ux * ux + uy * uy).sqrt() * (vx * vx + vy * vy).sqrt();
+        let mut a = ((ux * vx + uy * vy) / n.max(1e-12)).clamp(-1.0, 1.0).acos();
+        if ux * vy - uy * vx < 0.0 {
+            a = -a;
+        }
+        a
+    };
+    let theta1 = vec_angle(1.0, 0.0, (x1 - cx1) / rx, (y1 - cy1) / ry);
+    let mut dtheta = vec_angle(
+        (x1 - cx1) / rx,
+        (y1 - cy1) / ry,
+        (-x1 - cx1) / rx,
+        (-y1 - cy1) / ry,
+    );
+    if !sweep && dtheta > 0.0 {
+        dtheta -= std::f32::consts::TAU;
+    }
+    if sweep && dtheta < 0.0 {
+        dtheta += std::f32::consts::TAU;
+    }
+    if out.last() != Some(&(x0, y0)) {
+        out.push((x0, y0));
+    }
+    for i in 1..=16 {
+        let th = theta1 + dtheta * (i as f32 / 16.0);
+        let px = rx * th.cos();
+        let py = ry * th.sin();
+        out.push((cos_p * px - sin_p * py + ccx, sin_p * px + cos_p * py + ccy));
     }
 }
 
@@ -777,5 +880,23 @@ mod tests {
         assert_eq!(quad.pixel(0, 7), Some([0, 255, 0, 255]));
         assert_eq!(quad.pixel(15, 7), Some([0, 255, 0, 255]));
         assert_eq!(quad.pixel(8, 4), Some([0, 255, 0, 255]));
+        let arc = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><path d='M0 8 A8 8 0 0 0 8 0' stroke='#ff0000'/></svg>",
+        )
+        .expect("svg arc path");
+        assert_eq!(arc.pixel(0, 8), Some([255, 0, 0, 255]));
+        assert_eq!(arc.pixel(8, 0), Some([255, 0, 0, 255]));
+        let mut reds = Vec::new();
+        for y in 0..16 {
+            for x in 0..16 {
+                if arc.pixel(x, y) == Some([255, 0, 0, 255]) {
+                    reds.push((x, y));
+                }
+            }
+        }
+        assert!(
+            reds.iter().any(|&(x, y)| x <= 6 && y <= 6),
+            "arc should paint the short quarter, reds={reds:?}"
+        );
     }
 }
