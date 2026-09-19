@@ -1499,7 +1499,7 @@ impl NativeBrowser {
                 self.present_page_layer(page, stage, scale)?;
             }
         }
-        if self.chrome.overlay != ChromeOverlay::None {
+        if self.chrome.overlay != ChromeOverlay::None || self.chrome.has_command_popover() {
             let mut overlay = ve_gfx::DisplayList::new(window);
             self.chrome.append_overlay(&mut overlay, window);
             let renderer = self.sw.as_mut().expect("software renderer");

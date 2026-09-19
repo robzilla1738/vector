@@ -591,12 +591,18 @@ impl Chrome {
         if self.find_open {
             self.paint_find(&mut list, window);
         }
-        self.paint_command_suggestions(&mut list, window);
         list
+    }
+
+    /// True when the command-bar suggestion popover should composite above the page.
+    #[must_use]
+    pub fn has_command_popover(&self) -> bool {
+        self.command_focused && !self.command.is_empty()
     }
 
     /// Overlay scrim + card on top of an existing list.
     pub fn append_overlay(&self, list: &mut DisplayList, window: Size) {
+        self.paint_command_suggestions(list, window);
         if self.overlay != ChromeOverlay::None {
             self.paint_overlay(list, window);
         }
