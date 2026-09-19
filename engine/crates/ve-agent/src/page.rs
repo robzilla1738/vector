@@ -2352,14 +2352,15 @@ impl CanvasSurface {
         self.ops += 1;
     }
 
-    fn fill_text(&mut self, text: &str, x: i32, y: i32, color: [u8; 4]) {
+    fn fill_text(&mut self, text: &str, x: i32, y: i32, color: [u8; 4], italic: bool) {
         let mut cx = x;
         for ch in text.chars() {
             let cols = glyph5x7(ch);
             for (i, bits) in cols.iter().enumerate() {
                 for row in 0..7 {
                     if bits & (1 << row) != 0 {
-                        self.fill_rect(cx + i as i32, y - 7 + row, 1, 1, color);
+                        let shear = if italic && row < 3 { 1 } else { 0 };
+                        self.fill_rect(cx + i as i32 + shear, y - 7 + row, 1, 1, color);
                     }
                 }
             }
@@ -2414,6 +2415,7 @@ impl CanvasSurface {
         height: u32,
         mask: &[u8],
         color: [u8; 4],
+        italic: bool,
     ) {
         let style = CanvasStyle::Solid(color);
         for row in 0..height {
@@ -2424,7 +2426,15 @@ impl CanvasSurface {
                     continue;
                 }
                 let alpha = f32::from(cov) / 255.0;
-                self.fill_rect_styled(x + col as i32, y + row as i32, 1, 1, &style, alpha);
+                let shear = if italic && row * 2 < height { 1 } else { 0 };
+                self.fill_rect_styled(
+                    x + col as i32 + shear,
+                    y + row as i32,
+                    1,
+                    1,
+                    &style,
+                    alpha,
+                );
             }
         }
     }
@@ -3416,6 +3426,7 @@ impl Page {
         y: i32,
         color: &str,
         size: f32,
+        italic: bool,
     ) -> u64 {
         let color = parse_css_color(color);
         let size = if size > 0.0 { size } else { 10.0 };
@@ -3456,12 +3467,20 @@ impl Page {
                 if bitmap.color {
                     c.blit(&bitmap.data, bitmap.width, bitmap.height, dx, dy);
                 } else {
-                    c.blit_glyph_mask(dx, dy, bitmap.width, bitmap.height, &bitmap.data, color);
+                    c.blit_glyph_mask(
+                        dx,
+                        dy,
+                        bitmap.width,
+                        bitmap.height,
+                        &bitmap.data,
+                        color,
+                        italic,
+                    );
                 }
             }
             c.ops += 1;
         } else {
-            c.fill_text(text, x, y, color);
+            c.fill_text(text, x, y, color, italic);
         }
         c.ops
     }
@@ -3515,7 +3534,7 @@ impl Page {
             .or_insert_with(|| CanvasSurface::new(300, 150));
         if let Some(blits) = blits.filter(|b| !b.is_empty()) {
             for (dx, dy, w, h, mask) in blits {
-                c.blit_glyph_mask(dx, dy, w, h, &mask, color);
+                c.blit_glyph_mask(dx, dy, w, h, &mask, color, false);
             }
             c.ops += 1;
         } else {

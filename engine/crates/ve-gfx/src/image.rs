@@ -576,7 +576,9 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             world.map(px, py)
         } else {
             world.map(
-                svg_attr(tag, "x").unwrap_or(0.0) + svg_tspan_dx(raw),
+                svg_attr(tag, "x").unwrap_or(0.0)
+                    + svg_attr(tag, "dx").unwrap_or(0.0)
+                    + svg_tspan_dx(raw),
                 svg_attr(tag, "y").unwrap_or(0.0)
                     + svg_attr(tag, "dy").unwrap_or(0.0)
                     + svg_tspan_dy(raw),
@@ -648,6 +650,20 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             vertical,
             path_pts.as_deref(),
         );
+        if svg_font_bold(tag) {
+            paint_svg_text(
+                &mut img,
+                &content,
+                x + 1.0,
+                y,
+                color,
+                spacing,
+                word_sp,
+                scale,
+                vertical,
+                path_pts.as_deref(),
+            );
+        }
         let deco = svg_attr_str(tag, "text-decoration")
             .unwrap_or("")
             .to_ascii_lowercase();
@@ -2552,6 +2568,13 @@ fn svg_tspan_attr<'a>(content: &'a str, name: &str) -> Option<String> {
     svg_attr_str(svg_tspan_tag(content)?, name).map(|s| s.to_string())
 }
 
+fn svg_font_bold(tag: &str) -> bool {
+    let w = svg_attr_str(tag, "font-weight").unwrap_or("");
+    w.eq_ignore_ascii_case("bold")
+        || w.eq_ignore_ascii_case("bolder")
+        || w.parse::<f32>().is_ok_and(|n| n >= 700.0)
+}
+
 fn svg_tspan_dx(content: &str) -> f32 {
     svg_tspan_tag(content)
         .and_then(|t| svg_attr(t, "dx"))
@@ -4428,6 +4451,28 @@ mod tests {
         assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(12, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(8, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_text_dx_moves_glyph_right() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <text x='0' y='7' fill='#ff0000' dx='2'>I</text></svg>",
+        )
+        .expect("svg dx");
+        assert_eq!(img.pixel(4, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_font_weight_bold_widens_glyph() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <text x='0' y='7' fill='#ff0000' font-weight='bold'>I</text></svg>",
+        )
+        .expect("svg bold");
+        assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(3, 3), Some([255, 0, 0, 255]));
     }
 
     #[test]

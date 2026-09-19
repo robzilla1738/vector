@@ -2115,6 +2115,38 @@ fn canvas_letter_spacing_shifts_second_glyph() {
 }
 
 #[test]
+fn canvas_font_italic_shears_top_of_glyph() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxTop(font) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.font = font;
+                ctx.fillText("I", 1, 12);
+                var data = ctx.getImageData(0, 0, 16, 16).data;
+                var max = -1;
+                for (var y = 0; y < 8; y++) {
+                  for (var x = 0; x < 16; x++) {
+                    if (data[(y * 16 + x) * 4] > 200) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { n: maxTop("7px sans-serif"), i: maxTop("italic 7px sans-serif") };
+            })()"##,
+        )
+        .unwrap();
+    let n = v["n"].as_i64().unwrap_or(-1);
+    let i = v["i"].as_i64().unwrap_or(-1);
+    assert!(i > n, "italic must shear the top of I rightward: {v}");
+}
+
+#[test]
 fn canvas_font_kerning_tightens_av_pair() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -6289,6 +6321,38 @@ fn webgl_cull_face_skips_back_facing_triangle() {
     assert_eq!(v["ca"], 0, "{v}");
     assert_eq!(v["sg"], 255, "{v}");
     assert_eq!(v["sa"], 255, "{v}");
+}
+
+#[test]
+fn webgl_triangle_fan_fills_from_hub() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+              const left = new Uint8Array(4);
+              const right = new Uint8Array(4);
+              gl.readPixels(1, 6, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, left);
+              gl.readPixels(6, 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, right);
+              return { lg: left[1], la: left[3], rg: right[1], ra: right[3], fan: gl.TRIANGLE_FAN };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["fan"], 6, "{v}");
+    assert_eq!(v["lg"], 255, "{v}");
+    assert_eq!(v["la"], 255, "{v}");
+    assert_eq!(v["rg"], 255, "{v}");
+    assert_eq!(v["ra"], 255, "{v}");
 }
 
 #[test]

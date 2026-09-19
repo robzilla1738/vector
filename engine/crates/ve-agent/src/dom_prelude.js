@@ -4886,6 +4886,9 @@
     _isRtl() {
       return String(this._direction || "inherit") === "rtl";
     }
+    _fontItalic() {
+      return /italic|oblique/i.test(String(this._font || ""));
+    }
     _capsText(t) {
       let text = String(t == null ? "" : t);
       if (String(this._fontVariantCaps || "normal") === "small-caps") {
@@ -4932,7 +4935,7 @@
           cx += this._kernPair(prev, ch);
           const o = this._textOrigin(ch, cx, y);
           const p = this._mapPoint(o.x, o.y);
-          D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size);
+          D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0);
           cx += ((o.width || 6) * stretch) + gap;
           prev = ch;
         }
@@ -4946,7 +4949,7 @@
           const o = this._textOrigin(part, cx, y);
           if (!/^\s+$/.test(part)) {
             const p = this._mapPoint(o.x, o.y);
-            D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size);
+            D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0);
           }
           cx += (o.width || (part.length * 6)) + (/^\s+$/.test(part) ? wgap : 0);
         }
@@ -4954,7 +4957,7 @@
       }
       const o = this._textOrigin(t, x, y);
       const p = this._mapPoint(o.x, o.y);
-      D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size);
+      D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size, this._fontItalic() ? 1 : 0);
     }
     strokeText(t, x, y) {
       const o = this._textOrigin(t, x, y);
@@ -9488,6 +9491,7 @@
       this.FLOAT = 5126;
       this.TRIANGLES = 4;
       this.TRIANGLE_STRIP = 5;
+      this.TRIANGLE_FAN = 6;
       this.UNSIGNED_SHORT = 5123;
       this.UNPACK_FLIP_Y_WEBGL = 37440;
       this.UNPACK_PREMULTIPLY_ALPHA_WEBGL = 37441;
@@ -9804,6 +9808,14 @@
           for (let i = 0; i < n; i++) {
             const p = this._attribPoint(start + i);
             if (p) pts.push(p);
+          }
+          if (mode === this.TRIANGLE_FAN) {
+            for (let i = 1; i + 1 < pts.length; i++) {
+              const tri = [pts[0], pts[i], pts[i + 1]];
+              if (this._isCulled(tri[0], tri[1], tri[2])) continue;
+              this._fillPoly(tri, this._uniformCss());
+            }
+            return;
           }
           const strip = mode === this.TRIANGLE_STRIP;
           const step = strip ? 1 : 3;
