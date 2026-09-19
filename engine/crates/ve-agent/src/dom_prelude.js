@@ -9487,6 +9487,7 @@
       this.TEXTURE_2D = 3553;
       this.SCISSOR_TEST = 3089;
       this.VIEWPORT = 2978;
+      this.LINE_WIDTH = 2849;
       this.COLOR_WRITEMASK = 3107;
       this.BLEND = 3042;
       this.ONE = 1;
@@ -9564,6 +9565,7 @@
       if (p === this.RENDERER) return "Vector Software";
       if (p === this.VIEWPORT) return this._viewportRect().slice();
       if (p === this.COLOR_WRITEMASK) return this._colorMask.slice();
+      if (p === this.LINE_WIDTH) return this._lineWidth || 1;
       return null;
     }
     getExtension() { return null; }

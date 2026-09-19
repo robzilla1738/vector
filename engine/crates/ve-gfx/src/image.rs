@@ -563,7 +563,10 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             continue;
         }
         let raw = after.split("</text>").next().unwrap_or("");
-        let content = svg_text_inner(raw);
+        let mut content = svg_text_inner(raw);
+        if !svg_space_preserve(tag) {
+            content = collapse_svg_text(&content);
+        }
         let world = svg_group_offset(full, abs).then_tag(tag);
         let fill = svg_tspan_attr(raw, "fill").unwrap_or_else(|| svg_fill(tag).to_string());
         let color = with_opacity(parse_svg_color(&fill), world.opacity);
@@ -2555,6 +2558,27 @@ fn svg_unwrap_tag(content: &str, open: &str, close: &str) -> String {
     content.to_string()
 }
 
+fn svg_space_preserve(tag: &str) -> bool {
+    svg_attr_str(tag, "xml:space").is_some_and(|s| s.eq_ignore_ascii_case("preserve"))
+}
+
+fn collapse_svg_text(text: &str) -> String {
+    let mut out = String::new();
+    let mut pending = false;
+    for ch in text.chars() {
+        if ch.is_whitespace() {
+            pending = true;
+        } else {
+            if pending && !out.is_empty() {
+                out.push(' ');
+            }
+            pending = false;
+            out.push(ch);
+        }
+    }
+    out
+}
+
 fn svg_text_inner(content: &str) -> String {
     let s = svg_unwrap_tag(content, "<textPath", "</textPath>");
     svg_unwrap_tag(&s, "<tspan", "</tspan>")
@@ -4532,6 +4556,41 @@ mod tests {
         assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(12, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(8, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_preserve_aspect_xmax_shifts_right() {
+        let xmin = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 16' preserveAspectRatio='xMinYMin meet'>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg xmin");
+        let xmax = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 16' preserveAspectRatio='xMaxYMin meet'>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg xmax");
+        assert_eq!(xmin.pixel(2, 2), Some([255, 0, 0, 255]));
+        assert_eq!(xmin.pixel(6, 2), Some([0, 0, 0, 0]));
+        assert_eq!(xmax.pixel(6, 2), Some([255, 0, 0, 255]));
+        assert_eq!(xmax.pixel(2, 2), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_xml_space_preserve_keeps_double_gap() {
+        let collapsed = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='20' height='8'>\
+              <text x='0' y='7' fill='#ff0000'>I  I</text></svg>",
+        )
+        .expect("svg collapse");
+        let preserved = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='20' height='8'>\
+              <text x='0' y='7' fill='#ff0000' xml:space='preserve'>I  I</text></svg>",
+        )
+        .expect("svg preserve");
+        assert_eq!(collapsed.pixel(12, 3), Some([255, 0, 0, 255]));
+        assert_eq!(collapsed.pixel(16, 3), Some([0, 0, 0, 0]));
+        assert_eq!(preserved.pixel(16, 3), Some([255, 0, 0, 255]));
     }
 
     #[test]

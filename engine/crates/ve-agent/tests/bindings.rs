@@ -6418,6 +6418,26 @@ fn webgl_cull_face_skips_back_facing_triangle() {
 }
 
 #[test]
+fn webgl_get_parameter_reports_line_width() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              const before = gl.getParameter(gl.LINE_WIDTH);
+              gl.lineWidth(3);
+              const after = gl.getParameter(gl.LINE_WIDTH);
+              return { before, after, pname: gl.LINE_WIDTH };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["pname"], 2849, "{v}");
+    assert_eq!(v["before"], 1, "{v}");
+    assert_eq!(v["after"], 3, "{v}");
+}
+
+#[test]
 fn webgl_line_width_thickens_stroke() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page
