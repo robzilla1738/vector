@@ -4868,6 +4868,19 @@
       if (pair === "AV" || pair === "VA" || pair === "To" || pair === "LT") return -2;
       return 0;
     }
+    _fontStretchFactor() {
+      const s = String(this._fontStretch || "normal").toLowerCase();
+      if (s === "ultra-condensed") return 0.5;
+      if (s === "extra-condensed") return 0.625;
+      if (s === "condensed") return 0.75;
+      if (s === "semi-condensed") return 0.875;
+      if (s === "semi-expanded") return 1.125;
+      if (s === "expanded") return 1.25;
+      if (s === "extra-expanded") return 1.5;
+      if (s === "ultra-expanded") return 2;
+      const n = parseFloat(s);
+      return Number.isFinite(n) && n > 0 ? n / (s.includes("%") || n > 3 ? 100 : 1) : 1;
+    }
     _isRtl() {
       return String(this._direction || "inherit") === "rtl";
     }
@@ -4902,7 +4915,8 @@
       if (simple && text.length > 1 && String(this._fontKerning || "auto") !== "none") {
         for (let i = 1; i < text.length; i++) kerns += this._kernPair(text[i - 1], text[i]);
       }
-      if ((gap || kerns) && text.length > 1 && simple) {
+      const stretch = this._fontStretchFactor();
+      if ((gap || kerns || stretch !== 1) && text.length > 1 && simple) {
         let cx = +x;
         let prev = "";
         for (const ch of text) {
@@ -4910,7 +4924,7 @@
           const o = this._textOrigin(ch, cx, y);
           const p = this._mapPoint(o.x, o.y);
           D("canvasFillText", this.__h, o.text, p[0], p[1], String(this.fillStyle), o.size);
-          cx += (o.width || 6) + gap;
+          cx += ((o.width || 6) * stretch) + gap;
           prev = ch;
         }
         return;

@@ -2052,6 +2052,18 @@ mod tests {
     }
 
     #[test]
+    fn word_break_break_all_splits_long_word() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;word-break:break-all;margin:0}</style>\
+             <p id=p>aaaaaaaa</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let n = tree.root.find(p).unwrap().lines.len();
+        assert!(n >= 2, "break-all wraps aaaaaaaaa, got {n} lines");
+    }
+
+    #[test]
     fn hyphens_manual_breaks_at_soft_hyphen() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #p{width:40px;font-size:16px;line-height:20px;hyphens:manual;margin:0}</style>\

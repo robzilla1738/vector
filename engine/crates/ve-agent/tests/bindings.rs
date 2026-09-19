@@ -2110,6 +2110,42 @@ fn canvas_font_kerning_tightens_av_pair() {
 }
 
 #[test]
+fn canvas_font_stretch_condensed_narrows_text() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(stretch) {
+                var c = document.createElement("canvas");
+                c.width = 64;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "16px sans-serif";
+                ctx.fontStretch = stretch;
+                ctx.fillText("IIII", 2, 16);
+                var data = ctx.getImageData(0, 0, 64, 24).data;
+                var max = 0;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 64; x++) {
+                    if (data[(y * 64 + x) * 4 + 3] > 20) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { condensed: maxX("ultra-condensed"), expanded: maxX("ultra-expanded") };
+            })()"##,
+        )
+        .unwrap();
+    let condensed = v["condensed"].as_u64().unwrap_or(0);
+    let expanded = v["expanded"].as_u64().unwrap_or(0);
+    assert!(
+        expanded > condensed + 4,
+        "fontStretch ultra-expanded must be wider than ultra-condensed: {v}"
+    );
+}
+
+#[test]
 fn canvas_word_spacing_shifts_second_word() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -2668,6 +2704,40 @@ fn canvas_stroke_honours_line_join() {
     assert_eq!(v["round"]["ma"], 0, "{v}");
     assert_eq!(v["round"]["ta"], 255, "{v}");
     assert_eq!(v["round"]["og"], 255, "{v}");
+}
+
+#[test]
+fn canvas_stroke_honours_miter_limit() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function tip(limit) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = "#00ff00";
+                ctx.lineJoin = "miter";
+                ctx.miterLimit = limit;
+                ctx.beginPath();
+                ctx.moveTo(2, 8);
+                ctx.lineTo(8, 8);
+                ctx.lineTo(8, 14);
+                ctx.stroke();
+                var miter = ctx.getImageData(10, 5, 1, 1).data;
+                var on = ctx.getImageData(8, 8, 1, 1).data;
+                return { ma: miter[3], og: on[1] };
+              }
+              return { wide: tip(10), tight: tip(1) };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["wide"]["ma"], 255, "{v}");
+    assert_eq!(v["wide"]["og"], 255, "{v}");
+    assert_eq!(v["tight"]["ma"], 0, "{v}");
+    assert_eq!(v["tight"]["og"], 255, "{v}");
 }
 
 #[test]

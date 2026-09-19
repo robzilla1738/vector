@@ -208,7 +208,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        if !svg_in_defs(full, abs) && !svg_hidden(tag) {
+        if !svg_in_defs(full, abs) && !svg_hidden(tag) && !svg_switch_skipped(full, abs) {
             let g = with_filter_offset(svg_group_offset(full, abs), tag, &filters);
             paint_svg_rect(&mut img, tag, g, &grads, &clips, &patterns);
             apply_svg_filter(&mut img, tag, g, &filters);
@@ -220,7 +220,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        if !svg_in_defs(full, abs) && !svg_hidden(tag) {
+        if !svg_in_defs(full, abs) && !svg_hidden(tag) && !svg_switch_skipped(full, abs) {
             let g = with_filter_offset(svg_group_offset(full, abs), tag, &filters);
             paint_svg_circle(&mut img, tag, g, &grads, &clips, &patterns);
             apply_svg_filter(&mut img, tag, g, &filters);
@@ -232,7 +232,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        if !svg_in_defs(full, abs) && !svg_hidden(tag) {
+        if !svg_in_defs(full, abs) && !svg_hidden(tag) && !svg_switch_skipped(full, abs) {
             let g = with_filter_offset(svg_group_offset(full, abs), tag, &filters);
             paint_svg_ellipse(&mut img, tag, g, &grads, &clips, &patterns);
             apply_svg_filter(&mut img, tag, g, &filters);
@@ -253,7 +253,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             svg_attr(tag, "x2").unwrap_or(0.0),
             svg_attr(tag, "y2").unwrap_or(0.0),
         );
-        if !svg_hidden(tag) {
+        if !svg_hidden(tag) && !svg_switch_skipped(full, abs) {
             let (color, width) = svg_stroke(tag);
             let color = with_opacity(color, world.opacity);
             let width = width * svg_stroke_scale(tag, world.sx, world.sy);
@@ -286,6 +286,10 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
+        if svg_switch_skipped(full, abs) {
+            rest = &rest[i + tag_end + 1..];
+            continue;
+        }
         let world = svg_group_offset(full, abs).then_tag(tag);
         let closed = tag.starts_with("<polygon");
         let (color, width) = svg_stroke(tag);
@@ -398,6 +402,10 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
+        if svg_switch_skipped(full, abs) {
+            rest = &rest[i + tag_end + 1..];
+            continue;
+        }
         let world = svg_group_offset(full, abs).then_tag(tag);
         let (color, width) = svg_stroke(tag);
         let width = width * svg_stroke_scale(tag, world.sx, world.sy);
@@ -482,6 +490,10 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
+        if svg_switch_skipped(full, abs) {
+            rest = &rest[i + tag_end + 1..];
+            continue;
+        }
         let href = svg_attr_str(tag, "href")
             .or_else(|| svg_attr_str(tag, "xlink:href"))
             .unwrap_or("");
@@ -514,6 +526,10 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
+        if svg_switch_skipped(full, abs) {
+            rest = &rest[i + tag_end + 1..];
+            continue;
+        }
         let href = svg_attr_str(tag, "href")
             .or_else(|| svg_attr_str(tag, "xlink:href"))
             .unwrap_or("");
@@ -547,6 +563,10 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         let after = &rest[i + tag_end + 1..];
+        if svg_switch_skipped(full, abs) {
+            rest = after;
+            continue;
+        }
         let raw = after.split("</text>").next().unwrap_or("");
         let content = svg_text_inner(raw);
         let world = svg_group_offset(full, abs).then_tag(tag);
@@ -656,6 +676,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs)
             && !svg_hidden(tag)
+            && !svg_switch_skipped(full, abs)
             && svg_attr_str(tag, "fill").is_some()
         {
             let g = with_filter_offset(svg_group_offset(full, abs), tag, &filters);
@@ -854,6 +875,20 @@ fn svg_hidden(tag: &str) -> bool {
     svg_attr_str(tag, "display").is_some_and(|s| s.eq_ignore_ascii_case("none"))
         || svg_attr_str(tag, "visibility")
             .is_some_and(|s| s.eq_ignore_ascii_case("hidden") || s.eq_ignore_ascii_case("collapse"))
+}
+
+fn svg_switch_skipped(full: &str, pos: usize) -> bool {
+    let before = &full[..pos.min(full.len())];
+    let Some(open) = before.rfind("<switch") else {
+        return false;
+    };
+    if before[open..].contains("</switch>") {
+        return false;
+    }
+    let after = &full[open..];
+    let tag_end = after.find('>').unwrap_or(0);
+    let body = &full[open + tag_end + 1..pos];
+    body.contains('<')
 }
 
 fn svg_stroke_first(tag: &str) -> bool {
@@ -4572,6 +4607,20 @@ mod tests {
         assert!(px[1] > 200, "{px:?}");
         assert!(px[0] < 40, "{px:?}");
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_switch_paints_first_child_only() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <switch>\
+              <rect x='0' y='2' width='4' height='4' fill='#00ff00'/>\
+              <rect x='4' y='2' width='4' height='4' fill='#ff0000'/>\
+              </switch></svg>",
+        )
+        .expect("svg switch");
+        assert_eq!(img.pixel(2, 4), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(6, 4), Some([0, 0, 0, 0]));
     }
 
     #[test]
