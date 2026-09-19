@@ -5276,6 +5276,45 @@ fn promise_with_resolvers_and_try() {
 }
 
 #[test]
+fn crypto_subtle_aes_ctr_matches_nist() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__ctr = null;
+          const keyBytes = Uint8Array.from([0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c]);
+          const iv = Uint8Array.from([0xf0,0xf1,0xf2,0xf3,0xf4,0xf5,0xf6,0xf7,0xf8,0xf9,0xfa,0xfb,0xfc,0xfd,0xfe,0xff]);
+          const pt = Uint8Array.from([0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a]);
+          const expect = "874d6191b620e3261bef6864990db6ce";
+          crypto.subtle.importKey("raw", keyBytes, "AES-CTR", false, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.encrypt({ name: "AES-CTR", counter: iv, length: 128 }, key, pt).then(function (ct) {
+              var u = new Uint8Array(ct);
+              var hex = "";
+              for (var i = 0; i < u.length; i++) hex += u[i].toString(16).padStart(2, "0");
+              return crypto.subtle.decrypt({ name: "AES-CTR", counter: iv, length: 128 }, key, ct).then(function (back) {
+                var p = new Uint8Array(back);
+                window.__ctr = {
+                  hex: hex,
+                  nist: hex === expect,
+                  round: Array.from(p).every(function (b, i) { return b === pt[i]; }),
+                  storage: null
+                };
+                return document.hasStorageAccess().then(function (ok) {
+                  window.__ctr.storage = ok;
+                });
+              });
+            });
+          }).catch(function (e) { window.__ctr = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__ctr").unwrap();
+    assert_eq!(v["nist"], true, "{v}");
+    assert_eq!(v["round"], true, "{v}");
+    assert_eq!(v["storage"], false, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

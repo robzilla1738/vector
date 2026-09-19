@@ -573,6 +573,22 @@ pub const PRELUDE: &str = r#"(() => {
       }
       return out;
     };
+    const aesCtrCrypt = (key, iv, data) => {
+      if (iv.length !== 16) throw new DOMException("iv must be 16 bytes", "OperationError");
+      const rk = aesExpand(key);
+      const out = new Uint8Array(data.length);
+      const ctr = new Uint8Array(iv);
+      for (let i = 0; i < data.length; i += 16) {
+        const ks = aesEncryptBlock(rk, ctr);
+        const n = Math.min(16, data.length - i);
+        for (let j = 0; j < n; j++) out[i + j] = data[i + j] ^ ks[j];
+        for (let k = 15; k >= 0; k--) {
+          ctr[k] = (ctr[k] + 1) & 0xff;
+          if (ctr[k]) break;
+        }
+      }
+      return out;
+    };
     const pbkdf2HmacSha256 = (password, salt, iterations, dkLen) => {
       const out = new Uint8Array(dkLen);
       const blocks = Math.ceil(dkLen / 32);
@@ -620,7 +636,7 @@ pub const PRELUDE: &str = r#"(() => {
             _raw: toBytes(keyData),
           });
         }
-        if (name === "AESGCM" || name === "AESCBC") {
+        if (name === "AESGCM" || name === "AESCBC" || name === "AESCTR") {
           const raw = toBytes(keyData);
           if (raw.length !== 16) {
             return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
@@ -628,7 +644,7 @@ pub const PRELUDE: &str = r#"(() => {
           return Promise.resolve({
             type: "secret",
             extractable: !!extractable,
-            algorithm: { name: name === "AESCBC" ? "AES-CBC" : "AES-GCM", length: 128 },
+            algorithm: { name: name === "AESCBC" ? "AES-CBC" : name === "AESCTR" ? "AES-CTR" : "AES-GCM", length: 128 },
             usages: usages || [],
             _raw: raw,
           });
@@ -651,11 +667,11 @@ pub const PRELUDE: &str = r#"(() => {
           cryptoObj.getRandomValues(a);
           return a;
         };
-        if (name === "AESGCM" || name === "AESCBC") {
+        if (name === "AESGCM" || name === "AESCBC" || name === "AESCTR") {
           return Promise.resolve({
             type: "secret",
             extractable: !!extractable,
-            algorithm: { name: name === "AESCBC" ? "AES-CBC" : "AES-GCM", length: 128 },
+            algorithm: { name: name === "AESCBC" ? "AES-CBC" : name === "AESCTR" ? "AES-CTR" : "AES-GCM", length: 128 },
             usages: usages || [],
             _raw: rand(16),
           });
@@ -743,6 +759,8 @@ pub const PRELUDE: &str = r#"(() => {
             out = aesGcmEncrypt(key._raw, toBytes(algorithm.iv), algorithm.additionalData ? toBytes(algorithm.additionalData) : new Uint8Array(0), toBytes(data));
           } else if (name === "AESCBC") {
             out = aesCbcEncrypt(key._raw, toBytes(algorithm.iv), toBytes(data));
+          } else if (name === "AESCTR") {
+            out = aesCtrCrypt(key._raw, toBytes(algorithm.counter || algorithm.iv), toBytes(data));
           } else {
             return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
           }
@@ -762,6 +780,8 @@ pub const PRELUDE: &str = r#"(() => {
             out = aesGcmDecrypt(key._raw, toBytes(algorithm.iv), algorithm.additionalData ? toBytes(algorithm.additionalData) : new Uint8Array(0), toBytes(data));
           } else if (name === "AESCBC") {
             out = aesCbcDecrypt(key._raw, toBytes(algorithm.iv), toBytes(data));
+          } else if (name === "AESCTR") {
+            out = aesCtrCrypt(key._raw, toBytes(algorithm.counter || algorithm.iv), toBytes(data));
           } else {
             return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
           }

@@ -6644,6 +6644,8 @@
     get designMode() { return this._designMode || "off"; }
     set designMode(v) { this._designMode = String(v).toLowerCase() === "on" ? "on" : "off"; }
     hasFocus() { return this.__h === D("documentNode"); }
+    hasStorageAccess() { return Promise.resolve(false); }
+    requestStorageAccess() { return Promise.resolve(); }
     get fullscreenEnabled() { return true; }
     get fullscreenElement() { return documentFullscreenElement; }
     get fullscreen() { return !!documentFullscreenElement; }
