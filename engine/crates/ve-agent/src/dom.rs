@@ -1019,9 +1019,7 @@ pub(crate) fn host_call(
             Ok(JsValue::from(page.iframe_location_origin(id).as_str()))
         }
         "addAuthorSheet" => {
-            let css = arg_str(args, 0);
-            page.style_engine.add_stylesheet(&css);
-            page.update();
+            page.add_author_stylesheet(&arg_str(args, 0));
             Ok(JsValue::Undefined)
         }
         "documentWrite" => document_write(page, &arg_str(args, 1)),

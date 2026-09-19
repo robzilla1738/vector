@@ -4696,6 +4696,16 @@ impl Page {
     /// Recomputes styles if dirty. Does not flush layout. `getComputedStyle`
     /// for `display` / colors must not relayout official Complex-DOM Spectrum
     /// after jQuery `show()` appends a temp node to `body`.
+    pub(crate) fn add_author_stylesheet(&mut self, css: &str) {
+        self.style_engine.add_stylesheet(css);
+        let (new_tree, _) = self
+            .style_engine
+            .compute_and_clear(&mut self.doc, Some(&self.style_tree));
+        self.style_tree = new_tree;
+        self.install_background_images();
+        self.apply_animations();
+    }
+
     pub fn restyle_if_needed(&mut self) {
         if self.style_clean() {
             return;

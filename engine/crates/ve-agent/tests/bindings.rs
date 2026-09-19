@@ -2931,6 +2931,7 @@ fn css_style_sheet_inserts_and_deletes_rules() {
                 len: sheet.cssRules.length,
                 mid: mid,
                 sel: sheet.cssRules[1].selectorText,
+                display: getComputedStyle(document.getElementById("t")).display,
                 rule: sheet.cssRules[1] instanceof CSSStyleRule
               };
               sheet.deleteRule(1);
@@ -2946,6 +2947,7 @@ fn css_style_sheet_inserts_and_deletes_rules() {
     assert_eq!(v["before"]["mid"], 1, "{v}");
     assert_eq!(v["before"]["sel"], "#t", "{v}");
     assert_eq!(v["before"]["rule"], true, "{v}");
+    assert_eq!(v["before"]["display"], "none", "{v}");
     assert_eq!(v["after"], 2, "{v}");
     assert_eq!(v["first"], "h1", "{v}");
 }
@@ -2993,6 +2995,63 @@ fn xhr_sets_request_headers_and_reads_response_headers() {
     assert_eq!(v["headerErr"], "InvalidStateError", "{v}");
     assert_eq!(v["abortReady"], 1, "abort before send leaves OPENED: {v}");
     assert_eq!(v["abortEvents"], 0, "abort before send is a no-op: {v}");
+}
+
+#[test]
+fn show_picker_focuses_connected_controls() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var sel = document.createElement("select");
+              var err = "";
+              try { sel.showPicker(); } catch (e) { err = e.name; }
+              document.body.appendChild(sel);
+              sel.showPicker();
+              var input = document.createElement("input");
+              input.type = "number";
+              document.body.appendChild(input);
+              input.showPicker();
+              return {
+                err: err,
+                sel: document.activeElement === sel || sel._pickerOpen,
+                input: input._pickerOpen
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["err"], "InvalidStateError", "{v}");
+    assert_eq!(v["sel"], true, "{v}");
+    assert_eq!(v["input"], true, "{v}");
+}
+
+#[test]
+fn media_load_resets_playback_and_fast_seek_moves() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var video = document.createElement("video");
+              video.src = "https://s.test/a.mp4";
+              var ev = [];
+              video.addEventListener("emptied", function () { ev.push("emptied"); });
+              video.addEventListener("abort", function () { ev.push("abort"); });
+              video.addEventListener("loadstart", function () { ev.push("loadstart"); });
+              video.currentTime = 4;
+              video.play();
+              video.load();
+              var afterLoad = { time: video.currentTime, paused: video.paused, ev: ev.slice() };
+              video.fastSeek(2);
+              return { afterLoad: afterLoad, seek: video.currentTime };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["afterLoad"]["time"], 0.0, "{v}");
+    assert_eq!(v["afterLoad"]["paused"], true, "{v}");
+    assert_eq!(v["afterLoad"]["ev"][0], "emptied", "{v}");
+    assert_eq!(v["afterLoad"]["ev"][1], "abort", "{v}");
+    assert_eq!(v["afterLoad"]["ev"][2], "loadstart", "{v}");
+    assert_eq!(v["seek"], 2.0, "{v}");
 }
 
 #[test]

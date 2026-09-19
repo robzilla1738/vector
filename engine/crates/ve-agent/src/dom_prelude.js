@@ -3217,7 +3217,13 @@
       this.selectionEnd = (this.value || "").length;
       this.dispatchEvent(new Event("select", { bubbles: true }));
     }
-    showPicker() {}
+    showPicker() {
+      if (!this.isConnected) {
+        throw new DOMException("HTMLInputElement.showPicker: not connected", "InvalidStateError");
+      }
+      this.focus();
+      this._pickerOpen = true;
+    }
     setRangeText(replacement) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'setRangeText' on 'HTMLInputElement': 1 argument required, but only 0 present.");
@@ -3381,7 +3387,13 @@
       }
       this.options.add(element, arguments[1]);
     }
-    showPicker() {}
+    showPicker() {
+      if (!this.isConnected) {
+        throw new DOMException("HTMLSelectElement.showPicker: not connected", "InvalidStateError");
+      }
+      this.focus();
+      this._pickerOpen = true;
+    }
   }
   class HTMLOptionElement extends HTMLElement {
     get text() {
@@ -5576,6 +5588,7 @@
     }
     fastSeek(time) {
       if (arguments.length < 1) throw new TypeError("Failed to execute 'fastSeek' on 'HTMLMediaElement': 1 argument required, but only 0 present.");
+      this.currentTime = Number(time) || 0;
     }
     get srcObject() { return this._srcObject || null; }
     set srcObject(v) { this._srcObject = v; }
@@ -5584,7 +5597,13 @@
     get audioTracks() { return this._audioTracks || (this._audioTracks = emptyAudioTrackList()); }
     get videoTracks() { return this._videoTracks || (this._videoTracks = emptyVideoTrackList()); }
     getStartDate() { return new Date(NaN); }
-    load() {}
+    load() {
+      this._currentTime = 0;
+      this._paused = true;
+      this.dispatchEvent(new Event("emptied"));
+      this.dispatchEvent(new Event("abort"));
+      if (this.src) this.dispatchEvent(new Event("loadstart"));
+    }
     play() { this._paused = false; return Promise.resolve(); }
     pause() { this._paused = true; }
   }
