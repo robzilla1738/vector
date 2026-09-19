@@ -4123,7 +4123,20 @@
       this._d = Number(d) || 0; this._e = Number(e) || 0; this._f = Number(f) || 0;
     }
     resetTransform() { this.setTransform(1, 0, 0, 1, 0, 0); }
-    transform() {}
+    transform(a, b, c, d, e, f) {
+      if (arguments.length < 6) {
+        throw new TypeError("Failed to execute 'transform' on 'CanvasRenderingContext2D': 6 arguments required, but only " + arguments.length + " present.");
+      }
+      a = Number(a) || 0; b = Number(b) || 0; c = Number(c) || 0;
+      d = Number(d) || 0; e = Number(e) || 0; f = Number(f) || 0;
+      const na = this._a * a + this._c * b;
+      const nb = this._b * a + this._d * b;
+      const nc = this._a * c + this._c * d;
+      const nd = this._b * c + this._d * d;
+      const ne = this._a * e + this._c * f + this._e;
+      const nf = this._b * e + this._d * f + this._f;
+      this._a = na; this._b = nb; this._c = nc; this._d = nd; this._e = ne; this._f = nf;
+    }
     drawFocusIfNeeded(element) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'drawFocusIfNeeded' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");

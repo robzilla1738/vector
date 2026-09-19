@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition"
         )
     );
     assert_eq!(
@@ -346,6 +346,13 @@ fn native_bindings_install_element_id_accessor() {
         page.evaluate("document.getElementById('y').isEqualNode(document.body)")
             .unwrap(),
         serde_json::json!(false)
+    );
+    let pos = page
+        .evaluate("document.body.compareDocumentPosition(document.getElementById('y'))")
+        .unwrap();
+    assert!(
+        pos.as_u64().unwrap_or(0) & 16 != 0,
+        "body should report CONTAINED_BY for its child: {pos}"
     );
 }
 

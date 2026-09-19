@@ -641,6 +641,10 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeIsEqualNode", equal)?;
+            let pos = v8::FunctionTemplate::builder(native_node_compare_document_position)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCompareDocumentPosition", pos)?;
             Some(())
         })?;
         self.eval(
@@ -682,6 +686,7 @@ impl JsVm for V8Vm {
     Node.prototype.contains = globalThis.__veNativeContains;
     Node.prototype.hasChildNodes = globalThis.__veNativeHasChildNodes;
     Node.prototype.isEqualNode = globalThis.__veNativeIsEqualNode;
+    Node.prototype.compareDocumentPosition = globalThis.__veNativeCompareDocumentPosition;
   }
   def(Element.prototype, "innerHTML", globalThis.__veNativeInnerHTMLGet, globalThis.__veNativeInnerHTMLSet);
   def(Element.prototype, "outerHTML", globalThis.__veNativeOuterHTMLGet, globalThis.__veNativeOuterHTMLSet);
@@ -691,7 +696,7 @@ impl JsVm for V8Vm {
   Element.prototype.hasAttribute = globalThis.__veNativeHasAttribute;
   Element.prototype.toggleAttribute = globalThis.__veNativeToggleAttribute;
   Element.prototype.matches = globalThis.__veNativeMatches;
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition";
 })()"#,
             "vector:dom-native",
         )?;
@@ -1448,6 +1453,33 @@ fn native_node_is_equal_node(
     };
     let value = call_dom_host(scope, &[JsValue::from("isEqualNode"), handle, other]);
     rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_node_compare_document_position(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        native_set_number(scope, &mut rv, None, 1.0);
+        return;
+    };
+    let other = if args.length() > 0 {
+        args.get(0)
+            .to_object(scope)
+            .and_then(|obj| object_handle(scope, obj))
+    } else {
+        None
+    };
+    let Some(other) = other else {
+        native_set_number(scope, &mut rv, None, 1.0);
+        return;
+    };
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("compareDocumentPosition"), handle, other],
+    );
+    native_set_number(scope, &mut rv, value, 1.0);
 }
 
 fn looks_like_module(source: &str) -> bool {

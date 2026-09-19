@@ -930,6 +930,33 @@ fn canvas_rotate_maps_fill_rect() {
 }
 
 #[test]
+fn canvas_transform_multiplies_current_matrix() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.transform(1, 0, 0, 1, 4, 0);
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 2, 2);
+              var hit = ctx.getImageData(4, 0, 1, 1).data;
+              var miss = ctx.getImageData(0, 0, 1, 1).data;
+              var t = ctx.getTransform();
+              return { hg: hit[1], ha: hit[3], ma: miss[3], e: t.e, f: t.f };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hg"], 255, "{v}");
+    assert_eq!(v["ha"], 255, "{v}");
+    assert_eq!(v["ma"], 0, "{v}");
+    assert_eq!(v["e"], 4, "{v}");
+    assert_eq!(v["f"], 0, "{v}");
+}
+
+#[test]
 fn canvas_draw_image_blits_source_pixels() {
     const RED: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
     let mut page = open(&format!(
