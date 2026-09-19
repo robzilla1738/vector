@@ -129,6 +129,7 @@ jobs:
         run: cargo test -p ve-script --features v8
       - name: Page scripting on V8 (timers, console, evaluate gating)
         run: cargo test -p ve-agent --features v8
+      # H3-2: prelude remains default until 2026-10-02 if these two jobs stay green.
       - name: DOM bindings differential (prelude default)
         env:
           VECTOR_DOM_BINDINGS: prelude
