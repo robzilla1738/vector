@@ -19,7 +19,7 @@ const live = process.env.VECTOR_CORPUS_LIVE === "1";
 const htmlDir = process.env.VECTOR_LIVE_HTML || "/tmp/vector-live-html";
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
-const CONCURRENCY = Number(process.env.VECTOR_CORPUS_CONCURRENCY || 16);
+const CONCURRENCY = Number(process.env.VECTOR_CORPUS_CONCURRENCY || 6);
 const TIMEOUT_MS = Number(process.env.VECTOR_CORPUS_TIMEOUT_MS || 8000);
 const RETRIES = Number(process.env.VECTOR_CORPUS_RETRIES || 1);
 

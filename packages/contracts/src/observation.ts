@@ -168,6 +168,7 @@ export const ObservationRequestSchema = z.object({
   subtreeRef: z.string().optional(),
   maxElements: z.number().int().positive().default(120),
   maxTextChars: z.number().int().positive().default(6000),
+  maxTokens: z.number().int().positive().default(3000),
   sinceRevision: z.number().optional(),
   format: ObservationFormatSchema.optional(),
 });

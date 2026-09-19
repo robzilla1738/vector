@@ -5,34 +5,109 @@
     "test": "shell::tests::writes_corpus_observe_and_layout_triage"
   },
   "backend": "vector-engine",
-  "capabilityUnsupportedRate": 0.018,
+  "capabilityUnsupportedRate": 0.024,
+  "engineCapabilityUnsupportedRate": 0.0,
   "live": true,
   "liveFetch": {
-    "elapsedSec": 10.46,
-    "failed": 9,
-    "n": 491,
-    "ok": 491,
-    "p50Ms": 357.14054107666016,
-    "p95Ms": 572.0622539520264
+    "concurrency": 16,
+    "elapsedSec": 17.631891233,
+    "failed": 12,
+    "failedUrls": [
+      {
+        "error": "HTTP 403",
+        "url": "https://apnews.com/"
+      },
+      {
+        "error": "HTTP 401",
+        "url": "https://www.reuters.com/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.nytimes.com/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.economist.com/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.ft.com/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.w3.org/TR/css-display-3/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.w3.org/TR/CSS2/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://codeberg.org/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://lib.rs/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.npmjs.com/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.gnu.org/"
+      },
+      {
+        "error": "The operation was aborted due to timeout",
+        "url": "https://www.washingtonpost.com/"
+      }
+    ],
+    "htmlDir": "/tmp/vector-live-html",
+    "n": 500,
+    "ok": 488,
+    "p50Ms": 282.4250290000009,
+    "p95Ms": 1042.6523070000003,
+    "retried429": {
+      "attempted": 17,
+      "recovered": 16
+    },
+    "retries": 1
   },
   "observe": {
     "kind": "fetched-html-bodies",
     "liveHtml": {
       "kind": "fetched-html-bodies",
       "n": 60,
-      "p50Ms": 1.839,
-      "p95Ms": 2.189,
+      "p50Ms": 1.669,
+      "p95Ms": 7.454,
       "unsupported": 0
     },
     "n": 60,
-    "p50Ms": 1.839,
-    "p95Ms": 2.189,
+    "p50Ms": 1.669,
+    "p95Ms": 7.454,
     "standInP50Ms": 0.056,
     "standInP95Ms": 0.07,
+    "unit": "ms"
+  },
+  "openToObserve": {
+    "kind": "fetched-html-bodies",
+    "maxMs": 1129.276,
+    "n": 60,
+    "notes": "Parse+layout+compact observe on saved live HTML. Network fetch is excluded. Not an Apple-silicon published score.",
+    "p50Ms": 14.674,
+    "p95Ms": 101.869,
     "unit": "ms"
   },
   "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
   "security_mode": "production",
   "skippedLive": false,
+  "snapshotTokens": {
+    "budget": 3000,
+    "kind": "fetched-html-bodies",
+    "n": 60,
+    "p50": 2986,
+    "p95": 2999,
+    "unit": "approxTokens"
+  },
   "urls": 500
 }

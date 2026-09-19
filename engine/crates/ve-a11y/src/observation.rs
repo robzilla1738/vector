@@ -95,6 +95,10 @@ fn default_max_text_chars() -> usize {
     6000
 }
 
+fn default_max_tokens() -> usize {
+    3000
+}
+
 /// `ObservationRequest` plus the engine-only `format`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -108,6 +112,8 @@ pub struct ObservationRequest {
     pub max_elements: usize,
     /// Text budget in characters (default 6000).
     pub max_text_chars: usize,
+    /// Approximate token budget (`ceil(rendered_chars / 4)`, default 3000).
+    pub max_tokens: usize,
     /// Produce `changesSince` relative to this revision.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub since_revision: Option<u64>,
@@ -122,6 +128,7 @@ impl Default for ObservationRequest {
             subtree_ref: None,
             max_elements: default_max_elements(),
             max_text_chars: default_max_text_chars(),
+            max_tokens: default_max_tokens(),
             since_revision: None,
             format: Format::Compact,
         }
@@ -1740,7 +1747,46 @@ impl<'a> Builder<'a> {
             text_chars: content.text.chars().count(),
             approx_tokens: content.rendered_chars_for(self.request.scope).div_ceil(4),
         };
+        if self.apply_token_budget(&mut content) {
+            content.truncated = true;
+        }
         content
+    }
+
+    fn apply_token_budget(&self, content: &mut ObservationContent) -> bool {
+        let max = self.request.max_tokens.max(1);
+        let scope = self.request.scope;
+        let mut truncated = false;
+        while content.rendered_chars_for(scope).div_ceil(4) > max && !content.elements.is_empty() {
+            content.elements.pop();
+            truncated = true;
+        }
+        while content.rendered_chars_for(scope).div_ceil(4) > max && !content.links.is_empty() {
+            content.links.pop();
+            truncated = true;
+        }
+        while content.rendered_chars_for(scope).div_ceil(4) > max && !content.tables.is_empty() {
+            content.tables.pop();
+            truncated = true;
+        }
+        while content.rendered_chars_for(scope).div_ceil(4) > max && !content.dialogs.is_empty() {
+            content.dialogs.pop();
+            truncated = true;
+        }
+        while content.rendered_chars_for(scope).div_ceil(4) > max && content.headings.len() > 1 {
+            content.headings.pop();
+            truncated = true;
+        }
+        while content.rendered_chars_for(scope).div_ceil(4) > max && content.text.chars().count() > 32
+        {
+            let keep = content.text.chars().count().saturating_mul(3) / 4;
+            content.text = truncate_chars(&content.text, keep.max(32));
+            truncated = true;
+        }
+        content.stats.approx_tokens = content.rendered_chars_for(scope).div_ceil(4);
+        content.stats.elements_shown = content.elements.len();
+        content.stats.text_chars = content.text.chars().count();
+        truncated
     }
 }
 
@@ -2255,6 +2301,25 @@ mod tests {
         assert!(obs.text.chars().count() <= 300, "{}", obs.text.len());
         assert!(obs.truncated);
         assert!(obs.text.starts_with("Paragraph number 0"));
+    }
+
+    #[test]
+    fn token_budget_caps_approx_tokens() {
+        let mut html = String::from("<body>");
+        for i in 0..200 {
+            html.push_str(&format!(
+                r#"<a href="https://example.test/very/long/path/{i}/and/more/segments/here">link {i}</a>"#
+            ));
+        }
+        html.push_str("</body>");
+        let p = page(&html);
+        let obs = p.observe(&ObservationRequest::default());
+        assert!(
+            obs.stats.approx_tokens <= 3000,
+            "approx_tokens {}",
+            obs.stats.approx_tokens
+        );
+        assert!(obs.truncated);
     }
 
     #[test]
