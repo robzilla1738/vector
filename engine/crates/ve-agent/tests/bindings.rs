@@ -6698,6 +6698,48 @@ fn webgl_stencil_test_clips_second_draw() {
 }
 
 #[test]
+fn webgl_polygon_offset_pulls_same_depth_nearer() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.5, 1, -1, 0.5, -1, 1, 0.5,
+                1, -1, 0.5, 1, 1, 0.5, -1, 1, 0.5
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const tied = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, tied);
+              gl.enable(gl.POLYGON_OFFSET_FILL);
+              gl.polygonOffset(-1, -1);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const offset = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, offset);
+              return { tr: tied[0], tg: tied[1], ob: offset[2], oa: offset[3], cap: gl.POLYGON_OFFSET_FILL };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 32823, "{v}");
+    assert_eq!(v["tr"], 255, "{v}");
+    assert_eq!(v["tg"], 0, "{v}");
+    assert_eq!(v["ob"], 255, "{v}");
+    assert_eq!(v["oa"], 255, "{v}");
+}
+
+#[test]
 fn webgl_get_parameter_reports_line_width() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page

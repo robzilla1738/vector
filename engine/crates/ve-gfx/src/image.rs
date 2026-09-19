@@ -746,6 +746,7 @@ struct SvgGrad {
     cx: f32,
     cy: f32,
     r: f32,
+    object_bbox: bool,
     stops: Vec<(f32, [u8; 4])>,
 }
 
@@ -965,6 +966,7 @@ struct SvgPattern {
     y: f32,
     cw: f32,
     ch: f32,
+    object_bbox: bool,
     color: [u8; 4],
 }
 
@@ -987,12 +989,14 @@ fn parse_svg_patterns(text: &str) -> HashMap<String, SvgPattern> {
                 out.insert(
                     id.to_string(),
                     SvgPattern {
-                        w: svg_attr(tag, "width").unwrap_or(4.0).max(1.0),
-                        h: svg_attr(tag, "height").unwrap_or(4.0).max(1.0),
+                        w: svg_attr(tag, "width").unwrap_or(4.0),
+                        h: svg_attr(tag, "height").unwrap_or(4.0),
                         x: svg_attr(rtag, "x").unwrap_or(0.0),
                         y: svg_attr(rtag, "y").unwrap_or(0.0),
                         cw: svg_attr(rtag, "width").unwrap_or(0.0),
                         ch: svg_attr(rtag, "height").unwrap_or(0.0),
+                        object_bbox: svg_attr_str(tag, "patternUnits")
+                            .is_some_and(|s| s.eq_ignore_ascii_case("objectBoundingBox")),
                         color: parse_svg_color(svg_fill(rtag)),
                     },
                 );
@@ -1924,9 +1928,15 @@ fn blur_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32,
     }
 }
 
-fn sample_pattern(p: &SvgPattern, x: f32, y: f32) -> [u8; 4] {
-    let lx = ((x % p.w) + p.w) % p.w;
-    let ly = ((y % p.h) + p.h) % p.h;
+fn sample_pattern(p: &SvgPattern, x: f32, y: f32, tag: &str) -> [u8; 4] {
+    let (x, y, tw, th) = if p.object_bbox {
+        let (ox, oy, ow, oh) = svg_object_bbox(tag);
+        (x - ox, y - oy, (p.w * ow).max(0.001), (p.h * oh).max(0.001))
+    } else {
+        (x, y, p.w.max(1.0), p.h.max(1.0))
+    };
+    let lx = ((x % tw) + tw) % tw;
+    let ly = ((y % th) + th) % th;
     if lx >= p.x && lx < p.x + p.cw && ly >= p.y && ly < p.y + p.ch {
         p.color
     } else {
@@ -2374,6 +2384,8 @@ fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
                         } else {
                             0.0
                         },
+                        object_bbox: svg_attr_str(tag, "gradientUnits")
+                            .is_some_and(|s| s.eq_ignore_ascii_case("objectBoundingBox")),
                         stops: parse_gradient_stops(block),
                     },
                 );
@@ -2384,10 +2396,16 @@ fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
     out
 }
 
-fn sample_grad(g: &SvgGrad, x: f32, y: f32) -> [u8; 4] {
+fn sample_grad(g: &SvgGrad, x: f32, y: f32, tag: &str) -> [u8; 4] {
     if g.stops.is_empty() {
         return [0, 0, 0, 255];
     }
+    let (x, y) = if g.object_bbox {
+        let (ox, oy, ow, oh) = svg_object_bbox(tag);
+        ((x - ox) / ow, (y - oy) / oh)
+    } else {
+        (x, y)
+    };
     let t = if g.r > 0.0 {
         let dx = x - g.cx;
         let dy = y - g.cy;
@@ -3244,9 +3262,9 @@ fn paint_fill_color(
 ) -> [u8; 4] {
     let color = if let Some(id) = parse_url_id(fill) {
         if let Some(p) = patterns.get(id) {
-            sample_pattern(p, x, y)
+            sample_pattern(p, x, y, tag)
         } else if let Some(g) = grads.get(id) {
-            sample_grad(g, x, y)
+            sample_grad(g, x, y, tag)
         } else {
             parse_svg_color(fill)
         }
@@ -4609,6 +4627,38 @@ mod tests {
         assert_eq!(img.pixel(0, 0), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(2, 0), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(4, 0), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_pattern_object_bbox_scales_tile() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><pattern id='p' width='0.5' height='1' patternUnits='objectBoundingBox'>\
+              <rect x='0' y='0' width='2' height='2' fill='#ff0000'/></pattern></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#p)'/></svg>",
+        )
+        .expect("svg pattern OBB");
+        assert_eq!(img.pixel(0, 0), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(4, 0), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_linear_gradient_object_bbox_spans_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' gradientUnits='objectBoundingBox' x1='0' y1='0' x2='1' y2='0'>\
+              <stop offset='0' stop-color='#ff0000'/><stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg gradient OBB");
+        let left = img.pixel(0, 4).unwrap_or([0, 0, 0, 0]);
+        let mid = img.pixel(2, 4).unwrap_or([0, 0, 0, 0]);
+        let right = img.pixel(7, 4).unwrap_or([0, 0, 0, 0]);
+        assert!(left[0] > left[2], "left stays red: {left:?}");
+        assert!(mid[0] > mid[2], "quarter-span still redder than blue: {mid:?}");
+        assert!(right[2] > right[0], "right is blue: {right:?}");
     }
 
     #[test]

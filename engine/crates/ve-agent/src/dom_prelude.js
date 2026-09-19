@@ -9520,6 +9520,7 @@
       this.NOTEQUAL = 517;
       this.GEQUAL = 518;
       this.ALWAYS = 519;
+      this.POLYGON_OFFSET_FILL = 32823;
       this.STENCIL_TEST = 2960;
       this.STENCIL_BUFFER_BIT = 1024;
       this.KEEP = 7680;
@@ -9541,6 +9542,9 @@
       this._depth = null;
       this._depthFunc = 513;
       this._depthMask = true;
+      this._polyOffsetOn = false;
+      this._polyFactor = 0;
+      this._polyUnits = 0;
       this._stencilOn = false;
       this._stencil = null;
       this._stencilFunc = 519;
@@ -9650,6 +9654,7 @@
       if (cap === this.CULL_FACE) this._cullOn = true;
       if (cap === this.DEPTH_TEST) this._depthOn = true;
       if (cap === this.STENCIL_TEST) this._stencilOn = true;
+      if (cap === this.POLYGON_OFFSET_FILL) this._polyOffsetOn = true;
     }
     disable(cap) {
       if (cap === this.SCISSOR_TEST) this._scissorOn = false;
@@ -9657,6 +9662,11 @@
       if (cap === this.CULL_FACE) this._cullOn = false;
       if (cap === this.DEPTH_TEST) this._depthOn = false;
       if (cap === this.STENCIL_TEST) this._stencilOn = false;
+      if (cap === this.POLYGON_OFFSET_FILL) this._polyOffsetOn = false;
+    }
+    polygonOffset(factor, units) {
+      this._polyFactor = Number(factor) || 0;
+      this._polyUnits = Number(units) || 0;
     }
     cullFace(mode) {
       this._cullFace = Number(mode) || this.BACK;
@@ -9931,7 +9941,9 @@
       if (!pts.length) return 0;
       let s = 0;
       for (const p of pts) s += p[2] || 0;
-      return s / pts.length;
+      let z = s / pts.length;
+      if (this._polyOffsetOn) z += this._polyFactor * 0.01 + this._polyUnits * 0.01;
+      return z;
     }
     _polyBBox(pts) {
       const c = this.canvas;
