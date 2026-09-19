@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use ve_core::{NodeId, Point, Rect};
-use ve_style::Rgba;
+use ve_style::{MixBlendMode, Rgba};
 
 use crate::GfxError;
 use crate::display_list::{DisplayItem, DisplayList, TextRun};
@@ -178,6 +178,182 @@ impl std::fmt::Debug for SoftwareRenderer {
 impl Default for SoftwareRenderer {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+fn lum(c: [f32; 3]) -> f32 {
+    0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+}
+
+fn sat(c: [f32; 3]) -> f32 {
+    c[0].max(c[1]).max(c[2]) - c[0].min(c[1]).min(c[2])
+}
+
+fn clip_color(mut c: [f32; 3]) -> [f32; 3] {
+    let l = lum(c);
+    let n = c[0].min(c[1]).min(c[2]);
+    let x = c[0].max(c[1]).max(c[2]);
+    if n < 0.0 {
+        let denom = l - n;
+        if denom > 1e-8 {
+            for v in &mut c {
+                *v = l + (*v - l) * l / denom;
+            }
+        }
+    }
+    if x > 1.0 {
+        let denom = x - l;
+        if denom > 1e-8 {
+            for v in &mut c {
+                *v = l + (*v - l) * (1.0 - l) / denom;
+            }
+        }
+    }
+    c
+}
+
+fn set_lum(c: [f32; 3], l: f32) -> [f32; 3] {
+    let d = l - lum(c);
+    clip_color([c[0] + d, c[1] + d, c[2] + d])
+}
+
+fn set_sat(c: [f32; 3], s: f32) -> [f32; 3] {
+    let mut idx = [0usize, 1, 2];
+    idx.sort_by(|&a, &b| c[a].partial_cmp(&c[b]).unwrap_or(std::cmp::Ordering::Equal));
+    let (imin, imid, imax) = (idx[0], idx[1], idx[2]);
+    let mut out = c;
+    if c[imax] > c[imin] {
+        out[imid] = ((c[imid] - c[imin]) * s) / (c[imax] - c[imin]);
+        out[imax] = s;
+        out[imin] = 0.0;
+    } else {
+        out = [0.0, 0.0, 0.0];
+    }
+    out
+}
+
+fn mix_rgb(dst: [u8; 4], src: [u8; 4], mode: MixBlendMode) -> [u8; 3] {
+    let s = [
+        f32::from(src[0]) / 255.0,
+        f32::from(src[1]) / 255.0,
+        f32::from(src[2]) / 255.0,
+    ];
+    let d = [
+        f32::from(dst[0]) / 255.0,
+        f32::from(dst[1]) / 255.0,
+        f32::from(dst[2]) / 255.0,
+    ];
+    let out = match mode {
+        MixBlendMode::Normal => s,
+        MixBlendMode::Multiply => [s[0] * d[0], s[1] * d[1], s[2] * d[2]],
+        MixBlendMode::Screen => [
+            1.0 - (1.0 - s[0]) * (1.0 - d[0]),
+            1.0 - (1.0 - s[1]) * (1.0 - d[1]),
+            1.0 - (1.0 - s[2]) * (1.0 - d[2]),
+        ],
+        MixBlendMode::Darken => [s[0].min(d[0]), s[1].min(d[1]), s[2].min(d[2])],
+        MixBlendMode::Lighten => [s[0].max(d[0]), s[1].max(d[1]), s[2].max(d[2])],
+        MixBlendMode::Difference => [
+            (s[0] - d[0]).abs(),
+            (s[1] - d[1]).abs(),
+            (s[2] - d[2]).abs(),
+        ],
+        MixBlendMode::Exclusion => [
+            s[0] + d[0] - 2.0 * s[0] * d[0],
+            s[1] + d[1] - 2.0 * s[1] * d[1],
+            s[2] + d[2] - 2.0 * s[2] * d[2],
+        ],
+        MixBlendMode::Overlay => {
+            let ch = |sv: f32, dv: f32| {
+                if dv < 0.5 {
+                    2.0 * sv * dv
+                } else {
+                    1.0 - 2.0 * (1.0 - sv) * (1.0 - dv)
+                }
+            };
+            [ch(s[0], d[0]), ch(s[1], d[1]), ch(s[2], d[2])]
+        }
+        MixBlendMode::HardLight => {
+            let ch = |sv: f32, dv: f32| {
+                if sv < 0.5 {
+                    2.0 * sv * dv
+                } else {
+                    1.0 - 2.0 * (1.0 - sv) * (1.0 - dv)
+                }
+            };
+            [ch(s[0], d[0]), ch(s[1], d[1]), ch(s[2], d[2])]
+        }
+        MixBlendMode::SoftLight => {
+            let ch = |sv: f32, dv: f32| {
+                if sv <= 0.5 {
+                    dv - (1.0 - 2.0 * sv) * dv * (1.0 - dv)
+                } else {
+                    dv + (2.0 * sv - 1.0) * (1.0 - (1.0 - dv) * (1.0 - dv) - dv)
+                }
+            };
+            [ch(s[0], d[0]), ch(s[1], d[1]), ch(s[2], d[2])]
+        }
+        MixBlendMode::ColorDodge => {
+            let ch = |sv: f32, dv: f32| {
+                if dv <= 0.0 {
+                    0.0
+                } else if sv >= 1.0 {
+                    1.0
+                } else {
+                    (dv / (1.0 - sv)).min(1.0)
+                }
+            };
+            [ch(s[0], d[0]), ch(s[1], d[1]), ch(s[2], d[2])]
+        }
+        MixBlendMode::ColorBurn => {
+            let ch = |sv: f32, dv: f32| {
+                if dv >= 1.0 {
+                    1.0
+                } else if sv <= 0.0 {
+                    0.0
+                } else {
+                    1.0 - ((1.0 - dv) / sv).min(1.0)
+                }
+            };
+            [ch(s[0], d[0]), ch(s[1], d[1]), ch(s[2], d[2])]
+        }
+        MixBlendMode::Hue => set_lum(set_sat(s, sat(d)), lum(d)),
+        MixBlendMode::Saturation => set_lum(set_sat(d, sat(s)), lum(d)),
+        MixBlendMode::Color => set_lum(s, lum(d)),
+        MixBlendMode::Luminosity => set_lum(d, lum(s)),
+    };
+    [
+        (out[0].clamp(0.0, 1.0) * 255.0).round() as u8,
+        (out[1].clamp(0.0, 1.0) * 255.0).round() as u8,
+        (out[2].clamp(0.0, 1.0) * 255.0).round() as u8,
+    ]
+}
+
+fn composite_mix_layer(dest: &mut [u8], src: &[u8], mode: MixBlendMode) {
+    for (dst, src) in dest.chunks_exact_mut(4).zip(src.chunks_exact(4)) {
+        let sa = src[3];
+        if sa == 0 {
+            continue;
+        }
+        let backdrop = [dst[0], dst[1], dst[2], dst[3]];
+        let source = [src[0], src[1], src[2], src[3]];
+        let rgb = mix_rgb(backdrop, source, mode);
+        let a = f32::from(sa) / 255.0;
+        let da = f32::from(dst[3]) / 255.0;
+        let out_a = a + da * (1.0 - a);
+        if out_a <= 0.0 {
+            dst[0] = 0;
+            dst[1] = 0;
+            dst[2] = 0;
+            dst[3] = 0;
+            continue;
+        }
+        for i in 0..3 {
+            let s = f32::from(rgb[i]) / 255.0;
+            let d = f32::from(dst[i]) / 255.0;
+            dst[i] = ((s * a + d * da * (1.0 - a)) / out_a * 255.0).round() as u8;
+        }
+        dst[3] = (out_a * 255.0).round() as u8;
     }
 }
 
@@ -645,6 +821,7 @@ impl Renderer for SoftwareRenderer {
             scale: if scale > 0.0 { scale } else { 1.0 },
             translate: Vec::new(),
         };
+        let mut blend_stack: Vec<(MixBlendMode, Vec<u8>)> = Vec::new();
         for item in list.items() {
             match item {
                 DisplayItem::Rect { rect, color } => canvas.fill_rect(*rect, *color),
@@ -687,15 +864,7 @@ impl Renderer for SoftwareRenderer {
                     position,
                     repeat,
                     ..
-                } => self.draw_image(
-                    &mut canvas,
-                    *rect,
-                    *handle,
-                    *src,
-                    *size,
-                    *position,
-                    *repeat,
-                ),
+                } => self.draw_image(&mut canvas, *rect, *handle, *src, *size, *position, *repeat),
                 DisplayItem::LinearGradient {
                     rect,
                     start,
@@ -706,7 +875,10 @@ impl Renderer for SoftwareRenderer {
                 DisplayItem::FilterBlur { rect, radius } => canvas.blur_rect(*rect, *radius),
                 DisplayItem::PushClip(rect) => {
                     let mapped = canvas.map_rect(*rect);
-                    let clipped = canvas.clip_rect().intersection(&mapped).unwrap_or(Rect::ZERO);
+                    let clipped = canvas
+                        .clip_rect()
+                        .intersection(&mapped)
+                        .unwrap_or(Rect::ZERO);
                     canvas.clip.push(clipped);
                 }
                 DisplayItem::PopClip => {
@@ -716,10 +888,22 @@ impl Renderer for SoftwareRenderer {
                 DisplayItem::PopOpacity => {
                     canvas.opacity.pop();
                 }
-                DisplayItem::PushBlend(_) | DisplayItem::PopBlend => {}
+                DisplayItem::PushBlend(mode) => {
+                    let isolated = vec![0; canvas.rgba.len()];
+                    blend_stack.push((*mode, std::mem::replace(&mut canvas.rgba, isolated)));
+                }
+                DisplayItem::PopBlend => {
+                    if let Some((mode, dest)) = blend_stack.pop() {
+                        let src = std::mem::replace(&mut canvas.rgba, dest);
+                        composite_mix_layer(&mut canvas.rgba, &src, mode);
+                    }
+                }
                 DisplayItem::RoundedClip { rect, .. } => {
                     let mapped = canvas.map_rect(*rect);
-                    let clipped = canvas.clip_rect().intersection(&mapped).unwrap_or(Rect::ZERO);
+                    let clipped = canvas
+                        .clip_rect()
+                        .intersection(&mapped)
+                        .unwrap_or(Rect::ZERO);
                     canvas.clip.push(clipped);
                 }
                 DisplayItem::PushTransform {
@@ -731,7 +915,9 @@ impl Renderer for SoftwareRenderer {
                     ox,
                     oy,
                 } => {
-                    canvas.translate.push((*tx, *ty, *sx, *sy, *angle, *ox, *oy));
+                    canvas
+                        .translate
+                        .push((*tx, *ty, *sx, *sy, *angle, *ox, *oy));
                 }
                 DisplayItem::PopTransform => {
                     canvas.translate.pop();
@@ -749,6 +935,10 @@ impl Renderer for SoftwareRenderer {
                     );
                 }
             }
+        }
+        while let Some((mode, dest)) = blend_stack.pop() {
+            let src = std::mem::replace(&mut canvas.rgba, dest);
+            composite_mix_layer(&mut canvas.rgba, &src, mode);
         }
         Ok(Frame {
             width,
@@ -921,11 +1111,7 @@ mod tests {
         let mut renderer = SoftwareRenderer::new();
         let frame = renderer.render(&list, 20, 10, 1.0).unwrap();
         assert_eq!(frame.pixel(1, 1), Some([255, 255, 255, 255]), "unshifted");
-        assert_eq!(
-            frame.pixel(9, 1),
-            Some([255, 0, 0, 255]),
-            "translated red"
-        );
+        assert_eq!(frame.pixel(9, 1), Some([255, 0, 0, 255]), "translated red");
     }
 
     #[test]
@@ -956,7 +1142,33 @@ mod tests {
             Some([255, 0, 0, 255]),
             "scaled width covers x=6"
         );
-        assert_eq!(frame.pixel(18, 1), Some([255, 255, 255, 255]), "outside scale");
+        assert_eq!(
+            frame.pixel(18, 1),
+            Some([255, 255, 255, 255]),
+            "outside scale"
+        );
+    }
+
+    #[test]
+    fn software_renderer_applies_push_blend() {
+        let mut list = DisplayList::new(Size::new(8.0, 8.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 8.0, 8.0),
+            color: Rgba::rgb(0, 255, 0),
+        });
+        list.push(DisplayItem::PushBlend(MixBlendMode::Multiply));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 8.0, 8.0),
+            color: Rgba::rgb(255, 0, 0),
+        });
+        list.push(DisplayItem::PopBlend);
+        let mut renderer = SoftwareRenderer::new();
+        let frame = renderer.render(&list, 8, 8, 1.0).unwrap();
+        assert_eq!(
+            frame.pixel(3, 3),
+            Some([0, 0, 0, 255]),
+            "multiply red over green is black"
+        );
     }
 
     #[test]
