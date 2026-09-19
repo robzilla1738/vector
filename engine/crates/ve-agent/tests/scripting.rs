@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames"
         )
     );
     assert_eq!(
@@ -367,10 +367,8 @@ fn native_bindings_install_element_id_accessor() {
         serde_json::json!("xml")
     );
     assert_eq!(
-        page.evaluate(
-            "document.getElementById('y').lookupPrefix('http://www.w3.org/1999/xhtml')"
-        )
-        .unwrap(),
+        page.evaluate("document.getElementById('y').lookupPrefix('http://www.w3.org/1999/xhtml')")
+            .unwrap(),
         serde_json::Value::Null
     );
     assert_eq!(
@@ -432,8 +430,10 @@ fn native_bindings_install_element_id_accessor() {
             .unwrap(),
         serde_json::Value::Null
     );
-    page.evaluate("document.body.insertBefore(document.createElement('span'), document.getElementById('y'))")
-        .unwrap();
+    page.evaluate(
+        "document.body.insertBefore(document.createElement('span'), document.getElementById('y'))",
+    )
+    .unwrap();
     assert_eq!(
         page.evaluate("document.getElementById('y').previousSibling.tagName")
             .unwrap(),
@@ -445,8 +445,7 @@ fn native_bindings_install_element_id_accessor() {
         serde_json::json!("SPAN")
     );
     assert_eq!(
-        page.evaluate("document.body.lastElementChild.id")
-            .unwrap(),
+        page.evaluate("document.body.lastElementChild.id").unwrap(),
         serde_json::json!("y")
     );
     assert_eq!(
@@ -464,8 +463,7 @@ fn native_bindings_install_element_id_accessor() {
         serde_json::json!("y")
     );
     assert_eq!(
-        page.evaluate("document.getElementById('missing')")
-            .unwrap(),
+        page.evaluate("document.getElementById('missing')").unwrap(),
         serde_json::Value::Null
     );
     assert_eq!(
@@ -513,10 +511,8 @@ fn native_bindings_install_element_id_accessor() {
         serde_json::json!("EM")
     );
     assert_eq!(
-        page.evaluate(
-            "document.createElementNS('http://www.w3.org/2000/svg', 'svg').namespaceURI"
-        )
-        .unwrap(),
+        page.evaluate("document.createElementNS('http://www.w3.org/2000/svg', 'svg').namespaceURI")
+            .unwrap(),
         serde_json::json!("http://www.w3.org/2000/svg")
     );
     assert_eq!(
@@ -535,9 +531,65 @@ fn native_bindings_install_element_id_accessor() {
         serde_json::json!("EM")
     );
     assert_eq!(
-        page.evaluate("document.importNode(document.body.lastChild, false) !== document.body.lastChild")
+        page.evaluate(
+            "document.importNode(document.body.lastChild, false) !== document.body.lastChild"
+        )
+        .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.querySelectorAll('em').length")
+            .unwrap(),
+        serde_json::json!(1)
+    );
+    assert_eq!(
+        page.evaluate("document.querySelectorAll('em').item(0).tagName")
+            .unwrap(),
+        serde_json::json!("EM")
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.isSameNode(document.body.lastChild)")
             .unwrap(),
         serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.isSameNode(document.body)")
+            .unwrap(),
+        serde_json::json!(false)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.isDefaultNamespace('http://www.w3.org/1999/xhtml')")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.isDefaultNamespace('http://www.w3.org/2000/svg')")
+            .unwrap(),
+        serde_json::json!(false)
+    );
+    page.evaluate("document.body.lastChild.setAttribute('data-k', '1')")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.body.lastChild.hasAttributes()")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.getAttributeNames().includes('data-k')")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate(
+            "var em = document.body.lastChild; em.appendChild(document.createTextNode('a')); em.appendChild(document.createTextNode('b')); em.normalize(); em.childNodes.length"
+        )
+        .unwrap(),
+        serde_json::json!(1)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.textContent")
+            .unwrap(),
+        serde_json::json!("ab")
     );
 }
 

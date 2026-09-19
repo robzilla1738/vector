@@ -1095,6 +1095,43 @@ fn canvas_stroke_honours_line_cap() {
 }
 
 #[test]
+fn canvas_stroke_honours_line_join() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(join) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = "#00ff00";
+                ctx.lineJoin = join;
+                ctx.beginPath();
+                ctx.moveTo(2, 8);
+                ctx.lineTo(8, 8);
+                ctx.lineTo(8, 14);
+                ctx.stroke();
+                var miter = ctx.getImageData(10, 5, 1, 1).data;
+                var tip = ctx.getImageData(8, 5, 1, 1).data;
+                var on = ctx.getImageData(8, 8, 1, 1).data;
+                return { ma: miter[3], ta: tip[3], og: on[1] };
+              }
+              return { miter: sample("miter"), bevel: sample("bevel"), round: sample("round") };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["miter"]["ma"], 255, "{v}");
+    assert_eq!(v["miter"]["og"], 255, "{v}");
+    assert_eq!(v["bevel"]["ma"], 0, "{v}");
+    assert_eq!(v["bevel"]["og"], 255, "{v}");
+    assert_eq!(v["round"]["ma"], 0, "{v}");
+    assert_eq!(v["round"]["ta"], 255, "{v}");
+    assert_eq!(v["round"]["og"], 255, "{v}");
+}
+
+#[test]
 fn canvas_fill_rect_paints_shadow_blur() {
     let mut page = open(r#"<body></body>"#);
     let v = page

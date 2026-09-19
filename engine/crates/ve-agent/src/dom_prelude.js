@@ -4224,7 +4224,7 @@
     stroke() {
       const path = arguments[0];
       const p = path instanceof Path2D ? path : this._path;
-      D("canvasStrokePath", this.__h, p._payload(), String(this.strokeStyle || this.fillStyle), Number(this._lineWidth) || 1, (this._dash || []).join(","), Number(this._lineDashOffset) || 0, String(this._lineCap || "butt"));
+      D("canvasStrokePath", this.__h, p._payload(), String(this.strokeStyle || this.fillStyle), Number(this._lineWidth) || 1, (this._dash || []).join(","), Number(this._lineDashOffset) || 0, String(this._lineCap || "butt"), String(this._lineJoin || "miter"), Number(this._miterLimit) || 10);
     }
     strokeRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'strokeRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");

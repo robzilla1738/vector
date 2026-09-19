@@ -845,6 +845,42 @@ impl LineCap {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum LineJoin {
+    #[default]
+    Miter,
+    Bevel,
+    Round,
+}
+
+impl LineJoin {
+    fn parse(s: &str) -> Self {
+        match s {
+            "bevel" => Self::Bevel,
+            "round" => Self::Round,
+            _ => Self::Miter,
+        }
+    }
+}
+
+fn vec2_norm(v: [f32; 2]) -> [f32; 2] {
+    let len = v[0].mul_add(v[0], v[1] * v[1]).sqrt();
+    if len < 1e-6 {
+        [0.0, 0.0]
+    } else {
+        [v[0] / len, v[1] / len]
+    }
+}
+
+fn line_intersect(p1: [f32; 2], d1: [f32; 2], p2: [f32; 2], d2: [f32; 2]) -> Option<[f32; 2]> {
+    let det = d1[0].mul_add(d2[1], -d1[1] * d2[0]);
+    if det.abs() < 1e-6 {
+        return None;
+    }
+    let t = (p2[0] - p1[0]).mul_add(d2[1], -(p2[1] - p1[1]) * d2[0]) / det;
+    Some([p1[0] + t * d1[0], p1[1] + t * d1[1]])
+}
+
 impl CanvasStyle {
     fn sample(&self, x: f32, y: f32) -> [u8; 4] {
         match self {
@@ -1418,6 +1454,8 @@ impl CanvasSurface {
         dash: &[i32],
         dash_offset: i32,
         cap: LineCap,
+        join: LineJoin,
+        miter_limit: f32,
     ) {
         if pts.len() < 2 {
             return;
@@ -1442,6 +1480,83 @@ impl CanvasSurface {
                 }
             }
             dist += steps;
+        }
+        for i in 1..pts.len().saturating_sub(1) {
+            self.paint_line_join(
+                pts[i - 1],
+                pts[i],
+                pts[i + 1],
+                t,
+                style,
+                alpha,
+                join,
+                miter_limit,
+            );
+        }
+        if pts.len() >= 4 {
+            let first = pts[0];
+            let last_pt = pts[pts.len() - 1];
+            if (first[0] - last_pt[0]).abs() < 0.5 && (first[1] - last_pt[1]).abs() < 0.5 {
+                self.paint_line_join(
+                    pts[pts.len() - 2],
+                    first,
+                    pts[1],
+                    t,
+                    style,
+                    alpha,
+                    join,
+                    miter_limit,
+                );
+            }
+        }
+    }
+
+    fn paint_line_join(
+        &mut self,
+        a: [f32; 2],
+        b: [f32; 2],
+        c: [f32; 2],
+        t: i32,
+        style: &CanvasStyle,
+        alpha: f32,
+        join: LineJoin,
+        miter_limit: f32,
+    ) {
+        let d1 = vec2_norm([b[0] - a[0], b[1] - a[1]]);
+        let d2 = vec2_norm([c[0] - b[0], c[1] - b[1]]);
+        if d1 == [0.0, 0.0] || d2 == [0.0, 0.0] {
+            return;
+        }
+        let cross = d1[0].mul_add(d2[1], -d1[1] * d2[0]);
+        let dot = d1[0].mul_add(d2[0], d1[1] * d2[1]);
+        if cross.abs() < 1e-6 && dot > 0.0 {
+            return;
+        }
+        match join {
+            LineJoin::Bevel => {}
+            LineJoin::Round => {
+                self.fill_disk(b[0].round() as i32, b[1].round() as i32, t, style, alpha)
+            }
+            LineJoin::Miter => {
+                let half = t as f32 / 2.0;
+                let left1 = [-d1[1], d1[0]];
+                let left2 = [-d2[1], d2[0]];
+                let (n1, n2) = if cross > 0.0 {
+                    ([-left1[0], -left1[1]], [-left2[0], -left2[1]])
+                } else {
+                    (left1, left2)
+                };
+                let p1 = [b[0] + n1[0] * half, b[1] + n1[1] * half];
+                let p2 = [b[0] + n2[0] * half, b[1] + n2[1] * half];
+                if let Some(m) = line_intersect(p1, d1, p2, d2) {
+                    let mx = m[0] - b[0];
+                    let my = m[1] - b[1];
+                    let miter_len = mx.mul_add(mx, my * my).sqrt();
+                    if miter_len <= miter_limit.max(1.0) * half {
+                        self.fill_polygon_styled(&[p1, m, p2], style, alpha);
+                    }
+                }
+            }
         }
     }
 
@@ -1522,6 +1637,8 @@ impl CanvasSurface {
         dash: &[i32],
         dash_offset: i32,
         cap: LineCap,
+        join: LineJoin,
+        miter_limit: f32,
     ) {
         for r in rects {
             self.stroke_rect_styled(
@@ -1537,7 +1654,17 @@ impl CanvasSurface {
             );
         }
         for poly in polys {
-            self.stroke_polyline_styled(poly, style, alpha, width, dash, dash_offset, cap);
+            self.stroke_polyline_styled(
+                poly,
+                style,
+                alpha,
+                width,
+                dash,
+                dash_offset,
+                cap,
+                join,
+                miter_limit,
+            );
         }
         self.ops += 1;
     }
@@ -2313,6 +2440,8 @@ impl Page {
         dash: &[i32],
         dash_offset: i32,
         cap: &str,
+        join: &str,
+        miter_limit: f32,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
         let c = self
@@ -2328,6 +2457,8 @@ impl Page {
             dash,
             dash_offset,
             LineCap::parse(cap),
+            LineJoin::parse(join),
+            if miter_limit > 0.0 { miter_limit } else { 10.0 },
         );
         c.ops
     }
