@@ -6654,6 +6654,44 @@
     taintEnabled() { return false; }
     javaEnabled() { return false; }
     sendBeacon() { return true; }
+    get clipboard() {
+      if (!this._clipboard) {
+        this._clipboard = {
+          _text: "",
+          writeText(t) { this._text = String(t == null ? "" : t); return Promise.resolve(); },
+          readText() { return Promise.resolve(this._text); },
+        };
+      }
+      return this._clipboard;
+    }
+    get permissions() {
+      if (!this._permissions) {
+        this._permissions = {
+          query(desc) {
+            const name = desc && desc.name ? String(desc.name) : "";
+            return Promise.resolve({ name, state: "denied", onchange: null });
+          },
+        };
+      }
+      return this._permissions;
+    }
+    get geolocation() {
+      if (!this._geo) {
+        this._geo = {
+          getCurrentPosition(_ok, err) {
+            if (typeof err === "function") {
+              err({ code: 1, PERMISSION_DENIED: 1, message: "User denied Geolocation" });
+            }
+          },
+          watchPosition(_ok, err) {
+            this.getCurrentPosition(_ok, err);
+            return 0;
+          },
+          clearWatch() {},
+        };
+      }
+      return this._geo;
+    }
     registerProtocolHandler(scheme, url) {
       if (arguments.length < 2) {
         throw new TypeError("Failed to execute 'registerProtocolHandler' on 'Navigator': 2 arguments required, but only " + arguments.length + " present.");
@@ -7734,6 +7772,77 @@
       return parseFloat(cs[name]) || 0;
     } catch (e) {
       return 0;
+    }
+  }
+  const perfObservers = [];
+  function offerPerfEntry(entry) {
+    if (!entry) return;
+    for (const o of perfObservers) o._offer(entry);
+  }
+  (function wrapPerformanceEntries() {
+    const p = globalThis.performance;
+    if (!p) return;
+    const prevMark = p.mark;
+    const prevMeasure = p.measure;
+    if (typeof prevMark === "function") {
+      p.mark = function (name) {
+        const e = prevMark.call(p, name);
+        offerPerfEntry(e);
+        return e;
+      };
+    }
+    if (typeof prevMeasure === "function") {
+      p.measure = function (name, start, end) {
+        const e = prevMeasure.call(p, name, start, end);
+        offerPerfEntry(e);
+        return e;
+      };
+    }
+  })();
+  class PerformanceObserver {
+    constructor(cb) {
+      this._cb = cb;
+      this._types = new Set();
+      this._pending = [];
+      this._on = false;
+      perfObservers.push(this);
+    }
+    observe(opts) {
+      opts = opts || {};
+      this._on = true;
+      this._types = new Set();
+      if (opts.type) this._types.add(String(opts.type));
+      if (opts.entryTypes) {
+        Array.from(opts.entryTypes).forEach((t) => this._types.add(String(t)));
+      }
+      if (opts.buffered || opts.type || (opts.entryTypes && opts.entryTypes.length)) {
+        for (const t of this._types) {
+          const list = (performance.getEntriesByType && performance.getEntriesByType(t)) || [];
+          for (const e of list) this._pending.push(e);
+        }
+      }
+      queueMicrotask(() => this._flush());
+    }
+    disconnect() { this._on = false; this._types.clear(); this._pending.length = 0; }
+    takeRecords() {
+      const out = this._pending.slice();
+      this._pending.length = 0;
+      return out;
+    }
+    _offer(entry) {
+      if (!this._on || !entry || !this._types.has(entry.entryType)) return;
+      this._pending.push(entry);
+      queueMicrotask(() => this._flush());
+    }
+    _flush() {
+      if (!this._on || !this._pending.length) return;
+      const list = this._pending.splice(0);
+      const listObj = {
+        getEntries() { return list.slice(); },
+        getEntriesByType(t) { return list.filter((e) => e.entryType === t); },
+        getEntriesByName(n) { return list.filter((e) => e.name === n); },
+      };
+      if (this._cb) this._cb(listObj, this);
     }
   }
   class IntersectionObserver {
@@ -8847,7 +8956,7 @@
     Image, Audio, Option, external: windowExternal,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
-    MutationObserver, IntersectionObserver, ResizeObserver, Range, Sanitizer,
+    MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Sanitizer,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader,
     TextDecoder, TextEncoder,
     createDataChannelPair() {

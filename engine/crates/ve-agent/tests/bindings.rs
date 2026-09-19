@@ -3420,6 +3420,99 @@ fn abort_signal_is_event_target_and_throw_if_aborted() {
 }
 
 #[test]
+fn performance_observer_delivers_mark_and_buffered_paint() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__po = { marks: [], paints: [] };
+              performance.mark("before");
+              new PerformanceObserver(function (list) {
+                list.getEntries().forEach(function (e) { window.__po.marks.push(e.name); });
+              }).observe({ type: "mark", buffered: true });
+              new PerformanceObserver(function (list) {
+                list.getEntries().forEach(function (e) { window.__po.paints.push(e.name); });
+              }).observe({ type: "paint", buffered: true });
+              performance.mark("after");
+              return performance.getEntriesByType("paint").map(function (e) { return e.name; });
+            })()"##,
+        )
+        .unwrap();
+    assert!(started.as_array().is_some(), "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return window.__po;
+            })()"##,
+        )
+        .unwrap();
+    let marks = v["marks"].as_array().cloned().unwrap_or_default();
+    let paints = v["paints"].as_array().cloned().unwrap_or_default();
+    assert!(
+        marks.iter().any(|m| m == "before") && marks.iter().any(|m| m == "after"),
+        "{v}"
+    );
+    assert!(
+        paints.iter().any(|p| p == "first-contentful-paint"),
+        "{v}"
+    );
+}
+
+#[test]
+fn request_idle_callback_runs_with_time_remaining() {
+    let mut page = open(r#"<body></body>"#);
+    let _ = page
+        .evaluate(
+            r##"(function () {
+              window.__idle = null;
+              requestIdleCallback(function (d) {
+                window.__idle = { didTimeout: d.didTimeout, remain: d.timeRemaining() };
+              });
+              return true;
+            })()"##,
+        )
+        .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate("window.__idle")
+        .unwrap();
+    assert_eq!(v["didTimeout"], false, "{v}");
+    assert!(v["remain"].as_f64().unwrap_or(0.0) > 0.0, "{v}");
+}
+
+#[test]
+fn navigator_clipboard_round_trips_and_geolocation_denies() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__nav = { text: null, perm: null, geo: null };
+              navigator.clipboard.writeText("hi").then(function () {
+                return navigator.clipboard.readText();
+              }).then(function (t) { window.__nav.text = t; });
+              navigator.permissions.query({ name: "geolocation" }).then(function (p) {
+                window.__nav.perm = { name: p.name, state: p.state };
+              });
+              navigator.geolocation.getCurrentPosition(function () {}, function (e) {
+                window.__nav.geo = { code: e.code, message: e.message };
+              });
+              return true;
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started, true);
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate("window.__nav")
+        .unwrap();
+    assert_eq!(v["text"], "hi", "{v}");
+    assert_eq!(v["perm"]["name"], "geolocation", "{v}");
+    assert_eq!(v["perm"]["state"], "denied", "{v}");
+    assert_eq!(v["geo"]["code"], 1, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
