@@ -6548,11 +6548,62 @@
     get designMode() { return this._designMode || "off"; }
     set designMode(v) { this._designMode = String(v).toLowerCase() === "on" ? "on" : "off"; }
     hasFocus() { return this.__h === D("documentNode"); }
-    execCommand(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
-    queryCommandEnabled(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
+    execCommand(commandId, _showUI, value) {
+      if (arguments.length < 1) throw new TypeError("Not enough arguments");
+      const cmd = String(commandId).toLowerCase();
+      const sel = window.getSelection();
+      if (cmd === "selectall") {
+        const root = this.body || this.documentElement;
+        if (root) sel.selectAllChildren(root);
+        return true;
+      }
+      if (cmd === "delete") {
+        sel.deleteFromDocument();
+        return true;
+      }
+      if (cmd === "inserttext") {
+        const data = value == null ? "" : String(value);
+        const r = sel.rangeCount ? sel.getRangeAt(0) : null;
+        if (r && r.startContainer) {
+          if (!r.collapsed) r.deleteContents();
+          const c = r.startContainer;
+          if (c.nodeType === 3 && typeof c.insertData === "function") {
+            const off = r.startOffset | 0;
+            c.insertData(off, data);
+            r.setStart(c, off + data.length);
+            r.collapse(true);
+            return true;
+          }
+          const text = document.createTextNode(data);
+          r.insertNode(text);
+          if (text.parentNode) {
+            r.setStartAfter(text);
+            r.collapse(true);
+          }
+          return true;
+        }
+        const text = document.createTextNode(data);
+        const root = this.body || this.documentElement;
+        if (root) root.appendChild(text);
+        return true;
+      }
+      if (cmd === "copy") {
+        const clip = window.navigator && window.navigator.clipboard;
+        if (clip && typeof clip.writeText === "function") clip.writeText(String(sel));
+        return true;
+      }
+      return false;
+    }
+    queryCommandEnabled(commandId) {
+      if (arguments.length < 1) throw new TypeError("Not enough arguments");
+      return this.queryCommandSupported(commandId);
+    }
     queryCommandIndeterm(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
     queryCommandState(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
-    queryCommandSupported(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return false; }
+    queryCommandSupported(commandId) {
+      if (arguments.length < 1) throw new TypeError("Not enough arguments");
+      return ["selectall", "delete", "inserttext", "copy"].indexOf(String(commandId).toLowerCase()) >= 0;
+    }
     queryCommandValue(commandId) { if (arguments.length < 1) throw new TypeError("Not enough arguments"); return ""; }
     createAttribute(name) {
       if (arguments.length < 1) {
@@ -8955,7 +9006,7 @@
       return r;
     }
     deleteContents() {
-      if (this.collapsed) return;
+      if (!this.startContainer || this.collapsed) return;
       if (this.startContainer === this.endContainer) {
         const c = this.startContainer;
         if (c.nodeType === 3 || c.nodeType === 8) {
@@ -9022,6 +9073,10 @@
     }
     insertNode(node) {
       const c = this.startContainer;
+      if (!c) {
+        if (document.body) document.body.appendChild(node);
+        return;
+      }
       const o = this.startOffset;
       if (c.nodeType === 3) {
         const rest = c.splitText(o);
@@ -9044,6 +9099,7 @@
     }
     getClientRects() { return clientRectList(this.getBoundingClientRect()); }
     toString() {
+      if (!this.startContainer) return "";
       if (this.startContainer === this.endContainer && (this.startContainer.nodeType === 3 || this.startContainer.nodeType === 8)) {
         const start = Math.min(this.startOffset, this.endOffset);
         const end = Math.max(this.startOffset, this.endOffset);

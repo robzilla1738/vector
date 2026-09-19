@@ -3979,6 +3979,37 @@ fn mutation_record_is_a_real_class() {
 }
 
 #[test]
+fn exec_command_selects_inserts_and_deletes() {
+    let mut page = open(r#"<body><p id="p">hello</p></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const p = document.getElementById("p");
+              const text = p.firstChild;
+              const supported = document.queryCommandSupported("insertText") && document.queryCommandEnabled("delete");
+              document.execCommand("selectAll");
+              const selected = String(getSelection());
+              getSelection().setBaseAndExtent(text, 0, text, text.length);
+              document.execCommand("delete");
+              const afterDel = p.textContent;
+              document.execCommand("insertText", false, "hi");
+              document.execCommand("copy");
+              return {
+                supported,
+                selected,
+                afterDel,
+                afterIns: p.textContent
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["supported"], true, "{v}");
+    assert_eq!(v["selected"], "hello", "{v}");
+    assert_eq!(v["afterDel"], "", "{v}");
+    assert_eq!(v["afterIns"], "hi", "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
