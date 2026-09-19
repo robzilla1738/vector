@@ -828,6 +828,7 @@ enum CompositeOp {
     Screen,
     Overlay,
     Difference,
+    SoftLight,
 }
 
 impl CompositeOp {
@@ -841,6 +842,7 @@ impl CompositeOp {
             "screen" => Self::Screen,
             "overlay" => Self::Overlay,
             "difference" => Self::Difference,
+            "soft-light" => Self::SoftLight,
             "source-in" => Self::SourceIn,
             "destination-in" => Self::DestinationIn,
             "source-out" => Self::SourceOut,
@@ -1141,6 +1143,25 @@ fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
                 src[0].abs_diff(dst[0]),
                 src[1].abs_diff(dst[1]),
                 src[2].abs_diff(dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::SoftLight => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                let sf = f32::from(s) / 255.0;
+                let df = f32::from(d) / 255.0;
+                let out = if sf <= 0.5 {
+                    df - (1.0 - 2.0 * sf) * df * (1.0 - df)
+                } else {
+                    df + (2.0 * sf - 1.0) * (1.0 - (1.0 - df) * (1.0 - df) - df)
+                };
+                (out.clamp(0.0, 1.0) * 255.0).round() as u8
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
                 a.min(255) as u8,
             ];
         }

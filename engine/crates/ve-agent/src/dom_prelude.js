@@ -3674,9 +3674,21 @@
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'getContext' on 'HTMLCanvasElement': 1 argument required, but only 0 present.");
       }
-      if (String(type).toLowerCase() !== "2d") return null;
-      if (!this._ctx2d) this._ctx2d = new CanvasRenderingContext2D(IDL_INTERNAL, this);
-      return this._ctx2d;
+      const kind = String(type).toLowerCase();
+      if (kind === "2d") {
+        if (this._bitmapCtx) return null;
+        if (!this._ctx2d) this._ctx2d = new CanvasRenderingContext2D(IDL_INTERNAL, this);
+        return this._ctx2d;
+      }
+      if (kind === "bitmaprenderer") {
+        if (this._ctx2d) return null;
+        if (!this._bitmapCtx) {
+          this._bitmapCtx = Object.create(ImageBitmapRenderingContext.prototype);
+          this._bitmapCtx._canvas = this;
+        }
+        return this._bitmapCtx;
+      }
+      return null;
     }
     toDataURL() { return D("canvasToDataURL", this.__h) || "data:,"; }
     toBlob(callback) {
@@ -4385,9 +4397,26 @@
       this._fillStyle = "#000000";
       this._strokeStyle = "#000000";
       this._globalAlpha = 1;
+      this._lineWidth = 1;
+      this._lineCap = "butt";
+      this._lineJoin = "miter";
+      this._dash = [];
+      this._shadowOffsetX = 0;
+      this._shadowOffsetY = 0;
+      this._shadowBlur = 0;
+      this._filter = "none";
+      this._textAlign = "start";
+      this._textBaseline = "alphabetic";
+      this._globalCompositeOperation = "source-over";
       this._path = new Path2D();
       this._stack = [];
       this._a = 1; this._b = 0; this._c = 0; this._d = 1; this._e = 0; this._f = 0;
+      if (this.__h != null) {
+        D("canvasSetComposite", this.__h, "source-over");
+        const w = (this.canvas && this.canvas.width) || 0;
+        const h = (this.canvas && this.canvas.height) || 0;
+        D("canvasClearRect", this.__h, 0, 0, w, h);
+      }
     }
     isContextLost() { return false; }
     getTransform() { return { a: this._a, b: this._b, c: this._c, d: this._d, e: this._e, f: this._f }; }
@@ -6705,7 +6734,16 @@
   class ImageBitmapRenderingContext {
     constructor() { throw new TypeError("Illegal constructor"); }
     get canvas() { return this._canvas || null; }
-    transferFromImageBitmap(bitmap) {}
+    transferFromImageBitmap(bitmap) {
+      const c = this._canvas;
+      if (!c || c.__h == null) return;
+      const w = c.width || 0;
+      const h = c.height || 0;
+      D("canvasClearRect", c.__h, 0, 0, w, h);
+      if (!bitmap || bitmap.__h == null) return;
+      D("canvasDrawImage", c.__h, bitmap.__h, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+      if (typeof bitmap.close === "function") bitmap.close();
+    }
   }
   class Worklet {
     constructor() { throw new TypeError("Illegal constructor"); }

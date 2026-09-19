@@ -1344,6 +1344,95 @@ fn canvas_draw_focus_if_needed_strokes_path() {
 }
 
 #[test]
+fn canvas_reset_clears_pixels_and_transform() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 4;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.translate(2, 0);
+              ctx.fillRect(0, 0, 2, 2);
+              ctx.reset();
+              var gone = ctx.getImageData(2, 0, 1, 1).data;
+              ctx.fillRect(0, 0, 2, 2);
+              var black = ctx.getImageData(0, 0, 1, 1).data;
+              return { ga: gone[3], br: black[0], ba: black[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ga"], 0, "reset must clear prior pixels: {v}");
+    assert_eq!(v["br"], 0, "reset fillStyle is black: {v}");
+    assert_eq!(v["ba"], 255, "{v}");
+}
+
+#[test]
+fn canvas_bitmaprenderer_transfers_image_bitmap() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var off = new OffscreenCanvas(4, 4);
+              var octx = off.getContext("2d");
+              octx.fillStyle = "#ff0000";
+              octx.fillRect(0, 0, 4, 4);
+              var bmp = off.transferToImageBitmap();
+              var dst = document.createElement("canvas");
+              dst.width = 4;
+              dst.height = 4;
+              var br = dst.getContext("bitmaprenderer");
+              br.transferFromImageBitmap(bmp);
+              var probe = document.createElement("canvas");
+              probe.width = 4;
+              probe.height = 4;
+              probe.getContext("2d").drawImage(dst, 0, 0);
+              var p = probe.getContext("2d").getImageData(1, 1, 1, 1).data;
+              return {
+                r: p[0], a: p[3],
+                twoD: dst.getContext("2d"),
+                closed: bmp.width,
+                ctx: br instanceof ImageBitmapRenderingContext
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["twoD"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["closed"], 0, "transfer closes the bitmap: {v}");
+    assert_eq!(v["ctx"], true, "{v}");
+}
+
+#[test]
+fn canvas_soft_light_darkens_mid_gray() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 4;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#808080";
+              ctx.fillRect(0, 0, 4, 4);
+              ctx.globalCompositeOperation = "soft-light";
+              ctx.fillStyle = "#000000";
+              ctx.fillRect(0, 0, 4, 4);
+              var p = ctx.getImageData(1, 1, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 64, "{v}");
+    assert_eq!(v["g"], 64, "{v}");
+    assert_eq!(v["b"], 64, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
 fn canvas_text_baseline_shifts_fill_text() {
     let mut page = open(r#"<body></body>"#);
     let v = page
