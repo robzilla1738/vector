@@ -2655,14 +2655,21 @@ mod tests {
             "n": 8,
             "unit": "ms",
             "appleSilicon": false,
-            "notes": "Measured on this host, production profile, product chrome. Not an Apple-silicon published score.",
+            "rustcDebug": cfg!(debug_assertions),
+            "notes": "Measured on this host, production security profile, product chrome. rustcDebug true means cargo test (unoptimized). Not an Apple-silicon published score.",
             "inputToPaint": { "p50": pct(input_ms.clone(), 0.5), "p95": pct(input_ms.clone(), 0.95), "samples": input_ms },
             "wheelScroll": { "p50": pct(scroll_ms.clone(), 0.5), "p95": pct(scroll_ms.clone(), 0.95), "samples": scroll_ms },
             "fullRepaint": { "p50": pct(repaint_ms.clone(), 0.5), "p95": pct(repaint_ms.clone(), 0.95), "samples": repaint_ms },
             "test": "writes_section_6_human_timings"
         });
+        let name = if cfg!(debug_assertions) {
+            "section-6-this-host-debug.json"
+        } else {
+            "section-6-this-host.json"
+        };
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/perf/section-6-this-host.json");
+            .join("../../../docs/perf")
+            .join(name);
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }

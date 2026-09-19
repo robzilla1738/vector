@@ -7,7 +7,7 @@ use ve_style::Rgba;
 
 use crate::GfxError;
 use crate::display_list::{DisplayItem, DisplayList, TextRun};
-use crate::fonts::FontSystem;
+use crate::fonts::{FontSystem, GlyphBitmap};
 use crate::image::{ImageCache, ImageHandle};
 
 /// A rendered RGBA8 frame.
@@ -102,6 +102,8 @@ pub struct SoftwareRenderer {
     pub images: ImageCache,
     /// Layout node → decoded `<img>` for [`DisplayList::from_layout_with`].
     pub node_images: HashMap<NodeId, ImageHandle>,
+    /// Rasterised glyphs keyed by face / glyph / physical size / hint.
+    glyph_cache: HashMap<(fontdb::ID, u16, u32, bool), GlyphBitmap>,
 }
 
 impl std::fmt::Debug for SoftwareRenderer {
@@ -214,6 +216,32 @@ impl Canvas {
         let py0 = y0.floor().max(0.0) as u32;
         let px1 = (x1.ceil() as u32).min(self.width);
         let py1 = (y1.ceil() as u32).min(self.height);
+        let opaque = color.a >= 1.0 && self.alpha() >= 1.0;
+        if opaque && px1 > px0 + 2 && py1 > py0 + 2 {
+            let ix0 = (x0.ceil() as u32).min(px1);
+            let iy0 = (y0.ceil() as u32).min(py1);
+            let ix1 = (x1.floor() as u32).min(px1).max(ix0);
+            let iy1 = (y1.floor() as u32).min(py1).max(iy0);
+            let pixel = [color.r, color.g, color.b, 255u8];
+            for py in iy0..iy1 {
+                let row = ((py * self.width + ix0) * 4) as usize;
+                let n = ((ix1 - ix0) * 4) as usize;
+                for chunk in self.rgba[row..row + n].chunks_exact_mut(4) {
+                    chunk.copy_from_slice(&pixel);
+                }
+            }
+            for py in py0..py1 {
+                let cy = ((py as f32 + 1.0).min(y1) - (py as f32).max(y0)).clamp(0.0, 1.0);
+                for px in px0..px1 {
+                    if py >= iy0 && py < iy1 && px >= ix0 && px < ix1 {
+                        continue;
+                    }
+                    let cx = ((px as f32 + 1.0).min(x1) - (px as f32).max(x0)).clamp(0.0, 1.0);
+                    self.blend(px, py, color, cx * cy);
+                }
+            }
+            return;
+        }
         for py in py0..py1 {
             let cy = ((py as f32 + 1.0).min(y1) - (py as f32).max(y0)).clamp(0.0, 1.0);
             for px in px0..px1 {
@@ -347,6 +375,7 @@ impl SoftwareRenderer {
             fonts: FontSystem::new(),
             images: ImageCache::new(),
             node_images: HashMap::new(),
+            glyph_cache: HashMap::new(),
         }
     }
 
@@ -361,6 +390,7 @@ impl SoftwareRenderer {
             fonts,
             images: ImageCache::new(),
             node_images: HashMap::new(),
+            glyph_cache: HashMap::new(),
         }
     }
 
@@ -397,9 +427,18 @@ impl SoftwareRenderer {
             if glyph.id == 0 {
                 continue;
             }
-            if let Some(bitmap) =
-                self.fonts
-                    .rasterize_hinted(face, glyph.id as u16, size, run.size <= 18.0)
+            let hint = run.size <= 18.0;
+            let key = (face, glyph.id as u16, size.to_bits(), hint);
+            let bitmap = if let Some(hit) = self.glyph_cache.get(&key) {
+                Some(hit.clone())
+            } else {
+                let built = self.fonts.rasterize_hinted(face, glyph.id as u16, size, hint);
+                if let Some(ref b) = built {
+                    self.glyph_cache.insert(key, b.clone());
+                }
+                built
+            };
+            if let Some(bitmap) = bitmap
                 && bitmap.width > 0
             {
                 let left = (origin_x + glyph.x).round() as i32 + bitmap.left;

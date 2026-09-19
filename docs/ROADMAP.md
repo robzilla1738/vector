@@ -102,7 +102,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H0-A5 | IME/typing goes to `Page::focused()`, not first `input` | A | ☑ | two-input / click-to-focus tests |
 | H0-A6 | Full key model: keyup, repeat, arrows/Home/End/PageUp/Down/Delete/F-keys, modifiers; bind Back/Forward/Find/Zoom | A | ☑ | `NativeEvent::Key` + chrome shortcuts |
 | H0-A7 | Direct human input: `dispatch_human` → `Page` methods; no JSON Program, no 500 ms settle | A | ☑ | `dispatch_human_*` |
-| H0-A8 | Kill per-pixel blit; cache display list; coalesce wheel/move | A | ☑ | `DisplayListCache` |
+| H0-A8 | Kill per-pixel blit; cache display list; coalesce wheel/move | A | ☑ | `DisplayListCache`; reused `SoftwareRenderer`; glyph bitmap cache; opaque `fill_rect` interior writes; `docs/perf/section-6-this-host.json` |
 | H0-B1 | Wrapper lifetime: `WeakRef` + `FinalizationRegistry`; `listeners` → `WeakMap`; evict on slot recycle | B | ☑ | `dom_prelude.js` |
 | H0-B2 | Numeric node handles; primitive-array fast path; `VECTOR_DOM_PROFILE=1` | B | ☑ | `NodeId::to_u64`; `__veDomProfile` |
 | H0-B3 | Real `crypto.getRandomValues`, cycle-aware `structuredClone`, `performance.mark/measure` | B | ☑ | prelude + `__ve.randomBytes` |
