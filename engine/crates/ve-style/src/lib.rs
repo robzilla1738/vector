@@ -52,7 +52,7 @@ pub use coverage::CssCoverage;
 pub use element::{DomElement, ElementState, InteractionState};
 pub use invalidation::{Dependency, InvalidationMap, InvalidationStats};
 pub use media::{ColorScheme, MediaEnv, MediaQueryList, MediaType};
-pub use properties::{CalcExpr, CalcValue, PropertyId, SpecifiedValue};
+pub use properties::{CalcExpr, CalcValue, PropertyId, SpecifiedTransform, SpecifiedValue};
 pub use selector_impl::{
     CssString, PseudoClass, PseudoElement, SelectorParser, VeSelectorImpl, parse_selector_list,
 };

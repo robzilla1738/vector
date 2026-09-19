@@ -175,6 +175,15 @@ impl StyleTree {
         }
     }
 
+    /// Overrides computed transform after cascade (CSS animation interpolation).
+    pub fn override_transform(&mut self, id: NodeId, transform: Vec<crate::TransformOp>) {
+        if let Some(style) = self.styles.get_mut(&id) {
+            let mut next = (**style).clone();
+            next.transform = transform;
+            *style = Rc::new(next);
+        }
+    }
+
     /// The document revision this tree was computed for.
     #[must_use]
     pub fn revision(&self) -> Revision {
@@ -511,7 +520,10 @@ impl StyleEngine {
     /// `@font-face` rules from every author stylesheet.
     #[must_use]
     pub fn font_faces(&self) -> Vec<&crate::stylesheet::FontFaceRule> {
-        self.author.iter().flat_map(Stylesheet::font_faces).collect()
+        self.author
+            .iter()
+            .flat_map(Stylesheet::font_faces)
+            .collect()
     }
 
     /// `@keyframes` rules from every author stylesheet.

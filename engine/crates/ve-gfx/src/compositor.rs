@@ -25,6 +25,8 @@ pub struct Layer {
     pub scroll: Point,
     /// Opacity in `0..=1`.
     pub opacity: f32,
+    /// Compositor-only translation, applied after scroll (no relayout).
+    pub translate: Point,
     /// Content in layer-local coordinates (origin = `rect.origin`).
     pub content: DisplayList,
 }
@@ -68,6 +70,7 @@ impl Compositor {
             rect,
             scroll: Point::ZERO,
             opacity: 1.0,
+            translate: Point::ZERO,
             content,
         });
         self.damaged = true;
@@ -163,6 +166,25 @@ impl Compositor {
         true
     }
 
+    /// Compositor-only animation: lerp translation from `from` to `to` at `t` in `0..=1`.
+    pub fn animate_translate_at(&mut self, id: LayerId, from: Point, to: Point, t: f32) -> bool {
+        let t = t.clamp(0.0, 1.0);
+        self.animate_translate(
+            id,
+            Point::new(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t),
+        )
+    }
+
+    /// Compositor-only animation: translate a layer without relayout.
+    pub fn animate_translate(&mut self, id: LayerId, offset: Point) -> bool {
+        let Some(layer) = self.layer_mut(id) else {
+            return false;
+        };
+        layer.translate = offset;
+        self.damaged = true;
+        true
+    }
+
     /// Flattens all layers into one root-space display list for a surface of `size`.
     #[must_use]
     pub fn composite(&self, size: Size) -> DisplayList {
@@ -178,8 +200,8 @@ impl Compositor {
             out.push(DisplayItem::PushClip(layer.rect));
             out.append_translated(
                 &layer.content,
-                layer.rect.x() - layer.scroll.x,
-                layer.rect.y() - layer.scroll.y,
+                layer.rect.x() - layer.scroll.x + layer.translate.x,
+                layer.rect.y() - layer.scroll.y + layer.translate.y,
             );
             out.push(DisplayItem::PopClip);
             if grouped {
@@ -236,6 +258,8 @@ mod tests {
         assert!((comp.layer(id).unwrap().opacity - 0.25).abs() < f32::EPSILON);
         assert!(comp.animate_opacity_at(id, 0.0, 1.0, 0.4));
         assert!((comp.layer(id).unwrap().opacity - 0.4).abs() < f32::EPSILON);
+        assert!(comp.animate_translate_at(id, Point::ZERO, Point::new(20.0, 0.0), 0.5));
+        assert!((comp.layer(id).unwrap().translate.x - 10.0).abs() < f32::EPSILON);
         assert!(comp.take_damage());
         assert!(comp.remove_layer(id));
         assert!(comp.composite(Size::ZERO).is_empty());

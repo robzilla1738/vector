@@ -226,6 +226,35 @@ fn font_face_src_is_fetched_and_installed() {
 }
 
 #[test]
+fn css_animation_interpolates_translate_from_keyframes() {
+    let mut page = Page::from_html(
+        1,
+        r#"<style>
+            @keyframes slide { from { transform: translate(0px, 0px) } to { transform: translate(20px, 0px) } }
+            #box { animation: slide 1000ms; width: 10px; height: 10px }
+           </style><div id=box>x</div>"#,
+        None,
+        DEFAULT_VIEWPORT,
+    );
+    let id = page.document().element_by_id("box").unwrap();
+    let first = &page.style_tree().style(id).transform;
+    assert!(
+        matches!(first.first(), Some(ve_style::TransformOp::Translate(x, _)) if x.resolve(0.0).abs() < 1e-4),
+        "t=0 uses the from translate: {first:?}"
+    );
+    page.pump_virtual_time(500);
+    page.update();
+    let mid = &page.style_tree().style(id).transform;
+    match mid.first() {
+        Some(ve_style::TransformOp::Translate(x, _)) => {
+            let px = x.resolve(0.0);
+            assert!((px - 10.0).abs() < 1.0, "mid-animation translate was {px}");
+        }
+        other => panic!("expected translate, got {other:?}"),
+    }
+}
+
+#[test]
 fn css_animation_interpolates_opacity_from_keyframes() {
     let mut page = Page::from_html(
         1,

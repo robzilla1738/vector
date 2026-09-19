@@ -203,22 +203,43 @@ fn dom_bindings_default_is_prelude() {
 fn native_bindings_install_element_id_accessor() {
     let mut page = open("<p id=x>t</p>", true);
     assert_eq!(
-        page.evaluate("typeof globalThis.__veNativeBindings").unwrap(),
+        page.evaluate("typeof globalThis.__veNativeBindings")
+            .unwrap(),
         serde_json::json!("undefined")
     );
     page.install_native_dom_bindings().unwrap();
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
-        serde_json::json!("element.id")
+        serde_json::json!("element.id,className,tagName,textContent")
     );
     assert_eq!(
         page.evaluate("document.getElementById('x').id").unwrap(),
         serde_json::json!("x")
     );
-    page.evaluate("document.getElementById('x').id = 'y'").unwrap();
+    page.evaluate("document.getElementById('x').id = 'y'")
+        .unwrap();
     assert_eq!(
         page.evaluate("document.getElementById('y').id").unwrap(),
         serde_json::json!("y")
+    );
+    page.evaluate("document.getElementById('y').className = 'k'")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').className")
+            .unwrap(),
+        serde_json::json!("k")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').tagName")
+            .unwrap(),
+        serde_json::json!("P")
+    );
+    page.evaluate("document.getElementById('y').textContent = 'z'")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').textContent")
+            .unwrap(),
+        serde_json::json!("z")
     );
 }
 
@@ -236,7 +257,8 @@ fn es_module_spa_runs_without_bundler() {
     );
     page.settle(200);
     assert_eq!(
-        page.evaluate("document.getElementById('root').textContent").unwrap(),
+        page.evaluate("document.getElementById('root').textContent")
+            .unwrap(),
         serde_json::json!("empty")
     );
     assert_eq!(
@@ -244,7 +266,8 @@ fn es_module_spa_runs_without_bundler() {
         serde_json::json!(true)
     );
     assert_eq!(
-        page.evaluate("typeof globalThis.__veRewriteModule").unwrap(),
+        page.evaluate("typeof globalThis.__veRewriteModule")
+            .unwrap(),
         serde_json::json!("undefined")
     );
     assert_eq!(
@@ -306,7 +329,10 @@ fn es_module_relative_import_runs_without_bundler() {
     )
     .unwrap();
     page.settle(200);
-    assert_eq!(page.evaluate("globalThis.modRan").unwrap(), serde_json::json!(41));
+    assert_eq!(
+        page.evaluate("globalThis.modRan").unwrap(),
+        serde_json::json!(41)
+    );
 }
 
 #[test]
@@ -351,7 +377,11 @@ fn program_click_increments_a_type_button() {
     let n = page
         .evaluate("document.getElementById('n').textContent")
         .unwrap();
-    assert_eq!(n, serde_json::json!("3"), "agent click after settle must run the listener");
+    assert_eq!(
+        n,
+        serde_json::json!("3"),
+        "agent click after settle must run the listener"
+    );
     let obs = page.observe(&ObservationRequest::default()).unwrap();
     assert!(
         obs.content.text.contains("Count: 3") || obs.content.text.contains('3'),
@@ -428,11 +458,17 @@ fn press_fires_keydown_and_keyup_and_honours_prevent_default() {
     let log = page.evaluate("log.join('|')").unwrap();
     assert_eq!(
         log,
-        serde_json::json!("down:a:KeyA:false:false|up:a|down:x:KeyX:false:false|up:x|down:F5:F5:true:true|up:F5"),
+        serde_json::json!(
+            "down:a:KeyA:false:false|up:a|down:x:KeyX:false:false|up:x|down:F5:F5:true:true|up:F5"
+        ),
         "{log}"
     );
     let value = page.evaluate("document.getElementById('q').value").unwrap();
-    assert_eq!(value, serde_json::json!("aba"), "preventDefault on x must skip typing");
+    assert_eq!(
+        value,
+        serde_json::json!("aba"),
+        "preventDefault on x must skip typing"
+    );
     let _ = page.evaluate(
         "var q = document.getElementById('q'); q.selectionStart = q.selectionEnd = q.value.length;",
     );
@@ -508,10 +544,12 @@ fn pointer_capture_retargets_pointerup() {
     assert!(types.contains("pointerup:outer:outer"), "{types}");
     assert!(types.contains("lostpointercapture:outer:outer"), "{types}");
     assert!(
-        page.evaluate("typeof PointerEvent === 'function' && typeof CompositionEvent === 'function'")
-            .unwrap()
-            .as_bool()
-            .unwrap_or(false)
+        page.evaluate(
+            "typeof PointerEvent === 'function' && typeof CompositionEvent === 'function'"
+        )
+        .unwrap()
+        .as_bool()
+        .unwrap_or(false)
     );
 }
 
@@ -595,7 +633,10 @@ fn writes_dombench_phase0_memo() {
         .get("nodes")
         .and_then(serde_json::Value::as_u64)
         .expect("nodes.size");
-    assert!(nodes > 0, "Phase-0 wrapper map must be populated: {profile}");
+    assert!(
+        nodes > 0,
+        "Phase-0 wrapper map must be populated: {profile}"
+    );
     let rss = ve_core::process_rss_bytes();
     let evidence = serde_json::json!({
         "backend": "vector-engine",

@@ -16,7 +16,10 @@ use ve_dom::{DirtyFlags, Document, Namespace, Node, NodeKind};
 use ve_gfx::{ImageCache, ImageHandle, SoftwareRenderer};
 use ve_html::DocumentMeta;
 use ve_layout::{LayoutEngine, LayoutTree, ParleyShaper};
-use ve_style::{BackgroundImage, FontFaceSrc, StyleEngine, StyleTree};
+use ve_style::{
+    BackgroundImage, FontFaceSrc, Length, LengthPercentage, SpecifiedTransform, SpecifiedValue,
+    StyleEngine, StyleTree, TransformOp,
+};
 
 use crate::forms::{self, Enctype, FormMethod};
 use crate::keys::{Chord, Key, Modifiers};
@@ -2685,6 +2688,15 @@ impl Page {
             };
             if let Some(opacity) = interpolate_keyframe_opacity(rule, t) {
                 self.style_tree.override_opacity(id, opacity);
+            }
+            if let Some((x, y)) = interpolate_keyframe_translate(rule, t) {
+                self.style_tree.override_transform(
+                    id,
+                    vec![TransformOp::Translate(
+                        LengthPercentage::Px(x),
+                        LengthPercentage::Px(y),
+                    )],
+                );
             }
         }
     }
@@ -6449,6 +6461,61 @@ fn interpolate_keyframe_opacity(rule: &ve_style::KeyframesRule, t: f32) -> Optio
         }
     }
     Some(stops.last().map(|s| s.1).unwrap_or(1.0))
+}
+
+fn specified_px(value: &SpecifiedValue) -> Option<f32> {
+    match value {
+        SpecifiedValue::Length(Length::Px(n)) => Some(*n),
+        SpecifiedValue::Number(n) => Some(*n),
+        SpecifiedValue::Integer(i) => Some(*i as f32),
+        _ => None,
+    }
+}
+
+fn interpolate_keyframe_translate(rule: &ve_style::KeyframesRule, t: f32) -> Option<(f32, f32)> {
+    let mut stops: Vec<(f32, (f32, f32))> = Vec::new();
+    for frame in &rule.frames {
+        let Some((x, y)) = frame.block.declarations.iter().find_map(|d| {
+            if d.property != ve_style::PropertyId::Transform {
+                return None;
+            }
+            let SpecifiedValue::Transform(ops) = &d.value else {
+                return None;
+            };
+            ops.iter().find_map(|op| match op {
+                SpecifiedTransform::Translate(x, y) => Some((specified_px(x)?, specified_px(y)?)),
+                _ => None,
+            })
+        }) else {
+            continue;
+        };
+        for offset in &frame.offsets {
+            stops.push((*offset, (x, y)));
+        }
+    }
+    if stops.is_empty() {
+        return None;
+    }
+    stops.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    if t <= stops[0].0 {
+        return Some(stops[0].1);
+    }
+    if let Some(last) = stops.last()
+        && t >= last.0
+    {
+        return Some(last.1);
+    }
+    for w in stops.windows(2) {
+        if t >= w[0].0 && t <= w[1].0 {
+            let span = (w[1].0 - w[0].0).max(f32::EPSILON);
+            let u = (t - w[0].0) / span;
+            return Some((
+                w[0].1.0 + (w[1].1.0 - w[0].1.0) * u,
+                w[0].1.1 + (w[1].1.1 - w[0].1.1) * u,
+            ));
+        }
+    }
+    stops.last().map(|s| s.1)
 }
 
 fn decode_data_url_image_size(data_url: &str) -> Option<(u32, u32)> {

@@ -534,28 +534,65 @@ impl JsVm for V8Vm {
     fn install_native_dom_bindings(&mut self) -> Result<(), ScriptError> {
         self.run(|scope| {
             let global = scope.get_current_context().global(scope);
-            let getter = v8::FunctionTemplate::builder(native_element_id_get)
+            let put = |scope: &mut v8::PinScope<'_, '_>,
+                       name: &str,
+                       func: v8::Local<'_, v8::Function>| {
+                let key = v8::String::new(scope, name)?;
+                global.set(scope, key.into(), func.into())?;
+                Some(())
+            };
+            let id_get = v8::FunctionTemplate::builder(native_element_id_get)
                 .build(scope)
                 .get_function(scope)?;
-            let setter = v8::FunctionTemplate::builder(native_element_id_set)
+            put(scope, "__veNativeIdGet", id_get)?;
+            let id_set = v8::FunctionTemplate::builder(native_element_id_set)
                 .build(scope)
                 .get_function(scope)?;
-            let get_key = v8::String::new(scope, "__veNativeIdGet")?;
-            let set_key = v8::String::new(scope, "__veNativeIdSet")?;
-            global.set(scope, get_key.into(), getter.into())?;
-            global.set(scope, set_key.into(), setter.into())?;
+            put(scope, "__veNativeIdSet", id_set)?;
+            let class_get = v8::FunctionTemplate::builder(native_element_class_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeClassGet", class_get)?;
+            let class_set = v8::FunctionTemplate::builder(native_element_class_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeClassSet", class_set)?;
+            let tag_get = v8::FunctionTemplate::builder(native_element_tag_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeTagGet", tag_get)?;
+            let text_get = v8::FunctionTemplate::builder(native_node_text_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeTextGet", text_get)?;
+            let text_set = v8::FunctionTemplate::builder(native_node_text_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeTextSet", text_set)?;
             Some(())
         })?;
         self.eval(
             r#"(function () {
   if (typeof Element === "undefined") return;
-  Object.defineProperty(Element.prototype, "id", {
+  var def = function (proto, name, get, set) {
+    Object.defineProperty(proto, name, {
+      configurable: true,
+      enumerable: true,
+      get: get,
+      set: set
+    });
+  };
+  def(Element.prototype, "id", globalThis.__veNativeIdGet, globalThis.__veNativeIdSet);
+  def(Element.prototype, "className", globalThis.__veNativeClassGet, globalThis.__veNativeClassSet);
+  Object.defineProperty(Element.prototype, "tagName", {
     configurable: true,
     enumerable: true,
-    get: globalThis.__veNativeIdGet,
-    set: globalThis.__veNativeIdSet
+    get: globalThis.__veNativeTagGet
   });
-  globalThis.__veNativeBindings = "element.id";
+  if (typeof Node !== "undefined") {
+    def(Node.prototype, "textContent", globalThis.__veNativeTextGet, globalThis.__veNativeTextSet);
+  }
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent";
 })()"#,
             "vector:dom-native",
         )?;
@@ -830,10 +867,7 @@ fn drop_timer_pin(scope: &mut v8::PinScope<'_, '_>, id: u64) {
     }
 }
 
-fn call_dom_host(
-    scope: &mut v8::PinScope<'_, '_>,
-    args: &[JsValue],
-) -> Option<JsValue> {
+fn call_dom_host(scope: &mut v8::PinScope<'_, '_>, args: &[JsValue]) -> Option<JsValue> {
     let index = scope
         .get_slot::<HostFnNames>()?
         .0
@@ -853,20 +887,12 @@ fn object_handle(
     Some(to_js_value(scope, value))
 }
 
-fn native_element_id_get(
+fn native_set_string(
     scope: &mut v8::PinScope<'_, '_>,
-    args: v8::FunctionCallbackArguments<'_>,
-    mut rv: v8::ReturnValue<'_, v8::Value>,
+    rv: &mut v8::ReturnValue<'_, v8::Value>,
+    value: Option<JsValue>,
 ) {
-    let this = args.this();
-    let Some(handle) = object_handle(scope, this) else {
-        rv.set_empty_string();
-        return;
-    };
-    match call_dom_host(
-        scope,
-        &[JsValue::from("getAttr"), handle, JsValue::from("id")],
-    ) {
+    match value {
         Some(JsValue::String(s)) => {
             if let Some(v) = v8::String::new(scope, &s) {
                 rv.set(v.into());
@@ -879,13 +905,70 @@ fn native_element_id_get(
     rv.set_empty_string();
 }
 
+fn native_this_handle(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: &v8::FunctionCallbackArguments<'_>,
+) -> Option<JsValue> {
+    object_handle(scope, args.this())
+}
+
+fn native_element_id_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("getAttr"), handle, JsValue::from("id")],
+    );
+    native_set_string(scope, &mut rv, value);
+}
+
 fn native_element_id_set(
     scope: &mut v8::PinScope<'_, '_>,
     args: v8::FunctionCallbackArguments<'_>,
     _rv: v8::ReturnValue<'_, v8::Value>,
 ) {
-    let this = args.this();
-    let Some(handle) = object_handle(scope, this) else {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let value = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::from("")
+    };
+    let _ = call_dom_host(
+        scope,
+        &[JsValue::from("setAttr"), handle, JsValue::from("id"), value],
+    );
+}
+
+fn native_element_class_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("getAttr"), handle, JsValue::from("class")],
+    );
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_element_class_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
         return;
     };
     let value = if args.length() > 0 {
@@ -898,10 +981,52 @@ fn native_element_id_set(
         &[
             JsValue::from("setAttr"),
             handle,
-            JsValue::from("id"),
+            JsValue::from("class"),
             value,
         ],
     );
+}
+
+fn native_element_tag_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("tagName"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_node_text_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("textContent"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_node_text_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let value = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::from("")
+    };
+    let _ = call_dom_host(scope, &[JsValue::from("setTextContent"), handle, value]);
 }
 
 fn looks_like_module(source: &str) -> bool {
@@ -1460,9 +1585,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(vm.eval("modRan", "<t>").unwrap(), JsValue::Number(41.0));
-        let classic = vm
-            .eval("typeof rewriteModule", "<t>")
-            .unwrap();
+        let classic = vm.eval("typeof rewriteModule", "<t>").unwrap();
         assert_eq!(classic, JsValue::String("undefined".into()));
     }
 
