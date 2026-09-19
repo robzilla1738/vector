@@ -1387,6 +1387,10 @@ impl NativeBrowser {
             pin.url.hash(&mut h);
             pin.title.hash(&mut h);
         }
+        for (status, goal) in &self.chrome.recent_runs {
+            status.hash(&mut h);
+            goal.hash(&mut h);
+        }
         (self.chrome.theme == ve_chrome::ChromeTheme::Dark).hash(&mut h);
         self.chrome.shows_start_page().hash(&mut h);
         self.window_size.width.to_bits().hash(&mut h);
@@ -3232,12 +3236,73 @@ mod tests {
             "{texts:?}"
         );
         assert!(texts.iter().any(|t| t == "RECENT"), "{texts:?}");
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.contains("Draft a reply to the deploy")),
+            "{texts:?}"
+        );
+        let _ = browser.handle_event(NativeEvent::Resize {
+            width: 1440.0,
+            height: 900.0,
+        });
         browser.set_device_scale(2.0);
         let png = browser.capture_shell_png().expect("start png");
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("ve-shell-start.png"), &png).unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn browsing_sidebar_screenshot_matches_electron_03() {
+        let path = format!("/tmp/vector-browse-shot-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::new();
+        browser.enable_product_chrome_at(&path);
+        for (url, title) in ve_chrome::design_reference_sites().iter().take(6) {
+            let html = format!(
+                "<html><head><title>{}</title></head><body><h1>{}</h1></body></html>",
+                title.replace('<', ""),
+                title.replace('<', "")
+            );
+            browser
+                .handle_event(NativeEvent::NewTab {
+                    html,
+                    url: (*url).into(),
+                })
+                .unwrap();
+        }
+        browser.seed_design_reference_chrome();
+        let _ = browser.handle_event(NativeEvent::Resize {
+            width: 1440.0,
+            height: 900.0,
+        });
+        let list = browser.paint_shell_list().unwrap();
+        let texts: Vec<String> = list
+            .items()
+            .iter()
+            .filter_map(|i| match i {
+                ve_gfx::DisplayItem::Text(run) => Some(run.text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.iter().any(|t| t.contains("VEC-142")), "{texts:?}");
+        assert!(texts.iter().any(|t| t.contains("Hacker News")), "{texts:?}");
+        assert!(texts.iter().any(|t| t == "AGENT"), "{texts:?}");
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.contains("Compare Checkout Session")),
+            "{texts:?}"
+        );
+        browser.set_device_scale(2.0);
+        let png = browser.capture_shell_png().expect("browse png");
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../docs/ui/screenshots");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("ve-shell-browse.png"), &png).unwrap();
         let _ = std::fs::remove_file(&path);
     }
 

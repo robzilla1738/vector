@@ -174,6 +174,8 @@ pub struct Chrome {
     pub sheet_body: String,
     /// Why the active tab is on this backend (never a silent swap).
     pub route_reason: String,
+    /// Sidebar AGENT footer rows `(status, goal)` from the Electron rail home.
+    pub recent_runs: Vec<(String, String)>,
 }
 
 impl Default for Chrome {
@@ -204,6 +206,7 @@ impl Default for Chrome {
             sheet_title: String::new(),
             sheet_body: String::new(),
             route_reason: String::new(),
+            recent_runs: Vec::new(),
         }
     }
 }
@@ -300,6 +303,21 @@ impl Chrome {
                 });
             }
         }
+        self.recent_runs = vec![
+            (
+                "needs_input".into(),
+                "Draft a reply to the deploy-failure thread".into(),
+            ),
+            (
+                "completed".into(),
+                "Compare Checkout Session pricing modes".into(),
+            ),
+            (
+                "partially_completed".into(),
+                "Collect every ResizeObserver example".into(),
+            ),
+            ("failed".into(), "Book the 9:30 slot for Thursday".into()),
+        ];
     }
 
     /// Compact top-pill command bar (Electron 01 / 03).
@@ -562,7 +580,11 @@ impl Chrome {
         icon_plus(list, 22.0, y + 16.0, 10.0, t.sb_ink_1);
         self.label(list, Point::new(36.0, y + 20.0), "New Tab", 12.0, t.sb_ink_1);
         y += self.metrics.row_h;
+        let foot = self.agent_footer_top(window);
         for tab in self.tabs_for_active_space() {
+            if y + self.metrics.row_h > foot {
+                break;
+            }
             if tab.active {
                 fill_round(
                     list,
@@ -591,14 +613,40 @@ impl Chrome {
             );
             y += self.metrics.row_h;
         }
-        let foot = window.height - 88.0;
-        self.label(list, Point::new(16.0, foot), "AGENT", 11.0, t.sb_ink_1);
-        let status = if self.agent_status.is_empty() {
-            "Ready"
+        self.label(list, Point::new(16.0, foot + 16.0), "AGENT", 11.0, t.sb_ink_1);
+        let live = self
+            .recent_runs
+            .iter()
+            .filter(|(s, _)| s == "running")
+            .count();
+        let live_l = if live == 0 {
+            if self.agent_status.is_empty() {
+                "Ready".to_string()
+            } else {
+                self.agent_status.clone()
+            }
         } else {
-            self.agent_status.as_str()
+            format!("{live} live")
         };
-        self.label(list, Point::new(16.0, foot + 18.0), status, 12.0, t.sb_ink_0);
+        self.label(list, Point::new(sb - 72.0, foot + 16.0), &live_l, 11.0, t.sb_ink_1);
+        let mut ry = foot + 28.0;
+        for (status, goal) in self.recent_runs.iter().take(4) {
+            let color = match status.as_str() {
+                "completed" | "ok" => t.ok,
+                "failed" | "error" => t.err,
+                "needs_input" | "partially_completed" => t.warn,
+                _ => t.sb_ink_1,
+            };
+            icon_dot(list, 20.0, ry + 10.0, 3.0, color);
+            self.label(
+                list,
+                Point::new(32.0, ry + 16.0),
+                &truncate(goal, 28),
+                11.0,
+                t.sb_ink_0,
+            );
+            ry += 26.0;
+        }
         self.label(
             list,
             Point::new(16.0, window.height - 20.0),
@@ -606,6 +654,11 @@ impl Chrome {
             11.0,
             t.sb_ink_1,
         );
+    }
+
+    fn agent_footer_top(&self, window: Size) -> f32 {
+        let runs = self.recent_runs.len().min(4) as f32;
+        window.height - (48.0 + runs * 26.0 + 24.0)
     }
 
     fn paint_toolbar(&self, list: &mut DisplayList, window: Size) {
@@ -1776,6 +1829,13 @@ mod tests {
         assert!(texts.iter().any(|t| *t == "G" || *t == "L" || *t == "Y"), "{texts:?}");
         assert!(texts.iter().any(|t| t.contains("Hacker News")), "{texts:?}");
         assert!(texts.iter().any(|t| t.contains("github.com")), "{texts:?}");
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.contains("Draft a reply to the deploy")),
+            "{texts:?}"
+        );
+        assert!(texts.iter().any(|t| *t == "AGENT"), "{texts:?}");
     }
 
     #[test]
