@@ -2536,6 +2536,17 @@
     hasPointerCapture(pointerId) {
       return pointerCaptures.get(Number(pointerId)) === this;
     }
+    checkVisibility(options) {
+      if (!this.isConnected) return false;
+      const cs = getComputedStyle(this);
+      if (!cs) return true;
+      if (cs.display === "none") return false;
+      if (cs.visibility === "hidden" || cs.visibility === "collapse") return false;
+      if (cs.contentVisibility === "hidden") return false;
+      const opts = options || {};
+      if (opts.checkOpacity && Number(cs.opacity) === 0) return false;
+      return true;
+    }
   }
   applyChildNode(Element.prototype);
   Element.prototype.streamAppendHTMLUnsafe = function streamAppendHTMLUnsafe(opts) {
@@ -8701,6 +8712,21 @@
     toString() { return this.href; }
     toJSON() { return this.href; }
   }
+  URL.canParse = function (url, base) {
+    try {
+      return !!(new URL(url, base))._protocol;
+    } catch (e) {
+      return false;
+    }
+  };
+  URL.parse = function (url, base) {
+    try {
+      const u = new URL(url, base);
+      return u._protocol ? u : null;
+    } catch (e) {
+      return null;
+    }
+  };
   class DOMParser {
     parseFromString(str, type) {
       if (arguments.length < 2) {

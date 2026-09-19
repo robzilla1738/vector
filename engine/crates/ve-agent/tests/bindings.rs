@@ -4255,6 +4255,61 @@ fn data_transfer_files_from_item_add() {
 }
 
 #[test]
+fn url_can_parse_and_parse_relative() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const ok = URL.canParse("https://s.test/a");
+              const rel = URL.parse("/x", "https://s.test/y");
+              const bad = URL.canParse("::::");
+              const none = URL.parse("::::");
+              return {
+                ok,
+                rel: rel && rel.href,
+                bad,
+                none: none === null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(v["rel"], "https://s.test/x", "{v}");
+    assert_eq!(v["bad"], false, "{v}");
+    assert_eq!(v["none"], true, "{v}");
+}
+
+#[test]
+fn element_check_visibility_honours_display_and_opacity() {
+    let mut page = open(
+        r#"<body>
+          <div id="ok">x</div>
+          <div id="hid" style="display:none">x</div>
+          <div id="fade" style="opacity:0">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const detached = document.createElement("div");
+              return {
+                ok: document.getElementById("ok").checkVisibility(),
+                hid: document.getElementById("hid").checkVisibility(),
+                fadeDefault: document.getElementById("fade").checkVisibility(),
+                fadeOpacity: document.getElementById("fade").checkVisibility({ checkOpacity: true }),
+                detached: detached.checkVisibility()
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(v["hid"], false, "{v}");
+    assert_eq!(v["fadeDefault"], true, "{v}");
+    assert_eq!(v["fadeOpacity"], false, "{v}");
+    assert_eq!(v["detached"], false, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
