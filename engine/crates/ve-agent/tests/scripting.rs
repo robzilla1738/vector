@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling"
         )
     );
     assert_eq!(
@@ -408,6 +408,36 @@ fn native_bindings_install_element_id_accessor() {
         page.evaluate("document.body.contains(document.getElementById('y').cloneNode(false))")
             .unwrap(),
         serde_json::json!(false)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').parentNode.tagName")
+            .unwrap(),
+        serde_json::json!("BODY")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').firstChild.tagName")
+            .unwrap(),
+        serde_json::json!("B")
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.id").unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.body.firstChild.id").unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').nextSibling")
+            .unwrap(),
+        serde_json::Value::Null
+    );
+    page.evaluate("document.body.insertBefore(document.createElement('span'), document.getElementById('y'))")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').previousSibling.tagName")
+            .unwrap(),
+        serde_json::json!("SPAN")
     );
 }
 

@@ -677,6 +677,26 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeClosest", closest)?;
+            let parent = v8::FunctionTemplate::builder(native_node_parent_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeParentNode", parent)?;
+            let first = v8::FunctionTemplate::builder(native_node_first_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeFirstChild", first)?;
+            let last = v8::FunctionTemplate::builder(native_node_last_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeLastChild", last)?;
+            let next = v8::FunctionTemplate::builder(native_node_next_sibling)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNextSibling", next)?;
+            let prev = v8::FunctionTemplate::builder(native_node_prev_sibling)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativePrevSibling", prev)?;
             Some(())
         })?;
         self.eval(
@@ -770,7 +790,19 @@ impl JsVm for V8Vm {
       return wrapNode(globalThis.__veNativeQuerySelector.call(this, s));
     };
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest";
+  var defNode = function (name, get) {
+    Object.defineProperty(Node.prototype, name, {
+      configurable: true,
+      enumerable: true,
+      get: get
+    });
+  };
+  defNode("parentNode", function () { return wrapNode(globalThis.__veNativeParentNode.call(this)); });
+  defNode("firstChild", function () { return wrapNode(globalThis.__veNativeFirstChild.call(this)); });
+  defNode("lastChild", function () { return wrapNode(globalThis.__veNativeLastChild.call(this)); });
+  defNode("nextSibling", function () { return wrapNode(globalThis.__veNativeNextSibling.call(this)); });
+  defNode("previousSibling", function () { return wrapNode(globalThis.__veNativePrevSibling.call(this)); });
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling";
 })()"#,
             "vector:dom-native",
         )?;
@@ -1706,6 +1738,60 @@ fn native_element_closest(
     let sel = native_arg(scope, &args, 0);
     let value = call_dom_host(scope, &[JsValue::from("closest"), handle, sel]);
     native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_node_walk(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: &v8::FunctionCallbackArguments<'_>,
+    op: &str,
+    rv: &mut v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, args) else {
+        rv.set_null();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from(op), handle]);
+    native_set_handle_or_null(scope, rv, value);
+}
+
+fn native_node_parent_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "parentNode", &mut rv);
+}
+
+fn native_node_first_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "firstChild", &mut rv);
+}
+
+fn native_node_last_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "lastChild", &mut rv);
+}
+
+fn native_node_next_sibling(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "nextSibling", &mut rv);
+}
+
+fn native_node_prev_sibling(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "prevSibling", &mut rv);
 }
 
 fn looks_like_module(source: &str) -> bool {
