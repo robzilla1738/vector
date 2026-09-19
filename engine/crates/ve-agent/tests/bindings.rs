@@ -1270,7 +1270,7 @@ fn canvas_bezier_curve_paints_off_the_chord() {
               ctx.moveTo(1, 14);
               ctx.bezierCurveTo(1, 1, 14, 1, 14, 14);
               ctx.stroke();
-              var peak = ctx.getImageData(8, 2, 1, 1).data;
+              var peak = ctx.getImageData(8, 4, 1, 1).data;
               var chord = ctx.getImageData(8, 14, 1, 1).data;
               return { pg: peak[1], pa: peak[3], ca: chord[3] };
             })()"##,
