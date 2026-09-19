@@ -487,3 +487,57 @@ fn compose_text_fires_composition_sequence() {
         "あい"
     );
 }
+
+#[test]
+fn writes_dombench_phase0_memo() {
+    let mut page = open(
+        r#"<section class="todoapp"><h1>todos</h1><ul class="todo-list"></ul></section>"#,
+        true,
+    );
+    let _ = page.settle(50);
+    let profile = page
+        .evaluate(
+            r#"(function () {
+              const list = document.querySelector(".todo-list");
+              for (let i = 0; i < 100; i++) {
+                const li = document.createElement("li");
+                const lab = document.createElement("label");
+                lab.textContent = "todo " + i;
+                li.appendChild(lab);
+                list.appendChild(li);
+                if (i % 3 === 0) li.className = "completed";
+                if (i % 5 === 0 && list.firstChild) list.removeChild(list.firstChild);
+              }
+              return __veDomProfile();
+            })()"#,
+        )
+        .unwrap();
+    let nodes = profile
+        .get("nodes")
+        .and_then(serde_json::Value::as_u64)
+        .expect("nodes.size");
+    assert!(nodes > 0, "Phase-0 wrapper map must be populated: {profile}");
+    let rss = ve_core::process_rss_bytes();
+    let evidence = serde_json::json!({
+        "backend": "vector-engine",
+        "security_mode": "production",
+        "not_a_published_score": true,
+        "handles": "numeric_u64",
+        "wrapper": "WeakRef+FinalizationRegistry",
+        "listeners": "WeakMap",
+        "VECTOR_DOM_PROFILE": true,
+        "VECTOR_DOM_BINDINGS": std::env::var("VECTOR_DOM_BINDINGS").unwrap_or_else(|_| "prelude".into()),
+        "todoMvcIterations": 100,
+        "nodesSize": nodes,
+        "rssBytes": rss,
+        "test": "writes_dombench_phase0_memo",
+        "notes": "100 add/toggle/remove cycles on a TodoMVC-shaped list; nodes is prelude WeakMap size after the loop."
+    });
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../docs/engine/evidence/dombench-latest.json");
+    std::fs::write(
+        &path,
+        format!("{}\n", serde_json::to_string_pretty(&evidence).unwrap()),
+    )
+    .unwrap();
+}
