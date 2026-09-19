@@ -113,7 +113,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H0-D1 | Perf gate in `production` profile; corpus p95/per-page gates | D | ☑ | `docs/perf/production-observe-gate.json` (`security_mode: production`) |
 | H0-D2 | CI: drop Windows legs; one rust-cache key per job class; `ci-durations.json` | D | ☑ | `.github/ci-durations.json` |
 | H0-D3 | Evidence hygiene: retire mock held-out; `BENCHMARKS.md`; fix README vs §0 | D | ☑ | `docs/BENCHMARKS.md` |
-| H0-D4 | Delete `ve-vm`; park `--official-score` and `http3.rs`; `.gitignore` `dist/` | B/D | ☑ | crate removed |
+| H0-D4 | Delete `ve-vm`; park `--official-score` and `http3.rs`; `.gitignore` `dist/` | B/D | ☑ | not a workspace member; `engine/README.md` no longer lists the crate; `--official-score` is accepted then forced off (`official_score_parked`); `NetworkContext::try_http3` returns `None` (http3.rs stays compiled); `.gitignore` `dist/` |
 
 ### Horizon 1 — Real frames, real input, protocol v1
 
