@@ -5002,6 +5002,103 @@ mod tests {
     }
 
     #[test]
+    fn hidpi_surface_is_physical_px_while_list_stays_css() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .new_tab(
+                "<html><body style='margin:0'><div id=box style='width:200px;height:100px;background:#0033cc;font-size:16px'>HiDPI</div></body></html>",
+                "https://hidpi.test/",
+            )
+            .unwrap();
+        browser
+            .handle_event(NativeEvent::Resize {
+                width: 800.0,
+                height: 600.0,
+            })
+            .unwrap();
+        assert!((browser.device_scale() - 1.0).abs() < f32::EPSILON);
+        assert_eq!(browser.window().size, Size::new(800.0, 600.0));
+        assert_eq!(browser.window().surface.width, 800);
+        assert_eq!(browser.window().surface.height, 600);
+
+        let list_1x = browser.paint_shell_list().unwrap();
+        assert_eq!(list_1x.size, Size::new(800.0, 600.0));
+        let box_1x = list_1x
+            .items()
+            .iter()
+            .find_map(|i| match i {
+                ve_gfx::DisplayItem::Rect { rect, .. }
+                    if (rect.width() - 200.0).abs() < 1.0 && (rect.height() - 100.0).abs() < 1.0 =>
+                {
+                    Some(*rect)
+                }
+                _ => None,
+            })
+            .expect("200×100 CSS box in the 1× list");
+        let text_1x = list_1x.items().iter().find_map(|i| match i {
+            ve_gfx::DisplayItem::Text(run) if run.text.contains("HiDPI") => Some(run.size),
+            _ => None,
+        });
+
+        browser.set_device_scale(2.0);
+        assert!((browser.device_scale() - 2.0).abs() < f32::EPSILON);
+        assert_eq!(browser.identity()["deviceScale"], 2.0);
+        assert_eq!(
+            browser.window().size,
+            Size::new(800.0, 600.0),
+            "window size stays CSS px"
+        );
+        assert_eq!(browser.window().surface.width, 1600);
+        assert_eq!(browser.window().surface.height, 1200);
+
+        let list_2x = browser.paint_shell_list().unwrap();
+        assert_eq!(list_2x.size, Size::new(800.0, 600.0));
+        let box_2x = list_2x
+            .items()
+            .iter()
+            .find_map(|i| match i {
+                ve_gfx::DisplayItem::Rect { rect, .. }
+                    if (rect.width() - 200.0).abs() < 1.0 && (rect.height() - 100.0).abs() < 1.0 =>
+                {
+                    Some(*rect)
+                }
+                _ => None,
+            })
+            .expect("200×100 CSS box must not double in the 2× list");
+        assert!((box_2x.x() - box_1x.x()).abs() < 1.0);
+        assert!((box_2x.y() - box_1x.y()).abs() < 1.0);
+        assert!((box_2x.width() - 200.0).abs() < 1.0);
+        assert!((box_2x.height() - 100.0).abs() < 1.0);
+        if let Some(size_1x) = text_1x {
+            let size_2x = list_2x
+                .items()
+                .iter()
+                .find_map(|i| match i {
+                    ve_gfx::DisplayItem::Text(run) if run.text.contains("HiDPI") => Some(run.size),
+                    _ => None,
+                })
+                .expect("HiDPI text stays in the 2× list");
+            assert!(
+                (size_2x - size_1x).abs() < 0.5,
+                "text size must stay CSS px, got {size_1x} then {size_2x}"
+            );
+        }
+        assert!(
+            list_2x.items().iter().all(|i| i.bounds().is_none_or(|r| {
+                r.right() <= 800.0 + 2.0 && r.bottom() <= 600.0 + 2.0
+            })),
+            "no display-list geometry in physical px: {:?}",
+            list_2x.bounds()
+        );
+
+        let frame = browser.present().unwrap();
+        assert_eq!(frame.width, 1600);
+        assert_eq!(frame.height, 1200);
+        assert_eq!(browser.framebuffer().width, 1600);
+        assert_eq!(browser.framebuffer().height, 1200);
+    }
+
+    #[test]
     fn window_owns_surface_pointer_and_urlbar() {
         let mut browser = NativeBrowser::new();
         assert!(std::ptr::eq(

@@ -41,26 +41,31 @@ mod tests {
         assert!(!w.urlbar_focused);
         assert!(!w.urlbar_selected);
         assert!(!w.presented);
-        assert_eq!(w.surface.width, 1280);
-        assert_eq!(w.surface.height, 720);
+        assert_eq!(w.surface.width, 2560);
+        assert_eq!(w.surface.height, 1440);
         assert_eq!(w.size, Size::new(1280.0, 720.0));
     }
 }
 
 impl NativeWindow {
-    /// Default 1280×720 window.
+    /// Default 1280×720 CSS window. The surface is physical px (`css × scale`).
     #[must_use]
     pub fn new(device_scale: f32) -> Self {
+        let scale = device_scale.max(0.01);
+        let css_w = 1280.0;
+        let css_h = 720.0;
+        let pw = (css_w * scale).round().max(1.0) as u32;
+        let ph = (css_h * scale).round().max(1.0) as u32;
         Self {
-            surface: Frame::filled(1280, 720, [255, 255, 255, 255]),
+            surface: Frame::filled(pw, ph, [255, 255, 255, 255]),
             pointer: Point::ZERO,
             urlbar: String::new(),
             urlbar_focused: false,
             urlbar_selected: false,
             compositor: Compositor::new(),
             presented: false,
-            device_scale: device_scale.max(0.01),
-            size: Size::new(1280.0, 720.0),
+            device_scale: scale,
+            size: Size::new(css_w, css_h),
         }
     }
 }
