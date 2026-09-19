@@ -82,20 +82,28 @@ function collectStringClaims(result: unknown): string[] {
   return out;
 }
 
-/** Re-observe challenge: long textual claims must appear on the page, or a write must have landed. */
+/** Re-observe challenge: long textual claims must appear on the page; writes need observed or remoteConfirmed. */
 export function verifyDoneAgainstObservation(
   result: unknown,
   obs: Observation,
   outcomes: StepOutcome[],
 ): { ok: boolean; reason: string } {
-  const writesOk = outcomes.some((o) => o.status === "ok" && WRITE_LIKE_OPS.has(o.op));
+  const writeOutcomes = outcomes.filter((o) => o.status === "ok" && WRITE_LIKE_OPS.has(o.op));
+  const writesConfirmed = writeOutcomes.some(
+    (o) => Boolean(o.receipt?.observed) || o.receipt?.remoteConfirmed === true || o.effect === "observed",
+  );
   const text = observationGroundText(obs);
   const claims = collectStringClaims(result);
   const longClaims = claims.filter((c) => c.length >= 8);
   const ungrounded = longClaims.filter((c) => !text.includes(c.toLowerCase()));
-  if (ungrounded.length === 0) return { ok: true, reason: "grounded" };
-  if (writesOk && longClaims.length === 0) return { ok: true, reason: "writes-ok" };
-  return { ok: false, reason: `ungrounded claims: ${ungrounded.slice(0, 3).join(", ")}` };
+  if (ungrounded.length > 0) return { ok: false, reason: `ungrounded claims: ${ungrounded.slice(0, 3).join(", ")}` };
+  if (longClaims.length > 0) return { ok: true, reason: "grounded" };
+  const shortGrounded = claims.some((c) => text.includes(c.toLowerCase()));
+  if (writeOutcomes.length > 0 && !writesConfirmed && claims.length > 0 && !shortGrounded) {
+    return { ok: false, reason: "write not observed or remoteConfirmed" };
+  }
+  if (writeOutcomes.length > 0 && writesConfirmed) return { ok: true, reason: "writes-confirmed" };
+  return { ok: true, reason: "grounded" };
 }
 
   export async function tryVisionPlan(self: CoordinatorLoopHost, args: {

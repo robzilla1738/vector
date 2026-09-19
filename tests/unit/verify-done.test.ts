@@ -42,6 +42,26 @@ describe("verifyDoneAgainstObservation", () => {
     const v = verifyDoneAgainstObservation({ answer: "visible page heading" }, obs(), []);
     expect(v.ok).toBe(true);
   });
+
+  it("accepts a write only when observed or remoteConfirmed", () => {
+    const click = {
+      stepId: "c",
+      op: "click",
+      status: "ok" as const,
+      startedAt: 1,
+      durationMs: 1,
+    };
+    const bare = verifyDoneAgainstObservation({ note: "xyz" }, obs(), [click]);
+    expect(bare).toMatchObject({ ok: false, reason: "write not observed or remoteConfirmed" });
+    const observed = verifyDoneAgainstObservation({ note: "xyz" }, obs(), [
+      { ...click, receipt: { observed: "clicked", remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } },
+    ]);
+    expect(observed).toMatchObject({ ok: true, reason: "writes-confirmed" });
+    const remote = verifyDoneAgainstObservation({ note: "xyz" }, obs(), [
+      { ...click, receipt: { remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false } },
+    ]);
+    expect(remote).toMatchObject({ ok: true, reason: "writes-confirmed" });
+  });
 });
 
 describe("lying model cannot complete a run", () => {
