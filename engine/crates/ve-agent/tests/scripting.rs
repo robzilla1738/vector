@@ -200,6 +200,29 @@ fn dom_bindings_default_is_prelude() {
 }
 
 #[test]
+fn native_bindings_install_element_id_accessor() {
+    let mut page = open("<p id=x>t</p>", true);
+    assert_eq!(
+        page.evaluate("typeof globalThis.__veNativeBindings").unwrap(),
+        serde_json::json!("undefined")
+    );
+    page.install_native_dom_bindings().unwrap();
+    assert_eq!(
+        page.evaluate("globalThis.__veNativeBindings").unwrap(),
+        serde_json::json!("element.id")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('x').id").unwrap(),
+        serde_json::json!("x")
+    );
+    page.evaluate("document.getElementById('x').id = 'y'").unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').id").unwrap(),
+        serde_json::json!("y")
+    );
+}
+
+#[test]
 fn es_module_spa_runs_without_bundler() {
     let mut page = open(
         r#"<div id="root">boot</div>

@@ -280,6 +280,11 @@ pub trait JsVm {
     fn register_module(&mut self, url: &str, source: &str) {
         let _ = (url, source);
     }
+
+    /// Overlay native V8 accessors on the prelude DOM (H1-B1). Default is a no-op.
+    fn install_native_dom_bindings(&mut self) -> Result<(), ScriptError> {
+        Ok(())
+    }
 }
 
 /// Strip the `module:` origin prefix and a fragment.

@@ -531,6 +531,29 @@ impl JsVm for V8Vm {
         }
     }
 
+    fn install_native_dom_bindings(&mut self) -> Result<(), ScriptError> {
+        self.run(|scope| {
+            let global = scope.get_current_context().global(scope);
+            let element_key = v8::String::new(scope, "Element")?;
+            let element = global.get(scope, element_key.into())?;
+            let element_fn: v8::Local<v8::Function> = element.try_into().ok()?;
+            let proto_key = v8::String::new(scope, "prototype")?;
+            let proto = element_fn.get(scope, proto_key.into())?;
+            let proto_obj: v8::Local<v8::Object> = proto.try_into().ok()?;
+            let name = v8::String::new(scope, "id")?;
+            proto_obj.set_accessor_with_setter(
+                scope,
+                name.into(),
+                native_element_id_getter,
+                native_element_id_setter,
+            )?;
+            let flag = v8::String::new(scope, "__veNativeBindings")?;
+            let mode = v8::String::new(scope, "element.id")?;
+            global.set(scope, flag.into(), mode.into())?;
+            Some(())
+        })
+    }
+
     fn call(&mut self, function: &str, args: &[JsValue]) -> Result<JsValue, ScriptError> {
         self.with_host(None, |vm| vm.call_inner(function, args))
     }
@@ -797,6 +820,78 @@ fn drop_timer_pin(scope: &mut v8::PinScope<'_, '_>, id: u64) {
     if let Some(pins) = scope.get_slot::<TimerPins>() {
         pins.slots.borrow_mut().remove(&id);
     }
+}
+
+fn call_dom_host(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: &[JsValue],
+) -> Option<JsValue> {
+    let index = scope
+        .get_slot::<HostFnNames>()?
+        .0
+        .iter()
+        .position(|n| n == "dom")?;
+    let CurrentHost(ptr) = scope.get_slot::<CurrentHost>().map(|h| CurrentHost(h.0))?;
+    let host: &mut dyn HostApi = unsafe { &mut *ptr };
+    host.call(index, args).ok()
+}
+
+fn object_handle(
+    scope: &mut v8::PinScope<'_, '_>,
+    this: v8::Local<'_, v8::Object>,
+) -> Option<JsValue> {
+    let key = v8::String::new(scope, "__h")?;
+    let value = this.get(scope, key.into())?;
+    Some(to_js_value(scope, value))
+}
+
+fn native_element_id_getter(
+    scope: &mut v8::PinScope<'_, '_>,
+    _key: v8::Local<'_, v8::Name>,
+    args: v8::PropertyCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let this = args.this();
+    let Some(handle) = object_handle(scope, this) else {
+        rv.set_empty_string();
+        return;
+    };
+    match call_dom_host(
+        scope,
+        &[JsValue::from("getAttr"), handle, JsValue::from("id")],
+    ) {
+        Some(JsValue::String(s)) => {
+            if let Some(v) = v8::String::new(scope, &s) {
+                rv.set(v.into());
+                return;
+            }
+        }
+        Some(JsValue::Null | JsValue::Undefined) => {}
+        _ => {}
+    }
+    rv.set_empty_string();
+}
+
+fn native_element_id_setter(
+    scope: &mut v8::PinScope<'_, '_>,
+    _key: v8::Local<'_, v8::Name>,
+    value: v8::Local<'_, v8::Value>,
+    args: v8::PropertyCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, ()>,
+) {
+    let this = args.this();
+    let Some(handle) = object_handle(scope, this) else {
+        return;
+    };
+    let _ = call_dom_host(
+        scope,
+        &[
+            JsValue::from("setAttr"),
+            handle,
+            JsValue::from("id"),
+            to_js_value(scope, value),
+        ],
+    );
 }
 
 fn looks_like_module(source: &str) -> bool {

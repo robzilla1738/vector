@@ -46,6 +46,36 @@ pub struct Tab {
     pub context: ContextId,
 }
 
+fn cert_error_parts(url: &str, err: &Error) -> Option<(String, String)> {
+    let msg = err.to_string();
+    let lower = msg.to_ascii_lowercase();
+    if !(lower.contains("certificate")
+        || lower.contains("unknownissuer")
+        || lower.contains("unknown issuer"))
+    {
+        return None;
+    }
+    let host = url
+        .split("://")
+        .nth(1)?
+        .split(['/', '?', '#'])
+        .next()?
+        .rsplit('@')
+        .next()?
+        .split(':')
+        .next()?
+        .to_owned();
+    if host.is_empty() {
+        return None;
+    }
+    let fingerprint = if lower.contains("unknownissuer") || lower.contains("unknown issuer") {
+        "unknown-issuer"
+    } else {
+        "tls-error"
+    };
+    Some((host, fingerprint.into()))
+}
+
 /// Key down or up.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -435,11 +465,30 @@ impl NativeBrowser {
 
     /// Opens a tab by URL through the engine loader.
     pub fn open_url(&mut self, url: &str) -> Result<&Tab> {
-        let opened = self.engine.open(OpenRequest {
+        match self.engine.open(OpenRequest {
             url: Some(url.to_owned()),
             ..OpenRequest::default()
-        })?;
-        Ok(self.attach_opened(opened, ChromeBackend::Engine, None, true))
+        }) {
+            Ok(opened) => Ok(self.attach_opened(opened, ChromeBackend::Engine, None, true)),
+            Err(e) => {
+                self.present_navigation_error(url, &e);
+                Err(e)
+            }
+        }
+    }
+
+    /// Browser backed by an already-built engine (tests, custom transports).
+    #[must_use]
+    pub fn with_engine(engine: VectorEngine) -> Self {
+        let mut browser = Self::new();
+        browser.engine = engine;
+        browser
+    }
+
+    fn present_navigation_error(&mut self, url: &str, err: &Error) {
+        if let Some((host, fingerprint)) = cert_error_parts(url, err) {
+            self.show_cert_sheet(&host, &fingerprint);
+        }
     }
 
     fn attach_opened(
@@ -2224,7 +2273,10 @@ impl NativeBrowser {
         };
         let page = self.engine.page_mut(page_id)?;
         page.navigate(url)?;
-        page.commit_navigation()?;
+        if let Err(e) = page.commit_navigation() {
+            self.present_navigation_error(url, &e);
+            return Err(e);
+        }
         self.sync_active_tab();
         Ok(())
     }
@@ -4957,6 +5009,49 @@ mod tests {
         assert!(browser.permitted("geolocation"));
         let profile = ve_profile::Profile::open(&path).unwrap();
         assert_eq!(profile.permissions().unwrap().len(), 1);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn tls_navigation_error_opens_cert_sheet() {
+        struct CertFail;
+        impl ve_net::Transport for CertFail {
+            fn send(&self, request: &ve_net::Request) -> std::result::Result<ve_net::Response, ve_net::NetError> {
+                Err(ve_net::NetError::Transport(format!(
+                    "invalid peer certificate: UnknownIssuer for {}",
+                    request.url
+                )))
+            }
+            fn name(&self) -> &'static str {
+                "cert-fail"
+            }
+            fn uses_live_dns(&self) -> bool {
+                false
+            }
+        }
+        let engine = crate::VectorEngine::with_transport(
+            crate::EngineConfig {
+                offline: false,
+                policy: ve_net::NetworkPolicy::permissive(),
+                ..crate::EngineConfig::default()
+            },
+            Box::new(CertFail),
+        );
+        let path = format!("/tmp/vector-cert-nav-{}.sqlite", std::process::id());
+        let _ = std::fs::remove_file(&path);
+        let mut browser = NativeBrowser::with_engine(engine);
+        browser.enable_product_chrome_at(&path);
+        let err = browser
+            .open_url("https://bad-cert.test/")
+            .err()
+            .expect("tls failure");
+        assert!(
+            err.to_string().to_ascii_lowercase().contains("certificate"),
+            "{err}"
+        );
+        assert_eq!(browser.chrome().overlay, ve_chrome::ChromeOverlay::Cert);
+        assert_eq!(browser.chrome().sheet_title, "bad-cert.test");
+        assert_eq!(browser.chrome().sheet_body, "unknown-issuer");
         let _ = std::fs::remove_file(&path);
     }
 

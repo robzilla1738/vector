@@ -363,11 +363,11 @@ impl Page {
             vm.set_call_deadline(Some(Duration::from_secs(120)));
         }
         self.run_script(PRELUDE, "vector:prelude")?;
+        self.run_script(DOM_PRELUDE, "vector:dom")?;
         let bindings = std::env::var("VECTOR_DOM_BINDINGS").unwrap_or_else(|_| "prelude".into());
         if bindings == "native" {
-            tracing::info!("VECTOR_DOM_BINDINGS=native is compiled but prelude remains default until differential CI is green (H1-B1 / H3-2)");
+            self.install_native_dom_bindings()?;
         }
-        self.run_script(DOM_PRELUDE, "vector:dom")?;
         if performance_now_is_wall() {
             self.run_script(WALL_PERFORMANCE_NOW, "vector:prelude")?;
         }
@@ -375,6 +375,20 @@ impl Page {
             vm.set_call_deadline(Some(script_deadline()));
         }
         Ok(())
+    }
+
+    /// Overlay native V8 accessors on the prelude DOM (H1-B1). Default-on waits for H3-2.
+    pub fn install_native_dom_bindings(&mut self) -> Result<()> {
+        let Some(mut vm) = self.scripting.as_mut().and_then(|s| s.vm.take()) else {
+            return Err(Error::capability_unsupported(
+                "scripting is not enabled on this page",
+            ));
+        };
+        let result = vm.install_native_dom_bindings();
+        if let Some(s) = self.scripting.as_mut() {
+            s.vm = Some(vm);
+        }
+        result.map_err(Error::from)
     }
 
     /// Whether a VM is attached.
