@@ -2430,7 +2430,7 @@ impl CanvasSurface {
     }
 
     fn blit(&mut self, src: &[u8], sw: u32, sh: u32, dx: i32, dy: i32) {
-        self.blit_scaled(src, sw, sh, 0, 0, sw, sh, dx, dy, sw, sh, false);
+        self.blit_scaled(src, sw, sh, 0, 0, sw, sh, dx, dy, sw, sh, 0);
     }
 
     fn blit_scaled(
@@ -2446,7 +2446,7 @@ impl CanvasSurface {
         dy: i32,
         dw: u32,
         dh: u32,
-        smooth: bool,
+        smooth: i32,
     ) {
         if sw == 0 || sh == 0 || dw == 0 || dh == 0 {
             return;
@@ -2467,10 +2467,34 @@ impl CanvasSurface {
                     continue;
                 }
                 let di = (y as u32 * self.width + x as u32) as usize * 4;
-                let px = if smooth && (dw != sw || dh != sh) {
+                let px = if smooth > 0 && (dw != sw || dh != sh) {
                     let fx = sx as f32 + (col as f32 + 0.5) * sw as f32 / dw as f32 - 0.5;
                     let fy = sy as f32 + (row as f32 + 0.5) * sh as f32 / dh as f32 - 0.5;
-                    sample_bilinear(src, src_w, src_h, sx, sy, x1, y1, fx, fy)
+                    if smooth >= 2 {
+                        let mut acc = [0u32; 4];
+                        for (ox, oy) in [
+                            (-0.35_f32, -0.35_f32),
+                            (0.35, -0.35),
+                            (-0.35, 0.35),
+                            (0.35, 0.35),
+                        ] {
+                            let s = sample_bilinear(
+                                src, src_w, src_h, sx, sy, x1, y1, fx + ox, fy + oy,
+                            );
+                            acc[0] += u32::from(s[0]);
+                            acc[1] += u32::from(s[1]);
+                            acc[2] += u32::from(s[2]);
+                            acc[3] += u32::from(s[3]);
+                        }
+                        [
+                            (acc[0] / 4) as u8,
+                            (acc[1] / 4) as u8,
+                            (acc[2] / 4) as u8,
+                            (acc[3] / 4) as u8,
+                        ]
+                    } else {
+                        sample_bilinear(src, src_w, src_h, sx, sy, x1, y1, fx, fy)
+                    }
                 } else {
                     let src_y = sy + row * sh / dh;
                     let src_x = sx + col * sw / dw;
@@ -3512,7 +3536,7 @@ impl Page {
         dy: i32,
         dw: i32,
         dh: i32,
-        smooth: bool,
+        smooth: i32,
     ) -> u64 {
         let src_pixels = self
             .canvases

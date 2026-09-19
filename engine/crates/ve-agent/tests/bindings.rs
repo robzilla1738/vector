@@ -1698,6 +1698,47 @@ fn canvas_bezier_curve_paints_off_the_chord() {
 }
 
 #[test]
+fn canvas_image_smoothing_quality_high_blurs_more() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function mid(quality) {
+                var src = document.createElement("canvas");
+                src.width = 2;
+                src.height = 1;
+                var sctx = src.getContext("2d");
+                sctx.fillStyle = "#ff0000";
+                sctx.fillRect(0, 0, 1, 1);
+                sctx.fillStyle = "#0000ff";
+                sctx.fillRect(1, 0, 1, 1);
+                var dst = document.createElement("canvas");
+                dst.width = 8;
+                dst.height = 1;
+                var dctx = dst.getContext("2d");
+                dctx.imageSmoothingEnabled = true;
+                dctx.imageSmoothingQuality = quality;
+                dctx.drawImage(src, 0, 0, 2, 1, 0, 0, 8, 1);
+                var p = dctx.getImageData(3, 0, 1, 1).data;
+                return { r: p[0], b: p[2] };
+              }
+              return { low: mid("low"), high: mid("high") };
+            })()"##,
+        )
+        .unwrap();
+    let lr = v["low"]["r"].as_u64().unwrap_or(0);
+    let lb = v["low"]["b"].as_u64().unwrap_or(0);
+    let hr = v["high"]["r"].as_u64().unwrap_or(0);
+    let hb = v["high"]["b"].as_u64().unwrap_or(0);
+    assert!(lr > 0 && lb > 0, "low still blends: {v}");
+    assert!(hr > 0 && hb > 0, "high still blends: {v}");
+    assert!(
+        lr != hr || lb != hb,
+        "high quality must change the scaled midpoint: {v}"
+    );
+}
+
+#[test]
 fn canvas_image_smoothing_blends_scaled_pixels() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -2107,6 +2148,39 @@ fn canvas_font_kerning_tightens_av_pair() {
         none > normal + 1,
         "fontKerning:normal must tighten AV: {v}"
     );
+}
+
+#[test]
+fn canvas_font_variant_caps_small_caps_uppercases() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function dump(text, caps) {
+                var c = document.createElement("canvas");
+                c.width = 32;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "16px sans-serif";
+                ctx.fontVariantCaps = caps;
+                ctx.fillText(text, 2, 16);
+                return Array.from(ctx.getImageData(0, 0, 32, 24).data).join(",");
+              }
+              var lower = dump("a", "normal");
+              var upper = dump("A", "normal");
+              var small = dump("a", "small-caps");
+              return {
+                lowerEqSmall: lower === small,
+                smallEqUpper: small === upper,
+                lowerEqUpper: lower === upper
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["lowerEqUpper"], false, "a and A must differ: {v}");
+    assert_eq!(v["lowerEqSmall"], false, "small-caps must change a: {v}");
+    assert_eq!(v["smallEqUpper"], true, "small-caps a matches A: {v}");
 }
 
 #[test]

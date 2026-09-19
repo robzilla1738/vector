@@ -4852,7 +4852,9 @@
         }
       }
       const box = dw || dh ? this._mapRect(dx, dy, dw, dh) : this._mapPoint(dx, dy).concat([0, 0]);
-      D("canvasDrawImage", this.__h, img.__h, sx, sy, sw, sh, box[0], box[1], box[2], box[3], this._imageSmoothingEnabled !== false ? 1 : 0);
+      const quality = String(this._imageSmoothingQuality || "low").toLowerCase();
+      const smooth = this._imageSmoothingEnabled === false ? 0 : (quality === "high" ? 2 : 1);
+      D("canvasDrawImage", this.__h, img.__h, sx, sy, sw, sh, box[0], box[1], box[2], box[3], smooth);
     }
     _letterGap() {
       const n = parseFloat(String(this._letterSpacing || "0"));
@@ -4884,9 +4886,16 @@
     _isRtl() {
       return String(this._direction || "inherit") === "rtl";
     }
+    _capsText(t) {
+      let text = String(t == null ? "" : t);
+      if (String(this._fontVariantCaps || "normal") === "small-caps") {
+        text = text.toUpperCase();
+      }
+      return text;
+    }
     _textOrigin(t, x, y) {
       const size = Number((/([0-9]*\.?[0-9]+)px/.exec(String(this._font || "")) || [])[1]) || 10;
-      const text = String(t == null ? "" : t);
+      const text = this._capsText(t);
       const align = String(this._textAlign || "start");
       let ax = +x;
       let ay = +y;
@@ -4908,7 +4917,7 @@
     fillText(t, x, y) {
       const gap = this._letterGap();
       const wgap = this._wordGap();
-      const text = String(t == null ? "" : t);
+      const text = this._capsText(t);
       const align = String(this._textAlign || "start");
       const simple = (align === "start" || align === "left" || !align) && !this._isRtl();
       let kerns = 0;
