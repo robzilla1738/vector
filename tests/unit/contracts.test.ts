@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ProgramSchema, StepSchema, MethodSchemas, EventSchema } from "@vector/contracts";
+import { ProgramSchema, ProgramBudgetSchema, StepSchema, MethodSchemas, EventSchema } from "@vector/contracts";
 
 describe("StepSchema", () => {
   it("accepts every core op", () => {
@@ -52,6 +52,18 @@ describe("ProgramSchema", () => {
     expect(ProgramSchema.safeParse({ pageId: "p1", steps: [] }).success).toBe(false);
     const huge = { pageId: "p1", steps: Array.from({ length: 201 }, (_, i) => ({ id: `s${i}`, op: "reload" })) };
     expect(ProgramSchema.safeParse(huge).success).toBe(false);
+  });
+
+  it("ProgramBudgetSchema accepts tokens", () => {
+    expect(ProgramBudgetSchema.safeParse({ tokens: 3000 }).success).toBe(true);
+    expect(ProgramBudgetSchema.safeParse({ tokens: 0 }).success).toBe(false);
+    expect(
+      ProgramSchema.safeParse({
+        pageId: "p1",
+        steps: [{ id: "s1", op: "click", target: "r1" }],
+        budget: { tokens: 3000 },
+      }).success,
+    ).toBe(true);
   });
 });
 

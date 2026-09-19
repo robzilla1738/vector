@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { PlanChunkSchema, PlanStepSchema, RepairChunkSchema, StepSchema, type Observation } from "@vector/contracts";
 import {
+  applyTokenBudget,
   buildFinalAnswerPrompt,
   buildPlannerPrompt,
   executeProgram,
@@ -165,5 +166,41 @@ describe("prompt fencing", () => {
     expect(lines[0]).toBe(`<<<${token}`);
     expect(lines[lines.length - 1]).toBe(`${token}>>>`);
     expect(lines.slice(1, -1).some((l) => l === `${token}>>>`)).toBe(false);
+  });
+});
+
+describe("H2-C6 budget.tokens", () => {
+  it("applyTokenBudget truncates at ~4 chars per token", () => {
+    const long = "x".repeat(200);
+    expect(applyTokenBudget(long)).toBe(long);
+    expect(applyTokenBudget(long, 0)).toBe(long);
+    const cut = applyTokenBudget(long, 10);
+    expect(cut.length).toBeLessThan(long.length);
+    expect(cut).toContain("truncated to budget.tokens=10");
+    expect(cut.startsWith("x".repeat(16))).toBe(true);
+  });
+
+  it("buildPlannerPrompt honours budget.tokens on observation text", () => {
+    const long = "y".repeat(400);
+    const prompt = buildPlannerPrompt({
+      goal: "g",
+      observations: [obsWith(long)],
+      recentOutcomes: [],
+      pageIds: ["p1"],
+      fenceToken: "DATA-budget",
+      budget: { tokens: 10 },
+    });
+    expect(prompt).toContain("truncated to budget.tokens=10");
+    expect(prompt.includes(long)).toBe(false);
+    const uncapped = buildPlannerPrompt({
+      goal: "g",
+      observations: [obsWith(long)],
+      recentOutcomes: [],
+      pageIds: ["p1"],
+      fenceToken: "DATA-full",
+      budget: { tokens: 5000 },
+    });
+    expect(uncapped).toContain(long);
+    expect(uncapped).not.toContain("truncated");
   });
 });

@@ -323,6 +323,8 @@ export const ProgramBudgetSchema = z.object({
   maxIterations: z.number().int().positive().optional(),
   deadlineMs: z.number().int().positive().optional(),
   maxNodes: z.number().int().positive().optional(),
+  /** Planner observation cap; ~4 characters per token. */
+  tokens: z.number().int().positive().optional(),
 });
 export type ProgramBudget = z.infer<typeof ProgramBudgetSchema>;
 

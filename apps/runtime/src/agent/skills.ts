@@ -1,10 +1,12 @@
 /**
- * Compiled guarded skills (VEC-018).
+ * Compiled guarded skills (VEC-018 / H2-C6).
  *
  * A skill is a bounded program plus semantic guards. Reuse is allowed only
  * when every precondition holds on a fresh observation. Failures stop at the
- * guard; they do not improvise writes.
+ * guard; they do not improvise writes. `siteKey` is the registrable origin
+ * plus a control-fingerprint of the observation ref set.
  */
+import { createHash } from "node:crypto";
 import type { ObservationContent, Program, Step } from "@vector/contracts";
 
 export interface SkillGuard {
@@ -25,8 +27,33 @@ export interface CompiledSkill {
   preconditions: SkillGuard[];
   postconditions: SkillGuard[];
   evidence: string;
+  /** `${origin}#${controlFingerprint}` — required for reuse when set. */
+  siteKey?: string;
   /** Set after postconditions fail. Consequential reuse is then refused. */
   blocked?: boolean;
+}
+
+/** Registrable origin; empty when `url` is not absolute. */
+export function registrableOrigin(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "";
+  }
+}
+
+/** Stable hash of interactive controls (role/name/tag + form fields). */
+export function controlFingerprint(obs: ObservationContent): string {
+  const parts = [
+    ...(obs.elements ?? []).map((e) => `${e.role ?? e.tag}:${e.name ?? ""}:${e.ref}`),
+    ...(obs.formFields ?? []).map((f) => `field:${f.type}:${f.name ?? f.label ?? ""}:${f.ref}`),
+  ].sort();
+  return createHash("sha256").update(parts.join("\n")).digest("hex").slice(0, 16);
+}
+
+/** H2-C6 site key: origin plus control fingerprint. */
+export function siteKey(url: string, obs: ObservationContent): string {
+  return `${registrableOrigin(url)}#${controlFingerprint(obs)}`;
 }
 
 export function guardsHold(
@@ -67,6 +94,7 @@ export function compileSkill(opts: {
   preconditions: SkillGuard[];
   postconditions: SkillGuard[];
   evidence: string;
+  siteKey?: string;
 }): CompiledSkill {
   return {
     id: opts.id,
@@ -75,6 +103,7 @@ export function compileSkill(opts: {
     preconditions: opts.preconditions,
     postconditions: opts.postconditions,
     evidence: opts.evidence,
+    siteKey: opts.siteKey,
   };
 }
 
@@ -89,6 +118,12 @@ export function tryReuseSkill(
   if (!match) return { skipped: "no skill matched the goal" };
   if (match.blocked) {
     return { skipped: `skill ${match.id} blocked after failed postconditions` };
+  }
+  if (match.siteKey) {
+    const now = siteKey(url, obs);
+    if (now !== match.siteKey) {
+      return { skipped: `skill ${match.id} siteKey mismatch` };
+    }
   }
   if (!guardsHold(obs, url, match.preconditions, documentEpoch)) {
     return { skipped: `skill ${match.id} guards failed` };

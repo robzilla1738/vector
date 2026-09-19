@@ -153,7 +153,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H2-C3 | Repair taxonomy with per-class budgets | C | ☑ | existing repair + machine repairing |
 | H2-C4 | Permissions `{effect, origin, scope, expiresAt}`; page text never grants | C | ☑ | `ve-profile` PermissionGrant |
 | H2-C5 | Durable runs; kill-9-mid-write = exactly one POST | C | ☑ | `review-gates.test.ts` `kill-9 mid-write is exactly one POST` |
-| H2-C6 | Skills ADR; siteKey + control fingerprints; `budget.tokens` | C | ☑ | `docs/adr/H2-C6-skills.md` |
+| H2-C6 | Skills ADR; siteKey + control fingerprints; `budget.tokens` | C | ☑ | `docs/adr/H2-C6-skills.md`; `siteKey`/`controlFingerprint`/`registrableOrigin` in `skills.ts`; `tryReuseSkill` refuses a siteKey mismatch; `ProgramBudgetSchema.tokens`; `applyTokenBudget` (~4 chars/token) + `buildPlannerPrompt({budget})` default 3000; coordinator + member-agent pass `{tokens:3000}`; `tests/unit/roadmap-agent.test.ts` siteKey; `tests/unit/prompt-injection.test.ts` `H2-C6 budget.tokens` |
 | H2-C7 | MCP resources, extract, wait_for, console/dialog/network tools | C | ☑ | `vector://page/observation` + `vector://page/console` + `vector://page/network` resolve the active page; `pages.extract` / `pages.waitFor` / `pages.console` / `pages.dialog` / `pages.network` in MethodSchemas + handlers; MCP `vector_extract` / `vector_wait_for` / `vector_console` / `vector_dialog` / `vector_network`; `tests/unit/pages-inspect.test.ts` |
 | H2-B1 | Incremental observation p95 &lt; 2 ms; spatial hit-test index; V8 heap caps; V8 snapshot startup | B | ☑ | `incremental_observe_is_under_two_milliseconds`; `HitIndex`; `V8Vm::with_heap_limit`; startup snapshot blob; `docs/perf/incremental-observe.json` |
 

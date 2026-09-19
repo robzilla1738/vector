@@ -7,6 +7,8 @@ import {
   compileSkill,
   tryReuseSkill,
   evaluateHeldOutAdvantage,
+  siteKey,
+  controlFingerprint,
   redactForModel,
   agentMayEgress,
   promptCannotGrant,
@@ -67,6 +69,29 @@ describe("VEC-018 skills", () => {
     expect("skill" in ok && ok.skill.id === "inc").toBe(true);
     const skip = tryReuseSkill([skill], "increment the counter", obs("Save"), "https://app.test/");
     expect("skipped" in skip).toBe(true);
+  });
+
+  it("siteKey is origin plus control fingerprint; reuse refuses a mismatch", () => {
+    const page = obs("Increment");
+    const key = siteKey("https://app.test/form", page);
+    expect(key.startsWith("https://app.test#")).toBe(true);
+    expect(key.split("#")[1]).toBe(controlFingerprint(page));
+    expect(siteKey("https://other.test/", page)).not.toBe(key);
+    expect(controlFingerprint(obs("Save"))).not.toBe(controlFingerprint(page));
+
+    const skill = compileSkill({
+      id: "inc",
+      goalPattern: "increment",
+      pageId: "p1",
+      steps: [{ id: "c", op: "click", target: "r1" }],
+      preconditions: [{ role: "button", nameIncludes: "Increment" }],
+      postconditions: [],
+      evidence: "same controls",
+      siteKey: key,
+    });
+    expect("skill" in tryReuseSkill([skill], "increment", page, "https://app.test/")).toBe(true);
+    const skip = tryReuseSkill([skill], "increment", obs("Increment"), "https://evil.test/");
+    expect(skip).toMatchObject({ skipped: expect.stringContaining("siteKey") });
   });
 
   it("does not claim the 2x p95 stretch without measured metrics", () => {

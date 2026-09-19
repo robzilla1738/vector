@@ -443,6 +443,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
             pageIds: run.pageIds,
             repairNote: lastError,
             context: run.config?.context,
+            budget: { tokens: 3000 },
           });
           const args = { modelId, system: PLANNER_SYSTEM, prompt, schema: PlanChunkSchema, maxOutputTokens: 8192 };
           if (!canStream) return (await structuredCall<PlanChunk>("planner", args)).object;
@@ -829,7 +830,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
             const repair = await structuredCall<RepairChunk>("repair", {
               modelId: recoveryModelId,
               system: `${PLANNER_SYSTEM}\n\nYou are the recovery model. A chunk failed: ${lastError}. Produce a corrected bounded chunk.`,
-              prompt: buildPlannerPrompt({ goal: run.goal, observations: [fresh], recentOutcomes: outcomes, pageIds: run.pageIds, repairNote: lastError, context: run.config?.context }),
+              prompt: buildPlannerPrompt({ goal: run.goal, observations: [fresh], recentOutcomes: outcomes, pageIds: run.pageIds, repairNote: lastError, context: run.config?.context, budget: { tokens: 3000 } }),
               schema: RepairChunkSchema,
               maxOutputTokens: 8192,
             });
