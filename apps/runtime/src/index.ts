@@ -50,6 +50,7 @@ export {
   authorizeProgram,
   classifyStep,
   DEFAULT_GRANTS,
+  USER_RUN_GRANTS,
   KNOWN_GRANTS,
   resolveGrants,
   sanitizeGrants,

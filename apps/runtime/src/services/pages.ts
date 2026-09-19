@@ -91,8 +91,14 @@ export interface PageServiceDeps {
   /**
    * Privilege-independent effect grants (Gate D / Gate F). Model text and
    * RPC params cannot expand these. A function re-reads after settings.set.
+   * Used for unsolicited `pages.execute` (no runId).
    */
   grants?: GrantSource;
+  /**
+   * Grants for a user-started `runs.start` (`ctx.runId` set). Starting the
+   * run is the write grant. Falls back to `grants` when omitted.
+   */
+  grantsForRun?: GrantSource;
 }
 
 /**
@@ -746,7 +752,10 @@ export class PageService {
       if (lp.target.controller === "human")
         throw new VectorError("conflict", `page ${pageId} is under human control`);
       const allSteps = collectSteps(program);
-      const auth = authorizeProgram(allSteps, this.deps.grants ?? DEFAULT_GRANTS);
+      const grants = ctx.runId
+        ? (this.deps.grantsForRun ?? this.deps.grants ?? DEFAULT_GRANTS)
+        : (this.deps.grants ?? DEFAULT_GRANTS);
+      const auth = authorizeProgram(allSteps, grants);
       if (!auth.ok) throw new VectorError("permission_denied", auth.denied);
       this.programInflight.add(pageId);
       try {

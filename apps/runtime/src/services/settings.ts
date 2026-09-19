@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { EngineMode } from "@vector/contracts";
-import { DEFAULT_GRANTS, sanitizeGrants } from "../agent/permissions.js";
+import { DEFAULT_GRANTS, USER_RUN_GRANTS, sanitizeGrants } from "../agent/permissions.js";
 import { FALLBACK_MODELS, DEFAULT_PLANNER_MODEL, modelCallBudget, type ModelClient } from "../agent/model-client.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
 import type { Repo } from "../store/repo.js";
@@ -85,6 +85,16 @@ export class SettingsService {
   /** Live grant list. settings.set is the only expander. */
   effectGrants(): readonly string[] {
     return sanitizeGrants(this.get("effectGrants") ?? this.fileSettings.effectGrants ?? DEFAULT_GRANTS);
+  }
+
+  /**
+   * Grants for a user-started run. Starting the run is the write grant.
+   * An explicit settings.effectGrants list still wins (permission sheet).
+   */
+  effectGrantsForRun(): readonly string[] {
+    const explicit = this.get("effectGrants") ?? this.fileSettings.effectGrants;
+    if (explicit !== undefined) return sanitizeGrants(explicit);
+    return sanitizeGrants([...USER_RUN_GRANTS]);
   }
 
   /** Setting wins over the env override; anything unrecognised is "auto". */

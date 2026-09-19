@@ -4520,6 +4520,12 @@ impl Page {
         let plan = forms::plan_submission(&self.doc, form, submitter, &|id| {
             files.get(&id).cloned().unwrap_or_default()
         });
+        if self.dispatch_js_event(form, "submit", true, true, None) {
+            return Ok(format!(
+                "submit default prevented on {}",
+                ref_for(form)
+            ));
+        }
         if plan.method == FormMethod::Dialog {
             if let Some(dialog) = self
                 .doc

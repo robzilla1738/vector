@@ -215,6 +215,8 @@ export const SettingsSetParams = z.object({
   zoomFactor: z.number().optional(),
   /** Vector Engine routing: off (default, Chromium only) | auto (router) | always (engine only). */
   engineMode: EngineModeSchema.optional(),
+  /** Privilege-independent effect grants. Model text cannot expand these. */
+  effectGrants: z.array(z.string()).optional(),
 });
 export const SettingsGetParams = z.object({});
 

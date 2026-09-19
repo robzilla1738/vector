@@ -229,3 +229,59 @@ fn performance_now_tracks_virtual_time_by_default() {
         "wall sleep must not advance virtual performance.now"
     );
 }
+
+#[test]
+fn program_click_increments_a_type_button() {
+    let mut page = open(
+        r#"<button type="button" id="inc">Increment</button>
+           <p>Count: <span id="n">0</span></p>
+           <script>
+             document.getElementById("inc").addEventListener("click", function () {
+               var n = document.getElementById("n");
+               n.textContent = String(+n.textContent + 1);
+             });
+           </script>"#,
+        true,
+    );
+    let settled = page.settle(200);
+    assert!(settled.settled, "{settled:?}");
+    page.click_target("css:#inc").unwrap();
+    page.click_target("css:#inc").unwrap();
+    page.click_target("css:#inc").unwrap();
+    let n = page
+        .evaluate("document.getElementById('n').textContent")
+        .unwrap();
+    assert_eq!(n, serde_json::json!("3"), "agent click after settle must run the listener");
+    let obs = page.observe(&ObservationRequest::default()).unwrap();
+    assert!(
+        obs.content.text.contains("Count: 3") || obs.content.text.contains('3'),
+        "{}",
+        obs.content.text
+    );
+}
+
+#[test]
+fn program_fill_and_submit_sets_the_output() {
+    let mut page = open(
+        r#"<form id="f">
+             <label>Name <input id="name" name="name" type="text"></label>
+             <button type="submit">Submit</button>
+           </form>
+           <p id="out">not submitted</p>
+           <script>
+             document.getElementById("f").addEventListener("submit", function (e) {
+               e.preventDefault();
+               document.getElementById("out").textContent = "submitted:" + document.getElementById("name").value;
+             });
+           </script>"#,
+        true,
+    );
+    let _ = page.settle(200);
+    let name = page.resolve("css:#name", None).unwrap();
+    page.fill(name, "Ada", 5_000).unwrap();
+    page.click_target("css:button").unwrap();
+    let out = page
+        .evaluate("document.getElementById('out').textContent")
+        .unwrap();
+    assert_eq!(out, serde_json::json!("submitted:Ada"));
+}

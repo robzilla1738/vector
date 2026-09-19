@@ -308,6 +308,103 @@ describe("Gate D permissions and durable writes", () => {
         grants: ["effect:write", "effect:*"],
       } as never),
     ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+    await expect(
+      pages.execute(
+        { pageId: opened.pageId, steps: [{ id: "c", op: "click", target: "r9" }] },
+        { runId: "run_unsolicited_does_not_expand_page_grants" },
+      ),
+    ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+  });
+
+  it("runs.start grants write; unsolicited pages.execute stays read-only", async () => {
+    let clicked = 0;
+    const makePage = (pageId: string, url: string): DriverPage => ({
+      identity: { pageId, targetId: "engine-run-grant", backend: "vector-engine" },
+      url: () => url,
+      title: async () => "counter",
+      isAttached: () => true,
+      navigate: async () => {},
+      back: async () => {},
+      forward: async () => {},
+      reload: async () => {},
+      stop: async () => {},
+      click: async () => {
+        clicked++;
+      },
+      dblclick: async () => {},
+      hover: async () => {},
+      fill: async () => {},
+      typeText: async () => {},
+      press: async () => {},
+      check: async () => {},
+      uncheck: async () => {},
+      select: async () => {},
+      scroll: async () => {},
+      dragTo: async () => {},
+      clickPoint: async () => {},
+      uploadFiles: async () => {},
+      waitFor: async () => ({ ok: true, timedOut: false }),
+      waitForDownload: async () => ({ suggestedFilename: "f" }),
+      handleDialog: async () => {},
+      collectScroll: async () => ({ items: [], collected: 0 }),
+      screenshot: async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }),
+      observe: async () => obs({ url }) as unknown as ObservationContent,
+      expandRef: async () => [],
+      extract: async () => ({ t: "ok" }),
+      evaluate: async () => null,
+      setEvents: () => {},
+      dispose: async () => {},
+      executeProgram: async (steps) => {
+        clicked += steps.filter((s) => s.op === "click").length;
+        return {
+          status: "completed",
+          steps: steps.map((s) => ({
+            stepId: s.id,
+            op: s.op,
+            status: "ok",
+            startedAt: 1,
+            durationMs: 1,
+          })),
+        } as ExecuteProgramResult;
+      },
+    });
+    const driver: BrowserDriver = {
+      backend: "vector-engine",
+      connect: async () => {},
+      disconnect: async () => {},
+      isConnected: () => true,
+      listTargets: async () => [],
+      createTarget: async () => "engine-run-grant",
+      routingOf: () => ({ requiresScript: false }),
+      attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/counter"),
+    };
+    const repo = new Repo(openDb(":memory:"));
+    const pages = new PageService({
+      repo,
+      events: new EventBus(repo),
+      native: new NullNativeBridge(),
+      grants: ["effect:read"],
+      grantsForRun: ["effect:read", "effect:write", "effect:egress"],
+      drivers: () => ({ vector: null, chrome: null, engine: driver }),
+      router: new Router({
+        mode: () => "always",
+        engineAvailable: () => true,
+        store: new MemoryRouterStore(),
+      }),
+    });
+    const opened = await pages.open({ url: "https://app.test/counter", background: true, ownedByRuntime: true });
+    await expect(
+      pages.execute({
+        pageId: opened.pageId,
+        steps: [{ id: "c", op: "click", target: "r9" }],
+      }),
+    ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+    const run = await pages.execute(
+      { pageId: opened.pageId, steps: [{ id: "c", op: "click", target: "r9" }] },
+      { runId: "run_user_started" },
+    );
+    expect(run.status).toBe("completed");
+    expect(clicked).toBe(1);
   });
 
   it("does not dispatch a second write with the same idempotency key", () => {
@@ -622,6 +719,7 @@ describe("Gate B/F one session without Chromium", () => {
       repo,
       events,
       native: new NullNativeBridge(),
+      grants: ["effect:read", "effect:write"],
       drivers: () => drivers,
       router,
     });
