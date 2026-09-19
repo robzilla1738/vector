@@ -293,11 +293,14 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         }
         let dashes = svg_dash(tag);
         let cap = svg_linecap(tag);
+        let join = svg_linejoin(tag);
+        let miter = svg_miterlimit(tag);
         for w in coords.windows(2) {
             stroke_line(
                 &mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width, &dashes, cap,
             );
         }
+        stroke_joins(&mut img, &coords, color, width, join, miter);
         rest = &rest[i + tag_end + 1..];
     }
     rest = text.as_ref();
@@ -309,28 +312,46 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let (color, width) = svg_stroke(tag);
         let width = width * ((world.sx.abs() + world.sy.abs()) * 0.5).max(0.0);
         if let Some(d) = svg_attr_str(tag, "d") {
-            let mut pts: Vec<(f32, f32)> = svg_path_points(d)
+            let contours: Vec<Vec<(f32, f32)>> = svg_path_subpaths(d)
                 .into_iter()
-                .map(|(x, y)| world.map(x, y))
+                .map(|sp| sp.into_iter().map(|(x, y)| world.map(x, y)).collect())
                 .collect();
             let closed = d.bytes().any(|b| b == b'Z' || b == b'z');
-            if closed && pts.len() >= 2 && pts.first() != pts.last() {
-                let first = pts[0];
-                pts.push(first);
-            }
             let fill = svg_fill(tag);
-            if closed && !fill.eq_ignore_ascii_case("none") && pts.len() >= 3 {
-                fill_polygon_with(&mut img, &pts, |x, y| {
-                    paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5)
-                });
+            if closed && !fill.eq_ignore_ascii_case("none") {
+                let mut filled = contours.clone();
+                for c in &mut filled {
+                    if c.len() >= 2 && c.first() != c.last() {
+                        let first = c[0];
+                        c.push(first);
+                    }
+                }
+                let evenodd = svg_attr_str(tag, "fill-rule")
+                    .is_some_and(|s| s.eq_ignore_ascii_case("evenodd"));
+                if evenodd {
+                    fill_contours_with(&mut img, &filled, |x, y| {
+                        paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5)
+                    });
+                } else {
+                    for c in &filled {
+                        fill_polygon_with(&mut img, c, |x, y| {
+                            paint_fill_color(tag, fill, &grads, x as f32 + 0.5, y as f32 + 0.5)
+                        });
+                    }
+                }
             }
             if svg_attr_str(tag, "stroke").is_some() || !closed {
                 let dashes = svg_dash(tag);
                 let cap = svg_linecap(tag);
-                for w in pts.windows(2) {
-                    stroke_line(
-                        &mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width, &dashes, cap,
-                    );
+                let join = svg_linejoin(tag);
+                let miter = svg_miterlimit(tag);
+                for c in &contours {
+                    for w in c.windows(2) {
+                        stroke_line(
+                            &mut img, w[0].0, w[0].1, w[1].0, w[1].1, color, width, &dashes, cap,
+                        );
+                    }
+                    stroke_joins(&mut img, c, color, width, join, miter);
                 }
             }
         }
@@ -949,29 +970,42 @@ fn paint_svg_text(img: &mut DecodedImage, content: &str, x: f32, y: f32, color: 
 fn fill_polygon_with(
     img: &mut DecodedImage,
     pts: &[(f32, f32)],
+    color_at: impl FnMut(u32, u32) -> [u8; 4],
+) {
+    let one = [pts.to_vec()];
+    fill_contours_with(img, &one, color_at);
+}
+
+fn fill_contours_with(
+    img: &mut DecodedImage,
+    contours: &[Vec<(f32, f32)>],
     mut color_at: impl FnMut(u32, u32) -> [u8; 4],
 ) {
-    if pts.len() < 3 {
-        return;
-    }
     let mut min_y = i32::MAX;
     let mut max_y = i32::MIN;
-    for p in pts {
-        let y = p.1.round() as i32;
-        min_y = min_y.min(y);
-        max_y = max_y.max(y);
+    for pts in contours {
+        for p in pts {
+            let y = p.1.round() as i32;
+            min_y = min_y.min(y);
+            max_y = max_y.max(y);
+        }
+    }
+    if min_y == i32::MAX {
+        return;
     }
     min_y = min_y.max(0);
     max_y = max_y.min(img.height as i32 - 1);
     for y in min_y..=max_y {
         let mut xs = Vec::new();
-        for w in pts.windows(2) {
-            let (x0, y0) = w[0];
-            let (x1, y1) = w[1];
-            let yf = y as f32 + 0.5;
-            if (y0 <= yf && y1 > yf) || (y1 <= yf && y0 > yf) {
-                let t = (yf - y0) / (y1 - y0);
-                xs.push(x0 + t * (x1 - x0));
+        let yf = y as f32 + 0.5;
+        for pts in contours {
+            for w in pts.windows(2) {
+                let (x0, y0) = w[0];
+                let (x1, y1) = w[1];
+                if (y0 <= yf && y1 > yf) || (y1 <= yf && y0 > yf) {
+                    let t = (yf - y0) / (y1 - y0);
+                    xs.push(x0 + t * (x1 - x0));
+                }
             }
         }
         xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -1150,6 +1184,21 @@ fn svg_linecap(tag: &str) -> &'static str {
     }
 }
 
+fn svg_linejoin(tag: &str) -> &'static str {
+    let raw = svg_attr_str(tag, "stroke-linejoin").unwrap_or("round");
+    if raw.eq_ignore_ascii_case("miter") {
+        "miter"
+    } else if raw.eq_ignore_ascii_case("bevel") {
+        "bevel"
+    } else {
+        "round"
+    }
+}
+
+fn svg_miterlimit(tag: &str) -> f32 {
+    svg_attr(tag, "stroke-miterlimit").unwrap_or(4.0).max(1.0)
+}
+
 fn svg_dash(tag: &str) -> Vec<f32> {
     let Some(raw) = svg_attr_str(tag, "stroke-dasharray") else {
         return Vec::new();
@@ -1266,7 +1315,102 @@ fn stroke_line(
     }
 }
 
-fn svg_path_points(d: &str) -> Vec<(f32, f32)> {
+fn plot_px(img: &mut DecodedImage, x: i32, y: i32, color: [u8; 4]) {
+    if x >= 0 && y >= 0 && (x as u32) < img.width && (y as u32) < img.height {
+        let idx = ((y as u32 * img.width + x as u32) * 4) as usize;
+        img.rgba[idx..idx + 4].copy_from_slice(&color);
+    }
+}
+
+fn stroke_joins(
+    img: &mut DecodedImage,
+    pts: &[(f32, f32)],
+    color: [u8; 4],
+    width: f32,
+    join: &str,
+    miter_limit: f32,
+) {
+    if pts.len() < 3 {
+        return;
+    }
+    let closed = pts.first() == pts.last();
+    let n = if closed { pts.len() - 1 } else { pts.len() };
+    if n < 2 {
+        return;
+    }
+    let start = if closed { 0 } else { 1 };
+    let end = if closed { n } else { n.saturating_sub(1) };
+    let radius = (width * 0.5).max(0.5);
+    for i in start..end {
+        let prev = pts[(i + n - 1) % n];
+        let cur = pts[i];
+        let next = pts[(i + 1) % n];
+        stroke_join(img, prev, cur, next, color, radius, join, miter_limit);
+    }
+}
+
+fn stroke_join(
+    img: &mut DecodedImage,
+    prev: (f32, f32),
+    cur: (f32, f32),
+    next: (f32, f32),
+    color: [u8; 4],
+    radius: f32,
+    join: &str,
+    miter_limit: f32,
+) {
+    let (ax, ay) = (cur.0 - prev.0, cur.1 - prev.1);
+    let (bx, by) = (next.0 - cur.0, next.1 - cur.1);
+    let alen = ax.hypot(ay);
+    let blen = bx.hypot(by);
+    if alen < 1e-4 || blen < 1e-4 {
+        return;
+    }
+    let (ix, iy) = (ax / alen, ay / alen);
+    let (ox, oy) = (bx / blen, by / blen);
+    if join.eq_ignore_ascii_case("round") {
+        let r = radius.ceil() as i32;
+        let cxi = cur.0.round() as i32;
+        let cyi = cur.1.round() as i32;
+        for dy in -r..=r {
+            for dx in -r..=r {
+                if (dx as f32).hypot(dy as f32) > radius + 0.25 {
+                    continue;
+                }
+                plot_px(img, cxi + dx, cyi + dy, color);
+            }
+        }
+        return;
+    }
+    let cross = ix * oy - iy * ox;
+    let sign = if cross < 0.0 { 1.0 } else { -1.0 };
+    let (inx, iny) = (-iy, ix);
+    let (onx, ony) = (-oy, ox);
+    let p1 = (cur.0 + inx * radius * sign, cur.1 + iny * radius * sign);
+    let p2 = (cur.0 + onx * radius * sign, cur.1 + ony * radius * sign);
+    let mut use_bevel = join.eq_ignore_ascii_case("bevel");
+    let mut miter = p1;
+    if !use_bevel {
+        let det = ix * oy - iy * ox;
+        if det.abs() < 1e-5 {
+            use_bevel = true;
+        } else {
+            let t = ((p2.0 - p1.0) * oy - (p2.1 - p1.1) * ox) / det;
+            miter = (p1.0 + t * ix, p1.1 + t * iy);
+            let mlen = (miter.0 - cur.0).hypot(miter.1 - cur.1);
+            if mlen > miter_limit * radius {
+                use_bevel = true;
+            }
+        }
+    }
+    if use_bevel {
+        fill_polygon_with(img, &[cur, p1, p2, cur], |_, _| color);
+    } else {
+        fill_polygon_with(img, &[cur, p1, miter, p2, cur], |_, _| color);
+    }
+}
+
+fn svg_path_subpaths(d: &str) -> Vec<Vec<(f32, f32)>> {
     let mut nums = Vec::new();
     let mut cmds = Vec::new();
     let mut rest = d.trim();
@@ -1313,6 +1457,7 @@ fn svg_path_points(d: &str) -> Vec<(f32, f32)> {
         }
         rest = rest[1..].trim_start();
     }
+    let mut contours = Vec::new();
     let mut out = Vec::new();
     let mut cx = 0.0;
     let mut cy = 0.0;
@@ -1325,6 +1470,9 @@ fn svg_path_points(d: &str) -> Vec<(f32, f32)> {
         match cmd.to_ascii_uppercase() {
             'M' | 'L' => {
                 let mut first = cmd.eq_ignore_ascii_case(&'m');
+                if first && !out.is_empty() {
+                    contours.push(std::mem::take(&mut out));
+                }
                 while ni + 1 < next_cmd_at {
                     let mut x = nums[ni];
                     let mut y = nums[ni + 1];
@@ -1449,7 +1597,10 @@ fn svg_path_points(d: &str) -> Vec<(f32, f32)> {
             _ => {}
         }
     }
-    out
+    if !out.is_empty() {
+        contours.push(out);
+    }
+    contours
 }
 
 fn sample_quad(out: &mut Vec<(f32, f32)>, x0: f32, y0: f32, x1: f32, y1: f32, x2: f32, y2: f32) {
@@ -2143,5 +2294,38 @@ mod tests {
         .expect("svg linecap square");
         assert_eq!(img.pixel(0, 4), Some([0, 255, 0, 255]));
         assert_eq!(img.pixel(4, 4), Some([0, 255, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_fill_rule_evenodd_keeps_hole_empty() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <path fill='#ff0000' fill-rule='evenodd' d='M0,0 L8,0 L8,8 L0,8 Z M2,2 L6,2 L6,6 L2,6 Z'/></svg>",
+        )
+        .expect("svg evenodd");
+        assert_eq!(img.pixel(0, 0), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_stroke_linejoin_miter_reaches_outer_corner() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <polyline points='2,6 2,2 6,2' fill='none' stroke='#0000ff' stroke-width='4' stroke-linecap='butt' stroke-linejoin='miter'/></svg>",
+        )
+        .expect("svg linejoin miter");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 255, 255]));
+        assert_eq!(img.pixel(2, 2), Some([0, 0, 255, 255]));
+    }
+
+    #[test]
+    fn decode_svg_stroke_linejoin_bevel_keeps_outer_corner_empty() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <polyline points='2,6 2,2 6,2' fill='none' stroke='#0000ff' stroke-width='4' stroke-linecap='butt' stroke-linejoin='bevel'/></svg>",
+        )
+        .expect("svg linejoin bevel");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(2, 2), Some([0, 0, 255, 255]));
     }
 }

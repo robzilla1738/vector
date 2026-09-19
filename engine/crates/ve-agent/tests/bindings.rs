@@ -3926,6 +3926,43 @@ fn intersection_observer_refires_after_scroll() {
 }
 
 #[test]
+fn intersection_observer_refires_after_resize() {
+    let mut page = open(
+        r#"<body>
+          <div id="box" style="width:200px;height:200px">box</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const hits = [];
+              const io = new IntersectionObserver(function (recs) {
+                hits.push({
+                  i: recs[0] && recs[0].isIntersecting,
+                  r: recs[0] && recs[0].intersectionRatio,
+                  w: innerWidth
+                });
+              });
+              io.observe(document.getElementById("box"));
+              io._fire();
+              const afterFirst = hits.length;
+              resizeTo(50, 50);
+              return { hits: hits, afterFirst: afterFirst, inner: innerWidth };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inner"], 50, "{v}");
+    assert!(v["afterFirst"].as_i64().unwrap_or(0) >= 1, "{v}");
+    assert!(
+        v["hits"].as_array().map(|a| a.len()).unwrap_or(0) >= 2,
+        "{v}"
+    );
+    assert_eq!(v["hits"][0]["i"], true, "{v}");
+    assert_eq!(v["hits"][0]["w"], 1280, "{v}");
+    assert_eq!(v["hits"][1]["w"], 50, "{v}");
+}
+
+#[test]
 fn resize_observer_refires_when_style_width_changes() {
     let mut page = open(r#"<body><div id="t" style="width:80px;height:20px">x</div></body>"#);
     page.evaluate(
@@ -5341,6 +5378,44 @@ fn webgl_clear_paints_and_read_pixels() {
 }
 
 #[test]
+fn webgl_shader_compile_and_program_link() {
+    let mut page = open("<title>gls</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.createElement("canvas");
+              c.width = 4;
+              c.height = 4;
+              document.body.appendChild(c);
+              const gl = c.getContext("webgl");
+              const empty = gl.createShader(gl.VERTEX_SHADER);
+              gl.compileShader(empty);
+              const vs = gl.createShader(gl.VERTEX_SHADER);
+              gl.shaderSource(vs, "void main() {}");
+              gl.compileShader(vs);
+              const prog = gl.createProgram();
+              gl.attachShader(prog, vs);
+              gl.linkProgram(prog);
+              const bad = gl.createProgram();
+              gl.linkProgram(bad);
+              return {
+                empty: gl.getShaderParameter(empty) === false,
+                vs: gl.getShaderParameter(vs) === true,
+                log: gl.getShaderInfoLog(empty).length > 0,
+                linked: gl.getProgramParameter(prog) === true,
+                unlinked: gl.getProgramParameter(bad) === false
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["empty"], true, "{v}");
+    assert_eq!(v["vs"], true, "{v}");
+    assert_eq!(v["log"], true, "{v}");
+    assert_eq!(v["linked"], true, "{v}");
+    assert_eq!(v["unlinked"], true, "{v}");
+}
+
+#[test]
 fn audio_buffer_and_get_user_media_denies() {
     let mut page = open("<title>ab</title>");
     page.evaluate(
@@ -5602,6 +5677,35 @@ fn analyser_and_biquad_filter_nodes() {
     assert_eq!(v["wave"], true, "{v}");
     assert_eq!(v["type"], true, "{v}");
     assert_eq!(v["time"], true, "{v}");
+}
+
+#[test]
+fn analyser_reads_connected_oscillator() {
+    let mut page = open("<title>an2</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              const an = ctx.createAnalyser();
+              osc.connect(an);
+              osc.start();
+              const wave = new Uint8Array(an.fftSize);
+              an.getByteTimeDomainData(wave);
+              const bins = new Uint8Array(an.frequencyBinCount);
+              an.getByteFrequencyData(bins);
+              let min = 255, max = 0;
+              for (let i = 0; i < wave.length; i++) {
+                if (wave[i] < min) min = wave[i];
+                if (wave[i] > max) max = wave[i];
+              }
+              return { spread: max > min, peak: bins[2] === 200, idle: bins[0] === 10 };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["spread"], true, "{v}");
+    assert_eq!(v["peak"], true, "{v}");
+    assert_eq!(v["idle"], true, "{v}");
 }
 
 #[test]

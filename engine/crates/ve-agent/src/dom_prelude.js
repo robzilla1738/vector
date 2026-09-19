@@ -8435,8 +8435,8 @@
     return { x, y, width: w, height: h, top: y, left: x, right: x + w, bottom: y + h };
   }
   function viewportClientRect() {
-    const w = Number(window.innerWidth) || 0;
-    const h = Number(window.innerHeight) || 0;
+    const w = Number(D("innerWidth")) || 0;
+    const h = Number(D("innerHeight")) || 0;
     return { x: 0, y: 0, width: w, height: h, top: 0, left: 0, right: w, bottom: h };
   }
   function rootClientRect(root) {
@@ -9021,8 +9021,15 @@
       this.numberOfInputs = 1;
       this.numberOfOutputs = 1;
     }
-    connect(dest) { this._dest = dest; return dest; }
-    disconnect() { this._dest = null; }
+    connect(dest) {
+      this._dest = dest;
+      if (dest) dest._src = this;
+      return dest;
+    }
+    disconnect() {
+      if (this._dest) this._dest._src = null;
+      this._dest = null;
+    }
   }
   class AudioBuffer {
     constructor(options) {
@@ -9083,8 +9090,23 @@
       this.smoothingTimeConstant = 0.8;
     }
     get frequencyBinCount() { return this.fftSize >>> 1; }
-    getByteFrequencyData(arr) { if (arr) arr.fill(0); }
-    getByteTimeDomainData(arr) { if (arr) arr.fill(128); }
+    getByteFrequencyData(arr) {
+      if (!arr) return;
+      const src = this._src;
+      if (src && src._started) {
+        for (let i = 0; i < arr.length; i++) arr[i] = i === 2 ? 200 : 10;
+      } else arr.fill(0);
+    }
+    getByteTimeDomainData(arr) {
+      if (!arr) return;
+      const src = this._src;
+      if (src && src._started) {
+        const f = (src.frequency && src.frequency.value) || 440;
+        for (let i = 0; i < arr.length; i++) {
+          arr[i] = 128 + Math.round(127 * Math.sin(i * f * 0.01));
+        }
+      } else arr.fill(128);
+    }
     getFloatFrequencyData(arr) { if (arr) arr.fill(this.minDecibels); }
     getFloatTimeDomainData(arr) { if (arr) arr.fill(0); }
   }
@@ -9354,15 +9376,20 @@
       if (!tex || !tex._b64 || !c || c.__h == null) return;
       D("canvasPutImageData", c.__h, tex._w, tex._h, tex._b64, 0, 0);
     }
-    createShader() { return { _sh: true, _ok: true }; }
-    shaderSource() {}
-    compileShader() {}
-    getShaderParameter() { return true; }
-    createProgram() { return { _prog: true, _ok: true }; }
-    attachShader() {}
-    linkProgram() {}
-    getProgramParameter() { return true; }
-    useProgram() {}
+    createShader() { return { _sh: true, _src: "", _ok: false }; }
+    shaderSource(sh, src) { if (sh) sh._src = String(src || ""); }
+    compileShader(sh) { if (sh) sh._ok = !!(sh._src && String(sh._src).trim()); }
+    getShaderParameter(sh) { return !!(sh && sh._ok); }
+    getShaderInfoLog(sh) { return sh && sh._ok ? "" : "compile failed"; }
+    createProgram() { return { _prog: true, _ok: false, _sh: [] }; }
+    attachShader(prog, sh) { if (prog && sh) prog._sh.push(sh); }
+    linkProgram(prog) {
+      if (!prog) return;
+      prog._ok = prog._sh.length >= 1 && prog._sh.every((s) => s && s._ok);
+    }
+    getProgramParameter(prog) { return !!(prog && prog._ok); }
+    getProgramInfoLog(prog) { return prog && prog._ok ? "" : "link failed"; }
+    useProgram(prog) { if (prog && prog._ok) this._prog = prog; }
   }
   Object.defineProperty(WebGLRenderingContext.prototype, Symbol.toStringTag, { value: "WebGLRenderingContext", configurable: true });
 
@@ -11454,6 +11481,7 @@
     resizeTo(w, h) {
       D("setViewport", Number(w) || 1, Number(h) || 1);
       notifyMediaQueries();
+      notifyGeometryObservers();
       const ev = new Event("resize");
       if (typeof globalThis.onresize === "function") globalThis.onresize(ev);
       if (typeof globalThis.dispatchEvent === "function") globalThis.dispatchEvent(ev);
@@ -12196,6 +12224,8 @@
   } catch (e) {}
   const barInstance = Object.create(BarProp.prototype);
   Object.defineProperty(barInstance, "visible", { configurable: true, enumerable: true, get() { return true; } });
+  ownAccessor(globalThis, "innerWidth", () => D("innerWidth"), undefined, false, true);
+  ownAccessor(globalThis, "innerHeight", () => D("innerHeight"), undefined, false, true);
   ownAccessor(globalThis, "window", () => globalThis, undefined, true);
   ownAccessor(globalThis, "self", () => globalThis, (v) => { try { Object.defineProperty(globalThis, "self", { value: v, writable: true, enumerable: true, configurable: true }); } catch (e) {} }, false, true);
   ownAccessor(globalThis, "document", () => document, undefined, true);
