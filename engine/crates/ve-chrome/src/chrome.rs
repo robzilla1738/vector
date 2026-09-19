@@ -194,7 +194,7 @@ impl Default for Chrome {
             sidebar_collapsed: false,
             sidebar_width: ChromeMetrics::default().sidebar_w,
             rail_width: ChromeMetrics::default().rail_w,
-            rail_open: true,
+            rail_open: false,
             overlay: ChromeOverlay::None,
             agent_status: String::new(),
             backend: ChromeBackend::Engine,
@@ -591,6 +591,14 @@ impl Chrome {
             );
             y += self.metrics.row_h;
         }
+        let foot = window.height - 88.0;
+        self.label(list, Point::new(16.0, foot), "AGENT", 11.0, t.sb_ink_1);
+        let status = if self.agent_status.is_empty() {
+            "Ready"
+        } else {
+            self.agent_status.as_str()
+        };
+        self.label(list, Point::new(16.0, foot + 18.0), status, 12.0, t.sb_ink_0);
         self.label(
             list,
             Point::new(16.0, window.height - 20.0),
@@ -1730,6 +1738,7 @@ mod tests {
         c.command = "example.com".into();
         c.command_focused = true;
         c.agent_status = "Idle".into();
+        c.rail_open = true;
         c
     }
 

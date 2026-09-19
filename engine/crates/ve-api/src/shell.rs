@@ -2817,7 +2817,12 @@ mod tests {
         assert!(browser.chrome_enabled());
         let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
         assert!(stage.x() >= 200.0);
-        assert!(stage.width() < 800.0);
+        assert!(
+            browser.chrome().rail_used() == 0.0,
+            "Electron default is rail closed"
+        );
+        assert!(stage.width() > 900.0);
+        assert!(stage.width() < 1100.0);
     }
 
     #[test]
