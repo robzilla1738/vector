@@ -761,6 +761,15 @@ enum CanvasStyle {
         y1: f32,
         stops: Vec<(f32, [u8; 4])>,
     },
+    Radial {
+        x0: f32,
+        y0: f32,
+        r0: f32,
+        x1: f32,
+        y1: f32,
+        r1: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    },
 }
 
 impl CanvasStyle {
@@ -774,6 +783,15 @@ impl CanvasStyle {
                 y1,
                 stops,
             } => sample_linear_gradient(*x0, *y0, *x1, *y1, stops, x, y),
+            Self::Radial {
+                x0,
+                y0,
+                r0,
+                x1,
+                y1,
+                r1,
+                stops,
+            } => sample_radial_gradient(*x0, *y0, *r0, *x1, *y1, *r1, stops, x, y),
         }
     }
 }
@@ -844,6 +862,41 @@ fn lerp_rgba(a: [u8; 4], b: [u8; 4], t: f32) -> [u8; 4] {
     ]
 }
 
+fn parse_canvas_stops(stops_s: &str) -> Vec<(f32, [u8; 4])> {
+    let mut stops = Vec::new();
+    for stop in stops_s.split(';') {
+        if stop.is_empty() {
+            continue;
+        }
+        if let Some((off, color)) = stop.split_once('=') {
+            if let Ok(o) = off.parse::<f32>() {
+                stops.push((o.clamp(0.0, 1.0), parse_css_color(color)));
+            }
+        }
+    }
+    stops
+}
+
+fn sample_radial_gradient(
+    x0: f32,
+    y0: f32,
+    r0: f32,
+    x1: f32,
+    y1: f32,
+    r1: f32,
+    stops: &[(f32, [u8; 4])],
+    x: f32,
+    y: f32,
+) -> [u8; 4] {
+    let cx = if r1.abs() > r0.abs() { x1 } else { x0 };
+    let cy = if r1.abs() > r0.abs() { y1 } else { y0 };
+    let inner = r0.min(r1);
+    let outer = r0.max(r1).max(inner + 1e-3);
+    let d = (x - cx).hypot(y - cy);
+    let t = ((d - inner) / (outer - inner)).clamp(0.0, 1.0);
+    sample_linear_gradient(0.0, 0.0, 1.0, 0.0, stops, t, 0.0)
+}
+
 fn parse_canvas_style(s: &str) -> CanvasStyle {
     let t = s.trim();
     if let Some(rest) = t.strip_prefix("ve-grad:") {
@@ -851,28 +904,27 @@ fn parse_canvas_style(s: &str) -> CanvasStyle {
         let kind = parts.next().unwrap_or("");
         let coords = parts.next().unwrap_or("");
         let stops_s = parts.next().unwrap_or("");
-        if kind == "linear" {
-            let nums: Vec<f32> = coords.split(',').filter_map(|n| n.parse().ok()).collect();
-            if nums.len() == 4 {
-                let mut stops = Vec::new();
-                for stop in stops_s.split(';') {
-                    if stop.is_empty() {
-                        continue;
-                    }
-                    if let Some((off, color)) = stop.split_once('=') {
-                        if let Ok(o) = off.parse::<f32>() {
-                            stops.push((o.clamp(0.0, 1.0), parse_css_color(color)));
-                        }
-                    }
-                }
-                return CanvasStyle::Linear {
-                    x0: nums[0],
-                    y0: nums[1],
-                    x1: nums[2],
-                    y1: nums[3],
-                    stops,
-                };
-            }
+        let nums: Vec<f32> = coords.split(',').filter_map(|n| n.parse().ok()).collect();
+        let stops = parse_canvas_stops(stops_s);
+        if kind == "linear" && nums.len() == 4 {
+            return CanvasStyle::Linear {
+                x0: nums[0],
+                y0: nums[1],
+                x1: nums[2],
+                y1: nums[3],
+                stops,
+            };
+        }
+        if kind == "radial" && nums.len() == 6 {
+            return CanvasStyle::Radial {
+                x0: nums[0],
+                y0: nums[1],
+                r0: nums[2],
+                x1: nums[3],
+                y1: nums[4],
+                r1: nums[5],
+                stops,
+            };
         }
     }
     CanvasStyle::Solid(parse_css_color(t))

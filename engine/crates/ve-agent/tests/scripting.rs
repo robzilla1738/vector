@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes"
         )
     );
     assert_eq!(
@@ -326,6 +326,16 @@ fn native_bindings_install_element_id_accessor() {
             .unwrap_or("")
             .contains("<p"),
         "outerHTML should serialize the element"
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').hasChildNodes()")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.contains(document.getElementById('y'))")
+            .unwrap(),
+        serde_json::json!(true)
     );
 }
 

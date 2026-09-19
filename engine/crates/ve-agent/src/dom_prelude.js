@@ -4107,7 +4107,11 @@
     }
     createRadialGradient(x0, y0, r0, x1, y1, r1) {
       if (arguments.length < 6) throw new TypeError("Failed to execute 'createRadialGradient' on 'CanvasRenderingContext2D': 6 arguments required, but only " + arguments.length + " present.");
-      return Object.create(CanvasGradient.prototype);
+      const g = Object.create(CanvasGradient.prototype);
+      g._kind = "radial";
+      g._coords = [Number(x0) || 0, Number(y0) || 0, Number(r0) || 0, Number(x1) || 0, Number(y1) || 0, Number(r1) || 0];
+      g._stops = [];
+      return g;
     }
     createConicGradient(startAngle, x, y) { return Object.create(CanvasGradient.prototype); }
     createPattern() { return null; }

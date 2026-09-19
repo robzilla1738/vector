@@ -629,6 +629,14 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeMatches", matches)?;
+            let contains = v8::FunctionTemplate::builder(native_node_contains)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeContains", contains)?;
+            let has_kids = v8::FunctionTemplate::builder(native_node_has_child_nodes)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeHasChildNodes", has_kids)?;
             Some(())
         })?;
         self.eval(
@@ -667,6 +675,8 @@ impl JsVm for V8Vm {
       enumerable: true,
       get: globalThis.__veNativeIsConnected
     });
+    Node.prototype.contains = globalThis.__veNativeContains;
+    Node.prototype.hasChildNodes = globalThis.__veNativeHasChildNodes;
   }
   def(Element.prototype, "innerHTML", globalThis.__veNativeInnerHTMLGet, globalThis.__veNativeInnerHTMLSet);
   def(Element.prototype, "outerHTML", globalThis.__veNativeOuterHTMLGet, globalThis.__veNativeOuterHTMLSet);
@@ -676,7 +686,7 @@ impl JsVm for V8Vm {
   Element.prototype.hasAttribute = globalThis.__veNativeHasAttribute;
   Element.prototype.toggleAttribute = globalThis.__veNativeToggleAttribute;
   Element.prototype.matches = globalThis.__veNativeMatches;
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes";
 })()"#,
             "vector:dom-native",
         )?;
@@ -1378,6 +1388,40 @@ fn native_element_matches(
     let sel = native_arg(scope, &args, 0);
     let value = call_dom_host(scope, &[JsValue::from("matches"), handle, sel]);
     rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_node_contains(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let other = if args.length() > 0 {
+        args.get(0)
+            .to_object(scope)
+            .and_then(|obj| object_handle(scope, obj))
+            .unwrap_or(JsValue::Null)
+    } else {
+        JsValue::Null
+    };
+    let value = call_dom_host(scope, &[JsValue::from("contains"), handle, other]);
+    rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_node_has_child_nodes(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("childNodes"), handle]);
+    rv.set_bool(matches!(value, Some(JsValue::Array(ref a)) if !a.is_empty()));
 }
 
 fn looks_like_module(source: &str) -> bool {

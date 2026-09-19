@@ -508,10 +508,88 @@ fn svg_path_points(d: &str) -> Vec<(f32, f32)> {
                 cx = sx;
                 cy = sy;
             }
+            'Q' => {
+                while ni + 3 < next_cmd_at {
+                    let mut cpx = nums[ni];
+                    let mut cpy = nums[ni + 1];
+                    let mut x = nums[ni + 2];
+                    let mut y = nums[ni + 3];
+                    if rel {
+                        cpx += cx;
+                        cpy += cy;
+                        x += cx;
+                        y += cy;
+                    }
+                    sample_quad(&mut out, cx, cy, cpx, cpy, x, y);
+                    cx = x;
+                    cy = y;
+                    ni += 4;
+                }
+            }
+            'C' => {
+                while ni + 5 < next_cmd_at {
+                    let mut x1 = nums[ni];
+                    let mut y1 = nums[ni + 1];
+                    let mut x2 = nums[ni + 2];
+                    let mut y2 = nums[ni + 3];
+                    let mut x = nums[ni + 4];
+                    let mut y = nums[ni + 5];
+                    if rel {
+                        x1 += cx;
+                        y1 += cy;
+                        x2 += cx;
+                        y2 += cy;
+                        x += cx;
+                        y += cy;
+                    }
+                    sample_cubic(&mut out, cx, cy, x1, y1, x2, y2, x, y);
+                    cx = x;
+                    cy = y;
+                    ni += 6;
+                }
+            }
             _ => {}
         }
     }
     out
+}
+
+fn sample_quad(out: &mut Vec<(f32, f32)>, x0: f32, y0: f32, x1: f32, y1: f32, x2: f32, y2: f32) {
+    if out.last() != Some(&(x0, y0)) {
+        out.push((x0, y0));
+    }
+    for i in 1..=12 {
+        let t = i as f32 / 12.0;
+        let u = 1.0 - t;
+        out.push((
+            u * u * x0 + 2.0 * u * t * x1 + t * t * x2,
+            u * u * y0 + 2.0 * u * t * y1 + t * t * y2,
+        ));
+    }
+}
+
+fn sample_cubic(
+    out: &mut Vec<(f32, f32)>,
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+    x3: f32,
+    y3: f32,
+) {
+    if out.last() != Some(&(x0, y0)) {
+        out.push((x0, y0));
+    }
+    for i in 1..=16 {
+        let t = i as f32 / 16.0;
+        let u = 1.0 - t;
+        out.push((
+            u * u * u * x0 + 3.0 * u * u * t * x1 + 3.0 * u * t * t * x2 + t * t * t * x3,
+            u * u * u * y0 + 3.0 * u * u * t * y1 + 3.0 * u * t * t * y2 + t * t * t * y3,
+        ));
+    }
 }
 
 fn svg_attr_str<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
@@ -692,5 +770,12 @@ mod tests {
         .expect("svg path");
         assert_eq!(path.pixel(0, 0), Some([255, 0, 255, 255]));
         assert_eq!(path.pixel(7, 0), Some([255, 0, 255, 255]));
+        let quad = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='8'><path d='M0 7 Q8 0 15 7' stroke='#00ff00'/></svg>",
+        )
+        .expect("svg quadratic path");
+        assert_eq!(quad.pixel(0, 7), Some([0, 255, 0, 255]));
+        assert_eq!(quad.pixel(15, 7), Some([0, 255, 0, 255]));
+        assert_eq!(quad.pixel(8, 4), Some([0, 255, 0, 255]));
     }
 }

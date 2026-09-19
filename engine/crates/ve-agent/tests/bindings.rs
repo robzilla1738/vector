@@ -751,6 +751,41 @@ fn canvas_linear_gradient_fills_pixels() {
 }
 
 #[test]
+fn canvas_radial_gradient_fills_center() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              var g = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+              g.addColorStop(0, "#ff0000");
+              g.addColorStop(1, "#0000ff");
+              ctx.fillStyle = g;
+              ctx.fillRect(0, 0, 16, 16);
+              var center = ctx.getImageData(8, 8, 1, 1).data;
+              var edge = ctx.getImageData(15, 8, 1, 1).data;
+              return {
+                cr: center[0], cb: center[2],
+                er: edge[0], eb: edge[2],
+                encoded: String(g).indexOf("ve-grad:radial:") === 0
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["encoded"], true, "{v}");
+    assert!(v["cr"].as_f64().unwrap_or(0.0) > 200.0, "center red: {v}");
+    assert!(
+        v["cb"].as_f64().unwrap_or(99.0) < 40.0,
+        "center not blue: {v}"
+    );
+    assert!(v["eb"].as_f64().unwrap_or(0.0) > 200.0, "edge blue: {v}");
+    assert!(v["er"].as_f64().unwrap_or(99.0) < 40.0, "edge not red: {v}");
+}
+
+#[test]
 fn canvas_draw_image_blits_source_pixels() {
     const RED: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
     let mut page = open(&format!(
