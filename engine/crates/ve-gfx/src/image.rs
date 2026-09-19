@@ -177,19 +177,14 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         if let Some(h) = svg_attr(tag, "height") {
             height = h.max(1.0) as u32;
         }
-        if let Some(vb) = tag
-            .split("viewBox=\"")
-            .nth(1)
-            .or_else(|| tag.split("viewbox=\"").nth(1))
-            .and_then(|s| s.split('"').next())
-        {
-            let nums: Vec<f32> = vb
-                .split_whitespace()
-                .filter_map(|p| p.parse().ok())
-                .collect();
-            if nums.len() == 4 {
-                width = nums[2].max(1.0) as u32;
-                height = nums[3].max(1.0) as u32;
+        if svg_attr(tag, "width").is_none() || svg_attr(tag, "height").is_none() {
+            if let Some((_, _, vw, vh)) = svg_viewbox_nums(tag) {
+                if svg_attr(tag, "width").is_none() {
+                    width = vw.max(1.0) as u32;
+                }
+                if svg_attr(tag, "height").is_none() {
+                    height = vh.max(1.0) as u32;
+                }
             }
         }
     }
@@ -791,11 +786,12 @@ impl SvgXform {
     fn then_tag(self, tag: &str) -> Self {
         let (tx, ty) = svg_translate(tag);
         let (sx, sy) = svg_scale(tag);
+        let (vox, voy, vsx, vsy) = svg_viewbox_xform(tag).unwrap_or((0.0, 0.0, 1.0, 1.0));
         Self {
-            ox: self.ox + tx * self.sx,
-            oy: self.oy + ty * self.sy,
-            sx: self.sx * sx,
-            sy: self.sy * sy,
+            ox: self.ox + (tx + vox) * self.sx,
+            oy: self.oy + (ty + voy) * self.sy,
+            sx: self.sx * sx * vsx,
+            sy: self.sy * sy * vsy,
             opacity: self.opacity,
             clip: self.clip,
         }
@@ -2569,6 +2565,32 @@ fn svg_tspan_tag(content: &str) -> Option<&str> {
 
 fn svg_tspan_attr<'a>(content: &'a str, name: &str) -> Option<String> {
     svg_attr_str(svg_tspan_tag(content)?, name).map(|s| s.to_string())
+}
+
+fn svg_viewbox_nums(tag: &str) -> Option<(f32, f32, f32, f32)> {
+    let raw = svg_attr_str(tag, "viewBox").or_else(|| svg_attr_str(tag, "viewbox"))?;
+    let nums: Vec<f32> = raw
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .filter(|s| !s.is_empty())
+        .filter_map(|p| p.parse().ok())
+        .collect();
+    if nums.len() == 4 {
+        Some((nums[0], nums[1], nums[2], nums[3]))
+    } else {
+        None
+    }
+}
+
+fn svg_viewbox_xform(tag: &str) -> Option<(f32, f32, f32, f32)> {
+    let (minx, miny, vbw, vbh) = svg_viewbox_nums(tag)?;
+    if vbw <= 0.0 || vbh <= 0.0 {
+        return None;
+    }
+    let w = svg_attr(tag, "width").unwrap_or(vbw);
+    let h = svg_attr(tag, "height").unwrap_or(vbh);
+    let sx = w / vbw;
+    let sy = h / vbh;
+    Some((-minx * sx, -miny * sy, sx, sy))
 }
 
 fn svg_font_bold(tag: &str) -> bool {
@@ -4461,6 +4483,19 @@ mod tests {
         assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(12, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(8, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_viewbox_scales_rect_to_viewport() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 16 16'>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg viewBox");
+        assert_eq!(img.width, 8);
+        assert_eq!(img.height, 8);
+        assert_eq!(img.pixel(2, 2), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(6, 6), Some([0, 0, 0, 0]));
     }
 
     #[test]

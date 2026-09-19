@@ -4886,10 +4886,16 @@
     _isRtl() {
       return String(this._direction || "inherit") === "rtl";
     }
+    get fontStyle() { return this._fontStyle || "normal"; }
+    set fontStyle(v) { this._fontStyle = String(v); }
+    get fontWeight() { return this._fontWeight || "normal"; }
+    set fontWeight(v) { this._fontWeight = String(v); }
     _fontItalic() {
-      return /italic|oblique/i.test(String(this._font || ""));
+      return /italic|oblique/i.test(String(this._fontStyle || this._font || ""));
     }
     _fontBold() {
+      const w = String(this._fontWeight || "");
+      if (/bold/i.test(w) || /(?:^|[\s\/])(?:[7-9]00)(?:\s|$)/.test(w)) return true;
       const f = String(this._font || "");
       return /bold/i.test(f) || /(?:^|[\s\/])(?:[7-9]00)(?:\s|$)/.test(f);
     }
@@ -9493,6 +9499,8 @@
       this.ARRAY_BUFFER = 34962;
       this.ELEMENT_ARRAY_BUFFER = 34963;
       this.FLOAT = 5126;
+      this.POINTS = 0;
+      this.LINE_LOOP = 2;
       this.LINE_STRIP = 3;
       this.TRIANGLES = 4;
       this.TRIANGLE_STRIP = 5;
@@ -9818,6 +9826,17 @@
           for (let i = 0; i < n; i++) {
             const p = this._attribPoint(start + i);
             if (p) pts.push(p);
+          }
+          if (mode === this.POINTS) {
+            const css = this._uniformCss();
+            for (const p of pts) {
+              D("canvasFillRect", c.__h, p[0] - 1, p[1] - 1, 2, 2, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
+            }
+            return;
+          }
+          if (mode === this.LINE_LOOP && pts.length >= 2) {
+            this._strokePoly(pts.concat([pts[0]]), this._uniformCss());
+            return;
           }
           if (mode === this.LINE_STRIP && pts.length >= 2) {
             this._strokePoly(pts, this._uniformCss());

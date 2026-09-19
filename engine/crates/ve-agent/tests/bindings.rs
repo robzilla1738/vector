@@ -2115,6 +2115,37 @@ fn canvas_letter_spacing_shifts_second_glyph() {
 }
 
 #[test]
+fn canvas_font_weight_property_widens_glyph() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(weight) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.font = "7px sans-serif";
+                ctx.fontWeight = weight;
+                ctx.fillText("I", 1, 12);
+                var data = ctx.getImageData(0, 0, 16, 16).data;
+                var max = -1;
+                for (var i = 0; i < data.length; i += 4) {
+                  if (data[i] > 200) max = Math.max(max, (i / 4) % 16);
+                }
+                return max;
+              }
+              return { n: maxX("normal"), b: maxX("bold") };
+            })()"##,
+        )
+        .unwrap();
+    let n = v["n"].as_i64().unwrap_or(-1);
+    let b = v["b"].as_i64().unwrap_or(-1);
+    assert!(b > n, "fontWeight=bold must widen I: {v}");
+}
+
+#[test]
 fn canvas_font_bold_widens_glyph() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -6351,6 +6382,68 @@ fn webgl_cull_face_skips_back_facing_triangle() {
     assert_eq!(v["ca"], 0, "{v}");
     assert_eq!(v["sg"], 255, "{v}");
     assert_eq!(v["sa"], 255, "{v}");
+}
+
+#[test]
+fn webgl_points_fills_vertex() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.POINTS, 0, 1);
+              const mid = new Uint8Array(4);
+              const out = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              return { g: mid[1], a: mid[3], oa: out[3], pts: gl.POINTS };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["pts"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+}
+
+#[test]
+fn webgl_line_loop_closes_polyline() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.LINE_LOOP, 0, 4);
+              const edge = new Uint8Array(4);
+              const mid = new Uint8Array(4);
+              gl.readPixels(4, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, edge);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              return { eg: edge[1], ea: edge[3], ma: mid[3], loop: gl.LINE_LOOP };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["loop"], 2, "{v}");
+    assert_eq!(v["eg"], 255, "{v}");
+    assert_eq!(v["ea"], 255, "{v}");
+    assert_eq!(v["ma"], 0, "{v}");
 }
 
 #[test]
