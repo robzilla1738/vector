@@ -318,6 +318,15 @@ impl ComputedStyle {
                 MaxSize::Calc { px, percent } => format!("calc({px}px + {percent}%)"),
             }
         }
+        fn time_ms(v: f32) -> String {
+            if v == 0.0 {
+                "0s".into()
+            } else if (v / 1000.0 - (v / 1000.0).round()).abs() < 1e-4 {
+                format!("{}s", (v / 1000.0).round())
+            } else {
+                format!("{}s", v / 1000.0)
+            }
+        }
 
         if name.starts_with("--") {
             return self
@@ -602,6 +611,71 @@ impl ComputedStyle {
                 crate::values::Color::Rgba(c) => c.to_css_string(),
                 crate::values::Color::CurrentColor => self.color.to_css_string(),
             },
+            PropertyId::AnimationDuration => time_ms(self.animation_duration_ms),
+            PropertyId::AnimationDelay => time_ms(self.animation_delay_ms),
+            PropertyId::TransitionDuration => time_ms(self.transition_duration_ms),
+            PropertyId::TransitionDelay => time_ms(self.transition_delay_ms),
+            PropertyId::AnimationIterationCount => {
+                if self.animation_iteration_count.is_infinite() {
+                    "infinite".into()
+                } else {
+                    format!("{}", self.animation_iteration_count)
+                }
+            }
+            PropertyId::AspectRatio => match self.aspect_ratio {
+                None => "auto".into(),
+                Some(r) => format!("{r}"),
+            },
+            PropertyId::ColumnCount => match self.column_count {
+                None => "auto".into(),
+                Some(n) => format!("{n}"),
+            },
+            PropertyId::ColumnWidth => match self.column_width {
+                None => "auto".into(),
+                Some(w) => px(w),
+            },
+            PropertyId::LineClamp => match self.line_clamp {
+                None => "none".into(),
+                Some(n) => format!("{n}"),
+            },
+            PropertyId::ContainIntrinsicWidth => match self.contain_intrinsic_width {
+                None => "none".into(),
+                Some(w) => px(w),
+            },
+            PropertyId::ContainIntrinsicHeight => match self.contain_intrinsic_height {
+                None => "none".into(),
+                Some(h) => px(h),
+            },
+            PropertyId::BorderTopLeftRadius => px(self.border_top_left_radius),
+            PropertyId::BorderTopRightRadius => px(self.border_top_right_radius),
+            PropertyId::BorderBottomRightRadius => px(self.border_bottom_right_radius),
+            PropertyId::BorderBottomLeftRadius => px(self.border_bottom_left_radius),
+            PropertyId::Perspective => {
+                if self.perspective == 0.0 {
+                    "none".into()
+                } else {
+                    px(self.perspective)
+                }
+            },
+            PropertyId::TextSizeAdjust => format!("{}", self.text_size_adjust),
+            PropertyId::ContainerName => {
+                if self.container_name.is_empty() {
+                    "none".into()
+                } else {
+                    self.container_name.clone()
+                }
+            },
+            PropertyId::ViewTransitionName => {
+                if self.view_transition_name.is_empty() {
+                    "none".into()
+                } else {
+                    self.view_transition_name.clone()
+                }
+            },
+            PropertyId::TapHighlightColor => match self.tap_highlight_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
             _ => String::new(),
         }
     }
@@ -778,5 +852,31 @@ mod tests {
         assert!(style.property_css("stroke").contains("0, 0, 255"));
         assert_eq!(style.property_css("stroke-width"), "3px");
         assert_eq!(style.property_css("zoom"), "2");
+    }
+
+    #[test]
+    fn property_css_exposes_time_radius_and_columns() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "animation-duration: 1s; animation-delay: 200ms; animation-iteration-count: infinite; \
+             transition-duration: 500ms; aspect-ratio: 2; column-count: 3; column-width: 80px; \
+             line-clamp: 2; border-top-left-radius: 4px; perspective: 200px; container-name: main",
+            false,
+        );
+        assert_eq!(style.property_css("animation-duration"), "1s");
+        assert_eq!(style.property_css("animation-delay"), "0.2s");
+        assert_eq!(style.property_css("animation-iteration-count"), "infinite");
+        assert_eq!(style.property_css("transition-duration"), "0.5s");
+        assert_eq!(style.property_css("aspect-ratio"), "2");
+        assert_eq!(style.property_css("column-count"), "3");
+        assert_eq!(style.property_css("column-width"), "80px");
+        assert_eq!(style.property_css("line-clamp"), "2");
+        assert_eq!(style.property_css("border-top-left-radius"), "4px");
+        assert_eq!(style.property_css("perspective"), "200px");
+        assert_eq!(style.property_css("container-name"), "main");
+        assert_eq!(ComputedStyle::initial().property_css("aspect-ratio"), "auto");
+        assert_eq!(ComputedStyle::initial().property_css("animation-name"), "none");
+        assert_eq!(ComputedStyle::initial().property_css("perspective"), "none");
     }
 }

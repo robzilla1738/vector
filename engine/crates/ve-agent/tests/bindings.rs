@@ -2315,6 +2315,38 @@ fn canvas_filter_drop_shadow_paints_offset() {
 }
 
 #[test]
+fn computed_style_exposes_time_radius_and_columns() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="animation-duration:1s;animation-iteration-count:infinite;aspect-ratio:2;column-count:3;line-clamp:2;border-top-left-radius:4px;perspective:200px">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                dur: String(cs.animationDuration || cs.getPropertyValue("animation-duration")),
+                iter: String(cs.animationIterationCount || cs.getPropertyValue("animation-iteration-count")),
+                ar: String(cs.aspectRatio || cs.getPropertyValue("aspect-ratio")),
+                cols: String(cs.columnCount || cs.getPropertyValue("column-count")),
+                clamp: String(cs.lineClamp || cs.getPropertyValue("line-clamp")),
+                radius: String(cs.borderTopLeftRadius || cs.getPropertyValue("border-top-left-radius")),
+                persp: String(cs.perspective || cs.getPropertyValue("perspective"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["dur"], "1s", "{v}");
+    assert_eq!(v["iter"], "infinite", "{v}");
+    assert_eq!(v["ar"], "2", "{v}");
+    assert_eq!(v["cols"], "3", "{v}");
+    assert_eq!(v["clamp"], "2", "{v}");
+    assert_eq!(v["radius"], "4px", "{v}");
+    assert_eq!(v["persp"], "200px", "{v}");
+}
+
+#[test]
 fn computed_style_exposes_flex_list_and_paint_keywords() {
     let mut page = open(
         r#"<body>
