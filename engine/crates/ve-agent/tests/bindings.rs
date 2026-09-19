@@ -2730,6 +2730,36 @@ fn canvas_filter_saturate_zero_greys_red() {
 }
 
 #[test]
+fn canvas_filter_url_saturate_zero_greys_red() {
+    let mut page = open(
+        r#"<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+  <filter id="f"><feColorMatrix type="saturate" values="0"/></filter>
+</svg>
+</body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "url(#f)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["r"], v["g"], "{v}");
+    assert_eq!(v["g"], v["b"], "{v}");
+    assert!(v["r"].as_u64().unwrap_or(0) > 20 && v["r"].as_u64().unwrap_or(0) < 200, "{v}");
+}
+
+#[test]
 fn canvas_fill_text_paints_distinct_glyphs() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -6353,6 +6383,34 @@ fn webgl_blend_equation_subtract_removes_src() {
     assert_eq!(v["r"], 0, "{v}");
     assert_eq!(v["g"], 255, "{v}");
     assert_eq!(v["b"], 0, "{v}");
+}
+
+#[test]
+fn webgl_blend_equation_separate_adds_alpha() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 1, 0, 100 / 255);
+              gl.clear();
+              gl.enable(gl.BLEND);
+              gl.blendFunc(gl.ONE, gl.ONE);
+              gl.blendEquationSeparate(gl.FUNC_SUBTRACT, gl.FUNC_ADD);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], a: px[3], add: gl.FUNC_ADD };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["add"], 32774, "{v}");
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
 }
 
 #[test]

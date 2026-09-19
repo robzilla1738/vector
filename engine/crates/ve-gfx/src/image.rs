@@ -2084,7 +2084,13 @@ fn parse_gradient_stops(block: &str) -> Vec<(f32, [u8; 4])> {
 }
 
 #[derive(Clone)]
-enum SvgClip {
+struct SvgClip {
+    kind: SvgClipKind,
+    object_bbox: bool,
+}
+
+#[derive(Clone)]
+enum SvgClipKind {
     Rect { x: f32, y: f32, w: f32, h: f32 },
     Circle { cx: f32, cy: f32, r: f32 },
     Ellipse { cx: f32, cy: f32, rx: f32, ry: f32 },
@@ -2094,19 +2100,59 @@ enum SvgClip {
     },
 }
 
+fn clip_units_object_bbox(tag: &str) -> bool {
+    svg_attr_str(tag, "clipPathUnits")
+        .or_else(|| svg_attr_str(tag, "maskContentUnits"))
+        .is_some_and(|s| s.eq_ignore_ascii_case("objectBoundingBox"))
+}
+
+fn svg_object_bbox(tag: &str) -> (f32, f32, f32, f32) {
+    if let (Some(w), Some(h)) = (svg_attr(tag, "width"), svg_attr(tag, "height")) {
+        return (
+            svg_attr(tag, "x").unwrap_or(0.0),
+            svg_attr(tag, "y").unwrap_or(0.0),
+            w.max(0.001),
+            h.max(0.001),
+        );
+    }
+    if let (Some(cx), Some(cy), Some(r)) =
+        (svg_attr(tag, "cx"), svg_attr(tag, "cy"), svg_attr(tag, "r"))
+    {
+        return (cx - r, cy - r, (2.0 * r).max(0.001), (2.0 * r).max(0.001));
+    }
+    if let (Some(cx), Some(cy), Some(rx), Some(ry)) = (
+        svg_attr(tag, "cx"),
+        svg_attr(tag, "cy"),
+        svg_attr(tag, "rx"),
+        svg_attr(tag, "ry"),
+    ) {
+        return (
+            cx - rx,
+            cy - ry,
+            (2.0 * rx).max(0.001),
+            (2.0 * ry).max(0.001),
+        );
+    }
+    (0.0, 0.0, 1.0, 1.0)
+}
+
 fn parse_clip_or_mask_block(block: &str, id: &str, out: &mut HashMap<String, SvgClip>) {
     let tag_end = block.find('>').unwrap_or(block.len());
     let tag = &block[..tag_end];
+    let object_bbox = clip_units_object_bbox(tag);
     if let Some(ri) = block.find("<rect") {
         let re = block[ri..].find('>').unwrap_or(block.len() - ri);
         let rtag = &block[ri..ri + re];
         out.insert(
             id.to_string(),
-            SvgClip::Rect {
-                x: svg_attr(rtag, "x").unwrap_or(0.0),
-                y: svg_attr(rtag, "y").unwrap_or(0.0),
-                w: svg_attr(rtag, "width").unwrap_or(0.0),
-                h: svg_attr(rtag, "height").unwrap_or(0.0),
+            SvgClip {
+                object_bbox,
+                kind: SvgClipKind::Rect {
+                    x: svg_attr(rtag, "x").unwrap_or(0.0),
+                    y: svg_attr(rtag, "y").unwrap_or(0.0),
+                    w: svg_attr(rtag, "width").unwrap_or(0.0),
+                    h: svg_attr(rtag, "height").unwrap_or(0.0),
+                },
             },
         );
     } else if let Some(ci) = block.find("<circle") {
@@ -2114,10 +2160,13 @@ fn parse_clip_or_mask_block(block: &str, id: &str, out: &mut HashMap<String, Svg
         let ctag = &block[ci..ci + ce];
         out.insert(
             id.to_string(),
-            SvgClip::Circle {
-                cx: svg_attr(ctag, "cx").unwrap_or(0.0),
-                cy: svg_attr(ctag, "cy").unwrap_or(0.0),
-                r: svg_attr(ctag, "r").unwrap_or(0.0),
+            SvgClip {
+                object_bbox,
+                kind: SvgClipKind::Circle {
+                    cx: svg_attr(ctag, "cx").unwrap_or(0.0),
+                    cy: svg_attr(ctag, "cy").unwrap_or(0.0),
+                    r: svg_attr(ctag, "r").unwrap_or(0.0),
+                },
             },
         );
     } else if let Some(ei) = block.find("<ellipse") {
@@ -2125,11 +2174,14 @@ fn parse_clip_or_mask_block(block: &str, id: &str, out: &mut HashMap<String, Svg
         let etag = &block[ei..ei + ee];
         out.insert(
             id.to_string(),
-            SvgClip::Ellipse {
-                cx: svg_attr(etag, "cx").unwrap_or(0.0),
-                cy: svg_attr(etag, "cy").unwrap_or(0.0),
-                rx: svg_attr(etag, "rx").unwrap_or(0.0),
-                ry: svg_attr(etag, "ry").unwrap_or(0.0),
+            SvgClip {
+                object_bbox,
+                kind: SvgClipKind::Ellipse {
+                    cx: svg_attr(etag, "cx").unwrap_or(0.0),
+                    cy: svg_attr(etag, "cy").unwrap_or(0.0),
+                    rx: svg_attr(etag, "rx").unwrap_or(0.0),
+                    ry: svg_attr(etag, "ry").unwrap_or(0.0),
+                },
             },
         );
     } else if let Some(pi) = block.find("<path") {
@@ -2141,9 +2193,12 @@ fn parse_clip_or_mask_block(block: &str, id: &str, out: &mut HashMap<String, Svg
                 .is_some_and(|s| s.eq_ignore_ascii_case("evenodd"));
             out.insert(
                 id.to_string(),
-                SvgClip::Path {
-                    contours: svg_path_subpaths(d),
-                    evenodd,
+                SvgClip {
+                    object_bbox,
+                    kind: SvgClipKind::Path {
+                        contours: svg_path_subpaths(d),
+                        evenodd,
+                    },
                 },
             );
         }
@@ -2157,9 +2212,12 @@ fn parse_clip_or_mask_block(block: &str, id: &str, out: &mut HashMap<String, Svg
                 .is_some_and(|s| s.eq_ignore_ascii_case("evenodd"));
             out.insert(
                 id.to_string(),
-                SvgClip::Path {
-                    contours: vec![pts],
-                    evenodd,
+                SvgClip {
+                    object_bbox,
+                    kind: SvgClipKind::Path {
+                        contours: vec![pts],
+                        evenodd,
+                    },
                 },
             );
         }
@@ -2217,22 +2275,33 @@ fn clip_allows(tag: &str, clips: &HashMap<String, SvgClip>, x: f32, y: f32) -> b
     let Some(id) = parse_url_id(raw) else {
         return true;
     };
-    match clips.get(id) {
-        Some(SvgClip::Rect { x: cx, y: cy, w, h }) => {
-            x >= *cx && x < *cx + *w && y >= *cy && y < *cy + *h
-        }
-        Some(SvgClip::Circle { cx, cy, r }) => {
+    let Some(clip) = clips.get(id) else {
+        return true;
+    };
+    let (x, y) = if clip.object_bbox {
+        let (ox, oy, ow, oh) = svg_object_bbox(tag);
+        ((x - ox) / ow, (y - oy) / oh)
+    } else {
+        (x, y)
+    };
+    match &clip.kind {
+        SvgClipKind::Rect {
+            x: cx,
+            y: cy,
+            w,
+            h,
+        } => x >= *cx && x < *cx + *w && y >= *cy && y < *cy + *h,
+        SvgClipKind::Circle { cx, cy, r } => {
             let dx = x - *cx;
             let dy = y - *cy;
             dx * dx + dy * dy <= *r * *r
         }
-        Some(SvgClip::Ellipse { cx, cy, rx, ry }) => {
+        SvgClipKind::Ellipse { cx, cy, rx, ry } => {
             let nx = (x - *cx) / rx.max(0.001);
             let ny = (y - *cy) / ry.max(0.001);
             nx * nx + ny * ny <= 1.0
         }
-        Some(SvgClip::Path { contours, evenodd }) => contours_contain(contours, x, y, *evenodd),
-        None => true,
+        SvgClipKind::Path { contours, evenodd } => contours_contain(contours, x, y, *evenodd),
     }
 }
 
@@ -4932,6 +5001,20 @@ mod tests {
         .expect("svg polyline clip");
         assert_eq!(img.pixel(4, 4), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(1, 1), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_clip_path_object_bbox_maps_unit_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><clipPath id='c' clipPathUnits='objectBoundingBox'>\
+              <rect x='0.25' y='0.25' width='0.5' height='0.5'/></clipPath></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000' clip-path='url(#c)'/></svg>",
+        )
+        .expect("svg objectBoundingBox clip");
+        assert_eq!(img.pixel(4, 4), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(1, 1), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(7, 7), Some([0, 0, 0, 0]));
     }
 
     #[test]

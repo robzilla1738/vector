@@ -1460,6 +1460,19 @@ fn parse_canvas_drop_shadow(filter: &str) -> Option<(i32, i32, i32, String)> {
     ))
 }
 
+fn parse_canvas_filter_url(filter: &str) -> Option<&str> {
+    let s = filter.trim();
+    let inner = s.strip_prefix("url(")?.strip_suffix(')')?.trim();
+    let inner = inner.trim_matches(|c| c == '"' || c == '\'');
+    inner.strip_prefix('#')
+}
+
+enum CanvasSvgFilter {
+    Blur(i32),
+    Saturate(f32),
+    HueRotate(f32),
+}
+
 fn parse_canvas_hue_rotate(filter: &str) -> Option<f32> {
     let s = filter.trim();
     let inner = s.strip_prefix("hue-rotate(")?.strip_suffix(')')?;
@@ -3088,6 +3101,50 @@ impl Page {
             .resize(width, height);
     }
 
+    fn canvas_filter_from_svg(&self, id: &str) -> Option<CanvasSvgFilter> {
+        let node = self.doc.element_by_id(id)?;
+        for child in self.doc.descendants(node) {
+            let Some(el) = self.doc.element(child) else {
+                continue;
+            };
+            let name = el.name.to_ascii_lowercase();
+            if name == "fegaussianblur" {
+                let raw = el
+                    .attr("stdDeviation")
+                    .or_else(|| el.attr("stddeviation"))
+                    .unwrap_or("0");
+                let radius = raw
+                    .split(|c: char| c == ',' || c.is_whitespace())
+                    .find(|s| !s.is_empty())
+                    .and_then(|s| s.parse::<f32>().ok())
+                    .unwrap_or(0.0)
+                    .round()
+                    .clamp(0.0, 16.0) as i32;
+                if radius > 0 {
+                    return Some(CanvasSvgFilter::Blur(radius));
+                }
+            }
+            if name == "fecolormatrix" {
+                let kind = el.attr("type").unwrap_or("matrix");
+                if kind.eq_ignore_ascii_case("saturate") {
+                    let amount = el
+                        .attr("values")
+                        .and_then(|s| s.split_whitespace().next()?.parse().ok())
+                        .unwrap_or(1.0);
+                    return Some(CanvasSvgFilter::Saturate(amount));
+                }
+                if kind.eq_ignore_ascii_case("huerotate") {
+                    let deg = el
+                        .attr("values")
+                        .and_then(|s| s.split_whitespace().next()?.parse().ok())
+                        .unwrap_or(0.0);
+                    return Some(CanvasSvgFilter::HueRotate(deg));
+                }
+            }
+        }
+        None
+    }
+
     pub(crate) fn canvas_fill_rect(
         &mut self,
         id: NodeId,
@@ -3104,6 +3161,7 @@ impl Page {
         filter: &str,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
+        let url_filter = parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
         let paint_shadow = shadow_x != 0 || shadow_y != 0 || shadow_blur > 0;
         let shadow_style = if paint_shadow {
             Some(self.resolve_canvas_style(shadow))
@@ -3181,6 +3239,18 @@ impl Page {
         }
         if let Some(op) = parse_canvas_filter_fn(filter, "opacity") {
             c.color_filter_rect(x, y, w, h, CanvasColorFilter::Opacity(op));
+        }
+        match url_filter {
+            Some(CanvasSvgFilter::Blur(radius)) if radius > 0 => {
+                c.blur_rect(x, y, w, h, radius);
+            }
+            Some(CanvasSvgFilter::Saturate(amount)) => {
+                c.color_filter_rect(x, y, w, h, CanvasColorFilter::Saturate(amount));
+            }
+            Some(CanvasSvgFilter::HueRotate(deg)) => {
+                c.color_filter_rect(x, y, w, h, CanvasColorFilter::HueRotate(deg));
+            }
+            _ => {}
         }
         c.ops
     }

@@ -9556,6 +9556,7 @@
       this._blendOn = false;
       this._blend = [1, 0];
       this._blendEq = 32774;
+      this._blendEqA = null;
       this._lineWidth = 1;
       this._colorMask = [true, true, true, true];
       this._arrayBuf = null;
@@ -9680,7 +9681,14 @@
       this._blend = [Number(srcRGB) || 0, Number(dstRGB) || 0];
       this._blendA = [Number(srcA) || 0, Number(dstA) || 0];
     }
-    blendEquation(mode) { this._blendEq = Number(mode) || this.FUNC_ADD; }
+    blendEquation(mode) {
+      this._blendEq = Number(mode) || this.FUNC_ADD;
+      this._blendEqA = null;
+    }
+    blendEquationSeparate(modeRGB, modeA) {
+      this._blendEq = Number(modeRGB) || this.FUNC_ADD;
+      this._blendEqA = Number(modeA) || this.FUNC_ADD;
+    }
     depthFunc(fn) { this._depthFunc = Number(fn) || this.LESS; }
     depthMask(flag) { this._depthMask = flag !== false; }
     stencilFunc(func, ref, mask) {
@@ -9814,13 +9822,20 @@
         let out = "";
         const n = Math.max(destBin.length, srcBin.length);
         const reverse = this._blendEq === this.FUNC_REVERSE_SUBTRACT;
+        const eqA = this._blendEqA;
         for (let i = 0; i < n; i += 4) {
           const sub = (d, s) => Math.max(0, reverse ? (s || 0) - (d || 0) : (d || 0) - (s || 0));
+          const da = destBin.charCodeAt(i + 3) || 0;
+          const sa = srcBin.charCodeAt(i + 3) || 0;
+          let a = da;
+          if (eqA === this.FUNC_SUBTRACT) a = Math.max(0, da - sa);
+          else if (eqA === this.FUNC_REVERSE_SUBTRACT) a = Math.max(0, sa - da);
+          else if (eqA === this.FUNC_ADD) a = Math.min(255, da + sa);
           out += String.fromCharCode(
             sub(destBin.charCodeAt(i), srcBin.charCodeAt(i)),
             sub(destBin.charCodeAt(i + 1), srcBin.charCodeAt(i + 1)),
             sub(destBin.charCodeAt(i + 2), srcBin.charCodeAt(i + 2)),
-            destBin.charCodeAt(i + 3) || 0
+            a
           );
         }
         D("canvasPutImageData", c.__h, w, h, btoa(out), x, y);
