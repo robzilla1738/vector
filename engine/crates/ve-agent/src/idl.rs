@@ -357,7 +357,7 @@ fn text_content_of(doc: &Document, id: NodeId) -> Option<String> {
 }
 
 fn pack_id(id: NodeId) -> JsValue {
-    JsValue::String(format!("{}:{}", id.index(), id.generation()))
+    JsValue::Number(id.to_u64() as f64)
 }
 
 fn first_element_child(doc: &Document, id: NodeId) -> Option<NodeId> {
@@ -1794,6 +1794,65 @@ mod tests {
             page.scroll_offset().y > 0.0,
             "viewport y {}",
             page.scroll_offset().y
+        );
+    }
+
+    #[test]
+    fn scroll_margin_insets_prepare_pointer() {
+        use crate::page::{DEFAULT_VIEWPORT, Page};
+
+        let mut plain = Page::from_html(
+            1,
+            "<html><body style=\"margin:0\"><div style=\"height:1200px\">pad</div><div id=\"t\">target</div><div style=\"height:1200px\">after</div></body></html>",
+            Some("https://s.test/doc"),
+            DEFAULT_VIEWPORT,
+        );
+        plain.update();
+        let t = {
+            let mut live = LiveDom::document(&mut plain);
+            DocumentInterface::get_element_by_id(&mut live, "t".into()).expect("t")
+        };
+        let _ = plain.prepare_pointer(t, 0);
+        let without = plain.scroll_offset().y;
+
+        let mut inset = Page::from_html(
+            1,
+            "<html><body style=\"margin:0\"><div style=\"height:1200px\">pad</div><div id=\"t\" style=\"scroll-margin:200px\">target</div><div style=\"height:1200px\">after</div></body></html>",
+            Some("https://s.test/doc"),
+            DEFAULT_VIEWPORT,
+        );
+        inset.update();
+        let t = {
+            let mut live = LiveDom::document(&mut inset);
+            DocumentInterface::get_element_by_id(&mut live, "t".into()).expect("t")
+        };
+        let _ = inset.prepare_pointer(t, 0);
+        assert!(
+            (inset.scroll_offset().y - without).abs() > 10.0,
+            "scroll-margin must change the snap, without={without} with={}",
+            inset.scroll_offset().y
+        );
+    }
+
+    #[test]
+    fn scroll_snap_aligns_to_start() {
+        use crate::page::{DEFAULT_VIEWPORT, Page};
+
+        let mut page = Page::from_html(
+            1,
+            "<html style=\"scroll-snap-type:y\"><body style=\"margin:0\">\
+             <div id=\"a\" style=\"height:400px;scroll-snap-align:start\">a</div>\
+             <div id=\"b\" style=\"height:400px;scroll-snap-align:start\">b</div>\
+             <div style=\"height:2000px\">pad</div></body></html>",
+            Some("https://s.test/doc"),
+            DEFAULT_VIEWPORT,
+        );
+        page.update();
+        page.scroll_by(0.0, 250.0);
+        let y = page.scroll_offset().y;
+        assert!(
+            (y - 0.0).abs() < 1.0 || (y - 400.0).abs() < 1.0,
+            "must snap to a start edge, got {y}"
         );
     }
 

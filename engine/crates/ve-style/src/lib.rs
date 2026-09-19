@@ -46,19 +46,19 @@ pub mod stylesheet;
 pub mod ua;
 pub mod values;
 
-pub use cascade::{RestyleStats, RuleSet, StyleEngine, StyleTree};
+pub use cascade::{CSS_BYTES_CAP, RestyleStats, RuleSet, StyleEngine, StyleTree};
 pub use computed::{ComputeContext, ComputedStyle, CustomProperties};
 pub use coverage::CssCoverage;
 pub use element::{DomElement, ElementState, InteractionState};
 pub use invalidation::{Dependency, InvalidationMap, InvalidationStats};
 pub use media::{ColorScheme, MediaEnv, MediaQueryList, MediaType};
-pub use properties::{CalcExpr, CalcValue, PropertyId, SpecifiedValue};
+pub use properties::{CalcExpr, CalcValue, PropertyId, SpecifiedTransform, SpecifiedValue};
 pub use selector_impl::{
     CssString, PseudoClass, PseudoElement, SelectorParser, VeSelectorImpl, parse_selector_list,
 };
 pub use stylesheet::{
-    CssRule, DeclarationBlock, Keyframe, KeyframesRule, Origin, PropertyDeclaration, StyleRule,
-    Stylesheet, parse_declaration_block, parse_declaration_block_counted, parse_stylesheet,
-    strip_cdata,
+    CssRule, DeclarationBlock, FontFaceRule, FontFaceSrc, Keyframe, KeyframesRule, Origin,
+    PropertyDeclaration, StyleRule, Stylesheet, parse_declaration_block,
+    parse_declaration_block_counted, parse_stylesheet, strip_cdata,
 };
 pub use values::*;

@@ -84,6 +84,47 @@ fn keep_alive_pooling_and_gzip_decoding() {
 }
 
 #[test]
+fn get_retries_after_a_dropped_keep_alive() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut stream) = stream else { break };
+            let mut buf = vec![0u8; 8192];
+            let mut req = Vec::new();
+            loop {
+                let n = match stream.read(&mut buf) {
+                    Ok(0) | Err(_) => return,
+                    Ok(n) => n,
+                };
+                req.extend_from_slice(&buf[..n]);
+                if req.windows(4).any(|w| w == b"\r\n\r\n") {
+                    break;
+                }
+            }
+            let body = b"<p>ok</p>";
+            let _ = write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: keep-alive\r\n\r\n",
+                body.len()
+            );
+            let _ = stream.write_all(body);
+            let _ = stream.flush();
+        }
+    });
+
+    let transport = HyperTransport::new().unwrap();
+    let url = format!("http://127.0.0.1:{port}/drop");
+    let first = transport.send(&Request::get(&url).unwrap()).unwrap();
+    assert_eq!(first.status, 200);
+    let second = transport
+        .send(&Request::get(&url).unwrap())
+        .expect("stale keep-alive GET retries on a new connection");
+    assert_eq!(second.status, 200);
+    assert_eq!(second.text(), "<p>ok</p>");
+}
+
+#[test]
 fn loopback_https_with_fixture_ca() {
     use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 

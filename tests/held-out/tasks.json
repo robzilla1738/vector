@@ -1,0 +1,5 @@
+[
+  { "id": "increment-the-counter", "goal": "Increment the counter until it shows 3" },
+  { "id": "submit-name", "goal": "Fill the name field with Ada and submit" },
+  { "id": "find-in-table", "goal": "Read the price of the first row" }
+]

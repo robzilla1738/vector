@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { promisify } from "node:util";
 import { VectorError } from "@vector/contracts";
-import type { BrowserCookie, BrowserDriver } from "@vector/browser-driver";
+import type { BrowserCookie, BrowserDriver } from "@vector/engine-client";
 import type { NativeBridge } from "../native.js";
 
 const execFileP = promisify(execFile);

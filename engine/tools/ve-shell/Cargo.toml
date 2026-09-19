@@ -28,8 +28,12 @@ product = ["window", "v8", "http", "gpu"]
 [dependencies]
 ve-api.workspace = true
 ve-core.workspace = true
+ve-chrome.workspace = true
+ve-profile.workspace = true
+ve-shell-mac.workspace = true
 anyhow.workspace = true
 clap.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 winit = { workspace = true, optional = true }
 softbuffer = { workspace = true, optional = true }

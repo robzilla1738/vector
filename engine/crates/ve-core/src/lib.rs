@@ -21,17 +21,21 @@
 #![forbid(unsafe_code)]
 
 pub mod account;
+pub mod clock;
 pub mod error;
 pub mod geometry;
 pub mod id;
+pub mod input;
 pub mod trace;
 
 pub use account::{
     host_package_energy_uj, process_memory_snapshot, process_rss_bytes, process_tree_rss_bytes,
 };
+pub use clock::Clock;
 pub use error::{Error, ErrorCode, ErrorPayload, Result};
 pub use geometry::{Edges, Point, Rect, Size};
 pub use id::{NodeId, Revision};
+pub use input::ScrollPhase;
 pub use trace::{Stage, StageSample, StageTimer};
 
 /// Engine version string, taken from the workspace package version.

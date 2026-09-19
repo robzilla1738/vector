@@ -8,7 +8,7 @@ import {
   type Step,
   type StepOutcome,
 } from "@vector/contracts";
-import type { DriverPage } from "@vector/browser-driver";
+import type { DriverPage } from "@vector/engine-client";
 
 export interface ExecContext {
   runId?: string;

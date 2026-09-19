@@ -5,8 +5,9 @@
 //! and its subresources share a handful of sockets instead of one TCP+TLS
 //! handshake per request. Bodies are requested compressed
 //! (`Accept-Encoding: gzip, deflate, br`) and decoded here, so the rest of
-//! the engine only ever sees identity bodies. A dedicated tokio runtime is
-//! owned by the transport so the rest of the engine stays synchronous.
+//! the engine only ever sees identity bodies. A 2-worker tokio runtime is
+//! owned by the transport so [`crate::Transport::start_many`] can spawn
+//! without blocking the caller.
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -27,7 +28,7 @@ use hyper_util::client::legacy::connect::dns::{GaiResolver, Name};
 use hyper_util::rt::TokioExecutor;
 use tokio_rustls::rustls::{ClientConfig, RootCertStore};
 
-use crate::transport::Transport;
+use crate::transport::{PendingFetches, Transport};
 use crate::{NetError, Request, Response, decode_body};
 
 /// Connector wrapper that counts how many connections were actually
@@ -137,7 +138,9 @@ impl HyperTransport {
 
     /// Same as [`Self::new`], plus extra DER certificates for fixture/WPT CAs.
     pub fn with_extra_roots(extra: impl IntoIterator<Item = Vec<u8>>) -> Result<Self, NetError> {
-        let runtime = tokio::runtime::Builder::new_current_thread()
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .thread_name("ve-net")
             .enable_all()
             .build()
             .map_err(|e| NetError::Transport(format!("tokio runtime: {e}")))?;
@@ -194,36 +197,60 @@ impl HyperTransport {
 
 /// One exchange on a cloned client handle (so several can run as spawned
 /// tasks on the transport's runtime).
+fn build_http_request(request: &Request) -> Result<HttpRequest<Full<Bytes>>, NetError> {
+    let uri: Uri = request
+        .url
+        .as_str()
+        .parse()
+        .map_err(|e| NetError::Http(format!("uri: {e}")))?;
+    let mut builder = HttpRequest::builder()
+        .method(request.method.clone())
+        .uri(uri);
+    let mut wants_encoding = true;
+    for (name, value) in &request.headers {
+        if name == ACCEPT_ENCODING {
+            wants_encoding = false;
+        }
+        builder = builder.header(name, value);
+    }
+    if wants_encoding {
+        builder = builder.header(
+            ACCEPT_ENCODING,
+            HeaderValue::from_static("gzip, deflate, br"),
+        );
+    }
+    let body = Full::new(request.body.clone().unwrap_or_default());
+    builder
+        .body(body)
+        .map_err(|e| NetError::Http(e.to_string()))
+}
+
+fn idempotent(method: &str) -> bool {
+    method.eq_ignore_ascii_case("GET") || method.eq_ignore_ascii_case("HEAD")
+}
+
 async fn exchange(client: PooledClient, request: Request) -> Result<Response, NetError> {
     {
         let url = &request.url;
-        let uri: Uri = url
-            .as_str()
-            .parse()
-            .map_err(|e| NetError::Http(format!("uri: {e}")))?;
-        let mut builder = HttpRequest::builder()
-            .method(request.method.clone())
-            .uri(uri);
-        let mut wants_encoding = true;
-        for (name, value) in &request.headers {
-            if name == ACCEPT_ENCODING {
-                wants_encoding = false;
+        let req = build_http_request(&request)?;
+        let res = match client.request(req).await {
+            Ok(res) => res,
+            Err(first) if idempotent(request.method.as_str()) => {
+                let retry = build_http_request(&request)?;
+                client.request(retry).await.map_err(|e| {
+                    NetError::Transport(format!(
+                        "request {}: {e} (after {first})",
+                        url.host_str().unwrap_or("?")
+                    ))
+                })?
             }
-            builder = builder.header(name, value);
-        }
-        if wants_encoding {
-            builder = builder.header(
-                ACCEPT_ENCODING,
-                HeaderValue::from_static("gzip, deflate, br"),
-            );
-        }
-        let body = Full::new(request.body.clone().unwrap_or_default());
-        let req = builder
-            .body(body)
-            .map_err(|e| NetError::Http(e.to_string()))?;
-        let res = client.request(req).await.map_err(|e| {
-            NetError::Transport(format!("request {}: {e}", url.host_str().unwrap_or("?")))
-        })?;
+            Err(e) => {
+                return Err(NetError::Transport(format!(
+                    "request {}: {e}",
+                    url.host_str().unwrap_or("?")
+                )));
+            }
+        };
         let (mut parts, body) = res.into_parts();
         let raw = body
             .collect()
@@ -281,29 +308,48 @@ impl Transport for HyperTransport {
     }
 
     fn send_many(&self, requests: &[Request]) -> Vec<Result<Response, NetError>> {
+        self.start_many(requests).join()
+    }
+
+    fn start_many(&self, requests: &[Request]) -> PendingFetches {
+        if requests.is_empty() {
+            return PendingFetches::from_ready(Vec::new());
+        }
         self.pin_requests(requests);
-        self.runtime.block_on(async {
-            let timeout = self.timeout;
-            let mut handles = Vec::with_capacity(requests.len());
-            for request in requests {
-                let client = self.client.clone();
-                let request = request.clone();
-                handles.push(tokio::spawn(async move {
-                    tokio::time::timeout(timeout, exchange(client, request))
-                        .await
-                        .map_err(|_| NetError::Transport(format!("timed out after {timeout:?}")))?
-                }));
-            }
-            let mut out = Vec::with_capacity(handles.len());
-            for handle in handles {
-                out.push(
-                    handle.await.unwrap_or_else(|e| {
+        let timeout = self.timeout;
+        let mut handles = Vec::with_capacity(requests.len());
+        for request in requests {
+            let client = self.client.clone();
+            let request = request.clone();
+            handles.push(self.runtime.spawn(async move {
+                tokio::time::timeout(timeout, exchange(client, request))
+                    .await
+                    .map_err(|_| NetError::Transport(format!("timed out after {timeout:?}")))?
+            }));
+        }
+        let handle = self.runtime.handle().clone();
+        PendingFetches::from_join(move || {
+            handle.block_on(async {
+                let mut out = Vec::with_capacity(handles.len());
+                for task in handles {
+                    out.push(task.await.unwrap_or_else(|e| {
                         Err(NetError::Transport(format!("send_many join: {e}")))
-                    }),
-                );
-            }
-            out
+                    }));
+                }
+                out
+            })
         })
+    }
+
+    fn warmup_dns(&self, host: &str, port: u16) {
+        let host = host.to_owned();
+        std::mem::drop(self.runtime.spawn(async move {
+            let _ = tokio::task::spawn_blocking(move || {
+                use std::net::ToSocketAddrs;
+                let _ = (host.as_str(), port).to_socket_addrs();
+            })
+            .await;
+        }));
     }
 
     fn name(&self) -> &'static str {

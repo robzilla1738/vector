@@ -1,0 +1,25 @@
+{
+  "review": "H3-5",
+  "backend": "google-chrome",
+  "chromeVersion": "Google Chrome 148.0.7778.96",
+  "suite": "speedometer.3.0.TodoMVC-JavaScript-ES5",
+  "measured": true,
+  "officialSuite": false,
+  "officialDisplayedScore": false,
+  "n": 1,
+  "samples_ms": [
+    11.599999999627471
+  ],
+  "phases": {
+    "jsMs": 11.599999999627471
+  },
+  "items": {
+    "added": 50,
+    "afterDelete": 49
+  },
+  "host": "x64",
+  "notes": "Same-machine Chrome timing of the TodoMVC-JavaScript-ES5 add/complete/delete loop. Tracked only. Not an official Speedometer displayed score and not a target.",
+  "artifact": {
+    "harness": "tests/speedometer-chrome-tracked.mjs"
+  }
+}

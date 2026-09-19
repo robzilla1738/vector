@@ -1,10 +1,12 @@
 //! Block formatting: sizing a box against its containing block and stacking
 //! block-level children vertically, placing floats and honouring `clear`.
 
+use std::collections::HashMap;
+
 use ve_core::{Edges, Point, Rect, Size};
 use ve_style::{
-    BoxSizing, ComputedStyle, Float, LengthPercentage, LengthPercentageAuto, ListStylePosition,
-    Position, PseudoElement, WritingMode,
+    BoxSizing, BreakBefore, ColumnSpan, ComputedStyle, Float, LengthPercentage,
+    LengthPercentageAuto, ListStylePosition, Position, PositionArea, PseudoElement, WritingMode,
 };
 
 use crate::box_tree::{BoxKind, Fragment, LayoutBox};
@@ -120,7 +122,22 @@ pub fn layout_root(root: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) {
     };
     layout_box_at(root, ctx, cb, Point::ZERO, Forced::default());
     let viewport = Rect::new(0.0, 0.0, ctx.viewport.width, ctx.viewport.height);
-    layout_positioned(root, ctx, viewport, viewport);
+    let mut anchors = HashMap::new();
+    collect_anchors(root, &mut anchors);
+    layout_positioned(root, ctx, viewport, viewport, &anchors);
+}
+
+/// Records in-flow `anchor-name` boxes for `position-anchor` lookup.
+pub fn collect_anchors<S: std::hash::BuildHasher>(
+    bx: &LayoutBox,
+    out: &mut HashMap<String, Rect, S>,
+) {
+    if !bx.style.anchor_name.is_empty() {
+        out.insert(bx.style.anchor_name.clone(), bx.rect);
+    }
+    for child in &bx.children {
+        collect_anchors(child, out);
+    }
 }
 
 /// Lays out `bx` with its **margin-box** top-left at `origin`. Sets
@@ -184,6 +201,16 @@ pub fn layout_box_at(
             }
             // A replaced element with `width: auto` takes its intrinsic width,
             // or the specified height scaled by the intrinsic ratio.
+            None if style.aspect_ratio.is_some() && !style.height.is_auto() => {
+                let ratio = style.aspect_ratio.unwrap_or(1.0);
+                let h = style.height.maybe_resolve(cb.height).unwrap_or(0.0);
+                let h = if style.box_sizing == BoxSizing::BorderBox {
+                    (h - bp_v).max(0.0)
+                } else {
+                    h
+                };
+                clamp_width(&style, h * ratio, cb.width, bp_h)
+            }
             None if bx.replaced.is_some() => {
                 let intrinsic = bx.replaced.unwrap_or_default();
                 let from_height = style
@@ -251,6 +278,9 @@ pub fn layout_box_at(
         _ if bx.style.writing_mode == WritingMode::VerticalRl => {
             layout_block_flow_vertical_rl(bx, ctx, content_rect, child_cb_height)
         }
+        _ if bx.style.writing_mode == WritingMode::VerticalLr => {
+            layout_block_flow_vertical_lr(bx, ctx, content_rect, child_cb_height)
+        }
         _ => layout_block_flow(bx, ctx, content_rect, child_cb_height),
     };
     if bfc {
@@ -266,6 +296,10 @@ pub fn layout_box_at(
         (h - bp_v).max(0.0)
     } else {
         let specified = child_cb_height.filter(|_| !style.height.is_auto());
+        let from_ratio = style
+            .aspect_ratio
+            .filter(|_| specified.is_none())
+            .map(|ratio| content_width / ratio.max(f32::EPSILON));
         let replaced_auto = bx
             .replaced
             .filter(|_| specified.is_none())
@@ -278,7 +312,21 @@ pub fn layout_box_at(
                     intrinsic.height
                 }
             });
-        let h = specified.or(replaced_auto).unwrap_or(content_height);
+        let size_contained = style.contain.contains_size()
+            || style.container_type.contains_size()
+            || style.content_visibility == ve_style::ContentVisibility::Hidden;
+        let h = if size_contained
+            && specified.is_none()
+            && from_ratio.is_none()
+            && replaced_auto.is_none()
+        {
+            0.0
+        } else {
+            specified
+                .or(replaced_auto)
+                .or(from_ratio)
+                .unwrap_or(content_height)
+        };
         clamp_height(&style, h, cb.height, bp_v)
     };
 
@@ -310,8 +358,8 @@ fn place_marker(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) {
         |l| l.rect.height(),
     );
     let x = match marker.position {
-        ListStylePosition::Outside => bx.content.x() - width,
-        ListStylePosition::Inside => bx.content.x(),
+        ListStylePosition::Outside => bx.content.x() - width - style.marker_offset,
+        ListStylePosition::Inside => bx.content.x() + style.marker_offset,
     };
     let rect = Rect::new(x, bx.content.y(), width, line_height);
     bx.marker_fragment = Some(Fragment {
@@ -426,12 +474,86 @@ fn peek_collapsing_top(bx: &LayoutBox, cb_width: f32) -> f32 {
 }
 
 /// Stacks block-level children vertically. Returns the content height.
+fn used_column_count(style: &ComputedStyle, width: f32) -> u32 {
+    if let Some(n) = style.column_count.filter(|n| *n >= 2) {
+        return n;
+    }
+    if let Some(cw) = style.column_width.filter(|w| *w > 0.0) {
+        return ((width / cw).floor() as u32).max(1);
+    }
+    1
+}
+
+fn layout_block_flow_columns(
+    bx: &mut LayoutBox,
+    ctx: &mut LayoutCtx<'_>,
+    content: Rect,
+    cb_height: Option<f32>,
+    cols: u32,
+) -> f32 {
+    let cols = cols.max(2) as usize;
+    let gap = bx.style.column_gap.resolve(content.width());
+    let col_w = ((content.width() - gap * (cols as f32 - 1.0)) / cols as f32).max(0.0);
+    let cb = ContainingBlock {
+        width: col_w,
+        height: cb_height,
+    };
+    let full = ContainingBlock {
+        width: content.width(),
+        height: cb_height,
+    };
+    let mut col_y = vec![content.y(); cols];
+    let mut i = 0usize;
+    for child in &mut bx.children {
+        if child.is_out_of_flow() || child.is_float() {
+            continue;
+        }
+        if child.style.break_before == BreakBefore::Column {
+            let y = col_y.iter().copied().fold(content.y(), f32::max);
+            col_y.fill(y);
+            i = 0;
+        }
+        if child.style.column_span == ColumnSpan::All {
+            let y = col_y.iter().copied().fold(content.y(), f32::max);
+            layout_box_at(
+                child,
+                ctx,
+                full,
+                Point::new(content.x(), y),
+                Forced::default(),
+            );
+            if child.style.position == Position::Relative
+                || child.style.position == Position::Sticky
+            {
+                apply_relative_offset(child, full);
+            }
+            let bottom = child.rect.bottom();
+            col_y.fill(bottom);
+            i = 0;
+            continue;
+        }
+        let col = i % cols;
+        i += 1;
+        let x = content.x() + col as f32 * (col_w + gap);
+        layout_box_at(child, ctx, cb, Point::new(x, col_y[col]), Forced::default());
+        if child.style.position == Position::Relative || child.style.position == Position::Sticky {
+            apply_relative_offset(child, cb);
+        }
+        col_y[col] = child.rect.bottom();
+    }
+    col_y.into_iter().fold(content.y(), f32::max) - content.y()
+}
+
 fn layout_block_flow(
     bx: &mut LayoutBox,
     ctx: &mut LayoutCtx<'_>,
     content: Rect,
     cb_height: Option<f32>,
 ) -> f32 {
+    let cols = used_column_count(&bx.style, content.width());
+    if cols >= 2 {
+        return layout_block_flow_columns(bx, ctx, content, cb_height, cols);
+    }
     let cb = ContainingBlock {
         width: content.width(),
         height: cb_height,
@@ -579,6 +701,57 @@ fn layout_block_flow_vertical_rl(
     max_height.max(0.0)
 }
 
+/// Stacks block-level children left-to-right (`writing-mode: vertical-lr`).
+fn layout_block_flow_vertical_lr(
+    bx: &mut LayoutBox,
+    ctx: &mut LayoutCtx<'_>,
+    content: Rect,
+    cb_height: Option<f32>,
+) -> f32 {
+    let cb = ContainingBlock {
+        width: content.width(),
+        height: cb_height,
+    };
+    let mut cursor = content.x();
+    let mut max_height = cb_height.unwrap_or(0.0);
+    for child in &mut bx.children {
+        if child.is_out_of_flow() {
+            child.rect = Rect::new(cursor, content.y(), 0.0, 0.0);
+            continue;
+        }
+        if child.is_float() {
+            layout_float(child, ctx, content, content.y());
+            continue;
+        }
+        let margins = if child.has_own_edges() {
+            resolve_margins(&child.style, cb.width)
+        } else {
+            Edges::ZERO
+        };
+        let forced = Forced {
+            width: None,
+            height: if child.style.height.is_auto() {
+                cb_height
+            } else {
+                None
+            },
+        };
+        layout_box_at(child, ctx, cb, Point::ZERO, forced);
+        if child.style.position == Position::Relative || child.style.position == Position::Sticky {
+            apply_relative_offset(child, cb);
+        }
+        let margin_box_w = child.rect.width() + margins.horizontal();
+        translate_subtree(
+            child,
+            cursor + margins.left - child.rect.x(),
+            content.y() + margins.top - child.rect.y(),
+        );
+        cursor += margin_box_w;
+        max_height = max_height.max(child.rect.height() + margins.vertical());
+    }
+    max_height.max(0.0)
+}
+
 /// Lays out a float (shrink-to-fit) and places it against the current
 /// block formatting context's floats, no higher than `y_min`.
 pub fn layout_float(child: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect, y_min: f32) {
@@ -604,6 +777,14 @@ pub fn layout_float(child: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rec
     let origin = ctx
         .floats()
         .place(side, size, y, content.x(), content.right());
+    let extra = child.style.float_offset.resolve(size.width);
+    let origin = Point::new(
+        origin.x + if side == Float::Right { -extra } else { extra },
+        origin.y,
+    );
+    let margin_box = Rect::new(origin.x, origin.y, size.width, size.height);
+    ctx.floats()
+        .set_last_wrap(child.style.shape_outside.wrap_rect(margin_box));
     translate_subtree(
         child,
         origin.x + margins.left - child.rect.x(),
@@ -800,11 +981,12 @@ fn intrinsic_min_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> 
 /// Second pass: places `absolute` / `fixed` boxes against their containing
 /// block. `abs_cb` is the padding box of the nearest positioned ancestor,
 /// `viewport` the initial containing block.
-pub fn layout_positioned(
+pub fn layout_positioned<S: std::hash::BuildHasher>(
     bx: &mut LayoutBox,
     ctx: &mut LayoutCtx<'_>,
     abs_cb: Rect,
     viewport: Rect,
+    anchors: &HashMap<String, Rect, S>,
 ) {
     let own_cb = if bx.has_own_edges() && bx.style.position.is_positioned() {
         // Padding box of this box.
@@ -820,15 +1002,25 @@ pub fn layout_positioned(
             } else {
                 own_cb
             };
-            place_absolute(child, ctx, cb_rect);
+            place_absolute(child, ctx, cb_rect, anchors);
         }
-        layout_positioned(child, ctx, own_cb, viewport);
+        layout_positioned(child, ctx, own_cb, viewport, anchors);
     }
 }
 
-fn place_absolute(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, cb_rect: Rect) {
+fn place_absolute<S: std::hash::BuildHasher>(
+    bx: &mut LayoutBox,
+    ctx: &mut LayoutCtx<'_>,
+    mut cb_rect: Rect,
+    anchors: &HashMap<String, Rect, S>,
+) {
     let style = bx.style.clone();
     let static_pos = bx.rect.origin;
+    if !style.position_anchor.is_empty()
+        && let Some(r) = anchors.get(&style.position_anchor)
+    {
+        cb_rect = *r;
+    }
     let cb = ContainingBlock {
         width: cb_rect.width(),
         height: Some(cb_rect.height()),
@@ -857,16 +1049,34 @@ fn place_absolute(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, cb_rect: Rect) {
         },
     );
     let size = bx.rect.size;
-    let x = match (left, right) {
+    let mut x = match (left, right) {
         (Some(l), _) => cb_rect.x() + l + margins.left,
         (None, Some(r)) => cb_rect.right() - r - margins.right - size.width,
         (None, None) => static_pos.x + margins.left,
     };
-    let y = match (top, bottom) {
+    let mut y = match (top, bottom) {
         (Some(t), _) => cb_rect.y() + t + margins.top,
         (None, Some(b)) => cb_rect.bottom() - b - margins.bottom - size.height,
         (None, None) => static_pos.y + margins.top,
     };
+    if left.is_none() && right.is_none() {
+        x = match style.position_area {
+            PositionArea::Left => cb_rect.x() - size.width - margins.right,
+            PositionArea::Right => cb_rect.right() + margins.left,
+            PositionArea::Center => cb_rect.x() + (cb_rect.width() - size.width) / 2.0,
+            PositionArea::Top | PositionArea::Bottom => cb_rect.x() + margins.left,
+            PositionArea::None => x,
+        };
+    }
+    if top.is_none() && bottom.is_none() {
+        y = match style.position_area {
+            PositionArea::Top => cb_rect.y() - size.height - margins.bottom,
+            PositionArea::Bottom => cb_rect.bottom() + margins.top,
+            PositionArea::Center => cb_rect.y() + (cb_rect.height() - size.height) / 2.0,
+            PositionArea::Left | PositionArea::Right => cb_rect.y() + margins.top,
+            PositionArea::None => y,
+        };
+    }
     let forced_height = match (style.height.is_auto(), top, bottom) {
         (true, Some(t), Some(b)) => Some((cb_rect.height() - t - b - margins.vertical()).max(0.0)),
         _ => None,

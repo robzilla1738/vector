@@ -9,13 +9,13 @@
 use std::num::NonZeroUsize;
 
 use ve_core::Rect;
-use vello::kurbo::{Affine, BezPath, Rect as KRect, Stroke};
-use vello::peniko::{Color, Fill, Mix};
-use vello::{AaConfig, AaSupport, RenderParams, RendererOptions, Scene};
+use vello::kurbo::{Affine, Rect as KRect, Stroke};
+use vello::peniko::{Blob, Color, Fill, FontData, Mix};
+use vello::{AaConfig, AaSupport, Glyph, RenderParams, RendererOptions, Scene};
 
 use crate::GfxError;
 use crate::display_list::{DisplayItem, DisplayList};
-use crate::fonts::{FontSystem, GlyphBitmap, GlyphVerb};
+use crate::fonts::FontSystem;
 use crate::image::ImageCache;
 use crate::renderer::{Frame, Renderer};
 
@@ -30,6 +30,27 @@ fn krect(r: Rect) -> KRect {
 
 fn color(c: ve_style::Rgba) -> Color {
     Color::from_rgba8(c.r, c.g, c.b, (c.a * 255.0).round() as u8)
+}
+
+fn mix_blend(mode: ve_style::MixBlendMode) -> Mix {
+    match mode {
+        ve_style::MixBlendMode::Normal => Mix::Normal,
+        ve_style::MixBlendMode::Multiply => Mix::Multiply,
+        ve_style::MixBlendMode::Screen => Mix::Screen,
+        ve_style::MixBlendMode::Overlay => Mix::Overlay,
+        ve_style::MixBlendMode::Darken => Mix::Darken,
+        ve_style::MixBlendMode::Lighten => Mix::Lighten,
+        ve_style::MixBlendMode::ColorDodge => Mix::ColorDodge,
+        ve_style::MixBlendMode::ColorBurn => Mix::ColorBurn,
+        ve_style::MixBlendMode::HardLight => Mix::HardLight,
+        ve_style::MixBlendMode::SoftLight => Mix::SoftLight,
+        ve_style::MixBlendMode::Difference => Mix::Difference,
+        ve_style::MixBlendMode::Exclusion => Mix::Exclusion,
+        ve_style::MixBlendMode::Hue => Mix::Hue,
+        ve_style::MixBlendMode::Saturation => Mix::Saturation,
+        ve_style::MixBlendMode::Color => Mix::Color,
+        ve_style::MixBlendMode::Luminosity => Mix::Luminosity,
+    }
 }
 
 fn is_lost_device(err: &GfxError) -> bool {
@@ -106,20 +127,6 @@ pub fn build_scene_with(list: &DisplayList, scale: f32, images: Option<&ImageCac
     build_scene_fonts(list, scale, images, None)
 }
 
-fn glyph_to_rgba(bitmap: &GlyphBitmap, c: ve_style::Rgba) -> Vec<u8> {
-    let mut rgba = vec![0u8; bitmap.data.len() * 4];
-    let a0 = (c.a * 255.0).round() as u16;
-    for (i, &cov) in bitmap.data.iter().enumerate() {
-        let a = (u16::from(cov) * a0 / 255) as u8;
-        let o = i * 4;
-        rgba[o] = c.r;
-        rgba[o + 1] = c.g;
-        rgba[o + 2] = c.b;
-        rgba[o + 3] = a;
-    }
-    rgba
-}
-
 fn peniko_rgba(rgba: Vec<u8>, width: u32, height: u32) -> vello::peniko::ImageBrush {
     vello::peniko::ImageBrush::from(vello::peniko::ImageData {
         data: vello::peniko::Blob::from(rgba),
@@ -130,26 +137,6 @@ fn peniko_rgba(rgba: Vec<u8>, width: u32, height: u32) -> vello::peniko::ImageBr
     })
 }
 
-fn outline_to_path(verbs: &[GlyphVerb]) -> BezPath {
-    let mut path = BezPath::new();
-    for verb in verbs {
-        match *verb {
-            GlyphVerb::MoveTo(x, y) => path.move_to((f64::from(x), f64::from(y))),
-            GlyphVerb::LineTo(x, y) => path.line_to((f64::from(x), f64::from(y))),
-            GlyphVerb::QuadTo(cx, cy, x, y) => {
-                path.quad_to((f64::from(cx), f64::from(cy)), (f64::from(x), f64::from(y)));
-            }
-            GlyphVerb::CurveTo(c1x, c1y, c2x, c2y, x, y) => path.curve_to(
-                (f64::from(c1x), f64::from(c1y)),
-                (f64::from(c2x), f64::from(c2y)),
-                (f64::from(x), f64::from(y)),
-            ),
-            GlyphVerb::Close => path.close_path(),
-        }
-    }
-    path
-}
-
 fn paint_text(
     scene: &mut Scene,
     run: &crate::TextRun,
@@ -158,41 +145,47 @@ fn paint_text(
 ) {
     if let Some(fonts) = fonts
         && let Some(face) = fonts.query(&run.family, run.weight, run.style)
+        && let Some(shaped) = fonts.shape_retained(face, &run.text, run.size)
     {
-        let mut x = f64::from(run.origin.x);
-        let baseline = f64::from(run.origin.y);
-        for ch in run.text.chars() {
-            let Some(glyph) = fonts.glyph_for_char(face, ch) else {
+        let origin = Affine::translate((f64::from(run.origin.x), f64::from(run.origin.y)));
+        let outline: Vec<Glyph> = shaped
+            .glyphs
+            .iter()
+            .filter(|g| g.face == face)
+            .map(|g| Glyph {
+                id: g.id,
+                x: g.x,
+                y: g.y,
+            })
+            .collect();
+        if !outline.is_empty()
+            && let Some(font) = fonts.with_face_bytes(face, |bytes, index| {
+                FontData::new(Blob::new(std::sync::Arc::new(bytes.to_vec())), index)
+            })
+        {
+            scene
+                .draw_glyphs(&font)
+                .font_size(run.size)
+                .hint(run.size <= 18.0)
+                .brush(color(run.color))
+                .transform(transform * origin)
+                .draw(Fill::NonZero, outline.into_iter());
+        }
+        for g in shaped.glyphs.iter().filter(|g| g.face != face) {
+            let Some(bmp) = fonts.rasterize_hinted(g.face, g.id as u16, run.size, false) else {
                 continue;
             };
-            let advance = fonts
-                .advance(face, glyph, run.size)
-                .unwrap_or(run.size * 0.5);
-            if let Some(outline) = fonts.outline(face, glyph, run.size)
-                && !outline.verbs.is_empty()
-            {
-                let path = outline_to_path(&outline.verbs);
-                let affine = transform
-                    * Affine::translate((x, baseline))
-                    * Affine::scale_non_uniform(1.0, -1.0);
-                scene.fill(Fill::NonZero, affine, color(run.color), None, &path);
-            } else if let Some(bitmap) = fonts.rasterize(face, glyph, run.size)
-                && bitmap.width > 0
-                && bitmap.height > 0
-                && !bitmap.data.is_empty()
-            {
-                let rgba = glyph_to_rgba(&bitmap, run.color);
-                let image = peniko_rgba(rgba, bitmap.width, bitmap.height);
-                let affine = transform
-                    * Affine::translate((
-                        x + f64::from(bitmap.left),
-                        baseline - f64::from(bitmap.top),
-                    ));
-                scene.draw_image(&image, affine);
+            if !bmp.color || bmp.width == 0 || bmp.height == 0 {
+                continue;
             }
-            x += f64::from(advance);
+            let image = peniko_rgba(bmp.data, bmp.width, bmp.height);
+            let x = f64::from(run.origin.x + g.x) + f64::from(bmp.left);
+            let y = f64::from(run.origin.y + g.y) - f64::from(bmp.top);
+            scene.draw_image(&image, transform * Affine::translate((x, y)));
         }
-        return;
+        if !shaped.glyphs.is_empty() {
+            return;
+        }
     }
     let mut x = f64::from(run.origin.x);
     let y = f64::from(run.origin.y) - f64::from(run.size);
@@ -259,7 +252,7 @@ pub fn build_scene_fonts(
             DisplayItem::Text(run) => {
                 paint_text(&mut scene, run, transform, fonts.as_deref_mut());
             }
-            DisplayItem::Image { rect, handle } => {
+            DisplayItem::Image { rect, handle, .. } => {
                 if let Some(img) = images.and_then(|c| c.get(*handle)) {
                     let image = peniko_rgba(img.rgba.clone(), img.width, img.height);
                     let sx = f64::from(rect.width()) / f64::from(img.width.max(1));
@@ -290,7 +283,69 @@ pub fn build_scene_fonts(
                 );
                 scene.push_layer(Fill::NonZero, Mix::Normal, *alpha, transform, &everything);
             }
-            DisplayItem::PopClip | DisplayItem::PopOpacity => scene.pop_layer(),
+            DisplayItem::PushBlend(mode) => {
+                let everything = KRect::new(
+                    0.0,
+                    0.0,
+                    f64::from(list.size.width),
+                    f64::from(list.size.height),
+                );
+                scene.push_layer(Fill::NonZero, mix_blend(*mode), 1.0, transform, &everything);
+            }
+            DisplayItem::PopClip
+            | DisplayItem::PopOpacity
+            | DisplayItem::PopTransform
+            | DisplayItem::PopBlend => scene.pop_layer(),
+            DisplayItem::RoundedClip { rect, .. } => {
+                scene.push_clip_layer(Fill::NonZero, transform, &krect(*rect));
+            }
+            DisplayItem::PushTransform {
+                tx,
+                ty,
+                sx,
+                sy,
+                angle,
+                ox,
+                oy,
+            } => {
+                let shifted = if angle.abs() > f32::EPSILON {
+                    transform
+                        * Affine::translate((f64::from(*ox), f64::from(*oy)))
+                        * Affine::translate((f64::from(*tx), f64::from(*ty)))
+                        * Affine::rotate(f64::from(*angle))
+                        * Affine::scale_non_uniform(f64::from(*sx), f64::from(*sy))
+                        * Affine::translate((-f64::from(*ox), -f64::from(*oy)))
+                } else {
+                    transform
+                        * Affine::translate((f64::from(*tx), f64::from(*ty)))
+                        * Affine::scale_non_uniform(f64::from(*sx), f64::from(*sy))
+                };
+                let everything = KRect::new(
+                    0.0,
+                    0.0,
+                    f64::from(list.size.width),
+                    f64::from(list.size.height),
+                );
+                scene.push_layer(Fill::NonZero, Mix::Normal, 1.0, shifted, &everything);
+            }
+            DisplayItem::LinearGradient { rect, stops, .. } => {
+                let c = stops
+                    .first()
+                    .map(|(_, c)| *c)
+                    .unwrap_or(ve_style::Rgba::TRANSPARENT);
+                scene.fill(Fill::NonZero, transform, color(c), None, &krect(*rect));
+            }
+            DisplayItem::FilterBlur { .. } => {}
+            DisplayItem::BoxShadow {
+                rect,
+                dx,
+                dy,
+                color: c,
+                ..
+            } => {
+                let shadow = Rect::new(rect.x() + dx, rect.y() + dy, rect.width(), rect.height());
+                scene.fill(Fill::NonZero, transform, color(*c), None, &krect(shadow));
+            }
         }
     }
     scene
@@ -525,14 +580,26 @@ impl VelloRenderer {
         height: u32,
         scale: f32,
     ) -> Result<(), GfxError> {
+        self.present_list_with(list, width, height, scale, None)
+    }
+
+    /// [`Self::present_list`] with decoded images for [`DisplayItem::Image`].
+    pub fn present_list_with(
+        &mut self,
+        list: &DisplayList,
+        width: u32,
+        height: u32,
+        scale: f32,
+        images: Option<&ImageCache>,
+    ) -> Result<(), GfxError> {
         if width == 0 || height == 0 {
             return Err(GfxError::Gpu("zero-sized frame".into()));
         }
-        match self.present_list_once(list, width, height, scale) {
+        match self.present_list_once(list, width, height, scale, images) {
             Ok(()) => Ok(()),
             Err(e) if is_lost_device(&e) => {
                 self.drop_present_target();
-                self.present_list_once(list, width, height, scale)
+                self.present_list_once(list, width, height, scale, images)
             }
             Err(e) => Err(e),
         }
@@ -544,11 +611,12 @@ impl VelloRenderer {
         width: u32,
         height: u32,
         scale: f32,
+        images: Option<&ImageCache>,
     ) -> Result<(), GfxError> {
         let scene = build_scene_fonts(
             list,
             if scale > 0.0 { scale } else { 1.0 },
-            None,
+            images,
             Some(&mut self.fonts),
         );
         self.present_to_cached(&scene, width, height)
@@ -562,6 +630,7 @@ impl VelloRenderer {
         width: u32,
         height: u32,
         scale: f32,
+        images: Option<&ImageCache>,
     ) -> Result<(), GfxError> {
         if width == 0 || height == 0 {
             return Err(GfxError::Gpu("zero-sized frame".into()));
@@ -571,7 +640,7 @@ impl VelloRenderer {
             self.cached_scene = Some(build_scene_fonts(
                 &list,
                 if scale > 0.0 { scale } else { 1.0 },
-                None,
+                images,
                 Some(&mut self.fonts),
             ));
             let _ = compositor.take_damage();
@@ -710,6 +779,12 @@ mod tests {
         list.push(DisplayItem::Image {
             rect: Rect::new(0.0, 0.0, 8.0, 8.0),
             handle: crate::ImageHandle(1),
+            src: None,
+            size: ve_style::BackgroundSize::Auto,
+            position: ve_style::BackgroundPosition::default(),
+            repeat: ve_style::BackgroundRepeat::NoRepeat,
+            fixed: false,
+            pixelated: false,
         });
         let empty = DisplayList::new(Size::new(40.0, 20.0));
         let with = build_scene(&list, 1.0);
@@ -769,6 +844,12 @@ mod tests {
         list.push(DisplayItem::Image {
             rect: Rect::new(0.0, 0.0, 8.0, 8.0),
             handle: crate::ImageHandle(1),
+            src: None,
+            size: ve_style::BackgroundSize::Auto,
+            position: ve_style::BackgroundPosition::default(),
+            repeat: ve_style::BackgroundRepeat::NoRepeat,
+            fixed: false,
+            pixelated: false,
         });
         let mut cpu = crate::SoftwareRenderer::new();
         let cpu_frame = cpu.render(&list, 32, 16, 1.0).unwrap();
@@ -785,5 +866,71 @@ mod tests {
         assert!(!build_scene(&list, 1.0).encoding().is_empty());
         assert!(gpu.present_list(&list, 32, 16, 1.0).is_ok());
         let _ = gpu.present_list(&list, 32, 16, 1.0);
+    }
+
+    #[test]
+    fn gpu_present_paints_cached_image_not_magenta() {
+        let mut cache = crate::ImageCache::new();
+        let handle = cache.insert(crate::DecodedImage::solid(8, 8, [0, 255, 0, 255]));
+        let mut list = DisplayList::new(Size::new(16.0, 16.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 16.0, 16.0),
+            color: ve_style::Rgba::WHITE,
+        });
+        list.push(DisplayItem::Image {
+            rect: Rect::new(0.0, 0.0, 8.0, 8.0),
+            handle,
+            src: None,
+            size: ve_style::BackgroundSize::Auto,
+            position: ve_style::BackgroundPosition::default(),
+            repeat: ve_style::BackgroundRepeat::NoRepeat,
+            fixed: false,
+            pixelated: false,
+        });
+        let Ok((mut gpu, _)) = VelloRenderer::headless() else {
+            return;
+        };
+        gpu.present_list_with(&list, 16, 16, 1.0, Some(&cache))
+            .expect("present");
+        let frame = gpu.readback_present_target().expect("readback");
+        let px = frame.pixel(2, 2).expect("pixel");
+        assert!(
+            px[1] > 200 && px[0] < 40 && px[2] < 40,
+            "expected green image pixels, not magenta placeholder, got {px:?}"
+        );
+    }
+
+    #[test]
+    fn present_composited_paints_cached_image_not_magenta() {
+        let mut cache = crate::ImageCache::new();
+        let handle = cache.insert(crate::DecodedImage::solid(8, 8, [0, 255, 0, 255]));
+        let mut list = DisplayList::new(Size::new(16.0, 16.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 16.0, 16.0),
+            color: ve_style::Rgba::WHITE,
+        });
+        list.push(DisplayItem::Image {
+            rect: Rect::new(0.0, 0.0, 8.0, 8.0),
+            handle,
+            src: None,
+            size: ve_style::BackgroundSize::Auto,
+            position: ve_style::BackgroundPosition::default(),
+            repeat: ve_style::BackgroundRepeat::NoRepeat,
+            fixed: false,
+            pixelated: false,
+        });
+        let mut compositor = crate::Compositor::new();
+        compositor.add_layer(Rect::new(0.0, 0.0, 16.0, 16.0), list);
+        let Ok((mut gpu, _)) = VelloRenderer::headless() else {
+            return;
+        };
+        gpu.present_composited(&mut compositor, 16, 16, 1.0, Some(&cache))
+            .expect("present");
+        let frame = gpu.readback_present_target().expect("readback");
+        let px = frame.pixel(2, 2).expect("pixel");
+        assert!(
+            px[1] > 200 && px[0] < 40 && px[2] < 40,
+            "expected green image pixels, not magenta placeholder, got {px:?}"
+        );
     }
 }

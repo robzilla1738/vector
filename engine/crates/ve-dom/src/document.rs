@@ -1489,12 +1489,58 @@ impl Document {
 
     /// Sets the dirty value of a form control.
     pub fn set_form_value(&mut self, id: NodeId, value: impl Into<String>) -> Result<()> {
-        self.try_element_mut(id)?
+        let value = value.into();
+        let end = u32::try_from(value.encode_utf16().count()).unwrap_or(u32::MAX);
+        let form = self
+            .try_element_mut(id)?
             .form
-            .get_or_insert_with(FormState::default)
-            .value = Some(value.into());
+            .get_or_insert_with(FormState::default);
+        form.value = Some(value);
+        form.selection_start = Some(end);
+        form.selection_end = Some(end);
         self.journal.record(Mutation::FormStateChanged { node: id });
         self.mark_dirty(id, DirtyFlags::A11Y | DirtyFlags::PAINT);
+        Ok(())
+    }
+
+    /// UTF-16 selection range for a form control. Unset start is 0; unset end
+    /// is the current value length.
+    #[must_use]
+    pub fn form_selection(&self, id: NodeId) -> (u32, u32) {
+        let len = u32::try_from(
+            self.form_value(id)
+                .unwrap_or_default()
+                .encode_utf16()
+                .count(),
+        )
+        .unwrap_or(u32::MAX);
+        let form = self.element(id).and_then(|e| e.form.as_ref());
+        let start = form.and_then(|f| f.selection_start).unwrap_or(0).min(len);
+        let end = form
+            .and_then(|f| f.selection_end)
+            .unwrap_or(len)
+            .clamp(start, len);
+        (start, end)
+    }
+
+    /// Sets the UTF-16 selection range for a form control.
+    pub fn set_form_selection(&mut self, id: NodeId, start: u32, end: u32) -> Result<()> {
+        let len = u32::try_from(
+            self.form_value(id)
+                .unwrap_or_default()
+                .encode_utf16()
+                .count(),
+        )
+        .unwrap_or(u32::MAX);
+        let start = start.min(len);
+        let end = end.clamp(start, len);
+        let form = self
+            .try_element_mut(id)?
+            .form
+            .get_or_insert_with(FormState::default);
+        form.selection_start = Some(start);
+        form.selection_end = Some(end);
+        self.journal.record(Mutation::FormStateChanged { node: id });
         Ok(())
     }
 
@@ -1824,6 +1870,13 @@ mod tests {
         assert_eq!(doc.form_value(input).as_deref(), Some("default"));
         doc.set_form_value(input, "typed").unwrap();
         assert_eq!(doc.form_value(input).as_deref(), Some("typed"));
+        assert_eq!(
+            doc.form_selection(input),
+            (5, 5),
+            "caret follows typed value"
+        );
+        doc.set_form_selection(input, 2, 4).unwrap();
+        assert_eq!(doc.form_selection(input), (2, 4));
         assert_eq!(
             doc.attribute(input, "value"),
             Some("default"),

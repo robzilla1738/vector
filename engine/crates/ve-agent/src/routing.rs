@@ -15,7 +15,7 @@ use ve_dom::{Document, NodeKind};
 /// Always populated after parse. `requires_script` flips only when the miss
 /// ratio exceeds 50% *and* missed declarations affect display / position /
 /// visibility. A 5% threshold false-positives real stylesheets.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CssCoverage {
     /// Declarations seen.
@@ -24,6 +24,19 @@ pub struct CssCoverage {
     pub unknown: usize,
     /// Declarations the engine parsed but defers to a later milestone.
     pub deferred: usize,
+    /// Unknown property names by frequency (author + inline).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub top_unknown: Vec<UnknownProperty>,
+}
+
+/// One unknown CSS property counted on a page.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnknownProperty {
+    /// Property name, lower-cased.
+    pub name: String,
+    /// How many declarations used it.
+    pub count: u32,
 }
 
 /// Router input for one opened document.

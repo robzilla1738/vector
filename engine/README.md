@@ -28,7 +28,6 @@ implemented.
 | `ve-napi` | `@vector/engine-native`: napi-rs 3 addon behind `napi` (`ABI_VERSION` 4) — async `Engine` class, JSON plus UTF-8 JSON/PNG Buffers; optional `ve-host` child per context |
 | `ve-host` | Isolated engine process: JSON control pipe, sandbox (macOS `sandbox_init` / Linux seccomp), fetches through the parent broker |
 | `ve-replay` | Hermetic replay: missing archive is nondeterminism; speculative writes denied (VEC-024) |
-| `ve-vm` | Research JS expression interpreter; Test262 subset; dedicated-worker `postMessage` eval (VEC-025). V8 stays production |
 | `tools/wpt-runner` | WPT reftest runner comparing fragment *geometry* (not pixels) against `rel=match` references; per-milestone manifest |
 | `tools/wpt-harness` | Testharness + pixel runner; inlines pinned testharness + idlharness; `--http` whole-tree server; VEC-006 |
 | `tools/ve-shell` | Native product CLI + `--gui` (`--features product`: window + V8 + HTTP). No Chromium |
@@ -220,4 +219,4 @@ Still open:
 - **Graphics** — WebGL/WebGPU return null (compatibility track). GPU
   glyphs/clips/`<img>`/`present_list` exist; software PNG is the capture path.
 - **Network** — HTTP/3 is Alt-Svc only.
-- **Research** — `ve-vm` Test262 subset; V8 stays production.
+- **Research** — `ve-vm` is deleted (H0-D4). V8 stays production.

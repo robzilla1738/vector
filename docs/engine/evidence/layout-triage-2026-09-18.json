@@ -1,0 +1,253 @@
+{
+  "backend": "vector-engine",
+  "boxes": 13,
+  "chromiumLive": true,
+  "date": "2026-09-19",
+  "engineBoxes": [
+    {
+      "chromium": {
+        "h": 30,
+        "w": 100,
+        "x": 0,
+        "y": 0
+      },
+      "engine": {
+        "h": 30.0,
+        "w": 100.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "html": "flex-row",
+      "match": true,
+      "selector": "#a",
+      "test": "flex_row_distributes_width_and_hit_testing_finds_items"
+    },
+    {
+      "chromium": {
+        "h": 30,
+        "w": 200,
+        "x": 100,
+        "y": 0
+      },
+      "engine": {
+        "h": 30.0,
+        "w": 200.0,
+        "x": 100.0,
+        "y": 0.0
+      },
+      "html": "flex-row",
+      "match": true,
+      "selector": "#big",
+      "test": "flex_row_distributes_width_and_hit_testing_finds_items"
+    },
+    {
+      "chromium": {
+        "h": 50,
+        "w": 400,
+        "x": 0,
+        "y": 0
+      },
+      "engine": {
+        "h": 50.0,
+        "w": 400.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "html": "block-margin",
+      "match": true,
+      "selector": "#a",
+      "test": "blocks_stack_vertically_with_margins_and_padding"
+    },
+    {
+      "chromium": {
+        "h": 60,
+        "w": 210,
+        "x": 0,
+        "y": 60
+      },
+      "engine": {
+        "h": 60.0,
+        "w": 210.0,
+        "x": 0.0,
+        "y": 60.0
+      },
+      "html": "block-margin",
+      "match": true,
+      "selector": "#b",
+      "test": "blocks_stack_vertically_with_margins_and_padding"
+    },
+    {
+      "chromium": {
+        "h": 20,
+        "w": 100,
+        "x": 100,
+        "y": 0
+      },
+      "engine": {
+        "h": 20.0,
+        "w": 100.0,
+        "x": 100.0,
+        "y": 0.0
+      },
+      "html": "grid-place",
+      "match": true,
+      "selector": "#a",
+      "test": "grid_placement_and_order_are_honoured"
+    },
+    {
+      "chromium": {
+        "h": 20,
+        "w": 100,
+        "x": 0,
+        "y": 20
+      },
+      "engine": {
+        "h": 20.0,
+        "w": 100.0,
+        "x": 0.0,
+        "y": 20.0
+      },
+      "html": "grid-place",
+      "match": true,
+      "selector": "#b",
+      "test": "grid_placement_and_order_are_honoured"
+    },
+    {
+      "chromium": {
+        "h": 20,
+        "w": 100,
+        "x": 0,
+        "y": 0
+      },
+      "engine": {
+        "h": 20.0,
+        "w": 100.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "html": "grid-place",
+      "match": true,
+      "selector": "#c",
+      "test": "grid_placement_and_order_are_honoured"
+    },
+    {
+      "chromium": {
+        "h": 20,
+        "w": 50,
+        "x": 0,
+        "y": 0
+      },
+      "engine": {
+        "h": 20.0,
+        "w": 50.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "html": "grid-areas",
+      "match": true,
+      "selector": "#a",
+      "test": "grid_template_areas_place_named_items"
+    },
+    {
+      "chromium": {
+        "h": 20,
+        "w": 150,
+        "x": 50,
+        "y": 0
+      },
+      "engine": {
+        "h": 20.0,
+        "w": 150.0,
+        "x": 50.0,
+        "y": 0.0
+      },
+      "html": "grid-areas",
+      "match": true,
+      "selector": "#b",
+      "test": "grid_template_areas_place_named_items"
+    },
+    {
+      "chromium": {
+        "h": 20,
+        "w": 400,
+        "x": 5,
+        "y": 5
+      },
+      "engine": {
+        "h": 20.0,
+        "w": 400.0,
+        "x": 5.0,
+        "y": 5.0
+      },
+      "html": "positioned",
+      "match": true,
+      "selector": "#rel",
+      "test": "positioned_boxes_and_stacking_order"
+    },
+    {
+      "chromium": {
+        "h": 50,
+        "w": 50,
+        "x": 20,
+        "y": 10
+      },
+      "engine": {
+        "h": 50.0,
+        "w": 50.0,
+        "x": 20.0,
+        "y": 10.0
+      },
+      "html": "positioned",
+      "match": true,
+      "selector": "#abs",
+      "test": "positioned_boxes_and_stacking_order"
+    },
+    {
+      "chromium": {
+        "h": 40,
+        "w": 80,
+        "x": 12,
+        "y": 12
+      },
+      "engine": {
+        "h": 40.0,
+        "w": 80.0,
+        "x": 12.0,
+        "y": 12.0
+      },
+      "html": "fixed-box",
+      "match": true,
+      "selector": "#box",
+      "test": "explicit_px_box"
+    },
+    {
+      "chromium": {
+        "h": 24,
+        "w": 200,
+        "x": 0,
+        "y": 0
+      },
+      "engine": {
+        "h": 24.0,
+        "w": 200.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "html": "percent",
+      "match": true,
+      "selector": "#half",
+      "test": "percentage_width"
+    }
+  ],
+  "matched": 13,
+  "notes": "Engine LayoutTree::rect_of vs google-chrome --headless=new getBoundingClientRect. Explicit px/flex/grid/abs fixtures; body margin 0; 400×600 CSS viewport.",
+  "pages": 7,
+  "reference": "chromium-headless",
+  "skippedLive": false,
+  "test": "layout_triage_measures_engine_and_chromium_boxes",
+  "tolerancePx": 1.0,
+  "viewport": {
+    "height": 600.0,
+    "width": 400.0
+  }
+}

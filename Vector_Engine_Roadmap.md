@@ -1,5 +1,7 @@
 # Vector: independent, AI-native browser engine roadmap
 
+> **Superseded by [docs/ROADMAP.md](docs/ROADMAP.md).** Ticket evidence (VEC-001–025) below remains historical. Do not schedule new work from this status block.
+
 ## Review baseline and status
 
 Repository: https://github.com/robzilla1738/vector

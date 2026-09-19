@@ -73,9 +73,9 @@ runtime over [MCP](docs/mcp.md) or the [loopback API](docs/api.md).
 same harness (`tests/benchmarks/run.mjs`), 5 repeats after 1 warmup, p50 on
 darwin arm64 (2026-09-16). Chromium is the headless standalone driver with
 `engineMode: off`; Vector Engine is `engineMode: always` (process isolation).
-Held-out p95 of `act+observe`: Chromium 14.9 ms, engine 2.8 ms (5.32×).
-Token stretch is measured from declared model usage (`meetsStretch` true,
-`tokenRatio` 8.35). Snapshot: `docs/engine/evidence/held-out-latest.json`.
+Held-out mock 5.32× / 8.35× tokens is retired (`MockModelClient`, n=1). Live
+GPT 5.6 Luna rows (5 trials, competitor included) are in `docs/BENCHMARKS.md`
+and `docs/engine/evidence/held-out-latest.json`.
 
 | Metric | Chromium | Vector Engine |
 |---|---:|---:|
@@ -152,7 +152,7 @@ apps/runtime     the authoritative runtime: pages, router, programs, runs, sets,
 engine/          Vector Engine — Rust cargo workspace (crates/, tools/, fixtures/, conformance/)
 engine/crates/ve-napi   @vector/engine-native — napi-rs 3 addon the runtime loads
 packages/contracts      zod schemas shared by every surface
-packages/browser-driver drivers: vector (Electron/standalone Chromium), chrome (attached), vector-engine
+packages/engine-client  `@vector/engine-client` (`EnginePage`); Chromium adapters stay in `packages/browser-driver`
 packages/cli            `vector` CLI over the loopback API
 packages/mcp            MCP stdio server over the loopback API
 fixtures/               deterministic test sites (records, forms, interaction-lab)

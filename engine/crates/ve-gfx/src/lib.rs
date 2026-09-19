@@ -30,14 +30,18 @@ pub mod display_list;
 pub mod fonts;
 pub mod image;
 pub mod renderer;
+pub mod tiles;
 #[cfg(feature = "gpu")]
 pub mod vello_backend;
 
 pub use compositor::{Compositor, Layer, LayerId};
-pub use display_list::{DisplayItem, DisplayList, TextRun};
-pub use fonts::{FontSystem, GlyphBitmap, GlyphOutline, GlyphVerb};
+pub use display_list::{
+    DisplayItem, DisplayList, TextRun, background_tile_origins, resolve_image_placement,
+};
+pub use fonts::{FontSystem, GlyphBitmap, GlyphOutline, GlyphVerb, PlacedGlyph, RetainedGlyphRun};
 pub use image::{DecodedImage, ImageCache, ImageFormat, ImageHandle, sniff_format};
 pub use renderer::{Frame, Renderer, SoftwareRenderer};
+pub use tiles::{TILE_PX, TileGrid};
 #[cfg(feature = "gpu")]
 pub use vello_backend::{VelloRenderer, build_scene, build_scene_fonts, build_scene_with};
 

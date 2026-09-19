@@ -1,0 +1,23 @@
+{
+  "appleSilicon": false,
+  "arch": "x86_64",
+  "contexts": [
+    1,
+    2
+  ],
+  "isolatedProcesses": true,
+  "isolation": "process",
+  "notAPublishedScore": true,
+  "origins": [
+    "https://a.test",
+    "https://b.test"
+  ],
+  "os": "linux",
+  "pids": [
+    265208,
+    265211
+  ],
+  "sandbox": true,
+  "securityProfile": "production",
+  "test": "production_two_origins_use_distinct_ve_host_processes"
+}

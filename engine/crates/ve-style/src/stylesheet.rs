@@ -12,6 +12,7 @@ use crate::coverage::CssCoverage;
 use crate::media::MediaQueryList;
 use crate::properties::{PropertyId, SpecifiedValue, expand_shorthand};
 use crate::selector_impl::{SelectorParser, StyleParseErrorKind, VeSelectorImpl};
+use crate::values::{FontStyle, FontWeight};
 
 /// Where a stylesheet comes from; the first key of the cascade.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -84,6 +85,28 @@ pub struct KeyframesRule {
     pub frames: Vec<Keyframe>,
 }
 
+/// One `@font-face` `src` component.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FontFaceSrc {
+    /// `url(...)`.
+    Url(String),
+    /// `local(...)`.
+    Local(String),
+}
+
+/// A `@font-face` rule. Does not participate in the cascade.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FontFaceRule {
+    /// `font-family` name.
+    pub family: String,
+    /// `src` list in source order.
+    pub sources: Vec<FontFaceSrc>,
+    /// `font-weight` (defaults to 400).
+    pub weight: FontWeight,
+    /// `font-style` (defaults to normal).
+    pub style: FontStyle,
+}
+
 /// A top-level or nested rule.
 #[derive(Clone, Debug)]
 pub enum CssRule {
@@ -93,6 +116,8 @@ pub enum CssRule {
     Media(MediaRule),
     /// A `@keyframes` rule. Does not participate in the cascade.
     Keyframes(KeyframesRule),
+    /// A `@font-face` rule. Does not participate in the cascade.
+    FontFace(FontFaceRule),
 }
 
 /// A parsed stylesheet.
@@ -126,7 +151,7 @@ impl Stylesheet {
                 .map(|r| match r {
                     CssRule::Style(_) => 1,
                     CssRule::Media(m) => count(&m.rules),
-                    CssRule::Keyframes(_) => 0,
+                    CssRule::Keyframes(_) | CssRule::FontFace(_) => 0,
                 })
                 .sum()
         }
@@ -141,7 +166,24 @@ impl Stylesheet {
                 match rule {
                     CssRule::Keyframes(k) => out.push(k),
                     CssRule::Media(m) => walk(&m.rules, out),
-                    CssRule::Style(_) => {}
+                    CssRule::Style(_) | CssRule::FontFace(_) => {}
+                }
+            }
+        }
+        let mut out = Vec::new();
+        walk(&self.rules, &mut out);
+        out
+    }
+
+    /// `@font-face` rules in source order, including nested sheets.
+    #[must_use]
+    pub fn font_faces(&self) -> Vec<&FontFaceRule> {
+        fn walk<'a>(rules: &'a [CssRule], out: &mut Vec<&'a FontFaceRule>) {
+            for rule in rules {
+                match rule {
+                    CssRule::FontFace(f) => out.push(f),
+                    CssRule::Media(m) => walk(&m.rules, out),
+                    CssRule::Style(_) | CssRule::Keyframes(_) => {}
                 }
             }
         }
@@ -354,12 +396,14 @@ struct RuleParser {
 /// Prelude of a supported at-rule.
 enum AtPrelude {
     Media(MediaQueryList),
-    /// `@supports` / `@layer` / `@scope`: the body is parsed as rules; the
-    /// condition is treated as true (`@supports not (...)` is rare in static
-    /// pages and errs on the side of applying styles).
+    /// `@supports`: body is kept only when the condition is true.
+    Supports(bool),
+    /// `@layer` / `@scope`: the body is parsed as rules (unconditional).
     Transparent,
     /// `@keyframes name`.
     Keyframes(String),
+    /// `@font-face`.
+    FontFace,
 }
 
 impl<'i> QualifiedRuleParser<'i> for RuleParser {
@@ -402,10 +446,11 @@ impl<'i> AtRuleParser<'i> for RuleParser {
         {
             let ident = input.expect_ident()?;
             Ok(AtPrelude::Keyframes(ident.as_ref().to_owned()))
-        } else if name.eq_ignore_ascii_case("supports")
-            || name.eq_ignore_ascii_case("layer")
-            || name.eq_ignore_ascii_case("scope")
-        {
+        } else if name.eq_ignore_ascii_case("font-face") {
+            Ok(AtPrelude::FontFace)
+        } else if name.eq_ignore_ascii_case("supports") {
+            Ok(AtPrelude::Supports(parse_supports_condition(input)))
+        } else if name.eq_ignore_ascii_case("layer") || name.eq_ignore_ascii_case("scope") {
             while input.next().is_ok() {}
             Ok(AtPrelude::Transparent)
         } else {
@@ -435,6 +480,20 @@ impl<'i> AtRuleParser<'i> for RuleParser {
                     .collect();
                 Ok(CssRule::Keyframes(KeyframesRule { name, frames }))
             }
+            AtPrelude::FontFace => {
+                let mut body = FontFaceBodyParser::default();
+                for item in RuleBodyParser::new(input, &mut body) {
+                    if let Err((err, slice)) = item {
+                        tracing::debug!(?err.kind, slice, "skipping invalid @font-face descriptor");
+                    }
+                }
+                Ok(CssRule::FontFace(FontFaceRule {
+                    family: body.family.unwrap_or_default(),
+                    sources: body.sources,
+                    weight: body.weight,
+                    style: body.style,
+                }))
+            }
             prelude => {
                 let rules = RuleBodyParser::new(input, self)
                     .filter_map(|r| match r {
@@ -447,11 +506,19 @@ impl<'i> AtRuleParser<'i> for RuleParser {
                     .collect();
                 match prelude {
                     AtPrelude::Media(query) => Ok(CssRule::Media(MediaRule { query, rules })),
-                    AtPrelude::Transparent => Ok(CssRule::Media(MediaRule {
+                    AtPrelude::Supports(true) | AtPrelude::Transparent => {
+                        Ok(CssRule::Media(MediaRule {
+                            query: MediaQueryList::default(),
+                            rules,
+                        }))
+                    }
+                    AtPrelude::Supports(false) => Ok(CssRule::Media(MediaRule {
                         query: MediaQueryList::default(),
-                        rules,
+                        rules: Vec::new(),
                     })),
-                    AtPrelude::Keyframes(_) => unreachable!("handled above"),
+                    AtPrelude::Keyframes(_) | AtPrelude::FontFace => {
+                        unreachable!("handled above")
+                    }
                 }
             }
         }
@@ -536,6 +603,201 @@ impl<'i> RuleBodyItemParser<'i, CssRule, StyleParseErrorKind<'i>> for RuleParser
     }
 }
 
+struct FontFaceBodyParser {
+    family: Option<String>,
+    sources: Vec<FontFaceSrc>,
+    weight: FontWeight,
+    style: FontStyle,
+}
+
+impl Default for FontFaceBodyParser {
+    fn default() -> Self {
+        Self {
+            family: None,
+            sources: Vec::new(),
+            weight: FontWeight::NORMAL,
+            style: FontStyle::Normal,
+        }
+    }
+}
+
+impl<'i> DeclarationParser<'i> for FontFaceBodyParser {
+    type Declaration = ();
+    type Error = StyleParseErrorKind<'i>;
+
+    fn parse_value<'t>(
+        &mut self,
+        name: CowRcStr<'i>,
+        input: &mut Parser<'i, 't>,
+        _start: &ParserState,
+    ) -> Result<Self::Declaration, ParseError<'i, Self::Error>> {
+        if name.eq_ignore_ascii_case("font-family") {
+            if let Ok(s) = input.try_parse(|i| i.expect_string_cloned()) {
+                self.family = Some(s.to_string());
+            } else {
+                let ident = input.expect_ident()?;
+                self.family = Some(ident.as_ref().to_owned());
+            }
+            let _ = input.try_parse(parse_important);
+            return Ok(());
+        }
+        if name.eq_ignore_ascii_case("src") {
+            self.sources = parse_font_face_src(input);
+            let _ = input.try_parse(parse_important);
+            return Ok(());
+        }
+        if name.eq_ignore_ascii_case("font-weight") {
+            if let Ok(n) = input.try_parse(Parser::expect_number) {
+                self.weight = FontWeight(n.round().clamp(1.0, 1000.0) as u16);
+            } else if let Ok(ident) = input.try_parse(|i| i.expect_ident_cloned()) {
+                self.weight = match ident.as_ref() {
+                    s if s.eq_ignore_ascii_case("bold") => FontWeight::BOLD,
+                    s if s.eq_ignore_ascii_case("normal") => FontWeight::NORMAL,
+                    _ => FontWeight::NORMAL,
+                };
+            }
+            let _ = input.try_parse(parse_important);
+            return Ok(());
+        }
+        if name.eq_ignore_ascii_case("font-style") {
+            if let Ok(ident) = input.try_parse(|i| i.expect_ident_cloned()) {
+                self.style = if ident.eq_ignore_ascii_case("italic") {
+                    FontStyle::Italic
+                } else if ident.eq_ignore_ascii_case("oblique") {
+                    FontStyle::Oblique
+                } else {
+                    FontStyle::Normal
+                };
+            }
+            let _ = input.try_parse(parse_important);
+            return Ok(());
+        }
+        while input.next().is_ok() {}
+        Ok(())
+    }
+}
+
+impl<'i> QualifiedRuleParser<'i> for FontFaceBodyParser {
+    type Prelude = ();
+    type QualifiedRule = ();
+    type Error = StyleParseErrorKind<'i>;
+}
+
+impl<'i> AtRuleParser<'i> for FontFaceBodyParser {
+    type Prelude = ();
+    type AtRule = ();
+    type Error = StyleParseErrorKind<'i>;
+}
+
+impl<'i> RuleBodyItemParser<'i, (), StyleParseErrorKind<'i>> for FontFaceBodyParser {
+    fn parse_declarations(&self) -> bool {
+        true
+    }
+
+    fn parse_qualified(&self) -> bool {
+        false
+    }
+}
+
+fn parse_font_face_src(input: &mut Parser<'_, '_>) -> Vec<FontFaceSrc> {
+    let mut sources = Vec::new();
+    loop {
+        if input.is_exhausted() {
+            break;
+        }
+        if let Ok(url) = input.try_parse(|i| i.expect_url()) {
+            sources.push(FontFaceSrc::Url(url.as_ref().to_owned()));
+        } else if input
+            .try_parse(|i| i.expect_function_matching("local"))
+            .is_ok()
+        {
+            let local = input
+                .parse_nested_block(|args| {
+                    if let Ok(s) = args.try_parse(|i| i.expect_string_cloned()) {
+                        return Ok(s.to_string());
+                    }
+                    let ident = args.expect_ident()?.as_ref().to_owned();
+                    Ok::<_, ParseError<'_, StyleParseErrorKind<'_>>>(ident)
+                })
+                .ok();
+            if let Some(name) = local {
+                sources.push(FontFaceSrc::Local(name));
+            }
+        } else if input
+            .try_parse(|i| i.expect_function_matching("format"))
+            .is_ok()
+        {
+            let _ = input.parse_nested_block(|args| {
+                while args.next().is_ok() {}
+                Ok::<_, ParseError<'_, StyleParseErrorKind<'_>>>(())
+            });
+        } else if input.try_parse(Parser::expect_comma).is_ok() {
+            // The separator was consumed; the next iteration parses the next source.
+        } else if input.next().is_err() {
+            break;
+        }
+    }
+    sources
+}
+
+/// `@supports` prelude: `(property: value)` with optional `not` / `and` / `or`.
+fn parse_supports_condition(input: &mut Parser<'_, '_>) -> bool {
+    let negated = input.try_parse(|i| i.expect_ident_matching("not")).is_ok();
+    let first = parse_supports_in_parens(input);
+    let mut result = if negated { !first } else { first };
+    loop {
+        let Ok(op) = input.try_parse(|i| {
+            Ok::<_, cssparser::ParseError<'static, ()>>(
+                i.expect_ident()?.as_ref().to_ascii_lowercase(),
+            )
+        }) else {
+            break;
+        };
+        if op != "and" && op != "or" {
+            break;
+        }
+        let next = parse_supports_in_parens(input);
+        if op == "and" {
+            result &= next;
+        } else {
+            result |= next;
+        }
+    }
+    while input.next().is_ok() {}
+    result
+}
+
+fn parse_supports_in_parens(input: &mut Parser<'_, '_>) -> bool {
+    if input.expect_parenthesis_block().is_err() {
+        return false;
+    }
+    input
+        .parse_nested_block(|inner| {
+            if inner.try_parse(|i| i.expect_ident_matching("not")).is_ok() {
+                return Ok(!parse_supports_in_parens(inner));
+            }
+            let name = match inner.expect_ident() {
+                Ok(n) => n.as_ref().to_owned(),
+                Err(_) => {
+                    while inner.next().is_ok() {}
+                    return Ok(false);
+                }
+            };
+            if inner.expect_colon().is_err() {
+                while inner.next().is_ok() {}
+                return Ok(false);
+            }
+            let Some(prop) = PropertyId::from_name(&name) else {
+                while inner.next().is_ok() {}
+                return Ok(false);
+            };
+            let ok = prop.parse_value(inner).is_some();
+            while inner.next().is_ok() {}
+            Ok::<_, ParseError<'_, StyleParseErrorKind<'_>>>(ok)
+        })
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -581,6 +843,42 @@ mod tests {
     }
 
     #[test]
+    fn supports_keeps_known_properties_and_drops_unknown() {
+        let sheet = parse_stylesheet(
+            r"
+            @supports (display: grid) { .g { display: grid } }
+            @supports (not-a-property: 1) { .nope { color: red } }
+            @supports not (display: grid) { .neg { color: blue } }
+            @supports (display: 12furlongs) { .bad { color: green } }
+            ",
+            Origin::Author,
+        );
+        assert_eq!(sheet.style_rule_count(), 1, "only display:grid applies");
+        let CssRule::Media(m) = &sheet.rules[0] else {
+            panic!("kept @supports becomes a media wrapper")
+        };
+        let CssRule::Style(g) = &m.rules[0] else {
+            panic!(".g kept")
+        };
+        assert_eq!(g.block.declarations[0].property, PropertyId::Display);
+        assert!(
+            sheet.rules.iter().all(|r| match r {
+                CssRule::Media(inner) => inner.rules.iter().all(|n| match n {
+                    CssRule::Style(s) => {
+                        !s.block
+                            .declarations
+                            .iter()
+                            .any(|d| matches!(d.property, PropertyId::Color))
+                    }
+                    _ => true,
+                }),
+                _ => true,
+            }),
+            "unknown / not / invalid @supports bodies must be dropped"
+        );
+    }
+
+    #[test]
     fn style_attribute_blocks() {
         let block =
             parse_declaration_block("display:none;;color: #123 !important; --x: 1 !important");
@@ -619,5 +917,36 @@ mod tests {
         assert!(!fade.frames[0].block.is_empty());
         let slide = &sheet.keyframes()[1];
         assert_eq!(slide.frames[0].offsets, [0.0, 1.0]);
+    }
+
+    #[test]
+    fn parses_font_face_src_family_weight() {
+        let sheet = parse_stylesheet(
+            r#"
+            @font-face {
+                font-family: "InterTest";
+                src: url("/fonts/inter.woff2") format("woff2"),
+                     local("Inter"),
+                     url(data:font/ttf;base64,AA==);
+                font-weight: 600;
+                font-style: italic;
+            }
+            "#,
+            Origin::Author,
+        );
+        assert_eq!(sheet.style_rule_count(), 0);
+        assert_eq!(sheet.font_faces().len(), 1);
+        let face = &sheet.font_faces()[0];
+        assert_eq!(face.family, "InterTest");
+        assert_eq!(
+            face.sources,
+            [
+                FontFaceSrc::Url("/fonts/inter.woff2".into()),
+                FontFaceSrc::Local("Inter".into()),
+                FontFaceSrc::Url("data:font/ttf;base64,AA==".into()),
+            ]
+        );
+        assert_eq!(face.weight, FontWeight(600));
+        assert_eq!(face.style, FontStyle::Italic);
     }
 }

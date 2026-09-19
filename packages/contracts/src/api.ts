@@ -17,7 +17,7 @@ import {
 } from "./entities.js";
 import { EventSchema } from "./events.js";
 import { CompactObservationSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
-import { ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
+import { ConditionSchema, ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
 import { StateQuerySchema } from "./state.js";
 
 const id = z.string().min(1);
@@ -68,6 +68,40 @@ export type ReturnObservation = z.infer<typeof ReturnObservationSchema>;
 export const PagesExecuteParams = z.object({
   program: ProgramSchema,
   returnObservation: ReturnObservationSchema.optional(),
+});
+/** Named observation keys (`title`, `r12`) or CSS extract specs. */
+export const ExtractFieldSchema = z.union([
+  z.string().min(1),
+  z.object({
+    name: z.string().min(1),
+    selector: z.string().optional(),
+    attribute: z.string().optional(),
+    all: z.boolean().optional(),
+  }),
+]);
+export const PagesExtractParams = z.object({
+  pageId: id,
+  fields: z.array(ExtractFieldSchema).optional(),
+});
+export const PagesWaitForParams = z.object({
+  pageId: id,
+  condition: ConditionSchema,
+});
+export const PagesConsoleParams = z.object({
+  pageId: id,
+  since: z.number().optional(),
+  limit: z.number().int().positive().max(1000).optional(),
+});
+export const PagesDialogParams = z.object({
+  pageId: id,
+  action: z.enum(["list", "accept", "dismiss"]).default("list"),
+  promptText: z.string().optional(),
+});
+export const PagesNetworkParams = z.object({
+  pageId: id,
+  since: z.number().optional(),
+  urlIncludes: z.string().optional(),
+  limit: z.number().int().positive().max(1000).optional(),
 });
 export const PagesCaptureParams = z.object({
   pageId: id,
@@ -215,6 +249,20 @@ export const SettingsSetParams = z.object({
   zoomFactor: z.number().optional(),
   /** Vector Engine routing: off (default, Chromium only) | auto (router) | always (engine only). */
   engineMode: EngineModeSchema.optional(),
+  /** Privilege-independent effect grants. Model text cannot expand these. */
+  effectGrants: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          effect: z.enum(["read", "write", "destructive", "egress", "*"]),
+          origin: z.string().optional(),
+          scope: z.string().optional(),
+          expiresAt: z.number().int().nonnegative().optional(),
+        }),
+      ]),
+    )
+    .optional(),
 });
 export const SettingsGetParams = z.object({});
 
@@ -241,6 +289,11 @@ export const MethodSchemas = {
   "pages.stop": PagesCloseParams,
   "pages.observe": PagesObserveParams,
   "pages.execute": PagesExecuteParams,
+  "pages.extract": PagesExtractParams,
+  "pages.waitFor": PagesWaitForParams,
+  "pages.console": PagesConsoleParams,
+  "pages.dialog": PagesDialogParams,
+  "pages.network": PagesNetworkParams,
   "pages.capture": PagesCaptureParams,
   "pages.scene": PagesSceneParams,
   "pages.engineInput": PagesEngineInputParams,
@@ -386,6 +439,28 @@ export const ResultSchemas = {
     /** present when the request carried returnObservation; full or compact per its format */
     observation: z.union([ObservationSchema, CompactObservationSchema]).optional(),
   }),
+  "pages.extract": z.object({
+    pageId: z.string(),
+    documentEpoch: z.number(),
+    revision: z.number(),
+    fields: z.record(z.string(), z.unknown()),
+  }),
+  "pages.waitFor": z.object({
+    ok: z.boolean(),
+    timedOut: z.boolean(),
+    detail: z.string().optional(),
+    status: z.string().optional(),
+  }),
+  "pages.console": z.object({
+    lines: z.array(z.object({ level: z.string(), message: z.string(), atMs: z.number().optional() })),
+  }),
+  "pages.dialog": z.object({
+    ok: z.boolean().optional(),
+    action: z.enum(["list", "accept", "dismiss"]).optional(),
+    dialogs: z.array(z.object({ type: z.string(), message: z.string() })).optional(),
+    pending: z.object({ type: z.string(), message: z.string() }).nullable().optional(),
+  }),
+  "pages.network": z.array(z.unknown()),
   "pages.engineInput": z.object({ ok: z.boolean() }),
   "pages.scene": z.object({
     kind: z.literal("displayList"),

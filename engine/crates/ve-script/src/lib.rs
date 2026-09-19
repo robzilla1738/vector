@@ -38,7 +38,10 @@ pub use event_loop::{DueJsTimer, EventLoop, RunReport, TaskId, TaskSource};
 pub use quickjs::QuickJsVm;
 #[cfg(feature = "v8")]
 pub use v8_vm::V8Vm;
-pub use vm::{HostApi, JsValue, JsVm, NoHost, NullVm, ScriptError, default_vm};
+pub use vm::{
+    HostApi, JsValue, JsVm, NoHost, NullVm, ScriptError, decode_data_module, default_vm,
+    module_import_specifiers, normalize_module_url, resolve_module_specifier,
+};
 pub use webidl::{Argument, Interface, Member, generate_rust_stub, parse_webidl};
 
 /// Traits generated from `idl/*.webidl` (plan A14).

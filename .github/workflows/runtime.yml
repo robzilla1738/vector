@@ -44,7 +44,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Install headless Chromium (playwright-core download, no browsers bundled)
-        run: pnpm --filter @vector/browser-driver exec playwright-core install --with-deps chromium-headless-shell
+        run: pnpm --filter @vector/engine-client exec playwright-core install --with-deps chromium-headless-shell
       - name: Integration suite against the fixture sites
         run: pnpm exec vitest run tests/integration
         env:
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.88.0
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
@@ -68,7 +68,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm --filter @vector/engine-native build:cargo
-      - run: pnpm --filter @vector/browser-driver exec playwright-core install --with-deps chromium-headless-shell
+      - run: pnpm --filter @vector/engine-client exec playwright-core install --with-deps chromium-headless-shell
       - name: Engine-backed integration + router tests (VECTOR_REQUIRE_ENGINE fails instead of skipping)
         run: pnpm exec vitest run tests/integration/vector-engine.test.ts tests/unit/engine-routing.test.ts tests/unit/vector-engine-driver.test.ts
         env:
@@ -101,7 +101,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.88.0
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine

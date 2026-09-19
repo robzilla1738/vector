@@ -6,8 +6,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use ve_agent::{
-    DEFAULT_VIEWPORT, ErrorCode, InFlightSummary, LoadedDocument, Loader, NavMethod,
-    NavigationRequest, ObservationRequest, Page, Program, ProgramResult, ProgramStatus, StepStatus,
+    DEFAULT_VIEWPORT, ErrorCode, Format, InFlightSummary, LoadedDocument, Loader, NavMethod,
+    NavigationRequest, ObservationRequest, ObservePath, Page, Program, ProgramResult,
+    ProgramStatus, StepStatus,
 };
 use ve_core::{Error, Result};
 
@@ -212,6 +213,8 @@ fn documents_are_decoded_with_the_declared_charset() {
             status: 200,
             last_modified: None,
             content_language: None,
+            coop: Default::default(),
+            coep: Default::default(),
         },
     );
     let page = Page::open(
@@ -222,9 +225,38 @@ fn documents_are_decoded_with_the_declared_charset() {
     )
     .unwrap();
     assert_eq!(page.title(), "Café ©");
+    assert_eq!(page.coop(), ve_agent::CoopPolicy::UnsafeNone);
+    assert_eq!(page.coep(), ve_agent::CoepPolicy::UnsafeNone);
+    assert!(!page.is_cross_origin_isolated());
     assert_eq!(page.status(), 200);
     let content = page.observe_now(&ObservationRequest::default());
     assert_eq!(content.headings, vec!["Crème".to_owned()]);
+}
+
+#[test]
+fn coop_same_origin_blocks_cross_origin_window_open() {
+    let mut loaded = ve_agent::LoadedDocument::html("https://a.test/", "<p>x</p>");
+    loaded.coop = ve_agent::CoopPolicy::SameOrigin;
+    loaded.coep = ve_agent::CoepPolicy::RequireCorp;
+    let page = ve_agent::Page::from_loaded(1, loaded, DEFAULT_VIEWPORT);
+    assert!(page.is_cross_origin_isolated());
+    assert!(!page.coop_allows_open("https://b.test/"));
+    assert!(page.coop_allows_open("https://a.test/other"));
+    let open = ve_agent::Page::from_html(2, "<p>y</p>", Some("https://a.test/"), DEFAULT_VIEWPORT);
+    assert!(open.coop_allows_open("https://b.test/"));
+}
+
+#[test]
+fn coep_require_corp_blocks_cross_origin_without_corp() {
+    let mut loaded = ve_agent::LoadedDocument::html("https://a.test/", "<p>x</p>");
+    loaded.coep = ve_agent::CoepPolicy::RequireCorp;
+    let page = ve_agent::Page::from_loaded(1, loaded, DEFAULT_VIEWPORT);
+    assert!(page.coep_allows_resource("https://a.test/img.png", None));
+    assert!(!page.coep_allows_resource("https://b.test/img.png", None));
+    assert!(page.coep_allows_resource("https://b.test/img.png", Some("cross-origin")));
+    assert!(page.coep_allows_resource("https://cdn.a.test/img.png", Some("same-site")));
+    assert!(!page.coep_allows_resource("https://cdn.b.test/img.png", Some("same-site")));
+    assert!(!page.coep_allows_resource("https://cdn.b.test/img.png", Some("same-origin")));
 }
 
 // ---------------------------------------------------------------------------
@@ -782,14 +814,14 @@ fn target_resolution_errors_carry_exact_codes_and_candidates() {
     );
     assert_eq!(error_code(&result, 0), ErrorCode::TargetDetached);
 
-    // Epoch mismatch → target_detached before anything runs.
+    // Epoch mismatch → ref_stale before anything runs.
     let one = reference(&page, "css:#one");
     let program = serde_json::json!({
         "documentEpoch": epoch + 1,
         "steps": [{ "id": "s", "op": "click", "target": one }]
     });
     let result = page.execute(&Program::from_value(program).unwrap());
-    assert_eq!(error_code(&result, 0), ErrorCode::TargetDetached);
+    assert_eq!(error_code(&result, 0), ErrorCode::RefStale);
 }
 
 #[test]
@@ -916,4 +948,49 @@ fn observe_reports_changes_since_and_epoch_rollover() {
         })
         .unwrap();
     assert!(fourth.changes_since.is_none());
+}
+
+#[test]
+fn incremental_observe_uses_hit_index_for_attribute_patch() {
+    let mut page = Page::from_html(
+        1,
+        r#"<body><button id=b style="width:80px;height:40px">Go</button></body>"#,
+        Some(ORIGIN),
+        DEFAULT_VIEWPORT,
+    );
+    let first = page
+        .observe(&ObservationRequest {
+            format: Format::Full,
+            ..ObservationRequest::default()
+        })
+        .unwrap();
+    let id = page.document().element_by_id("b").unwrap();
+    page.document_mut()
+        .set_attribute(id, "aria-label", "Next")
+        .unwrap();
+    page.update();
+    let patched = page
+        .observe(&ObservationRequest {
+            format: Format::Full,
+            since_revision: Some(first.revision),
+            ..ObservationRequest::default()
+        })
+        .unwrap();
+    assert_eq!(
+        page.last_observe_path(),
+        ObservePath::HitIndexPatch,
+        "attribute change must patch via HitIndex neighbors"
+    );
+    let full = page.observe_now(&ObservationRequest {
+        format: Format::Full,
+        ..ObservationRequest::default()
+    });
+    let name = |obs: &ve_a11y::ObservationContent| {
+        obs.elements
+            .iter()
+            .find(|e| e.tag == "button")
+            .and_then(|e| e.name.clone())
+    };
+    assert_eq!(name(&patched.content), Some("Next".into()));
+    assert_eq!(name(&patched.content), name(&full));
 }

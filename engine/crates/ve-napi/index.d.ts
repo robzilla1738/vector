@@ -34,6 +34,8 @@ export interface EngineConfig {
   isolation?: "auto" | "requireProcess" | "inProcess";
   /** When true, live sockets never open; missing archive entries are blocked (VEC-024). */
   hermetic?: boolean;
+  /** Layout text shaper. Omitted JSON defaults to `system`. Rust `Default` stays `metric`. */
+  shaper?: "metric" | "system";
   /** Accepted and ignored by the engine today; reserved for cookie/cache persistence. */
   dataDir?: string;
 }

@@ -7,19 +7,22 @@ use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 use ve_a11y::{
-    DialogEntry, Format, LabelIndex, ObservationContent, ObservationDelta, ObservationRequest,
-    ObserveInput, Role, Scope, Visibility5, changes_between, compute_name_with, observe, parse_ref,
-    parse_ref_parts, ref_for,
+    ConsoleEntry, DialogEntry, Format, LabelIndex, ObservationContent, ObservationDelta,
+    ObservationRequest, ObserveInput, Role, Scope, Visibility5, changes_between, compute_name_with,
+    observe, parse_ref, parse_ref_parts, ref_for,
 };
-use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Size, Stage};
+use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Revision, Size, Stage};
 use ve_dom::{DirtyFlags, Document, Namespace, Node, NodeKind};
-use ve_gfx::SoftwareRenderer;
+use ve_gfx::{FontSystem, ImageCache, ImageHandle, SoftwareRenderer};
 use ve_html::DocumentMeta;
-use ve_layout::{LayoutEngine, LayoutTree};
-use ve_style::{StyleEngine, StyleTree};
+use ve_layout::{LayoutEngine, LayoutTree, ParleyShaper};
+use ve_style::{
+    BackgroundImage, FontFaceSrc, FontFamily, FontStyle, FontWeight, Length, LengthPercentage,
+    SpecifiedTransform, SpecifiedValue, StyleEngine, StyleTree, TransformOp,
+};
 
 use crate::forms::{self, Enctype, FormMethod};
-use crate::keys::{Chord, Key};
+use crate::keys::{Chord, Key, Modifiers};
 use crate::routing::{CssCoverage, RoutingInfo, classify};
 use crate::screenshot::{self, Screenshot};
 use crate::steps::{MouseButton, ScrollDirection, Settled};
@@ -99,6 +102,10 @@ pub struct LoadedDocument {
     pub last_modified: Option<String>,
     /// HTTP `Content-Language` header, if any.
     pub content_language: Option<String>,
+    /// `Cross-Origin-Opener-Policy` (H3-4).
+    pub coop: CoopPolicy,
+    /// `Cross-Origin-Embedder-Policy` (H3-4).
+    pub coep: CoepPolicy,
 }
 
 impl LoadedDocument {
@@ -111,6 +118,70 @@ impl LoadedDocument {
             status: 200,
             last_modified: None,
             content_language: None,
+            coop: CoopPolicy::UnsafeNone,
+            coep: CoepPolicy::UnsafeNone,
+        }
+    }
+}
+
+/// `Cross-Origin-Opener-Policy`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CoopPolicy {
+    /// Default: document can share a browsing context group.
+    #[default]
+    UnsafeNone,
+    /// Isolate this document from cross-origin openers.
+    SameOrigin,
+    /// Isolate except same-origin popups with `unsafe-none`.
+    SameOriginAllowPopups,
+}
+
+/// `Cross-Origin-Embedder-Policy`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CoepPolicy {
+    /// Default: no embedder isolation.
+    #[default]
+    UnsafeNone,
+    /// Require CORP / CORS on cross-origin subresources.
+    RequireCorp,
+    /// Cross-origin no-cors requests are sent without credentials.
+    Credentialless,
+}
+
+impl CoopPolicy {
+    /// Parse a response header value (`None` → default).
+    #[must_use]
+    pub fn parse_header(value: Option<&str>) -> Self {
+        value.map(Self::parse).unwrap_or_default()
+    }
+
+    fn parse(value: &str) -> Self {
+        let v = value.split(';').next().unwrap_or("").trim();
+        if v.eq_ignore_ascii_case("same-origin") {
+            Self::SameOrigin
+        } else if v.eq_ignore_ascii_case("same-origin-allow-popups") {
+            Self::SameOriginAllowPopups
+        } else {
+            Self::UnsafeNone
+        }
+    }
+}
+
+impl CoepPolicy {
+    /// Parse a response header value (`None` → default).
+    #[must_use]
+    pub fn parse_header(value: Option<&str>) -> Self {
+        value.map(Self::parse).unwrap_or_default()
+    }
+
+    fn parse(value: &str) -> Self {
+        let v = value.split(';').next().unwrap_or("").trim();
+        if v.eq_ignore_ascii_case("require-corp") {
+            Self::RequireCorp
+        } else if v.eq_ignore_ascii_case("credentialless") {
+            Self::Credentialless
+        } else {
+            Self::UnsafeNone
         }
     }
 }
@@ -135,10 +206,14 @@ pub enum SubresourceKind {
     Image,
     /// `<script src>`.
     Script,
-    /// `@font-face src` (reserved; fonts are registered by the embedder).
+    /// `@font-face src`.
     Font,
     /// `<iframe>` / `<frame>` document (same-origin, plan A16).
     Document,
+    /// `<link rel=prefetch>` / `modulepreload` — Parser GET into the HTTP cache.
+    Prefetch,
+    /// `<link rel=preconnect>` / `dns-prefetch` — DNS only, no GET.
+    Preconnect,
 }
 
 /// A subresource fetch the page asks its [`Loader`] for.
@@ -165,6 +240,8 @@ pub struct LoadedResource {
     pub content_type: Option<String>,
     /// HTTP status.
     pub status: u16,
+    /// `Cross-Origin-Resource-Policy` (H3-4 / COEP).
+    pub corp: Option<String>,
 }
 
 /// A script the parser found, external (fetched) or inline. Kept on the page
@@ -196,12 +273,115 @@ pub struct LoadStats {
     pub images: usize,
     /// External scripts fetched.
     pub scripts: usize,
+    /// `@font-face` files installed into the page font system.
+    pub fonts: usize,
     /// Iframes whose document was parsed (same-origin attached, cross-origin isolated).
     pub frames: usize,
     /// Subresource fetches that failed.
     pub failed: usize,
     /// Wall time of the subresource batches in milliseconds.
     pub fetch_ms: u64,
+    /// `<link rel=prefetch>` / `modulepreload` bodies stored in cache.
+    pub prefetches: usize,
+    /// `<link rel=preconnect>` / `dns-prefetch` origins warmed.
+    pub preconnects: usize,
+}
+
+/// In-flight parser subresource batch from [`Loader::start_subresources`].
+pub struct PendingSubresources {
+    inner: PendingSubInner,
+}
+
+enum PendingSubInner {
+    Ready(Vec<Result<LoadedResource>>),
+    Join(Box<dyn FnOnce() -> Vec<Result<LoadedResource>>>),
+    Net {
+        batch: ve_net::PendingBatch,
+        n: usize,
+        wire: Vec<usize>,
+        failed: Vec<(usize, Error)>,
+    },
+}
+
+impl PendingSubresources {
+    /// Results that are already available (tests, sequential default).
+    #[must_use]
+    pub fn ready(results: Vec<Result<LoadedResource>>) -> Self {
+        Self {
+            inner: PendingSubInner::Ready(results),
+        }
+    }
+
+    /// Results produced when [`Loader::join_subresources`] runs.
+    #[must_use]
+    pub fn from_join(join: impl FnOnce() -> Vec<Result<LoadedResource>> + 'static) -> Self {
+        Self {
+            inner: PendingSubInner::Join(Box::new(join)),
+        }
+    }
+
+    /// Wire batch owned by [`ve_net::NetworkContext`].
+    #[must_use]
+    pub fn from_net(
+        batch: ve_net::PendingBatch,
+        n: usize,
+        wire: Vec<usize>,
+        failed: Vec<(usize, Error)>,
+    ) -> Self {
+        Self {
+            inner: PendingSubInner::Net {
+                batch,
+                n,
+                wire,
+                failed,
+            },
+        }
+    }
+
+    /// Finishes a net batch through `join_batch`, or returns ready/join results.
+    pub fn finish_net(
+        self,
+        join_batch: impl FnOnce(
+            ve_net::PendingBatch,
+        ) -> Vec<std::result::Result<ve_net::Response, ve_net::NetError>>,
+    ) -> Vec<Result<LoadedResource>> {
+        match self.inner {
+            PendingSubInner::Ready(results) => results,
+            PendingSubInner::Join(join) => join(),
+            PendingSubInner::Net {
+                batch,
+                n,
+                wire,
+                failed,
+            } => {
+                let responses = join_batch(batch);
+                let mut out: Vec<Option<Result<LoadedResource>>> = (0..n).map(|_| None).collect();
+                for (i, response) in wire.into_iter().zip(responses) {
+                    out[i] = Some(response.map_err(Error::from).map(|response| {
+                        LoadedResource {
+                            url: response.url.to_string(),
+                            bytes: response.body.to_vec(),
+                            content_type: response.content_type().map(str::to_owned),
+                            status: response.status.as_u16(),
+                            corp: response
+                                .headers
+                                .get("cross-origin-resource-policy")
+                                .and_then(|v| v.to_str().ok())
+                                .map(str::to_owned),
+                        }
+                    }));
+                }
+                for (i, e) in failed {
+                    out[i] = Some(Err(e));
+                }
+                out.into_iter()
+                    .map(|r| {
+                        r.unwrap_or_else(|| Err(Error::internal("subresource result missing")))
+                    })
+                    .collect()
+            }
+        }
+    }
 }
 
 /// Fetches documents for navigations and answers network questions for the
@@ -220,6 +400,25 @@ pub trait Loader {
             .map(|r| self.script_fetch(&r.url, "GET", &[], r.page, None))
             .collect()
     }
+    /// Starts parser subresource IO and returns without waiting on bodies.
+    /// The default runs [`Self::fetch_subresources`].
+    fn start_subresources(&mut self, requests: &[SubresourceRequest]) -> PendingSubresources {
+        PendingSubresources::ready(self.fetch_subresources(requests))
+    }
+    /// Waits for [`Self::start_subresources`].
+    fn join_subresources(&mut self, pending: PendingSubresources) -> Vec<Result<LoadedResource>> {
+        match pending.inner {
+            PendingSubInner::Ready(results) => results,
+            PendingSubInner::Join(join) => join(),
+            PendingSubInner::Net { .. } => {
+                vec![Err(Error::internal(
+                    "net subresource batch needs NetLoader",
+                ))]
+            }
+        }
+    }
+    /// Warm DNS for `rel=preconnect` / `dns-prefetch`. Default: no-op.
+    fn preconnect(&mut self, _urls: &[String]) {}
     /// Requests currently in flight for `page`.
     fn in_flight(&self, _page: u64) -> Vec<InFlightSummary> {
         Vec::new()
@@ -250,6 +449,7 @@ pub trait Loader {
                 bytes: loaded.bytes,
                 content_type: loaded.content_type,
                 status: loaded.status,
+                corp: None,
             });
         }
         let loaded = self.load(&NavigationRequest::get(url, page))?;
@@ -258,6 +458,7 @@ pub trait Loader {
             bytes: loaded.bytes,
             content_type: loaded.content_type,
             status: loaded.status,
+            corp: None,
         })
     }
 }
@@ -320,6 +521,17 @@ fn is_query_v1(v: &u32) -> bool {
     *v == QUERY_VERSION
 }
 
+/// Which text shaper a page uses for layout.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ShaperKind {
+    /// Synthetic per-character widths (CI, WPT, goldens, perf).
+    #[default]
+    Metric,
+    /// System fonts through [`ParleyShaper`].
+    System,
+}
+
 /// Default viewport.
 pub const DEFAULT_VIEWPORT: Size = Size {
     width: 1280.0,
@@ -334,6 +546,17 @@ pub const SETTLE_NAVIGATION_MS: u64 = 2000;
 pub const FETCH_BLOCKING_AGE_MS: u64 = 2000;
 /// Default actionability timeout.
 pub const DEFAULT_TIMEOUT_MS: u64 = 5000;
+
+/// How [`Page::observe_after_settle`] built the last snapshot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObservePath {
+    /// `since_revision` matched the live document revision.
+    Cache,
+    /// Journal + [`LayoutTree::nodes_overlapping`] patched the previous snapshot.
+    HitIndexPatch,
+    /// Full `observe_now`.
+    Full,
+}
 
 /// A live page.
 pub struct Page {
@@ -355,6 +578,12 @@ pub struct Page {
     pub(crate) viewport: Size,
     scale: f32,
     pub(crate) scroll: Point,
+    /// Rubber-band offset past the clamped scroll (H1-A5).
+    overscroll: Point,
+    /// Trackpad-style coasting velocity in CSS px / 16 ms (H1-A5).
+    scroll_velocity: Point,
+    /// True while a finger/wheel gesture is in Began/Changed (H1-A4).
+    scroll_gesture: bool,
     pub(crate) element_scroll: HashMap<NodeId, Point>,
     files: HashMap<NodeId, Vec<String>>,
     focused: Option<NodeId>,
@@ -363,9 +592,15 @@ pub struct Page {
     refreshes_followed: u8,
     observations: VecDeque<CachedObservation>,
     renderer: Option<SoftwareRenderer>,
+    images: ImageCache,
+    node_images: HashMap<NodeId, ImageHandle>,
+    shaper: ShaperKind,
     last_screenshot: Option<Screenshot>,
     last_navigation_error: Option<String>,
+    last_observe_path: ObservePath,
     virtual_time_ms: u64,
+    clock: ve_core::Clock,
+    wall_origin_ms: u64,
     cancelled: bool,
     /// Scripts in document order (external ones fetched at load).
     scripts: Vec<FetchedScript>,
@@ -384,6 +619,10 @@ pub struct Page {
     pub(crate) parser_scratch: Option<NodeId>,
     /// Arena length when document scripts started; later ids are script-created.
     pub(crate) parse_hi: u32,
+    /// Nodes allocated through script while parser visibility is gated. Arena
+    /// indices can be reused below `parse_hi`, so the high-water mark alone
+    /// cannot distinguish these from not-yet-visible parser nodes.
+    pub(crate) script_created_nodes: HashSet<NodeId>,
     /// `rel=expect` links whose target has already been seen (stay unblocked).
     expect_satisfied: HashSet<NodeId>,
     /// Head `rel=expect` links present at parse; body JS cannot add new ones.
@@ -398,11 +637,18 @@ pub struct Page {
     /// Evaluated after the writer returns so we can `run_script` (the VM is
     /// borrowed during the host call).
     pub(crate) pending_write_scripts: Vec<(NodeId, String)>,
+    /// Dynamically inserted `type=module` sources, flushed via `v8::Module`
+    /// after the current host call returns the VM.
+    pub(crate) pending_module_scripts: Vec<String>,
     /// Resolved `src` of attached iframes, used for `contentWindow.origin`.
     pub(crate) iframe_urls: HashMap<NodeId, String>,
 
     /// HTTP `Last-Modified` value for `document.lastModified`.
     pub(crate) last_modified: Option<String>,
+    /// Document COOP (H3-4).
+    pub(crate) coop: CoopPolicy,
+    /// Document COEP (H3-4).
+    pub(crate) coep: CoepPolicy,
     /// Browsing-document `document.readyState`.
     pub(crate) ready_state: &'static str,
     /// The script layer, when a VM is attached (plan A13).
@@ -454,6 +700,11 @@ pub struct Page {
     pub(crate) sw_client_posts: Vec<String>,
     /// Per-canvas 2D pixel buffers (VEC-008).
     pub(crate) canvases: HashMap<NodeId, CanvasSurface>,
+    /// `createPattern` pixel tiles keyed by id.
+    canvas_patterns: HashMap<u64, (u32, u32, Vec<u8>)>,
+    next_canvas_pattern: u64,
+    /// Fonts used by canvas `fillText` / `measureText` (H3-3).
+    canvas_fonts: Option<FontSystem>,
     /// Gate E: restyle passes during the current attribution window.
     restyle_calls: u32,
     /// Gate E: restyle passes that fell back to a full document compute.
@@ -508,6 +759,969 @@ pub(crate) struct WorkerRecord {
     pub last_message: Option<String>,
 }
 
+/// Fill style for canvas 2D (`fillStyle` colour or linear gradient).
+#[derive(Clone, Debug)]
+enum CanvasStyle {
+    Solid([u8; 4]),
+    Linear {
+        x0: f32,
+        y0: f32,
+        x1: f32,
+        y1: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    },
+    Radial {
+        x0: f32,
+        y0: f32,
+        r0: f32,
+        x1: f32,
+        y1: f32,
+        r1: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    },
+    Conic {
+        start: f32,
+        x: f32,
+        y: f32,
+        stops: Vec<(f32, [u8; 4])>,
+    },
+    Pattern {
+        width: u32,
+        height: u32,
+        pixels: Vec<u8>,
+        repeat: PatternRepeat,
+        transform: [f32; 6],
+    },
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum PatternRepeat {
+    #[default]
+    Repeat,
+    RepeatX,
+    RepeatY,
+    NoRepeat,
+}
+
+impl PatternRepeat {
+    fn parse(s: &str) -> Self {
+        match s {
+            "repeat-x" => Self::RepeatX,
+            "repeat-y" => Self::RepeatY,
+            "no-repeat" => Self::NoRepeat,
+            _ => Self::Repeat,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum CompositeOp {
+    #[default]
+    SourceOver,
+    Copy,
+    DestinationOver,
+    Xor,
+    Lighter,
+    SourceIn,
+    DestinationIn,
+    SourceOut,
+    DestinationOut,
+    SourceAtop,
+    DestinationAtop,
+    Multiply,
+    Screen,
+    Overlay,
+    Difference,
+    SoftLight,
+    HardLight,
+    Exclusion,
+    ColorDodge,
+    ColorBurn,
+    Hue,
+    Saturation,
+    Color,
+    Luminosity,
+}
+
+impl CompositeOp {
+    fn parse(s: &str) -> Self {
+        match s {
+            "copy" => Self::Copy,
+            "destination-over" => Self::DestinationOver,
+            "xor" => Self::Xor,
+            "lighter" => Self::Lighter,
+            "multiply" => Self::Multiply,
+            "screen" => Self::Screen,
+            "overlay" => Self::Overlay,
+            "difference" => Self::Difference,
+            "soft-light" => Self::SoftLight,
+            "hard-light" => Self::HardLight,
+            "exclusion" => Self::Exclusion,
+            "color-dodge" => Self::ColorDodge,
+            "color-burn" => Self::ColorBurn,
+            "hue" => Self::Hue,
+            "saturation" => Self::Saturation,
+            "color" => Self::Color,
+            "luminosity" => Self::Luminosity,
+            "source-in" => Self::SourceIn,
+            "destination-in" => Self::DestinationIn,
+            "source-out" => Self::SourceOut,
+            "destination-out" => Self::DestinationOut,
+            "source-atop" => Self::SourceAtop,
+            "destination-atop" => Self::DestinationAtop,
+            _ => Self::SourceOver,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum LineCap {
+    #[default]
+    Butt,
+    Square,
+    Round,
+}
+
+impl LineCap {
+    fn parse(s: &str) -> Self {
+        match s {
+            "square" => Self::Square,
+            "round" => Self::Round,
+            _ => Self::Butt,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum LineJoin {
+    #[default]
+    Miter,
+    Bevel,
+    Round,
+}
+
+impl LineJoin {
+    fn parse(s: &str) -> Self {
+        match s {
+            "bevel" => Self::Bevel,
+            "round" => Self::Round,
+            _ => Self::Miter,
+        }
+    }
+}
+
+fn vec2_norm(v: [f32; 2]) -> [f32; 2] {
+    let len = v[0].mul_add(v[0], v[1] * v[1]).sqrt();
+    if len < 1e-6 {
+        [0.0, 0.0]
+    } else {
+        [v[0] / len, v[1] / len]
+    }
+}
+
+fn line_intersect(p1: [f32; 2], d1: [f32; 2], p2: [f32; 2], d2: [f32; 2]) -> Option<[f32; 2]> {
+    let det = d1[0].mul_add(d2[1], -d1[1] * d2[0]);
+    if det.abs() < 1e-6 {
+        return None;
+    }
+    let t = (p2[0] - p1[0]).mul_add(d2[1], -(p2[1] - p1[1]) * d2[0]) / det;
+    Some([p1[0] + t * d1[0], p1[1] + t * d1[1]])
+}
+
+impl CanvasStyle {
+    fn sample(&self, x: f32, y: f32) -> [u8; 4] {
+        match self {
+            Self::Solid(c) => *c,
+            Self::Linear {
+                x0,
+                y0,
+                x1,
+                y1,
+                stops,
+            } => sample_linear_gradient(*x0, *y0, *x1, *y1, stops, x, y),
+            Self::Radial {
+                x0,
+                y0,
+                r0,
+                x1,
+                y1,
+                r1,
+                stops,
+            } => sample_radial_gradient(*x0, *y0, *r0, *x1, *y1, *r1, stops, x, y),
+            Self::Conic {
+                start,
+                x: cx,
+                y: cy,
+                stops,
+            } => sample_conic_gradient(*start, *cx, *cy, stops, x, y),
+            Self::Pattern {
+                width,
+                height,
+                pixels,
+                repeat,
+                transform,
+            } => sample_pattern(*width, *height, pixels, *repeat, *transform, x, y),
+        }
+    }
+}
+
+fn invert_affine(m: [f32; 6], x: f32, y: f32) -> (f32, f32) {
+    let [a, b, c, d, e, f] = m;
+    let det = a.mul_add(d, -b * c);
+    if det.abs() < 1e-8 {
+        return (x, y);
+    }
+    let ia = d / det;
+    let ib = -b / det;
+    let ic = -c / det;
+    let id = a / det;
+    let ie = (c * f - d * e) / det;
+    let iff = (b * e - a * f) / det;
+    (
+        ia.mul_add(x, ic.mul_add(y, ie)),
+        ib.mul_add(x, id.mul_add(y, iff)),
+    )
+}
+
+fn sample_pattern(
+    width: u32,
+    height: u32,
+    pixels: &[u8],
+    repeat: PatternRepeat,
+    transform: [f32; 6],
+    x: f32,
+    y: f32,
+) -> [u8; 4] {
+    if width == 0 || height == 0 {
+        return [0, 0, 0, 0];
+    }
+    let (x, y) = invert_affine(transform, x, y);
+    let fx = x.floor();
+    let fy = y.floor();
+    let in_x = fx >= 0.0 && fx < width as f32;
+    let in_y = fy >= 0.0 && fy < height as f32;
+    let px = match repeat {
+        PatternRepeat::Repeat | PatternRepeat::RepeatX => {
+            (fx as i32).rem_euclid(width as i32) as u32
+        }
+        PatternRepeat::RepeatY | PatternRepeat::NoRepeat => {
+            if !in_x {
+                return [0, 0, 0, 0];
+            }
+            fx as u32
+        }
+    };
+    let py = match repeat {
+        PatternRepeat::Repeat | PatternRepeat::RepeatY => {
+            (fy as i32).rem_euclid(height as i32) as u32
+        }
+        PatternRepeat::RepeatX | PatternRepeat::NoRepeat => {
+            if !in_y {
+                return [0, 0, 0, 0];
+            }
+            fy as u32
+        }
+    };
+    let i = ((py * width + px) * 4) as usize;
+    pixels
+        .get(i..i + 4)
+        .and_then(|s| s.try_into().ok())
+        .unwrap_or([0, 0, 0, 0])
+}
+
+fn dash_on(dist: i32, dash: &[i32], offset: i32) -> bool {
+    if dash.is_empty() {
+        return true;
+    }
+    let period: i32 = dash.iter().copied().sum();
+    if period <= 0 {
+        return true;
+    }
+    let mut d = (dist + offset).rem_euclid(period);
+    for (i, &seg) in dash.iter().enumerate() {
+        if d < seg {
+            return i % 2 == 0;
+        }
+        d -= seg;
+    }
+    true
+}
+
+fn sample_bilinear(
+    src: &[u8],
+    src_w: u32,
+    src_h: u32,
+    sx: u32,
+    sy: u32,
+    x1: u32,
+    y1: u32,
+    fx: f32,
+    fy: f32,
+) -> [u8; 4] {
+    let clamp_x = |x: i32| x.clamp(sx as i32, x1 as i32);
+    let clamp_y = |y: i32| y.clamp(sy as i32, y1 as i32);
+    let x0 = clamp_x(fx.floor() as i32);
+    let y0 = clamp_y(fy.floor() as i32);
+    let x1i = clamp_x(x0 + 1);
+    let y1i = clamp_y(y0 + 1);
+    let tx = (fx - x0 as f32).clamp(0.0, 1.0);
+    let ty = (fy - y0 as f32).clamp(0.0, 1.0);
+    let pix = |x: i32, y: i32| {
+        if x < 0 || y < 0 || x >= src_w as i32 || y >= src_h as i32 {
+            return [0u8; 4];
+        }
+        let si = (y as u32 * src_w + x as u32) as usize * 4;
+        if si + 3 >= src.len() {
+            return [0u8; 4];
+        }
+        [src[si], src[si + 1], src[si + 2], src[si + 3]]
+    };
+    let p00 = pix(x0, y0);
+    let p10 = pix(x1i, y0);
+    let p01 = pix(x0, y1i);
+    let p11 = pix(x1i, y1i);
+    let mut out = [0u8; 4];
+    for i in 0..4 {
+        let top = f32::from(p00[i]) + (f32::from(p10[i]) - f32::from(p00[i])) * tx;
+        let bot = f32::from(p01[i]) + (f32::from(p11[i]) - f32::from(p01[i])) * tx;
+        out[i] = (top + (bot - top) * ty).round() as u8;
+    }
+    out
+}
+
+fn glyph5x7(ch: char) -> [u8; 5] {
+    match ch {
+        ' ' | '\t' => [0, 0, 0, 0, 0],
+        'I' | 'i' | '1' | '|' => [0x00, 0x00, 0x7F, 0x00, 0x00],
+        'X' | 'x' => [0x63, 0x14, 0x08, 0x14, 0x63],
+        'O' | 'o' | '0' => [0x3E, 0x41, 0x41, 0x41, 0x3E],
+        _ => [0x7F, 0x41, 0x41, 0x41, 0x7F],
+    }
+}
+
+fn lum(c: [f32; 3]) -> f32 {
+    0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+}
+
+fn sat(c: [f32; 3]) -> f32 {
+    c[0].max(c[1]).max(c[2]) - c[0].min(c[1]).min(c[2])
+}
+
+fn clip_color(mut c: [f32; 3]) -> [f32; 3] {
+    let l = lum(c);
+    let n = c[0].min(c[1]).min(c[2]);
+    let x = c[0].max(c[1]).max(c[2]);
+    if n < 0.0 {
+        let denom = l - n;
+        if denom > 1e-8 {
+            for v in &mut c {
+                *v = l + (*v - l) * l / denom;
+            }
+        }
+    }
+    if x > 1.0 {
+        let denom = x - l;
+        if denom > 1e-8 {
+            for v in &mut c {
+                *v = l + (*v - l) * (1.0 - l) / denom;
+            }
+        }
+    }
+    c
+}
+
+fn set_lum(c: [f32; 3], l: f32) -> [f32; 3] {
+    let d = l - lum(c);
+    clip_color([c[0] + d, c[1] + d, c[2] + d])
+}
+
+fn set_sat(c: [f32; 3], s: f32) -> [f32; 3] {
+    let mut idx = [0usize, 1, 2];
+    idx.sort_by(|&a, &b| c[a].partial_cmp(&c[b]).unwrap_or(std::cmp::Ordering::Equal));
+    let (imin, imid, imax) = (idx[0], idx[1], idx[2]);
+    let mut out = c;
+    if c[imax] > c[imin] {
+        out[imid] = ((c[imid] - c[imin]) * s) / (c[imax] - c[imin]);
+        out[imax] = s;
+        out[imin] = 0.0;
+    } else {
+        out = [0.0, 0.0, 0.0];
+    }
+    out
+}
+
+fn rgb01(px: [u8; 4]) -> [f32; 3] {
+    [
+        f32::from(px[0]) / 255.0,
+        f32::from(px[1]) / 255.0,
+        f32::from(px[2]) / 255.0,
+    ]
+}
+
+fn rgb_u8(c: [f32; 3], a: u8) -> [u8; 4] {
+    [
+        (c[0].clamp(0.0, 1.0) * 255.0).round() as u8,
+        (c[1].clamp(0.0, 1.0) * 255.0).round() as u8,
+        (c[2].clamp(0.0, 1.0) * 255.0).round() as u8,
+        a,
+    ]
+}
+
+fn blend_nonseparable(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
+    let cb = rgb01(dst);
+    let cs = rgb01(src);
+    let out = match op {
+        CompositeOp::Hue => set_lum(set_sat(cs, sat(cb)), lum(cb)),
+        CompositeOp::Saturation => set_lum(set_sat(cb, sat(cs)), lum(cb)),
+        CompositeOp::Color => set_lum(cs, lum(cb)),
+        CompositeOp::Luminosity => set_lum(cb, lum(cs)),
+        _ => cs,
+    };
+    let a =
+        (u32::from(src[3]) + u32::from(dst[3]) * (255 - u32::from(src[3])) / 255).min(255) as u8;
+    rgb_u8(out, a)
+}
+
+fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
+    let sa = u32::from(src[3]);
+    let da = u32::from(dst[3]);
+    let (fs, fd) = match op {
+        CompositeOp::Copy => return src,
+        CompositeOp::Lighter => {
+            return [
+                src[0].saturating_add(dst[0]),
+                src[1].saturating_add(dst[1]),
+                src[2].saturating_add(dst[2]),
+                src[3].saturating_add(dst[3]),
+            ];
+        }
+        CompositeOp::SourceOver => (sa, da * (255 - sa) / 255),
+        CompositeOp::DestinationOver => (sa * (255 - da) / 255, da),
+        CompositeOp::Xor => (sa * (255 - da) / 255, da * (255 - sa) / 255),
+        CompositeOp::SourceIn => (sa * da / 255, 0),
+        CompositeOp::DestinationIn => (0, da * sa / 255),
+        CompositeOp::SourceOut => (sa * (255 - da) / 255, 0),
+        CompositeOp::DestinationOut => (0, da * (255 - sa) / 255),
+        CompositeOp::SourceAtop => (sa * da / 255, da * (255 - sa) / 255),
+        CompositeOp::DestinationAtop => (sa * (255 - da) / 255, da * sa / 255),
+        CompositeOp::Multiply => {
+            let a = sa + da * (255 - sa) / 255;
+            return [
+                ((u32::from(src[0]) * u32::from(dst[0])) / 255) as u8,
+                ((u32::from(src[1]) * u32::from(dst[1])) / 255) as u8,
+                ((u32::from(src[2]) * u32::from(dst[2])) / 255) as u8,
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::Screen => {
+            let a = sa + da * (255 - sa) / 255;
+            return [
+                (255 - ((255 - u32::from(src[0])) * (255 - u32::from(dst[0])) / 255)) as u8,
+                (255 - ((255 - u32::from(src[1])) * (255 - u32::from(dst[1])) / 255)) as u8,
+                (255 - ((255 - u32::from(src[2])) * (255 - u32::from(dst[2])) / 255)) as u8,
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::Overlay => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                let s = u32::from(s);
+                let d = u32::from(d);
+                if d < 128 {
+                    ((2 * s * d) / 255) as u8
+                } else {
+                    (255 - (2 * (255 - s) * (255 - d)) / 255) as u8
+                }
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::Difference => {
+            let a = sa + da * (255 - sa) / 255;
+            return [
+                src[0].abs_diff(dst[0]),
+                src[1].abs_diff(dst[1]),
+                src[2].abs_diff(dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::SoftLight => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                let sf = f32::from(s) / 255.0;
+                let df = f32::from(d) / 255.0;
+                let out = if sf <= 0.5 {
+                    df - (1.0 - 2.0 * sf) * df * (1.0 - df)
+                } else {
+                    df + (2.0 * sf - 1.0) * (1.0 - (1.0 - df) * (1.0 - df) - df)
+                };
+                (out.clamp(0.0, 1.0) * 255.0).round() as u8
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::HardLight => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                let s = u32::from(s);
+                let d = u32::from(d);
+                if s < 128 {
+                    ((2 * s * d) / 255) as u8
+                } else {
+                    (255 - (2 * (255 - s) * (255 - d)) / 255) as u8
+                }
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::Exclusion => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                let s = u32::from(s);
+                let d = u32::from(d);
+                (s + d - (2 * s * d) / 255) as u8
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::ColorDodge => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                if d == 0 {
+                    0
+                } else if s == 255 {
+                    255
+                } else {
+                    ((u32::from(d) * 255) / (255 - u32::from(s))).min(255) as u8
+                }
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::ColorBurn => {
+            let a = sa + da * (255 - sa) / 255;
+            let ch = |s: u8, d: u8| {
+                if d == 255 {
+                    255
+                } else if s == 0 {
+                    0
+                } else {
+                    (255 - ((255 - u32::from(d)) * 255 / u32::from(s)).min(255)) as u8
+                }
+            };
+            return [
+                ch(src[0], dst[0]),
+                ch(src[1], dst[1]),
+                ch(src[2], dst[2]),
+                a.min(255) as u8,
+            ];
+        }
+        CompositeOp::Hue
+        | CompositeOp::Saturation
+        | CompositeOp::Color
+        | CompositeOp::Luminosity => {
+            return blend_nonseparable(dst, src, op);
+        }
+    };
+    let out_a = fs + fd;
+    if out_a == 0 {
+        return [0, 0, 0, 0];
+    }
+    [
+        ((u32::from(src[0]) * fs + u32::from(dst[0]) * fd) / out_a) as u8,
+        ((u32::from(src[1]) * fs + u32::from(dst[1]) * fd) / out_a) as u8,
+        ((u32::from(src[2]) * fs + u32::from(dst[2]) * fd) / out_a) as u8,
+        out_a.min(255) as u8,
+    ]
+}
+
+fn sample_linear_gradient(
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+    stops: &[(f32, [u8; 4])],
+    x: f32,
+    y: f32,
+) -> [u8; 4] {
+    if stops.is_empty() {
+        return [0, 0, 0, 255];
+    }
+    let dx = x1 - x0;
+    let dy = y1 - y0;
+    let len2 = dx * dx + dy * dy;
+    let t = if len2 < 1e-8 {
+        0.0
+    } else {
+        ((x - x0) * dx + (y - y0) * dy) / len2
+    }
+    .clamp(0.0, 1.0);
+    if stops.len() == 1 {
+        return stops[0].1;
+    }
+    let mut ordered = stops.to_vec();
+    ordered.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    if t <= ordered[0].0 {
+        return ordered[0].1;
+    }
+    let last = ordered.len() - 1;
+    if t >= ordered[last].0 {
+        return ordered[last].1;
+    }
+    for w in ordered.windows(2) {
+        if t >= w[0].0 && t <= w[1].0 {
+            let span = w[1].0 - w[0].0;
+            let u = if span < 1e-8 {
+                0.0
+            } else {
+                (t - w[0].0) / span
+            };
+            return lerp_rgba(w[0].1, w[1].1, u);
+        }
+    }
+    ordered[last].1
+}
+
+fn parse_canvas_blur_px(filter: &str) -> i32 {
+    let s = filter.trim();
+    let Some(inner) = s
+        .strip_prefix("blur(")
+        .and_then(|rest| rest.strip_suffix(')'))
+    else {
+        return 0;
+    };
+    let n = inner.trim().trim_end_matches("px").trim();
+    n.parse::<f32>().unwrap_or(0.0).round().clamp(0.0, 16.0) as i32
+}
+
+fn parse_canvas_filter_fn(filter: &str, name: &str) -> Option<f32> {
+    let s = filter.trim();
+    let prefix = format!("{name}(");
+    let inner = s.strip_prefix(prefix.as_str())?.strip_suffix(')')?;
+    let t = inner.trim();
+    if let Some(p) = t.strip_suffix('%') {
+        return Some(p.parse::<f32>().unwrap_or(0.0).clamp(0.0, 100.0) / 100.0);
+    }
+    Some(t.parse::<f32>().unwrap_or(0.0))
+}
+
+fn parse_canvas_grayscale(filter: &str) -> f32 {
+    parse_canvas_filter_fn(filter, "grayscale")
+        .unwrap_or(0.0)
+        .clamp(0.0, 1.0)
+}
+
+fn parse_canvas_drop_shadow(filter: &str) -> Option<(i32, i32, i32, String)> {
+    let s = filter.trim();
+    let inner = s.strip_prefix("drop-shadow(")?.strip_suffix(')')?;
+    let mut rest = inner.trim();
+    let mut nums = Vec::new();
+    for _ in 0..3 {
+        let t = rest.trim_start();
+        if t.is_empty() {
+            break;
+        }
+        let (tok, after) = t.split_once(char::is_whitespace).unwrap_or((t, ""));
+        let Ok(n) = tok.trim_end_matches("px").parse::<f32>() else {
+            break;
+        };
+        nums.push(n.round() as i32);
+        rest = after;
+    }
+    if nums.len() < 2 {
+        return None;
+    }
+    let color = rest.trim();
+    Some((
+        nums[0],
+        nums[1],
+        if nums.len() >= 3 { nums[2] } else { 0 },
+        if color.is_empty() {
+            "#000000".into()
+        } else {
+            color.to_string()
+        },
+    ))
+}
+
+fn parse_canvas_filter_url(filter: &str) -> Option<&str> {
+    let s = filter.trim();
+    let inner = s.strip_prefix("url(")?.strip_suffix(')')?.trim();
+    let inner = inner.trim_matches(|c| c == '"' || c == '\'');
+    inner.strip_prefix('#')
+}
+
+enum CanvasSvgFilter {
+    Blur(i32),
+    Saturate(f32),
+    HueRotate(f32),
+}
+
+fn parse_canvas_hue_rotate(filter: &str) -> Option<f32> {
+    let s = filter.trim();
+    let inner = s.strip_prefix("hue-rotate(")?.strip_suffix(')')?;
+    let t = inner.trim().to_ascii_lowercase();
+    if let Some(n) = t.strip_suffix("turn") {
+        return Some(n.trim().parse::<f32>().unwrap_or(0.0) * 360.0);
+    }
+    if let Some(n) = t.strip_suffix("rad") {
+        return Some(n.trim().parse::<f32>().unwrap_or(0.0) * 180.0 / std::f32::consts::PI);
+    }
+    let n = t.strip_suffix("deg").unwrap_or(t.as_str()).trim();
+    Some(n.parse::<f32>().unwrap_or(0.0))
+}
+
+fn canvas_rgb_to_hsv(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let d = max - min;
+    let s = if max == 0.0 { 0.0 } else { d / max };
+    let h = if d == 0.0 {
+        0.0
+    } else if (max - r).abs() < f32::EPSILON {
+        60.0 * (((g - b) / d) % 6.0)
+    } else if (max - g).abs() < f32::EPSILON {
+        60.0 * ((b - r) / d + 2.0)
+    } else {
+        60.0 * ((r - g) / d + 4.0)
+    };
+    (if h < 0.0 { h + 360.0 } else { h }, s, max)
+}
+
+fn canvas_hsv_to_rgb(h: f32, s: f32, v: f32) -> (f32, f32, f32) {
+    let h = ((h % 360.0) + 360.0) % 360.0;
+    let c = v * s;
+    let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+    let m = v - c;
+    let (r, g, b) = if h < 60.0 {
+        (c, x, 0.0)
+    } else if h < 120.0 {
+        (x, c, 0.0)
+    } else if h < 180.0 {
+        (0.0, c, x)
+    } else if h < 240.0 {
+        (0.0, x, c)
+    } else if h < 300.0 {
+        (x, 0.0, c)
+    } else {
+        (c, 0.0, x)
+    };
+    (r + m, g + m, b + m)
+}
+
+fn canvas_path_bounds(rects: &[[f32; 4]], polys: &[Vec<[f32; 2]>]) -> Option<(i32, i32, i32, i32)> {
+    let mut min_x = f32::MAX;
+    let mut min_y = f32::MAX;
+    let mut max_x = f32::MIN;
+    let mut max_y = f32::MIN;
+    for r in rects {
+        min_x = min_x.min(r[0]);
+        min_y = min_y.min(r[1]);
+        max_x = max_x.max(r[0] + r[2]);
+        max_y = max_y.max(r[1] + r[3]);
+    }
+    for poly in polys {
+        for p in poly {
+            min_x = min_x.min(p[0]);
+            min_y = min_y.min(p[1]);
+            max_x = max_x.max(p[0]);
+            max_y = max_y.max(p[1]);
+        }
+    }
+    if min_x > max_x || min_y > max_y {
+        return None;
+    }
+    Some((
+        min_x.floor() as i32,
+        min_y.floor() as i32,
+        (max_x - min_x).ceil() as i32,
+        (max_y - min_y).ceil() as i32,
+    ))
+}
+
+fn canvas_alpha(color: [u8; 4], alpha: f32) -> [u8; 4] {
+    let a = alpha.clamp(0.0, 1.0);
+    [
+        color[0],
+        color[1],
+        color[2],
+        (f32::from(color[3]) * a).round() as u8,
+    ]
+}
+
+fn outline_glyph_mask(
+    mask: &[u8],
+    width: u32,
+    height: u32,
+    radius: i32,
+) -> (Vec<u8>, u32, u32, i32, i32) {
+    let r = radius.max(1);
+    let pad = r as u32;
+    let nw = width + pad * 2;
+    let nh = height + pad * 2;
+    let mut out = vec![0u8; (nw * nh) as usize];
+    for y in 0..height as i32 {
+        for x in 0..width as i32 {
+            let cov = mask[(y as u32 * width + x as u32) as usize];
+            if cov == 0 {
+                continue;
+            }
+            for dy in -r..=r {
+                for dx in -r..=r {
+                    if dx * dx + dy * dy > r * r {
+                        continue;
+                    }
+                    let nx = (x + dx + r) as u32;
+                    let ny = (y + dy + r) as u32;
+                    let i = (ny * nw + nx) as usize;
+                    out[i] = out[i].max(cov);
+                }
+            }
+        }
+    }
+    for y in 0..height {
+        for x in 0..width {
+            let src = mask[(y * width + x) as usize];
+            if src == 0 {
+                continue;
+            }
+            let i = ((y + pad) * nw + (x + pad)) as usize;
+            out[i] = 0;
+        }
+    }
+    (out, nw, nh, -r, -r)
+}
+
+fn lerp_rgba(a: [u8; 4], b: [u8; 4], t: f32) -> [u8; 4] {
+    [
+        (f32::from(a[0]) + (f32::from(b[0]) - f32::from(a[0])) * t).round() as u8,
+        (f32::from(a[1]) + (f32::from(b[1]) - f32::from(a[1])) * t).round() as u8,
+        (f32::from(a[2]) + (f32::from(b[2]) - f32::from(a[2])) * t).round() as u8,
+        (f32::from(a[3]) + (f32::from(b[3]) - f32::from(a[3])) * t).round() as u8,
+    ]
+}
+
+fn parse_canvas_stops(stops_s: &str) -> Vec<(f32, [u8; 4])> {
+    let mut stops = Vec::new();
+    for stop in stops_s.split(';') {
+        if stop.is_empty() {
+            continue;
+        }
+        if let Some((off, color)) = stop.split_once('=') {
+            if let Ok(o) = off.parse::<f32>() {
+                stops.push((o.clamp(0.0, 1.0), parse_css_color(color)));
+            }
+        }
+    }
+    stops
+}
+
+fn sample_radial_gradient(
+    x0: f32,
+    y0: f32,
+    r0: f32,
+    x1: f32,
+    y1: f32,
+    r1: f32,
+    stops: &[(f32, [u8; 4])],
+    x: f32,
+    y: f32,
+) -> [u8; 4] {
+    let cx = if r1.abs() > r0.abs() { x1 } else { x0 };
+    let cy = if r1.abs() > r0.abs() { y1 } else { y0 };
+    let inner = r0.min(r1);
+    let outer = r0.max(r1).max(inner + 1e-3);
+    let d = (x - cx).hypot(y - cy);
+    let t = ((d - inner) / (outer - inner)).clamp(0.0, 1.0);
+    sample_linear_gradient(0.0, 0.0, 1.0, 0.0, stops, t, 0.0)
+}
+
+fn sample_conic_gradient(
+    start: f32,
+    cx: f32,
+    cy: f32,
+    stops: &[(f32, [u8; 4])],
+    x: f32,
+    y: f32,
+) -> [u8; 4] {
+    let ang = (y - cy).atan2(x - cx);
+    let t = (ang - start).rem_euclid(std::f32::consts::TAU) / std::f32::consts::TAU;
+    sample_linear_gradient(0.0, 0.0, 1.0, 0.0, stops, t, 0.0)
+}
+
+fn parse_canvas_style(s: &str) -> CanvasStyle {
+    let t = s.trim();
+    if let Some(rest) = t.strip_prefix("ve-grad:") {
+        let mut parts = rest.splitn(3, ':');
+        let kind = parts.next().unwrap_or("");
+        let coords = parts.next().unwrap_or("");
+        let stops_s = parts.next().unwrap_or("");
+        let nums: Vec<f32> = coords.split(',').filter_map(|n| n.parse().ok()).collect();
+        let stops = parse_canvas_stops(stops_s);
+        if kind == "linear" && nums.len() == 4 {
+            return CanvasStyle::Linear {
+                x0: nums[0],
+                y0: nums[1],
+                x1: nums[2],
+                y1: nums[3],
+                stops,
+            };
+        }
+        if kind == "radial" && nums.len() == 6 {
+            return CanvasStyle::Radial {
+                x0: nums[0],
+                y0: nums[1],
+                r0: nums[2],
+                x1: nums[3],
+                y1: nums[4],
+                r1: nums[5],
+                stops,
+            };
+        }
+        if kind == "conic" && nums.len() == 3 {
+            return CanvasStyle::Conic {
+                start: nums[0],
+                x: nums[1],
+                y: nums[2],
+                stops,
+            };
+        }
+    }
+    CanvasStyle::Solid(parse_css_color(t))
+}
+
+#[derive(Clone, Copy)]
+enum CanvasColorFilter {
+    Grayscale(f32),
+    Invert(f32),
+    Brightness(f32),
+    Contrast(f32),
+    Sepia(f32),
+    Saturate(f32),
+    HueRotate(f32),
+    Opacity(f32),
+}
+
 /// Software 2D canvas backing store.
 #[derive(Clone, Debug)]
 pub(crate) struct CanvasSurface {
@@ -515,6 +1729,10 @@ pub(crate) struct CanvasSurface {
     height: u32,
     pixels: Vec<u8>,
     ops: u64,
+    clip: Option<(i32, i32, i32, i32)>,
+    clip_stack: Vec<Option<(i32, i32, i32, i32)>>,
+    composite: CompositeOp,
+    composite_stack: Vec<CompositeOp>,
 }
 
 impl CanvasSurface {
@@ -526,43 +1744,304 @@ impl CanvasSurface {
             width,
             height,
             ops: 0,
+            clip: None,
+            clip_stack: Vec::new(),
+            composite: CompositeOp::SourceOver,
+            composite_stack: Vec::new(),
         }
     }
 
     fn resize(&mut self, width: u32, height: u32) {
+        let composite = self.composite;
         *self = Self::new(width, height);
+        self.composite = composite;
     }
 
-    fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: [u8; 4]) {
+    fn blur_rect(&mut self, x: i32, y: i32, w: i32, h: i32, radius: i32) {
+        let r = radius.clamp(1, 16);
+        let x0 = (x - r).max(0);
+        let y0 = (y - r).max(0);
+        let x1 = (x + w + r).min(self.width as i32);
+        let y1 = (y + h + r).min(self.height as i32);
+        if x1 <= x0 || y1 <= y0 {
+            return;
+        }
+        let rw = (x1 - x0) as u32;
+        let rh = (y1 - y0) as u32;
+        let mut src = vec![0u8; (rw * rh * 4) as usize];
+        for row in 0..rh {
+            for col in 0..rw {
+                let px = x0 + col as i32;
+                let py = y0 + row as i32;
+                let si = ((py as u32 * self.width + px as u32) * 4) as usize;
+                let di = ((row * rw + col) * 4) as usize;
+                src[di..di + 4].copy_from_slice(&self.pixels[si..si + 4]);
+            }
+        }
+        let mut dst = src.clone();
+        for row in 0..rh as i32 {
+            for col in 0..rw as i32 {
+                let mut acc = [0u32; 4];
+                let mut n = 0u32;
+                for dy in -r..=r {
+                    for dx in -r..=r {
+                        if dx * dx + dy * dy > r * r {
+                            continue;
+                        }
+                        let nx = col + dx;
+                        let ny = row + dy;
+                        if nx < 0 || ny < 0 || nx >= rw as i32 || ny >= rh as i32 {
+                            continue;
+                        }
+                        let i = ((ny as u32 * rw + nx as u32) * 4) as usize;
+                        acc[0] += u32::from(src[i]);
+                        acc[1] += u32::from(src[i + 1]);
+                        acc[2] += u32::from(src[i + 2]);
+                        acc[3] += u32::from(src[i + 3]);
+                        n += 1;
+                    }
+                }
+                if n == 0 {
+                    continue;
+                }
+                let i = ((row as u32 * rw + col as u32) * 4) as usize;
+                dst[i] = (acc[0] / n) as u8;
+                dst[i + 1] = (acc[1] / n) as u8;
+                dst[i + 2] = (acc[2] / n) as u8;
+                dst[i + 3] = (acc[3] / n) as u8;
+            }
+        }
+        for row in 0..rh {
+            for col in 0..rw {
+                let px = x0 + col as i32;
+                let py = y0 + row as i32;
+                let si = ((row * rw + col) * 4) as usize;
+                let di = ((py as u32 * self.width + px as u32) * 4) as usize;
+                self.pixels[di..di + 4].copy_from_slice(&dst[si..si + 4]);
+            }
+        }
+    }
+
+    fn grayscale_rect(&mut self, x: i32, y: i32, w: i32, h: i32, amount: f32) {
+        self.color_filter_rect(x, y, w, h, CanvasColorFilter::Grayscale(amount));
+    }
+
+    fn color_filter_rect(&mut self, x: i32, y: i32, w: i32, h: i32, kind: CanvasColorFilter) {
+        if w <= 0 || h <= 0 {
+            return;
+        }
+        let x0 = x.max(0);
+        let y0 = y.max(0);
+        let x1 = (x + w).min(self.width as i32);
+        let y1 = (y + h).min(self.height as i32);
+        for py in y0..y1 {
+            for px in x0..x1 {
+                let i = ((py as u32 * self.width + px as u32) * 4) as usize;
+                if i + 3 >= self.pixels.len() || self.pixels[i + 3] == 0 {
+                    continue;
+                }
+                let r = f32::from(self.pixels[i]);
+                let g = f32::from(self.pixels[i + 1]);
+                let b = f32::from(self.pixels[i + 2]);
+                if let CanvasColorFilter::Opacity(amount) = kind {
+                    let a = f32::from(self.pixels[i + 3]) * amount.clamp(0.0, 1.0);
+                    self.pixels[i + 3] = a.round().clamp(0.0, 255.0) as u8;
+                    continue;
+                }
+                let (nr, ng, nb) = match kind {
+                    CanvasColorFilter::Grayscale(amount) => {
+                        let amount = amount.clamp(0.0, 1.0);
+                        let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                        (
+                            r + (y - r) * amount,
+                            g + (y - g) * amount,
+                            b + (y - b) * amount,
+                        )
+                    }
+                    CanvasColorFilter::Invert(amount) => {
+                        let amount = amount.clamp(0.0, 1.0);
+                        (
+                            r * (1.0 - amount) + (255.0 - r) * amount,
+                            g * (1.0 - amount) + (255.0 - g) * amount,
+                            b * (1.0 - amount) + (255.0 - b) * amount,
+                        )
+                    }
+                    CanvasColorFilter::Brightness(amount) => {
+                        let amount = amount.max(0.0);
+                        (r * amount, g * amount, b * amount)
+                    }
+                    CanvasColorFilter::Contrast(amount) => {
+                        let amount = amount.max(0.0);
+                        let adj = |c: f32| ((c / 255.0 - 0.5) * amount + 0.5) * 255.0;
+                        (adj(r), adj(g), adj(b))
+                    }
+                    CanvasColorFilter::Sepia(amount) => {
+                        let amount = amount.clamp(0.0, 1.0);
+                        let sr = 0.393 * r + 0.769 * g + 0.189 * b;
+                        let sg = 0.349 * r + 0.686 * g + 0.168 * b;
+                        let sb = 0.272 * r + 0.534 * g + 0.131 * b;
+                        (
+                            r + (sr - r) * amount,
+                            g + (sg - g) * amount,
+                            b + (sb - b) * amount,
+                        )
+                    }
+                    CanvasColorFilter::Saturate(amount) => {
+                        let amount = amount.max(0.0);
+                        let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                        (
+                            y + (r - y) * amount,
+                            y + (g - y) * amount,
+                            y + (b - y) * amount,
+                        )
+                    }
+                    CanvasColorFilter::HueRotate(deg) => {
+                        let (h, s, v) = canvas_rgb_to_hsv(r, g, b);
+                        canvas_hsv_to_rgb(h + deg, s, v)
+                    }
+                    CanvasColorFilter::Opacity(_) => unreachable!(),
+                };
+                self.pixels[i] = nr.round().clamp(0.0, 255.0) as u8;
+                self.pixels[i + 1] = ng.round().clamp(0.0, 255.0) as u8;
+                self.pixels[i + 2] = nb.round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+
+    fn stroke_rect_styled(
+        &mut self,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+        style: &CanvasStyle,
+        alpha: f32,
+        width: i32,
+        dash: &[i32],
+        dash_offset: i32,
+    ) {
         if w <= 0 || h <= 0 {
             self.ops += 1;
             return;
         }
-        let x0 = x.max(0) as u32;
-        let y0 = y.max(0) as u32;
-        let x1 = (x.saturating_add(w)).max(0) as u32;
-        let y1 = (y.saturating_add(h)).max(0) as u32;
+        let t = width.max(1);
+        if dash.is_empty() {
+            self.fill_rect_styled(x, y, w, t.min(h), style, alpha);
+            self.fill_rect_styled(x, y + h - t.min(h), w, t.min(h), style, alpha);
+            self.fill_rect_styled(x, y, t.min(w), h, style, alpha);
+            self.fill_rect_styled(x + w - t.min(w), y, t.min(w), h, style, alpha);
+            return;
+        }
+        let th = t.min(h);
+        let tw = t.min(w);
+        for col in 0..w {
+            if dash_on(col, dash, dash_offset) {
+                self.fill_rect_styled(x + col, y, 1, th, style, alpha);
+            }
+            if dash_on(w + h + (w - 1 - col), dash, dash_offset) {
+                self.fill_rect_styled(x + col, y + h - th, 1, th, style, alpha);
+            }
+        }
+        for row in 0..h {
+            if dash_on(w + row, dash, dash_offset) {
+                self.fill_rect_styled(x + w - tw, y + row, tw, 1, style, alpha);
+            }
+            if dash_on(w + h + w + (h - 1 - row), dash, dash_offset) {
+                self.fill_rect_styled(x, y + row, tw, 1, style, alpha);
+            }
+        }
+    }
+
+    fn fill_rect_styled(
+        &mut self,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+        style: &CanvasStyle,
+        alpha: f32,
+    ) {
+        let (x, y, w, h) = if w < 0 {
+            (x.saturating_add(w), y, -w, h)
+        } else {
+            (x, y, w, h)
+        };
+        let (x, y, w, h) = if h < 0 {
+            (x, y.saturating_add(h), w, -h)
+        } else {
+            (x, y, w, h)
+        };
+        if w <= 0 || h <= 0 {
+            self.ops += 1;
+            return;
+        }
+        let (cl, ct, cr, cb) = self.clip_rect();
+        let x0 = x.max(cl).max(0) as u32;
+        let y0 = y.max(ct).max(0) as u32;
+        let x1 = (x.saturating_add(w)).min(cr).max(0) as u32;
+        let y1 = (y.saturating_add(h)).min(cb).max(0) as u32;
         let x1 = x1.min(self.width);
         let y1 = y1.min(self.height);
         let x0 = x0.min(x1);
         let y0 = y0.min(y1);
         for row in y0..y1 {
-            let start = (row * self.width + x0) as usize * 4;
-            let end = (row * self.width + x1) as usize * 4;
-            let mut i = start;
-            while i + 3 < end {
-                self.pixels[i] = color[0];
-                self.pixels[i + 1] = color[1];
-                self.pixels[i + 2] = color[2];
-                self.pixels[i + 3] = color[3];
-                i += 4;
+            for col in x0..x1 {
+                let color = canvas_alpha(style.sample(col as f32 + 0.5, row as f32 + 0.5), alpha);
+                let i = (row * self.width + col) as usize * 4;
+                let dst = [
+                    self.pixels[i],
+                    self.pixels[i + 1],
+                    self.pixels[i + 2],
+                    self.pixels[i + 3],
+                ];
+                let out = blend_pixel(dst, color, self.composite);
+                self.pixels[i] = out[0];
+                self.pixels[i + 1] = out[1];
+                self.pixels[i + 2] = out[2];
+                self.pixels[i + 3] = out[3];
             }
         }
         self.ops += 1;
     }
 
+    fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: [u8; 4]) {
+        self.fill_rect_styled(x, y, w, h, &CanvasStyle::Solid(color), 1.0);
+    }
+
+    fn clip_rect(&self) -> (i32, i32, i32, i32) {
+        self.clip
+            .unwrap_or((0, 0, self.width as i32, self.height as i32))
+    }
+
+    fn intersect_clip(&mut self, x: i32, y: i32, w: i32, h: i32) {
+        let (cl, ct, cr, cb) = self.clip_rect();
+        let x0 = cl.max(x);
+        let y0 = ct.max(y);
+        let x1 = cr.min(x.saturating_add(w));
+        let y1 = cb.min(y.saturating_add(h));
+        self.clip = Some((x0, y0, x1, y1));
+        self.ops += 1;
+    }
+
+    fn save_clip(&mut self) {
+        self.clip_stack.push(self.clip);
+        self.composite_stack.push(self.composite);
+        self.ops += 1;
+    }
+
+    fn restore_clip(&mut self) {
+        self.clip = self.clip_stack.pop().flatten();
+        if let Some(op) = self.composite_stack.pop() {
+            self.composite = op;
+        }
+        self.ops += 1;
+    }
+
     fn clear_rect(&mut self, x: i32, y: i32, w: i32, h: i32) {
+        let prev = self.composite;
+        self.composite = CompositeOp::Copy;
         self.fill_rect(x, y, w, h, [0, 0, 0, 0]);
+        self.composite = prev;
     }
 
     fn get_image_data(&self, x: i32, y: i32, w: i32, h: i32) -> (u32, u32, Vec<u8>) {
@@ -616,7 +2095,7 @@ impl CanvasSurface {
         self.ops += 1;
     }
 
-    fn fill_polygon(&mut self, pts: &[[f32; 2]], color: [u8; 4]) {
+    fn fill_polygon_styled(&mut self, pts: &[[f32; 2]], style: &CanvasStyle, alpha: f32) {
         if pts.len() < 3 {
             return;
         }
@@ -646,17 +2125,429 @@ impl CanvasSurface {
                 }
                 let x0 = pair[0].floor() as i32;
                 let x1 = pair[1].ceil() as i32;
-                self.fill_rect(x0, y, (x1 - x0).max(0), 1, color);
+                self.fill_rect_styled(x0, y, (x1 - x0).max(0), 1, style, alpha);
             }
         }
     }
 
-    fn fill_path(&mut self, rects: &[[f32; 4]], polys: &[Vec<[f32; 2]>], color: [u8; 4]) {
+    fn fill_path_styled(
+        &mut self,
+        rects: &[[f32; 4]],
+        polys: &[Vec<[f32; 2]>],
+        style: &CanvasStyle,
+        alpha: f32,
+    ) {
         for r in rects {
-            self.fill_rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, color);
+            self.fill_rect_styled(
+                r[0] as i32,
+                r[1] as i32,
+                r[2] as i32,
+                r[3] as i32,
+                style,
+                alpha,
+            );
         }
         for poly in polys {
-            self.fill_polygon(poly, color);
+            self.fill_polygon_styled(poly, style, alpha);
+        }
+        self.ops += 1;
+    }
+
+    fn stroke_polyline_styled(
+        &mut self,
+        pts: &[[f32; 2]],
+        style: &CanvasStyle,
+        alpha: f32,
+        width: i32,
+        dash: &[i32],
+        dash_offset: i32,
+        cap: LineCap,
+        join: LineJoin,
+        miter_limit: f32,
+    ) {
+        if pts.len() < 2 {
+            return;
+        }
+        let t = width.max(1);
+        let o = (t - 1) / 2;
+        let mut dist = 0i32;
+        let last = pts.len() - 2;
+        for (seg, pair) in pts.windows(2).enumerate() {
+            let (a, b) = (pair[0], pair[1]);
+            let dx = b[0] - a[0];
+            let dy = b[1] - a[1];
+            let steps = dx.abs().max(dy.abs()).ceil().max(1.0) as i32;
+            for i in 0..=steps {
+                if dash_on(dist + i, dash, dash_offset) {
+                    let u = i as f32 / steps as f32;
+                    let x = (a[0] + dx * u).round() as i32;
+                    let y = (a[1] + dy * u).round() as i32;
+                    let at_start = seg == 0 && i == 0;
+                    let at_end = seg == last && i == steps;
+                    self.stamp_stroke(x, y, t, o, style, alpha, cap, at_start, at_end, dx, dy);
+                }
+            }
+            dist += steps;
+        }
+        for i in 1..pts.len().saturating_sub(1) {
+            self.paint_line_join(
+                pts[i - 1],
+                pts[i],
+                pts[i + 1],
+                t,
+                style,
+                alpha,
+                join,
+                miter_limit,
+            );
+        }
+        if pts.len() >= 4 {
+            let first = pts[0];
+            let last_pt = pts[pts.len() - 1];
+            if (first[0] - last_pt[0]).abs() < 0.5 && (first[1] - last_pt[1]).abs() < 0.5 {
+                self.paint_line_join(
+                    pts[pts.len() - 2],
+                    first,
+                    pts[1],
+                    t,
+                    style,
+                    alpha,
+                    join,
+                    miter_limit,
+                );
+            }
+        }
+    }
+
+    fn paint_line_join(
+        &mut self,
+        a: [f32; 2],
+        b: [f32; 2],
+        c: [f32; 2],
+        t: i32,
+        style: &CanvasStyle,
+        alpha: f32,
+        join: LineJoin,
+        miter_limit: f32,
+    ) {
+        let d1 = vec2_norm([b[0] - a[0], b[1] - a[1]]);
+        let d2 = vec2_norm([c[0] - b[0], c[1] - b[1]]);
+        if d1 == [0.0, 0.0] || d2 == [0.0, 0.0] {
+            return;
+        }
+        let cross = d1[0].mul_add(d2[1], -d1[1] * d2[0]);
+        let dot = d1[0].mul_add(d2[0], d1[1] * d2[1]);
+        if cross.abs() < 1e-6 && dot > 0.0 {
+            return;
+        }
+        match join {
+            LineJoin::Bevel => {}
+            LineJoin::Round => {
+                self.fill_disk(b[0].round() as i32, b[1].round() as i32, t, style, alpha)
+            }
+            LineJoin::Miter => {
+                let half = t as f32 / 2.0;
+                let left1 = [-d1[1], d1[0]];
+                let left2 = [-d2[1], d2[0]];
+                let (n1, n2) = if cross > 0.0 {
+                    ([-left1[0], -left1[1]], [-left2[0], -left2[1]])
+                } else {
+                    (left1, left2)
+                };
+                let p1 = [b[0] + n1[0] * half, b[1] + n1[1] * half];
+                let p2 = [b[0] + n2[0] * half, b[1] + n2[1] * half];
+                if let Some(m) = line_intersect(p1, d1, p2, d2) {
+                    let mx = m[0] - b[0];
+                    let my = m[1] - b[1];
+                    let miter_len = mx.mul_add(mx, my * my).sqrt();
+                    if miter_len <= miter_limit.max(1.0) * half {
+                        self.fill_polygon_styled(&[p1, m, p2], style, alpha);
+                    }
+                }
+            }
+        }
+    }
+
+    fn stamp_stroke(
+        &mut self,
+        x: i32,
+        y: i32,
+        t: i32,
+        o: i32,
+        style: &CanvasStyle,
+        alpha: f32,
+        cap: LineCap,
+        at_start: bool,
+        at_end: bool,
+        dx: f32,
+        dy: f32,
+    ) {
+        if matches!(cap, LineCap::Round) && (at_start || at_end) {
+            self.fill_disk(x, y, t, style, alpha);
+            return;
+        }
+        let mut sx = x - o;
+        let mut sy = y - o;
+        let mut sw = t;
+        let mut sh = t;
+        if matches!(cap, LineCap::Butt) && t > 1 && (at_start || at_end) {
+            if at_start {
+                if dx > 0.0 {
+                    sw -= x - sx;
+                    sx = x;
+                } else if dx < 0.0 {
+                    sw = (x + 1 - sx).min(sw);
+                }
+                if dy > 0.0 {
+                    sh -= y - sy;
+                    sy = y;
+                } else if dy < 0.0 {
+                    sh = (y + 1 - sy).min(sh);
+                }
+            }
+            if at_end {
+                if dx > 0.0 {
+                    sw = (x + 1 - sx).min(sw);
+                } else if dx < 0.0 {
+                    sw -= x - sx;
+                    sx = x;
+                }
+                if dy > 0.0 {
+                    sh = (y + 1 - sy).min(sh);
+                } else if dy < 0.0 {
+                    sh -= y - sy;
+                    sy = y;
+                }
+            }
+        }
+        self.fill_rect_styled(sx, sy, sw, sh, style, alpha);
+    }
+
+    fn fill_disk(&mut self, x: i32, y: i32, t: i32, style: &CanvasStyle, alpha: f32) {
+        let r = (t as f32) / 2.0;
+        let ir = r.ceil() as i32;
+        for dy in -ir..=ir {
+            for dx in -ir..=ir {
+                if (dx as f32).mul_add(dx as f32, (dy as f32) * (dy as f32)) <= r * r {
+                    self.fill_rect_styled(x + dx, y + dy, 1, 1, style, alpha);
+                }
+            }
+        }
+    }
+
+    fn stroke_path_styled(
+        &mut self,
+        rects: &[[f32; 4]],
+        polys: &[Vec<[f32; 2]>],
+        style: &CanvasStyle,
+        alpha: f32,
+        width: i32,
+        dash: &[i32],
+        dash_offset: i32,
+        cap: LineCap,
+        join: LineJoin,
+        miter_limit: f32,
+    ) {
+        for r in rects {
+            self.stroke_rect_styled(
+                r[0] as i32,
+                r[1] as i32,
+                r[2] as i32,
+                r[3] as i32,
+                style,
+                alpha,
+                width,
+                dash,
+                dash_offset,
+            );
+        }
+        for poly in polys {
+            self.stroke_polyline_styled(
+                poly,
+                style,
+                alpha,
+                width,
+                dash,
+                dash_offset,
+                cap,
+                join,
+                miter_limit,
+            );
+        }
+        self.ops += 1;
+    }
+
+    fn fill_text(&mut self, text: &str, x: i32, y: i32, color: [u8; 4], italic: bool, bold: bool) {
+        let mut cx = x;
+        for ch in text.chars() {
+            let cols = glyph5x7(ch);
+            for (i, bits) in cols.iter().enumerate() {
+                for row in 0..7 {
+                    if bits & (1 << row) != 0 {
+                        let shear = if italic && row < 3 { 1 } else { 0 };
+                        self.fill_rect(cx + i as i32 + shear, y - 7 + row, 1, 1, color);
+                        if bold {
+                            self.fill_rect(cx + i as i32 + shear + 1, y - 7 + row, 1, 1, color);
+                        }
+                    }
+                }
+            }
+            cx += 6;
+        }
+        self.ops += 1;
+    }
+
+    fn stroke_text(&mut self, text: &str, x: i32, y: i32, color: [u8; 4], radius: i32) {
+        let mut cx = x;
+        let r = radius.max(1);
+        for ch in text.chars() {
+            let cols = glyph5x7(ch);
+            for (i, bits) in cols.iter().enumerate() {
+                for row in 0..7 {
+                    if bits & (1 << row) == 0 {
+                        continue;
+                    }
+                    for dy in -r..=r {
+                        for dx in -r..=r {
+                            if dx == 0 && dy == 0 {
+                                continue;
+                            }
+                            if dx * dx + dy * dy > r * r {
+                                continue;
+                            }
+                            let nx = i as i32 + dx;
+                            let ny = row + dy;
+                            if nx >= 0
+                                && nx < 5
+                                && ny >= 0
+                                && ny < 7
+                                && cols[nx as usize] & (1 << ny) != 0
+                            {
+                                continue;
+                            }
+                            self.fill_rect(cx + i as i32 + dx, y - 7 + row + dy, 1, 1, color);
+                        }
+                    }
+                }
+            }
+            cx += 6;
+        }
+        self.ops += 1;
+    }
+
+    fn blit_glyph_mask(
+        &mut self,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+        mask: &[u8],
+        color: [u8; 4],
+        italic: bool,
+    ) {
+        let style = CanvasStyle::Solid(color);
+        for row in 0..height {
+            for col in 0..width {
+                let i = (row * width + col) as usize;
+                let cov = mask.get(i).copied().unwrap_or(0);
+                if cov == 0 {
+                    continue;
+                }
+                let alpha = f32::from(cov) / 255.0;
+                let shear = if italic && row * 2 < height { 1 } else { 0 };
+                self.fill_rect_styled(x + col as i32 + shear, y + row as i32, 1, 1, &style, alpha);
+            }
+        }
+    }
+
+    fn blit(&mut self, src: &[u8], sw: u32, sh: u32, dx: i32, dy: i32) {
+        self.blit_scaled(src, sw, sh, 0, 0, sw, sh, dx, dy, sw, sh, 0);
+    }
+
+    fn blit_scaled(
+        &mut self,
+        src: &[u8],
+        src_w: u32,
+        src_h: u32,
+        sx: u32,
+        sy: u32,
+        sw: u32,
+        sh: u32,
+        dx: i32,
+        dy: i32,
+        dw: u32,
+        dh: u32,
+        smooth: i32,
+    ) {
+        if sw == 0 || sh == 0 || dw == 0 || dh == 0 {
+            return;
+        }
+        let x1 = sx
+            .saturating_add(sw)
+            .saturating_sub(1)
+            .min(src_w.saturating_sub(1));
+        let y1 = sy
+            .saturating_add(sh)
+            .saturating_sub(1)
+            .min(src_h.saturating_sub(1));
+        for row in 0..dh {
+            for col in 0..dw {
+                let x = dx + col as i32;
+                let y = dy + row as i32;
+                if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
+                    continue;
+                }
+                let di = (y as u32 * self.width + x as u32) as usize * 4;
+                let px = if smooth > 0 && (dw != sw || dh != sh) {
+                    let fx = sx as f32 + (col as f32 + 0.5) * sw as f32 / dw as f32 - 0.5;
+                    let fy = sy as f32 + (row as f32 + 0.5) * sh as f32 / dh as f32 - 0.5;
+                    if smooth >= 2 {
+                        let mut acc = [0u32; 4];
+                        for (ox, oy) in [
+                            (-0.35_f32, -0.35_f32),
+                            (0.35, -0.35),
+                            (-0.35, 0.35),
+                            (0.35, 0.35),
+                        ] {
+                            let s = sample_bilinear(
+                                src,
+                                src_w,
+                                src_h,
+                                sx,
+                                sy,
+                                x1,
+                                y1,
+                                fx + ox,
+                                fy + oy,
+                            );
+                            acc[0] += u32::from(s[0]);
+                            acc[1] += u32::from(s[1]);
+                            acc[2] += u32::from(s[2]);
+                            acc[3] += u32::from(s[3]);
+                        }
+                        [
+                            (acc[0] / 4) as u8,
+                            (acc[1] / 4) as u8,
+                            (acc[2] / 4) as u8,
+                            (acc[3] / 4) as u8,
+                        ]
+                    } else {
+                        sample_bilinear(src, src_w, src_h, sx, sy, x1, y1, fx, fy)
+                    }
+                } else {
+                    let src_y = sy + row * sh / dh;
+                    let src_x = sx + col * sw / dw;
+                    if src_y >= src_h || src_x >= src_w {
+                        continue;
+                    }
+                    let si = (src_y * src_w + src_x) as usize * 4;
+                    if si + 3 >= src.len() {
+                        continue;
+                    }
+                    [src[si], src[si + 1], src[si + 2], src[si + 3]]
+                };
+                self.pixels[di..di + 4].copy_from_slice(&px);
+            }
         }
         self.ops += 1;
     }
@@ -877,6 +2768,9 @@ impl Page {
             viewport,
             scale: 1.0,
             scroll: Point::ZERO,
+            overscroll: Point::ZERO,
+            scroll_velocity: Point::ZERO,
+            scroll_gesture: false,
             element_scroll: HashMap::new(),
             files: HashMap::new(),
             focused: None,
@@ -885,9 +2779,15 @@ impl Page {
             refreshes_followed: 0,
             observations: VecDeque::new(),
             renderer: None,
+            images: ImageCache::new(),
+            node_images: HashMap::new(),
+            shaper: ShaperKind::Metric,
             last_screenshot: None,
             last_navigation_error: None,
+            last_observe_path: ObservePath::Full,
             virtual_time_ms: 0,
+            clock: ve_core::Clock::Virtual,
+            wall_origin_ms: ve_core::Clock::wall_unix_ms(),
             cancelled: false,
             scripts: Vec::new(),
             load_stats: LoadStats::default(),
@@ -896,14 +2796,18 @@ impl Page {
             parser_limit: None,
             parser_scratch: None,
             parse_hi: 0,
+            script_created_nodes: HashSet::new(),
             expect_satisfied: HashSet::new(),
             expect_from_head: HashSet::new(),
             expect_armed: HashSet::new(),
             expect_body_started: false,
             scripts_executed: HashSet::new(),
             pending_write_scripts: Vec::new(),
+            pending_module_scripts: Vec::new(),
             iframe_urls: HashMap::new(),
             last_modified: None,
+            coop: CoopPolicy::UnsafeNone,
+            coep: CoepPolicy::UnsafeNone,
             ready_state: "loading",
             scripting: None,
             local_storage: HashMap::new(),
@@ -932,6 +2836,9 @@ impl Page {
             next_worker: 0,
             sw_client_posts: Vec::new(),
             canvases: HashMap::new(),
+            canvas_patterns: HashMap::new(),
+            next_canvas_pattern: 0,
+            canvas_fonts: None,
             restyle_calls: 0,
             restyle_full_calls: 0,
             last_recomputed: 0,
@@ -1208,6 +3115,50 @@ impl Page {
             .resize(width, height);
     }
 
+    fn canvas_filter_from_svg(&self, id: &str) -> Option<CanvasSvgFilter> {
+        let node = self.doc.element_by_id(id)?;
+        for child in self.doc.descendants(node) {
+            let Some(el) = self.doc.element(child) else {
+                continue;
+            };
+            let name = el.name.to_ascii_lowercase();
+            if name == "fegaussianblur" {
+                let raw = el
+                    .attr("stdDeviation")
+                    .or_else(|| el.attr("stddeviation"))
+                    .unwrap_or("0");
+                let radius = raw
+                    .split(|c: char| c == ',' || c.is_whitespace())
+                    .find(|s| !s.is_empty())
+                    .and_then(|s| s.parse::<f32>().ok())
+                    .unwrap_or(0.0)
+                    .round()
+                    .clamp(0.0, 16.0) as i32;
+                if radius > 0 {
+                    return Some(CanvasSvgFilter::Blur(radius));
+                }
+            }
+            if name == "fecolormatrix" {
+                let kind = el.attr("type").unwrap_or("matrix");
+                if kind.eq_ignore_ascii_case("saturate") {
+                    let amount = el
+                        .attr("values")
+                        .and_then(|s| s.split_whitespace().next()?.parse().ok())
+                        .unwrap_or(1.0);
+                    return Some(CanvasSvgFilter::Saturate(amount));
+                }
+                if kind.eq_ignore_ascii_case("huerotate") {
+                    let deg = el
+                        .attr("values")
+                        .and_then(|s| s.split_whitespace().next()?.parse().ok())
+                        .unwrap_or(0.0);
+                    return Some(CanvasSvgFilter::HueRotate(deg));
+                }
+            }
+        }
+        None
+    }
+
     pub(crate) fn canvas_fill_rect(
         &mut self,
         id: NodeId,
@@ -1216,13 +3167,175 @@ impl Page {
         w: i32,
         h: i32,
         color: &str,
+        alpha: f32,
+        shadow_x: i32,
+        shadow_y: i32,
+        shadow: &str,
+        shadow_blur: i32,
+        filter: &str,
     ) -> u64 {
+        let style = self.resolve_canvas_style(color);
+        let url_filter =
+            parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
+        let paint_shadow = shadow_x != 0 || shadow_y != 0 || shadow_blur > 0;
+        let shadow_style = if paint_shadow {
+            Some(self.resolve_canvas_style(shadow))
+        } else {
+            None
+        };
+        let drop_shadow = parse_canvas_drop_shadow(filter)
+            .map(|(dx, dy, br, col)| (dx, dy, br, self.resolve_canvas_style(&col)));
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.fill_rect(x, y, w, h, parse_css_color(color));
+        if let Some(shadow_style) = shadow_style.as_ref() {
+            let r = shadow_blur.max(0);
+            if r == 0 {
+                c.fill_rect_styled(x + shadow_x, y + shadow_y, w, h, shadow_style, alpha);
+            } else {
+                let fade = (alpha / (1.0 + r as f32)).max(0.08);
+                for dy in -r..=r {
+                    for dx in -r..=r {
+                        if dx * dx + dy * dy <= r * r {
+                            c.fill_rect_styled(
+                                x + shadow_x + dx,
+                                y + shadow_y + dy,
+                                w,
+                                h,
+                                shadow_style,
+                                fade,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        if let Some((dx, dy, br, ds)) = drop_shadow.as_ref() {
+            if *br <= 0 {
+                c.fill_rect_styled(x + dx, y + dy, w, h, ds, alpha);
+            } else {
+                let fade = (alpha / (1.0 + *br as f32)).max(0.08);
+                for sdy in -br..=*br {
+                    for sdx in -br..=*br {
+                        if sdx * sdx + sdy * sdy <= *br * *br {
+                            c.fill_rect_styled(x + dx + sdx, y + dy + sdy, w, h, ds, fade);
+                        }
+                    }
+                }
+            }
+        }
+        c.fill_rect_styled(x, y, w, h, &style, alpha);
+        let blur = parse_canvas_blur_px(filter);
+        if blur > 0 {
+            c.blur_rect(x, y, w, h, blur);
+        }
+        let gray = parse_canvas_grayscale(filter);
+        if gray > 0.0 {
+            c.grayscale_rect(x, y, w, h, gray);
+        }
+        if let Some(inv) = parse_canvas_filter_fn(filter, "invert") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Invert(inv));
+        }
+        if let Some(br) = parse_canvas_filter_fn(filter, "brightness") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Brightness(br));
+        }
+        if let Some(ct) = parse_canvas_filter_fn(filter, "contrast") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Contrast(ct));
+        }
+        if let Some(sp) = parse_canvas_filter_fn(filter, "sepia") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Sepia(sp));
+        }
+        if let Some(sat) = parse_canvas_filter_fn(filter, "saturate") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Saturate(sat));
+        }
+        if let Some(deg) = parse_canvas_hue_rotate(filter) {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::HueRotate(deg));
+        }
+        if let Some(op) = parse_canvas_filter_fn(filter, "opacity") {
+            c.color_filter_rect(x, y, w, h, CanvasColorFilter::Opacity(op));
+        }
+        match url_filter {
+            Some(CanvasSvgFilter::Blur(radius)) if radius > 0 => {
+                c.blur_rect(x, y, w, h, radius);
+            }
+            Some(CanvasSvgFilter::Saturate(amount)) => {
+                c.color_filter_rect(x, y, w, h, CanvasColorFilter::Saturate(amount));
+            }
+            Some(CanvasSvgFilter::HueRotate(deg)) => {
+                c.color_filter_rect(x, y, w, h, CanvasColorFilter::HueRotate(deg));
+            }
+            _ => {}
+        }
         c.ops
+    }
+
+    fn resolve_canvas_style(&self, s: &str) -> CanvasStyle {
+        if let Some(rest) = s.strip_prefix("ve-pat:") {
+            let mut parts = rest.splitn(3, ':');
+            let id_s = parts.next().unwrap_or("");
+            let mode = PatternRepeat::parse(parts.next().unwrap_or("repeat"));
+            let mut transform = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+            if let Some(xf) = parts.next() {
+                for (i, n) in xf.split(',').take(6).enumerate() {
+                    if let Ok(v) = n.parse::<f32>() {
+                        transform[i] = v;
+                    }
+                }
+            }
+            if let Ok(id) = id_s.trim().parse::<u64>() {
+                if let Some((w, h, px)) = self.canvas_patterns.get(&id) {
+                    return CanvasStyle::Pattern {
+                        width: *w,
+                        height: *h,
+                        pixels: px.clone(),
+                        repeat: mode,
+                        transform,
+                    };
+                }
+            }
+        }
+        parse_canvas_style(s)
+    }
+
+    pub(crate) fn canvas_set_composite(&mut self, id: NodeId, op: &str) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.composite = CompositeOp::parse(op);
+        c.ops
+    }
+
+    pub(crate) fn canvas_create_pattern_data(
+        &mut self,
+        width: u32,
+        height: u32,
+        pixels: Vec<u8>,
+    ) -> Option<u64> {
+        if width == 0 || height == 0 {
+            return None;
+        }
+        self.next_canvas_pattern += 1;
+        let id = self.next_canvas_pattern;
+        self.canvas_patterns.insert(id, (width, height, pixels));
+        Some(id)
+    }
+
+    pub(crate) fn canvas_create_pattern(&mut self, src: NodeId) -> Option<u64> {
+        let tile = self
+            .canvases
+            .get(&src)
+            .map(|s| (s.width, s.height, s.pixels.clone()))
+            .or_else(|| {
+                let handle = *self.node_images.get(&src)?;
+                let img = self.images.get(handle)?;
+                Some((img.width, img.height, img.rgba.clone()))
+            })?;
+        self.next_canvas_pattern += 1;
+        let id = self.next_canvas_pattern;
+        self.canvas_patterns.insert(id, tile);
+        Some(id)
     }
 
     pub(crate) fn canvas_clear_rect(&mut self, id: NodeId, x: i32, y: i32, w: i32, h: i32) -> u64 {
@@ -1284,12 +3397,473 @@ impl Page {
         rects: &[[f32; 4]],
         polys: &[Vec<[f32; 2]>],
         color: &str,
+        filter: &str,
     ) -> u64 {
+        let url_filter =
+            parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
+        let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.fill_path(rects, polys, parse_css_color(color));
+        c.fill_path_styled(rects, polys, &style, 1.0);
+        let blur = parse_canvas_blur_px(filter);
+        if blur > 0 {
+            if let Some((x, y, w, h)) = canvas_path_bounds(rects, polys) {
+                c.blur_rect(x, y, w, h, blur);
+            }
+        }
+        if let Some((x, y, w, h)) = canvas_path_bounds(rects, polys) {
+            match url_filter {
+                Some(CanvasSvgFilter::Blur(radius)) if radius > 0 => {
+                    c.blur_rect(x, y, w, h, radius);
+                }
+                Some(CanvasSvgFilter::Saturate(amount)) => {
+                    c.color_filter_rect(x, y, w, h, CanvasColorFilter::Saturate(amount));
+                }
+                Some(CanvasSvgFilter::HueRotate(deg)) => {
+                    c.color_filter_rect(x, y, w, h, CanvasColorFilter::HueRotate(deg));
+                }
+                _ => {}
+            }
+        }
+        c.ops
+    }
+
+    pub(crate) fn canvas_stroke_path(
+        &mut self,
+        id: NodeId,
+        rects: &[[f32; 4]],
+        polys: &[Vec<[f32; 2]>],
+        color: &str,
+        width: i32,
+        dash: &[i32],
+        dash_offset: i32,
+        cap: &str,
+        join: &str,
+        miter_limit: f32,
+        filter: &str,
+    ) -> u64 {
+        let url_filter =
+            parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
+        let style = self.resolve_canvas_style(color);
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.stroke_path_styled(
+            rects,
+            polys,
+            &style,
+            1.0,
+            width,
+            dash,
+            dash_offset,
+            LineCap::parse(cap),
+            LineJoin::parse(join),
+            if miter_limit > 0.0 { miter_limit } else { 10.0 },
+        );
+        let blur = parse_canvas_blur_px(filter);
+        if blur > 0 {
+            if let Some((x, y, w, h)) = canvas_path_bounds(rects, polys) {
+                let pad = blur + width.max(1) / 2 + 1;
+                c.blur_rect(
+                    x - pad,
+                    y - pad,
+                    (w + 2 * pad).max(1),
+                    (h + 2 * pad).max(1),
+                    blur,
+                );
+            }
+        }
+        if let Some((x, y, w, h)) = canvas_path_bounds(rects, polys) {
+            let pad = width.max(1) / 2 + 1;
+            let x = x - pad;
+            let y = y - pad;
+            let w = (w + 2 * pad).max(1);
+            let h = (h + 2 * pad).max(1);
+            match url_filter {
+                Some(CanvasSvgFilter::Blur(radius)) if radius > 0 => {
+                    c.blur_rect(x, y, w, h, radius);
+                }
+                Some(CanvasSvgFilter::Saturate(amount)) => {
+                    c.color_filter_rect(x, y, w, h, CanvasColorFilter::Saturate(amount));
+                }
+                Some(CanvasSvgFilter::HueRotate(deg)) => {
+                    c.color_filter_rect(x, y, w, h, CanvasColorFilter::HueRotate(deg));
+                }
+                _ => {}
+            }
+        }
+        c.ops
+    }
+
+    pub(crate) fn canvas_stroke_rect(
+        &mut self,
+        id: NodeId,
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+        color: &str,
+        width: i32,
+        dash: &[i32],
+        dash_offset: i32,
+    ) -> u64 {
+        let style = self.resolve_canvas_style(color);
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.stroke_rect_styled(x, y, w, h, &style, 1.0, width, dash, dash_offset);
+        c.ops
+    }
+
+    fn ensure_canvas_fonts(&mut self) -> &mut FontSystem {
+        if self.canvas_fonts.is_none() {
+            let mut fonts = FontSystem::new();
+            fonts.load_system_fonts();
+            self.canvas_fonts = Some(fonts);
+        }
+        self.canvas_fonts.as_mut().expect("canvas fonts installed")
+    }
+
+    pub(crate) fn canvas_measure_text(&mut self, text: &str, size: f32) -> f64 {
+        let size = if size > 0.0 { size } else { 10.0 };
+        let fonts = self.ensure_canvas_fonts();
+        if let Some(face) = fonts.query(
+            &[FontFamily::SansSerif],
+            FontWeight::NORMAL,
+            FontStyle::Normal,
+        ) {
+            if let Some(width) = fonts.measure(face, text, size) {
+                return f64::from(width);
+            }
+        }
+        (text.chars().count() as f64) * 6.0
+    }
+
+    pub(crate) fn canvas_fill_text(
+        &mut self,
+        id: NodeId,
+        text: &str,
+        x: i32,
+        y: i32,
+        color: &str,
+        size: f32,
+        italic: bool,
+        bold: bool,
+        shadow_x: i32,
+        shadow_y: i32,
+        shadow: &str,
+        shadow_blur: i32,
+    ) -> u64 {
+        let color = parse_css_color(color);
+        let shadow_color = if shadow_x != 0 || shadow_y != 0 || shadow_blur > 0 {
+            Some(parse_css_color(shadow))
+        } else {
+            None
+        };
+        let size = if size > 0.0 { size } else { 10.0 };
+        let blits = {
+            let fonts = self.ensure_canvas_fonts();
+            fonts
+                .query(
+                    &[FontFamily::SansSerif],
+                    FontWeight::NORMAL,
+                    FontStyle::Normal,
+                )
+                .and_then(|face| {
+                    let run = fonts.shape_retained(face, text, size)?;
+                    let mut out = Vec::new();
+                    for glyph in run.glyphs {
+                        if glyph.id == 0 {
+                            continue;
+                        }
+                        let Some(bitmap) = fonts.rasterize_id(glyph.face, glyph.id, size) else {
+                            continue;
+                        };
+                        if bitmap.width == 0 || bitmap.height == 0 {
+                            continue;
+                        }
+                        let dx = x + glyph.x.round() as i32 + bitmap.left;
+                        let dy = y + glyph.y.round() as i32 - bitmap.top;
+                        out.push((dx, dy, bitmap));
+                    }
+                    Some(out)
+                })
+        };
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        if let Some(blits) = blits.filter(|b| !b.is_empty()) {
+            if let Some(sc) = shadow_color {
+                let r = shadow_blur.max(0);
+                for (dx, dy, bitmap) in &blits {
+                    if bitmap.color {
+                        continue;
+                    }
+                    if r == 0 {
+                        c.blit_glyph_mask(
+                            dx + shadow_x,
+                            dy + shadow_y,
+                            bitmap.width,
+                            bitmap.height,
+                            &bitmap.data,
+                            sc,
+                            italic,
+                        );
+                    } else {
+                        for sdy in -r..=r {
+                            for sdx in -r..=r {
+                                if sdx * sdx + sdy * sdy <= r * r {
+                                    c.blit_glyph_mask(
+                                        dx + shadow_x + sdx,
+                                        dy + shadow_y + sdy,
+                                        bitmap.width,
+                                        bitmap.height,
+                                        &bitmap.data,
+                                        sc,
+                                        italic,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            for (dx, dy, bitmap) in blits {
+                if bitmap.color {
+                    c.blit(&bitmap.data, bitmap.width, bitmap.height, dx, dy);
+                } else {
+                    c.blit_glyph_mask(
+                        dx,
+                        dy,
+                        bitmap.width,
+                        bitmap.height,
+                        &bitmap.data,
+                        color,
+                        italic,
+                    );
+                    if bold {
+                        c.blit_glyph_mask(
+                            dx + 1,
+                            dy,
+                            bitmap.width,
+                            bitmap.height,
+                            &bitmap.data,
+                            color,
+                            italic,
+                        );
+                    }
+                }
+            }
+            c.ops += 1;
+        } else {
+            if let Some(sc) = shadow_color {
+                c.fill_text(text, x + shadow_x, y + shadow_y, sc, italic, bold);
+            }
+            c.fill_text(text, x, y, color, italic, bold);
+        }
+        c.ops
+    }
+
+    pub(crate) fn canvas_stroke_text(
+        &mut self,
+        id: NodeId,
+        text: &str,
+        x: i32,
+        y: i32,
+        color: &str,
+        size: f32,
+        width: i32,
+        shadow_x: i32,
+        shadow_y: i32,
+        shadow: &str,
+        shadow_blur: i32,
+    ) -> u64 {
+        let color = parse_css_color(color);
+        let shadow_color = if shadow_x != 0 || shadow_y != 0 || shadow_blur > 0 {
+            Some(parse_css_color(shadow))
+        } else {
+            None
+        };
+        let size = if size > 0.0 { size } else { 10.0 };
+        let radius = width.max(1);
+        let blits = {
+            let fonts = self.ensure_canvas_fonts();
+            fonts
+                .query(
+                    &[FontFamily::SansSerif],
+                    FontWeight::NORMAL,
+                    FontStyle::Normal,
+                )
+                .and_then(|face| {
+                    let run = fonts.shape_retained(face, text, size)?;
+                    let mut out = Vec::new();
+                    for glyph in run.glyphs {
+                        if glyph.id == 0 {
+                            continue;
+                        }
+                        let Some(bitmap) = fonts.rasterize_id(glyph.face, glyph.id, size) else {
+                            continue;
+                        };
+                        if bitmap.width == 0 || bitmap.height == 0 || bitmap.color {
+                            continue;
+                        }
+                        let (mask, w, h, ox, oy) =
+                            outline_glyph_mask(&bitmap.data, bitmap.width, bitmap.height, radius);
+                        let dx = x + glyph.x.round() as i32 + bitmap.left + ox;
+                        let dy = y + glyph.y.round() as i32 - bitmap.top + oy;
+                        out.push((dx, dy, w, h, mask));
+                    }
+                    Some(out)
+                })
+        };
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        if let Some(blits) = blits.filter(|b| !b.is_empty()) {
+            if let Some(sc) = shadow_color {
+                let r = shadow_blur.max(0);
+                for (dx, dy, w, h, mask) in &blits {
+                    if r == 0 {
+                        c.blit_glyph_mask(dx + shadow_x, dy + shadow_y, *w, *h, mask, sc, false);
+                    } else {
+                        for sdy in -r..=r {
+                            for sdx in -r..=r {
+                                if sdx * sdx + sdy * sdy <= r * r {
+                                    c.blit_glyph_mask(
+                                        dx + shadow_x + sdx,
+                                        dy + shadow_y + sdy,
+                                        *w,
+                                        *h,
+                                        mask,
+                                        sc,
+                                        false,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            for (dx, dy, w, h, mask) in blits {
+                c.blit_glyph_mask(dx, dy, w, h, &mask, color, false);
+            }
+            c.ops += 1;
+        } else {
+            if let Some(sc) = shadow_color {
+                c.stroke_text(text, x + shadow_x, y + shadow_y, sc, radius);
+            }
+            c.stroke_text(text, x, y, color, radius);
+        }
+        c.ops
+    }
+
+    pub(crate) fn canvas_draw_image(
+        &mut self,
+        id: NodeId,
+        src: NodeId,
+        sx: i32,
+        sy: i32,
+        sw: i32,
+        sh: i32,
+        dx: i32,
+        dy: i32,
+        dw: i32,
+        dh: i32,
+        smooth: i32,
+    ) -> u64 {
+        let src_pixels = self
+            .canvases
+            .get(&src)
+            .map(|s| (s.width, s.height, s.pixels.clone()))
+            .or_else(|| {
+                let handle = *self.node_images.get(&src)?;
+                let img = self.images.get(handle)?;
+                Some((img.width, img.height, img.rgba.clone()))
+            });
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        if let Some((w, h, px)) = src_pixels {
+            let sx = sx.max(0) as u32;
+            let sy = sy.max(0) as u32;
+            let sw = if sw <= 0 {
+                w.saturating_sub(sx)
+            } else {
+                (sw as u32).min(w.saturating_sub(sx))
+            };
+            let sh = if sh <= 0 {
+                h.saturating_sub(sy)
+            } else {
+                (sh as u32).min(h.saturating_sub(sy))
+            };
+            let dw = if dw <= 0 { sw } else { dw as u32 };
+            let dh = if dh <= 0 { sh } else { dh as u32 };
+            c.blit_scaled(&px, w, h, sx, sy, sw, sh, dx, dy, dw, dh, smooth);
+        }
+        c.ops
+    }
+
+    pub(crate) fn canvas_clip_path(
+        &mut self,
+        id: NodeId,
+        rects: &[[f32; 4]],
+        polys: &[Vec<[f32; 2]>],
+    ) -> u64 {
+        let mut min_x = f32::MAX;
+        let mut min_y = f32::MAX;
+        let mut max_x = f32::MIN;
+        let mut max_y = f32::MIN;
+        for r in rects {
+            min_x = min_x.min(r[0]);
+            min_y = min_y.min(r[1]);
+            max_x = max_x.max(r[0] + r[2]);
+            max_y = max_y.max(r[1] + r[3]);
+        }
+        for poly in polys {
+            for p in poly {
+                min_x = min_x.min(p[0]);
+                min_y = min_y.min(p[1]);
+                max_x = max_x.max(p[0]);
+                max_y = max_y.max(p[1]);
+            }
+        }
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        if min_x <= max_x && min_y <= max_y {
+            c.intersect_clip(
+                min_x.floor() as i32,
+                min_y.floor() as i32,
+                (max_x - min_x).ceil() as i32,
+                (max_y - min_y).ceil() as i32,
+            );
+        }
+        c.ops
+    }
+
+    pub(crate) fn canvas_save(&mut self, id: NodeId) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.save_clip();
+        c.ops
+    }
+
+    pub(crate) fn canvas_restore(&mut self, id: NodeId) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.restore_clip();
         c.ops
     }
 
@@ -1382,11 +3956,164 @@ impl Page {
         let Some(decoded) = decode_raster(bytes) else {
             return;
         };
+        let handle = self.images.insert(decoded.clone());
+        self.node_images.insert(id, handle);
         let renderer = self
             .renderer
             .get_or_insert_with(SoftwareRenderer::with_system_fonts);
         let handle = renderer.images.insert(decoded);
         renderer.node_images.insert(id, handle);
+    }
+
+    /// Layout shaper for this page (`metric` or `system`).
+    #[must_use]
+    pub fn shaper(&self) -> ShaperKind {
+        self.shaper
+    }
+
+    /// Replaces the layout shaper and forces a later relayout.
+    pub fn set_shaper(&mut self, kind: ShaperKind) {
+        if self.shaper == kind {
+            return;
+        }
+        self.shaper = kind;
+        self.layout_engine = match kind {
+            ShaperKind::Metric => LayoutEngine::new(),
+            ShaperKind::System => {
+                LayoutEngine::with_shaper(Box::new(ParleyShaper::with_system_fonts()))
+            }
+        };
+        self.style_tree = StyleTree::default();
+    }
+
+    /// Decoded `<img>` handles keyed by layout node.
+    #[must_use]
+    pub fn node_images(&self) -> &HashMap<NodeId, ImageHandle> {
+        &self.node_images
+    }
+
+    /// Page-owned decoded image cache (GPU and software share this).
+    #[must_use]
+    pub fn image_cache(&self) -> &ImageCache {
+        &self.images
+    }
+
+    /// Scrolls the viewport by CSS pixels without running an agent Program.
+    pub fn scroll_by(&mut self, dx: f32, dy: f32) -> ScrollState {
+        self.scroll_by_phase(dx, dy, ve_core::ScrollPhase::Changed)
+    }
+
+    /// Wheel / trackpad scroll with a gesture phase (H1-A5).
+    pub fn scroll_by_phase(
+        &mut self,
+        dx: f32,
+        dy: f32,
+        phase: ve_core::ScrollPhase,
+    ) -> ScrollState {
+        self.update();
+        match phase {
+            ve_core::ScrollPhase::Cancelled => {
+                self.scroll_velocity = Point::ZERO;
+                self.scroll_gesture = false;
+                self.doc.record_scrolled(None);
+                return self.scroll_state();
+            }
+            ve_core::ScrollPhase::Began => {
+                self.scroll_velocity = Point::ZERO;
+                self.scroll_gesture = true;
+            }
+            ve_core::ScrollPhase::Changed => {
+                self.scroll_gesture = true;
+            }
+            ve_core::ScrollPhase::Ended => {
+                self.scroll_gesture = false;
+            }
+        }
+        if dx.abs() > f32::EPSILON {
+            let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
+            self.scroll.x = (self.scroll.x + dx).clamp(0.0, max_x);
+            self.doc.record_scrolled(None);
+        }
+        if phase == ve_core::ScrollPhase::Ended && dy.abs() <= f32::EPSILON {
+            return self.scroll_state();
+        }
+        self.scroll_viewport(dy)
+    }
+
+    fn scroll_state(&self) -> ScrollState {
+        let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+        let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
+        ScrollState {
+            x: self.scroll.x,
+            y: self.scroll.y,
+            max_x,
+            max_y,
+            container: None,
+        }
+    }
+
+    /// Rubber-band offset past the clamped scroll range.
+    #[must_use]
+    pub fn overscroll_offset(&self) -> Point {
+        self.overscroll
+    }
+
+    /// `prefers-reduced-motion: reduce` — skips rubber-band and momentum.
+    pub fn set_reduced_motion(&mut self, reduce: bool) {
+        self.style_engine.media.reduced_motion = reduce;
+    }
+
+    /// Advances rubber-band spring-back and trackpad momentum.
+    pub fn tick_scroll_physics(&mut self, dt_ms: f32) {
+        self.update();
+        let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+        let frames = (dt_ms / 16.0).clamp(1.0, 16.0) as i32;
+        if self.style_engine.media.reduced_motion {
+            self.overscroll = Point::ZERO;
+            self.scroll_velocity = Point::ZERO;
+            return;
+        }
+        for _ in 0..frames {
+            if self.overscroll.y.abs() > 0.2 {
+                self.overscroll.y *= 0.62;
+                if self.overscroll.y.abs() < 0.15 {
+                    self.overscroll.y = 0.0;
+                }
+                self.scroll_velocity.y = 0.0;
+                continue;
+            }
+            self.overscroll.y = 0.0;
+            if self.scroll_velocity.y.abs() < 0.4 {
+                self.scroll_velocity.y = 0.0;
+                continue;
+            }
+            let next = (self.scroll.y + self.scroll_velocity.y).clamp(0.0, max_y);
+            self.scroll.y = next;
+            self.scroll_velocity.y *= 0.88;
+            if next <= 0.0 || next >= max_y {
+                self.scroll_velocity.y = 0.0;
+            }
+        }
+        self.doc.record_scrolled(None);
+    }
+
+    /// True while rubber-band or momentum still needs a vsync tick.
+    #[must_use]
+    pub fn needs_scroll_frame(&self) -> bool {
+        !self.style_engine.media.reduced_motion
+            && (self.overscroll.y.abs() > 0.15 || self.scroll_velocity.y.abs() > 0.4)
+    }
+
+    /// True while the user is still in a scroll gesture (not coasting).
+    #[must_use]
+    pub fn scroll_interacting(&self) -> bool {
+        self.scroll_gesture
+    }
+
+    /// `prefers-reduced-motion` media flag.
+    #[must_use]
+    pub fn reduced_motion(&self) -> bool {
+        self.style_engine.media.reduced_motion
     }
 
     /// Sets the device pixel ratio used for screenshots and `viewport.scale`.
@@ -1411,6 +4138,7 @@ impl Page {
             ve_html::ParseOptions {
                 scripting_enabled: self.scripting.is_some(),
                 chunk_size: 16 * 1024,
+                max_bytes: Some(ve_html::HTML_BYTES_CAP),
             },
         );
         if self.doc.node_count() > 1 || !self.history.is_empty() {
@@ -1434,15 +4162,20 @@ impl Page {
         });
         self.status = loaded.status;
         self.last_modified.clone_from(&loaded.last_modified);
+        self.coop = loaded.coop;
+        self.coep = loaded.coep;
         self.doc
             .set_content_language(loaded.content_language.clone());
         self.parser_limit = None;
         self.parse_hi = 0;
+        self.script_created_nodes.clear();
         self.expect_satisfied.clear();
         self.scripts_executed.clear();
         self.iframe_urls.clear();
         self.routing = classify(&self.doc, self.content_type.as_deref());
         self.scroll = Point::ZERO;
+        self.overscroll = Point::ZERO;
+        self.scroll_velocity = Point::ZERO;
         self.element_scroll.clear();
         self.files.clear();
         self.focused = None;
@@ -1465,6 +4198,7 @@ impl Page {
         self.style_engine.clear_author_styles();
         let sheets = self.fetch_subresources();
         self.add_styles(&sheets);
+        self.fetch_font_faces();
         self.update();
         if let Some(s) = self.scripting.as_mut() {
             s.reset();
@@ -1528,6 +4262,7 @@ impl Page {
         let resolve = |href: &str| base.join(href.trim()).ok().map(|u| u.to_string());
 
         let mut requests: Vec<(NodeId, SubresourceRequest)> = Vec::new();
+        let mut preconnects: Vec<String> = Vec::new();
         let mut data_images: Vec<(NodeId, u32, u32, String)> = Vec::new();
         let ids: Vec<NodeId> = self.doc.elements().collect();
         for id in ids {
@@ -1536,30 +4271,49 @@ impl Page {
             };
             if e.is_html("link") {
                 let rel = self.doc.attribute(id, "rel").unwrap_or("");
-                let is_sheet = rel
+                let rels: Vec<String> = rel
                     .split_ascii_whitespace()
-                    .any(|r| r.eq_ignore_ascii_case("stylesheet"));
-                let alternate = rel
-                    .split_ascii_whitespace()
-                    .any(|r| r.eq_ignore_ascii_case("alternate"));
-                if !is_sheet || alternate || self.doc.attribute(id, "disabled").is_some() {
-                    continue;
-                }
-                if let Some(m) = self.doc.attribute(id, "media")
-                    && !ve_style::MediaQueryList::parse_str(m).evaluate(&self.style_engine.media)
-                {
+                    .map(str::to_ascii_lowercase)
+                    .collect();
+                let is_sheet = rels.iter().any(|r| r == "stylesheet");
+                let alternate = rels.iter().any(|r| r == "alternate");
+                if is_sheet && !alternate && self.doc.attribute(id, "disabled").is_none() {
+                    if let Some(m) = self.doc.attribute(id, "media")
+                        && !ve_style::MediaQueryList::parse_str(m)
+                            .evaluate(&self.style_engine.media)
+                    {
+                        continue;
+                    }
+                    if let Some(url) = self.doc.attribute(id, "href").and_then(resolve) {
+                        requests.push((
+                            id,
+                            SubresourceRequest {
+                                url,
+                                kind: SubresourceKind::Stylesheet,
+                                page,
+                                referrer: referrer.clone(),
+                            },
+                        ));
+                    }
                     continue;
                 }
                 if let Some(url) = self.doc.attribute(id, "href").and_then(resolve) {
-                    requests.push((
-                        id,
-                        SubresourceRequest {
-                            url,
-                            kind: SubresourceKind::Stylesheet,
-                            page,
-                            referrer: referrer.clone(),
-                        },
-                    ));
+                    if rels
+                        .iter()
+                        .any(|r| r == "preconnect" || r == "dns-prefetch")
+                    {
+                        preconnects.push(url);
+                    } else if rels.iter().any(|r| r == "prefetch" || r == "modulepreload") {
+                        requests.push((
+                            id,
+                            SubresourceRequest {
+                                url,
+                                kind: SubresourceKind::Prefetch,
+                                page,
+                                referrer: referrer.clone(),
+                            },
+                        ));
+                    }
                 }
             } else if e.is_html("style") {
                 let css = self.doc.text_content(id);
@@ -1660,6 +4414,18 @@ impl Page {
                 }
             }
         }
+        let started = Instant::now();
+        let pending = if has_loader && !requests.is_empty() {
+            let batch: Vec<SubresourceRequest> = requests.iter().map(|(_, r)| r.clone()).collect();
+            Some(
+                self.loader
+                    .as_mut()
+                    .expect("loader")
+                    .start_subresources(&batch),
+            )
+        } else {
+            None
+        };
         for (id, w, h, data) in data_images {
             let _ = self.doc.set_natural_size(id, w, h);
             self.load_stats.images += 1;
@@ -1667,20 +4433,35 @@ impl Page {
                 self.install_image(id, &bytes);
             }
         }
-        if !has_loader || requests.is_empty() {
+        if has_loader && !preconnects.is_empty() {
+            self.loader
+                .as_mut()
+                .expect("loader")
+                .preconnect(&preconnects);
+            self.load_stats.preconnects += preconnects.len();
+        }
+        let Some(pending) = pending else {
             self.collect_scripts(&HashMap::new());
             return sheets;
-        }
-        let started = Instant::now();
-        let batch: Vec<SubresourceRequest> = requests.iter().map(|(_, r)| r.clone()).collect();
+        };
         let results = self
             .loader
             .as_mut()
             .expect("loader")
-            .fetch_subresources(&batch);
+            .join_subresources(pending);
         let mut script_sources: HashMap<NodeId, Option<String>> = HashMap::new();
         let mut imports: Vec<(NodeId, usize, SubresourceRequest)> = Vec::new();
         for ((id, req), result) in requests.into_iter().zip(results) {
+            let result = result.and_then(|res| {
+                if self.coep_allows_resource(&res.url, res.corp.as_deref()) {
+                    Ok(res)
+                } else {
+                    Err(Error::coded(
+                        ve_core::ErrorCode::CapabilityUnsupported,
+                        format!("COEP blocked {}", res.url),
+                    ))
+                }
+            });
             match (req.kind, result) {
                 (SubresourceKind::Stylesheet, Ok(res)) if res.status < 400 => {
                     let css = decode_text(&res.bytes, res.content_type.as_deref());
@@ -1742,6 +4523,9 @@ impl Page {
                 (SubresourceKind::Document, Ok(_) | Err(_)) => {
                     self.load_stats.failed += 1;
                 }
+                (SubresourceKind::Prefetch, Ok(res)) if res.status < 400 => {
+                    self.load_stats.prefetches += 1;
+                }
                 (_, Ok(res)) => {
                     tracing::debug!(url = %res.url, status = res.status, "subresource failed");
                     self.load_stats.failed += 1;
@@ -1796,6 +4580,8 @@ impl Page {
             stylesheets = self.load_stats.stylesheets,
             images = self.load_stats.images,
             scripts = self.load_stats.scripts,
+            prefetches = self.load_stats.prefetches,
+            preconnects = self.load_stats.preconnects,
             failed = self.load_stats.failed,
             fetch_ms = self.load_stats.fetch_ms,
             "subresources"
@@ -1857,6 +4643,146 @@ impl Page {
         }
         for (_, css) in ordered {
             self.style_engine.add_stylesheet(&css);
+        }
+    }
+
+    /// Fetches `@font-face src` URLs after author sheets are parsed (H1-B3).
+    fn fetch_font_faces(&mut self) {
+        let faces: Vec<ve_style::FontFaceRule> = self
+            .style_engine
+            .font_faces()
+            .into_iter()
+            .cloned()
+            .collect();
+        if faces.is_empty() {
+            return;
+        }
+        let page = self.id;
+        let referrer = Some(self.url.clone());
+        let base = self.base_url.clone();
+        let mut requests = Vec::new();
+        let mut data_fonts = Vec::new();
+        for face in &faces {
+            for src in &face.sources {
+                let FontFaceSrc::Url(href) = src else {
+                    continue;
+                };
+                if href.starts_with("data:") {
+                    if let Some(bytes) = decode_data_url_bytes(href) {
+                        data_fonts.push(bytes);
+                    }
+                    continue;
+                }
+                let url = base
+                    .as_ref()
+                    .and_then(|b| b.join(href.trim()).ok())
+                    .map(|u| u.to_string())
+                    .or_else(|| href.starts_with("http").then(|| href.clone()));
+                if let Some(url) = url {
+                    requests.push(SubresourceRequest {
+                        url,
+                        kind: SubresourceKind::Font,
+                        page,
+                        referrer: referrer.clone(),
+                    });
+                }
+            }
+        }
+        for bytes in data_fonts {
+            self.install_font(bytes);
+        }
+        if requests.is_empty() || self.loader.is_none() {
+            return;
+        }
+        let results = self
+            .loader
+            .as_mut()
+            .expect("loader")
+            .fetch_subresources(&requests);
+        for result in results {
+            match result {
+                Ok(res) if res.status < 400 && !res.bytes.is_empty() => {
+                    self.install_font(res.bytes);
+                }
+                Ok(_) | Err(_) => self.load_stats.failed += 1,
+            }
+        }
+    }
+
+    fn install_font(&mut self, bytes: Vec<u8>) {
+        if bytes.is_empty() {
+            return;
+        }
+        self.layout_engine.register_font(bytes.clone());
+        self.renderer
+            .get_or_insert_with(SoftwareRenderer::with_system_fonts)
+            .fonts
+            .load_font_data(bytes);
+        self.load_stats.fonts += 1;
+    }
+
+    fn apply_animations(&mut self) {
+        let animated: Vec<(
+            NodeId,
+            String,
+            f32,
+            f32,
+            f32,
+            ve_style::AnimationFillMode,
+            ve_style::AnimationPlayState,
+            ve_style::AnimationDirection,
+            String,
+        )> = self
+            .doc
+            .elements()
+            .filter_map(|id| {
+                let style = self.style_tree.style(id);
+                if style.animation_name.is_empty() || style.animation_duration_ms <= 0.0 {
+                    None
+                } else {
+                    Some((
+                        id,
+                        style.animation_name.clone(),
+                        style.animation_duration_ms,
+                        style.animation_delay_ms,
+                        style.animation_iteration_count,
+                        style.animation_fill_mode,
+                        style.animation_play_state,
+                        style.animation_direction,
+                        style.animation_timing_function.clone(),
+                    ))
+                }
+            })
+            .collect();
+        if animated.is_empty() {
+            return;
+        }
+        let keyframes = self.style_engine.keyframes();
+        let now = self.now_ms() as f32;
+        for (id, name, duration, delay, iterations, fill, play, direction, timing) in animated {
+            let Some(rule) = keyframes
+                .iter()
+                .find(|k| k.name.eq_ignore_ascii_case(&name))
+            else {
+                continue;
+            };
+            let Some(t) = animation_progress(
+                now, delay, duration, iterations, fill, play, direction, &timing,
+            ) else {
+                continue;
+            };
+            if let Some(opacity) = interpolate_keyframe_opacity(rule, t) {
+                self.style_tree.override_opacity(id, opacity);
+            }
+            if let Some((x, y)) = interpolate_keyframe_translate(rule, t) {
+                self.style_tree.override_transform(
+                    id,
+                    vec![TransformOp::Translate(
+                        LengthPercentage::Px(x),
+                        LengthPercentage::Px(y),
+                    )],
+                );
+            }
         }
     }
 
@@ -2007,6 +4933,55 @@ impl Page {
         self.status
     }
 
+    /// `Cross-Origin-Opener-Policy` of the current document.
+    #[must_use]
+    pub fn coop(&self) -> CoopPolicy {
+        self.coop
+    }
+
+    /// `Cross-Origin-Embedder-Policy` of the current document.
+    #[must_use]
+    pub fn coep(&self) -> CoepPolicy {
+        self.coep
+    }
+
+    /// True when COOP + COEP isolate this document (H3-4).
+    #[must_use]
+    pub fn is_cross_origin_isolated(&self) -> bool {
+        !matches!(self.coop, CoopPolicy::UnsafeNone) && !matches!(self.coep, CoepPolicy::UnsafeNone)
+    }
+
+    /// Whether a fetched subresource may be used under this document's COEP.
+    #[must_use]
+    pub fn coep_allows_resource(&self, url: &str, corp: Option<&str>) -> bool {
+        match self.coep {
+            CoepPolicy::UnsafeNone => true,
+            CoepPolicy::Credentialless => true,
+            CoepPolicy::RequireCorp => {
+                if same_origin_url(&self.url, url) {
+                    return true;
+                }
+                match corp.unwrap_or("").trim() {
+                    v if v.eq_ignore_ascii_case("cross-origin") => true,
+                    v if v.eq_ignore_ascii_case("same-site") => same_site_url(&self.url, url),
+                    _ => false,
+                }
+            }
+        }
+    }
+
+    /// Whether `window.open(url)` may share this browsing context (COOP).
+    #[must_use]
+    pub fn coop_allows_open(&self, url: &str) -> bool {
+        if matches!(self.coop, CoopPolicy::UnsafeNone) {
+            return true;
+        }
+        if matches!(self.coop, CoopPolicy::SameOriginAllowPopups) {
+            return true;
+        }
+        same_origin_url(&self.url, url)
+    }
+
     /// Viewport.
     #[must_use]
     pub fn viewport(&self) -> Size {
@@ -2020,16 +4995,43 @@ impl Page {
         self.style_tree = StyleTree::default();
     }
 
-    /// Viewport scroll offset.
+    /// Viewport scroll offset, including rubber-band.
     #[must_use]
     pub fn scroll_offset(&self) -> Point {
-        self.scroll
+        Point::new(
+            self.scroll.x + self.overscroll.x,
+            self.scroll.y + self.overscroll.y,
+        )
     }
 
     /// Focused element.
     #[must_use]
     pub fn focused(&self) -> Option<NodeId> {
         self.focused
+    }
+
+    /// Origin-keyed `localStorage` (Playwright `storage.state` origins).
+    #[must_use]
+    pub fn local_storage_map(&self) -> &HashMap<String, HashMap<String, String>> {
+        &self.local_storage
+    }
+
+    /// Mutable origin-keyed `localStorage`.
+    pub fn local_storage_map_mut(&mut self) -> &mut HashMap<String, HashMap<String, String>> {
+        &mut self.local_storage
+    }
+
+    /// First `input` / `textarea` / `contenteditable` when nothing is focused.
+    #[must_use]
+    pub fn first_editable(&self) -> Option<NodeId> {
+        self.doc
+            .descendants(self.doc.document_element()?)
+            .find(|id| {
+                self.doc
+                    .element(*id)
+                    .is_some_and(|e| e.is_html("input") || e.is_html("textarea"))
+                    || self.doc.attribute(*id, "contenteditable").is_some()
+            })
     }
 
     /// History length and current index.
@@ -2122,6 +5124,26 @@ impl Page {
         self.virtual_time_ms
     }
 
+    /// Current page time: virtual settle clock, or wall time in the GUI.
+    #[must_use]
+    pub fn now_ms(&self) -> u64 {
+        match self.clock {
+            ve_core::Clock::Virtual => self.virtual_time_ms,
+            ve_core::Clock::Wall => {
+                ve_core::Clock::wall_unix_ms().saturating_sub(self.wall_origin_ms)
+            }
+        }
+    }
+
+    /// Switch the page clock. Goldens stay on [`ve_core::Clock::Virtual`].
+    pub fn set_clock(&mut self, clock: ve_core::Clock) {
+        self.clock = clock;
+        if clock == ve_core::Clock::Wall {
+            self.wall_origin_ms =
+                ve_core::Clock::wall_unix_ms().saturating_sub(self.virtual_time_ms);
+        }
+    }
+
     pub(crate) fn advance_virtual_time(&mut self, ms: u64) {
         self.virtual_time_ms += ms;
         if let Some(s) = self.scripting.as_mut() {
@@ -2171,6 +5193,17 @@ impl Page {
     /// Recomputes styles if dirty. Does not flush layout. `getComputedStyle`
     /// for `display` / colors must not relayout official Complex-DOM Spectrum
     /// after jQuery `show()` appends a temp node to `body`.
+    pub(crate) fn add_author_stylesheet(&mut self, css: &str) {
+        self.style_engine.add_stylesheet(css);
+        let (new_tree, _) = self
+            .style_engine
+            .compute_and_clear(&mut self.doc, Some(&self.style_tree));
+        self.style_tree = new_tree;
+        self.install_background_images();
+        self.apply_animations();
+    }
+
+    /// Recomputes style and layout when DOM or stylesheet state is dirty.
     pub fn restyle_if_needed(&mut self) {
         if self.style_clean() {
             return;
@@ -2187,6 +5220,47 @@ impl Page {
             self.restyle_full_calls += 1;
         }
         self.doc.clear_dirty_all(DirtyFlags::STYLE);
+        self.install_background_images();
+        self.apply_animations();
+    }
+
+    fn install_inline_svgs(&mut self) {
+        let ids: Vec<NodeId> = self
+            .doc
+            .elements()
+            .filter(|&id| is_svg_root(&self.doc, id) && !self.node_images.contains_key(&id))
+            .collect();
+        for id in ids {
+            let markup = serialize_svg(&self.doc, id);
+            if let Ok(decoded) = ve_gfx::image::decode(markup.as_bytes()) {
+                let w = decoded.width.max(1);
+                let h = decoded.height.max(1);
+                let _ = self.doc.set_natural_size(id, w, h);
+                let handle = self.images.insert(decoded.clone());
+                self.node_images.insert(id, handle);
+                let renderer = self
+                    .renderer
+                    .get_or_insert_with(SoftwareRenderer::with_system_fonts);
+                let handle = renderer.images.insert(decoded);
+                renderer.node_images.insert(id, handle);
+            }
+        }
+    }
+
+    fn install_background_images(&mut self) {
+        let urls: Vec<(NodeId, String)> = self
+            .doc
+            .elements()
+            .filter_map(|id| match &self.style_tree.style(id).background_image {
+                BackgroundImage::Url(u) if u.starts_with("data:") => Some((id, u.clone())),
+                _ => None,
+            })
+            .collect();
+        for (id, data) in urls {
+            if let Some(bytes) = decode_data_url_bytes(&data) {
+                self.install_image(id, &bytes);
+            }
+        }
     }
 
     /// Recomputes styles and layout if anything is dirty. Uses the
@@ -2194,8 +5268,10 @@ impl Page {
     /// full pass when the journal cannot cover `since`.
     pub fn update(&mut self) {
         if self.style_clean() && self.layout_clean() {
+            self.apply_animations();
             return;
         }
+        self.install_inline_svgs();
         self.restyle_if_needed();
         if !self.layout_clean() {
             let previous = std::mem::replace(&mut self.layout, LayoutTree::blank(self.viewport));
@@ -2242,6 +5318,11 @@ impl Page {
             declarations_total: c.declarations_total,
             unknown: c.declarations_unknown,
             deferred: c.declarations_deferred,
+            top_unknown: c
+                .top_unknown(16)
+                .into_iter()
+                .map(|(name, count)| crate::routing::UnknownProperty { name, count })
+                .collect(),
         });
         if !self.routing.requires_script && c.exceeds(0.50) {
             self.routing.requires_script = true;
@@ -2331,7 +5412,13 @@ impl Page {
         let Some(limit) = self.parser_limit else {
             return true;
         };
-        if id.index() >= self.parse_hi {
+        // A script-created node can reuse an arena slot freed while parsing.
+        // Its non-zero generation still makes it newer than the parser's
+        // snapshot even when the recycled index is below `parse_hi`.
+        if self.script_created_nodes.contains(&id)
+            || id.generation() > 0
+            || id.index() >= self.parse_hi
+        {
             return true;
         }
         // Parse order, not live tree order: a node parsed before the running
@@ -2743,7 +5830,20 @@ impl Page {
     // Navigation
     // ---------------------------------------------------------------------
 
-    /// Requests a navigation (completed by [`Self::settle`]).
+    /// Applies a queued navigation without the agent `settle(500)` budget.
+    pub fn commit_navigation(&mut self) -> Result<()> {
+        if self.pending_navigation.is_none() {
+            return Ok(());
+        }
+        if let Err(e) = self.perform_navigation() {
+            self.last_navigation_error = Some(e.to_string());
+            return Err(e);
+        }
+        self.update();
+        Ok(())
+    }
+
+    /// Requests a navigation (completed by [`Self::settle`] or [`Self::commit_navigation`]).
     pub fn navigate(&mut self, url: &str) -> Result<()> {
         let resolved = self
             .resolve_url(url)
@@ -2863,13 +5963,87 @@ impl Page {
             url: &self.url,
             base_url: self.base_url.as_ref().map(url::Url::as_str),
             pending_dialogs: &self.pending_dialogs,
+            restrict: None,
         }
+    }
+
+    /// How the last [`Self::observe`] / [`Self::observe_after_settle`] snapshot
+    /// was produced.
+    #[must_use]
+    pub fn last_observe_path(&self) -> ObservePath {
+        self.last_observe_path
+    }
+
+    fn observe_via_hit_index(
+        &mut self,
+        request: &ObservationRequest,
+        since: u64,
+        previous: &ObservationContent,
+    ) -> Option<ObservationContent> {
+        let since = Revision(since);
+        let entries = self.doc.journal().entries_since(since)?;
+        let mut structural = false;
+        for entry in entries {
+            match &entry.mutation {
+                ve_dom::Mutation::AttributeChanged { .. }
+                | ve_dom::Mutation::FormStateChanged { .. }
+                | ve_dom::Mutation::GeometryChanged { .. }
+                | ve_dom::Mutation::Scrolled { .. } => {}
+                _ => structural = true,
+            }
+        }
+        if structural {
+            return None;
+        }
+        let touched = self.doc.journal().touched_since(since)?;
+        if touched.is_empty() {
+            return None;
+        }
+        let mut restrict = touched;
+        for id in restrict.clone() {
+            if let Some(rect) = self.layout.rect_of(id) {
+                for neighbor in self.layout.nodes_overlapping(rect) {
+                    if !restrict.contains(&neighbor) {
+                        restrict.push(neighbor);
+                    }
+                }
+            }
+        }
+        let mut input = self.observe_input();
+        input.restrict = Some(&restrict);
+        let patch = observe(&input, request);
+        let dirty: HashSet<String> = restrict.iter().map(|id| ref_for(*id)).collect();
+        let mut content = previous.clone();
+        content.elements.retain(|e| !dirty.contains(&e.reference));
+        content.elements.extend(patch.elements);
+        content
+            .form_fields
+            .retain(|e| !dirty.contains(&e.reference));
+        content.form_fields.extend(patch.form_fields);
+        content.links.retain(|e| !dirty.contains(&e.reference));
+        content.links.extend(patch.links);
+        content.url.clone_from(&patch.url);
+        content.title.clone_from(&patch.title);
+        content.viewport = patch.viewport;
+        content.scroll = patch.scroll;
+        content.truncated |= patch.truncated;
+        self.last_observe_path = ObservePath::HitIndexPatch;
+        Some(content)
     }
 
     /// Builds an observation without settling or caching (perf probes).
     #[must_use]
     pub fn observe_now(&self, request: &ObservationRequest) -> ObservationContent {
         let mut content = observe(&self.observe_input(), request);
+        content.console = self
+            .console()
+            .iter()
+            .map(|line| ConsoleEntry {
+                level: line.level.clone(),
+                message: line.message.clone(),
+                at_ms: line.at_ms,
+            })
+            .collect();
         for e in &mut content.elements {
             if e.type_.as_deref() == Some("file")
                 && let Some(files) = parse_ref(&e.reference)
@@ -2909,8 +6083,25 @@ impl Page {
         });
         // Fast path: nothing changed since the cached observation.
         let content = match cached_same {
-            Some(c) if c.revision == revision => c.content.clone(),
-            _ => self.observe_now(request),
+            Some(c) if c.revision == revision => {
+                self.last_observe_path = ObservePath::Cache;
+                c.content.clone()
+            }
+            Some(prev) => {
+                let prev_rev = prev.revision;
+                let prev_content = prev.content.clone();
+                match self.observe_via_hit_index(request, prev_rev, &prev_content) {
+                    Some(content) => content,
+                    None => {
+                        self.last_observe_path = ObservePath::Full;
+                        self.observe_now(request)
+                    }
+                }
+            }
+            None => {
+                self.last_observe_path = ObservePath::Full;
+                self.observe_now(request)
+            }
         };
         let (changes_since, delta) = match request.since_revision {
             None => (None, None),
@@ -3007,8 +6198,9 @@ impl Page {
     // Target resolution
     // ---------------------------------------------------------------------
 
-    /// Resolves an `r<index>` ref: `target_detached` for tombstones (and
-    /// epoch mismatches), `not_found` for never-allocated indices.
+    /// Resolves an `r<index>` ref: `target_detached` for tombstones,
+    /// `ref_stale` for generation/epoch mismatches, `not_found` for
+    /// never-allocated indices.
     pub fn resolve_ref(&self, reference: &str, epoch: Option<u64>) -> Result<NodeId> {
         let (index, generation) = parse_ref_parts(reference)
             .ok_or_else(|| Error::invalid_params(format!("malformed ref {reference:?}")))?;
@@ -3016,7 +6208,7 @@ impl Page {
             && epoch != u64::from(self.generation)
         {
             return Err(Error::coded_with(
-                ErrorCode::TargetDetached,
+                ErrorCode::RefStale,
                 format!(
                     "ref {reference} belongs to document epoch {epoch}; the page is at epoch {}",
                     self.generation
@@ -3031,7 +6223,7 @@ impl Page {
                     && id.generation() != g
                 {
                     return Err(Error::coded_with(
-                        ErrorCode::TargetDetached,
+                        ErrorCode::RefStale,
                         format!(
                             "ref {reference} generation {g} does not match live generation {}",
                             id.generation()
@@ -3373,22 +6565,44 @@ impl Page {
 
     /// Scrolls the viewport so `rect` (document coordinates) is visible.
     pub(crate) fn scroll_into_view(&mut self, rect: Rect) {
-        let vw = self.viewport.width;
-        let vh = self.viewport.height;
+        self.scroll_into_view_inset(rect, 0.0, 0.0);
+    }
+
+    fn scroll_into_view_inset(&mut self, rect: Rect, margin: f32, padding: f32) {
+        let vh = (self.viewport.height - padding * 2.0).max(1.0);
+        let vw = (self.viewport.width - padding * 2.0).max(1.0);
+        let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+        let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
         let mut changed = false;
-        if rect.y() < self.scroll.y || rect.bottom() > self.scroll.y + vh {
-            let max_y = (self.layout.content_height() - vh).max(0.0);
-            let target = (rect.y() + rect.height() / 2.0 - vh / 2.0).clamp(0.0, max_y);
-            if (target - self.scroll.y).abs() > 0.5 {
-                self.scroll.y = target;
+        let top = rect.y() - margin;
+        let bottom = rect.bottom() + margin;
+        let left = rect.x() - margin;
+        let right = rect.right() + margin;
+        let view_y = self.scroll.y + padding;
+        let view_x = self.scroll.x + padding;
+        if top < view_y {
+            let next = (top - padding).clamp(0.0, max_y);
+            if (next - self.scroll.y).abs() > 0.5 {
+                self.scroll.y = next;
+                changed = true;
+            }
+        } else if bottom > view_y + vh {
+            let next = (bottom - padding - vh).clamp(0.0, max_y);
+            if (next - self.scroll.y).abs() > 0.5 {
+                self.scroll.y = next;
                 changed = true;
             }
         }
-        if rect.x() < self.scroll.x || rect.right() > self.scroll.x + vw {
-            let max_x = (self.layout.root.rect.right() - vw).max(0.0);
-            let target = (rect.x() + rect.width() / 2.0 - vw / 2.0).clamp(0.0, max_x);
-            if (target - self.scroll.x).abs() > 0.5 {
-                self.scroll.x = target;
+        if left < view_x {
+            let next = (left - padding).clamp(0.0, max_x);
+            if (next - self.scroll.x).abs() > 0.5 {
+                self.scroll.x = next;
+                changed = true;
+            }
+        } else if right > view_x + vw {
+            let next = (right - padding - vw).clamp(0.0, max_x);
+            if (next - self.scroll.x).abs() > 0.5 {
+                self.scroll.x = next;
                 changed = true;
             }
         }
@@ -3401,7 +6615,8 @@ impl Page {
     /// point (after scrolling into view). Returns the dispatch point.
     pub fn prepare_pointer(&mut self, id: NodeId, timeout_ms: u64) -> Result<Point> {
         let rect = self.actionable(id, timeout_ms)?;
-        self.scroll_into_view(rect);
+        let style = self.style_tree.style(id);
+        self.scroll_into_view_inset(rect, style.scroll_margin, style.scroll_padding);
         let viewport = Rect::new(
             self.scroll.x,
             self.scroll.y,
@@ -3564,6 +6779,24 @@ impl Page {
             self.focus(None);
         }
         tracing::debug!(%id, ?point, ?button, "click");
+        let button_code = match button {
+            MouseButton::Left => 0.0,
+            MouseButton::Middle => 1.0,
+            MouseButton::Right => 2.0,
+        };
+        let extra = [
+            ("button", ve_script::JsValue::Number(button_code)),
+            ("pointerId", ve_script::JsValue::Number(1.0)),
+            ("isPrimary", ve_script::JsValue::Bool(true)),
+        ];
+        let _ = self.dispatch_js_event_init(id, "pointerdown", true, true, Some(point), &extra);
+        let _ = self.dispatch_js_event_init(id, "mousedown", true, true, Some(point), &extra);
+        let _ = self.dispatch_js_event_init(id, "pointerup", true, true, Some(point), &extra);
+        let _ = self.dispatch_js_event_init(id, "mouseup", true, true, Some(point), &extra);
+        if button == MouseButton::Right {
+            let _ = self.dispatch_js_event_init(id, "contextmenu", true, true, Some(point), &extra);
+            return Ok(format!("{} contextmenu", ref_for(id)));
+        }
         if button != MouseButton::Left {
             return Ok(format!(
                 "{} {:?} click (no activation)",
@@ -3571,7 +6804,7 @@ impl Page {
                 button
             ));
         }
-        if self.dispatch_js_event(id, "click", true, true, Some(point)) {
+        if self.dispatch_js_event_init(id, "click", true, true, Some(point), &extra) {
             return Ok(format!("{} click default prevented", ref_for(id)));
         }
         self.activate(id)
@@ -3869,6 +7102,9 @@ impl Page {
         let plan = forms::plan_submission(&self.doc, form, submitter, &|id| {
             files.get(&id).cloned().unwrap_or_default()
         });
+        if self.dispatch_js_event(form, "submit", true, true, None) {
+            return Ok(format!("submit default prevented on {}", ref_for(form)));
+        }
         if plan.method == FormMethod::Dialog {
             if let Some(dialog) = self
                 .doc
@@ -3960,6 +7196,10 @@ impl Page {
         for n in &chain {
             self.doc.mark_dirty(*n, DirtyFlags::STYLE);
         }
+        let _ = self.dispatch_js_event(id, "pointerover", true, true, None);
+        let _ = self.dispatch_js_event(id, "pointerenter", false, false, None);
+        let _ = self.dispatch_js_event(id, "mouseover", true, true, None);
+        let _ = self.dispatch_js_event(id, "mouseenter", false, false, None);
         Ok(format!("hovering {}", ref_for(id)))
     }
 
@@ -4019,6 +7259,11 @@ impl Page {
             return Err(Error::step_failed(format!("{} is read-only", ref_for(id))));
         }
         self.focus(Some(id));
+        if self.scripting.is_some() {
+            let _ = self.call_script("__veSelectControl", &[crate::dom::pack(id)]);
+        } else {
+            self.dispatch_js_event(id, "select", true, false, None);
+        }
         let via_value = self.input_type(id).is_some()
             || self.doc.element(id).is_some_and(|e| e.is_html("textarea"));
         if via_value && self.scripting.is_some() {
@@ -4101,14 +7346,149 @@ impl Page {
         Ok(format!("typed {typed} chars into {}", ref_for(id)))
     }
 
-    /// `press`: a key chord with default actions.
+    /// IME commit: compositionstart → compositionupdate → compositionend, then insert.
+    pub fn compose_text(&mut self, id: NodeId, value: &str, timeout_ms: u64) -> Result<String> {
+        self.actionable(id, timeout_ms)?;
+        if !self.is_text_control(id) {
+            return Err(Error::invalid_params(format!(
+                "{} is not a text control",
+                ref_for(id)
+            )));
+        }
+        if self.doc.attribute(id, "readonly").is_some() {
+            return Err(Error::step_failed(format!("{} is read-only", ref_for(id))));
+        }
+        self.focus(Some(id));
+        let data = ve_script::JsValue::from(value);
+        let _ = self.dispatch_js_event_init(id, "compositionstart", true, true, None, &[]);
+        let _ = self.dispatch_js_event_init(
+            id,
+            "compositionupdate",
+            true,
+            true,
+            None,
+            &[("data", data.clone())],
+        );
+        let mut current = if self.doc.attribute(id, "contenteditable").is_some()
+            && self.input_type(id).is_none()
+            && !self.doc.element(id).is_some_and(|e| e.is_html("textarea"))
+        {
+            self.doc.text_content(id)
+        } else {
+            self.doc.form_value(id).unwrap_or_default()
+        };
+        current.push_str(value);
+        self.set_text_value(id, &current)?;
+        let _ =
+            self.dispatch_js_event_init(id, "compositionend", true, true, None, &[("data", data)]);
+        self.dispatch_js_event(id, "input", true, false, None);
+        self.dispatch_js_event(id, "change", true, false, None);
+        Ok(format!(
+            "composed {} chars into {}",
+            value.chars().count(),
+            ref_for(id)
+        ))
+    }
+
+    /// `press`: keydown, default action unless prevented, keyup.
     pub fn press(&mut self, target: Option<NodeId>, key: &str, timeout_ms: u64) -> Result<String> {
         let chord = Chord::parse(key)?;
         if let Some(id) = target {
             self.actionable(id, timeout_ms)?;
             self.focus(Some(id));
         }
-        self.press_key(target, &chord)
+        let detail = self.dispatch_parsed_key(&chord, true, false)?;
+        let _ = self.dispatch_parsed_key(&chord, false, false);
+        Ok(detail)
+    }
+
+    /// Human key down or up. Default action runs only on down when not prevented.
+    pub fn dispatch_key(
+        &mut self,
+        key: &str,
+        down: bool,
+        repeat: bool,
+        modifiers: Modifiers,
+    ) -> Result<String> {
+        let mut chord = Chord::parse(key)?;
+        chord.modifiers = modifiers;
+        self.dispatch_parsed_key(&chord, down, repeat)
+    }
+
+    fn dispatch_parsed_key(&mut self, chord: &Chord, down: bool, repeat: bool) -> Result<String> {
+        let ty = if down { "keydown" } else { "keyup" };
+        let prevented = self.fire_keyboard(ty, self.focused, chord, repeat);
+        if down && !prevented {
+            return self.press_key(self.focused, chord);
+        }
+        Ok(if prevented {
+            format!("{ty} default prevented")
+        } else {
+            format!("{ty}")
+        })
+    }
+
+    fn fire_keyboard(
+        &mut self,
+        ty: &str,
+        target: Option<NodeId>,
+        chord: &Chord,
+        repeat: bool,
+    ) -> bool {
+        let Some(id) = target
+            .or(self.focused)
+            .or_else(|| self.doc.document_element())
+        else {
+            return false;
+        };
+        let key_name = chord.key_name();
+        let code = chord.code();
+        let extra = [
+            ("key", ve_script::JsValue::from(key_name.as_str())),
+            ("code", ve_script::JsValue::from(code.as_str())),
+            (
+                "keyCode",
+                ve_script::JsValue::Number(f64::from(chord.key_code())),
+            ),
+            (
+                "which",
+                ve_script::JsValue::Number(f64::from(chord.key_code())),
+            ),
+            ("ctrlKey", ve_script::JsValue::Bool(chord.modifiers.control)),
+            ("shiftKey", ve_script::JsValue::Bool(chord.modifiers.shift)),
+            ("altKey", ve_script::JsValue::Bool(chord.modifiers.alt)),
+            ("metaKey", ve_script::JsValue::Bool(chord.modifiers.meta)),
+            ("repeat", ve_script::JsValue::Bool(repeat)),
+        ];
+        self.dispatch_js_event_init(id, ty, true, true, None, &extra)
+    }
+
+    fn move_text_caret(&mut self, id: NodeId, mode: &str) -> bool {
+        let (start, end) = self.doc.form_selection(id);
+        let len = u32::try_from(
+            self.doc
+                .form_value(id)
+                .unwrap_or_default()
+                .encode_utf16()
+                .count(),
+        )
+        .unwrap_or(u32::MAX);
+        let (next_start, next_end) = match mode {
+            "left" => {
+                let n = start.saturating_sub(1);
+                (n, n)
+            }
+            "right" => {
+                let n = end.saturating_add(1).min(len);
+                (n, n)
+            }
+            "home" => (0, 0),
+            "end" => (len, len),
+            _ => return false,
+        };
+        self.doc
+            .set_form_selection(id, next_start, next_end)
+            .is_ok()
     }
 
     fn press_key(&mut self, _target: Option<NodeId>, chord: &Chord) -> Result<String> {
@@ -4225,6 +7605,18 @@ impl Page {
                     if self.input_type(id).as_deref() == Some("radio") {
                         return self.step_radio(id, forward);
                     }
+                    if self.is_text_control(id) {
+                        let mode = match chord.key {
+                            Key::ArrowLeft => "left",
+                            Key::ArrowRight => "right",
+                            Key::Home => "home",
+                            Key::End => "end",
+                            _ => "",
+                        };
+                        if !mode.is_empty() && self.move_text_caret(id, mode) {
+                            return Ok(format!("caret {mode} in {}", ref_for(id)));
+                        }
+                    }
                 }
                 // Viewport scroll by 40px (up/down) like a browser.
                 if matches!(chord.key, Key::ArrowUp | Key::ArrowDown) {
@@ -4234,6 +7626,19 @@ impl Page {
                 Ok("arrow ignored".into())
             }
             Key::Home | Key::End | Key::PageUp | Key::PageDown => {
+                if let Some(id) = focused
+                    && self.is_text_control(id)
+                    && matches!(chord.key, Key::Home | Key::End)
+                {
+                    let mode = if matches!(chord.key, Key::Home) {
+                        "home"
+                    } else {
+                        "end"
+                    };
+                    if self.move_text_caret(id, mode) {
+                        return Ok(format!("caret {mode} in {}", ref_for(id)));
+                    }
+                }
                 let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
                 let y = match chord.key {
                     Key::Home => 0.0,
@@ -4245,6 +7650,7 @@ impl Page {
                 self.doc.record_scrolled(None);
                 Ok(format!("scrolled to y={y}"))
             }
+            Key::Function(_) => Ok(format!("function key {}", chord.key_name())),
             Key::Char(c) => {
                 if chord.modifiers.control || chord.modifiers.meta {
                     let lower = c.to_ascii_lowercase();
@@ -4502,13 +7908,45 @@ impl Page {
             })
     }
 
+    fn rubber_band_allowed(&self) -> bool {
+        if self.style_engine.media.reduced_motion {
+            return false;
+        }
+        let Some(root) = self.doc.document_element() else {
+            return true;
+        };
+        !matches!(
+            self.style_tree.style(root).overscroll_behavior,
+            ve_style::OverscrollBehavior::None | ve_style::OverscrollBehavior::Contain
+        )
+    }
+
     fn scroll_viewport(&mut self, dy: f32) -> ScrollState {
         let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
         let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
-        self.scroll = Point::new(
-            self.scroll.x.clamp(0.0, max_x),
-            (self.scroll.y + dy).clamp(0.0, max_y),
-        );
+        let next_y = self.scroll.y + dy;
+        if self.rubber_band_allowed() {
+            if next_y < 0.0 {
+                self.overscroll.y += next_y * 0.55;
+                self.scroll.y = 0.0;
+            } else if next_y > max_y {
+                self.overscroll.y += (next_y - max_y) * 0.55;
+                self.scroll.y = max_y;
+            } else {
+                self.overscroll.y *= 0.35;
+                if self.overscroll.y.abs() < 0.15 {
+                    self.overscroll.y = 0.0;
+                }
+                self.scroll.y = next_y.clamp(0.0, max_y);
+            }
+            self.scroll_velocity.y = dy;
+        } else {
+            self.overscroll = Point::ZERO;
+            self.scroll_velocity = Point::ZERO;
+            self.scroll.y = next_y.clamp(0.0, max_y);
+        }
+        self.scroll.x = self.scroll.x.clamp(0.0, max_x);
+        self.snap_scroll(max_y);
         self.doc.record_scrolled(None);
         ScrollState {
             x: self.scroll.x,
@@ -4516,6 +7954,43 @@ impl Page {
             max_x,
             max_y,
             container: None,
+        }
+    }
+
+    fn snap_scroll(&mut self, max_y: f32) {
+        let snapping = self
+            .doc
+            .elements()
+            .any(|id| self.style_tree.style(id).scroll_snap_type != ve_style::ScrollSnapType::None);
+        if !snapping {
+            return;
+        }
+        let mut best: Option<f32> = None;
+        let mut best_d = f32::INFINITY;
+        for id in self.doc.elements() {
+            let style = self.style_tree.style(id);
+            if style.scroll_snap_align == ve_style::ScrollSnapAlign::None {
+                continue;
+            }
+            let Some(rect) = self.layout.rect_of(id) else {
+                continue;
+            };
+            let y = match style.scroll_snap_align {
+                ve_style::ScrollSnapAlign::Start => rect.y(),
+                ve_style::ScrollSnapAlign::Center => {
+                    rect.y() + rect.height() / 2.0 - self.viewport.height / 2.0
+                }
+                ve_style::ScrollSnapAlign::End => rect.bottom() - self.viewport.height,
+                ve_style::ScrollSnapAlign::None => continue,
+            };
+            let d = (y - self.scroll.y).abs();
+            if d < best_d {
+                best_d = d;
+                best = Some(y);
+            }
+        }
+        if let Some(y) = best {
+            self.scroll.y = y.clamp(0.0, max_y);
         }
     }
 
@@ -4898,6 +8373,28 @@ fn same_origin_url(page: &str, other: &str) -> bool {
     }
 }
 
+fn same_site_url(page: &str, other: &str) -> bool {
+    match (url::Url::parse(page), url::Url::parse(other)) {
+        (Ok(a), Ok(b)) => {
+            a.scheme() == b.scheme()
+                && registrable_site(a.host_str().unwrap_or(""))
+                    == registrable_site(b.host_str().unwrap_or(""))
+        }
+        _ => false,
+    }
+}
+
+fn registrable_site(host: &str) -> &str {
+    let mut parts = host.rsplit('.');
+    match (parts.next(), parts.next()) {
+        (Some(tld), Some(sld)) if !tld.is_empty() && !sld.is_empty() => {
+            let start = host.len().saturating_sub(sld.len() + 1 + tld.len());
+            &host[start..]
+        }
+        _ => host,
+    }
+}
+
 pub(crate) fn filename_from_url(url: &str) -> String {
     url::Url::parse(url)
         .ok()
@@ -4975,7 +8472,178 @@ fn collect_imports(css: &str) -> Vec<String> {
     }
 }
 
+fn ease_unit(t: f32, timing: &str) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    match timing {
+        "linear" => t,
+        "ease-in" => t * t,
+        "ease-out" => 1.0 - (1.0 - t) * (1.0 - t),
+        _ => t * t * (3.0 - 2.0 * t),
+    }
+}
+
+fn animation_progress(
+    now: f32,
+    delay: f32,
+    duration: f32,
+    iterations: f32,
+    fill: ve_style::AnimationFillMode,
+    play: ve_style::AnimationPlayState,
+    direction: ve_style::AnimationDirection,
+    timing: &str,
+) -> Option<f32> {
+    if duration <= 0.0 {
+        return None;
+    }
+    let paused = play == ve_style::AnimationPlayState::Paused;
+    if now < delay || paused && now <= delay {
+        return if fill.backwards() {
+            Some(ease_unit(
+                match direction {
+                    ve_style::AnimationDirection::Reverse
+                    | ve_style::AnimationDirection::AlternateReverse => 1.0,
+                    _ => 0.0,
+                },
+                timing,
+            ))
+        } else if paused {
+            Some(ease_unit(0.0, timing))
+        } else {
+            None
+        };
+    }
+    let elapsed = if paused { 0.0 } else { now - delay };
+    let total = duration * iterations;
+    if elapsed >= total && total.is_finite() {
+        return if fill.forwards() {
+            let end = match direction {
+                ve_style::AnimationDirection::Reverse => 0.0,
+                ve_style::AnimationDirection::Alternate if iterations as i32 % 2 == 0 => 0.0,
+                ve_style::AnimationDirection::AlternateReverse if iterations as i32 % 2 == 1 => 0.0,
+                _ => 1.0,
+            };
+            Some(ease_unit(end, timing))
+        } else {
+            None
+        };
+    }
+    let cycle = if duration > 0.0 {
+        elapsed / duration
+    } else {
+        0.0
+    };
+    let iter = cycle.floor();
+    let mut t = cycle - iter;
+    let reverse = match direction {
+        ve_style::AnimationDirection::Reverse => true,
+        ve_style::AnimationDirection::Alternate => iter as i32 % 2 == 1,
+        ve_style::AnimationDirection::AlternateReverse => iter as i32 % 2 == 0,
+        ve_style::AnimationDirection::Normal => false,
+    };
+    if reverse {
+        t = 1.0 - t;
+    }
+    Some(ease_unit(t, timing))
+}
+
 /// Natural size of a `data:` image without fetching anything.
+fn interpolate_keyframe_opacity(rule: &ve_style::KeyframesRule, t: f32) -> Option<f32> {
+    let mut stops: Vec<(f32, f32)> = Vec::new();
+    for frame in &rule.frames {
+        let Some(opacity) = frame.block.declarations.iter().find_map(|d| {
+            if d.property != ve_style::PropertyId::Opacity {
+                return None;
+            }
+            match &d.value {
+                ve_style::SpecifiedValue::Number(n) => Some(*n),
+                ve_style::SpecifiedValue::Integer(i) => Some(*i as f32),
+                ve_style::SpecifiedValue::Percentage(p) => Some(p / 100.0),
+                _ => None,
+            }
+        }) else {
+            continue;
+        };
+        for offset in &frame.offsets {
+            stops.push((*offset, opacity));
+        }
+    }
+    if stops.is_empty() {
+        return None;
+    }
+    stops.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    if t <= stops[0].0 {
+        return Some(stops[0].1);
+    }
+    if let Some(last) = stops.last()
+        && t >= last.0
+    {
+        return Some(last.1);
+    }
+    for w in stops.windows(2) {
+        if t >= w[0].0 && t <= w[1].0 {
+            let span = (w[1].0 - w[0].0).max(f32::EPSILON);
+            let u = (t - w[0].0) / span;
+            return Some(w[0].1 + (w[1].1 - w[0].1) * u);
+        }
+    }
+    Some(stops.last().map(|s| s.1).unwrap_or(1.0))
+}
+
+fn specified_px(value: &SpecifiedValue) -> Option<f32> {
+    match value {
+        SpecifiedValue::Length(Length::Px(n)) => Some(*n),
+        SpecifiedValue::Number(n) => Some(*n),
+        SpecifiedValue::Integer(i) => Some(*i as f32),
+        _ => None,
+    }
+}
+
+fn interpolate_keyframe_translate(rule: &ve_style::KeyframesRule, t: f32) -> Option<(f32, f32)> {
+    let mut stops: Vec<(f32, (f32, f32))> = Vec::new();
+    for frame in &rule.frames {
+        let Some((x, y)) = frame.block.declarations.iter().find_map(|d| {
+            if d.property != ve_style::PropertyId::Transform {
+                return None;
+            }
+            let SpecifiedValue::Transform(ops) = &d.value else {
+                return None;
+            };
+            ops.iter().find_map(|op| match op {
+                SpecifiedTransform::Translate(x, y) => Some((specified_px(x)?, specified_px(y)?)),
+                _ => None,
+            })
+        }) else {
+            continue;
+        };
+        for offset in &frame.offsets {
+            stops.push((*offset, (x, y)));
+        }
+    }
+    if stops.is_empty() {
+        return None;
+    }
+    stops.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    if t <= stops[0].0 {
+        return Some(stops[0].1);
+    }
+    if let Some(last) = stops.last()
+        && t >= last.0
+    {
+        return Some(last.1);
+    }
+    for w in stops.windows(2) {
+        if t >= w[0].0 && t <= w[1].0 {
+            let span = (w[1].0 - w[0].0).max(f32::EPSILON);
+            let u = (t - w[0].0) / span;
+            return Some((
+                w[0].1.0 + (w[1].1.0 - w[0].1.0) * u,
+                w[0].1.1 + (w[1].1.1 - w[0].1.1) * u,
+            ));
+        }
+    }
+    stops.last().map(|s| s.1)
+}
+
 fn decode_data_url_image_size(data_url: &str) -> Option<(u32, u32)> {
     let bytes = decode_data_url_bytes(data_url)?;
     let size = imagesize::blob_size(&bytes).ok()?;
@@ -4991,6 +8659,64 @@ fn decode_data_url_bytes(data_url: &str) -> Option<Vec<u8>> {
         base64_decode(payload)
     } else {
         Some(percent_decode(payload).into_bytes())
+    }
+}
+
+fn is_svg_element(el: &ve_dom::ElementData) -> bool {
+    el.name == "svg" && (el.namespace == Namespace::Svg || el.namespace == Namespace::Html)
+}
+
+fn is_svg_root(doc: &Document, id: NodeId) -> bool {
+    let Some(el) = doc.element(id) else {
+        return false;
+    };
+    if !is_svg_element(el) {
+        return false;
+    }
+    match doc.parent(id).and_then(|p| doc.element(p)) {
+        Some(parent) if parent.name == "svg" => false,
+        _ => true,
+    }
+}
+
+fn escape_xml(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+fn serialize_svg(doc: &Document, id: NodeId) -> String {
+    let mut out = String::new();
+    write_svg_node(doc, id, &mut out);
+    out
+}
+
+fn write_svg_node(doc: &Document, id: NodeId, out: &mut String) {
+    if let Some(el) = doc.element(id) {
+        out.push('<');
+        out.push_str(&el.name);
+        if el.name == "svg" && el.attr("xmlns").is_none() {
+            out.push_str(" xmlns=\"http://www.w3.org/2000/svg\"");
+        }
+        for a in &el.attributes {
+            out.push(' ');
+            out.push_str(&a.name);
+            out.push_str("=\"");
+            out.push_str(&escape_xml(&a.value));
+            out.push('"');
+        }
+        out.push('>');
+        for c in doc.children(id) {
+            write_svg_node(doc, c, out);
+        }
+        out.push_str("</");
+        out.push_str(&el.name);
+        out.push('>');
+        return;
+    }
+    if let Some(NodeKind::Text(t)) = doc.get(id).map(|n| &n.kind) {
+        out.push_str(&escape_xml(t));
     }
 }
 
@@ -5069,13 +8795,30 @@ fn percent_decode(input: &str) -> String {
 
 impl Page {
     pub(crate) fn set_element_scroll_axis(&mut self, id: NodeId, axis: &str, value: f32) {
+        let value = value.max(0.0);
+        if self.doc.document_element() == Some(id) || self.doc.body() == Some(id) {
+            self.set_viewport_scroll_axis(axis, value);
+        }
         let cur = self.element_scroll.entry(id).or_default();
         if axis == "x" {
-            cur.x = value.max(0.0);
+            cur.x = value;
         } else {
-            cur.y = value.max(0.0);
+            cur.y = value;
         }
         self.doc.record_scrolled(Some(id));
+    }
+
+    /// Clamp and store viewport scroll for `window.scrollX` / `scrollY`.
+    pub(crate) fn set_viewport_scroll_axis(&mut self, axis: &str, value: f32) {
+        self.update();
+        let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+        let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
+        if axis == "x" {
+            self.scroll.x = value.min(max_x);
+        } else {
+            self.scroll.y = value.min(max_y);
+        }
+        self.doc.record_scrolled(None);
     }
 }
 
@@ -5269,42 +9012,10 @@ pub(crate) fn dispatch_worker(source: &str, msg: &str) -> Option<String> {
     }
     let data: serde_json::Value =
         serde_json::from_str(msg).unwrap_or_else(|_| serde_json::Value::String(msg.to_owned()));
-    if let Some(arg) = extract_post_message_arg(source) {
-        let mut env = std::collections::BTreeMap::new();
-        env.insert("document".into(), ve_vm::Value::Undefined);
-        let mut event = std::collections::BTreeMap::new();
-        event.insert("data".into(), json_to_vm(&data));
-        let ev = ve_vm::Value::Object(event);
-        env.insert("e".into(), ev.clone());
-        env.insert("event".into(), ev);
-        if let Ok(v) = ve_vm::eval_with(arg, &env) {
-            return Some(v.to_json().to_string());
-        }
-    }
+    // Inline `postMessage` arguments used to go through ve-vm. That crate is
+    // deleted (H0-D4); the payload is the posted `data` JSON.
+    let _ = extract_post_message_arg(source);
     Some(data.to_string())
-}
-
-fn json_to_vm(v: &serde_json::Value) -> ve_vm::Value {
-    match v {
-        serde_json::Value::Null => ve_vm::Value::Null,
-        serde_json::Value::Bool(b) => ve_vm::Value::Bool(*b),
-        serde_json::Value::Number(n) => n.as_f64().map_or(ve_vm::Value::Null, ve_vm::Value::Number),
-        serde_json::Value::String(s) => ve_vm::Value::String(s.clone()),
-        serde_json::Value::Array(a) => {
-            let mut m = std::collections::BTreeMap::new();
-            for (i, item) in a.iter().enumerate() {
-                m.insert(i.to_string(), json_to_vm(item));
-            }
-            ve_vm::Value::Object(m)
-        }
-        serde_json::Value::Object(o) => {
-            let mut m = std::collections::BTreeMap::new();
-            for (k, item) in o {
-                m.insert(k.clone(), json_to_vm(item));
-            }
-            ve_vm::Value::Object(m)
-        }
-    }
 }
 
 fn extract_post_message_arg(source: &str) -> Option<&str> {
@@ -5651,7 +9362,31 @@ fn parse_css_color(s: &str) -> [u8; 4] {
             }
         }
     }
-    match t.to_ascii_lowercase().as_str() {
+    let lower = t.to_ascii_lowercase();
+    if let Some(rest) = lower
+        .strip_prefix("rgba(")
+        .or_else(|| lower.strip_prefix("rgb("))
+    {
+        let nums: Vec<f32> = rest
+            .trim_end_matches(')')
+            .split(',')
+            .filter_map(|s| s.trim().parse().ok())
+            .collect();
+        if nums.len() >= 3 {
+            let a = if nums.len() >= 4 {
+                (nums[3].clamp(0.0, 1.0) * 255.0).round() as u8
+            } else {
+                255
+            };
+            return [
+                nums[0].clamp(0.0, 255.0) as u8,
+                nums[1].clamp(0.0, 255.0) as u8,
+                nums[2].clamp(0.0, 255.0) as u8,
+                a,
+            ];
+        }
+    }
+    match lower.as_str() {
         "white" => [255, 255, 255, 255],
         "red" => [255, 0, 0, 255],
         "blue" => [0, 0, 255, 255],

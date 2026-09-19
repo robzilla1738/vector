@@ -4,7 +4,12 @@ use std::collections::HashMap;
 
 use ve_core::{Edges, NodeId, Point, Rect, Size};
 use ve_layout::LayoutTree;
-use ve_style::{FontFamily, FontStyle, FontWeight, Rgba, StyleTree};
+use ve_style::{
+    BackfaceVisibility, BackgroundAttachment, BackgroundClip, BackgroundImage, BackgroundOrigin,
+    BackgroundPosition, BackgroundRepeat, BackgroundSize, Color, ComputedStyle, ContentVisibility,
+    Display, EmptyCells, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto,
+    MixBlendMode, ObjectFit, Rgba, StyleTree, TextDecorationLine, TextDecorationStyle, TransformOp,
+};
 
 use crate::image::ImageHandle;
 
@@ -55,6 +60,38 @@ pub enum DisplayItem {
         rect: Rect,
         /// The image.
         handle: ImageHandle,
+        /// Optional source rectangle in image pixels. `None` uses the full image.
+        src: Option<Rect>,
+        /// `background-size` / `object-fit`.
+        size: BackgroundSize,
+        /// `background-position`.
+        position: BackgroundPosition,
+        /// `background-repeat`.
+        repeat: BackgroundRepeat,
+        /// `background-attachment: fixed` — do not scroll with the list.
+        fixed: bool,
+        /// `image-rendering: pixelated` / `crisp-edges`.
+        pixelated: bool,
+    },
+    /// Linear gradient fill.
+    LinearGradient {
+        /// Destination bounds.
+        rect: Rect,
+        /// Start point in list space.
+        start: Point,
+        /// End point in list space.
+        end: Point,
+        /// Colour stops as (offset 0–1, colour).
+        stops: Vec<(f32, Rgba)>,
+        /// `background-attachment: fixed`.
+        fixed: bool,
+    },
+    /// Blur the pixels already in `rect` (filter: blur).
+    FilterBlur {
+        /// Region to blur.
+        rect: Rect,
+        /// Blur radius in CSS pixels.
+        radius: f32,
     },
     /// Everything until the matching [`DisplayItem::PopClip`] is clipped to `rect`.
     PushClip(Rect),
@@ -64,6 +101,51 @@ pub enum DisplayItem {
     PushOpacity(f32),
     /// Ends an opacity group.
     PopOpacity,
+    /// Blend subsequent items with the backdrop until [`DisplayItem::PopBlend`].
+    PushBlend(MixBlendMode),
+    /// Ends a mix-blend group.
+    PopBlend,
+    /// Clip to a rounded rectangle until [`DisplayItem::PopClip`].
+    RoundedClip {
+        /// Bounds.
+        rect: Rect,
+        /// Corner radius in CSS pixels (uniform).
+        radius: f32,
+    },
+    /// Affine subsequent items until [`DisplayItem::PopTransform`].
+    /// With `angle == 0`: `p' = (p.x * sx + tx, p.y * sy + ty)`.
+    /// With rotation: `p' = origin + R * S * (p - origin) + T`.
+    PushTransform {
+        /// X translation (includes transform-origin compensation when `angle == 0`).
+        tx: f32,
+        /// Y translation (includes transform-origin compensation when `angle == 0`).
+        ty: f32,
+        /// X scale.
+        sx: f32,
+        /// Y scale.
+        sy: f32,
+        /// Rotation in radians (counter-clockwise from +x, CSS `rotate`).
+        angle: f32,
+        /// Transform-origin X used when `angle != 0`.
+        ox: f32,
+        /// Transform-origin Y used when `angle != 0`.
+        oy: f32,
+    },
+    /// Ends a transform group.
+    PopTransform,
+    /// Drop shadow behind a rectangle.
+    BoxShadow {
+        /// Box bounds.
+        rect: Rect,
+        /// Offset.
+        dx: f32,
+        /// Offset.
+        dy: f32,
+        /// Blur radius.
+        blur: f32,
+        /// Shadow colour.
+        color: Rgba,
+    },
 }
 
 impl DisplayItem {
@@ -74,14 +156,24 @@ impl DisplayItem {
             Self::Rect { rect, .. }
             | Self::Border { rect, .. }
             | Self::Image { rect, .. }
-            | Self::PushClip(rect) => Some(*rect),
+            | Self::LinearGradient { rect, .. }
+            | Self::FilterBlur { rect, .. }
+            | Self::PushClip(rect)
+            | Self::RoundedClip { rect, .. }
+            | Self::BoxShadow { rect, .. } => Some(*rect),
             Self::Text(run) => Some(Rect::new(
                 run.origin.x,
                 run.origin.y - run.size,
                 run.text.chars().count() as f32 * run.size * 0.5,
                 run.size * 1.2,
             )),
-            Self::PopClip | Self::PushOpacity(_) | Self::PopOpacity => None,
+            Self::PopClip
+            | Self::PushOpacity(_)
+            | Self::PopOpacity
+            | Self::PushBlend(_)
+            | Self::PopBlend
+            | Self::PushTransform { .. }
+            | Self::PopTransform => None,
         }
     }
 
@@ -106,11 +198,89 @@ impl DisplayItem {
                 origin: run.origin.translate(dx, dy),
                 ..run.clone()
             }),
-            Self::Image { rect, handle } => Self::Image {
-                rect: rect.translate(dx, dy),
+            Self::Image {
+                rect,
+                handle,
+                src,
+                size,
+                position,
+                repeat,
+                fixed,
+                pixelated,
+            } => Self::Image {
+                rect: if *fixed {
+                    *rect
+                } else {
+                    rect.translate(dx, dy)
+                },
                 handle: *handle,
+                src: *src,
+                size: *size,
+                position: *position,
+                repeat: *repeat,
+                fixed: *fixed,
+                pixelated: *pixelated,
+            },
+            Self::LinearGradient {
+                rect,
+                start,
+                end,
+                stops,
+                fixed,
+            } => Self::LinearGradient {
+                rect: if *fixed {
+                    *rect
+                } else {
+                    rect.translate(dx, dy)
+                },
+                start: if *fixed {
+                    *start
+                } else {
+                    start.translate(dx, dy)
+                },
+                end: if *fixed { *end } else { end.translate(dx, dy) },
+                stops: stops.clone(),
+                fixed: *fixed,
+            },
+            Self::FilterBlur { rect, radius } => Self::FilterBlur {
+                rect: rect.translate(dx, dy),
+                radius: *radius,
             },
             Self::PushClip(rect) => Self::PushClip(rect.translate(dx, dy)),
+            Self::RoundedClip { rect, radius } => Self::RoundedClip {
+                rect: rect.translate(dx, dy),
+                radius: *radius,
+            },
+            Self::BoxShadow {
+                rect,
+                dx: sdx,
+                dy: sdy,
+                blur,
+                color,
+            } => Self::BoxShadow {
+                rect: rect.translate(dx, dy),
+                dx: *sdx,
+                dy: *sdy,
+                blur: *blur,
+                color: *color,
+            },
+            Self::PushTransform {
+                tx,
+                ty,
+                sx,
+                sy,
+                angle,
+                ox,
+                oy,
+            } => Self::PushTransform {
+                tx: *tx + dx,
+                ty: *ty + dy,
+                sx: *sx,
+                sy: *sy,
+                angle: *angle,
+                ox: *ox + dx,
+                oy: *oy + dy,
+            },
             other => other.clone(),
         }
     }
@@ -179,6 +349,21 @@ impl DisplayList {
         Self::from_layout_with(layout, styles, &HashMap::new())
     }
 
+    fn table_cell_is_empty(layout: &LayoutTree, node: NodeId) -> bool {
+        let Some(bx) = layout.root.find(node) else {
+            return true;
+        };
+        !bx.children.iter().any(|c| {
+            if c.is_out_of_flow() {
+                return false;
+            }
+            match &c.kind {
+                ve_layout::BoxKind::Text(s) => !s.trim().is_empty(),
+                _ => true,
+            }
+        })
+    }
+
     /// [`from_layout`] with decoded `<img>` pixels keyed by node.
     #[must_use]
     pub fn from_layout_with(
@@ -204,16 +389,122 @@ impl DisplayList {
         for item in layout.paint_order() {
             let Some(node) = item.node else { continue };
             let style = styles.style(node);
+            if style.backface_visibility == BackfaceVisibility::Hidden {
+                let mut angle = 0.0f32;
+                for op in style.transform.iter().chain(style.rotate.iter()) {
+                    if let TransformOp::Rotate(r) = op {
+                        angle += *r;
+                    }
+                }
+                let wrapped = angle.rem_euclid(std::f32::consts::TAU);
+                if wrapped > std::f32::consts::FRAC_PI_2
+                    && wrapped < 3.0 * std::f32::consts::FRAC_PI_2
+                {
+                    continue;
+                }
+            }
             let clip = layout.clip_of(node);
             let faded = style.opacity < 1.0 - f32::EPSILON;
-            if let Some(c) = clip {
+            let blended = style.mix_blend_mode != MixBlendMode::Normal;
+            let radius = style
+                .border_top_left_radius
+                .max(style.border_top_right_radius)
+                .max(style.border_bottom_right_radius)
+                .max(style.border_bottom_left_radius);
+            if radius > 0.0 {
+                list.push(DisplayItem::RoundedClip {
+                    rect: item.rect,
+                    radius,
+                });
+            } else if let Some(c) = clip {
                 list.push(DisplayItem::PushClip(c));
+            }
+            let css_clip = if style.position.is_out_of_flow() {
+                style.clip.to_rect(item.rect)
+            } else {
+                None
+            };
+            if let Some(c) = css_clip {
+                list.push(DisplayItem::PushClip(c));
+            }
+            let mut tx = 0.0f32;
+            let mut ty = 0.0f32;
+            let mut sx = 1.0f32;
+            let mut sy = 1.0f32;
+            let mut angle = 0.0f32;
+            let mut xformed = false;
+            for op in style
+                .transform
+                .iter()
+                .chain(style.translate.iter())
+                .chain(style.rotate.iter())
+                .chain(style.scale.iter())
+            {
+                match op {
+                    TransformOp::Translate(x, y) => {
+                        tx += x.resolve(item.rect.width());
+                        ty += y.resolve(item.rect.height());
+                        xformed = true;
+                    }
+                    TransformOp::Scale(x, y) => {
+                        sx *= *x;
+                        sy *= *y;
+                        xformed = true;
+                    }
+                    TransformOp::Rotate(r) => {
+                        angle += *r;
+                        xformed = true;
+                    }
+                }
+            }
+            if (style.zoom - 1.0).abs() > f32::EPSILON {
+                sx *= style.zoom;
+                sy *= style.zoom;
+                xformed = true;
+            }
+            if xformed {
+                let ox = item.rect.x() + style.transform_origin.x.resolve(item.rect.width());
+                let oy = item.rect.y() + style.transform_origin.y.resolve(item.rect.height());
+                if angle.abs() <= f32::EPSILON
+                    && ((sx - 1.0).abs() > f32::EPSILON || (sy - 1.0).abs() > f32::EPSILON)
+                {
+                    tx += ox * (1.0 - sx);
+                    ty += oy * (1.0 - sy);
+                }
+                list.push(DisplayItem::PushTransform {
+                    tx,
+                    ty,
+                    sx,
+                    sy,
+                    angle,
+                    ox,
+                    oy,
+                });
             }
             if faded {
                 list.push(DisplayItem::PushOpacity(style.opacity.clamp(0.0, 1.0)));
             }
+            if blended {
+                list.push(DisplayItem::PushBlend(style.mix_blend_mode));
+            }
             if let Some(text) = &item.text {
-                if style.visibility == ve_style::Visibility::Visible {
+                if style.visibility == ve_style::Visibility::Visible
+                    && style.content_visibility != ContentVisibility::Hidden
+                {
+                    if !style.text_shadow.is_none() {
+                        list.push(DisplayItem::Text(TextRun {
+                            origin: Point::new(
+                                item.rect.x() + style.text_shadow.dx,
+                                item.rect.y() + item.baseline + style.text_shadow.dy,
+                            ),
+                            text: text.clone(),
+                            size: style.font_size,
+                            color: style.text_shadow.color,
+                            weight: style.font_weight,
+                            style: style.font_style,
+                            family: style.font_family.clone(),
+                        }));
+                    }
                     list.push(DisplayItem::Text(TextRun {
                         origin: Point::new(item.rect.x(), item.rect.y() + item.baseline),
                         text: text.clone(),
@@ -223,12 +514,54 @@ impl DisplayList {
                         style: style.font_style,
                         family: style.font_family.clone(),
                     }));
+                    if let Some(mark) = style.text_emphasis.mark() {
+                        let marks: String = text.chars().map(|_| mark).collect();
+                        list.push(DisplayItem::Text(TextRun {
+                            origin: Point::new(
+                                item.rect.x(),
+                                item.rect.y() + item.baseline - style.font_size * 0.55,
+                            ),
+                            text: marks,
+                            size: style.font_size * 0.45,
+                            color: style.color,
+                            weight: style.font_weight,
+                            style: style.font_style,
+                            family: style.font_family.clone(),
+                        }));
+                    }
+                    if style.text_decoration_line == TextDecorationLine::Underline {
+                        let under = if style.text_underline_position
+                            == ve_style::TextUnderlinePosition::Under
+                        {
+                            style.font_size * 0.2
+                        } else {
+                            0.0
+                        };
+                        push_line_decoration(
+                            &mut list,
+                            item.rect.x(),
+                            item.rect.y() + item.baseline + style.text_underline_offset + under,
+                            item.rect.width().max(1.0),
+                            style.text_decoration_thickness.max(1.0),
+                            style.text_decoration_color.resolve(style.color),
+                            style.text_decoration_style,
+                        );
+                    }
                 }
-            } else if !item.rect.is_empty() && style.visibility == ve_style::Visibility::Visible {
-                if let Some(handle) = images.get(&node) {
-                    list.push(DisplayItem::Image {
+            } else if !item.rect.is_empty()
+                && style.visibility == ve_style::Visibility::Visible
+                && style.content_visibility != ContentVisibility::Hidden
+                && !(style.empty_cells == EmptyCells::Hide
+                    && style.display == Display::TableCell
+                    && Self::table_cell_is_empty(layout, node))
+            {
+                if !style.box_shadow.is_none() {
+                    list.push(DisplayItem::BoxShadow {
                         rect: item.rect,
-                        handle: *handle,
+                        dx: style.box_shadow.dx,
+                        dy: style.box_shadow.dy,
+                        blur: style.box_shadow.blur,
+                        color: style.box_shadow.color,
                     });
                 }
                 // Skip the root box background: it was promoted to the canvas.
@@ -236,9 +569,121 @@ impl DisplayList {
                     let bg = style.background_color.resolve(style.color);
                     if !bg.is_transparent() {
                         list.push(DisplayItem::Rect {
-                            rect: item.rect,
+                            rect: background_clip_rect(item.rect, &style),
                             color: bg,
                         });
+                    }
+                    if !matches!(style.fill, Color::CurrentColor) {
+                        let fill = style.fill.resolve(style.color);
+                        if !fill.is_transparent() {
+                            list.push(DisplayItem::Rect {
+                                rect: item.rect,
+                                color: fill,
+                            });
+                        }
+                    }
+                    let stroke = style.stroke.resolve(style.color);
+                    let stroke_width =
+                        if style.vector_effect == ve_style::VectorEffect::NonScalingStroke {
+                            style.stroke_width / style.zoom.max(0.01)
+                        } else {
+                            style.stroke_width
+                        };
+                    if !stroke.is_transparent() && stroke_width > 0.0 {
+                        list.push(DisplayItem::Border {
+                            rect: item.rect,
+                            widths: Edges::uniform(stroke_width),
+                            color: stroke,
+                        });
+                    }
+                }
+                if let BackgroundImage::LinearGradient(stops) = &style.background_image {
+                    let clip = background_clip_rect(item.rect, &style);
+                    list.push(DisplayItem::LinearGradient {
+                        rect: clip,
+                        start: Point::new(clip.x(), clip.y()),
+                        end: Point::new(clip.x(), clip.bottom()),
+                        stops: stops.clone(),
+                        fixed: style.background_attachment == BackgroundAttachment::Fixed,
+                    });
+                }
+                if let Some(handle) = images.get(&node) {
+                    let is_bg = matches!(style.background_image, BackgroundImage::Url(_));
+                    let (size, position, repeat) = if is_bg {
+                        (
+                            style.background_size,
+                            BackgroundPosition {
+                                x: style
+                                    .background_position_x
+                                    .unwrap_or(style.background_position.x),
+                                y: style
+                                    .background_position_y
+                                    .unwrap_or(style.background_position.y),
+                            },
+                            style.background_repeat,
+                        )
+                    } else {
+                        (
+                            object_fit_size(style.object_fit),
+                            style.object_position,
+                            BackgroundRepeat::NoRepeat,
+                        )
+                    };
+                    let dest = if is_bg {
+                        background_origin_rect(item.rect, &style)
+                    } else {
+                        item.rect
+                    };
+                    let clip = if is_bg {
+                        Some(background_clip_rect(item.rect, &style))
+                    } else {
+                        None
+                    };
+                    if let Some(c) = clip {
+                        list.push(DisplayItem::PushClip(c));
+                    }
+                    let bg_blend = is_bg && style.background_blend_mode != MixBlendMode::Normal;
+                    if bg_blend {
+                        list.push(DisplayItem::PushBlend(style.background_blend_mode));
+                    }
+                    list.push(DisplayItem::Image {
+                        rect: dest,
+                        handle: *handle,
+                        src: None,
+                        size,
+                        position,
+                        repeat,
+                        fixed: is_bg && style.background_attachment == BackgroundAttachment::Fixed,
+                        pixelated: style.image_rendering != ve_style::ImageRendering::Auto,
+                    });
+                    if bg_blend {
+                        list.push(DisplayItem::PopBlend);
+                    }
+                    if clip.is_some() {
+                        list.push(DisplayItem::PopClip);
+                    }
+                } else if matches!(style.border_image, BackgroundImage::Url(_)) {
+                    if let Some(handle) = images.get(&node) {
+                        list.push(DisplayItem::Image {
+                            rect: item.rect,
+                            handle: *handle,
+                            src: None,
+                            size: BackgroundSize::Auto,
+                            position: BackgroundPosition::default(),
+                            repeat: BackgroundRepeat::NoRepeat,
+                            fixed: false,
+                            pixelated: false,
+                        });
+                    }
+                }
+                for filter in [style.filter, style.backdrop_filter] {
+                    if let Filter::Blur(radius) = filter {
+                        if radius > 0.0 {
+                            list.push(DisplayItem::FilterBlur {
+                                rect: item.rect,
+                                radius,
+                            });
+                        }
                     }
                 }
                 let widths = Edges::new(
@@ -257,16 +702,320 @@ impl DisplayList {
                         });
                     }
                 }
+                if let Some(n) = style.column_count.filter(|n| *n >= 2) {
+                    if style.column_rule_width > 0.0 {
+                        let gap = style.column_gap.resolve(item.rect.width());
+                        let cols = n as f32;
+                        let col_w = ((item.rect.width() - gap * (cols - 1.0)) / cols).max(0.0);
+                        let color = style.column_rule_color.resolve(style.color);
+                        if !color.is_transparent() {
+                            for i in 0..n - 1 {
+                                let x = item.rect.x()
+                                    + (i as f32 + 1.0) * col_w
+                                    + i as f32 * gap
+                                    + (gap - style.column_rule_width) * 0.5;
+                                push_column_rule(
+                                    &mut list,
+                                    x,
+                                    item.rect.y(),
+                                    style.column_rule_width.max(1.0),
+                                    item.rect.height(),
+                                    color,
+                                    style.column_rule_style,
+                                );
+                            }
+                        }
+                    }
+                }
+                if !style.outline_style.is_none() && style.outline_width > 0.0 {
+                    let grow = style.outline_offset + style.outline_width;
+                    let outline = Rect::new(
+                        item.rect.x() - grow,
+                        item.rect.y() - grow,
+                        item.rect.width() + grow * 2.0,
+                        item.rect.height() + grow * 2.0,
+                    );
+                    let color = style.outline_color.resolve(style.color);
+                    if !color.is_transparent() {
+                        list.push(DisplayItem::Border {
+                            rect: outline,
+                            widths: Edges::uniform(style.outline_width),
+                            color,
+                        });
+                    }
+                }
+            }
+            if blended {
+                list.push(DisplayItem::PopBlend);
             }
             if faded {
                 list.push(DisplayItem::PopOpacity);
             }
-            if clip.is_some() {
+            if xformed {
+                list.push(DisplayItem::PopTransform);
+            }
+            if radius > 0.0 || clip.is_some() {
+                list.push(DisplayItem::PopClip);
+            }
+            if css_clip.is_some() {
                 list.push(DisplayItem::PopClip);
             }
         }
         list
     }
+}
+
+fn background_origin_rect(rect: Rect, style: &ComputedStyle) -> Rect {
+    let kind = match style.background_origin {
+        BackgroundOrigin::BorderBox => BackgroundClip::BorderBox,
+        BackgroundOrigin::PaddingBox => BackgroundClip::PaddingBox,
+        BackgroundOrigin::ContentBox => BackgroundClip::ContentBox,
+    };
+    inset_box(rect, style, kind)
+}
+
+fn background_clip_rect(rect: Rect, style: &ComputedStyle) -> Rect {
+    inset_box(rect, style, style.background_clip)
+}
+
+fn inset_box(rect: Rect, style: &ComputedStyle, kind: BackgroundClip) -> Rect {
+    let w = rect.width();
+    let (bt, br, bb, bl) = match kind {
+        BackgroundClip::BorderBox => return rect,
+        BackgroundClip::PaddingBox => (
+            style.border_top(),
+            style.border_right(),
+            style.border_bottom(),
+            style.border_left(),
+        ),
+        BackgroundClip::ContentBox => (
+            style.border_top() + style.padding_top.resolve(w),
+            style.border_right() + style.padding_right.resolve(w),
+            style.border_bottom() + style.padding_bottom.resolve(w),
+            style.border_left() + style.padding_left.resolve(w),
+        ),
+    };
+    Rect::new(
+        rect.x() + bl,
+        rect.y() + bt,
+        (rect.width() - bl - br).max(0.0),
+        (rect.height() - bt - bb).max(0.0),
+    )
+}
+
+fn push_line_decoration(
+    list: &mut DisplayList,
+    x: f32,
+    y: f32,
+    width: f32,
+    thickness: f32,
+    color: Rgba,
+    style: TextDecorationStyle,
+) {
+    match style {
+        TextDecorationStyle::Solid | TextDecorationStyle::Wavy => {
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x, y, width, thickness),
+                color,
+            });
+        }
+        TextDecorationStyle::Double => {
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x, y, width, thickness),
+                color,
+            });
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x, y + thickness + 1.0, width, thickness),
+                color,
+            });
+        }
+        TextDecorationStyle::Dashed => {
+            let dash = (thickness * 3.0).max(4.0);
+            let mut cx = x;
+            while cx < x + width {
+                let w = dash.min(x + width - cx);
+                list.push(DisplayItem::Rect {
+                    rect: Rect::new(cx, y, w, thickness),
+                    color,
+                });
+                cx += dash * 2.0;
+            }
+        }
+        TextDecorationStyle::Dotted => {
+            let mut cx = x;
+            while cx < x + width {
+                list.push(DisplayItem::Rect {
+                    rect: Rect::new(cx, y, thickness, thickness),
+                    color,
+                });
+                cx += thickness * 2.0;
+            }
+        }
+    }
+}
+
+fn push_column_rule(
+    list: &mut DisplayList,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    color: Rgba,
+    style: TextDecorationStyle,
+) {
+    match style {
+        TextDecorationStyle::Solid | TextDecorationStyle::Wavy => {
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x, y, width, height),
+                color,
+            });
+        }
+        TextDecorationStyle::Double => {
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x, y, width, height),
+                color,
+            });
+            list.push(DisplayItem::Rect {
+                rect: Rect::new(x + width + 1.0, y, width, height),
+                color,
+            });
+        }
+        TextDecorationStyle::Dashed | TextDecorationStyle::Dotted => {
+            let dash = if style == TextDecorationStyle::Dotted {
+                width
+            } else {
+                (width * 3.0).max(4.0)
+            };
+            let mut cy = y;
+            while cy < y + height {
+                let h = dash.min(y + height - cy);
+                list.push(DisplayItem::Rect {
+                    rect: Rect::new(x, cy, width, h),
+                    color,
+                });
+                cy += dash * 2.0;
+            }
+        }
+    }
+}
+
+fn object_fit_size(fit: ObjectFit) -> BackgroundSize {
+    match fit {
+        ObjectFit::Cover => BackgroundSize::Cover,
+        ObjectFit::Contain | ObjectFit::ScaleDown => BackgroundSize::Contain,
+        ObjectFit::None => BackgroundSize::Auto,
+        ObjectFit::Fill => BackgroundSize::Size {
+            width: LengthPercentageAuto::Percent(100.0),
+            height: LengthPercentageAuto::Percent(100.0),
+        },
+    }
+}
+
+fn resolve_axis(value: LengthPercentageAuto, basis: f32, auto: f32) -> f32 {
+    match value {
+        LengthPercentageAuto::Auto => auto,
+        LengthPercentageAuto::Px(px) => px,
+        LengthPercentageAuto::Percent(p) => basis * p / 100.0,
+        LengthPercentageAuto::Calc { px, percent } => px + basis * percent / 100.0,
+    }
+}
+
+/// Destination and source rectangles for one background / object-fit tile.
+#[must_use]
+pub fn resolve_image_placement(
+    box_rect: Rect,
+    img_w: f32,
+    img_h: f32,
+    size: BackgroundSize,
+    position: BackgroundPosition,
+) -> (Rect, Rect) {
+    let box_w = box_rect.width().max(0.001);
+    let box_h = box_rect.height().max(0.001);
+    let img_w = img_w.max(0.001);
+    let img_h = img_h.max(0.001);
+    let (tile_w, tile_h, src) = match size {
+        BackgroundSize::Cover => {
+            let scale = (box_w / img_w).max(box_h / img_h);
+            let src_w = (box_w / scale).min(img_w);
+            let src_h = (box_h / scale).min(img_h);
+            let extra_x = (img_w - src_w).max(0.0);
+            let extra_y = (img_h - src_h).max(0.0);
+            (
+                box_w,
+                box_h,
+                Rect::new(
+                    position.x.resolve(extra_x),
+                    position.y.resolve(extra_y),
+                    src_w,
+                    src_h,
+                ),
+            )
+        }
+        BackgroundSize::Contain => {
+            let scale = (box_w / img_w).min(box_h / img_h);
+            (
+                img_w * scale,
+                img_h * scale,
+                Rect::new(0.0, 0.0, img_w, img_h),
+            )
+        }
+        BackgroundSize::Auto => (img_w, img_h, Rect::new(0.0, 0.0, img_w, img_h)),
+        BackgroundSize::Size { width, height } => {
+            let tw = resolve_axis(width, box_w, img_w);
+            let th = resolve_axis(height, box_h, img_h);
+            (
+                tw.max(0.001),
+                th.max(0.001),
+                Rect::new(0.0, 0.0, img_w, img_h),
+            )
+        }
+    };
+    let dx = position.x.resolve((box_w - tile_w).max(0.0));
+    let dy = position.y.resolve((box_h - tile_h).max(0.0));
+    (
+        Rect::new(box_rect.x() + dx, box_rect.y() + dy, tile_w, tile_h),
+        src,
+    )
+}
+
+/// Tile origins for `background-repeat` inside `box_rect`.
+#[must_use]
+pub fn background_tile_origins(box_rect: Rect, tile: Rect, repeat: BackgroundRepeat) -> Vec<Point> {
+    let mut out = vec![Point::new(tile.x(), tile.y())];
+    let tw = tile.width().max(0.001);
+    let th = tile.height().max(0.001);
+    let repeat_x = matches!(repeat, BackgroundRepeat::Repeat | BackgroundRepeat::RepeatX);
+    let repeat_y = matches!(repeat, BackgroundRepeat::Repeat | BackgroundRepeat::RepeatY);
+    if repeat_x {
+        let mut x = tile.x() - tw;
+        while x + tw > box_rect.x() {
+            out.push(Point::new(x, tile.y()));
+            x -= tw;
+        }
+        let mut x = tile.x() + tw;
+        while x < box_rect.right() {
+            out.push(Point::new(x, tile.y()));
+            x += tw;
+        }
+    }
+    if repeat_y {
+        let row: Vec<Point> = out.clone();
+        let mut y = tile.y() - th;
+        while y + th > box_rect.y() {
+            for p in &row {
+                out.push(Point::new(p.x, y));
+            }
+            y -= th;
+        }
+        let mut y = tile.y() + th;
+        while y < box_rect.bottom() {
+            for p in &row {
+                out.push(Point::new(p.x, y));
+            }
+            y += th;
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -357,6 +1106,761 @@ mod tests {
                 .iter()
                 .any(|i| matches!(i, DisplayItem::PushClip(_))),
             "overflow clip missing"
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_box_shadow() {
+        let html = "<style>body{margin:0} #s{width:40px;height:20px;background:red;box-shadow:2px 3px 4px black}</style>\
+                    <div id=s></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::BoxShadow {
+                    dx,
+                    dy,
+                    blur,
+                    color,
+                    ..
+                } if (*dx - 2.0).abs() < f32::EPSILON
+                    && (*dy - 3.0).abs() < f32::EPSILON
+                    && (*blur - 4.0).abs() < f32::EPSILON
+                    && *color == Rgba::BLACK
+            )),
+            "box-shadow missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_outline_and_text_shadow() {
+        let html = "<style>body{margin:0} #o{width:40px;height:20px;background:red;outline:2px solid blue;outline-offset:1px}\
+                    #t{text-shadow:1px 2px black}</style>\
+                    <div id=o></div><p id=t>Hi</p>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Border { widths, color, .. }
+                    if widths.top == 2.0 && *color == Rgba::rgb(0, 0, 255)
+            )),
+            "outline missing: {:?}",
+            list.items()
+        );
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Text(run) if run.text == "Hi" && run.color == Rgba::BLACK
+            )),
+            "text-shadow missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_text_underline() {
+        let html = "<style>body{margin:0} #t{text-decoration:underline;text-decoration-thickness:4px;text-underline-offset:2px}</style><p id=t>Hi</p>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#t").unwrap()[0];
+        assert_eq!(
+            styles.style(id).text_decoration_line,
+            TextDecorationLine::Underline
+        );
+        assert!((styles.style(id).text_decoration_thickness - 4.0).abs() < f32::EPSILON);
+        assert!((styles.style(id).text_underline_offset - 2.0).abs() < f32::EPSILON);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        let underline = list.items().iter().find_map(|i| match i {
+            DisplayItem::Rect { rect, .. } if (rect.height() - 4.0).abs() < 0.1 => Some(*rect),
+            _ => None,
+        });
+        assert!(
+            underline.is_some()
+                && list
+                    .items()
+                    .iter()
+                    .any(|i| matches!(i, DisplayItem::Text(run) if run.text == "Hi")),
+            "underline missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_mix_blend_mode() {
+        let html = "<style>body{margin:0} #t{mix-blend-mode:multiply;width:10px;height:10px;background:red}</style><div id=t></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::PushBlend(MixBlendMode::Multiply))),
+            "mix-blend-mode missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_background_blend_mode() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;background-image:url(x.png);background-blend-mode:multiply}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(
+            styles.style(id).background_blend_mode,
+            MixBlendMode::Multiply
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::PushBlend(MixBlendMode::Multiply))),
+            "background-blend-mode missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_hides_backface() {
+        let html = "<style>body{margin:0} #t{width:10px;height:10px;background:red;backface-visibility:hidden;rotate:180deg}</style><div id=t></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#t").unwrap()[0];
+        assert_eq!(
+            styles.style(id).backface_visibility,
+            ve_style::BackfaceVisibility::Hidden
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            !list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Rect { color, .. } if *color == Rgba::rgb(255, 0, 0)
+            )),
+            "back face should be hidden: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_text_emphasis_marks() {
+        let html =
+            "<style>body{margin:0;font-size:16px} #t{text-emphasis:dot}</style><p id=t>Hi</p>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#t").unwrap()[0];
+        assert_eq!(styles.style(id).text_emphasis, ve_style::TextEmphasis::Dot);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::Text(run) if run.text.contains('•'))),
+            "text-emphasis marks missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_non_scaling_stroke_ignores_zoom() {
+        let html = "<style>body{margin:0} #t{width:10px;height:10px;stroke:red;stroke-width:4px;zoom:2;vector-effect:non-scaling-stroke}</style><div id=t></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Border { widths, .. } if (widths.top - 2.0).abs() < 0.1
+            )),
+            "non-scaling stroke should be 4/2=2, got {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_border_image() {
+        let html = "<style>body{margin:0} #g{width:20px;height:10px;border-image:url(x.png)}</style><div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert!(matches!(
+            styles.style(id).border_image,
+            BackgroundImage::Url(_)
+        ));
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::Image { handle, .. } if handle.0 == 1)),
+            "border-image missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_column_rule() {
+        let html = "<style>body{margin:0} #c{column-count:2;column-gap:16px;column-rule-width:2px;column-rule-color:blue;width:200px;height:40px}</style>\
+                    <div id=c><div style='height:20px'></div><div style='height:20px'></div></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(400.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Rect { rect, color }
+                    if (rect.width() - 2.0).abs() < 0.5 && *color == Rgba::rgb(0, 0, 255)
+            )),
+            "column-rule missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_applies_individual_translate() {
+        let html = "<style>body{margin:0} #g{width:20px;height:10px;background:red;translate:8px 4px}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert!(!styles.style(id).translate.is_empty(), "translate computed");
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::PushTransform { tx, ty, sx, sy, angle, .. } if (*tx - 8.0).abs() < 0.1 && (*ty - 4.0).abs() < 0.1 && (*sx - 1.0).abs() < f32::EPSILON && (*sy - 1.0).abs() < f32::EPSILON && angle.abs() < f32::EPSILON)),
+            "individual translate missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_applies_individual_scale() {
+        let html = "<style>body{margin:0} #g{width:20px;height:10px;background:red;scale:2;transform-origin:0 0}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert!(!styles.style(id).scale.is_empty(), "scale computed");
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::PushTransform { sx, sy, .. }
+                    if (*sx - 2.0).abs() < 0.1 && (*sy - 2.0).abs() < 0.1
+            )),
+            "individual scale missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_applies_individual_rotate() {
+        let html = "<style>body{margin:0} #g{width:20px;height:10px;background:red;rotate:90deg}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert!(!styles.style(id).rotate.is_empty(), "rotate computed");
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        let half_pi = std::f32::consts::FRAC_PI_2;
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::PushTransform { angle, .. }
+                    if (*angle - half_pi).abs() < 0.01
+            )),
+            "individual rotate missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_applies_css_clip_rect() {
+        let html = "<style>body{margin:0} #g{position:absolute;left:0;top:0;width:40px;height:20px;background:red;clip:rect(0, 20px, 20px, 0)}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        let clip = styles.style(id).clip;
+        assert!(
+            matches!(clip, ve_style::CssClip::Rect { right, .. } if (right - 20.0).abs() < f32::EPSILON),
+            "clip computed: {clip:?}"
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::PushClip(r) if (r.width() - 20.0).abs() < 0.5 && (r.height() - 20.0).abs() < 0.5
+            )),
+            "css clip missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_applies_offset_path() {
+        let html = "<style>body{margin:0} #g{width:20px;height:10px;background:red;offset-path:path(\"M 0 0 L 80 0\");offset-distance:100%}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Rect { rect, .. } if (rect.x() - 80.0).abs() < 0.5 && (rect.width() - 20.0).abs() < 0.5
+            )),
+            "offset-path paint missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_hides_empty_cells() {
+        let html = "<style>body{margin:0} table{border-spacing:0;empty-cells:hide} td{width:20px;height:10px;background:red;padding:0}</style>\
+                    <table><tr><td id=e></td><td id=f>x</td></tr></table>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        let reds = list
+            .items()
+            .iter()
+            .filter(
+                |i| matches!(i, DisplayItem::Rect { color, .. } if *color == Rgba::rgb(255, 0, 0)),
+            )
+            .count();
+        assert_eq!(reds, 1, "empty cell still painted: {:?}", list.items());
+    }
+
+    #[test]
+    fn from_layout_applies_zoom_and_hides_content_visibility() {
+        let html = "<style>body{margin:0} #z{width:10px;height:10px;background:red;zoom:2;transform-origin:0 0} #h{width:10px;height:10px;background:blue;content-visibility:hidden}</style>\
+                    <div id=z></div><div id=h></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let z = engine.select(&doc, "#z").unwrap()[0];
+        let h = engine.select(&doc, "#h").unwrap()[0];
+        assert!((styles.style(z).zoom - 2.0).abs() < f32::EPSILON);
+        assert_eq!(
+            styles.style(h).content_visibility,
+            ContentVisibility::Hidden
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::PushTransform { sx, sy, .. }
+                    if (*sx - 2.0).abs() < 0.1 && (*sy - 2.0).abs() < 0.1
+            )),
+            "zoom missing: {:?}",
+            list.items()
+        );
+        let blues = list
+            .items()
+            .iter()
+            .filter(
+                |i| matches!(i, DisplayItem::Rect { color, .. } if *color == Rgba::rgb(0, 0, 255)),
+            )
+            .count();
+        assert_eq!(blues, 0, "hidden still painted: {:?}", list.items());
+    }
+
+    #[test]
+    fn from_layout_uses_background_origin_content_box() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;padding:4px;border:2px solid black;background-image:url(\"https://a.test/x.png\");background-origin:content-box;background-repeat:no-repeat}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(
+            styles.style(id).background_origin,
+            BackgroundOrigin::ContentBox
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image { rect, .. } if (rect.width() - 40.0).abs() < 0.5
+            )),
+            "origin content-box image missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_clips_background_to_content_box() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;padding:4px;border:2px solid black;background:red;background-clip:content-box}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(styles.style(id).background_clip, BackgroundClip::ContentBox);
+        assert_eq!(styles.style(id).cursor, "auto");
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        let bg = list.items().iter().find_map(|i| match i {
+            DisplayItem::Rect { rect, color } if *color == Rgba::rgb(255, 0, 0) => Some(*rect),
+            _ => None,
+        });
+        let bg = bg.expect("content-box background");
+        assert!(
+            (bg.width() - 40.0).abs() < 0.5,
+            "content width, got {}",
+            bg.width()
+        );
+        assert!(
+            (bg.height() - 20.0).abs() < 0.5,
+            "content height, got {}",
+            bg.height()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_background_size_cover() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;background-image:url(\"https://a.test/x.png\");background-size:cover;background-repeat:no-repeat;background-position:center}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(styles.style(id).background_size, BackgroundSize::Cover);
+        assert_eq!(
+            styles.style(id).background_repeat,
+            BackgroundRepeat::NoRepeat
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image {
+                    size: BackgroundSize::Cover,
+                    repeat: BackgroundRepeat::NoRepeat,
+                    ..
+                }
+            )),
+            "cover image missing: {:?}",
+            list.items()
+        );
+        let (dest, src) = resolve_image_placement(
+            Rect::new(0.0, 0.0, 40.0, 20.0),
+            10.0,
+            10.0,
+            BackgroundSize::Cover,
+            BackgroundPosition {
+                x: ve_style::LengthPercentage::Percent(50.0),
+                y: ve_style::LengthPercentage::Percent(50.0),
+            },
+        );
+        assert!((dest.width() - 40.0).abs() < f32::EPSILON);
+        assert!((src.height() - 5.0).abs() < f32::EPSILON);
+        assert!((src.y() - 2.5).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn from_layout_emits_object_position() {
+        let html = "<style>body{margin:0} img{display:block;width:40px;height:20px;object-fit:none;object-position:right bottom}</style>\
+                    <img id=g>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(
+            styles.style(id).object_position.x,
+            ve_style::LengthPercentage::Percent(100.0)
+        );
+        assert_eq!(
+            styles.style(id).object_position.y,
+            ve_style::LengthPercentage::Percent(100.0)
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image {
+                    position,
+                    repeat: BackgroundRepeat::NoRepeat,
+                    ..
+                } if position.x == ve_style::LengthPercentage::Percent(100.0)
+                    && position.y == ve_style::LengthPercentage::Percent(100.0)
+            )),
+            "object-position missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_linear_gradient_and_filter_blur() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;background-image:linear-gradient(red, blue);filter:blur(2px)}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(
+                |i| matches!(i, DisplayItem::LinearGradient { stops, .. } if stops.len() >= 2)
+            ),
+            "linear-gradient missing: {:?}",
+            list.items()
+        );
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::FilterBlur { radius, .. } if *radius >= 2.0)),
+            "filter blur missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_backdrop_filter_blur() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;background:red;backdrop-filter:blur(3px)}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert!(
+            matches!(styles.style(id).backdrop_filter, Filter::Blur(r) if r >= 3.0),
+            "backdrop-filter computed: {:?}",
+            styles.style(id).backdrop_filter
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::FilterBlur { radius, .. } if *radius >= 3.0)),
+            "backdrop-filter blur missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_dashed_underline() {
+        let html = "<style>body{margin:0} #t{text-decoration:underline;text-decoration-style:dashed;text-decoration-thickness:2px}</style><p id=t>Hi</p>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        let dashes = list
+            .items()
+            .iter()
+            .filter(|i| matches!(i, DisplayItem::Rect { rect, .. } if (rect.height() - 2.0).abs() < 0.1))
+            .count();
+        assert!(
+            dashes >= 2,
+            "dashed underline should emit multiple rects, got {dashes}: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_fill_and_stroke() {
+        let html = "<style>body{margin:0} #s{width:20px;height:10px;fill:red;stroke:blue;stroke-width:2px}</style><div id=s></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Rect { color, .. } if *color == Rgba::rgb(255, 0, 0)
+            )),
+            "fill missing: {:?}",
+            list.items()
+        );
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Border { widths, color, .. }
+                    if widths.top == 2.0 && *color == Rgba::rgb(0, 0, 255)
+            )),
+            "stroke missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_uses_background_position_x() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;background-image:url(x.png);background-position-x:10px}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert_eq!(
+            styles.style(id).background_position_x,
+            Some(ve_style::LengthPercentage::Px(10.0))
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image { position, pixelated: false, .. }
+                    if position.x == ve_style::LengthPercentage::Px(10.0)
+            )),
+            "background-position-x missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_marks_pixelated_image() {
+        let html = "<style>body{margin:0} #g{width:10px;height:10px;image-rendering:pixelated}</style><img id=g>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image {
+                    pixelated: true,
+                    ..
+                }
+            )),
+            "pixelated missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_inline_svg_image() {
+        let html = "<style>body{margin:0} svg{display:block}</style>\
+                    <svg id=s width=8 height=8></svg>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#s").unwrap()[0];
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(7));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image { handle, rect, .. }
+                    if handle.0 == 7 && (rect.width() - 8.0).abs() < 0.5
+            )),
+            "inline svg image missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn fixed_background_does_not_translate() {
+        let item = DisplayItem::Image {
+            rect: Rect::new(10.0, 20.0, 8.0, 8.0),
+            handle: ImageHandle(1),
+            src: None,
+            size: BackgroundSize::Auto,
+            position: BackgroundPosition {
+                x: ve_style::LengthPercentage::ZERO,
+                y: ve_style::LengthPercentage::ZERO,
+            },
+            repeat: BackgroundRepeat::NoRepeat,
+            fixed: true,
+            pixelated: false,
+        };
+        let moved = item.translated(5.0, 7.0);
+        assert!(
+            matches!(
+                moved,
+                DisplayItem::Image { rect, fixed: true, .. }
+                    if (rect.x() - 10.0).abs() < f32::EPSILON && (rect.y() - 20.0).abs() < f32::EPSILON
+            ),
+            "fixed background must stay put: {moved:?}"
         );
     }
 }

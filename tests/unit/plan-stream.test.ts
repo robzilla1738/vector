@@ -152,6 +152,7 @@ describe("RunCoordinator streams plans (A5)", () => {
       repo, events,
       pages: { observe: vi.fn(async () => obs()), execute, capture: vi.fn(), livePageIds: () => ["p1"], get: () => ({ viewStatus: "visible" }) } as never,
       model: () => model, defaultModel: () => "m", recoveryModel: () => undefined, recordModelCall: () => {},
+      grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     });
     const run = await coordinator.start({ goal: "g", pageIds: ["p1"] });
     for (let i = 0; i < 200 && !["completed", "failed"].includes(repo.getRun(run.runId)!.status); i++) await new Promise((r) => setTimeout(r, 10));

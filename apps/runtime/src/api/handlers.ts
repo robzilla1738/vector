@@ -1,4 +1,4 @@
-import { EventTypes, MethodSchemas, newProgramId, VectorError, type MethodName } from "@vector/contracts";
+import { EventTypes, MethodSchemas, newProgramId, VectorError, type Condition, type MethodName } from "@vector/contracts";
 import type { PageService } from "../services/pages.js";
 import type { SetService } from "../services/sets.js";
 import type { RunService } from "../services/runs.js";
@@ -10,7 +10,7 @@ import type { StateService } from "../services/state.js";
 import type { Tracer } from "../services/tracing.js";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
-import type { EngineAvailability } from "@vector/browser-driver";
+import type { EngineAvailability } from "@vector/engine-client";
 import { compactObservation } from "../services/observation-render.js";
 import type { DriverSet } from "../services/pages.js";
 import type { Router } from "../services/router.js";
@@ -77,6 +77,29 @@ export function makeInvoker(s: Services) {
         });
         if (!p.returnObservation) return result;
         return { ...result, observation: observation ? (format === "compact" ? compactObservation(observation) : observation) : undefined };
+      }
+      case "pages.extract": {
+        const p = params as { pageId: string; fields?: Array<string | { name: string; selector?: string; attribute?: string; all?: boolean }> };
+        return s.pages.extract(p.pageId, p.fields);
+      }
+      case "pages.waitFor": {
+        const p = params as { pageId: string; condition: Condition };
+        return s.pages.waitFor(p.pageId, p.condition);
+      }
+      case "pages.console": {
+        const p = params as { pageId: string; since?: number; limit?: number };
+        return s.pages.console(p.pageId, p);
+      }
+      case "pages.dialog": {
+        const p = params as { pageId: string; action?: "list" | "accept" | "dismiss"; promptText?: string };
+        return s.pages.dialog(p.pageId, p.action ?? "list", p.promptText);
+      }
+      case "pages.network": {
+        const p = params as { pageId: string; since?: number; urlIncludes?: string; limit?: number };
+        if (s.pages.network) return s.pages.network(p.pageId, p);
+        if (!s.responses) throw new VectorError("backend_unavailable", "response capture not wired");
+        await s.responses.flush();
+        return s.responses.list(p.pageId, p);
       }
       case "pages.engineInput": {
         const p = params as {

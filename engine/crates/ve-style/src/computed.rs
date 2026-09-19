@@ -286,7 +286,12 @@ impl ComputedStyle {
     /// `getComputedStyle`. Unknown names yield the empty string.
     #[must_use]
     pub fn property_css(&self, name: &str) -> String {
-        use crate::values::{LengthPercentage, LengthPercentageAuto, MaxSize};
+        use crate::values::{
+            BackgroundImage, BackgroundPosition, BackgroundSize, BoxShadow, ClipPath, Content,
+            ContentItem, CssClip, Filter, GridLine, GridTemplateAreas, LengthPercentage,
+            LengthPercentageAuto, LineHeight, MaxSize, OffsetPath, ShapeOutside, TrackSize,
+            TransformOp, VerticalAlign,
+        };
 
         fn px(v: f32) -> String {
             if v == 0.0 {
@@ -318,7 +323,129 @@ impl ComputedStyle {
                 MaxSize::Calc { px, percent } => format!("calc({px}px + {percent}%)"),
             }
         }
+        fn time_ms(v: f32) -> String {
+            if v == 0.0 {
+                "0s".into()
+            } else if (v / 1000.0 - (v / 1000.0).round()).abs() < 1e-4 {
+                format!("{}s", (v / 1000.0).round())
+            } else {
+                format!("{}s", v / 1000.0)
+            }
+        }
+        fn transform_ops(ops: &[TransformOp]) -> String {
+            if ops.is_empty() {
+                return "none".into();
+            }
+            ops.iter()
+                .map(|op| match *op {
+                    TransformOp::Translate(x, y) => format!("translate({}, {})", lp(x), lp(y)),
+                    TransformOp::Scale(x, y) => {
+                        if (x - y).abs() < 1e-6 {
+                            format!("scale({x})")
+                        } else {
+                            format!("scale({x}, {y})")
+                        }
+                    }
+                    TransformOp::Rotate(rad) => format!("rotate({}deg)", rad.to_degrees()),
+                })
+                .collect::<Vec<_>>()
+                .join(" ")
+        }
+        fn bg_image(img: &BackgroundImage) -> String {
+            match img {
+                BackgroundImage::None => "none".into(),
+                BackgroundImage::Url(u) => format!("url(\"{u}\")"),
+                BackgroundImage::LinearGradient(stops) => {
+                    let parts = stops
+                        .iter()
+                        .map(|(_, c)| c.to_css_string())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!("linear-gradient({parts})")
+                }
+            }
+        }
+        fn bg_size(v: BackgroundSize) -> String {
+            match v {
+                BackgroundSize::Auto => "auto".into(),
+                BackgroundSize::Cover => "cover".into(),
+                BackgroundSize::Contain => "contain".into(),
+                BackgroundSize::Size { width, height } => format!("{} {}", lpa(width), lpa(height)),
+            }
+        }
+        fn bg_pos(v: BackgroundPosition) -> String {
+            format!("{} {}", lp(v.x), lp(v.y))
+        }
+        fn box_shadow(v: BoxShadow) -> String {
+            if v.is_none() {
+                "none".into()
+            } else {
+                format!(
+                    "{} {} {} {}",
+                    px(v.dx),
+                    px(v.dy),
+                    px(v.blur),
+                    v.color.to_css_string()
+                )
+            }
+        }
+        fn filter_css(v: Filter) -> String {
+            match v {
+                Filter::None => "none".into(),
+                Filter::Blur(r) => format!("blur({})", px(r)),
+            }
+        }
+        fn grid_line(v: &GridLine) -> String {
+            match v {
+                GridLine::Auto => "auto".into(),
+                GridLine::Line(n) => format!("{n}"),
+                GridLine::Span(n) => format!("span {n}"),
+                GridLine::Named(n) => n.clone(),
+            }
+        }
+        fn track_size(v: TrackSize) -> String {
+            match v {
+                TrackSize::Px(v) => px(v),
+                TrackSize::Percent(p) => format!("{p}%"),
+                TrackSize::Fr(n) => format!("{n}fr"),
+                TrackSize::Auto => "auto".into(),
+                TrackSize::MinContent => "min-content".into(),
+                TrackSize::MaxContent => "max-content".into(),
+            }
+        }
+        fn tracks(list: &[TrackSize]) -> String {
+            if list.is_empty() {
+                "none".into()
+            } else {
+                list.iter()
+                    .copied()
+                    .map(track_size)
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            }
+        }
+        fn grid_areas(v: &GridTemplateAreas) -> String {
+            if v.is_none() {
+                "none".into()
+            } else {
+                v.rows
+                    .iter()
+                    .map(|row| format!("\"{}\"", row.join(" ")))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            }
+        }
 
+        if name.eq_ignore_ascii_case("border-spacing") {
+            if (self.border_spacing_x - self.border_spacing_y).abs() < 1e-4 {
+                return px(self.border_spacing_x);
+            }
+            return format!(
+                "{} {}",
+                px(self.border_spacing_x),
+                px(self.border_spacing_y)
+            );
+        }
         if name.starts_with("--") {
             return self
                 .custom_properties
@@ -400,7 +527,434 @@ impl ComputedStyle {
             PropertyId::FlexWrap => self.flex_wrap.to_string(),
             PropertyId::JustifyContent => self.justify_content.to_string(),
             PropertyId::AlignItems => self.align_items.to_string(),
-            _ => String::new(),
+            PropertyId::FillRule => self.fill_rule.to_string(),
+            PropertyId::StrokeLinecap => self.stroke_linecap.to_string(),
+            PropertyId::StrokeLinejoin => self.stroke_linejoin.to_string(),
+            PropertyId::StrokeMiterlimit => format!("{}", self.stroke_miterlimit),
+            PropertyId::StrokeDashoffset => format!("{}", self.stroke_dashoffset),
+            PropertyId::AccentColor => match self.accent_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::CaretColor => match self.caret_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::LetterSpacing => {
+                if self.letter_spacing == 0.0 {
+                    "normal".into()
+                } else {
+                    px(self.letter_spacing)
+                }
+            }
+            PropertyId::WordSpacing => {
+                if self.word_spacing == 0.0 {
+                    "normal".into()
+                } else {
+                    px(self.word_spacing)
+                }
+            }
+            PropertyId::LineHeight => match self.line_height {
+                LineHeight::Normal => "normal".into(),
+                LineHeight::Number(n) => format!("{n}"),
+                LineHeight::Px(v) => px(v),
+            },
+            PropertyId::TabSize => format!("{}", self.tab_size),
+            PropertyId::UserSelect => self.user_select.to_string(),
+            PropertyId::Cursor => self.cursor.clone(),
+            PropertyId::WillChange => self.will_change.clone(),
+            PropertyId::OutlineWidth => px(self.outline_width),
+            PropertyId::OutlineStyle => self.outline_style.to_string(),
+            PropertyId::OutlineColor => match self.outline_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::OutlineOffset => px(self.outline_offset),
+            PropertyId::BorderTopColor => match self.border_top_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::BorderRightColor => match self.border_right_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::BorderBottomColor => match self.border_bottom_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::BorderLeftColor => match self.border_left_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::VerticalAlign => match self.vertical_align {
+                VerticalAlign::Baseline => "baseline".into(),
+                VerticalAlign::Sub => "sub".into(),
+                VerticalAlign::Super => "super".into(),
+                VerticalAlign::Top => "top".into(),
+                VerticalAlign::TextTop => "text-top".into(),
+                VerticalAlign::Middle => "middle".into(),
+                VerticalAlign::Bottom => "bottom".into(),
+                VerticalAlign::TextBottom => "text-bottom".into(),
+                VerticalAlign::Length(v) => px(v),
+                VerticalAlign::Percent(p) => format!("{p}%"),
+            },
+            PropertyId::Hyphens => self.hyphens.to_string(),
+            PropertyId::TextIndent => lp(self.text_indent),
+            PropertyId::TextAlignLast => self.text_align_last.to_string(),
+            PropertyId::WordBreak => self.word_break.to_string(),
+            PropertyId::OverflowWrap => self.overflow_wrap.to_string(),
+            PropertyId::ScrollBehavior => self.scroll_behavior.to_string(),
+            PropertyId::OverscrollBehavior => self.overscroll_behavior.to_string(),
+            PropertyId::Appearance => self.appearance.to_string(),
+            PropertyId::Orphans => format!("{}", self.orphans),
+            PropertyId::Widows => format!("{}", self.widows),
+            PropertyId::AnimationTimingFunction => self.animation_timing_function.clone(),
+            PropertyId::TextWrap => self.text_wrap.to_string(),
+            PropertyId::FontVariant => self.font_variant.to_string(),
+            PropertyId::TextOverflow => self.text_overflow.to_string(),
+            PropertyId::UnicodeBidi => self.unicode_bidi.to_string(),
+            PropertyId::ListStyleType => self.list_style_type.to_string(),
+            PropertyId::ListStylePosition => self.list_style_position.to_string(),
+            PropertyId::FlexGrow => format!("{}", self.flex_grow),
+            PropertyId::FlexShrink => format!("{}", self.flex_shrink),
+            PropertyId::FlexBasis => lpa(self.flex_basis),
+            PropertyId::Order => format!("{}", self.order),
+            PropertyId::AlignContent => self.align_content.to_string(),
+            PropertyId::JustifyItems => self.justify_items.to_string(),
+            PropertyId::AlignSelf => self.align_self.to_string(),
+            PropertyId::JustifySelf => self.justify_self.to_string(),
+            PropertyId::RowGap => lp(self.row_gap),
+            PropertyId::ColumnGap => lp(self.column_gap),
+            PropertyId::Isolation => self.isolation.to_string(),
+            PropertyId::MixBlendMode => self.mix_blend_mode.to_string(),
+            PropertyId::AnimationFillMode => self.animation_fill_mode.to_string(),
+            PropertyId::AnimationPlayState => self.animation_play_state.to_string(),
+            PropertyId::AnimationDirection => self.animation_direction.to_string(),
+            PropertyId::AnimationName => {
+                if self.animation_name.is_empty() {
+                    "none".into()
+                } else {
+                    self.animation_name.clone()
+                }
+            }
+            PropertyId::TransitionProperty => self.transition_property.clone(),
+            PropertyId::TransitionTimingFunction => self.transition_timing_function.clone(),
+            PropertyId::Contain => self.contain.to_string(),
+            PropertyId::ScrollbarWidth => self.scrollbar_width.to_string(),
+            PropertyId::ContainerType => self.container_type.to_string(),
+            PropertyId::TouchAction => self.touch_action.to_string(),
+            PropertyId::ImageRendering => self.image_rendering.to_string(),
+            PropertyId::PreferredColorScheme => self.color_scheme.to_string(),
+            PropertyId::ColumnSpan => self.column_span.to_string(),
+            PropertyId::TableLayout => self.table_layout.to_string(),
+            PropertyId::EmptyCells => self.empty_cells.to_string(),
+            PropertyId::ContentVisibility => self.content_visibility.to_string(),
+            PropertyId::FieldSizing => self.field_sizing.to_string(),
+            PropertyId::Resize => self.resize.to_string(),
+            PropertyId::TextOrientation => self.text_orientation.to_string(),
+            PropertyId::BackgroundBlendMode => self.background_blend_mode.to_string(),
+            PropertyId::FontStretch => self.font_stretch.to_string(),
+            PropertyId::FontVariantLigatures => self.font_variant_ligatures.to_string(),
+            PropertyId::FontVariantNumeric => self.font_variant_numeric.to_string(),
+            PropertyId::FontKerning => self.font_kerning.to_string(),
+            PropertyId::ScrollSnapType => self.scroll_snap_type.to_string(),
+            PropertyId::ScrollSnapAlign => self.scroll_snap_align.to_string(),
+            PropertyId::BreakBefore => self.break_before.to_string(),
+            PropertyId::BreakAfter => self.break_after.to_string(),
+            PropertyId::BreakInside => self.break_inside.to_string(),
+            PropertyId::TextRendering => self.text_rendering.to_string(),
+            PropertyId::FontSmoothing => self.font_smoothing.to_string(),
+            PropertyId::TransformStyle => self.transform_style.to_string(),
+            PropertyId::BackfaceVisibility => self.backface_visibility.to_string(),
+            PropertyId::HangingPunctuation => self.hanging_punctuation.to_string(),
+            PropertyId::TextEmphasis => self.text_emphasis.to_string(),
+            PropertyId::BoxOrient => self.box_orient.to_string(),
+            PropertyId::TransformBox => self.transform_box.to_string(),
+            PropertyId::VectorEffect => self.vector_effect.to_string(),
+            PropertyId::Speak => self.speak.to_string(),
+            PropertyId::ForcedColorAdjust => self.forced_color_adjust.to_string(),
+            PropertyId::TextJustify => self.text_justify.to_string(),
+            PropertyId::PrintColorAdjust => self.print_color_adjust.to_string(),
+            PropertyId::FontDisplay => self.font_display.to_string(),
+            PropertyId::FontOpticalSizing => self.font_optical_sizing.to_string(),
+            PropertyId::FontSynthesis => self.font_synthesis.to_string(),
+            PropertyId::RubyPosition => self.ruby_position.to_string(),
+            PropertyId::MathStyle => self.math_style.to_string(),
+            PropertyId::OverflowScrolling => self.overflow_scrolling.to_string(),
+            PropertyId::TouchCallout => self.touch_callout.to_string(),
+            PropertyId::ColorInterpolationFilters => self.color_interpolation_filters.to_string(),
+            PropertyId::FontVariantEastAsian => self.font_variant_east_asian.to_string(),
+            PropertyId::MaskComposite => self.mask_composite.to_string(),
+            PropertyId::ScrollSnapStop => self.scroll_snap_stop.to_string(),
+            PropertyId::BorderCollapse => self.border_collapse.to_string(),
+            PropertyId::CaptionSide => self.caption_side.to_string(),
+            PropertyId::TextDecorationStyle => self.text_decoration_style.to_string(),
+            PropertyId::TextUnderlinePosition => self.text_underline_position.to_string(),
+            PropertyId::ColumnRuleStyle => self.column_rule_style.to_string(),
+            PropertyId::ObjectFit => self.object_fit.to_string(),
+            PropertyId::BackgroundRepeat => self.background_repeat.to_string(),
+            PropertyId::BackgroundClip => self.background_clip.to_string(),
+            PropertyId::BackgroundOrigin => self.background_origin.to_string(),
+            PropertyId::BackgroundAttachment => self.background_attachment.to_string(),
+            PropertyId::GridAutoFlow => self.grid_auto_flow.to_string(),
+            PropertyId::Zoom => format!("{}", self.zoom),
+            PropertyId::StrokeWidth => px(self.stroke_width),
+            PropertyId::ScrollMargin => px(self.scroll_margin),
+            PropertyId::ScrollPadding => px(self.scroll_padding),
+            PropertyId::TextDecorationThickness => px(self.text_decoration_thickness),
+            PropertyId::TextUnderlineOffset => px(self.text_underline_offset),
+            PropertyId::ColumnRuleWidth => px(self.column_rule_width),
+            PropertyId::MarkerOffset => px(self.marker_offset),
+            PropertyId::MathDepth => format!("{}", self.math_depth),
+            PropertyId::FontFeatureSettings => self.font_feature_settings.clone(),
+            PropertyId::FontLanguageOverride => self.font_language_override.clone(),
+            PropertyId::FontPalette => self.font_palette.clone(),
+            PropertyId::AnimationRange => self.animation_range.clone(),
+            PropertyId::AnimationTimeline => self.animation_timeline.clone(),
+            PropertyId::ViewTimeline => self.view_timeline.clone(),
+            PropertyId::BorderImageSlice => self.border_image_slice.clone(),
+            PropertyId::TextDecorationColor => match self.text_decoration_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::ColumnRuleColor => match self.column_rule_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::Fill => match self.fill {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::Stroke => match self.stroke {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::AnimationDuration => time_ms(self.animation_duration_ms),
+            PropertyId::AnimationDelay => time_ms(self.animation_delay_ms),
+            PropertyId::TransitionDuration => time_ms(self.transition_duration_ms),
+            PropertyId::TransitionDelay => time_ms(self.transition_delay_ms),
+            PropertyId::AnimationIterationCount => {
+                if self.animation_iteration_count.is_infinite() {
+                    "infinite".into()
+                } else {
+                    format!("{}", self.animation_iteration_count)
+                }
+            }
+            PropertyId::AspectRatio => match self.aspect_ratio {
+                None => "auto".into(),
+                Some(r) => format!("{r}"),
+            },
+            PropertyId::ColumnCount => match self.column_count {
+                None => "auto".into(),
+                Some(n) => format!("{n}"),
+            },
+            PropertyId::ColumnWidth => match self.column_width {
+                None => "auto".into(),
+                Some(w) => px(w),
+            },
+            PropertyId::LineClamp => match self.line_clamp {
+                None => "none".into(),
+                Some(n) => format!("{n}"),
+            },
+            PropertyId::ContainIntrinsicWidth => match self.contain_intrinsic_width {
+                None => "none".into(),
+                Some(w) => px(w),
+            },
+            PropertyId::ContainIntrinsicHeight => match self.contain_intrinsic_height {
+                None => "none".into(),
+                Some(h) => px(h),
+            },
+            PropertyId::BorderTopLeftRadius => px(self.border_top_left_radius),
+            PropertyId::BorderTopRightRadius => px(self.border_top_right_radius),
+            PropertyId::BorderBottomRightRadius => px(self.border_bottom_right_radius),
+            PropertyId::BorderBottomLeftRadius => px(self.border_bottom_left_radius),
+            PropertyId::Perspective => {
+                if self.perspective == 0.0 {
+                    "none".into()
+                } else {
+                    px(self.perspective)
+                }
+            }
+            PropertyId::TextSizeAdjust => format!("{}", self.text_size_adjust),
+            PropertyId::ContainerName => {
+                if self.container_name.is_empty() {
+                    "none".into()
+                } else {
+                    self.container_name.clone()
+                }
+            }
+            PropertyId::ViewTransitionName => {
+                if self.view_transition_name.is_empty() {
+                    "none".into()
+                } else {
+                    self.view_transition_name.clone()
+                }
+            }
+            PropertyId::TapHighlightColor => match self.tap_highlight_color {
+                crate::values::Color::Rgba(c) => c.to_css_string(),
+                crate::values::Color::CurrentColor => self.color.to_css_string(),
+            },
+            PropertyId::Transform => transform_ops(&self.transform),
+            PropertyId::Translate => transform_ops(&self.translate),
+            PropertyId::Scale => transform_ops(&self.scale),
+            PropertyId::Rotate => transform_ops(&self.rotate),
+            PropertyId::Filter => filter_css(self.filter),
+            PropertyId::BackdropFilter => filter_css(self.backdrop_filter),
+            PropertyId::BackgroundImage => bg_image(&self.background_image),
+            PropertyId::MaskImage => bg_image(&self.mask_image),
+            PropertyId::ListStyleImage => bg_image(&self.list_style_image),
+            PropertyId::BorderImage => bg_image(&self.border_image),
+            PropertyId::BackgroundSize => bg_size(self.background_size),
+            PropertyId::BackgroundPosition => bg_pos(self.background_position),
+            PropertyId::ObjectPosition => bg_pos(self.object_position),
+            PropertyId::TransformOrigin => bg_pos(self.transform_origin),
+            PropertyId::PerspectiveOrigin => bg_pos(self.perspective_origin),
+            PropertyId::BoxShadow => box_shadow(self.box_shadow),
+            PropertyId::TextShadow => box_shadow(self.text_shadow),
+            PropertyId::Clip => match self.clip {
+                CssClip::Auto => "auto".into(),
+                CssClip::Rect {
+                    top,
+                    right,
+                    bottom,
+                    left,
+                } => format!(
+                    "rect({}, {}, {}, {})",
+                    px(top),
+                    px(right),
+                    px(bottom),
+                    px(left)
+                ),
+            },
+            PropertyId::ClipPath => match self.clip_path {
+                ClipPath::None => "none".into(),
+                ClipPath::Inset {
+                    top,
+                    right,
+                    bottom,
+                    left,
+                } => format!(
+                    "inset({} {} {} {})",
+                    lp(top),
+                    lp(right),
+                    lp(bottom),
+                    lp(left)
+                ),
+            },
+            PropertyId::Content => match &self.content {
+                Content::Normal => "normal".into(),
+                Content::None => "none".into(),
+                Content::Text(t) => format!("\"{t}\""),
+                Content::Items(items) => {
+                    if items.is_empty() {
+                        "normal".into()
+                    } else {
+                        items
+                            .iter()
+                            .map(|item| match item {
+                                ContentItem::Text(t) => format!("\"{t}\""),
+                                ContentItem::Attr(n) => format!("attr({n})"),
+                                ContentItem::OpenQuote => "open-quote".into(),
+                                ContentItem::CloseQuote => "close-quote".into(),
+                                ContentItem::NoQuote => "no-open-quote".into(),
+                                ContentItem::Ignored => "none".into(),
+                            })
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    }
+                }
+            },
+            PropertyId::Quotes => {
+                if self.quotes.is_empty() {
+                    "auto".into()
+                } else {
+                    self.quotes.clone()
+                }
+            }
+            PropertyId::OffsetPath => match self.offset_path {
+                OffsetPath::None => "none".into(),
+                OffsetPath::Line { x0, y0, x1, y1 } => {
+                    format!("path(\"M {x0} {y0} L {x1} {y1}\")")
+                }
+            },
+            PropertyId::OffsetDistance => lp(self.offset_distance),
+            PropertyId::ShapeOutside => match self.shape_outside {
+                ShapeOutside::None => "none".into(),
+                ShapeOutside::Inset {
+                    top,
+                    right,
+                    bottom,
+                    left,
+                } => format!(
+                    "inset({} {} {} {})",
+                    lp(top),
+                    lp(right),
+                    lp(bottom),
+                    lp(left)
+                ),
+            },
+            PropertyId::GridRowStart => grid_line(&self.grid_row_start),
+            PropertyId::GridRowEnd => grid_line(&self.grid_row_end),
+            PropertyId::GridColumnStart => grid_line(&self.grid_column_start),
+            PropertyId::GridColumnEnd => grid_line(&self.grid_column_end),
+            PropertyId::AnchorName => {
+                if self.anchor_name.is_empty() {
+                    "none".into()
+                } else {
+                    self.anchor_name.clone()
+                }
+            }
+            PropertyId::PositionAnchor => {
+                if self.position_anchor.is_empty() {
+                    "none".into()
+                } else {
+                    self.position_anchor.clone()
+                }
+            }
+            PropertyId::PositionArea => self.position_area.to_string(),
+            PropertyId::BorderSpacingX => px(self.border_spacing_x),
+            PropertyId::BorderSpacingY => px(self.border_spacing_y),
+            PropertyId::GridTemplateColumns => tracks(&self.grid_template_columns),
+            PropertyId::GridTemplateRows => tracks(&self.grid_template_rows),
+            PropertyId::GridTemplateAreas => grid_areas(&self.grid_template_areas),
+            PropertyId::GridAutoColumns => {
+                if self.grid_auto_columns.is_empty() {
+                    "auto".into()
+                } else {
+                    tracks(&self.grid_auto_columns)
+                }
+            }
+            PropertyId::GridAutoRows => {
+                if self.grid_auto_rows.is_empty() {
+                    "auto".into()
+                } else {
+                    tracks(&self.grid_auto_rows)
+                }
+            }
+            PropertyId::BackgroundPositionX => match self.background_position_x {
+                Some(v) => lp(v),
+                None => lp(self.background_position.x),
+            },
+            PropertyId::BackgroundPositionY => match self.background_position_y {
+                Some(v) => lp(v),
+                None => lp(self.background_position.y),
+            },
+            PropertyId::CounterReset => {
+                if self.counter_reset == 0 {
+                    "none".into()
+                } else {
+                    format!("{}", self.counter_reset)
+                }
+            }
+            PropertyId::CounterIncrement => {
+                if self.counter_increment == 0 {
+                    "none".into()
+                } else {
+                    format!("{}", self.counter_increment)
+                }
+            }
+            PropertyId::FloatOffset => lp(self.float_offset),
+            PropertyId::Custom(_) => String::new(),
         }
     }
 }
@@ -457,6 +1011,16 @@ mod tests {
         assert_eq!(reset.color, Rgba::BLACK);
         assert_eq!(reset.font_size, 20.0);
         assert_eq!(reset.width, LengthPercentageAuto::Auto);
+
+        let imaged = compute(
+            &initial,
+            "background-image: url(\"https://a.test/x.png\")",
+            false,
+        );
+        assert_eq!(
+            imaged.background_image,
+            crate::values::BackgroundImage::Url("https://a.test/x.png".into())
+        );
     }
 
     #[test]
@@ -483,6 +1047,180 @@ mod tests {
             invalid.display,
             Display::Inline,
             "invalid at computed-value time -> initial"
+        );
+    }
+
+    #[test]
+    fn property_css_exposes_spacing_and_ui() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "letter-spacing: 4px; word-spacing: 8px; line-height: 2; tab-size: 4; \
+             user-select: none; cursor: pointer; will-change: transform; \
+             outline-width: 2px; outline-style: solid; outline-color: red; outline-offset: 1px; \
+             border-top-color: blue; vertical-align: middle; hyphens: none; text-indent: 16px",
+            false,
+        );
+        assert_eq!(style.property_css("letter-spacing"), "4px");
+        assert_eq!(style.property_css("word-spacing"), "8px");
+        assert_eq!(style.property_css("line-height"), "2");
+        assert_eq!(style.property_css("tab-size"), "4");
+        assert_eq!(style.property_css("user-select"), "none");
+        assert_eq!(style.property_css("cursor"), "pointer");
+        assert_eq!(style.property_css("will-change"), "transform");
+        assert_eq!(style.property_css("outline-width"), "2px");
+        assert_eq!(style.property_css("outline-style"), "solid");
+        assert!(style.property_css("outline-color").contains("255, 0, 0"));
+        assert_eq!(style.property_css("outline-offset"), "1px");
+        assert!(style.property_css("border-top-color").contains("0, 0, 255"));
+        assert_eq!(style.property_css("vertical-align"), "middle");
+        assert_eq!(style.property_css("hyphens"), "none");
+        assert_eq!(style.property_css("text-indent"), "16px");
+        assert_eq!(
+            ComputedStyle::initial().property_css("letter-spacing"),
+            "normal"
+        );
+        assert_eq!(
+            ComputedStyle::initial().property_css("line-height"),
+            "normal"
+        );
+    }
+
+    #[test]
+    fn property_css_exposes_break_and_scroll_keywords() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "text-align-last: center; word-break: break-all; overflow-wrap: anywhere; \
+             scroll-behavior: smooth; overscroll-behavior: none; appearance: none; \
+             orphans: 3; widows: 4; animation-timing-function: linear",
+            false,
+        );
+        assert_eq!(style.property_css("text-align-last"), "center");
+        assert_eq!(style.property_css("word-break"), "break-all");
+        assert_eq!(style.property_css("overflow-wrap"), "anywhere");
+        assert_eq!(style.property_css("scroll-behavior"), "smooth");
+        assert_eq!(style.property_css("overscroll-behavior"), "none");
+        assert_eq!(style.property_css("appearance"), "none");
+        assert_eq!(style.property_css("orphans"), "3");
+        assert_eq!(style.property_css("widows"), "4");
+        assert_eq!(style.property_css("animation-timing-function"), "linear");
+    }
+
+    #[test]
+    fn property_css_exposes_flex_list_and_paint_keywords() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "flex-grow: 2; flex-shrink: 0; order: 3; list-style-type: decimal; \
+             text-overflow: ellipsis; isolation: isolate; mix-blend-mode: multiply; \
+             object-fit: cover; table-layout: fixed; empty-cells: hide; \
+             content-visibility: hidden; resize: both; vector-effect: non-scaling-stroke; \
+             fill: red; stroke: blue; stroke-width: 3px; zoom: 2",
+            false,
+        );
+        assert_eq!(style.property_css("flex-grow"), "2");
+        assert_eq!(style.property_css("flex-shrink"), "0");
+        assert_eq!(style.property_css("order"), "3");
+        assert_eq!(style.property_css("list-style-type"), "decimal");
+        assert_eq!(style.property_css("text-overflow"), "ellipsis");
+        assert_eq!(style.property_css("isolation"), "isolate");
+        assert_eq!(style.property_css("mix-blend-mode"), "multiply");
+        assert_eq!(style.property_css("object-fit"), "cover");
+        assert_eq!(style.property_css("table-layout"), "fixed");
+        assert_eq!(style.property_css("empty-cells"), "hide");
+        assert_eq!(style.property_css("content-visibility"), "hidden");
+        assert_eq!(style.property_css("resize"), "both");
+        assert_eq!(style.property_css("vector-effect"), "non-scaling-stroke");
+        assert!(style.property_css("fill").contains("255, 0, 0"));
+        assert!(style.property_css("stroke").contains("0, 0, 255"));
+        assert_eq!(style.property_css("stroke-width"), "3px");
+        assert_eq!(style.property_css("zoom"), "2");
+    }
+
+    #[test]
+    fn property_css_exposes_time_radius_and_columns() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "animation-duration: 1s; animation-delay: 200ms; animation-iteration-count: infinite; \
+             transition-duration: 500ms; aspect-ratio: 2; column-count: 3; column-width: 80px; \
+             line-clamp: 2; border-top-left-radius: 4px; perspective: 200px; container-name: main",
+            false,
+        );
+        assert_eq!(style.property_css("animation-duration"), "1s");
+        assert_eq!(style.property_css("animation-delay"), "0.2s");
+        assert_eq!(style.property_css("animation-iteration-count"), "infinite");
+        assert_eq!(style.property_css("transition-duration"), "0.5s");
+        assert_eq!(style.property_css("aspect-ratio"), "2");
+        assert_eq!(style.property_css("column-count"), "3");
+        assert_eq!(style.property_css("column-width"), "80px");
+        assert_eq!(style.property_css("line-clamp"), "2");
+        assert_eq!(style.property_css("border-top-left-radius"), "4px");
+        assert_eq!(style.property_css("perspective"), "200px");
+        assert_eq!(style.property_css("container-name"), "main");
+        assert_eq!(
+            ComputedStyle::initial().property_css("aspect-ratio"),
+            "auto"
+        );
+        assert_eq!(
+            ComputedStyle::initial().property_css("animation-name"),
+            "none"
+        );
+        assert_eq!(ComputedStyle::initial().property_css("perspective"), "none");
+    }
+
+    #[test]
+    fn property_css_exposes_transform_filter_clip_and_images() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "transform: translate(10px, 20px) scale(2); filter: blur(4px); \
+             background-image: url(\"https://a.test/x.png\"); background-size: cover; \
+             clip-path: inset(1px 2px 3px 4px); clip: rect(0, 10px, 10px, 0); \
+             content: \"hi\"; box-shadow: 1px 2px 3px red; grid-row-start: 2",
+            false,
+        );
+        assert_eq!(
+            style.property_css("transform"),
+            "translate(10px, 20px) scale(2)"
+        );
+        assert_eq!(style.property_css("filter"), "blur(4px)");
+        assert_eq!(
+            style.property_css("background-image"),
+            "url(\"https://a.test/x.png\")"
+        );
+        assert_eq!(style.property_css("background-size"), "cover");
+        assert_eq!(style.property_css("clip-path"), "inset(1px 2px 3px 4px)");
+        assert_eq!(style.property_css("clip"), "rect(0px, 10px, 10px, 0px)");
+        assert_eq!(style.property_css("content"), "\"hi\"");
+        assert!(style.property_css("box-shadow").starts_with("1px 2px 3px"));
+        assert_eq!(style.property_css("grid-row-start"), "2");
+        assert_eq!(ComputedStyle::initial().property_css("transform"), "none");
+        assert_eq!(ComputedStyle::initial().property_css("filter"), "none");
+        assert_eq!(ComputedStyle::initial().property_css("clip"), "auto");
+    }
+
+    #[test]
+    fn property_css_exposes_grid_tracks_spacing_and_counters() {
+        let initial = ComputedStyle::initial();
+        let style = compute(
+            &initial,
+            "grid-template-columns: 1fr 2fr; grid-template-areas: \"a b\" \"a c\"; \
+             border-spacing: 4px; counter-reset: 1; float-offset: 12px; \
+             background-position-x: 25%",
+            false,
+        );
+        assert_eq!(style.property_css("grid-template-columns"), "1fr 2fr");
+        assert_eq!(style.property_css("grid-template-areas"), "\"a b\" \"a c\"");
+        assert_eq!(style.property_css("border-spacing"), "4px");
+        assert_eq!(style.property_css("counter-reset"), "1");
+        assert_eq!(style.property_css("counter-increment"), "none");
+        assert_eq!(style.property_css("float-offset"), "12px");
+        assert_eq!(style.property_css("background-position-x"), "25%");
+        assert_eq!(
+            ComputedStyle::initial().property_css("grid-template-columns"),
+            "none"
         );
     }
 }

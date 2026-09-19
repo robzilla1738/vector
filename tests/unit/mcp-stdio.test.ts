@@ -66,22 +66,44 @@ describe("Gate F MCP stdio session", () => {
       });
       req.on("end", () => {
         const body = JSON.parse(raw || "{}") as Rpc;
-        calls.push({ method: body.method, params: body.params });
+        if (typeof body.method === "string") {
+          calls.push({ method: body.method, params: body.params });
+        }
         let result: unknown = {};
         switch (body.method) {
           case "pages.open":
             result = { pageId: "p1", backend: "vector-engine", documentEpoch: 1, url: body.params?.url };
             break;
-          case "pages.observe":
-            result = {
-              pageId: "p1",
-              observation: {
-                text: 'r1 textbox "Name"\nr9 button "Save"',
-                url: "https://app.test/form",
-                formFields: [{ ref: "r1", name: "Name", value: "typed-by-human" }],
-              },
-            };
+          case "pages.observe": {
+            const format = body.params?.format ?? "compact";
+            result =
+              format === "full"
+                ? {
+                    pageId: "p1",
+                    observation: {
+                      format: "full",
+                      url: "https://app.test/form",
+                      elements: [
+                        {
+                          ref: "r9",
+                          role: "button",
+                          name: "Save",
+                          selector: "#save",
+                          rect: { x: 8, y: 12, w: 64, h: 28 },
+                        },
+                      ],
+                    },
+                  }
+                : {
+                    pageId: "p1",
+                    observation: {
+                      text: 'r1 textbox "Name"\nr9 button "Save"',
+                      url: "https://app.test/form",
+                      formFields: [{ ref: "r1", name: "Name", value: "typed-by-human" }],
+                    },
+                  };
             break;
+          }
           case "pages.execute":
             result = { status: "completed", pageId: "p1", steps: [{ stepId: "c", status: "ok" }] };
             break;
@@ -160,5 +182,20 @@ describe("Gate F MCP stdio session", () => {
       "pages.takeover",
       "pages.resume",
     ]);
+  });
+
+  it("reaches full observation over MCP", async () => {
+    const observed = await mcp.call("tools/call", {
+      name: "vector_page_observe",
+      arguments: { pageId: "p1", format: "full" },
+    });
+    const text = (observed.result as { content: [{ text: string }] }).content[0].text;
+    const parsed = JSON.parse(text) as {
+      observation: { format: string; elements: { selector: string; rect: { w: number } }[] };
+    };
+    expect(parsed.observation.format).toBe("full");
+    expect(parsed.observation.elements[0]).toMatchObject({ selector: "#save", rect: { w: 64 } });
+    const observeCall = [...calls].reverse().find((c) => c.method === "pages.observe");
+    expect(observeCall?.params).toMatchObject({ pageId: "p1", format: "full" });
   });
 });

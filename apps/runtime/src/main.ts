@@ -9,7 +9,7 @@
 import { randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { EventTypes, VectorError, type Step } from "@vector/contracts";
+import { EventTypes, VectorError, isElementRef, type Step } from "@vector/contracts";
 import { RpcChannel, type Transport } from "@vector/contracts";
 import {
   AttachedChromeDriver,
@@ -18,7 +18,7 @@ import {
   VectorEngineDriver,
   type BrowserDriver,
   type EngineAvailability,
-} from "@vector/browser-driver";
+} from "@vector/engine-client";
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb } from "./store/db.js";
 import { Repo } from "./store/repo.js";
@@ -243,6 +243,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     recordStep: (s) => repo.saveStep(s),
     electronEngineView: () => env.VECTOR_ELECTRON === "1",
     grants: () => settings.effectGrants(),
+    grantsForRun: () => settings.effectGrantsForRun(),
     callOperation: async (name, args, pageId) => {
       const slash = name.indexOf("/");
       const siteKey = slash > 0 ? name.slice(0, slash) : new URL(pages.get(pageId).url).host;
@@ -288,7 +289,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     steps
       .filter((s) => s.op !== "navigate")
       .map((s) => {
-        if ("target" in s && typeof s.target === "string" && /^r\d+$/.test(s.target)) {
+        if ("target" in s && typeof s.target === "string" && isElementRef(s.target)) {
           const el = refLookup(pageId, s.target);
           const sel = el?.selector;
           if (sel?.role) {

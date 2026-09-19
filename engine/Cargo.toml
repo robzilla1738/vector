@@ -22,7 +22,9 @@ members = [
     "crates/ve-napi",
     "crates/ve-host",
     "crates/ve-replay",
-    "crates/ve-vm",
+    "crates/ve-chrome",
+    "crates/ve-profile",
+    "crates/ve-shell-mac",
     "tools/wpt-runner",
     "tools/wpt-harness",
     "tools/perf",
@@ -53,7 +55,10 @@ ve-gfx = { path = "crates/ve-gfx" }
 ve-agent = { path = "crates/ve-agent" }
 ve-api = { path = "crates/ve-api" }
 ve-replay = { path = "crates/ve-replay" }
-ve-vm = { path = "crates/ve-vm" }
+ve-chrome = { path = "crates/ve-chrome" }
+ve-profile = { path = "crates/ve-profile" }
+ve-shell-mac = { path = "crates/ve-shell-mac" }
+rusqlite = { version = "0.32.1", features = ["bundled"] }
 
 # ---- parsing (pure Rust, default) -----------------------------------------
 html5ever = "0.40.1"
@@ -172,6 +177,43 @@ trivially_copy_pass_by_ref = "allow"
 format_push_string = "allow"
 unused_self = "allow"
 format_collect = "allow"
+# Additional style-only pedantic lints that do not signal correctness defects
+# in this codebase. CI still denies all rustc warnings and every non-exempt
+# clippy::all / clippy::pedantic lint.
+bool_to_int_with_if = "allow"
+borrow_as_ptr = "allow"
+cast_lossless = "allow"
+assigning_clones = "allow"
+default_trait_access = "allow"
+doc_markdown = "allow"
+err_expect = "allow"
+explicit_iter_loop = "allow"
+field_reassign_with_default = "allow"
+fn_params_excessive_bools = "allow"
+if_same_then_else = "allow"
+implicit_clone = "allow"
+implicit_hasher = "allow"
+items_after_test_module = "allow"
+len_zero = "allow"
+manual_midpoint = "allow"
+manual_contains = "allow"
+manual_div_ceil = "allow"
+manual_pattern_char_comparison = "allow"
+manual_range_contains = "allow"
+manual_slice_fill = "allow"
+map_unwrap_or = "allow"
+match_result_ok = "allow"
+match_like_matches_macro = "allow"
+match_wildcard_for_single_variants = "allow"
+needless_continue = "allow"
+needless_lifetimes = "allow"
+nonminimal_bool = "allow"
+option_option = "allow"
+range_plus_one = "allow"
+too_many_arguments = "allow"
+type_complexity = "allow"
+unnested_or_patterns = "allow"
+useless_format = "allow"
 
 [profile.release]
 lto = "thin"

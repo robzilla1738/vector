@@ -105,7 +105,7 @@ impl Ord for JsTimer {
     }
 }
 
-/// A JS timer that is due and should fire through `__veFireTimer`.
+/// A JS timer that is due and should fire through the VM callback table.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DueJsTimer {
     /// Prelude timer id.
@@ -138,6 +138,7 @@ pub struct EventLoop {
     js_timers: BinaryHeap<JsTimer>,
     js_live: HashMap<u64, u64>,
     js_seq: u64,
+    next_js_id: u64,
     cancelled: Vec<TaskId>,
     now: Duration,
     next_id: u64,
@@ -270,8 +271,10 @@ impl EventLoop {
         self.microtasks.len()
     }
 
-    /// Arms a page JS timer (`setTimeout` / `setInterval`).
-    pub fn arm_js_timer(&mut self, id: u64, now_ms: u64, delay_ms: u64, repeat: bool) {
+    /// Arms a page JS timer (`setTimeout` / `setInterval`) and returns the id.
+    pub fn arm_js_timer(&mut self, now_ms: u64, delay_ms: u64, repeat: bool) -> u64 {
+        self.next_js_id += 1;
+        let id = self.next_js_id;
         self.js_seq += 1;
         self.js_live.insert(id, self.js_seq);
         self.js_timers.push(JsTimer {
@@ -280,6 +283,7 @@ impl EventLoop {
             id,
             repeat_ms: repeat.then_some(delay_ms.max(1)),
         });
+        id
     }
 
     /// Cancels a page JS timer.
@@ -302,6 +306,9 @@ impl EventLoop {
             .map(|t| t.due_ms)
             .min()
     }
+
+    /// rAF callbacks do not block settle after [`Self::MAX_RAF_DRAIN`] frames.
+    pub const MAX_RAF_DRAIN: usize = 8;
 
     /// `(due within horizon, armed later)` for settle readiness.
     #[must_use]
@@ -555,16 +562,17 @@ mod tests {
     #[test]
     fn js_timers_live_on_the_same_loop() {
         let mut lp = EventLoop::new();
-        lp.arm_js_timer(1, 0, 10, false);
-        lp.arm_js_timer(2, 0, 50, true);
+        let timeout = lp.arm_js_timer(0, 10, false);
+        let interval = lp.arm_js_timer(0, 50, true);
+        assert_ne!(timeout, interval);
         assert_eq!(lp.js_timer_count(), 2);
         assert_eq!(lp.next_js_timer_due_ms(), Some(10));
         assert_eq!(lp.js_timer_readiness(20), (1, 1));
         let due = lp.pop_due_js_timer(20).expect("timeout due");
-        assert_eq!(due.id, 1);
+        assert_eq!(due.id, timeout);
         lp.drop_js_timer(due.id);
         assert_eq!(lp.js_timer_count(), 1);
-        lp.clear_js_timer(2);
+        lp.clear_js_timer(interval);
         assert_eq!(lp.js_timer_count(), 0);
         assert!(lp.pop_due_js_timer(100).is_none());
     }

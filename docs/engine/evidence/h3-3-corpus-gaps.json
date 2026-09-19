@@ -1,0 +1,19 @@
+{
+  "backend": "vector-engine",
+  "corpus": {
+    "dir": "/tmp/vector-live-html",
+    "kind": "fetched-html-bodies"
+  },
+  "declarations": {
+    "deferred": 0,
+    "missRatio": 0.0,
+    "total": 24280,
+    "unknown": 0
+  },
+  "notes": "CssCoverage on live HTML bodies. H3-3 still has isolated property tests; this is the corpus-frequency ledger, not a claim that remaining CSS is done.",
+  "pages": 100,
+  "profile": "release",
+  "requiresScript": 1,
+  "test": "writes_h3_3_corpus_css_coverage",
+  "topUnknown": []
+}

@@ -86,6 +86,12 @@ pub struct FormState {
     /// Current selectedness for `<option>`. `None` falls back to the
     /// `selected` attribute.
     pub selected: Option<bool>,
+    /// UTF-16 caret / selection start. `None` means unset (treat as 0).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection_start: Option<u32>,
+    /// UTF-16 caret / selection end. `None` means unset (treat as value length).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection_end: Option<u32>,
 }
 
 /// Element specific data.

@@ -2,12 +2,12 @@
 
 use std::collections::HashMap;
 
-use ve_core::{NodeId, Rect};
-use ve_style::Rgba;
+use ve_core::{NodeId, Point, Rect};
+use ve_style::{MixBlendMode, Rgba};
 
 use crate::GfxError;
 use crate::display_list::{DisplayItem, DisplayList, TextRun};
-use crate::fonts::FontSystem;
+use crate::fonts::{FontSystem, GlyphBitmap};
 use crate::image::{ImageCache, ImageHandle};
 
 /// A rendered RGBA8 frame.
@@ -42,6 +42,66 @@ impl Frame {
         self.rgba[i..i + 4].try_into().ok()
     }
 
+    /// Copies `src` into this frame. Sizes must match.
+    pub fn copy_from(&mut self, src: &Frame) {
+        if self.width == src.width && self.height == src.height {
+            self.rgba.copy_from_slice(&src.rgba);
+        }
+    }
+
+    /// Blits `src` into this frame at pixel origin `(dst_x, dst_y)`.
+    pub fn blit_from(&mut self, src: &Frame, dst_x: i32, dst_y: i32) {
+        self.blit_region(src, 0, 0, dst_x, dst_y, src.width, src.height);
+    }
+
+    /// Copies a `width × height` rectangle from `src` at `(src_x, src_y)`
+    /// onto this frame at `(dst_x, dst_y)`.
+    pub fn blit_region(
+        &mut self,
+        src: &Frame,
+        src_x: i32,
+        src_y: i32,
+        dst_x: i32,
+        dst_y: i32,
+        width: u32,
+        height: u32,
+    ) {
+        for row in 0..height {
+            let sy = src_y + row as i32;
+            let dy = dst_y + row as i32;
+            if sy < 0 || sy >= src.height as i32 || dy < 0 || dy >= self.height as i32 {
+                continue;
+            }
+            let mut sx0 = src_x;
+            let mut dx0 = dst_x;
+            let mut n = width as i32;
+            if sx0 < 0 {
+                n += sx0;
+                dx0 -= sx0;
+                sx0 = 0;
+            }
+            if dx0 < 0 {
+                n += dx0;
+                sx0 -= dx0;
+                dx0 = 0;
+            }
+            if sx0 + n > src.width as i32 {
+                n = src.width as i32 - sx0;
+            }
+            if dx0 + n > self.width as i32 {
+                n = self.width as i32 - dx0;
+            }
+            if n <= 0 {
+                continue;
+            }
+            let src_off = ((sy as u32 * src.width + sx0 as u32) * 4) as usize;
+            let dst_off = ((dy as u32 * self.width + dx0 as u32) * 4) as usize;
+            let bytes = (n as usize) * 4;
+            self.rgba[dst_off..dst_off + bytes]
+                .copy_from_slice(&src.rgba[src_off..src_off + bytes]);
+        }
+    }
+
     /// Encodes the frame as a binary PPM (P6) image, dropping alpha. Handy
     /// for debugging without an image encoder dependency.
     #[must_use]
@@ -52,6 +112,28 @@ impl Frame {
         }
         out
     }
+}
+
+fn sample_stops(stops: &[(f32, Rgba)], t: f32) -> Rgba {
+    if stops.len() == 1 {
+        return stops[0].1;
+    }
+    let t = t.clamp(0.0, 1.0);
+    for w in stops.windows(2) {
+        let (t0, c0) = w[0];
+        let (t1, c1) = w[1];
+        if t <= t1 {
+            let span = (t1 - t0).max(f32::EPSILON);
+            let u = ((t - t0) / span).clamp(0.0, 1.0);
+            return Rgba::rgba(
+                (f32::from(c0.r) + (f32::from(c1.r) - f32::from(c0.r)) * u).round() as u8,
+                (f32::from(c0.g) + (f32::from(c1.g) - f32::from(c0.g)) * u).round() as u8,
+                (f32::from(c0.b) + (f32::from(c1.b) - f32::from(c0.b)) * u).round() as u8,
+                c0.a + (c1.a - c0.a) * u,
+            );
+        }
+    }
+    stops.last().map(|s| s.1).unwrap_or(Rgba::TRANSPARENT)
 }
 
 /// A paint backend.
@@ -80,6 +162,8 @@ pub struct SoftwareRenderer {
     pub images: ImageCache,
     /// Layout node → decoded `<img>` for [`DisplayList::from_layout_with`].
     pub node_images: HashMap<NodeId, ImageHandle>,
+    /// Rasterised glyphs keyed by face / glyph / physical size / hint.
+    glyph_cache: HashMap<(fontdb::ID, u16, u32, bool), GlyphBitmap>,
 }
 
 impl std::fmt::Debug for SoftwareRenderer {
@@ -97,6 +181,182 @@ impl Default for SoftwareRenderer {
     }
 }
 
+fn lum(c: [f32; 3]) -> f32 {
+    0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+}
+
+fn sat(c: [f32; 3]) -> f32 {
+    c[0].max(c[1]).max(c[2]) - c[0].min(c[1]).min(c[2])
+}
+
+fn clip_color(mut c: [f32; 3]) -> [f32; 3] {
+    let l = lum(c);
+    let n = c[0].min(c[1]).min(c[2]);
+    let x = c[0].max(c[1]).max(c[2]);
+    if n < 0.0 {
+        let denom = l - n;
+        if denom > 1e-8 {
+            for v in &mut c {
+                *v = l + (*v - l) * l / denom;
+            }
+        }
+    }
+    if x > 1.0 {
+        let denom = x - l;
+        if denom > 1e-8 {
+            for v in &mut c {
+                *v = l + (*v - l) * (1.0 - l) / denom;
+            }
+        }
+    }
+    c
+}
+
+fn set_lum(c: [f32; 3], l: f32) -> [f32; 3] {
+    let d = l - lum(c);
+    clip_color([c[0] + d, c[1] + d, c[2] + d])
+}
+
+fn set_sat(c: [f32; 3], s: f32) -> [f32; 3] {
+    let mut idx = [0usize, 1, 2];
+    idx.sort_by(|&a, &b| c[a].partial_cmp(&c[b]).unwrap_or(std::cmp::Ordering::Equal));
+    let (imin, imid, imax) = (idx[0], idx[1], idx[2]);
+    let mut out = c;
+    if c[imax] > c[imin] {
+        out[imid] = ((c[imid] - c[imin]) * s) / (c[imax] - c[imin]);
+        out[imax] = s;
+        out[imin] = 0.0;
+    } else {
+        out = [0.0, 0.0, 0.0];
+    }
+    out
+}
+
+fn mix_rgb(dst: [u8; 4], src: [u8; 4], mode: MixBlendMode) -> [u8; 3] {
+    let s = [
+        f32::from(src[0]) / 255.0,
+        f32::from(src[1]) / 255.0,
+        f32::from(src[2]) / 255.0,
+    ];
+    let d = [
+        f32::from(dst[0]) / 255.0,
+        f32::from(dst[1]) / 255.0,
+        f32::from(dst[2]) / 255.0,
+    ];
+    let out = match mode {
+        MixBlendMode::Normal => s,
+        MixBlendMode::Multiply => [s[0] * d[0], s[1] * d[1], s[2] * d[2]],
+        MixBlendMode::Screen => [
+            1.0 - (1.0 - s[0]) * (1.0 - d[0]),
+            1.0 - (1.0 - s[1]) * (1.0 - d[1]),
+            1.0 - (1.0 - s[2]) * (1.0 - d[2]),
+        ],
+        MixBlendMode::Darken => [s[0].min(d[0]), s[1].min(d[1]), s[2].min(d[2])],
+        MixBlendMode::Lighten => [s[0].max(d[0]), s[1].max(d[1]), s[2].max(d[2])],
+        MixBlendMode::Difference => [
+            (s[0] - d[0]).abs(),
+            (s[1] - d[1]).abs(),
+            (s[2] - d[2]).abs(),
+        ],
+        MixBlendMode::Exclusion => [
+            s[0] + d[0] - 2.0 * s[0] * d[0],
+            s[1] + d[1] - 2.0 * s[1] * d[1],
+            s[2] + d[2] - 2.0 * s[2] * d[2],
+        ],
+        MixBlendMode::Overlay => {
+            let ch = |sv: f32, dv: f32| {
+                if dv < 0.5 {
+                    2.0 * sv * dv
+                } else {
+                    1.0 - 2.0 * (1.0 - sv) * (1.0 - dv)
+                }
+            };
+            [ch(s[0], d[0]), ch(s[1], d[1]), ch(s[2], d[2])]
+        }
+        MixBlendMode::HardLight => {
+            let ch = |sv: f32, dv: f32| {
+                if sv < 0.5 {
+                    2.0 * sv * dv
+                } else {
+                    1.0 - 2.0 * (1.0 - sv) * (1.0 - dv)
+                }
+            };
+            [ch(s[0], d[0]), ch(s[1], d[1]), ch(s[2], d[2])]
+        }
+        MixBlendMode::SoftLight => {
+            let ch = |sv: f32, dv: f32| {
+                if sv <= 0.5 {
+                    dv - (1.0 - 2.0 * sv) * dv * (1.0 - dv)
+                } else {
+                    dv + (2.0 * sv - 1.0) * (1.0 - (1.0 - dv) * (1.0 - dv) - dv)
+                }
+            };
+            [ch(s[0], d[0]), ch(s[1], d[1]), ch(s[2], d[2])]
+        }
+        MixBlendMode::ColorDodge => {
+            let ch = |sv: f32, dv: f32| {
+                if dv <= 0.0 {
+                    0.0
+                } else if sv >= 1.0 {
+                    1.0
+                } else {
+                    (dv / (1.0 - sv)).min(1.0)
+                }
+            };
+            [ch(s[0], d[0]), ch(s[1], d[1]), ch(s[2], d[2])]
+        }
+        MixBlendMode::ColorBurn => {
+            let ch = |sv: f32, dv: f32| {
+                if dv >= 1.0 {
+                    1.0
+                } else if sv <= 0.0 {
+                    0.0
+                } else {
+                    1.0 - ((1.0 - dv) / sv).min(1.0)
+                }
+            };
+            [ch(s[0], d[0]), ch(s[1], d[1]), ch(s[2], d[2])]
+        }
+        MixBlendMode::Hue => set_lum(set_sat(s, sat(d)), lum(d)),
+        MixBlendMode::Saturation => set_lum(set_sat(d, sat(s)), lum(d)),
+        MixBlendMode::Color => set_lum(s, lum(d)),
+        MixBlendMode::Luminosity => set_lum(d, lum(s)),
+    };
+    [
+        (out[0].clamp(0.0, 1.0) * 255.0).round() as u8,
+        (out[1].clamp(0.0, 1.0) * 255.0).round() as u8,
+        (out[2].clamp(0.0, 1.0) * 255.0).round() as u8,
+    ]
+}
+
+fn composite_mix_layer(dest: &mut [u8], src: &[u8], mode: MixBlendMode) {
+    for (dst, src) in dest.chunks_exact_mut(4).zip(src.chunks_exact(4)) {
+        let sa = src[3];
+        if sa == 0 {
+            continue;
+        }
+        let backdrop = [dst[0], dst[1], dst[2], dst[3]];
+        let source = [src[0], src[1], src[2], src[3]];
+        let rgb = mix_rgb(backdrop, source, mode);
+        let a = f32::from(sa) / 255.0;
+        let da = f32::from(dst[3]) / 255.0;
+        let out_a = a + da * (1.0 - a);
+        if out_a <= 0.0 {
+            dst[0] = 0;
+            dst[1] = 0;
+            dst[2] = 0;
+            dst[3] = 0;
+            continue;
+        }
+        for i in 0..3 {
+            let s = f32::from(rgb[i]) / 255.0;
+            let d = f32::from(dst[i]) / 255.0;
+            dst[i] = ((s * a + d * da * (1.0 - a)) / out_a * 255.0).round() as u8;
+        }
+        dst[3] = (out_a * 255.0).round() as u8;
+    }
+}
+
 struct Canvas {
     width: u32,
     height: u32,
@@ -104,6 +364,7 @@ struct Canvas {
     clip: Vec<Rect>,
     opacity: Vec<f32>,
     scale: f32,
+    translate: Vec<(f32, f32, f32, f32, f32, f32, f32)>,
 }
 
 impl Canvas {
@@ -118,6 +379,38 @@ impl Canvas {
 
     fn alpha(&self) -> f32 {
         self.opacity.iter().product()
+    }
+
+    fn map_point(&self, p: Point) -> Point {
+        let mut x = p.x;
+        let mut y = p.y;
+        for &(tx, ty, sx, sy, angle, ox, oy) in &self.translate {
+            if angle.abs() > f32::EPSILON {
+                let dx = (x - ox) * sx;
+                let dy = (y - oy) * sy;
+                let (c, s) = (angle.cos(), angle.sin());
+                x = dx * c - dy * s + ox + tx;
+                y = dx * s + dy * c + oy + ty;
+            } else {
+                x = x * sx + tx;
+                y = y * sy + ty;
+            }
+        }
+        Point::new(x, y)
+    }
+
+    fn map_rect(&self, rect: Rect) -> Rect {
+        let corners = [
+            self.map_point(Point::new(rect.x(), rect.y())),
+            self.map_point(Point::new(rect.right(), rect.y())),
+            self.map_point(Point::new(rect.right(), rect.bottom())),
+            self.map_point(Point::new(rect.x(), rect.bottom())),
+        ];
+        let min_x = corners.iter().map(|p| p.x).fold(f32::MAX, f32::min);
+        let min_y = corners.iter().map(|p| p.y).fold(f32::MAX, f32::min);
+        let max_x = corners.iter().map(|p| p.x).fold(f32::MIN, f32::max);
+        let max_y = corners.iter().map(|p| p.y).fold(f32::MIN, f32::max);
+        Rect::new(min_x, min_y, max_x - min_x, max_y - min_y)
     }
 
     fn blend(&mut self, x: u32, y: u32, color: Rgba, coverage: f32) {
@@ -144,6 +437,7 @@ impl Canvas {
 
     /// Fills a CSS-pixel rectangle with antialiased edges.
     fn fill_rect(&mut self, rect: Rect, color: Rgba) {
+        let rect = self.map_rect(rect);
         let Some(visible) = rect.intersection(&self.clip_rect()) else {
             return;
         };
@@ -158,11 +452,120 @@ impl Canvas {
         let py0 = y0.floor().max(0.0) as u32;
         let px1 = (x1.ceil() as u32).min(self.width);
         let py1 = (y1.ceil() as u32).min(self.height);
+        let opaque = color.a >= 1.0 && self.alpha() >= 1.0;
+        if opaque && px1 > px0 + 2 && py1 > py0 + 2 {
+            let ix0 = (x0.ceil() as u32).min(px1);
+            let iy0 = (y0.ceil() as u32).min(py1);
+            let ix1 = (x1.floor() as u32).min(px1).max(ix0);
+            let iy1 = (y1.floor() as u32).min(py1).max(iy0);
+            let pixel = [color.r, color.g, color.b, 255u8];
+            for py in iy0..iy1 {
+                let row = ((py * self.width + ix0) * 4) as usize;
+                let n = ((ix1 - ix0) * 4) as usize;
+                for chunk in self.rgba[row..row + n].chunks_exact_mut(4) {
+                    chunk.copy_from_slice(&pixel);
+                }
+            }
+            for py in py0..py1 {
+                let cy = ((py as f32 + 1.0).min(y1) - (py as f32).max(y0)).clamp(0.0, 1.0);
+                for px in px0..px1 {
+                    if py >= iy0 && py < iy1 && px >= ix0 && px < ix1 {
+                        continue;
+                    }
+                    let cx = ((px as f32 + 1.0).min(x1) - (px as f32).max(x0)).clamp(0.0, 1.0);
+                    self.blend(px, py, color, cx * cy);
+                }
+            }
+            return;
+        }
         for py in py0..py1 {
             let cy = ((py as f32 + 1.0).min(y1) - (py as f32).max(y0)).clamp(0.0, 1.0);
             for px in px0..px1 {
                 let cx = ((px as f32 + 1.0).min(x1) - (px as f32).max(x0)).clamp(0.0, 1.0);
                 self.blend(px, py, color, cx * cy);
+            }
+        }
+    }
+
+    fn fill_linear_gradient(
+        &mut self,
+        rect: Rect,
+        start: Point,
+        end: Point,
+        stops: &[(f32, Rgba)],
+    ) {
+        if stops.is_empty() {
+            return;
+        }
+        let rect = self.map_rect(rect);
+        let start = self.map_point(start);
+        let end = self.map_point(end);
+        let Some(visible) = rect.intersection(&self.clip_rect()) else {
+            return;
+        };
+        let s = self.scale;
+        let dx = end.x - start.x;
+        let dy = end.y - start.y;
+        let len2 = dx * dx + dy * dy;
+        let px0 = (visible.x() * s).floor().max(0.0) as u32;
+        let py0 = (visible.y() * s).floor().max(0.0) as u32;
+        let px1 = ((visible.right() * s).ceil() as u32).min(self.width);
+        let py1 = ((visible.bottom() * s).ceil() as u32).min(self.height);
+        for py in py0..py1 {
+            for px in px0..px1 {
+                let x = px as f32 / s;
+                let y = py as f32 / s;
+                let t = if len2 < f32::EPSILON {
+                    0.0
+                } else {
+                    ((x - start.x) * dx + (y - start.y) * dy) / len2
+                }
+                .clamp(0.0, 1.0);
+                self.blend(px, py, sample_stops(stops, t), 1.0);
+            }
+        }
+    }
+
+    fn blur_rect(&mut self, rect: Rect, radius: f32) {
+        let r = radius.round().max(0.0) as i32;
+        if r == 0 {
+            return;
+        }
+        let rect = self.map_rect(rect);
+        let Some(visible) = rect.intersection(&self.clip_rect()) else {
+            return;
+        };
+        let s = self.scale;
+        let x0 = (visible.x() * s).floor().max(0.0) as i32;
+        let y0 = (visible.y() * s).floor().max(0.0) as i32;
+        let x1 = ((visible.right() * s).ceil() as i32).min(self.width as i32);
+        let y1 = ((visible.bottom() * s).ceil() as i32).min(self.height as i32);
+        if x1 <= x0 || y1 <= y0 {
+            return;
+        }
+        let src = self.rgba.clone();
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let mut acc = [0u32; 4];
+                let mut n = 0u32;
+                for yy in (y - r).max(y0)..(y + r + 1).min(y1) {
+                    for xx in (x - r).max(x0)..(x + r + 1).min(x1) {
+                        let i = ((yy as u32 * self.width + xx as u32) * 4) as usize;
+                        acc[0] += u32::from(src[i]);
+                        acc[1] += u32::from(src[i + 1]);
+                        acc[2] += u32::from(src[i + 2]);
+                        acc[3] += u32::from(src[i + 3]);
+                        n += 1;
+                    }
+                }
+                if n == 0 {
+                    continue;
+                }
+                let i = ((y as u32 * self.width + x as u32) * 4) as usize;
+                self.rgba[i] = (acc[0] / n) as u8;
+                self.rgba[i + 1] = (acc[1] / n) as u8;
+                self.rgba[i + 2] = (acc[2] / n) as u8;
+                self.rgba[i + 3] = (acc[3] / n) as u8;
             }
         }
     }
@@ -198,6 +601,44 @@ impl Canvas {
             }
         }
     }
+
+    fn blit_rgba(&mut self, left: i32, top: i32, width: u32, height: u32, data: &[u8]) {
+        let clip = self.clip_rect();
+        for row in 0..height {
+            for col in 0..width {
+                let i = ((row * width + col) * 4) as usize;
+                if i + 3 >= data.len() {
+                    continue;
+                }
+                let a = f32::from(data[i + 3]) / 255.0;
+                if a <= 0.0 {
+                    continue;
+                }
+                let x = left + col as i32;
+                let y = top + row as i32;
+                if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
+                    continue;
+                }
+                if !clip.contains(ve_core::Point::new(
+                    x as f32 / self.scale,
+                    y as f32 / self.scale,
+                )) {
+                    continue;
+                }
+                self.blend(
+                    x as u32,
+                    y as u32,
+                    Rgba {
+                        r: data[i],
+                        g: data[i + 1],
+                        b: data[i + 2],
+                        a,
+                    },
+                    1.0,
+                );
+            }
+        }
+    }
 }
 
 impl SoftwareRenderer {
@@ -208,6 +649,7 @@ impl SoftwareRenderer {
             fonts: FontSystem::new(),
             images: ImageCache::new(),
             node_images: HashMap::new(),
+            glyph_cache: HashMap::new(),
         }
     }
 
@@ -216,10 +658,13 @@ impl SoftwareRenderer {
     pub fn with_system_fonts() -> Self {
         let mut fonts = FontSystem::new();
         fonts.load_system_fonts();
+        fonts.set_generic(&ve_style::FontFamily::SansSerif, "Inter");
+        fonts.set_generic(&ve_style::FontFamily::SystemUi, "Inter");
         Self {
             fonts,
             images: ImageCache::new(),
             node_images: HashMap::new(),
+            glyph_cache: HashMap::new(),
         }
     }
 
@@ -246,35 +691,88 @@ impl SoftwareRenderer {
             return;
         };
         let size = run.size * canvas.scale;
-        let mut pen_x = run.origin.x * canvas.scale;
-        let baseline_y = run.origin.y * canvas.scale;
-        for ch in run.text.chars() {
-            let Some(glyph) = self.fonts.glyph_for_char(face, ch) else {
+        let origin = canvas.map_point(run.origin);
+        let origin_x = origin.x * canvas.scale;
+        let baseline_y = origin.y * canvas.scale;
+        let Some(shaped) = self.fonts.shape_retained(face, &run.text, size) else {
+            return;
+        };
+        for glyph in shaped.glyphs {
+            if glyph.id == 0 {
                 continue;
+            }
+            let hint = run.size <= 18.0;
+            let key = (glyph.face, glyph.id as u16, size.to_bits(), hint);
+            let bitmap = if let Some(hit) = self.glyph_cache.get(&key) {
+                Some(hit.clone())
+            } else {
+                let built = self
+                    .fonts
+                    .rasterize_hinted(glyph.face, glyph.id as u16, size, hint);
+                if let Some(ref b) = built {
+                    self.glyph_cache.insert(key, b.clone());
+                }
+                built
             };
-            let advance = self.fonts.advance(face, glyph, size).unwrap_or(size * 0.5);
-            if let Some(bitmap) = self.fonts.rasterize(face, glyph, size)
+            if let Some(bitmap) = bitmap
                 && bitmap.width > 0
             {
-                let left = pen_x.round() as i32 + bitmap.left;
-                let top = baseline_y.round() as i32 - bitmap.top;
-                canvas.blit_alpha(
-                    left,
-                    top,
-                    bitmap.width,
-                    bitmap.height,
-                    &bitmap.data,
-                    run.color,
-                );
+                let left = (origin_x + glyph.x).round() as i32 + bitmap.left;
+                let top = (baseline_y + glyph.y).round() as i32 - bitmap.top;
+                if bitmap.color {
+                    canvas.blit_rgba(left, top, bitmap.width, bitmap.height, &bitmap.data);
+                } else {
+                    canvas.blit_alpha(
+                        left,
+                        top,
+                        bitmap.width,
+                        bitmap.height,
+                        &bitmap.data,
+                        run.color,
+                    );
+                }
             }
-            pen_x += advance;
         }
     }
 
-    fn draw_image(&self, canvas: &mut Canvas, rect: Rect, handle: crate::image::ImageHandle) {
+    fn draw_image(
+        &self,
+        canvas: &mut Canvas,
+        rect: Rect,
+        handle: crate::image::ImageHandle,
+        src: Option<Rect>,
+        size: ve_style::BackgroundSize,
+        position: ve_style::BackgroundPosition,
+        repeat: ve_style::BackgroundRepeat,
+    ) {
         let Some(image) = self.images.get(handle) else {
             return;
         };
+        let rect = canvas.map_rect(rect);
+        let (dest, resolved_src) = crate::resolve_image_placement(
+            rect,
+            image.width as f32,
+            image.height as f32,
+            size,
+            position,
+        );
+        let src = src.unwrap_or(resolved_src);
+        let clipped = canvas.clip_rect().intersection(&rect).unwrap_or(Rect::ZERO);
+        canvas.clip.push(clipped);
+        for origin in crate::background_tile_origins(rect, dest, repeat) {
+            let tile = Rect::new(origin.x, origin.y, dest.width(), dest.height());
+            self.blit_image(canvas, tile, image, src);
+        }
+        canvas.clip.pop();
+    }
+
+    fn blit_image(
+        &self,
+        canvas: &mut Canvas,
+        rect: Rect,
+        image: &crate::image::DecodedImage,
+        src: Rect,
+    ) {
         let Some(visible) = rect.intersection(&canvas.clip_rect()) else {
             return;
         };
@@ -284,11 +782,11 @@ impl SoftwareRenderer {
         let px1 = ((visible.right() * s).ceil() as u32).min(canvas.width);
         let py1 = ((visible.bottom() * s).ceil() as u32).min(canvas.height);
         for py in py0..py1 {
-            let v = ((py as f32 / s - rect.y()) / rect.height()).clamp(0.0, 0.999_99);
+            let v = ((py as f32 / s - rect.y()) / rect.height().max(0.001)).clamp(0.0, 0.999_99);
             for px in px0..px1 {
-                let u = ((px as f32 / s - rect.x()) / rect.width()).clamp(0.0, 0.999_99);
-                let sx = (u * image.width as f32) as u32;
-                let sy = (v * image.height as f32) as u32;
+                let u = ((px as f32 / s - rect.x()) / rect.width().max(0.001)).clamp(0.0, 0.999_99);
+                let sx = (src.x() + u * src.width()) as u32;
+                let sy = (src.y() + v * src.height()) as u32;
                 if let Some([r, g, b, a]) = image.pixel(sx, sy) {
                     canvas.blend(px, py, Rgba::rgba(r, g, b, f32::from(a) / 255.0), 1.0);
                 }
@@ -321,7 +819,9 @@ impl Renderer for SoftwareRenderer {
             clip: Vec::new(),
             opacity: Vec::new(),
             scale: if scale > 0.0 { scale } else { 1.0 },
+            translate: Vec::new(),
         };
+        let mut blend_stack: Vec<(MixBlendMode, Vec<u8>)> = Vec::new();
         for item in list.items() {
             match item {
                 DisplayItem::Rect { rect, color } => canvas.fill_rect(*rect, *color),
@@ -356,9 +856,29 @@ impl Renderer for SoftwareRenderer {
                     );
                 }
                 DisplayItem::Text(run) => self.draw_text(&mut canvas, run),
-                DisplayItem::Image { rect, handle } => self.draw_image(&mut canvas, *rect, *handle),
+                DisplayItem::Image {
+                    rect,
+                    handle,
+                    src,
+                    size,
+                    position,
+                    repeat,
+                    ..
+                } => self.draw_image(&mut canvas, *rect, *handle, *src, *size, *position, *repeat),
+                DisplayItem::LinearGradient {
+                    rect,
+                    start,
+                    end,
+                    stops,
+                    ..
+                } => canvas.fill_linear_gradient(*rect, *start, *end, stops),
+                DisplayItem::FilterBlur { rect, radius } => canvas.blur_rect(*rect, *radius),
                 DisplayItem::PushClip(rect) => {
-                    let clipped = canvas.clip_rect().intersection(rect).unwrap_or(Rect::ZERO);
+                    let mapped = canvas.map_rect(*rect);
+                    let clipped = canvas
+                        .clip_rect()
+                        .intersection(&mapped)
+                        .unwrap_or(Rect::ZERO);
                     canvas.clip.push(clipped);
                 }
                 DisplayItem::PopClip => {
@@ -368,7 +888,57 @@ impl Renderer for SoftwareRenderer {
                 DisplayItem::PopOpacity => {
                     canvas.opacity.pop();
                 }
+                DisplayItem::PushBlend(mode) => {
+                    let isolated = vec![0; canvas.rgba.len()];
+                    blend_stack.push((*mode, std::mem::replace(&mut canvas.rgba, isolated)));
+                }
+                DisplayItem::PopBlend => {
+                    if let Some((mode, dest)) = blend_stack.pop() {
+                        let src = std::mem::replace(&mut canvas.rgba, dest);
+                        composite_mix_layer(&mut canvas.rgba, &src, mode);
+                    }
+                }
+                DisplayItem::RoundedClip { rect, .. } => {
+                    let mapped = canvas.map_rect(*rect);
+                    let clipped = canvas
+                        .clip_rect()
+                        .intersection(&mapped)
+                        .unwrap_or(Rect::ZERO);
+                    canvas.clip.push(clipped);
+                }
+                DisplayItem::PushTransform {
+                    tx,
+                    ty,
+                    sx,
+                    sy,
+                    angle,
+                    ox,
+                    oy,
+                } => {
+                    canvas
+                        .translate
+                        .push((*tx, *ty, *sx, *sy, *angle, *ox, *oy));
+                }
+                DisplayItem::PopTransform => {
+                    canvas.translate.pop();
+                }
+                DisplayItem::BoxShadow {
+                    rect,
+                    dx,
+                    dy,
+                    color,
+                    ..
+                } => {
+                    canvas.fill_rect(
+                        Rect::new(rect.x() + dx, rect.y() + dy, rect.width(), rect.height()),
+                        *color,
+                    );
+                }
             }
+        }
+        while let Some((mode, dest)) = blend_stack.pop() {
+            let src = std::mem::replace(&mut canvas.rgba, dest);
+            composite_mix_layer(&mut canvas.rgba, &src, mode);
         }
         Ok(Frame {
             width,
@@ -441,5 +1011,198 @@ mod tests {
         let hi = renderer.render(&list, 20, 20, 2.0).unwrap();
         assert_eq!(hi.pixel(4, 10), Some([255, 0, 0, 255]), "HiDPI scale");
         assert_eq!(hi.to_ppm().len(), "P6\n20 20\n255\n".len() + 20 * 20 * 3);
+    }
+
+    #[test]
+    fn system_fonts_paint_inter_ui_text() {
+        let mut list = DisplayList::new(Size::new(200.0, 40.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 200.0, 40.0),
+            color: Rgba::WHITE,
+        });
+        list.push(DisplayItem::Text(TextRun {
+            origin: ve_core::Point::new(8.0, 28.0),
+            text: "Personal".into(),
+            size: 16.0,
+            color: Rgba::BLACK,
+            weight: ve_style::FontWeight::NORMAL,
+            style: ve_style::FontStyle::Normal,
+            family: vec![
+                ve_style::FontFamily::Named("Inter".into()),
+                ve_style::FontFamily::SansSerif,
+            ],
+        }));
+        let mut renderer = SoftwareRenderer::with_system_fonts();
+        let frame = renderer.render(&list, 200, 40, 1.0).unwrap();
+        let ink = frame
+            .rgba
+            .chunks_exact(4)
+            .filter(|px| px[0] < 200 && px[3] > 0)
+            .count();
+        assert!(
+            ink > 40,
+            "Inter/sans-serif must paint real glyphs, ink={ink}"
+        );
+        let hi = renderer.render(&list, 400, 80, 2.0).unwrap();
+        let hi_ink = hi
+            .rgba
+            .chunks_exact(4)
+            .filter(|px| px[0] < 200 && px[3] > 0)
+            .count();
+        assert!(
+            hi_ink > 80,
+            "Retina Inter UI text must stay hinted, ink={hi_ink}"
+        );
+    }
+
+    #[test]
+    fn software_paints_colour_emoji() {
+        let mut list = DisplayList::new(Size::new(64.0, 64.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 64.0, 64.0),
+            color: Rgba::WHITE,
+        });
+        list.push(DisplayItem::Text(TextRun {
+            origin: ve_core::Point::new(8.0, 48.0),
+            text: "😀".into(),
+            size: 32.0,
+            color: Rgba::BLACK,
+            weight: ve_style::FontWeight::NORMAL,
+            style: ve_style::FontStyle::Normal,
+            family: vec![ve_style::FontFamily::SansSerif],
+        }));
+        let mut renderer = SoftwareRenderer::with_system_fonts();
+        if renderer.fonts.emoji_face().is_none() {
+            return;
+        }
+        let frame = renderer.render(&list, 64, 64, 1.0).unwrap();
+        let colorful = frame.rgba.chunks_exact(4).any(|px| {
+            px[3] > 32
+                && ((px[0] as i16 - px[1] as i16).abs() > 20
+                    || (px[1] as i16 - px[2] as i16).abs() > 20)
+        });
+        assert!(
+            colorful,
+            "software present must paint colour emoji, not a tinted alpha mask"
+        );
+    }
+
+    #[test]
+    fn software_renderer_applies_push_transform() {
+        let mut list = DisplayList::new(Size::new(20.0, 10.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 20.0, 10.0),
+            color: Rgba::WHITE,
+        });
+        list.push(DisplayItem::PushTransform {
+            tx: 8.0,
+            ty: 0.0,
+            sx: 1.0,
+            sy: 1.0,
+            angle: 0.0,
+            ox: 0.0,
+            oy: 0.0,
+        });
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 4.0, 4.0),
+            color: Rgba::rgb(255, 0, 0),
+        });
+        list.push(DisplayItem::PopTransform);
+        let mut renderer = SoftwareRenderer::new();
+        let frame = renderer.render(&list, 20, 10, 1.0).unwrap();
+        assert_eq!(frame.pixel(1, 1), Some([255, 255, 255, 255]), "unshifted");
+        assert_eq!(frame.pixel(9, 1), Some([255, 0, 0, 255]), "translated red");
+    }
+
+    #[test]
+    fn software_renderer_applies_push_scale() {
+        let mut list = DisplayList::new(Size::new(20.0, 10.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 20.0, 10.0),
+            color: Rgba::WHITE,
+        });
+        list.push(DisplayItem::PushTransform {
+            tx: 0.0,
+            ty: 0.0,
+            sx: 2.0,
+            sy: 1.0,
+            angle: 0.0,
+            ox: 0.0,
+            oy: 0.0,
+        });
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 4.0, 4.0),
+            color: Rgba::rgb(255, 0, 0),
+        });
+        list.push(DisplayItem::PopTransform);
+        let mut renderer = SoftwareRenderer::new();
+        let frame = renderer.render(&list, 20, 10, 1.0).unwrap();
+        assert_eq!(
+            frame.pixel(6, 1),
+            Some([255, 0, 0, 255]),
+            "scaled width covers x=6"
+        );
+        assert_eq!(
+            frame.pixel(18, 1),
+            Some([255, 255, 255, 255]),
+            "outside scale"
+        );
+    }
+
+    #[test]
+    fn software_renderer_applies_push_blend() {
+        let mut list = DisplayList::new(Size::new(8.0, 8.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 8.0, 8.0),
+            color: Rgba::rgb(0, 255, 0),
+        });
+        list.push(DisplayItem::PushBlend(MixBlendMode::Multiply));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 8.0, 8.0),
+            color: Rgba::rgb(255, 0, 0),
+        });
+        list.push(DisplayItem::PopBlend);
+        let mut renderer = SoftwareRenderer::new();
+        let frame = renderer.render(&list, 8, 8, 1.0).unwrap();
+        assert_eq!(
+            frame.pixel(3, 3),
+            Some([0, 0, 0, 255]),
+            "multiply red over green is black"
+        );
+    }
+
+    #[test]
+    fn software_renderer_applies_push_rotate() {
+        let mut list = DisplayList::new(Size::new(20.0, 20.0));
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(0.0, 0.0, 20.0, 20.0),
+            color: Rgba::WHITE,
+        });
+        list.push(DisplayItem::PushTransform {
+            tx: 0.0,
+            ty: 0.0,
+            sx: 1.0,
+            sy: 1.0,
+            angle: std::f32::consts::FRAC_PI_2,
+            ox: 2.0,
+            oy: 0.0,
+        });
+        list.push(DisplayItem::Rect {
+            rect: Rect::new(2.0, 0.0, 8.0, 2.0),
+            color: Rgba::rgb(255, 0, 0),
+        });
+        list.push(DisplayItem::PopTransform);
+        let mut renderer = SoftwareRenderer::new();
+        let frame = renderer.render(&list, 20, 20, 1.0).unwrap();
+        assert_eq!(
+            frame.pixel(1, 4),
+            Some([255, 0, 0, 255]),
+            "90deg stands the bar up"
+        );
+        assert_eq!(
+            frame.pixel(8, 0),
+            Some([255, 255, 255, 255]),
+            "original x extent is empty after rotate"
+        );
     }
 }

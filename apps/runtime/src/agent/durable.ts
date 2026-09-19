@@ -30,8 +30,8 @@ export class DurableWriteLedger {
     if (persistPath) this.load();
   }
 
-  key(runId: string, pageId: string, epoch: number, signature: string): string {
-    return `${runId}|${pageId}|${epoch}|${signature}`;
+  key(runId: string, pageId: string, epoch: number, signature: string, revision = 0): string {
+    return `${runId}|${pageId}|${epoch}|r${revision}|${signature}`;
   }
 
   begin(opts: {
@@ -39,8 +39,15 @@ export class DurableWriteLedger {
     pageId: string;
     documentEpoch: number;
     signature: string;
+    revision?: number;
   }): { intent: WriteIntent; duplicate: boolean } {
-    const idempotencyKey = this.key(opts.runId, opts.pageId, opts.documentEpoch, opts.signature);
+    const idempotencyKey = this.key(
+      opts.runId,
+      opts.pageId,
+      opts.documentEpoch,
+      opts.signature,
+      opts.revision ?? 0,
+    );
     const existing = this.byKey.get(idempotencyKey);
     if (existing && (existing.status === "confirmed" || existing.status === "pending")) {
       return { intent: existing, duplicate: true };
@@ -122,6 +129,8 @@ export function beginConsequentialWrite(
     runId: string;
     pageId: string;
     documentEpoch: number;
+    /** Observation revision. Same click after a new observe is a new write. */
+    revision?: number;
     steps: Array<{ op: string; target?: unknown; value?: unknown }>;
   },
 ): { skip: boolean; intentId?: string } {
@@ -135,6 +144,7 @@ export function beginConsequentialWrite(
     runId: opts.runId,
     pageId: opts.pageId,
     documentEpoch: opts.documentEpoch,
+    revision: opts.revision,
     signature: stepSignature(stepsForSignature(opts.steps)),
   });
   if (began.duplicate) return { skip: true };

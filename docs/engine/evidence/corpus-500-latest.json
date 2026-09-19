@@ -1,0 +1,136 @@
+{
+  "artifact": {
+    "corpus": "engine/conformance/public-corpus-500.json",
+    "harness": "engine/tools/corpus/observe-500.mjs",
+    "test": "shell::tests::writes_corpus_observe_and_layout_triage"
+  },
+  "backend": "vector-engine",
+  "capabilityUnsupportedRate": 0.0,
+  "engineCapabilityUnsupportedRate": 0.0,
+  "live": true,
+  "liveFetch": {
+    "concurrency": 16,
+    "elapsedSec": 17.631891233,
+    "failed": 12,
+    "failedUrls": [
+      {
+        "error": "HTTP 403",
+        "url": "https://apnews.com/"
+      },
+      {
+        "error": "HTTP 401",
+        "url": "https://www.reuters.com/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.nytimes.com/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.economist.com/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.ft.com/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.w3.org/TR/css-display-3/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.w3.org/TR/CSS2/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://codeberg.org/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://lib.rs/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.npmjs.com/"
+      },
+      {
+        "error": "HTTP 403",
+        "url": "https://www.gnu.org/"
+      },
+      {
+        "error": "The operation was aborted due to timeout",
+        "url": "https://www.washingtonpost.com/"
+      }
+    ],
+    "htmlDir": "/tmp/vector-live-html",
+    "n": 526,
+    "ok": 514,
+    "p50Ms": 282.4250290000009,
+    "p95Ms": 1042.6523070000003,
+    "retried429": {
+      "attempted": 17,
+      "recovered": 16
+    },
+    "retries": 1,
+    "extrasFetched": {
+      "added": 26,
+      "ok": 26,
+      "failed": 0,
+      "note": "Additional fetchable URLs appended so opened n≥500 while keeping the 12 bot-walled originals"
+    }
+  },
+  "observe": {
+    "kind": "fetched-html-bodies",
+    "liveHtml": {
+      "kind": "fetched-html-bodies",
+      "n": 514,
+      "p50Ms": 1.661,
+      "p95Ms": 3.176,
+      "unsupported": 0
+    },
+    "n": 514,
+    "p50Ms": 1.661,
+    "p95Ms": 3.176,
+    "rustcDebug": false,
+    "standInP50Ms": 0.056,
+    "standInP95Ms": 0.07,
+    "unit": "ms"
+  },
+  "openToObserve": {
+    "htmlBytesCap": 256000,
+    "kind": "fetched-html-bodies",
+    "maxMs": 80.621,
+    "n": 514,
+    "notes": "Parse+layout+compact observe on saved live HTML. Network fetch is excluded. HTML parse stops at 256 KB so multi-MB specs do not take a full cascade. Not an Apple-silicon published score.",
+    "p50Ms": 14.365,
+    "p95Ms": 29.399,
+    "rustcDebug": false,
+    "slowest": "117",
+    "unit": "ms"
+  },
+  "purpose": "H1-D3 routing/quality number — not a license to delete Chromium",
+  "security_mode": "production",
+  "skippedLive": false,
+  "snapshotTokens": {
+    "budget": 3000,
+    "kind": "fetched-html-bodies",
+    "n": 514,
+    "p50": 2985,
+    "p95": 2999,
+    "unit": "approxTokens"
+  },
+  "taskControlRank": {
+    "heldOut": {
+      "inTop40": 3,
+      "n": 3,
+      "test": "held_out_task_controls_are_in_the_top_forty"
+    },
+    "inTop40": 484,
+    "kind": "fetched-html-bodies",
+    "n": 484,
+    "rate": 1.0,
+    "targetRate": 0.9,
+    "window": 40
+  },
+  "urls": 526
+}

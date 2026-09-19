@@ -18,13 +18,27 @@ use cssparser::{Parser, Token};
 use ve_core::Size;
 
 use crate::values::{
-    AlignItems, BorderCollapse, BorderStyle, BoxSizing, CaptionSide, Clear, ClipPath, Color,
-    Content, ContentItem, Direction, Display, FlexDirection, FlexWrap, Float, FontFamily,
-    FontStyle, FontWeight, GridLine, JustifyContent, Keyword, Length, LengthContext,
-    LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
-    Overflow, OverflowWrap, PointerEvents, Position, Rgba, SelfAlignment, TextAlign,
-    TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
-    VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
+    AlignItems, AnimationDirection, AnimationFillMode, AnimationPlayState, Appearance,
+    BackfaceVisibility, BackgroundAttachment, BackgroundClip, BackgroundImage, BackgroundOrigin,
+    BackgroundPosition, BackgroundRepeat, BackgroundSize, BorderCollapse, BorderStyle, BoxOrient,
+    BoxShadow, BoxSizing, BreakBefore, BreakInside, CaptionSide, Clear, ClipPath, Color,
+    ColorInterpolationFilters, ColumnSpan, Contain, ContainerType, Content, ContentItem,
+    ContentVisibility, CssClip, Direction, Display, EmptyCells, FieldSizing, FillRule, Filter,
+    FlexDirection, FlexWrap, Float, FontDisplay, FontFamily, FontKerning, FontOpticalSizing,
+    FontSmoothing, FontStretch, FontStyle, FontSynthesis, FontVariant, FontVariantEastAsian,
+    FontVariantLigatures, FontVariantNumeric, FontWeight, ForcedColorAdjust, GridAutoFlow,
+    GridLine, GridTemplateAreas, HangingPunctuation, Hyphens, ImageRendering, Isolation,
+    JustifyContent, Keyword, Length, LengthContext, LengthPercentage, LengthPercentageAuto,
+    LineHeight, ListStylePosition, ListStyleType, MaskComposite, MathStyle, MaxSize, MixBlendMode,
+    ObjectFit, OffsetPath, Overflow, OverflowScrolling, OverflowWrap, OverscrollBehavior,
+    PointerEvents, Position, PositionArea, PreferredColorScheme, PrintColorAdjust, Resize, Rgba,
+    RubyPosition, ScrollBehavior, ScrollSnapAlign, ScrollSnapStop, ScrollSnapType, ScrollbarWidth,
+    SelfAlignment, ShapeOutside, Speak, StrokeLinecap, StrokeLinejoin, TableLayout, TextAlign,
+    TextAlignLast, TextDecorationLine, TextDecorationStyle, TextEmphasis, TextJustify,
+    TextOrientation, TextOverflow, TextRendering, TextTransform, TextUnderlinePosition, TextWrap,
+    TouchAction, TouchCallout, TrackSize, TransformBox, TransformOp, TransformStyle, UnicodeBidi,
+    UserSelect, VectorEffect, VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode,
+    ZIndex,
 };
 
 /// Custom property store: raw token text keyed by `--name`.
@@ -213,6 +227,21 @@ pub enum SpecifiedTransform {
     Translate(SpecifiedValue, SpecifiedValue),
     /// `scale(x[, y])` / `scaleX` / `scaleY`.
     Scale(f32, f32),
+    /// `rotate(θ)` / `rotateZ(θ)`, radians.
+    Rotate(f32),
+}
+
+/// A `box-shadow` as specified (lengths not yet computed).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SpecifiedBoxShadow {
+    /// Horizontal offset.
+    pub dx: SpecifiedValue,
+    /// Vertical offset.
+    pub dy: SpecifiedValue,
+    /// Blur radius.
+    pub blur: SpecifiedValue,
+    /// Shadow colour (`currentcolor` allowed).
+    pub color: Color,
 }
 
 /// A parsed but not yet computed value.
@@ -244,6 +273,12 @@ pub enum SpecifiedValue {
     Color(Color),
     /// A quoted string.
     Str(String),
+    /// `url(...)`.
+    Url(String),
+    /// `linear-gradient` stops as (offset 0–1, colour).
+    LinearGradient(Vec<(f32, Color)>),
+    /// `blur(Npx)`.
+    FilterBlur(f32),
     /// A font-family list.
     Family(Vec<FontFamily>),
     /// A grid track list.
@@ -256,6 +291,18 @@ pub enum SpecifiedValue {
     Transform(Vec<SpecifiedTransform>),
     /// `clip-path: inset(top right bottom left)`.
     ClipInset(Box<[SpecifiedValue; 4]>),
+    /// `clip: rect(top, right, bottom, left)`.
+    ClipRect(Box<[SpecifiedValue; 4]>),
+    /// `offset-path: path(...)` line.
+    OffsetPath(OffsetPath),
+    /// `grid-template-areas`.
+    GridAreas(GridTemplateAreas),
+    /// `box-shadow: <offset-x> <offset-y> <blur>? <color>?`.
+    BoxShadow(Box<SpecifiedBoxShadow>),
+    /// `background-size`.
+    BackgroundSize(BackgroundSize),
+    /// `background-position`.
+    BackgroundPosition(BackgroundPosition),
     /// A grid line placement.
     GridLine(GridLine),
     /// A function or token the engine does not understand. Never accepted by
@@ -342,6 +389,28 @@ enum ValueSyntax {
     ClipPath,
     /// `grid-*-start` / `grid-*-end`.
     GridLine,
+    /// `grid-template-areas`.
+    GridAreas,
+    /// The `box-shadow` property.
+    BoxShadow,
+    /// `aspect-ratio`.
+    AspectRatio,
+    /// Individual `translate` property (`none` | `<length-percentage>{1,2}`).
+    IndividualTranslate,
+    /// Individual `scale` property (`none` | `<number>{1,2}`).
+    IndividualScale,
+    /// Individual `rotate` property (`none` | `<angle>`).
+    IndividualRotate,
+    /// `background-size`.
+    BackgroundSize,
+    /// `background-position`.
+    BackgroundPosition,
+    /// CSS 2.1 `clip`.
+    Clip,
+    /// `offset-path`.
+    OffsetPath,
+    /// `shape-outside`.
+    ShapeOutside,
     /// Arbitrary token stream (custom properties).
     Raw,
 }
@@ -350,6 +419,7 @@ enum ValueSyntax {
 /// valid for the property, which drops the declaration at parse time.
 mod conv {
     use super::*;
+    use crate::values::CssClip;
 
     pub fn kw<T: Keyword>(v: &SpecifiedValue, _: &ConvertContext) -> Option<T> {
         T::from_keyword(v.keyword()?)
@@ -459,6 +529,13 @@ mod conv {
         }
     }
 
+    pub fn fill_color(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Color> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(Color::Rgba(Rgba::TRANSPARENT)),
+            _ => color(v, ctx),
+        }
+    }
+
     /// The `color` property itself: `currentcolor` means the inherited colour.
     pub fn color_rgba(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Rgba> {
         color(v, ctx).map(|c| c.resolve(ctx.parent_color))
@@ -470,6 +547,15 @@ mod conv {
             SpecifiedValue::Integer(i) => Some((*i as f32).clamp(0.0, 1.0)),
             SpecifiedValue::Percentage(p) => Some((p / 100.0).clamp(0.0, 1.0)),
             SpecifiedValue::Calc(_) => calc(v, ctx)?.as_number().map(|n| n.clamp(0.0, 1.0)),
+            _ => None,
+        }
+    }
+
+    pub fn number(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Number(n) => Some(*n),
+            SpecifiedValue::Integer(i) => Some(*i as f32),
+            SpecifiedValue::Calc(_) => calc(v, ctx)?.as_number(),
             _ => None,
         }
     }
@@ -488,6 +574,13 @@ mod conv {
             SpecifiedValue::Integer(i) => Some(*i),
             SpecifiedValue::Calc(_) => calc(v, ctx)?.as_number().map(|n| n.round() as i32),
             _ => None,
+        }
+    }
+
+    pub fn counter(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<i32> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(0),
+            _ => integer(v, ctx),
         }
     }
 
@@ -593,9 +686,18 @@ mod conv {
 
     pub fn grid_line(v: &SpecifiedValue, _: &ConvertContext) -> Option<GridLine> {
         match v {
-            SpecifiedValue::GridLine(l) => Some(*l),
+            SpecifiedValue::GridLine(l) => Some(l.clone()),
             SpecifiedValue::Keyword(k) if k == "auto" => Some(GridLine::Auto),
+            SpecifiedValue::Keyword(k) => Some(GridLine::Named(k.clone())),
             SpecifiedValue::Integer(i) if *i != 0 => Some(GridLine::Line(*i)),
+            _ => None,
+        }
+    }
+
+    pub fn grid_areas(v: &SpecifiedValue, _: &ConvertContext) -> Option<GridTemplateAreas> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(GridTemplateAreas::default()),
+            SpecifiedValue::GridAreas(a) => Some(a.clone()),
             _ => None,
         }
     }
@@ -636,8 +738,191 @@ mod conv {
                         Some(TransformOp::Translate(lp(x, ctx)?, lp(y, ctx)?))
                     }
                     SpecifiedTransform::Scale(x, y) => Some(TransformOp::Scale(*x, *y)),
+                    SpecifiedTransform::Rotate(r) => Some(TransformOp::Rotate(*r)),
                 })
                 .collect(),
+            _ => None,
+        }
+    }
+
+    pub fn background_size(v: &SpecifiedValue, _: &ConvertContext) -> Option<BackgroundSize> {
+        match v {
+            SpecifiedValue::BackgroundSize(s) => Some(*s),
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(BackgroundSize::Auto),
+            SpecifiedValue::Keyword(k) if k == "cover" => Some(BackgroundSize::Cover),
+            SpecifiedValue::Keyword(k) if k == "contain" => Some(BackgroundSize::Contain),
+            _ => None,
+        }
+    }
+
+    pub fn background_position(
+        v: &SpecifiedValue,
+        _: &ConvertContext,
+    ) -> Option<BackgroundPosition> {
+        match v {
+            SpecifiedValue::BackgroundPosition(p) => Some(*p),
+            _ => None,
+        }
+    }
+
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `auto`.
+    pub fn opt_lp(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Option<LengthPercentage>> {
+        lp(v, ctx).map(Some)
+    }
+
+    pub fn quotes(v: &SpecifiedValue, _: &ConvertContext) -> Option<String> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" || k == "auto" => Some(String::new()),
+            SpecifiedValue::Str(s) | SpecifiedValue::Keyword(s) => Some(s.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn background_image(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<BackgroundImage> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(BackgroundImage::None),
+            SpecifiedValue::Url(u) => Some(BackgroundImage::Url(u.clone())),
+            SpecifiedValue::Str(s) => Some(BackgroundImage::Url(s.clone())),
+            SpecifiedValue::LinearGradient(stops) => {
+                let out = stops
+                    .iter()
+                    .map(|(t, c)| {
+                        let rgba = match c {
+                            Color::Rgba(c) => *c,
+                            Color::CurrentColor => ctx.parent_color,
+                        };
+                        (*t, rgba)
+                    })
+                    .collect();
+                Some(BackgroundImage::LinearGradient(out))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn filter(v: &SpecifiedValue, _: &ConvertContext) -> Option<Filter> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(Filter::None),
+            SpecifiedValue::FilterBlur(r) => Some(Filter::Blur(*r)),
+            _ => None,
+        }
+    }
+
+    pub fn box_shadow(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<BoxShadow> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(BoxShadow::default()),
+            SpecifiedValue::BoxShadow(s) => Some(BoxShadow {
+                dx: length_px(&s.dx, ctx).unwrap_or(0.0),
+                dy: length_px(&s.dy, ctx).unwrap_or(0.0),
+                blur: length_px(&s.blur, ctx).unwrap_or(0.0).max(0.0),
+                color: match s.color {
+                    Color::Rgba(c) => c,
+                    Color::CurrentColor => ctx.parent_color,
+                },
+            }),
+            _ => None,
+        }
+    }
+
+    pub fn cursor(v: &SpecifiedValue, _: &ConvertContext) -> Option<String> {
+        match v {
+            SpecifiedValue::Keyword(k) => Some(k.clone()),
+            SpecifiedValue::Str(s) => Some(s.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn ident_name(v: &SpecifiedValue, _: &ConvertContext) -> Option<String> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(String::new()),
+            SpecifiedValue::Keyword(k) => Some(k.clone()),
+            SpecifiedValue::Str(s) => Some(s.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn ident_or_number(v: &SpecifiedValue, _: &ConvertContext) -> Option<String> {
+        match v {
+            SpecifiedValue::Keyword(k) => Some(k.clone()),
+            SpecifiedValue::Str(s) => Some(s.clone()),
+            SpecifiedValue::Number(n) => Some(n.to_string()),
+            SpecifiedValue::Integer(i) => Some(i.to_string()),
+            SpecifiedValue::Percentage(p) => Some(format!("{p}%")),
+            _ => None,
+        }
+    }
+
+    pub fn zoom(v: &SpecifiedValue, _: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "normal" => Some(1.0),
+            SpecifiedValue::Number(n) if *n > 0.0 => Some(*n),
+            SpecifiedValue::Integer(i) if *i > 0 => Some(*i as f32),
+            SpecifiedValue::Percentage(p) if *p > 0.0 => Some(*p / 100.0),
+            _ => None,
+        }
+    }
+
+    pub fn time_ms(v: &SpecifiedValue, _: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Number(n) if *n >= 0.0 => Some(*n),
+            SpecifiedValue::Integer(i) if *i >= 0 => Some(*i as f32),
+            _ => None,
+        }
+    }
+
+    pub fn iteration_count(v: &SpecifiedValue, _: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "infinite" => Some(f32::INFINITY),
+            SpecifiedValue::Number(n) if *n >= 0.0 => Some(*n),
+            SpecifiedValue::Integer(i) if *i >= 0 => Some(*i as f32),
+            _ => None,
+        }
+    }
+
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `none`.
+    pub fn line_clamp(v: &SpecifiedValue, _: &ConvertContext) -> Option<Option<u32>> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(None),
+            SpecifiedValue::Integer(i) if *i >= 1 => Some(Some(*i as u32)),
+            SpecifiedValue::Number(n) if *n >= 1.0 => Some(Some(*n as u32)),
+            _ => None,
+        }
+    }
+
+    pub fn tab_size(v: &SpecifiedValue, _: &ConvertContext) -> Option<u32> {
+        match v {
+            SpecifiedValue::Integer(i) if *i >= 1 => Some(*i as u32),
+            SpecifiedValue::Number(n) if *n >= 1.0 => Some(*n as u32),
+            _ => None,
+        }
+    }
+
+    pub fn decoration_px(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(1.0),
+            _ => length_px(v, ctx),
+        }
+    }
+
+    pub fn grid_auto_flow(v: &SpecifiedValue, _: &ConvertContext) -> Option<GridAutoFlow> {
+        match v {
+            SpecifiedValue::Keyword(k) => match k.to_ascii_lowercase().as_str() {
+                "row" => Some(GridAutoFlow::Row),
+                "column" => Some(GridAutoFlow::Column),
+                "dense" | "row-dense" => Some(GridAutoFlow::RowDense),
+                "column-dense" => Some(GridAutoFlow::ColumnDense),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `auto`.
+    pub fn aspect_ratio(v: &SpecifiedValue, _: &ConvertContext) -> Option<Option<f32>> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
+            SpecifiedValue::Number(n) if *n > 0.0 => Some(Some(*n)),
+            SpecifiedValue::Integer(i) if *i > 0 => Some(Some(*i as f32)),
             _ => None,
         }
     }
@@ -650,6 +935,83 @@ mod conv {
                 right: lp(&sides[1], ctx)?,
                 bottom: lp(&sides[2], ctx)?,
                 left: lp(&sides[3], ctx)?,
+            }),
+            _ => None,
+        }
+    }
+
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `auto`.
+    pub fn column_count(v: &SpecifiedValue, _: &ConvertContext) -> Option<Option<u32>> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
+            SpecifiedValue::Integer(i) if *i >= 1 => Some(Some(*i as u32)),
+            SpecifiedValue::Number(n) if *n >= 1.0 => Some(Some(*n as u32)),
+            _ => None,
+        }
+    }
+
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `auto`.
+    pub fn column_width(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Option<f32>> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
+            _ => Some(Some(length_px(v, ctx)?)),
+        }
+    }
+
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `none`/`auto`.
+    pub fn contain_intrinsic(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Option<f32>> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" || k == "auto" => Some(None),
+            _ => Some(Some(length_px(v, ctx)?)),
+        }
+    }
+
+    pub fn perspective(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(0.0),
+            _ => length_px(v, ctx),
+        }
+    }
+
+    pub fn text_size_adjust(v: &SpecifiedValue, _: &ConvertContext) -> Option<f32> {
+        match v {
+            SpecifiedValue::Keyword(k) if matches!(k.as_str(), "none" | "auto") => Some(1.0),
+            SpecifiedValue::Percentage(p) if *p > 0.0 => Some(*p / 100.0),
+            SpecifiedValue::Number(n) if *n > 0.0 => Some(*n),
+            SpecifiedValue::Integer(i) if *i > 0 => Some(*i as f32),
+            _ => None,
+        }
+    }
+
+    pub fn offset_path(v: &SpecifiedValue, _: &ConvertContext) -> Option<OffsetPath> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(OffsetPath::None),
+            SpecifiedValue::OffsetPath(p) => Some(*p),
+            _ => None,
+        }
+    }
+
+    pub fn shape_outside(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<ShapeOutside> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" => Some(ShapeOutside::None),
+            SpecifiedValue::ClipInset(sides) => Some(ShapeOutside::Inset {
+                top: lp(&sides[0], ctx)?,
+                right: lp(&sides[1], ctx)?,
+                bottom: lp(&sides[2], ctx)?,
+                left: lp(&sides[3], ctx)?,
+            }),
+            _ => None,
+        }
+    }
+
+    pub fn css_clip(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<CssClip> {
+        match v {
+            SpecifiedValue::Keyword(k) if k == "auto" => Some(CssClip::Auto),
+            SpecifiedValue::ClipRect(sides) => Some(CssClip::Rect {
+                top: length_px(&sides[0], ctx)?,
+                right: length_px(&sides[1], ctx)?,
+                bottom: length_px(&sides[2], ctx)?,
+                left: length_px(&sides[3], ctx)?,
             }),
             _ => None,
         }
@@ -716,6 +1078,44 @@ macro_rules! property_table {
                     "overflow-inline" => Some(Self::OverflowX),
                     "overflow-block" => Some(Self::OverflowY),
                     "word-wrap" => Some(Self::OverflowWrap),
+                    "inset-area" => Some(Self::PositionArea),
+                    "-webkit-line-clamp" => Some(Self::LineClamp),
+                    "-webkit-appearance" => Some(Self::Appearance),
+                    "-webkit-font-smoothing" => Some(Self::FontSmoothing),
+                    "-moz-osx-font-smoothing" => Some(Self::FontSmoothing),
+                    "page-break-before" => Some(Self::BreakBefore),
+                    "page-break-inside" => Some(Self::BreakInside),
+                    "page-break-after" => Some(Self::BreakAfter),
+                    "-webkit-text-size-adjust" => Some(Self::TextSizeAdjust),
+                    "-webkit-box-orient" => Some(Self::BoxOrient),
+                    "-webkit-tap-highlight-color" => Some(Self::TapHighlightColor),
+                    "-webkit-transform" | "-moz-transform" => Some(Self::Transform),
+                    "-webkit-mask-image" => Some(Self::MaskImage),
+                    "-webkit-text-decoration" => Some(Self::TextDecorationLine),
+                    "-o-object-fit" => Some(Self::ObjectFit),
+                    "-webkit-user-select" | "-moz-user-select" | "-ms-user-select" => {
+                        Some(Self::UserSelect)
+                    }
+                    "-moz-column-gap" | "-webkit-column-gap" => Some(Self::ColumnGap),
+                    "-moz-appearance" | "-ms-appearance" => Some(Self::Appearance),
+                    "-webkit-margin-before" => Some(Self::MarginTop),
+                    "-webkit-margin-after" => Some(Self::MarginBottom),
+                    "-webkit-margin-start" => Some(Self::MarginLeft),
+                    "-webkit-margin-end" => Some(Self::MarginRight),
+                    "-webkit-backdrop-filter" => Some(Self::BackdropFilter),
+                    "-webkit-background-clip" => Some(Self::BackgroundClip),
+                    "-webkit-justify-content" => Some(Self::JustifyContent),
+                    "-webkit-forced-color-adjust" => Some(Self::ForcedColorAdjust),
+                    "-o-border-image" | "border-image-source" => Some(Self::BorderImage),
+                    "overscroll-behavior-x" | "overscroll-behavior-y" => {
+                        Some(Self::OverscrollBehavior)
+                    }
+                    "-ms-overflow-style" => Some(Self::ScrollbarWidth),
+                    "-webkit-box-pack" => Some(Self::JustifyContent),
+                    "-webkit-overflow-scrolling" => Some(Self::OverflowScrolling),
+                    "-webkit-touch-callout" => Some(Self::TouchCallout),
+                    "-webkit-mask-composite" => Some(Self::MaskComposite),
+                    "scroll-padding-inline" | "scroll-padding-block" => Some(Self::ScrollPadding),
                     _ if lower.starts_with("--") && lower.len() > 2 => Some(Self::Custom(name.to_owned())),
                     _ => None,
                 }
@@ -937,8 +1337,16 @@ property_table! {
     OverflowY: "overflow-y" => overflow_y: Overflow = Overflow::Visible, inherited = false, syntax = Single, convert = conv::kw::<Overflow>;
     /// `clip-path` (only `inset()`; visibility only)
     ClipPath: "clip-path" => clip_path: ClipPath = ClipPath::None, inherited = false, syntax = ClipPath, convert = conv::clip_path;
+    /// CSS 2.1 `clip` (`auto` / `rect()`), paint-only on out-of-flow boxes
+    Clip: "clip" => clip: CssClip = CssClip::Auto, inherited = false, syntax = Clip, convert = conv::css_clip;
     /// `transform` (`translate` / `scale` only; geometry only)
     Transform: "transform" => transform: Vec<TransformOp> = Vec::new(), inherited = false, syntax = Transform, convert = conv::transform;
+    /// Individual `translate` (`none` or one/two lengths)
+    Translate: "translate" => translate: Vec<TransformOp> = Vec::new(), inherited = false, syntax = IndividualTranslate, convert = conv::transform;
+    /// Individual `scale` (`none` or one/two numbers)
+    Scale: "scale" => scale: Vec<TransformOp> = Vec::new(), inherited = false, syntax = IndividualScale, convert = conv::transform;
+    /// Individual `rotate` (`none` or an angle)
+    Rotate: "rotate" => rotate: Vec<TransformOp> = Vec::new(), inherited = false, syntax = IndividualRotate, convert = conv::transform;
     /// `font-size` (pixels)
     FontSize: "font-size" => font_size: f32 = 16.0, inherited = true, syntax = Single, convert = conv::font_size;
     /// `font-weight`
@@ -955,16 +1363,42 @@ property_table! {
     WordSpacing: "word-spacing" => word_spacing: f32 = 0.0, inherited = true, syntax = Single, convert = conv::spacing;
     /// `text-align`
     TextAlign: "text-align" => text_align: TextAlign = TextAlign::Start, inherited = true, syntax = Single, convert = conv::kw::<TextAlign>;
+    /// `text-align-last`
+    TextAlignLast: "text-align-last" => text_align_last: TextAlignLast = TextAlignLast::Auto, inherited = true, syntax = Single, convert = conv::kw::<TextAlignLast>;
+    /// `text-wrap`
+    TextWrap: "text-wrap" => text_wrap: TextWrap = TextWrap::Wrap, inherited = true, syntax = Single, convert = conv::kw::<TextWrap>;
+    /// `hyphens`
+    Hyphens: "hyphens" => hyphens: Hyphens = Hyphens::Manual, inherited = true, syntax = Single, convert = conv::kw::<Hyphens>;
     /// `text-indent`
     TextIndent: "text-indent" => text_indent: LengthPercentage = LengthPercentage::ZERO, inherited = true, syntax = Single, convert = conv::lp;
     /// `text-decoration-line` (single keyword; `text-decoration` aliases to it)
     TextDecorationLine: "text-decoration-line" => text_decoration_line: TextDecorationLine = TextDecorationLine::None, inherited = false, syntax = Single, convert = conv::kw::<TextDecorationLine>;
+    /// `text-decoration-color`
+    TextDecorationColor: "text-decoration-color" => text_decoration_color: Color = Color::CurrentColor, inherited = false, syntax = Single, convert = conv::color;
+    /// `text-decoration-thickness` (pixels; `auto` is 1)
+    TextDecorationThickness: "text-decoration-thickness" => text_decoration_thickness: f32 = 1.0, inherited = false, syntax = Single, convert = conv::decoration_px;
+    /// `text-underline-offset` (pixels)
+    TextUnderlineOffset: "text-underline-offset" => text_underline_offset: f32 = 1.0, inherited = false, syntax = Single, convert = conv::decoration_px;
+    /// `text-decoration-style`
+    TextDecorationStyle: "text-decoration-style" => text_decoration_style: TextDecorationStyle = TextDecorationStyle::Solid, inherited = false, syntax = Single, convert = conv::kw::<TextDecorationStyle>;
+    /// `text-underline-position`
+    TextUnderlinePosition: "text-underline-position" => text_underline_position: TextUnderlinePosition = TextUnderlinePosition::Auto, inherited = true, syntax = Single, convert = conv::kw::<TextUnderlinePosition>;
+    /// `user-select`
+    UserSelect: "user-select" => user_select: UserSelect = UserSelect::Auto, inherited = false, syntax = Single, convert = conv::kw::<UserSelect>;
+    /// `will-change` (first ident)
+    WillChange: "will-change" => will_change: String = String::from("auto"), inherited = false, syntax = Single, convert = conv::cursor;
     /// `text-transform`
     TextTransform: "text-transform" => text_transform: TextTransform = TextTransform::None, inherited = true, syntax = Single, convert = conv::kw::<TextTransform>;
+    /// `font-variant`
+    FontVariant: "font-variant" => font_variant: FontVariant = FontVariant::Normal, inherited = true, syntax = Single, convert = conv::kw::<FontVariant>;
     /// `text-overflow`
     TextOverflow: "text-overflow" => text_overflow: TextOverflow = TextOverflow::Clip, inherited = false, syntax = Single, convert = conv::kw::<TextOverflow>;
     /// `white-space`
     WhiteSpace: "white-space" => white_space: WhiteSpace = WhiteSpace::Normal, inherited = true, syntax = Single, convert = conv::kw::<WhiteSpace>;
+    /// `tab-size`
+    TabSize: "tab-size" => tab_size: u32 = 8, inherited = true, syntax = Single, convert = conv::tab_size;
+    /// `line-clamp` / `-webkit-line-clamp` (`none` is `None`)
+    LineClamp: "line-clamp" => line_clamp: Option<u32> = None, inherited = false, syntax = Single, convert = conv::line_clamp;
     /// `word-break`
     WordBreak: "word-break" => word_break: WordBreak = WordBreak::Normal, inherited = true, syntax = Single, convert = conv::kw::<WordBreak>;
     /// `overflow-wrap` (`word-wrap` aliases to it)
@@ -1017,6 +1451,8 @@ property_table! {
     GridTemplateColumns: "grid-template-columns" => grid_template_columns: Vec<TrackSize> = Vec::new(), inherited = false, syntax = TrackList, convert = conv::tracks;
     /// `grid-template-rows` (explicit tracks only; empty = `none`)
     GridTemplateRows: "grid-template-rows" => grid_template_rows: Vec<TrackSize> = Vec::new(), inherited = false, syntax = TrackList, convert = conv::tracks;
+    /// `grid-template-areas`
+    GridTemplateAreas: "grid-template-areas" => grid_template_areas: GridTemplateAreas = GridTemplateAreas { rows: Vec::new() }, inherited = false, syntax = GridAreas, convert = conv::grid_areas;
     /// `grid-auto-columns` (first track size only)
     GridAutoColumns: "grid-auto-columns" => grid_auto_columns: Vec<TrackSize> = Vec::new(), inherited = false, syntax = TrackList, convert = conv::tracks;
     /// `grid-auto-rows` (first track size only)
@@ -1029,6 +1465,310 @@ property_table! {
     GridColumnStart: "grid-column-start" => grid_column_start: GridLine = GridLine::Auto, inherited = false, syntax = GridLine, convert = conv::grid_line;
     /// `grid-column-end`
     GridColumnEnd: "grid-column-end" => grid_column_end: GridLine = GridLine::Auto, inherited = false, syntax = GridLine, convert = conv::grid_line;
+    /// `border-top-left-radius` (pixels)
+    BorderTopLeftRadius: "border-top-left-radius" => border_top_left_radius: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `border-top-right-radius` (pixels)
+    BorderTopRightRadius: "border-top-right-radius" => border_top_right_radius: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `border-bottom-right-radius` (pixels)
+    BorderBottomRightRadius: "border-bottom-right-radius" => border_bottom_right_radius: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `border-bottom-left-radius` (pixels)
+    BorderBottomLeftRadius: "border-bottom-left-radius" => border_bottom_left_radius: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `object-fit`
+    ObjectFit: "object-fit" => object_fit: ObjectFit = ObjectFit::Fill, inherited = false, syntax = Single, convert = conv::kw::<ObjectFit>;
+    /// `object-position` (same value space as `background-position`)
+    ObjectPosition: "object-position" => object_position: BackgroundPosition = BackgroundPosition {
+        x: LengthPercentage::Percent(50.0),
+        y: LengthPercentage::Percent(50.0),
+    }, inherited = false, syntax = BackgroundPosition, convert = conv::background_position;
+    /// `transform-origin` (percentages refer to the border box)
+    TransformOrigin: "transform-origin" => transform_origin: BackgroundPosition = BackgroundPosition {
+        x: LengthPercentage::Percent(50.0),
+        y: LengthPercentage::Percent(50.0),
+    }, inherited = false, syntax = BackgroundPosition, convert = conv::background_position;
+    /// `box-shadow` (first shadow only)
+    BoxShadow: "box-shadow" => box_shadow: BoxShadow = BoxShadow {
+        dx: 0.0,
+        dy: 0.0,
+        blur: 0.0,
+        color: Rgba::TRANSPARENT,
+    }, inherited = false, syntax = BoxShadow, convert = conv::box_shadow;
+    /// `background-image` (`none` or `url(...)`)
+    BackgroundImage: "background-image" => background_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
+    /// `mask-image`
+    MaskImage: "mask-image" => mask_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
+    /// `background-size`
+    BackgroundSize: "background-size" => background_size: BackgroundSize = BackgroundSize::Auto, inherited = false, syntax = BackgroundSize, convert = conv::background_size;
+    /// `background-position`
+    BackgroundPosition: "background-position" => background_position: BackgroundPosition = BackgroundPosition {
+        x: LengthPercentage::ZERO,
+        y: LengthPercentage::ZERO,
+    }, inherited = false, syntax = BackgroundPosition, convert = conv::background_position;
+    /// `background-position-x`
+    BackgroundPositionX: "background-position-x" => background_position_x: Option<LengthPercentage> = None, inherited = false, syntax = Single, convert = conv::opt_lp;
+    /// `background-position-y`
+    BackgroundPositionY: "background-position-y" => background_position_y: Option<LengthPercentage> = None, inherited = false, syntax = Single, convert = conv::opt_lp;
+    /// `background-repeat`
+    BackgroundRepeat: "background-repeat" => background_repeat: BackgroundRepeat = BackgroundRepeat::Repeat, inherited = false, syntax = Single, convert = conv::kw::<BackgroundRepeat>;
+    /// `background-clip`
+    BackgroundClip: "background-clip" => background_clip: BackgroundClip = BackgroundClip::BorderBox, inherited = false, syntax = Single, convert = conv::kw::<BackgroundClip>;
+    /// `background-origin`
+    BackgroundOrigin: "background-origin" => background_origin: BackgroundOrigin = BackgroundOrigin::PaddingBox, inherited = false, syntax = Single, convert = conv::kw::<BackgroundOrigin>;
+    /// `background-attachment`
+    BackgroundAttachment: "background-attachment" => background_attachment: BackgroundAttachment = BackgroundAttachment::Scroll, inherited = false, syntax = Single, convert = conv::kw::<BackgroundAttachment>;
+    /// `cursor` (keyword stored as the canonical name)
+    Cursor: "cursor" => cursor: String = String::from("auto"), inherited = true, syntax = Single, convert = conv::cursor;
+    /// `filter` (`none` or `blur()`)
+    Filter: "filter" => filter: Filter = Filter::None, inherited = false, syntax = Single, convert = conv::filter;
+    /// `backdrop-filter` (`none` or `blur()`)
+    BackdropFilter: "backdrop-filter" => backdrop_filter: Filter = Filter::None, inherited = false, syntax = Single, convert = conv::filter;
+    /// `animation-name` (`none` is empty)
+    AnimationName: "animation-name" => animation_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `animation-duration` in milliseconds
+    AnimationDuration: "animation-duration" => animation_duration_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
+    /// `animation-delay` in milliseconds
+    AnimationDelay: "animation-delay" => animation_delay_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
+    /// `animation-iteration-count` (`infinite` is +∞)
+    AnimationIterationCount: "animation-iteration-count" => animation_iteration_count: f32 = 1.0, inherited = false, syntax = Single, convert = conv::iteration_count;
+    /// `animation-fill-mode`
+    AnimationFillMode: "animation-fill-mode" => animation_fill_mode: AnimationFillMode = AnimationFillMode::None, inherited = false, syntax = Single, convert = conv::kw::<AnimationFillMode>;
+    /// `animation-play-state`
+    AnimationPlayState: "animation-play-state" => animation_play_state: AnimationPlayState = AnimationPlayState::Running, inherited = false, syntax = Single, convert = conv::kw::<AnimationPlayState>;
+    /// `animation-direction`
+    AnimationDirection: "animation-direction" => animation_direction: AnimationDirection = AnimationDirection::Normal, inherited = false, syntax = Single, convert = conv::kw::<AnimationDirection>;
+    /// `animation-timing-function` (first ident)
+    AnimationTimingFunction: "animation-timing-function" => animation_timing_function: String = String::from("ease"), inherited = false, syntax = Single, convert = conv::cursor;
+    /// `isolation`
+    Isolation: "isolation" => isolation: Isolation = Isolation::Auto, inherited = false, syntax = Single, convert = conv::kw::<Isolation>;
+    /// `mix-blend-mode`
+    MixBlendMode: "mix-blend-mode" => mix_blend_mode: MixBlendMode = MixBlendMode::Normal, inherited = false, syntax = Single, convert = conv::kw::<MixBlendMode>;
+    /// `transition-property` (`all` default)
+    TransitionProperty: "transition-property" => transition_property: String = String::from("all"), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `transition-duration` in milliseconds
+    TransitionDuration: "transition-duration" => transition_duration_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
+    /// `transition-delay` in milliseconds
+    TransitionDelay: "transition-delay" => transition_delay_ms: f32 = 0.0, inherited = false, syntax = Single, convert = conv::time_ms;
+    /// `transition-timing-function` (first ident)
+    TransitionTimingFunction: "transition-timing-function" => transition_timing_function: String = String::from("ease"), inherited = false, syntax = Single, convert = conv::cursor;
+    /// `outline-width` (pixels)
+    OutlineWidth: "outline-width" => outline_width: f32 = 0.0, inherited = false, syntax = Single, convert = conv::border_width;
+    /// `outline-style`
+    OutlineStyle: "outline-style" => outline_style: BorderStyle = BorderStyle::None, inherited = false, syntax = Single, convert = conv::kw::<BorderStyle>;
+    /// `outline-color`
+    OutlineColor: "outline-color" => outline_color: Color = Color::CurrentColor, inherited = false, syntax = Single, convert = conv::color;
+    /// `outline-offset` (pixels)
+    OutlineOffset: "outline-offset" => outline_offset: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `text-shadow` (first shadow only)
+    TextShadow: "text-shadow" => text_shadow: BoxShadow = BoxShadow {
+        dx: 0.0,
+        dy: 0.0,
+        blur: 0.0,
+        color: Rgba::TRANSPARENT,
+    }, inherited = false, syntax = BoxShadow, convert = conv::box_shadow;
+    /// `aspect-ratio` (`auto` is `None`)
+    AspectRatio: "aspect-ratio" => aspect_ratio: Option<f32> = None, inherited = false, syntax = AspectRatio, convert = conv::aspect_ratio;
+    /// `zoom` (unitless scale; `normal` is 1)
+    Zoom: "zoom" => zoom: f32 = 1.0, inherited = false, syntax = Single, convert = conv::zoom;
+    /// `contain`
+    Contain: "contain" => contain: Contain = Contain::None, inherited = false, syntax = Single, convert = conv::kw::<Contain>;
+    /// `contain-intrinsic-width` (`none` is `None`)
+    ContainIntrinsicWidth: "contain-intrinsic-width" => contain_intrinsic_width: Option<f32> = None, inherited = false, syntax = Single, convert = conv::contain_intrinsic;
+    /// `contain-intrinsic-height` (`none` is `None`)
+    ContainIntrinsicHeight: "contain-intrinsic-height" => contain_intrinsic_height: Option<f32> = None, inherited = false, syntax = Single, convert = conv::contain_intrinsic;
+    /// `scrollbar-width`
+    ScrollbarWidth: "scrollbar-width" => scrollbar_width: ScrollbarWidth = ScrollbarWidth::Auto, inherited = false, syntax = Single, convert = conv::kw::<ScrollbarWidth>;
+    /// `container-type`
+    ContainerType: "container-type" => container_type: ContainerType = ContainerType::Normal, inherited = false, syntax = Single, convert = conv::kw::<ContainerType>;
+    /// `container-name`
+    ContainerName: "container-name" => container_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `scroll-margin` (pixels, first value)
+    ScrollMargin: "scroll-margin" => scroll_margin: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `scroll-padding` (pixels, first value)
+    ScrollPadding: "scroll-padding" => scroll_padding: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `scroll-behavior`
+    ScrollBehavior: "scroll-behavior" => scroll_behavior: ScrollBehavior = ScrollBehavior::Auto, inherited = false, syntax = Single, convert = conv::kw::<ScrollBehavior>;
+    /// `overscroll-behavior`
+    OverscrollBehavior: "overscroll-behavior" => overscroll_behavior: OverscrollBehavior = OverscrollBehavior::Auto, inherited = false, syntax = Single, convert = conv::kw::<OverscrollBehavior>;
+    /// `touch-action`
+    TouchAction: "touch-action" => touch_action: TouchAction = TouchAction::Auto, inherited = false, syntax = Single, convert = conv::kw::<TouchAction>;
+    /// `appearance`
+    Appearance: "appearance" => appearance: Appearance = Appearance::Auto, inherited = false, syntax = Single, convert = conv::kw::<Appearance>;
+    /// `image-rendering`
+    ImageRendering: "image-rendering" => image_rendering: ImageRendering = ImageRendering::Auto, inherited = false, syntax = Single, convert = conv::kw::<ImageRendering>;
+    /// `caret-color`
+    CaretColor: "caret-color" => caret_color: Color = Color::CurrentColor, inherited = true, syntax = Single, convert = conv::color;
+    /// `accent-color`
+    AccentColor: "accent-color" => accent_color: Color = Color::CurrentColor, inherited = true, syntax = Single, convert = conv::color;
+    /// `color-scheme`
+    PreferredColorScheme: "color-scheme" => color_scheme: PreferredColorScheme = PreferredColorScheme::Normal, inherited = true, syntax = Single, convert = conv::kw::<PreferredColorScheme>;
+    /// `quotes` (first open quote)
+    Quotes: "quotes" => quotes: String = String::new(), inherited = true, syntax = Single, convert = conv::quotes;
+    /// `list-style-image`
+    ListStyleImage: "list-style-image" => list_style_image: BackgroundImage = BackgroundImage::None, inherited = true, syntax = Single, convert = conv::background_image;
+    /// `counter-reset` (integer)
+    CounterReset: "counter-reset" => counter_reset: i32 = 0, inherited = false, syntax = Single, convert = conv::counter;
+    /// `counter-increment` (integer)
+    CounterIncrement: "counter-increment" => counter_increment: i32 = 0, inherited = false, syntax = Single, convert = conv::counter;
+    /// `column-count` (`auto` is `None`)
+    ColumnCount: "column-count" => column_count: Option<u32> = None, inherited = false, syntax = Single, convert = conv::column_count;
+    /// `column-width` (`auto` is `None`)
+    ColumnWidth: "column-width" => column_width: Option<f32> = None, inherited = false, syntax = Single, convert = conv::column_width;
+    /// `column-rule-width` (pixels)
+    ColumnRuleWidth: "column-rule-width" => column_rule_width: f32 = 0.0, inherited = false, syntax = Single, convert = conv::border_width;
+    /// `column-rule-color`
+    ColumnRuleColor: "column-rule-color" => column_rule_color: Color = Color::CurrentColor, inherited = false, syntax = Single, convert = conv::color;
+    /// `column-rule-style`
+    ColumnRuleStyle: "column-rule-style" => column_rule_style: TextDecorationStyle = TextDecorationStyle::Solid, inherited = false, syntax = Single, convert = conv::kw::<TextDecorationStyle>;
+    /// `column-span`
+    ColumnSpan: "column-span" => column_span: ColumnSpan = ColumnSpan::None, inherited = false, syntax = Single, convert = conv::kw::<ColumnSpan>;
+    /// `fill` (`none` is transparent)
+    Fill: "fill" => fill: Color = Color::CurrentColor, inherited = true, syntax = Single, convert = conv::fill_color;
+    /// `stroke` (`none` is transparent)
+    Stroke: "stroke" => stroke: Color = Color::Rgba(Rgba::TRANSPARENT), inherited = true, syntax = Single, convert = conv::fill_color;
+    /// `stroke-width` (pixels)
+    StrokeWidth: "stroke-width" => stroke_width: f32 = 1.0, inherited = true, syntax = Single, convert = conv::length_px;
+    /// `grid-auto-flow`
+    GridAutoFlow: "grid-auto-flow" => grid_auto_flow: GridAutoFlow = GridAutoFlow::Row, inherited = false, syntax = Single, convert = conv::grid_auto_flow;
+    /// `table-layout`
+    TableLayout: "table-layout" => table_layout: TableLayout = TableLayout::Auto, inherited = false, syntax = Single, convert = conv::kw::<TableLayout>;
+    /// `empty-cells`
+    EmptyCells: "empty-cells" => empty_cells: EmptyCells = EmptyCells::Show, inherited = true, syntax = Single, convert = conv::kw::<EmptyCells>;
+    /// `content-visibility`
+    ContentVisibility: "content-visibility" => content_visibility: ContentVisibility = ContentVisibility::Visible, inherited = false, syntax = Single, convert = conv::kw::<ContentVisibility>;
+    /// `field-sizing`
+    FieldSizing: "field-sizing" => field_sizing: FieldSizing = FieldSizing::Fixed, inherited = false, syntax = Single, convert = conv::kw::<FieldSizing>;
+    /// `resize`
+    Resize: "resize" => resize: Resize = Resize::None, inherited = false, syntax = Single, convert = conv::kw::<Resize>;
+    /// `offset-path` (`none` or `path()` line)
+    OffsetPath: "offset-path" => offset_path: OffsetPath = OffsetPath::None, inherited = false, syntax = OffsetPath, convert = conv::offset_path;
+    /// `offset-distance`
+    OffsetDistance: "offset-distance" => offset_distance: LengthPercentage = LengthPercentage::ZERO, inherited = false, syntax = Single, convert = conv::lp;
+    /// `shape-outside` (`none` or `inset()`)
+    ShapeOutside: "shape-outside" => shape_outside: ShapeOutside = ShapeOutside::None, inherited = false, syntax = ShapeOutside, convert = conv::shape_outside;
+    /// `text-orientation`
+    TextOrientation: "text-orientation" => text_orientation: TextOrientation = TextOrientation::Mixed, inherited = true, syntax = Single, convert = conv::kw::<TextOrientation>;
+    /// Extra offset after float placement.
+    FloatOffset: "float-offset" => float_offset: LengthPercentage = LengthPercentage::ZERO, inherited = false, syntax = Single, convert = conv::lp;
+    /// `anchor-name` (`none` is empty).
+    AnchorName: "anchor-name" => anchor_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `position-anchor` (`none` is empty).
+    PositionAnchor: "position-anchor" => position_anchor: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `position-area` / `inset-area`.
+    PositionArea: "position-area" => position_area: PositionArea = PositionArea::None, inherited = false, syntax = Single, convert = conv::kw::<PositionArea>;
+    /// `background-blend-mode`
+    BackgroundBlendMode: "background-blend-mode" => background_blend_mode: MixBlendMode = MixBlendMode::Normal, inherited = false, syntax = Single, convert = conv::kw::<MixBlendMode>;
+    /// `font-stretch`
+    FontStretch: "font-stretch" => font_stretch: FontStretch = FontStretch::Normal, inherited = true, syntax = Single, convert = conv::kw::<FontStretch>;
+    /// `font-variant-ligatures`
+    FontVariantLigatures: "font-variant-ligatures" => font_variant_ligatures: FontVariantLigatures = FontVariantLigatures::None, inherited = true, syntax = Single, convert = conv::kw::<FontVariantLigatures>;
+    /// `font-variant-numeric`
+    FontVariantNumeric: "font-variant-numeric" => font_variant_numeric: FontVariantNumeric = FontVariantNumeric::Normal, inherited = true, syntax = Single, convert = conv::kw::<FontVariantNumeric>;
+    /// `font-kerning`
+    FontKerning: "font-kerning" => font_kerning: FontKerning = FontKerning::None, inherited = true, syntax = Single, convert = conv::kw::<FontKerning>;
+    /// `scroll-snap-type`
+    ScrollSnapType: "scroll-snap-type" => scroll_snap_type: ScrollSnapType = ScrollSnapType::None, inherited = false, syntax = Single, convert = conv::kw::<ScrollSnapType>;
+    /// `scroll-snap-align`
+    ScrollSnapAlign: "scroll-snap-align" => scroll_snap_align: ScrollSnapAlign = ScrollSnapAlign::None, inherited = false, syntax = Single, convert = conv::kw::<ScrollSnapAlign>;
+    /// `orphans`
+    Orphans: "orphans" => orphans: u32 = 2, inherited = true, syntax = Single, convert = conv::tab_size;
+    /// `widows`
+    Widows: "widows" => widows: u32 = 2, inherited = true, syntax = Single, convert = conv::tab_size;
+    /// `break-before`
+    BreakBefore: "break-before" => break_before: BreakBefore = BreakBefore::Auto, inherited = false, syntax = Single, convert = conv::kw::<BreakBefore>;
+    /// `break-after`
+    BreakAfter: "break-after" => break_after: BreakBefore = BreakBefore::Auto, inherited = false, syntax = Single, convert = conv::kw::<BreakBefore>;
+    /// `break-inside`
+    BreakInside: "break-inside" => break_inside: BreakInside = BreakInside::Auto, inherited = false, syntax = Single, convert = conv::kw::<BreakInside>;
+    /// `text-rendering`
+    TextRendering: "text-rendering" => text_rendering: TextRendering = TextRendering::Auto, inherited = true, syntax = Single, convert = conv::kw::<TextRendering>;
+    /// `-webkit-font-smoothing`
+    FontSmoothing: "font-smoothing" => font_smoothing: FontSmoothing = FontSmoothing::Auto, inherited = true, syntax = Single, convert = conv::kw::<FontSmoothing>;
+    /// `transform-style`
+    TransformStyle: "transform-style" => transform_style: TransformStyle = TransformStyle::Flat, inherited = false, syntax = Single, convert = conv::kw::<TransformStyle>;
+    /// `perspective` (pixels; `none` is 0)
+    Perspective: "perspective" => perspective: f32 = 0.0, inherited = false, syntax = Single, convert = conv::perspective;
+    /// `backface-visibility`
+    BackfaceVisibility: "backface-visibility" => backface_visibility: BackfaceVisibility = BackfaceVisibility::Visible, inherited = false, syntax = Single, convert = conv::kw::<BackfaceVisibility>;
+    /// `text-size-adjust` (scale; `none`/`auto` are 1)
+    TextSizeAdjust: "text-size-adjust" => text_size_adjust: f32 = 1.0, inherited = true, syntax = Single, convert = conv::text_size_adjust;
+    /// `hanging-punctuation`
+    HangingPunctuation: "hanging-punctuation" => hanging_punctuation: HangingPunctuation = HangingPunctuation::None, inherited = true, syntax = Single, convert = conv::kw::<HangingPunctuation>;
+    /// `marker-offset` (pixels)
+    MarkerOffset: "marker-offset" => marker_offset: f32 = 0.0, inherited = false, syntax = Single, convert = conv::length_px;
+    /// `text-emphasis`
+    TextEmphasis: "text-emphasis" => text_emphasis: TextEmphasis = TextEmphasis::None, inherited = true, syntax = Single, convert = conv::kw::<TextEmphasis>;
+    /// `-webkit-box-orient`
+    BoxOrient: "box-orient" => box_orient: BoxOrient = BoxOrient::Horizontal, inherited = false, syntax = Single, convert = conv::kw::<BoxOrient>;
+    /// `transform-box`
+    TransformBox: "transform-box" => transform_box: TransformBox = TransformBox::BorderBox, inherited = false, syntax = Single, convert = conv::kw::<TransformBox>;
+    /// `vector-effect`
+    VectorEffect: "vector-effect" => vector_effect: VectorEffect = VectorEffect::None, inherited = false, syntax = Single, convert = conv::kw::<VectorEffect>;
+    /// `font-feature-settings` (first ident)
+    FontFeatureSettings: "font-feature-settings" => font_feature_settings: String = String::from("normal"), inherited = true, syntax = Single, convert = conv::cursor;
+    /// `-webkit-tap-highlight-color`
+    TapHighlightColor: "tap-highlight-color" => tap_highlight_color: Color = Color::CurrentColor, inherited = true, syntax = Single, convert = conv::color;
+    /// `speak`
+    Speak: "speak" => speak: Speak = Speak::Normal, inherited = true, syntax = Single, convert = conv::kw::<Speak>;
+    /// `forced-color-adjust`
+    ForcedColorAdjust: "forced-color-adjust" => forced_color_adjust: ForcedColorAdjust = ForcedColorAdjust::Auto, inherited = false, syntax = Single, convert = conv::kw::<ForcedColorAdjust>;
+    /// `view-transition-name` (`none` is empty)
+    ViewTransitionName: "view-transition-name" => view_transition_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `text-justify`
+    TextJustify: "text-justify" => text_justify: TextJustify = TextJustify::Auto, inherited = true, syntax = Single, convert = conv::kw::<TextJustify>;
+    /// `perspective-origin`
+    PerspectiveOrigin: "perspective-origin" => perspective_origin: BackgroundPosition = BackgroundPosition {
+        x: LengthPercentage::Percent(50.0),
+        y: LengthPercentage::Percent(50.0),
+    }, inherited = false, syntax = BackgroundPosition, convert = conv::background_position;
+    /// `print-color-adjust`
+    PrintColorAdjust: "print-color-adjust" => print_color_adjust: PrintColorAdjust = PrintColorAdjust::Economy, inherited = true, syntax = Single, convert = conv::kw::<PrintColorAdjust>;
+    /// `font-display`
+    FontDisplay: "font-display" => font_display: FontDisplay = FontDisplay::Auto, inherited = false, syntax = Single, convert = conv::kw::<FontDisplay>;
+    /// `font-optical-sizing`
+    FontOpticalSizing: "font-optical-sizing" => font_optical_sizing: FontOpticalSizing = FontOpticalSizing::Auto, inherited = true, syntax = Single, convert = conv::kw::<FontOpticalSizing>;
+    /// `font-synthesis`
+    FontSynthesis: "font-synthesis" => font_synthesis: FontSynthesis = FontSynthesis::Auto, inherited = true, syntax = Single, convert = conv::kw::<FontSynthesis>;
+    /// `ruby-position`
+    RubyPosition: "ruby-position" => ruby_position: RubyPosition = RubyPosition::Over, inherited = true, syntax = Single, convert = conv::kw::<RubyPosition>;
+    /// `math-style`
+    MathStyle: "math-style" => math_style: MathStyle = MathStyle::Normal, inherited = true, syntax = Single, convert = conv::kw::<MathStyle>;
+    /// `math-depth`
+    MathDepth: "math-depth" => math_depth: i32 = 0, inherited = true, syntax = Single, convert = conv::integer;
+    /// `font-language-override` (first ident)
+    FontLanguageOverride: "font-language-override" => font_language_override: String = String::from("normal"), inherited = true, syntax = Single, convert = conv::cursor;
+    /// `font-palette` (first ident)
+    FontPalette: "font-palette" => font_palette: String = String::from("normal"), inherited = true, syntax = Single, convert = conv::cursor;
+    /// `border-image` (`none` or `url(...)`)
+    BorderImage: "border-image" => border_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
+    /// `-webkit-overflow-scrolling`
+    OverflowScrolling: "overflow-scrolling" => overflow_scrolling: OverflowScrolling = OverflowScrolling::Auto, inherited = false, syntax = Single, convert = conv::kw::<OverflowScrolling>;
+    /// `-webkit-touch-callout`
+    TouchCallout: "touch-callout" => touch_callout: TouchCallout = TouchCallout::Default, inherited = false, syntax = Single, convert = conv::kw::<TouchCallout>;
+    /// `animation-range` (first ident)
+    AnimationRange: "animation-range" => animation_range: String = String::from("normal"), inherited = false, syntax = Single, convert = conv::cursor;
+    /// `animation-timeline` (first ident)
+    AnimationTimeline: "animation-timeline" => animation_timeline: String = String::from("auto"), inherited = false, syntax = Single, convert = conv::cursor;
+    /// `view-timeline` (first ident)
+    ViewTimeline: "view-timeline" => view_timeline: String = String::from("none"), inherited = false, syntax = Single, convert = conv::cursor;
+    /// `border-image-slice` (first ident or number)
+    BorderImageSlice: "border-image-slice" => border_image_slice: String = String::from("100%"), inherited = false, syntax = Single, convert = conv::ident_or_number;
+    /// `color-interpolation-filters`
+    ColorInterpolationFilters: "color-interpolation-filters" => color_interpolation_filters: ColorInterpolationFilters = ColorInterpolationFilters::Auto, inherited = false, syntax = Single, convert = conv::kw::<ColorInterpolationFilters>;
+    /// `font-variant-east-asian`
+    FontVariantEastAsian: "font-variant-east-asian" => font_variant_east_asian: FontVariantEastAsian = FontVariantEastAsian::Normal, inherited = true, syntax = Single, convert = conv::kw::<FontVariantEastAsian>;
+    /// `mask-composite`
+    MaskComposite: "mask-composite" => mask_composite: MaskComposite = MaskComposite::Add, inherited = false, syntax = Single, convert = conv::kw::<MaskComposite>;
+    /// `scroll-snap-stop`
+    ScrollSnapStop: "scroll-snap-stop" => scroll_snap_stop: ScrollSnapStop = ScrollSnapStop::Normal, inherited = false, syntax = Single, convert = conv::kw::<ScrollSnapStop>;
+    /// `stroke-miterlimit`
+    StrokeMiterlimit: "stroke-miterlimit" => stroke_miterlimit: f32 = 4.0, inherited = true, syntax = Single, convert = conv::non_negative_number;
+    /// `fill-rule`
+    FillRule: "fill-rule" => fill_rule: FillRule = FillRule::Nonzero, inherited = true, syntax = Single, convert = conv::kw::<FillRule>;
+    /// `stroke-linecap`
+    StrokeLinecap: "stroke-linecap" => stroke_linecap: StrokeLinecap = StrokeLinecap::Butt, inherited = true, syntax = Single, convert = conv::kw::<StrokeLinecap>;
+    /// `stroke-linejoin`
+    StrokeLinejoin: "stroke-linejoin" => stroke_linejoin: StrokeLinejoin = StrokeLinejoin::Miter, inherited = true, syntax = Single, convert = conv::kw::<StrokeLinejoin>;
+    /// `stroke-dashoffset`
+    StrokeDashoffset: "stroke-dashoffset" => stroke_dashoffset: f32 = 0.0, inherited = true, syntax = Single, convert = conv::number;
 }
 
 impl ComputedStyle {
@@ -1065,7 +1805,7 @@ impl ComputedStyle {
     /// Returns `true` if either overflow axis clips content.
     #[must_use]
     pub fn overflow_clips(&self) -> bool {
-        self.overflow.clips() || self.overflow_y.clips()
+        self.overflow.clips() || self.overflow_y.clips() || self.resize != Resize::None
     }
 
     /// Returns `true` if the element is a float that is in flow (not
@@ -1093,198 +1833,18 @@ impl ComputedStyle {
             )
             || self.display.is_flex()
             || self.display.is_grid()
+            || self.isolation == Isolation::Isolate
     }
 }
 
 /// Properties whose *unknown or deferred* declarations could change what is
 /// displayed, where, or whether it is visible. Used by the coverage counter
 /// (see [`crate::coverage`]).
-pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[
-    "aspect-ratio",
-    "contain",
-    "content-visibility",
-    "columns",
-    "column-count",
-    "column-width",
-    "translate",
-    "rotate",
-    "scale",
-    "offset",
-    "offset-path",
-    "position-anchor",
-    "anchor-name",
-    "inset-area",
-    "position-area",
-    "clip",
-    "zoom",
-    "container-type",
-    "text-orientation",
-    "float-offset",
-    "shape-outside",
-    "table-layout",
-    "empty-cells",
-    "visibility-collapse",
-    "grid-template-areas",
-    "grid-area",
-    "field-sizing",
-    "resize",
-];
+pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[];
 
 /// Known properties the engine parses names for but does not implement.
 /// Declarations of these count as `deferred` rather than `unknown`.
-pub const DEFERRED_PROPERTIES: &[&str] = &[
-    "animation",
-    "animation-name",
-    "animation-duration",
-    "animation-delay",
-    "animation-timing-function",
-    "animation-iteration-count",
-    "animation-direction",
-    "animation-fill-mode",
-    "animation-play-state",
-    "transition",
-    "transition-property",
-    "transition-duration",
-    "transition-delay",
-    "transition-timing-function",
-    "background-image",
-    "background-position",
-    "background-position-x",
-    "background-position-y",
-    "background-size",
-    "background-repeat",
-    "background-attachment",
-    "background-clip",
-    "background-origin",
-    "background-blend-mode",
-    "border-radius",
-    "border-top-left-radius",
-    "border-top-right-radius",
-    "border-bottom-left-radius",
-    "border-bottom-right-radius",
-    "border-image",
-    "box-shadow",
-    "text-shadow",
-    "filter",
-    "backdrop-filter",
-    "mix-blend-mode",
-    "isolation",
-    "outline",
-    "outline-width",
-    "outline-style",
-    "outline-color",
-    "outline-offset",
-    "cursor",
-    "user-select",
-    "will-change",
-    "font-variant",
-    "font-variant-ligatures",
-    "font-variant-numeric",
-    "font-feature-settings",
-    "font-kerning",
-    "font-stretch",
-    "font-display",
-    "font-optical-sizing",
-    "text-rendering",
-    "text-decoration-color",
-    "text-decoration-style",
-    "text-decoration-thickness",
-    "text-underline-offset",
-    "text-underline-position",
-    "text-size-adjust",
-    "-webkit-text-size-adjust",
-    "-webkit-font-smoothing",
-    "-moz-osx-font-smoothing",
-    "-webkit-tap-highlight-color",
-    "-webkit-appearance",
-    "appearance",
-    "scroll-behavior",
-    "scroll-margin",
-    "scroll-padding",
-    "scroll-snap-type",
-    "scroll-snap-align",
-    "overscroll-behavior",
-    "touch-action",
-    "object-fit",
-    "object-position",
-    "image-rendering",
-    "quotes",
-    "counter-reset",
-    "counter-increment",
-    "tab-size",
-    "hyphens",
-    "orphans",
-    "widows",
-    "page-break-before",
-    "page-break-after",
-    "page-break-inside",
-    "break-before",
-    "break-after",
-    "break-inside",
-    "speak",
-    "src",
-    "unicode-range",
-    "aspect-ratio",
-    "contain",
-    "content-visibility",
-    "columns",
-    "column-count",
-    "column-width",
-    "column-rule",
-    "column-span",
-    "translate",
-    "rotate",
-    "scale",
-    "transform-origin",
-    "transform-style",
-    "transform-box",
-    "perspective",
-    "perspective-origin",
-    "backface-visibility",
-    "clip",
-    "zoom",
-    "container-type",
-    "container-name",
-    "container",
-    "table-layout",
-    "empty-cells",
-    "grid-template-areas",
-    "grid-auto-flow",
-    "resize",
-    "accent-color",
-    "color-scheme",
-    "forced-color-adjust",
-    "print-color-adjust",
-    "shape-outside",
-    "text-wrap",
-    "text-align-last",
-    "text-justify",
-    "hanging-punctuation",
-    "line-clamp",
-    "-webkit-line-clamp",
-    "-webkit-box-orient",
-    "inset-area",
-    "position-area",
-    "position-anchor",
-    "anchor-name",
-    "view-transition-name",
-    "field-sizing",
-    "text-emphasis",
-    "ruby-position",
-    "caret-color",
-    "text-orientation",
-    "font-synthesis",
-    "font-language-override",
-    "font-palette",
-    "math-style",
-    "math-depth",
-    "list-style-image",
-    "marker-offset",
-    "vector-effect",
-    "fill",
-    "stroke",
-    "stroke-width",
-];
+pub const DEFERRED_PROPERTIES: &[&str] = &["src", "unicode-range"];
 
 // ---------------------------------------------------------------------------
 // Value parsing
@@ -1318,7 +1878,20 @@ fn parse_component<'i>(input: &mut Parser<'i, '_>) -> Option<SpecifiedValue> {
             SpecifiedValue::Color(Color::Rgba(Rgba::from_hex(&h)?))
         }
         Token::Dimension { value, unit, .. } => {
-            SpecifiedValue::Length(Length::from_unit(value, &unit)?)
+            let u = unit.to_ascii_lowercase();
+            if u == "s" {
+                SpecifiedValue::Number(value * 1000.0)
+            } else if u == "ms" || u == "deg" {
+                SpecifiedValue::Number(value)
+            } else if u == "rad" {
+                SpecifiedValue::Number(value.to_degrees())
+            } else if u == "grad" {
+                SpecifiedValue::Number(value * 0.9)
+            } else if u == "turn" {
+                SpecifiedValue::Number(value * 360.0)
+            } else {
+                SpecifiedValue::Length(Length::from_unit(value, &unit)?)
+            }
         }
         Token::Percentage { unit_value, .. } => SpecifiedValue::Percentage(unit_value * 100.0),
         Token::Number {
@@ -1328,7 +1901,7 @@ fn parse_component<'i>(input: &mut Parser<'i, '_>) -> Option<SpecifiedValue> {
             None => SpecifiedValue::Number(value),
         },
         Token::QuotedString(s) => SpecifiedValue::Str(s.to_string()),
-        Token::UnquotedUrl(_) => SpecifiedValue::Unsupported,
+        Token::UnquotedUrl(u) => SpecifiedValue::Url(u.to_string()),
         Token::Function(name) => {
             let lower = name.to_ascii_lowercase();
             match lower.as_str() {
@@ -1349,6 +1922,71 @@ fn parse_component<'i>(input: &mut Parser<'i, '_>) -> Option<SpecifiedValue> {
                         })
                         .ok()?;
                     SpecifiedValue::Color(Color::Rgba(rgba))
+                }
+                "linear-gradient" => {
+                    let stops = input
+                        .parse_nested_block(|args| {
+                            let mut stops = Vec::new();
+                            while !args.is_exhausted() {
+                                let _ = args.try_parse(Parser::expect_comma);
+                                if let Some(v) = parse_component(args) {
+                                    match v {
+                                        SpecifiedValue::Color(c) => {
+                                            stops.push((stops.len() as f32, c));
+                                        }
+                                        SpecifiedValue::Keyword(k) => {
+                                            if let Some(c) = Rgba::from_name(&k) {
+                                                stops.push((stops.len() as f32, Color::Rgba(c)));
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                } else {
+                                    break;
+                                }
+                            }
+                            Ok::<_, cssparser::ParseError<'_, ()>>(stops)
+                        })
+                        .ok()?;
+                    if stops.len() < 2 {
+                        return None;
+                    }
+                    let last = (stops.len() - 1) as f32;
+                    let stops = stops
+                        .into_iter()
+                        .map(|(i, c)| (if last == 0.0 { 0.0 } else { i / last }, c))
+                        .collect();
+                    SpecifiedValue::LinearGradient(stops)
+                }
+                "blur" => {
+                    let r = input
+                        .parse_nested_block(|args| {
+                            let v = parse_component(args)
+                                .ok_or_else(|| args.new_error_for_next_token::<()>())?;
+                            while args.next().is_ok() {}
+                            Ok::<_, cssparser::ParseError<'_, ()>>(v)
+                        })
+                        .ok()?;
+                    let px = conv::length_px(&r, &ConvertContext::DUMMY).unwrap_or(0.0);
+                    SpecifiedValue::FilterBlur(px)
+                }
+                "url" => {
+                    let href = input
+                        .parse_nested_block(|args| {
+                            let tok = args.next()?.clone();
+                            let href = match tok {
+                                Token::QuotedString(s) => s.to_string(),
+                                Token::UnquotedUrl(u) => u.to_string(),
+                                Token::Ident(s) => s.to_string(),
+                                _ => {
+                                    return Err(args.new_error_for_next_token::<()>());
+                                }
+                            };
+                            while args.next().is_ok() {}
+                            Ok::<_, cssparser::ParseError<'_, ()>>(href)
+                        })
+                        .ok()?;
+                    SpecifiedValue::Url(href)
                 }
                 "calc" | "min" | "max" | "clamp" | "-webkit-calc" | "-moz-calc" => {
                     let expr = input
@@ -1780,11 +2418,15 @@ fn parse_transform_list(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
                         1.0,
                         number(y).ok_or_else(|| args.new_error_for_next_token::<()>())?,
                     ),
-                    // Rotations, skews and matrices do not move the box's
+                    ("rotate" | "rotatez", [a]) => {
+                        let deg = number(a).ok_or_else(|| args.new_error_for_next_token::<()>())?;
+                        SpecifiedTransform::Rotate(deg.to_radians())
+                    }
+                    // 3-D rotations, skews and matrices do not move the box's
                     // axis-aligned centre; treat them as identity.
                     (
-                        "rotate" | "rotatex" | "rotatey" | "rotatez" | "rotate3d" | "skew"
-                        | "skewx" | "skewy" | "matrix" | "matrix3d" | "perspective",
+                        "rotatex" | "rotatey" | "rotate3d" | "skew" | "skewx" | "skewy" | "matrix"
+                        | "matrix3d" | "perspective",
                         _,
                     ) => SpecifiedTransform::Scale(1.0, 1.0),
                     _ => return Err(args.new_error_for_next_token()),
@@ -1834,6 +2476,259 @@ fn parse_clip_path(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     }
 }
 
+fn parse_css_clip(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    match input.next().ok()?.clone() {
+        Token::Ident(k) if k.eq_ignore_ascii_case("auto") => {
+            Some(SpecifiedValue::Keyword("auto".into()))
+        }
+        Token::Function(name) if name.eq_ignore_ascii_case("rect") => {
+            let sides = input
+                .parse_nested_block(|args| {
+                    let mut values = Vec::new();
+                    while !args.is_exhausted() && values.len() < 4 {
+                        if args.try_parse(Parser::expect_comma).is_ok() {
+                            continue;
+                        }
+                        let v = parse_component(args)
+                            .ok_or_else(|| args.new_error_for_next_token::<()>())?;
+                        values.push(v);
+                    }
+                    while args.next().is_ok() {}
+                    if values.len() == 4 {
+                        Ok([
+                            values[0].clone(),
+                            values[1].clone(),
+                            values[2].clone(),
+                            values[3].clone(),
+                        ])
+                    } else {
+                        Err(args.new_error_for_next_token())
+                    }
+                })
+                .ok()?;
+            Some(SpecifiedValue::ClipRect(Box::new(sides)))
+        }
+        _ => None,
+    }
+}
+
+fn parse_box_shadow(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    let mut lengths = Vec::new();
+    let mut color = Color::Rgba(Rgba::BLACK);
+    while !input.is_exhausted() {
+        let v = parse_component(input)?;
+        match v {
+            SpecifiedValue::Keyword(k) if k == "none" && lengths.is_empty() => {
+                return input
+                    .is_exhausted()
+                    .then_some(SpecifiedValue::Keyword("none".into()));
+            }
+            SpecifiedValue::Keyword(k) if k == "inset" => {}
+            SpecifiedValue::Color(c) => color = c,
+            SpecifiedValue::Keyword(k) => {
+                if let Some(rgba) = Rgba::from_name(&k) {
+                    color = Color::Rgba(rgba);
+                } else {
+                    return None;
+                }
+            }
+            other => {
+                if lengths.len() >= 4 {
+                    return None;
+                }
+                lengths.push(other);
+            }
+        }
+    }
+    if lengths.len() < 2 {
+        return None;
+    }
+    Some(SpecifiedValue::BoxShadow(Box::new(SpecifiedBoxShadow {
+        dx: lengths[0].clone(),
+        dy: lengths[1].clone(),
+        blur: lengths
+            .get(2)
+            .cloned()
+            .unwrap_or(SpecifiedValue::Number(0.0)),
+        color,
+    })))
+}
+
+fn specified_lp(v: &SpecifiedValue) -> Option<LengthPercentage> {
+    match v {
+        SpecifiedValue::Length(l) => Some(LengthPercentage::Px(
+            l.to_px(&ConvertContext::DUMMY.lengths()),
+        )),
+        SpecifiedValue::Percentage(p) => Some(LengthPercentage::Percent(*p)),
+        SpecifiedValue::Number(n) if *n == 0.0 => Some(LengthPercentage::ZERO),
+        SpecifiedValue::Integer(0) => Some(LengthPercentage::ZERO),
+        _ => None,
+    }
+}
+
+fn specified_lpa(v: &SpecifiedValue) -> Option<LengthPercentageAuto> {
+    match v {
+        SpecifiedValue::Keyword(k) if k == "auto" => Some(LengthPercentageAuto::Auto),
+        SpecifiedValue::Length(l) => Some(LengthPercentageAuto::Px(
+            l.to_px(&ConvertContext::DUMMY.lengths()),
+        )),
+        SpecifiedValue::Percentage(p) => Some(LengthPercentageAuto::Percent(*p)),
+        SpecifiedValue::Number(n) if *n == 0.0 => Some(LengthPercentageAuto::Px(0.0)),
+        SpecifiedValue::Integer(0) => Some(LengthPercentageAuto::Px(0.0)),
+        _ => None,
+    }
+}
+
+fn parse_individual_translate(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    if input.try_parse(|i| i.expect_ident_matching("none")).is_ok() {
+        return Some(SpecifiedValue::Keyword("none".into()));
+    }
+    let x = parse_component(input)?;
+    let y = if input.is_exhausted() {
+        SpecifiedValue::Length(Length::ZERO)
+    } else {
+        parse_component(input)?
+    };
+    Some(SpecifiedValue::Transform(vec![
+        SpecifiedTransform::Translate(x, y),
+    ]))
+}
+
+fn parse_individual_scale(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    if input.try_parse(|i| i.expect_ident_matching("none")).is_ok() {
+        return Some(SpecifiedValue::Keyword("none".into()));
+    }
+    let x = match parse_component(input)? {
+        SpecifiedValue::Number(n) => n,
+        SpecifiedValue::Integer(i) => i as f32,
+        _ => return None,
+    };
+    let y = if input.is_exhausted() {
+        x
+    } else {
+        match parse_component(input)? {
+            SpecifiedValue::Number(n) => n,
+            SpecifiedValue::Integer(i) => i as f32,
+            _ => return None,
+        }
+    };
+    Some(SpecifiedValue::Transform(vec![SpecifiedTransform::Scale(
+        x, y,
+    )]))
+}
+
+fn parse_individual_rotate(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    if input.try_parse(|i| i.expect_ident_matching("none")).is_ok() {
+        return Some(SpecifiedValue::Keyword("none".into()));
+    }
+    let deg = match parse_component(input)? {
+        SpecifiedValue::Number(n) => n,
+        SpecifiedValue::Integer(i) => i as f32,
+        _ => return None,
+    };
+    Some(SpecifiedValue::Transform(vec![SpecifiedTransform::Rotate(
+        deg.to_radians(),
+    )]))
+}
+
+fn parse_aspect_ratio(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    if input.try_parse(|i| i.expect_ident_matching("auto")).is_ok() {
+        return Some(SpecifiedValue::Keyword("auto".into()));
+    }
+    let width = match input.next().ok()?.clone() {
+        Token::Number { value, .. } => value,
+        _ => return None,
+    };
+    if width <= 0.0 {
+        return None;
+    }
+    if input.is_exhausted() {
+        return Some(SpecifiedValue::Number(width));
+    }
+    if input.expect_delim('/').is_err() {
+        return None;
+    }
+    let height = match input.next().ok()?.clone() {
+        Token::Number { value, .. } => value,
+        _ => return None,
+    };
+    if height <= 0.0 {
+        return None;
+    }
+    Some(SpecifiedValue::Number(width / height))
+}
+
+fn parse_background_size(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    let a = parse_component(input)?;
+    if let SpecifiedValue::Keyword(k) = &a {
+        if k == "cover" {
+            return Some(SpecifiedValue::BackgroundSize(BackgroundSize::Cover));
+        }
+        if k == "contain" {
+            return Some(SpecifiedValue::BackgroundSize(BackgroundSize::Contain));
+        }
+        if k == "auto" && input.is_exhausted() {
+            return Some(SpecifiedValue::BackgroundSize(BackgroundSize::Auto));
+        }
+    }
+    let width = specified_lpa(&a)?;
+    let height = if input.is_exhausted() {
+        width
+    } else {
+        specified_lpa(&parse_component(input)?)?
+    };
+    Some(SpecifiedValue::BackgroundSize(BackgroundSize::Size {
+        width,
+        height,
+    }))
+}
+
+fn parse_background_position(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    let keyword_x = |k: &str| -> Option<LengthPercentage> {
+        match k {
+            "left" => Some(LengthPercentage::Percent(0.0)),
+            "center" => Some(LengthPercentage::Percent(50.0)),
+            "right" => Some(LengthPercentage::Percent(100.0)),
+            _ => None,
+        }
+    };
+    let keyword_y = |k: &str| -> Option<LengthPercentage> {
+        match k {
+            "top" => Some(LengthPercentage::Percent(0.0)),
+            "center" => Some(LengthPercentage::Percent(50.0)),
+            "bottom" => Some(LengthPercentage::Percent(100.0)),
+            _ => None,
+        }
+    };
+    let a = parse_component(input)?;
+    if input.is_exhausted() {
+        return Some(SpecifiedValue::BackgroundPosition(match &a {
+            SpecifiedValue::Keyword(k) => BackgroundPosition {
+                x: keyword_x(k).or_else(|| keyword_y(k))?,
+                y: LengthPercentage::Percent(50.0),
+            },
+            _ => BackgroundPosition {
+                x: specified_lp(&a)?,
+                y: LengthPercentage::Percent(50.0),
+            },
+        }));
+    }
+    let b = parse_component(input)?;
+    let (x, y) = match (&a, &b) {
+        (SpecifiedValue::Keyword(ka), SpecifiedValue::Keyword(kb)) => (
+            keyword_x(ka).or_else(|| keyword_x(kb))?,
+            keyword_y(kb).or_else(|| keyword_y(ka))?,
+        ),
+        (SpecifiedValue::Keyword(ka), b) => (keyword_x(ka)?, specified_lp(b)?),
+        (a, SpecifiedValue::Keyword(kb)) => (specified_lp(a)?, keyword_y(kb)?),
+        (a, b) => (specified_lp(a)?, specified_lp(b)?),
+    };
+    Some(SpecifiedValue::BackgroundPosition(BackgroundPosition {
+        x,
+        y,
+    }))
+}
+
 fn parse_grid_line(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
     let mut span = false;
     let mut number: Option<i32> = None;
@@ -1845,8 +2740,11 @@ fn parse_grid_line(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
                     .then_some(SpecifiedValue::Keyword("auto".into()));
             }
             Token::Ident(k) if k.eq_ignore_ascii_case("span") => span = true,
-            // Custom line names are ignored; the number (if any) is kept.
-            Token::Ident(_) => {}
+            Token::Ident(k) => {
+                return Some(SpecifiedValue::GridLine(GridLine::Named(
+                    k.to_ascii_lowercase(),
+                )));
+            }
             Token::Number {
                 int_value: Some(i), ..
             } if i != 0 => number = Some(i),
@@ -1858,6 +2756,64 @@ fn parse_grid_line(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
         (false, Some(n)) => GridLine::Line(n),
         (false, None) => GridLine::Auto,
     }))
+}
+
+fn parse_grid_areas(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    if input.try_parse(|i| i.expect_ident_matching("none")).is_ok() {
+        return Some(SpecifiedValue::Keyword("none".into()));
+    }
+    let mut rows = Vec::new();
+    while !input.is_exhausted() {
+        match input.next().ok()?.clone() {
+            Token::QuotedString(s) => {
+                let cells: Vec<String> = s
+                    .split_whitespace()
+                    .map(|c| c.to_ascii_lowercase())
+                    .collect();
+                if cells.is_empty() {
+                    return None;
+                }
+                rows.push(cells);
+            }
+            _ => return None,
+        }
+    }
+    (!rows.is_empty()).then_some(SpecifiedValue::GridAreas(GridTemplateAreas { rows }))
+}
+
+fn parse_offset_path(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    match input.next().ok()?.clone() {
+        Token::Ident(k) if k.eq_ignore_ascii_case("none") => {
+            Some(SpecifiedValue::Keyword("none".into()))
+        }
+        Token::Function(name) if name.eq_ignore_ascii_case("path") => {
+            let d = input
+                .parse_nested_block(|args| match args.next().ok() {
+                    Some(Token::QuotedString(s)) => Ok(s.to_string()),
+                    _ => Err(args.new_error_for_next_token::<()>()),
+                })
+                .ok()?;
+            let nums: Vec<f32> = d
+                .split(|c: char| !c.is_ascii_digit() && c != '.' && c != '-' && c != '+')
+                .filter_map(|p| p.parse().ok())
+                .collect();
+            if nums.len() >= 4 {
+                Some(SpecifiedValue::OffsetPath(OffsetPath::Line {
+                    x0: nums[0],
+                    y0: nums[1],
+                    x1: nums[2],
+                    y1: nums[3],
+                }))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+fn parse_shape_outside(input: &mut Parser<'_, '_>) -> Option<SpecifiedValue> {
+    parse_clip_path(input)
 }
 
 /// Reads the remaining input as raw text (for custom properties and `var()`
@@ -1922,6 +2878,39 @@ impl PropertyId {
                 .ok()?,
             ValueSyntax::GridLine => css_wide(input)
                 .or_else(|()| parse_grid_line(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::GridAreas => css_wide(input)
+                .or_else(|()| parse_grid_areas(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::BoxShadow => css_wide(input)
+                .or_else(|()| parse_box_shadow(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::BackgroundSize => css_wide(input)
+                .or_else(|()| parse_background_size(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::BackgroundPosition => css_wide(input)
+                .or_else(|()| parse_background_position(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::AspectRatio => css_wide(input)
+                .or_else(|()| parse_aspect_ratio(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::IndividualTranslate => css_wide(input)
+                .or_else(|()| parse_individual_translate(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::IndividualScale => css_wide(input)
+                .or_else(|()| parse_individual_scale(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::IndividualRotate => css_wide(input)
+                .or_else(|()| parse_individual_rotate(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::Clip => css_wide(input)
+                .or_else(|()| parse_css_clip(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::OffsetPath => css_wide(input)
+                .or_else(|()| parse_offset_path(input).ok_or(()))
+                .ok()?,
+            ValueSyntax::ShapeOutside => css_wide(input)
+                .or_else(|()| parse_shape_outside(input).ok_or(()))
                 .ok()?,
         };
         input.expect_exhausted().ok()?;
@@ -2001,6 +2990,17 @@ pub const SHORTHANDS: &[&str] = &[
     "grid",
     "list-style",
     "font",
+    "animation",
+    "transition",
+    "border-radius",
+    "outline",
+    "column-rule",
+    "contain-intrinsic-size",
+    "columns",
+    "-moz-columns",
+    "-webkit-columns",
+    "offset",
+    "container",
 ];
 
 /// Expands a shorthand into longhand `(property, value)` pairs. Returns
@@ -2229,9 +3229,33 @@ pub fn expand_shorthand<'i>(
             "grid-area" => slash_separated(input, 4).and_then(|parts| {
                 let mut it = parts.into_iter();
                 let row_start = it.next()?;
-                let column_start = it.next().unwrap_or_else(|| mirror_line(&row_start));
-                let row_end = it.next().unwrap_or_else(|| mirror_line(&row_start));
-                let column_end = it.next().unwrap_or_else(|| mirror_line(&column_start));
+                let named_area = it.len() == 0
+                    && match &row_start {
+                        SpecifiedValue::GridLine(GridLine::Named(_)) => true,
+                        SpecifiedValue::Keyword(k) if k != "auto" => true,
+                        _ => false,
+                    };
+                let column_start = it.next().unwrap_or_else(|| {
+                    if named_area {
+                        row_start.clone()
+                    } else {
+                        mirror_line(&row_start)
+                    }
+                });
+                let row_end = it.next().unwrap_or_else(|| {
+                    if named_area {
+                        row_start.clone()
+                    } else {
+                        mirror_line(&row_start)
+                    }
+                });
+                let column_end = it.next().unwrap_or_else(|| {
+                    if named_area {
+                        row_start.clone()
+                    } else {
+                        mirror_line(&column_start)
+                    }
+                });
                 let out = vec![
                     (P::GridRowStart, row_start),
                     (P::GridColumnStart, column_start),
@@ -2265,13 +3289,17 @@ pub fn expand_shorthand<'i>(
                     return Some(vec![
                         (P::ListStyleType, values[0].clone()),
                         (P::ListStylePosition, values[0].clone()),
+                        (P::ListStyleImage, values[0].clone()),
                     ]);
                 }
                 let mut ty = SpecifiedValue::Keyword("disc".into());
                 let mut pos = SpecifiedValue::Keyword("outside".into());
+                let mut image = SpecifiedValue::Keyword("none".into());
                 for v in values {
                     if P::ListStylePosition.accepts(&v) {
                         pos = v;
+                    } else if matches!(v, SpecifiedValue::Url(_)) {
+                        image = v;
                     } else if matches!(v, SpecifiedValue::Unsupported) {
                         // `url(...)` image: no marker text change.
                     } else if P::ListStyleType.accepts(&v) {
@@ -2280,9 +3308,282 @@ pub fn expand_shorthand<'i>(
                         return None;
                     }
                 }
-                Some(vec![(P::ListStyleType, ty), (P::ListStylePosition, pos)])
+                Some(vec![
+                    (P::ListStyleType, ty),
+                    (P::ListStylePosition, pos),
+                    (P::ListStyleImage, image),
+                ])
+            }
+            "container" => {
+                let values = parse_components(input, 3)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::ContainerName, values[0].clone()),
+                        (P::ContainerType, values[0].clone()),
+                    ]);
+                }
+                let mut name = SpecifiedValue::Keyword("none".into());
+                let mut ty = SpecifiedValue::Keyword("normal".into());
+                for v in values {
+                    if matches!(&v, SpecifiedValue::Keyword(k) if matches!(k.as_str(), "size" | "inline-size" | "normal"))
+                    {
+                        ty = v;
+                    } else if matches!(&v, SpecifiedValue::Keyword(_) | SpecifiedValue::Str(_)) {
+                        name = v;
+                    }
+                }
+                Some(vec![(P::ContainerName, name), (P::ContainerType, ty)])
             }
             "font" => expand_font(input),
+            "animation" => {
+                let values = parse_components(input, 8)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::AnimationName, values[0].clone()),
+                        (P::AnimationDuration, values[0].clone()),
+                        (P::AnimationDelay, values[0].clone()),
+                        (P::AnimationIterationCount, values[0].clone()),
+                        (P::AnimationFillMode, values[0].clone()),
+                        (P::AnimationPlayState, values[0].clone()),
+                        (P::AnimationDirection, values[0].clone()),
+                        (P::AnimationTimingFunction, values[0].clone()),
+                    ]);
+                }
+                let mut name = SpecifiedValue::Keyword("none".into());
+                let mut duration = SpecifiedValue::Number(0.0);
+                let mut delay = SpecifiedValue::Number(0.0);
+                let mut iteration = SpecifiedValue::Number(1.0);
+                let mut fill = SpecifiedValue::Keyword("none".into());
+                let mut play = SpecifiedValue::Keyword("running".into());
+                let mut direction = SpecifiedValue::Keyword("normal".into());
+                let mut timing = SpecifiedValue::Keyword("ease".into());
+                let mut times = 0u8;
+                for v in values {
+                    match &v {
+                        SpecifiedValue::Number(n) if *n >= 0.0 => {
+                            if times == 0 {
+                                duration = v;
+                            } else {
+                                delay = v;
+                            }
+                            times += 1;
+                        }
+                        SpecifiedValue::Integer(i) if *i >= 0 => iteration = v,
+                        SpecifiedValue::Keyword(k)
+                            if matches!(k.as_str(), "forwards" | "backwards" | "both") =>
+                        {
+                            fill = v;
+                        }
+                        SpecifiedValue::Keyword(k)
+                            if matches!(k.as_str(), "running" | "paused") =>
+                        {
+                            play = v;
+                        }
+                        SpecifiedValue::Keyword(k)
+                            if matches!(
+                                k.as_str(),
+                                "normal" | "reverse" | "alternate" | "alternate-reverse"
+                            ) =>
+                        {
+                            direction = v;
+                        }
+                        SpecifiedValue::Keyword(k)
+                            if matches!(
+                                k.as_str(),
+                                "ease" | "linear" | "ease-in" | "ease-out" | "ease-in-out"
+                            ) =>
+                        {
+                            timing = v;
+                        }
+                        SpecifiedValue::Keyword(_) | SpecifiedValue::Str(_) => name = v,
+                        _ => {}
+                    }
+                }
+                Some(vec![
+                    (P::AnimationName, name),
+                    (P::AnimationDuration, duration),
+                    (P::AnimationDelay, delay),
+                    (P::AnimationIterationCount, iteration),
+                    (P::AnimationFillMode, fill),
+                    (P::AnimationPlayState, play),
+                    (P::AnimationDirection, direction),
+                    (P::AnimationTimingFunction, timing),
+                ])
+            }
+            "column-rule" => {
+                let values = parse_components(input, 4)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::ColumnRuleWidth, values[0].clone()),
+                        (P::ColumnRuleStyle, values[0].clone()),
+                        (P::ColumnRuleColor, values[0].clone()),
+                    ]);
+                }
+                let mut width = SpecifiedValue::Length(Length::Px(0.0));
+                let mut style = SpecifiedValue::Keyword("none".into());
+                let mut color = SpecifiedValue::Color(Color::CurrentColor);
+                for v in values {
+                    if P::ColumnRuleWidth.accepts(&v)
+                        && !matches!(&v, SpecifiedValue::Keyword(k) if k == "none" || k == "hidden" || k == "solid" || k == "dashed" || k == "dotted" || k == "double")
+                    {
+                        width = v;
+                    } else if P::ColumnRuleStyle.accepts(&v)
+                        && matches!(&v, SpecifiedValue::Keyword(_))
+                    {
+                        style = v;
+                    } else if P::ColumnRuleColor.accepts(&v) {
+                        color = v;
+                    }
+                }
+                Some(vec![
+                    (P::ColumnRuleWidth, width),
+                    (P::ColumnRuleStyle, style),
+                    (P::ColumnRuleColor, color),
+                ])
+            }
+            "outline" => {
+                let values = parse_components(input, 4)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::OutlineWidth, values[0].clone()),
+                        (P::OutlineStyle, values[0].clone()),
+                        (P::OutlineColor, values[0].clone()),
+                    ]);
+                }
+                let mut width = SpecifiedValue::Length(Length::Px(3.0));
+                let mut style = SpecifiedValue::Keyword("none".into());
+                let mut color = SpecifiedValue::Color(Color::CurrentColor);
+                for v in values {
+                    if P::OutlineWidth.accepts(&v)
+                        && !matches!(&v, SpecifiedValue::Keyword(k) if k == "none" || k == "hidden" || k == "solid" || k == "dashed" || k == "dotted" || k == "double")
+                    {
+                        width = v;
+                    } else if P::OutlineStyle.accepts(&v)
+                        && matches!(&v, SpecifiedValue::Keyword(_))
+                    {
+                        style = v;
+                    } else if P::OutlineColor.accepts(&v) {
+                        color = v;
+                    }
+                }
+                Some(vec![
+                    (P::OutlineWidth, width),
+                    (P::OutlineStyle, style),
+                    (P::OutlineColor, color),
+                ])
+            }
+            "border-radius" => four(
+                [
+                    P::BorderTopLeftRadius,
+                    P::BorderTopRightRadius,
+                    P::BorderBottomRightRadius,
+                    P::BorderBottomLeftRadius,
+                ],
+                input,
+            ),
+            "transition" => {
+                let values = parse_components(input, 8)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::TransitionProperty, values[0].clone()),
+                        (P::TransitionDuration, values[0].clone()),
+                        (P::TransitionDelay, values[0].clone()),
+                        (P::TransitionTimingFunction, values[0].clone()),
+                    ]);
+                }
+                let mut property = SpecifiedValue::Keyword("all".into());
+                let mut duration = SpecifiedValue::Number(0.0);
+                let mut delay = SpecifiedValue::Number(0.0);
+                let mut timing = SpecifiedValue::Keyword("ease".into());
+                let mut times = 0u8;
+                for v in values {
+                    match &v {
+                        SpecifiedValue::Number(n) if *n >= 0.0 => {
+                            if times == 0 {
+                                duration = v;
+                            } else {
+                                delay = v;
+                            }
+                            times += 1;
+                        }
+                        SpecifiedValue::Keyword(k)
+                            if matches!(
+                                k.as_str(),
+                                "ease" | "linear" | "ease-in" | "ease-out" | "ease-in-out"
+                            ) =>
+                        {
+                            timing = v;
+                        }
+                        SpecifiedValue::Keyword(_) | SpecifiedValue::Str(_) => property = v,
+                        _ => {}
+                    }
+                }
+                Some(vec![
+                    (P::TransitionProperty, property),
+                    (P::TransitionDuration, duration),
+                    (P::TransitionDelay, delay),
+                    (P::TransitionTimingFunction, timing),
+                ])
+            }
+            "contain-intrinsic-size" => {
+                let values = parse_components(input, 2)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::ContainIntrinsicWidth, values[0].clone()),
+                        (P::ContainIntrinsicHeight, values[0].clone()),
+                    ]);
+                }
+                let a = values.first()?.clone();
+                let b = values.get(1).cloned().unwrap_or_else(|| a.clone());
+                let out = vec![
+                    (P::ContainIntrinsicWidth, a),
+                    (P::ContainIntrinsicHeight, b),
+                ];
+                out.iter().all(|(p, v)| p.accepts(v)).then_some(out)
+            }
+            "columns" | "-moz-columns" | "-webkit-columns" => {
+                let values = parse_components(input, 2)?;
+                if values.len() == 1 && values[0].is_css_wide() {
+                    return Some(vec![
+                        (P::ColumnCount, values[0].clone()),
+                        (P::ColumnWidth, values[0].clone()),
+                    ]);
+                }
+                let mut count = SpecifiedValue::Keyword("auto".into());
+                let mut width = SpecifiedValue::Keyword("auto".into());
+                for v in values {
+                    if P::ColumnCount.accepts(&v) && !P::ColumnWidth.accepts(&v) {
+                        count = v;
+                    } else if P::ColumnWidth.accepts(&v) && !P::ColumnCount.accepts(&v) {
+                        width = v;
+                    } else if P::ColumnCount.accepts(&v) {
+                        count = v;
+                    } else if P::ColumnWidth.accepts(&v) {
+                        width = v;
+                    } else {
+                        return None;
+                    }
+                }
+                Some(vec![(P::ColumnCount, count), (P::ColumnWidth, width)])
+            }
+            "offset" => {
+                let mut path = SpecifiedValue::Keyword("none".into());
+                let mut distance = SpecifiedValue::Length(Length::ZERO);
+                while !input.is_exhausted() {
+                    if let Ok(p) = input.try_parse(|i| {
+                        parse_offset_path(i).ok_or_else(|| i.new_error_for_next_token::<()>())
+                    }) {
+                        path = p;
+                        continue;
+                    }
+                    if let Some(d) = parse_component(input) {
+                        distance = d;
+                    } else {
+                        return None;
+                    }
+                }
+                Some(vec![(P::OffsetPath, path), (P::OffsetDistance, distance)])
+            }
             _ => None,
         }
     })();
@@ -2501,6 +3802,82 @@ mod tests {
         );
         assert!(PropertyId::from_name("not-a-property").is_none());
         assert_eq!(
+            PropertyId::from_name("-webkit-transform"),
+            Some(PropertyId::Transform)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-text-decoration"),
+            Some(PropertyId::TextDecorationLine)
+        );
+        assert_eq!(
+            PropertyId::from_name("-o-object-fit"),
+            Some(PropertyId::ObjectFit)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-user-select"),
+            Some(PropertyId::UserSelect)
+        );
+        assert_eq!(
+            PropertyId::from_name("-moz-column-gap"),
+            Some(PropertyId::ColumnGap)
+        );
+        assert_eq!(
+            PropertyId::from_name("-ms-overflow-style"),
+            Some(PropertyId::ScrollbarWidth)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-box-pack"),
+            Some(PropertyId::JustifyContent)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-overflow-scrolling"),
+            Some(PropertyId::OverflowScrolling)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-touch-callout"),
+            Some(PropertyId::TouchCallout)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-mask-composite"),
+            Some(PropertyId::MaskComposite)
+        );
+        assert_eq!(
+            PropertyId::from_name("border-image-source"),
+            Some(PropertyId::BorderImage)
+        );
+        assert_eq!(
+            PropertyId::from_name("scroll-padding-inline"),
+            Some(PropertyId::ScrollPadding)
+        );
+        assert_eq!(
+            PropertyId::from_name("animation-range"),
+            Some(PropertyId::AnimationRange)
+        );
+        assert_eq!(
+            PropertyId::from_name("mask-composite"),
+            Some(PropertyId::MaskComposite)
+        );
+        assert_eq!(
+            PropertyId::from_name("stroke-miterlimit"),
+            Some(PropertyId::StrokeMiterlimit)
+        );
+        assert_eq!(
+            PropertyId::from_name("fill-rule"),
+            Some(PropertyId::FillRule)
+        );
+        assert_eq!(
+            PropertyId::from_name("stroke-linecap"),
+            Some(PropertyId::StrokeLinecap)
+        );
+        assert_eq!(
+            PropertyId::from_name("stroke-linejoin"),
+            Some(PropertyId::StrokeLinejoin)
+        );
+        assert_eq!(
+            PropertyId::from_name("stroke-dashoffset"),
+            Some(PropertyId::StrokeDashoffset)
+        );
+        assert_eq!(
             PropertyId::from_name("overflow-x"),
             Some(PropertyId::OverflowX)
         );
@@ -2547,6 +3924,86 @@ mod tests {
         ok("clip-path", "inset(50%)");
         ok("transform", "translate(10px, 20%) scale(2)");
         ok("transform", "none");
+        ok("translate", "10px 20px");
+        ok("translate", "none");
+        ok("scale", "2");
+        ok("scale", "1 2");
+        ok("scale", "none");
+        ok("box-shadow", "0 4px 8px black");
+        ok("box-shadow", "none");
+        ok("background-image", "none");
+        ok("background-image", "url(\"https://a.test/x.png\")");
+        ok("background-image", "linear-gradient(red, blue)");
+        ok("background-size", "cover");
+        ok("background-size", "contain");
+        ok("background-size", "100px 50%");
+        ok("background-position", "center");
+        ok("background-position", "right 20px");
+        ok("background-repeat", "no-repeat");
+        ok("background-clip", "content-box");
+        ok("background-origin", "content-box");
+        ok("cursor", "pointer");
+        ok("cursor", "auto");
+        ok("user-select", "none");
+        ok("will-change", "transform");
+        ok("text-decoration-color", "red");
+        ok("aspect-ratio", "auto");
+        ok("aspect-ratio", "16 / 9");
+        ok("aspect-ratio", "1.5");
+        ok("zoom", "2");
+        ok("zoom", "normal");
+        ok("contain", "size");
+        ok("contain", "strict");
+        ok("content-visibility", "hidden");
+        ok("object-position", "center");
+        ok("object-position", "right 20px");
+        ok("transform-origin", "center");
+        ok("transform-origin", "0 0");
+        ok("filter", "blur(4px)");
+        ok("filter", "none");
+        ok("animation-name", "fade");
+        ok("animation-name", "none");
+        ok("animation-duration", "1s");
+        ok("animation-duration", "250ms");
+        ok("outline-width", "2px");
+        ok("outline-style", "solid");
+        ok("outline-color", "red");
+        ok("outline-offset", "1px");
+        ok("text-shadow", "1px 2px 3px black");
+        ok("transition-property", "opacity");
+        ok("transition-duration", "0.2s");
+        let anim = expand("animation", "fade 1s").expect("animation shorthand");
+        assert_eq!(
+            anim[0],
+            (
+                PropertyId::AnimationName,
+                SpecifiedValue::Keyword("fade".into())
+            )
+        );
+        assert_eq!(
+            anim[1],
+            (
+                PropertyId::AnimationDuration,
+                SpecifiedValue::Number(1000.0)
+            )
+        );
+        assert_eq!(anim.len(), 8);
+        let trans = expand("transition", "opacity 200ms").expect("transition shorthand");
+        assert_eq!(
+            trans[0],
+            (
+                PropertyId::TransitionProperty,
+                SpecifiedValue::Keyword("opacity".into())
+            )
+        );
+        assert_eq!(
+            trans[1],
+            (
+                PropertyId::TransitionDuration,
+                SpecifiedValue::Number(200.0)
+            )
+        );
+        assert_eq!(trans.len(), 4);
         ok("border-top-style", "dashed");
         ok("pointer-events", "none");
         ok("opacity", "0.5");
@@ -2561,11 +4018,150 @@ mod tests {
         ok("color", "rebeccapurple");
         ok("background-color", "hsla(0 0% 0% / 0.5)");
         ok("--x", "anything at all");
+        ok("rotate", "45deg");
+        ok("clip", "rect(0, 10px, 10px, 0)");
+        ok("container-type", "size");
+        ok("column-count", "3");
+        ok("column-width", "12em");
+        ok("table-layout", "fixed");
+        ok("empty-cells", "hide");
+        ok("grid-template-areas", "\"a b\" \"a c\"");
+        ok("grid-row-start", "header");
+        ok("field-sizing", "content");
+        ok("resize", "both");
+        ok("offset-path", "path(\"M 0 0 L 80 0\")");
+        ok("offset-distance", "50%");
+        ok("shape-outside", "inset(0 20px 0 0)");
+        ok("text-orientation", "upright");
+        ok("float-offset", "12px");
+        ok("anchor-name", "--foo");
+        ok("position-anchor", "--foo");
+        ok("position-area", "bottom");
+        ok("inset-area", "top");
+        ok("backdrop-filter", "blur(4px)");
+        ok("animation-delay", "200ms");
+        ok("animation-iteration-count", "infinite");
+        ok("animation-fill-mode", "forwards");
+        ok("animation-play-state", "paused");
+        ok("animation-direction", "reverse");
+        ok("animation-timing-function", "linear");
+        ok("isolation", "isolate");
+        ok("tab-size", "4");
+        ok("line-clamp", "2");
+        ok("-webkit-line-clamp", "3");
+        ok("text-decoration-thickness", "2px");
+        ok("text-underline-offset", "3px");
+        ok("mix-blend-mode", "multiply");
+        ok("grid-auto-flow", "column");
+        ok("grid-auto-flow", "dense");
+        ok("column-span", "all");
+        ok("column-rule-width", "2px");
+        ok("column-rule-color", "red");
+        ok("transition-delay", "100ms");
+        ok("transition-timing-function", "linear");
+        ok("text-decoration-style", "dashed");
+        ok("background-attachment", "fixed");
+        ok("column-rule-style", "dotted");
+        ok("fill", "none");
+        ok("stroke", "red");
+        ok("stroke-width", "2px");
+        ok("font-variant", "small-caps");
+        ok("background-position-x", "10px");
+        ok("background-position-y", "20%");
+        ok("text-align-last", "center");
+        ok("text-wrap", "nowrap");
+        ok("hyphens", "manual");
+        ok("text-underline-position", "under");
+        ok("scroll-margin", "8px");
+        ok("scroll-padding", "12px");
+        ok("scroll-behavior", "smooth");
+        ok("overscroll-behavior", "none");
+        ok("contain-intrinsic-width", "200px");
+        ok("contain-intrinsic-height", "none");
+        ok("mask-image", "none");
+        ok("-webkit-mask-image", "none");
+        ok("scrollbar-width", "thin");
+        ok("touch-action", "none");
+        ok("appearance", "none");
+        ok("-webkit-appearance", "none");
+        ok("image-rendering", "pixelated");
+        ok("caret-color", "red");
+        ok("accent-color", "blue");
+        ok("color-scheme", "dark");
+        ok("quotes", "\"«\"");
+        ok("list-style-image", "none");
+        ok("container-name", "sidebar");
+        ok("counter-reset", "1");
+        ok("counter-increment", "none");
+        ok("background-blend-mode", "multiply");
+        ok("font-stretch", "condensed");
+        ok("font-variant-ligatures", "none");
+        ok("font-variant-numeric", "tabular-nums");
+        ok("font-kerning", "none");
+        ok("scroll-snap-type", "y");
+        ok("scroll-snap-align", "start");
+        ok("orphans", "3");
+        ok("widows", "3");
+        ok("break-before", "column");
+        ok("break-after", "avoid");
+        ok("break-inside", "avoid");
+        ok("page-break-before", "column");
+        ok("text-rendering", "optimizeLegibility");
+        ok("-webkit-font-smoothing", "antialiased");
+        ok("transform-style", "preserve-3d");
+        ok("perspective", "500px");
+        ok("perspective", "none");
+        ok("backface-visibility", "hidden");
+        ok("text-size-adjust", "200%");
+        ok("-webkit-text-size-adjust", "none");
+        ok("hanging-punctuation", "first");
+        ok("marker-offset", "8px");
+        ok("text-emphasis", "dot");
+        ok("-webkit-box-orient", "vertical");
+        ok("transform-box", "fill-box");
+        ok("vector-effect", "non-scaling-stroke");
+        ok("font-feature-settings", "normal");
+        ok("-webkit-tap-highlight-color", "red");
+        ok("speak", "none");
+        ok("forced-color-adjust", "none");
+        ok("view-transition-name", "card");
+        ok("text-justify", "inter-word");
+        ok("perspective-origin", "center");
+        ok("print-color-adjust", "exact");
+        ok("font-display", "swap");
+        ok("font-optical-sizing", "none");
+        ok("font-synthesis", "none");
+        ok("ruby-position", "under");
+        ok("math-style", "compact");
+        ok("math-depth", "1");
+        ok("font-language-override", "normal");
+        ok("font-palette", "normal");
+        ok("border-image", "none");
+        ok("-webkit-overflow-scrolling", "touch");
+        ok("-webkit-touch-callout", "none");
+        ok("animation-range", "cover");
+        ok("animation-timeline", "auto");
+        ok("view-timeline", "none");
+        ok("border-image-slice", "30");
+        ok("color-interpolation-filters", "srgb");
+        ok("font-variant-east-asian", "jis78");
+        ok("mask-composite", "exclude");
+        ok("-webkit-mask-composite", "source-over");
+        ok("scroll-snap-stop", "always");
+        ok("stroke-miterlimit", "4");
+        ok("fill-rule", "evenodd");
+        ok("stroke-linecap", "round");
+        ok("stroke-linejoin", "bevel");
+        ok("stroke-dashoffset", "2");
+        ok("stroke-dashoffset", "-1");
+        ok("-ms-overflow-style", "scrollbar");
+        ok("-webkit-box-pack", "justify");
+        ok("scroll-padding-inline", "8px");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 93);
+        assert_eq!(PropertyId::ALL.len(), 252);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
@@ -2619,6 +4215,15 @@ mod tests {
 
     #[test]
     fn expands_shorthands() {
+        let radius = expand("border-radius", "4px").unwrap();
+        assert_eq!(radius.len(), 4);
+        assert_eq!(
+            radius[0],
+            (
+                PropertyId::BorderTopLeftRadius,
+                SpecifiedValue::Length(Length::Px(4.0))
+            )
+        );
         let out = expand("margin", "1px 2em").unwrap();
         assert_eq!(out.len(), 4);
         assert_eq!(
@@ -2635,6 +4240,28 @@ mod tests {
                 SpecifiedValue::Length(Length::Em(2.0))
             )
         );
+
+        let out = expand("contain-intrinsic-size", "120px 80px").unwrap();
+        assert_eq!(out.len(), 2);
+        assert!(
+            out.iter()
+                .any(|(p, v)| *p == PropertyId::ContainIntrinsicWidth
+                    && *v == SpecifiedValue::Length(Length::Px(120.0)))
+        );
+        assert!(
+            out.iter()
+                .any(|(p, v)| *p == PropertyId::ContainIntrinsicHeight
+                    && *v == SpecifiedValue::Length(Length::Px(80.0)))
+        );
+
+        let out = expand("column-rule", "2px dotted red").unwrap();
+        assert_eq!(out.len(), 3);
+        assert!(out.iter().any(|(p, v)| *p == PropertyId::ColumnRuleWidth
+            && *v == SpecifiedValue::Length(Length::Px(2.0))));
+        assert!(out.iter().any(|(p, v)| *p == PropertyId::ColumnRuleStyle
+            && *v == SpecifiedValue::Keyword("dotted".into())));
+        assert!(out.iter().any(|(p, v)| *p == PropertyId::ColumnRuleColor
+            && *v == SpecifiedValue::Keyword("red".into())));
 
         let out = expand("border", "2px solid red").unwrap();
         assert_eq!(out.len(), 12, "width, style and colour for four sides");
@@ -2736,7 +4363,14 @@ mod tests {
         );
 
         let out = expand("list-style", "none inside").unwrap();
-        assert_eq!(out[0].1, SpecifiedValue::Keyword("none".into()));
+        assert_eq!(
+            out[0],
+            (
+                PropertyId::ListStyleType,
+                SpecifiedValue::Keyword("none".into())
+            ),
+            "{out:?}"
+        );
         assert_eq!(out[1].1, SpecifiedValue::Keyword("inside".into()));
 
         let out = expand("border-spacing", "4px").unwrap();
@@ -2747,6 +4381,38 @@ mod tests {
                 SpecifiedValue::Length(Length::Px(4.0))
             )
         );
+
+        let out = expand("container", "sidebar size").unwrap();
+        assert_eq!(
+            out[0],
+            (
+                PropertyId::ContainerName,
+                SpecifiedValue::Keyword("sidebar".into())
+            )
+        );
+        assert_eq!(
+            out[1],
+            (
+                PropertyId::ContainerType,
+                SpecifiedValue::Keyword("size".into())
+            )
+        );
+
+        let out = expand("columns", "2").unwrap();
+        assert_eq!(
+            out[0],
+            (PropertyId::ColumnCount, SpecifiedValue::Integer(2))
+        );
+        assert_eq!(
+            out[1],
+            (
+                PropertyId::ColumnWidth,
+                SpecifiedValue::Keyword("auto".into())
+            )
+        );
+        let moz = expand("-moz-columns", "2").unwrap();
+        assert_eq!(moz[0].0, PropertyId::ColumnCount);
+        assert_eq!(moz[1].0, PropertyId::ColumnWidth);
 
         let mut input = cssparser::ParserInput::new("1px");
         let mut parser = Parser::new(&mut input);

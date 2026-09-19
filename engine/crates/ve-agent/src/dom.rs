@@ -13,13 +13,20 @@ use ve_script::{JsValue, ScriptError};
 use crate::page::{LoadedDocument, Page, outer_html};
 
 pub(crate) fn pack(id: NodeId) -> JsValue {
-    JsValue::String(format!("{}:{}", id.index(), id.generation()))
+    JsValue::Number(id.to_u64() as f64)
 }
 
 fn unpack(v: &JsValue) -> Option<NodeId> {
+    if let Some(n) = v.as_f64() {
+        if n.is_finite() && n >= 0.0 {
+            return Some(NodeId::from_u64(n as u64));
+        }
+    }
     let s = v.as_str()?;
-    let (i, g) = s.split_once(':')?;
-    Some(NodeId::new(i.parse().ok()?, g.parse().ok()?))
+    if let Some((i, g)) = s.split_once(':') {
+        return Some(NodeId::new(i.parse().ok()?, g.parse().ok()?));
+    }
+    s.parse::<u64>().ok().map(NodeId::from_u64)
 }
 
 fn arg_str(args: &[JsValue], i: usize) -> String {
@@ -30,6 +37,48 @@ fn arg_bool(args: &[JsValue], i: usize) -> bool {
 }
 fn arg_f64(args: &[JsValue], i: usize) -> f64 {
     args.get(i).and_then(JsValue::as_f64).unwrap_or(0.0)
+}
+fn arg_alpha(args: &[JsValue], i: usize) -> f32 {
+    args.get(i)
+        .and_then(JsValue::as_f64)
+        .unwrap_or(1.0)
+        .clamp(0.0, 1.0) as f32
+}
+
+fn parse_canvas_path(spec: &serde_json::Value) -> (Vec<[f32; 4]>, Vec<Vec<[f32; 2]>>) {
+    let mut rects = Vec::new();
+    if let Some(arr) = spec.get("r").and_then(serde_json::Value::as_array) {
+        for r in arr {
+            if let Some(v) = r.as_array() {
+                rects.push([
+                    v.first().and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                    v.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                    v.get(2).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                    v.get(3).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                ]);
+            }
+        }
+    }
+    let mut polys = Vec::new();
+    if let Some(arr) = spec.get("p").and_then(serde_json::Value::as_array) {
+        for poly in arr {
+            let Some(pts) = poly.as_array() else { continue };
+            let mut out = Vec::new();
+            for pt in pts {
+                let Some(xy) = pt.as_array() else { continue };
+                out.push([
+                    xy.first()
+                        .and_then(serde_json::Value::as_f64)
+                        .unwrap_or(0.0) as f32,
+                    xy.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                ]);
+            }
+            if out.len() >= 2 {
+                polys.push(out);
+            }
+        }
+    }
+    (rects, polys)
 }
 fn obj(pairs: &[(&str, JsValue)]) -> JsValue {
     JsValue::Object(
@@ -375,6 +424,15 @@ pub(crate) fn host_call(
 ) -> Result<JsValue, ScriptError> {
     match op {
         "documentNode" => Ok(pack(page.doc.root())),
+        "queueModuleEval" => {
+            page.pending_module_scripts.push(arg_str(args, 0));
+            Ok(JsValue::Undefined)
+        }
+        "windowOpen" => {
+            let url = arg_str(args, 0);
+            let blocked = !page.coop_allows_open(&url);
+            Ok(obj(&[("blocked", JsValue::Bool(blocked))]))
+        }
         "describe" => describe_node(page, live(page, args, 0)?).ok_or_else(|| fail("detached")),
         "describeMany" => Ok(JsValue::Array(
             args.iter()
@@ -566,6 +624,27 @@ pub(crate) fn host_call(
             Ok(JsValue::Number(f64::from(
                 crate::idl::LiveNode::new(&mut page.doc, id).compare_document_position(other),
             )))
+        }
+        "splitText" => {
+            let id = live(page, args, 0)?;
+            let offset = arg_f64(args, 1).max(0.0) as usize;
+            let data = crate::idl::LiveNode::new(&mut page.doc, id)
+                .node_value()
+                .unwrap_or_default();
+            let chars: Vec<char> = data.chars().collect();
+            if offset > chars.len() {
+                return Err(fail("The index is not in the allowed range."));
+            }
+            let prefix: String = chars[..offset].iter().collect();
+            let suffix: String = chars[offset..].iter().collect();
+            crate::idl::LiveNode::new(&mut page.doc, id).set_node_value(Some(prefix));
+            let next = page.doc.create_text(suffix);
+            page.script_created_nodes.insert(next);
+            if let Some(parent) = page.doc.parent(id) {
+                let before = page.doc.next_sibling(id);
+                let _ = crate::idl::LiveDom::new(page, parent).insert_before(next, before);
+            }
+            Ok(pack(next))
         }
         "normalize" => {
             let id = live(page, args, 0)?;
@@ -941,9 +1020,7 @@ pub(crate) fn host_call(
             Ok(JsValue::from(page.iframe_location_origin(id).as_str()))
         }
         "addAuthorSheet" => {
-            let css = arg_str(args, 0);
-            page.style_engine.add_stylesheet(&css);
-            page.update();
+            page.add_author_stylesheet(&arg_str(args, 0));
             Ok(JsValue::Undefined)
         }
         "documentWrite" => document_write(page, &arg_str(args, 1)),
@@ -1200,6 +1277,22 @@ pub(crate) fn host_call(
             crate::idl::LiveDom::document(page).set_cookie(arg_str(args, 0));
             Ok(JsValue::Undefined)
         }
+        "compress" => {
+            let format = arg_str(args, 0);
+            let input = ve_net::base64_decode(arg_str(args, 1).as_bytes()).unwrap_or_default();
+            match compress_bytes(&format, &input) {
+                Ok(out) => Ok(JsValue::from(ve_net::base64_encode(&out).as_str())),
+                Err(e) => Err(fail(e)),
+            }
+        }
+        "decompress" => {
+            let format = arg_str(args, 0);
+            let input = ve_net::base64_decode(arg_str(args, 1).as_bytes()).unwrap_or_default();
+            match decompress_bytes(&format, &input) {
+                Ok(out) => Ok(JsValue::from(ve_net::base64_encode(&out).as_str())),
+                Err(e) => Err(fail(e)),
+            }
+        }
         "lastModified" => Ok(JsValue::from(page.last_modified.as_deref().unwrap_or(""))),
         "readyState" => Ok(JsValue::from(page.ready_state)),
         "setReadyState" => {
@@ -1218,9 +1311,9 @@ pub(crate) fn host_call(
             .elements_from_point(arg_f64(args, 0), arg_f64(args, 1)))),
         "createElement" => {
             let name = arg_str(args, 0);
-            Ok(pack(
-                crate::idl::LiveDom::document(page).create_element(name),
-            ))
+            let id = crate::idl::LiveDom::document(page).create_element(name);
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
         }
         "createElementNS" => {
             let ns = arg_str(args, 0);
@@ -1236,28 +1329,40 @@ pub(crate) fn host_call(
             } else {
                 local.to_owned()
             };
-            Ok(pack(page.doc.create_element_qname(name, namespace, prefix)))
+            let id = page.doc.create_element_qname(name, namespace, prefix);
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
         }
-        "createTextNode" => Ok(pack(page.doc.create_text(arg_str(args, 0)))),
-        "createComment" => Ok(pack(page.doc.create_comment(arg_str(args, 0)))),
+        "createTextNode" => {
+            let id = page.doc.create_text(arg_str(args, 0));
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
+        }
+        "createComment" => {
+            let id = page.doc.create_comment(arg_str(args, 0));
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
+        }
         "createProcessingInstruction" => {
             let target = arg_str(args, 0);
             let data = arg_str(args, 1);
             if data.contains("?>") || target.is_empty() {
                 return Err(fail("InvalidCharacterError"));
             }
-            Ok(pack(page.doc.create_processing_instruction(target, data)))
+            let id = page.doc.create_processing_instruction(target, data);
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
         }
         "createDocumentType" => {
             let name = arg_str(args, 0);
             if name.is_empty() || name.chars().any(char::is_whitespace) {
                 return Err(fail("InvalidCharacterError"));
             }
-            Ok(pack(page.doc.create_doctype(
-                name,
-                arg_str(args, 1),
-                arg_str(args, 2),
-            )))
+            let id = page
+                .doc
+                .create_doctype(name, arg_str(args, 1), arg_str(args, 2));
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
         }
         "createDocument" => {
             let ns = arg_str(args, 0);
@@ -1301,7 +1406,11 @@ pub(crate) fn host_call(
             Some(NodeKind::Doctype { system_id, .. }) => JsValue::from(system_id.as_str()),
             _ => JsValue::Null,
         }),
-        "createFragment" => Ok(pack(page.doc.create_fragment())),
+        "createFragment" => {
+            let id = page.doc.create_fragment();
+            page.script_created_nodes.insert(id);
+            Ok(pack(id))
+        }
         "attachShadow" => {
             let mode = if arg_str(args, 1) == "closed" {
                 ShadowRootMode::Closed
@@ -1328,6 +1437,11 @@ pub(crate) fn host_call(
             page.doc.assign_slot(slot, nodes);
             Ok(JsValue::Undefined)
         }
+        "assignedNodes" => Ok(arr(page.doc.assigned_nodes(live(page, args, 0)?))),
+        "assignedSlot" => Ok(live(page, args, 0)
+            .ok()
+            .and_then(|id| page.doc.assigned_slot(id))
+            .map_or(JsValue::Null, pack)),
         "shadowRoot" => {
             let Some(root) = page.doc.shadow_root(live(page, args, 0)?) else {
                 return Ok(JsValue::Null);
@@ -1581,6 +1695,28 @@ pub(crate) fn host_call(
             crate::idl::LiveDom::new(page, id).set_value(arg_str(args, 1));
             Ok(JsValue::Undefined)
         }
+        "selectionStart" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(f64::from(page.doc.form_selection(id).0)))
+        }
+        "setSelectionStart" => {
+            let id = live(page, args, 0)?;
+            let start = arg_f64(args, 1) as u32;
+            let end = page.doc.form_selection(id).1.max(start);
+            page.doc.set_form_selection(id, start, end).ok();
+            Ok(JsValue::Undefined)
+        }
+        "selectionEnd" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(f64::from(page.doc.form_selection(id).1)))
+        }
+        "setSelectionEnd" => {
+            let id = live(page, args, 0)?;
+            let end = arg_f64(args, 1) as u32;
+            let start = page.doc.form_selection(id).0.min(end);
+            page.doc.set_form_selection(id, start, end).ok();
+            Ok(JsValue::Undefined)
+        }
         "checked" => {
             let id = live(page, args, 0)?;
             Ok(JsValue::Bool(crate::idl::LiveDom::new(page, id).checked()))
@@ -1626,6 +1762,13 @@ pub(crate) fn host_call(
         "innerHeight" => Ok(JsValue::Number(
             crate::idl::LiveDom::document(page).inner_height(),
         )),
+        "setViewport" => {
+            let w = arg_f64(args, 0).max(1.0) as f32;
+            let h = arg_f64(args, 1).max(1.0) as f32;
+            page.set_viewport(ve_core::Size::new(w, h));
+            page.update();
+            Ok(JsValue::Undefined)
+        }
         "scrollX" => Ok(JsValue::Number(
             crate::idl::LiveDom::document(page).scroll_x(),
         )),
@@ -1654,6 +1797,25 @@ pub(crate) fn host_call(
         )),
         "historyGo" => {
             let d = arg_f64(args, 0) as i32;
+            let from = page.history_index;
+            let dest = from as i32 + d;
+            if dest < 0 || dest as usize >= page.history.len() || dest as usize == from {
+                return Ok(JsValue::Undefined);
+            }
+            let to = dest as usize;
+            let same_document =
+                page.history[from].document.bytes == page.history[to].document.bytes;
+            if same_document {
+                if let Some(cur) = page.history.get_mut(from) {
+                    cur.scroll = page.scroll;
+                }
+                page.history_index = to;
+                if let Some(entry) = page.history.get(to) {
+                    page.url.clone_from(&entry.document.url);
+                    page.scroll = entry.scroll;
+                }
+                return Ok(JsValue::Bool(true));
+            }
             match d.cmp(&0) {
                 std::cmp::Ordering::Less => {
                     for _ in 0..(-d) {
@@ -2024,6 +2186,31 @@ pub(crate) fn host_call(
             page.canvas_resize(id, arg_f64(args, 1) as u32, arg_f64(args, 2) as u32);
             Ok(JsValue::Undefined)
         }
+        "canvasStrokeRect" => {
+            let id = live(page, args, 0)?;
+            let dash: Vec<i32> = arg_str(args, 7)
+                .split(',')
+                .filter_map(|s| s.trim().parse().ok())
+                .collect();
+            let ops = page.canvas_stroke_rect(
+                id,
+                arg_f64(args, 1) as i32,
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+                arg_f64(args, 4) as i32,
+                &arg_str(args, 5),
+                arg_f64(args, 6).max(1.0) as i32,
+                &dash,
+                arg_f64(args, 8) as i32,
+            );
+            Ok(JsValue::Number(ops as f64))
+        }
+        "canvasSetComposite" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(
+                page.canvas_set_composite(id, &arg_str(args, 1)) as f64,
+            ))
+        }
         "canvasFillRect" => {
             let id = live(page, args, 0)?;
             let ops = page.canvas_fill_rect(
@@ -2033,6 +2220,12 @@ pub(crate) fn host_call(
                 arg_f64(args, 3) as i32,
                 arg_f64(args, 4) as i32,
                 &arg_str(args, 5),
+                arg_alpha(args, 6),
+                arg_f64(args, 7) as i32,
+                arg_f64(args, 8) as i32,
+                &arg_str(args, 9),
+                arg_f64(args, 10) as i32,
+                &arg_str(args, 11),
             );
             Ok(JsValue::Number(ops as f64))
         }
@@ -2086,43 +2279,119 @@ pub(crate) fn host_call(
             );
             Ok(JsValue::Undefined)
         }
-        "canvasFillPath" => {
+        "canvasFillText" => {
+            let id = live(page, args, 0)?;
+            let ops = page.canvas_fill_text(
+                id,
+                &arg_str(args, 1),
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+                &arg_str(args, 4),
+                arg_f64(args, 5) as f32,
+                arg_f64(args, 6) as i32 != 0,
+                arg_f64(args, 7) as i32 != 0,
+                arg_f64(args, 8) as i32,
+                arg_f64(args, 9) as i32,
+                &arg_str(args, 10),
+                arg_f64(args, 11) as i32,
+            );
+            Ok(JsValue::Number(ops as f64))
+        }
+        "canvasStrokeText" => {
+            let id = live(page, args, 0)?;
+            let ops = page.canvas_stroke_text(
+                id,
+                &arg_str(args, 1),
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+                &arg_str(args, 4),
+                arg_f64(args, 5) as f32,
+                arg_f64(args, 6) as i32,
+                arg_f64(args, 7) as i32,
+                arg_f64(args, 8) as i32,
+                &arg_str(args, 9),
+                arg_f64(args, 10) as i32,
+            );
+            Ok(JsValue::Number(ops as f64))
+        }
+        "canvasMeasureText" => Ok(JsValue::Number(
+            page.canvas_measure_text(&arg_str(args, 1), arg_f64(args, 2) as f32),
+        )),
+        "canvasCreatePattern" => {
+            let src = live(page, args, 0)?;
+            Ok(page
+                .canvas_create_pattern(src)
+                .map_or(JsValue::Null, |id| JsValue::Number(id as f64)))
+        }
+        "canvasCreatePatternData" => {
+            let w = arg_f64(args, 0) as u32;
+            let h = arg_f64(args, 1) as u32;
+            let bytes = ve_net::base64_decode(arg_str(args, 2).as_bytes()).unwrap_or_default();
+            Ok(page
+                .canvas_create_pattern_data(w, h, bytes)
+                .map_or(JsValue::Null, |id| JsValue::Number(id as f64)))
+        }
+        "canvasDrawImage" => {
+            let id = live(page, args, 0)?;
+            let src = live(page, args, 1)?;
+            let ops = page.canvas_draw_image(
+                id,
+                src,
+                arg_f64(args, 2) as i32,
+                arg_f64(args, 3) as i32,
+                arg_f64(args, 4) as i32,
+                arg_f64(args, 5) as i32,
+                arg_f64(args, 6) as i32,
+                arg_f64(args, 7) as i32,
+                arg_f64(args, 8) as i32,
+                arg_f64(args, 9) as i32,
+                arg_f64(args, 10) as i32,
+            );
+            Ok(JsValue::Number(ops as f64))
+        }
+        "canvasClip" => {
             let id = live(page, args, 0)?;
             let spec: serde_json::Value =
                 serde_json::from_str(&arg_str(args, 1)).unwrap_or(serde_json::Value::Null);
-            let mut rects = Vec::new();
-            if let Some(arr) = spec.get("r").and_then(serde_json::Value::as_array) {
-                for r in arr {
-                    if let Some(v) = r.as_array() {
-                        rects.push([
-                            v.first().and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                            v.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                            v.get(2).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                            v.get(3).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                        ]);
-                    }
-                }
-            }
-            let mut polys = Vec::new();
-            if let Some(arr) = spec.get("p").and_then(serde_json::Value::as_array) {
-                for poly in arr {
-                    let Some(pts) = poly.as_array() else { continue };
-                    let mut out = Vec::new();
-                    for pt in pts {
-                        let Some(xy) = pt.as_array() else { continue };
-                        out.push([
-                            xy.first()
-                                .and_then(serde_json::Value::as_f64)
-                                .unwrap_or(0.0) as f32,
-                            xy.get(1).and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                        ]);
-                    }
-                    if out.len() >= 3 {
-                        polys.push(out);
-                    }
-                }
-            }
-            let ops = page.canvas_fill_path(id, &rects, &polys, &arg_str(args, 2));
+            let (rects, polys) = parse_canvas_path(&spec);
+            Ok(JsValue::Number(
+                page.canvas_clip_path(id, &rects, &polys) as f64
+            ))
+        }
+        "canvasSave" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(page.canvas_save(id) as f64))
+        }
+        "canvasRestore" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(page.canvas_restore(id) as f64))
+        }
+        "canvasFillPath" | "canvasStrokePath" => {
+            let id = live(page, args, 0)?;
+            let spec: serde_json::Value =
+                serde_json::from_str(&arg_str(args, 1)).unwrap_or(serde_json::Value::Null);
+            let (rects, polys) = parse_canvas_path(&spec);
+            let ops = if op == "canvasStrokePath" {
+                let dash: Vec<i32> = arg_str(args, 4)
+                    .split(',')
+                    .filter_map(|s| s.trim().parse().ok())
+                    .collect();
+                page.canvas_stroke_path(
+                    id,
+                    &rects,
+                    &polys,
+                    &arg_str(args, 2),
+                    arg_f64(args, 3).max(1.0) as i32,
+                    &dash,
+                    arg_f64(args, 5) as i32,
+                    &arg_str(args, 6),
+                    &arg_str(args, 7),
+                    arg_f64(args, 8) as f32,
+                    &arg_str(args, 9),
+                )
+            } else {
+                page.canvas_fill_path(id, &rects, &polys, &arg_str(args, 2), &arg_str(args, 3))
+            };
             Ok(JsValue::Number(ops as f64))
         }
         "mutationsSince" => {
@@ -2491,6 +2760,55 @@ fn header_value(headers_json: &str, name: &str) -> Option<String> {
                 .then(|| val.as_str().unwrap_or(&val.to_string()).to_owned())
         }),
         _ => None,
+    }
+}
+
+fn compress_bytes(format: &str, input: &[u8]) -> Result<Vec<u8>, String> {
+    use std::io::Write;
+    match format {
+        "gzip" => {
+            let mut enc = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+            enc.write_all(input).map_err(|e| e.to_string())?;
+            enc.finish().map_err(|e| e.to_string())
+        }
+        "deflate" => {
+            let mut enc =
+                flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+            enc.write_all(input).map_err(|e| e.to_string())?;
+            enc.finish().map_err(|e| e.to_string())
+        }
+        "deflate-raw" => {
+            let mut enc =
+                flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+            enc.write_all(input).map_err(|e| e.to_string())?;
+            enc.finish().map_err(|e| e.to_string())
+        }
+        _ => Err("unsupported compression format".into()),
+    }
+}
+
+fn decompress_bytes(format: &str, input: &[u8]) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+    match format {
+        "gzip" => {
+            let mut dec = flate2::read::GzDecoder::new(input);
+            let mut out = Vec::new();
+            dec.read_to_end(&mut out).map_err(|e| e.to_string())?;
+            Ok(out)
+        }
+        "deflate" => {
+            let mut dec = flate2::read::ZlibDecoder::new(input);
+            let mut out = Vec::new();
+            dec.read_to_end(&mut out).map_err(|e| e.to_string())?;
+            Ok(out)
+        }
+        "deflate-raw" => {
+            let mut dec = flate2::read::DeflateDecoder::new(input);
+            let mut out = Vec::new();
+            dec.read_to_end(&mut out).map_err(|e| e.to_string())?;
+            Ok(out)
+        }
+        _ => Err("unsupported compression format".into()),
     }
 }
 

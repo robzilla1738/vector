@@ -8,9 +8,11 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Parser;
+mod frame_trace;
+
 use ve_api::{
-    BrowserServiceListener, BrowserServicePump, EngineConfig, NativeBrowser, NativeEvent,
-    OpenRequest, ScreenshotOptions, VectorEngine,
+    BrowserServiceListener, BrowserServicePump, Clock, EngineConfig, NativeBrowser, NativeEvent,
+    OpenRequest, ScreenshotOptions, ShaperKind, VectorEngine,
 };
 use ve_core::Size;
 
@@ -45,22 +47,26 @@ struct Args {
     /// `NativeBrowser` (`Finding` 1). Example: `127.0.0.1:0`.
     #[arg(long)]
     service: Option<String>,
+    /// Write a frame trace JSON (input→paint, from_layout, jank).
+    #[arg(long)]
+    trace_frames: Option<PathBuf>,
+    /// Replay scripted input JSON, then exit (headless).
+    #[arg(long)]
+    replay_input: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    if args.replay_input.is_some() && !args.gui {
+        return run_replay(&args);
+    }
     if args.gui {
         return run_gui(&args);
     }
     if let Some(bind) = args.service.as_deref() {
         return run_service(bind, &args);
     }
-    let mut engine = VectorEngine::new(EngineConfig {
-        viewport: Size::new(1280.0, 720.0),
-        offline: args.url.starts_with("data:") || args.html.is_some(),
-        policy: ve_api::NetworkPolicy::permissive(),
-        ..EngineConfig::default()
-    });
+    let mut engine = VectorEngine::new(product_config(&args));
     let opened = engine.open(OpenRequest {
         url: Some(args.url.clone()),
         html: args.html,
@@ -93,19 +99,47 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+fn product_config(args: &Args) -> EngineConfig {
+    EngineConfig {
+        viewport: Size::new(1280.0, 720.0),
+        offline: args.url.starts_with("data:")
+            || args.url.starts_with("file:")
+            || args.html.is_some(),
+        scripting: cfg!(feature = "v8"),
+        shaper: ShaperKind::System,
+        policy: ve_api::NetworkPolicy::permissive(),
+        ..EngineConfig::default()
+    }
+}
+
+fn run_replay(args: &Args) -> Result<()> {
+    let mut browser = NativeBrowser::with_config(product_config(args));
+    if let Some(html) = &args.html {
+        browser.handle_event(NativeEvent::NewTab {
+            html: html.clone(),
+            url: args.url.clone(),
+        })?;
+    } else {
+        browser.open_url(&args.url)?;
+    }
+    let _ = browser.present();
+    let path = args
+        .replay_input
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("--replay-input required"))?;
+    let events = frame_trace::load_replay(path)?;
+    let trace = frame_trace::replay(&mut browser, &events);
+    if let Some(out) = &args.trace_frames {
+        trace.write(out)?;
+        eprintln!("wrote {}", out.display());
+    } else {
+        println!("{}", serde_json::to_string_pretty(&trace)?);
+    }
+    Ok(())
+}
+
 fn run_service(bind: &str, args: &Args) -> Result<()> {
-    let listener = BrowserServiceListener::bind_config(
-        bind,
-        EngineConfig {
-            viewport: Size::new(1280.0, 720.0),
-            offline: args.url.starts_with("data:")
-                || args.url.starts_with("file:")
-                || args.html.is_some(),
-            scripting: cfg!(feature = "v8"),
-            policy: ve_api::NetworkPolicy::permissive(),
-            ..EngineConfig::default()
-        },
-    )?;
+    let listener = BrowserServiceListener::bind_config(bind, product_config(args))?;
     if args.html.is_some() || args.url != "about:blank" {
         let mut client = ve_api::BrowserClient::connect(listener.addr())?;
         let mut params = serde_json::json!({ "url": args.url });
@@ -129,15 +163,11 @@ fn run_service(bind: &str, args: &Args) -> Result<()> {
 
 fn run_gui(args: &Args) -> Result<()> {
     let mut browser = NativeBrowser::with_config(EngineConfig {
-        viewport: Size::new(1280.0, 720.0),
-        offline: args.url.starts_with("data:")
-            || args.url.starts_with("file:")
-            || args.html.is_some(),
-        scripting: cfg!(feature = "v8"),
-        policy: ve_api::NetworkPolicy::permissive(),
-        ..EngineConfig::default()
+        clock: Clock::Wall,
+        ..product_config(args)
     });
     browser.enable_os_clipboard();
+    browser.enable_product_chrome();
     let html = args.html.clone();
     if let Some(html) = html {
         browser.handle_event(NativeEvent::NewTab {
@@ -177,14 +207,27 @@ fn run_gui(args: &Args) -> Result<()> {
     #[cfg(not(feature = "window"))]
     {
         let _ = pump;
+        let stage = browser.chrome().stage_rect(Size::new(1280.0, 720.0));
+        if let Some(path) = args.screenshot.as_ref() {
+            let png = browser.capture_shell_png()?;
+            std::fs::write(path, png)?;
+        }
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
                 "mode": "headless-native",
                 "rebuildWith": "--features window",
                 "identity": browser.identity(),
+                "chromeEnabled": browser.chrome_enabled(),
                 "chromeAx": browser.chrome_ax(),
                 "chromeTitle": NativeBrowser::CHROME_TITLE,
+                "stage": {
+                    "x": stage.x(),
+                    "y": stage.y(),
+                    "width": stage.width(),
+                    "height": stage.height(),
+                    "radius": browser.chrome().metrics.stage_radius,
+                },
             }))?
         );
         Ok(())

@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "dependencies": {
-    "@vector/browser-driver": "workspace:*",
+    "@vector/engine-client": "workspace:*",
     "@vector/contracts": "workspace:*",
     "@vector/runtime": "workspace:*",
     "zod": "4.5.4"

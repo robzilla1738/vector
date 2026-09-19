@@ -17,8 +17,8 @@
  * tested with a fake store and a fake clock. Every decision carries a
  * `routeReason` that ends up on `pages.open` results.
  */
-import { VectorError, type Backend, type EngineMode, type Step } from "@vector/contracts";
-import type { PageRouting } from "@vector/browser-driver";
+import { ELEMENT_REF, VectorError, type Backend, type EngineMode, type Step } from "@vector/contracts";
+import type { PageRouting } from "@vector/engine-client";
 
 export const NEEDS_CHROMIUM_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -253,17 +253,16 @@ export class Router {
   }
 }
 
-const REF = /^r\d+$/;
 /** Does the step address an observation ref anywhere (target, drag destination, refReady wait)? */
 export function stepTargetsRef(s: Step): boolean {
   const rec = s as unknown as Record<string, unknown>;
-  if (typeof rec.target === "string" && REF.test(rec.target)) return true;
-  if (typeof rec.to === "string" && REF.test(rec.to)) return true;
+  if (typeof rec.target === "string" && ELEMENT_REF.test(rec.target)) return true;
+  if (typeof rec.to === "string" && ELEMENT_REF.test(rec.to)) return true;
   const conds: unknown[] = [];
   if (s.op === "waitFor") conds.push(s.condition);
   if (s.expect) conds.push(...s.expect);
   return conds.some((c) => {
     const cc = c as { kind?: string; ref?: string } | undefined;
-    return cc?.kind === "refReady" && typeof cc.ref === "string" && REF.test(cc.ref);
+    return cc?.kind === "refReady" && typeof cc.ref === "string" && ELEMENT_REF.test(cc.ref);
   });
 }

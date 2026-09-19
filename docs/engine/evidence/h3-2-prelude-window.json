@@ -1,0 +1,14 @@
+{
+  "id": "H3-2",
+  "default": "prelude",
+  "nativeSwitch": "VECTOR_DOM_BINDINGS=native",
+  "windowStarted": "2026-09-18",
+  "flipAfter": "2026-10-02",
+  "flipped": false,
+  "differentialJobs": [
+    "engine.yml: DOM bindings differential (prelude default)",
+    "engine.yml: DOM bindings differential (native switch; prelude still default-on)"
+  ],
+  "test": "dom_bindings_default_is_prelude",
+  "reason": "Differential CI exists. Default stays prelude until two weeks of green jobs after windowStarted. Not flipped."
+}

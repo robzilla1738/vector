@@ -1,0 +1,15 @@
+{
+  "VECTOR_DOM_BINDINGS": "prelude",
+  "VECTOR_DOM_PROFILE": true,
+  "backend": "vector-engine",
+  "handles": "numeric_u64",
+  "listeners": "WeakMap",
+  "nodesSize": 211,
+  "not_a_published_score": true,
+  "notes": "100 add/toggle/remove cycles on a TodoMVC-shaped list; nodes is prelude WeakMap size after the loop.",
+  "rssBytes": 51920896,
+  "security_mode": "production",
+  "test": "writes_dombench_phase0_memo",
+  "todoMvcIterations": 100,
+  "wrapper": "WeakRef+FinalizationRegistry"
+}

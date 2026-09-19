@@ -9,7 +9,10 @@
 //! [`FloatContext`]: crate::floats::FloatContext
 
 use ve_core::{NodeId, Point, Rect};
-use ve_style::{ComputedStyle, Direction, TextAlign};
+use ve_style::{
+    ComputedStyle, Direction, HangingPunctuation, TextAlign, TextAlignLast, TextJustify,
+    TextOverflow, TextWrap,
+};
 
 use crate::block::{
     ContainingBlock, Forced, LayoutCtx, layout_box_at, layout_float, resolve_margins,
@@ -55,6 +58,8 @@ struct InlineState<'a, 'c> {
     open: Vec<OpenInline>,
     /// The block container's node (owner of bare text).
     container: Option<NodeId>,
+    /// `text-justify` of the container.
+    justify: TextJustify,
 }
 
 impl InlineState<'_, '_> {
@@ -127,9 +132,18 @@ impl InlineState<'_, '_> {
             TextAlign::Right | TextAlign::End => (self.line.width - line_width).max(0.0),
             _ => 0.0,
         };
+        let extra = if align == TextAlign::Justify && self.justify != TextJustify::None {
+            (self.line.width - line_width).max(0.0)
+        } else {
+            0.0
+        };
         let mut fragments = std::mem::take(&mut self.line.fragments);
+        let gaps = fragments.len().saturating_sub(1);
+        let step = if gaps > 0 { extra / gaps as f32 } else { 0.0 };
         for (i, f) in fragments.iter_mut().enumerate() {
-            f.rect = f.rect.translate(shift, baseline - f.baseline);
+            f.rect = f
+                .rect
+                .translate(shift + step * i as f32, baseline - f.baseline);
             for open in &mut self.open {
                 if i >= open.start {
                     open.acc = open.acc.union(&f.rect);
@@ -162,6 +176,23 @@ fn used_text_align(style: &ComputedStyle) -> TextAlign {
     }
 }
 
+fn used_text_align_last(style: &ComputedStyle) -> Option<TextAlign> {
+    let align = match style.text_align_last {
+        TextAlignLast::Auto => return None,
+        TextAlignLast::Start => TextAlign::Start,
+        TextAlignLast::End => TextAlign::End,
+        TextAlignLast::Left => TextAlign::Left,
+        TextAlignLast::Right => TextAlign::Right,
+        TextAlignLast::Center => TextAlign::Center,
+        TextAlignLast::Justify => TextAlign::Start,
+    };
+    Some(match (align, style.direction) {
+        (TextAlign::Start, Direction::Rtl) => TextAlign::End,
+        (TextAlign::End, Direction::Rtl) => TextAlign::Start,
+        (a, _) => a,
+    })
+}
+
 /// Lays out the inline-level children of `bx` into `bx.lines`. Returns the
 /// height of the inline formatting context.
 pub fn layout_inline(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect) -> f32 {
@@ -182,13 +213,26 @@ pub fn layout_inline(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect)
         lines: Vec::new(),
         open: Vec::new(),
         container: bx.node,
+        justify: bx.style.text_justify,
     };
     state.line = state.start_line(content.y());
     state.line.advance = indent.max(0.0);
     let mut children = std::mem::take(&mut bx.children);
     flow_children(&mut children, &mut state, align);
-    state.finish_line(align);
+    state.finish_line(used_text_align_last(&bx.style).unwrap_or(align));
     bx.lines = state.lines;
+    if let Some(n) = bx.style.line_clamp {
+        bx.lines.truncate(n.max(1) as usize);
+    }
+    // `text-overflow` applies to block containers, not flex containers. Text
+    // directly inside flex containers lives in an anonymous item that shares
+    // the container's computed style, so guard the formatting context here.
+    if !bx.style.display.is_flex()
+        && bx.style.text_overflow == TextOverflow::Ellipsis
+        && bx.style.overflow.clips()
+    {
+        apply_text_ellipsis(&mut bx.lines, content.right(), &bx.style, state.ctx.shaper);
+    }
     sync_atomic_boxes(&mut children, &bx.lines);
     bx.children = children;
     bx.lines
@@ -284,9 +328,47 @@ fn flow_float(child: &mut LayoutBox, state: &mut InlineState<'_, '_>) {
     state.line.width = (r - l).max(0.0);
 }
 
+fn apply_text_ellipsis(
+    lines: &mut [LineBox],
+    max_right: f32,
+    style: &ComputedStyle,
+    shaper: &mut dyn crate::text::TextShaper,
+) {
+    let dots = "…";
+    let dw = shaper.measure(dots, style);
+    for line in lines.iter_mut() {
+        if !line
+            .fragments
+            .iter()
+            .any(|f| f.text.is_some() && f.rect.right() > max_right + 0.01)
+        {
+            continue;
+        }
+        let limit = max_right - dw;
+        line.fragments.retain(|f| f.rect.x() < limit + 0.01);
+        let Some(last) = line.fragments.iter_mut().rev().find(|f| f.text.is_some()) else {
+            continue;
+        };
+        let budget = (limit - last.rect.x()).max(0.0);
+        let mut t = last.text.clone().unwrap_or_default();
+        while !t.is_empty() && shaper.measure(&t, style) > budget + 0.01 {
+            t.pop();
+        }
+        t.push_str(dots);
+        let width = shaper.measure(&t, style);
+        last.text = Some(t);
+        last.rect = Rect::new(
+            last.rect.x(),
+            last.rect.y(),
+            width.max(0.0),
+            last.rect.height(),
+        );
+    }
+}
+
 fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>, align: TextAlign) {
     let style: &ComputedStyle = &child.style;
-    let wrap = style.white_space.wraps();
+    let wrap = style.white_space.wraps() && style.text_wrap != TextWrap::Nowrap;
     let mut lines = state
         .ctx
         .shaper
@@ -312,6 +394,15 @@ fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>,
             .shaper
             .shape(text, style, state.remaining(), state.line.width, wrap);
     }
+    if wrap && style.text_wrap == TextWrap::Balance && lines.len() > 1 {
+        let n = lines.len();
+        let total: f32 = lines.iter().map(|l| l.width).sum();
+        let target = (total / n as f32) + 0.5;
+        let balanced = state.ctx.shaper.shape(text, style, target, target, wrap);
+        if balanced.len() == n {
+            lines = balanced;
+        }
+    }
     let mut union = Rect::ZERO;
     for (i, shaped) in lines.into_iter().enumerate() {
         if i > 0 {
@@ -319,7 +410,7 @@ fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>,
         }
         let mut piece = &text[shaped.range.clone()];
         let mut width = shaped.width;
-        if state.line.is_empty() && piece.starts_with(' ') {
+        if state.line.is_empty() && piece.starts_with(' ') && style.white_space.collapses() {
             // Collapsible whitespace at the start of a line is removed.
             let trimmed = piece.trim_start();
             width -= state
@@ -348,7 +439,17 @@ fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>,
             continue;
         }
         let pen = state.pen();
-        let rect = Rect::new(pen.x, pen.y, width.max(0.0), shaped.height);
+        let mut x = pen.x;
+        if style.hanging_punctuation == HangingPunctuation::First
+            && state.line.is_empty()
+            && piece.starts_with(['"', '\'', '“', '‘', '«', '('])
+        {
+            if let Some(mark) = piece.chars().next() {
+                let mut buf = [0u8; 4];
+                x -= state.ctx.shaper.measure(mark.encode_utf8(&mut buf), style);
+            }
+        }
+        let rect = Rect::new(x, pen.y, width.max(0.0), shaped.height);
         union = union.union(&rect);
         state.push_fragment(Fragment {
             node: child.node,

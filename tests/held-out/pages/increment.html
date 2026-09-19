@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Held-out counter</title></head>
+<body>
+  <h1>Counter</h1>
+  <button id="inc" type="button">Increment</button>
+  <p>Count: <span id="n">0</span></p>
+  <script>
+    document.getElementById("inc").addEventListener("click", function () {
+      var n = document.getElementById("n");
+      n.textContent = String(+n.textContent + 1);
+    });
+  </script>
+</body>
+</html>

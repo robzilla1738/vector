@@ -4,6 +4,7 @@ import {
   newPageId,
   VectorError,
   type Backend,
+  type Condition,
   type Observation,
   type ObservationContent,
   type ObservationRequest,
@@ -15,7 +16,7 @@ import {
   type StepRecord,
 } from "@vector/contracts";
 import { newStepId } from "@vector/contracts";
-import type { BrowserDriver, DriverPage, DriverPageEvents } from "@vector/browser-driver";
+import type { BrowserDriver, DriverPage, DriverPageEvents } from "@vector/engine-client";
 import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
@@ -32,7 +33,7 @@ export interface DriverSet {
   engine?: BrowserDriver | null;
 }
 
-type ObserveReq = Partial<Pick<ObservationRequest, "scope" | "subtreeRef" | "maxElements" | "maxTextChars" | "sinceRevision">>;
+type ObserveReq = Partial<Pick<ObservationRequest, "scope" | "subtreeRef" | "maxElements" | "maxTextChars" | "sinceRevision" | "format">>;
 
 /** `pages.execute` result: the program result plus the act-and-observe observation. */
 export type ExecuteResult = ProgramResult & { observation?: Observation };
@@ -58,6 +59,8 @@ interface LivePage {
   lastObs?: { fingerprint: string; reqKey: string; obs: Observation };
   /** recent observations by revision so `sinceRevision` can diff against the one the caller last saw */
   history: { revision: number; text: string; fields: Map<string, string> }[];
+  consoleLines: { level: string; message: string; atMs?: number }[];
+  lastDialog?: { type: string; message: string };
 }
 
 const OBSERVATION_HISTORY = 8;
@@ -75,7 +78,11 @@ export interface PageServiceDeps {
   recordStep?: (s: StepRecord) => void;
   artifacts?: { save(o: { runId?: string; pageId?: string; label: string; buffer: Buffer; mediaType: string }): { artifactId: string } };
   /** passive response capture — bound per page in wireDriverEvents */
-  responses?: { record(pageId: string): NonNullable<DriverPageEvents["onResponse"]> };
+  responses?: {
+    record(pageId: string): NonNullable<DriverPageEvents["onResponse"]>;
+    flush(): Promise<void>;
+    list(pageId: string, opts?: { since?: number; urlIncludes?: string; limit?: number }): unknown[];
+  };
   /** structured spans (§6) — execute/observe emit timing records */
   tracer?: {
     start(
@@ -91,8 +98,14 @@ export interface PageServiceDeps {
   /**
    * Privilege-independent effect grants (Gate D / Gate F). Model text and
    * RPC params cannot expand these. A function re-reads after settings.set.
+   * Used for unsolicited `pages.execute` (no runId).
    */
   grants?: GrantSource;
+  /**
+   * Grants for a user-started `runs.start` (`ctx.runId` set). Starting the
+   * run is the write grant. Falls back to `grants` when omitted.
+   */
+  grantsForRun?: GrantSource;
 }
 
 /**
@@ -346,7 +359,7 @@ export class PageService {
       lastActiveAt: Date.now(),
       routeReason,
     };
-    const lp: LivePage = { target, driver: dp, queue: Promise.resolve(), history: [] };
+    const lp: LivePage = { target, driver: dp, queue: Promise.resolve(), history: [], consoleLines: [] };
     this.live.set(pageId, lp);
     this.wireDriverEvents(lp);
     this.persist(lp);
@@ -386,6 +399,8 @@ export class PageService {
     lp.target.documentEpoch++;
     lp.history = [];
     lp.lastObs = undefined;
+    lp.consoleLines = [];
+    lp.lastDialog = undefined;
     this.wireDriverEvents(lp);
     await dp.navigate(url).catch(() => {});
     this.persist(lp);
@@ -420,7 +435,7 @@ export class PageService {
       createdAt: Date.now(),
       lastActiveAt: Date.now(),
     };
-    const lp: LivePage = { target, driver: dp, queue: Promise.resolve(), history: [] };
+    const lp: LivePage = { target, driver: dp, queue: Promise.resolve(), history: [], consoleLines: [] };
     this.live.set(pageId, lp);
     if (dp) this.wireDriverEvents(lp);
     this.persist(lp);
@@ -452,8 +467,14 @@ export class PageService {
           reason,
         });
       },
-      onDialog: (info) =>
-        this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, dialog: info }),
+      onDialog: (info) => {
+        lp.lastDialog = info;
+        this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, dialog: info });
+      },
+      onConsole: (info) => {
+      lp.consoleLines.push({ level: info.level, message: info.message, atMs: Date.now() });
+      if (lp.consoleLines.length > 200) lp.consoleLines.splice(0, lp.consoleLines.length - 200);
+      },
       onDownload: (info) => {
         // In the desktop shell the native will-download path is authoritative
         // (it sees every profile-session download); driver events cover
@@ -639,8 +660,14 @@ export class PageService {
           return { ...hit.obs, observedAt: Date.now(), cached: true, changesSince: undefined, deltaFrom: undefined };
         }
       }
-      const content = await dp.observe(req);
-      return this.recordObservation(pageId, content, req, fingerprint);
+    const content = await dp.observe(req);
+    if (lp && content.console?.length) {
+      for (const line of content.console) {
+        lp.consoleLines.push({ level: line.level, message: line.message, atMs: line.atMs ?? Date.now() });
+      }
+      if (lp.consoleLines.length > 200) lp.consoleLines.splice(0, lp.consoleLines.length - 200);
+    }
+    return this.recordObservation(pageId, content, req, fingerprint);
     });
   }
 
@@ -728,6 +755,96 @@ export class PageService {
     return changes;
   }
 
+  /** Structured fields from the current observation, plus CSS extract specs. */
+  async extract(
+    pageId: string,
+    fields?: Array<string | { name: string; selector?: string; attribute?: string; all?: boolean }>,
+  ): Promise<{ pageId: string; documentEpoch: number; revision: number; fields: Record<string, unknown> }> {
+    const obs = await this.observe(pageId, {});
+    const { picked, css } = pickExtractFields(obs.content, fields);
+    if (css.length) {
+      const extra = await this.driverPageLenient(pageId).extract(css);
+      Object.assign(picked, extra);
+    }
+    return { pageId, documentEpoch: obs.documentEpoch, revision: obs.revision, fields: picked };
+  }
+
+  /** Wait until a condition holds — one `waitFor` program step. */
+  async waitFor(pageId: string, condition: Condition): Promise<{
+    ok: boolean;
+    timedOut: boolean;
+    detail?: string;
+    status?: string;
+  }> {
+    const result = await this.execute({
+      pageId,
+      steps: [{ id: newStepId(), op: "waitFor", condition }],
+    });
+    const step = result.steps[0];
+    return {
+      ok: result.status === "completed",
+      timedOut: step?.error?.code === "condition_timeout",
+      detail: step?.detail ?? step?.error?.message,
+      status: result.status,
+    };
+  }
+
+  /** Page console lines (driver buffer, observe payload, and event log). */
+  async console(
+    pageId: string,
+    opts?: { since?: number; limit?: number },
+  ): Promise<{ lines: { level: string; message: string; atMs?: number }[] }> {
+    const lp = this.live.get(pageId);
+    const dp = this.driverPageLenient(pageId);
+    let lines = lp?.consoleLines.slice() ?? [];
+    if (dp.console) {
+      const fromDriver = await dp.console();
+      if (fromDriver.length) lines = mergeConsoleLines(lines, fromDriver);
+    } else if (!lines.length) {
+      const obs = await this.observe(pageId, {});
+      if (obs.content.console?.length) lines = mergeConsoleLines(lines, obs.content.console);
+    }
+    if (opts?.since !== undefined) lines = lines.filter((l) => (l.atMs ?? 0) >= opts.since!);
+    if (opts?.limit !== undefined) lines = lines.slice(-opts.limit);
+    return { lines };
+  }
+
+  /** List or accept/dismiss the current dialog. */
+  async dialog(
+    pageId: string,
+    action: "list" | "accept" | "dismiss" = "list",
+    promptText?: string,
+  ): Promise<{
+    ok?: boolean;
+    action?: "list" | "accept" | "dismiss";
+    dialogs?: { type: string; message: string }[];
+    pending?: { type: string; message: string } | null;
+  }> {
+    const lp = this.live.get(pageId);
+    if (action === "list") {
+      const obs = await this.observe(pageId, {});
+      const dialogs = obs.content.dialogs.length ? obs.content.dialogs : (lp?.lastDialog ? [lp.lastDialog] : []);
+      return { action: "list", dialogs, pending: lp?.lastDialog ?? dialogs[0] ?? null };
+    }
+    const result = await this.execute({
+      pageId,
+      steps: [{ id: newStepId(), op: "dialog", action, promptText }],
+    });
+    if (lp) lp.lastDialog = undefined;
+    return { ok: result.status === "completed", action, pending: null };
+  }
+
+  /** Captured HTTP responses for the page (same store as `responses.list`). */
+  async network(
+    pageId: string,
+    opts?: { since?: number; urlIncludes?: string; limit?: number },
+  ): Promise<unknown[]> {
+    this.get(pageId);
+    if (!this.deps.responses) return [];
+    await this.deps.responses.flush();
+    return this.deps.responses.list(pageId, opts);
+  }
+
   // ---------- execution ----------
 
   /**
@@ -746,7 +863,16 @@ export class PageService {
       if (lp.target.controller === "human")
         throw new VectorError("conflict", `page ${pageId} is under human control`);
       const allSteps = collectSteps(program);
-      const auth = authorizeProgram(allSteps, this.deps.grants ?? DEFAULT_GRANTS);
+      const grants = ctx.runId
+        ? (this.deps.grantsForRun ?? this.deps.grants ?? DEFAULT_GRANTS)
+        : (this.deps.grants ?? DEFAULT_GRANTS);
+      let origin = "";
+      try {
+        origin = lp.target.url ? new URL(lp.target.url).origin : "";
+      } catch {
+        origin = "";
+      }
+      const auth = authorizeProgram(allSteps, grants, origin);
       if (!auth.ok) throw new VectorError("permission_denied", auth.denied);
       this.programInflight.add(pageId);
       try {
@@ -1230,6 +1356,83 @@ export class PageService {
   livePageIds(): string[] {
     return [...this.live.keys()];
   }
+}
+
+const EXTRACT_KEYS = new Set([
+  "url",
+  "title",
+  "text",
+  "headings",
+  "elements",
+  "formFields",
+  "tables",
+  "links",
+  "dialogs",
+  "console",
+  "viewport",
+  "scroll",
+  "frames",
+]);
+
+function pickExtractFields(
+  content: ObservationContent,
+  fields?: Array<string | { name: string; selector?: string; attribute?: string; all?: boolean }>,
+): {
+  picked: Record<string, unknown>;
+  css: { name: string; selector?: string; attribute?: string; all?: boolean }[];
+} {
+  const picked: Record<string, unknown> = {};
+  const css: { name: string; selector?: string; attribute?: string; all?: boolean }[] = [];
+  if (!fields?.length) {
+    picked.url = content.url;
+    picked.title = content.title;
+    picked.text = content.text;
+    picked.headings = content.headings;
+    picked.formFields = content.formFields;
+    picked.tables = content.tables;
+    picked.links = content.links;
+    picked.dialogs = content.dialogs;
+    return { picked, css };
+  }
+  for (const field of fields) {
+    if (typeof field !== "string") {
+      if (field.selector) css.push(field);
+      else {
+        const value = valueForExtractName(content, field.name);
+        if (value !== undefined) picked[field.name] = value;
+        else css.push(field);
+      }
+      continue;
+    }
+    picked[field] = valueForExtractName(content, field) ?? null;
+  }
+  return { picked, css };
+}
+
+function valueForExtractName(content: ObservationContent, name: string): unknown {
+  if (EXTRACT_KEYS.has(name)) return content[name as keyof ObservationContent];
+  const el = content.elements.find((e) => e.ref === name || e.name === name);
+  if (el) return el;
+  const form = content.formFields.find((f) => f.ref === name || f.label === name || f.name === name);
+  if (form) return form;
+  const link = content.links.find((l) => l.ref === name || l.text === name);
+  if (link) return link;
+  return undefined;
+}
+
+function mergeConsoleLines(
+  a: { level: string; message: string; atMs?: number }[],
+  b: { level: string; message: string; atMs?: number }[],
+): { level: string; message: string; atMs?: number }[] {
+  const seen = new Set(a.map((l) => `${l.level}|${l.message}|${l.atMs ?? 0}`));
+  const out = a.slice();
+  for (const line of b) {
+    const key = `${line.level}|${line.message}|${line.atMs ?? 0}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(line);
+  }
+  return out;
 }
 
 function stepInputsOf(s: { op: string } & Record<string, unknown>): Record<string, unknown> {

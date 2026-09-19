@@ -35,6 +35,63 @@ fn host_table_exposes_the_dom_dispatcher() {
 }
 
 #[test]
+fn structured_clone_is_cycle_aware_and_crypto_is_csprng() {
+    let mut page = open("<p>x</p>");
+    let cycle = page
+        .evaluate(
+            r#"(function () {
+              const a = { n: 1 };
+              a.self = a;
+              const c = structuredClone(a);
+              return { n: c.n, same: c.self === c, notOrig: c !== a };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(cycle["n"], 1, "{cycle}");
+    assert_eq!(cycle["same"], true, "{cycle}");
+    assert_eq!(cycle["notOrig"], true, "{cycle}");
+    let date = page
+        .evaluate("structuredClone(new Date(0)) instanceof Date && structuredClone(new Date(0)).getTime() === 0")
+        .unwrap();
+    assert_eq!(date, true, "{date}");
+    let fn_err = page.evaluate(
+        r#"(function () { try { structuredClone(function () {}); return "ok"; } catch (e) { return e.name; } })()"#,
+    );
+    assert_eq!(fn_err.unwrap(), "TypeError");
+    let rand = page
+        .evaluate(
+            r#"(function () {
+              const a = new Uint8Array(16);
+              const b = new Uint8Array(16);
+              crypto.getRandomValues(a);
+              crypto.getRandomValues(b);
+              let diff = 0;
+              for (let i = 0; i < 16; i++) if (a[i] !== b[i]) diff++;
+              return { type: typeof crypto.getRandomValues, diff };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(rand["type"], "function", "{rand}");
+    assert!(
+        rand["diff"].as_u64().unwrap_or(0) >= 1,
+        "two CSPRNG fills must differ: {rand}"
+    );
+    let perf = page
+        .evaluate(
+            r#"(function () {
+              performance.mark("a");
+              performance.mark("b");
+              const m = performance.measure("ab", "a", "b");
+              return { name: m.name, marks: performance.getEntriesByType("mark").length, measured: typeof m.duration };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(perf["name"], "ab", "{perf}");
+    assert_eq!(perf["marks"], 2, "{perf}");
+    assert_eq!(perf["measured"], "number", "{perf}");
+}
+
+#[test]
 fn query_inner_html_events_and_storage_run_on_the_engine() {
     let mut page = open(
         r#"<div id="host"><p class="x">hi</p></div>
@@ -320,7 +377,7 @@ fn incremental_update_and_css_coverage_are_wired() {
            <p id="t">hello</p>
            <script>document.getElementById('t').textContent = 'mutated';</script>"#,
     );
-    let cov = page.routing().css_coverage.expect("css coverage");
+    let cov = page.routing().css_coverage.clone().expect("css coverage");
     assert!(cov.declarations_total >= 3, "{cov:?}");
     assert_eq!(
         page.evaluate("document.getElementById('t').textContent")
@@ -662,6 +719,3052 @@ fn canvas_fillrect_records_ops() {
 }
 
 #[test]
+fn canvas_linear_gradient_fills_pixels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 100;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              var g = ctx.createLinearGradient(0, 0, 100, 0);
+              g.addColorStop(0, "#ff0000");
+              g.addColorStop(1, "#0000ff");
+              ctx.fillStyle = g;
+              ctx.fillRect(0, 0, 100, 8);
+              var left = ctx.getImageData(0, 0, 1, 1).data;
+              var right = ctx.getImageData(99, 0, 1, 1).data;
+              return {
+                lr: left[0], lg: left[1], lb: left[2],
+                rr: right[0], rg: right[1], rb: right[2],
+                encoded: String(g).indexOf("ve-grad:linear:") === 0
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["encoded"], true, "{v}");
+    assert!(v["lr"].as_u64().unwrap_or(0) > 200, "left red: {v}");
+    assert!(v["lb"].as_u64().unwrap_or(99) < 40, "left not blue: {v}");
+    assert!(v["rb"].as_u64().unwrap_or(0) > 200, "right blue: {v}");
+    assert!(v["rr"].as_u64().unwrap_or(99) < 40, "right not red: {v}");
+}
+
+#[test]
+fn canvas_radial_gradient_fills_center() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              var g = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+              g.addColorStop(0, "#ff0000");
+              g.addColorStop(1, "#0000ff");
+              ctx.fillStyle = g;
+              ctx.fillRect(0, 0, 16, 16);
+              var center = ctx.getImageData(8, 8, 1, 1).data;
+              var edge = ctx.getImageData(15, 8, 1, 1).data;
+              return {
+                cr: center[0], cb: center[2],
+                er: edge[0], eb: edge[2],
+                encoded: String(g).indexOf("ve-grad:radial:") === 0
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["encoded"], true, "{v}");
+    assert!(v["cr"].as_f64().unwrap_or(0.0) > 200.0, "center red: {v}");
+    assert!(
+        v["cb"].as_f64().unwrap_or(99.0) < 40.0,
+        "center not blue: {v}"
+    );
+    assert!(v["eb"].as_f64().unwrap_or(0.0) > 200.0, "edge blue: {v}");
+    assert!(v["er"].as_f64().unwrap_or(99.0) < 40.0, "edge not red: {v}");
+}
+
+#[test]
+fn canvas_conic_gradient_sweeps_around_center() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              var g = ctx.createConicGradient(0, 8, 8);
+              g.addColorStop(0, "#ff0000");
+              g.addColorStop(0.5, "#0000ff");
+              g.addColorStop(1, "#ff0000");
+              ctx.fillStyle = g;
+              ctx.fillRect(0, 0, 16, 16);
+              var right = ctx.getImageData(14, 8, 1, 1).data;
+              var left = ctx.getImageData(2, 8, 1, 1).data;
+              return {
+                encoded: String(g).indexOf("ve-grad:conic:") === 0,
+                rr: right[0], rb: right[2],
+                lr: left[0], lb: left[2]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["encoded"], true, "{v}");
+    assert!(v["rr"].as_f64().unwrap_or(0.0) > 200.0, "right red: {v}");
+    assert!(
+        v["rb"].as_f64().unwrap_or(99.0) < 40.0,
+        "right not blue: {v}"
+    );
+    assert!(v["lb"].as_f64().unwrap_or(0.0) > 200.0, "left blue: {v}");
+    assert!(v["lr"].as_f64().unwrap_or(99.0) < 40.0, "left not red: {v}");
+}
+
+#[test]
+fn canvas_create_pattern_repeats_source_pixels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var src = document.createElement("canvas");
+              src.width = 2;
+              src.height = 2;
+              var sctx = src.getContext("2d");
+              sctx.fillStyle = "#00ff00";
+              sctx.fillRect(0, 0, 2, 2);
+              var dst = document.createElement("canvas");
+              dst.width = 8;
+              dst.height = 8;
+              var ctx = dst.getContext("2d");
+              var pat = ctx.createPattern(src, "repeat");
+              ctx.fillStyle = pat;
+              ctx.fillRect(0, 0, 8, 8);
+              var a = ctx.getImageData(0, 0, 1, 1).data;
+              var b = ctx.getImageData(3, 5, 1, 1).data;
+              var c = ctx.getImageData(7, 7, 1, 1).data;
+              return {
+                encoded: String(pat).indexOf("ve-pat:") === 0,
+                ag: a[1], aa: a[3],
+                bg: b[1], ba: b[3],
+                cg: c[1], ca: c[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["encoded"], true, "{v}");
+    assert_eq!(v["ag"], 255, "{v}");
+    assert_eq!(v["aa"], 255, "{v}");
+    assert_eq!(v["bg"], 255, "{v}");
+    assert_eq!(v["ba"], 255, "{v}");
+    assert_eq!(v["cg"], 255, "{v}");
+    assert_eq!(v["ca"], 255, "{v}");
+}
+
+#[test]
+fn canvas_pattern_set_transform_shifts_tile() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var src = document.createElement("canvas");
+              src.width = 2;
+              src.height = 1;
+              var sctx = src.getContext("2d");
+              sctx.fillStyle = "#ff0000";
+              sctx.fillRect(0, 0, 1, 1);
+              sctx.fillStyle = "#0000ff";
+              sctx.fillRect(1, 0, 1, 1);
+              var dst = document.createElement("canvas");
+              dst.width = 4;
+              dst.height = 2;
+              var ctx = dst.getContext("2d");
+              var pat = ctx.createPattern(src, "repeat");
+              ctx.fillStyle = pat;
+              ctx.fillRect(0, 0, 4, 2);
+              var before = ctx.getImageData(0, 0, 1, 1).data;
+              pat.setTransform({ a: 1, b: 0, c: 0, d: 1, e: 1, f: 0 });
+              ctx.fillRect(0, 0, 4, 2);
+              var after = ctx.getImageData(0, 0, 1, 1).data;
+              return {
+                br: before[0], bb: before[2],
+                ar: after[0], ab: after[2],
+                encoded: String(pat).indexOf("1,0,0,1,1,0") >= 0
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["br"].as_u64().unwrap_or(0) > 200,
+        "identity samples red: {v}"
+    );
+    assert_eq!(v["bb"], 0, "{v}");
+    assert_eq!(
+        v["ar"], 0,
+        "translate(1,0) must sample the blue column: {v}"
+    );
+    assert!(v["ab"].as_u64().unwrap_or(0) > 200, "{v}");
+    assert_eq!(v["encoded"], true, "{v}");
+}
+
+#[test]
+fn canvas_create_pattern_no_repeat_stays_in_tile() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var src = document.createElement("canvas");
+              src.width = 2;
+              src.height = 2;
+              var sctx = src.getContext("2d");
+              sctx.fillStyle = "#00ff00";
+              sctx.fillRect(0, 0, 2, 2);
+              var dst = document.createElement("canvas");
+              dst.width = 8;
+              dst.height = 8;
+              var ctx = dst.getContext("2d");
+              var pat = ctx.createPattern(src, "no-repeat");
+              ctx.fillStyle = pat;
+              ctx.fillRect(0, 0, 8, 8);
+              var a = ctx.getImageData(0, 0, 1, 1).data;
+              var b = ctx.getImageData(3, 0, 1, 1).data;
+              var c = ctx.getImageData(0, 3, 1, 1).data;
+              return {
+                encoded: String(pat),
+                ag: a[1], aa: a[3],
+                ba: b[3],
+                ca: c[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["encoded"].as_str().unwrap_or("").contains("no-repeat"),
+        "{v}"
+    );
+    assert_eq!(v["ag"], 255, "{v}");
+    assert_eq!(v["aa"], 255, "{v}");
+    assert_eq!(v["ba"], 0, "{v}");
+    assert_eq!(v["ca"], 0, "{v}");
+}
+
+#[test]
+fn canvas_destination_over_keeps_dst() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 8, 8);
+              ctx.globalCompositeOperation = "destination-over";
+              ctx.fillStyle = "#0000ff";
+              ctx.fillRect(0, 0, 8, 8);
+              var p = ctx.getImageData(2, 2, 1, 1).data;
+              ctx.globalCompositeOperation = "xor";
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 8, 8);
+              var x = ctx.getImageData(2, 2, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3], xa: x[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["xa"], 0, "{v}");
+}
+
+#[test]
+fn canvas_source_in_and_destination_in_clip_to_overlap() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op) {
+                var c = document.createElement("canvas");
+                c.width = 8;
+                c.height = 8;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.fillRect(0, 0, 4, 8);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = "#00ff00";
+                ctx.fillRect(2, 0, 6, 8);
+                var overlap = ctx.getImageData(3, 3, 1, 1).data;
+                var destOnly = ctx.getImageData(0, 3, 1, 1).data;
+                var srcOnly = ctx.getImageData(6, 3, 1, 1).data;
+                return {
+                  or: overlap[0], og: overlap[1], oa: overlap[3],
+                  da: destOnly[3], sa: srcOnly[3]
+                };
+              }
+              return { src: sample("source-in"), dst: sample("destination-in") };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["src"]["og"], 255, "{v}");
+    assert_eq!(v["src"]["or"], 0, "{v}");
+    assert_eq!(v["src"]["oa"], 255, "{v}");
+    assert_eq!(v["src"]["da"], 255, "{v}");
+    assert_eq!(v["src"]["sa"], 0, "{v}");
+    assert_eq!(v["dst"]["or"], 255, "{v}");
+    assert_eq!(v["dst"]["og"], 0, "{v}");
+    assert_eq!(v["dst"]["oa"], 255, "{v}");
+    assert_eq!(v["dst"]["da"], 255, "{v}");
+    assert_eq!(v["dst"]["sa"], 0, "{v}");
+}
+
+#[test]
+fn canvas_source_out_and_destination_out_punch_overlap() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op) {
+                var c = document.createElement("canvas");
+                c.width = 8;
+                c.height = 8;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.fillRect(0, 0, 4, 8);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = "#00ff00";
+                ctx.fillRect(2, 0, 6, 8);
+                var overlap = ctx.getImageData(3, 3, 1, 1).data;
+                var destOnly = ctx.getImageData(0, 3, 1, 1).data;
+                var srcOnly = ctx.getImageData(6, 3, 1, 1).data;
+                return {
+                  or: overlap[0], og: overlap[1], oa: overlap[3],
+                  da: destOnly[3], dr: destOnly[0],
+                  sa: srcOnly[3], sg: srcOnly[1]
+                };
+              }
+              return { src: sample("source-out"), dst: sample("destination-out") };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["src"]["oa"], 0, "source-out overlap must vanish: {v}");
+    assert_eq!(v["src"]["da"], 255, "source-out dest-only stays: {v}");
+    assert_eq!(v["src"]["sa"], 255, "source-out src-only stays: {v}");
+    assert_eq!(v["src"]["sg"], 255, "{v}");
+    assert_eq!(
+        v["dst"]["oa"], 0,
+        "destination-out overlap must vanish: {v}"
+    );
+    assert_eq!(v["dst"]["da"], 255, "destination-out dest-only stays: {v}");
+    assert_eq!(v["dst"]["dr"], 255, "{v}");
+    assert_eq!(v["dst"]["sa"], 0, "destination-out src-only vanishes: {v}");
+}
+
+#[test]
+fn canvas_source_atop_and_destination_atop_keep_overlap() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op) {
+                var c = document.createElement("canvas");
+                c.width = 8;
+                c.height = 8;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.fillRect(0, 0, 4, 8);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = "#00ff00";
+                ctx.fillRect(2, 0, 6, 8);
+                var overlap = ctx.getImageData(3, 3, 1, 1).data;
+                var destOnly = ctx.getImageData(0, 3, 1, 1).data;
+                var srcOnly = ctx.getImageData(6, 3, 1, 1).data;
+                return {
+                  or: overlap[0], og: overlap[1], oa: overlap[3],
+                  da: destOnly[3], dr: destOnly[0],
+                  sa: srcOnly[3]
+                };
+              }
+              return { src: sample("source-atop"), dst: sample("destination-atop") };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["src"]["og"], 255, "source-atop overlap is source: {v}");
+    assert_eq!(v["src"]["oa"], 255, "{v}");
+    assert_eq!(v["src"]["da"], 255, "source-atop dest-only stays: {v}");
+    assert_eq!(v["src"]["sa"], 0, "source-atop src-only vanishes: {v}");
+    assert_eq!(v["dst"]["or"], 255, "destination-atop overlap is dest: {v}");
+    assert_eq!(v["dst"]["oa"], 255, "{v}");
+    assert_eq!(v["dst"]["da"], 255, "unpainted dest-only stays: {v}");
+    assert_eq!(v["dst"]["sa"], 255, "destination-atop src-only stays: {v}");
+}
+
+#[test]
+fn canvas_filter_blur_spills_outside_fill_rect() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.filter = "blur(2px)";
+              ctx.fillRect(6, 6, 4, 4);
+              var mid = ctx.getImageData(8, 8, 1, 1).data;
+              var halo = ctx.getImageData(4, 8, 1, 1).data;
+              ctx.filter = "none";
+              ctx.clearRect(0, 0, 16, 16);
+              ctx.fillRect(6, 6, 4, 4);
+              var sharp = ctx.getImageData(4, 8, 1, 1).data;
+              return { mg: mid[1], ma: mid[3], hg: halo[1], ha: halo[3], sa: sharp[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(v["mg"].as_u64().unwrap_or(0) > 20, "blurred fill keeps center: {v}");
+    assert!(v["ha"].as_u64().unwrap_or(0) > 0, "blur must spill outside the rect: {v}");
+    assert_eq!(v["sa"], 0, "without filter the halo pixel stays empty: {v}");
+}
+
+#[test]
+fn canvas_filter_blur_spills_outside_fill_path() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.filter = "blur(2px)";
+              ctx.beginPath();
+              ctx.rect(6, 6, 4, 4);
+              ctx.fill();
+              var mid = ctx.getImageData(8, 8, 1, 1).data;
+              var halo = ctx.getImageData(4, 8, 1, 1).data;
+              return { mg: mid[1], ma: mid[3], ha: halo[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["mg"].as_u64().unwrap_or(0) > 20,
+        "blurred path fill keeps center: {v}"
+    );
+    assert!(
+        v["ha"].as_u64().unwrap_or(0) > 0,
+        "path blur must spill outside the rect: {v}"
+    );
+}
+
+#[test]
+fn canvas_lighter_adds_overlapping_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 4;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 4, 4);
+              ctx.globalCompositeOperation = "lighter";
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 4, 4);
+              var p = ctx.getImageData(1, 1, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_multiply_and_screen_blend_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op, dest, src) {
+                var c = document.createElement("canvas");
+                c.width = 4;
+                c.height = 4;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = dest;
+                ctx.fillRect(0, 0, 4, 4);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = src;
+                ctx.fillRect(0, 0, 4, 4);
+                var p = ctx.getImageData(1, 1, 1, 1).data;
+                return { r: p[0], g: p[1], b: p[2], a: p[3] };
+              }
+              return {
+                mul: sample("multiply", "#ff0000", "#808080"),
+                screen: sample("screen", "#000000", "#00ff00")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["mul"]["r"], 128, "{v}");
+    assert_eq!(v["mul"]["g"], 0, "{v}");
+    assert_eq!(v["mul"]["b"], 0, "{v}");
+    assert_eq!(v["screen"]["g"], 255, "{v}");
+    assert_eq!(v["screen"]["r"], 0, "{v}");
+}
+
+#[test]
+fn canvas_overlay_and_difference_blend_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op, dest, src) {
+                var c = document.createElement("canvas");
+                c.width = 4;
+                c.height = 4;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = dest;
+                ctx.fillRect(0, 0, 4, 4);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = src;
+                ctx.fillRect(0, 0, 4, 4);
+                var p = ctx.getImageData(1, 1, 1, 1).data;
+                return { r: p[0], g: p[1], b: p[2], a: p[3] };
+              }
+              return {
+                overlay: sample("overlay", "#400000", "#ffffff"),
+                diff: sample("difference", "#ff0000", "#00ff00")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["overlay"]["r"], 128, "{v}");
+    assert_eq!(v["diff"]["r"], 255, "{v}");
+    assert_eq!(v["diff"]["g"], 255, "{v}");
+    assert_eq!(v["diff"]["b"], 0, "{v}");
+}
+
+#[test]
+fn canvas_offscreen_and_image_bitmap_round_trip() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var off = new OffscreenCanvas(4, 4);
+              var ctx = off.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 4, 4);
+              var painted = ctx.getImageData(1, 1, 1, 1).data;
+              var bmp = off.transferToImageBitmap();
+              var dst = document.createElement("canvas");
+              dst.width = 4;
+              dst.height = 4;
+              dst.getContext("2d").drawImage(bmp, 0, 0);
+              var copied = dst.getContext("2d").getImageData(1, 1, 1, 1).data;
+              var cleared = ctx.getImageData(1, 1, 1, 1).data;
+              return {
+                pg: painted[1], pa: painted[3],
+                cg: copied[1], ca: copied[3],
+                ea: cleared[3],
+                w: bmp.width, h: bmp.height,
+                inst: bmp instanceof ImageBitmap
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["pg"], 255, "{v}");
+    assert_eq!(v["cg"], 255, "{v}");
+    assert_eq!(v["ea"], 0, "transfer must clear the offscreen canvas: {v}");
+    assert_eq!(v["w"], 4, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+}
+
+#[test]
+fn canvas_create_image_bitmap_draws() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          var src = document.createElement("canvas");
+          src.width = 4;
+          src.height = 4;
+          var sctx = src.getContext("2d");
+          sctx.fillStyle = "#0000ff";
+          sctx.fillRect(0, 0, 4, 4);
+          createImageBitmap(src).then(function (bmp) {
+            var dst = document.createElement("canvas");
+            dst.width = 4;
+            dst.height = 4;
+            dst.getContext("2d").drawImage(bmp, 0, 0);
+            var p = dst.getContext("2d").getImageData(1, 1, 1, 1).data;
+            window.__ib = { w: bmp.width, inst: bmp instanceof ImageBitmap, b: p[2], a: p[3] };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__ib").unwrap();
+    assert_eq!(v["w"], 4, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["b"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_draw_focus_if_needed_strokes_path() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.beginPath();
+              ctx.rect(2, 2, 12, 12);
+              ctx.drawFocusIfNeeded(c);
+              var ring = ctx.getImageData(2, 8, 1, 1).data;
+              return { b: ring[2], a: ring[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["a"].as_u64().unwrap_or(0) > 0,
+        "focus ring must paint: {v}"
+    );
+    assert!(
+        v["b"].as_u64().unwrap_or(0) > 100,
+        "focus ring is blue: {v}"
+    );
+}
+
+#[test]
+fn canvas_reset_clears_pixels_and_transform() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 4;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.translate(2, 0);
+              ctx.fillRect(0, 0, 2, 2);
+              ctx.reset();
+              var gone = ctx.getImageData(2, 0, 1, 1).data;
+              ctx.fillRect(0, 0, 2, 2);
+              var black = ctx.getImageData(0, 0, 1, 1).data;
+              return { ga: gone[3], br: black[0], ba: black[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ga"], 0, "reset must clear prior pixels: {v}");
+    assert_eq!(v["br"], 0, "reset fillStyle is black: {v}");
+    assert_eq!(v["ba"], 255, "{v}");
+}
+
+#[test]
+fn canvas_bitmaprenderer_transfers_image_bitmap() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var off = new OffscreenCanvas(4, 4);
+              var octx = off.getContext("2d");
+              octx.fillStyle = "#ff0000";
+              octx.fillRect(0, 0, 4, 4);
+              var bmp = off.transferToImageBitmap();
+              var dst = document.createElement("canvas");
+              dst.width = 4;
+              dst.height = 4;
+              var br = dst.getContext("bitmaprenderer");
+              br.transferFromImageBitmap(bmp);
+              var probe = document.createElement("canvas");
+              probe.width = 4;
+              probe.height = 4;
+              probe.getContext("2d").drawImage(dst, 0, 0);
+              var p = probe.getContext("2d").getImageData(1, 1, 1, 1).data;
+              return {
+                r: p[0], a: p[3],
+                twoD: dst.getContext("2d"),
+                closed: bmp.width,
+                ctx: br instanceof ImageBitmapRenderingContext
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["twoD"], serde_json::Value::Null, "{v}");
+    assert_eq!(v["closed"], 0, "transfer closes the bitmap: {v}");
+    assert_eq!(v["ctx"], true, "{v}");
+}
+
+#[test]
+fn canvas_soft_light_darkens_mid_gray() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 4;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#808080";
+              ctx.fillRect(0, 0, 4, 4);
+              ctx.globalCompositeOperation = "soft-light";
+              ctx.fillStyle = "#000000";
+              ctx.fillRect(0, 0, 4, 4);
+              var p = ctx.getImageData(1, 1, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 64, "{v}");
+    assert_eq!(v["g"], 64, "{v}");
+    assert_eq!(v["b"], 64, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_exclusion_and_hard_light_blend_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op, dest, src) {
+                var c = document.createElement("canvas");
+                c.width = 4;
+                c.height = 4;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = dest;
+                ctx.fillRect(0, 0, 4, 4);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = src;
+                ctx.fillRect(0, 0, 4, 4);
+                var p = ctx.getImageData(1, 1, 1, 1).data;
+                return { r: p[0], g: p[1], b: p[2], a: p[3] };
+              }
+              return {
+                exclusion: sample("exclusion", "#ffffff", "#ffffff"),
+                hard: sample("hard-light", "#c0c0c0", "#404040")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["exclusion"]["r"], 0, "{v}");
+    assert_eq!(v["exclusion"]["g"], 0, "{v}");
+    assert_eq!(v["exclusion"]["b"], 0, "{v}");
+    assert_eq!(v["hard"]["r"], 96, "{v}");
+    assert_eq!(v["hard"]["g"], 96, "{v}");
+    assert_eq!(v["hard"]["b"], 96, "{v}");
+    assert_eq!(v["hard"]["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_color_dodge_and_color_burn_blend_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op, dest, src) {
+                var c = document.createElement("canvas");
+                c.width = 4;
+                c.height = 4;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = dest;
+                ctx.fillRect(0, 0, 4, 4);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = src;
+                ctx.fillRect(0, 0, 4, 4);
+                var p = ctx.getImageData(1, 1, 1, 1).data;
+                return { r: p[0], g: p[1], b: p[2], a: p[3] };
+              }
+              return {
+                dodge: sample("color-dodge", "#400000", "#800000"),
+                burn: sample("color-burn", "#c0c0c0", "#808080")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["dodge"]["r"], 128, "{v}");
+    assert_eq!(v["dodge"]["g"], 0, "{v}");
+    assert_eq!(v["dodge"]["b"], 0, "{v}");
+    assert_eq!(v["burn"]["r"], 130, "{v}");
+    assert_eq!(v["burn"]["g"], 130, "{v}");
+    assert_eq!(v["burn"]["b"], 130, "{v}");
+}
+
+#[test]
+fn canvas_hue_saturation_color_and_luminosity_blend() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(op, dest, src) {
+                var c = document.createElement("canvas");
+                c.width = 4;
+                c.height = 4;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = dest;
+                ctx.fillRect(0, 0, 4, 4);
+                ctx.globalCompositeOperation = op;
+                ctx.fillStyle = src;
+                ctx.fillRect(0, 0, 4, 4);
+                var p = ctx.getImageData(1, 1, 1, 1).data;
+                return { r: p[0], g: p[1], b: p[2], a: p[3] };
+              }
+              return {
+                hue: sample("hue", "#ff0000", "#00ff00"),
+                color: sample("color", "#808080", "#ff0000"),
+                lum: sample("luminosity", "#ff0000", "#ffffff"),
+                sat: sample("saturation", "#808000", "#ff0000")
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["hue"]["g"].as_u64().unwrap_or(0) > v["hue"]["r"].as_u64().unwrap_or(0) + 50,
+        "hue takes the source hue: {v}"
+    );
+    assert!(
+        v["color"]["r"].as_u64().unwrap_or(0) > 200
+            && v["color"]["g"].as_u64().unwrap_or(255) < 120,
+        "color tints dest with source chroma: {v}"
+    );
+    assert_eq!(v["lum"]["r"], 255, "{v}");
+    assert_eq!(v["lum"]["g"], 255, "{v}");
+    assert_eq!(v["lum"]["b"], 255, "{v}");
+    assert!(
+        v["sat"]["r"].as_u64().unwrap_or(0) > 80 && v["sat"]["b"].as_u64().unwrap_or(255) < 20,
+        "saturation boosts dest chroma: {v}"
+    );
+}
+
+#[test]
+fn canvas_filter_blur_spills_outside_stroke_path() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 2;
+              ctx.filter = "blur(2px)";
+              ctx.beginPath();
+              ctx.moveTo(4, 8);
+              ctx.lineTo(12, 8);
+              ctx.stroke();
+              var mid = ctx.getImageData(8, 8, 1, 1).data;
+              var halo = ctx.getImageData(8, 6, 1, 1).data;
+              return { mg: mid[1], ma: mid[3], ha: halo[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["mg"].as_u64().unwrap_or(0) > 20,
+        "blurred stroke keeps the line: {v}"
+    );
+    assert!(
+        v["ha"].as_u64().unwrap_or(0) > 0,
+        "stroke blur must spill off the path: {v}"
+    );
+}
+
+#[test]
+fn data_transfer_stores_and_clears_text() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var dt = new DataTransfer();
+              dt.setData("text", "hello");
+              dt.setData("url", "https://example.com/");
+              var ev = new DragEvent("dragstart");
+              ev.dataTransfer.setData("text/plain", "from-event");
+              var itemType = "";
+              var itemKind = "";
+              var asString = "";
+              if (dt.items && dt.items.length) {
+                itemType = dt.items.item(0).type;
+                itemKind = dt.items.item(0).kind;
+                dt.items.item(0).getAsString(function (s) { asString = s; });
+              }
+              var before = {
+                text: dt.getData("text"),
+                url: dt.getData("url"),
+                types: dt.types.slice(),
+                items: dt.items.length,
+                itemType: itemType,
+                itemKind: itemKind,
+                asString: asString,
+                ev: ev.dataTransfer.getData("text")
+              };
+              dt.clearData("text");
+              var afterOne = { text: dt.getData("text"), url: dt.getData("url"), types: dt.types.slice() };
+              dt.clearData();
+              return {
+                before: before,
+                afterOne: afterOne,
+                empty: { text: dt.getData("text"), types: dt.types.slice(), items: dt.items.length }
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"]["text"], "hello", "{v}");
+    assert_eq!(v["before"]["url"], "https://example.com/", "{v}");
+    assert_eq!(v["before"]["items"], 2, "{v}");
+    assert_eq!(v["before"]["itemKind"], "string", "{v}");
+    assert_eq!(v["before"]["asString"], "hello", "{v}");
+    assert_eq!(v["before"]["ev"], "from-event", "{v}");
+    assert_eq!(v["afterOne"]["text"], "", "{v}");
+    assert_eq!(v["afterOne"]["url"], "https://example.com/", "{v}");
+    assert_eq!(v["empty"]["text"], "", "{v}");
+    assert_eq!(v["empty"]["items"], 0, "{v}");
+}
+
+#[test]
+fn canvas_text_baseline_shifts_fill_text() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function minY(base) {
+                var c = document.createElement("canvas");
+                c.width = 24;
+                c.height = 32;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.textBaseline = base;
+                ctx.fillText("I", 4, 12);
+                var data = ctx.getImageData(0, 0, 24, 32).data;
+                var min = 32;
+                for (var y = 0; y < 32; y++) {
+                  for (var x = 0; x < 24; x++) {
+                    if (data[(y * 24 + x) * 4 + 3] > 20) min = Math.min(min, y);
+                  }
+                }
+                return min;
+              }
+              return { alphabetic: minY("alphabetic"), top: minY("top") };
+            })()"##,
+        )
+        .unwrap();
+    let alpha = v["alphabetic"].as_u64().unwrap_or(32);
+    let top = v["top"].as_u64().unwrap_or(32);
+    assert!(
+        top > alpha,
+        "top baseline must paint lower than alphabetic: {v}"
+    );
+}
+
+#[test]
+fn canvas_bezier_curve_paints_off_the_chord() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(1, 14);
+              ctx.bezierCurveTo(1, 1, 14, 1, 14, 14);
+              ctx.stroke();
+              var peak = ctx.getImageData(8, 4, 1, 1).data;
+              var chord = ctx.getImageData(8, 14, 1, 1).data;
+              return { pg: peak[1], pa: peak[3], ca: chord[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["pa"].as_u64().unwrap_or(0) > 20,
+        "cubic must paint above the chord: {v}"
+    );
+    assert_eq!(v["ca"], 0, "the straight chord must stay empty: {v}");
+}
+
+#[test]
+fn canvas_image_smoothing_quality_high_blurs_more() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function mid(quality) {
+                var src = document.createElement("canvas");
+                src.width = 2;
+                src.height = 1;
+                var sctx = src.getContext("2d");
+                sctx.fillStyle = "#ff0000";
+                sctx.fillRect(0, 0, 1, 1);
+                sctx.fillStyle = "#0000ff";
+                sctx.fillRect(1, 0, 1, 1);
+                var dst = document.createElement("canvas");
+                dst.width = 8;
+                dst.height = 1;
+                var dctx = dst.getContext("2d");
+                dctx.imageSmoothingEnabled = true;
+                dctx.imageSmoothingQuality = quality;
+                dctx.drawImage(src, 0, 0, 2, 1, 0, 0, 8, 1);
+                var p = dctx.getImageData(3, 0, 1, 1).data;
+                return { r: p[0], b: p[2] };
+              }
+              return { low: mid("low"), high: mid("high") };
+            })()"##,
+        )
+        .unwrap();
+    let lr = v["low"]["r"].as_u64().unwrap_or(0);
+    let lb = v["low"]["b"].as_u64().unwrap_or(0);
+    let hr = v["high"]["r"].as_u64().unwrap_or(0);
+    let hb = v["high"]["b"].as_u64().unwrap_or(0);
+    assert!(lr > 0 && lb > 0, "low still blends: {v}");
+    assert!(hr > 0 && hb > 0, "high still blends: {v}");
+    assert!(
+        lr != hr || lb != hb,
+        "high quality must change the scaled midpoint: {v}"
+    );
+}
+
+#[test]
+fn canvas_image_smoothing_blends_scaled_pixels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(smooth) {
+                var src = document.createElement("canvas");
+                src.width = 2;
+                src.height = 1;
+                var sctx = src.getContext("2d");
+                sctx.fillStyle = "#ff0000";
+                sctx.fillRect(0, 0, 1, 1);
+                sctx.fillStyle = "#0000ff";
+                sctx.fillRect(1, 0, 1, 1);
+                var dst = document.createElement("canvas");
+                dst.width = 8;
+                dst.height = 1;
+                var dctx = dst.getContext("2d");
+                dctx.imageSmoothingEnabled = smooth;
+                dctx.drawImage(src, 0, 0, 2, 1, 0, 0, 8, 1);
+                var mid = dctx.getImageData(3, 0, 1, 1).data;
+                return { r: mid[0], b: mid[2] };
+              }
+              return { on: sample(true), off: sample(false) };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["on"]["r"].as_u64().unwrap_or(0) > 0 && v["on"]["b"].as_u64().unwrap_or(0) > 0,
+        "smoothing must blend the red/blue boundary: {v}"
+    );
+    assert!(
+        v["off"]["r"].as_u64().unwrap_or(255) == 255 && v["off"]["b"].as_u64().unwrap_or(255) == 0
+            || v["off"]["r"].as_u64().unwrap_or(0) == 0
+                && v["off"]["b"].as_u64().unwrap_or(0) == 255,
+        "nearest neighbour stays a source color: {v}"
+    );
+}
+
+#[test]
+fn create_attribute_returns_attr_node() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var a = document.createAttribute("data-k");
+              a.value = "1";
+              var prev = document.body.setAttributeNode(a);
+              var got = document.body.getAttributeNode("data-k");
+              return {
+                type: a.nodeType,
+                inst: a instanceof Attr,
+                name: a.name,
+                value: document.body.getAttribute("data-k"),
+                owner: a.ownerElement === document.body,
+                same: got === a || (got && got.value === "1"),
+                prevNull: prev == null,
+                ctorThrew: false
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["type"], 2, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["name"], "data-k", "{v}");
+    assert_eq!(v["value"], "1", "{v}");
+    assert_eq!(v["owner"], true, "{v}");
+    assert_eq!(v["same"], true, "{v}");
+}
+
+#[test]
+fn canvas_path2d_ellipse_arc_to_and_round_rect() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.beginPath();
+              ctx.ellipse(8, 8, 6, 2, 0, 0, Math.PI * 2);
+              ctx.fill();
+              var flat = {
+                mid: ctx.getImageData(8, 8, 1, 1).data[1],
+                east: ctx.getImageData(13, 8, 1, 1).data[1],
+                south: ctx.getImageData(8, 13, 1, 1).data[3],
+                aabbOut: ctx.getImageData(12, 10, 1, 1).data[3]
+              };
+              ctx.clearRect(0, 0, 16, 16);
+              ctx.beginPath();
+              ctx.ellipse(8, 8, 6, 2, Math.PI / 2, 0, Math.PI * 2);
+              ctx.fill();
+              var rot = {
+                mid: ctx.getImageData(8, 8, 1, 1).data[1],
+                east: ctx.getImageData(13, 8, 1, 1).data[3],
+                south: ctx.getImageData(8, 13, 1, 1).data[1]
+              };
+              ctx.clearRect(0, 0, 16, 16);
+              ctx.beginPath();
+              ctx.roundRect(1, 1, 14, 14, 6);
+              ctx.fill();
+              var round = {
+                mid: ctx.getImageData(8, 8, 1, 1).data[1],
+                corner: ctx.getImageData(1, 1, 1, 1).data[3],
+                edge: ctx.getImageData(8, 1, 1, 1).data[1]
+              };
+              ctx.clearRect(0, 0, 16, 16);
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(0, 8);
+              ctx.arcTo(8, 8, 8, 0, 4);
+              ctx.stroke();
+              return {
+                flat: flat,
+                rot: rot,
+                round: round,
+                arcCorner: ctx.isPointInStroke(8, 8),
+                arcH: ctx.isPointInStroke(4, 8),
+                arcV: ctx.isPointInStroke(8, 4)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["flat"]["mid"].as_u64().unwrap_or(0) > 200,
+        "ellipse center: {v}"
+    );
+    assert!(
+        v["flat"]["east"].as_u64().unwrap_or(0) > 200,
+        "ellipse east: {v}"
+    );
+    assert_eq!(v["flat"]["south"], 0, "flat ellipse must miss south: {v}");
+    assert_eq!(
+        v["flat"]["aabbOut"], 0,
+        "flat ellipse must miss AABB corner: {v}"
+    );
+    assert!(
+        v["rot"]["mid"].as_u64().unwrap_or(0) > 200,
+        "rotated center: {v}"
+    );
+    assert_eq!(v["rot"]["east"], 0, "rotated ellipse must miss east: {v}");
+    assert!(
+        v["rot"]["south"].as_u64().unwrap_or(0) > 200,
+        "rotated south: {v}"
+    );
+    assert!(
+        v["round"]["mid"].as_u64().unwrap_or(0) > 200,
+        "roundRect center: {v}"
+    );
+    assert_eq!(
+        v["round"]["corner"], 0,
+        "roundRect must leave the sharp corner empty: {v}"
+    );
+    assert!(
+        v["round"]["edge"].as_u64().unwrap_or(0) > 200,
+        "roundRect edge: {v}"
+    );
+    assert_eq!(
+        v["arcCorner"], false,
+        "arcTo must bend away from the corner: {v}"
+    );
+    assert_eq!(v["arcH"], true, "arcTo must keep the incoming tangent: {v}");
+    assert_eq!(v["arcV"], true, "arcTo must keep the outgoing tangent: {v}");
+}
+
+#[test]
+fn canvas_stroke_text_outlines_instead_of_filling() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function pixels(kind) {
+                var c = document.createElement("canvas");
+                c.width = 24;
+                c.height = 28;
+                var ctx = c.getContext("2d");
+                ctx.font = "20px sans-serif";
+                if (kind === "fill") {
+                  ctx.fillStyle = "#00ff00";
+                  ctx.fillText("I", 4, 20);
+                } else {
+                  ctx.strokeStyle = "#00ff00";
+                  ctx.lineWidth = 2;
+                  ctx.strokeText("I", 4, 20);
+                }
+                return ctx.getImageData(0, 0, 24, 28).data;
+              }
+              var fill = pixels("fill");
+              var stroke = pixels("stroke");
+              var fillOnly = 0, strokeOnly = 0, both = 0;
+              for (var i = 0; i < fill.length; i += 4) {
+                var f = fill[i + 3] > 20;
+                var s = stroke[i + 3] > 20;
+                if (f && s) both++;
+                else if (f) fillOnly++;
+                else if (s) strokeOnly++;
+              }
+              return { fillOnly: fillOnly, strokeOnly: strokeOnly, both: both };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["fillOnly"].as_u64().unwrap_or(0) > 0,
+        "fillText must keep an interior strokeText punches out: {v}"
+    );
+    assert!(
+        v["strokeOnly"].as_u64().unwrap_or(0) > 0,
+        "strokeText must paint a halo fillText does not: {v}"
+    );
+}
+
+#[test]
+fn canvas_create_pattern_from_image_data() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var dst = document.createElement("canvas");
+              dst.width = 4;
+              dst.height = 4;
+              var ctx = dst.getContext("2d");
+              var data = ctx.createImageData(2, 2);
+              for (var i = 0; i < data.data.length; i += 4) {
+                data.data[i] = 0;
+                data.data[i + 1] = 255;
+                data.data[i + 2] = 0;
+                data.data[i + 3] = 255;
+              }
+              var pat = ctx.createPattern(data, "repeat");
+              ctx.fillStyle = pat;
+              ctx.fillRect(0, 0, 4, 4);
+              var a = ctx.getImageData(0, 0, 1, 1).data;
+              var b = ctx.getImageData(3, 3, 1, 1).data;
+              return { encoded: String(pat), ag: a[1], aa: a[3], bg: b[1], ba: b[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["encoded"].as_str().unwrap_or("").contains("ve-pat:"),
+        "{v}"
+    );
+    assert_eq!(v["ag"], 255, "{v}");
+    assert_eq!(v["aa"], 255, "{v}");
+    assert_eq!(v["bg"], 255, "{v}");
+    assert_eq!(v["ba"], 255, "{v}");
+}
+
+#[test]
+fn canvas_text_align_shifts_fill_text() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function minX(align) {
+                var c = document.createElement("canvas");
+                c.width = 48;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.textAlign = align;
+                ctx.fillText("MM", 24, 16);
+                var data = ctx.getImageData(0, 0, 48, 24).data;
+                var min = 48;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 48; x++) {
+                    if (data[(y * 48 + x) * 4 + 3] > 20) min = Math.min(min, x);
+                  }
+                }
+                return min;
+              }
+              return { left: minX("left"), center: minX("center"), right: minX("right"), end: minX("end") };
+            })()"##,
+        )
+        .unwrap();
+    let left = v["left"].as_u64().unwrap_or(0);
+    let center = v["center"].as_u64().unwrap_or(0);
+    let right = v["right"].as_u64().unwrap_or(0);
+    let end = v["end"].as_u64().unwrap_or(0);
+    assert!(
+        left > center && center > right,
+        "textAlign must shift fillText: {v}"
+    );
+    assert_eq!(right, end, "end must match right in ltr: {v}");
+}
+
+#[test]
+fn canvas_direction_rtl_flips_start_align() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function minX(dir, align) {
+                var c = document.createElement("canvas");
+                c.width = 48;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.direction = dir;
+                ctx.textAlign = align;
+                ctx.fillText("MM", 24, 16);
+                var data = ctx.getImageData(0, 0, 48, 24).data;
+                var min = 48;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 48; x++) {
+                    if (data[(y * 48 + x) * 4 + 3] > 20) min = Math.min(min, x);
+                  }
+                }
+                return min;
+              }
+              return {
+                ltrStart: minX("ltr", "start"),
+                rtlStart: minX("rtl", "start"),
+                ltrEnd: minX("ltr", "end"),
+                rtlEnd: minX("rtl", "end")
+              };
+            })()"##,
+        )
+        .unwrap();
+    let ltr_start = v["ltrStart"].as_u64().unwrap_or(0);
+    let rtl_start = v["rtlStart"].as_u64().unwrap_or(0);
+    let ltr_end = v["ltrEnd"].as_u64().unwrap_or(0);
+    let rtl_end = v["rtlEnd"].as_u64().unwrap_or(0);
+    assert!(
+        ltr_start > rtl_start,
+        "rtl start must sit left of ltr start: {v}"
+    );
+    assert!(
+        rtl_end > ltr_end,
+        "rtl end must sit right of ltr end: {v}"
+    );
+    assert_eq!(ltr_start, rtl_end, "rtl end matches ltr start: {v}");
+    assert_eq!(rtl_start, ltr_end, "rtl start matches ltr end: {v}");
+}
+
+#[test]
+fn canvas_letter_spacing_shifts_second_glyph() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(gap) {
+                var c = document.createElement("canvas");
+                c.width = 64;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.letterSpacing = gap;
+                ctx.fillText("II", 2, 16);
+                var data = ctx.getImageData(0, 0, 64, 24).data;
+                var max = 0;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 64; x++) {
+                    if (data[(y * 64 + x) * 4 + 3] > 20) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { tight: maxX("0px"), wide: maxX("10px") };
+            })()"##,
+        )
+        .unwrap();
+    let tight = v["tight"].as_u64().unwrap_or(0);
+    let wide = v["wide"].as_u64().unwrap_or(0);
+    assert!(
+        wide > tight + 6,
+        "letterSpacing must push the second glyph: {v}"
+    );
+}
+
+#[test]
+fn canvas_font_style_property_shears_glyph() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxTop(style) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.font = "7px sans-serif";
+                ctx.fontStyle = style;
+                ctx.fillText("I", 1, 12);
+                var data = ctx.getImageData(0, 0, 16, 16).data;
+                var max = -1;
+                for (var y = 0; y < 8; y++) {
+                  for (var x = 0; x < 16; x++) {
+                    if (data[(y * 16 + x) * 4] > 200) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { n: maxTop("normal"), i: maxTop("italic") };
+            })()"##,
+        )
+        .unwrap();
+    let n = v["n"].as_i64().unwrap_or(-1);
+    let i = v["i"].as_i64().unwrap_or(-1);
+    assert!(i > n, "fontStyle=italic must shear I: {v}");
+}
+
+#[test]
+fn canvas_font_weight_property_widens_glyph() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(weight) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.font = "7px sans-serif";
+                ctx.fontWeight = weight;
+                ctx.fillText("I", 1, 12);
+                var data = ctx.getImageData(0, 0, 16, 16).data;
+                var max = -1;
+                for (var i = 0; i < data.length; i += 4) {
+                  if (data[i] > 200) max = Math.max(max, (i / 4) % 16);
+                }
+                return max;
+              }
+              return { n: maxX("normal"), b: maxX("bold") };
+            })()"##,
+        )
+        .unwrap();
+    let n = v["n"].as_i64().unwrap_or(-1);
+    let b = v["b"].as_i64().unwrap_or(-1);
+    assert!(b > n, "fontWeight=bold must widen I: {v}");
+}
+
+#[test]
+fn canvas_font_bold_widens_glyph() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(font) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.font = font;
+                ctx.fillText("I", 1, 12);
+                var data = ctx.getImageData(0, 0, 16, 16).data;
+                var max = -1;
+                for (var i = 0; i < data.length; i += 4) {
+                  if (data[i] > 200) max = Math.max(max, (i / 4) % 16);
+                }
+                return max;
+              }
+              return { n: maxX("7px sans-serif"), b: maxX("bold 7px sans-serif") };
+            })()"##,
+        )
+        .unwrap();
+    let n = v["n"].as_i64().unwrap_or(-1);
+    let b = v["b"].as_i64().unwrap_or(-1);
+    assert!(b > n, "bold must widen I: {v}");
+}
+
+#[test]
+fn canvas_font_italic_shears_top_of_glyph() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxTop(font) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.font = font;
+                ctx.fillText("I", 1, 12);
+                var data = ctx.getImageData(0, 0, 16, 16).data;
+                var max = -1;
+                for (var y = 0; y < 8; y++) {
+                  for (var x = 0; x < 16; x++) {
+                    if (data[(y * 16 + x) * 4] > 200) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { n: maxTop("7px sans-serif"), i: maxTop("italic 7px sans-serif") };
+            })()"##,
+        )
+        .unwrap();
+    let n = v["n"].as_i64().unwrap_or(-1);
+    let i = v["i"].as_i64().unwrap_or(-1);
+    assert!(i > n, "italic must shear the top of I rightward: {v}");
+}
+
+#[test]
+fn canvas_font_kerning_tightens_av_pair() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(kern) {
+                var c = document.createElement("canvas");
+                c.width = 64;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.fontKerning = kern;
+                ctx.fillText("AV", 2, 16);
+                var data = ctx.getImageData(0, 0, 64, 24).data;
+                var max = 0;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 64; x++) {
+                    if (data[(y * 64 + x) * 4 + 3] > 20) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { none: maxX("none"), normal: maxX("normal") };
+            })()"##,
+        )
+        .unwrap();
+    let none = v["none"].as_u64().unwrap_or(0);
+    let normal = v["normal"].as_u64().unwrap_or(0);
+    assert!(
+        none > normal + 1,
+        "fontKerning:normal must tighten AV: {v}"
+    );
+}
+
+#[test]
+fn canvas_font_variant_caps_small_caps_uppercases() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function dump(text, caps) {
+                var c = document.createElement("canvas");
+                c.width = 32;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "16px sans-serif";
+                ctx.fontVariantCaps = caps;
+                ctx.fillText(text, 2, 16);
+                return Array.from(ctx.getImageData(0, 0, 32, 24).data).join(",");
+              }
+              var lower = dump("a", "normal");
+              var upper = dump("A", "normal");
+              var small = dump("a", "small-caps");
+              return {
+                lowerEqSmall: lower === small,
+                smallEqUpper: small === upper,
+                lowerEqUpper: lower === upper
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["lowerEqUpper"], false, "a and A must differ: {v}");
+    assert_eq!(v["lowerEqSmall"], false, "small-caps must change a: {v}");
+    assert_eq!(v["smallEqUpper"], true, "small-caps a matches A: {v}");
+}
+
+#[test]
+fn canvas_font_stretch_condensed_narrows_text() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(stretch) {
+                var c = document.createElement("canvas");
+                c.width = 64;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "16px sans-serif";
+                ctx.fontStretch = stretch;
+                ctx.fillText("IIII", 2, 16);
+                var data = ctx.getImageData(0, 0, 64, 24).data;
+                var max = 0;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 64; x++) {
+                    if (data[(y * 64 + x) * 4 + 3] > 20) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { condensed: maxX("ultra-condensed"), expanded: maxX("ultra-expanded") };
+            })()"##,
+        )
+        .unwrap();
+    let condensed = v["condensed"].as_u64().unwrap_or(0);
+    let expanded = v["expanded"].as_u64().unwrap_or(0);
+    assert!(
+        expanded > condensed + 4,
+        "fontStretch ultra-expanded must be wider than ultra-condensed: {v}"
+    );
+}
+
+#[test]
+fn canvas_word_spacing_shifts_second_word() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxX(gap) {
+                var c = document.createElement("canvas");
+                c.width = 80;
+                c.height = 24;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "12px sans-serif";
+                ctx.wordSpacing = gap;
+                ctx.fillText("I I", 2, 16);
+                var data = ctx.getImageData(0, 0, 80, 24).data;
+                var max = 0;
+                for (var y = 0; y < 24; y++) {
+                  for (var x = 0; x < 80; x++) {
+                    if (data[(y * 80 + x) * 4 + 3] > 20) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { tight: maxX("0px"), wide: maxX("12px") };
+            })()"##,
+        )
+        .unwrap();
+    let tight = v["tight"].as_u64().unwrap_or(0);
+    let wide = v["wide"].as_u64().unwrap_or(0);
+    assert!(
+        wide > tight + 6,
+        "wordSpacing must push the second word: {v}"
+    );
+}
+
+#[test]
+fn canvas_filter_grayscale_equalizes_channels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "grayscale(1)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              var o = ctx.getImageData(0, 0, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3], oa: o[3] };
+            })()"##,
+        )
+        .unwrap();
+    let r = v["r"].as_u64().unwrap_or(0);
+    let g = v["g"].as_u64().unwrap_or(0);
+    let b = v["b"].as_u64().unwrap_or(0);
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+    assert_eq!(r, g, "grayscale must equalize r/g: {v}");
+    assert_eq!(g, b, "grayscale must equalize g/b: {v}");
+    assert!(r > 20 && r < 200, "grayscale red is mid gray: {v}");
+}
+
+#[test]
+fn canvas_filter_invert_swaps_red_to_cyan() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "invert(1)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_filter_brightness_scales_red() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "brightness(0.5)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 128, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_filter_contrast_flattens_to_mid_gray() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "contrast(0)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 128, "{v}");
+    assert_eq!(v["g"], 128, "{v}");
+    assert_eq!(v["b"], 128, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_filter_sepia_tints_red() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "sepia(1)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], 255, "{v}");
+    assert!(v["r"].as_u64().unwrap_or(0) > v["g"].as_u64().unwrap_or(0), "{v}");
+    assert!(v["g"].as_u64().unwrap_or(0) > v["b"].as_u64().unwrap_or(0), "{v}");
+    assert!(v["g"].as_u64().unwrap_or(0) > 20, "{v}");
+}
+
+#[test]
+fn canvas_filter_hue_rotate_shifts_red_to_green() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "hue-rotate(120deg)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn canvas_filter_opacity_scales_alpha() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "opacity(0.5)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 128, "{v}");
+}
+
+#[test]
+fn canvas_filter_drop_shadow_paints_offset() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "drop-shadow(3px 0 0 #00ff00)";
+              ctx.fillRect(1, 1, 3, 3);
+              var src = ctx.getImageData(2, 2, 1, 1).data;
+              var sh = ctx.getImageData(5, 2, 1, 1).data;
+              var empty = ctx.getImageData(0, 2, 1, 1).data;
+              return {
+                r: src[0], g: src[1], b: src[2], a: src[3],
+                sr: sh[0], sg: sh[1], sb: sh[2], sa: sh[3],
+                ea: empty[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["sr"], 0, "{v}");
+    assert_eq!(v["sg"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
+    assert_eq!(v["ea"], 0, "{v}");
+}
+
+#[test]
+fn computed_style_exposes_grid_tracks_spacing_and_counters() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="grid-template-columns:1fr 2fr;border-spacing:4px;counter-reset:1;background-position-x:25%">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                cols: String(cs.gridTemplateColumns || cs.getPropertyValue("grid-template-columns")),
+                spacing: String(cs.borderSpacing || cs.getPropertyValue("border-spacing")),
+                reset: String(cs.counterReset || cs.getPropertyValue("counter-reset")),
+                bx: String(cs.backgroundPositionX || cs.getPropertyValue("background-position-x"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cols"], "1fr 2fr", "{v}");
+    assert_eq!(v["spacing"], "4px", "{v}");
+    assert_eq!(v["reset"], "1", "{v}");
+    assert_eq!(v["bx"], "25%", "{v}");
+}
+
+#[test]
+fn computed_style_exposes_transform_filter_clip_and_images() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="transform:translate(10px, 20px) scale(2);filter:blur(4px);background-image:url(https://a.test/x.png);background-size:cover;clip-path:inset(1px 2px 3px 4px);content:&quot;hi&quot;">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                transform: String(cs.transform || cs.getPropertyValue("transform")),
+                filter: String(cs.filter || cs.getPropertyValue("filter")),
+                image: String(cs.backgroundImage || cs.getPropertyValue("background-image")),
+                size: String(cs.backgroundSize || cs.getPropertyValue("background-size")),
+                clip: String(cs.clipPath || cs.getPropertyValue("clip-path")),
+                content: String(cs.content || cs.getPropertyValue("content"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["transform"], "translate(10px, 20px) scale(2)", "{v}");
+    assert_eq!(v["filter"], "blur(4px)", "{v}");
+    assert!(v["image"].as_str().unwrap_or("").contains("https://a.test/x.png"), "{v}");
+    assert_eq!(v["size"], "cover", "{v}");
+    assert_eq!(v["clip"], "inset(1px 2px 3px 4px)", "{v}");
+    assert_eq!(v["content"], "\"hi\"", "{v}");
+}
+
+#[test]
+fn computed_style_exposes_time_radius_and_columns() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="animation-duration:1s;animation-iteration-count:infinite;aspect-ratio:2;column-count:3;line-clamp:2;border-top-left-radius:4px;perspective:200px">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                dur: String(cs.animationDuration || cs.getPropertyValue("animation-duration")),
+                iter: String(cs.animationIterationCount || cs.getPropertyValue("animation-iteration-count")),
+                ar: String(cs.aspectRatio || cs.getPropertyValue("aspect-ratio")),
+                cols: String(cs.columnCount || cs.getPropertyValue("column-count")),
+                clamp: String(cs.lineClamp || cs.getPropertyValue("line-clamp")),
+                radius: String(cs.borderTopLeftRadius || cs.getPropertyValue("border-top-left-radius")),
+                persp: String(cs.perspective || cs.getPropertyValue("perspective"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["dur"], "1s", "{v}");
+    assert_eq!(v["iter"], "infinite", "{v}");
+    assert_eq!(v["ar"], "2", "{v}");
+    assert_eq!(v["cols"], "3", "{v}");
+    assert_eq!(v["clamp"], "2", "{v}");
+    assert_eq!(v["radius"], "4px", "{v}");
+    assert_eq!(v["persp"], "200px", "{v}");
+}
+
+#[test]
+fn computed_style_exposes_flex_list_and_paint_keywords() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="flex-grow:2;list-style-type:decimal;text-overflow:ellipsis;isolation:isolate;object-fit:cover;table-layout:fixed;zoom:2">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                grow: String(cs.flexGrow || cs.getPropertyValue("flex-grow")),
+                list: String(cs.listStyleType || cs.getPropertyValue("list-style-type")),
+                overflow: String(cs.textOverflow || cs.getPropertyValue("text-overflow")),
+                isolation: String(cs.isolation || cs.getPropertyValue("isolation")),
+                fit: String(cs.objectFit || cs.getPropertyValue("object-fit")),
+                table: String(cs.tableLayout || cs.getPropertyValue("table-layout")),
+                zoom: String(cs.zoom || cs.getPropertyValue("zoom"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["grow"], "2", "{v}");
+    assert_eq!(v["list"], "decimal", "{v}");
+    assert_eq!(v["overflow"], "ellipsis", "{v}");
+    assert_eq!(v["isolation"], "isolate", "{v}");
+    assert_eq!(v["fit"], "cover", "{v}");
+    assert_eq!(v["table"], "fixed", "{v}");
+    assert_eq!(v["zoom"], "2", "{v}");
+}
+
+#[test]
+fn canvas_filter_saturate_zero_greys_red() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "saturate(0)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["r"], v["g"], "{v}");
+    assert_eq!(v["g"], v["b"], "{v}");
+}
+
+#[test]
+fn canvas_filter_url_saturate_zero_greys_red() {
+    let mut page = open(
+        r#"<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+  <filter id="f"><feColorMatrix type="saturate" values="0"/></filter>
+</svg>
+</body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "url(#f)";
+              ctx.fillRect(1, 1, 6, 6);
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["r"], v["g"], "{v}");
+    assert_eq!(v["g"], v["b"], "{v}");
+    assert!(v["r"].as_u64().unwrap_or(0) > 20 && v["r"].as_u64().unwrap_or(0) < 200, "{v}");
+}
+
+#[test]
+fn canvas_filter_url_saturate_zero_greys_fill_path() {
+    let mut page = open(
+        r#"<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+  <filter id="f"><feColorMatrix type="saturate" values="0"/></filter>
+</svg>
+</body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "url(#f)";
+              ctx.beginPath();
+              ctx.rect(1, 1, 6, 6);
+              ctx.fill();
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["r"], v["g"], "{v}");
+    assert_eq!(v["g"], v["b"], "{v}");
+    assert!(v["r"].as_u64().unwrap_or(0) > 20 && v["r"].as_u64().unwrap_or(0) < 200, "{v}");
+}
+
+#[test]
+fn canvas_filter_url_saturate_zero_greys_stroke_path() {
+    let mut page = open(
+        r#"<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+  <filter id="f"><feColorMatrix type="saturate" values="0"/></filter>
+</svg>
+</body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#ff0000";
+              ctx.lineWidth = 6;
+              ctx.filter = "url(#f)";
+              ctx.beginPath();
+              ctx.moveTo(1, 4);
+              ctx.lineTo(7, 4);
+              ctx.stroke();
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["r"], v["g"], "{v}");
+    assert_eq!(v["g"], v["b"], "{v}");
+    assert!(v["r"].as_u64().unwrap_or(0) > 20 && v["r"].as_u64().unwrap_or(0) < 200, "{v}");
+}
+
+#[test]
+fn canvas_fill_text_paints_distinct_glyphs() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 32;
+              c.height = 24;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.font = "16px sans-serif";
+              ctx.fillText("I", 1, 16);
+              ctx.fillText(" ", 20, 16);
+              var iData = ctx.getImageData(0, 0, 16, 24).data;
+              var space = ctx.getImageData(16, 0, 16, 24).data;
+              var ig = 0, ia = 0, sa = 0;
+              for (var n = 0; n < iData.length; n += 4) {
+                if (iData[n + 3] > 20) { ig = Math.max(ig, iData[n + 1]); ia = Math.max(ia, iData[n + 3]); }
+              }
+              for (var s = 0; s < space.length; s += 4) sa = Math.max(sa, space[s + 3]);
+              return { ig: ig, ia: ia, sa: sa, ii: ctx.measureText("II").width, m: ctx.measureText("MMMM").width, one: ctx.measureText("I").width };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["ig"].as_u64().unwrap_or(0) > 100,
+        "I glyph should paint green: {v}"
+    );
+    assert!(
+        v["ia"].as_u64().unwrap_or(0) > 20,
+        "I glyph should have coverage: {v}"
+    );
+    assert_eq!(v["sa"], 0, "space must stay empty: {v}");
+    assert!(
+        v["m"].as_f64().unwrap_or(0.0) > v["one"].as_f64().unwrap_or(0.0),
+        "MMMM must be wider than I: {v}"
+    );
+    assert!(v["ii"].as_f64().unwrap_or(0.0) > 0.0, "{v}");
+}
+
+#[test]
+fn canvas_fill_rect_paints_shadow_offset() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 12;
+              c.height = 12;
+              var ctx = c.getContext("2d");
+              ctx.shadowOffsetX = 4;
+              ctx.shadowOffsetY = 4;
+              ctx.shadowColor = "#0000ff";
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 4, 4);
+              var src = ctx.getImageData(1, 1, 1, 1).data;
+              var sh = ctx.getImageData(5, 5, 1, 1).data;
+              var empty = ctx.getImageData(10, 1, 1, 1).data;
+              return {
+                sr: src[0], sa: src[3],
+                sb: sh[2], sha: sh[3],
+                ea: empty[3],
+                tw: ctx.measureText("II").width
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sr"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
+    assert_eq!(v["sb"], 255, "{v}");
+    assert_eq!(v["sha"], 255, "{v}");
+    assert_eq!(v["ea"], 0, "{v}");
+    assert!(v["tw"].as_f64().unwrap_or(0.0) > 0.0, "{v}");
+}
+
+#[test]
+fn canvas_fill_text_paints_shadow_offset() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.font = "16px sans-serif";
+              ctx.shadowOffsetX = 8;
+              ctx.shadowOffsetY = 0;
+              ctx.shadowColor = "#0000ff";
+              ctx.fillStyle = "#ff0000";
+              ctx.fillText("I", 1, 14);
+              var src = ctx.getImageData(2, 8, 1, 1).data;
+              var sh = ctx.getImageData(10, 8, 1, 1).data;
+              return { sr: src[0], sa: src[3], sb: sh[2], sha: sh[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sr"], 255, "{v}");
+    assert!(
+        v["sa"].as_u64().unwrap_or(0) > 100,
+        "source I coverage: {v}"
+    );
+    assert_eq!(v["sb"], 255, "{v}");
+    assert!(
+        v["sha"].as_u64().unwrap_or(0) > 100,
+        "shadow I coverage: {v}"
+    );
+}
+
+#[test]
+fn canvas_fill_text_paints_shadow_blur() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.font = "16px sans-serif";
+              ctx.shadowBlur = 4;
+              ctx.shadowColor = "#0000ff";
+              ctx.fillStyle = "#ff0000";
+              ctx.fillText("I", 8, 14);
+              var data = ctx.getImageData(0, 0, 24, 16).data;
+              var sr = 0, sa = 0, sb = 0, spa = 0;
+              for (var i = 0; i < data.length; i += 4) {
+                var x = (i / 4) % 24;
+                if (data[i + 3] > 20 && data[i] > data[i + 2] + 40) {
+                  sr = Math.max(sr, data[i]);
+                  sa = Math.max(sa, data[i + 3]);
+                }
+                if (x <= 5 && data[i + 3] > 0 && data[i + 2] > data[i]) {
+                  sb = Math.max(sb, data[i + 2]);
+                  spa = Math.max(spa, data[i + 3]);
+                }
+              }
+              return { sr: sr, sa: sa, sb: sb, spa: spa };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["sr"].as_u64().unwrap_or(0) > 200,
+        "source I stays red-dominant: {v}"
+    );
+    assert!(
+        v["sa"].as_u64().unwrap_or(0) > 100,
+        "source I coverage: {v}"
+    );
+    assert!(
+        v["sb"].as_u64().unwrap_or(0) > 0 && v["spa"].as_u64().unwrap_or(0) > 0,
+        "blur must spill blue outside the glyph: {v}"
+    );
+}
+
+#[test]
+fn canvas_stroke_text_paints_shadow_offset() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.font = "16px sans-serif";
+              ctx.lineWidth = 2;
+              ctx.shadowOffsetX = 8;
+              ctx.shadowOffsetY = 0;
+              ctx.shadowColor = "#0000ff";
+              ctx.strokeStyle = "#ff0000";
+              ctx.strokeText("I", 1, 14);
+              var src = ctx.getImageData(0, 0, 8, 16).data;
+              var sh = ctx.getImageData(8, 0, 8, 16).data;
+              var sr = 0, sa = 0, sb = 0, sha = 0;
+              for (var i = 0; i < src.length; i += 4) {
+                if (src[i + 3] > 20) { sr = Math.max(sr, src[i]); sa = Math.max(sa, src[i + 3]); }
+              }
+              for (var j = 0; j < sh.length; j += 4) {
+                if (sh[j + 3] > 20) { sb = Math.max(sb, sh[j + 2]); sha = Math.max(sha, sh[j + 3]); }
+              }
+              return { sr: sr, sa: sa, sb: sb, sha: sha };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sr"], 255, "{v}");
+    assert!(
+        v["sa"].as_u64().unwrap_or(0) > 20,
+        "source stroke I coverage: {v}"
+    );
+    assert_eq!(v["sb"], 255, "{v}");
+    assert!(
+        v["sha"].as_u64().unwrap_or(0) > 20,
+        "shadow stroke I coverage: {v}"
+    );
+}
+
+#[test]
+fn canvas_stroke_text_paints_shadow_blur() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.font = "16px sans-serif";
+              ctx.lineWidth = 2;
+              ctx.shadowBlur = 4;
+              ctx.shadowColor = "#0000ff";
+              ctx.strokeStyle = "#ff0000";
+              ctx.strokeText("I", 8, 14);
+              var data = ctx.getImageData(0, 0, 24, 16).data;
+              var sr = 0, sa = 0, sb = 0, spa = 0;
+              for (var i = 0; i < data.length; i += 4) {
+                var x = (i / 4) % 24;
+                if (data[i + 3] > 20 && data[i] > data[i + 2] + 40) {
+                  sr = Math.max(sr, data[i]);
+                  sa = Math.max(sa, data[i + 3]);
+                }
+                if (x <= 5 && data[i + 3] > 0 && data[i + 2] > data[i]) {
+                  sb = Math.max(sb, data[i + 2]);
+                  spa = Math.max(spa, data[i + 3]);
+                }
+              }
+              return { sr: sr, sa: sa, sb: sb, spa: spa };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["sr"].as_u64().unwrap_or(0) > 200,
+        "source stroke I stays red-dominant: {v}"
+    );
+    assert!(
+        v["sa"].as_u64().unwrap_or(0) > 20,
+        "source stroke I coverage: {v}"
+    );
+    assert!(
+        v["sb"].as_u64().unwrap_or(0) > 0 && v["spa"].as_u64().unwrap_or(0) > 0,
+        "blur must spill blue outside the stroke: {v}"
+    );
+}
+
+#[test]
+fn canvas_stroke_rect_honours_line_dash() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 12;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 4]);
+              ctx.strokeRect(1, 1, 16, 8);
+              var on = ctx.getImageData(1, 1, 1, 1).data;
+              var off = ctx.getImageData(5, 1, 1, 1).data;
+              var on2 = ctx.getImageData(9, 1, 1, 1).data;
+              return { og: on[1], oa: on[3], fa: off[3], o2g: on2[1] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["og"], 255, "{v}");
+    assert_eq!(v["oa"], 255, "{v}");
+    assert_eq!(v["fa"], 0, "{v}");
+    assert_eq!(v["o2g"], 255, "{v}");
+}
+
+#[test]
+fn canvas_stroke_honours_line_cap() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(cap) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = "#00ff00";
+                ctx.lineCap = cap;
+                ctx.beginPath();
+                ctx.moveTo(6, 6);
+                ctx.lineTo(14, 6);
+                ctx.stroke();
+                var beyond = ctx.getImageData(4, 6, 1, 1).data;
+                var on = ctx.getImageData(6, 6, 1, 1).data;
+                var corner = ctx.getImageData(4, 4, 1, 1).data;
+                return { ba: beyond[3], og: on[1], ca: corner[3] };
+              }
+              return { butt: sample("butt"), square: sample("square"), round: sample("round") };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["butt"]["ba"], 0, "{v}");
+    assert_eq!(v["butt"]["og"], 255, "{v}");
+    assert_eq!(v["square"]["ba"], 255, "{v}");
+    assert_eq!(v["square"]["og"], 255, "{v}");
+    assert_eq!(v["square"]["ca"], 255, "{v}");
+    assert_eq!(v["round"]["og"], 255, "{v}");
+    assert_eq!(v["round"]["ba"], 255, "{v}");
+    assert_eq!(v["round"]["ca"], 0, "{v}");
+}
+
+#[test]
+fn canvas_stroke_honours_line_join() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function sample(join) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = "#00ff00";
+                ctx.lineJoin = join;
+                ctx.beginPath();
+                ctx.moveTo(2, 8);
+                ctx.lineTo(8, 8);
+                ctx.lineTo(8, 14);
+                ctx.stroke();
+                var miter = ctx.getImageData(10, 5, 1, 1).data;
+                var tip = ctx.getImageData(8, 5, 1, 1).data;
+                var on = ctx.getImageData(8, 8, 1, 1).data;
+                return { ma: miter[3], ta: tip[3], og: on[1] };
+              }
+              return { miter: sample("miter"), bevel: sample("bevel"), round: sample("round") };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["miter"]["ma"], 255, "{v}");
+    assert_eq!(v["miter"]["og"], 255, "{v}");
+    assert_eq!(v["bevel"]["ma"], 0, "{v}");
+    assert_eq!(v["bevel"]["og"], 255, "{v}");
+    assert_eq!(v["round"]["ma"], 0, "{v}");
+    assert_eq!(v["round"]["ta"], 255, "{v}");
+    assert_eq!(v["round"]["og"], 255, "{v}");
+}
+
+#[test]
+fn canvas_stroke_honours_miter_limit() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function tip(limit) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = "#00ff00";
+                ctx.lineJoin = "miter";
+                ctx.miterLimit = limit;
+                ctx.beginPath();
+                ctx.moveTo(2, 8);
+                ctx.lineTo(8, 8);
+                ctx.lineTo(8, 14);
+                ctx.stroke();
+                var miter = ctx.getImageData(10, 5, 1, 1).data;
+                var on = ctx.getImageData(8, 8, 1, 1).data;
+                return { ma: miter[3], og: on[1] };
+              }
+              return { wide: tip(10), tight: tip(1) };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["wide"]["ma"], 255, "{v}");
+    assert_eq!(v["wide"]["og"], 255, "{v}");
+    assert_eq!(v["tight"]["ma"], 0, "{v}");
+    assert_eq!(v["tight"]["og"], 255, "{v}");
+}
+
+#[test]
+fn canvas_fill_rect_paints_shadow_blur() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.shadowBlur = 2;
+              ctx.shadowColor = "#0000ff";
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(4, 4, 4, 4);
+              var src = ctx.getImageData(5, 5, 1, 1).data;
+              var spill = ctx.getImageData(2, 6, 1, 1).data;
+              return { sr: src[0], sa: src[3], sb: spill[2], spa: spill[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sr"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
+    assert!(
+        v["sb"].as_u64().unwrap_or(0) > 0 && v["spa"].as_u64().unwrap_or(0) > 0,
+        "blur must spill blue outside the fill: {v}"
+    );
+}
+
+#[test]
+fn canvas_stroke_path_honours_line_dash() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 4]);
+              ctx.beginPath();
+              ctx.moveTo(1, 3);
+              ctx.lineTo(17, 3);
+              ctx.stroke();
+              var on = ctx.getImageData(1, 3, 1, 1).data;
+              var off = ctx.getImageData(5, 3, 1, 1).data;
+              var on2 = ctx.getImageData(9, 3, 1, 1).data;
+              return { og: on[1], oa: on[3], fa: off[3], o2g: on2[1] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["og"], 255, "{v}");
+    assert_eq!(v["oa"], 255, "{v}");
+    assert_eq!(v["fa"], 0, "{v}");
+    assert_eq!(v["o2g"], 255, "{v}");
+}
+
+#[test]
+fn canvas_stroke_honours_line_dash_offset() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 4]);
+              ctx.lineDashOffset = 4;
+              ctx.beginPath();
+              ctx.moveTo(1, 3);
+              ctx.lineTo(17, 3);
+              ctx.stroke();
+              var off = ctx.getImageData(1, 3, 1, 1).data;
+              var on = ctx.getImageData(5, 3, 1, 1).data;
+              return { fa: off[3], og: on[1], oa: on[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["fa"], 0, "{v}");
+    assert_eq!(v["og"], 255, "{v}");
+    assert_eq!(v["oa"], 255, "{v}");
+}
+
+#[test]
+fn canvas_is_point_in_path_hits_rect() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.beginPath();
+              ctx.rect(2, 2, 6, 6);
+              var path = new Path2D();
+              path.moveTo(0, 8);
+              path.lineTo(8, 8);
+              path.lineTo(4, 16);
+              path.closePath();
+              return {
+                inside: ctx.isPointInPath(4, 4),
+                outside: ctx.isPointInPath(12, 4),
+                polyIn: ctx.isPointInPath(path, 4, 11),
+                polyOut: ctx.isPointInPath(path, 0, 0)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inside"], true, "{v}");
+    assert_eq!(v["outside"], false, "{v}");
+    assert_eq!(v["polyIn"], true, "{v}");
+    assert_eq!(v["polyOut"], false, "{v}");
+}
+
+#[test]
+fn canvas_is_point_in_stroke_hits_line() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(0, 8);
+              ctx.lineTo(16, 8);
+              var path = new Path2D("M0 8 L16 8");
+              return {
+                on: ctx.isPointInStroke(8, 8),
+                off: ctx.isPointInStroke(8, 14),
+                filled: ctx.isPointInPath(8, 8),
+                pathOn: ctx.isPointInStroke(path, 8, 8),
+                pathOff: ctx.isPointInStroke(path, 8, 14)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["on"], true, "{v}");
+    assert_eq!(v["off"], false, "{v}");
+    assert_eq!(v["filled"], false, "{v}");
+    assert_eq!(v["pathOn"], true, "{v}");
+    assert_eq!(v["pathOff"], false, "{v}");
+}
+
+#[test]
+fn canvas_path2d_parses_svg_quad_cubic_and_arc() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.lineWidth = 2;
+              var quad = new Path2D("M0 7 Q8 0 15 7");
+              var cubic = new Path2D("M0 15 C0 0 15 0 15 15");
+              var arc = new Path2D("M0 8 A8 8 0 0 0 8 0");
+              ctx.strokeStyle = "#00ff00";
+              ctx.stroke(arc);
+              var arcHit = false;
+              for (var i = 1; i <= 6; i++) {
+                if (ctx.isPointInStroke(arc, i, i)) arcHit = true;
+              }
+              return {
+                quad: ctx.isPointInStroke(quad, 8, 4),
+                cubic: ctx.isPointInStroke(cubic, 8, 4),
+                arc: arcHit,
+                arcEnd: ctx.isPointInStroke(arc, 8, 0)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["quad"], true, "{v}");
+    assert_eq!(v["cubic"], true, "{v}");
+    assert_eq!(v["arc"], true, "{v}");
+    assert_eq!(v["arcEnd"], true, "{v}");
+}
+
+#[test]
+fn canvas_fill_path_uses_linear_gradient() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              var g = ctx.createLinearGradient(0, 0, 16, 0);
+              g.addColorStop(0, "#ff0000");
+              g.addColorStop(1, "#0000ff");
+              ctx.fillStyle = g;
+              ctx.beginPath();
+              ctx.rect(0, 0, 16, 8);
+              ctx.fill();
+              var left = ctx.getImageData(0, 4, 1, 1).data;
+              var right = ctx.getImageData(15, 4, 1, 1).data;
+              return { lr: left[0], lb: left[2], rr: right[0], rb: right[2] };
+            })()"##,
+        )
+        .unwrap();
+    assert!(v["lr"].as_f64().unwrap_or(0.0) > 200.0, "left red: {v}");
+    assert!(
+        v["lb"].as_f64().unwrap_or(99.0) < 40.0,
+        "left not blue: {v}"
+    );
+    assert!(v["rb"].as_f64().unwrap_or(0.0) > 200.0, "right blue: {v}");
+    assert!(
+        v["rr"].as_f64().unwrap_or(99.0) < 40.0,
+        "right not red: {v}"
+    );
+}
+
+#[test]
+fn canvas_stroke_respects_line_width() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.lineWidth = 5;
+              ctx.strokeStyle = "#00ff00";
+              ctx.beginPath();
+              ctx.moveTo(0, 8);
+              ctx.lineTo(16, 8);
+              ctx.stroke();
+              var mid = ctx.getImageData(8, 8, 1, 1).data;
+              var thick = ctx.getImageData(8, 6, 1, 1).data;
+              var empty = ctx.getImageData(8, 0, 1, 1).data;
+              return { mg: mid[1], tg: thick[1], ea: empty[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["mg"], 255, "{v}");
+    assert_eq!(v["tg"], 255, "{v}");
+    assert_eq!(v["ea"], 0, "{v}");
+}
+
+#[test]
+fn canvas_path2d_parses_smooth_s_and_t() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.lineWidth = 2;
+              var t = new Path2D("M0 7 Q8 0 8 7 T 16 7");
+              var s = new Path2D("M0 15 C0 0 8 0 8 8 S 16 16 16 8");
+              return {
+                tMid: ctx.isPointInStroke(t, 10, 10),
+                tEnd: ctx.isPointInStroke(t, 16, 7),
+                sEnd: ctx.isPointInStroke(s, 16, 8)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["tMid"], true, "{v}");
+    assert_eq!(v["tEnd"], true, "{v}");
+    assert_eq!(v["sEnd"], true, "{v}");
+}
+
+#[test]
+fn canvas_rotate_maps_fill_rect() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.rotate(Math.PI / 2);
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, -4, 4, 4);
+              var hit = ctx.getImageData(2, 2, 1, 1).data;
+              var miss = ctx.getImageData(6, 2, 1, 1).data;
+              var t = ctx.getTransform();
+              return {
+                hg: hit[1], ha: hit[3],
+                ma: miss[3],
+                a: Math.round(t.a * 1000) / 1000,
+                b: Math.round(t.b * 1000) / 1000,
+                c: Math.round(t.c * 1000) / 1000,
+                d: Math.round(t.d * 1000) / 1000
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hg"], 255, "{v}");
+    assert_eq!(v["ha"], 255, "{v}");
+    assert_eq!(v["ma"], 0, "{v}");
+    assert!((v["a"].as_f64().unwrap_or(99.0)).abs() < 0.01, "{v}");
+    assert!((v["b"].as_f64().unwrap_or(0.0) - 1.0).abs() < 0.01, "{v}");
+    assert!((v["c"].as_f64().unwrap_or(0.0) + 1.0).abs() < 0.01, "{v}");
+    assert!((v["d"].as_f64().unwrap_or(99.0)).abs() < 0.01, "{v}");
+}
+
+#[test]
+fn canvas_transform_multiplies_current_matrix() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.transform(1, 0, 0, 1, 4, 0);
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 2, 2);
+              var hit = ctx.getImageData(4, 0, 1, 1).data;
+              var miss = ctx.getImageData(0, 0, 1, 1).data;
+              var t = ctx.getTransform();
+              return { hg: hit[1], ha: hit[3], ma: miss[3], e: t.e, f: t.f };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hg"], 255, "{v}");
+    assert_eq!(v["ha"], 255, "{v}");
+    assert_eq!(v["ma"], 0, "{v}");
+    assert_eq!(v["e"], 4, "{v}");
+    assert_eq!(v["f"], 0, "{v}");
+}
+
+#[test]
+fn canvas_draw_image_blits_source_pixels() {
+    const RED: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
+    let mut page = open(&format!(
+        r#"<img id="src" src="data:image/png;base64,{RED}"><canvas id="dst"></canvas>"#
+    ));
+    let from_img = page
+        .evaluate(
+            r#"(function () {
+              var img = document.getElementById("src");
+              var c = document.getElementById("dst");
+              c.width = 4;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.drawImage(img, 0, 0);
+              var d = ctx.getImageData(0, 0, 1, 1).data;
+              return { r: d[0], g: d[1], b: d[2], a: d[3] };
+            })()"#,
+        )
+        .unwrap();
+    assert!(
+        from_img["r"].as_u64().unwrap_or(0) > 200,
+        "img drawImage must blit ImageCache pixels: {from_img}"
+    );
+    assert_eq!(from_img["g"], 0, "{from_img}");
+    assert_eq!(from_img["b"], 0, "{from_img}");
+    let from_canvas = page
+        .evaluate(
+            r##"(function () {
+              var src = document.createElement("canvas");
+              src.width = 2;
+              src.height = 2;
+              var sctx = src.getContext("2d");
+              sctx.fillStyle = "#00ff00";
+              sctx.fillRect(0, 0, 2, 2);
+              var dst = document.createElement("canvas");
+              dst.width = 4;
+              dst.height = 4;
+              var dctx = dst.getContext("2d");
+              dctx.drawImage(src, 1, 1);
+              var d = dctx.getImageData(1, 1, 1, 1).data;
+              var empty = dctx.getImageData(0, 0, 1, 1).data;
+              return {
+                r: d[0], g: d[1], b: d[2], a: d[3],
+                er: empty[0], eg: empty[1], eb: empty[2], ea: empty[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(from_canvas["g"], 255, "{from_canvas}");
+    assert_eq!(from_canvas["r"], 0, "{from_canvas}");
+    assert_eq!(from_canvas["ea"], 0, "{from_canvas}");
+}
+
+#[test]
+fn canvas_draw_image_honours_source_and_dest_rects() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var src = document.createElement("canvas");
+              src.width = 8;
+              src.height = 4;
+              var sctx = src.getContext("2d");
+              sctx.fillStyle = "#ff0000";
+              sctx.fillRect(0, 0, 4, 4);
+              sctx.fillStyle = "#0000ff";
+              sctx.fillRect(4, 0, 4, 4);
+              var dst = document.createElement("canvas");
+              dst.width = 8;
+              dst.height = 8;
+              var dctx = dst.getContext("2d");
+              dctx.drawImage(src, 4, 0, 4, 4, 0, 0, 8, 8);
+              var a = dctx.getImageData(1, 1, 1, 1).data;
+              var b = dctx.getImageData(6, 6, 1, 1).data;
+              return { ar: a[0], ab: a[2], br: b[0], bb: b[2] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ar"], 0, "source-rect must skip the red half: {v}");
+    assert!(v["ab"].as_u64().unwrap_or(0) > 200, "scaled blue: {v}");
+    assert_eq!(v["br"], 0, "{v}");
+    assert!(v["bb"].as_u64().unwrap_or(0) > 200, "{v}");
+}
+
+#[test]
+fn canvas_save_restore_translate_and_global_alpha() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 4;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.globalAlpha = 0.5;
+              ctx.save();
+              ctx.translate(4, 0);
+              ctx.globalAlpha = 1;
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 2, 2);
+              ctx.restore();
+              ctx.fillRect(0, 0, 2, 2);
+              ctx.save();
+              ctx.scale(2, 1);
+              ctx.fillStyle = "#0000ff";
+              ctx.globalAlpha = 1;
+              ctx.fillRect(3, 2, 1, 1);
+              ctx.restore();
+              var left = ctx.getImageData(0, 0, 1, 1).data;
+              var right = ctx.getImageData(4, 0, 1, 1).data;
+              var mid = ctx.getImageData(2, 0, 1, 1).data;
+              var scaled = ctx.getImageData(6, 2, 1, 1).data;
+              return {
+                la: left[3], lr: left[0],
+                rg: right[1], ra: right[3],
+                ma: mid[3],
+                sb: scaled[2], sa: scaled[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["lr"], 255, "{v}");
+    assert!(
+        v["la"].as_u64().unwrap_or(0) > 100 && v["la"].as_u64().unwrap_or(0) < 160,
+        "half alpha: {v}"
+    );
+    assert_eq!(v["rg"], 255, "{v}");
+    assert_eq!(v["ra"], 255, "{v}");
+    assert_eq!(v["ma"], 0, "{v}");
+    assert_eq!(v["sb"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
+}
+
+#[test]
+fn canvas_clip_and_quadratic_curve_paint_pixels() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 16;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(0, 0, 4, 4);
+              ctx.clip();
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 16, 8);
+              var inside = ctx.getImageData(1, 1, 1, 1).data;
+              var outside = ctx.getImageData(8, 1, 1, 1).data;
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(0, 0, 2, 2);
+              ctx.clip();
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 16, 8);
+              ctx.restore();
+              ctx.fillStyle = "#0000aa";
+              ctx.fillRect(0, 0, 16, 8);
+              var after = ctx.getImageData(3, 1, 1, 1).data;
+              var still = ctx.getImageData(8, 1, 1, 1).data;
+              ctx.restore();
+              ctx.beginPath();
+              ctx.moveTo(0, 7);
+              ctx.quadraticCurveTo(8, 0, 15, 7);
+              ctx.strokeStyle = "#0000ff";
+              ctx.stroke();
+              var row = ctx.getImageData(0, 0, 16, 8).data;
+              var blue = 0;
+              for (var i = 0; i < row.length; i += 4) {
+                if (row[i + 2] > 200 && row[i] < 40) blue++;
+              }
+              return {
+                ir: inside[0], oa: outside[3],
+                ab: after[2], sa: still[3],
+                blue: blue
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ir"], 255, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+    assert!(
+        v["ab"].as_u64().unwrap_or(0) > 100,
+        "restore clip then fill: {v}"
+    );
+    assert_eq!(v["sa"], 0, "{v}");
+    assert!(
+        v["blue"].as_f64().unwrap_or(0.0) > 4.0,
+        "quadratic should paint: {v}"
+    );
+}
+
+#[test]
+fn canvas_stroke_path_records_ops() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 40;
+              c.height = 20;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.lineTo(10, 0);
+              ctx.stroke();
+              ctx.strokeRect(1, 1, 8, 8);
+              const d = ctx.getImageData(0, 0, 1, 1).data;
+              return { r: d[0], g: d[1], b: d[2], a: d[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["r"], 0, "{v}");
+}
+
+#[test]
 fn remove_attribute_node_clears_named_attr() {
     let mut page = open(r#"<p id="t" class="x"></p>"#);
     let v = page
@@ -883,6 +3986,4841 @@ fn template_content_cssstylesheet_and_import_node() {
     assert_eq!(v["text"], "ok", "{v}");
     assert_eq!(v["sheet"], true, "{v}");
     assert_eq!(v["adopted"], 1, "{v}");
+}
+
+#[test]
+fn css_style_sheet_inserts_and_deletes_rules() {
+    let mut page = open(r#"<body><p id="t">x</p></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var sheet = new CSSStyleSheet();
+              sheet.replaceSync("h1{color:blue}h2{color:green}");
+              var mid = sheet.insertRule("#t{display:none}", 1);
+              var before = {
+                len: sheet.cssRules.length,
+                mid: mid,
+                sel: sheet.cssRules[1].selectorText,
+                display: getComputedStyle(document.getElementById("t")).display,
+                rule: sheet.cssRules[1] instanceof CSSStyleRule
+              };
+              sheet.deleteRule(1);
+              return {
+                before: before,
+                after: sheet.cssRules.length,
+                first: sheet.cssRules[0].selectorText
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"]["len"], 3, "{v}");
+    assert_eq!(v["before"]["mid"], 1, "{v}");
+    assert_eq!(v["before"]["sel"], "#t", "{v}");
+    assert_eq!(v["before"]["rule"], true, "{v}");
+    assert_eq!(v["before"]["display"], "none", "{v}");
+    assert_eq!(v["after"], 2, "{v}");
+    assert_eq!(v["first"], "h1", "{v}");
+}
+
+#[test]
+fn xhr_sets_request_headers_and_reads_response_headers() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var xhr = new XMLHttpRequest();
+              xhr.open("GET", "data:text/plain,hello");
+              xhr.setRequestHeader("X-Test", "one");
+              xhr.setRequestHeader("X-Test", "two");
+              var headerErr = "";
+              xhr.send();
+              try { xhr.setRequestHeader("X-Late", "no"); } catch (e) { headerErr = e.name; }
+              var aborted = 0;
+              var after = new XMLHttpRequest();
+              after.open("GET", "data:text/plain,x");
+              after.onabort = function () { aborted++; };
+              after.abort();
+              return {
+                status: xhr.status,
+                body: xhr.responseText,
+                ct: xhr.getResponseHeader("content-type"),
+                all: xhr.getAllResponseHeaders(),
+                headerErr: headerErr,
+                abortReady: after.readyState,
+                abortEvents: aborted
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["status"], 200, "{v}");
+    assert_eq!(v["body"], "hello", "{v}");
+    assert!(
+        v["ct"]
+            .as_str()
+            .unwrap_or("")
+            .to_ascii_lowercase()
+            .contains("text/plain"),
+        "{v}"
+    );
+    assert_eq!(v["headerErr"], "InvalidStateError", "{v}");
+    assert_eq!(v["abortReady"], 1, "abort before send leaves OPENED: {v}");
+    assert_eq!(v["abortEvents"], 0, "abort before send is a no-op: {v}");
+}
+
+#[test]
+fn show_picker_focuses_connected_controls() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var sel = document.createElement("select");
+              var err = "";
+              try { sel.showPicker(); } catch (e) { err = e.name; }
+              document.body.appendChild(sel);
+              sel.showPicker();
+              var input = document.createElement("input");
+              input.type = "number";
+              document.body.appendChild(input);
+              input.showPicker();
+              return {
+                err: err,
+                sel: document.activeElement === sel || sel._pickerOpen,
+                input: input._pickerOpen
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["err"], "InvalidStateError", "{v}");
+    assert_eq!(v["sel"], true, "{v}");
+    assert_eq!(v["input"], true, "{v}");
+}
+
+#[test]
+fn media_load_resets_playback_and_fast_seek_moves() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var video = document.createElement("video");
+              video.src = "https://s.test/a.mp4";
+              var ev = [];
+              video.addEventListener("emptied", function () { ev.push("emptied"); });
+              video.addEventListener("abort", function () { ev.push("abort"); });
+              video.addEventListener("loadstart", function () { ev.push("loadstart"); });
+              video.currentTime = 4;
+              video.play();
+              video.load();
+              var afterLoad = { time: video.currentTime, paused: video.paused, ev: ev.slice() };
+              video.fastSeek(2);
+              return { afterLoad: afterLoad, seek: video.currentTime };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["afterLoad"]["time"], 0.0, "{v}");
+    assert_eq!(v["afterLoad"]["paused"], true, "{v}");
+    assert_eq!(v["afterLoad"]["ev"][0], "emptied", "{v}");
+    assert_eq!(v["afterLoad"]["ev"][1], "abort", "{v}");
+    assert_eq!(v["afterLoad"]["ev"][2], "loadstart", "{v}");
+    assert_eq!(v["seek"], 2.0, "{v}");
+}
+
+#[test]
+fn element_internals_stores_form_value_and_validity() {
+    let mut page = open(r#"<body><form id="f"></form></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              customElements.define("x-field", class extends HTMLElement {});
+              var form = document.getElementById("f");
+              var el = document.createElement("x-field");
+              el.setAttribute("name", "qty");
+              form.appendChild(el);
+              var internals = el.attachInternals();
+              internals.setFormValue("7");
+              internals.setValidity({ customError: true }, "bad");
+              var msg = internals.validationMessage;
+              var invalid = [];
+              el.addEventListener("invalid", function () { invalid.push(1); });
+              var check = internals.checkValidity();
+              internals.setValidity({ customError: false }, "");
+              var fd = new FormData(form);
+              return {
+                value: fd.get("qty"),
+                check: check,
+                invalid: invalid.length,
+                msg: msg,
+                ok: internals.checkValidity()
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["value"], "7", "{v}");
+    assert_eq!(v["check"], false, "{v}");
+    assert_eq!(v["invalid"], 1, "{v}");
+    assert_eq!(v["msg"], "bad", "{v}");
+    assert_eq!(v["ok"], true, "{v}");
+}
+
+#[test]
+fn navigation_navigate_updates_location_unless_intercepted() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var seen = [];
+              navigation.addEventListener("navigate", function (ev) {
+                seen.push(ev.destination.url);
+                if (String(ev.destination.url).indexOf("hold") >= 0) ev.intercept();
+              });
+              navigation.navigate("#go");
+              var afterGo = location.hash;
+              var entries = navigation.entries().length;
+              navigation.navigate("#hold");
+              return {
+                afterGo: afterGo,
+                hold: location.hash,
+                entries: entries,
+                seen: seen.length,
+                current: navigation.currentEntry instanceof NavigationHistoryEntry
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["afterGo"], "#go", "{v}");
+    assert_eq!(v["hold"], "#go", "intercept must skip the location write: {v}");
+    assert!(v["entries"].as_u64().unwrap_or(0) >= 2, "{v}");
+    assert_eq!(v["seen"], 2, "{v}");
+    assert_eq!(v["current"], true, "{v}");
+}
+
+#[test]
+fn close_watcher_request_close_honours_prevent_default() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var w = new CloseWatcher();
+              var ev = [];
+              w.addEventListener("cancel", function (e) { ev.push("cancel"); e.preventDefault(); });
+              w.addEventListener("close", function () { ev.push("close"); });
+              w.requestClose();
+              var blocked = ev.slice();
+              var w2 = new CloseWatcher();
+              var ev2 = [];
+              w2.addEventListener("cancel", function () { ev2.push("cancel"); });
+              w2.addEventListener("close", function () { ev2.push("close"); });
+              w2.requestClose();
+              w2.requestClose();
+              w2.destroy();
+              w2.close();
+              return { blocked: blocked, closed: ev2 };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["blocked"][0], "cancel", "{v}");
+    assert_eq!(v["blocked"].as_array().map(|a| a.len()).unwrap_or(0), 1, "{v}");
+    assert_eq!(v["closed"][0], "cancel", "{v}");
+    assert_eq!(v["closed"][1], "close", "{v}");
+    assert_eq!(v["closed"].as_array().map(|a| a.len()).unwrap_or(0), 2, "{v}");
+}
+
+#[test]
+fn broadcast_channel_delivers_to_same_name_peers() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__bc = [];
+          window.__a = new BroadcastChannel("room");
+          window.__b = new BroadcastChannel("room");
+          window.__c = new BroadcastChannel("other");
+          window.__b.onmessage = function (e) { window.__bc.push("b:" + e.data); };
+          window.__c.onmessage = function (e) { window.__bc.push("c:" + e.data); };
+          window.__a.postMessage("hi");
+          window.__a.close();
+          var closedErr = "";
+          try { window.__a.postMessage("no"); } catch (e) { closedErr = e.name; }
+          window.__closedErr = closedErr;
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return { got: window.__bc.slice(), closedErr: window.__closedErr };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["got"][0], "b:hi", "{v}");
+    assert_eq!(v["got"].as_array().map(|a| a.len()).unwrap_or(0), 1, "{v}");
+    assert_eq!(v["closedErr"], "InvalidStateError", "{v}");
+}
+
+#[test]
+fn document_style_sheets_exposes_style_element_rules() {
+    let mut page = open(r#"<body><style>#t{color:red}h1{font-size:2em}</style></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var sheets = document.styleSheets;
+              return {
+                len: sheets.length,
+                rules: sheets[0].cssRules.length,
+                sel: sheets[0].cssRules[0].selectorText
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["len"], 1, "{v}");
+    assert_eq!(v["rules"], 2, "{v}");
+    assert_eq!(v["sel"], "#t", "{v}");
+}
+
+#[test]
+fn event_source_opens_and_delivers_sse_data() {
+    let mut page = open(r#"<body></body>"#);
+    let connecting = page
+        .evaluate(
+            r##"(function () {
+              window.__es = [];
+              window.__opened = -1;
+              var payload = btoa("data:hello\nid:42\n\n");
+              window.__src = new EventSource("data:text/event-stream;base64," + payload);
+              window.__src.onopen = function () { window.__opened = window.__src.readyState; };
+              window.__src.onmessage = function (e) { window.__es.push({ data: e.data, id: e.lastEventId }); };
+              return { connecting: window.__src.readyState, connectingConst: EventSource.CONNECTING };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(connecting["connecting"], 0, "{connecting}");
+    assert_eq!(connecting["connectingConst"], 0, "{connecting}");
+    assert!(page.settle(50).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var open = window.__opened;
+              var got = window.__es.slice();
+              window.__src.close();
+              return { open: open, data: got[0] && got[0].data, id: got[0] && got[0].id, closed: window.__src.readyState };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["open"], 1, "{v}");
+    assert_eq!(v["data"], "hello", "{v}");
+    assert_eq!(v["id"], "42", "{v}");
+    assert_eq!(v["closed"], 2, "{v}");
+}
+
+#[test]
+fn intersection_observer_clips_to_viewport_and_root_margin() {
+    let mut page = open(
+        r#"<body>
+          <div id="in" style="width:40px;height:20px">in</div>
+          <div id="out" style="position:absolute;top:2000px;left:0;width:40px;height:20px">out</div>
+        </body>"#,
+    );
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__io = { in: null, out: null, outMargin: null };
+              new IntersectionObserver(function (recs) {
+                recs.forEach(function (r) {
+                  if (r.target.id === "in") window.__io.in = r;
+                  if (r.target.id === "out") window.__io.out = r;
+                });
+              }).observe(document.getElementById("in"));
+              new IntersectionObserver(function (recs) {
+                window.__io.out = recs[0];
+              }).observe(document.getElementById("out"));
+              new IntersectionObserver(function (recs) {
+                window.__io.outMargin = recs[0];
+              }, { rootMargin: "2000px" }).observe(document.getElementById("out"));
+              return {
+                vw: innerWidth,
+                vh: innerHeight,
+                inTop: document.getElementById("in").getBoundingClientRect().top,
+                outTop: document.getElementById("out").getBoundingClientRect().top
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(started["vh"].as_f64().unwrap_or(0.0) < 2000.0, "{started}");
+    assert!(started["outTop"].as_f64().unwrap_or(0.0) > 720.0, "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var i = window.__io.in;
+              var o = window.__io.out;
+              var m = window.__io.outMargin;
+              return {
+                inHit: i && i.isIntersecting,
+                inRatio: i && i.intersectionRatio,
+                inHasRect: i && i.intersectionRect && i.intersectionRect.width > 0,
+                outHit: o && o.isIntersecting,
+                outRatio: o && o.intersectionRatio,
+                outRootH: o && o.rootBounds && o.rootBounds.height,
+                marginHit: m && m.isIntersecting,
+                marginRatio: m && m.intersectionRatio
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inHit"], true, "{v}");
+    assert!(v["inRatio"].as_f64().unwrap_or(0.0) > 0.0, "{v}");
+    assert_eq!(v["inHasRect"], true, "{v}");
+    assert_eq!(v["outHit"], false, "{v}");
+    assert_eq!(v["outRatio"], 0.0, "{v}");
+    assert_eq!(v["marginHit"], true, "{v}");
+    assert!(v["marginRatio"].as_f64().unwrap_or(0.0) > 0.0, "{v}");
+}
+
+#[test]
+fn resize_observer_reports_content_box_inside_padding() {
+    let mut page = open(
+        r#"<body><div id="t" style="width:100px;height:40px;padding:10px 20px;border:5px solid red">x</div></body>"#,
+    );
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__ro = null;
+              new ResizeObserver(function (recs) { window.__ro = recs[0]; }).observe(document.getElementById("t"));
+              var el = document.getElementById("t");
+              var cs = getComputedStyle(el);
+              return {
+                padL: cs.paddingLeft || cs.getPropertyValue("padding-left"),
+                border: cs.borderLeftWidth || cs.getPropertyValue("border-left-width"),
+                boxW: el.getBoundingClientRect().width
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var r = window.__ro;
+              var box = document.getElementById("t").getBoundingClientRect();
+              return {
+                x: r && r.contentRect.x,
+                y: r && r.contentRect.y,
+                w: r && r.contentRect.width,
+                h: r && r.contentRect.height,
+                borderW: r && r.borderBoxSize[0].inlineSize,
+                contentW: r && r.contentBoxSize[0].inlineSize,
+                boxW: box.width
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["x"], 20.0, "{v} started={started}");
+    assert_eq!(v["y"], 10.0, "{v} started={started}");
+    assert!(
+        v["w"].as_f64().unwrap_or(0.0) + 1.0 < v["boxW"].as_f64().unwrap_or(0.0),
+        "content box must be inside padding+border: {v} started={started}"
+    );
+    assert_eq!(v["borderW"], v["boxW"], "{v}");
+    assert_eq!(v["contentW"], v["w"], "{v}");
+}
+
+#[test]
+fn file_reader_reads_blob_text_and_data_url() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              var blob = new Blob(["hi"], { type: "text/plain" });
+              var file = new File(["ab"], "n.txt", { type: "text/plain" });
+              window.__fr = { text: null, url: null, size: blob.size, fileName: file.name, fileSize: file.size };
+              var r = new FileReader();
+              r.onload = function () { window.__fr.text = r.result; };
+              r.readAsText(blob);
+              var r2 = new FileReader();
+              r2.onload = function () { window.__fr.url = r2.result; };
+              r2.readAsDataURL(blob);
+              return window.__fr.size;
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started, 2, "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return window.__fr;
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["text"], "hi", "{v}");
+    assert_eq!(v["fileName"], "n.txt", "{v}");
+    assert_eq!(v["fileSize"], 2, "{v}");
+    assert_eq!(v["url"], "data:text/plain;base64,aGk=", "{v}");
+}
+
+#[test]
+fn abort_signal_is_event_target_and_throw_if_aborted() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = new AbortController();
+              var hits = 0;
+              c.signal.addEventListener("abort", function () { hits++; });
+              var before = c.signal.aborted;
+              c.abort("stop");
+              var name = "";
+              try { c.signal.throwIfAborted(); } catch (e) { name = e; }
+              return {
+                before: before,
+                after: c.signal.aborted,
+                hits: hits,
+                reason: c.signal.reason,
+                thrown: name,
+                proto: c.signal instanceof AbortSignal
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], false, "{v}");
+    assert_eq!(v["after"], true, "{v}");
+    assert_eq!(v["hits"], 1, "{v}");
+    assert_eq!(v["reason"], "stop", "{v}");
+    assert_eq!(v["thrown"], "stop", "{v}");
+    assert_eq!(v["proto"], true, "{v}");
+}
+
+#[test]
+fn performance_observer_delivers_mark_and_buffered_paint() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__po = { marks: [], paints: [] };
+              performance.mark("before");
+              new PerformanceObserver(function (list) {
+                list.getEntries().forEach(function (e) { window.__po.marks.push(e.name); });
+              }).observe({ type: "mark", buffered: true });
+              new PerformanceObserver(function (list) {
+                list.getEntries().forEach(function (e) { window.__po.paints.push(e.name); });
+              }).observe({ type: "paint", buffered: true });
+              performance.mark("after");
+              return performance.getEntriesByType("paint").map(function (e) { return e.name; });
+            })()"##,
+        )
+        .unwrap();
+    assert!(started.as_array().is_some(), "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return window.__po;
+            })()"##,
+        )
+        .unwrap();
+    let marks = v["marks"].as_array().cloned().unwrap_or_default();
+    let paints = v["paints"].as_array().cloned().unwrap_or_default();
+    assert!(
+        marks.iter().any(|m| m == "before") && marks.iter().any(|m| m == "after"),
+        "{v}"
+    );
+    assert!(
+        paints.iter().any(|p| p == "first-contentful-paint"),
+        "{v}"
+    );
+}
+
+#[test]
+fn request_idle_callback_runs_with_time_remaining() {
+    let mut page = open(r#"<body></body>"#);
+    let _ = page
+        .evaluate(
+            r##"(function () {
+              window.__idle = null;
+              requestIdleCallback(function (d) {
+                window.__idle = { didTimeout: d.didTimeout, remain: d.timeRemaining() };
+              });
+              return true;
+            })()"##,
+        )
+        .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate("window.__idle")
+        .unwrap();
+    assert_eq!(v["didTimeout"], false, "{v}");
+    assert!(v["remain"].as_f64().unwrap_or(0.0) > 0.0, "{v}");
+}
+
+#[test]
+fn navigator_clipboard_round_trips_and_geolocation_denies() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__nav = { text: null, perm: null, geo: null };
+              navigator.clipboard.writeText("hi").then(function () {
+                return navigator.clipboard.readText();
+              }).then(function (t) { window.__nav.text = t; });
+              navigator.permissions.query({ name: "geolocation" }).then(function (p) {
+                window.__nav.perm = { name: p.name, state: p.state };
+              });
+              navigator.geolocation.getCurrentPosition(function () {}, function (e) {
+                window.__nav.geo = { code: e.code, message: e.message };
+              });
+              return true;
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started, true);
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate("window.__nav")
+        .unwrap();
+    assert_eq!(v["text"], "hi", "{v}");
+    assert_eq!(v["perm"]["name"], "geolocation", "{v}");
+    assert_eq!(v["perm"]["state"], "denied", "{v}");
+    assert_eq!(v["geo"]["code"], 1, "{v}");
+}
+
+#[test]
+fn offscreen_canvas_context_is_offscreen_2d() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var off = new OffscreenCanvas(4, 4);
+              var ctx = off.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 4, 4);
+              var px = ctx.getImageData(1, 1, 1, 1).data;
+              return {
+                inst: ctx instanceof OffscreenCanvasRenderingContext2D,
+                notHtml: !(ctx instanceof CanvasRenderingContext2D) || ctx instanceof OffscreenCanvasRenderingContext2D,
+                canvas: ctx.canvas === off,
+                r: px[0],
+                a: px[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["canvas"], true, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn document_fonts_tracks_font_face_load() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              var face = new FontFace("VeTest", "local(Arial)", { weight: "400" });
+              window.__ff = { before: document.fonts.check("16px VeTest"), after: null, size: 0, status: face.status };
+              document.fonts.add(face);
+              window.__ff.size = document.fonts.size;
+              window.__ff.mid = document.fonts.check("16px VeTest");
+              face.load();
+              return face.status;
+            })()"##,
+        )
+        .unwrap();
+    assert!(started == "loading" || started == "loaded", "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              window.__ff.after = document.fonts.check("16px VeTest");
+              window.__ff.loaded = document.fonts.check("16px VeTest") && [...document.fonts][0].status === "loaded";
+              return window.__ff;
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], true, "unregistered family uses system fonts: {v}");
+    assert_eq!(v["mid"], false, "added unloaded face must fail check: {v}");
+    assert_eq!(v["size"], 1, "{v}");
+    assert_eq!(v["after"], true, "{v}");
+    assert_eq!(v["loaded"], true, "{v}");
+}
+
+#[test]
+fn notification_request_permission_denies() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__n = { before: Notification.permission, after: null };
+              Notification.requestPermission().then(function (p) { window.__n.after = p; });
+              return window.__n.before;
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started, "default", "{started}");
+    assert!(page.settle(20).settled);
+    let v = page.evaluate("window.__n").unwrap();
+    assert_eq!(v["after"], "denied", "{v}");
+    assert_eq!(
+        page.evaluate("Notification.permission").unwrap(),
+        "denied"
+    );
+}
+
+#[test]
+fn crypto_subtle_digests_sha256() {
+    let mut page = open(r#"<body></body>"#);
+    let _ = page
+        .evaluate(
+            r##"(function () {
+              window.__digest = null;
+              crypto.subtle.digest("SHA-256", new Uint8Array([97, 98, 99])).then(function (buf) {
+                var u = new Uint8Array(buf);
+                var hex = "";
+                for (var i = 0; i < u.length; i++) hex += u[i].toString(16).padStart(2, "0");
+                window.__digest = hex;
+              });
+              return true;
+            })()"##,
+        )
+        .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page.evaluate("window.__digest").unwrap();
+    assert_eq!(
+        v,
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "{v}"
+    );
+}
+
+#[test]
+fn navigation_precommit_redirect_updates_location() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              navigation.addEventListener("navigate", function (ev) {
+                ev.intercept({
+                  precommitHandler: function (ctrl) { ctrl.redirect("#other"); }
+                });
+              });
+              navigation.navigate("#first");
+              return { hash: location.hash, dest: navigation.currentEntry.url };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hash"], "#other", "{v}");
+}
+
+#[test]
+fn fetch_reads_blob_object_url() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              var blob = new Blob(["hello-blob"], { type: "text/plain" });
+              window.__blobUrl = URL.createObjectURL(blob);
+              window.__blobText = null;
+              window.__revoked = null;
+              fetch(window.__blobUrl).then(function (r) { return r.text(); }).then(function (t) {
+                window.__blobText = t;
+                URL.revokeObjectURL(window.__blobUrl);
+                return fetch(window.__blobUrl).then(function () { window.__revoked = "ok"; }, function () { window.__revoked = "fail"; });
+              });
+              return { unique: window.__blobUrl !== "blob:vector:0", prefix: window.__blobUrl.indexOf("blob:") === 0 };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started["unique"], true, "{started}");
+    assert_eq!(started["prefix"], true, "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate("({ text: window.__blobText, revoked: window.__revoked })")
+        .unwrap();
+    assert_eq!(v["text"], "hello-blob", "{v}");
+    assert_eq!(v["revoked"], "fail", "{v}");
+}
+
+#[test]
+fn speech_synthesis_speak_fires_start_and_end() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__sp = [];
+              var u = new SpeechSynthesisUtterance("hi");
+              u.onstart = function () { window.__sp.push("start"); };
+              u.onend = function () { window.__sp.push("end"); };
+              speechSynthesis.speak(u);
+              return { speaking: speechSynthesis.speaking, voices: speechSynthesis.getVoices().length };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started["speaking"], true, "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate("({ ev: window.__sp.join(','), speaking: speechSynthesis.speaking })")
+        .unwrap();
+    assert_eq!(v["ev"], "start,end", "{v}");
+    assert_eq!(v["speaking"], false, "{v}");
+}
+
+#[test]
+fn visual_viewport_tracks_inner_size_and_scroll() {
+    let mut page = open(r#"<body style="height:2000px">x</body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__vv = 0;
+              visualViewport.addEventListener("scroll", function () { window.__vv++; });
+              return {
+                inst: visualViewport instanceof VisualViewport,
+                w: visualViewport.width,
+                h: visualViewport.height,
+                innerW: innerWidth,
+                innerH: innerHeight,
+                top0: visualViewport.pageTop
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started["inst"], true, "{started}");
+    assert_eq!(started["w"], started["innerW"], "{started}");
+    assert_eq!(started["h"], started["innerH"], "{started}");
+    assert_eq!(started["top0"], 0.0, "{started}");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              scrollTo(0, 80);
+              return { top: visualViewport.pageTop, left: visualViewport.pageLeft, hits: window.__vv };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["top"], 80.0, "{v}");
+    assert!(v["hits"].as_u64().unwrap_or(0) >= 1, "{v}");
+}
+
+#[test]
+fn window_scroll_y_tracks_document_element_scroll_top() {
+    let mut page = open(r#"<body style="height:2000px">x</body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              scrollTo(0, 80);
+              return {
+                y: scrollY,
+                x: scrollX,
+                top: document.documentElement.scrollTop
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["y"], 80.0, "{v}");
+    assert_eq!(v["top"], 80.0, "{v}");
+}
+
+#[test]
+fn selection_set_base_and_extent_and_delete_from_document() {
+    let mut page = open(r#"<body><p id="p">hello world</p></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const p = document.getElementById("p");
+              const text = p.firstChild;
+              const sel = getSelection();
+              let ctorThrew = false;
+              try { new Selection(); } catch (e) { ctorThrew = e instanceof TypeError; }
+              sel.selectAllChildren(p);
+              const all = {
+                isSel: sel instanceof Selection,
+                tag: Object.prototype.toString.call(sel),
+                type: sel.type,
+                collapsed: sel.isCollapsed,
+                count: sel.rangeCount,
+                text: String(sel),
+                contains: sel.containsNode(p, true),
+                ctorThrew
+              };
+              sel.setBaseAndExtent(text, 0, text, 5);
+              const mid = { type: sel.type, collapsed: sel.isCollapsed, text: String(sel), ao: sel.anchorOffset, fo: sel.focusOffset };
+              sel.deleteFromDocument();
+              sel.removeAllRanges();
+              let emptyThrew = false;
+              try { sel.collapseToStart(); } catch (e) { emptyThrew = e.name === "InvalidStateError"; }
+              return { all, mid, left: p.textContent, emptyThrew, none: sel.type };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["all"]["isSel"], true, "{v}");
+    assert_eq!(v["all"]["tag"], "[object Selection]", "{v}");
+    assert_eq!(v["all"]["type"], "Range", "{v}");
+    assert_eq!(v["all"]["collapsed"], false, "{v}");
+    assert_eq!(v["all"]["count"], 1, "{v}");
+    assert_eq!(v["all"]["text"], "hello world", "{v}");
+    assert_eq!(v["all"]["contains"], true, "{v}");
+    assert_eq!(v["all"]["ctorThrew"], true, "{v}");
+    assert_eq!(v["mid"]["type"], "Range", "{v}");
+    assert_eq!(v["mid"]["text"], "hello", "{v}");
+    assert_eq!(v["mid"]["ao"], 0, "{v}");
+    assert_eq!(v["mid"]["fo"], 5, "{v}");
+    assert_eq!(v["left"], " world", "{v}");
+    assert_eq!(v["emptyThrew"], true, "{v}");
+    assert_eq!(v["none"], "None", "{v}");
+}
+
+#[test]
+fn document_open_clears_body_and_close_finishes() {
+    let mut page = open(r#"<body><p id="keep">keep</p></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              let loaded = 0;
+              let ready = 0;
+              addEventListener("load", function () { loaded++; });
+              document.addEventListener("DOMContentLoaded", function () { ready++; });
+              const before = !!document.getElementById("keep");
+              document.open();
+              const mid = document.body.childNodes.length;
+              document.write("<p id=n>new</p>");
+              document.close();
+              return {
+                before,
+                mid,
+                after: document.getElementById("n") && document.getElementById("n").textContent,
+                keepGone: !document.getElementById("keep"),
+                ready,
+                loaded
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], true, "{v}");
+    assert_eq!(v["mid"], 0, "{v}");
+    assert_eq!(v["after"], "new", "{v}");
+    assert_eq!(v["keepGone"], true, "{v}");
+    assert_eq!(v["ready"], 1, "{v}");
+    assert_eq!(v["loaded"], 1, "{v}");
+}
+
+#[test]
+fn indexeddb_exposes_idb_classes() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__idbcls = "pending";
+          const req = indexedDB.open("cls");
+          req.onsuccess = function () {
+            const db = req.result;
+            const store = db.createObjectStore("kv");
+            const tx = db.transaction("kv");
+            window.__idbcls = {
+              factory: indexedDB instanceof IDBFactory,
+              openReq: req instanceof IDBOpenDBRequest && req instanceof IDBRequest,
+              db: db instanceof IDBDatabase,
+              store: store instanceof IDBObjectStore,
+              tx: tx instanceof IDBTransaction,
+              tag: Object.prototype.toString.call(db)
+            };
+          };
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__idbcls").unwrap();
+    assert_eq!(v["factory"], true, "{v}");
+    assert_eq!(v["openReq"], true, "{v}");
+    assert_eq!(v["db"], true, "{v}");
+    assert_eq!(v["store"], true, "{v}");
+    assert_eq!(v["tx"], true, "{v}");
+    assert_eq!(v["tag"], "[object IDBDatabase]", "{v}");
+}
+
+#[test]
+fn crypto_subtle_digests_sha1_and_signs_hmac() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__crypto2 = null;
+          const keyBytes = new TextEncoder().encode("key");
+          const msg = new TextEncoder().encode("The quick brown fox jumps over the lazy dog");
+          Promise.all([
+            crypto.subtle.digest("SHA-1", new Uint8Array([97, 98, 99])),
+            crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]).then(function (key) {
+              return crypto.subtle.sign("HMAC", key, msg);
+            })
+          ]).then(function (bufs) {
+            const hex = function (buf) {
+              return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+            };
+            window.__crypto2 = { sha1: hex(bufs[0]), hmac: hex(bufs[1]) };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__crypto2").unwrap();
+    assert_eq!(v["sha1"], "a9993e364706816aba3e25717850c26c9cd0d89d", "{v}");
+    assert_eq!(
+        v["hmac"],
+        "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
+        "{v}"
+    );
+}
+
+#[test]
+fn intersection_observer_refires_after_scroll() {
+    let mut page = open(
+        r#"<body>
+          <div id="out" style="position:absolute;top:2000px;left:0;width:40px;height:20px">out</div>
+        </body>"#,
+    );
+    page.evaluate(
+        r##"(function () {
+          window.__ioHits = [];
+          new IntersectionObserver(function (recs) {
+            window.__ioHits.push(recs[0] && recs[0].isIntersecting);
+          }).observe(document.getElementById("out"));
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(20).settled);
+    page.evaluate("scrollTo(0, 2000)").unwrap();
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return { hits: window.__ioHits, top: document.getElementById("out").getBoundingClientRect().top };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["hits"][0], false, "{v}");
+    assert_eq!(v["hits"][1], true, "{v}");
+}
+
+#[test]
+fn intersection_observer_refires_after_resize() {
+    let mut page = open(
+        r#"<body>
+          <div id="box" style="width:200px;height:200px">box</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const hits = [];
+              const io = new IntersectionObserver(function (recs) {
+                hits.push({
+                  i: recs[0] && recs[0].isIntersecting,
+                  r: recs[0] && recs[0].intersectionRatio,
+                  w: innerWidth
+                });
+              });
+              io.observe(document.getElementById("box"));
+              io._fire();
+              const afterFirst = hits.length;
+              resizeTo(50, 50);
+              return { hits: hits, afterFirst: afterFirst, inner: innerWidth };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inner"], 50, "{v}");
+    assert!(v["afterFirst"].as_i64().unwrap_or(0) >= 1, "{v}");
+    assert!(
+        v["hits"].as_array().map(|a| a.len()).unwrap_or(0) >= 2,
+        "{v}"
+    );
+    assert_eq!(v["hits"][0]["i"], true, "{v}");
+    assert_eq!(v["hits"][0]["w"], 1280, "{v}");
+    assert_eq!(v["hits"][1]["w"], 50, "{v}");
+}
+
+#[test]
+fn resize_observer_refires_when_style_width_changes() {
+    let mut page = open(r#"<body><div id="t" style="width:80px;height:20px">x</div></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__roW = [];
+          new ResizeObserver(function (recs) {
+            window.__roW.push(recs[0] && recs[0].contentRect.width);
+          }).observe(document.getElementById("t"));
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(20).settled);
+    page.evaluate("document.getElementById('t').style.width = '160px'").unwrap();
+    assert!(page.settle(20).settled);
+    let v = page.evaluate("window.__roW").unwrap();
+    assert_eq!(v[0], 80.0, "{v}");
+    assert_eq!(v[1], 160.0, "{v}");
+}
+
+#[test]
+fn mutation_record_is_a_real_class() {
+    let mut page = open(r#"<body><div id="c"></div></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__mr = null;
+          const c = document.getElementById("c");
+          const obs = new MutationObserver(function (recs) { window.__mr = recs[0]; });
+          obs.observe(c, { childList: true });
+          c.appendChild(document.createElement("span"));
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const r = window.__mr;
+              return {
+                isRec: r instanceof MutationRecord,
+                tag: Object.prototype.toString.call(r),
+                type: r && r.type,
+                added: r && r.addedNodes && r.addedNodes.length
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["isRec"], true, "{v}");
+    assert_eq!(v["tag"], "[object MutationRecord]", "{v}");
+    assert_eq!(v["type"], "childList", "{v}");
+    assert_eq!(v["added"], 1, "{v}");
+}
+
+#[test]
+fn exec_command_selects_inserts_and_deletes() {
+    let mut page = open(r#"<body><p id="p">hello</p></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const p = document.getElementById("p");
+              const text = p.firstChild;
+              const supported = document.queryCommandSupported("insertText") && document.queryCommandEnabled("delete");
+              document.execCommand("selectAll");
+              const selected = String(getSelection());
+              getSelection().setBaseAndExtent(text, 0, text, text.length);
+              document.execCommand("delete");
+              const afterDel = p.textContent;
+              document.execCommand("insertText", false, "hi");
+              document.execCommand("copy");
+              return {
+                supported,
+                selected,
+                afterDel,
+                afterIns: p.textContent
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["supported"], true, "{v}");
+    assert_eq!(v["selected"], "hello", "{v}");
+    assert_eq!(v["afterDel"], "", "{v}");
+    assert_eq!(v["afterIns"], "hi", "{v}");
+}
+
+#[test]
+fn element_animate_applies_opacity_and_finishes() {
+    let mut page = open(r#"<body><div id="box" style="opacity:0">x</div></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const el = document.getElementById("box");
+              const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 0, fill: "forwards" });
+              return {
+                isAnim: a instanceof Animation,
+                tag: Object.prototype.toString.call(a),
+                state: a.playState,
+                opacity: getComputedStyle(el).opacity,
+                timeline: document.timeline instanceof DocumentTimeline
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["isAnim"], true, "{v}");
+    assert_eq!(v["tag"], "[object Animation]", "{v}");
+    assert_eq!(v["state"], "finished", "{v}");
+    assert_eq!(v["opacity"], "1", "{v}");
+    assert_eq!(v["timeline"], true, "{v}");
+}
+
+#[test]
+fn element_animate_interpolates_opacity_over_time() {
+    let mut page = open(r#"<body><div id="box" style="opacity:0">x</div></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__anim = document.getElementById("box").animate(
+                [{ opacity: 0 }, { opacity: 1 }],
+                { duration: 80, fill: "forwards" }
+              );
+              return {
+                state: window.__anim.playState,
+                opacity: getComputedStyle(document.getElementById("box")).opacity
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started["state"], "running", "{started}");
+    assert_eq!(started["opacity"], "0", "{started}");
+    let _ = page.settle(200);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return {
+                opacity: getComputedStyle(document.getElementById("box")).opacity,
+                state: window.__anim.playState
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["opacity"], "1", "{v}");
+    assert_eq!(v["state"], "finished", "{v}");
+}
+
+#[test]
+fn dialog_show_modal_requires_connected_and_close_fires() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const d = document.createElement("dialog");
+              let disconnected = false;
+              try { d.showModal(); } catch (e) { disconnected = e.name === "InvalidStateError"; }
+              document.body.appendChild(d);
+              d.showModal();
+              let already = false;
+              try { d.showModal(); } catch (e) { already = e.name === "InvalidStateError"; }
+              let closed = 0;
+              d.addEventListener("close", function () { closed++; });
+              d.close("done");
+              return {
+                disconnected,
+                already,
+                closed,
+                ret: d.returnValue,
+                open: d.open
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["disconnected"], true, "{v}");
+    assert_eq!(v["already"], true, "{v}");
+    assert_eq!(v["closed"], 1, "{v}");
+    assert_eq!(v["ret"], "done", "{v}");
+    assert_eq!(v["open"], false, "{v}");
+}
+
+#[test]
+fn element_get_animations_lists_running_and_finished() {
+    let mut page = open(r#"<body><div id="a">x</div><div id="b">y</div></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const a = document.getElementById("a");
+              const b = document.getElementById("b");
+              const run = a.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 80, fill: "forwards" });
+              const done = b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 0, fill: "forwards" });
+              const listed = a.getAnimations();
+              const all = document.getAnimations();
+              return {
+                runCount: listed.length,
+                runSame: listed[0] === run,
+                runState: listed[0] && listed[0].playState,
+                doneCount: b.getAnimations().length,
+                doneState: b.getAnimations()[0] && b.getAnimations()[0].playState,
+                allCount: all.length,
+                allHasRun: all.indexOf(run) >= 0,
+                allHasDone: all.indexOf(done) >= 0
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["runCount"], 1, "{v}");
+    assert_eq!(v["runSame"], true, "{v}");
+    assert_eq!(v["runState"], "running", "{v}");
+    assert_eq!(v["doneCount"], 1, "{v}");
+    assert_eq!(v["doneState"], "finished", "{v}");
+    assert_eq!(v["allCount"], 2, "{v}");
+    assert_eq!(v["allHasRun"], true, "{v}");
+    assert_eq!(v["allHasDone"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_aes_gcm_round_trips_and_matches_nist() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__aes = null;
+          const keyBytes = new Uint8Array(16);
+          const iv = new Uint8Array(12);
+          const nist = crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new Uint8Array(0)).then(function (empty) {
+              const hex = Array.from(new Uint8Array(empty)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+              return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode("abc")).then(function (ct) {
+                return crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ct).then(function (pt) {
+                  window.__aes = { nist: hex, text: new TextDecoder().decode(pt), ctLen: ct.byteLength };
+                });
+              });
+            });
+          });
+          nist.catch(function (e) { window.__aes = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__aes").unwrap();
+    assert_eq!(
+        v["nist"],
+        "58e2fccefa7e3061367f1d57a4e7455a",
+        "{v}"
+    );
+    assert_eq!(v["text"], "abc", "{v}");
+    assert_eq!(v["ctLen"], 19, "{v}");
+}
+
+#[test]
+fn slot_assigned_nodes_match_named_and_manual() {
+    let mut page = open(r#"<body><div id="host"><span id="a" slot="s">A</span><span id="b">B</span></div></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const host = document.getElementById("host");
+              const shadow = host.attachShadow({ mode: "open" });
+              shadow.innerHTML = "<slot name=\"s\"></slot><slot></slot>";
+              const named = shadow.querySelector("slot[name=s]");
+              const def = shadow.querySelector("slot:not([name])");
+              const a = document.getElementById("a");
+              const namedNodes = named.assignedNodes();
+              const defEls = def.assignedElements();
+              return {
+                namedCount: namedNodes.length,
+                namedSame: namedNodes[0] === a,
+                namedEls: named.assignedElements().length,
+                defCount: defEls.length,
+                defTag: defEls[0] && defEls[0].id,
+                aSlot: a.assignedSlot === named
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["namedCount"], 1, "{v}");
+    assert_eq!(v["namedSame"], true, "{v}");
+    assert_eq!(v["namedEls"], 1, "{v}");
+    assert_eq!(v["defCount"], 1, "{v}");
+    assert_eq!(v["defTag"], "b", "{v}");
+    assert_eq!(v["aSlot"], true, "{v}");
+}
+
+#[test]
+fn speech_synthesis_exposes_a_default_voice() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const voices = speechSynthesis.getVoices();
+              return {
+                count: voices.length,
+                isVoice: voices[0] instanceof SpeechSynthesisVoice,
+                tag: Object.prototype.toString.call(voices[0]),
+                name: voices[0] && voices[0].name,
+                lang: voices[0] && voices[0].lang,
+                def: voices[0] && voices[0].default
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["count"], 1, "{v}");
+    assert_eq!(v["isVoice"], true, "{v}");
+    assert_eq!(v["tag"], "[object SpeechSynthesisVoice]", "{v}");
+    assert_eq!(v["name"], "Vector", "{v}");
+    assert_eq!(v["lang"], "en-US", "{v}");
+    assert_eq!(v["def"], true, "{v}");
+}
+
+#[test]
+fn data_transfer_files_from_item_add() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const dt = new DataTransfer();
+              const file = new File(["hi"], "x.txt", { type: "text/plain" });
+              const item = dt.items.add(file);
+              return {
+                len: dt.files.length,
+                name: dt.files[0] && dt.files[0].name,
+                kind: item && item.kind,
+                asFile: item && item.getAsFile() && item.getAsFile().name,
+                listTag: Object.prototype.toString.call(dt.files)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["len"], 1, "{v}");
+    assert_eq!(v["name"], "x.txt", "{v}");
+    assert_eq!(v["kind"], "file", "{v}");
+    assert_eq!(v["asFile"], "x.txt", "{v}");
+    assert_eq!(v["listTag"], "[object FileList]", "{v}");
+}
+
+#[test]
+fn url_can_parse_and_parse_relative() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const ok = URL.canParse("https://s.test/a");
+              const rel = URL.parse("/x", "https://s.test/y");
+              const bad = URL.canParse("::::");
+              const none = URL.parse("::::");
+              return {
+                ok,
+                rel: rel && rel.href,
+                bad,
+                none: none === null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(v["rel"], "https://s.test/x", "{v}");
+    assert_eq!(v["bad"], false, "{v}");
+    assert_eq!(v["none"], true, "{v}");
+}
+
+#[test]
+fn element_check_visibility_honours_display_and_opacity() {
+    let mut page = open(
+        r#"<body>
+          <div id="ok">x</div>
+          <div id="hid" style="display:none">x</div>
+          <div id="fade" style="opacity:0">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const detached = document.createElement("div");
+              return {
+                ok: document.getElementById("ok").checkVisibility(),
+                hid: document.getElementById("hid").checkVisibility(),
+                fadeDefault: document.getElementById("fade").checkVisibility(),
+                fadeOpacity: document.getElementById("fade").checkVisibility({ checkOpacity: true }),
+                detached: detached.checkVisibility()
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(v["hid"], false, "{v}");
+    assert_eq!(v["fadeDefault"], true, "{v}");
+    assert_eq!(v["fadeOpacity"], false, "{v}");
+    assert_eq!(v["detached"], false, "{v}");
+}
+
+#[test]
+fn form_request_submit_fires_cancelable_submit() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const form = document.createElement("form");
+              const btn = document.createElement("button");
+              form.appendChild(btn);
+              document.body.appendChild(form);
+              let count = 0;
+              let submitterOk = false;
+              form.addEventListener("submit", function (e) {
+                count++;
+                submitterOk = e.submitter === btn && e instanceof SubmitEvent;
+                e.preventDefault();
+              });
+              form.requestSubmit(btn);
+              let notFound = false;
+              const other = document.createElement("button");
+              document.body.appendChild(other);
+              try { form.requestSubmit(other); } catch (e) { notFound = e.name === "NotFoundError"; }
+              return { count, submitterOk, notFound };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["count"], 1, "{v}");
+    assert_eq!(v["submitterOk"], true, "{v}");
+    assert_eq!(v["notFound"], true, "{v}");
+}
+
+#[test]
+fn document_start_view_transition_runs_callback() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__vt = null;
+          const vt = document.startViewTransition(function () { window.__ran = true; });
+          window.__inst = vt instanceof ViewTransition;
+          window.__tag = Object.prototype.toString.call(vt);
+          Promise.all([vt.updateCallbackDone, vt.ready, vt.finished]).then(function () {
+            window.__vt = { ran: !!window.__ran, inst: window.__inst, tag: window.__tag };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__vt").unwrap();
+    assert_eq!(v["ran"], true, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["tag"], "[object ViewTransition]", "{v}");
+}
+
+#[test]
+fn css_register_property_supplies_initial_value() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              CSS.registerProperty({ name: "--ve-x", syntax: "<number>", inherits: false, initialValue: "4" });
+              let dup = false;
+              try { CSS.registerProperty({ name: "--ve-x", syntax: "*", inherits: false, initialValue: "1" }); }
+              catch (e) { dup = e.name === "InvalidModificationError"; }
+              let bad = false;
+              try { CSS.registerProperty({ name: "color", syntax: "*", inherits: false, initialValue: "red" }); }
+              catch (e) { bad = e.name === "SyntaxError"; }
+              return {
+                initial: getComputedStyle(document.body).getPropertyValue("--ve-x"),
+                dup,
+                bad
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["initial"], "4", "{v}");
+    assert_eq!(v["dup"], true, "{v}");
+    assert_eq!(v["bad"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_verifies_hmac() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__ver = null;
+          const keyBytes = new TextEncoder().encode("key");
+          const msg = new TextEncoder().encode("The quick brown fox jumps over the lazy dog");
+          crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]).then(function (key) {
+            return crypto.subtle.sign("HMAC", key, msg).then(function (sig) {
+              return Promise.all([
+                crypto.subtle.verify("HMAC", key, sig, msg),
+                crypto.subtle.verify("HMAC", key, new Uint8Array(32), msg)
+              ]).then(function (ok) {
+                window.__ver = { good: ok[0], bad: ok[1] };
+              });
+            });
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__ver").unwrap();
+    assert_eq!(v["good"], true, "{v}");
+    assert_eq!(v["bad"], false, "{v}");
+}
+
+#[test]
+fn scheduler_post_task_runs_callback() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__sched = null;
+          scheduler.postTask(function () { return 7; }).then(function (v) {
+            window.__sched = v;
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__sched").unwrap();
+    assert_eq!(v, 7, "{v}");
+}
+
+#[test]
+fn popover_show_hide_fires_toggle_events() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const el = document.createElement("div");
+              el.popover = "auto";
+              document.body.appendChild(el);
+              const evs = [];
+              el.addEventListener("beforetoggle", function (e) {
+                evs.push(["before", e.oldState, e.newState, e instanceof ToggleEvent]);
+              });
+              el.addEventListener("toggle", function (e) {
+                evs.push(["toggle", e.oldState, e.newState]);
+              });
+              el.showPopover();
+              const open = el.togglePopover();
+              el.hidePopover();
+              let cancelled = 0;
+              el.addEventListener("beforetoggle", function (e) { e.preventDefault(); cancelled++; });
+              el.showPopover();
+              return { evs, open, cancelled, stillClosed: !el._popoverOpen };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["evs"][0][0], "before", "{v}");
+    assert_eq!(v["evs"][0][1], "closed", "{v}");
+    assert_eq!(v["evs"][0][2], "open", "{v}");
+    assert_eq!(v["evs"][0][3], true, "{v}");
+    assert_eq!(v["evs"][1][0], "toggle", "{v}");
+    assert_eq!(v["open"], false, "{v}");
+    assert_eq!(v["cancelled"], 1, "{v}");
+    assert_eq!(v["stillClosed"], true, "{v}");
+}
+
+#[test]
+fn caches_open_put_and_match_blob_url() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__cache = null;
+          const url = URL.createObjectURL(new Blob(["hi"], { type: "text/plain" }));
+          caches.open("v1").then(function (cache) {
+            return cache.add(url).then(function () {
+              return cache.match(url).then(function (res) {
+                return res.text().then(function (text) {
+                  return caches.has("v1").then(function (has) {
+                    window.__cache = {
+                      text,
+                      has,
+                      inst: cache instanceof Cache,
+                      storage: caches instanceof CacheStorage
+                    };
+                  });
+                });
+              });
+            });
+          }).catch(function (e) { window.__cache = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__cache").unwrap();
+    assert_eq!(v["text"], "hi", "{v}");
+    assert_eq!(v["has"], true, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["storage"], true, "{v}");
+}
+
+#[test]
+fn request_fullscreen_sets_document_element() {
+    let mut page = open(r#"<body><div id="box">x</div></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__fs = null;
+          const el = document.getElementById("box");
+          el.requestFullscreen().then(function () {
+            const on = document.fullscreenElement === el && document.fullscreenEnabled;
+            return document.exitFullscreen().then(function () {
+              window.__fs = { on, off: document.fullscreenElement === null };
+            });
+          }).catch(function (e) { window.__fs = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__fs").unwrap();
+    assert_eq!(v["on"], true, "{v}");
+    assert_eq!(v["off"], true, "{v}");
+}
+
+#[test]
+fn navigator_share_and_locks_request() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__nav = null;
+          const can = navigator.canShare({ title: "t", text: "x" });
+          Promise.all([
+            navigator.share({ title: "t", text: "x" }),
+            navigator.locks.request("k", function (lock) { return lock.name + ":" + lock.mode; })
+          ]).then(function (vals) {
+            window.__nav = {
+              can,
+              shared: navigator._lastShare && navigator._lastShare.title,
+              lock: vals[1]
+            };
+          }).catch(function (e) { window.__nav = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__nav").unwrap();
+    assert_eq!(v["can"], true, "{v}");
+    assert_eq!(v["shared"], "t", "{v}");
+    assert_eq!(v["lock"], "k:exclusive", "{v}");
+}
+
+#[test]
+fn match_media_returns_media_query_list() {
+    let mut page = open("<title>mql</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const mql = matchMedia("(min-width: 1px)");
+              return {
+                inst: mql instanceof MediaQueryList,
+                media: mql.media,
+                matches: mql.matches,
+                tag: Object.prototype.toString.call(mql)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["media"], "(min-width: 1px)", "{v}");
+    assert_eq!(v["matches"], true, "{v}");
+    assert_eq!(v["tag"], "[object MediaQueryList]", "{v}");
+}
+
+#[test]
+fn history_go_after_push_state_fires_popstate() {
+    let mut page = open("<title>hist</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const evs = [];
+              addEventListener("popstate", function (e) {
+                evs.push({
+                  inst: e instanceof PopStateEvent,
+                  state: e.state,
+                  href: location.href
+                });
+              });
+              history.pushState({ n: 1 }, "", "/one");
+              history.pushState({ n: 2 }, "", "/two");
+              const two = history.state;
+              history.back();
+              const one = history.state;
+              history.forward();
+              return { two, one, after: history.state, evs, len: history.length };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["two"]["n"], 2, "{v}");
+    assert_eq!(v["one"]["n"], 1, "{v}");
+    assert_eq!(v["after"]["n"], 2, "{v}");
+    assert_eq!(v["evs"][0]["inst"], true, "{v}");
+    assert_eq!(v["evs"][0]["state"]["n"], 1, "{v}");
+    assert_eq!(v["evs"][1]["inst"], true, "{v}");
+    assert_eq!(v["evs"][1]["state"]["n"], 2, "{v}");
+}
+
+#[test]
+fn css_highlights_registry_stores_ranges() {
+    let mut page = open("<title>hl</title><p>hi</p>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const r = new Range();
+              const h = new Highlight(r);
+              CSS.highlights.set("mark", h);
+              return {
+                inst: h instanceof Highlight,
+                size: h.size,
+                has: CSS.highlights.has("mark"),
+                same: CSS.highlights.get("mark") === h,
+                tag: Object.prototype.toString.call(CSS.highlights)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["size"], 1, "{v}");
+    assert_eq!(v["has"], true, "{v}");
+    assert_eq!(v["same"], true, "{v}");
+    assert_eq!(v["tag"], "[object HighlightRegistry]", "{v}");
+}
+
+#[test]
+fn crypto_subtle_aes_cbc_round_trips_nist() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__cbc = null;
+          const keyBytes = new Uint8Array([0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c]);
+          const iv = new Uint8Array([0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f]);
+          const pt = new Uint8Array([0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a]);
+          const expect = [0x76,0x49,0xab,0xac,0x81,0x19,0xb2,0x46,0xce,0xe9,0x8e,0x9b,0x12,0xe9,0x19,0x7d];
+          crypto.subtle.importKey("raw", keyBytes, { name: "AES-CBC" }, false, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.encrypt({ name: "AES-CBC", iv: iv }, key, pt).then(function (ct) {
+              const got = Array.from(new Uint8Array(ct));
+              return crypto.subtle.decrypt({ name: "AES-CBC", iv: iv }, key, ct).then(function (back) {
+                const plain = Array.from(new Uint8Array(back));
+                window.__cbc = {
+                  nist: expect.every(function (b, i) { return b === got[i]; }),
+                  round: plain.every(function (b, i) { return b === pt[i]; })
+                };
+              });
+            });
+          }).catch(function (e) { window.__cbc = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__cbc").unwrap();
+    assert_eq!(v["nist"], true, "{v}");
+    assert_eq!(v["round"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_pbkdf2_derives_sha256_bits() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__pbk = null;
+          const expect = [0x12,0x0f,0xb6,0xcf,0xfc,0xf8,0xb3,0x2c,0x43,0xe7,0x22,0x52,0x56,0xc4,0xf8,0x37,0xa8,0x65,0x48,0xc9,0x2c,0xcc,0x35,0x48,0x08,0x05,0x98,0x7c,0xb7,0x0b,0xe1,0x7b];
+          const pw = new TextEncoder().encode("password");
+          const salt = new TextEncoder().encode("salt");
+          crypto.subtle.importKey("raw", pw, "PBKDF2", false, ["deriveBits"]).then(function (key) {
+            return crypto.subtle.deriveBits({ name: "PBKDF2", salt: salt, iterations: 1, hash: "SHA-256" }, key, 256).then(function (bits) {
+              const got = Array.from(new Uint8Array(bits));
+              window.__pbk = { ok: expect.every(function (b, i) { return b === got[i]; }), got: got };
+            });
+          }).catch(function (e) { window.__pbk = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__pbk").unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+}
+
+#[test]
+fn streams_and_url_pattern_are_real_classes() {
+    let mut page = open("<title>st</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__st = null;
+          const t = new TransformStream({
+            transform(chunk, ctrl) { ctrl.enqueue(chunk + 1); }
+          });
+          const w = t.writable.getWriter();
+          const r = t.readable.getReader();
+          w.write(2).then(function () { return w.close(); }).then(function () {
+            return r.read();
+          }).then(function (v) {
+            const p = new URLPattern({ pathname: "/books/:id" });
+            window.__st = {
+              stream: new ReadableStream() instanceof ReadableStream,
+              writable: t.writable instanceof WritableStream,
+              transform: t instanceof TransformStream,
+              out: v.value,
+              url: p.test("https://s.test/books/7") && p.exec("https://s.test/books/7").pathname.input === "/books/7"
+            };
+          }).catch(function (e) { window.__st = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__st").unwrap();
+    assert_eq!(v["stream"], true, "{v}");
+    assert_eq!(v["writable"], true, "{v}");
+    assert_eq!(v["transform"], true, "{v}");
+    assert_eq!(v["out"], 3, "{v}");
+    assert_eq!(v["url"], true, "{v}");
+}
+
+#[test]
+fn audio_context_creates_oscillator_and_gain() {
+    let mut page = open("<title>au</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain).connect(ctx.destination);
+              osc.start();
+              return {
+                inst: ctx instanceof AudioContext,
+                osc: osc instanceof OscillatorNode,
+                type: osc.type,
+                freq: osc.frequency.value,
+                dest: osc._dest === gain && gain._dest === ctx.destination,
+                state: ctx.state,
+                tag: Object.prototype.toString.call(ctx)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["osc"], true, "{v}");
+    assert_eq!(v["type"], "sine", "{v}");
+    assert_eq!(v["freq"], 440, "{v}");
+    assert_eq!(v["dest"], true, "{v}");
+    assert_eq!(v["state"], "running", "{v}");
+    assert_eq!(v["tag"], "[object AudioContext]", "{v}");
+}
+
+#[test]
+fn canvas_get_context_webgl_reports_version() {
+    let mut page = open("<title>gl</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.createElement("canvas");
+              const gl = c.getContext("webgl");
+              return {
+                inst: gl instanceof WebGLRenderingContext,
+                version: gl.getParameter(gl.VERSION),
+                vendor: gl.getParameter(gl.VENDOR),
+                again: c.getContext("webgl") === gl,
+                two: c.getContext("2d") === null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["version"], "WebGL 1.0 (Vector)", "{v}");
+    assert_eq!(v["vendor"], "Vector", "{v}");
+    assert_eq!(v["again"], true, "{v}");
+    assert_eq!(v["two"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_generate_key_round_trips_aes_cbc() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__gen = null;
+          const iv = new Uint8Array(16);
+          const pt = new Uint8Array(16);
+          for (let i = 0; i < 16; i++) pt[i] = i + 1;
+          crypto.subtle.generateKey({ name: "AES-CBC" }, false, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.encrypt({ name: "AES-CBC", iv: iv }, key, pt).then(function (ct) {
+              return crypto.subtle.decrypt({ name: "AES-CBC", iv: iv }, key, ct).then(function (back) {
+                const plain = new Uint8Array(back);
+                window.__gen = {
+                  type: key.type,
+                  round: Array.from(plain).every(function (b, i) { return b === pt[i]; })
+                };
+              });
+            });
+          }).catch(function (e) { window.__gen = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__gen").unwrap();
+    assert_eq!(v["type"], "secret", "{v}");
+    assert_eq!(v["round"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_export_and_derive_key() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__exp = null;
+          const pw = new TextEncoder().encode("password");
+          const salt = new TextEncoder().encode("salt");
+          crypto.subtle.generateKey({ name: "AES-CBC" }, true, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.exportKey("raw", key).then(function (raw) {
+              return crypto.subtle.importKey("raw", pw, "PBKDF2", false, ["deriveKey"]).then(function (base) {
+                return crypto.subtle.deriveKey(
+                  { name: "PBKDF2", salt: salt, iterations: 1, hash: "SHA-256" },
+                  base,
+                  { name: "AES-CBC" },
+                  true,
+                  ["encrypt", "decrypt"]
+                ).then(function (derived) {
+                  return crypto.subtle.exportKey("jwk", derived).then(function (jwk) {
+                    window.__exp = {
+                      rawLen: new Uint8Array(raw).length,
+                      kty: jwk.kty,
+                      derived: derived.type
+                    };
+                  });
+                });
+              });
+            });
+          }).catch(function (e) { window.__exp = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__exp").unwrap();
+    assert_eq!(v["rawLen"], 16, "{v}");
+    assert_eq!(v["kty"], "oct", "{v}");
+    assert_eq!(v["derived"], "secret", "{v}");
+}
+
+#[test]
+fn text_encoder_stream_encodes_chunks() {
+    let mut page = open("<title>tes</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__tes = null;
+          const s = new TextEncoderStream();
+          const w = s.writable.getWriter();
+          const r = s.readable.getReader();
+          w.write("hi").then(function () { return w.close(); }).then(function () {
+            return r.read();
+          }).then(function (v) {
+            const dec = new TextDecoderStream();
+            const dw = dec.writable.getWriter();
+            const dr = dec.readable.getReader();
+            return dw.write(v.value).then(function () { return dw.close(); }).then(function () {
+              return dr.read();
+            }).then(function (out) {
+              window.__tes = {
+                enc: s instanceof TextEncoderStream,
+                dec: dec instanceof TextDecoderStream,
+                bytes: Array.from(v.value),
+                text: out.value
+              };
+            });
+          }).catch(function (e) { window.__tes = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__tes").unwrap();
+    assert_eq!(v["enc"], true, "{v}");
+    assert_eq!(v["dec"], true, "{v}");
+    assert_eq!(v["bytes"][0], 104, "{v}");
+    assert_eq!(v["bytes"][1], 105, "{v}");
+    assert_eq!(v["text"], "hi", "{v}");
+}
+
+#[test]
+fn rtc_peer_connection_creates_offer() {
+    let mut page = open("<title>rtc</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__rtc = null;
+          const pc = new RTCPeerConnection();
+          let ice = 0;
+          pc.addEventListener("icecandidate", function () { ice++; });
+          pc.createOffer().then(function (offer) {
+            return pc.setLocalDescription(offer).then(function () {
+              window.__rtc = {
+                inst: pc instanceof RTCPeerConnection,
+                type: offer.type,
+                sdp: offer.sdp.indexOf("v=0") === 0,
+                state: pc.signalingState,
+                ice: ice,
+                tag: Object.prototype.toString.call(pc)
+              };
+            });
+          }).catch(function (e) { window.__rtc = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__rtc").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["type"], "offer", "{v}");
+    assert_eq!(v["sdp"], true, "{v}");
+    assert_eq!(v["state"], "have-local-offer", "{v}");
+    assert_eq!(v["ice"], 1, "{v}");
+    assert_eq!(v["tag"], "[object RTCPeerConnection]", "{v}");
+}
+
+#[test]
+fn rtc_data_channel_opens_after_offer_answer() {
+    let mut page = open("<title>rtcdc</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__dc = null;
+          const a = new RTCPeerConnection();
+          const b = new RTCPeerConnection();
+          const ch = a.createDataChannel("chat");
+          let opened = 0;
+          ch.addEventListener("open", function () { opened++; });
+          a.createOffer().then(function (offer) {
+            return a.setLocalDescription(offer).then(function () {
+              return b.setRemoteDescription(offer);
+            }).then(function () {
+              return b.createAnswer();
+            }).then(function (answer) {
+              return b.setLocalDescription(answer).then(function () {
+                return a.setRemoteDescription(answer);
+              });
+            }).then(function () {
+              window.__dc = {
+                inst: ch instanceof RTCDataChannel,
+                label: ch.label === "chat",
+                open: ch.readyState === "open",
+                conn: a.connectionState === "connected",
+                opened: opened
+              };
+            });
+          }).catch(function (e) { window.__dc = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(80).settled);
+    let v = page.evaluate("window.__dc").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["label"], true, "{v}");
+    assert_eq!(v["open"], true, "{v}");
+    assert_eq!(v["conn"], true, "{v}");
+}
+
+#[test]
+fn computed_style_exposes_fill_rule_and_stroke_joins() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:bevel">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                rule: cs.fillRule === "evenodd" || cs.getPropertyValue("fill-rule") === "evenodd",
+                cap: cs.strokeLinecap === "round" || cs.getPropertyValue("stroke-linecap") === "round",
+                join: cs.strokeLinejoin === "bevel" || cs.getPropertyValue("stroke-linejoin") === "bevel"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["rule"], true, "{v}");
+    assert_eq!(v["cap"], true, "{v}");
+    assert_eq!(v["join"], true, "{v}");
+}
+
+#[test]
+fn computed_style_exposes_break_and_scroll_keywords() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="text-align-last:center;word-break:break-all;overflow-wrap:anywhere;scroll-behavior:smooth;appearance:none;orphans:3;widows:4">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                last: String(cs.textAlignLast || cs.getPropertyValue("text-align-last")),
+                word: String(cs.wordBreak || cs.getPropertyValue("word-break")),
+                wrap: String(cs.overflowWrap || cs.getPropertyValue("overflow-wrap")),
+                scroll: String(cs.scrollBehavior || cs.getPropertyValue("scroll-behavior")),
+                appearance: String(cs.appearance || cs.getPropertyValue("appearance")),
+                orphans: String(cs.orphans || cs.getPropertyValue("orphans")),
+                widows: String(cs.widows || cs.getPropertyValue("widows"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["last"], "center", "{v}");
+    assert_eq!(v["word"], "break-all", "{v}");
+    assert_eq!(v["wrap"], "anywhere", "{v}");
+    assert_eq!(v["scroll"], "smooth", "{v}");
+    assert_eq!(v["appearance"], "none", "{v}");
+    assert_eq!(v["orphans"], "3", "{v}");
+    assert_eq!(v["widows"], "4", "{v}");
+}
+
+#[test]
+fn computed_style_exposes_spacing_and_ui() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="letter-spacing:4px;word-spacing:8px;line-height:2;tab-size:4;user-select:none;cursor:pointer;outline-width:2px;outline-style:solid;vertical-align:middle;hyphens:none;text-indent:16px">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                letter: String(cs.letterSpacing || cs.getPropertyValue("letter-spacing")),
+                word: String(cs.wordSpacing || cs.getPropertyValue("word-spacing")),
+                line: String(cs.lineHeight || cs.getPropertyValue("line-height")),
+                tab: String(cs.tabSize || cs.getPropertyValue("tab-size")),
+                user: String(cs.userSelect || cs.getPropertyValue("user-select")),
+                cursor: String(cs.cursor || cs.getPropertyValue("cursor")),
+                outlineW: String(cs.outlineWidth || cs.getPropertyValue("outline-width")),
+                outlineS: String(cs.outlineStyle || cs.getPropertyValue("outline-style")),
+                valign: String(cs.verticalAlign || cs.getPropertyValue("vertical-align")),
+                hyphens: String(cs.hyphens || cs.getPropertyValue("hyphens")),
+                indent: String(cs.textIndent || cs.getPropertyValue("text-indent"))
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["letter"], "4px", "{v}");
+    assert_eq!(v["word"], "8px", "{v}");
+    assert_eq!(v["line"], "2", "{v}");
+    assert_eq!(v["tab"], "4", "{v}");
+    assert_eq!(v["user"], "none", "{v}");
+    assert_eq!(v["cursor"], "pointer", "{v}");
+    assert_eq!(v["outlineW"], "2px", "{v}");
+    assert_eq!(v["outlineS"], "solid", "{v}");
+    assert_eq!(v["valign"], "middle", "{v}");
+    assert_eq!(v["hyphens"], "none", "{v}");
+    assert_eq!(v["indent"], "16px", "{v}");
+}
+
+#[test]
+fn computed_style_exposes_accent_and_caret_color() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="accent-color:#00ff00;caret-color:#0000ff">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              const accent = cs.accentColor || cs.getPropertyValue("accent-color");
+              const caret = cs.caretColor || cs.getPropertyValue("caret-color");
+              return { accent: String(accent), caret: String(caret) };
+            })()"##,
+        )
+        .unwrap();
+    let accent = v["accent"].as_str().unwrap_or("");
+    let caret = v["caret"].as_str().unwrap_or("");
+    assert!(
+        accent.contains("0, 255, 0") || accent.contains("#00ff00"),
+        "{v}"
+    );
+    assert!(
+        caret.contains("0, 0, 255") || caret.contains("#0000ff"),
+        "{v}"
+    );
+}
+
+#[test]
+fn match_media_change_fires_on_resize() {
+    let mut page = open("<title>mq</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const mql = matchMedia("(max-width: 400px)");
+              const evs = [];
+              mql.addEventListener("change", function () { evs.push(mql.matches); });
+              const before = mql.matches;
+              resizeTo(360, 640);
+              const mid = mql.matches;
+              resizeTo(1280, 720);
+              return {
+                before,
+                mid,
+                after: mql.matches,
+                evs,
+                width: innerWidth
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], false, "{v}");
+    assert_eq!(v["mid"], true, "{v}");
+    assert_eq!(v["after"], false, "{v}");
+    assert_eq!(v["evs"][0], true, "{v}");
+    assert_eq!(v["evs"][1], false, "{v}");
+    assert_eq!(v["width"], 1280, "{v}");
+}
+
+#[test]
+fn screen_and_outer_size_track_resize() {
+    let mut page = open("<title>screen</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const before = {
+                sw: screen.width,
+                sh: screen.height,
+                aw: screen.availWidth,
+                ah: screen.availHeight,
+                ow: outerWidth,
+                oh: outerHeight,
+                iw: innerWidth
+              };
+              resizeTo(360, 640);
+              const mid = {
+                sw: screen.width,
+                sh: screen.height,
+                aw: screen.availWidth,
+                ow: outerWidth,
+                iw: innerWidth
+              };
+              resizeTo(1280, 720);
+              return { before, mid, afterW: screen.width, afterOw: outerWidth };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"]["sw"], 1280, "{v}");
+    assert_eq!(v["before"]["iw"], 1280, "{v}");
+    assert_eq!(v["mid"]["sw"], 360, "{v}");
+    assert_eq!(v["mid"]["sh"], 640, "{v}");
+    assert_eq!(v["mid"]["aw"], 360, "{v}");
+    assert_eq!(v["mid"]["ow"], 360, "{v}");
+    assert_eq!(v["mid"]["iw"], 360, "{v}");
+    assert_eq!(v["afterW"], 1280, "{v}");
+    assert_eq!(v["afterOw"], 1280, "{v}");
+}
+
+#[test]
+fn webgl_uniform4f_fills_draw_arrays() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              const loc = gl.getUniformLocation(gl.createProgram(), "uColor");
+              gl.uniform4f(loc, 1, 0, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(2, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { loc: !!(loc && loc._u), r: px[0], g: px[1], b: px[2], a: px[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["loc"], true, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn computed_style_exposes_stroke_dashoffset() {
+    let mut page = open(
+        r#"<body>
+          <div id="s" style="stroke-dashoffset:2;stroke-miterlimit:8">x</div>
+        </body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const cs = getComputedStyle(document.getElementById("s"));
+              return {
+                off: cs.strokeDashoffset === "2" || cs.getPropertyValue("stroke-dashoffset") === "2",
+                miter: cs.strokeMiterlimit === "8" || cs.getPropertyValue("stroke-miterlimit") === "8"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["off"], true, "{v}");
+    assert_eq!(v["miter"], true, "{v}");
+}
+
+#[test]
+fn rtc_add_track_and_transceiver() {
+    let mut page = open("<title>rtctrack</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const pc = new RTCPeerConnection();
+              const track = new MediaStreamTrack();
+              track.kind = "video";
+              const sender = pc.addTrack(track);
+              const tr = pc.addTransceiver("audio");
+              return {
+                senders: pc.getSenders().length,
+                receivers: pc.getReceivers().length,
+                same: sender.track === track,
+                video: pc.getSenders()[0].track.kind === "video",
+                audio: tr.receiver.track.kind === "audio",
+                connecting: pc.connectionState === "connecting"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["senders"], 2, "{v}");
+    assert_eq!(v["receivers"], 1, "{v}");
+    assert_eq!(v["same"], true, "{v}");
+    assert_eq!(v["video"], true, "{v}");
+    assert_eq!(v["audio"], true, "{v}");
+    assert_eq!(v["connecting"], true, "{v}");
+}
+
+#[test]
+fn midi_display_and_shared_storage_deny() {
+    let mut page = open("<title>midi</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__mds = null;
+          Promise.allSettled([
+            navigator.requestMIDIAccess(),
+            navigator.mediaDevices.getDisplayMedia({ video: true }),
+            navigator.sharedStorage.get("k"),
+            navigator.sharedStorage.set("k", "v")
+          ]).then(function (rows) {
+            window.__mds = {
+              midi: rows[0].status === "rejected" && rows[0].reason.name === "NotAllowedError",
+              display: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError",
+              get: rows[2].status === "rejected" && rows[2].reason.name === "NotAllowedError",
+              set: rows[3].status === "rejected" && rows[3].reason.name === "NotAllowedError"
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__mds").unwrap();
+    assert_eq!(v["midi"], true, "{v}");
+    assert_eq!(v["display"], true, "{v}");
+    assert_eq!(v["get"], true, "{v}");
+    assert_eq!(v["set"], true, "{v}");
+}
+
+#[test]
+fn local_fonts_and_screen_details_deny() {
+    let mut page = open("<title>fonts</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__fsd = null;
+          Promise.allSettled([
+            navigator.queryLocalFonts(),
+            navigator.getScreenDetails()
+          ]).then(function (rows) {
+            window.__fsd = {
+              fonts: rows[0].status === "rejected" && rows[0].reason.name === "NotAllowedError",
+              screen: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError"
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__fsd").unwrap();
+    assert_eq!(v["fonts"], true, "{v}");
+    assert_eq!(v["screen"], true, "{v}");
+}
+
+#[test]
+fn trusted_types_policy_creates_trusted_html() {
+    let mut page = open("<title>tt</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const p = trustedTypes.createPolicy("p", {
+                createHTML(s) { return String(s).replace(/x/g, "y"); }
+              });
+              const t = p.createHTML("ax");
+              return {
+                inst: t instanceof TrustedHTML,
+                html: String(t) === "ay",
+                is: trustedTypes.isHTML(t),
+                name: p.name === "p"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["html"], true, "{v}");
+    assert_eq!(v["is"], true, "{v}");
+    assert_eq!(v["name"], true, "{v}");
+}
+
+#[test]
+fn canvas_transfer_control_copies_pixels() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 8, 8);
+              const off = c.transferControlToOffscreen();
+              const d = off.getContext("2d").getImageData(2, 2, 1, 1).data;
+              return { r: d[0], g: d[1], b: d[2], a: d[3], w: off.width };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["w"], 8, "{v}");
+}
+
+#[test]
+fn set_html_strips_script_and_keeps_paragraph() {
+    let mut page = open(r#"<body><div id="t"></div></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const t = document.getElementById("t");
+              t.setHTML("<p id=ok>hi</p><script>window.__x=1</script>");
+              return {
+                p: !!t.querySelector("p#ok"),
+                script: t.querySelector("script") == null,
+                text: (t.textContent || "").indexOf("hi") >= 0,
+                leaked: window.__x == null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["p"], true, "{v}");
+    assert_eq!(v["script"], true, "{v}");
+    assert_eq!(v["text"], true, "{v}");
+    assert_eq!(v["leaked"], true, "{v}");
+}
+
+#[test]
+fn webgl_framebuffer_clear_blits_via_texture() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              const tex = gl.createTexture();
+              gl.bindTexture(gl.TEXTURE_2D, tex);
+              const fb = gl.createFramebuffer();
+              gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+              gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex);
+              gl.clearColor(0, 1, 0, 1);
+              gl.clear();
+              gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+              gl.bindTexture(gl.TEXTURE_2D, tex);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(2, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { fb: !!(fb && fb._fb), r: px[0], g: px[1], b: px[2], a: px[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["fb"], true, "{v}");
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn webgl_scissor_clips_clear() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.disable(gl.SCISSOR_TEST);
+              gl.clearColor(1, 0, 0, 1);
+              gl.clear();
+              gl.enable(gl.SCISSOR_TEST);
+              gl.scissor(2, 2, 4, 4);
+              gl.clearColor(0, 1, 0, 1);
+              gl.clear();
+              const out = new Uint8Array(4);
+              const inr = new Uint8Array(4);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              gl.readPixels(3, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, inr);
+              return {
+                on: gl._scissorOn === true,
+                cap: gl.SCISSOR_TEST,
+                or: out[0], og: out[1],
+                ir: inr[0], ig: inr[1], ia: inr[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["on"], true, "{v}");
+    assert_eq!(v["cap"], 3089, "{v}");
+    assert_eq!(v["or"], 255, "{v}");
+    assert_eq!(v["og"], 0, "{v}");
+    assert_eq!(v["ir"], 0, "{v}");
+    assert_eq!(v["ig"], 255, "{v}");
+    assert_eq!(v["ia"], 255, "{v}");
+}
+
+#[test]
+fn webgl_front_face_cw_flips_culling() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0.5, -0.5, 0, 0.5]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.enable(gl.CULL_FACE);
+              gl.frontFace(gl.CW);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const culled = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, culled);
+              gl.frontFace(gl.CCW);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const shown = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, shown);
+              return { cg: culled[1], ca: culled[3], sg: shown[1], sa: shown[3], cw: gl.CW };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cw"], 2305, "{v}");
+    assert_eq!(v["cg"], 0, "{v}");
+    assert_eq!(v["ca"], 0, "{v}");
+    assert_eq!(v["sg"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
+}
+
+#[test]
+fn webgl_blend_equation_reverse_subtract_keeps_src_minus_dest() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 0, 0, 1);
+              gl.clear();
+              gl.enable(gl.BLEND);
+              gl.blendFunc(gl.ONE, gl.ONE);
+              gl.blendEquation(gl.FUNC_REVERSE_SUBTRACT);
+              gl.uniform4f(null, 1, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], a: px[3], rev: gl.FUNC_REVERSE_SUBTRACT };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["rev"], 32779, "{v}");
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+}
+
+#[test]
+fn webgl_blend_equation_subtract_removes_src() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 1, 0, 1);
+              gl.clear();
+              gl.enable(gl.BLEND);
+              gl.blendFunc(gl.ONE, gl.ONE);
+              gl.blendEquation(gl.FUNC_SUBTRACT);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], a: px[3], sub: gl.FUNC_SUBTRACT };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sub"], 32778, "{v}");
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+}
+
+#[test]
+fn webgl_blend_equation_separate_adds_alpha() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 1, 0, 100 / 255);
+              gl.clear();
+              gl.enable(gl.BLEND);
+              gl.blendFunc(gl.ONE, gl.ONE);
+              gl.blendEquationSeparate(gl.FUNC_SUBTRACT, gl.FUNC_ADD);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], a: px[3], add: gl.FUNC_ADD };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["add"], 32774, "{v}");
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn webgl_blend_zero_one_keeps_dest() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 0, 0, 1);
+              gl.clear();
+              gl.enable(gl.BLEND);
+              gl.blendFunc(gl.ZERO, gl.ONE);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], a: px[3], z: gl.ZERO, o: gl.ONE };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["z"], 0, "{v}");
+    assert_eq!(v["o"], 1, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn webgl_cull_face_skips_back_facing_triangle() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0, 0.5, 0.5, -0.5]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.enable(gl.CULL_FACE);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const culled = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, culled);
+              gl.disable(gl.CULL_FACE);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const shown = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, shown);
+              return { cg: culled[1], ca: culled[3], sg: shown[1], sa: shown[3], cap: gl.CULL_FACE };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 2884, "{v}");
+    assert_eq!(v["cg"], 0, "{v}");
+    assert_eq!(v["ca"], 0, "{v}");
+    assert_eq!(v["sg"], 255, "{v}");
+    assert_eq!(v["sa"], 255, "{v}");
+}
+
+#[test]
+fn webgl_depth_test_rejects_farther_triangle() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.2, 1, -1, 0.2, -1, 1, 0.2,
+                1, -1, 0.2, 1, 1, 0.2, -1, 1, 0.2
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.8, 1, -1, 0.8, -1, 1, 0.8,
+                1, -1, 0.8, 1, 1, 0.8, -1, 1, 0.8
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const far = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, far);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.05, 1, -1, 0.05, -1, 1, 0.05,
+                1, -1, 0.05, 1, 1, 0.05, -1, 1, 0.05
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const near = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, near);
+              return { fr: far[0], fg: far[1], nr: near[0], nb: near[2], cap: gl.DEPTH_TEST };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 2929, "{v}");
+    assert_eq!(v["fr"], 255, "{v}");
+    assert_eq!(v["fg"], 0, "{v}");
+    assert_eq!(v["nr"], 0, "{v}");
+    assert_eq!(v["nb"], 255, "{v}");
+}
+
+#[test]
+fn webgl_depth_func_greater_keeps_farther_triangle() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.5, 1, -1, 0.5, -1, 1, 0.5,
+                1, -1, 0.5, 1, 1, 0.5, -1, 1, 0.5
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.depthFunc(gl.GREATER);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.8, 1, -1, 0.8, -1, 1, 0.8,
+                1, -1, 0.8, 1, 1, 0.8, -1, 1, 0.8
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const far = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, far);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.2, 1, -1, 0.2, -1, 1, 0.2,
+                1, -1, 0.2, 1, 1, 0.2, -1, 1, 0.2
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const near = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, near);
+              return { fg: far[1], fr: far[0], ng: near[1], nb: near[2], fn: gl.GREATER };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["fn"], 516, "{v}");
+    assert_eq!(v["fg"], 255, "{v}");
+    assert_eq!(v["fr"], 0, "{v}");
+    assert_eq!(v["ng"], 255, "{v}");
+    assert_eq!(v["nb"], 0, "{v}");
+}
+
+#[test]
+fn webgl_blend_func_separate_keeps_rgb_replaces_alpha() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 0, 0, 0.5);
+              gl.clear();
+              const before = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, before);
+              gl.enable(gl.BLEND);
+              gl.blendFuncSeparate(gl.ZERO, gl.ONE, gl.ONE, gl.ZERO);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const after = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, after);
+              return { br: before[0], ba: before[3], ar: after[0], ag: after[1], aa: after[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["br"], 255, "{v}");
+    assert!(v["ba"].as_u64().unwrap_or(0) < 200, "{v}");
+    assert_eq!(v["ar"], 255, "{v}");
+    assert_eq!(v["ag"], 0, "{v}");
+    assert_eq!(v["aa"], 255, "{v}");
+}
+
+#[test]
+fn webgl_depth_mask_false_skips_depth_write() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.5, 1, -1, 0.5, -1, 1, 0.5,
+                1, -1, 0.5, 1, 1, 0.5, -1, 1, 0.5
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.depthMask(false);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.2, 1, -1, 0.2, -1, 1, 0.2,
+                1, -1, 0.2, 1, 1, 0.2, -1, 1, 0.2
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.3, 1, -1, 0.3, -1, 1, 0.3,
+                1, -1, 0.3, 1, 1, 0.3, -1, 1, 0.3
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 255, "{v}");
+}
+
+#[test]
+fn webgl_stencil_test_clips_second_draw() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.STENCIL_TEST);
+              gl.stencilFunc(gl.ALWAYS, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0, -1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              gl.stencilFunc(gl.EQUAL, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const left = new Uint8Array(4);
+              const right = new Uint8Array(4);
+              gl.readPixels(1, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, left);
+              gl.readPixels(6, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, right);
+              return { lg: left[1], la: left[3], rg: right[1], ra: right[3], cap: gl.STENCIL_TEST };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 2960, "{v}");
+    assert_eq!(v["lg"], 255, "{v}");
+    assert_eq!(v["la"], 255, "{v}");
+    assert_eq!(v["rg"], 0, "{v}");
+    assert_eq!(v["ra"], 0, "{v}");
+}
+
+#[test]
+fn webgl_stencil_mask_zero_skips_stencil_write() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.STENCIL_TEST);
+              gl.stencilFunc(gl.ALWAYS, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+              gl.stencilMask(0);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0, -1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              gl.stencilFunc(gl.EQUAL, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+              gl.stencilMask(255);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const left = new Uint8Array(4);
+              const right = new Uint8Array(4);
+              gl.readPixels(1, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, left);
+              gl.readPixels(6, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, right);
+              return { lr: left[0], lg: left[1], rg: right[1], ra: right[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["lr"], 255, "{v}");
+    assert_eq!(v["lg"], 0, "{v}");
+    assert_eq!(v["rg"], 0, "{v}");
+    assert_eq!(v["ra"], 0, "{v}");
+}
+
+#[test]
+fn webgl_clear_stencil_sets_ref_for_equal() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.STENCIL_TEST);
+              gl.clearStencil(1);
+              gl.clear(gl.STENCIL_BUFFER_BIT);
+              gl.stencilFunc(gl.EQUAL, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { g: px[1], a: px[3], bit: gl.STENCIL_BUFFER_BIT };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["bit"], 1024, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn webgl_separate_stencil_state_distinguishes_front_and_back_faces() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const gl = document.getElementById("c").getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.STENCIL_TEST);
+              gl.stencilFuncSeparate(gl.FRONT, gl.ALWAYS, 1, 255);
+              gl.stencilFuncSeparate(gl.BACK, gl.ALWAYS, 2, 255);
+              gl.stencilOpSeparate(gl.FRONT, gl.KEEP, gl.KEEP, gl.REPLACE);
+              gl.stencilOpSeparate(gl.BACK, gl.KEEP, gl.KEEP, gl.KEEP);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0, -1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                0, -1, 1, 1, 1, -1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              gl.stencilFunc(gl.EQUAL, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const left = new Uint8Array(4);
+              const right = new Uint8Array(4);
+              gl.readPixels(1, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, left);
+              gl.readPixels(6, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, right);
+              return { lg: left[1], rb: right[2], frontAndBack: gl.FRONT_AND_BACK };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["lg"], 255, "{v}");
+    assert_eq!(v["rb"], 255, "{v}");
+    assert_eq!(v["frontAndBack"], 1032, "{v}");
+}
+
+#[test]
+fn webgl_texture_parameters_and_generated_mipmaps_are_observable() {
+    let mut page = open(r#"<body><canvas id="c" width="4" height="4"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const gl = document.getElementById("c").getContext("webgl");
+              const tex = gl.createTexture();
+              gl.bindTexture(gl.TEXTURE_2D, tex);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+              gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+              const pixels = new Uint8Array(4 * 4 * 4);
+              for (let i = 0; i < pixels.length; i += 4) {
+                pixels[i] = 40;
+                pixels[i + 1] = 80;
+                pixels[i + 2] = 120;
+                pixels[i + 3] = 255;
+              }
+              gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 4, 4, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+              gl.generateMipmap(gl.TEXTURE_2D);
+              const fb = gl.createFramebuffer();
+              gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+              gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 2);
+              const pixel = new Uint8Array(4);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+              return {
+                min: gl.getTexParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER),
+                wrap: gl.getTexParameter(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S),
+                pixel: Array.from(pixel)
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["min"], 9987, "{v}");
+    assert_eq!(v["wrap"], 33071, "{v}");
+    assert_eq!(v["pixel"], serde_json::json!([40, 80, 120, 255]), "{v}");
+}
+
+#[test]
+fn webgl_clear_depth_zero_rejects_default_z() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              gl.depthFunc(gl.LESS);
+              gl.clearDepth(0);
+              gl.clear(gl.DEPTH_BUFFER_BIT);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { g: px[1], a: px[3], bit: gl.DEPTH_BUFFER_BIT };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["bit"], 256, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["a"], 0, "{v}");
+}
+
+#[test]
+fn webgl_polygon_offset_pulls_same_depth_nearer() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.5, 1, -1, 0.5, -1, 1, 0.5,
+                1, -1, 0.5, 1, 1, 0.5, -1, 1, 0.5
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const tied = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, tied);
+              gl.enable(gl.POLYGON_OFFSET_FILL);
+              gl.polygonOffset(-1, -1);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const offset = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, offset);
+              return { tr: tied[0], tg: tied[1], ob: offset[2], oa: offset[3], cap: gl.POLYGON_OFFSET_FILL };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 32823, "{v}");
+    assert_eq!(v["tr"], 255, "{v}");
+    assert_eq!(v["tg"], 0, "{v}");
+    assert_eq!(v["ob"], 255, "{v}");
+    assert_eq!(v["oa"], 255, "{v}");
+}
+
+#[test]
+fn webgl_sample_coverage_zero_keeps_dest() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.SAMPLE_COVERAGE);
+              gl.sampleCoverage(0, false);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const zero = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, zero);
+              gl.sampleCoverage(1, false);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const one = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, one);
+              return { za: zero[3], og: one[1], oa: one[3], cap: gl.SAMPLE_COVERAGE };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 32928, "{v}");
+    assert_eq!(v["za"], 0, "{v}");
+    assert_eq!(v["og"], 255, "{v}");
+    assert_eq!(v["oa"], 255, "{v}");
+}
+
+#[test]
+fn webgl_depth_range_pushes_near_triangle_farther() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.5, 1, -1, 0.5, -1, 1, 0.5,
+                1, -1, 0.5, 1, 1, 0.5, -1, 1, 0.5
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.depthRange(0.6, 1);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.2, 1, -1, 0.2, -1, 1, 0.2,
+                1, -1, 0.2, 1, 1, 0.2, -1, 1, 0.2
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], cap: gl.DEPTH_RANGE };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 2928, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+}
+
+#[test]
+fn webgl_get_parameter_reports_line_width() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              const before = gl.getParameter(gl.LINE_WIDTH);
+              gl.lineWidth(3);
+              const after = gl.getParameter(gl.LINE_WIDTH);
+              return { before, after, pname: gl.LINE_WIDTH };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["pname"], 2849, "{v}");
+    assert_eq!(v["before"], 1, "{v}");
+    assert_eq!(v["after"], 3, "{v}");
+}
+
+#[test]
+fn webgl_line_width_thickens_stroke() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, 0, 1, 0]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.lineWidth(4);
+              gl.drawArrays(gl.LINE_STRIP, 0, 2);
+              const mid = new Uint8Array(4);
+              const thick = new Uint8Array(4);
+              const out = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              gl.readPixels(4, 5, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, thick);
+              gl.readPixels(4, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              return { g: mid[1], tg: thick[1], ta: thick[3], oa: out[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["tg"], 255, "{v}");
+    assert_eq!(v["ta"], 255, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+}
+
+#[test]
+fn webgl_lines_strokes_independent_segments() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, 0, 1, 0, -1, 1, 1, 1]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.LINES, 0, 2);
+              const mid = new Uint8Array(4);
+              const top = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              gl.readPixels(4, 7, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, top);
+              return { g: mid[1], a: mid[3], ta: top[3], lines: gl.LINES };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["lines"], 1, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["ta"], 0, "{v}");
+}
+
+#[test]
+fn webgl_points_fills_vertex() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.POINTS, 0, 1);
+              const mid = new Uint8Array(4);
+              const out = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              return { g: mid[1], a: mid[3], oa: out[3], pts: gl.POINTS };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["pts"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+}
+
+#[test]
+fn webgl_line_loop_closes_polyline() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.LINE_LOOP, 0, 4);
+              const edge = new Uint8Array(4);
+              const mid = new Uint8Array(4);
+              gl.readPixels(4, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, edge);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              return { eg: edge[1], ea: edge[3], ma: mid[3], loop: gl.LINE_LOOP };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["loop"], 2, "{v}");
+    assert_eq!(v["eg"], 255, "{v}");
+    assert_eq!(v["ea"], 255, "{v}");
+    assert_eq!(v["ma"], 0, "{v}");
+}
+
+#[test]
+fn webgl_line_strip_strokes_polyline() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, 0, 1, 0]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.LINE_STRIP, 0, 2);
+              const mid = new Uint8Array(4);
+              const out = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              gl.readPixels(4, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              return { g: mid[1], a: mid[3], oa: out[3], strip: gl.LINE_STRIP };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["strip"], 3, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+}
+
+#[test]
+fn webgl_triangle_fan_fills_from_hub() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+              const left = new Uint8Array(4);
+              const right = new Uint8Array(4);
+              gl.readPixels(1, 6, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, left);
+              gl.readPixels(6, 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, right);
+              return { lg: left[1], la: left[3], rg: right[1], ra: right[3], fan: gl.TRIANGLE_FAN };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["fan"], 6, "{v}");
+    assert_eq!(v["lg"], 255, "{v}");
+    assert_eq!(v["la"], 255, "{v}");
+    assert_eq!(v["rg"], 255, "{v}");
+    assert_eq!(v["ra"], 255, "{v}");
+}
+
+#[test]
+fn webgl_triangle_strip_fills_second_triangle() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+              const left = new Uint8Array(4);
+              const right = new Uint8Array(4);
+              gl.readPixels(1, 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, left);
+              gl.readPixels(6, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, right);
+              return { lg: left[1], la: left[3], rg: right[1], ra: right[3], strip: gl.TRIANGLE_STRIP };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["strip"], 5, "{v}");
+    assert_eq!(v["lg"], 255, "{v}");
+    assert_eq!(v["la"], 255, "{v}");
+    assert_eq!(v["rg"], 255, "{v}");
+    assert_eq!(v["ra"], 255, "{v}");
+}
+
+#[test]
+fn webgl_draw_arrays_fills_vertex_triangle() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0.5, -0.5, 0, 0.5]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const inr = new Uint8Array(4);
+              const out = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, inr);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              return { g: inr[1], a: inr[3], og: out[1], oa: out[3], n: buf._data.length };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["n"], 6, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["og"], 0, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+}
+
+#[test]
+fn webgl_draw_elements_and_webgl2_context() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const two = c.getContext("webgl2");
+              const inst = two instanceof WebGL2RenderingContext;
+              two.clearColor(0, 0, 0, 0);
+              two.clear();
+              two.uniform4f(null, 0, 0, 1, 1);
+              const vb = two.createBuffer();
+              two.bindBuffer(two.ARRAY_BUFFER, vb);
+              two.bufferData(two.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0.5, -0.5, 0, 0.5]));
+              const ib = two.createBuffer();
+              two.bindBuffer(two.ELEMENT_ARRAY_BUFFER, ib);
+              two.bufferData(two.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2]));
+              two.enableVertexAttribArray(0);
+              two.vertexAttribPointer(0, 2, two.FLOAT, false, 0, 0);
+              two.drawElements(two.TRIANGLES, 3, two.UNSIGNED_SHORT, 0);
+              const px = new Uint8Array(4);
+              two.readPixels(4, 3, 1, 1, two.RGBA, two.UNSIGNED_BYTE, px);
+              const blocked = document.createElement("canvas");
+              blocked.getContext("2d");
+              return {
+                inst: inst,
+                tag: Object.prototype.toString.call(two),
+                b: px[2],
+                a: px[3],
+                twoNull: blocked.getContext("webgl2") === null
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["tag"], "[object WebGL2RenderingContext]", "{v}");
+    assert_eq!(v["b"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["twoNull"], true, "{v}");
+}
+
+#[test]
+fn webgl_viewport_maps_clip_and_clips_clear() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 0, 0, 1);
+              gl.clear();
+              gl.viewport(2, 2, 4, 4);
+              gl.clearColor(0, 1, 0, 1);
+              gl.clear();
+              const out = new Uint8Array(4);
+              const inn = new Uint8Array(4);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              gl.readPixels(3, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, inn);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 0, 1]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const mid = new Uint8Array(4);
+              const far = new Uint8Array(4);
+              gl.readPixels(4, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              gl.readPixels(7, 7, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, far);
+              const vp = gl.getParameter(gl.VIEWPORT);
+              return {
+                or: out[0], og: out[1],
+                ir: inn[0], ig: inn[1],
+                mb: mid[2], ma: mid[3],
+                fr: far[0], fg: far[1], fb: far[2],
+                vx: vp[0], vy: vp[1], vw: vp[2], vh: vp[3],
+                cap: gl.VIEWPORT
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 2978, "{v}");
+    assert_eq!(v["vx"], 2, "{v}");
+    assert_eq!(v["vy"], 2, "{v}");
+    assert_eq!(v["vw"], 4, "{v}");
+    assert_eq!(v["vh"], 4, "{v}");
+    assert_eq!(v["or"], 255, "{v}");
+    assert_eq!(v["og"], 0, "{v}");
+    assert_eq!(v["ir"], 0, "{v}");
+    assert_eq!(v["ig"], 255, "{v}");
+    assert_eq!(v["mb"], 255, "{v}");
+    assert_eq!(v["ma"], 255, "{v}");
+    assert_eq!(v["fr"], 255, "{v}");
+    assert_eq!(v["fg"], 0, "{v}");
+    assert_eq!(v["fb"], 0, "{v}");
+}
+
+#[test]
+fn webgl_blend_additive_keeps_both_channels() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 1);
+              gl.clear();
+              gl.enable(gl.BLEND);
+              gl.blendFunc(gl.ONE, gl.ONE);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(2, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], a: px[3], on: gl._blendOn === true, cap: gl.BLEND };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["on"], true, "{v}");
+    assert_eq!(v["cap"], 3042, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+}
+
+#[test]
+fn webgl_color_mask_keeps_red_channel() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 0, 0, 1);
+              gl.clear();
+              gl.colorMask(false, true, true, true);
+              gl.clearColor(0, 1, 0, 1);
+              gl.clear();
+              const px = new Uint8Array(4);
+              gl.readPixels(2, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              const mask = gl.getParameter(gl.COLOR_WRITEMASK);
+              return { r: px[0], g: px[1], b: px[2], a: px[3], mr: mask[0], mg: mask[1], cap: gl.COLOR_WRITEMASK };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 3107, "{v}");
+    assert_eq!(v["mr"], false, "{v}");
+    assert_eq!(v["mg"], true, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn webgl_unpack_flip_y_reverses_texture_rows() {
+    let mut page = open(r#"<body><canvas id="c" width="2" height="2"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              const pixels = new Uint8Array([
+                255, 0, 0, 255, 255, 0, 0, 255,
+                0, 255, 0, 255, 0, 255, 0, 255
+              ]);
+              const tex = gl.createTexture();
+              gl.bindTexture(gl.TEXTURE_2D, tex);
+              gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+              gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const top = new Uint8Array(4);
+              const bot = new Uint8Array(4);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, top);
+              gl.readPixels(0, 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, bot);
+              return { tr: top[0], tg: top[1], br: bot[0], bg: bot[1], cap: gl.UNPACK_FLIP_Y_WEBGL, flip: gl._flipY === true };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 37440, "{v}");
+    assert_eq!(v["flip"], true, "{v}");
+    assert_eq!(v["tr"], 0, "{v}");
+    assert_eq!(v["tg"], 255, "{v}");
+    assert_eq!(v["br"], 255, "{v}");
+    assert_eq!(v["bg"], 0, "{v}");
+}
+
+#[test]
+fn webgl_unpack_premultiply_alpha_scales_rgb() {
+    let mut page = open(r#"<body><canvas id="c" width="2" height="2"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              const pixels = new Uint8Array([
+                255, 0, 0, 128, 255, 0, 0, 128,
+                255, 0, 0, 128, 255, 0, 0, 128
+              ]);
+              const tex = gl.createTexture();
+              gl.bindTexture(gl.TEXTURE_2D, tex);
+              gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
+              gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const p = new Uint8Array(4);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, p);
+              return { r: p[0], g: p[1], b: p[2], a: p[3], cap: gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, on: gl._premultiply === true };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 37441, "{v}");
+    assert_eq!(v["on"], true, "{v}");
+    assert_eq!(v["r"], 128, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 128, "{v}");
+}
+
+#[test]
+fn document_hidden_tracks_visibility_state() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              let n = 0;
+              document.addEventListener("visibilitychange", function () { n++; });
+              const a = document.hidden;
+              const b = document.visibilityState;
+              document.__veSetHidden(true);
+              const c = document.hidden;
+              const d = document.visibilityState;
+              const afterHide = n;
+              document.__veSetHidden(true);
+              const same = n;
+              document.__veSetHidden(false);
+              return {
+                a: a,
+                b: b,
+                c: c,
+                d: d,
+                afterHide: afterHide,
+                same: same,
+                afterShow: n,
+                shown: document.hidden,
+                vis: document.visibilityState
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], false, "{v}");
+    assert_eq!(v["b"], "visible", "{v}");
+    assert_eq!(v["c"], true, "{v}");
+    assert_eq!(v["d"], "hidden", "{v}");
+    assert_eq!(v["afterHide"], 1, "{v}");
+    assert_eq!(v["same"], 1, "{v}");
+    assert_eq!(v["afterShow"], 2, "{v}");
+    assert_eq!(v["shown"], false, "{v}");
+    assert_eq!(v["vis"], "visible", "{v}");
+}
+
+#[test]
+fn crypto_subtle_digests_sha512() {
+    let mut page = open(r#"<body></body>"#);
+    let _ = page
+        .evaluate(
+            r##"(function () {
+              window.__sha512 = null;
+              crypto.subtle.digest("SHA-512", new Uint8Array([97, 98, 99])).then(function (buf) {
+                var u = new Uint8Array(buf);
+                var hex = "";
+                for (var i = 0; i < u.length; i++) hex += u[i].toString(16).padStart(2, "0");
+                window.__sha512 = hex;
+              }).catch(function (e) { window.__sha512 = String(e); });
+              return true;
+            })()"##,
+        )
+        .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page.evaluate("window.__sha512").unwrap();
+    assert_eq!(
+        v,
+        "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+        "{v}"
+    );
+}
+
+#[test]
+fn crypto_subtle_hkdf_matches_rfc5869() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__hkdf = null;
+          const ikm = new Uint8Array(22);
+          for (let i = 0; i < 22; i++) ikm[i] = 0x0b;
+          const salt = new Uint8Array([0,1,2,3,4,5,6,7,8,9,10,11,12]);
+          const info = new Uint8Array([0xf0,0xf1,0xf2,0xf3,0xf4,0xf5,0xf6,0xf7,0xf8,0xf9]);
+          crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]).then(function (key) {
+            return crypto.subtle.deriveBits(
+              { name: "HKDF", hash: "SHA-256", salt: salt, info: info },
+              key,
+              336
+            );
+          }).then(function (buf) {
+            var u = new Uint8Array(buf);
+            var hex = "";
+            for (var i = 0; i < u.length; i++) hex += u[i].toString(16).padStart(2, "0");
+            window.__hkdf = hex;
+          }).catch(function (e) { window.__hkdf = String(e); });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__hkdf").unwrap();
+    assert_eq!(
+        v,
+        "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865",
+        "{v}"
+    );
+}
+
+#[test]
+fn compression_stream_round_trips_gzip() {
+    let mut page = open("<title>gz</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__gz = null;
+          const cs = new CompressionStream("gzip");
+          const w = cs.writable.getWriter();
+          const r = cs.readable.getReader();
+          w.write(new TextEncoder().encode("hello")).then(function () { return w.close(); }).then(function () {
+            return r.read();
+          }).then(function (v) {
+            const bytes = Array.from(v.value);
+            const ds = new DecompressionStream("gzip");
+            const dw = ds.writable.getWriter();
+            const dr = ds.readable.getReader();
+            return dw.write(v.value).then(function () { return dw.close(); }).then(function () {
+              return dr.read();
+            }).then(function (out) {
+              window.__gz = {
+                inst: cs instanceof CompressionStream && ds instanceof DecompressionStream,
+                magic: bytes[0] === 31 && bytes[1] === 139,
+                text: new TextDecoder().decode(out.value)
+              };
+            });
+          }).catch(function (e) { window.__gz = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__gz").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["magic"], true, "{v}");
+    assert_eq!(v["text"], "hello", "{v}");
+}
+
+#[test]
+fn cookie_store_sets_and_deletes() {
+    let mut page = open("<title>ck</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__ck = null;
+          cookieStore.set("ve", "1").then(function () {
+            return cookieStore.get("ve");
+          }).then(function (got) {
+            return cookieStore.delete("ve").then(function () {
+              return cookieStore.get("ve").then(function (after) {
+                window.__ck = {
+                  inst: cookieStore instanceof CookieStore,
+                  name: got && got.name,
+                  value: got && got.value,
+                  gone: after === null
+                };
+              });
+            });
+          }).catch(function (e) { window.__ck = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__ck").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["name"], "ve", "{v}");
+    assert_eq!(v["value"], "1", "{v}");
+    assert_eq!(v["gone"], true, "{v}");
+}
+
+#[test]
+fn clipboard_item_write_and_read() {
+    let mut page = open("<title>clip</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__clip = null;
+          const item = new ClipboardItem({ "text/plain": "hi" });
+          navigator.clipboard.write([item]).then(function () {
+            return navigator.clipboard.read();
+          }).then(function (items) {
+            return items[0].getType("text/plain").then(function (blob) {
+              return blob.text().then(function (t) {
+                window.__clip = {
+                  inst: item instanceof ClipboardItem,
+                  types: item.types,
+                  text: t
+                };
+              });
+            });
+          }).catch(function (e) { window.__clip = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__clip").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["types"][0], "text/plain", "{v}");
+    assert_eq!(v["text"], "hi", "{v}");
+}
+
+#[test]
+fn navigator_storage_estimates_usage() {
+    let mut page = open("<title>st</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__st = null;
+          localStorage.setItem("k", "vv");
+          navigator.storage.estimate().then(function (e) {
+            window.__st = {
+              quota: e.quota,
+              usage: e.usage,
+              persist: null
+            };
+            return navigator.storage.persist().then(function (ok) {
+              window.__st.persist = ok;
+            });
+          }).catch(function (e) { window.__st = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__st").unwrap();
+    assert_eq!(v["quota"], 1073741824, "{v}");
+    assert_eq!(v["usage"], 3, "{v}");
+    assert_eq!(v["persist"], false, "{v}");
+}
+
+#[test]
+fn crypto_subtle_digests_sha384() {
+    let mut page = open(r#"<body></body>"#);
+    let _ = page
+        .evaluate(
+            r##"(function () {
+              window.__sha384 = null;
+              crypto.subtle.digest("SHA-384", new Uint8Array([97, 98, 99])).then(function (buf) {
+                var u = new Uint8Array(buf);
+                var hex = "";
+                for (var i = 0; i < u.length; i++) hex += u[i].toString(16).padStart(2, "0");
+                window.__sha384 = hex;
+              }).catch(function (e) { window.__sha384 = String(e); });
+              return true;
+            })()"##,
+        )
+        .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page.evaluate("window.__sha384").unwrap();
+    assert_eq!(
+        v,
+        "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7",
+        "{v}"
+    );
+}
+
+#[test]
+fn abort_signal_timeout_and_any() {
+    let mut page = open("<title>ab</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__ab = null;
+          const done = AbortSignal.abort("gone");
+          const c = new AbortController();
+          const any = AbortSignal.any([c.signal]);
+          c.abort("z");
+          const timed = AbortSignal.timeout(5);
+          window.__ab = {
+            abortInst: done instanceof AbortSignal && done.aborted && done.reason === "gone",
+            any: any.aborted && any.reason === "z",
+            timed: false
+          };
+          const check = function () {
+            window.__ab.timed = timed.aborted && timed.reason && timed.reason.name === "TimeoutError";
+          };
+          if (timed.aborted) check();
+          else timed.addEventListener("abort", check);
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__ab").unwrap();
+    assert_eq!(v["abortInst"], true, "{v}");
+    assert_eq!(v["any"], true, "{v}");
+    assert_eq!(v["timed"], true, "{v}");
+}
+
+#[test]
+fn readable_stream_from_enqueues_iterable() {
+    let mut page = open("<title>rs</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__rs = null;
+          const s = ReadableStream.from(["a", "b"]);
+          const r = s.getReader();
+          r.read().then(function (first) {
+            return r.read().then(function (second) {
+              return r.read().then(function (end) {
+                window.__rs = {
+                  inst: s instanceof ReadableStream,
+                  first: first.value,
+                  second: second.value,
+                  done: end.done
+                };
+              });
+            });
+          }).catch(function (e) { window.__rs = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__rs").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["first"], "a", "{v}");
+    assert_eq!(v["second"], "b", "{v}");
+    assert_eq!(v["done"], true, "{v}");
+}
+
+#[test]
+fn css_typed_units_and_scheduler_yield() {
+    let mut page = open("<title>cssu</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__cu = null;
+          scheduler.yield().then(function () {
+            window.__cu = {
+              px: CSS.px(12).toString(),
+              num: CSS.number(3).toString(),
+              pct: CSS.percent(50).toString(),
+              deg: CSS.deg(90).toString(),
+              yielded: true
+            };
+          }).catch(function (e) { window.__cu = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__cu").unwrap();
+    assert_eq!(v["px"], "12px", "{v}");
+    assert_eq!(v["num"], "3", "{v}");
+    assert_eq!(v["pct"], "50%", "{v}");
+    assert_eq!(v["deg"], "90deg", "{v}");
+    assert_eq!(v["yielded"], true, "{v}");
+}
+
+#[test]
+fn promise_with_resolvers_and_try() {
+    let mut page = open("<title>pr</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__pr = null;
+          const w = Promise.withResolvers();
+          Promise.try(function (n) { return n + 1; }, 2).then(function (v) {
+            w.resolve("ok");
+            return w.promise.then(function (got) {
+              window.__pr = {
+                tryVal: v,
+                resolved: got,
+                prerender: document.prerendering
+              };
+            });
+          }).catch(function (e) { window.__pr = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__pr").unwrap();
+    assert_eq!(v["tryVal"], 3, "{v}");
+    assert_eq!(v["resolved"], "ok", "{v}");
+    assert_eq!(v["prerender"], false, "{v}");
+}
+
+#[test]
+fn crypto_subtle_aes_ctr_matches_nist() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__ctr = null;
+          const keyBytes = Uint8Array.from([0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c]);
+          const iv = Uint8Array.from([0xf0,0xf1,0xf2,0xf3,0xf4,0xf5,0xf6,0xf7,0xf8,0xf9,0xfa,0xfb,0xfc,0xfd,0xfe,0xff]);
+          const pt = Uint8Array.from([0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a]);
+          const expect = "874d6191b620e3261bef6864990db6ce";
+          crypto.subtle.importKey("raw", keyBytes, "AES-CTR", false, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.encrypt({ name: "AES-CTR", counter: iv, length: 128 }, key, pt).then(function (ct) {
+              var u = new Uint8Array(ct);
+              var hex = "";
+              for (var i = 0; i < u.length; i++) hex += u[i].toString(16).padStart(2, "0");
+              return crypto.subtle.decrypt({ name: "AES-CTR", counter: iv, length: 128 }, key, ct).then(function (back) {
+                var p = new Uint8Array(back);
+                window.__ctr = {
+                  hex: hex,
+                  nist: hex === expect,
+                  round: Array.from(p).every(function (b, i) { return b === pt[i]; }),
+                  storage: null
+                };
+                return document.hasStorageAccess().then(function (ok) {
+                  window.__ctr.storage = ok;
+                });
+              });
+            });
+          }).catch(function (e) { window.__ctr = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__ctr").unwrap();
+    assert_eq!(v["nist"], true, "{v}");
+    assert_eq!(v["round"], true, "{v}");
+    assert_eq!(v["storage"], false, "{v}");
+}
+
+#[test]
+fn webgl_clear_paints_and_read_pixels() {
+    let mut page = open("<title>glp</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              document.body.appendChild(c);
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 0, 0, 1);
+              gl.clear(gl.COLOR_BUFFER_BIT);
+              const pix = new Uint8Array(4);
+              gl.readPixels(2, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
+              return { r: pix[0], g: pix[1], b: pix[2], a: pix[3], inst: gl instanceof WebGLRenderingContext };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn webgl_shader_compile_and_program_link() {
+    let mut page = open("<title>gls</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.createElement("canvas");
+              c.width = 4;
+              c.height = 4;
+              document.body.appendChild(c);
+              const gl = c.getContext("webgl");
+              const empty = gl.createShader(gl.VERTEX_SHADER);
+              gl.compileShader(empty);
+              const vs = gl.createShader(gl.VERTEX_SHADER);
+              gl.shaderSource(vs, "void main() {}");
+              gl.compileShader(vs);
+              const prog = gl.createProgram();
+              gl.attachShader(prog, vs);
+              gl.linkProgram(prog);
+              const bad = gl.createProgram();
+              gl.linkProgram(bad);
+              return {
+                empty: gl.getShaderParameter(empty) === false,
+                vs: gl.getShaderParameter(vs) === true,
+                log: gl.getShaderInfoLog(empty).length > 0,
+                linked: gl.getProgramParameter(prog) === true,
+                unlinked: gl.getProgramParameter(bad) === false
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["empty"], true, "{v}");
+    assert_eq!(v["vs"], true, "{v}");
+    assert_eq!(v["log"], true, "{v}");
+    assert_eq!(v["linked"], true, "{v}");
+    assert_eq!(v["unlinked"], true, "{v}");
+}
+
+#[test]
+fn audio_buffer_and_get_user_media_denies() {
+    let mut page = open("<title>ab</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__abuf = null;
+          const ctx = new AudioContext();
+          const buf = ctx.createBuffer(1, 4, 44100);
+          buf.getChannelData(0)[0] = 0.5;
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          let ended = false;
+          src.onended = function () { ended = true; };
+          src.start();
+          const raw = new Uint8Array([128, 255]).buffer;
+          ctx.decodeAudioData(raw).then(function (decoded) {
+            return navigator.mediaDevices.getUserMedia({ audio: true }).then(function () {
+              window.__abuf = { err: "allowed" };
+            }).catch(function (e) {
+              window.__abuf = {
+                inst: buf instanceof AudioBuffer && src instanceof AudioBufferSourceNode,
+                sample: buf.getChannelData(0)[0],
+                decoded: decoded.length === 2,
+                ended: ended,
+                deny: e.name === "NotAllowedError",
+                time: typeof ctx.currentTime === "number"
+              };
+            });
+          }).catch(function (e) { window.__abuf = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__abuf").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["sample"], 0.5, "{v}");
+    assert_eq!(v["decoded"], true, "{v}");
+    assert_eq!(v["ended"], true, "{v}");
+    assert_eq!(v["deny"], true, "{v}");
+    assert_eq!(v["time"], true, "{v}");
+}
+
+#[test]
+fn file_pickers_and_wake_lock_deny() {
+    let mut page = open("<title>fp</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__fp = null;
+          Promise.allSettled([
+            showOpenFilePicker(),
+            showSaveFilePicker(),
+            showDirectoryPicker(),
+            navigator.wakeLock.request("screen")
+          ]).then(function (rows) {
+            window.__fp = {
+              open: rows[0].status === "rejected" && rows[0].reason.name === "AbortError",
+              save: rows[1].status === "rejected" && rows[1].reason.name === "AbortError",
+              dir: rows[2].status === "rejected" && rows[2].reason.name === "AbortError",
+              wake: rows[3].status === "rejected" && rows[3].reason.name === "NotAllowedError",
+              paint: !!(CSS.paintWorklet && typeof CSS.paintWorklet.addModule === "function")
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__fp").unwrap();
+    assert_eq!(v["open"], true, "{v}");
+    assert_eq!(v["save"], true, "{v}");
+    assert_eq!(v["dir"], true, "{v}");
+    assert_eq!(v["wake"], true, "{v}");
+    assert_eq!(v["paint"], true, "{v}");
+}
+
+#[test]
+fn credentials_and_payment_request_deny() {
+    let mut page = open("<title>cred</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__cred = null;
+          const pay = new PaymentRequest([{ supportedMethods: "basic-card" }], { total: { label: "t", amount: { currency: "USD", value: "1.00" } } });
+          Promise.allSettled([
+            navigator.credentials.get({ password: true }),
+            navigator.credentials.create({ password: { id: "u", password: "p" } }),
+            pay.show(),
+            pay.canMakePayment(),
+            PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+          ]).then(function (rows) {
+            window.__cred = {
+              get: rows[0].status === "rejected" && rows[0].reason.name === "NotAllowedError",
+              create: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError",
+              show: rows[2].status === "rejected" && rows[2].reason.name === "NotAllowedError",
+              canPay: rows[3].status === "fulfilled" && rows[3].value === false,
+              pk: rows[4].status === "fulfilled" && rows[4].value === false,
+              inst: pay instanceof PaymentRequest && typeof PublicKeyCredential === "function"
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__cred").unwrap();
+    assert_eq!(v["get"], true, "{v}");
+    assert_eq!(v["create"], true, "{v}");
+    assert_eq!(v["show"], true, "{v}");
+    assert_eq!(v["canPay"], true, "{v}");
+    assert_eq!(v["pk"], true, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+}
+
+#[test]
+fn navigator_battery_gamepads_and_ua_data() {
+    let mut page = open("<title>nav</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__navx = null;
+          Promise.all([
+            navigator.getBattery(),
+            navigator.userAgentData.getHighEntropyValues(["platform"]),
+            navigator.gpu.requestAdapter()
+          ]).then(function (rows) {
+            const bat = rows[0];
+            navigator.mediaSession.metadata = { title: "t" };
+            navigator.mediaSession.playbackState = "playing";
+            window.__navx = {
+              charging: bat.charging === true && bat.level === 1,
+              pads: Array.isArray(navigator.getGamepads()) && navigator.getGamepads().length === 0,
+              ua: navigator.userAgentData.brands.some(function (b) { return b.brand === "Vector"; }) && rows[1].platform === "Linux",
+              conn: navigator.connection.effectiveType === "4g" && navigator.connection.saveData === false,
+              gpu: rows[2] === null,
+              mem: navigator.deviceMemory === 8 && navigator.maxTouchPoints === 0,
+              media: navigator.mediaSession.playbackState === "playing",
+              vk: navigator.virtualKeyboard.overlaysContent === false
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__navx").unwrap();
+    assert_eq!(v["charging"], true, "{v}");
+    assert_eq!(v["pads"], true, "{v}");
+    assert_eq!(v["ua"], true, "{v}");
+    assert_eq!(v["conn"], true, "{v}");
+    assert_eq!(v["gpu"], true, "{v}");
+    assert_eq!(v["mem"], true, "{v}");
+    assert_eq!(v["media"], true, "{v}");
+    assert_eq!(v["vk"], true, "{v}");
+}
+
+#[test]
+fn device_apis_and_screen_orientation_deny() {
+    let mut page = open("<title>dev</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__devx = null;
+          const ed = new EyeDropper();
+          const bd = new BarcodeDetector();
+          Promise.allSettled([
+            navigator.bluetooth.requestDevice({ acceptAllDevices: true }),
+            navigator.usb.requestDevice({ filters: [] }),
+            navigator.serial.requestPort(),
+            navigator.hid.requestDevice({ filters: [] }),
+            screen.orientation.lock("portrait"),
+            ed.open(),
+            bd.detect(document.createElement("canvas")),
+            IdleDetector.requestPermission(),
+            new IdleDetector().start()
+          ]).then(function (rows) {
+            window.__devx = {
+              bt: rows[0].status === "rejected" && rows[0].reason.name === "NotAllowedError",
+              usb: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError",
+              serial: rows[2].status === "rejected" && rows[2].reason.name === "NotAllowedError",
+              hid: rows[3].status === "rejected" && rows[3].reason.name === "NotAllowedError",
+              ori: rows[4].status === "rejected" && rows[4].reason.name === "NotAllowedError" && screen.orientation.type === "landscape-primary",
+              eye: rows[5].status === "rejected" && rows[5].reason.name === "AbortError",
+              bar: rows[6].status === "fulfilled" && Array.isArray(rows[6].value) && rows[6].value.length === 0,
+              idlePerm: rows[7].status === "fulfilled" && rows[7].value === "denied",
+              idleStart: rows[8].status === "rejected" && rows[8].reason.name === "NotAllowedError"
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__devx").unwrap();
+    assert_eq!(v["bt"], true, "{v}");
+    assert_eq!(v["usb"], true, "{v}");
+    assert_eq!(v["serial"], true, "{v}");
+    assert_eq!(v["hid"], true, "{v}");
+    assert_eq!(v["ori"], true, "{v}");
+    assert_eq!(v["eye"], true, "{v}");
+    assert_eq!(v["bar"], true, "{v}");
+    assert_eq!(v["idlePerm"], true, "{v}");
+    assert_eq!(v["idleStart"], true, "{v}");
+}
+
+#[test]
+fn storage_access_and_picture_in_picture_deny() {
+    let mut page = open("<title>pip</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__pip = null;
+          const v = document.createElement("video");
+          document.body.appendChild(v);
+          Promise.allSettled([
+            document.requestStorageAccess(),
+            v.requestPictureInPicture(),
+            document.exitPictureInPicture(),
+            v.setSinkId("default"),
+            navigator.keyboard.lock(["KeyA"])
+          ]).then(function (rows) {
+            window.__pip = {
+              storage: rows[0].status === "rejected" && rows[0].reason.name === "NotAllowedError",
+              pip: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError",
+              exit: rows[2].status === "rejected" && rows[2].reason.name === "InvalidStateError",
+              sink: rows[3].status === "rejected" && rows[3].reason.name === "NotAllowedError",
+              keys: rows[4].status === "rejected" && rows[4].reason.name === "NotAllowedError",
+              enabled: document.pictureInPictureEnabled === false && document.pictureInPictureElement === null
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__pip").unwrap();
+    assert_eq!(v["storage"], true, "{v}");
+    assert_eq!(v["pip"], true, "{v}");
+    assert_eq!(v["exit"], true, "{v}");
+    assert_eq!(v["sink"], true, "{v}");
+    assert_eq!(v["keys"], true, "{v}");
+    assert_eq!(v["enabled"], true, "{v}");
+}
+
+#[test]
+fn analyser_and_biquad_filter_nodes() {
+    let mut page = open("<title>an</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const ctx = new AudioContext();
+              const an = ctx.createAnalyser();
+              const bq = ctx.createBiquadFilter();
+              const bins = new Uint8Array(an.frequencyBinCount);
+              an.getByteFrequencyData(bins);
+              const wave = new Uint8Array(an.fftSize);
+              an.getByteTimeDomainData(wave);
+              return {
+                inst: an instanceof AnalyserNode && bq instanceof BiquadFilterNode,
+                bins: an.frequencyBinCount === 1024 && bins[0] === 0,
+                wave: wave[0] === 128,
+                type: bq.type === "lowpass" && bq.frequency.value === 350,
+                time: typeof ctx.currentTime === "number"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["bins"], true, "{v}");
+    assert_eq!(v["wave"], true, "{v}");
+    assert_eq!(v["type"], true, "{v}");
+    assert_eq!(v["time"], true, "{v}");
+}
+
+#[test]
+fn analyser_reads_connected_oscillator() {
+    let mut page = open("<title>an2</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              const an = ctx.createAnalyser();
+              osc.connect(an);
+              osc.start();
+              const wave = new Uint8Array(an.fftSize);
+              an.getByteTimeDomainData(wave);
+              const bins = new Uint8Array(an.frequencyBinCount);
+              an.getByteFrequencyData(bins);
+              let min = 255, max = 0;
+              for (let i = 0; i < wave.length; i++) {
+                if (wave[i] < min) min = wave[i];
+                if (wave[i] > max) max = wave[i];
+              }
+              return { spread: max > min, peak: bins[2] === 200, idle: bins[0] === 10 };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["spread"], true, "{v}");
+    assert_eq!(v["peak"], true, "{v}");
+    assert_eq!(v["idle"], true, "{v}");
+}
+
+#[test]
+fn media_stream_and_web_audio_graph_nodes() {
+    let mut page = open("<title>ms</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__ms = null;
+          const v = document.createElement("video");
+          document.body.appendChild(v);
+          const stream = v.captureStream();
+          const track = new MediaStreamTrack();
+          stream.addTrack(track);
+          const ctx = new AudioContext();
+          const delay = ctx.createDelay();
+          const comp = ctx.createDynamicsCompressor();
+          const pan = ctx.createStereoPanner();
+          const src = ctx.createMediaStreamSource(stream);
+          const oc = new OffscreenCanvas(4, 4);
+          oc.getContext("2d").fillStyle = "#00ff00";
+          oc.getContext("2d").fillRect(0, 0, 4, 4);
+          oc.convertToBlob().then(function (blob) {
+            window.__ms = {
+              stream: stream instanceof MediaStream && stream.getTracks().length === 1,
+              track: track instanceof MediaStreamTrack && track.readyState === "ended",
+              nodes: delay instanceof DelayNode && comp instanceof DynamicsCompressorNode && pan instanceof StereoPannerNode,
+              src: src instanceof MediaStreamAudioSourceNode && src.mediaStream === stream,
+              blob: blob instanceof Blob && blob.size > 0 && blob.type === "image/png"
+            };
+          }).catch(function (e) { window.__ms = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__ms").unwrap();
+    assert_eq!(v["stream"], true, "{v}");
+    assert_eq!(v["track"], true, "{v}");
+    assert_eq!(v["nodes"], true, "{v}");
+    assert_eq!(v["src"], true, "{v}");
+    assert_eq!(v["blob"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_wraps_and_unwraps_aes_key() {
+    let mut page = open("<title>wrap</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__wrap = null;
+          const iv = new Uint8Array(12);
+          const civ = new Uint8Array(12);
+          const pt = new TextEncoder().encode("abc");
+          crypto.subtle.generateKey({ name: "AES-GCM" }, true, ["wrapKey", "unwrapKey", "encrypt", "decrypt"]).then(function (wrapping) {
+            return crypto.subtle.generateKey({ name: "AES-GCM" }, true, ["encrypt", "decrypt"]).then(function (key) {
+              return crypto.subtle.wrapKey("raw", key, wrapping, { name: "AES-GCM", iv: iv }).then(function (wrapped) {
+                return crypto.subtle.unwrapKey("raw", wrapped, wrapping, { name: "AES-GCM", iv: iv }, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]).then(function (unwrapped) {
+                  return Promise.all([
+                    crypto.subtle.encrypt({ name: "AES-GCM", iv: civ }, key, pt),
+                    crypto.subtle.encrypt({ name: "AES-GCM", iv: civ }, unwrapped, pt)
+                  ]).then(function (cts) {
+                    const a = new Uint8Array(cts[0]);
+                    const b = new Uint8Array(cts[1]);
+                    let same = a.length === b.length;
+                    for (let i = 0; i < a.length && same; i++) same = a[i] === b[i];
+                    window.__wrap = { same: same, wrapped: wrapped.byteLength > 16 };
+                  });
+                });
+              });
+            });
+          }).catch(function (e) { window.__wrap = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(80).settled);
+    let v = page.evaluate("window.__wrap").unwrap();
+    assert_eq!(v["same"], true, "{v}");
+    assert_eq!(v["wrapped"], true, "{v}");
+}
+
+#[test]
+fn media_play_fires_play_and_playing() {
+    let mut page = open("<title>play</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const video = document.createElement("video");
+              const ev = [];
+              video.addEventListener("play", function () { ev.push("play"); });
+              video.addEventListener("playing", function () { ev.push("playing"); });
+              video.addEventListener("pause", function () { ev.push("pause"); });
+              video.play();
+              const afterPlay = { paused: video.paused, ev: ev.slice() };
+              video.pause();
+              return { afterPlay: afterPlay, paused: video.paused, ev: ev.slice() };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["afterPlay"]["paused"], false, "{v}");
+    assert_eq!(v["afterPlay"]["ev"][0], "play", "{v}");
+    assert_eq!(v["afterPlay"]["ev"][1], "playing", "{v}");
+    assert_eq!(v["paused"], true, "{v}");
+    assert_eq!(v["ev"][2], "pause", "{v}");
+}
+
+#[test]
+fn xr_and_presentation_request_deny() {
+    let mut page = open("<title>xr</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__xr = null;
+          const req = new PresentationRequest("https://s.test/slides");
+          Promise.allSettled([
+            navigator.xr.isSessionSupported("inline"),
+            navigator.xr.requestSession("immersive-vr"),
+            req.start(),
+            req.getAvailability()
+          ]).then(function (rows) {
+            window.__xr = {
+              supported: rows[0].status === "fulfilled" && rows[0].value === false,
+              session: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError",
+              start: rows[2].status === "rejected" && rows[2].reason.name === "NotAllowedError",
+              avail: rows[3].status === "fulfilled" && rows[3].value.value === false,
+              inst: req instanceof PresentationRequest
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__xr").unwrap();
+    assert_eq!(v["supported"], true, "{v}");
+    assert_eq!(v["session"], true, "{v}");
+    assert_eq!(v["start"], true, "{v}");
+    assert_eq!(v["avail"], true, "{v}");
+    assert_eq!(v["inst"], true, "{v}");
+}
+
+#[test]
+fn media_can_play_type_and_ready_state() {
+    let mut page = open("<title>cpt</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__cpt = null;
+          const video = document.createElement("video");
+          const img = document.createElement("img");
+          let loaded = false;
+          img.addEventListener("load", function () { loaded = true; });
+          const maybe = video.canPlayType("video/mp4");
+          const none = video.canPlayType("text/plain");
+          video.src = "https://s.test/a.mp4";
+          video.play();
+          const afterPlay = video.readyState;
+          video.load();
+          img.decode().then(function () {
+            const pos = document.caretPositionFromPoint(1, 1);
+            const range = document.caretRangeFromPoint(1, 1);
+            window.__cpt = {
+              maybe: maybe === "maybe",
+              none: none === "",
+              playReady: afterPlay === HTMLMediaElement.HAVE_ENOUGH_DATA,
+              loadReady: video.readyState === HTMLMediaElement.HAVE_NOTHING,
+              decode: loaded,
+              caret: !!(range && range.collapsed && pos && pos.offsetNode)
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__cpt").unwrap();
+    assert_eq!(v["maybe"], true, "{v}");
+    assert_eq!(v["none"], true, "{v}");
+    assert_eq!(v["playReady"], true, "{v}");
+    assert_eq!(v["loadReady"], true, "{v}");
+    assert_eq!(v["decode"], true, "{v}");
+    assert_eq!(v["caret"], true, "{v}");
+}
+
+#[test]
+fn web_audio_factory_nodes() {
+    let mut page = open("<title>wan</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const ctx = new AudioContext();
+              const wave = ctx.createPeriodicWave(new Float32Array([0, 0]), new Float32Array([0, 1]));
+              const csrc = ctx.createConstantSource();
+              const merge = ctx.createChannelMerger(2);
+              const split = ctx.createChannelSplitter(2);
+              const shape = ctx.createWaveShaper();
+              const conv = ctx.createConvolver();
+              const pan = ctx.createPanner();
+              const iir = ctx.createIIRFilter([1], [1]);
+              pan.setPosition(1, 2, 3);
+              const mag = new Float32Array(1);
+              iir.getFrequencyResponse(new Float32Array([440]), mag, new Float32Array(1));
+              return {
+                wave: wave instanceof PeriodicWave,
+                csrc: csrc instanceof ConstantSourceNode && csrc.offset.value === 1,
+                merge: merge instanceof ChannelMergerNode && merge.numberOfInputs === 2,
+                split: split instanceof ChannelSplitterNode && split.numberOfOutputs === 2,
+                shape: shape instanceof WaveShaperNode,
+                conv: conv instanceof ConvolverNode && conv.normalize === true,
+                pan: pan instanceof PannerNode && pan.positionX.value === 1,
+                iir: iir instanceof IIRFilterNode && mag[0] === 1
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["wave"], true, "{v}");
+    assert_eq!(v["csrc"], true, "{v}");
+    assert_eq!(v["merge"], true, "{v}");
+    assert_eq!(v["split"], true, "{v}");
+    assert_eq!(v["shape"], true, "{v}");
+    assert_eq!(v["conv"], true, "{v}");
+    assert_eq!(v["pan"], true, "{v}");
+    assert_eq!(v["iir"], true, "{v}");
+}
+
+#[test]
+fn crypto_subtle_imports_jwk_oct_key() {
+    let mut page = open("<title>jwk</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__jwk = null;
+          const iv = new Uint8Array(12);
+          const pt = new TextEncoder().encode("abc");
+          crypto.subtle.generateKey({ name: "AES-GCM" }, true, ["encrypt", "decrypt"]).then(function (key) {
+            return crypto.subtle.exportKey("jwk", key).then(function (jwk) {
+              return crypto.subtle.importKey("jwk", jwk, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]).then(function (imported) {
+                return Promise.all([
+                  crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, pt),
+                  crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, imported, pt)
+                ]).then(function (cts) {
+                  const a = new Uint8Array(cts[0]);
+                  const b = new Uint8Array(cts[1]);
+                  let same = a.length === b.length;
+                  for (let i = 0; i < a.length && same; i++) same = a[i] === b[i];
+                  window.__jwk = { same: same, kty: jwk.kty === "oct" && typeof jwk.k === "string" };
+                });
+              });
+            });
+          }).catch(function (e) { window.__jwk = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(80).settled);
+    let v = page.evaluate("window.__jwk").unwrap();
+    assert_eq!(v["same"], true, "{v}");
+    assert_eq!(v["kty"], true, "{v}");
+}
+
+#[test]
+fn performance_navigation_timing_entry() {
+    let mut page = open("<title>navt</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const nav = performance.getEntriesByType("navigation");
+              const all = performance.getEntries();
+              return {
+                one: nav.length === 1 && nav[0].entryType === "navigation" && nav[0].type === "navigate",
+                listed: all.some(function (e) { return e.entryType === "navigation"; }),
+                paint: performance.getEntriesByType("paint").length >= 0
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["one"], true, "{v}");
+    assert_eq!(v["listed"], true, "{v}");
+}
+
+#[test]
+fn performance_resource_timing_records_fetch() {
+    let mut page = open("<title>rest</title>");
+    page.evaluate(
+        r##"(function () {
+          fetch("data:text/plain,hi").then(function (r) { return r.text(); }).then(function (t) {
+            const res = performance.getEntriesByType("resource");
+            const all = performance.getEntries();
+            const hit = res.find(function (e) { return e.name.indexOf("data:text/plain,hi") === 0; });
+            window.__res = {
+              text: t,
+              n: res.length,
+              type: !!(hit && hit.entryType === "resource"),
+              initiator: !!(hit && hit.initiatorType === "fetch"),
+              size: !!(hit && hit.encodedBodySize === 2 && hit.transferSize === 2),
+              listed: all.some(function (e) { return e.entryType === "resource" && e.name.indexOf("data:") === 0; }),
+              lcp: performance.getEntriesByType("largest-contentful-paint").length === 1
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(80).settled);
+    let v = page.evaluate("window.__res").unwrap();
+    assert_eq!(v["text"], "hi", "{v}");
+    assert_eq!(v["type"], true, "{v}");
+    assert_eq!(v["initiator"], true, "{v}");
+    assert_eq!(v["size"], true, "{v}");
+    assert_eq!(v["listed"], true, "{v}");
+    assert_eq!(v["lcp"], true, "{v}");
+}
+
+#[test]
+fn webgl_tex_image_draw_arrays_blits() {
+    let mut page = open("<title>glt</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              document.body.appendChild(c);
+              const gl = c.getContext("webgl");
+              const im = new ImageData(4, 4);
+              for (let i = 0; i < im.data.length; i += 4) {
+                im.data[i] = 0;
+                im.data[i + 1] = 255;
+                im.data[i + 2] = 0;
+                im.data[i + 3] = 255;
+              }
+              const tex = gl.createTexture();
+              gl.bindTexture(3553, tex);
+              gl.texImage2D(3553, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+              gl.drawArrays(4, 0, 6);
+              const pix = new Uint8Array(4);
+              gl.readPixels(1, 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
+              return { r: pix[0], g: pix[1], b: pix[2], a: pix[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
 }
 
 #[test]
@@ -2079,7 +10017,7 @@ fn expect_link_unblocks_when_href_cleared() {
 }
 
 #[test]
-fn canvas_webgl_and_webgpu_are_null() {
+fn canvas_webgl_is_available_and_excludes_other_context_modes() {
     let mut page = open(r#"<body></body>"#);
     let v = page
         .evaluate(
@@ -2093,9 +10031,9 @@ fn canvas_webgl_and_webgpu_are_null() {
             })()"#,
         )
         .unwrap();
-    assert_eq!(v["webgl"], true, "{v}");
+    assert_eq!(v["webgl"], false, "{v}");
     assert_eq!(v["webgpu"], true, "{v}");
-    assert_eq!(v["two"], true, "{v}");
+    assert_eq!(v["two"], false, "{v}");
 }
 
 #[test]
@@ -4893,7 +12831,7 @@ fn official_html_link_media_body_and_eventsource_idl() {
                 fillThrew,
                 setHtmlLen: Element.prototype.setHTML.length,
                 esUrl: typeof es.url === "string",
-                esClosed: es.readyState === EventSource.CLOSED,
+                esConnecting: es.readyState === EventSource.CONNECTING,
                 esTag: Object.prototype.toString.call(es),
               };
             })()"##,
@@ -4912,7 +12850,7 @@ fn official_html_link_media_body_and_eventsource_idl() {
     assert_eq!(v["fillThrew"], true, "{v}");
     assert_eq!(v["setHtmlLen"], 1, "{v}");
     assert_eq!(v["esUrl"], true, "{v}");
-    assert_eq!(v["esClosed"], true, "{v}");
+    assert_eq!(v["esConnecting"], true, "{v}");
     assert_eq!(v["esTag"], "[object EventSource]", "{v}");
 }
 

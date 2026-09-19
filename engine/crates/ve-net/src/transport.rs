@@ -2,12 +2,45 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::net::ToSocketAddrs;
 use std::rc::Rc;
 
 use http::StatusCode;
 use http::header::{HeaderMap, HeaderName, HeaderValue};
 
 use crate::{NetError, Request, Response};
+
+/// In-flight batch from [`Transport::start_many`]. Join waits for the wire;
+/// start itself must return without waiting on response bodies.
+pub struct PendingFetches {
+    join: Box<dyn FnOnce() -> Vec<Result<Response, NetError>> + Send>,
+}
+
+impl PendingFetches {
+    /// Results that are already available (cache, mock, sequential default).
+    #[must_use]
+    pub fn from_ready(results: Vec<Result<Response, NetError>>) -> Self {
+        Self {
+            join: Box::new(move || results),
+        }
+    }
+
+    /// Results produced when [`Self::join`] runs (spawned IO, worker thread).
+    #[must_use]
+    pub fn from_join(
+        join: impl FnOnce() -> Vec<Result<Response, NetError>> + Send + 'static,
+    ) -> Self {
+        Self {
+            join: Box::new(join),
+        }
+    }
+
+    /// Waits for every exchange in this batch. Results stay in request order.
+    #[must_use]
+    pub fn join(self) -> Vec<Result<Response, NetError>> {
+        (self.join)()
+    }
+}
 
 /// Sends a single request and returns the complete response. Redirects,
 /// cookies and caching are handled by [`crate::NetworkContext`], not here.
@@ -22,6 +55,13 @@ pub trait Transport {
         requests.iter().map(|r| self.send(r)).collect()
     }
 
+    /// Starts the wire exchanges and returns immediately. The default runs
+    /// [`Self::send_many`] and wraps the results; live transports spawn the
+    /// work and wait only in [`PendingFetches::join`].
+    fn start_many(&self, requests: &[Request]) -> PendingFetches {
+        PendingFetches::from_ready(self.send_many(requests))
+    }
+
     /// Human readable backend name.
     fn name(&self) -> &'static str;
 
@@ -29,6 +69,17 @@ pub trait Transport {
     /// socket, so the broker must not call `to_socket_addrs`.
     fn uses_live_dns(&self) -> bool {
         true
+    }
+
+    /// Warm the OS resolver for `rel=preconnect` / `dns-prefetch`. Must
+    /// return without waiting on DNS. The default detaches a lookup thread.
+    fn warmup_dns(&self, host: &str, port: u16) {
+        let host = host.to_owned();
+        let _ = std::thread::Builder::new()
+            .name("ve-dns".into())
+            .spawn(move || {
+                let _ = (host.as_str(), port).to_socket_addrs();
+            });
     }
 }
 

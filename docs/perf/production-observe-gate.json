@@ -1,0 +1,31 @@
+{
+  "appleSilicon": false,
+  "backend": "vector-engine",
+  "corpus": {
+    "dir": "/tmp/vector-live-html",
+    "kind": "fetched-html-bodies"
+  },
+  "gates": {
+    "observeP95Ms": 5,
+    "openMaxMs": 1000,
+    "openP95Ms": 300
+  },
+  "metric": "observe",
+  "n": 100,
+  "notes": "Compact observe and open→observe on live HTML bodies under SecurityProfile::Production. Parse stops at 256 KB. Not an Apple-silicon published score.",
+  "observe": {
+    "p50Ms": 1.697,
+    "p95Ms": 3.099
+  },
+  "openToObserve": {
+    "maxMs": 50.95,
+    "p50Ms": 15.261,
+    "p95Ms": 27.839,
+    "slowest": "138"
+  },
+  "profile": "release",
+  "security_mode": "production",
+  "test": "writes_production_profile_observe_gate",
+  "unit": "ms",
+  "unsupported": 0
+}

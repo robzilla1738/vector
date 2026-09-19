@@ -7,12 +7,31 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { PlanStepSchema, errorAdvice, toErrorPayload, VectorError } from "@vector/contracts";
 import { rpc } from "./client.js";
 
 const server = new McpServer({ name: "vector", version: "0.1.0" });
 
+const FlattenedStepSchema = z
+  .object({
+    id: z.string(),
+    op: z.string(),
+  })
+  .passthrough();
+export const McpStepSchema = z.union([PlanStepSchema, FlattenedStepSchema]);
+
 const text = (v: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(v, null, 2) }] });
-const err = (e: unknown) => ({ content: [{ type: "text" as const, text: `error: ${(e as Error).message}` }], isError: true });
+const err = (e: unknown) => {
+  const base = e instanceof VectorError
+    ? { code: e.code, message: e.message, details: e.detail ?? null }
+    : { ...toErrorPayload(e), details: null as unknown };
+  const advice = errorAdvice(base.code);
+  const payload = { ...base, retryable: advice.retryable, hint: advice.hint };
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify({ code: payload.code, message: payload.message, details: payload.details, retryable: payload.retryable, hint: payload.hint }, null, 2) }],
+    isError: true,
+  };
+};
 
 server.registerTool("vector_pages_list", { description: "List open browser pages (tabs, background workers, attached Chrome tabs)." }, async () => {
   try {
@@ -94,7 +113,7 @@ server.registerTool(
       "{pageId, steps:[{id:'s1',op:'fill',target:'r4',value:'hello'},{id:'s2',op:'press',key:'Enter',target:'r4',expect:[{kind:'textVisible',text:'Results'}]}], returnObservation:{format:'compact'}}",
     inputSchema: {
       pageId: z.string(),
-      steps: z.array(z.record(z.string(), z.unknown())).describe("step objects, e.g. {id:'s1', op:'click', target:'r3'}"),
+      steps: z.array(McpStepSchema).describe("step objects, e.g. {id:'s1', op:'click', target:'r3'}"),
       documentEpoch: z.number().int().nonnegative().optional().describe("epoch the refs were observed in; the program fails fast if the page navigated since"),
       returnObservation: z
         .object({
@@ -556,6 +575,134 @@ server.registerTool(
     } catch (e) {
       return err(e);
     }
+  },
+);
+
+server.registerTool(
+  "vector_extract",
+  {
+    description: "Extract structured fields from the current observation.",
+    inputSchema: { pageId: z.string(), fields: z.array(z.string()).optional() },
+  },
+  async ({ pageId, fields }) => {
+    try {
+      return text(await rpc("pages.extract", { pageId, fields }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+server.registerTool(
+  "vector_wait_for",
+  {
+    description: "Wait until a condition holds on the page.",
+    inputSchema: { pageId: z.string(), condition: z.record(z.string(), z.unknown()) },
+  },
+  async ({ pageId, condition }) => {
+    try {
+      return text(await rpc("pages.waitFor", { pageId, condition }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+server.registerTool(
+  "vector_console",
+  {
+    description: "Read page console lines.",
+    inputSchema: { pageId: z.string(), since: z.number().optional(), limit: z.number().int().positive().optional() },
+  },
+  async ({ pageId, since, limit }) => {
+    try {
+      return text(await rpc("pages.console", { pageId, since, limit }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+server.registerTool(
+  "vector_dialog",
+  {
+    description: "List or accept/dismiss the current page dialog (alert/confirm/prompt).",
+    inputSchema: {
+      pageId: z.string(),
+      action: z.enum(["list", "accept", "dismiss"]).optional(),
+      promptText: z.string().optional(),
+    },
+  },
+  async ({ pageId, action, promptText }) => {
+    try {
+      return text(await rpc("pages.dialog", { pageId, action: action ?? "list", promptText }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+server.registerTool(
+  "vector_network",
+  {
+    description: "List captured HTTP responses for a page (url, status, type, timing).",
+    inputSchema: {
+      pageId: z.string(),
+      since: z.number().optional(),
+      urlIncludes: z.string().optional(),
+      limit: z.number().int().positive().optional(),
+    },
+  },
+  async ({ pageId, since, urlIncludes, limit }) => {
+    try {
+      return text(await rpc("pages.network", { pageId, since, urlIncludes, limit }));
+    } catch (e) {
+      return err(e);
+    }
+  },
+);
+
+async function activePageId(): Promise<string | null> {
+  const ws = (await rpc("workspace.get")) as { activePageId?: string | null };
+  return ws.activePageId ?? null;
+}
+
+server.registerResource(
+  "vector://page/observation",
+  "vector://page/observation",
+  { description: "Latest compact observation for the active page." },
+  async () => {
+    const pageId = await activePageId();
+    if (!pageId) return { contents: [{ uri: "vector://page/observation", text: JSON.stringify({ error: "no active page" }) }] };
+    return {
+      contents: [{ uri: "vector://page/observation", text: JSON.stringify(await rpc("pages.observe", { pageId, format: "compact" })) }],
+    };
+  },
+);
+
+server.registerResource(
+  "vector://page/console",
+  "vector://page/console",
+  { description: "Console lines for the active page." },
+  async () => {
+    const pageId = await activePageId();
+    if (!pageId) return { contents: [{ uri: "vector://page/console", text: JSON.stringify({ lines: [] }) }] };
+    return {
+      contents: [{ uri: "vector://page/console", text: JSON.stringify(await rpc("pages.console", { pageId })) }],
+    };
+  },
+);
+
+server.registerResource(
+  "vector://page/network",
+  "vector://page/network",
+  { description: "Captured HTTP responses for the active page." },
+  async () => {
+    const pageId = await activePageId();
+    if (!pageId) return { contents: [{ uri: "vector://page/network", text: "[]" }] };
+    return {
+      contents: [{ uri: "vector://page/network", text: JSON.stringify(await rpc("pages.network", { pageId })) }],
+    };
   },
 );
 

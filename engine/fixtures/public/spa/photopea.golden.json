@@ -238,6 +238,12 @@
     }
   ],
   "dialogs": [],
+  "console": [
+    {
+      "level": "log",
+      "message": "1280"
+    }
+  ],
   "truncated": false,
   "stats": {
     "elementsTotal": 17,

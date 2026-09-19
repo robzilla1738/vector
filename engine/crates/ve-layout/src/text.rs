@@ -84,6 +84,11 @@ pub trait TextShaper {
     fn descent(&mut self, style: &ComputedStyle) -> f32 {
         style.font_size * MetricShaper::DESCENT_RATIO
     }
+
+    /// Registers an OpenType/TrueType file. Default is a no-op (metric shaper).
+    fn register_font(&mut self, _data: Vec<u8>) -> usize {
+        0
+    }
 }
 
 /// Character width classes of the deterministic metric model.
@@ -158,7 +163,8 @@ impl CharClass {
 /// `0.8em`, descent `0.2em`. See the module documentation.
 ///
 /// Used when no font data is available and in tests. Wrapping is greedy at
-/// spaces; forced `\n` breaks are honoured; `word-break: break-all` and
+/// spaces and CJK ideographs; `word-break: keep-all` keeps CJK unbreakable;
+/// forced `\n` breaks are honoured; `word-break: break-all` and
 /// `overflow-wrap: anywhere|break-word` allow breaking inside words that do
 /// not fit on a line of their own.
 #[derive(Clone, Copy, Debug)]
@@ -192,11 +198,18 @@ impl MetricShaper {
     }
 
     fn width_of(&self, text: &str, style: &ComputedStyle) -> f32 {
-        let font_size = style.font_size;
+        let mut font_size = style.font_size * style.text_size_adjust.max(0.01);
+        if style.math_style == ve_style::MathStyle::Compact {
+            font_size *= 0.7;
+        }
         let mut width = 0.0;
         let mut chars = 0usize;
         for c in text.chars() {
-            let advance = self.char_advance(c, font_size);
+            let advance = if c == '\t' {
+                style.tab_size.max(1) as f32 * self.char_advance(' ', font_size)
+            } else {
+                self.char_advance(c, font_size)
+            };
             width += advance;
             if advance > 0.0 {
                 chars += 1;
@@ -205,7 +218,14 @@ impl MetricShaper {
                 width += style.word_spacing;
             }
         }
-        width + style.letter_spacing * chars as f32
+        let mut width = width + style.letter_spacing * chars as f32;
+        if style.font_variant_ligatures.collapses() {
+            width -= count_common_ligatures(text) as f32 * font_size * 0.15;
+        }
+        if style.font_kerning.applies() {
+            width -= count_kern_pairs(text) as f32 * font_size * 0.1;
+        }
+        width * style.font_stretch.factor()
     }
 
     /// Baseline offset from the top of a line of `line_height` for `style`.
@@ -214,6 +234,36 @@ impl MetricShaper {
         let half_leading = (line_height - style.font_size) / 2.0;
         half_leading + style.font_size * Self::ASCENT_RATIO
     }
+}
+
+fn count_common_ligatures(text: &str) -> usize {
+    let bytes = text.as_bytes();
+    let mut n = 0;
+    let mut i = 0;
+    while i + 1 < bytes.len() {
+        if bytes[i] == b'f' && matches!(bytes[i + 1], b'i' | b'l' | b'f') {
+            n += 1;
+            i += 2;
+        } else {
+            i += 1;
+        }
+    }
+    n
+}
+
+fn count_kern_pairs(text: &str) -> usize {
+    let mut chars = text.chars().peekable();
+    let mut n = 0;
+    while let Some(a) = chars.next() {
+        let Some(&b) = chars.peek() else { break };
+        if matches!(
+            (a, b),
+            ('A', 'V' | 'W') | ('V' | 'W', 'A') | ('T', 'o') | ('W', 'e')
+        ) {
+            n += 1;
+        }
+    }
+    n
 }
 
 /// Whether `style` lets a word be broken anywhere when it would overflow.
@@ -229,12 +279,17 @@ fn breaks_words(style: &ComputedStyle) -> bool {
 
 /// Greedy word-wrapping over `text` using a width oracle. Shared by the
 /// metric shaper and used as fallback by the parley shaper.
+#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
 fn greedy_wrap(
     text: &str,
     first_available: f32,
     available: f32,
     wrap: bool,
     break_words: bool,
+    hyphenate: bool,
+    auto_hyphen: bool,
+    break_spaces: bool,
+    split_cjk: bool,
     height: f32,
     baseline: f32,
     width_of: &dyn Fn(&str) -> f32,
@@ -254,7 +309,7 @@ fn greedy_wrap(
         });
     };
 
-    for (idx, word) in split_words(text) {
+    for (idx, word) in split_words(text, hyphenate, auto_hyphen, break_spaces, split_cjk) {
         if word == "\n" {
             push_line(line_start, line_end, &mut lines);
             line_start = idx + 1;
@@ -263,7 +318,11 @@ fn greedy_wrap(
             continue;
         }
         let candidate_end = idx + word.len();
-        let candidate = text[line_start..candidate_end].trim_end();
+        let candidate = if break_spaces {
+            &text[line_start..candidate_end]
+        } else {
+            text[line_start..candidate_end].trim_end()
+        };
         let fits = !wrap || width_of(candidate) <= limit + 0.01;
         if fits {
             line_end = candidate_end;
@@ -271,11 +330,12 @@ fn greedy_wrap(
         }
         if line_end != line_start {
             // Break before this word.
-            push_line(
-                line_start,
-                text[line_start..line_end].trim_end().len() + line_start,
-                &mut lines,
-            );
+            let end = if break_spaces {
+                line_end
+            } else {
+                text[line_start..line_end].trim_end().len() + line_start
+            };
+            push_line(line_start, end, &mut lines);
             line_start = idx;
             limit = available;
         }
@@ -300,7 +360,11 @@ fn greedy_wrap(
         line_start = piece_start;
         line_end = candidate_end;
     }
-    let trimmed_end = line_start + text[line_start..line_end].trim_end().len();
+    let trimmed_end = if break_spaces {
+        line_end
+    } else {
+        line_start + text[line_start..line_end].trim_end().len()
+    };
     if trimmed_end > line_start || lines.is_empty() {
         push_line(line_start, trimmed_end.max(line_start), &mut lines);
     }
@@ -309,25 +373,47 @@ fn greedy_wrap(
 
 /// Splits into `(byte_offset, word)` where a word is a maximal run of
 /// non-space characters plus the following spaces, or a lone `"\n"`.
-fn split_words(text: &str) -> Vec<(usize, &str)> {
-    let mut out = Vec::new();
+#[allow(clippy::fn_params_excessive_bools)]
+fn split_words(
+    text: &str,
+    hyphenate: bool,
+    auto_hyphen: bool,
+    break_spaces: bool,
+    split_cjk: bool,
+) -> Vec<(usize, &str)> {
+    let mut raw = Vec::new();
     let mut start: Option<usize> = None;
     let mut in_trailing_space = false;
     for (i, ch) in text.char_indices() {
+        if hyphenate && ch == '\u{00AD}' {
+            if let Some(s) = start.take() {
+                raw.push((s, &text[s..i]));
+            }
+            in_trailing_space = false;
+            continue;
+        }
         if ch == '\n' {
             if let Some(s) = start.take() {
-                out.push((s, &text[s..i]));
+                raw.push((s, &text[s..i]));
             }
-            out.push((i, "\n"));
+            raw.push((i, "\n"));
             in_trailing_space = false;
         } else if ch == ' ' {
             if start.is_none() {
                 start = Some(i);
             }
             in_trailing_space = true;
+        } else if split_cjk && CharClass::of(ch) == CharClass::Ideograph {
+            if in_trailing_space && let Some(s) = start.take() {
+                raw.push((s, &text[s..i]));
+            } else if let Some(s) = start.take() {
+                raw.push((s, &text[s..i]));
+            }
+            raw.push((i, &text[i..i + ch.len_utf8()]));
+            in_trailing_space = false;
         } else {
             if in_trailing_space && let Some(s) = start.take() {
-                out.push((s, &text[s..i]));
+                raw.push((s, &text[s..i]));
             }
             in_trailing_space = false;
             if start.is_none() {
@@ -336,9 +422,60 @@ fn split_words(text: &str) -> Vec<(usize, &str)> {
         }
     }
     if let Some(s) = start {
-        out.push((s, &text[s..]));
+        raw.push((s, &text[s..]));
     }
-    out
+    let mut out = raw;
+    if auto_hyphen {
+        let mut hyphenated = Vec::new();
+        for (idx, word) in out {
+            if word == "\n" || word.chars().all(|c| c == ' ') {
+                hyphenated.push((idx, word));
+                continue;
+            }
+            let letters: Vec<(usize, char)> =
+                word.char_indices().filter(|(_, ch)| *ch != ' ').collect();
+            if letters.len() <= 3 {
+                hyphenated.push((idx, word));
+                continue;
+            }
+            let mut start_b = 0usize;
+            for (n, (ci, ch)) in letters.iter().enumerate() {
+                if n > 0 && n % 3 == 0 {
+                    hyphenated.push((idx + start_b, &word[start_b..*ci]));
+                    start_b = *ci;
+                }
+                let _ = ch;
+            }
+            if start_b < word.len() {
+                hyphenated.push((idx + start_b, &word[start_b..]));
+            }
+        }
+        out = hyphenated;
+    }
+    if !break_spaces {
+        return out;
+    }
+    let mut exploded = Vec::new();
+    for (idx, word) in out {
+        if word == "\n" {
+            exploded.push((idx, word));
+            continue;
+        }
+        let cut = word.trim_end_matches(' ').len();
+        if cut == word.len() {
+            exploded.push((idx, word));
+            continue;
+        }
+        if cut > 0 {
+            exploded.push((idx, &word[..cut]));
+        }
+        let mut i = cut;
+        while i < word.len() {
+            exploded.push((idx + i, &word[i..=i]));
+            i += 1;
+        }
+    }
+    exploded
 }
 
 impl TextShaper for MetricShaper {
@@ -360,6 +497,10 @@ impl TextShaper for MetricShaper {
             available,
             wrap,
             breaks_words(style),
+            style.hyphens != ve_style::Hyphens::None,
+            style.hyphens == ve_style::Hyphens::Auto,
+            style.white_space == ve_style::WhiteSpace::BreakSpaces,
+            style.word_break != ve_style::WordBreak::KeepAll,
             height,
             baseline,
             &width_of,
@@ -403,9 +544,20 @@ impl ParleyShaper {
     /// it behaves like [`MetricShaper`].
     #[must_use]
     pub fn new() -> Self {
+        Self::with_system_fonts_enabled(false)
+    }
+
+    /// System-installed fonts through fontique. Used by `ve-shell --gui`,
+    /// the corpus, and Speedometer. Tests/WPT/perf keep [`Self::new`].
+    #[must_use]
+    pub fn with_system_fonts() -> Self {
+        Self::with_system_fonts_enabled(true)
+    }
+
+    fn with_system_fonts_enabled(system_fonts: bool) -> Self {
         let collection = parley::fontique::Collection::new(parley::fontique::CollectionOptions {
             shared: false,
-            system_fonts: false,
+            system_fonts,
         });
         let fonts = parley::FontContext {
             collection,
@@ -415,7 +567,7 @@ impl ParleyShaper {
             fonts,
             layouts: parley::LayoutContext::new(),
             fallback: MetricShaper::default(),
-            has_fonts: false,
+            has_fonts: system_fonts,
         }
     }
 
@@ -537,6 +689,10 @@ impl TextShaper for ParleyShaper {
             ));
         }
         out
+    }
+
+    fn register_font(&mut self, data: Vec<u8>) -> usize {
+        Self::register_font(self, data)
     }
 }
 

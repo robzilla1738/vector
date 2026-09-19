@@ -18,7 +18,7 @@
       "sameOrigin": true
     }
   ],
-  "text": "# Squoosh\nDrop OR Paste\nOr try one of these:\n## Small\nSmaller images mean faster load times. Squoosh can reduce file size and maintain high quality.\n[img: silhouette of a large 1.4 megabyte image shrunk into a smaller 80 kilobyte image]\n## Simple\nOpen your image, inspect the differences, then save instantly. Feeling adventurous? Adjust the settings for even smaller files.\n[img: grid of multiple shrunk images displaying various options]\n## Secure\nWorried about privacy? Images never leave your device since Squoosh does all the work locally.\n[img: silhouette of a cloud with a 'no' symbol on top]\n[footer]\n[footer]",
+  "text": "# Squoosh\nDrop OR [Paste]\nOr try one of these:\n## Small\nSmaller images mean faster load times. Squoosh can reduce file size and maintain high quality.\n[img: silhouette of a large 1.4 megabyte image shrunk into a smaller 80 kilobyte image]\n## Simple\nOpen your image, inspect the differences, then save instantly. Feeling adventurous? Adjust the settings for even smaller files.\n[img: grid of multiple shrunk images displaying various options]\n## Secure\nWorried about privacy? Images never leave your device since Squoosh does all the work locally.\n[img: silhouette of a cloud with a 'no' symbol on top]\n[footer]\n[footer]",
   "headings": [
     "Squoosh",
     "Small",
@@ -30,67 +30,82 @@
       "ref": "r166",
       "tag": "button",
       "role": "button",
-      "type": "submit"
+      "type": "submit",
+      "scrollContainer": "r153"
     },
     {
-      "ref": "r187",
+      "ref": "r174",
+      "tag": "button",
+      "role": "button",
+      "name": "Paste",
+      "type": "submit",
+      "scrollContainer": "r153"
+    },
+    {
+      "ref": "r188",
       "tag": "button",
       "role": "button",
       "name": "Large photo 2.8MB",
       "type": "submit",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r153"
     },
     {
-      "ref": "r194",
+      "ref": "r195",
       "tag": "button",
       "role": "button",
       "name": "Artwork 2.9MB",
       "type": "submit",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r153"
     },
     {
-      "ref": "r201",
+      "ref": "r202",
       "tag": "button",
       "role": "button",
       "name": "Device screen 1.6MB",
       "type": "submit",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r153"
     },
     {
-      "ref": "r208",
+      "ref": "r209",
       "tag": "button",
       "role": "button",
       "name": "SVG icon 13KB",
       "type": "submit",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r153"
     },
     {
-      "ref": "r256",
+      "ref": "r257",
       "tag": "a",
       "role": "link",
       "name": "Privacy",
       "href": "https://github.com/GoogleChromeLabs/squoosh/blob/dev/README.md#privacy",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r153"
     },
     {
-      "ref": "r258",
+      "ref": "r259",
       "tag": "a",
       "role": "link",
       "name": "Source on Github",
       "href": "https://github.com/GoogleChromeLabs/squoosh",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r153"
     }
   ],
   "formFields": [],
   "tables": [],
   "links": [
     {
-      "ref": "r256",
+      "ref": "r257",
       "text": "Privacy",
       "href": "https://github.com/GoogleChromeLabs/squoosh/blob/dev/README.md#privacy"
     },
     {
-      "ref": "r258",
+      "ref": "r259",
       "text": "Source on Github",
       "href": "https://github.com/GoogleChromeLabs/squoosh"
     }
@@ -98,9 +113,9 @@
   "dialogs": [],
   "truncated": false,
   "stats": {
-    "elementsTotal": 7,
-    "elementsShown": 7,
-    "textChars": 617,
-    "approxTokens": 271
+    "elementsTotal": 8,
+    "elementsShown": 8,
+    "textChars": 619,
+    "approxTokens": 277
   }
 }

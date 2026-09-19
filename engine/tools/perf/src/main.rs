@@ -25,8 +25,8 @@ use clap::Parser;
 use serde::Serialize;
 use serde_json::{Value, json};
 use ve_api::{
-    EngineConfig, ExecuteRequest, NetworkPolicy, ObservationContent, ObservationRequest,
-    OpenRequest, PageId, Program, VectorEngine,
+    EngineConfig, ExecuteRequest, NativeBrowser, NativeEvent, NetworkPolicy, ObservationContent,
+    ObservationRequest, OpenRequest, PageId, Program, ScrollPhase, SecurityProfile, VectorEngine,
 };
 use ve_core::Size;
 
@@ -64,6 +64,9 @@ struct Args {
     /// Write the JSON report here instead of stdout.
     #[arg(long)]
     out: Option<PathBuf>,
+    /// Replay input JSON and print a frame trace (`H0-A1`).
+    #[arg(long)]
+    frames: bool,
 }
 
 const METRICS: [&str; 6] = [
@@ -440,6 +443,9 @@ fn main() -> Result<()> {
         .with_writer(std::io::stderr)
         .init();
     let args = Args::parse();
+    if args.frames {
+        return run_frames(&args);
+    }
     let paths: Vec<PathBuf> = match &args.input {
         Some(p) => vec![p.clone()],
         None => {
@@ -461,6 +467,7 @@ fn main() -> Result<()> {
         viewport,
         offline: true,
         policy: NetworkPolicy::permissive(),
+        security_profile: SecurityProfile::Production,
         ..EngineConfig::default()
     });
 
@@ -543,7 +550,7 @@ fn main() -> Result<()> {
             "release"
         },
         backend: "vector-engine",
-        security_mode: "developer-offline",
+        security_mode: "production",
         os: std::env::consts::OS.to_owned(),
         arch: std::env::consts::ARCH,
         rss_bytes: ve_core::process_rss_bytes(),
@@ -593,6 +600,50 @@ fn main() -> Result<()> {
     }
     if !all_gates_pass && !args.no_fail {
         std::process::exit(1);
+    }
+    Ok(())
+}
+
+fn run_frames(args: &Args) -> Result<()> {
+    let html = args.input.as_ref().map_or_else(
+        || {
+            Ok::<String, anyhow::Error>(
+                "<html><body style='height:4000px'>scroll</body></html>".into(),
+            )
+        },
+        |p| std::fs::read_to_string(p).map_err(Into::into),
+    )?;
+    let mut browser = NativeBrowser::with_config(EngineConfig {
+        viewport: Size::new(args.width, args.height),
+        offline: true,
+        security_profile: SecurityProfile::Production,
+        ..EngineConfig::default()
+    });
+    browser.handle_event(NativeEvent::NewTab {
+        html,
+        url: "about:blank".into(),
+    })?;
+    let _ = browser.present();
+    let before = browser.from_layout_calls();
+    for _ in 0..8 {
+        browser.handle_event(NativeEvent::Wheel {
+            dx: 0.0,
+            dy: 40.0,
+            phase: ScrollPhase::Changed,
+        })?;
+        let _ = browser.present();
+    }
+    let after = browser.from_layout_calls();
+    let report = json!({
+        "security_mode": "production",
+        "fromLayoutBeforeScroll": before,
+        "fromLayoutAfterScroll": after,
+        "fromLayoutDuringScroll": after.saturating_sub(before),
+    });
+    let json = serde_json::to_string_pretty(&report)?;
+    match &args.out {
+        Some(path) => std::fs::write(path, json)?,
+        None => println!("{json}"),
     }
     Ok(())
 }

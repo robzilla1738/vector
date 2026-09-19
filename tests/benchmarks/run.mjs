@@ -155,6 +155,10 @@ async function runBackend(backend) {
   const rpc = (m, p = {}) => rt.invoke(m, p);
   const info = { backend, runtimeSha: sha(runtimeRoot) };
   try {
+    // The benchmark deliberately exercises click, fill, and navigation without
+    // a user-started run. Grant those effects in this isolated temp profile;
+    // the product default remains read-only.
+    await rpc("settings.set", { effectGrants: ["effect:read", "effect:write", "effect:egress"] });
     const describe = await rpc("runtime.describe").catch(() => ({}));
     info.engine = describe.engine ?? null;
     const sessions = await rpc("sessions.list").catch(() => []);

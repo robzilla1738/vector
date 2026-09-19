@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { executeProgram } from "@vector/runtime";
-import { READINESS_INIT_SCRIPT, READINESS_GLOBAL, POST_NAVIGATION_SETTLE_MS } from "@vector/browser-driver";
-import type { DriverPage } from "@vector/browser-driver";
+import { READINESS_INIT_SCRIPT, READINESS_GLOBAL, POST_NAVIGATION_SETTLE_MS } from "@vector/engine-client";
+import type { DriverPage } from "@vector/engine-client";
 import type { Condition } from "@vector/contracts";
 
 describe("readiness init script", () => {

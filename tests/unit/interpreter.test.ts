@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { executeProgram } from "@vector/runtime";
-import type { DriverPage } from "@vector/browser-driver";
+import type { DriverPage } from "@vector/engine-client";
 import type { Condition, Program, ProgramNode } from "@vector/contracts";
 
 /** Same minimal fake DriverPage as executor.test.ts — duplicated to stay self-contained. */

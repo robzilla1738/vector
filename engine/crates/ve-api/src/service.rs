@@ -24,6 +24,8 @@ type Job = Box<dyn FnOnce(&mut BrowserService) + Send>;
 /// Owns one [`NativeBrowser`] and applies serialized client requests.
 pub struct BrowserService {
     browser: NativeBrowser,
+    events: Vec<Value>,
+    next_sub: u64,
 }
 
 impl BrowserService {
@@ -32,6 +34,8 @@ impl BrowserService {
     pub fn new() -> Self {
         Self {
             browser: NativeBrowser::new(),
+            events: Vec::new(),
+            next_sub: 1,
         }
     }
 
@@ -40,13 +44,19 @@ impl BrowserService {
     pub fn with_config(config: EngineConfig) -> Self {
         Self {
             browser: NativeBrowser::with_config(config),
+            events: Vec::new(),
+            next_sub: 1,
         }
     }
 
     /// Wrap an existing native browser so GUI and the socket share it.
     #[must_use]
     pub fn from_browser(browser: NativeBrowser) -> Self {
-        Self { browser }
+        Self {
+            browser,
+            events: Vec::new(),
+            next_sub: 1,
+        }
     }
 
     /// Live native browser (GUI event loop / tests).
@@ -65,7 +75,7 @@ impl BrowserService {
         match method {
             "identity" => Ok(self.identity()),
             "pages.open" => self.open(params),
-            "pages.observe" => self.observe(),
+            "pages.observe" => self.observe(params),
             "pages.execute" => self.execute(params),
             "pages.takeover" => {
                 self.browser.takeover();
@@ -77,6 +87,18 @@ impl BrowserService {
             }
             "input.event" => self.event(params),
             "scene.update" => self.browser.scene_active(),
+            "pages.list" => self.list_pages(),
+            "pages.close" => self.close_page_params(params),
+            "pages.screenshot" => self.screenshot(),
+            "cookies.get" => self.cookies_get(params),
+            "cookies.set" => self.cookies_set(params),
+            "storage.state.get" => self.storage_state_get(params),
+            "storage.state.set" => self.storage_state_set(params),
+            "contexts.create" => self.contexts_create(),
+            "contexts.list" => self.contexts_list(),
+            "contexts.close" => self.contexts_close(params),
+            "events.subscribe" => self.events_subscribe(),
+            "events.since" => self.events_since(params),
             "shutdown" => Ok(json!({ "ok": true })),
             other => Err(Error::invalid_params(format!("unknown method {other}"))),
         }
@@ -117,16 +139,20 @@ impl BrowserService {
         } else {
             self.browser.open_url(url)?;
         }
-        let tab = self
-            .browser
-            .active_tab()
-            .ok_or_else(|| Error::not_found("open produced no tab"))?;
+        let (page, url, title) = {
+            let tab = self
+                .browser
+                .active_tab()
+                .ok_or_else(|| Error::not_found("open produced no tab"))?;
+            (tab.page.0, tab.url.clone(), tab.page_title.clone())
+        };
         let meta = self.browser.active_page_meta();
+        self.push_event("page.opened", json!({ "page": page, "url": url }));
         Ok(json!({
             "ok": true,
-            "page": tab.page.0,
-            "url": tab.url,
-            "title": tab.page_title,
+            "page": page,
+            "url": url,
+            "title": title,
             "generation": meta.as_ref().map_or(0, |m| m.2),
             "documentEpoch": meta.as_ref().map_or(0, |m| m.2),
             "revision": meta.as_ref().map_or(0, |m| m.3),
@@ -135,13 +161,21 @@ impl BrowserService {
         }))
     }
 
-    fn observe(&mut self) -> Result<Value> {
-        let obs = self.browser.observe_active()?;
+    fn observe(&mut self, params: &Value) -> Result<Value> {
+        let request =
+            if params.is_null() || params.as_object().is_some_and(serde_json::Map::is_empty) {
+                ObservationRequest::default()
+            } else {
+                serde_json::from_value(params.clone())
+                    .map_err(|e| Error::invalid_params(format!("observe: {e}")))?
+            };
+        let obs = self.browser.observe_active_with(&request)?;
         let mut value = serde_json::to_value(&obs)
             .map_err(|e| Error::internal(format!("observe encode: {e}")))?;
         if let Some(obj) = value.as_object_mut() {
             obj.insert("ok".into(), json!(true));
             obj.insert("chromium".into(), json!(false));
+            obj.remove("generation");
         }
         Ok(value)
     }
@@ -197,6 +231,216 @@ impl BrowserService {
         Ok(value)
     }
 
+    fn list_pages(&self) -> Result<Value> {
+        let tabs: Vec<Value> = self
+            .browser
+            .tabs()
+            .iter()
+            .enumerate()
+            .map(|(i, t)| {
+                json!({
+                    "page": t.page.0,
+                    "url": t.url,
+                    "title": t.page_title,
+                    "active": i == self.browser.active_index(),
+                })
+            })
+            .collect();
+        Ok(json!({ "ok": true, "pages": tabs, "protocolVersion": 1 }))
+    }
+
+    fn close_page_params(&mut self, params: &Value) -> Result<Value> {
+        if let Some(page) = params.get("page").and_then(Value::as_u64) {
+            let idx = self
+                .browser
+                .tabs()
+                .iter()
+                .position(|t| t.page.0 == page)
+                .ok_or_else(|| Error::not_found(format!("no page {page}")))?;
+            self.browser.set_active(idx);
+        }
+        self.browser.handle_event(NativeEvent::CloseTab)?;
+        self.push_event("page.closed", json!({}));
+        Ok(json!({ "ok": true, "closed": true }))
+    }
+
+    fn push_event(&mut self, kind: &str, data: Value) {
+        self.events.push(json!({
+            "id": self.events.len() + 1,
+            "type": kind,
+            "data": data,
+        }));
+    }
+
+    fn resolve_context(&self, params: &Value) -> Result<crate::ContextId> {
+        if let Some(id) = params.get("context").and_then(Value::as_u64) {
+            return Ok(crate::ContextId(id));
+        }
+        if let Some(tab) = self.browser.active_tab() {
+            return self.browser.engine().context_of(tab.page);
+        }
+        Ok(crate::DEFAULT_CONTEXT)
+    }
+
+    fn cookies_get(&self, params: &Value) -> Result<Value> {
+        let ctx = self.resolve_context(params)?;
+        let cookies = self.browser.engine().cookies(ctx)?;
+        let filtered = if let Some(url) = params.get("url").and_then(Value::as_str) {
+            let parsed = url::Url::parse(url)
+                .map_err(|e| Error::invalid_params(format!("cookies.get url: {e}")))?;
+            let now = std::time::SystemTime::now();
+            let net = self.browser.engine().network(ctx)?;
+            let net = net.borrow();
+            net.cookies
+                .cookies_for(&parsed, now)
+                .into_iter()
+                .map(crate::BrowserCookie::from)
+                .collect::<Vec<_>>()
+        } else {
+            cookies
+        };
+        Ok(json!({ "ok": true, "cookies": filtered }))
+    }
+
+    fn cookies_set(&mut self, params: &Value) -> Result<Value> {
+        let ctx = self.resolve_context(params)?;
+        let list = params
+            .get("cookies")
+            .cloned()
+            .or_else(|| Some(params.clone()))
+            .unwrap_or(Value::Array(Vec::new()));
+        let cookies: Vec<crate::BrowserCookie> = serde_json::from_value(list)
+            .map_err(|e| Error::invalid_params(format!("cookies.set: {e}")))?;
+        let imported = self.browser.engine_mut().set_cookies(ctx, cookies)?;
+        self.push_event("cookies.changed", json!({ "imported": imported }));
+        Ok(json!({ "ok": true, "imported": imported }))
+    }
+
+    fn storage_state_get(&self, params: &Value) -> Result<Value> {
+        let ctx = self.resolve_context(params)?;
+        let cookies = self.browser.engine().cookies(ctx)?;
+        let mut origins = Vec::new();
+        for tab in self.browser.tabs() {
+            if self.browser.engine().context_of(tab.page)? != ctx {
+                continue;
+            }
+            let page = self.browser.engine().page(tab.page)?;
+            for (origin, map) in page.local_storage_map() {
+                let local_storage: Vec<Value> = map
+                    .iter()
+                    .map(|(name, value)| json!({ "name": name, "value": value }))
+                    .collect();
+                origins.push(json!({ "origin": origin, "localStorage": local_storage }));
+            }
+        }
+        Ok(json!({ "ok": true, "cookies": cookies, "origins": origins }))
+    }
+
+    fn storage_state_set(&mut self, params: &Value) -> Result<Value> {
+        let ctx = self.resolve_context(params)?;
+        if let Some(cookies) = params.get("cookies") {
+            let cookies: Vec<crate::BrowserCookie> = serde_json::from_value(cookies.clone())
+                .map_err(|e| Error::invalid_params(format!("storage.state cookies: {e}")))?;
+            let _ = self.browser.engine_mut().set_cookies(ctx, cookies)?;
+        }
+        if let Some(origins) = params.get("origins").and_then(Value::as_array) {
+            for origin in origins {
+                let origin_url = origin.get("origin").and_then(Value::as_str).unwrap_or("");
+                let items = origin
+                    .get("localStorage")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                for tab in self
+                    .browser
+                    .tabs()
+                    .iter()
+                    .map(|t| t.page)
+                    .collect::<Vec<_>>()
+                {
+                    if self.browser.engine().context_of(tab)? != ctx {
+                        continue;
+                    }
+                    let page = self.browser.engine_mut().page_mut(tab)?;
+                    let map = page
+                        .local_storage_map_mut()
+                        .entry(origin_url.to_string())
+                        .or_default();
+                    for item in &items {
+                        if let (Some(name), Some(value)) = (
+                            item.get("name").and_then(Value::as_str),
+                            item.get("value").and_then(Value::as_str),
+                        ) {
+                            map.insert(name.to_string(), value.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(json!({ "ok": true }))
+    }
+
+    fn contexts_create(&mut self) -> Result<Value> {
+        let id = self.browser.engine_mut().new_context(None);
+        self.push_event("context.created", json!({ "context": id.0 }));
+        Ok(json!({ "ok": true, "context": id.0 }))
+    }
+
+    fn contexts_list(&self) -> Result<Value> {
+        let ids: Vec<u64> = self
+            .browser
+            .engine()
+            .contexts()
+            .into_iter()
+            .map(|c| c.0)
+            .collect();
+        Ok(json!({ "ok": true, "contexts": ids }))
+    }
+
+    fn contexts_close(&mut self, params: &Value) -> Result<Value> {
+        let id = params
+            .get("context")
+            .and_then(Value::as_u64)
+            .ok_or_else(|| Error::invalid_params("contexts.close needs context"))?;
+        let closed = self.browser.engine_mut().free_context(crate::ContextId(id));
+        Ok(json!({ "ok": true, "closed": closed }))
+    }
+
+    fn events_subscribe(&mut self) -> Result<Value> {
+        let id = self.next_sub;
+        self.next_sub += 1;
+        Ok(json!({
+            "ok": true,
+            "subscriptionId": id,
+            "cursor": self.events.len(),
+        }))
+    }
+
+    fn events_since(&self, params: &Value) -> Result<Value> {
+        let cursor = params.get("cursor").and_then(Value::as_u64).unwrap_or(0) as usize;
+        let events = self.events.iter().skip(cursor).cloned().collect::<Vec<_>>();
+        Ok(json!({ "ok": true, "events": events, "cursor": self.events.len() }))
+    }
+
+    fn screenshot(&mut self) -> Result<Value> {
+        let tab = self
+            .browser
+            .active_tab()
+            .ok_or_else(|| Error::not_found("no active page"))?;
+        let page = tab.page;
+        let shot = self
+            .browser
+            .engine_mut()
+            .screenshot(page, &crate::ScreenshotOptions::default())?;
+        Ok(json!({
+            "ok": true,
+            "width": shot.width,
+            "height": shot.height,
+            "scale": shot.scale,
+            "pngBase64": shot.to_json().get("pngBase64").cloned().unwrap_or(json!("")),
+        }))
+    }
+
     fn event(&mut self, params: &Value) -> Result<Value> {
         let event: NativeEvent = serde_json::from_value(params.clone())
             .map_err(|e| Error::invalid_params(format!("event: {e}")))?;
@@ -215,9 +459,7 @@ fn observation_envelope(obs: crate::EngineObservation) -> Result<Value> {
         .map_err(|e| Error::internal(format!("observation encode: {e}")))?;
     if let Some(obj) = value.as_object_mut() {
         obj.insert("ok".into(), json!(true));
-        if let Some(epoch) = obj.get("documentEpoch").cloned() {
-            obj.insert("generation".into(), epoch);
-        }
+        obj.remove("generation");
         if let Some(settled) = obj.get("settled").cloned()
             && settled.is_object()
         {
@@ -258,6 +500,7 @@ impl BrowserServiceListener {
             EngineConfig {
                 offline: true,
                 policy: crate::NetworkPolicy::permissive(),
+                shaper: crate::ShaperKind::System,
                 ..EngineConfig::default()
             },
         )
@@ -585,6 +828,7 @@ fn parse_code(code: &str) -> ErrorCode {
         "not_found" => ErrorCode::NotFound,
         "invalid_params" => ErrorCode::InvalidParams,
         "target_detached" => ErrorCode::TargetDetached,
+        "ref_stale" => ErrorCode::RefStale,
         "target_ambiguous" => ErrorCode::TargetAmbiguous,
         "backend_unavailable" => ErrorCode::BackendUnavailable,
         "capability_unsupported" => ErrorCode::CapabilityUnsupported,
@@ -701,6 +945,7 @@ mod tests {
         assert_eq!(id["chromium"], false);
         assert_eq!(id["electron"], false);
         assert_eq!(id["service"], "browser-service");
+        assert_eq!(id["shaper"], "system");
         assert_eq!(id["page"], page);
     }
 
@@ -1023,6 +1268,47 @@ mod tests {
             })
             .unwrap_or("")
             .to_owned()
+    }
+
+    #[test]
+    fn cookies_storage_contexts_and_events_are_real() {
+        let mut service = BrowserService::new();
+        service
+            .handle(
+                "pages.open",
+                &json!({"html":"<p>hi</p>","url":"https://cookie.test/"}),
+            )
+            .expect("open");
+        let set = service
+            .handle(
+                "cookies.set",
+                &json!({"cookies":[{
+                    "name":"sid",
+                    "value":"abc",
+                    "domain":"cookie.test",
+                    "path":"/",
+                    "secure":false,
+                    "httpOnly":false
+                }]}),
+            )
+            .expect("set");
+        assert_eq!(set["imported"], 1);
+        let got = service.handle("cookies.get", &json!({})).expect("get");
+        assert_eq!(got["cookies"][0]["name"], "sid");
+        let state = service
+            .handle("storage.state.get", &json!({}))
+            .expect("state");
+        assert_eq!(state["cookies"][0]["value"], "abc");
+        let sub = service.handle("events.subscribe", &json!({})).expect("sub");
+        assert!(sub["subscriptionId"].as_u64().unwrap() >= 1);
+        let ev = service
+            .handle("events.since", &json!({"cursor":0}))
+            .expect("since");
+        assert!(ev["events"].as_array().unwrap().len() >= 1);
+        let ctx = service.handle("contexts.create", &json!({})).expect("ctx");
+        assert!(ctx["context"].as_u64().unwrap() >= 1);
+        let list = service.handle("contexts.list", &json!({})).expect("list");
+        assert!(list["contexts"].as_array().unwrap().len() >= 2);
     }
 
     fn score_unseen_name(obs: &crate::Observation) -> Option<String> {

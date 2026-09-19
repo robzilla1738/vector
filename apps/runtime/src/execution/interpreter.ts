@@ -8,7 +8,7 @@ import {
   type Step,
   type StepOutcome,
 } from "@vector/contracts";
-import type { DriverPage } from "@vector/browser-driver";
+import type { DriverPage } from "@vector/engine-client";
 import type { makeStepRunner } from "./executor.js";
 
 type StepRunner = ReturnType<typeof makeStepRunner>;

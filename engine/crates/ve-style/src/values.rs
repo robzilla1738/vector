@@ -648,7 +648,7 @@ impl VerticalAlign {
 }
 
 /// A computed `grid-row-start` / `grid-column-end` value.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum GridLine {
     /// Auto-placed.
     #[default]
@@ -657,6 +657,65 @@ pub enum GridLine {
     Line(i32),
     /// Span this many tracks from the opposite edge.
     Span(u32),
+    /// A named line or `grid-template-areas` name.
+    Named(String),
+}
+
+/// Computed `grid-template-areas` (`none` is empty).
+#[derive(Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct GridTemplateAreas {
+    /// Rows of cell names (`.` cells are stored as `"."`).
+    pub rows: Vec<Vec<String>>,
+}
+
+impl GridTemplateAreas {
+    /// No areas.
+    #[must_use]
+    pub fn is_none(&self) -> bool {
+        self.rows.is_empty()
+    }
+
+    /// Column count from the longest row.
+    #[must_use]
+    pub fn column_count(&self) -> u16 {
+        self.rows.iter().map(|r| r.len() as u16).max().unwrap_or(0)
+    }
+
+    /// Row count.
+    #[must_use]
+    pub fn row_count(&self) -> u16 {
+        self.rows.len() as u16
+    }
+
+    /// Named areas as `(name, row_start, row_end, col_start, col_end)` in
+    /// 1-based grid lines.
+    #[must_use]
+    pub fn named_boxes(&self) -> Vec<(String, u16, u16, u16, u16)> {
+        let mut boxes: std::collections::BTreeMap<String, (u16, u16, u16, u16)> =
+            std::collections::BTreeMap::new();
+        for (r, row) in self.rows.iter().enumerate() {
+            let row_i = (r as u16) + 1;
+            for (c, name) in row.iter().enumerate() {
+                if name == "." || name.is_empty() {
+                    continue;
+                }
+                let col_i = (c as u16) + 1;
+                boxes
+                    .entry(name.clone())
+                    .and_modify(|b| {
+                        b.0 = b.0.min(row_i);
+                        b.1 = b.1.max(row_i + 1);
+                        b.2 = b.2.min(col_i);
+                        b.3 = b.3.max(col_i + 1);
+                    })
+                    .or_insert((row_i, row_i + 1, col_i, col_i + 1));
+            }
+        }
+        boxes
+            .into_iter()
+            .map(|(name, (rs, re, cs, ce))| (name, rs, re, cs, ce))
+            .collect()
+    }
 }
 
 /// One component of the `content` property.
@@ -725,6 +784,46 @@ impl Content {
     }
 }
 
+/// CSS 2.1 `clip` (`auto` or `rect()`), used on absolutely positioned boxes.
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum CssClip {
+    /// `clip: auto` — no additional clip.
+    #[default]
+    Auto,
+    /// `clip: rect(top, right, bottom, left)` in border-box coordinates.
+    Rect {
+        /// Offset from the top border edge.
+        top: f32,
+        /// Offset from the left border edge to the right clip edge.
+        right: f32,
+        /// Offset from the top border edge to the bottom clip edge.
+        bottom: f32,
+        /// Offset from the left border edge.
+        left: f32,
+    },
+}
+
+impl CssClip {
+    /// Resolves the clip rectangle in the same space as `border`.
+    #[must_use]
+    pub fn to_rect(self, border: ve_core::Rect) -> Option<ve_core::Rect> {
+        match self {
+            Self::Auto => None,
+            Self::Rect {
+                top,
+                right,
+                bottom,
+                left,
+            } => Some(ve_core::Rect::new(
+                border.x() + left,
+                border.y() + top,
+                (right - left).max(0.0),
+                (bottom - top).max(0.0),
+            )),
+        }
+    }
+}
+
 /// The computed `clip-path` (only `inset()` is understood).
 #[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub enum ClipPath {
@@ -744,6 +843,143 @@ pub enum ClipPath {
     },
 }
 
+/// One computed `box-shadow` (offset + blur + colour). `none` is the zero value.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct BoxShadow {
+    /// Horizontal offset in CSS pixels.
+    pub dx: f32,
+    /// Vertical offset in CSS pixels.
+    pub dy: f32,
+    /// Blur radius in CSS pixels.
+    pub blur: f32,
+    /// Shadow colour.
+    pub color: Rgba,
+}
+
+impl Default for BoxShadow {
+    fn default() -> Self {
+        Self {
+            dx: 0.0,
+            dy: 0.0,
+            blur: 0.0,
+            color: Rgba::TRANSPARENT,
+        }
+    }
+}
+
+impl BoxShadow {
+    /// `box-shadow: none` or a fully transparent zero shadow.
+    #[must_use]
+    pub fn is_none(self) -> bool {
+        self.color.is_transparent() && self.dx == 0.0 && self.dy == 0.0 && self.blur == 0.0
+    }
+}
+
+/// Computed `background-image` (`none`, `url(...)`, or a linear gradient).
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum BackgroundImage {
+    /// `none`
+    #[default]
+    None,
+    /// `url(...)`
+    Url(String),
+    /// `linear-gradient(...)` with stops as (offset 0–1, colour).
+    LinearGradient(Vec<(f32, Rgba)>),
+}
+
+impl BackgroundImage {
+    /// Whether this is `none`.
+    #[must_use]
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
+}
+
+/// Computed `background-size`.
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum BackgroundSize {
+    /// `auto` (intrinsic size).
+    #[default]
+    Auto,
+    /// Scale to cover the box.
+    Cover,
+    /// Scale to fit inside the box.
+    Contain,
+    /// Explicit width / height (`auto` on one axis keeps aspect).
+    Size {
+        /// Width.
+        width: LengthPercentageAuto,
+        /// Height.
+        height: LengthPercentageAuto,
+    },
+}
+
+/// Computed `background-position` (`0% 0%` is top-left).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct BackgroundPosition {
+    /// Horizontal offset.
+    pub x: LengthPercentage,
+    /// Vertical offset.
+    pub y: LengthPercentage,
+}
+
+impl Default for BackgroundPosition {
+    fn default() -> Self {
+        Self {
+            x: LengthPercentage::ZERO,
+            y: LengthPercentage::ZERO,
+        }
+    }
+}
+
+keyword_enum! {
+    /// The `background-clip` property.
+    BackgroundClip {
+        /// Clip to the border box.
+        BorderBox = "border-box",
+        /// Clip to the padding box.
+        PaddingBox = "padding-box",
+        /// Clip to the content box.
+        ContentBox = "content-box",
+    }
+}
+
+keyword_enum! {
+    /// The `background-origin` property.
+    BackgroundOrigin {
+        /// Position relative to the border box.
+        BorderBox = "border-box",
+        /// Position relative to the padding box (initial).
+        PaddingBox = "padding-box",
+        /// Position relative to the content box.
+        ContentBox = "content-box",
+    }
+}
+
+keyword_enum! {
+    /// The `background-repeat` property.
+    BackgroundRepeat {
+        /// Tile on both axes.
+        Repeat = "repeat",
+        /// No tiling.
+        NoRepeat = "no-repeat",
+        /// Tile horizontally.
+        RepeatX = "repeat-x",
+        /// Tile vertically.
+        RepeatY = "repeat-y",
+    }
+}
+
+/// Computed `filter` (`none` or `blur(Npx)`).
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum Filter {
+    /// `none`
+    #[default]
+    None,
+    /// `blur(radius)`
+    Blur(f32),
+}
+
 /// One `transform` function (only the geometry-affecting subset).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum TransformOp {
@@ -751,6 +987,8 @@ pub enum TransformOp {
     Translate(LengthPercentage, LengthPercentage),
     /// `scale(x, y)` about the transform origin (box centre).
     Scale(f32, f32),
+    /// `rotate(θ)` about the transform origin, radians clockwise-from-x.
+    Rotate(f32),
 }
 
 keyword_enum! {
@@ -809,6 +1047,8 @@ keyword_enum! {
         Right = "right",
         /// Baseline (treated as `start` for content distribution).
         Baseline = "baseline",
+        /// Legacy `-webkit-box-pack: justify`.
+        Justify = "justify",
     }
 }
 
@@ -865,6 +1105,392 @@ keyword_enum! {
 }
 
 keyword_enum! {
+    /// The `object-fit` property.
+    ObjectFit {
+        /// Stretch to fill.
+        Fill = "fill",
+        /// Preserve aspect, may letterbox.
+        Contain = "contain",
+        /// Preserve aspect, may crop.
+        Cover = "cover",
+        /// Intrinsic size, no scale.
+        None = "none",
+        /// Smaller of none/contain.
+        ScaleDown = "scale-down",
+    }
+}
+
+keyword_enum! {
+    /// The `contain` property (single keyword).
+    Contain {
+        /// No containment.
+        None = "none",
+        /// Size containment.
+        Size = "size",
+        /// Layout containment.
+        Layout = "layout",
+        /// Paint containment.
+        Paint = "paint",
+        /// Layout + paint.
+        Content = "content",
+        /// Size + layout + paint.
+        Strict = "strict",
+    }
+}
+
+impl Contain {
+    /// Size is independent of descendants.
+    #[must_use]
+    pub fn contains_size(self) -> bool {
+        matches!(self, Self::Size | Self::Strict)
+    }
+}
+
+keyword_enum! {
+    /// The `table-layout` property.
+    TableLayout {
+        /// Automatic (content-based) column sizing.
+        Auto = "auto",
+        /// Fixed: first-row specified widths, no content measurement.
+        Fixed = "fixed",
+    }
+}
+
+keyword_enum! {
+    /// The `empty-cells` property.
+    EmptyCells {
+        /// Paint empty cells.
+        Show = "show",
+        /// Hide background and borders of empty cells.
+        Hide = "hide",
+    }
+}
+
+keyword_enum! {
+    /// The `container-type` property.
+    ContainerType {
+        /// Not a container.
+        Normal = "normal",
+        /// Size container (width and height).
+        Size = "size",
+        /// Inline-size container.
+        InlineSize = "inline-size",
+    }
+}
+
+impl ContainerType {
+    /// Size containment as if `contain: size`.
+    #[must_use]
+    pub fn contains_size(self) -> bool {
+        matches!(self, Self::Size)
+    }
+}
+
+keyword_enum! {
+    /// The `field-sizing` property.
+    FieldSizing {
+        /// UA default control size.
+        Fixed = "fixed",
+        /// Size to the control's value.
+        Content = "content",
+    }
+}
+
+keyword_enum! {
+    /// The `resize` property.
+    Resize {
+        /// Not user-resizable.
+        None = "none",
+        /// Both axes.
+        Both = "both",
+        /// Inline axis.
+        Horizontal = "horizontal",
+        /// Block axis.
+        Vertical = "vertical",
+    }
+}
+
+/// Computed `offset-path` (`none` or a line from `path()`).
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum OffsetPath {
+    /// `none`
+    #[default]
+    None,
+    /// `path("M x0 y0 L x1 y1")` treated as a straight segment.
+    Line {
+        /// Start X.
+        x0: f32,
+        /// Start Y.
+        y0: f32,
+        /// End X.
+        x1: f32,
+        /// End Y.
+        y1: f32,
+    },
+}
+
+impl OffsetPath {
+    /// Translation for `offset-distance` along this path.
+    #[must_use]
+    pub fn translation(self, distance: LengthPercentage) -> (f32, f32) {
+        match self {
+            Self::None => (0.0, 0.0),
+            Self::Line { x0, y0, x1, y1 } => {
+                let dx = x1 - x0;
+                let dy = y1 - y0;
+                let len = (dx * dx + dy * dy).sqrt();
+                let t = if len < 1e-6 {
+                    0.0
+                } else {
+                    (distance.resolve(len) / len).clamp(0.0, 1.0)
+                };
+                (x0 + dx * t, y0 + dy * t)
+            }
+        }
+    }
+}
+
+/// Computed `shape-outside` (`none` or `inset()`).
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub enum ShapeOutside {
+    /// No wrap shape.
+    #[default]
+    None,
+    /// `inset(top right bottom left)` from the float margin box.
+    Inset {
+        /// Top inset.
+        top: LengthPercentage,
+        /// Right inset.
+        right: LengthPercentage,
+        /// Bottom inset.
+        bottom: LengthPercentage,
+        /// Left inset.
+        left: LengthPercentage,
+    },
+}
+
+impl ShapeOutside {
+    /// Exclusion rectangle inside `margin`.
+    #[must_use]
+    pub fn wrap_rect(self, margin: ve_core::Rect) -> ve_core::Rect {
+        match self {
+            Self::None => margin,
+            Self::Inset {
+                top,
+                right,
+                bottom,
+                left,
+            } => {
+                let t = top.resolve(margin.height());
+                let r = right.resolve(margin.width());
+                let b = bottom.resolve(margin.height());
+                let l = left.resolve(margin.width());
+                ve_core::Rect::new(
+                    margin.x() + l,
+                    margin.y() + t,
+                    (margin.width() - l - r).max(0.0),
+                    (margin.height() - t - b).max(0.0),
+                )
+            }
+        }
+    }
+}
+
+keyword_enum! {
+    /// The `text-orientation` property.
+    TextOrientation {
+        /// Mixed upright / sideways in vertical writing modes.
+        Mixed = "mixed",
+        /// Keep glyphs upright.
+        Upright = "upright",
+        /// Rotate glyphs 90 degrees in vertical writing modes.
+        Sideways = "sideways",
+    }
+}
+
+keyword_enum! {
+    /// `position-area` / `inset-area` region around an anchor.
+    PositionArea {
+        /// No area; use insets against the containing block.
+        None = "none",
+        /// Above the anchor.
+        Top = "top",
+        /// Below the anchor.
+        Bottom = "bottom",
+        /// Toward the inline start of the anchor.
+        Left = "left",
+        /// Toward the inline end of the anchor.
+        Right = "right",
+        /// Centered on the anchor.
+        Center = "center",
+    }
+}
+
+keyword_enum! {
+    /// `animation-fill-mode`.
+    AnimationFillMode {
+        /// No fill outside the active interval.
+        None = "none",
+        /// Hold the last keyframe after the animation ends.
+        Forwards = "forwards",
+        /// Apply the first keyframe during delay.
+        Backwards = "backwards",
+        /// Both.
+        Both = "both",
+    }
+}
+
+impl AnimationFillMode {
+    /// Fill during the delay interval.
+    #[must_use]
+    pub fn backwards(self) -> bool {
+        matches!(self, Self::Backwards | Self::Both)
+    }
+
+    /// Fill after the active interval.
+    #[must_use]
+    pub fn forwards(self) -> bool {
+        matches!(self, Self::Forwards | Self::Both)
+    }
+}
+
+keyword_enum! {
+    /// `animation-play-state`.
+    AnimationPlayState {
+        /// Animation progresses with time.
+        Running = "running",
+        /// Animation is frozen.
+        Paused = "paused",
+    }
+}
+
+keyword_enum! {
+    /// `animation-direction`.
+    AnimationDirection {
+        /// Play forwards.
+        Normal = "normal",
+        /// Play backwards.
+        Reverse = "reverse",
+        /// Alternate each iteration.
+        Alternate = "alternate",
+        /// Alternate, starting backwards.
+        AlternateReverse = "alternate-reverse",
+    }
+}
+
+keyword_enum! {
+    /// `isolation`.
+    Isolation {
+        /// Auto stacking.
+        Auto = "auto",
+        /// New stacking context.
+        Isolate = "isolate",
+    }
+}
+
+keyword_enum! {
+    /// `mix-blend-mode`.
+    MixBlendMode {
+        /// Source over, no mixing.
+        Normal = "normal",
+        /// Multiply.
+        Multiply = "multiply",
+        /// Screen.
+        Screen = "screen",
+        /// Overlay.
+        Overlay = "overlay",
+        /// Darken.
+        Darken = "darken",
+        /// Lighten.
+        Lighten = "lighten",
+        /// Color dodge.
+        ColorDodge = "color-dodge",
+        /// Color burn.
+        ColorBurn = "color-burn",
+        /// Hard light.
+        HardLight = "hard-light",
+        /// Soft light.
+        SoftLight = "soft-light",
+        /// Difference.
+        Difference = "difference",
+        /// Exclusion.
+        Exclusion = "exclusion",
+        /// Hue.
+        Hue = "hue",
+        /// Saturation.
+        Saturation = "saturation",
+        /// Color.
+        Color = "color",
+        /// Luminosity.
+        Luminosity = "luminosity",
+    }
+}
+
+keyword_enum! {
+    /// `grid-auto-flow`.
+    GridAutoFlow {
+        /// Fill rows.
+        Row = "row",
+        /// Fill columns.
+        Column = "column",
+        /// Dense row packing (`dense` / `row dense`).
+        RowDense = "dense",
+        /// Dense column packing.
+        ColumnDense = "column-dense",
+    }
+}
+
+keyword_enum! {
+    /// `column-span`.
+    ColumnSpan {
+        /// Stay in one column.
+        None = "none",
+        /// Span the full multicol container.
+        All = "all",
+    }
+}
+
+keyword_enum! {
+    /// `text-decoration-style` / `column-rule-style`.
+    TextDecorationStyle {
+        /// Single solid line.
+        Solid = "solid",
+        /// Two parallel lines.
+        Double = "double",
+        /// Dots.
+        Dotted = "dotted",
+        /// Dashes.
+        Dashed = "dashed",
+        /// Wave.
+        Wavy = "wavy",
+    }
+}
+
+keyword_enum! {
+    /// `background-attachment`.
+    BackgroundAttachment {
+        /// Scroll with the element.
+        Scroll = "scroll",
+        /// Fixed to the viewport.
+        Fixed = "fixed",
+        /// Scroll with the element's ancestor padding box.
+        Local = "local",
+    }
+}
+
+keyword_enum! {
+    /// The `content-visibility` property.
+    ContentVisibility {
+        /// Paint and lay out normally.
+        Visible = "visible",
+        /// Skip painting; size-contain.
+        Hidden = "hidden",
+        /// Skip painting when off-screen.
+        Auto = "auto",
+    }
+}
+
+keyword_enum! {
     /// The `pointer-events` property.
     PointerEvents {
         /// Normal hit testing.
@@ -889,6 +1515,38 @@ keyword_enum! {
 }
 
 keyword_enum! {
+    /// The `scrollbar-width` property.
+    ScrollbarWidth {
+        /// Platform default.
+        Auto = "auto",
+        /// Thin scrollbar.
+        Thin = "thin",
+        /// Hidden scrollbar, element still scrolls.
+        None = "none",
+        /// Legacy `-ms-overflow-style: scrollbar`.
+        Scrollbar = "scrollbar",
+        /// Legacy `-ms-overflow-style: -ms-autohiding-scrollbar`.
+        MsAutohiding = "-ms-autohiding-scrollbar",
+    }
+}
+
+keyword_enum! {
+    /// The `user-select` property.
+    UserSelect {
+        /// Browser default.
+        Auto = "auto",
+        /// Selection disabled.
+        None = "none",
+        /// Text may be selected.
+        Text = "text",
+        /// Select the whole element.
+        All = "all",
+        /// Contain selection to the element.
+        Contain = "contain",
+    }
+}
+
+keyword_enum! {
     /// The `text-transform` property.
     TextTransform {
         /// As written.
@@ -899,6 +1557,530 @@ keyword_enum! {
         Lowercase = "lowercase",
         /// Title-case each word.
         Capitalize = "capitalize",
+    }
+}
+
+keyword_enum! {
+    /// `font-variant` (first keyword only).
+    FontVariant {
+        /// No variant.
+        Normal = "normal",
+        /// Render as small capitals.
+        SmallCaps = "small-caps",
+    }
+}
+
+keyword_enum! {
+    /// `text-align-last`.
+    TextAlignLast {
+        /// Use `text-align`.
+        Auto = "auto",
+        /// Start edge.
+        Start = "start",
+        /// End edge.
+        End = "end",
+        /// Left.
+        Left = "left",
+        /// Right.
+        Right = "right",
+        /// Center.
+        Center = "center",
+        /// Justify (treated as start).
+        Justify = "justify",
+    }
+}
+
+keyword_enum! {
+    /// `scroll-behavior`.
+    ScrollBehavior {
+        /// Instant scroll.
+        Auto = "auto",
+        /// Smooth scroll.
+        Smooth = "smooth",
+    }
+}
+
+keyword_enum! {
+    /// `appearance`.
+    Appearance {
+        /// UA widget.
+        Auto = "auto",
+        /// No native widget.
+        None = "none",
+    }
+}
+
+keyword_enum! {
+    /// `hyphens`.
+    Hyphens {
+        /// No hyphenation.
+        None = "none",
+        /// Soft hyphens only.
+        Manual = "manual",
+        /// Automatic plus soft hyphens.
+        Auto = "auto",
+    }
+}
+
+keyword_enum! {
+    /// `text-wrap`.
+    TextWrap {
+        /// Wrap.
+        Wrap = "wrap",
+        /// Do not wrap.
+        Nowrap = "nowrap",
+        /// Balance line lengths.
+        Balance = "balance",
+    }
+}
+
+keyword_enum! {
+    /// `image-rendering`.
+    ImageRendering {
+        /// UA default.
+        Auto = "auto",
+        /// Crisp nearest-neighbour.
+        Pixelated = "pixelated",
+        /// Crisp edges.
+        CrispEdges = "crisp-edges",
+    }
+}
+
+keyword_enum! {
+    /// `color-scheme`.
+    PreferredColorScheme {
+        /// Normal.
+        Normal = "normal",
+        /// Light.
+        Light = "light",
+        /// Dark.
+        Dark = "dark",
+    }
+}
+
+keyword_enum! {
+    /// `overscroll-behavior`.
+    OverscrollBehavior {
+        /// Default rubber-band.
+        Auto = "auto",
+        /// Contain overscroll.
+        Contain = "contain",
+        /// No overscroll.
+        None = "none",
+    }
+}
+
+keyword_enum! {
+    /// `touch-action`.
+    TouchAction {
+        /// Browser default.
+        Auto = "auto",
+        /// No panning.
+        None = "none",
+        /// Pan X.
+        PanX = "pan-x",
+        /// Pan Y.
+        PanY = "pan-y",
+        /// Manipulation.
+        Manipulation = "manipulation",
+    }
+}
+
+keyword_enum! {
+    /// `text-underline-position`.
+    TextUnderlinePosition {
+        /// UA default.
+        Auto = "auto",
+        /// Below the alphabetic baseline.
+        Under = "under",
+        /// Font metrics.
+        FromFont = "from-font",
+    }
+}
+
+keyword_enum! {
+    /// `font-stretch`.
+    FontStretch {
+        /// 50%.
+        UltraCondensed = "ultra-condensed",
+        /// 62.5%.
+        ExtraCondensed = "extra-condensed",
+        /// 75%.
+        Condensed = "condensed",
+        /// 87.5%.
+        SemiCondensed = "semi-condensed",
+        /// 100%.
+        Normal = "normal",
+        /// 112.5%.
+        SemiExpanded = "semi-expanded",
+        /// 125%.
+        Expanded = "expanded",
+        /// 150%.
+        ExtraExpanded = "extra-expanded",
+        /// 200%.
+        UltraExpanded = "ultra-expanded",
+    }
+}
+
+impl FontStretch {
+    /// Width multiplier applied to shaped advance.
+    #[must_use]
+    pub fn factor(self) -> f32 {
+        match self {
+            Self::UltraCondensed => 0.5,
+            Self::ExtraCondensed => 0.625,
+            Self::Condensed => 0.75,
+            Self::SemiCondensed => 0.875,
+            Self::Normal => 1.0,
+            Self::SemiExpanded => 1.125,
+            Self::Expanded => 1.25,
+            Self::ExtraExpanded => 1.5,
+            Self::UltraExpanded => 2.0,
+        }
+    }
+}
+
+keyword_enum! {
+    /// `font-variant-ligatures`.
+    FontVariantLigatures {
+        /// No ligatures.
+        None = "none",
+        /// Common ligatures.
+        Normal = "normal",
+        /// Common ligatures on.
+        CommonLigatures = "common-ligatures",
+        /// Common ligatures off.
+        NoCommonLigatures = "no-common-ligatures",
+    }
+}
+
+impl FontVariantLigatures {
+    /// Whether `fi`/`fl`/`ff` collapse to a ligature advance.
+    #[must_use]
+    pub fn collapses(self) -> bool {
+        matches!(self, Self::Normal | Self::CommonLigatures)
+    }
+}
+
+keyword_enum! {
+    /// `font-variant-numeric`.
+    FontVariantNumeric {
+        /// Default figures.
+        Normal = "normal",
+        /// Tabular figures.
+        TabularNums = "tabular-nums",
+        /// Oldstyle figures.
+        OldstyleNums = "oldstyle-nums",
+    }
+}
+
+keyword_enum! {
+    /// `font-kerning`.
+    FontKerning {
+        /// UA default (on).
+        Auto = "auto",
+        /// Enable kerning.
+        Normal = "normal",
+        /// Disable kerning.
+        None = "none",
+    }
+}
+
+impl FontKerning {
+    /// Whether pair kerning is applied.
+    #[must_use]
+    pub fn applies(self) -> bool {
+        !matches!(self, Self::None)
+    }
+}
+
+keyword_enum! {
+    /// `scroll-snap-type` (axis or `none`).
+    ScrollSnapType {
+        /// No snapping.
+        None = "none",
+        /// Snap on X.
+        X = "x",
+        /// Snap on Y.
+        Y = "y",
+        /// Snap on both axes.
+        Both = "both",
+        /// Mandatory Y snap.
+        Mandatory = "mandatory",
+    }
+}
+
+keyword_enum! {
+    /// `scroll-snap-align`.
+    ScrollSnapAlign {
+        /// No snap target.
+        None = "none",
+        /// Snap to start.
+        Start = "start",
+        /// Snap to center.
+        Center = "center",
+        /// Snap to end.
+        End = "end",
+    }
+}
+
+keyword_enum! {
+    /// `break-before` / `page-break-before`.
+    BreakBefore {
+        /// Auto.
+        Auto = "auto",
+        /// Force a column break.
+        Column = "column",
+        /// Force a page break.
+        Page = "page",
+        /// Avoid a break.
+        Avoid = "avoid",
+    }
+}
+
+keyword_enum! {
+    /// `break-inside` / `page-break-inside`.
+    BreakInside {
+        /// Auto.
+        Auto = "auto",
+        /// Avoid breaking.
+        Avoid = "avoid",
+    }
+}
+
+keyword_enum! {
+    /// `text-rendering`.
+    TextRendering {
+        /// UA default.
+        Auto = "auto",
+        /// Speed.
+        OptimizeSpeed = "optimizeSpeed",
+        /// Legibility.
+        OptimizeLegibility = "optimizeLegibility",
+        /// Geometric precision.
+        GeometricPrecision = "geometricPrecision",
+    }
+}
+
+keyword_enum! {
+    /// `-webkit-font-smoothing` / `-moz-osx-font-smoothing`.
+    FontSmoothing {
+        /// UA default.
+        Auto = "auto",
+        /// Grayscale.
+        Antialiased = "antialiased",
+        /// Subpixel.
+        SubpixelAntialiased = "subpixel-antialiased",
+        /// Off.
+        None = "none",
+        /// macOS grayscale alias.
+        Grayscale = "grayscale",
+    }
+}
+
+keyword_enum! {
+    /// `transform-style`.
+    TransformStyle {
+        /// Flatten.
+        Flat = "flat",
+        /// Preserve 3D.
+        Preserve3d = "preserve-3d",
+    }
+}
+
+keyword_enum! {
+    /// `backface-visibility`.
+    BackfaceVisibility {
+        /// Paint the back face.
+        Visible = "visible",
+        /// Hide the back face.
+        Hidden = "hidden",
+    }
+}
+
+keyword_enum! {
+    /// `hanging-punctuation`.
+    HangingPunctuation {
+        /// No hanging.
+        None = "none",
+        /// Hang the first mark.
+        First = "first",
+        /// Hang the last mark.
+        Last = "last",
+    }
+}
+
+keyword_enum! {
+    /// `text-emphasis` (first keyword).
+    TextEmphasis {
+        /// No marks.
+        None = "none",
+        /// Filled dot.
+        Dot = "dot",
+        /// Filled circle.
+        Filled = "filled",
+        /// Circle.
+        Circle = "circle",
+    }
+}
+
+keyword_enum! {
+    /// `-webkit-box-orient`.
+    BoxOrient {
+        /// Row.
+        Horizontal = "horizontal",
+        /// Column.
+        Vertical = "vertical",
+        /// Inline axis.
+        InlineAxis = "inline-axis",
+        /// Block axis.
+        BlockAxis = "block-axis",
+    }
+}
+
+keyword_enum! {
+    /// `transform-box`.
+    TransformBox {
+        /// Border box.
+        BorderBox = "border-box",
+        /// Fill / content box.
+        FillBox = "fill-box",
+        /// Content box.
+        ContentBox = "content-box",
+        /// Stroke box.
+        StrokeBox = "stroke-box",
+        /// View box.
+        ViewBox = "view-box",
+    }
+}
+
+keyword_enum! {
+    /// `vector-effect`.
+    VectorEffect {
+        /// Scale with transforms.
+        None = "none",
+        /// Keep stroke width constant.
+        NonScalingStroke = "non-scaling-stroke",
+    }
+}
+
+keyword_enum! {
+    /// `speak`.
+    Speak {
+        /// Speak.
+        Normal = "normal",
+        /// Silent.
+        None = "none",
+        /// Spell out.
+        SpellOut = "spell-out",
+    }
+}
+
+keyword_enum! {
+    /// `forced-color-adjust`.
+    ForcedColorAdjust {
+        /// Allow forced colors.
+        Auto = "auto",
+        /// Keep author colors.
+        None = "none",
+    }
+}
+
+impl TextEmphasis {
+    /// Mark drawn above each character, if any.
+    #[must_use]
+    pub fn mark(self) -> Option<char> {
+        match self {
+            Self::None => None,
+            Self::Dot | Self::Filled => Some('•'),
+            Self::Circle => Some('◦'),
+        }
+    }
+}
+
+keyword_enum! {
+    /// `text-justify`.
+    TextJustify {
+        /// UA default (inter-word).
+        Auto = "auto",
+        /// No added spacing.
+        None = "none",
+        /// Space between words.
+        InterWord = "inter-word",
+        /// Distribute across the line.
+        Distribute = "distribute",
+    }
+}
+
+keyword_enum! {
+    /// `print-color-adjust`.
+    PrintColorAdjust {
+        /// Allow UA adjustments.
+        Economy = "economy",
+        /// Keep author colors.
+        Exact = "exact",
+    }
+}
+
+keyword_enum! {
+    /// `font-display`.
+    FontDisplay {
+        /// UA default.
+        Auto = "auto",
+        /// Swap immediately.
+        Swap = "swap",
+        /// Block then swap.
+        Block = "block",
+        /// Optional.
+        Optional = "optional",
+        /// Fallback.
+        Fallback = "fallback",
+    }
+}
+
+keyword_enum! {
+    /// `font-optical-sizing`.
+    FontOpticalSizing {
+        /// Enable.
+        Auto = "auto",
+        /// Disable.
+        None = "none",
+    }
+}
+
+keyword_enum! {
+    /// `font-synthesis`.
+    FontSynthesis {
+        /// Allow synthetic faces.
+        Auto = "auto",
+        /// No synthetic faces.
+        None = "none",
+        /// Weight only.
+        Weight = "weight",
+        /// Style only.
+        Style = "style",
+    }
+}
+
+keyword_enum! {
+    /// `ruby-position`.
+    RubyPosition {
+        /// Above.
+        Over = "over",
+        /// Below.
+        Under = "under",
+        /// Alternate.
+        Alternate = "alternate",
+    }
+}
+
+keyword_enum! {
+    /// `math-style`.
+    MathStyle {
+        /// Normal.
+        Normal = "normal",
+        /// Compact.
+        Compact = "compact",
     }
 }
 
@@ -1665,5 +2847,125 @@ mod tests {
             Display::from_keyword("INLINE-block"),
             Some(Display::InlineBlock)
         );
+    }
+}
+
+keyword_enum! {
+    /// `-webkit-overflow-scrolling`.
+    OverflowScrolling {
+        /// Platform default scrolling.
+        Auto = "auto",
+        /// Momentum scrolling.
+        Touch = "touch",
+    }
+}
+
+keyword_enum! {
+    /// `-webkit-touch-callout`.
+    TouchCallout {
+        /// Show the callout.
+        Default = "default",
+        /// Suppress the callout.
+        None = "none",
+    }
+}
+
+keyword_enum! {
+    /// `mask-composite` / `-webkit-mask-composite`.
+    MaskComposite {
+        /// Source over destination.
+        Add = "add",
+        /// Source minus destination.
+        Subtract = "subtract",
+        /// Intersection.
+        Intersect = "intersect",
+        /// Symmetric difference.
+        Exclude = "exclude",
+        /// Legacy source-over.
+        SourceOver = "source-over",
+        /// Legacy xor.
+        Xor = "xor",
+    }
+}
+
+keyword_enum! {
+    /// `color-interpolation-filters`.
+    ColorInterpolationFilters {
+        /// User-agent default.
+        Auto = "auto",
+        /// sRGB.
+        Srgb = "srgb",
+        /// Linear RGB.
+        LinearRgb = "linearrgb",
+    }
+}
+
+keyword_enum! {
+    /// `font-variant-east-asian` (first keyword).
+    FontVariantEastAsian {
+        /// No east-asian variant.
+        Normal = "normal",
+        /// JIS78 glyphs.
+        Jis78 = "jis78",
+        /// JIS83 glyphs.
+        Jis83 = "jis83",
+        /// JIS90 glyphs.
+        Jis90 = "jis90",
+        /// JIS04 glyphs.
+        Jis04 = "jis04",
+        /// Simplified Chinese.
+        Simplified = "simplified",
+        /// Traditional Chinese.
+        Traditional = "traditional",
+        /// Full-width forms.
+        FullWidth = "full-width",
+        /// Proportional-width forms.
+        ProportionalWidth = "proportional-width",
+        /// Ruby variants.
+        Ruby = "ruby",
+    }
+}
+
+keyword_enum! {
+    /// `scroll-snap-stop`.
+    ScrollSnapStop {
+        /// Pass through snap points.
+        Normal = "normal",
+        /// Always stop at the snap point.
+        Always = "always",
+    }
+}
+
+keyword_enum! {
+    /// `fill-rule`.
+    FillRule {
+        /// Non-zero winding.
+        Nonzero = "nonzero",
+        /// Even-odd.
+        Evenodd = "evenodd",
+    }
+}
+
+keyword_enum! {
+    /// `stroke-linecap`.
+    StrokeLinecap {
+        /// Flat ends.
+        Butt = "butt",
+        /// Semicircle ends.
+        Round = "round",
+        /// Square projection.
+        Square = "square",
+    }
+}
+
+keyword_enum! {
+    /// `stroke-linejoin`.
+    StrokeLinejoin {
+        /// Extended outer edges.
+        Miter = "miter",
+        /// Circular join.
+        Round = "round",
+        /// Cut corner.
+        Bevel = "bevel",
     }
 }

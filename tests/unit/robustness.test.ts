@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { applyMigrations, EventBus, executeProgram, openDb, Repo, RunCoordinator } from "@vector/runtime";
 import type { ModelClient } from "@vector/runtime";
-import type { DriverPage, } from "@vector/browser-driver";
+import type { DriverPage, } from "@vector/engine-client";
 import type { Observation } from "@vector/contracts";
 
 const memRepo = () => new Repo(openDb(":memory:"));
@@ -102,6 +102,7 @@ describe("RunCoordinator.failActive (P1-10)", () => {
       repo, events,
       pages: { observe: vi.fn(async () => obs()), execute: vi.fn(), capture: vi.fn(), livePageIds: () => ["p1"], get: () => ({ viewStatus: "visible" }) } as never,
       model: () => model, defaultModel: () => "m", recoveryModel: () => undefined, recordModelCall: () => {},
+      grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     });
     const run = await coordinator.start({ goal: "g", pageIds: ["p1"] });
     for (let i = 0; i < 50 && !seen; i++) await new Promise((r) => setTimeout(r, 10));

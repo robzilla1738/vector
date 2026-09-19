@@ -1,0 +1,49 @@
+{
+  "appleSilicon": true,
+  "commandAck": {
+    "p50": 47.614459,
+    "p95": 48.086709,
+    "samples": [
+      46.579,
+      46.683042,
+      47.9965,
+      47.581209,
+      47.620458,
+      47.614459,
+      48.086709,
+      47.248582999999996
+    ],
+    "unit": "ms"
+  },
+  "host": "aarch64",
+  "idleCpu": {
+    "needsFrame": false,
+    "percent": 0.0,
+    "windowMs": 1000
+  },
+  "navSoak": {
+    "finalRssBytes": 561184768,
+    "growthPct": 0.0,
+    "n": 1000,
+    "warmupN": 50,
+    "warmupRssBytes": 561184768
+  },
+  "notes": "This-host budgets at 1440x900 CSS px @2x. Idle CPU uses the GUI Wait path (sleep when needs_frame is false) with an off-screen animating tab. Command ack is ⌘K then Escape. Peak RSS includes the cargo-test harness after 100 TodoMVC-shaped open/close. Soak is 1000 engine.open+close after 50 warmup.",
+  "os": "macos",
+  "peakRss": {
+    "after100TodoBytes": 561184768,
+    "baselineBytes": 560250880,
+    "peakBytes": 561184768,
+    "peakMb": 535.1875
+  },
+  "review": "ROADMAP §6",
+  "rustcDebug": false,
+  "security_mode": "production",
+  "test": "writes_section_6_idle_command_rss_soak",
+  "todoIterations": 100,
+  "viewport": {
+    "cssHeight": 900,
+    "cssWidth": 1440,
+    "deviceScale": 2
+  }
+}

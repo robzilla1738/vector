@@ -1,7 +1,7 @@
 import { createCipheriv, createHash, pbkdf2Sync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { chromeEpochToUnix, CookieService, decryptValue, mapSameSite } from "@vector/runtime";
-import type { BrowserCookie, BrowserDriver } from "@vector/browser-driver";
+import type { BrowserCookie, BrowserDriver } from "@vector/engine-client";
 
 const KEY = pbkdf2Sync("test-password", "saltysalt", 1003, 16, "sha1");
 const IV = Buffer.alloc(16, 0x20);

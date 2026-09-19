@@ -75,7 +75,13 @@ export function compileAndAuthorize(
 ): DispatchPrep {
   const compiled = compileAction(opts);
   if ("rejected" in compiled) return compiled;
-  const auth = authorizeProgram(compiled.program.steps ?? [], opts.grants);
+  let origin = "";
+  try {
+    origin = opts.url ? new URL(opts.url).origin : "";
+  } catch {
+    origin = "";
+  }
+  const auth = authorizeProgram(compiled.program.steps ?? [], opts.grants, origin);
   if (!auth.ok) return { denied: auth.denied, effect: auth.effect };
   return compiled;
 }

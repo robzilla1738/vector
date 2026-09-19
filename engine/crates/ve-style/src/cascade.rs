@@ -35,6 +35,10 @@ use crate::stylesheet::{
 use crate::ua::UA_STYLESHEET;
 use crate::values::{Content, Direction};
 
+/// Author stylesheet parse budget. Atomic CSS dumps (Atlassian, etc.) otherwise
+/// dominate open→observe on an otherwise small document.
+pub const CSS_BYTES_CAP: usize = 64_000;
+
 /// `#todo-list` / `#new-todo` without combinators or other simple selectors.
 fn simple_id_selector(selector: &str) -> Option<&str> {
     let rest = selector.trim().strip_prefix('#')?;
@@ -160,6 +164,24 @@ impl StyleTree {
     #[must_use]
     pub fn is_displayed(&self, id: NodeId) -> bool {
         self.styles.get(&id).is_some_and(|s| s.is_displayed())
+    }
+
+    /// Overrides computed opacity after cascade (CSS animation interpolation).
+    pub fn override_opacity(&mut self, id: NodeId, opacity: f32) {
+        if let Some(style) = self.styles.get_mut(&id) {
+            let mut next = (**style).clone();
+            next.opacity = opacity.clamp(0.0, 1.0);
+            *style = Rc::new(next);
+        }
+    }
+
+    /// Overrides computed transform after cascade (CSS animation interpolation).
+    pub fn override_transform(&mut self, id: NodeId, transform: Vec<crate::TransformOp>) {
+        if let Some(style) = self.styles.get_mut(&id) {
+            let mut next = (**style).clone();
+            next.transform = transform;
+            *style = Rc::new(next);
+        }
     }
 
     /// The document revision this tree was computed for.
@@ -328,7 +350,7 @@ impl RuleSet {
                 match rule {
                     CssRule::Style(s) => out.push((origin, s)),
                     CssRule::Media(m) if m.query.evaluate(env) => walk(&m.rules, origin, env, out),
-                    CssRule::Media(_) | CssRule::Keyframes(_) => {}
+                    CssRule::Media(_) | CssRule::Keyframes(_) | CssRule::FontFace(_) => {}
                 }
             }
         }
@@ -451,6 +473,15 @@ impl StyleEngine {
 
     /// Adds an author stylesheet from source text.
     pub fn add_stylesheet(&mut self, css: &str) {
+        let css = if css.len() > CSS_BYTES_CAP {
+            let mut n = CSS_BYTES_CAP.min(css.len());
+            while n > 0 && !css.is_char_boundary(n) {
+                n -= 1;
+            }
+            &css[..n]
+        } else {
+            css
+        };
         self.author.push(parse_stylesheet(css, Origin::Author));
         self.generation += 1;
         self.rules.replace(None);
@@ -484,6 +515,21 @@ impl StyleEngine {
     #[must_use]
     pub fn author_stylesheet_count(&self) -> usize {
         self.author.len()
+    }
+
+    /// `@font-face` rules from every author stylesheet.
+    #[must_use]
+    pub fn font_faces(&self) -> Vec<&crate::stylesheet::FontFaceRule> {
+        self.author
+            .iter()
+            .flat_map(Stylesheet::font_faces)
+            .collect()
+    }
+
+    /// `@keyframes` rules from every author stylesheet.
+    #[must_use]
+    pub fn keyframes(&self) -> Vec<&crate::stylesheet::KeyframesRule> {
+        self.author.iter().flat_map(Stylesheet::keyframes).collect()
     }
 
     /// CSS coverage over every author stylesheet plus every `style=""`
@@ -1454,5 +1500,31 @@ mod tests {
             stats.recomputed
         );
         assert!(tree.styles.contains_key(&probe));
+    }
+
+    #[test]
+    fn animation_and_font_face_are_collected() {
+        let (doc, _) = document(
+            r#"
+            @font-face { font-family: X; src: url(/x.ttf); }
+            @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+            #box { animation: fade 1s; transition: opacity 200ms }
+            "#,
+            |doc, body| {
+                el(doc, body, "div", &[("id", "box")]);
+            },
+        );
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        assert_eq!(engine.font_faces().len(), 1);
+        assert_eq!(engine.font_faces()[0].family, "X");
+        assert_eq!(engine.keyframes().len(), 1);
+        let tree = engine.compute(&doc);
+        let box_id = engine.select(&doc, "#box").unwrap()[0];
+        let style = tree.style(box_id);
+        assert_eq!(style.animation_name, "fade");
+        assert_eq!(style.animation_duration_ms, 1000.0);
+        assert_eq!(style.transition_property, "opacity");
+        assert_eq!(style.transition_duration_ms, 200.0);
     }
 }

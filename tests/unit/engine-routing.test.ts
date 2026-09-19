@@ -9,8 +9,8 @@
  *   - returnObservation on the engine path is one native call
  */
 import { describe, it, expect, vi } from "vitest";
-import { EventBus, MemoryRouterStore, NullNativeBridge, PageService, Repo, Router, openDb, type DriverSet, type NativeBridge } from "@vector/runtime";
-import type { BrowserDriver, DriverPage, ExecuteProgramOptions, ExecuteProgramResult, PageRouting } from "@vector/browser-driver";
+import { EventBus, MemoryRouterStore, NullNativeBridge, PageService, Repo, Router, USER_RUN_GRANTS, openDb, type DriverSet, type NativeBridge } from "@vector/runtime";
+import type { BrowserDriver, DriverPage, ExecuteProgramOptions, ExecuteProgramResult, PageRouting } from "@vector/engine-client";
 import type { EngineMode, ObservationContent, Step } from "@vector/contracts";
 
 const content = (url: string, over: Partial<ObservationContent> = {}): ObservationContent => ({
@@ -126,7 +126,7 @@ function harness(mode: EngineMode, engineOpts: Partial<FakeOpts> = {}, native: N
   const drivers: DriverSet = { vector: vector.driver, chrome: null, engine: engine.driver };
   const store = new MemoryRouterStore();
   const router = new Router({ mode: () => mode, engineAvailable: () => true, store });
-  const pages = new PageService({ repo, events, native, drivers: () => drivers, router });
+  const pages = new PageService({ repo, events, native, drivers: () => drivers, router, grants: [...USER_RUN_GRANTS] });
   return { repo, events, pages, router, vector, engine, store };
 }
 
@@ -355,10 +355,11 @@ describe("engine execution path", () => {
     await h.pages.execute({ pageId: page.pageId, steps: [{ id: "a", op: "click", target: "r1" }, { id: "b", op: "press", key: "Enter" }] }, { onStep });
     expect(onStep).toHaveBeenCalledTimes(2);
     expect(onStep.mock.calls.map((c) => (c[1] as Step).id)).toEqual(["a", "b"]);
-    // model-authored programs still cannot reach page JS on the engine path
+    // evaluate is effect:destructive — USER_RUN_GRANTS do not include it, and
+    // allowEval:false still blocks it even if a destructive grant is present
     await expect(
       h.pages.execute({ pageId: page.pageId, steps: [{ id: "e", op: "evaluate", expression: "1" }] }, { allowEval: false }),
-    ).rejects.toMatchObject({ code: "invalid_params" });
+    ).rejects.toMatchObject({ code: "permission_denied" });
   });
 });
 

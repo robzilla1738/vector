@@ -5,10 +5,11 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 use ve_agent::{
     DEFAULT_VIEWPORT, Format, LoadedDocument, LoadedResource, Loader, NavigationRequest,
-    ObservationRequest, Page, SubresourceRequest,
+    ObservationRequest, Page, PendingSubresources, SubresourceRequest,
 };
 use ve_core::{Error, Result};
 
@@ -48,15 +49,22 @@ impl Loader for Site {
                     bytes: bytes.clone(),
                     content_type: Some((*ct).to_owned()),
                     status: 200,
+                    corp: None,
                 }),
                 None => Ok(LoadedResource {
                     url: r.url.clone(),
                     bytes: Vec::new(),
                     content_type: None,
                     status: 404,
+                    corp: None,
                 }),
             })
             .collect()
+    }
+    fn preconnect(&mut self, urls: &[String]) {
+        self.batches
+            .borrow_mut()
+            .push(urls.iter().map(|u| format!("preconnect:{u}")).collect());
     }
 }
 
@@ -185,4 +193,260 @@ fn a_failed_stylesheet_or_script_does_not_break_the_load() {
     assert_eq!(page.load_stats().failed, 2);
     assert!(page.scripts()[0].failed);
     assert!(page.document().element_by_id("p").is_some());
+}
+
+#[test]
+fn font_face_src_is_fetched_and_installed() {
+    let mut site = Site::default();
+    site.docs.insert(
+        "https://s.test/".into(),
+        r#"<!doctype html><html><head>
+             <style>
+               @font-face { font-family: InterTest; src: url("/fonts/inter.ttf"); }
+               p { font-family: InterTest, sans-serif }
+             </style>
+           </head><body><p id=p>Hi</p></body></html>"#
+            .into(),
+    );
+    let font_bytes = std::fs::read("/usr/share/fonts/truetype/macos/Inter-Regular.ttf")
+        .unwrap_or_else(|_| b"not-a-font".to_vec());
+    site.files.insert(
+        "https://s.test/fonts/inter.ttf".into(),
+        (font_bytes, "font/ttf"),
+    );
+    let batches = site.batches.clone();
+    let page = Page::open(1, Box::new(site), "https://s.test/", DEFAULT_VIEWPORT).unwrap();
+    let b = batches.borrow();
+    assert!(
+        b.iter()
+            .any(|batch| batch.iter().any(|u| u.ends_with("/fonts/inter.ttf"))),
+        "font-face src must be fetched: {b:?}"
+    );
+    assert_eq!(page.load_stats().fonts, 1);
+}
+
+#[test]
+fn css_animation_interpolates_translate_from_keyframes() {
+    let mut page = Page::from_html(
+        1,
+        r#"<style>
+            @keyframes slide { from { transform: translate(0px, 0px) } to { transform: translate(20px, 0px) } }
+            #box { animation: slide 1000ms; width: 10px; height: 10px }
+           </style><div id=box>x</div>"#,
+        None,
+        DEFAULT_VIEWPORT,
+    );
+    let id = page.document().element_by_id("box").unwrap();
+    let first = &page.style_tree().style(id).transform;
+    assert!(
+        matches!(first.first(), Some(ve_style::TransformOp::Translate(x, _)) if x.resolve(0.0).abs() < 1e-4),
+        "t=0 uses the from translate: {first:?}"
+    );
+    page.pump_virtual_time(500);
+    page.update();
+    let mid = &page.style_tree().style(id).transform;
+    match mid.first() {
+        Some(ve_style::TransformOp::Translate(x, _)) => {
+            let px = x.resolve(0.0);
+            assert!((px - 10.0).abs() < 1.0, "mid-animation translate was {px}");
+        }
+        other => panic!("expected translate, got {other:?}"),
+    }
+}
+
+#[test]
+fn css_animation_interpolates_opacity_from_keyframes() {
+    let mut page = Page::from_html(
+        1,
+        r#"<style>
+            @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+            #box { animation: fade 1000ms; width: 10px; height: 10px }
+           </style><div id=box>x</div>"#,
+        None,
+        DEFAULT_VIEWPORT,
+    );
+    let id = page.document().element_by_id("box").unwrap();
+    assert!(
+        (page.style_tree().style(id).opacity - 0.0).abs() < 1e-4,
+        "t=0 uses the from keyframe"
+    );
+    page.pump_virtual_time(500);
+    page.update();
+    let mid = page.style_tree().style(id).opacity;
+    assert!((mid - 0.5).abs() < 0.05, "mid-animation opacity was {mid}");
+}
+
+#[test]
+fn css_animation_respects_delay_and_fill() {
+    let mut page = Page::from_html(
+        1,
+        r#"<style>
+            @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+            #box { animation: fade 1000ms 500ms both; width: 10px; height: 10px }
+           </style><div id=box>x</div>"#,
+        None,
+        DEFAULT_VIEWPORT,
+    );
+    let id = page.document().element_by_id("box").unwrap();
+    assert!(
+        (page.style_tree().style(id).opacity - 0.0).abs() < 1e-4,
+        "backwards fill uses the from keyframe during delay"
+    );
+    page.pump_virtual_time(500);
+    page.update();
+    assert!(
+        (page.style_tree().style(id).opacity - 0.0).abs() < 0.05,
+        "animation starts after delay"
+    );
+    page.pump_virtual_time(500);
+    page.update();
+    let mid = page.style_tree().style(id).opacity;
+    assert!((mid - 0.5).abs() < 0.08, "mid-active opacity was {mid}");
+    page.pump_virtual_time(2000);
+    page.update();
+    assert!(
+        (page.style_tree().style(id).opacity - 1.0).abs() < 0.05,
+        "forwards fill holds the last keyframe"
+    );
+}
+
+#[test]
+fn preconnect_and_prefetch_are_issued() {
+    let mut site = Site::default();
+    site.docs.insert(
+        "https://s.test/".into(),
+        r#"<!doctype html><html><head>
+             <link rel=preconnect href="https://cdn.test">
+             <link rel="dns-prefetch" href="https://fonts.test">
+             <link rel=prefetch href="/next.html">
+             <link rel=stylesheet href="/css/a.css">
+           </head><body><p id=p>ok</p></body></html>"#
+            .into(),
+    );
+    site.files.insert(
+        "https://s.test/css/a.css".into(),
+        (b"#p{color:rgb(1,2,3)}".to_vec(), "text/css"),
+    );
+    site.files.insert(
+        "https://s.test/next.html".into(),
+        (b"<p>next</p>".to_vec(), "text/html"),
+    );
+    let batches = site.batches.clone();
+    let page = Page::open(1, Box::new(site), "https://s.test/", DEFAULT_VIEWPORT).unwrap();
+    let stats = page.load_stats();
+    assert_eq!(stats.preconnects, 2, "{stats:?}");
+    assert_eq!(stats.prefetches, 1, "{stats:?}");
+    assert_eq!(stats.stylesheets, 1, "{stats:?}");
+    let b = batches.borrow();
+    assert!(
+        b.iter().any(|batch| batch
+            .iter()
+            .any(|u| u.starts_with("preconnect:https://cdn.test"))),
+        "preconnect batch: {b:?}"
+    );
+    assert!(
+        b.iter()
+            .any(|batch| batch.iter().any(|u| u == "https://s.test/next.html")),
+        "prefetch in fetch batch: {b:?}"
+    );
+}
+
+struct SlowSite {
+    start_ms: Rc<RefCell<Option<u128>>>,
+}
+
+impl Loader for SlowSite {
+    fn load(&mut self, request: &NavigationRequest) -> Result<LoadedDocument> {
+        Ok(LoadedDocument::html(
+            &request.url,
+            r#"<!doctype html><img src="/i.png"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAIAAAAAAAAAAAAAAA==">"#,
+        ))
+    }
+
+    fn start_subresources(&mut self, requests: &[SubresourceRequest]) -> PendingSubresources {
+        *self.start_ms.borrow_mut() = Some(0);
+        let urls: Vec<String> = requests.iter().map(|r| r.url.clone()).collect();
+        let started = Instant::now();
+        let start_ms = self.start_ms.clone();
+        PendingSubresources::from_join(move || {
+            std::thread::sleep(Duration::from_millis(80));
+            *start_ms.borrow_mut() = Some(started.elapsed().as_millis());
+            urls.into_iter()
+                .map(|url| {
+                    Ok(LoadedResource {
+                        url,
+                        bytes: PNG_8X4.to_vec(),
+                        content_type: Some("image/png".into()),
+                        status: 200,
+                        corp: None,
+                    })
+                })
+                .collect()
+        })
+    }
+}
+
+#[test]
+fn start_subresources_returns_before_join_waits() {
+    let mut site = SlowSite {
+        start_ms: Rc::new(RefCell::new(None)),
+    };
+    let req = SubresourceRequest {
+        url: "https://s.test/i.png".into(),
+        kind: ve_agent::SubresourceKind::Image,
+        page: 1,
+        referrer: None,
+    };
+    let t0 = Instant::now();
+    let pending = site.start_subresources(&[req]);
+    assert!(
+        t0.elapsed() < Duration::from_millis(20),
+        "start_subresources must return before the 80ms body: {:?}",
+        t0.elapsed()
+    );
+    let t1 = Instant::now();
+    let out = site.join_subresources(pending);
+    assert!(
+        t1.elapsed() >= Duration::from_millis(80),
+        "join waits for the body: {:?}",
+        t1.elapsed()
+    );
+    assert_eq!(out.len(), 1);
+}
+
+#[test]
+fn page_starts_subresource_io_before_data_images() {
+    let start_ms = Rc::new(RefCell::new(None));
+    let site = SlowSite {
+        start_ms: start_ms.clone(),
+    };
+    let t0 = Instant::now();
+    let page = Page::open(1, Box::new(site), "https://s.test/", DEFAULT_VIEWPORT).unwrap();
+    let elapsed = t0.elapsed();
+    assert!(
+        elapsed >= Duration::from_millis(80),
+        "open waits at settle for the body: {elapsed:?}"
+    );
+    assert_eq!(page.load_stats().images, 2, "data URL + fetched PNG");
+    assert!(
+        start_ms.borrow().is_some(),
+        "start_subresources ran during open"
+    );
+}
+
+#[test]
+fn inline_svg_paints_rect_pixels() {
+    let mut page = Page::from_html(
+        1,
+        r##"<body style="margin:0"><svg width="8" height="8"><rect x="0" y="0" width="8" height="8" fill="#ff0000"/></svg></body>"##,
+        None,
+        ve_core::Size::new(32.0, 32.0),
+    );
+    let frame = page.present_frame(false).unwrap();
+    assert_eq!(
+        frame.pixel(2, 2),
+        Some([255, 0, 0, 255]),
+        "inline svg rect must paint: {:?}",
+        frame.pixel(2, 2)
+    );
 }

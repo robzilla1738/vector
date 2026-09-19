@@ -29,8 +29,8 @@ import {
   tryReuseSkill,
   type DriverSet,
 } from "@vector/runtime";
-import type { ObservationContent, SetMember, Step } from "@vector/contracts";
-import type { BrowserDriver, DriverPage, ExecuteProgramResult } from "@vector/browser-driver";
+import type { ObservationContent, Program, SetMember, Step } from "@vector/contracts";
+import type { BrowserDriver, DriverPage, ExecuteProgramResult } from "@vector/engine-client";
 
 const obs = (opts?: { ref?: string; name?: string; url?: string }): ObservationContent =>
   ({
@@ -219,6 +219,16 @@ describe("Gate D permissions and durable writes", () => {
     if (!auth.ok) expect(auth.effect).toBe("write");
   });
 
+  it("honours origin and expiresAt on structured grants (H2-C4)", () => {
+    const click = [{ id: "c", op: "click", target: "r1" }] satisfies Program["steps"];
+    const scoped = [{ effect: "write" as const, origin: "https://app.test", scope: "*", expiresAt: 0 }];
+    expect(authorizeProgram(click, scoped, "https://app.test").ok).toBe(true);
+    expect(authorizeProgram(click, scoped, "https://evil.test").ok).toBe(false);
+    const expired = [{ effect: "write" as const, origin: "*", scope: "*", expiresAt: 1 }];
+    expect(authorizeProgram(click, expired, "https://app.test", 2).ok).toBe(false);
+    expect(authorizeProgram(click, ["effect:write"], "https://anywhere.test").ok).toBe(true);
+  });
+
   it("pages.execute is the permission chokepoint; RPC grants cannot expand it", async () => {
     const makePage = (pageId: string, url: string): DriverPage => ({
       identity: { pageId, targetId: "engine-perm", backend: "vector-engine" },
@@ -308,6 +318,103 @@ describe("Gate D permissions and durable writes", () => {
         grants: ["effect:write", "effect:*"],
       } as never),
     ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+    await expect(
+      pages.execute(
+        { pageId: opened.pageId, steps: [{ id: "c", op: "click", target: "r9" }] },
+        { runId: "run_unsolicited_does_not_expand_page_grants" },
+      ),
+    ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+  });
+
+  it("runs.start grants write; unsolicited pages.execute stays read-only", async () => {
+    let clicked = 0;
+    const makePage = (pageId: string, url: string): DriverPage => ({
+      identity: { pageId, targetId: "engine-run-grant", backend: "vector-engine" },
+      url: () => url,
+      title: async () => "counter",
+      isAttached: () => true,
+      navigate: async () => {},
+      back: async () => {},
+      forward: async () => {},
+      reload: async () => {},
+      stop: async () => {},
+      click: async () => {
+        clicked++;
+      },
+      dblclick: async () => {},
+      hover: async () => {},
+      fill: async () => {},
+      typeText: async () => {},
+      press: async () => {},
+      check: async () => {},
+      uncheck: async () => {},
+      select: async () => {},
+      scroll: async () => {},
+      dragTo: async () => {},
+      clickPoint: async () => {},
+      uploadFiles: async () => {},
+      waitFor: async () => ({ ok: true, timedOut: false }),
+      waitForDownload: async () => ({ suggestedFilename: "f" }),
+      handleDialog: async () => {},
+      collectScroll: async () => ({ items: [], collected: 0 }),
+      screenshot: async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }),
+      observe: async () => obs({ url }) as unknown as ObservationContent,
+      expandRef: async () => [],
+      extract: async () => ({ t: "ok" }),
+      evaluate: async () => null,
+      setEvents: () => {},
+      dispose: async () => {},
+      executeProgram: async (steps) => {
+        clicked += steps.filter((s) => s.op === "click").length;
+        return {
+          status: "completed",
+          steps: steps.map((s) => ({
+            stepId: s.id,
+            op: s.op,
+            status: "ok",
+            startedAt: 1,
+            durationMs: 1,
+          })),
+        } as ExecuteProgramResult;
+      },
+    });
+    const driver: BrowserDriver = {
+      backend: "vector-engine",
+      connect: async () => {},
+      disconnect: async () => {},
+      isConnected: () => true,
+      listTargets: async () => [],
+      createTarget: async () => "engine-run-grant",
+      routingOf: () => ({ requiresScript: false }),
+      attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/counter"),
+    };
+    const repo = new Repo(openDb(":memory:"));
+    const pages = new PageService({
+      repo,
+      events: new EventBus(repo),
+      native: new NullNativeBridge(),
+      grants: ["effect:read"],
+      grantsForRun: ["effect:read", "effect:write", "effect:egress"],
+      drivers: () => ({ vector: null, chrome: null, engine: driver }),
+      router: new Router({
+        mode: () => "always",
+        engineAvailable: () => true,
+        store: new MemoryRouterStore(),
+      }),
+    });
+    const opened = await pages.open({ url: "https://app.test/counter", background: true, ownedByRuntime: true });
+    await expect(
+      pages.execute({
+        pageId: opened.pageId,
+        steps: [{ id: "c", op: "click", target: "r9" }],
+      }),
+    ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+    const run = await pages.execute(
+      { pageId: opened.pageId, steps: [{ id: "c", op: "click", target: "r9" }] },
+      { runId: "run_user_started" },
+    );
+    expect(run.status).toBe("completed");
+    expect(clicked).toBe(1);
   });
 
   it("does not dispatch a second write with the same idempotency key", () => {
@@ -348,6 +455,14 @@ describe("Gate D permissions and durable writes", () => {
     });
     expect(read.skip).toBe(false);
     expect(read.intentId).toBeUndefined();
+    const nextObserve = beginConsequentialWrite(ledger, {
+      runId: "run1",
+      pageId: "p1",
+      documentEpoch: 2,
+      revision: 3,
+      steps,
+    });
+    expect(nextObserve.skip).toBe(false);
   });
 
   it("does not reuse a skill on a different origin", () => {
@@ -429,6 +544,29 @@ describe("Gate D fixture write counter", () => {
       const lost = restarted.begin({ runId: "run1", pageId: "p1", documentEpoch: 1, signature });
       expect(lost.duplicate).toBe(true);
       if (!lost.duplicate) {
+        await fetch(`${fixture.origin}/api/writes`, { method: "POST" });
+      }
+      const counted = (await (await fetch(`${fixture.origin}/api/writes`)).json()) as { writes: number };
+      expect(counted.writes).toBe(1);
+    } finally {
+      fixture.stop();
+    }
+  });
+
+  it("kill-9 mid-write is exactly one POST", async () => {
+    const fixture = await spawnFormsWriteCounter();
+    try {
+      const path = join(fixture.dir, "ledger-kill9.json");
+      const signature = stepSignature([{ op: "click", target: "pay" }]);
+      const first = new DurableWriteLedger(path);
+      const begun = first.begin({ runId: "run-k9", pageId: "p1", documentEpoch: 1, signature });
+      expect(begun.duplicate).toBe(false);
+      await fetch(`${fixture.origin}/api/writes`, { method: "POST" });
+      // Process dies before confirm() — the pending row is already on disk.
+      const afterKill = new DurableWriteLedger(path);
+      const replay = afterKill.begin({ runId: "run-k9", pageId: "p1", documentEpoch: 1, signature });
+      expect(replay.duplicate).toBe(true);
+      if (!replay.duplicate) {
         await fetch(`${fixture.origin}/api/writes`, { method: "POST" });
       }
       const counted = (await (await fetch(`${fixture.origin}/api/writes`)).json()) as { writes: number };
@@ -599,6 +737,7 @@ describe("Gate B/F one session without Chromium", () => {
       repo,
       events,
       native: new NullNativeBridge(),
+      grants: ["effect:read", "effect:write"],
       drivers: () => drivers,
       router,
     });

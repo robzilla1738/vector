@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { VectorError, type Predicate, type Program, type ProgramResult, type Step } from "@vector/contracts";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
+import { USER_RUN_GRANTS, type GrantSource } from "../agent/permissions.js";
 import { agentMayEgress } from "../agent/policy.js";
 import { evalPredicate } from "../execution/interpreter.js";
 import type { Repo } from "../store/repo.js";
@@ -58,6 +59,7 @@ const PRE_DISPATCH_CODES = new Set([
   "backend_unavailable",
   "not_found",
   "target_detached",
+  "ref_stale",
   "unsupported_op",
   "conflict",
   "permission_denied",
@@ -82,6 +84,8 @@ export class OperationService {
       translateSteps?: (pageId: string, steps: Step[]) => Step[];
       fetchJson?: (url: string, init?: RequestInit) => Promise<unknown>;
       egressAllowlist?: () => string[];
+      /** User-started invokes; defaults to USER_RUN_GRANTS like runs.start. */
+      grants?: GrantSource;
     },
   ) {}
 
@@ -526,6 +530,7 @@ export class OperationService {
         steps: saved.steps ?? [],
         observation: obs.content,
         url: live.url ?? obs.content.url,
+        grants: this.deps.grants ?? USER_RUN_GRANTS,
       });
       if ("rejected" in prepared) throw new VectorError("conflict", prepared.rejected);
       if ("denied" in prepared) throw new VectorError("permission_denied", prepared.denied);

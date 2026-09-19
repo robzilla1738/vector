@@ -40,6 +40,11 @@ beforeAll(() => {
       executed.push({ program, ctx });
       return { status: "completed" as const, steps: [], extracted: { fields: { done: true } } };
     },
+    extract: async () => ({ pageId: "p1", documentEpoch: 0, revision: 1, fields: { title: "x" } }),
+    waitFor: async () => ({ ok: true, timedOut: false, detail: "ready", status: "completed" }),
+    console: async () => ({ lines: [{ level: "log", message: "hi", atMs: 1 }] }),
+    dialog: async () => ({ action: "list" as const, dialogs: [], pending: null }),
+    network: async () => [],
   } as unknown as PageService;
   const sets = new SetService(repo, events, pages);
   const settings = {
@@ -128,6 +133,14 @@ describe("handler results conform to ResultSchemas", () => {
     await call("workspace.get");
     await call("runtime.describe");
     await call("history.clear");
+  });
+
+  it("pages.extract / waitFor / console / dialog / network", async () => {
+    await call("pages.extract", { pageId: "p1", fields: ["title"] });
+    await call("pages.waitFor", { pageId: "p1", condition: { kind: "settled" } });
+    await call("pages.console", { pageId: "p1" });
+    await call("pages.dialog", { pageId: "p1" });
+    await call("pages.network", { pageId: "p1" });
   });
 });
 

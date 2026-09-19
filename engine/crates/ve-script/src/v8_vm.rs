@@ -17,10 +17,11 @@
 #![allow(unsafe_code)]
 
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Once};
+use std::sync::{Arc, Once, OnceLock};
 use std::time::Duration;
 
 use crate::vm::{HostApi, JsValue, JsVm, ScriptError};
@@ -135,6 +136,32 @@ pub fn preload() {
     init_v8();
 }
 
+fn startup_snapshot_blob() -> Option<v8::StartupData> {
+    static BYTES: OnceLock<Option<Vec<u8>>> = OnceLock::new();
+    BYTES
+        .get_or_init(create_startup_snapshot)
+        .clone()
+        .map(v8::StartupData::from)
+}
+
+fn create_startup_snapshot() -> Option<Vec<u8>> {
+    init_v8();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut isolate = v8::Isolate::snapshot_creator(None, None);
+        {
+            v8::scope!(let scope, &mut isolate);
+            let context = v8::Context::new(scope, v8::ContextOptions::default());
+            let scope = &mut v8::ContextScope::new(scope, context);
+            scope.set_default_context(context);
+        }
+        isolate
+            .create_blob(v8::FunctionCodeHandling::Keep)
+            .map(|blob| blob.to_vec())
+    }))
+    .ok()
+    .flatten()
+}
+
 fn start_shared_watchdog() {
     // Placeholder: per-eval watchdog still uses a reused thread pool via spawn.
     // Preload forces the platform + this function to run before seccomp.
@@ -151,6 +178,28 @@ fn start_shared_watchdog() {
 /// isolate slot; only dereferenced inside the trampoline while the owning
 /// `eval_with_host`/`call_with_host` frame is alive.
 struct CurrentHost(*mut dyn HostApi);
+
+/// Host function names in registration order (trampoline looks up by index).
+struct HostFnNames(Vec<String>);
+
+/// JS timer callbacks persisted on the isolate (H1-A3).
+#[derive(Default)]
+struct TimerPins {
+    slots: RefCell<HashMap<u64, TimerPin>>,
+}
+
+/// ES module sources and compiled graph (H1-B2).
+#[derive(Default)]
+struct ModuleGraph {
+    sources: RefCell<HashMap<String, String>>,
+    compiled: RefCell<HashMap<String, v8::Global<v8::Module>>>,
+    script_urls: RefCell<HashMap<i32, String>>,
+}
+
+struct TimerPin {
+    func: v8::Global<v8::Value>,
+    args: v8::Global<v8::Value>,
+}
 
 /// V8 virtual machine.
 pub struct V8Vm {
@@ -199,8 +248,14 @@ impl V8Vm {
         if let Some(max) = max_bytes {
             params = params.heap_limits(0, max);
         }
+        if let Some(blob) = startup_snapshot_blob() {
+            params = params.snapshot_blob(blob);
+        }
         let mut isolate = v8::Isolate::new(params);
         isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
+        isolate.set_slot(TimerPins::default());
+        isolate.set_slot(ModuleGraph::default());
+        isolate.set_slot(HostFnNames(Vec::new()));
         let context = {
             v8::scope!(let scope, &mut isolate);
             let context = v8::Context::new(scope, v8::ContextOptions::default());
@@ -427,9 +482,22 @@ fn host_trampoline(
     // only invokes callbacks while a script is running inside that frame.
     let host: &mut dyn HostApi = unsafe { &mut *ptr };
     let index = usize::try_from(index).unwrap_or(usize::MAX);
+    let host_name = scope
+        .get_slot::<HostFnNames>()
+        .and_then(|names| names.0.get(index).cloned());
+    if host_name.as_deref() == Some("clearTimer") {
+        if let Some(id) = converted.first().and_then(JsValue::as_f64) {
+            drop_timer_pin(scope, id as u64);
+        }
+    }
     let result = catch_unwind(AssertUnwindSafe(|| host.call(index, &converted)));
     match result {
         Ok(Ok(value)) => {
+            if host_name.as_deref() == Some("setTimer") {
+                if let JsValue::Number(id) = &value {
+                    pin_timer_callback(scope, *id as u64, args.get(2), args.get(3));
+                }
+            }
             let v = from_js_value(scope, &value);
             rv.set(v);
         }
@@ -454,6 +522,716 @@ impl JsVm for V8Vm {
 
     fn eval(&mut self, source: &str, origin: &str) -> Result<JsValue, ScriptError> {
         self.with_host(None, |vm| vm.eval_inner(source, origin))
+    }
+
+    fn register_module(&mut self, url: &str, source: &str) {
+        let url = crate::normalize_module_url(url);
+        if let Some(graph) = self.isolate.get_slot::<ModuleGraph>() {
+            graph.sources.borrow_mut().insert(url, source.to_owned());
+        }
+    }
+
+    fn install_native_dom_bindings(&mut self) -> Result<(), ScriptError> {
+        self.run(|scope| {
+            let global = scope.get_current_context().global(scope);
+            let put = |scope: &mut v8::PinScope<'_, '_>,
+                       name: &str,
+                       func: v8::Local<'_, v8::Function>| {
+                let key = v8::String::new(scope, name)?;
+                global.set(scope, key.into(), func.into())?;
+                Some(())
+            };
+            let id_get = v8::FunctionTemplate::builder(native_element_id_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeIdGet", id_get)?;
+            let id_set = v8::FunctionTemplate::builder(native_element_id_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeIdSet", id_set)?;
+            let class_get = v8::FunctionTemplate::builder(native_element_class_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeClassGet", class_get)?;
+            let class_set = v8::FunctionTemplate::builder(native_element_class_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeClassSet", class_set)?;
+            let tag_get = v8::FunctionTemplate::builder(native_element_tag_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeTagGet", tag_get)?;
+            let text_get = v8::FunctionTemplate::builder(native_node_text_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeTextGet", text_get)?;
+            let text_set = v8::FunctionTemplate::builder(native_node_text_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeTextSet", text_set)?;
+            let get_attr = v8::FunctionTemplate::builder(native_element_get_attribute)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeGetAttribute", get_attr)?;
+            let set_attr = v8::FunctionTemplate::builder(native_element_set_attribute)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeSetAttribute", set_attr)?;
+            let remove_attr = v8::FunctionTemplate::builder(native_element_remove_attribute)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeRemoveAttribute", remove_attr)?;
+            let has_attr = v8::FunctionTemplate::builder(native_element_has_attribute)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeHasAttribute", has_attr)?;
+            let toggle_attr = v8::FunctionTemplate::builder(native_element_toggle_attribute)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeToggleAttribute", toggle_attr)?;
+            let node_type = v8::FunctionTemplate::builder(native_node_type_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNodeType", node_type)?;
+            let node_name = v8::FunctionTemplate::builder(native_node_name_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNodeName", node_name)?;
+            let node_value_get = v8::FunctionTemplate::builder(native_node_value_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNodeValueGet", node_value_get)?;
+            let node_value_set = v8::FunctionTemplate::builder(native_node_value_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNodeValueSet", node_value_set)?;
+            let connected = v8::FunctionTemplate::builder(native_node_is_connected)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeIsConnected", connected)?;
+            let inner_get = v8::FunctionTemplate::builder(native_element_inner_html_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeInnerHTMLGet", inner_get)?;
+            let inner_set = v8::FunctionTemplate::builder(native_element_inner_html_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeInnerHTMLSet", inner_set)?;
+            let outer_get = v8::FunctionTemplate::builder(native_element_outer_html_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeOuterHTMLGet", outer_get)?;
+            let outer_set = v8::FunctionTemplate::builder(native_element_outer_html_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeOuterHTMLSet", outer_set)?;
+            let matches = v8::FunctionTemplate::builder(native_element_matches)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeMatches", matches)?;
+            let contains = v8::FunctionTemplate::builder(native_node_contains)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeContains", contains)?;
+            let has_kids = v8::FunctionTemplate::builder(native_node_has_child_nodes)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeHasChildNodes", has_kids)?;
+            let equal = v8::FunctionTemplate::builder(native_node_is_equal_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeIsEqualNode", equal)?;
+            let pos = v8::FunctionTemplate::builder(native_node_compare_document_position)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCompareDocumentPosition", pos)?;
+            let lookup_prefix = v8::FunctionTemplate::builder(native_node_lookup_prefix)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeLookupPrefix", lookup_prefix)?;
+            let lookup_ns = v8::FunctionTemplate::builder(native_node_lookup_namespace_uri)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeLookupNamespaceURI", lookup_ns)?;
+            let local_name = v8::FunctionTemplate::builder(native_element_local_name)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeLocalName", local_name)?;
+            let prefix = v8::FunctionTemplate::builder(native_element_prefix)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativePrefix", prefix)?;
+            let ns_uri = v8::FunctionTemplate::builder(native_element_namespace_uri)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNamespaceURI", ns_uri)?;
+            let clone = v8::FunctionTemplate::builder(native_node_clone_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCloneNode", clone)?;
+            let qsa = v8::FunctionTemplate::builder(native_element_query_selector)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeQuerySelector", qsa)?;
+            let closest = v8::FunctionTemplate::builder(native_element_closest)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeClosest", closest)?;
+            let parent = v8::FunctionTemplate::builder(native_node_parent_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeParentNode", parent)?;
+            let first = v8::FunctionTemplate::builder(native_node_first_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeFirstChild", first)?;
+            let last = v8::FunctionTemplate::builder(native_node_last_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeLastChild", last)?;
+            let next = v8::FunctionTemplate::builder(native_node_next_sibling)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNextSibling", next)?;
+            let prev = v8::FunctionTemplate::builder(native_node_prev_sibling)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativePrevSibling", prev)?;
+            let first_el = v8::FunctionTemplate::builder(native_first_element_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeFirstElementChild", first_el)?;
+            let last_el = v8::FunctionTemplate::builder(native_last_element_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeLastElementChild", last_el)?;
+            let next_el = v8::FunctionTemplate::builder(native_next_element_sibling)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNextElementSibling", next_el)?;
+            let prev_el = v8::FunctionTemplate::builder(native_prev_element_sibling)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativePrevElementSibling", prev_el)?;
+            let by_id = v8::FunctionTemplate::builder(native_document_get_element_by_id)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeGetElementById", by_id)?;
+            let owner = v8::FunctionTemplate::builder(native_node_owner_document)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeOwnerDocument", owner)?;
+            let append = v8::FunctionTemplate::builder(native_node_append_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeAppendChild", append)?;
+            let insert = v8::FunctionTemplate::builder(native_node_insert_before)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeInsertBefore", insert)?;
+            let remove = v8::FunctionTemplate::builder(native_node_remove_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeRemoveChild", remove)?;
+            let replace = v8::FunctionTemplate::builder(native_node_replace_child)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeReplaceChild", replace)?;
+            let create_el = v8::FunctionTemplate::builder(native_document_create_element)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCreateElement", create_el)?;
+            let create_text = v8::FunctionTemplate::builder(native_document_create_text)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCreateTextNode", create_text)?;
+            let create_comment = v8::FunctionTemplate::builder(native_document_create_comment)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCreateComment", create_comment)?;
+            let create_ns = v8::FunctionTemplate::builder(native_document_create_element_ns)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCreateElementNS", create_ns)?;
+            let create_frag = v8::FunctionTemplate::builder(native_document_create_fragment)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCreateFragment", create_frag)?;
+            let import = v8::FunctionTemplate::builder(native_document_import_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeImportNode", import)?;
+            let adopt = v8::FunctionTemplate::builder(native_document_adopt_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeAdoptNode", adopt)?;
+            let root = v8::FunctionTemplate::builder(native_node_get_root_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeGetRootNode", root)?;
+            let qsa_all = v8::FunctionTemplate::builder(native_element_query_selector_all)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeQuerySelectorAll", qsa_all)?;
+            let normalize = v8::FunctionTemplate::builder(native_node_normalize)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNormalize", normalize)?;
+            let same = v8::FunctionTemplate::builder(native_node_is_same_node)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeIsSameNode", same)?;
+            let attr_names = v8::FunctionTemplate::builder(native_element_attr_names)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeAttrNames", attr_names)?;
+            let remove = v8::FunctionTemplate::builder(native_element_remove)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeRemove", remove)?;
+            let adj = v8::FunctionTemplate::builder(native_element_insert_adjacent_html)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeInsertAdjacentHTML", adj)?;
+            let document_el = v8::FunctionTemplate::builder(native_document_element)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeDocumentElement", document_el)?;
+            let body = v8::FunctionTemplate::builder(native_document_body)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeBody", body)?;
+            let children = v8::FunctionTemplate::builder(native_element_children)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeChildren", children)?;
+            let by_tag = v8::FunctionTemplate::builder(native_get_elements_by_tag_name)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeGetElementsByTagName", by_tag)?;
+            let by_class = v8::FunctionTemplate::builder(native_get_elements_by_class_name)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeGetElementsByClassName", by_class)?;
+            let title_get = v8::FunctionTemplate::builder(native_document_title_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeTitleGet", title_get)?;
+            let title_set = v8::FunctionTemplate::builder(native_document_title_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeTitleSet", title_set)?;
+            let head = v8::FunctionTemplate::builder(native_document_head)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeHead", head)?;
+            let url = v8::FunctionTemplate::builder(native_document_url)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeURL", url)?;
+            let cookie_get = v8::FunctionTemplate::builder(native_document_cookie_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCookieGet", cookie_get)?;
+            let cookie_set = v8::FunctionTemplate::builder(native_document_cookie_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeCookieSet", cookie_set)?;
+            let split = v8::FunctionTemplate::builder(native_text_split)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeSplitText", split)?;
+            let child_nodes = v8::FunctionTemplate::builder(native_node_child_nodes)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeChildNodes", child_nodes)?;
+            let box_metric = v8::FunctionTemplate::builder(native_element_box)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeBox", box_metric)?;
+            let set_scroll = v8::FunctionTemplate::builder(native_element_set_scroll)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeSetScroll", set_scroll)?;
+            let bounding = v8::FunctionTemplate::builder(native_element_bounding_rect)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeBoundingRect", bounding)?;
+            let dataset = v8::FunctionTemplate::builder(native_element_dataset)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeDataset", dataset)?;
+            let set_dataset = v8::FunctionTemplate::builder(native_element_set_dataset)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeSetDataset", set_dataset)?;
+            Some(())
+        })?;
+        self.eval(
+            r#"(function () {
+  if (typeof Element === "undefined") return;
+  var def = function (proto, name, get, set) {
+    Object.defineProperty(proto, name, {
+      configurable: true,
+      enumerable: true,
+      get: get,
+      set: set
+    });
+  };
+  def(Element.prototype, "id", globalThis.__veNativeIdGet, globalThis.__veNativeIdSet);
+  def(Element.prototype, "className", globalThis.__veNativeClassGet, globalThis.__veNativeClassSet);
+  Object.defineProperty(Element.prototype, "tagName", {
+    configurable: true,
+    enumerable: true,
+    get: globalThis.__veNativeTagGet
+  });
+  if (typeof Node !== "undefined") {
+    def(Node.prototype, "textContent", globalThis.__veNativeTextGet, globalThis.__veNativeTextSet);
+    def(Node.prototype, "nodeValue", globalThis.__veNativeNodeValueGet, globalThis.__veNativeNodeValueSet);
+    Object.defineProperty(Node.prototype, "nodeType", {
+      configurable: true,
+      enumerable: true,
+      get: globalThis.__veNativeNodeType
+    });
+    Object.defineProperty(Node.prototype, "nodeName", {
+      configurable: true,
+      enumerable: true,
+      get: globalThis.__veNativeNodeName
+    });
+    Object.defineProperty(Node.prototype, "isConnected", {
+      configurable: true,
+      enumerable: true,
+      get: globalThis.__veNativeIsConnected
+    });
+    Node.prototype.contains = globalThis.__veNativeContains;
+    Node.prototype.hasChildNodes = globalThis.__veNativeHasChildNodes;
+    Node.prototype.isEqualNode = globalThis.__veNativeIsEqualNode;
+    Node.prototype.compareDocumentPosition = globalThis.__veNativeCompareDocumentPosition;
+    Node.prototype.lookupPrefix = globalThis.__veNativeLookupPrefix;
+    Node.prototype.lookupNamespaceURI = globalThis.__veNativeLookupNamespaceURI;
+    Node.prototype.cloneNode = function (deep) {
+      var wrap = globalThis.__veWrap;
+      var h = globalThis.__veNativeCloneNode.call(this, !!deep);
+      return typeof wrap === "function" ? wrap(h) : h;
+    };
+  }
+  def(Element.prototype, "innerHTML", globalThis.__veNativeInnerHTMLGet, globalThis.__veNativeInnerHTMLSet);
+  def(Element.prototype, "outerHTML", globalThis.__veNativeOuterHTMLGet, globalThis.__veNativeOuterHTMLSet);
+  Element.prototype.getAttribute = globalThis.__veNativeGetAttribute;
+  Element.prototype.setAttribute = globalThis.__veNativeSetAttribute;
+  Element.prototype.removeAttribute = globalThis.__veNativeRemoveAttribute;
+  Element.prototype.hasAttribute = globalThis.__veNativeHasAttribute;
+  Element.prototype.toggleAttribute = globalThis.__veNativeToggleAttribute;
+  Element.prototype.matches = globalThis.__veNativeMatches;
+  Object.defineProperty(Element.prototype, "localName", {
+    configurable: true,
+    enumerable: true,
+    get: globalThis.__veNativeLocalName
+  });
+  Object.defineProperty(Element.prototype, "prefix", {
+    configurable: true,
+    enumerable: true,
+    get: globalThis.__veNativePrefix
+  });
+  Object.defineProperty(Element.prototype, "namespaceURI", {
+    configurable: true,
+    enumerable: true,
+    get: globalThis.__veNativeNamespaceURI
+  });
+  var wrapNode = function (h) {
+    var wrap = globalThis.__veWrap;
+    return typeof wrap === "function" ? wrap(h) : h;
+  };
+  var wrapList = function (handles) {
+    var out = [];
+    if (!handles) return out;
+    for (var i = 0; i < handles.length; i++) {
+      var n = wrapNode(handles[i]);
+      if (n) out.push(n);
+    }
+    out.item = function (i) { return this[i] || null; };
+    return out;
+  };
+  Element.prototype.querySelector = function (s) {
+    return wrapNode(globalThis.__veNativeQuerySelector.call(this, s));
+  };
+  Element.prototype.querySelectorAll = function (s) {
+    return wrapList(globalThis.__veNativeQuerySelectorAll.call(this, s));
+  };
+  Element.prototype.hasAttributes = function () {
+    return (globalThis.__veNativeAttrNames.call(this) || []).length > 0;
+  };
+  Element.prototype.getAttributeNames = function () {
+    return globalThis.__veNativeAttrNames.call(this) || [];
+  };
+  Element.prototype.remove = function () {
+    globalThis.__veNativeRemove.call(this);
+  };
+  Element.prototype.insertAdjacentHTML = function (pos, html) {
+    globalThis.__veNativeInsertAdjacentHTML.call(this, pos, html == null ? "" : String(html));
+  };
+  Element.prototype.getBoundingClientRect = function () {
+    return globalThis.__veNativeBoundingRect.call(this) || { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0 };
+  };
+  var boxMetric = function (which) {
+    return Number(globalThis.__veNativeBox.call(this, which)) || 0;
+  };
+  def(Element.prototype, "scrollTop", function () { return boxMetric.call(this, "scrollTop"); }, function (v) {
+    globalThis.__veNativeSetScroll.call(this, "y", Number(v) || 0);
+    try { this.dispatchEvent(new Event("scroll")); } catch (e) {}
+  });
+  def(Element.prototype, "scrollLeft", function () { return boxMetric.call(this, "scrollLeft"); }, function (v) {
+    globalThis.__veNativeSetScroll.call(this, "x", Number(v) || 0);
+    try { this.dispatchEvent(new Event("scroll")); } catch (e) {}
+  });
+  Object.defineProperty(Element.prototype, "clientWidth", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "clientWidth"); }
+  });
+  Object.defineProperty(Element.prototype, "clientHeight", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "clientHeight"); }
+  });
+  Object.defineProperty(Element.prototype, "offsetWidth", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "offsetWidth"); }
+  });
+  Object.defineProperty(Element.prototype, "offsetHeight", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "offsetHeight"); }
+  });
+  Object.defineProperty(Element.prototype, "offsetTop", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "offsetTop"); }
+  });
+  Object.defineProperty(Element.prototype, "offsetLeft", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "offsetLeft"); }
+  });
+  Object.defineProperty(Element.prototype, "scrollWidth", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "scrollWidth"); }
+  });
+  Object.defineProperty(Element.prototype, "scrollHeight", {
+    configurable: true, enumerable: true, get: function () { return boxMetric.call(this, "scrollHeight"); }
+  });
+  Object.defineProperty(Element.prototype, "dataset", {
+    configurable: true,
+    enumerable: true,
+    get: function () {
+      if (!this || this.__h == null) throw new TypeError("Illegal invocation");
+      var html = typeof HTMLElement !== "undefined" && this instanceof HTMLElement;
+      var svg = typeof SVGElement !== "undefined" && this instanceof SVGElement;
+      var math = typeof MathMLElement !== "undefined" && this instanceof MathMLElement;
+      if (!html && !svg && !math) return undefined;
+      var self = this;
+      var raw = globalThis.__veNativeDataset.call(this) || {};
+      return new Proxy(raw, {
+        set: function (t, k, v) {
+          if (typeof k !== "string") return false;
+          t[k] = String(v);
+          globalThis.__veNativeSetDataset.call(self, k, String(v));
+          return true;
+        },
+        deleteProperty: function (t, k) {
+          delete t[k];
+          var attr = "data-" + String(k).replace(/[A-Z]/g, function (c) { return "-" + c.toLowerCase(); });
+          globalThis.__veNativeRemoveAttribute.call(self, attr);
+          return true;
+        }
+      });
+    }
+  });
+  Element.prototype.closest = function (s) {
+    return wrapNode(globalThis.__veNativeClosest.call(this, s));
+  };
+    if (typeof Document !== "undefined") {
+    Document.prototype.querySelector = function (s) {
+      return wrapNode(globalThis.__veNativeQuerySelector.call(this, s));
+    };
+    Document.prototype.querySelectorAll = function (s) {
+      return wrapList(globalThis.__veNativeQuerySelectorAll.call(this, s));
+    };
+  }
+  if (typeof DocumentFragment !== "undefined") {
+    DocumentFragment.prototype.querySelector = function (s) {
+      return wrapNode(globalThis.__veNativeQuerySelector.call(this, s));
+    };
+    DocumentFragment.prototype.querySelectorAll = function (s) {
+      return wrapList(globalThis.__veNativeQuerySelectorAll.call(this, s));
+    };
+  }
+  var defNode = function (name, get) {
+    Object.defineProperty(Node.prototype, name, {
+      configurable: true,
+      enumerable: true,
+      get: get
+    });
+  };
+  defNode("parentNode", function () { return wrapNode(globalThis.__veNativeParentNode.call(this)); });
+  defNode("childNodes", function () { return wrapList(globalThis.__veNativeChildNodes.call(this)); });
+  defNode("firstChild", function () { return wrapNode(globalThis.__veNativeFirstChild.call(this)); });
+  defNode("lastChild", function () { return wrapNode(globalThis.__veNativeLastChild.call(this)); });
+  defNode("nextSibling", function () { return wrapNode(globalThis.__veNativeNextSibling.call(this)); });
+  defNode("previousSibling", function () { return wrapNode(globalThis.__veNativePrevSibling.call(this)); });
+  var defEl = function (proto, name, get) {
+    Object.defineProperty(proto, name, {
+      configurable: true,
+      enumerable: true,
+      get: get
+    });
+  };
+  defEl(Element.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
+  defEl(Element.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
+  defEl(Element.prototype, "nextElementSibling", function () { return wrapNode(globalThis.__veNativeNextElementSibling.call(this)); });
+  defEl(Element.prototype, "previousElementSibling", function () { return wrapNode(globalThis.__veNativePrevElementSibling.call(this)); });
+  defEl(Element.prototype, "children", function () { return wrapList(globalThis.__veNativeChildren.call(this)); });
+  var childCount = function () {
+    var c = globalThis.__veNativeChildren.call(this);
+    return c ? c.length : 0;
+  };
+  Object.defineProperty(Element.prototype, "childElementCount", {
+    configurable: true,
+    enumerable: true,
+    get: childCount
+  });
+  if (typeof HTMLElement !== "undefined") {
+    defEl(HTMLElement.prototype, "children", function () { return wrapList(globalThis.__veNativeChildren.call(this)); });
+    Object.defineProperty(HTMLElement.prototype, "childElementCount", {
+      configurable: true,
+      enumerable: true,
+      get: childCount
+    });
+  }
+  Element.prototype.getElementsByTagName = function (s) {
+    return wrapList(globalThis.__veNativeGetElementsByTagName.call(this, s));
+  };
+  Element.prototype.getElementsByClassName = function (s) {
+    return wrapList(globalThis.__veNativeGetElementsByClassName.call(this, s));
+  };
+  if (typeof Document !== "undefined") {
+    defEl(Document.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
+    defEl(Document.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
+    defEl(Document.prototype, "documentElement", function () { return wrapNode(globalThis.__veNativeDocumentElement.call(this)); });
+    defEl(Document.prototype, "body", function () { return wrapNode(globalThis.__veNativeBody.call(this)); });
+    defEl(Document.prototype, "head", function () { return wrapNode(globalThis.__veNativeHead.call(this)); });
+    def(Document.prototype, "title", globalThis.__veNativeTitleGet, globalThis.__veNativeTitleSet);
+    Object.defineProperty(Document.prototype, "URL", {
+      configurable: true,
+      enumerable: true,
+      get: globalThis.__veNativeURL
+    });
+    Object.defineProperty(Document.prototype, "documentURI", {
+      configurable: true,
+      enumerable: true,
+      get: globalThis.__veNativeURL
+    });
+    def(Document.prototype, "cookie", globalThis.__veNativeCookieGet, globalThis.__veNativeCookieSet);
+    if (typeof Text !== "undefined" && globalThis.__veNativeSplitText) {
+      Text.prototype.splitText = function (offset) {
+        offset |= 0;
+        var len = (this.data || "").length;
+        if (offset < 0 || offset > len) throw new DOMException("The index is not in the allowed range.", "IndexSizeError");
+        return wrapNode(globalThis.__veNativeSplitText.call(this, offset));
+      };
+    }
+    Document.prototype.getElementsByTagName = function (s) {
+      return wrapList(globalThis.__veNativeGetElementsByTagName.call(this, s));
+    };
+    Document.prototype.getElementsByClassName = function (s) {
+      return wrapList(globalThis.__veNativeGetElementsByClassName.call(this, s));
+    };
+    Document.prototype.getElementById = function (id) {
+      return wrapNode(globalThis.__veNativeGetElementById.call(this, id));
+    };
+    Document.prototype.createElement = function (name) {
+      var el = wrapNode(globalThis.__veNativeCreateElement.call(this, name));
+      if (el && String(name).toLowerCase() === "script") el._scriptCreated = true;
+      if (typeof globalThis.__veConstructCustom === "function") globalThis.__veConstructCustom(el);
+      return el;
+    };
+    Document.prototype.createTextNode = function (data) {
+      return wrapNode(globalThis.__veNativeCreateTextNode.call(this, data == null ? "" : String(data)));
+    };
+    Document.prototype.createComment = function (data) {
+      return wrapNode(globalThis.__veNativeCreateComment.call(this, data == null ? "" : String(data)));
+    };
+    Document.prototype.createElementNS = function (ns, name) {
+      var el = wrapNode(globalThis.__veNativeCreateElementNS.call(this, ns == null ? "" : String(ns), name));
+      if (typeof globalThis.__veConstructCustom === "function") globalThis.__veConstructCustom(el);
+      return el;
+    };
+    Document.prototype.createDocumentFragment = function () {
+      return wrapNode(globalThis.__veNativeCreateFragment.call(this));
+    };
+    Document.prototype.createAttribute = function (name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'createAttribute' on 'Document': 1 argument required, but only 0 present.");
+      }
+      return globalThis.__veMakeAttr(String(name), "", null, null);
+    };
+    Document.prototype.createAttributeNS = function (ns, name) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'createAttributeNS' on 'Document': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      return globalThis.__veMakeAttr(String(name), "", null, ns);
+    };
+    Document.prototype.importNode = function (n, deep) {
+      return wrapNode(globalThis.__veNativeImportNode.call(this, n, !!deep));
+    };
+    Document.prototype.adoptNode = function (n) {
+      if (n == null) throw new TypeError("Failed to execute 'adoptNode' on 'Document'");
+      if (n.nodeType === 9) throw new DOMException("Document nodes cannot be adopted.", "NotSupportedError");
+      return wrapNode(globalThis.__veNativeAdoptNode.call(this, n)) || n;
+    };
+  }
+  Node.prototype.getRootNode = function (opts) {
+    return wrapNode(globalThis.__veNativeGetRootNode.call(this, !!(opts && opts.composed))) || this;
+  };
+  Node.prototype.normalize = function () {
+    globalThis.__veNativeNormalize.call(this);
+  };
+  Node.prototype.isSameNode = function (n) {
+    return n != null && !!globalThis.__veNativeIsSameNode.call(this, n);
+  };
+  Node.prototype.isDefaultNamespace = function (ns) {
+    var found = globalThis.__veNativeLookupNamespaceURI.call(this, null);
+    if (ns == null || ns === "") return found == null;
+    return found === String(ns);
+  };
+  defNode("ownerDocument", function () { return wrapNode(globalThis.__veNativeOwnerDocument.call(this)); });
+  Node.prototype.appendChild = function (n) {
+    if (n && n.nodeType === 11) {
+      while (n.firstChild) this.appendChild(n.firstChild);
+      return n;
+    }
+    globalThis.__veNativeAppendChild.call(this, n);
+    if (typeof globalThis.__veUpgradeOne === "function") globalThis.__veUpgradeOne(n);
+    if (typeof globalThis.__vePrepareInserted === "function") globalThis.__vePrepareInserted(n);
+    return n;
+  };
+  Node.prototype.insertBefore = function (n, ref) {
+    if (n && n.nodeType === 11) {
+      while (n.firstChild) this.insertBefore(n.firstChild, ref);
+      return n;
+    }
+    globalThis.__veNativeInsertBefore.call(this, n, ref);
+    if (typeof globalThis.__veUpgradeOne === "function") globalThis.__veUpgradeOne(n);
+    if (typeof globalThis.__vePrepareInserted === "function") globalThis.__vePrepareInserted(n);
+    return n;
+  };
+  Node.prototype.removeChild = function (n) {
+    try { if (typeof globalThis.__veCancelPending === "function") globalThis.__veCancelPending(n); } catch (e) {}
+    globalThis.__veNativeRemoveChild.call(this, n);
+    return n;
+  };
+  Node.prototype.replaceChild = function (n, old) {
+    globalThis.__veNativeReplaceChild.call(this, n, old);
+    if (typeof globalThis.__veUpgradeOne === "function") globalThis.__veUpgradeOne(n);
+    return old;
+  };
+  if (typeof DocumentFragment !== "undefined") {
+    defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
+    defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
+  }
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,offsetWidth,offsetHeight,offsetTop,offsetLeft,scrollWidth,scrollHeight,getBoundingClientRect,dataset,createAttribute,createAttributeNS";
+})()"#,
+            "vector:dom-native",
+        )?;
+        Ok(())
     }
 
     fn call(&mut self, function: &str, args: &[JsValue]) -> Result<JsValue, ScriptError> {
@@ -492,6 +1270,7 @@ impl JsVm for V8Vm {
             Some(())
         });
         self.host_names.extend(owned);
+        self.isolate.set_slot(HostFnNames(self.host_names.clone()));
         result
     }
 
@@ -573,10 +1352,33 @@ impl JsVm for V8Vm {
         }
         self.parked = false;
     }
+
+    fn fire_timer_callback(
+        &mut self,
+        host: &mut dyn HostApi,
+        id: u64,
+    ) -> Result<JsValue, ScriptError> {
+        self.with_host(Some(host), |vm| vm.fire_timer_inner(id))
+    }
+
+    fn drop_timer_callback(&mut self, id: u64) {
+        if let Some(pins) = self.isolate.get_slot::<TimerPins>() {
+            pins.slots.borrow_mut().remove(&id);
+        }
+    }
+
+    fn clear_timer_callbacks(&mut self) {
+        if let Some(pins) = self.isolate.get_slot::<TimerPins>() {
+            pins.slots.borrow_mut().clear();
+        }
+    }
 }
 
 impl V8Vm {
     fn eval_inner(&mut self, source: &str, origin: &str) -> Result<JsValue, ScriptError> {
+        if origin.starts_with("module:") || looks_like_module(source) {
+            return self.eval_module_inner(source, origin);
+        }
         let source = source.to_owned();
         let origin = origin.to_owned();
         self.run(|scope| {
@@ -601,6 +1403,21 @@ impl V8Vm {
         })
     }
 
+    fn eval_module_inner(&mut self, source: &str, origin: &str) -> Result<JsValue, ScriptError> {
+        let source = source.to_owned();
+        let origin = origin.to_owned();
+        self.register_module(&origin, &source);
+        self.run(|scope| {
+            let module = compile_module_source(scope, &origin, &source)?;
+            let ok = module.instantiate_module(scope, module_resolve_callback)?;
+            if !ok {
+                return None;
+            }
+            let value = module.evaluate(scope)?;
+            Some(to_js_value(scope, value))
+        })
+    }
+
     fn call_inner(&mut self, function: &str, args: &[JsValue]) -> Result<JsValue, ScriptError> {
         let function = function.to_owned();
         let args = args.to_vec();
@@ -621,6 +1438,1425 @@ impl V8Vm {
             Some(to_js_value(scope, value))
         })
     }
+
+    fn fire_timer_inner(&mut self, id: u64) -> Result<JsValue, ScriptError> {
+        self.run(|scope| {
+            let (func_g, args_g) = {
+                let pins = scope.get_slot::<TimerPins>()?;
+                let slots = pins.slots.borrow();
+                let pin = slots.get(&id)?;
+                (pin.func.clone(), pin.args.clone())
+            };
+            let func = v8::Local::new(scope, &func_g);
+            let args_val = v8::Local::new(scope, &args_g);
+            if let Ok(js_fn) = v8::Local::<v8::Function>::try_from(func) {
+                let recv = v8::undefined(scope).into();
+                let argv = array_locals(scope, args_val);
+                let value = js_fn.call(scope, recv, &argv)?;
+                return Some(to_js_value(scope, value));
+            }
+            let src = func.to_rust_string_lossy(scope);
+            let code = v8::String::new(scope, &src)?;
+            let script = v8::Script::compile(scope, code, None)?;
+            let value = script.run(scope)?;
+            Some(to_js_value(scope, value))
+        })
+    }
+}
+
+fn array_locals<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    value: v8::Local<'s, v8::Value>,
+) -> Vec<v8::Local<'s, v8::Value>> {
+    let Ok(arr) = v8::Local::<v8::Array>::try_from(value) else {
+        return Vec::new();
+    };
+    let mut out = Vec::with_capacity(arr.length() as usize);
+    for i in 0..arr.length() {
+        let key = v8::Integer::new(scope, i as i32);
+        if let Some(item) = arr.get(scope, key.into()) {
+            out.push(item);
+        }
+    }
+    out
+}
+
+fn pin_timer_callback(
+    scope: &mut v8::PinScope<'_, '_>,
+    id: u64,
+    func: v8::Local<'_, v8::Value>,
+    args: v8::Local<'_, v8::Value>,
+) {
+    let pin = TimerPin {
+        func: v8::Global::new(scope, func),
+        args: v8::Global::new(scope, args),
+    };
+    if let Some(pins) = scope.get_slot::<TimerPins>() {
+        pins.slots.borrow_mut().insert(id, pin);
+    }
+}
+
+fn drop_timer_pin(scope: &mut v8::PinScope<'_, '_>, id: u64) {
+    if let Some(pins) = scope.get_slot::<TimerPins>() {
+        pins.slots.borrow_mut().remove(&id);
+    }
+}
+
+fn call_dom_host(scope: &mut v8::PinScope<'_, '_>, args: &[JsValue]) -> Option<JsValue> {
+    let index = scope
+        .get_slot::<HostFnNames>()?
+        .0
+        .iter()
+        .position(|n| n == "dom")?;
+    let CurrentHost(ptr) = scope.get_slot::<CurrentHost>().map(|h| CurrentHost(h.0))?;
+    let host: &mut dyn HostApi = unsafe { &mut *ptr };
+    host.call(index, args).ok()
+}
+
+fn object_handle(
+    scope: &mut v8::PinScope<'_, '_>,
+    this: v8::Local<'_, v8::Object>,
+) -> Option<JsValue> {
+    let key = v8::String::new(scope, "__h")?;
+    let value = this.get(scope, key.into())?;
+    Some(to_js_value(scope, value))
+}
+
+fn native_set_string(
+    scope: &mut v8::PinScope<'_, '_>,
+    rv: &mut v8::ReturnValue<'_, v8::Value>,
+    value: Option<JsValue>,
+) {
+    match value {
+        Some(JsValue::String(s)) => {
+            if let Some(v) = v8::String::new(scope, &s) {
+                rv.set(v.into());
+                return;
+            }
+        }
+        Some(JsValue::Null | JsValue::Undefined) => {}
+        _ => {}
+    }
+    rv.set_empty_string();
+}
+
+fn native_this_handle(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: &v8::FunctionCallbackArguments<'_>,
+) -> Option<JsValue> {
+    object_handle(scope, args.this())
+}
+
+fn native_element_id_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("getAttr"), handle, JsValue::from("id")],
+    );
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_element_id_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let value = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::from("")
+    };
+    let _ = call_dom_host(
+        scope,
+        &[JsValue::from("setAttr"), handle, JsValue::from("id"), value],
+    );
+}
+
+fn native_element_class_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("getAttr"), handle, JsValue::from("class")],
+    );
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_element_class_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let value = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::from("")
+    };
+    let _ = call_dom_host(
+        scope,
+        &[
+            JsValue::from("setAttr"),
+            handle,
+            JsValue::from("class"),
+            value,
+        ],
+    );
+}
+
+fn native_element_tag_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("tagName"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_node_text_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("textContent"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_node_text_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let value = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::from("")
+    };
+    let _ = call_dom_host(scope, &[JsValue::from("setTextContent"), handle, value]);
+}
+
+fn native_arg(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: &v8::FunctionCallbackArguments<'_>,
+    i: i32,
+) -> JsValue {
+    if args.length() > i {
+        to_js_value(scope, args.get(i))
+    } else {
+        JsValue::from("")
+    }
+}
+
+fn native_element_get_attribute(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("getAttr"), handle, name]);
+    match value {
+        Some(JsValue::String(s)) => {
+            if let Some(v) = v8::String::new(scope, &s) {
+                rv.set(v.into());
+                return;
+            }
+        }
+        Some(JsValue::Null | JsValue::Undefined) | None => {}
+        _ => {}
+    }
+    rv.set_null();
+}
+
+fn native_element_set_attribute(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let value = native_arg(scope, &args, 1);
+    let _ = call_dom_host(scope, &[JsValue::from("setAttr"), handle, name, value]);
+}
+
+fn native_element_remove_attribute(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("removeAttr"), handle, name]);
+}
+
+fn native_element_has_attribute(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("hasAttr"), handle, name]);
+    rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_element_toggle_attribute(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let force = if args.length() > 1 {
+        to_js_value(scope, args.get(1))
+    } else {
+        JsValue::Undefined
+    };
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("toggleAttribute"), handle, name, force],
+    );
+    rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_set_number(
+    scope: &mut v8::PinScope<'_, '_>,
+    rv: &mut v8::ReturnValue<'_, v8::Value>,
+    value: Option<JsValue>,
+    fallback: f64,
+) {
+    let n = match value {
+        Some(JsValue::Number(n)) => n,
+        _ => fallback,
+    };
+    rv.set(v8::Number::new(scope, n).into());
+}
+
+fn native_node_type_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        native_set_number(scope, &mut rv, None, 0.0);
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("nodeType"), handle]);
+    native_set_number(scope, &mut rv, value, 0.0);
+}
+
+fn native_node_name_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("nodeName"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_node_value_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("nodeValue"), handle]);
+    match value {
+        Some(JsValue::String(s)) => {
+            if let Some(v) = v8::String::new(scope, &s) {
+                rv.set(v.into());
+                return;
+            }
+        }
+        Some(JsValue::Null | JsValue::Undefined) | None => {}
+        _ => {}
+    }
+    rv.set_null();
+}
+
+fn native_node_value_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let value = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::from("")
+    };
+    let _ = call_dom_host(scope, &[JsValue::from("setNodeValue"), handle, value]);
+}
+
+fn native_node_is_connected(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("isConnected"), handle]);
+    rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_element_inner_html_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("innerHTML"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_element_inner_html_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let raw = if args.length() > 0 {
+        match to_js_value(scope, args.get(0)) {
+            JsValue::String(s) => s,
+            other => other.to_string(),
+        }
+    } else {
+        String::new()
+    };
+    let normalized = raw.replace("\r\n", "\n").replace('\r', "\n");
+    let _ = call_dom_host(
+        scope,
+        &[
+            JsValue::from("setInnerHTML"),
+            handle,
+            JsValue::from(normalized.as_str()),
+        ],
+    );
+}
+
+fn native_element_outer_html_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("outerHTML"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_element_outer_html_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let value = native_arg(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("setOuterHTML"), handle, value]);
+}
+
+fn native_element_matches(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let sel = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("matches"), handle, sel]);
+    rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_node_contains(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let other = if args.length() > 0 {
+        args.get(0)
+            .to_object(scope)
+            .and_then(|obj| object_handle(scope, obj))
+            .unwrap_or(JsValue::Null)
+    } else {
+        JsValue::Null
+    };
+    let value = call_dom_host(scope, &[JsValue::from("contains"), handle, other]);
+    rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_node_has_child_nodes(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("childNodes"), handle]);
+    rv.set_bool(matches!(value, Some(JsValue::Array(ref a)) if !a.is_empty()));
+}
+
+fn native_node_is_equal_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let other = if args.length() > 0 {
+        args.get(0)
+            .to_object(scope)
+            .and_then(|obj| object_handle(scope, obj))
+            .unwrap_or(JsValue::Null)
+    } else {
+        JsValue::Null
+    };
+    let value = call_dom_host(scope, &[JsValue::from("isEqualNode"), handle, other]);
+    rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_node_compare_document_position(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        native_set_number(scope, &mut rv, None, 1.0);
+        return;
+    };
+    let other = if args.length() > 0 {
+        args.get(0)
+            .to_object(scope)
+            .and_then(|obj| object_handle(scope, obj))
+    } else {
+        None
+    };
+    let Some(other) = other else {
+        native_set_number(scope, &mut rv, None, 1.0);
+        return;
+    };
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("compareDocumentPosition"), handle, other],
+    );
+    native_set_number(scope, &mut rv, value, 1.0);
+}
+
+fn native_set_string_or_null(
+    scope: &mut v8::PinScope<'_, '_>,
+    rv: &mut v8::ReturnValue<'_, v8::Value>,
+    value: Option<JsValue>,
+) {
+    match value {
+        Some(JsValue::String(s)) => {
+            if let Some(v) = v8::String::new(scope, &s) {
+                rv.set(v.into());
+                return;
+            }
+        }
+        Some(JsValue::Null | JsValue::Undefined) | None => {}
+        _ => {}
+    }
+    rv.set_null();
+}
+
+fn native_node_lookup_prefix(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let ns = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::Null
+    };
+    let value = call_dom_host(scope, &[JsValue::from("lookupPrefix"), handle, ns]);
+    native_set_string_or_null(scope, &mut rv, value);
+}
+
+fn native_node_lookup_namespace_uri(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let prefix = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::Null
+    };
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("lookupNamespaceURI"), handle, prefix],
+    );
+    native_set_string_or_null(scope, &mut rv, value);
+}
+
+fn native_set_handle_or_null(
+    scope: &mut v8::PinScope<'_, '_>,
+    rv: &mut v8::ReturnValue<'_, v8::Value>,
+    value: Option<JsValue>,
+) {
+    match value {
+        Some(JsValue::Number(n)) => {
+            rv.set(v8::Number::new(scope, n).into());
+        }
+        _ => rv.set_null(),
+    }
+}
+
+fn native_element_local_name(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("localName"), handle]);
+    native_set_string_or_null(scope, &mut rv, value);
+}
+
+fn native_element_prefix(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("prefix"), handle]);
+    native_set_string_or_null(scope, &mut rv, value);
+}
+
+fn native_element_namespace_uri(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("namespaceURI"), handle]);
+    native_set_string_or_null(scope, &mut rv, value);
+}
+
+fn native_node_clone_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let deep = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::Bool(false)
+    };
+    let value = call_dom_host(scope, &[JsValue::from("cloneNode"), handle, deep]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_element_query_selector(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let sel = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("querySelector"), handle, sel]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_element_closest(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let sel = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("closest"), handle, sel]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_node_walk(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: &v8::FunctionCallbackArguments<'_>,
+    op: &str,
+    rv: &mut v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, args) else {
+        rv.set_null();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from(op), handle]);
+    native_set_handle_or_null(scope, rv, value);
+}
+
+fn native_node_parent_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "parentNode", &mut rv);
+}
+
+fn native_node_first_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "firstChild", &mut rv);
+}
+
+fn native_node_last_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "lastChild", &mut rv);
+}
+
+fn native_node_next_sibling(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "nextSibling", &mut rv);
+}
+
+fn native_node_prev_sibling(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "prevSibling", &mut rv);
+}
+
+fn native_first_element_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "firstElementChild", &mut rv);
+}
+
+fn native_last_element_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "lastElementChild", &mut rv);
+}
+
+fn native_next_element_sibling(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "nextElementSibling", &mut rv);
+}
+
+fn native_prev_element_sibling(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "prevElementSibling", &mut rv);
+}
+
+fn native_document_get_element_by_id(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let id = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("getElementById"), id]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_node_owner_document(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "ownerDocument", &mut rv);
+}
+
+fn native_child_handle(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: &v8::FunctionCallbackArguments<'_>,
+    i: i32,
+) -> JsValue {
+    if args.length() <= i {
+        return JsValue::Null;
+    }
+    args.get(i)
+        .to_object(scope)
+        .and_then(|obj| object_handle(scope, obj))
+        .unwrap_or(JsValue::Null)
+}
+
+fn native_node_append_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let child = native_child_handle(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("appendChild"), handle, child]);
+    if args.length() > 0 {
+        rv.set(args.get(0));
+    } else {
+        rv.set_null();
+    }
+}
+
+fn native_node_insert_before(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let child = native_child_handle(scope, &args, 0);
+    let before = native_child_handle(scope, &args, 1);
+    let _ = call_dom_host(
+        scope,
+        &[JsValue::from("insertBefore"), handle, child, before],
+    );
+    if args.length() > 0 {
+        rv.set(args.get(0));
+    } else {
+        rv.set_null();
+    }
+}
+
+fn native_node_remove_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let child = native_child_handle(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("removeChild"), handle, child]);
+    if args.length() > 0 {
+        rv.set(args.get(0));
+    } else {
+        rv.set_null();
+    }
+}
+
+fn native_node_replace_child(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let new_child = native_child_handle(scope, &args, 0);
+    let old_child = native_child_handle(scope, &args, 1);
+    let _ = call_dom_host(
+        scope,
+        &[JsValue::from("replaceChild"), handle, new_child, old_child],
+    );
+    if args.length() > 1 {
+        rv.set(args.get(1));
+    } else {
+        rv.set_null();
+    }
+}
+
+fn native_document_create_element(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let name = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("createElement"), name]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_create_text(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let data = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("createTextNode"), data]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_create_comment(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let data = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("createComment"), data]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_create_element_ns(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let ns = native_arg(scope, &args, 0);
+    let name = native_arg(scope, &args, 1);
+    let value = call_dom_host(scope, &[JsValue::from("createElementNS"), ns, name]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_create_fragment(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let _ = args;
+    let value = call_dom_host(scope, &[JsValue::from("createFragment")]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_import_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let node = native_child_handle(scope, &args, 0);
+    let deep = if args.length() > 1 {
+        to_js_value(scope, args.get(1))
+    } else {
+        JsValue::Bool(false)
+    };
+    let value = call_dom_host(scope, &[JsValue::from("importNode"), node, deep]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_document_adopt_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let node = native_child_handle(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("adoptNode"), node]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_node_get_root_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let composed = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::Bool(false)
+    };
+    let value = call_dom_host(scope, &[JsValue::from("getRootNode"), handle, composed]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_element_query_selector_all(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &JsValue::Array(Vec::new())));
+        return;
+    };
+    let sel = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("querySelectorAll"), handle, sel])
+        .unwrap_or(JsValue::Array(Vec::new()));
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_node_normalize(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let _ = call_dom_host(scope, &[JsValue::from("normalize"), handle]);
+}
+
+fn native_node_is_same_node(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let other = native_child_handle(scope, &args, 0);
+    rv.set_bool(handle == other);
+}
+
+fn native_element_attr_names(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &JsValue::Array(Vec::new())));
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("attrNames"), handle])
+        .unwrap_or(JsValue::Array(Vec::new()));
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_element_remove(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let _ = call_dom_host(scope, &[JsValue::from("remove"), handle]);
+}
+
+fn native_element_insert_adjacent_html(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let pos = native_arg(scope, &args, 0);
+    let html = native_arg(scope, &args, 1);
+    let _ = call_dom_host(
+        scope,
+        &[JsValue::from("insertAdjacentHTML"), handle, pos, html],
+    );
+}
+
+fn native_document_element(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "documentElement", &mut rv);
+}
+
+fn native_document_body(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "body", &mut rv);
+}
+
+fn native_element_children(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &JsValue::Array(Vec::new())));
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("children"), handle])
+        .unwrap_or(JsValue::Array(Vec::new()));
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_get_elements_by_tag_name(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &JsValue::Array(Vec::new())));
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("getElementsByTagName"), handle, name],
+    )
+    .unwrap_or(JsValue::Array(Vec::new()));
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_get_elements_by_class_name(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &JsValue::Array(Vec::new())));
+        return;
+    };
+    let name = native_arg(scope, &args, 0);
+    let value = call_dom_host(
+        scope,
+        &[JsValue::from("getElementsByClassName"), handle, name],
+    )
+    .unwrap_or(JsValue::Array(Vec::new()));
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_document_title_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("title"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_document_title_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let title = native_arg(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("setTitle"), handle, title]);
+}
+
+fn native_document_head(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    native_node_walk(scope, &args, "head", &mut rv);
+}
+
+fn native_document_url(
+    scope: &mut v8::PinScope<'_, '_>,
+    _args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let value = call_dom_host(scope, &[JsValue::from("url")]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_document_cookie_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    _args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let value = call_dom_host(scope, &[JsValue::from("cookie")]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_document_cookie_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let cookie = native_arg(scope, &args, 0);
+    let _ = call_dom_host(scope, &[JsValue::from("setCookie"), cookie]);
+}
+
+fn native_text_split(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let offset = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("splitText"), handle, offset]);
+    native_set_handle_or_null(scope, &mut rv, value);
+}
+
+fn native_node_child_nodes(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &JsValue::Array(Vec::new())));
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("childNodes"), handle])
+        .unwrap_or(JsValue::Array(Vec::new()));
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_element_box(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        native_set_number(scope, &mut rv, None, 0.0);
+        return;
+    };
+    let which = native_arg(scope, &args, 0);
+    let value = call_dom_host(scope, &[JsValue::from("box"), handle, which]);
+    native_set_number(scope, &mut rv, value, 0.0);
+}
+
+fn native_element_set_scroll(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let axis = native_arg(scope, &args, 0);
+    let value = native_arg(scope, &args, 1);
+    let _ = call_dom_host(scope, &[JsValue::from("setScroll"), handle, axis, value]);
+}
+
+fn native_element_bounding_rect(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let empty = JsValue::Object(Default::default());
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &empty));
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("boundingRect"), handle]).unwrap_or(empty);
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_element_dataset(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let empty = JsValue::Object(Default::default());
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set(from_js_value(scope, &empty));
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("dataset"), handle]).unwrap_or(empty);
+    rv.set(from_js_value(scope, &value));
+}
+
+fn native_element_set_dataset(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let key = native_arg(scope, &args, 0);
+    let value = native_arg(scope, &args, 1);
+    let _ = call_dom_host(scope, &[JsValue::from("setDataset"), handle, key, value]);
+}
+
+fn looks_like_module(source: &str) -> bool {
+    source.lines().any(|line| {
+        let t = line.trim_start();
+        t.starts_with("import ")
+            || t.starts_with("export ")
+            || t.starts_with("import\"")
+            || t.starts_with("import'")
+    })
+}
+
+fn cache_compiled_module<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    url: &str,
+    module: v8::Local<'s, v8::Module>,
+) {
+    let url = crate::normalize_module_url(url);
+    if let Some(graph) = scope.get_slot::<ModuleGraph>() {
+        graph
+            .compiled
+            .borrow_mut()
+            .insert(url.clone(), v8::Global::new(scope, module));
+        if let Some(id) = module.script_id() {
+            graph.script_urls.borrow_mut().insert(id, url);
+        }
+    }
+}
+
+fn compile_module_source<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    url: &str,
+    source: &str,
+) -> Option<v8::Local<'s, v8::Module>> {
+    let url = crate::normalize_module_url(url);
+    if let Some(existing) = scope
+        .get_slot::<ModuleGraph>()
+        .and_then(|g| g.compiled.borrow().get(&url).cloned())
+    {
+        return Some(v8::Local::new(scope, existing));
+    }
+    let code = v8::String::new(scope, source)?;
+    let name = v8::String::new(scope, &url)?;
+    let script_origin = v8::ScriptOrigin::new(
+        scope,
+        name.into(),
+        0,
+        0,
+        false,
+        0,
+        None,
+        false,
+        false,
+        true,
+        None,
+    );
+    let mut module_source = v8::script_compiler::Source::new(code, Some(&script_origin));
+    let module = v8::script_compiler::compile_module(scope, &mut module_source)?;
+    cache_compiled_module(scope, &url, module);
+    Some(module)
+}
+
+fn compile_registered_module<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    url: &str,
+) -> Option<v8::Local<'s, v8::Module>> {
+    let url = crate::normalize_module_url(url);
+    let source = scope
+        .get_slot::<ModuleGraph>()
+        .and_then(|g| g.sources.borrow().get(&url).cloned())?;
+    compile_module_source(scope, &url, &source)
+}
+
+fn module_resolve_callback<'s>(
+    context: v8::Local<'s, v8::Context>,
+    specifier: v8::Local<'s, v8::String>,
+    _import_attributes: v8::Local<'s, v8::FixedArray>,
+    referrer: v8::Local<'s, v8::Module>,
+) -> Option<v8::Local<'s, v8::Module>> {
+    v8::callback_scope!(unsafe scope, context);
+    let spec = specifier.to_rust_string_lossy(scope);
+    let referrer_url = referrer
+        .script_id()
+        .and_then(|id| {
+            scope
+                .get_slot::<ModuleGraph>()?
+                .script_urls
+                .borrow()
+                .get(&id)
+                .cloned()
+        })
+        .unwrap_or_default();
+    let url = crate::resolve_module_specifier(&referrer_url, &spec)?;
+    if let Some(body) = crate::decode_data_module(&url) {
+        return compile_module_source(scope, &url, &body);
+    }
+    compile_registered_module(scope, &url)
 }
 
 unsafe extern "C" {
@@ -1065,6 +3301,37 @@ mod tests {
             }
         }
         panic!("WebAssembly.instantiate did not resolve after platform pump");
+    }
+
+    #[test]
+    fn v8_startup_snapshot_or_heap_limit_creates_isolate() {
+        let mut vm = V8Vm::with_heap_limit(Some(64 * 1024 * 1024)).unwrap();
+        assert_eq!(vm.eval("1+1", "<t>").unwrap(), JsValue::Number(2.0));
+    }
+
+    #[test]
+    fn es_module_export_runs_via_v8_module() {
+        let mut vm = V8Vm::new().unwrap();
+        vm.eval(
+            "globalThis.modRan = 0;\nexport const n = 1;\nglobalThis.modRan = 41;",
+            "module:spa.js",
+        )
+        .unwrap();
+        assert_eq!(vm.eval("modRan", "<t>").unwrap(), JsValue::Number(41.0));
+        let classic = vm.eval("typeof rewriteModule", "<t>").unwrap();
+        assert_eq!(classic, JsValue::String("undefined".into()));
+    }
+
+    #[test]
+    fn es_module_relative_import_resolves_without_bundler() {
+        let mut vm = V8Vm::new().unwrap();
+        vm.register_module("https://s.test/lib.js", "export const n = 41;");
+        vm.eval(
+            "import { n } from './lib.js'; globalThis.modRan = n;",
+            "https://s.test/main.js",
+        )
+        .unwrap();
+        assert_eq!(vm.eval("modRan", "<t>").unwrap(), JsValue::Number(41.0));
     }
 
     #[test]

@@ -46,6 +46,14 @@ export const ElementRefSchema = z.object({
   offscreen: z.boolean().optional(),
   /** covered at its centre point by another element (overlay, sticky bar) */
   occluded: z.boolean().optional(),
+  /** Frame keys from the top document to this element's frame. */
+  frameChain: z.array(z.string()).optional(),
+  /** Shadow roots between this node and the light tree. */
+  shadowDepth: z.number().int().optional(),
+  /** Nearest scrollable ancestor ref. */
+  scrollContainer: z.string().optional(),
+  /** Ref of the element covering this one at its centre. */
+  occludedBy: z.string().optional(),
   /** attached but not shown (Full only) */
   hidden: z.boolean().optional(),
   /** accessible description (Full only) */
@@ -103,6 +111,10 @@ export const ObservationContentSchema = z.object({
   tables: z.array(TableBlockSchema),
   links: z.array(z.object({ ref: z.string(), text: z.string(), href: z.string() })),
   dialogs: z.array(z.object({ type: z.string(), message: z.string() })),
+  /** Page `console.*` lines captured since the last navigation. */
+  console: z
+    .array(z.object({ level: z.string(), message: z.string(), atMs: z.number().optional() }))
+    .optional(),
   /** True when content was cut to fit the budget. */
   truncated: z.boolean(),
   stats: z.object({
@@ -114,7 +126,17 @@ export const ObservationContentSchema = z.object({
 });
 export type ObservationContent = z.infer<typeof ObservationContentSchema>;
 
+export const ObservationDeltaSchema = z
+  .object({
+    added: z.array(z.unknown()).optional(),
+    removed: z.array(z.string()).optional(),
+    updated: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
+export type ObservationDelta = z.infer<typeof ObservationDeltaSchema>;
+
 export const ObservationSchema = z.object({
+  protocolVersion: z.literal(1).optional(),
   observationId: z.string(),
   pageId: z.string(),
   documentEpoch: z.number(),
@@ -124,6 +146,8 @@ export const ObservationSchema = z.object({
   content: ObservationContentSchema,
   /** Human/model-readable field-level diff vs the previous revision. */
   changesSince: z.array(z.string()).optional(),
+  /** Structured element delta (Full). */
+  delta: ObservationDeltaSchema.optional(),
   /** §8.5 — the observationId this delta applies to; absent on a first observation. */
   deltaFrom: z.string().optional(),
   /** Served from the observation cache: the page fingerprint was unchanged since this observation was taken (plan A6). */
@@ -156,6 +180,8 @@ export const ObservationRequestSchema = z.object({
   subtreeRef: z.string().optional(),
   maxElements: z.number().int().positive().default(120),
   maxTextChars: z.number().int().positive().default(6000),
+  maxTokens: z.number().int().positive().default(3000),
   sinceRevision: z.number().optional(),
+  format: ObservationFormatSchema.optional(),
 });
 export type ObservationRequest = z.infer<typeof ObservationRequestSchema>;

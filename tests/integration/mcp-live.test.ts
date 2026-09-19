@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { startRuntime, type RuntimeHandle } from "@vector/runtime";
-import { probeEngineNative } from "@vector/browser-driver";
+import { probeEngineNative } from "@vector/engine-client";
 
 const engine = await probeEngineNative();
 const describeIfEngine = engine.available ? describe : describe.skip;

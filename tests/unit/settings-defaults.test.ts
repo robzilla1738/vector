@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DEFAULT_PLANNER_MODEL, openDb, Repo, SettingsService } from "@vector/runtime";
+import { MethodSchemas } from "@vector/contracts";
+import { DEFAULT_PLANNER_MODEL, openDb, Repo, SettingsService, USER_RUN_GRANTS, authorizeProgram } from "@vector/runtime";
 
 function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}) {
   const dir = mkdtempSync(join(tmpdir(), "vector-settings-"));
@@ -54,20 +55,30 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
-  it("defaults effect grants to read+write+destructive+egress and sanitizes settings.set", () => {
+  it("defaults effect grants to read-only and sanitizes settings.set", () => {
     const { dir, settings } = harness();
     try {
       expect(settings.effectGrants()).toEqual([
         "effect:read",
+      ]);
+      expect(settings.effectGrantsForRun()).toEqual([
+        "effect:read",
         "effect:write",
-        "effect:destructive",
         "effect:egress",
       ]);
       expect(settings.all().effectGrants).toEqual(settings.effectGrants());
       settings.set({ effectGrants: ["effect:write", "grant-from-model", "effect:*"] });
       expect(settings.effectGrants()).toEqual(["effect:write", "effect:*"]);
+      expect(settings.effectGrantsForRun()).toEqual(["effect:write", "effect:*"]);
       settings.set({ effectGrants: ["effect:read"] });
       expect(settings.effectGrants()).toEqual(["effect:read"]);
+      expect(settings.effectGrantsForRun()).toEqual(["effect:read"]);
+      const parsed = MethodSchemas["settings.set"].parse({
+        effectGrants: ["effect:read", "effect:write", "effect:egress"],
+      });
+      expect(parsed.effectGrants).toEqual(["effect:read", "effect:write", "effect:egress"]);
+      expect(authorizeProgram([{ id: "c", op: "click", target: "r1" }], USER_RUN_GRANTS).ok).toBe(true);
+      expect(authorizeProgram([{ id: "c", op: "click", target: "r1" }], settings.effectGrants()).ok).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

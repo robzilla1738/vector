@@ -4,7 +4,10 @@
 //! gated by the context capability.
 #![cfg(feature = "v8")]
 
-use ve_agent::{DEFAULT_VIEWPORT, Page, Program, ProgramStatus, Step, StepBase, StepStatus};
+use ve_agent::{
+    DEFAULT_VIEWPORT, Modifiers, MouseButton, ObservationRequest, Page, Program, ProgramStatus,
+    Step, StepBase, StepStatus,
+};
 use ve_script::{JsVm, V8Vm};
 
 fn vm() -> Box<dyn JsVm> {
@@ -20,6 +23,33 @@ fn open(html: &str, allow_evaluate: bool) -> Page {
         Some((vm(), allow_evaluate)),
     )
     .unwrap()
+}
+
+#[test]
+fn incremental_observe_is_under_two_milliseconds() {
+    let mut page = open(
+        "<body><h1>observe</h1><p>one</p><p>two</p><p>three</p></body>",
+        true,
+    );
+    let first = page.observe(&ObservationRequest::default()).unwrap();
+    let mut times = Vec::new();
+    for _ in 0..8 {
+        let t0 = std::time::Instant::now();
+        let _ = page
+            .observe(&ObservationRequest {
+                since_revision: Some(first.revision),
+                ..ObservationRequest::default()
+            })
+            .unwrap();
+        times.push(t0.elapsed().as_secs_f64() * 1000.0);
+    }
+    times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let p95 = times[(times.len() * 95 / 100).min(times.len() - 1)];
+    assert!(
+        p95 < 2.0,
+        "incremental observe p95 {p95} ms (n={}) must be < 2 ms; samples={times:?}",
+        times.len()
+    );
 }
 
 #[test]
@@ -44,6 +74,9 @@ fn document_scripts_run_in_order_and_timers_fire_inside_settle() {
     assert_eq!(page.console().len(), 2, "{:?}", page.console());
     assert_eq!(page.console()[0].message, r#"hello {"x":1}"#);
     assert!(page.console()[1].message.contains("boom"));
+    let observed = page.observe_now(&Default::default());
+    assert_eq!(observed.console.len(), 2, "{:?}", observed.console);
+    assert_eq!(observed.console[0].message, r#"hello {"x":1}"#);
 
     let order = page.evaluate("order.join(',')").unwrap();
     // classic scripts in order (microtasks drain after each), then `defer`;
@@ -62,6 +95,23 @@ fn document_scripts_run_in_order_and_timers_fire_inside_settle() {
         "{settled:?}"
     );
     assert!(page.virtual_time_ms() < 5000);
+}
+
+#[test]
+fn event_loop_fires_string_timeouts_and_extra_args() {
+    let mut page = open("<p>t</p>", true);
+    let _ = page.evaluate(
+        r##"(function () {
+          window.__hits = [];
+          setTimeout(function (a, b) { window.__hits.push(a + b); }, 10, 'x', 'y');
+          setTimeout("window.__hits.push('str')", 20);
+          const id = setTimeout(function () { window.__hits.push('nope'); }, 30);
+          clearTimeout(id);
+        })()"##,
+    );
+    page.pump_virtual_time(50);
+    let hits = page.evaluate("window.__hits.join(',')").unwrap();
+    assert_eq!(hits, serde_json::json!("xy,str"), "{hits}");
 }
 
 #[test]
@@ -138,6 +188,631 @@ fn a_runaway_script_is_cut_off_and_the_page_survives() {
 }
 
 #[test]
+fn dom_bindings_default_is_prelude() {
+    let mode = std::env::var("VECTOR_DOM_BINDINGS").unwrap_or_else(|_| "prelude".into());
+    assert!(
+        mode == "prelude" || mode == "native",
+        "VECTOR_DOM_BINDINGS must be prelude|native, got {mode}"
+    );
+    if std::env::var("VECTOR_DOM_BINDINGS").is_err() {
+        assert_eq!(mode, "prelude");
+    }
+}
+
+#[test]
+fn native_bindings_install_element_id_accessor() {
+    let mut page = open("<p id=x>t</p>", true);
+    let expected_before = if std::env::var("VECTOR_DOM_BINDINGS").as_deref() == Ok("native") {
+        "string"
+    } else {
+        "undefined"
+    };
+    assert_eq!(
+        page.evaluate("typeof globalThis.__veNativeBindings")
+            .unwrap(),
+        serde_json::json!(expected_before)
+    );
+    page.install_native_dom_bindings().unwrap();
+    assert_eq!(
+        page.evaluate("globalThis.__veNativeBindings").unwrap(),
+        serde_json::json!(
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML,documentElement,body,children,childElementCount,getElementsByTagName,getElementsByClassName,title,head,URL,cookie,splitText,childNodes,scrollTop,scrollLeft,clientWidth,clientHeight,offsetWidth,offsetHeight,offsetTop,offsetLeft,scrollWidth,scrollHeight,getBoundingClientRect,dataset,createAttribute,createAttributeNS"
+        )
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('x').id").unwrap(),
+        serde_json::json!("x")
+    );
+    let attr = page
+        .evaluate(
+            r#"(function () {
+              var a = document.createAttribute("data-k");
+              a.value = "1";
+              return { name: a.name, type: a.nodeType, inst: a instanceof Attr, value: a.value };
+            })()"#,
+        )
+        .unwrap();
+    assert_eq!(attr["name"], "data-k", "{attr}");
+    assert_eq!(attr["type"], 2, "{attr}");
+    assert_eq!(attr["inst"], true, "{attr}");
+    assert_eq!(attr["value"], "1", "{attr}");
+    page.evaluate("document.getElementById('x').id = 'y'")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').id").unwrap(),
+        serde_json::json!("y")
+    );
+    page.evaluate("document.getElementById('y').className = 'k'")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').className")
+            .unwrap(),
+        serde_json::json!("k")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').tagName")
+            .unwrap(),
+        serde_json::json!("P")
+    );
+    page.evaluate("document.getElementById('y').textContent = 'z'")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').textContent")
+            .unwrap(),
+        serde_json::json!("z")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').getAttribute('id')")
+            .unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').getAttribute('missing')")
+            .unwrap(),
+        serde_json::Value::Null
+    );
+    page.evaluate("document.getElementById('y').setAttribute('data-k', '1')")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').hasAttribute('data-k')")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').getAttribute('data-k')")
+            .unwrap(),
+        serde_json::json!("1")
+    );
+    page.evaluate("document.getElementById('y').removeAttribute('data-k')")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').hasAttribute('data-k')")
+            .unwrap(),
+        serde_json::json!(false)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').getAttribute('data-k')")
+            .unwrap(),
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').toggleAttribute('open')")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').hasAttribute('open')")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').toggleAttribute('open')")
+            .unwrap(),
+        serde_json::json!(false)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').nodeType")
+            .unwrap(),
+        serde_json::json!(1)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').nodeName")
+            .unwrap(),
+        serde_json::json!("P")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').isConnected")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    page.evaluate("document.getElementById('y').innerHTML = '<b>ok</b>'")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').innerHTML")
+            .unwrap(),
+        serde_json::json!("<b>ok</b>")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').matches('p')")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert!(
+        page.evaluate("document.getElementById('y').outerHTML")
+            .unwrap()
+            .as_str()
+            .unwrap_or("")
+            .contains("<p"),
+        "outerHTML should serialize the element"
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').hasChildNodes()")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.contains(document.getElementById('y'))")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').isEqualNode(document.getElementById('y'))")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').isEqualNode(document.body)")
+            .unwrap(),
+        serde_json::json!(false)
+    );
+    let pos = page
+        .evaluate("document.body.compareDocumentPosition(document.getElementById('y'))")
+        .unwrap();
+    assert!(
+        pos.as_u64().unwrap_or(0) & 16 != 0,
+        "body should report CONTAINED_BY for its child: {pos}"
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').lookupNamespaceURI(null)")
+            .unwrap(),
+        serde_json::json!("http://www.w3.org/1999/xhtml")
+    );
+    assert_eq!(
+        page.evaluate(
+            "document.getElementById('y').lookupPrefix('http://www.w3.org/XML/1998/namespace')"
+        )
+        .unwrap(),
+        serde_json::json!("xml")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').lookupPrefix('http://www.w3.org/1999/xhtml')")
+            .unwrap(),
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').localName")
+            .unwrap(),
+        serde_json::json!("p")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').namespaceURI")
+            .unwrap(),
+        serde_json::json!("http://www.w3.org/1999/xhtml")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').prefix")
+            .unwrap(),
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        page.evaluate("document.querySelector('#y').id").unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').closest('body').tagName")
+            .unwrap(),
+        serde_json::json!("BODY")
+    );
+    page.evaluate("document.getElementById('y').setAttribute('data-c', '1')")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').cloneNode(true).getAttribute('data-c')")
+            .unwrap(),
+        serde_json::json!("1")
+    );
+    assert_eq!(
+        page.evaluate("document.body.contains(document.getElementById('y').cloneNode(false))")
+            .unwrap(),
+        serde_json::json!(false)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').parentNode.tagName")
+            .unwrap(),
+        serde_json::json!("BODY")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').firstChild.tagName")
+            .unwrap(),
+        serde_json::json!("B")
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.id").unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.body.firstChild.id").unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').nextSibling")
+            .unwrap(),
+        serde_json::Value::Null
+    );
+    page.evaluate(
+        "document.body.insertBefore(document.createElement('span'), document.getElementById('y'))",
+    )
+    .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').previousSibling.tagName")
+            .unwrap(),
+        serde_json::json!("SPAN")
+    );
+    assert_eq!(
+        page.evaluate("document.body.firstElementChild.tagName")
+            .unwrap(),
+        serde_json::json!("SPAN")
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastElementChild.id").unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.body.firstElementChild.nextElementSibling.id")
+            .unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').previousElementSibling.tagName")
+            .unwrap(),
+        serde_json::json!("SPAN")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').id").unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('missing')").unwrap(),
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').ownerDocument === document")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.ownerDocument").unwrap(),
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        page.evaluate("document.body.appendChild(document.createElement('i')).tagName")
+            .unwrap(),
+        serde_json::json!("I")
+    );
+    assert_eq!(
+        page.evaluate("document.body.removeChild(document.body.lastChild).tagName")
+            .unwrap(),
+        serde_json::json!("I")
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.id").unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.createTextNode('hi').nodeValue")
+            .unwrap(),
+        serde_json::json!("hi")
+    );
+    assert_eq!(
+        page.evaluate("document.createComment('c').nodeType")
+            .unwrap(),
+        serde_json::json!(8)
+    );
+    assert_eq!(
+        page.evaluate(
+            "document.body.replaceChild(document.createElement('em'), document.getElementById('y')).id"
+        )
+        .unwrap(),
+        serde_json::json!("y")
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.tagName").unwrap(),
+        serde_json::json!("EM")
+    );
+    assert_eq!(
+        page.evaluate("document.createElementNS('http://www.w3.org/2000/svg', 'svg').namespaceURI")
+            .unwrap(),
+        serde_json::json!("http://www.w3.org/2000/svg")
+    );
+    assert_eq!(
+        page.evaluate("document.createDocumentFragment().nodeType")
+            .unwrap(),
+        serde_json::json!(11)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.getRootNode() === document")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.importNode(document.body.lastChild, true).tagName")
+            .unwrap(),
+        serde_json::json!("EM")
+    );
+    assert_eq!(
+        page.evaluate(
+            "document.importNode(document.body.lastChild, false) !== document.body.lastChild"
+        )
+        .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.querySelectorAll('em').length")
+            .unwrap(),
+        serde_json::json!(1)
+    );
+    assert_eq!(
+        page.evaluate("document.querySelectorAll('em').item(0).tagName")
+            .unwrap(),
+        serde_json::json!("EM")
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.isSameNode(document.body.lastChild)")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.isSameNode(document.body)")
+            .unwrap(),
+        serde_json::json!(false)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.isDefaultNamespace('http://www.w3.org/1999/xhtml')")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.isDefaultNamespace('http://www.w3.org/2000/svg')")
+            .unwrap(),
+        serde_json::json!(false)
+    );
+    page.evaluate("document.body.lastChild.setAttribute('data-k', '1')")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.body.lastChild.hasAttributes()")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.getAttributeNames().includes('data-k')")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate(
+            "var em = document.body.lastChild; em.appendChild(document.createTextNode('a')); em.appendChild(document.createTextNode('b')); em.normalize(); em.childNodes.length"
+        )
+        .unwrap(),
+        serde_json::json!(1)
+    );
+    assert_eq!(
+        page.evaluate("document.body.lastChild.textContent")
+            .unwrap(),
+        serde_json::json!("ab")
+    );
+    assert_eq!(
+        page.evaluate(
+            "var n = document.createElement('i'); document.body.appendChild(n); n.remove(); document.body.lastChild.tagName"
+        )
+        .unwrap(),
+        serde_json::json!("EM")
+    );
+    assert_eq!(
+        page.evaluate(
+            "document.body.lastChild.insertAdjacentHTML('beforeend', '<b>x</b>'); document.body.lastChild.lastChild.tagName"
+        )
+        .unwrap(),
+        serde_json::json!("B")
+    );
+    assert_eq!(
+        page.evaluate("document.documentElement.tagName").unwrap(),
+        serde_json::json!("HTML")
+    );
+    assert_eq!(
+        page.evaluate("document.body.tagName").unwrap(),
+        serde_json::json!("BODY")
+    );
+    assert_eq!(
+        page.evaluate("document.body.children.length >= 1").unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.childElementCount === document.body.children.length")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementsByTagName('*').length >= 3")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate(
+            "document.body.lastChild.className = 'k'; document.getElementsByClassName('k').length"
+        )
+        .unwrap(),
+        serde_json::json!(1)
+    );
+    assert_eq!(
+        page.evaluate("document.head.tagName").unwrap(),
+        serde_json::json!("HEAD")
+    );
+    page.evaluate("document.title = 'native-title'").unwrap();
+    assert_eq!(
+        page.evaluate("document.title").unwrap(),
+        serde_json::json!("native-title")
+    );
+    assert!(
+        page.evaluate("document.URL")
+            .unwrap()
+            .as_str()
+            .unwrap_or("")
+            .contains("s.test"),
+        "native URL must come from the document host"
+    );
+    assert_eq!(
+        page.evaluate(
+            "var t = document.createTextNode('abcd'); document.body.appendChild(t); var rest = t.splitText(2); t.data + '|' + rest.data + '|' + (rest.previousSibling === t)"
+        )
+        .unwrap(),
+        serde_json::json!("ab|cd|true")
+    );
+    assert_eq!(
+        page.evaluate("document.body.childNodes.length >= 1 && typeof document.body.childNodes.item === 'function'")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.getBoundingClientRect().width > 0")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    page.evaluate("document.body.scrollTop = 4").unwrap();
+    assert_eq!(
+        page.evaluate("document.body.scrollTop").unwrap(),
+        serde_json::json!(4)
+    );
+    page.evaluate("document.body.scrollLeft = 3").unwrap();
+    assert_eq!(
+        page.evaluate("document.body.scrollLeft").unwrap(),
+        serde_json::json!(3)
+    );
+    assert_eq!(
+        page.evaluate("document.body.clientWidth > 0 && document.body.clientHeight > 0")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("document.body.offsetWidth === document.body.clientWidth && document.body.scrollWidth >= document.body.clientWidth")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    page.evaluate("document.body.dataset.k = 'v'").unwrap();
+    assert_eq!(
+        page.evaluate("document.body.dataset.k + '|' + document.body.getAttribute('data-k')")
+            .unwrap(),
+        serde_json::json!("v|v")
+    );
+    page.evaluate("delete document.body.dataset.k").unwrap();
+    assert_eq!(
+        page.evaluate("document.body.getAttribute('data-k')")
+            .unwrap(),
+        serde_json::Value::Null
+    );
+}
+
+#[test]
+fn es_module_spa_runs_without_bundler() {
+    let mut page = open(
+        r#"<div id="root">boot</div>
+           <script type="module">
+             const root = document.getElementById("root");
+             root.textContent = "empty";
+             globalThis.__spaReady = true;
+             export function refresh() { return root.textContent; }
+           </script>"#,
+        true,
+    );
+    page.settle(200);
+    assert_eq!(
+        page.evaluate("document.getElementById('root').textContent")
+            .unwrap(),
+        serde_json::json!("empty")
+    );
+    assert_eq!(
+        page.evaluate("globalThis.__spaReady").unwrap(),
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        page.evaluate("typeof globalThis.__veRewriteModule")
+            .unwrap(),
+        serde_json::json!("undefined")
+    );
+    assert_eq!(
+        page.evaluate("typeof rewriteModule").unwrap(),
+        serde_json::json!("undefined")
+    );
+}
+
+#[test]
+fn es_module_relative_import_runs_without_bundler() {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::rc::Rc;
+    use ve_agent::{LoadedDocument, Loader, NavigationRequest};
+    use ve_core::Error;
+
+    #[derive(Default)]
+    struct Recorder {
+        served: HashMap<String, LoadedDocument>,
+        log: Rc<RefCell<Vec<NavigationRequest>>>,
+    }
+    impl Recorder {
+        fn serve(mut self, url: &str, body: &str) -> Self {
+            self.served
+                .insert(url.to_owned(), LoadedDocument::html(url, body));
+            self
+        }
+    }
+    impl Loader for Recorder {
+        fn load(&mut self, request: &NavigationRequest) -> ve_core::Result<LoadedDocument> {
+            self.log.borrow_mut().push(request.clone());
+            let key = request.url.split('#').next().unwrap_or_default();
+            self.served
+                .get(key)
+                .cloned()
+                .ok_or_else(|| Error::Network(format!("no canned response for {}", request.url)))
+        }
+    }
+
+    let rec = Recorder::default()
+        .serve(
+            "https://s.test/",
+            r#"<script type="module">
+                 import { n } from './lib.js';
+                 globalThis.modRan = n;
+               </script>"#,
+        )
+        .serve("https://s.test/lib.js", "export const n = 41;");
+    let mut page = Page::from_html_with_loader(
+        1,
+        r#"<script type="module">
+             import { n } from './lib.js';
+             globalThis.modRan = n;
+           </script>"#,
+        Some("https://s.test/"),
+        DEFAULT_VIEWPORT,
+        Some((vm(), true)),
+        Some(Box::new(rec)),
+    )
+    .unwrap();
+    page.settle(200);
+    assert_eq!(
+        page.evaluate("globalThis.modRan").unwrap(),
+        serde_json::json!(41)
+    );
+}
+
+#[test]
 fn performance_now_tracks_virtual_time_by_default() {
     let mut page = open("<title>t</title>", true);
     let now = page
@@ -156,4 +831,310 @@ fn performance_now_tracks_virtual_time_by_default() {
         later, now,
         "wall sleep must not advance virtual performance.now"
     );
+}
+
+#[test]
+fn program_click_increments_a_type_button() {
+    let mut page = open(
+        r#"<button type="button" id="inc">Increment</button>
+           <p>Count: <span id="n">0</span></p>
+           <script>
+             document.getElementById("inc").addEventListener("click", function () {
+               var n = document.getElementById("n");
+               n.textContent = String(+n.textContent + 1);
+             });
+           </script>"#,
+        true,
+    );
+    let settled = page.settle(200);
+    assert!(settled.settled, "{settled:?}");
+    page.click_target("css:#inc").unwrap();
+    page.click_target("css:#inc").unwrap();
+    page.click_target("css:#inc").unwrap();
+    let n = page
+        .evaluate("document.getElementById('n').textContent")
+        .unwrap();
+    assert_eq!(
+        n,
+        serde_json::json!("3"),
+        "agent click after settle must run the listener"
+    );
+    let obs = page.observe(&ObservationRequest::default()).unwrap();
+    assert!(
+        obs.content.text.contains("Count: 3") || obs.content.text.contains('3'),
+        "{}",
+        obs.content.text
+    );
+}
+
+#[test]
+fn program_fill_and_submit_sets_the_output() {
+    let mut page = open(
+        r#"<form id="f">
+             <label>Name <input id="name" name="name" type="text"></label>
+             <button type="submit">Submit</button>
+           </form>
+           <p id="out">not submitted</p>
+           <script>
+             document.getElementById("f").addEventListener("submit", function (e) {
+               e.preventDefault();
+               document.getElementById("out").textContent = "submitted:" + document.getElementById("name").value;
+             });
+           </script>"#,
+        true,
+    );
+    let _ = page.settle(200);
+    let name = page.resolve("css:#name", None).unwrap();
+    page.fill(name, "Ada", 5_000).unwrap();
+    page.click_target("css:button").unwrap();
+    let out = page
+        .evaluate("document.getElementById('out').textContent")
+        .unwrap();
+    assert_eq!(out, serde_json::json!("submitted:Ada"));
+}
+
+#[test]
+fn press_fires_keydown_and_keyup_and_honours_prevent_default() {
+    let mut page = open(
+        r#"<input id="q" value="ab">
+           <script>
+             const log = [];
+             const q = document.getElementById("q");
+             q.addEventListener("keydown", (e) => {
+               log.push("down:" + e.key + ":" + e.code + ":" + e.repeat + ":" + e.ctrlKey);
+               if (e.key === "x") e.preventDefault();
+             });
+             q.addEventListener("keyup", (e) => { log.push("up:" + e.key); });
+           </script>"#,
+        true,
+    );
+    let _ = page.settle(200);
+    let id = page.document().element_by_id("q").expect("#q");
+    page.press(Some(id), "a", 0).unwrap();
+    page.press(Some(id), "x", 0).unwrap();
+    page.dispatch_key(
+        "F5",
+        true,
+        true,
+        Modifiers {
+            control: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    page.dispatch_key(
+        "F5",
+        false,
+        false,
+        Modifiers {
+            control: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let log = page.evaluate("log.join('|')").unwrap();
+    assert_eq!(
+        log,
+        serde_json::json!(
+            "down:a:KeyA:false:false|up:a|down:x:KeyX:false:false|up:x|down:F5:F5:true:true|up:F5"
+        ),
+        "{log}"
+    );
+    let value = page.evaluate("document.getElementById('q').value").unwrap();
+    assert_eq!(
+        value,
+        serde_json::json!("aba"),
+        "preventDefault on x must skip typing"
+    );
+    let _ = page.evaluate(
+        "var q = document.getElementById('q'); q.selectionStart = q.selectionEnd = q.value.length;",
+    );
+    page.press(Some(id), "ArrowLeft", 0).unwrap();
+    let caret = page
+        .evaluate("document.getElementById('q').selectionStart")
+        .unwrap();
+    assert_eq!(caret, serde_json::json!(2), "ArrowLeft must move the caret");
+}
+
+#[test]
+fn events_log_human_and_agent_clicks_are_byte_identical() {
+    let html = include_str!("../../../../fixtures/events-log/index.html");
+    let run = |human: bool| {
+        let mut page = open(html, true);
+        let _ = page.settle(200);
+        let id = page.document().element_by_id("b").expect("#b");
+        if human {
+            let point = page.prepare_pointer(id, 5_000).unwrap();
+            let scroll = page.scroll_offset();
+            page.click_point(point.x - scroll.x, point.y - scroll.y, MouseButton::Left)
+                .unwrap();
+        } else {
+            page.click(id, MouseButton::Left, 5_000).unwrap();
+        }
+        page.evaluate("document.getElementById('log').textContent")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    let agent = run(false);
+    let human = run(true);
+    assert!(!agent.is_empty(), "agent click produced no events-log");
+    assert_eq!(agent, human, "human={human} agent={agent}");
+    let parsed: Vec<serde_json::Value> = serde_json::from_str(&agent).unwrap();
+    let types: Vec<&str> = parsed
+        .iter()
+        .filter_map(|e| e.get("type").and_then(|t| t.as_str()))
+        .collect();
+    assert_eq!(
+        types,
+        ["pointerdown", "mousedown", "pointerup", "mouseup", "click"],
+        "{agent}"
+    );
+}
+
+#[test]
+fn pointer_capture_retargets_pointerup() {
+    let mut page = open(
+        r#"<div id="outer"><button id="b">Go</button></div>
+           <pre id="log"></pre>
+           <script>
+             const log = [];
+             const rec = (e) => log.push(e.type + ":" + (e.target && e.target.id) + ":" + (e.currentTarget && e.currentTarget.id));
+             const outer = document.getElementById("outer");
+             const b = document.getElementById("b");
+             outer.addEventListener("pointerdown", (e) => { rec(e); outer.setPointerCapture(e.pointerId); });
+             outer.addEventListener("pointerup", rec);
+             b.addEventListener("pointerup", rec);
+             outer.addEventListener("lostpointercapture", rec);
+             document.getElementById("log").__dump = () => JSON.stringify(log);
+           </script>"#,
+        true,
+    );
+    let _ = page.settle(200);
+    page.click_target("css:#b").unwrap();
+    let log = page
+        .evaluate("document.getElementById('log').__dump()")
+        .unwrap();
+    let types = log.as_str().unwrap();
+    assert!(types.contains("pointerdown:b:outer"), "{types}");
+    assert!(types.contains("pointerup:outer:outer"), "{types}");
+    assert!(types.contains("lostpointercapture:outer:outer"), "{types}");
+    assert!(
+        page.evaluate(
+            "typeof PointerEvent === 'function' && typeof CompositionEvent === 'function'"
+        )
+        .unwrap()
+        .as_bool()
+        .unwrap_or(false)
+    );
+}
+
+#[test]
+fn fill_selects_the_control_and_fires_select() {
+    let mut page = open(
+        r#"<input id="n" value="old"><pre id="log"></pre>
+           <script>
+             const n = document.getElementById("n");
+             n.addEventListener("select", () => { document.getElementById("log").textContent = n.selectionStart + "-" + n.selectionEnd; });
+           </script>"#,
+        true,
+    );
+    let _ = page.settle(200);
+    let id = page.document().element_by_id("n").expect("#n");
+    page.fill(id, "Ada", 5_000).unwrap();
+    let log = page
+        .evaluate("document.getElementById('log').textContent")
+        .unwrap();
+    assert_eq!(log.as_str().unwrap(), "0-3");
+}
+
+#[test]
+fn compose_text_fires_composition_sequence() {
+    let mut page = open(
+        r#"<input id="n"><pre id="log"></pre>
+           <script>
+             const log = [];
+             const n = document.getElementById("n");
+             ["compositionstart", "compositionupdate", "compositionend", "input"].forEach((t) =>
+               n.addEventListener(t, (e) => log.push(e.type + ":" + (e.data || "")))
+             );
+             document.getElementById("log").__dump = () => JSON.stringify(log);
+           </script>"#,
+        true,
+    );
+    let _ = page.settle(200);
+    let id = page.document().element_by_id("n").expect("#n");
+    page.compose_text(id, "あい", 5_000).unwrap();
+    let log = page
+        .evaluate("document.getElementById('log').__dump()")
+        .unwrap();
+    let types = log.as_str().unwrap();
+    assert!(types.contains("compositionstart:"), "{types}");
+    assert!(types.contains("compositionupdate:あい"), "{types}");
+    assert!(types.contains("compositionend:あい"), "{types}");
+    assert_eq!(
+        page.evaluate("document.getElementById('n').value")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+        "あい"
+    );
+}
+
+#[test]
+fn writes_dombench_phase0_memo() {
+    let mut page = open(
+        r#"<section class="todoapp"><h1>todos</h1><ul class="todo-list"></ul></section>"#,
+        true,
+    );
+    let _ = page.settle(50);
+    let profile = page
+        .evaluate(
+            r#"(function () {
+              const list = document.querySelector(".todo-list");
+              for (let i = 0; i < 100; i++) {
+                const li = document.createElement("li");
+                const lab = document.createElement("label");
+                lab.textContent = "todo " + i;
+                li.appendChild(lab);
+                list.appendChild(li);
+                if (i % 3 === 0) li.className = "completed";
+                if (i % 5 === 0 && list.firstChild) list.removeChild(list.firstChild);
+              }
+              return __veDomProfile();
+            })()"#,
+        )
+        .unwrap();
+    let nodes = profile
+        .get("nodes")
+        .and_then(serde_json::Value::as_u64)
+        .expect("nodes.size");
+    assert!(
+        nodes > 0,
+        "Phase-0 wrapper map must be populated: {profile}"
+    );
+    let rss = ve_core::process_rss_bytes();
+    let evidence = serde_json::json!({
+        "backend": "vector-engine",
+        "security_mode": "production",
+        "not_a_published_score": true,
+        "handles": "numeric_u64",
+        "wrapper": "WeakRef+FinalizationRegistry",
+        "listeners": "WeakMap",
+        "VECTOR_DOM_PROFILE": true,
+        "VECTOR_DOM_BINDINGS": std::env::var("VECTOR_DOM_BINDINGS").unwrap_or_else(|_| "prelude".into()),
+        "todoMvcIterations": 100,
+        "nodesSize": nodes,
+        "rssBytes": rss,
+        "test": "writes_dombench_phase0_memo",
+        "notes": "100 add/toggle/remove cycles on a TodoMVC-shaped list; nodes is prelude WeakMap size after the loop."
+    });
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../docs/engine/evidence/dombench-latest.json");
+    std::fs::write(
+        &path,
+        format!("{}\n", serde_json::to_string_pretty(&evidence).unwrap()),
+    )
+    .unwrap();
 }

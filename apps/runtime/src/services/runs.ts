@@ -21,7 +21,7 @@ import { join } from "node:path";
 import { RunCoordinator } from "../agent/coordinator.js";
 import { DurableWriteLedger } from "../agent/durable.js";
 import { runMemberAgent } from "../agent/member-agent.js";
-import { DEFAULT_GRANTS } from "../agent/permissions.js";
+import { USER_RUN_GRANTS } from "../agent/permissions.js";
 import { SetRunner } from "../scheduler/set-runner.js";
 import { WorkerPool } from "../scheduler/pool.js";
 
@@ -144,7 +144,7 @@ export class RunService {
           buffer: Buffer.from(JSON.stringify(obs)),
         }).artifactId,
       tracer: deps.tracer,
-      grants: () => deps.settings.effectGrants(),
+      grants: () => deps.settings.effectGrantsForRun(),
       durableWrites,
     });
     this.setRunner = new SetRunner({
@@ -155,7 +155,7 @@ export class RunService {
       pool: this.pool,
       nativeAvailable: deps.nativeAvailable,
       translateSteps: deps.translateSteps,
-      grants: () => deps.settings.effectGrants?.() ?? DEFAULT_GRANTS,
+      grants: () => deps.settings.effectGrantsForRun?.() ?? USER_RUN_GRANTS,
       durableWrites,
       getProgram: (id) => {
         const p = deps.repo.getProgram(id);
@@ -202,7 +202,7 @@ export class RunService {
           modelId,
           // the set-run's own signal — runs.cancel stops member model calls
           signal: ctx.signal,
-          grants: () => deps.settings.effectGrants?.() ?? DEFAULT_GRANTS,
+          grants: () => deps.settings.effectGrantsForRun?.() ?? USER_RUN_GRANTS,
           durable: durableWrites,
           recordModelCall: (c) => this.recordModelCall({ runId: ctx.runId, role: "planner", ...c }),
         });

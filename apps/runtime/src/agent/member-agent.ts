@@ -46,7 +46,7 @@ export async function runMemberAgent(opts: {
   for (let calls = 0, stepsRun = 0; calls < MEMBER_MAX_CALLS && stepsRun < MEMBER_MAX_STEPS; ) {
     if (signal.aborted) break;
     const obs = await pages.observe(pageId, {});
-    const prompt = buildPlannerPrompt({ goal: memberGoal, observations: [obs], recentOutcomes: outcomes, pageIds: [pageId] });
+    const prompt = buildPlannerPrompt({ goal: memberGoal, observations: [obs], recentOutcomes: outcomes, pageIds: [pageId], budget: { tokens: 3000 } });
     const call = await model.generateStructured({
       modelId,
       system: PLANNER_SYSTEM,
@@ -95,6 +95,7 @@ export async function runMemberAgent(opts: {
       runId,
       pageId,
       documentEpoch: prepared.program.documentEpoch ?? obs.documentEpoch,
+      revision: obs.revision,
       steps,
     });
     if (write.skip) {

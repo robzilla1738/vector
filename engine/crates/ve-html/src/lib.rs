@@ -40,6 +40,11 @@ pub use decode::{
 pub use meta::{DocumentMeta, MetaRefresh, document_meta, parse_refresh_content};
 pub use sink::DomSink;
 
+/// First-document parse budget. `fetch.mjs` skips bodies above 1.5 MB;
+/// the engine instead stops at this many decoded bytes so a 15 MB spec
+/// does not take a full cascade/layout before the first observe.
+pub const HTML_BYTES_CAP: usize = 256_000;
+
 /// The result of parsing a document.
 #[derive(Debug)]
 pub struct ParseOutcome {
@@ -58,6 +63,9 @@ pub struct ParseOptions {
     pub scripting_enabled: bool,
     /// Streaming chunk size in bytes (character-aligned).
     pub chunk_size: usize,
+    /// Stop feeding the tokenizer after this many decoded UTF-8 bytes.
+    /// `None` means unlimited (tests and `document.write` fragments).
+    pub max_bytes: Option<usize>,
 }
 
 impl Default for ParseOptions {
@@ -65,6 +73,7 @@ impl Default for ParseOptions {
         Self {
             scripting_enabled: false,
             chunk_size: 16 * 1024,
+            max_bytes: None,
         }
     }
 }
@@ -289,6 +298,7 @@ pub fn parse_document_bytes(
         ParseOptions {
             scripting_enabled: false,
             chunk_size,
+            max_bytes: None,
         },
     )
 }
@@ -303,6 +313,11 @@ pub fn parse_document_bytes_with(
     let decoded = decode_html_bytes(bytes, transport_charset);
     let mut parser = DocumentParser::with_options(options);
     let text = decoded.text.as_str();
+    let mut limit = options.max_bytes.unwrap_or(text.len()).min(text.len());
+    while limit > 0 && !text.is_char_boundary(limit) {
+        limit -= 1;
+    }
+    let text = trim_unclosed_raw_text(&text[..limit]);
     let chunk_size = options.chunk_size.max(1);
     let mut start = 0;
     while start < text.len() {
@@ -314,6 +329,22 @@ pub fn parse_document_bytes_with(
         start = end;
     }
     (parser.finish(), decoded)
+}
+
+/// Drops a trailing unclosed `<style>` / `<script>` so a byte cap that lands
+/// inside a 200 KB atomic CSS dump does not become a cascade.
+fn trim_unclosed_raw_text(text: &str) -> &str {
+    let lower = text.to_ascii_lowercase();
+    let mut cut = text.len();
+    for (open, close) in [("<style", "</style>"), ("<script", "</script>")] {
+        if let Some(start) = lower.rfind(open) {
+            let rest = &lower[start.saturating_add(open.len())..];
+            if !rest.contains(close) {
+                cut = cut.min(start);
+            }
+        }
+    }
+    &text[..cut]
 }
 
 #[cfg(test)]
@@ -363,6 +394,75 @@ mod tests {
         assert_eq!(decoded.source, CharsetSource::Default);
         let body = utf8.document.body().unwrap();
         assert_eq!(utf8.document.text_content(body), "日本語");
+    }
+
+    #[test]
+    fn max_bytes_stops_feeding_the_tokenizer() {
+        let html = format!(
+            "<!doctype html><p id=keep>head</p><p>{}</p><p id=tail>tail</p>",
+            "pad".repeat(80)
+        );
+        let (capped, _) = parse_document_bytes_with(
+            html.as_bytes(),
+            None,
+            ParseOptions {
+                scripting_enabled: false,
+                chunk_size: 32,
+                max_bytes: Some(40),
+            },
+        );
+        assert!(capped.document.element_by_id("keep").is_some());
+        assert!(capped.document.element_by_id("tail").is_none());
+        let (full, _) = parse_document_bytes_with(
+            html.as_bytes(),
+            None,
+            ParseOptions {
+                scripting_enabled: false,
+                chunk_size: 32,
+                max_bytes: None,
+            },
+        );
+        assert!(full.document.element_by_id("tail").is_some());
+    }
+
+    #[test]
+    fn max_bytes_drops_an_unclosed_style_blob() {
+        let mut html = String::from("<!doctype html><title>x</title><style>");
+        html.push_str(&".x{color:red}".repeat(8_000));
+        html.push_str("</style><p id=keep>after</p>");
+        let (capped, _) = parse_document_bytes_with(
+            html.as_bytes(),
+            None,
+            ParseOptions {
+                scripting_enabled: false,
+                chunk_size: 16 * 1024,
+                max_bytes: Some(8_000),
+            },
+        );
+        let styles: Vec<_> = capped
+            .document
+            .elements()
+            .filter(|&id| {
+                capped
+                    .document
+                    .element(id)
+                    .is_some_and(|e| e.is_html("style"))
+            })
+            .collect();
+        assert!(
+            styles.is_empty(),
+            "unclosed style at the byte cap is dropped"
+        );
+        let (full, _) = parse_document_bytes_with(
+            html.as_bytes(),
+            None,
+            ParseOptions {
+                scripting_enabled: false,
+                chunk_size: 16 * 1024,
+                max_bytes: None,
+            },
+        );
+        assert!(full.document.element_by_id("keep").is_some());
     }
 
     #[test]
@@ -521,6 +621,7 @@ mod tests {
         let mut parser = DocumentParser::with_options(ParseOptions {
             scripting_enabled: true,
             chunk_size: 1024,
+            max_bytes: None,
         });
         parser.feed(html);
         let on = parser.finish().document;

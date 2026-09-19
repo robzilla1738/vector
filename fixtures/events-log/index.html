@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /><title>events-log</title></head>
+  <body>
+    <button id="b">Go</button>
+    <pre id="log"></pre>
+    <script>
+      const log = [];
+      const rec = (e) => {
+        log.push({ type: e.type, x: e.clientX || 0, y: e.clientY || 0, button: e.button || 0, key: e.key || "" });
+        document.getElementById("log").textContent = JSON.stringify(log);
+      };
+      ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "keydown", "keyup"].forEach((t) =>
+        document.getElementById("b").addEventListener(t, rec),
+      );
+    </script>
+  </body>
+</html>

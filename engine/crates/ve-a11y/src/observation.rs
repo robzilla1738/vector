@@ -95,6 +95,10 @@ fn default_max_text_chars() -> usize {
     6000
 }
 
+fn default_max_tokens() -> usize {
+    3000
+}
+
 /// `ObservationRequest` plus the engine-only `format`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -108,6 +112,8 @@ pub struct ObservationRequest {
     pub max_elements: usize,
     /// Text budget in characters (default 6000).
     pub max_text_chars: usize,
+    /// Approximate token budget (`ceil(rendered_chars / 4)`, default 3000).
+    pub max_tokens: usize,
     /// Produce `changesSince` relative to this revision.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub since_revision: Option<u64>,
@@ -122,6 +128,7 @@ impl Default for ObservationRequest {
             subtree_ref: None,
             max_elements: default_max_elements(),
             max_text_chars: default_max_text_chars(),
+            max_tokens: default_max_tokens(),
             since_revision: None,
             format: Format::Compact,
         }
@@ -157,6 +164,14 @@ fn default_frame() -> String {
 
 fn is_main_frame(s: &str) -> bool {
     s == "main"
+}
+
+fn is_main_frame_chain(chain: &[String]) -> bool {
+    chain.is_empty() || chain == ["main"]
+}
+
+fn is_zero_depth(depth: &u32) -> bool {
+    *depth == 0
 }
 
 /// `SelectorStrategy.role`.
@@ -266,6 +281,18 @@ pub struct ElementRef {
     /// Covered at its centre point (Full).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub occluded: Option<bool>,
+    /// Frame keys from the top document to this element's frame.
+    #[serde(default, skip_serializing_if = "is_main_frame_chain")]
+    pub frame_chain: Vec<String>,
+    /// Shadow roots between this node and the light tree.
+    #[serde(default, skip_serializing_if = "is_zero_depth")]
+    pub shadow_depth: u32,
+    /// Nearest scrollable ancestor (`r<index>`), if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scroll_container: Option<String>,
+    /// Element covering this one at its centre (`r<index>`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub occluded_by: Option<String>,
     /// Attached but not shown (Full).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hidden: Option<bool>,
@@ -365,6 +392,23 @@ pub struct DialogEntry {
     pub message: String,
 }
 
+/// A captured `console.*` line.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConsoleEntry {
+    /// `log`, `info`, `warn`, `error`, `debug`.
+    pub level: String,
+    /// Message text.
+    pub message: String,
+    /// Virtual or wall time when logged, milliseconds.
+    #[serde(default, skip_serializing_if = "is_zero_u64")]
+    pub at_ms: u64,
+}
+
+fn is_zero_u64(n: &u64) -> bool {
+    *n == 0
+}
+
 /// `viewport`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ViewportInfo {
@@ -430,6 +474,9 @@ pub struct ObservationContent {
     pub links: Vec<LinkEntry>,
     /// Open dialogs.
     pub dialogs: Vec<DialogEntry>,
+    /// Page `console.*` lines captured since the last navigation.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub console: Vec<ConsoleEntry>,
     /// A budget was tripped.
     pub truncated: bool,
     /// Counters.
@@ -526,6 +573,9 @@ pub struct ObserveInput<'a> {
     pub base_url: Option<&'a str>,
     /// Engine-level pending dialogs (none in M1).
     pub pending_dialogs: &'a [DialogEntry],
+    /// When set, only these nodes are considered as interactive candidates
+    /// (HitIndex incremental observe). Text / headings stay full-tree.
+    pub restrict: Option<&'a [NodeId]>,
 }
 
 /// Per-element visibility classification (architecture §5).
@@ -537,6 +587,8 @@ pub struct Visibility5 {
     pub offscreen: bool,
     /// Something else is on top at the centre.
     pub occluded: bool,
+    /// Covering node when `occluded`.
+    pub occluded_by: Option<NodeId>,
     /// Viewport-relative rect after clipping.
     pub rect: Rect,
 }
@@ -667,6 +719,35 @@ impl<'a> Builder<'a> {
         self.input.styles.get(id)
     }
 
+    fn shadow_depth(&self, id: NodeId) -> u32 {
+        let mut n = 0u32;
+        let mut cur = Some(id);
+        while let Some(node) = cur {
+            let Some(shadow) = self.doc.containing_shadow_root(node) else {
+                break;
+            };
+            n += 1;
+            cur = self.doc.host(shadow);
+        }
+        n
+    }
+
+    fn scroll_container_ref(&self, id: NodeId) -> Option<String> {
+        std::iter::once(id)
+            .chain(self.doc.ancestors(id))
+            .find(|&a| {
+                self.input
+                    .styles
+                    .get(a)
+                    .is_some_and(|s| s.overflow.is_scrollable())
+                    && self
+                        .doc
+                        .element(a)
+                        .is_some_and(|e| !e.is_html("body") && !e.is_html("html"))
+            })
+            .map(ref_for)
+    }
+
     fn resolve_href(&self, href: &str) -> String {
         let href = href.trim();
         match &self.base {
@@ -745,18 +826,22 @@ impl<'a> Builder<'a> {
         }
         let offscreen = !rect.intersects(&self.viewport_rect) && !rect.is_empty()
             || (rect.is_empty() && !self.viewport_rect.contains(Point::new(rect.x(), rect.y())));
-        let occluded = if rect.is_empty() || offscreen {
-            false
+        let (occluded, occluded_by) = if rect.is_empty() || offscreen {
+            (false, None)
         } else {
             let center = rect.center();
             // Occluded: the topmost box at the centre belongs to neither the
             // element, a descendant, nor an ancestor (an ancestor hit means the
             // centre fell between the element's own fragments).
             match self.input.layout.hit_test(center) {
-                Some(hit) => {
-                    hit != id && !doc.is_ancestor_of(id, hit) && !doc.is_ancestor_of(hit, id)
+                Some(hit)
+                    if hit != id
+                        && !doc.is_ancestor_of(id, hit)
+                        && !doc.is_ancestor_of(hit, id) =>
+                {
+                    (true, Some(hit))
                 }
-                None => false,
+                _ => (false, None),
             }
         };
         let viewport_rect = rect.translate(-self.input.scroll.x, -self.input.scroll.y);
@@ -764,6 +849,7 @@ impl<'a> Builder<'a> {
             shown: true,
             offscreen,
             occluded,
+            occluded_by,
             rect: viewport_rect,
         }
     }
@@ -1034,68 +1120,88 @@ impl<'a> Builder<'a> {
     }
 
     fn collect_candidates(&mut self) -> Vec<Candidate> {
-        let doc = self.doc;
         let mut out = Vec::new();
-        let ids: Vec<NodeId> = if self.request.scope == Scope::Subtree {
-            std::iter::once(self.root)
-                .chain(doc.descendants(self.root))
-                .collect()
-        } else {
-            doc.descendants(self.root).collect()
-        };
-        for (order, id) in ids.into_iter().enumerate() {
-            let Some(e) = doc.element(id) else { continue };
-            let role = Role::for_element(doc, id);
-            if !Self::is_candidate(e, role) || !self.in_scope(e, role) {
-                continue;
+        let mut order = 0usize;
+        if let Some(ids) = self.input.restrict {
+            for &id in ids {
+                if self.doc.element(id).is_some() {
+                    self.walk_candidates(id, false, &mut order, &mut out);
+                }
             }
-            if self.request.scope == Scope::Tables && !self.inside_table(id) {
-                continue;
+            out.retain(|c| ids.contains(&c.id));
+            return out;
+        }
+        self.walk_candidates(self.root, true, &mut order, &mut out);
+        out
+    }
+
+    fn walk_candidates(
+        &mut self,
+        id: NodeId,
+        is_scope_root: bool,
+        order: &mut usize,
+        out: &mut Vec<Candidate>,
+    ) {
+        let doc = self.doc;
+        if let Some(e) = doc.element(id) {
+            if Self::skip_element(e) {
+                return;
             }
             if !self.input.styles.is_displayed(id) {
-                continue;
+                return;
             }
-            // Skip candidates whose ancestor is skipped (hidden / aria-hidden).
-            if doc
-                .ancestors(id)
-                .any(|a| doc.element(a).is_some_and(Self::skip_element))
-            {
-                continue;
+            let consider = !is_scope_root || self.request.scope == Scope::Subtree;
+            if consider {
+                *order += 1;
+                let role = Role::for_element(doc, id);
+                if Self::is_candidate(e, role)
+                    && self.in_scope(e, role)
+                    && !(self.request.scope == Scope::Tables && !self.inside_table(id))
+                {
+                    let vis = self.visibility(id);
+                    if vis.shown || self.full {
+                        let e = doc.element(id).expect("live element");
+                        let is_link = role == Some(Role::Link);
+                        let form = is_form_control(e);
+                        let form_field = form
+                            || matches!(
+                                role,
+                                Some(Role::TextBox | Role::SearchBox | Role::Checkbox)
+                            );
+                        let in_view_action =
+                            !vis.offscreen && (is_submit_control(e) || role == Some(Role::Button));
+                        let decisive = form_field || in_view_action;
+                        let rank = if !vis.shown {
+                            6
+                        } else if vis.occluded {
+                            5
+                        } else if decisive {
+                            0
+                        } else if !vis.offscreen && !is_link {
+                            1
+                        } else if !vis.offscreen && is_link {
+                            2
+                        } else {
+                            3
+                        };
+                        out.push(Candidate {
+                            id,
+                            rank,
+                            order: *order,
+                            vis,
+                            role,
+                        });
+                    }
+                }
             }
-            let vis = self.visibility(id);
-            if !vis.shown && !self.full {
-                continue;
-            }
-            let e = doc.element(id).expect("live element");
-            let is_link = role == Some(Role::Link);
-            let form = is_form_control(e);
-            let form_field =
-                form || matches!(role, Some(Role::TextBox | Role::SearchBox | Role::Checkbox));
-            let in_view_action =
-                !vis.offscreen && (is_submit_control(e) || role == Some(Role::Button));
-            let decisive = form_field || in_view_action;
-            let rank = if !vis.shown {
-                6
-            } else if vis.occluded {
-                5
-            } else if decisive {
-                0
-            } else if !vis.offscreen && !is_link {
-                1
-            } else if !vis.offscreen && is_link {
-                2
-            } else {
-                3
-            };
-            out.push(Candidate {
-                id,
-                rank,
-                order,
-                vis,
-                role,
-            });
         }
-        out
+        let mut children: Vec<NodeId> = doc.children(id).collect();
+        if let Some(shadow) = doc.shadow_root(id) {
+            children.extend(doc.children(shadow));
+        }
+        for child in children {
+            self.walk_candidates(child, false, order, out);
+        }
     }
 
     /// Choice labels of a `<select>` or an ARIA listbox/menu/radiogroup, capped at 20.
@@ -1309,6 +1415,10 @@ impl<'a> Builder<'a> {
             // element needs a scroll first or will not land at all.
             offscreen: c.vis.offscreen.then_some(true),
             occluded: c.vis.occluded.then_some(true),
+            frame_chain: vec!["main".into()],
+            shadow_depth: self.shadow_depth(id),
+            scroll_container: self.scroll_container_ref(id),
+            occluded_by: c.vis.occluded_by.map(ref_for),
             hidden: None,
             description: None,
             states: None,
@@ -1723,6 +1833,7 @@ impl<'a> Builder<'a> {
             tables,
             links,
             dialogs,
+            console: Vec::new(),
             truncated: self.truncated,
             stats: Stats::default(),
         };
@@ -1732,7 +1843,47 @@ impl<'a> Builder<'a> {
             text_chars: content.text.chars().count(),
             approx_tokens: content.rendered_chars_for(self.request.scope).div_ceil(4),
         };
+        if self.apply_token_budget(&mut content) {
+            content.truncated = true;
+        }
         content
+    }
+
+    fn apply_token_budget(&self, content: &mut ObservationContent) -> bool {
+        let max = self.request.max_tokens.max(1);
+        let scope = self.request.scope;
+        let mut truncated = false;
+        while content.rendered_chars_for(scope).div_ceil(4) > max && !content.elements.is_empty() {
+            content.elements.pop();
+            truncated = true;
+        }
+        while content.rendered_chars_for(scope).div_ceil(4) > max && !content.links.is_empty() {
+            content.links.pop();
+            truncated = true;
+        }
+        while content.rendered_chars_for(scope).div_ceil(4) > max && !content.tables.is_empty() {
+            content.tables.pop();
+            truncated = true;
+        }
+        while content.rendered_chars_for(scope).div_ceil(4) > max && !content.dialogs.is_empty() {
+            content.dialogs.pop();
+            truncated = true;
+        }
+        while content.rendered_chars_for(scope).div_ceil(4) > max && content.headings.len() > 1 {
+            content.headings.pop();
+            truncated = true;
+        }
+        while content.rendered_chars_for(scope).div_ceil(4) > max
+            && content.text.chars().count() > 32
+        {
+            let keep = content.text.chars().count().saturating_mul(3) / 4;
+            content.text = truncate_chars(&content.text, keep.max(32));
+            truncated = true;
+        }
+        content.stats.approx_tokens = content.rendered_chars_for(scope).div_ceil(4);
+        content.stats.elements_shown = content.elements.len();
+        content.stats.text_chars = content.text.chars().count();
+        truncated
     }
 }
 
@@ -1910,6 +2061,7 @@ mod tests {
                 url: "https://app.test/records?page=2",
                 base_url: None,
                 pending_dialogs: &[],
+                restrict: None,
             }
         }
 
@@ -2250,6 +2402,25 @@ mod tests {
     }
 
     #[test]
+    fn token_budget_caps_approx_tokens() {
+        let mut html = String::from("<body>");
+        for i in 0..200 {
+            html.push_str(&format!(
+                r#"<a href="https://example.test/very/long/path/{i}/and/more/segments/here">link {i}</a>"#
+            ));
+        }
+        html.push_str("</body>");
+        let p = page(&html);
+        let obs = p.observe(&ObservationRequest::default());
+        assert!(
+            obs.stats.approx_tokens <= 3000,
+            "approx_tokens {}",
+            obs.stats.approx_tokens
+        );
+        assert!(obs.truncated);
+    }
+
+    #[test]
     fn scopes_restrict_collection_at_the_source() {
         let p = page(APP);
         let forms = p.observe(&ObservationRequest {
@@ -2452,8 +2623,14 @@ mod tests {
         let full = p.full();
         let under = full.element(&ref_for(p.id("under"))).unwrap();
         assert_eq!(under.occluded, Some(true), "{under:?}");
+        assert_eq!(
+            under.occluded_by.as_deref(),
+            Some(ref_for(p.id("cover")).as_str()),
+            "occludedBy names the cover"
+        );
         let free = full.element(&ref_for(p.id("free"))).unwrap();
         assert_eq!(free.occluded, Some(false));
+        assert!(free.occluded_by.is_none());
         let compact = p.compact();
         assert_eq!(
             compact.elements[0].reference,
@@ -2461,6 +2638,74 @@ mod tests {
             "occluded sorted after"
         );
         assert_eq!(compact.elements[1].reference, ref_for(p.id("under")));
+    }
+
+    #[test]
+    fn protocol_fields_frame_chain_scroll_shadow_and_occluder() {
+        let p = page(
+            r#"<style>#box{height:40px;overflow:auto}</style>
+            <div id=box><button id=in>In</button></div>
+            <div id=host><template shadowrootmode="open"><button id=s>Shadow</button></template></div>"#,
+        );
+        let full = p.full();
+        let inner = full.element(&ref_for(p.id("in"))).unwrap();
+        assert_eq!(inner.frame_chain, vec!["main".to_string()]);
+        assert_eq!(
+            inner.scroll_container.as_deref(),
+            Some(ref_for(p.id("box")).as_str())
+        );
+        let shadow = full
+            .elements
+            .iter()
+            .find(|e| e.name.as_deref() == Some("Shadow"))
+            .expect("shadow button is observed");
+        assert!(shadow.shadow_depth >= 1, "{shadow:?}");
+    }
+
+    #[test]
+    fn held_out_task_controls_are_in_the_top_forty() {
+        let cases = [
+            (
+                include_str!("../../../../tests/held-out/pages/increment.html"),
+                "Increment",
+            ),
+            (
+                include_str!("../../../../tests/held-out/pages/submit.html"),
+                "Name",
+            ),
+            (
+                include_str!("../../../../tests/held-out/pages/table.html"),
+                "Widget",
+            ),
+        ];
+        for (html, needle) in cases {
+            let p = page(html);
+            let obs = p.compact();
+            let top: Vec<String> = obs
+                .elements
+                .iter()
+                .take(40)
+                .map(|e| {
+                    format!(
+                        "{} {} {}",
+                        e.name.as_deref().unwrap_or(""),
+                        e.text.as_deref().unwrap_or(""),
+                        e.role.as_deref().unwrap_or("")
+                    )
+                })
+                .collect();
+            let hit = top.iter().any(|t| t.contains(needle))
+                || obs
+                    .form_fields
+                    .iter()
+                    .take(40)
+                    .any(|f| f.label.as_deref().unwrap_or("").contains(needle))
+                || obs
+                    .tables
+                    .iter()
+                    .any(|t| t.rows.iter().any(|r| r.iter().any(|c| c.contains(needle))));
+            assert!(hit, "task control {needle:?} missing from top 40: {top:?}");
+        }
     }
 
     #[test]

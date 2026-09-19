@@ -257,6 +257,147 @@ pub trait JsVm {
 
     /// Re-enter a parked isolate before evaluating worker scripts.
     fn unpark(&mut self) {}
+
+    /// Invokes a timer callback persisted by `setTimer` (H1-A3).
+    fn fire_timer_callback(
+        &mut self,
+        host: &mut dyn HostApi,
+        id: u64,
+    ) -> Result<JsValue, ScriptError> {
+        let _ = (host, id);
+        Err(ScriptError::Unsupported("timer callbacks".into()))
+    }
+
+    /// Drops one persisted timer callback.
+    fn drop_timer_callback(&mut self, id: u64) {
+        let _ = id;
+    }
+
+    /// Drops every persisted timer callback (document reset).
+    fn clear_timer_callbacks(&mut self) {}
+
+    /// Register an ES module source so `import` can resolve it (H1-B2).
+    fn register_module(&mut self, url: &str, source: &str) {
+        let _ = (url, source);
+    }
+
+    /// Overlay native V8 accessors on the prelude DOM (H1-B1). Default is a no-op.
+    fn install_native_dom_bindings(&mut self) -> Result<(), ScriptError> {
+        Ok(())
+    }
+}
+
+/// Strip the `module:` origin prefix and a fragment.
+#[must_use]
+pub fn normalize_module_url(url: &str) -> String {
+    let url = url.strip_prefix("module:").unwrap_or(url);
+    url.split('#').next().unwrap_or(url).to_owned()
+}
+
+/// Resolve a module specifier against a referrer URL.
+#[must_use]
+pub fn resolve_module_specifier(referrer: &str, specifier: &str) -> Option<String> {
+    let spec = specifier.trim();
+    if spec.is_empty() {
+        return None;
+    }
+    if spec.starts_with("data:")
+        || spec.starts_with("http://")
+        || spec.starts_with("https://")
+        || spec.starts_with("file:")
+    {
+        return Some(spec.to_owned());
+    }
+    let referrer = normalize_module_url(referrer);
+    if spec.starts_with('/') {
+        let scheme = referrer.find("://")?;
+        let host_end = referrer[scheme + 3..]
+            .find('/')
+            .map_or(referrer.len(), |i| scheme + 3 + i);
+        return Some(format!("{}{spec}", &referrer[..host_end]));
+    }
+    if spec.starts_with("./") || spec.starts_with("../") {
+        return join_relative_module(&referrer, spec);
+    }
+    None
+}
+
+fn join_relative_module(referrer: &str, specifier: &str) -> Option<String> {
+    let slash = referrer.rfind('/')?;
+    let mut dir = referrer[..slash].to_owned();
+    let origin_end = referrer.find("://").map_or(0, |i| {
+        referrer[i + 3..]
+            .find('/')
+            .map_or(referrer.len(), |j| i + 3 + j)
+    });
+    for part in specifier.split('/') {
+        match part {
+            "." | "" => {}
+            ".." => {
+                if let Some(i) = dir.rfind('/') {
+                    if i >= origin_end {
+                        dir.truncate(i);
+                    }
+                }
+            }
+            p => {
+                dir.push('/');
+                dir.push_str(p);
+            }
+        }
+    }
+    Some(dir)
+}
+
+/// `import` / `from` string specifiers in module source.
+#[must_use]
+pub fn module_import_specifiers(source: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for (keyword, skip) in [("import ", 7usize), ("from ", 5), ("import(", 7)] {
+        let mut rest = source;
+        while let Some(i) = rest.find(keyword) {
+            let tail = rest[i + skip..].trim_start();
+            let quote = tail.as_bytes().first().copied();
+            if matches!(quote, Some(b'"' | b'\'')) {
+                let q = quote.unwrap() as char;
+                if let Some(end) = tail[1..].find(q) {
+                    let spec = &tail[1..=end];
+                    if !spec.is_empty() {
+                        out.push(spec.to_owned());
+                    }
+                }
+            }
+            rest = &rest[i + skip..];
+        }
+    }
+    out
+}
+
+/// Decode a `data:text/javascript,...` module URL.
+#[must_use]
+pub fn decode_data_module(url: &str) -> Option<String> {
+    let rest = url.strip_prefix("data:")?;
+    let (_meta, data) = rest.split_once(',')?;
+    Some(percent_decode(data))
+}
+
+fn percent_decode(input: &str) -> String {
+    let bytes = input.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            let hex = &input[i + 1..i + 3];
+            if let Ok(v) = u8::from_str_radix(hex, 16) {
+                out.push(v);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// The backend used when no real VM is compiled in.
@@ -376,6 +517,42 @@ mod tests {
             } else {
                 "null"
             }
+        );
+    }
+
+    #[test]
+    fn resolves_relative_and_data_module_specifiers() {
+        assert_eq!(
+            resolve_module_specifier("https://s.test/app/main.js", "./lib.js").as_deref(),
+            Some("https://s.test/app/lib.js")
+        );
+        assert_eq!(
+            resolve_module_specifier("module:https://s.test/#inline", "./lib.js").as_deref(),
+            Some("https://s.test/lib.js")
+        );
+        assert_eq!(
+            resolve_module_specifier("https://s.test/app/main.js", "../lib.js").as_deref(),
+            Some("https://s.test/lib.js")
+        );
+        assert_eq!(
+            resolve_module_specifier("https://s.test/app/main.js", "/abs.js").as_deref(),
+            Some("https://s.test/abs.js")
+        );
+        assert_eq!(
+            resolve_module_specifier(
+                "https://s.test/main.js",
+                "data:text/javascript,export const n=1"
+            )
+            .as_deref(),
+            Some("data:text/javascript,export const n=1")
+        );
+        assert_eq!(
+            module_import_specifiers("import { n } from './lib.js'; import './side.js';"),
+            vec!["./side.js".to_string(), "./lib.js".to_string()]
+        );
+        assert_eq!(
+            decode_data_module("data:text/javascript,export%20const%20n=1").as_deref(),
+            Some("export const n=1")
         );
     }
 }

@@ -63,6 +63,91 @@ pub use floats::FloatContext;
 pub use stacking::{PaintItem, StackingContext};
 pub use text::{CharClass, MetricShaper, ParleyShaper, ShapedLine, TextShaper};
 
+/// Uniform grid over paint items so observe occlusion is O(k) not O(n).
+#[derive(Clone, Debug, Default)]
+struct HitIndex {
+    cell: f32,
+    cells: HashMap<(i32, i32), Vec<usize>>,
+}
+
+impl HitIndex {
+    const CELL: f32 = 64.0;
+
+    fn build(paint: &[PaintItem]) -> Self {
+        let mut cells: HashMap<(i32, i32), Vec<usize>> = HashMap::new();
+        for (i, item) in paint.iter().enumerate() {
+            if !item.hit_testable {
+                continue;
+            }
+            let r = item.rect;
+            let x0 = (r.x() / Self::CELL).floor() as i32;
+            let y0 = (r.y() / Self::CELL).floor() as i32;
+            let x1 = (r.right() / Self::CELL).floor() as i32;
+            let y1 = (r.bottom() / Self::CELL).floor() as i32;
+            for y in y0..=y1 {
+                for x in x0..=x1 {
+                    cells.entry((x, y)).or_default().push(i);
+                }
+            }
+        }
+        Self {
+            cell: Self::CELL,
+            cells,
+        }
+    }
+
+    fn nodes_in_rect(&self, rect: Rect, paint: &[PaintItem]) -> Vec<NodeId> {
+        if self.cells.is_empty() {
+            return paint
+                .iter()
+                .filter(|item| item.hit_testable && item.rect.intersects(&rect))
+                .filter_map(|item| item.element)
+                .collect();
+        }
+        let x0 = (rect.x() / self.cell).floor() as i32;
+        let y0 = (rect.y() / self.cell).floor() as i32;
+        let x1 = (rect.right() / self.cell).floor() as i32;
+        let y1 = (rect.bottom() / self.cell).floor() as i32;
+        let mut out = Vec::new();
+        for y in y0..=y1 {
+            for x in x0..=x1 {
+                let Some(idxs) = self.cells.get(&(x, y)) else {
+                    continue;
+                };
+                for &i in idxs {
+                    let item = &paint[i];
+                    if item.hit_testable
+                        && item.rect.intersects(&rect)
+                        && let Some(id) = item.element
+                        && !out.contains(&id)
+                    {
+                        out.push(id);
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    fn query(&self, point: Point, paint: &[PaintItem]) -> Option<NodeId> {
+        if self.cells.is_empty() {
+            return paint
+                .iter()
+                .rev()
+                .find(|item| item.hit_testable && item.rect.contains(point))
+                .and_then(|i| i.element);
+        }
+        let cx = (point.x / self.cell).floor() as i32;
+        let cy = (point.y / self.cell).floor() as i32;
+        let idxs = self.cells.get(&(cx, cy))?;
+        idxs.iter()
+            .rev()
+            .copied()
+            .find(|&i| paint[i].hit_testable && paint[i].rect.contains(point))
+            .and_then(|i| paint[i].element)
+    }
+}
+
 /// Flags a relayout clears on the nodes it visits.
 fn layout_flags() -> DirtyFlags {
     DirtyFlags::LAYOUT | DirtyFlags::TEXT | DirtyFlags::LAYOUT_CHILDREN
@@ -81,6 +166,8 @@ pub struct LayoutTree {
     clips: HashMap<NodeId, Rect>,
     /// `stacking` flattened once; hit testing and painting read this.
     paint: Vec<PaintItem>,
+    /// Spatial index over `paint` (64 CSS-px cells) for observe occlusion.
+    hit_index: HitIndex,
     revision: Revision,
     boxes_laid_out: usize,
 }
@@ -97,6 +184,7 @@ impl LayoutTree {
             geometry: HashMap::new(),
             clips: HashMap::new(),
             paint: Vec::new(),
+            hit_index: HitIndex::default(),
             revision: Revision(0),
             boxes_laid_out: 0,
         }
@@ -157,11 +245,13 @@ impl LayoutTree {
     /// per candidate element, so it must not re-flatten the stacking tree.
     #[must_use]
     pub fn hit_test(&self, point: Point) -> Option<NodeId> {
-        self.paint
-            .iter()
-            .rev()
-            .find(|item| item.hit_testable && item.rect.contains(point))
-            .and_then(|i| i.element)
+        self.hit_index.query(point, &self.paint)
+    }
+
+    /// Hit-testable nodes whose paint rects overlap `rect` (64px cell index).
+    #[must_use]
+    pub fn nodes_overlapping(&self, rect: Rect) -> Vec<NodeId> {
+        self.hit_index.nodes_in_rect(rect, &self.paint)
     }
 
     /// Boxes in paint order (back to front).
@@ -207,6 +297,7 @@ impl LayoutTree {
         collect_geometry(&self.root, &mut self.geometry, &mut self.clips);
         self.stacking = StackingContext::build(&self.root);
         self.paint = self.stacking.paint_order();
+        self.hit_index = HitIndex::build(&self.paint);
     }
 
     /// Applies `position: sticky` against `scroll` (VEC-012).
@@ -256,6 +347,11 @@ impl LayoutEngine {
         Self { shaper }
     }
 
+    /// Registers a `@font-face` file on the current shaper.
+    pub fn register_font(&mut self, data: Vec<u8>) -> usize {
+        self.shaper.register_font(data)
+    }
+
     /// Lays out `doc` into `viewport`.
     pub fn layout(&mut self, doc: &Document, styles: &StyleTree, viewport: Size) -> LayoutTree {
         let span = Stage::Layout.span();
@@ -274,6 +370,7 @@ impl LayoutEngine {
             geometry: HashMap::new(),
             clips: HashMap::new(),
             paint: Vec::new(),
+            hit_index: HitIndex::default(),
             revision: styles.revision(),
             boxes_laid_out,
         };
@@ -425,7 +522,9 @@ impl LayoutEngine {
             } else {
                 viewport_rect
             };
-            block::layout_positioned(&mut fresh, &mut ctx, abs_cb, viewport_rect);
+            let mut anchors = std::collections::HashMap::new();
+            block::collect_anchors(&fresh, &mut anchors);
+            block::layout_positioned(&mut fresh, &mut ctx, abs_cb, viewport_rect, &anchors);
             finish_subtree(&mut fresh, inherited_clip);
             if let Some(slot) = tree.root.find_mut(boundary) {
                 *slot = fresh;
@@ -549,22 +648,76 @@ fn finish_subtree(bx: &mut LayoutBox, inherited_clip: Option<Rect>) {
     propagate_clips(bx, inherited_clip);
 }
 
-/// Applies `transform: translate() / scale()` to boxes (geometry only).
+/// Applies `transform: translate() / scale() / rotate()` and `offset-path`
+/// to boxes (geometry only).
 fn apply_transforms(bx: &mut LayoutBox) {
-    if bx.has_own_edges() && !bx.style.transform.is_empty() {
-        let rect = bx.rect;
-        let center = rect.center();
-        for op in bx.style.transform.clone() {
-            match op {
-                TransformOp::Translate(x, y) => {
-                    block::translate_subtree(bx, x.resolve(rect.width()), y.resolve(rect.height()));
+    if bx.has_own_edges() {
+        let (ox, oy) = bx.style.offset_path.translation(bx.style.offset_distance);
+        if ox != 0.0 || oy != 0.0 {
+            block::translate_subtree(bx, ox, oy);
+        }
+        if !matches!(bx.style.writing_mode, ve_style::WritingMode::HorizontalTb)
+            && bx.style.text_orientation == ve_style::TextOrientation::Sideways
+        {
+            rotate_subtree(bx, bx.rect.center(), std::f32::consts::FRAC_PI_2);
+        }
+        if !bx.style.transform.is_empty() {
+            let rect = bx.rect;
+            let center = rect.center();
+            for op in bx.style.transform.clone() {
+                match op {
+                    TransformOp::Translate(x, y) => {
+                        block::translate_subtree(
+                            bx,
+                            x.resolve(rect.width()),
+                            y.resolve(rect.height()),
+                        );
+                    }
+                    TransformOp::Scale(sx, sy) => scale_subtree(bx, center, sx, sy),
+                    TransformOp::Rotate(angle) => rotate_subtree(bx, center, angle),
                 }
-                TransformOp::Scale(sx, sy) => scale_subtree(bx, center, sx, sy),
             }
         }
     }
     for child in &mut bx.children {
         apply_transforms(child);
+    }
+}
+
+fn rotate_rect(r: Rect, center: Point, angle: f32) -> Rect {
+    let (c, s) = (angle.cos(), angle.sin());
+    let rot = |p: Point| {
+        let dx = p.x - center.x;
+        let dy = p.y - center.y;
+        Point::new(center.x + dx * c - dy * s, center.y + dx * s + dy * c)
+    };
+    let pts = [
+        rot(Point::new(r.x(), r.y())),
+        rot(Point::new(r.right(), r.y())),
+        rot(Point::new(r.right(), r.bottom())),
+        rot(Point::new(r.x(), r.bottom())),
+    ];
+    let min_x = pts.iter().map(|p| p.x).fold(f32::MAX, f32::min);
+    let min_y = pts.iter().map(|p| p.y).fold(f32::MAX, f32::min);
+    let max_x = pts.iter().map(|p| p.x).fold(f32::MIN, f32::max);
+    let max_y = pts.iter().map(|p| p.y).fold(f32::MIN, f32::max);
+    Rect::from_points(Point::new(min_x, min_y), Point::new(max_x, max_y))
+}
+
+fn rotate_subtree(bx: &mut LayoutBox, center: Point, angle: f32) {
+    bx.rect = rotate_rect(bx.rect, center, angle);
+    bx.content = rotate_rect(bx.content, center, angle);
+    for line in &mut bx.lines {
+        line.rect = rotate_rect(line.rect, center, angle);
+        for f in &mut line.fragments {
+            f.rect = rotate_rect(f.rect, center, angle);
+        }
+    }
+    if let Some(m) = &mut bx.marker_fragment {
+        m.rect = rotate_rect(m.rect, center, angle);
+    }
+    for child in &mut bx.children {
+        rotate_subtree(child, center, angle);
     }
 }
 
@@ -791,6 +944,15 @@ mod tests {
     }
 
     #[test]
+    fn inline_svg_is_a_replaced_box_from_width_height() {
+        let html = "<style>body{margin:0} svg{display:block}</style>\
+             <svg id=s width=40 height=20></svg>";
+        let (doc, engine, tree) = layout(html, 200.0);
+        let r = rect(&tree, &engine, &doc, "#s");
+        assert_eq!(r.size, Size::new(40.0, 20.0), "{r:?}");
+    }
+
+    #[test]
     fn blocks_stack_vertically_with_margins_and_padding() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} div{height:50px} #b{margin-top:10px;padding:5px;width:50%}</style>\
@@ -850,6 +1012,19 @@ mod tests {
             Some(doc.body().unwrap()),
             "outside the row"
         );
+        assert_eq!(
+            tree.hit_test(Point::new(150.0, 10.0)),
+            tree.paint_order()
+                .iter()
+                .rev()
+                .find(|item| item.hit_testable && item.rect.contains(Point::new(150.0, 10.0)))
+                .and_then(|i| i.element),
+            "spatial index matches linear paint-order scan"
+        );
+        let a = engine.select_one(&doc, "#a").unwrap();
+        let big = engine.select_one(&doc, "#big").unwrap();
+        let near = tree.nodes_overlapping(Rect::new(90.0, 0.0, 20.0, 30.0));
+        assert!(near.contains(&a) && near.contains(&big), "{near:?}");
     }
 
     #[test]
@@ -902,6 +1077,26 @@ mod tests {
         assert_eq!(
             rect(&tree, &engine, &doc, "#b"),
             Rect::new(0.0, 20.0, 100.0, 20.0)
+        );
+    }
+
+    #[test]
+    fn grid_template_areas_place_named_items() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} .g{display:grid;width:200px;grid-template-columns:50px 150px;grid-template-rows:20px;grid-template-areas:\"a b\"}\
+             #a{grid-area:a} #b{grid-area:b}</style>\
+             <div class=g><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.x() - 0.0).abs() < 1.0 && (a.width() - 50.0).abs() < 1.0,
+            "area a, got {a:?}"
+        );
+        assert!(
+            (b.x() - 50.0).abs() < 1.0 && (b.width() - 150.0).abs() < 1.0,
+            "area b, got {b:?}"
         );
     }
 
@@ -1004,6 +1199,29 @@ mod tests {
             "wrapped"
         );
         assert_eq!(rect(&tree, &engine, &doc, "div").height(), 60.0);
+    }
+
+    #[test]
+    fn table_layout_fixed_ignores_later_row_content() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} table{table-layout:fixed;width:200px;border-spacing:0} td{padding:0;height:10px}</style>\
+             <table><tr><td id=a style='width:50px'>x</td><td id=b>y</td></tr>\
+             <tr><td id=c>mmmmmmmmmmmmmmmmmmmm</td><td id=d></td></tr></table>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let c = rect(&tree, &engine, &doc, "#c");
+        assert!(
+            (a.width() - 50.0).abs() < 1.0,
+            "first-row specified width, got {}",
+            a.width()
+        );
+        assert!(
+            (c.width() - a.width()).abs() < 1.0,
+            "fixed layout does not grow from later content, a={} c={}",
+            a.width(),
+            c.width()
+        );
     }
 
     #[test]
@@ -1296,6 +1514,31 @@ mod tests {
     }
 
     #[test]
+    fn vertical_lr_stacks_children_rightward() {
+        let (doc, engine, tree) = layout(
+            "<style>html,body{margin:0}\
+             #outer{writing-mode:vertical-lr;width:200px;height:100px}\
+             #a,#b{width:40px;height:50px}</style>\
+             <div id=outer><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            a.x().abs() < 1.0,
+            "first child sits on the left, got a.x={}",
+            a.x()
+        );
+        assert!(
+            (b.x() - 40.0).abs() < 1.0,
+            "second child is to the right of the first, got b.x={}",
+            b.x()
+        );
+        assert!(b.x() > a.x(), "vertical-lr stacks rightward");
+        assert!((a.y() - b.y()).abs() < 1.0);
+    }
+
+    #[test]
     fn rtl_block_places_inline_at_inline_end() {
         let (doc, engine, tree) = layout(
             "<style>html,body{margin:0}\
@@ -1312,6 +1555,815 @@ mod tests {
             "inline-start is the right edge under direction:rtl; got x={} want {}",
             inline.x(),
             expected
+        );
+    }
+
+    #[test]
+    fn aspect_ratio_sizes_auto_axis() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}\
+             #w{width:160px;aspect-ratio:16/9}\
+             #h{display:inline-block;height:90px;aspect-ratio:16/9}</style>\
+             <div id=w></div><div id=h></div>",
+            400.0,
+        );
+        let wide = rect(&tree, &engine, &doc, "#w");
+        assert!(
+            (wide.width() - 160.0).abs() < 0.5,
+            "width stays specified, got {}",
+            wide.width()
+        );
+        assert!(
+            (wide.height() - 90.0).abs() < 0.5,
+            "height from 16/9, got {}",
+            wide.height()
+        );
+        let tall = rect(&tree, &engine, &doc, "#h");
+        assert!(
+            (tall.height() - 90.0).abs() < 0.5,
+            "height stays specified, got {}",
+            tall.height()
+        );
+        assert!(
+            (tall.width() - 160.0).abs() < 0.5,
+            "width from 16/9, got {}",
+            tall.width()
+        );
+    }
+
+    #[test]
+    fn transform_rotate_expands_axis_aligned_bounds() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #g{width:20px;height:10px;transform:rotate(90deg)}</style>\
+             <div id=g></div>",
+            400.0,
+        );
+        let r = rect(&tree, &engine, &doc, "#g");
+        assert!(
+            (r.width() - 10.0).abs() < 0.5,
+            "90deg swaps sides, width got {}",
+            r.width()
+        );
+        assert!(
+            (r.height() - 20.0).abs() < 0.5,
+            "90deg swaps sides, height got {}",
+            r.height()
+        );
+    }
+
+    #[test]
+    fn container_type_size_does_not_grow_from_children() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{container-type:size;width:80px} #k{height:40px}</style>\
+             <div id=c><div id=k></div></div>",
+            400.0,
+        );
+        let boxc = rect(&tree, &engine, &doc, "#c");
+        assert!(
+            boxc.height() < 8.0,
+            "container-type:size auto height stays empty, got {}",
+            boxc.height()
+        );
+    }
+
+    #[test]
+    fn column_count_places_children_side_by_side() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{column-count:2;width:200px} #c>div{height:20px}</style>\
+             <div id=c><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.y() - b.y()).abs() < 0.5,
+            "columns share a row, a.y={} b.y={}",
+            a.y(),
+            b.y()
+        );
+        assert!(
+            b.x() > a.x() + 40.0,
+            "second child is in column 2, a.x={} b.x={}",
+            a.x(),
+            b.x()
+        );
+    }
+
+    #[test]
+    fn contain_size_does_not_grow_from_children() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{contain:size;width:80px} #k{height:40px}</style>\
+             <div id=c><div id=k></div></div>",
+            400.0,
+        );
+        let boxc = rect(&tree, &engine, &doc, "#c");
+        assert!(
+            boxc.height() < 8.0,
+            "contain:size auto height stays empty, got {}",
+            boxc.height()
+        );
+    }
+
+    #[test]
+    fn field_sizing_content_sizes_to_value() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} input{display:block;font-size:16px;border:0;padding:0;field-sizing:content}</style>\
+             <input id=a value=hi><input id=b value=hellohello>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.width() - 16.0).abs() < 0.5,
+            "2ch at 16px font, got {}",
+            a.width()
+        );
+        assert!(
+            (b.width() - 80.0).abs() < 0.5,
+            "10ch at 16px font, got {}",
+            b.width()
+        );
+        assert!(b.width() > a.width() + 40.0);
+    }
+
+    #[test]
+    fn offset_path_translates_box() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #g{width:20px;height:10px;offset-path:path(\"M 0 0 L 80 0\");offset-distance:100%}</style>\
+             <div id=g></div>",
+            400.0,
+        );
+        let g = rect(&tree, &engine, &doc, "#g");
+        assert!(
+            (g.x() - 80.0).abs() < 0.5 && (g.y() - 0.0).abs() < 0.5,
+            "offset-path 100% along 80px line, got {g:?}"
+        );
+    }
+
+    #[test]
+    fn shape_outside_inset_narrows_float_wrap() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px;line-height:20px;width:300px}\
+             #f{float:left;width:100px;height:40px;shape-outside:inset(0 20px 0 0)}</style>\
+             <div id=f></div><p id=p style='margin:0'>aaaa bbbb cccc dddd eeee ffff</p>",
+            300.0,
+        );
+        assert_eq!(
+            rect(&tree, &engine, &doc, "#f"),
+            Rect::new(0.0, 0.0, 100.0, 40.0),
+            "float margin box is unchanged"
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let lines = &tree.root.find(p).unwrap().lines;
+        assert!(
+            !lines.is_empty() && (lines[0].rect.x() - 80.0).abs() < 0.5,
+            "shape-outside inset 20px, first line starts at 80, got {:?}",
+            lines.first().map(|l| l.rect)
+        );
+    }
+
+    #[test]
+    fn resize_establishes_bfc() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{resize:both;width:200px} #f{float:left;width:40px;height:30px}</style>\
+             <div id=p><div id=f></div></div>",
+            400.0,
+        );
+        let p = rect(&tree, &engine, &doc, "#p");
+        assert!(
+            p.height() >= 30.0,
+            "resize:both contains the float, got height {}",
+            p.height()
+        );
+    }
+
+    #[test]
+    fn float_offset_shifts_placed_float() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #f{float:left;width:40px;height:20px;float-offset:16px}</style>\
+             <div id=f></div>",
+            400.0,
+        );
+        let f = rect(&tree, &engine, &doc, "#f");
+        assert!((f.x() - 16.0).abs() < 0.5, "float-offset 16px, got {f:?}");
+    }
+
+    #[test]
+    fn text_orientation_sideways_rotates_vertical_box() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}\
+             #u{width:20px;height:10px;writing-mode:vertical-rl;text-orientation:upright}\
+             #s{width:20px;height:10px;writing-mode:vertical-rl;text-orientation:sideways}</style>\
+             <div id=u></div><div id=s></div>",
+            400.0,
+        );
+        let u = rect(&tree, &engine, &doc, "#u");
+        let s = rect(&tree, &engine, &doc, "#s");
+        assert!(
+            (u.width() - 20.0).abs() < 0.5 && (u.height() - 10.0).abs() < 0.5,
+            "upright keeps specified size, got {u:?}"
+        );
+        assert!(
+            (s.width() - 10.0).abs() < 1.0 && (s.height() - 20.0).abs() < 1.0,
+            "sideways rotates 90deg, got {s:?}"
+        );
+    }
+
+    #[test]
+    fn text_transform_uppercase_widens_ascii() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px}\
+             span{display:inline-block}\
+             #a{text-transform:none} #b{text-transform:uppercase}</style>\
+             <span id=a>aa</span><span id=b>aa</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            a.width() < b.width() - 2.0,
+            "uppercase AA is wider than aa, got a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn font_variant_small_caps_uppercases() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px}\
+             span{display:inline-block}\
+             #a{font-variant:normal} #b{font-variant:small-caps}</style>\
+             <span id=a>aa</span><span id=b>aa</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            a.width() < b.width() - 2.0,
+            "small-caps AA is wider than aa, got a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn text_wrap_nowrap_keeps_one_line() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:40px;font-size:16px;line-height:20px;text-wrap:nowrap;margin:0}</style>\
+             <p id=p>aaaa bbbb cccc</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        assert_eq!(
+            tree.root.find(p).unwrap().lines.len(),
+            1,
+            "text-wrap:nowrap"
+        );
+    }
+
+    #[test]
+    fn text_overflow_ellipsis_truncates_nowrap_line() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:40px;font-size:16px;line-height:20px;overflow:hidden;text-overflow:ellipsis;text-wrap:nowrap;margin:0}</style>\
+             <p id=p>aaaa bbbb cccc</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let line = &tree.root.find(p).unwrap().lines[0];
+        let text: String = line
+            .fragments
+            .iter()
+            .filter_map(|f| f.text.as_deref())
+            .collect();
+        assert!(text.ends_with('…'), "ellipsis, got {text:?}");
+        assert!(
+            !text.contains("cccc"),
+            "overflowing tail is dropped, got {text:?}"
+        );
+        let right = line
+            .fragments
+            .iter()
+            .map(|f| f.rect.right())
+            .fold(0.0_f32, f32::max);
+        assert!(
+            right <= 40.01,
+            "ellipsis stays inside the box, right {right}"
+        );
+    }
+
+    #[test]
+    fn text_overflow_does_not_ellipsis_flex_items() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{display:flex;width:40px;font-size:16px;line-height:20px;overflow:hidden;text-overflow:ellipsis}</style>\
+             <div id=p>aaaaaaaaaaaa</div>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "#p").unwrap();
+        let text: String = tree
+            .root
+            .find(p)
+            .unwrap()
+            .children
+            .iter()
+            .flat_map(|child| &child.lines)
+            .flat_map(|line| &line.fragments)
+            .filter_map(|fragment| fragment.text.as_deref())
+            .collect();
+        assert_eq!(text, "aaaaaaaaaaaa");
+    }
+
+    #[test]
+    fn fixed_table_cell_min_width_contributes_to_column() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}</style>\
+             <div style='display:table;table-layout:fixed;border-spacing:0'><div style='display:table-row'><div id=cell style='display:table-cell;min-width:96px;height:96px'></div></div></div>",
+            400.0,
+        );
+        let cell = rect(&tree, &engine, &doc, "#cell");
+        assert_eq!(cell.width(), 96.0);
+        assert_eq!(cell.height(), 96.0);
+    }
+
+    #[test]
+    fn text_align_last_center_shifts_last_line() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:72px;font-size:16px;line-height:20px;text-align:left;text-align-last:right;margin:0}</style>\
+             <p id=p>aaaa bbbb cccc</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let lines = &tree.root.find(p).unwrap().lines;
+        assert!(lines.len() >= 2, "two lines, got {}", lines.len());
+        let first_x = lines[0].fragments[0].rect.x();
+        let last = lines.last().unwrap();
+        let last_x = last.fragments[0].rect.x();
+        assert!(
+            last_x > first_x + 8.0,
+            "last line right-aligned, first={first_x} last={last_x}"
+        );
+    }
+
+    #[test]
+    fn font_stretch_condensed_narrows_text() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:inline-block}\
+             #a{font-stretch:normal} #b{font-stretch:condensed}</style>\
+             <span id=a>aaaa</span><span id=b>aaaa</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            b.width() < a.width() * 0.85,
+            "condensed is narrower, a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn font_kerning_tightens_av_pair() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:inline-block}\
+             #a{font-kerning:none} #b{font-kerning:normal}</style>\
+             <span id=a>AV</span><span id=b>AV</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            b.width() < a.width() - 0.5,
+            "kerning tightens AV, a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn font_variant_ligatures_collapses_fi() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:inline-block}\
+             #a{font-variant-ligatures:none} #b{font-variant-ligatures:common-ligatures}</style>\
+             <span id=a>fi</span><span id=b>fi</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            b.width() < a.width() - 0.5,
+            "ligature fi is narrower, a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn text_size_adjust_doubles_advance() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:inline-block}\
+             #a{text-size-adjust:100%} #b{text-size-adjust:200%}</style>\
+             <span id=a>aaaa</span><span id=b>aaaa</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (b.width() - a.width() * 2.0).abs() < 1.0,
+            "200% is double, a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn hanging_punctuation_shifts_first_quote() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{width:200px;margin:0}\
+             #b{hanging-punctuation:first}</style>\
+             <p id=a>\"aaaa</p><p id=b>\"aaaa</p>",
+            400.0,
+        );
+        let a = engine.select_one(&doc, "#a").unwrap();
+        let b = engine.select_one(&doc, "#b").unwrap();
+        let ax = tree.root.find(a).unwrap().lines[0].fragments[0].rect.x();
+        let bx = tree.root.find(b).unwrap().lines[0].fragments[0].rect.x();
+        assert!(
+            bx < ax - 1.0,
+            "hanging quote sits left of the line box, a={ax} b={bx}"
+        );
+    }
+
+    #[test]
+    fn marker_offset_shifts_outside_marker() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:list-item;list-style-position:outside}\
+             #b{marker-offset:20px}</style>\
+             <div id=a>a</div><div id=b>b</div>",
+            400.0,
+        );
+        let a = engine.select_one(&doc, "#a").unwrap();
+        let b = engine.select_one(&doc, "#b").unwrap();
+        let am = tree.root.find(a).unwrap().marker_fragment.as_ref().unwrap();
+        let bm = tree.root.find(b).unwrap().marker_fragment.as_ref().unwrap();
+        assert!(
+            bm.rect.x() < am.rect.x() - 10.0,
+            "marker-offset moves the marker left, a={} b={}",
+            am.rect.x(),
+            bm.rect.x()
+        );
+    }
+
+    #[test]
+    fn text_justify_spreads_non_last_line() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px}\
+             #p,#q{width:56px;margin:0;line-height:20px}\
+             #p{text-align:justify} #q{text-align:start}</style>\
+             <p id=p><span>aa</span> <span>bb</span> <span>cc</span></p>\
+             <p id=q><span>aa</span> <span>bb</span> <span>cc</span></p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "#p").unwrap();
+        let q = engine.select_one(&doc, "#q").unwrap();
+        let pl = &tree.root.find(p).unwrap().lines;
+        let ql = &tree.root.find(q).unwrap().lines;
+        assert!(pl.len() >= 2 && ql.len() >= 2, "two lines");
+        let px = pl[0].fragments.last().unwrap().rect.x();
+        let qx = ql[0].fragments.last().unwrap().rect.x();
+        assert!(px > qx + 2.0, "justified first line spreads, p={px} q={qx}");
+    }
+
+    #[test]
+    fn math_style_compact_narrows_text() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:inline-block}\
+             #b{math-style:compact}</style>\
+             <span id=a>aaaa</span><span id=b>aaaa</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            b.width() < a.width() * 0.8,
+            "compact is narrower, a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn box_orient_vertical_stacks_flex_children() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{display:flex;box-orient:vertical;width:100px}\
+             #c>div{width:40px;height:10px}</style>\
+             <div id=c><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.x() - b.x()).abs() < 1.0 && b.y() > a.y() + 5.0,
+            "box-orient:vertical stacks, a={a:?} b={b:?}"
+        );
+    }
+
+    #[test]
+    fn break_before_column_starts_new_row() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{column-count:2;column-gap:0;width:200px}\
+             #c>div{height:10px} #b{break-before:column}</style>\
+             <div id=c><div id=a></div><div id=b></div><div id=d></div></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (b.x() - a.x()).abs() < 1.0 && b.y() > a.y() + 5.0,
+            "break-before:column starts a new column row, a={a:?} b={b:?}"
+        );
+    }
+
+    #[test]
+    fn text_wrap_balance_evens_two_lines() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:72px;font-size:16px;line-height:20px;text-wrap:balance;margin:0}</style>\
+             <p id=p>aa bb cc dd</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let lines = &tree.root.find(p).unwrap().lines;
+        assert_eq!(lines.len(), 2, "balance keeps two lines");
+        let t0: String = lines[0]
+            .fragments
+            .iter()
+            .filter_map(|f| f.text.as_deref())
+            .collect();
+        let t1: String = lines[1]
+            .fragments
+            .iter()
+            .filter_map(|f| f.text.as_deref())
+            .collect();
+        assert!(
+            t1.contains("cc"),
+            "balance moves cc onto the second line, got {t0:?} / {t1:?}"
+        );
+    }
+
+    #[test]
+    fn white_space_break_spaces_wraps_trailing_spaces() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;white-space:break-spaces;margin:0}</style>\
+             <p id=p>aa   </p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let n = tree.root.find(p).unwrap().lines.len();
+        assert!(n >= 2, "break-spaces wraps trailing spaces, got {n} lines");
+    }
+
+    #[test]
+    fn hyphens_auto_wraps_long_word() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;hyphens:auto;margin:0}</style>\
+             <p id=p>aaaaaaaa</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let n = tree.root.find(p).unwrap().lines.len();
+        assert!(n >= 2, "hyphens:auto wraps aaaaaaaa, got {n} lines");
+    }
+
+    #[test]
+    fn overflow_wrap_anywhere_splits_long_word() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;overflow-wrap:anywhere;margin:0}</style>\
+             <p id=p>aaaaaaaa</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let n = tree.root.find(p).unwrap().lines.len();
+        assert!(
+            n >= 2,
+            "overflow-wrap:anywhere wraps aaaaaaaa, got {n} lines"
+        );
+    }
+
+    #[test]
+    fn overflow_wrap_break_word_splits_long_word() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;overflow-wrap:break-word;margin:0}</style>\
+             <p id=p>aaaaaaaa</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let n = tree.root.find(p).unwrap().lines.len();
+        assert!(
+            n >= 2,
+            "overflow-wrap:break-word wraps aaaaaaaa, got {n} lines"
+        );
+    }
+
+    #[test]
+    fn text_indent_shifts_first_line() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{width:200px;margin:0}\
+             #b{text-indent:16px}</style>\
+             <p id=a>aaaa</p><p id=b>aaaa</p>",
+            400.0,
+        );
+        let a = engine.select_one(&doc, "#a").unwrap();
+        let b = engine.select_one(&doc, "#b").unwrap();
+        let ax = tree.root.find(a).unwrap().lines[0].fragments[0].rect.x();
+        let bx = tree.root.find(b).unwrap().lines[0].fragments[0].rect.x();
+        assert!(
+            bx > ax + 10.0,
+            "text-indent shifts the first line, a={ax} b={bx}"
+        );
+    }
+
+    #[test]
+    fn word_break_break_all_splits_long_word() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;word-break:break-all;margin:0}</style>\
+             <p id=p>aaaaaaaa</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let n = tree.root.find(p).unwrap().lines.len();
+        assert!(n >= 2, "break-all wraps aaaaaaaaa, got {n} lines");
+    }
+
+    #[test]
+    fn word_break_keep_all_keeps_cjk_unbroken() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}\
+             #a,#b{width:24px;font-size:16px;line-height:20px;margin:0}\
+             #b{word-break:keep-all}</style>\
+             <p id=a>你好你好</p><p id=b>你好你好</p>",
+            400.0,
+        );
+        let a = engine.select_one(&doc, "#a").unwrap();
+        let b = engine.select_one(&doc, "#b").unwrap();
+        let an = tree.root.find(a).unwrap().lines.len();
+        let bn = tree.root.find(b).unwrap().lines.len();
+        assert!(an >= 2, "normal wrap splits CJK, got {an} lines");
+        assert_eq!(bn, 1, "keep-all keeps CJK on one line, got {bn}");
+    }
+
+    #[test]
+    fn hyphens_manual_breaks_at_soft_hyphen() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:40px;font-size:16px;line-height:20px;hyphens:manual;margin:0}</style>\
+             <p id=p>aa\u{00AD}bbbbbbbb</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let n = tree.root.find(p).unwrap().lines.len();
+        assert!(n >= 2, "soft hyphen is a wrap opportunity, got {n} lines");
+    }
+
+    #[test]
+    fn tab_size_widens_pre_tabs() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px}\
+             pre{margin:0;white-space:pre;display:inline-block}\
+             #a{tab-size:2} #b{tab-size:8}</style>\
+             <pre id=a>\t</pre><pre id=b>\t</pre>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (a.width() - 16.0).abs() < 1.0,
+            "tab-size 2 at 16px / 0.5em space = 16px, got {}",
+            a.width()
+        );
+        assert!(
+            (b.width() - 64.0).abs() < 1.0,
+            "tab-size 8 at 16px / 0.5em space = 64px, got {}",
+            b.width()
+        );
+    }
+
+    #[test]
+    fn line_clamp_truncates_lines() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:80px;font-size:16px;line-height:20px;line-clamp:2;margin:0}</style>\
+             <p id=p>aaaa bbbb cccc dddd eeee ffff</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let lines = &tree.root.find(p).unwrap().lines;
+        assert_eq!(lines.len(), 2, "line-clamp:2, got {:?}", lines.len());
+    }
+
+    #[test]
+    fn isolation_establishes_bfc() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{isolation:isolate;width:200px} #f{float:left;width:40px;height:30px}</style>\
+             <div id=p><div id=f></div></div>",
+            400.0,
+        );
+        let p = rect(&tree, &engine, &doc, "#p");
+        assert!(
+            p.height() >= 30.0,
+            "isolation:isolate contains the float, got height {}",
+            p.height()
+        );
+    }
+
+    #[test]
+    fn grid_auto_flow_column_fills_down_first() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}\
+             .g{display:grid;width:40px;grid-template-columns:20px 20px;grid-template-rows:10px 10px;grid-auto-flow:column}\
+             .g>div{width:20px;height:10px}</style>\
+             <div class=g><div id=a></div><div id=b></div><div id=c></div></div>",
+            400.0,
+        );
+        let gid = engine.select_one(&doc, ".g").unwrap();
+        assert_eq!(
+            tree.root.find(gid).unwrap().style.grid_auto_flow,
+            ve_style::GridAutoFlow::Column,
+            "computed grid-auto-flow"
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        let c = rect(&tree, &engine, &doc, "#c");
+        assert!(
+            (a.x() - b.x()).abs() < 1.0 && b.y() > a.y() + 5.0,
+            "column flow stacks a then b, got a={a:?} b={b:?}"
+        );
+        assert!(
+            c.x() > a.x() + 10.0 && (c.y() - a.y()).abs() < 1.0,
+            "third item starts column 2, got c={c:?}"
+        );
+    }
+
+    #[test]
+    fn column_span_all_uses_full_width() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #c{column-count:2;column-gap:0;width:200px}\
+             #c>div{height:10px} #s{column-span:all;height:8px}</style>\
+             <div id=c><div id=s></div><div id=a></div><div id=b></div></div>",
+            400.0,
+        );
+        let s = rect(&tree, &engine, &doc, "#s");
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            (s.width() - 200.0).abs() < 1.0,
+            "spanner is full width, got {s:?}"
+        );
+        assert!(
+            (a.y() - b.y()).abs() < 0.5 && b.x() > a.x() + 40.0,
+            "later children still columnize, a={a:?} b={b:?}"
+        );
+    }
+
+    #[test]
+    fn position_anchor_and_area_place_against_named_box() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0}\
+             #a{width:40px;height:20px;anchor-name:--foo}\
+             #b{position:absolute;width:10px;height:10px;position-anchor:--foo;position-area:bottom}</style>\
+             <div id=a></div><div id=b></div>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert_eq!(a, Rect::new(0.0, 0.0, 40.0, 20.0));
+        assert!(
+            (b.x() - 0.0).abs() < 0.5 && (b.y() - 20.0).abs() < 0.5,
+            "position-area:bottom against --foo, got {b:?}"
+        );
+    }
+
+    #[test]
+    fn visibility_collapse_zeroes_row_keeps_column_width() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} table{border-spacing:0} td{padding:0}</style>\
+             <table><tr id=vis><td id=a style='height:20px'>xx</td></tr>\
+             <tr id=hid style='visibility:collapse'><td id=b>wwwwwwww</td></tr></table>",
+            400.0,
+        );
+        let hid = rect(&tree, &engine, &doc, "#hid");
+        let table = rect(&tree, &engine, &doc, "table");
+        assert!(
+            hid.height() < 0.5,
+            "collapsed row height is 0, got {}",
+            hid.height()
+        );
+        assert!(
+            table.width() >= 60.0,
+            "collapsed row still contributes column width, table width {}",
+            table.width()
+        );
+        assert!(
+            table.height() >= 19.0 && table.height() < 25.0,
+            "only the visible row counts, table height {}",
+            table.height()
         );
     }
 }

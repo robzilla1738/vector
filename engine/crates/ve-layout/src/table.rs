@@ -20,7 +20,10 @@
 //! so the shared border is not doubled. Column elements contribute no widths.
 
 use ve_core::{Point, Rect, Size};
-use ve_style::{BorderCollapse, BoxSizing, CaptionSide, LengthPercentageAuto, VerticalAlign};
+use ve_style::{
+    BorderCollapse, BoxSizing, CaptionSide, LengthPercentageAuto, TableLayout, VerticalAlign,
+    Visibility,
+};
 
 use crate::block::{
     ContainingBlock, Forced, LayoutCtx, border_edges, box_edges, intrinsic_min_width,
@@ -183,12 +186,58 @@ fn overlap_sum(ov: &[f32], start: usize, end: usize) -> f32 {
     ov.get(start..end).map_or(0.0, |s| s.iter().copied().sum())
 }
 
+fn column_widths_fixed(bx: &LayoutBox, grid: &Grid) -> Columns {
+    let n = grid.n_cols;
+    let mut cols = Columns {
+        min: vec![0.0; n],
+        max: vec![0.0; n],
+        spec: vec![ColSpec::Auto; n],
+    };
+    let first_row = grid.rows.first().copied();
+    for gc in &grid.cells {
+        if first_row != Some((gc.group, gc.row)) || gc.col_span != 1 {
+            continue;
+        }
+        let cell = cell(bx, gc);
+        let (_, padding, border) = box_edges(cell, 0.0);
+        let bp_h = padding.horizontal() + border.horizontal();
+        let min_width = cell.style.min_width.resolve(0.0);
+        let min_border_box = if cell.style.box_sizing == BoxSizing::BorderBox {
+            min_width
+        } else {
+            min_width + bp_h
+        };
+        cols.min[gc.col] = cols.min[gc.col].max(min_border_box);
+        cols.max[gc.col] = cols.max[gc.col].max(min_border_box);
+        match cell.style.width {
+            LengthPercentageAuto::Px(w) => {
+                let border_box = if cell.style.box_sizing == BoxSizing::BorderBox {
+                    w
+                } else {
+                    w + bp_h
+                };
+                cols.spec[gc.col] = ColSpec::Px(border_box);
+                cols.min[gc.col] = border_box;
+                cols.max[gc.col] = border_box;
+            }
+            LengthPercentageAuto::Percent(p) => {
+                cols.spec[gc.col] = ColSpec::Percent(p);
+            }
+            _ => {}
+        }
+    }
+    cols
+}
+
 fn column_widths(
     bx: &mut LayoutBox,
     grid: &Grid,
     spacing: f32,
     ctx: &mut LayoutCtx<'_>,
 ) -> Columns {
+    if bx.style.table_layout == TableLayout::Fixed {
+        return column_widths_fixed(bx, grid);
+    }
     let n = grid.n_cols;
     let mut cols = Columns {
         min: vec![0.0; n],
@@ -589,6 +638,11 @@ fn layout_rows(
             - overlap_sum(&row_ov, gc.grid_row, last);
         if h > spanned {
             row_heights[last] += h - spanned;
+        }
+    }
+    for (i, &(g, r)) in grid.rows.iter().enumerate() {
+        if bx.children[g].children[r].style.visibility == Visibility::Collapse {
+            row_heights[i] = 0.0;
         }
     }
 

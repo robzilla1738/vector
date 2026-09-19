@@ -1,0 +1,21 @@
+[package]
+name = "ve-chrome"
+description = "Retained chrome widgets for ve-shell (Arc sidebar, command bar, stage, rail)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+ve-core.workspace = true
+ve-gfx.workspace = true
+ve-style.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true

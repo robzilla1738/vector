@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ProgramSchema, StepSchema, MethodSchemas, EventSchema } from "@vector/contracts";
+import { ProgramSchema, ProgramBudgetSchema, StepSchema, MethodSchemas, EventSchema, errorAdvice, isElementRef } from "@vector/contracts";
 
 describe("StepSchema", () => {
   it("accepts every core op", () => {
@@ -53,12 +53,25 @@ describe("ProgramSchema", () => {
     const huge = { pageId: "p1", steps: Array.from({ length: 201 }, (_, i) => ({ id: `s${i}`, op: "reload" })) };
     expect(ProgramSchema.safeParse(huge).success).toBe(false);
   });
+
+  it("ProgramBudgetSchema accepts tokens", () => {
+    expect(ProgramBudgetSchema.safeParse({ tokens: 3000 }).success).toBe(true);
+    expect(ProgramBudgetSchema.safeParse({ tokens: 0 }).success).toBe(false);
+    expect(
+      ProgramSchema.safeParse({
+        pageId: "p1",
+        steps: [{ id: "s1", op: "click", target: "r1" }],
+        budget: { tokens: 3000 },
+      }).success,
+    ).toBe(true);
+  });
 });
 
 describe("API schemas", () => {
   it("has all versioned methods from the roadmap", () => {
     for (const m of [
       "pages.list", "pages.open", "pages.observe", "pages.execute", "pages.capture",
+      "pages.extract", "pages.waitFor", "pages.console", "pages.dialog", "pages.network",
       "sets.create", "sets.map", "sets.results",
       "runs.start", "runs.pause", "runs.resume", "runs.cancel", "runs.events",
       "artifacts.list", "artifacts.read",
@@ -84,6 +97,22 @@ describe("API schemas", () => {
     expect(P.safeParse({ program, returnObservation: { scope: "subtree", subtreeRef: "r2", format: "full" } }).success).toBe(true);
     expect(P.safeParse({ program, returnObservation: { scope: "everything" } }).success).toBe(false);
     expect(P.safeParse({ program, returnObservation: { format: "yaml" } }).success).toBe(false);
+  });
+
+  it("isElementRef accepts generational refs (H0-C1)", () => {
+    expect(isElementRef("r12")).toBe(true);
+    expect(isElementRef("r12.3")).toBe(true);
+    expect(isElementRef("css:#q")).toBe(false);
+    expect(isElementRef("r")).toBe(false);
+  });
+
+  it("errorAdvice sets retryable and hint for MCP (H0-C2)", () => {
+    expect(errorAdvice("ref_stale")).toEqual({
+      retryable: true,
+      hint: "re-observe and retry with a fresh ref",
+    });
+    expect(errorAdvice("permission_denied")).toMatchObject({ retryable: false, hint: expect.stringMatching(/grant/) });
+    expect(errorAdvice("cancelled")).toEqual({ retryable: false, hint: null });
   });
 
   it("validates events", () => {

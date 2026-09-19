@@ -18,6 +18,8 @@ pub struct Hub {
     config: EngineConfig,
     contexts: HashMap<u32, Host>,
     pages: HashMap<u64, u32>,
+    /// Origin → process context (H3-4 per-site isolation).
+    site_contexts: HashMap<String, u32>,
     next_context: u32,
     next_page: u64,
 }
@@ -60,8 +62,9 @@ fn parse_options(options_json: &str) -> Result<Value, ApiError> {
 /// pass an explicit allowlist. `securityProfile` / `VECTOR_ENGINE_PROFILE`
 /// select production fail-closed isolation.
 pub fn parse_config(config_json: &str) -> Result<EngineConfig, ApiError> {
-    let mut config = if config_json.trim().is_empty() {
-        EngineConfig::default()
+    let mut config: EngineConfig = if config_json.trim().is_empty() {
+        // Empty JSON is the product default: system shaper, strict policy.
+        serde_json::from_value(json!({}))?
     } else {
         let value: Value = serde_json::from_str(config_json)?;
         serde_json::from_value(value)?
@@ -97,6 +100,7 @@ impl Hub {
             config,
             contexts: HashMap::new(),
             pages: HashMap::new(),
+            site_contexts: HashMap::new(),
             next_context: DEFAULT_CONTEXT,
             next_page: 0,
         };
@@ -162,12 +166,58 @@ impl Hub {
             .ok_or_else(|| ApiError::new("not_found", format!("no such context {id}")))
     }
 
+    /// OS pid of a context's `ve-host` child, when isolated in-process is off.
+    #[must_use]
+    pub fn context_process_id(&self, id: u32) -> Option<u32> {
+        self.contexts.get(&id).and_then(Host::process_id)
+    }
+
+    /// Context that owns `page`.
+    #[must_use]
+    pub fn page_context_id(&self, page: u64) -> Option<u32> {
+        self.pages.get(&page).copied()
+    }
+
     fn host_of(&self, page: u64) -> Result<&Host, ApiError> {
         let ctx = self
             .pages
             .get(&page)
             .ok_or_else(|| ApiError::no_such_page(page))?;
         self.context(*ctx)
+    }
+
+    fn site_origin(url: &str) -> String {
+        url::Url::parse(url)
+            .ok()
+            .map(|u| u.origin().ascii_serialization())
+            .unwrap_or_else(|| url.to_owned())
+    }
+
+    /// Process context for `url`'s origin. Production isolation gets one
+    /// host process per site (H3-4). Callers still pass a context id; a
+    /// different origin is remapped onto the site process.
+    fn map_site_context(&mut self, fallback: u32, url: &str) -> Result<u32, ApiError> {
+        let origin = Self::site_origin(url);
+        if let Some(&id) = self.site_contexts.get(&origin) {
+            return Ok(id);
+        }
+        let id = if self.site_contexts.is_empty() && self.contexts.contains_key(&fallback) {
+            fallback
+        } else {
+            self.spawn_context(None)?
+        };
+        self.site_contexts.insert(origin, id);
+        Ok(id)
+    }
+
+    fn context_for_site(&mut self, fallback: u32, url: &str) -> Result<u32, ApiError> {
+        if !matches!(
+            self.config.security_profile,
+            ve_api::SecurityProfile::Production
+        ) {
+            return Ok(fallback);
+        }
+        self.map_site_context(fallback, url)
     }
 
     /// Opens a page in a context; the reply carries the new page id.
@@ -179,6 +229,10 @@ impl Hub {
         if let Err(e) = self.context(context_id) {
             return fail(&e);
         }
+        let context_id = match self.context_for_site(context_id, url) {
+            Ok(id) => id,
+            Err(e) => return fail(&e),
+        };
         self.next_page += 1;
         let page = self.next_page;
         self.pages.insert(page, context_id);
@@ -285,6 +339,7 @@ mod tests {
     fn config_defaults_to_a_strict_policy_unless_given() {
         let c = parse_config("").unwrap();
         assert!(c.policy.block_loopback && !c.policy.allow_file);
+        assert_eq!(c.shaper, ve_api::ShaperKind::System);
         let c = parse_config(r#"{"offline": true, "dataDir": "/tmp/x"}"#).unwrap();
         assert!(c.offline && c.policy.block_loopback);
         let c = parse_config(r#"{"policy": {"blockLoopback": true}}"#).unwrap();
@@ -397,5 +452,28 @@ mod tests {
         assert_eq!(hub.pages(), vec![pb]);
         hub.shutdown();
         assert!(hub.new_context("{}").is_err());
+    }
+
+    #[test]
+    fn map_site_context_reuses_origin_and_isolates_sites() {
+        let mut hub =
+            Hub::from_json(r#"{"offline": true, "viewport": {"width": 800, "height": 600}}"#)
+                .unwrap();
+        let a = hub
+            .map_site_context(DEFAULT_CONTEXT, "https://a.test/x")
+            .unwrap();
+        let a2 = hub
+            .map_site_context(DEFAULT_CONTEXT, "https://a.test/y")
+            .unwrap();
+        let b = hub
+            .map_site_context(DEFAULT_CONTEXT, "https://b.test/")
+            .unwrap();
+        assert_eq!(a, a2);
+        assert_ne!(a, b);
+        assert_eq!(Hub::site_origin("https://a.test/x"), "https://a.test");
+        assert_ne!(
+            Hub::site_origin("https://a.test/"),
+            Hub::site_origin("https://b.test/")
+        );
     }
 }

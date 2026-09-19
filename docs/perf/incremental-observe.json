@@ -1,0 +1,24 @@
+{
+  "appleSilicon": false,
+  "backend": "vector-engine",
+  "corpus": {
+    "dir": "/tmp/vector-live-html",
+    "kind": "fetched-html-bodies"
+  },
+  "evidence": [
+    "ve-agent::incremental_observe_is_under_two_milliseconds",
+    "ve-api::incremental_observe_p95_under_2ms_on_corpus_sample"
+  ],
+  "metric": "incremental_observe",
+  "n": 100,
+  "notes": "Cached sinceRevision observe on live HTML bodies. Not an Apple-silicon published score.",
+  "p50Ms": 0.194,
+  "p95Ms": 0.33,
+  "profile": "release",
+  "revisionCache": "Page::observe_after_settle returns the cached ObservationContent when since_revision matches the live document revision",
+  "security_mode": "production",
+  "spatialHitIndex": "ve_layout::HitIndex 64px cells — LayoutTree::hit_test for observe occlusion; nodes_overlapping patches attribute/geometry incremental observe",
+  "targetP95Ms": 2,
+  "v8HeapCaps": "V8Vm::with_heap_limit / VECTOR_V8_HEAP_MB",
+  "v8SnapshotStartup": "V8Vm startup snapshot blob + platform Once"
+}

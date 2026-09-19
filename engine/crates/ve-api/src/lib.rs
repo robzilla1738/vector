@@ -34,6 +34,7 @@ pub mod ffi;
 pub mod service;
 pub mod shell;
 pub mod updates;
+pub mod window;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -47,17 +48,19 @@ use ve_net::{Initiator, NetworkContext, Request};
 
 pub use service::{BrowserClient, BrowserService, BrowserServiceListener, BrowserServicePump};
 pub use shell::{
-    ChromeAxNode, EventOutcome, NativeBrowser, NativeController, NativeEvent, Tab, scene_json,
+    ChromeAxNode, EventOutcome, KeyState, NativeBrowser, NativeController, NativeEvent, Tab,
+    scene_json,
 };
 pub use updates::{UpdateKeyPair, verify_update_manifest};
 pub use ve_agent::{
     EngineObservation, ExecuteRequest, ExecuteResult, Format, InFlightSummary, LoadedDocument,
     Loader, NavMethod, NavigationRequest, ObservationContent, ObservationRequest, Page, Program,
     ProgramResult, RoutingInfo, SETTLE_NAVIGATION_MS, SETTLE_STEP_MS, Scope, Screenshot, Settled,
-    StepOutcome,
+    ShaperKind, StepOutcome,
 };
-pub use ve_core::VERSION;
+pub use ve_core::{Clock, ScrollPhase, VERSION};
 pub use ve_net::{BrowserCookie, ContextId, NetworkPolicy};
+pub use window::{Browser, NativeWindow};
 
 /// Start V8 before a production sandbox denies new threads.
 pub fn preload_scripting() {
@@ -141,6 +144,16 @@ pub struct EngineConfig {
     /// (WPT/fixture HTTPS CAs). Empty in ordinary browsing.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub extra_tls_roots: Vec<Vec<u8>>,
+    /// Layout text shaper. GUI / corpus / Speedometer / NAPI use [`ShaperKind::System`].
+    /// Rust [`Default`] stays Metric so goldens stay deterministic.
+    #[serde(default = "product_shaper")]
+    pub shaper: ShaperKind,
+    /// Page clock. Goldens stay [`Clock::Virtual`]; `ve-shell --gui` uses Wall.
+    pub clock: Clock,
+}
+
+fn product_shaper() -> ShaperKind {
+    ShaperKind::System
 }
 
 impl Default for EngineConfig {
@@ -157,6 +170,8 @@ impl Default for EngineConfig {
             security_profile: SecurityProfile::Developer,
             isolation: IsolationMode::Auto,
             extra_tls_roots: Vec::new(),
+            shaper: ShaperKind::Metric,
+            clock: Clock::Virtual,
         }
     }
 }
@@ -303,16 +318,36 @@ impl Loader for NetLoader {
             status: response.status.as_u16(),
             last_modified: response.last_modified().map(str::to_owned),
             content_language: response.content_language().map(str::to_owned),
+            coop: ve_agent::CoopPolicy::parse_header(
+                response
+                    .headers
+                    .get("cross-origin-opener-policy")
+                    .and_then(|v| v.to_str().ok()),
+            ),
+            coep: ve_agent::CoepPolicy::parse_header(
+                response
+                    .headers
+                    .get("cross-origin-embedder-policy")
+                    .and_then(|v| v.to_str().ok()),
+            ),
         })
     }
 
-    /// One concurrent batch through `NetworkContext::fetch_many`
+    /// One concurrent batch through `NetworkContext::start_fetch_many`
     /// (`Initiator::Parser`, kind-specific `Accept`), so a page's stylesheets,
     /// images and scripts share the transport's pooled connections.
     fn fetch_subresources(
         &mut self,
         requests: &[ve_agent::SubresourceRequest],
     ) -> Vec<Result<ve_agent::LoadedResource>> {
+        let pending = self.start_subresources(requests);
+        self.join_subresources(pending)
+    }
+
+    fn start_subresources(
+        &mut self,
+        requests: &[ve_agent::SubresourceRequest],
+    ) -> ve_agent::PendingSubresources {
         let mut wire = Vec::with_capacity(requests.len());
         let mut failed: Vec<(usize, Error)> = Vec::new();
         for (i, r) in requests.iter().enumerate() {
@@ -326,6 +361,8 @@ impl Loader for NetLoader {
                         ve_agent::SubresourceKind::Script => "*/*",
                         ve_agent::SubresourceKind::Font => "font/woff2,font/woff,*/*;q=0.1",
                         ve_agent::SubresourceKind::Document => "text/html,*/*;q=0.1",
+                        ve_agent::SubresourceKind::Prefetch
+                        | ve_agent::SubresourceKind::Preconnect => "*/*",
                     };
                     let mut req = req
                         .for_page(r.page)
@@ -340,30 +377,30 @@ impl Loader for NetLoader {
                 Err(e) => failed.push((i, e.into())),
             }
         }
-        let responses = self
+        let batch = self
             .net
             .borrow_mut()
-            .fetch_many(wire.iter().map(|(_, r)| r.clone()).collect());
-        let mut out: Vec<Option<Result<ve_agent::LoadedResource>>> =
-            (0..requests.len()).map(|_| None).collect();
-        for ((i, _), response) in wire.into_iter().zip(responses) {
-            out[i] = Some(
-                response
-                    .map_err(Error::from)
-                    .map(|response| ve_agent::LoadedResource {
-                        url: response.url.to_string(),
-                        bytes: response.body.to_vec(),
-                        content_type: response.content_type().map(str::to_owned),
-                        status: response.status.as_u16(),
-                    }),
-            );
+            .start_fetch_many(wire.iter().map(|(_, r)| r.clone()).collect());
+        ve_agent::PendingSubresources::from_net(
+            batch,
+            requests.len(),
+            wire.into_iter().map(|(i, _)| i).collect(),
+            failed,
+        )
+    }
+
+    fn join_subresources(
+        &mut self,
+        pending: ve_agent::PendingSubresources,
+    ) -> Vec<Result<ve_agent::LoadedResource>> {
+        let net = Rc::clone(&self.net);
+        pending.finish_net(move |batch| net.borrow_mut().join_fetch_many(batch))
+    }
+
+    fn preconnect(&mut self, urls: &[String]) {
+        for url in urls {
+            let _ = self.net.borrow().preconnect(url);
         }
-        for (i, e) in failed {
-            out[i] = Some(Err(e));
-        }
-        out.into_iter()
-            .map(|r| r.unwrap_or_else(|| Err(Error::internal("subresource result missing"))))
-            .collect()
     }
 
     fn in_flight(&self, page: u64) -> Vec<InFlightSummary> {
@@ -414,6 +451,11 @@ impl Loader for NetLoader {
             bytes: response.body.to_vec(),
             content_type: response.content_type().map(str::to_owned),
             status: response.status.as_u16(),
+            corp: response
+                .headers
+                .get("cross-origin-resource-policy")
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_owned),
         })
     }
 }
@@ -671,6 +713,8 @@ impl VectorEngine {
             }
         };
         page.set_scale(self.config.scale);
+        page.set_shaper(self.config.shaper);
+        page.set_clock(self.config.clock);
         page.set_network_policy(policy);
         let settled = page.settle_passive(SETTLE_NAVIGATION_MS);
         if let Some(error) = page.take_navigation_error() {
@@ -1288,5 +1332,14 @@ mod tests {
             .unwrap();
         assert_eq!(opened.title, "Archived");
         assert_eq!(opened.status, 200);
+    }
+
+    #[test]
+    fn json_config_defaults_to_system_shaper_goldens_stay_metric() {
+        let parsed: EngineConfig = serde_json::from_str("{}").unwrap();
+        assert_eq!(parsed.shaper, ShaperKind::System);
+        assert_eq!(EngineConfig::default().shaper, ShaperKind::Metric);
+        let metric: EngineConfig = serde_json::from_str(r#"{"shaper":"metric"}"#).unwrap();
+        assert_eq!(metric.shaper, ShaperKind::Metric);
     }
 }
