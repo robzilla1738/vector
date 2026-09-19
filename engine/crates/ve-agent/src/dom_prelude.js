@@ -2225,9 +2225,12 @@
     _syncCss() {
       this._css = this._rules.map((r) => r.cssText).join("");
     }
-    replaceSync(css) {
+    _loadRules(css) {
       this._css = String(css ?? "");
       this._rules = this._parseRules(this._css);
+    }
+    replaceSync(css) {
+      this._loadRules(css);
       if (this._css) D("addAuthorSheet", this._css);
       return this;
     }
@@ -6355,6 +6358,20 @@
     }
     get location() { return this.__h === D("documentNode") ? location : null; }
     get readyState() { return this.__h === D("documentNode") ? D("readyState") : "complete"; }
+    get styleSheets() {
+      const nodes = this.querySelectorAll ? this.querySelectorAll("style") : [];
+      const out = [];
+      for (let i = 0; i < nodes.length; i++) {
+        const el = nodes[i];
+        if (!el._sheet) {
+          el._sheet = new CSSStyleSheet();
+          el._sheet._loadRules(el.textContent || "");
+        }
+        out.push(el._sheet);
+      }
+      out.item = function (i) { return out[i] || null; };
+      return out;
+    }
     get domain() {
       if (this._domain != null) return this._domain;
       try { return new URL(this.URL || D("url") || "http://127.0.0.1").hostname; }
@@ -7137,6 +7154,7 @@
     back() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
     forward() { return { committed: Promise.resolve(), finished: Promise.resolve() }; }
   }
+  const broadcastChannels = new Map();
   class BroadcastChannel extends EventTarget {
     constructor(name) {
       super();
@@ -7144,14 +7162,45 @@
         throw new TypeError("Failed to construct 'BroadcastChannel': 1 argument required, but only 0 present.");
       }
       this._name = String(name);
+      this._closed = false;
+      let set = broadcastChannels.get(this._name);
+      if (!set) {
+        set = new Set();
+        broadcastChannels.set(this._name, set);
+      }
+      set.add(this);
     }
     get name() { return this._name; }
     postMessage(message) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'postMessage' on 'BroadcastChannel': 1 argument required, but only 0 present.");
       }
+      if (this._closed) {
+        throw new DOMException("BroadcastChannel is closed", "InvalidStateError");
+      }
+      const peers = broadcastChannels.get(this._name);
+      if (!peers) return;
+      const data = message;
+      const source = this;
+      for (const dest of peers) {
+        if (dest === source || dest._closed) continue;
+        const deliver = () => {
+          if (dest._closed) return;
+          dest.dispatchEvent(new MessageEvent("message", { data }));
+        };
+        if (typeof globalThis.setTimeout === "function") globalThis.setTimeout(deliver, 0);
+        else if (typeof globalThis.queueMicrotask === "function") globalThis.queueMicrotask(deliver);
+        else deliver();
+      }
     }
-    close() {}
+    close() {
+      this._closed = true;
+      const set = broadcastChannels.get(this._name);
+      if (set) {
+        set.delete(this);
+        if (!set.size) broadcastChannels.delete(this._name);
+      }
+    }
   }
   class MessagePort extends EventTarget {
     constructor() { throw new TypeError("Illegal constructor"); }

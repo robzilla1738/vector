@@ -3155,6 +3155,58 @@ fn close_watcher_request_close_honours_prevent_default() {
 }
 
 #[test]
+fn broadcast_channel_delivers_to_same_name_peers() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__bc = [];
+          window.__a = new BroadcastChannel("room");
+          window.__b = new BroadcastChannel("room");
+          window.__c = new BroadcastChannel("other");
+          window.__b.onmessage = function (e) { window.__bc.push("b:" + e.data); };
+          window.__c.onmessage = function (e) { window.__bc.push("c:" + e.data); };
+          window.__a.postMessage("hi");
+          window.__a.close();
+          var closedErr = "";
+          try { window.__a.postMessage("no"); } catch (e) { closedErr = e.name; }
+          window.__closedErr = closedErr;
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return { got: window.__bc.slice(), closedErr: window.__closedErr };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["got"][0], "b:hi", "{v}");
+    assert_eq!(v["got"].as_array().map(|a| a.len()).unwrap_or(0), 1, "{v}");
+    assert_eq!(v["closedErr"], "InvalidStateError", "{v}");
+}
+
+#[test]
+fn document_style_sheets_exposes_style_element_rules() {
+    let mut page = open(r#"<body><style>#t{color:red}h1{font-size:2em}</style></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var sheets = document.styleSheets;
+              return {
+                len: sheets.length,
+                rules: sheets[0].cssRules.length,
+                sel: sheets[0].cssRules[0].selectorText
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["len"], 1, "{v}");
+    assert_eq!(v["rules"], 2, "{v}");
+    assert_eq!(v["sel"], "#t", "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
