@@ -9500,6 +9500,7 @@
       this.ELEMENT_ARRAY_BUFFER = 34963;
       this.FLOAT = 5126;
       this.POINTS = 0;
+      this.LINES = 1;
       this.LINE_LOOP = 2;
       this.LINE_STRIP = 3;
       this.TRIANGLES = 4;
@@ -9831,6 +9832,13 @@
             const css = this._uniformCss();
             for (const p of pts) {
               D("canvasFillRect", c.__h, p[0] - 1, p[1] - 1, 2, 2, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
+            }
+            return;
+          }
+          if (mode === this.LINES) {
+            const css = this._uniformCss();
+            for (let i = 0; i + 1 < pts.length; i += 2) {
+              this._strokePoly([pts[i], pts[i + 1]], css);
             }
             return;
           }

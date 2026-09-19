@@ -4486,6 +4486,17 @@ mod tests {
     }
 
     #[test]
+    fn decode_svg_viewbox_origin_shifts_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='8 8 8 8'>\
+              <rect x='8' y='8' width='4' height='4' fill='#ff0000'/></svg>",
+        )
+        .expect("svg viewBox origin");
+        assert_eq!(img.pixel(2, 2), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(6, 6), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
     fn decode_svg_viewbox_scales_rect_to_viewport() {
         let img = decode(
             b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 16 16'>\

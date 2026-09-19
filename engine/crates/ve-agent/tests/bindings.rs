@@ -2115,6 +2115,39 @@ fn canvas_letter_spacing_shifts_second_glyph() {
 }
 
 #[test]
+fn canvas_font_style_property_shears_glyph() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              function maxTop(style) {
+                var c = document.createElement("canvas");
+                c.width = 16;
+                c.height = 16;
+                var ctx = c.getContext("2d");
+                ctx.fillStyle = "#ff0000";
+                ctx.font = "7px sans-serif";
+                ctx.fontStyle = style;
+                ctx.fillText("I", 1, 12);
+                var data = ctx.getImageData(0, 0, 16, 16).data;
+                var max = -1;
+                for (var y = 0; y < 8; y++) {
+                  for (var x = 0; x < 16; x++) {
+                    if (data[(y * 16 + x) * 4] > 200) max = Math.max(max, x);
+                  }
+                }
+                return max;
+              }
+              return { n: maxTop("normal"), i: maxTop("italic") };
+            })()"##,
+        )
+        .unwrap();
+    let n = v["n"].as_i64().unwrap_or(-1);
+    let i = v["i"].as_i64().unwrap_or(-1);
+    assert!(i > n, "fontStyle=italic must shear I: {v}");
+}
+
+#[test]
 fn canvas_font_weight_property_widens_glyph() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -6382,6 +6415,37 @@ fn webgl_cull_face_skips_back_facing_triangle() {
     assert_eq!(v["ca"], 0, "{v}");
     assert_eq!(v["sg"], 255, "{v}");
     assert_eq!(v["sa"], 255, "{v}");
+}
+
+#[test]
+fn webgl_lines_strokes_independent_segments() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, 0, 1, 0, -1, 1, 1, 1]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.drawArrays(gl.LINES, 0, 2);
+              const mid = new Uint8Array(4);
+              const top = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              gl.readPixels(4, 7, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, top);
+              return { g: mid[1], a: mid[3], ta: top[3], lines: gl.LINES };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["lines"], 1, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["ta"], 0, "{v}");
 }
 
 #[test]
