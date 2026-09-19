@@ -553,12 +553,14 @@ impl DisplayList {
                         list.push(DisplayItem::PopClip);
                     }
                 }
-                if let Filter::Blur(radius) = style.filter {
-                    if radius > 0.0 {
-                        list.push(DisplayItem::FilterBlur {
-                            rect: item.rect,
-                            radius,
-                        });
+                for filter in [style.filter, style.backdrop_filter] {
+                    if let Filter::Blur(radius) = filter {
+                        if radius > 0.0 {
+                            list.push(DisplayItem::FilterBlur {
+                                rect: item.rect,
+                                radius,
+                            });
+                        }
                     }
                 }
                 let widths = Edges::new(
@@ -1273,6 +1275,31 @@ mod tests {
                 .iter()
                 .any(|i| matches!(i, DisplayItem::FilterBlur { radius, .. } if *radius >= 2.0)),
             "filter blur missing: {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_backdrop_filter_blur() {
+        let html = "<style>body{margin:0} #g{width:40px;height:20px;background:red;backdrop-filter:blur(3px)}</style>\
+                    <div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert!(
+            matches!(styles.style(id).backdrop_filter, Filter::Blur(r) if r >= 3.0),
+            "backdrop-filter computed: {:?}",
+            styles.style(id).backdrop_filter
+        );
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let list = DisplayList::from_layout(&layout, &styles);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::FilterBlur { radius, .. } if *radius >= 3.0)),
+            "backdrop-filter blur missing: {:?}",
             list.items()
         );
     }

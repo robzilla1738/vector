@@ -1324,6 +1324,8 @@ property_table! {
     Cursor: "cursor" => cursor: String = String::from("auto"), inherited = true, syntax = Single, convert = conv::cursor;
     /// `filter` (`none` or `blur()`)
     Filter: "filter" => filter: Filter = Filter::None, inherited = false, syntax = Single, convert = conv::filter;
+    /// `backdrop-filter` (`none` or `blur()`)
+    BackdropFilter: "backdrop-filter" => backdrop_filter: Filter = Filter::None, inherited = false, syntax = Single, convert = conv::filter;
     /// `animation-name` (`none` is empty)
     AnimationName: "animation-name" => animation_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
     /// `animation-duration` in milliseconds
@@ -1475,7 +1477,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "background-attachment",
     "background-blend-mode",
     "border-image",
-    "backdrop-filter",
     "mix-blend-mode",
     "isolation",
     "font-variant",
@@ -3532,11 +3533,12 @@ mod tests {
         ok("position-anchor", "--foo");
         ok("position-area", "bottom");
         ok("inset-area", "top");
+        ok("backdrop-filter", "blur(4px)");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 145);
+        assert_eq!(PropertyId::ALL.len(), 146);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))
