@@ -128,7 +128,10 @@ pub fn layout_root(root: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) {
 }
 
 /// Records in-flow `anchor-name` boxes for `position-anchor` lookup.
-pub fn collect_anchors(bx: &LayoutBox, out: &mut HashMap<String, Rect>) {
+pub fn collect_anchors<S: std::hash::BuildHasher>(
+    bx: &LayoutBox,
+    out: &mut HashMap<String, Rect, S>,
+) {
     if !bx.style.anchor_name.is_empty() {
         out.insert(bx.style.anchor_name.clone(), bx.rect);
     }
@@ -507,9 +510,7 @@ fn layout_block_flow_columns(
         }
         if child.style.break_before == BreakBefore::Column {
             let y = col_y.iter().copied().fold(content.y(), f32::max);
-            for slot in &mut col_y {
-                *slot = y;
-            }
+            col_y.fill(y);
             i = 0;
         }
         if child.style.column_span == ColumnSpan::All {
@@ -521,27 +522,20 @@ fn layout_block_flow_columns(
                 Point::new(content.x(), y),
                 Forced::default(),
             );
-            if child.style.position == Position::Relative || child.style.position == Position::Sticky
+            if child.style.position == Position::Relative
+                || child.style.position == Position::Sticky
             {
                 apply_relative_offset(child, full);
             }
             let bottom = child.rect.bottom();
-            for slot in &mut col_y {
-                *slot = bottom;
-            }
+            col_y.fill(bottom);
             i = 0;
             continue;
         }
         let col = i % cols;
         i += 1;
         let x = content.x() + col as f32 * (col_w + gap);
-        layout_box_at(
-            child,
-            ctx,
-            cb,
-            Point::new(x, col_y[col]),
-            Forced::default(),
-        );
+        layout_box_at(child, ctx, cb, Point::new(x, col_y[col]), Forced::default());
         if child.style.position == Position::Relative || child.style.position == Position::Sticky {
             apply_relative_offset(child, cb);
         }
@@ -785,12 +779,7 @@ pub fn layout_float(child: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rec
         .place(side, size, y, content.x(), content.right());
     let extra = child.style.float_offset.resolve(size.width);
     let origin = Point::new(
-        origin.x
-            + if side == Float::Right {
-                -extra
-            } else {
-                extra
-            },
+        origin.x + if side == Float::Right { -extra } else { extra },
         origin.y,
     );
     let margin_box = Rect::new(origin.x, origin.y, size.width, size.height);
@@ -992,12 +981,12 @@ fn intrinsic_min_width_uncached(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>) -> 
 /// Second pass: places `absolute` / `fixed` boxes against their containing
 /// block. `abs_cb` is the padding box of the nearest positioned ancestor,
 /// `viewport` the initial containing block.
-pub fn layout_positioned(
+pub fn layout_positioned<S: std::hash::BuildHasher>(
     bx: &mut LayoutBox,
     ctx: &mut LayoutCtx<'_>,
     abs_cb: Rect,
     viewport: Rect,
-    anchors: &HashMap<String, Rect>,
+    anchors: &HashMap<String, Rect, S>,
 ) {
     let own_cb = if bx.has_own_edges() && bx.style.position.is_positioned() {
         // Padding box of this box.
@@ -1019,11 +1008,11 @@ pub fn layout_positioned(
     }
 }
 
-fn place_absolute(
+fn place_absolute<S: std::hash::BuildHasher>(
     bx: &mut LayoutBox,
     ctx: &mut LayoutCtx<'_>,
     mut cb_rect: Rect,
-    anchors: &HashMap<String, Rect>,
+    anchors: &HashMap<String, Rect, S>,
 ) {
     let style = bx.style.clone();
     let static_pos = bx.rect.origin;

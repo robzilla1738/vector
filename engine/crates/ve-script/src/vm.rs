@@ -358,10 +358,10 @@ pub fn module_import_specifiers(source: &str) -> Vec<String> {
         while let Some(i) = rest.find(keyword) {
             let tail = rest[i + skip..].trim_start();
             let quote = tail.as_bytes().first().copied();
-            if matches!(quote, Some(b'"') | Some(b'\'')) {
+            if matches!(quote, Some(b'"' | b'\'')) {
                 let q = quote.unwrap() as char;
                 if let Some(end) = tail[1..].find(q) {
-                    let spec = &tail[1..1 + end];
+                    let spec = &tail[1..=end];
                     if !spec.is_empty() {
                         out.push(spec.to_owned());
                     }
@@ -539,8 +539,11 @@ mod tests {
             Some("https://s.test/abs.js")
         );
         assert_eq!(
-            resolve_module_specifier("https://s.test/main.js", "data:text/javascript,export const n=1")
-                .as_deref(),
+            resolve_module_specifier(
+                "https://s.test/main.js",
+                "data:text/javascript,export const n=1"
+            )
+            .as_deref(),
             Some("data:text/javascript,export const n=1")
         );
         assert_eq!(

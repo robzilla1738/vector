@@ -40,10 +40,16 @@ function harness(model: MockModelClient) {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
   const tokens: { input: number; output: number; ms: number }[] = [];
+  let currentObservation = obs;
   const pages = {
-    observe: async () => obs,
+    observe: async () => currentObservation,
     execute: async (program: { steps: { id: string; op: string }[] }, ctx: { onStep?: (o: StepOutcome, s: unknown) => void }) => {
       for (const s of program.steps) ctx.onStep?.(done(s.id, s.op), s);
+      currentObservation = {
+        ...currentObservation,
+        revision: currentObservation.revision + 1,
+        content: { ...currentObservation.content, text: "Counter: 1" },
+      };
       return { status: "completed" as const, steps: program.steps.map((s) => done(s.id, s.op)) };
     },
     capture: async () => ({ dataUrl: "data:image/png;base64,AA", width: 1, height: 1, scale: 1 }),

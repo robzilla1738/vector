@@ -13,12 +13,12 @@ use objc2_app_kit::NSWindow;
 
 pub use ve_core::ScrollPhase;
 
-/// `CADisplayLink.preferredFrameRateRange` (H1-A4 ProMotion).
+/// `CADisplayLink.preferredFrameRateRange` (H1-A4 `ProMotion`).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FrameRateRange {
     /// Lowest acceptable Hz.
     pub minimum: f32,
-    /// Highest acceptable Hz (120 on ProMotion).
+    /// Highest acceptable Hz (120 on `ProMotion`).
     pub maximum: f32,
     /// Preferred Hz.
     pub preferred: f32,
@@ -74,10 +74,7 @@ pub fn default_menus() -> Vec<(String, Vec<MenuItem>)> {
         ),
         (
             "History".into(),
-            vec![
-                item("Back", "[", "back"),
-                item("Forward", "]", "forward"),
-            ],
+            vec![item("Back", "[", "back"), item("Forward", "]", "forward")],
         ),
     ]
 }
@@ -107,10 +104,10 @@ pub struct MacWindow {
     pub menus: Vec<(String, Vec<MenuItem>)>,
     /// Last menu command.
     pub last_command: Option<String>,
-    /// Whether a native NSWindow was created (macOS only).
+    /// Whether a native `NSWindow` was created (macOS only).
     pub native: bool,
     #[cfg(target_os = "macos")]
-    native_window: Option<Retained<NSWindow>>,
+    _native_window: Option<Retained<NSWindow>>,
 }
 
 impl Default for MacWindow {
@@ -125,7 +122,7 @@ impl Default for MacWindow {
             last_command: None,
             native: false,
             #[cfg(target_os = "macos")]
-            native_window: None,
+            _native_window: None,
         }
     }
 }
@@ -154,27 +151,29 @@ impl MacWindow {
     ///
     /// # Safety
     ///
-    /// `ns_view` must be a live AppKit `NSView` on the main thread. The host
+    /// `ns_view` must be a live `AppKit` `NSView` on the main thread. The host
     /// retains its owning `NSWindow` for the lifetime of this value.
     #[cfg(target_os = "macos")]
     #[must_use]
-    pub unsafe fn attach_product_view(ns_view: std::ptr::NonNull<std::ffi::c_void>) -> Option<Self> {
+    pub unsafe fn attach_product_view(
+        ns_view: std::ptr::NonNull<std::ffi::c_void>,
+    ) -> Option<Self> {
         unsafe { macos::attach_window(ns_view) }
     }
 
-    /// Map AppKit `NSEvent.phase` / `momentumPhase` bits onto [`ScrollPhase`].
+    /// Map `AppKit` `NSEvent.phase` / `momentumPhase` bits onto [`ScrollPhase`].
     #[must_use]
     pub fn scroll_phase_from_nsevent(phase: u8, momentum: u8) -> ScrollPhase {
         match (phase, momentum) {
             (1, _) => ScrollPhase::Began,
             (2, _) => ScrollPhase::Changed,
-            (4, _) | (8, _) => ScrollPhase::Cancelled,
+            (4 | 8, _) => ScrollPhase::Cancelled,
             (_, 1 | 2 | 4) => ScrollPhase::Ended,
             _ => ScrollPhase::Ended,
         }
     }
 
-    /// ProMotion `preferredFrameRateRange`: 80–120 Hz while interacting,
+    /// `ProMotion` `preferredFrameRateRange`: 80–120 Hz while interacting,
     /// 10–80 Hz idle, 10–60 Hz when `prefers-reduced-motion`.
     #[must_use]
     pub fn preferred_frame_rate_range(interacting: bool, reduced_motion: bool) -> FrameRateRange {
@@ -214,13 +213,13 @@ impl MacWindow {
         self.scroll_phase = Some(phase);
     }
 
-    /// IME composition (NSTextInputClient insertText / setMarkedText).
+    /// IME composition (`NSTextInputClient` insertText / setMarkedText).
     pub fn set_ime(&mut self, text: impl Into<String>, marked: bool) {
         self.ime = text.into();
         self.ime_marked = marked;
     }
 
-    /// Appearance from AppKit (`NSApp.effectiveAppearance`).
+    /// Appearance from `AppKit` (`NSApp.effectiveAppearance`).
     pub fn set_appearance(&mut self, appearance: Appearance) {
         self.appearance = appearance;
     }
@@ -234,18 +233,19 @@ impl MacWindow {
 #[cfg(target_os = "macos")]
 mod macos {
     use super::MacWindow;
+    use objc2::MainThreadOnly;
     use objc2::rc::Retained;
     use objc2::runtime::AnyObject;
-    use objc2::MainThreadOnly;
     use objc2_app_kit::{
-        NSApplication, NSApplicationActivationPolicy, NSColor, NSMenu, NSMenuItem,
-        NSView, NSWindow, NSWindowStyleMask,
+        NSApplication, NSApplicationActivationPolicy, NSColor, NSMenu, NSMenuItem, NSView,
+        NSWindow, NSWindowStyleMask,
     };
     use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
 
     /// Creates a titled, closable, resizable `NSWindow` and the Vector menu.
     pub(super) fn create_window() -> MacWindow {
-        let mtm = MainThreadMarker::new().expect("ve-shell product window requires the main thread");
+        let mtm =
+            MainThreadMarker::new().expect("ve-shell product window requires the main thread");
         let app = NSApplication::sharedApplication(mtm);
         app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
         let frame = NSRect::new(NSPoint::new(80.0, 80.0), NSSize::new(1280.0, 720.0));
@@ -284,14 +284,16 @@ mod macos {
     }
 
     fn host_for_window(window: Retained<NSWindow>, app: &NSApplication) -> MacWindow {
-        let mut host = MacWindow::default();
-        host.native = true;
-        host.appearance = super::MacWindow::appearance_from_ns_name(
-            &app.effectiveAppearance().name().to_string(),
-        );
+        let mut host = MacWindow {
+            native: true,
+            appearance: super::MacWindow::appearance_from_ns_name(
+                &app.effectiveAppearance().name().to_string(),
+            ),
+            _native_window: Some(window),
+            ..MacWindow::default()
+        };
         host.set_ime(String::new(), false);
         host.set_scroll_phase(super::MacWindow::scroll_phase_from_nsevent(0, 0));
-        host.native_window = Some(window);
         host
     }
 

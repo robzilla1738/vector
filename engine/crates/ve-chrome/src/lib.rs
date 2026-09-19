@@ -12,10 +12,12 @@ mod tokens;
 mod workspace;
 
 pub use chrome::{Chrome, ChromeBackend, ChromeHit, ChromeOverlay, ChromeTab};
-pub use intent::{detect_intent, intent_label, is_url_like, to_url, Intent, IntentContext, RunScope};
+pub use intent::{
+    Intent, IntentContext, RunScope, detect_intent, intent_label, is_url_like, to_url,
+};
 pub use tokens::{ChromeMetrics, ChromeTheme, ChromeTokens};
 pub use workspace::{
-    design_reference_sites, empty_layout, folders_in_space, host_of, parse_layout, set_active_space,
-    sync_order, sync_spaces, tabs_in_folder, tabs_in_space, toggle_pin, unfiled_tabs, Folder,
-    Layout, Pin, Space, SpaceColor, MAX_PINS,
+    Folder, Layout, MAX_PINS, Pin, Space, SpaceColor, design_reference_sites, empty_layout,
+    folders_in_space, host_of, parse_layout, set_active_space, sync_order, sync_spaces,
+    tabs_in_folder, tabs_in_space, toggle_pin, unfiled_tabs,
 };

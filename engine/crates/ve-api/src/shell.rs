@@ -4010,6 +4010,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "artifact generator requires /tmp/vector-live-html"]
     fn writes_production_profile_observe_gate() {
         use std::time::Instant;
         let dir = std::path::Path::new("/tmp/vector-live-html");
@@ -5304,6 +5305,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "artifact generator requires Linux google-chrome and timeout"]
     fn layout_triage_measures_engine_and_chromium_boxes() {
         struct Case {
             html_name: &'static str,

@@ -352,8 +352,8 @@ pub fn build_element_box(doc: &Document, styles: &StyleTree, id: NodeId) -> Opti
                 bx.col_span = span_attr(doc, id, "colspan", 1);
                 bx.row_span = span_attr(doc, id, "rowspan", 1);
             }
-            bx.replaced = replaced_size(doc, id)
-                .or_else(|| field_sizing_content_size(doc, id, &style));
+            bx.replaced =
+                replaced_size(doc, id).or_else(|| field_sizing_content_size(doc, id, &style));
             if display == Display::ListItem {
                 bx.marker = marker_for(doc, styles, id, &style);
             }
@@ -478,10 +478,7 @@ fn push_generated(
     let Content::Text(text) = &style.content else {
         return;
     };
-    let collapsed = apply_text_casing(
-        &collapse_whitespace(text, style.white_space),
-        style,
-    );
+    let collapsed = apply_text_casing(&collapse_whitespace(text, style.white_space), style);
     let mut bx = LayoutBox::new(None, container_kind(style.display), style.clone());
     bx.pseudo = Some(pseudo);
     bx.owner = Some(owner);
@@ -562,10 +559,8 @@ fn build_children(doc: &Document, styles: &StyleTree, node: NodeId, parent: &mut
             }
             NodeKind::Text(text) => {
                 let style = styles.style(child);
-                let collapsed = apply_text_casing(
-                    &collapse_whitespace(text, style.white_space),
-                    &style,
-                );
+                let collapsed =
+                    apply_text_casing(&collapse_whitespace(text, style.white_space), &style);
                 if !collapsed.is_empty() {
                     let mut bx = LayoutBox::new(Some(child), BoxKind::Text(collapsed), style);
                     bx.owner = Some(node);
@@ -609,6 +604,7 @@ fn apply_text_casing(text: &str, style: &ComputedStyle) -> String {
     }
 }
 
+/// Collapses text according to the computed CSS `white-space` mode.
 pub fn collapse_whitespace(text: &str, ws: WhiteSpace) -> String {
     if !ws.collapses() {
         return text.to_owned();

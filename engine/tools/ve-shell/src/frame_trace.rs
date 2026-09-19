@@ -144,7 +144,8 @@ pub fn replay(browser: &mut NativeBrowser, events: &[ReplayEvent]) -> FrameTrace
 /// Load a replay JSON array.
 pub fn load_replay(path: &Path) -> std::io::Result<Vec<ReplayEvent>> {
     let bytes = std::fs::read(path)?;
-    serde_json::from_slice(&bytes).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+    serde_json::from_slice(&bytes)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
 }
 
 #[cfg(test)]
@@ -163,7 +164,9 @@ mod tests {
                 "https://trace.test/wheel",
             )
             .unwrap();
-        let stage = browser.chrome().stage_rect(ve_core::Size::new(1280.0, 720.0));
+        let stage = browser
+            .chrome()
+            .stage_rect(ve_core::Size::new(1280.0, 720.0));
         let _ = browser.handle_event(NativeEvent::PointerMove {
             x: stage.x() + 20.0,
             y: stage.y() + 20.0,

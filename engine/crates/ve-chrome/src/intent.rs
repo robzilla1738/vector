@@ -52,14 +52,87 @@ pub struct IntentContext<'a> {
 }
 
 const IMPERATIVE: &[&str] = &[
-    "find", "open", "go", "book", "buy", "order", "add", "remove", "delete", "fill", "submit",
-    "click", "log", "sign", "check", "compare", "summarise", "summarize", "extract", "collect",
-    "list", "download", "upload", "send", "reply", "write", "draft", "create", "make", "schedule",
-    "cancel", "change", "update", "set", "turn", "search", "look", "get", "grab", "scrape", "read",
-    "translate", "explain", "tell", "show", "pull", "export", "save", "close", "scroll", "navigate",
-    "visit", "watch", "track", "monitor", "apply", "register", "renew", "pay", "transfer", "post",
-    "tweet", "email", "message", "call", "play", "pause", "mute", "unsubscribe", "follow", "like",
-    "share", "rename", "move", "copy", "paste", "sort", "filter", "group", "count", "calculate",
+    "find",
+    "open",
+    "go",
+    "book",
+    "buy",
+    "order",
+    "add",
+    "remove",
+    "delete",
+    "fill",
+    "submit",
+    "click",
+    "log",
+    "sign",
+    "check",
+    "compare",
+    "summarise",
+    "summarize",
+    "extract",
+    "collect",
+    "list",
+    "download",
+    "upload",
+    "send",
+    "reply",
+    "write",
+    "draft",
+    "create",
+    "make",
+    "schedule",
+    "cancel",
+    "change",
+    "update",
+    "set",
+    "turn",
+    "search",
+    "look",
+    "get",
+    "grab",
+    "scrape",
+    "read",
+    "translate",
+    "explain",
+    "tell",
+    "show",
+    "pull",
+    "export",
+    "save",
+    "close",
+    "scroll",
+    "navigate",
+    "visit",
+    "watch",
+    "track",
+    "monitor",
+    "apply",
+    "register",
+    "renew",
+    "pay",
+    "transfer",
+    "post",
+    "tweet",
+    "email",
+    "message",
+    "call",
+    "play",
+    "pause",
+    "mute",
+    "unsubscribe",
+    "follow",
+    "like",
+    "share",
+    "rename",
+    "move",
+    "copy",
+    "paste",
+    "sort",
+    "filter",
+    "group",
+    "count",
+    "calculate",
     "convert",
 ];
 
@@ -69,13 +142,21 @@ const QUESTION: &[&str] = &[
 ];
 
 const DEICTIC: &[&str] = &[
-    "this page", "this tab", "this site", "on this", "here", "these", "this form", "this table",
-    "this article", "this one",
+    "this page",
+    "this tab",
+    "this site",
+    "on this",
+    "here",
+    "these",
+    "this form",
+    "this table",
+    "this article",
+    "this one",
 ];
 
 const OBJECT: &[&str] = &[
-    "the", "this", "that", "these", "those", "my", "our", "your", "a", "an", "all", "every", "each",
-    "me", "it", "them", "into", "from", "for", "to", "on", "in", "with",
+    "the", "this", "that", "these", "those", "my", "our", "your", "a", "an", "all", "every",
+    "each", "me", "it", "them", "into", "from", "for", "to", "on", "in", "with",
 ];
 
 fn first_word(v: &str) -> &str {
@@ -121,7 +202,10 @@ fn looks_dotted_host(v: &str) -> bool {
     }
     let host = v.split('/').next().unwrap_or(v);
     let host = host.split(':').next().unwrap_or(host);
-    host.contains('.') && host.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+    host.contains('.')
+        && host
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
 }
 
 /// URL-like input (scheme, localhost, dotted host).

@@ -5,11 +5,10 @@ use std::collections::HashMap;
 use ve_core::{Edges, NodeId, Point, Rect, Size};
 use ve_layout::LayoutTree;
 use ve_style::{
-    BackgroundClip, BackgroundImage, BackgroundOrigin, BackgroundPosition, BackgroundRepeat,
-    BackgroundSize, ComputedStyle, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto,
-    BackfaceVisibility, BackgroundAttachment, Color, ContentVisibility, Display, EmptyCells,
-    MixBlendMode, ObjectFit,
-    Rgba, StyleTree, TextDecorationLine, TextDecorationStyle, TransformOp,
+    BackfaceVisibility, BackgroundAttachment, BackgroundClip, BackgroundImage, BackgroundOrigin,
+    BackgroundPosition, BackgroundRepeat, BackgroundSize, Color, ComputedStyle, ContentVisibility,
+    Display, EmptyCells, Filter, FontFamily, FontStyle, FontWeight, LengthPercentageAuto,
+    MixBlendMode, ObjectFit, Rgba, StyleTree, TextDecorationLine, TextDecorationStyle, TransformOp,
 };
 
 use crate::image::ImageHandle;
@@ -209,7 +208,11 @@ impl DisplayItem {
                 fixed,
                 pixelated,
             } => Self::Image {
-                rect: if *fixed { *rect } else { rect.translate(dx, dy) },
+                rect: if *fixed {
+                    *rect
+                } else {
+                    rect.translate(dx, dy)
+                },
                 handle: *handle,
                 src: *src,
                 size: *size,
@@ -225,8 +228,16 @@ impl DisplayItem {
                 stops,
                 fixed,
             } => Self::LinearGradient {
-                rect: if *fixed { *rect } else { rect.translate(dx, dy) },
-                start: if *fixed { *start } else { start.translate(dx, dy) },
+                rect: if *fixed {
+                    *rect
+                } else {
+                    rect.translate(dx, dy)
+                },
+                start: if *fixed {
+                    *start
+                } else {
+                    start.translate(dx, dy)
+                },
                 end: if *fixed { *end } else { end.translate(dx, dy) },
                 stops: stops.clone(),
                 fixed: *fixed,
@@ -572,13 +583,12 @@ impl DisplayList {
                         }
                     }
                     let stroke = style.stroke.resolve(style.color);
-                    let stroke_width = if style.vector_effect
-                        == ve_style::VectorEffect::NonScalingStroke
-                    {
-                        style.stroke_width / style.zoom.max(0.01)
-                    } else {
-                        style.stroke_width
-                    };
+                    let stroke_width =
+                        if style.vector_effect == ve_style::VectorEffect::NonScalingStroke {
+                            style.stroke_width / style.zoom.max(0.01)
+                        } else {
+                            style.stroke_width
+                        };
                     if !stroke.is_transparent() && stroke_width > 0.0 {
                         list.push(DisplayItem::Border {
                             rect: item.rect,
@@ -643,8 +653,7 @@ impl DisplayList {
                         size,
                         position,
                         repeat,
-                        fixed: is_bg
-                            && style.background_attachment == BackgroundAttachment::Fixed,
+                        fixed: is_bg && style.background_attachment == BackgroundAttachment::Fixed,
                         pixelated: style.image_rendering != ve_style::ImageRendering::Auto,
                     });
                     if bg_blend {
@@ -697,8 +706,7 @@ impl DisplayList {
                     if style.column_rule_width > 0.0 {
                         let gap = style.column_gap.resolve(item.rect.width());
                         let cols = n as f32;
-                        let col_w =
-                            ((item.rect.width() - gap * (cols - 1.0)) / cols).max(0.0);
+                        let col_w = ((item.rect.width() - gap * (cols - 1.0)) / cols).max(0.0);
                         let color = style.column_rule_color.resolve(style.color);
                         if !color.is_transparent() {
                             for i in 0..n - 1 {
@@ -955,7 +963,11 @@ pub fn resolve_image_placement(
         BackgroundSize::Size { width, height } => {
             let tw = resolve_axis(width, box_w, img_w);
             let th = resolve_axis(height, box_h, img_h);
-            (tw.max(0.001), th.max(0.001), Rect::new(0.0, 0.0, img_w, img_h))
+            (
+                tw.max(0.001),
+                th.max(0.001),
+                Rect::new(0.0, 0.0, img_w, img_h),
+            )
         }
     };
     let dx = position.x.resolve((box_w - tile_w).max(0.0));
@@ -968,11 +980,7 @@ pub fn resolve_image_placement(
 
 /// Tile origins for `background-repeat` inside `box_rect`.
 #[must_use]
-pub fn background_tile_origins(
-    box_rect: Rect,
-    tile: Rect,
-    repeat: BackgroundRepeat,
-) -> Vec<Point> {
+pub fn background_tile_origins(box_rect: Rect, tile: Rect, repeat: BackgroundRepeat) -> Vec<Point> {
     let mut out = vec![Point::new(tile.x(), tile.y())];
     let tw = tile.width().max(0.001);
     let th = tile.height().max(0.001);
@@ -1261,7 +1269,8 @@ mod tests {
 
     #[test]
     fn from_layout_emits_text_emphasis_marks() {
-        let html = "<style>body{margin:0;font-size:16px} #t{text-emphasis:dot}</style><p id=t>Hi</p>";
+        let html =
+            "<style>body{margin:0;font-size:16px} #t{text-emphasis:dot}</style><p id=t>Hi</p>";
         let doc = ve_html::parse_document(html).document;
         let mut engine = StyleEngine::new();
         engine.add_document_styles(&doc);
@@ -1353,10 +1362,7 @@ mod tests {
         engine.add_document_styles(&doc);
         let styles = engine.compute(&doc);
         let id = engine.select(&doc, "#g").unwrap()[0];
-        assert!(
-            !styles.style(id).translate.is_empty(),
-            "translate computed"
-        );
+        assert!(!styles.style(id).translate.is_empty(), "translate computed");
         let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
         let list = DisplayList::from_layout(&layout, &styles);
         assert!(
@@ -1400,10 +1406,7 @@ mod tests {
         engine.add_document_styles(&doc);
         let styles = engine.compute(&doc);
         let id = engine.select(&doc, "#g").unwrap()[0];
-        assert!(
-            !styles.style(id).rotate.is_empty(),
-            "rotate computed"
-        );
+        assert!(!styles.style(id).rotate.is_empty(), "rotate computed");
         let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
         let list = DisplayList::from_layout(&layout, &styles);
         let half_pi = std::f32::consts::FRAC_PI_2;
@@ -1477,7 +1480,9 @@ mod tests {
         let reds = list
             .items()
             .iter()
-            .filter(|i| matches!(i, DisplayItem::Rect { color, .. } if *color == Rgba::rgb(255, 0, 0)))
+            .filter(
+                |i| matches!(i, DisplayItem::Rect { color, .. } if *color == Rgba::rgb(255, 0, 0)),
+            )
             .count();
         assert_eq!(reds, 1, "empty cell still painted: {:?}", list.items());
     }
@@ -1511,7 +1516,9 @@ mod tests {
         let blues = list
             .items()
             .iter()
-            .filter(|i| matches!(i, DisplayItem::Rect { color, .. } if *color == Rgba::rgb(0, 0, 255)))
+            .filter(
+                |i| matches!(i, DisplayItem::Rect { color, .. } if *color == Rgba::rgb(0, 0, 255)),
+            )
             .count();
         assert_eq!(blues, 0, "hidden still painted: {:?}", list.items());
     }
@@ -1583,7 +1590,10 @@ mod tests {
         let styles = engine.compute(&doc);
         let id = engine.select(&doc, "#g").unwrap()[0];
         assert_eq!(styles.style(id).background_size, BackgroundSize::Cover);
-        assert_eq!(styles.style(id).background_repeat, BackgroundRepeat::NoRepeat);
+        assert_eq!(
+            styles.style(id).background_repeat,
+            BackgroundRepeat::NoRepeat
+        );
         let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
         let mut images = HashMap::new();
         images.insert(id, ImageHandle(1));
@@ -1662,9 +1672,9 @@ mod tests {
         let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
         let list = DisplayList::from_layout(&layout, &styles);
         assert!(
-            list.items()
-                .iter()
-                .any(|i| matches!(i, DisplayItem::LinearGradient { stops, .. } if stops.len() >= 2)),
+            list.items().iter().any(
+                |i| matches!(i, DisplayItem::LinearGradient { stops, .. } if stops.len() >= 2)
+            ),
             "linear-gradient missing: {:?}",
             list.items()
         );
@@ -1792,9 +1802,13 @@ mod tests {
         images.insert(id, ImageHandle(1));
         let list = DisplayList::from_layout_with(&layout, &styles, &images);
         assert!(
-            list.items()
-                .iter()
-                .any(|i| matches!(i, DisplayItem::Image { pixelated: true, .. })),
+            list.items().iter().any(|i| matches!(
+                i,
+                DisplayItem::Image {
+                    pixelated: true,
+                    ..
+                }
+            )),
             "pixelated missing: {:?}",
             list.items()
         );
@@ -1835,7 +1849,7 @@ mod tests {
                 x: ve_style::LengthPercentage::ZERO,
                 y: ve_style::LengthPercentage::ZERO,
             },
-            repeat:             BackgroundRepeat::NoRepeat,
+            repeat: BackgroundRepeat::NoRepeat,
             fixed: true,
             pixelated: false,
         };

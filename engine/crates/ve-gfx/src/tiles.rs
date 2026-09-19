@@ -137,8 +137,12 @@ impl TileGrid {
                 }
                 let ox = (col * self.tile_px) as f32 / scale;
                 let oy = (row * self.tile_px) as f32 / scale;
-                let tw = self.tile_px.min(self.width.saturating_sub(col * self.tile_px));
-                let th = self.tile_px.min(self.height.saturating_sub(row * self.tile_px));
+                let tw = self
+                    .tile_px
+                    .min(self.width.saturating_sub(col * self.tile_px));
+                let th = self
+                    .tile_px
+                    .min(self.height.saturating_sub(row * self.tile_px));
                 if tw == 0 || th == 0 {
                     self.dirty[i] = false;
                     continue;
@@ -147,7 +151,11 @@ impl TileGrid {
                     DisplayList::new(Size::new(tw as f32 / scale, th as f32 / scale));
                 tile_list.append_translated(list, -ox, -oy);
                 let frame = renderer.render(&tile_list, tw, th, scale)?;
-                dest.blit_from(&frame, (col * self.tile_px) as i32, (row * self.tile_px) as i32);
+                dest.blit_from(
+                    &frame,
+                    (col * self.tile_px) as i32,
+                    (row * self.tile_px) as i32,
+                );
                 self.tiles[i] = Some(frame);
                 self.dirty[i] = false;
                 self.rebuilds += 1;

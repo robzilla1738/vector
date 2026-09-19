@@ -2110,7 +2110,10 @@ mod tests {
         );
         let p = engine.select_one(&doc, "p").unwrap();
         let n = tree.root.find(p).unwrap().lines.len();
-        assert!(n >= 2, "overflow-wrap:anywhere wraps aaaaaaaa, got {n} lines");
+        assert!(
+            n >= 2,
+            "overflow-wrap:anywhere wraps aaaaaaaa, got {n} lines"
+        );
     }
 
     #[test]
@@ -2122,7 +2125,10 @@ mod tests {
         );
         let p = engine.select_one(&doc, "p").unwrap();
         let n = tree.root.find(p).unwrap().lines.len();
-        assert!(n >= 2, "overflow-wrap:break-word wraps aaaaaaaa, got {n} lines");
+        assert!(
+            n >= 2,
+            "overflow-wrap:break-word wraps aaaaaaaa, got {n} lines"
+        );
     }
 
     #[test]

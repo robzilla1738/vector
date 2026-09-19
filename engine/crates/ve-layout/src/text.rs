@@ -258,7 +258,7 @@ fn count_kern_pairs(text: &str) -> usize {
         let Some(&b) = chars.peek() else { break };
         if matches!(
             (a, b),
-            ('A', 'V') | ('V', 'A') | ('T', 'o') | ('W', 'e') | ('A', 'W') | ('W', 'A')
+            ('A', 'V' | 'W') | ('V' | 'W', 'A') | ('T', 'o') | ('W', 'e')
         ) {
             n += 1;
         }
@@ -279,6 +279,7 @@ fn breaks_words(style: &ComputedStyle) -> bool {
 
 /// Greedy word-wrapping over `text` using a width oracle. Shared by the
 /// metric shaper and used as fallback by the parley shaper.
+#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
 fn greedy_wrap(
     text: &str,
     first_available: f32,
@@ -372,6 +373,7 @@ fn greedy_wrap(
 
 /// Splits into `(byte_offset, word)` where a word is a maximal run of
 /// non-space characters plus the following spaces, or a lone `"\n"`.
+#[allow(clippy::fn_params_excessive_bools)]
 fn split_words(
     text: &str,
     hyphenate: bool,
@@ -430,10 +432,8 @@ fn split_words(
                 hyphenated.push((idx, word));
                 continue;
             }
-            let letters: Vec<(usize, char)> = word
-                .char_indices()
-                .filter(|(_, ch)| *ch != ' ')
-                .collect();
+            let letters: Vec<(usize, char)> =
+                word.char_indices().filter(|(_, ch)| *ch != ' ').collect();
             if letters.len() <= 3 {
                 hyphenated.push((idx, word));
                 continue;
@@ -471,7 +471,7 @@ fn split_words(
         }
         let mut i = cut;
         while i < word.len() {
-            exploded.push((idx + i, &word[i..i + 1]));
+            exploded.push((idx + i, &word[i..=i]));
             i += 1;
         }
     }

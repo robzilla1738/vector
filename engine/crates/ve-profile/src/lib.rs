@@ -1,14 +1,14 @@
-//! SQLite profile store for ordinary browsing (H2-A4).
+//! `SQLite` profile store for ordinary browsing (H2-A4).
 //!
 //! History, bookmarks, session restore, downloads, find, zoom, cert
 //! interstitial decisions, and permission grants. The on-disk file is a
-//! real SQLite database (`Profile::open`). Tests use `:memory:`.
+//! real `SQLite` database (`Profile::open`). Tests use `:memory:`.
 
 #![forbid(unsafe_code)]
 
 use std::path::{Path, PathBuf};
 
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 
 /// One history row.
@@ -81,7 +81,7 @@ pub struct CertDecision {
     pub decision: String,
 }
 
-/// On-disk SQLite profile.
+/// On-disk `SQLite` profile.
 #[derive(Debug)]
 pub struct Profile {
     path: PathBuf,
@@ -133,7 +133,7 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
 }
 
 impl Profile {
-    /// Opens or creates the SQLite file at `path`.
+    /// Opens or creates the `SQLite` file at `path`.
     pub fn open(path: impl AsRef<Path>) -> rusqlite::Result<Self> {
         let path = path.as_ref().to_path_buf();
         if let Some(parent) = path.parent() {
@@ -144,7 +144,7 @@ impl Profile {
         Ok(Self { path, conn })
     }
 
-    /// In-memory SQLite profile (tests).
+    /// In-memory `SQLite` profile (tests).
     pub fn memory() -> rusqlite::Result<Self> {
         let conn = Connection::open_in_memory()?;
         migrate(&conn)?;
@@ -197,7 +197,12 @@ impl Profile {
     }
 
     /// Record a visit.
-    pub fn visit(&self, url: impl AsRef<str>, title: impl AsRef<str>, at: u64) -> rusqlite::Result<()> {
+    pub fn visit(
+        &self,
+        url: impl AsRef<str>,
+        title: impl AsRef<str>,
+        at: u64,
+    ) -> rusqlite::Result<()> {
         self.conn.execute(
             "INSERT INTO history(url, title, visited_at) VALUES (?1, ?2, ?3)",
             params![url.as_ref(), title.as_ref(), at as i64],
@@ -298,7 +303,12 @@ impl Profile {
             "INSERT INTO permissions(effect, origin, scope, expires_at)
              VALUES (?1, ?2, ?3, ?4)
              ON CONFLICT(effect, origin, scope) DO UPDATE SET expires_at = excluded.expires_at",
-            params![grant.effect, grant.origin, grant.scope, grant.expires_at as i64],
+            params![
+                grant.effect,
+                grant.origin,
+                grant.scope,
+                grant.expires_at as i64
+            ],
         )?;
         Ok(())
     }
@@ -320,7 +330,12 @@ impl Profile {
     }
 
     /// Record a cert interstitial decision.
-    pub fn decide_cert(&self, host: &str, fingerprint: &str, decision: &str) -> rusqlite::Result<()> {
+    pub fn decide_cert(
+        &self,
+        host: &str,
+        fingerprint: &str,
+        decision: &str,
+    ) -> rusqlite::Result<()> {
         self.conn.execute(
             "INSERT INTO certs(host, fingerprint, decision) VALUES (?1, ?2, ?3)
              ON CONFLICT(host) DO UPDATE SET fingerprint = excluded.fingerprint, decision = excluded.decision",

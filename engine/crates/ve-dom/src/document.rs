@@ -1870,7 +1870,11 @@ mod tests {
         assert_eq!(doc.form_value(input).as_deref(), Some("default"));
         doc.set_form_value(input, "typed").unwrap();
         assert_eq!(doc.form_value(input).as_deref(), Some("typed"));
-        assert_eq!(doc.form_selection(input), (5, 5), "caret follows typed value");
+        assert_eq!(
+            doc.form_selection(input),
+            (5, 5),
+            "caret follows typed value"
+        );
         doc.set_form_selection(input, 2, 4).unwrap();
         assert_eq!(doc.form_selection(input), (2, 4));
         assert_eq!(

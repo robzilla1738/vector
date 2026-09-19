@@ -417,7 +417,11 @@ impl ComputedStyle {
             if list.is_empty() {
                 "none".into()
             } else {
-                list.iter().copied().map(track_size).collect::<Vec<_>>().join(" ")
+                list.iter()
+                    .copied()
+                    .map(track_size)
+                    .collect::<Vec<_>>()
+                    .join(" ")
             }
         }
         fn grid_areas(v: &GridTemplateAreas) -> String {
@@ -770,7 +774,7 @@ impl ComputedStyle {
                 } else {
                     px(self.perspective)
                 }
-            },
+            }
             PropertyId::TextSizeAdjust => format!("{}", self.text_size_adjust),
             PropertyId::ContainerName => {
                 if self.container_name.is_empty() {
@@ -778,14 +782,14 @@ impl ComputedStyle {
                 } else {
                     self.container_name.clone()
                 }
-            },
+            }
             PropertyId::ViewTransitionName => {
                 if self.view_transition_name.is_empty() {
                     "none".into()
                 } else {
                     self.view_transition_name.clone()
                 }
-            },
+            }
             PropertyId::TapHighlightColor => match self.tap_highlight_color {
                 crate::values::Color::Rgba(c) => c.to_css_string(),
                 crate::values::Color::CurrentColor => self.color.to_css_string(),
@@ -866,7 +870,7 @@ impl ComputedStyle {
                 } else {
                     self.quotes.clone()
                 }
-            },
+            }
             PropertyId::OffsetPath => match self.offset_path {
                 OffsetPath::None => "none".into(),
                 OffsetPath::Line { x0, y0, x1, y1 } => {
@@ -899,14 +903,14 @@ impl ComputedStyle {
                 } else {
                     self.anchor_name.clone()
                 }
-            },
+            }
             PropertyId::PositionAnchor => {
                 if self.position_anchor.is_empty() {
                     "none".into()
                 } else {
                     self.position_anchor.clone()
                 }
-            },
+            }
             PropertyId::PositionArea => self.position_area.to_string(),
             PropertyId::BorderSpacingX => px(self.border_spacing_x),
             PropertyId::BorderSpacingY => px(self.border_spacing_y),
@@ -950,7 +954,7 @@ impl ComputedStyle {
                 }
             }
             PropertyId::FloatOffset => lp(self.float_offset),
-            _ => String::new(),
+            PropertyId::Custom(_) => String::new(),
         }
     }
 }
@@ -1072,8 +1076,14 @@ mod tests {
         assert_eq!(style.property_css("vertical-align"), "middle");
         assert_eq!(style.property_css("hyphens"), "none");
         assert_eq!(style.property_css("text-indent"), "16px");
-        assert_eq!(ComputedStyle::initial().property_css("letter-spacing"), "normal");
-        assert_eq!(ComputedStyle::initial().property_css("line-height"), "normal");
+        assert_eq!(
+            ComputedStyle::initial().property_css("letter-spacing"),
+            "normal"
+        );
+        assert_eq!(
+            ComputedStyle::initial().property_css("line-height"),
+            "normal"
+        );
     }
 
     #[test]
@@ -1149,8 +1159,14 @@ mod tests {
         assert_eq!(style.property_css("border-top-left-radius"), "4px");
         assert_eq!(style.property_css("perspective"), "200px");
         assert_eq!(style.property_css("container-name"), "main");
-        assert_eq!(ComputedStyle::initial().property_css("aspect-ratio"), "auto");
-        assert_eq!(ComputedStyle::initial().property_css("animation-name"), "none");
+        assert_eq!(
+            ComputedStyle::initial().property_css("aspect-ratio"),
+            "auto"
+        );
+        assert_eq!(
+            ComputedStyle::initial().property_css("animation-name"),
+            "none"
+        );
         assert_eq!(ComputedStyle::initial().property_css("perspective"), "none");
     }
 
@@ -1165,7 +1181,10 @@ mod tests {
              content: \"hi\"; box-shadow: 1px 2px 3px red; grid-row-start: 2",
             false,
         );
-        assert_eq!(style.property_css("transform"), "translate(10px, 20px) scale(2)");
+        assert_eq!(
+            style.property_css("transform"),
+            "translate(10px, 20px) scale(2)"
+        );
         assert_eq!(style.property_css("filter"), "blur(4px)");
         assert_eq!(
             style.property_css("background-image"),

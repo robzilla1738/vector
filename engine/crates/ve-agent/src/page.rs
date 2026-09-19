@@ -1848,7 +1848,11 @@ impl CanvasSurface {
                     CanvasColorFilter::Grayscale(amount) => {
                         let amount = amount.clamp(0.0, 1.0);
                         let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                        (r + (y - r) * amount, g + (y - g) * amount, b + (y - b) * amount)
+                        (
+                            r + (y - r) * amount,
+                            g + (y - g) * amount,
+                            b + (y - b) * amount,
+                        )
                     }
                     CanvasColorFilter::Invert(amount) => {
                         let amount = amount.clamp(0.0, 1.0);
@@ -1881,7 +1885,11 @@ impl CanvasSurface {
                     CanvasColorFilter::Saturate(amount) => {
                         let amount = amount.max(0.0);
                         let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                        (y + (r - y) * amount, y + (g - y) * amount, y + (b - y) * amount)
+                        (
+                            y + (r - y) * amount,
+                            y + (g - y) * amount,
+                            y + (b - y) * amount,
+                        )
                     }
                     CanvasColorFilter::HueRotate(deg) => {
                         let (h, s, v) = canvas_rgb_to_hsv(r, g, b);
@@ -2443,14 +2451,7 @@ impl CanvasSurface {
                 }
                 let alpha = f32::from(cov) / 255.0;
                 let shear = if italic && row * 2 < height { 1 } else { 0 };
-                self.fill_rect_styled(
-                    x + col as i32 + shear,
-                    y + row as i32,
-                    1,
-                    1,
-                    &style,
-                    alpha,
-                );
+                self.fill_rect_styled(x + col as i32 + shear, y + row as i32, 1, 1, &style, alpha);
             }
         }
     }
@@ -2505,7 +2506,15 @@ impl CanvasSurface {
                             (0.35, 0.35),
                         ] {
                             let s = sample_bilinear(
-                                src, src_w, src_h, sx, sy, x1, y1, fx + ox, fy + oy,
+                                src,
+                                src_w,
+                                src_h,
+                                sx,
+                                sy,
+                                x1,
+                                y1,
+                                fx + ox,
+                                fy + oy,
                             );
                             acc[0] += u32::from(s[0]);
                             acc[1] += u32::from(s[1]);
@@ -3161,7 +3170,8 @@ impl Page {
         filter: &str,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
-        let url_filter = parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
+        let url_filter =
+            parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
         let paint_shadow = shadow_x != 0 || shadow_y != 0 || shadow_blur > 0;
         let shadow_style = if paint_shadow {
             Some(self.resolve_canvas_style(shadow))
@@ -3384,7 +3394,8 @@ impl Page {
         color: &str,
         filter: &str,
     ) -> u64 {
-        let url_filter = parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
+        let url_filter =
+            parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
         let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
@@ -3428,7 +3439,8 @@ impl Page {
         miter_limit: f32,
         filter: &str,
     ) -> u64 {
-        let url_filter = parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
+        let url_filter =
+            parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
         let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
@@ -5185,6 +5197,7 @@ impl Page {
         self.apply_animations();
     }
 
+    /// Recomputes style and layout when DOM or stylesheet state is dirty.
     pub fn restyle_if_needed(&mut self) {
         if self.style_clean() {
             return;

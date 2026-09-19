@@ -66,7 +66,9 @@ describe("Gate F MCP stdio session", () => {
       });
       req.on("end", () => {
         const body = JSON.parse(raw || "{}") as Rpc;
-        calls.push({ method: body.method, params: body.params });
+        if (typeof body.method === "string") {
+          calls.push({ method: body.method, params: body.params });
+        }
         let result: unknown = {};
         switch (body.method) {
           case "pages.open":
@@ -187,7 +189,7 @@ describe("Gate F MCP stdio session", () => {
       name: "vector_page_observe",
       arguments: { pageId: "p1", format: "full" },
     });
-    const text = (observed.result as { content: { text: string }[] }).content[0].text;
+    const text = (observed.result as { content: [{ text: string }] }).content[0].text;
     const parsed = JSON.parse(text) as {
       observation: { format: string; elements: { selector: string; rect: { w: number } }[] };
     };

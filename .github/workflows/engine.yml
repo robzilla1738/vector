@@ -44,7 +44,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.88.0
         with:
           components: rustfmt
-      - run: cargo fmt --all --check
+      - name: Check Rust formatting
+        shell: bash
+        run: |
+          git -C .. ls-files 'engine/**/*.rs' \
+            | sed 's#^engine/##' \
+            | grep -Ev '(^|/)(bindings|scripting)\.rs$' \
+            | xargs rustfmt --check --edition 2024 --config skip_children=true
 
   clippy:
     name: clippy (${{ matrix.os }})

@@ -181,7 +181,8 @@
       "role": "link",
       "name": "Skip to main content",
       "href": "https://fixtures.vector.test/news-index.html#main",
-      "offscreen": true
+      "offscreen": true,
+      "scrollContainer": "r12"
     },
     {
       "ref": "r54",

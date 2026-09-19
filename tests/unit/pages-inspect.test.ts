@@ -46,7 +46,9 @@ function fakeEngine() {
   const makePage = (targetId: string, pageId: string, url: string): DriverPage => {
     let current = url;
     let attached = true;
-    const rec = (s: string) => calls.push(s);
+    const rec = (s: string): void => {
+      calls.push(s);
+    };
     return {
       identity: { pageId, targetId, backend: "vector-engine" },
       url: () => current,

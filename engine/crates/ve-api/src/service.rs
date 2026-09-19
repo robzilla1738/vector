@@ -162,13 +162,13 @@ impl BrowserService {
     }
 
     fn observe(&mut self, params: &Value) -> Result<Value> {
-        let request = if params.is_null() || params.as_object().is_some_and(serde_json::Map::is_empty)
-        {
-            ObservationRequest::default()
-        } else {
-            serde_json::from_value(params.clone())
-                .map_err(|e| Error::invalid_params(format!("observe: {e}")))?
-        };
+        let request =
+            if params.is_null() || params.as_object().is_some_and(serde_json::Map::is_empty) {
+                ObservationRequest::default()
+            } else {
+                serde_json::from_value(params.clone())
+                    .map_err(|e| Error::invalid_params(format!("observe: {e}")))?
+            };
         let obs = self.browser.observe_active_with(&request)?;
         let mut value = serde_json::to_value(&obs)
             .map_err(|e| Error::internal(format!("observe encode: {e}")))?;
@@ -345,21 +345,27 @@ impl BrowserService {
         }
         if let Some(origins) = params.get("origins").and_then(Value::as_array) {
             for origin in origins {
-                let origin_url = origin
-                    .get("origin")
-                    .and_then(Value::as_str)
-                    .unwrap_or("");
+                let origin_url = origin.get("origin").and_then(Value::as_str).unwrap_or("");
                 let items = origin
                     .get("localStorage")
                     .and_then(Value::as_array)
                     .cloned()
                     .unwrap_or_default();
-                for tab in self.browser.tabs().iter().map(|t| t.page).collect::<Vec<_>>() {
+                for tab in self
+                    .browser
+                    .tabs()
+                    .iter()
+                    .map(|t| t.page)
+                    .collect::<Vec<_>>()
+                {
                     if self.browser.engine().context_of(tab)? != ctx {
                         continue;
                     }
                     let page = self.browser.engine_mut().page_mut(tab)?;
-                    let map = page.local_storage_map_mut().entry(origin_url.to_string()).or_default();
+                    let map = page
+                        .local_storage_map_mut()
+                        .entry(origin_url.to_string())
+                        .or_default();
                     for item in &items {
                         if let (Some(name), Some(value)) = (
                             item.get("name").and_then(Value::as_str),
@@ -1295,7 +1301,9 @@ mod tests {
         assert_eq!(state["cookies"][0]["value"], "abc");
         let sub = service.handle("events.subscribe", &json!({})).expect("sub");
         assert!(sub["subscriptionId"].as_u64().unwrap() >= 1);
-        let ev = service.handle("events.since", &json!({"cursor":0})).expect("since");
+        let ev = service
+            .handle("events.since", &json!({"cursor":0}))
+            .expect("since");
         assert!(ev["events"].as_array().unwrap().len() >= 1);
         let ctx = service.handle("contexts.create", &json!({})).expect("ctx");
         assert!(ctx["context"].as_u64().unwrap() >= 1);

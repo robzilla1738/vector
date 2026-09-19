@@ -593,9 +593,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             y += 7.0 * scale;
         }
         let align_base = svg_attr_str(tag, "alignment-baseline").unwrap_or("");
-        if align_base.eq_ignore_ascii_case("middle")
-            || align_base.eq_ignore_ascii_case("central")
-        {
+        if align_base.eq_ignore_ascii_case("middle") || align_base.eq_ignore_ascii_case("central") {
             y += 3.0 * scale;
         }
         let shift = match svg_attr_str(tag, "baseline-shift").unwrap_or("0") {
@@ -1366,9 +1364,7 @@ fn parse_svg_filters(text: &str) -> HashMap<String, SvgFilterKind> {
                 let ds = &block[di..di + de];
                 let mut color =
                     parse_svg_color(svg_attr_str(ds, "flood-color").unwrap_or("#000000"));
-                let op = svg_attr(ds, "flood-opacity")
-                    .unwrap_or(1.0)
-                    .clamp(0.0, 1.0);
+                let op = svg_attr(ds, "flood-opacity").unwrap_or(1.0).clamp(0.0, 1.0);
                 color[3] = (f32::from(color[3]) * op).round() as u8;
                 out.insert(
                     id.to_string(),
@@ -1488,8 +1484,7 @@ fn apply_svg_filter(
             erode_decoded_rect(img, bx0, by0, bx1, by1, *radius);
         }
         SvgFilterKind::Dilate(radius) => {
-            let (bx0, by0, bx1, by1) =
-                clip_decoded_bbox(img, x0, y0, x1, y1, *radius);
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, *radius);
             dilate_decoded_rect(img, bx0, by0, bx1, by1, *radius);
         }
         SvgFilterKind::Blend { color, mode } => {
@@ -1551,14 +1546,7 @@ fn apply_svg_filter(
     }
 }
 
-fn matrix_decoded_rect(
-    img: &mut DecodedImage,
-    x0: i32,
-    y0: i32,
-    x1: i32,
-    y1: i32,
-    m: &[f32; 20],
-) {
+fn matrix_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32, m: &[f32; 20]) {
     for y in y0..y1 {
         for x in x0..x1 {
             if x < 0 || y < 0 {
@@ -1702,14 +1690,7 @@ fn luminance_to_alpha_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1:
     }
 }
 
-fn light_decoded_rect(
-    img: &mut DecodedImage,
-    x0: i32,
-    y0: i32,
-    x1: i32,
-    y1: i32,
-    color: [u8; 4],
-) {
+fn light_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32, color: [u8; 4]) {
     for y in y0..y1 {
         for x in x0..x1 {
             let Some([r, g, b, a]) = img.pixel(x as u32, y as u32) else {
@@ -1719,7 +1700,12 @@ fn light_decoded_rect(
                 continue;
             }
             let mix = |s: u8, l: u8| ((f32::from(s) * 0.3 + f32::from(l) * 0.7).round()) as u8;
-            plot_px(img, x, y, [mix(r, color[0]), mix(g, color[1]), mix(b, color[2]), a]);
+            plot_px(
+                img,
+                x,
+                y,
+                [mix(r, color[0]), mix(g, color[1]), mix(b, color[2]), a],
+            );
         }
     }
 }
@@ -1971,7 +1957,12 @@ fn blend_decoded_rect(
             if i + 3 >= img.rgba.len() || img.rgba[i + 3] == 0 {
                 continue;
             }
-            let mut out = [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2], img.rgba[i + 3]];
+            let mut out = [
+                img.rgba[i],
+                img.rgba[i + 1],
+                img.rgba[i + 2],
+                img.rgba[i + 3],
+            ];
             for c in 0..3 {
                 let s = u16::from(out[c]);
                 let b = u16::from(color[c]);
@@ -2245,9 +2236,23 @@ struct SvgClip {
 
 #[derive(Clone)]
 enum SvgClipKind {
-    Rect { x: f32, y: f32, w: f32, h: f32 },
-    Circle { cx: f32, cy: f32, r: f32 },
-    Ellipse { cx: f32, cy: f32, rx: f32, ry: f32 },
+    Rect {
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    },
+    Circle {
+        cx: f32,
+        cy: f32,
+        r: f32,
+    },
+    Ellipse {
+        cx: f32,
+        cy: f32,
+        rx: f32,
+        ry: f32,
+    },
     Path {
         contours: Vec<Vec<(f32, f32)>>,
         evenodd: bool,
@@ -2440,12 +2445,9 @@ fn clip_allows(tag: &str, clips: &HashMap<String, SvgClip>, x: f32, y: f32) -> b
         (x, y)
     };
     match &clip.kind {
-        SvgClipKind::Rect {
-            x: cx,
-            y: cy,
-            w,
-            h,
-        } => x >= *cx && x < *cx + *w && y >= *cy && y < *cy + *h,
+        SvgClipKind::Rect { x: cx, y: cy, w, h } => {
+            x >= *cx && x < *cx + *w && y >= *cy && y < *cy + *h
+        }
         SvgClipKind::Circle { cx, cy, r } => {
             let dx = x - *cx;
             let dy = y - *cy;
@@ -2491,11 +2493,7 @@ fn contours_contain(contours: &[Vec<(f32, f32)>], x: f32, y: f32, evenodd: bool)
             }
         }
     }
-    if evenodd {
-        crosses % 2 == 1
-    } else {
-        wind != 0
-    }
+    if evenodd { crosses % 2 == 1 } else { wind != 0 }
 }
 
 fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
@@ -4876,7 +4874,10 @@ mod tests {
         let mid = img.pixel(2, 4).unwrap_or([0, 0, 0, 0]);
         let right = img.pixel(7, 4).unwrap_or([0, 0, 0, 0]);
         assert!(left[0] > left[2], "left stays red: {left:?}");
-        assert!(mid[0] > mid[2], "quarter-span still redder than blue: {mid:?}");
+        assert!(
+            mid[0] > mid[2],
+            "quarter-span still redder than blue: {mid:?}"
+        );
         assert!(right[2] > right[0], "right is blue: {right:?}");
     }
 

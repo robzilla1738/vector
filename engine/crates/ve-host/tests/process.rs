@@ -507,7 +507,7 @@ fn production_sandbox_runs_external_js_from_allowlisted_fixture() {
 
 #[test]
 fn production_two_origins_use_distinct_ve_host_processes() {
-    use ve_napi::hub::{Hub, DEFAULT_CONTEXT};
+    use ve_napi::hub::{DEFAULT_CONTEXT, Hub};
 
     let bin = host_bin();
     // Safety: this test binary owns VECTOR_ENGINE_HOST for Hub::try_spawn.

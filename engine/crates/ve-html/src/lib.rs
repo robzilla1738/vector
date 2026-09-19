@@ -442,9 +442,17 @@ mod tests {
         let styles: Vec<_> = capped
             .document
             .elements()
-            .filter(|&id| capped.document.element(id).is_some_and(|e| e.is_html("style")))
+            .filter(|&id| {
+                capped
+                    .document
+                    .element(id)
+                    .is_some_and(|e| e.is_html("style"))
+            })
             .collect();
-        assert!(styles.is_empty(), "unclosed style at the byte cap is dropped");
+        assert!(
+            styles.is_empty(),
+            "unclosed style at the byte cap is dropped"
+        );
         let (full, _) = parse_document_bytes_with(
             html.as_bytes(),
             None,

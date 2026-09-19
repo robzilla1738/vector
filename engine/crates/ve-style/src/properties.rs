@@ -23,22 +23,22 @@ use crate::values::{
     BackgroundPosition, BackgroundRepeat, BackgroundSize, BorderCollapse, BorderStyle, BoxOrient,
     BoxShadow, BoxSizing, BreakBefore, BreakInside, CaptionSide, Clear, ClipPath, Color,
     ColorInterpolationFilters, ColumnSpan, Contain, ContainerType, Content, ContentItem,
-    ContentVisibility, CssClip, Direction, Display, EmptyCells, FieldSizing, Filter, FlexDirection,
-    FillRule, FlexWrap, Float, FontDisplay, FontFamily, FontKerning, FontOpticalSizing, FontSmoothing,
-    FontStretch, FontStyle, FontSynthesis, FontVariant, FontVariantEastAsian, FontVariantLigatures,
-    FontVariantNumeric, FontWeight, ForcedColorAdjust, GridAutoFlow, GridLine, GridTemplateAreas,
-    HangingPunctuation, Hyphens, ImageRendering, Isolation, JustifyContent, Keyword, Length,
-    LengthContext, LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition,
-    ListStyleType, MaskComposite, MathStyle, MaxSize, MixBlendMode, ObjectFit, OffsetPath,
-    Overflow, OverflowScrolling, OverflowWrap, OverscrollBehavior, PointerEvents, Position,
-    PositionArea, PreferredColorScheme, PrintColorAdjust, Resize, Rgba, RubyPosition,
-    ScrollBehavior, ScrollSnapAlign, ScrollSnapStop, ScrollSnapType, ScrollbarWidth, SelfAlignment,
-    ShapeOutside, Speak, StrokeLinecap, StrokeLinejoin, TableLayout, TextAlign, TextAlignLast,
-    TextDecorationLine,
-    TextDecorationStyle, TextEmphasis, TextJustify, TextOrientation, TextOverflow, TextRendering,
-    TextTransform, TextUnderlinePosition, TextWrap, TouchAction, TouchCallout, TrackSize,
-    TransformBox, TransformOp, TransformStyle, UnicodeBidi, UserSelect, VectorEffect,
-    VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode, ZIndex,
+    ContentVisibility, CssClip, Direction, Display, EmptyCells, FieldSizing, FillRule, Filter,
+    FlexDirection, FlexWrap, Float, FontDisplay, FontFamily, FontKerning, FontOpticalSizing,
+    FontSmoothing, FontStretch, FontStyle, FontSynthesis, FontVariant, FontVariantEastAsian,
+    FontVariantLigatures, FontVariantNumeric, FontWeight, ForcedColorAdjust, GridAutoFlow,
+    GridLine, GridTemplateAreas, HangingPunctuation, Hyphens, ImageRendering, Isolation,
+    JustifyContent, Keyword, Length, LengthContext, LengthPercentage, LengthPercentageAuto,
+    LineHeight, ListStylePosition, ListStyleType, MaskComposite, MathStyle, MaxSize, MixBlendMode,
+    ObjectFit, OffsetPath, Overflow, OverflowScrolling, OverflowWrap, OverscrollBehavior,
+    PointerEvents, Position, PositionArea, PreferredColorScheme, PrintColorAdjust, Resize, Rgba,
+    RubyPosition, ScrollBehavior, ScrollSnapAlign, ScrollSnapStop, ScrollSnapType, ScrollbarWidth,
+    SelfAlignment, ShapeOutside, Speak, StrokeLinecap, StrokeLinejoin, TableLayout, TextAlign,
+    TextAlignLast, TextDecorationLine, TextDecorationStyle, TextEmphasis, TextJustify,
+    TextOrientation, TextOverflow, TextRendering, TextTransform, TextUnderlinePosition, TextWrap,
+    TouchAction, TouchCallout, TrackSize, TransformBox, TransformOp, TransformStyle, UnicodeBidi,
+    UserSelect, VectorEffect, VerticalAlign, Visibility, WhiteSpace, WordBreak, WritingMode,
+    ZIndex,
 };
 
 /// Custom property store: raw token text keyed by `--name`.
@@ -765,6 +765,7 @@ mod conv {
         }
     }
 
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `auto`.
     pub fn opt_lp(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Option<LengthPercentage>> {
         lp(v, ctx).map(Some)
     }
@@ -878,6 +879,7 @@ mod conv {
         }
     }
 
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `none`.
     pub fn line_clamp(v: &SpecifiedValue, _: &ConvertContext) -> Option<Option<u32>> {
         match v {
             SpecifiedValue::Keyword(k) if k == "none" => Some(None),
@@ -915,6 +917,7 @@ mod conv {
         }
     }
 
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `auto`.
     pub fn aspect_ratio(v: &SpecifiedValue, _: &ConvertContext) -> Option<Option<f32>> {
         match v {
             SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
@@ -937,6 +940,7 @@ mod conv {
         }
     }
 
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `auto`.
     pub fn column_count(v: &SpecifiedValue, _: &ConvertContext) -> Option<Option<u32>> {
         match v {
             SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
@@ -946,6 +950,7 @@ mod conv {
         }
     }
 
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `auto`.
     pub fn column_width(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Option<f32>> {
         match v {
             SpecifiedValue::Keyword(k) if k == "auto" => Some(None),
@@ -953,6 +958,7 @@ mod conv {
         }
     }
 
+    #[allow(clippy::option_option)] // Outer None means invalid; inner None is CSS `none`/`auto`.
     pub fn contain_intrinsic(v: &SpecifiedValue, ctx: &ConvertContext) -> Option<Option<f32>> {
         match v {
             SpecifiedValue::Keyword(k) if k == "none" || k == "auto" => Some(None),
@@ -1875,9 +1881,7 @@ fn parse_component<'i>(input: &mut Parser<'i, '_>) -> Option<SpecifiedValue> {
             let u = unit.to_ascii_lowercase();
             if u == "s" {
                 SpecifiedValue::Number(value * 1000.0)
-            } else if u == "ms" {
-                SpecifiedValue::Number(value)
-            } else if u == "deg" {
+            } else if u == "ms" || u == "deg" {
                 SpecifiedValue::Number(value)
             } else if u == "rad" {
                 SpecifiedValue::Number(value.to_degrees())
@@ -2701,11 +2705,7 @@ fn parse_background_position(input: &mut Parser<'_, '_>) -> Option<SpecifiedValu
         return Some(SpecifiedValue::BackgroundPosition(match &a {
             SpecifiedValue::Keyword(k) => BackgroundPosition {
                 x: keyword_x(k).or_else(|| keyword_y(k))?,
-                y: if keyword_x(k).is_some() {
-                    LengthPercentage::Percent(50.0)
-                } else {
-                    LengthPercentage::Percent(50.0)
-                },
+                y: LengthPercentage::Percent(50.0),
             },
             _ => BackgroundPosition {
                 x: specified_lp(&a)?,
@@ -3570,12 +3570,9 @@ pub fn expand_shorthand<'i>(
                 let mut path = SpecifiedValue::Keyword("none".into());
                 let mut distance = SpecifiedValue::Length(Length::ZERO);
                 while !input.is_exhausted() {
-                    if let Some(p) = input
-                        .try_parse(|i| {
-                            parse_offset_path(i).ok_or_else(|| i.new_error_for_next_token::<()>())
-                        })
-                        .ok()
-                    {
+                    if let Ok(p) = input.try_parse(|i| {
+                        parse_offset_path(i).ok_or_else(|| i.new_error_for_next_token::<()>())
+                    }) {
                         path = p;
                         continue;
                     }

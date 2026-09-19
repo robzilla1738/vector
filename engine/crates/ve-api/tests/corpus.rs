@@ -120,6 +120,7 @@ fn run(engine: &mut VectorEngine, kind: &'static str, path: &Path) -> PageResult
 }
 
 #[test]
+#[ignore = "evidence gate requires a freshly fetched public corpus"]
 fn router_classifies_the_public_corpus() {
     let statics = fixture_paths("static");
     let spas = fixture_paths("spa");

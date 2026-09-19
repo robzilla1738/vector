@@ -87,11 +87,9 @@ impl App {
             adapter.update_if_active(|| tree);
         }
         #[cfg(feature = "gpu")]
-        if let Some(gpu) = &mut self.gpu
-        {
+        if let Some(gpu) = &mut self.gpu {
             let scale = window.scale_factor() as f32;
-            if gpu.present(self.service.browser_mut(), scale).is_ok()
-            {
+            if gpu.present(self.service.browser_mut(), scale).is_ok() {
                 window.set_title(NativeBrowser::CHROME_TITLE);
                 return;
             }
@@ -184,13 +182,16 @@ impl ApplicationHandler<AccessKitEvent> for App {
         #[cfg(target_os = "macos")]
         let Some(mut host) = ({
             use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
-            window.window_handle().ok().and_then(|handle| match handle.as_raw() {
-                RawWindowHandle::AppKit(handle) => {
-                    // SAFETY: winit owns this live NSView on the main event-loop thread.
-                    unsafe { ve_shell_mac::MacWindow::attach_product_view(handle.ns_view) }
-                }
-                _ => None,
-            })
+            window
+                .window_handle()
+                .ok()
+                .and_then(|handle| match handle.as_raw() {
+                    RawWindowHandle::AppKit(handle) => {
+                        // SAFETY: winit owns this live NSView on the main event-loop thread.
+                        unsafe { ve_shell_mac::MacWindow::attach_product_view(handle.ns_view) }
+                    }
+                    _ => None,
+                })
         }) else {
             event_loop.exit();
             return;

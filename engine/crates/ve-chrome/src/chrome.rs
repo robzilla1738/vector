@@ -4,11 +4,11 @@ use ve_core::{Point, Rect, Size};
 use ve_gfx::{DisplayItem, DisplayList, TextRun};
 use ve_style::{FontFamily, FontStyle, FontWeight, Rgba};
 
-use crate::intent::{detect_intent, intent_label, Intent, IntentContext};
+use crate::intent::{Intent, IntentContext, detect_intent, intent_label};
 use crate::tokens::{ChromeMetrics, ChromeTheme, ChromeTokens};
 use crate::workspace::{
-    design_reference_sites, folders_in_space, host_of, tabs_in_folder, unfiled_tabs, Folder, Layout,
-    Pin, SpaceColor,
+    Folder, Layout, Pin, SpaceColor, design_reference_sites, folders_in_space, host_of,
+    tabs_in_folder, unfiled_tabs,
 };
 
 /// One sidebar / stage tab.
@@ -393,12 +393,42 @@ impl Chrome {
         self.disconnected = false;
         self.run_goal = "Find every open review comment on this PR that mentions accessibility and summarise what still needs to change".into();
         self.run_steps = vec![
-            ("ok".into(), "Open".into(), "github.com/…/pull/3/files".into(), "812 ms".into()),
-            ("ok".into(), "Wait".into(), "settled".into(), "340 ms".into()),
-            ("ok".into(), "Click".into(), "tab “Conversation”".into(), "128 ms".into()),
-            ("ok".into(), "Extract".into(), "23 comments".into(), "96 ms".into()),
-            ("failed".into(), "Click".into(), "r41 “Load more…” is off-screen".into(), "2.0 s".into()),
-            ("ok".into(), "Scroll".into(), "↓ 1 viewport".into(), "210 ms".into()),
+            (
+                "ok".into(),
+                "Open".into(),
+                "github.com/…/pull/3/files".into(),
+                "812 ms".into(),
+            ),
+            (
+                "ok".into(),
+                "Wait".into(),
+                "settled".into(),
+                "340 ms".into(),
+            ),
+            (
+                "ok".into(),
+                "Click".into(),
+                "tab “Conversation”".into(),
+                "128 ms".into(),
+            ),
+            (
+                "ok".into(),
+                "Extract".into(),
+                "23 comments".into(),
+                "96 ms".into(),
+            ),
+            (
+                "failed".into(),
+                "Click".into(),
+                "r41 “Load more…” is off-screen".into(),
+                "2.0 s".into(),
+            ),
+            (
+                "ok".into(),
+                "Scroll".into(),
+                "↓ 1 viewport".into(),
+                "210 ms".into(),
+            ),
         ];
         self.run_elapsed = "49s".into();
         self.run_calls = "3 calls".into();
@@ -434,7 +464,11 @@ impl Chrome {
                 self.run_message = "Reading the second page of review comments".into();
             }
         }
-        if !self.recent_runs.iter().any(|(_, g)| g.contains("review comment")) {
+        if !self
+            .recent_runs
+            .iter()
+            .any(|(_, g)| g.contains("review comment"))
+        {
             self.recent_runs.insert(
                 0,
                 ("running".into(), "Find every open review comment".into()),
@@ -453,8 +487,18 @@ impl Chrome {
         self.agent_status = "Working".into();
         self.set_name = "Competitor pricing pages".into();
         self.set_members = [
-            "Linear", "Notion", "Figma", "Vercel", "Stripe", "Arc", "Raycast", "Superhuman",
-            "Cron", "Warp", "Zed", "Loom",
+            "Linear",
+            "Notion",
+            "Figma",
+            "Vercel",
+            "Stripe",
+            "Arc",
+            "Raycast",
+            "Superhuman",
+            "Cron",
+            "Warp",
+            "Zed",
+            "Loom",
         ]
         .iter()
         .enumerate()
@@ -472,11 +516,13 @@ impl Chrome {
         })
         .collect();
         self.set_failed = "Cron · 429 rate limited".into();
-        if !self.recent_runs.iter().any(|(_, g)| g.contains("Competitor pricing")) {
-            self.recent_runs.insert(
-                0,
-                ("running".into(), "Competitor pricing pages".into()),
-            );
+        if !self
+            .recent_runs
+            .iter()
+            .any(|(_, g)| g.contains("Competitor pricing"))
+        {
+            self.recent_runs
+                .insert(0, ("running".into(), "Competitor pricing pages".into()));
         }
     }
 
@@ -733,7 +779,12 @@ impl Chrome {
     fn rail_new_tab_rect(&self) -> Rect {
         let (size, gap, x) = Self::rail_tile_metrics();
         let n = self.tabs.len().min(40) as f32;
-        Rect::new(x, self.metrics.toolbar_h + 4.0 + n * (size + gap), size, size)
+        Rect::new(
+            x,
+            self.metrics.toolbar_h + 4.0 + n * (size + gap),
+            size,
+            size,
+        )
     }
 
     /// Paints chrome into a display list sized to `window`.
@@ -816,7 +867,12 @@ impl Chrome {
             if tab.active {
                 fill_round(
                     list,
-                    Rect::new(rect.x() - 2.0, rect.y() - 2.0, rect.width() + 4.0, rect.height() + 4.0),
+                    Rect::new(
+                        rect.x() - 2.0,
+                        rect.y() - 2.0,
+                        rect.width() + 4.0,
+                        rect.height() + 4.0,
+                    ),
                     10.0,
                     t.sb_selected,
                 );
@@ -888,7 +944,13 @@ impl Chrome {
         }
 
         icon_plus(list, 22.0, y + 16.0, 10.0, t.sb_ink_1);
-        self.label(list, Point::new(36.0, y + 20.0), "New Tab", 12.0, t.sb_ink_1);
+        self.label(
+            list,
+            Point::new(36.0, y + 20.0),
+            "New Tab",
+            12.0,
+            t.sb_ink_1,
+        );
         y += self.metrics.row_h;
         let foot = self.agent_footer_top(window);
         for row in self.sidebar_content_rows() {
@@ -908,7 +970,13 @@ impl Chrome {
             }
             y += self.metrics.row_h;
         }
-        self.label(list, Point::new(16.0, foot + 16.0), "AGENT", 11.0, t.sb_ink_1);
+        self.label(
+            list,
+            Point::new(16.0, foot + 16.0),
+            "AGENT",
+            11.0,
+            t.sb_ink_1,
+        );
         let live = self
             .recent_runs
             .iter()
@@ -923,7 +991,13 @@ impl Chrome {
         } else {
             format!("{live} live")
         };
-        self.label(list, Point::new(sb - 72.0, foot + 16.0), &live_l, 11.0, t.sb_ink_1);
+        self.label(
+            list,
+            Point::new(sb - 72.0, foot + 16.0),
+            &live_l,
+            11.0,
+            t.sb_ink_1,
+        );
         let mut ry = foot + 28.0;
         for (status, goal) in self.recent_runs.iter().take(4) {
             let color = match status.as_str() {
@@ -1061,7 +1135,13 @@ impl Chrome {
                     t.sb_selected,
                 );
             }
-            self.label(list, Point::new(card.x() + 16.0, y + 20.0), title, 12.0, t.ink_0);
+            self.label(
+                list,
+                Point::new(card.x() + 16.0, y + 20.0),
+                title,
+                12.0,
+                t.ink_0,
+            );
             if !detail.is_empty() && detail != title {
                 self.label(
                     list,
@@ -1089,13 +1169,15 @@ impl Chrome {
                 } else {
                     tab.title.clone()
                 };
-                if title.to_ascii_lowercase().contains(&q) || tab.url.to_ascii_lowercase().contains(&q)
+                if title.to_ascii_lowercase().contains(&q)
+                    || tab.url.to_ascii_lowercase().contains(&q)
                 {
                     rows.push((title, tab.url.clone()));
                 }
             }
             for (url, title) in &self.history {
-                if title.to_ascii_lowercase().contains(&q) || url.to_ascii_lowercase().contains(&q) {
+                if title.to_ascii_lowercase().contains(&q) || url.to_ascii_lowercase().contains(&q)
+                {
                     rows.push((title.clone(), url.clone()));
                 }
             }
@@ -1223,7 +1305,13 @@ impl Chrome {
             FontWeight(500),
         );
         y += 36.0;
-        self.label(list, Point::new(x0, y + 16.0), &today_label(), 13.0, t.ink_2);
+        self.label(
+            list,
+            Point::new(x0, y + 16.0),
+            &today_label(),
+            13.0,
+            t.ink_2,
+        );
         y += 36.0;
         let hero = Rect::new(x0, y, inner_w, 40.0);
         fill_round(list, hero, 20.0, t.sb_field);
@@ -1387,11 +1475,23 @@ impl Chrome {
         self.label(list, Point::new(x + 24.0, y + 13.0), status, 10.0, t.bg_0);
         let mut cx = x + 96.0;
         if !self.run_elapsed.is_empty() {
-            self.label(list, Point::new(cx, y + 13.0), &self.run_elapsed, 11.0, t.ink_1);
+            self.label(
+                list,
+                Point::new(cx, y + 13.0),
+                &self.run_elapsed,
+                11.0,
+                t.ink_1,
+            );
             cx += 40.0;
         }
         if !self.run_calls.is_empty() {
-            self.label(list, Point::new(cx, y + 13.0), &self.run_calls, 11.0, t.ink_1);
+            self.label(
+                list,
+                Point::new(cx, y + 13.0),
+                &self.run_calls,
+                11.0,
+                t.ink_1,
+            );
         }
         y += 28.0;
         if self.takeover {
@@ -1411,21 +1511,65 @@ impl Chrome {
                 11.0,
                 t.ink_0,
             );
-            fill_round(list, Rect::new(x + w - 132.0, y + 40.0, 108.0, 22.0), 11.0, t.bg_0);
-            self.label(list, Point::new(x + w - 122.0, y + 55.0), "Return control", 11.0, t.ink_0);
+            fill_round(
+                list,
+                Rect::new(x + w - 132.0, y + 40.0, 108.0, 22.0),
+                11.0,
+                t.bg_0,
+            );
+            self.label(
+                list,
+                Point::new(x + w - 122.0, y + 55.0),
+                "Return control",
+                11.0,
+                t.ink_0,
+            );
             y += 84.0;
         }
         if !self.needs_input.is_empty() {
-            fill_round(list, Rect::new(x + 12.0, y, w - 24.0, 96.0), 8.0, t.sb_field);
-            self.label(list, Point::new(x + 24.0, y + 18.0), "Needs your answer", 11.0, t.warn);
+            fill_round(
+                list,
+                Rect::new(x + 12.0, y, w - 24.0, 96.0),
+                8.0,
+                t.sb_field,
+            );
+            self.label(
+                list,
+                Point::new(x + 24.0, y + 18.0),
+                "Needs your answer",
+                11.0,
+                t.warn,
+            );
             for line in wrap_words(&self.needs_input, 34).into_iter().take(2) {
                 self.label(list, Point::new(x + 24.0, y + 36.0), &line, 12.0, t.ink_0);
                 y += 16.0;
             }
-            fill_round(list, Rect::new(x + 20.0, y + 44.0, w - 108.0, 24.0), 12.0, t.bg_2);
-            self.label(list, Point::new(x + 32.0, y + 60.0), "Type an answer…", 11.0, t.ink_2);
-            fill_round(list, Rect::new(x + w - 76.0, y + 44.0, 48.0, 24.0), 12.0, t.ok);
-            self.label(list, Point::new(x + w - 64.0, y + 60.0), "Send", 11.0, t.bg_0);
+            fill_round(
+                list,
+                Rect::new(x + 20.0, y + 44.0, w - 108.0, 24.0),
+                12.0,
+                t.bg_2,
+            );
+            self.label(
+                list,
+                Point::new(x + 32.0, y + 60.0),
+                "Type an answer…",
+                11.0,
+                t.ink_2,
+            );
+            fill_round(
+                list,
+                Rect::new(x + w - 76.0, y + 44.0, 48.0, 24.0),
+                12.0,
+                t.ok,
+            );
+            self.label(
+                list,
+                Point::new(x + w - 64.0, y + 60.0),
+                "Send",
+                11.0,
+                t.bg_0,
+            );
             y += 108.0;
         }
         if !self.run_message.is_empty() {
@@ -1510,13 +1654,7 @@ impl Chrome {
             .iter()
             .filter(|(_, s)| s == "completed")
             .count();
-        self.label(
-            list,
-            Point::new(x + 16.0, y + 12.0),
-            "Working",
-            11.0,
-            t.ok,
-        );
+        self.label(list, Point::new(x + 16.0, y + 12.0), "Working", 11.0, t.ok);
         self.label(
             list,
             Point::new(x + 80.0, y + 12.0),
@@ -1525,7 +1663,13 @@ impl Chrome {
             t.ink_1,
         );
         y += 28.0;
-        self.label(list, Point::new(x + 16.0, y + 12.0), "MEMBERS", 10.0, t.ink_2);
+        self.label(
+            list,
+            Point::new(x + 16.0, y + 12.0),
+            "MEMBERS",
+            10.0,
+            t.ink_2,
+        );
         y += 20.0;
         let col_w = (w - 36.0) / 3.0;
         for (i, (label, status)) in self.set_members.iter().take(12).enumerate() {
@@ -1632,7 +1776,13 @@ impl Chrome {
         } else {
             self.find.as_str()
         };
-        self.label(list, Point::new(bar.x() + 12.0, bar.y() + 21.0), q, 12.0, t.ink_0);
+        self.label(
+            list,
+            Point::new(bar.x() + 12.0, bar.y() + 21.0),
+            q,
+            12.0,
+            t.ink_0,
+        );
         let count = if self.find.is_empty() {
             String::new()
         } else if self.find_matches == 0 {
@@ -1646,7 +1796,11 @@ impl Chrome {
                 Point::new(bar.x() + 200.0, bar.y() + 21.0),
                 &count,
                 11.0,
-                if self.find_matches == 0 { t.err } else { t.ink_1 },
+                if self.find_matches == 0 {
+                    t.err
+                } else {
+                    t.ink_1
+                },
             );
         }
         self.label(
@@ -1933,7 +2087,11 @@ impl Chrome {
                 .find(|(u, _)| *u == url)
                 .map(|(_, t)| t.as_str())
                 .unwrap_or("");
-            let line = if title.is_empty() { url.as_str() } else { title };
+            let line = if title.is_empty() {
+                url.as_str()
+            } else {
+                title
+            };
             self.label(
                 list,
                 Point::new(row.x() + 12.0, row.y() + 18.0),
@@ -2029,8 +2187,20 @@ impl Chrome {
         } else {
             "Allow"
         };
-        self.label(list, Point::new(card.x() + 40.0, card.y() + 228.0), deny, 12.0, t.err);
-        self.label(list, Point::new(card.x() + 260.0, card.y() + 228.0), allow, 12.0, t.ok);
+        self.label(
+            list,
+            Point::new(card.x() + 40.0, card.y() + 228.0),
+            deny,
+            12.0,
+            t.err,
+        );
+        self.label(
+            list,
+            Point::new(card.x() + 260.0, card.y() + 228.0),
+            allow,
+            12.0,
+            t.ok,
+        );
     }
 
     fn palette_rows(&self, card: &Rect) -> Vec<(String, Rect)> {
@@ -2055,7 +2225,10 @@ impl Chrome {
         let mut y = card.y() + 90.0;
         let mut out = Vec::new();
         for (url, _) in self.history.iter().rev().take(10) {
-            out.push((url.clone(), Rect::new(card.x() + 8.0, y, card.width() - 16.0, 40.0)));
+            out.push((
+                url.clone(),
+                Rect::new(card.x() + 8.0, y, card.width() - 16.0, 40.0),
+            ));
             y += 40.0;
         }
         out
@@ -2123,12 +2296,7 @@ fn fill_rect(list: &mut DisplayList, x: f32, y: f32, w: f32, h: f32, color: Rgba
 }
 
 fn icon_dot(list: &mut DisplayList, cx: f32, cy: f32, r: f32, color: Rgba) {
-    fill_round(
-        list,
-        Rect::new(cx - r, cy - r, r * 2.0, r * 2.0),
-        r,
-        color,
-    );
+    fill_round(list, Rect::new(cx - r, cy - r, r * 2.0, r * 2.0), r, color);
 }
 
 fn icon_plus(list: &mut DisplayList, cx: f32, cy: f32, size: f32, color: Rgba) {
@@ -2169,7 +2337,12 @@ fn icon_grid(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
         for j in 0..2 {
             fill_round(
                 list,
-                Rect::new(cx - 5.0 + i as f32 * 6.0, cy - 5.0 + j as f32 * 6.0, 4.0, 4.0),
+                Rect::new(
+                    cx - 5.0 + i as f32 * 6.0,
+                    cy - 5.0 + j as f32 * 6.0,
+                    4.0,
+                    4.0,
+                ),
                 1.0,
                 color,
             );
@@ -2189,7 +2362,14 @@ fn icon_panel(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba, cutout: Rgb
 
 fn icon_sidebar(list: &mut DisplayList, cx: f32, cy: f32, color: Rgba) {
     fill_round(list, Rect::new(cx - 7.0, cy - 6.0, 14.0, 12.0), 2.0, color);
-    fill_rect(list, cx - 6.0, cy - 5.0, 4.0, 10.0, Rgba::rgba(0, 0, 0, 0.35));
+    fill_rect(
+        list,
+        cx - 6.0,
+        cy - 5.0,
+        4.0,
+        10.0,
+        Rgba::rgba(0, 0, 0, 0.35),
+    );
 }
 
 fn space_dot_color(color: SpaceColor) -> Rgba {
@@ -2502,7 +2682,7 @@ fn wrap_words(s: &str, max: usize) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::{empty_layout, Pin};
+    use crate::workspace::{Pin, empty_layout};
 
     fn sample() -> Chrome {
         let mut c = Chrome::default();
@@ -2539,13 +2719,13 @@ mod tests {
             })
             .collect();
         assert!(
-            texts.iter().any(|t| t.starts_with("Good ") || *t == "Late night."),
+            texts
+                .iter()
+                .any(|t| t.starts_with("Good ") || *t == "Late night."),
             "{texts:?}"
         );
         assert!(
-            texts
-                .iter()
-                .any(|t| t.contains("Search, enter an address")),
+            texts.iter().any(|t| t.contains("Search, enter an address")),
             "{texts:?}"
         );
         assert!(
@@ -2554,10 +2734,16 @@ mod tests {
                 .any(|t| t.contains("Summarise the open review")),
             "{texts:?}"
         );
-        assert!(texts.iter().any(|t| *t == "PINNED" || *t == "FAVOURITES"), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| *t == "PINNED" || *t == "FAVOURITES"),
+            "{texts:?}"
+        );
         assert!(texts.iter().any(|t| *t == "RECENT"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "TRY ASKING"), "{texts:?}");
-        assert!(texts.iter().any(|t| *t == "G" || *t == "L" || *t == "Y"), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| *t == "G" || *t == "L" || *t == "Y"),
+            "{texts:?}"
+        );
         assert!(texts.iter().any(|t| t.contains("Hacker News")), "{texts:?}");
         assert!(texts.iter().any(|t| t.contains("github.com")), "{texts:?}");
         assert!(
@@ -2572,8 +2758,14 @@ mod tests {
     #[test]
     fn empty_sidebar_new_tab_sits_under_space_not_a_pin_band() {
         let chrome = Chrome::default();
-        assert!(matches!(chrome.hit(Size::new(1280.0, 720.0), 40.0, 56.0), ChromeHit::CommandBar));
-        assert!(matches!(chrome.hit(Size::new(1280.0, 720.0), 40.0, 92.0), ChromeHit::NewTab));
+        assert!(matches!(
+            chrome.hit(Size::new(1280.0, 720.0), 40.0, 56.0),
+            ChromeHit::CommandBar
+        ));
+        assert!(matches!(
+            chrome.hit(Size::new(1280.0, 720.0), 40.0, 92.0),
+            ChromeHit::NewTab
+        ));
     }
 
     #[test]
@@ -2629,12 +2821,19 @@ mod tests {
             })
             .collect();
         assert!(texts.iter().any(|t| *t == "Chromium"), "{texts:?}");
-        assert!(texts.iter().any(|t| *t == "explicit-backend:chromium"), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| *t == "explicit-backend:chromium"),
+            "{texts:?}"
+        );
         assert!(texts.iter().any(|t| *t == "AGENT"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Open"), "{texts:?}");
         let stage = chrome.stage_rect(window);
         assert!(stage.x() >= 260.0);
-        assert!(stage.y() < 16.0, "no top toolbar when sidebar is visible: y={}", stage.y());
+        assert!(
+            stage.y() < 16.0,
+            "no top toolbar when sidebar is visible: y={}",
+            stage.y()
+        );
         assert!(stage.width() < 1280.0 - 360.0);
         assert!(matches!(
             chrome.hit(window, 40.0, 60.0),
@@ -2684,7 +2883,10 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert!(texts.iter().any(|t| *t == "Certificate warning"), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| *t == "Certificate warning"),
+            "{texts:?}"
+        );
         assert!(texts.iter().any(|t| *t == "Block"), "{texts:?}");
         assert!(texts.iter().any(|t| *t == "Proceed"), "{texts:?}");
         chrome.overlay = ChromeOverlay::Permission;
@@ -2729,16 +2931,16 @@ mod tests {
             "History",
             "Downloads",
         ] {
-            assert!(texts.iter().any(|t| *t == expected), "missing {expected}: {texts:?}");
+            assert!(
+                texts.iter().any(|t| *t == expected),
+                "missing {expected}: {texts:?}"
+            );
         }
         let card = palette_card(window);
         let rows = chrome.palette_rows(&card);
         let new_tab = rows.iter().find(|(id, _)| id == "new").expect("new");
         let hit = chrome.hit(window, new_tab.1.x() + 4.0, new_tab.1.y() + 4.0);
-        assert_eq!(
-            hit,
-            ChromeHit::PaletteCommand { id: "new".into() }
-        );
+        assert_eq!(hit, ChromeHit::PaletteCommand { id: "new".into() });
     }
 
     #[test]
@@ -2767,7 +2969,10 @@ mod tests {
             "Agent effects",
             "Search engine",
         ] {
-            assert!(texts.iter().any(|t| *t == expected), "missing {expected}: {texts:?}");
+            assert!(
+                texts.iter().any(|t| *t == expected),
+                "missing {expected}: {texts:?}"
+            );
         }
         let drawer = settings_drawer(window);
         let dark = settings_theme_rect(&drawer, true);
@@ -2814,7 +3019,9 @@ mod tests {
     fn history_overlay_hits_rows() {
         let mut chrome = sample();
         chrome.overlay = ChromeOverlay::History;
-        chrome.history.push(("https://example.test/".into(), "Example".into()));
+        chrome
+            .history
+            .push(("https://example.test/".into(), "Example".into()));
         let window = Size::new(1280.0, 720.0);
         let list = chrome.paint(window);
         let texts: Vec<&str> = list
@@ -2853,11 +3060,14 @@ mod tests {
             "commandBar": true,
             "matches": "docs/ui/shell.md Arc sidebar + command bar + inset stage + agent rail"
         });
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../docs/ui/screenshots");
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/ui/screenshots");
         let _ = std::fs::create_dir_all(&dir);
-        std::fs::write(dir.join("ve-chrome-regions.json"), serde_json::to_vec_pretty(&doc).unwrap())
-            .unwrap();
+        std::fs::write(
+            dir.join("ve-chrome-regions.json"),
+            serde_json::to_vec_pretty(&doc).unwrap(),
+        )
+        .unwrap();
     }
 
     fn paint_texts(chrome: &Chrome) -> Vec<String> {
@@ -2902,8 +3112,14 @@ mod tests {
             !texts.iter().any(|t| t == "Personal" || t == "New Tab"),
             "rail must not paint expanded labels: {texts:?}"
         );
-        assert!(texts.iter().any(|t| t == "E"), "host letter for example.test: {texts:?}");
-        assert!(texts.iter().any(|t| t == "L"), "host letter for linear.app: {texts:?}");
+        assert!(
+            texts.iter().any(|t| t == "E"),
+            "host letter for example.test: {texts:?}"
+        );
+        assert!(
+            texts.iter().any(|t| t == "L"),
+            "host letter for linear.app: {texts:?}"
+        );
         assert_eq!(chrome.sidebar_used(), 56.0);
         assert!(matches!(
             chrome.hit(window, 20.0, 20.0),
@@ -3057,17 +3273,29 @@ mod tests {
             "agent rail occupies the right CSS strip ({rail_w}px)"
         );
         let texts = paint_texts(&chrome);
-        assert!(texts.iter().any(|t| t.contains("review comment")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("review comment")),
+            "{texts:?}"
+        );
         assert!(texts.iter().any(|t| t == "Working"), "{texts:?}");
         assert!(texts.iter().any(|t| t == "Extract"), "{texts:?}");
         assert!(texts.iter().any(|t| t.contains("Load more")), "{texts:?}");
-        assert!(texts.iter().any(|t| t.contains("Ask about this page")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("Ask about this page")),
+            "{texts:?}"
+        );
         assert!(texts.iter().any(|t| t == "Run"), "{texts:?}");
         assert!(texts.iter().any(|t| t == "49s"), "{texts:?}");
         chrome.seed_live_run("takeover");
         let texts = paint_texts(&chrome);
-        assert!(texts.iter().any(|t| t.contains("You're in control")), "{texts:?}");
-        assert!(texts.iter().any(|t| t.contains("Return control")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("You're in control")),
+            "{texts:?}"
+        );
+        assert!(
+            texts.iter().any(|t| t.contains("Return control")),
+            "{texts:?}"
+        );
         chrome.seed_live_run("needs-input");
         let texts = paint_texts(&chrome);
         assert!(texts.iter().any(|t| t == "Needs your answer"), "{texts:?}");
@@ -3077,16 +3305,28 @@ mod tests {
                 .any(|t| t.contains("focus") || t.contains("resolved")),
             "{texts:?}"
         );
-        assert!(texts.iter().any(|t| t.contains("Type an answer")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("Type an answer")),
+            "{texts:?}"
+        );
         chrome.seed_set_progress();
         let texts = paint_texts(&chrome);
         assert!(texts.iter().any(|t| t == "Set"), "{texts:?}");
-        assert!(texts.iter().any(|t| t.contains("Competitor pricing")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("Competitor pricing")),
+            "{texts:?}"
+        );
         assert!(texts.iter().any(|t| t == "Linear"), "{texts:?}");
         assert!(texts.iter().any(|t| t.contains("429")), "{texts:?}");
         chrome.seed_disconnected();
         let texts = paint_texts(&chrome);
-        assert!(texts.iter().any(|t| t.contains("Waiting for the runtime")), "{texts:?}");
-        assert!(texts.iter().any(|t| t.contains("Runtime disconnected")), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("Waiting for the runtime")),
+            "{texts:?}"
+        );
+        assert!(
+            texts.iter().any(|t| t.contains("Runtime disconnected")),
+            "{texts:?}"
+        );
     }
 }

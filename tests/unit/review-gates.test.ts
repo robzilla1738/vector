@@ -29,7 +29,7 @@ import {
   tryReuseSkill,
   type DriverSet,
 } from "@vector/runtime";
-import type { ObservationContent, SetMember, Step } from "@vector/contracts";
+import type { ObservationContent, Program, SetMember, Step } from "@vector/contracts";
 import type { BrowserDriver, DriverPage, ExecuteProgramResult } from "@vector/engine-client";
 
 const obs = (opts?: { ref?: string; name?: string; url?: string }): ObservationContent =>
@@ -220,7 +220,7 @@ describe("Gate D permissions and durable writes", () => {
   });
 
   it("honours origin and expiresAt on structured grants (H2-C4)", () => {
-    const click = [{ id: "c", op: "click", target: "r1" }];
+    const click = [{ id: "c", op: "click", target: "r1" }] satisfies Program["steps"];
     const scoped = [{ effect: "write" as const, origin: "https://app.test", scope: "*", expiresAt: 0 }];
     expect(authorizeProgram(click, scoped, "https://app.test").ok).toBe(true);
     expect(authorizeProgram(click, scoped, "https://evil.test").ok).toBe(false);

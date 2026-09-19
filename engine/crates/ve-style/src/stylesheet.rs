@@ -450,8 +450,7 @@ impl<'i> AtRuleParser<'i> for RuleParser {
             Ok(AtPrelude::FontFace)
         } else if name.eq_ignore_ascii_case("supports") {
             Ok(AtPrelude::Supports(parse_supports_condition(input)))
-        } else if name.eq_ignore_ascii_case("layer") || name.eq_ignore_ascii_case("scope")
-        {
+        } else if name.eq_ignore_ascii_case("layer") || name.eq_ignore_ascii_case("scope") {
             while input.next().is_ok() {}
             Ok(AtPrelude::Transparent)
         } else {
@@ -507,10 +506,12 @@ impl<'i> AtRuleParser<'i> for RuleParser {
                     .collect();
                 match prelude {
                     AtPrelude::Media(query) => Ok(CssRule::Media(MediaRule { query, rules })),
-                    AtPrelude::Supports(true) | AtPrelude::Transparent => Ok(CssRule::Media(MediaRule {
-                        query: MediaQueryList::default(),
-                        rules,
-                    })),
+                    AtPrelude::Supports(true) | AtPrelude::Transparent => {
+                        Ok(CssRule::Media(MediaRule {
+                            query: MediaQueryList::default(),
+                            rules,
+                        }))
+                    }
                     AtPrelude::Supports(false) => Ok(CssRule::Media(MediaRule {
                         query: MediaQueryList::default(),
                         rules: Vec::new(),
@@ -731,7 +732,7 @@ fn parse_font_face_src(input: &mut Parser<'_, '_>) -> Vec<FontFaceSrc> {
                 Ok::<_, ParseError<'_, StyleParseErrorKind<'_>>>(())
             });
         } else if input.try_parse(Parser::expect_comma).is_ok() {
-            continue;
+            // The separator was consumed; the next iteration parses the next source.
         } else if input.next().is_err() {
             break;
         }
@@ -746,7 +747,9 @@ fn parse_supports_condition(input: &mut Parser<'_, '_>) -> bool {
     let mut result = if negated { !first } else { first };
     loop {
         let Ok(op) = input.try_parse(|i| {
-            Ok::<_, cssparser::ParseError<'static, ()>>(i.expect_ident()?.as_ref().to_ascii_lowercase())
+            Ok::<_, cssparser::ParseError<'static, ()>>(
+                i.expect_ident()?.as_ref().to_ascii_lowercase(),
+            )
         }) else {
             break;
         };
@@ -862,9 +865,10 @@ mod tests {
             sheet.rules.iter().all(|r| match r {
                 CssRule::Media(inner) => inner.rules.iter().all(|n| match n {
                     CssRule::Style(s) => {
-                        !s.block.declarations.iter().any(|d| {
-                            matches!(d.property, PropertyId::Color)
-                        })
+                        !s.block
+                            .declarations
+                            .iter()
+                            .any(|d| matches!(d.property, PropertyId::Color))
                     }
                     _ => true,
                 }),

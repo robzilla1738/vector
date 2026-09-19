@@ -141,7 +141,9 @@ impl InlineState<'_, '_> {
         let gaps = fragments.len().saturating_sub(1);
         let step = if gaps > 0 { extra / gaps as f32 } else { 0.0 };
         for (i, f) in fragments.iter_mut().enumerate() {
-            f.rect = f.rect.translate(shift + step * i as f32, baseline - f.baseline);
+            f.rect = f
+                .rect
+                .translate(shift + step * i as f32, baseline - f.baseline);
             for open in &mut self.open {
                 if i >= open.start {
                     open.acc = open.acc.union(&f.rect);
@@ -349,7 +351,12 @@ fn apply_text_ellipsis(
         t.push_str(dots);
         let width = shaper.measure(&t, style);
         last.text = Some(t);
-        last.rect = Rect::new(last.rect.x(), last.rect.y(), width.max(0.0), last.rect.height());
+        last.rect = Rect::new(
+            last.rect.x(),
+            last.rect.y(),
+            width.max(0.0),
+            last.rect.height(),
+        );
     }
 }
 
@@ -429,7 +436,7 @@ fn flow_text(child: &mut LayoutBox, text: &str, state: &mut InlineState<'_, '_>,
         let mut x = pen.x;
         if style.hanging_punctuation == HangingPunctuation::First
             && state.line.is_empty()
-            && piece.starts_with(|c: char| matches!(c, '"' | '\'' | '“' | '‘' | '«' | '('))
+            && piece.starts_with(['"', '\'', '“', '‘', '«', '('])
         {
             if let Some(mark) = piece.chars().next() {
                 let mut buf = [0u8; 4];

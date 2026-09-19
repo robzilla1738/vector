@@ -290,13 +290,7 @@ pub fn build_scene_fonts(
                     f64::from(list.size.width),
                     f64::from(list.size.height),
                 );
-                scene.push_layer(
-                    Fill::NonZero,
-                    mix_blend(*mode),
-                    1.0,
-                    transform,
-                    &everything,
-                );
+                scene.push_layer(Fill::NonZero, mix_blend(*mode), 1.0, transform, &everything);
             }
             DisplayItem::PopClip
             | DisplayItem::PopOpacity

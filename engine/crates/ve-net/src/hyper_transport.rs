@@ -343,13 +343,13 @@ impl Transport for HyperTransport {
 
     fn warmup_dns(&self, host: &str, port: u16) {
         let host = host.to_owned();
-        let _ = self.runtime.spawn(async move {
+        std::mem::drop(self.runtime.spawn(async move {
             let _ = tokio::task::spawn_blocking(move || {
                 use std::net::ToSocketAddrs;
                 let _ = (host.as_str(), port).to_socket_addrs();
             })
             .await;
-        });
+        }));
     }
 
     fn name(&self) -> &'static str {
