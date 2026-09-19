@@ -5315,6 +5315,74 @@ fn crypto_subtle_aes_ctr_matches_nist() {
 }
 
 #[test]
+fn webgl_clear_paints_and_read_pixels() {
+    let mut page = open("<title>glp</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              document.body.appendChild(c);
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 0, 0, 1);
+              gl.clear(gl.COLOR_BUFFER_BIT);
+              const pix = new Uint8Array(4);
+              gl.readPixels(2, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
+              return { r: pix[0], g: pix[1], b: pix[2], a: pix[3], inst: gl instanceof WebGLRenderingContext };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn audio_buffer_and_get_user_media_denies() {
+    let mut page = open("<title>ab</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__abuf = null;
+          const ctx = new AudioContext();
+          const buf = ctx.createBuffer(1, 4, 44100);
+          buf.getChannelData(0)[0] = 0.5;
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          let ended = false;
+          src.onended = function () { ended = true; };
+          src.start();
+          const raw = new Uint8Array([128, 255]).buffer;
+          ctx.decodeAudioData(raw).then(function (decoded) {
+            return navigator.mediaDevices.getUserMedia({ audio: true }).then(function () {
+              window.__abuf = { err: "allowed" };
+            }).catch(function (e) {
+              window.__abuf = {
+                inst: buf instanceof AudioBuffer && src instanceof AudioBufferSourceNode,
+                sample: buf.getChannelData(0)[0],
+                decoded: decoded.length === 2,
+                ended: ended,
+                deny: e.name === "NotAllowedError",
+                time: typeof ctx.currentTime === "number"
+              };
+            });
+          }).catch(function (e) { window.__abuf = { err: String(e) }; });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__abuf").unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["sample"], 0.5, "{v}");
+    assert_eq!(v["decoded"], true, "{v}");
+    assert_eq!(v["ended"], true, "{v}");
+    assert_eq!(v["deny"], true, "{v}");
+    assert_eq!(v["time"], true, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

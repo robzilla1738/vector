@@ -8858,7 +8858,31 @@ fn parse_css_color(s: &str) -> [u8; 4] {
             }
         }
     }
-    match t.to_ascii_lowercase().as_str() {
+    let lower = t.to_ascii_lowercase();
+    if let Some(rest) = lower
+        .strip_prefix("rgba(")
+        .or_else(|| lower.strip_prefix("rgb("))
+    {
+        let nums: Vec<f32> = rest
+            .trim_end_matches(')')
+            .split(',')
+            .filter_map(|s| s.trim().parse().ok())
+            .collect();
+        if nums.len() >= 3 {
+            let a = if nums.len() >= 4 {
+                (nums[3].clamp(0.0, 1.0) * 255.0).round() as u8
+            } else {
+                255
+            };
+            return [
+                nums[0].clamp(0.0, 255.0) as u8,
+                nums[1].clamp(0.0, 255.0) as u8,
+                nums[2].clamp(0.0, 255.0) as u8,
+                a,
+            ];
+        }
+    }
+    match lower.as_str() {
         "white" => [255, 255, 255, 255],
         "red" => [255, 0, 0, 255],
         "blue" => [0, 0, 255, 255],

@@ -522,16 +522,65 @@ fn paint_svg_rect(
 ) {
     let (tx, ty) = svg_translate(tag);
     let (sx, sy) = svg_scale(tag);
-    let x = ((svg_attr(tag, "x").unwrap_or(0.0) + ox) * sx + tx).max(0.0) as u32;
-    let y = ((svg_attr(tag, "y").unwrap_or(0.0) + oy) * sy + ty).max(0.0) as u32;
-    let w = (svg_attr(tag, "width").unwrap_or(0.0) * sx).max(0.0) as u32;
-    let h = (svg_attr(tag, "height").unwrap_or(0.0) * sy).max(0.0) as u32;
+    let (ang, rcx, rcy) = svg_rotate(tag);
+    let x0 = (svg_attr(tag, "x").unwrap_or(0.0) + ox) * sx + tx;
+    let y0 = (svg_attr(tag, "y").unwrap_or(0.0) + oy) * sy + ty;
+    let w = (svg_attr(tag, "width").unwrap_or(0.0) * sx).max(0.0);
+    let h = (svg_attr(tag, "height").unwrap_or(0.0) * sy).max(0.0);
     let fill = svg_fill(tag);
-    for yy in y..(y + h).min(img.height) {
-        for xx in x..(x + w).min(img.width) {
-            let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
-            let idx = ((yy * img.width + xx) * 4) as usize;
-            img.rgba[idx..idx + 4].copy_from_slice(&color);
+    if ang.abs() < 0.001 {
+        let x = x0.max(0.0) as u32;
+        let y = y0.max(0.0) as u32;
+        let ww = w as u32;
+        let hh = h as u32;
+        for yy in y..(y + hh).min(img.height) {
+            for xx in x..(x + ww).min(img.width) {
+                let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
+                let idx = ((yy * img.width + xx) * 4) as usize;
+                img.rgba[idx..idx + 4].copy_from_slice(&color);
+            }
+        }
+        return;
+    }
+    let rad = ang.to_radians();
+    let corners = [
+        svg_rotate_pt(x0, y0, rad, rcx, rcy),
+        svg_rotate_pt(x0 + w, y0, rad, rcx, rcy),
+        svg_rotate_pt(x0 + w, y0 + h, rad, rcx, rcy),
+        svg_rotate_pt(x0, y0 + h, rad, rcx, rcy),
+    ];
+    let minx = corners
+        .iter()
+        .map(|p| p.0)
+        .fold(f32::MAX, f32::min)
+        .floor()
+        .max(0.0) as u32;
+    let miny = corners
+        .iter()
+        .map(|p| p.1)
+        .fold(f32::MAX, f32::min)
+        .floor()
+        .max(0.0) as u32;
+    let maxx = corners
+        .iter()
+        .map(|p| p.0)
+        .fold(0.0_f32, f32::max)
+        .ceil()
+        .min(img.width as f32) as u32;
+    let maxy = corners
+        .iter()
+        .map(|p| p.1)
+        .fold(0.0_f32, f32::max)
+        .ceil()
+        .min(img.height as f32) as u32;
+    for yy in miny..maxy {
+        for xx in minx..maxx {
+            let (lx, ly) = svg_rotate_pt(xx as f32 + 0.5, yy as f32 + 0.5, -rad, rcx, rcy);
+            if lx >= x0 && lx < x0 + w && ly >= y0 && ly < y0 + h {
+                let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
+                let idx = ((yy * img.width + xx) * 4) as usize;
+                img.rgba[idx..idx + 4].copy_from_slice(&color);
+            }
         }
     }
 }
@@ -748,6 +797,33 @@ fn svg_scale(tag: &str) -> (f32, f32) {
     let x = nums.next().and_then(|s| s.parse().ok()).unwrap_or(1.0);
     let y = nums.next().and_then(|s| s.parse().ok()).unwrap_or(x);
     (x, y)
+}
+
+fn svg_rotate_pt(x: f32, y: f32, rad: f32, cx: f32, cy: f32) -> (f32, f32) {
+    let dx = x - cx;
+    let dy = y - cy;
+    let c = rad.cos();
+    let s = rad.sin();
+    (cx + dx * c - dy * s, cy + dx * s + dy * c)
+}
+
+fn svg_rotate(tag: &str) -> (f32, f32, f32) {
+    let Some(raw) = svg_attr_str(tag, "transform") else {
+        return (0.0, 0.0, 0.0);
+    };
+    let Some(idx) = raw.find("rotate") else {
+        return (0.0, 0.0, 0.0);
+    };
+    let rest = raw[idx + 6..].trim();
+    let rest = rest.trim_start_matches('(');
+    let rest = rest.split(')').next().unwrap_or("").trim();
+    let mut nums = rest
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .filter(|s| !s.is_empty());
+    let ang = nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+    let cx = nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+    let cy = nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+    (ang, cx, cy)
 }
 
 fn svg_opacity_attr(tag: &str, name: &str) -> f32 {
@@ -1530,5 +1606,16 @@ mod tests {
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(3, 3), Some([255, 255, 0, 255]));
         assert_eq!(img.pixel(5, 5), Some([255, 255, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_rotate_moves_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='0' y='0' width='3' height='3' fill='#0000ff' transform='rotate(180, 4, 4)'/></svg>",
+        )
+        .expect("svg rotate");
+        assert_eq!(img.pixel(1, 1), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(6, 6), Some([0, 0, 255, 255]));
     }
 }

@@ -6980,6 +6980,17 @@
     get cookieEnabled() { return true; }
     get pdfViewerEnabled() { return false; }
     get hardwareConcurrency() { return 4; }
+    get mediaDevices() {
+      if (!this._mediaDevices) {
+        this._mediaDevices = {
+          getUserMedia() {
+            return Promise.reject(new DOMException("Permission denied", "NotAllowedError"));
+          },
+          enumerateDevices() { return Promise.resolve([]); },
+        };
+      }
+      return this._mediaDevices;
+    }
     get userActivation() { return navigatorUserActivation; }
     get plugins() { return navigatorPlugins; }
     get mimeTypes() { return navigatorMimeTypes; }
@@ -8771,6 +8782,40 @@
     connect(dest) { this._dest = dest; return dest; }
     disconnect() { this._dest = null; }
   }
+  class AudioBuffer {
+    constructor(options) {
+      const o = options || {};
+      this.sampleRate = Number(o.sampleRate) || 44100;
+      this.length = Number(o.length) || 0;
+      this.numberOfChannels = Number(o.numberOfChannels) || 1;
+      this.duration = this.length / this.sampleRate;
+      this._ch = [];
+      for (let i = 0; i < this.numberOfChannels; i++) this._ch.push(new Float32Array(this.length));
+    }
+    getChannelData(i) { return this._ch[i | 0] || new Float32Array(0); }
+    copyToChannel(src, i, offset) {
+      const dest = this._ch[i | 0];
+      if (!dest || !src) return;
+      dest.set(src, Number(offset) || 0);
+    }
+  }
+  class AudioBufferSourceNode extends AudioNode {
+    constructor(ctx) {
+      super(ctx);
+      this.buffer = null;
+      this.onended = null;
+      this._started = false;
+    }
+    start() {
+      this._started = true;
+      const self = this;
+      queueMicrotask(() => {
+        const ev = new Event("ended");
+        if (typeof self.onended === "function") self.onended(ev);
+      });
+    }
+    stop() { this._started = false; }
+  }
   class OscillatorNode extends AudioNode {
     constructor(ctx) {
       super(ctx);
@@ -8800,11 +8845,24 @@
       super();
       this.state = "running";
       this.sampleRate = 44100;
-      this.currentTime = 0;
       this.destination = new AudioDestinationNode(this);
+      this._t0 = performance.now();
     }
+    get currentTime() { return Math.max(0, (performance.now() - this._t0) / 1000); }
     createOscillator() { return new OscillatorNode(this); }
     createGain() { return new GainNode(this); }
+    createBuffer(channels, length, sampleRate) {
+      return new AudioBuffer({ numberOfChannels: channels, length: length, sampleRate: sampleRate });
+    }
+    createBufferSource() { return new AudioBufferSourceNode(this); }
+    decodeAudioData(data) {
+      const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : (data && data.buffer ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : new Uint8Array(0));
+      const n = Math.max(1, bytes.length);
+      const buf = new AudioBuffer({ numberOfChannels: 1, length: n, sampleRate: this.sampleRate });
+      const ch = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) ch[i] = (bytes[i] - 128) / 128;
+      return Promise.resolve(buf);
+    }
     resume() { this.state = "running"; return Promise.resolve(); }
     suspend() { this.state = "suspended"; return Promise.resolve(); }
     close() { this.state = "closed"; return Promise.resolve(); }
@@ -8821,6 +8879,8 @@
       this.VERSION = 7938;
       this.VENDOR = 7936;
       this.RENDERER = 7937;
+      this.RGBA = 6408;
+      this.UNSIGNED_BYTE = 5121;
       this._clear = [0, 0, 0, 0];
     }
     getParameter(p) {
@@ -8831,8 +8891,24 @@
     }
     getExtension() { return null; }
     getSupportedExtensions() { return []; }
-    clearColor(r, g, b, a) { this._clear = [r, g, b, a]; }
-    clear() {}
+    clearColor(r, g, b, a) { this._clear = [Number(r) || 0, Number(g) || 0, Number(b) || 0, a == null ? 1 : Number(a)]; }
+    clear() {
+      const c = this.canvas;
+      if (!c || c.__h == null) return;
+      const [r, g, b, a] = this._clear;
+      const hex = (n) => Math.max(0, Math.min(255, Math.round(n * 255))).toString(16).padStart(2, "0");
+      const css = a >= 1 ? ("#" + hex(r) + hex(g) + hex(b)) : ("rgba(" + Math.round(r * 255) + "," + Math.round(g * 255) + "," + Math.round(b * 255) + "," + a + ")");
+      D("canvasResize", c.__h, c.width, c.height);
+      D("canvasFillRect", c.__h, 0, 0, c.width, c.height, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
+    }
+    readPixels(x, y, w, h, _format, _type, dst) {
+      const c = this.canvas;
+      if (!c || c.__h == null || !dst) return;
+      const r = D("canvasGetImageData", c.__h, Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0) || {};
+      const bin = atob(r.b64 || "");
+      const n = Math.min(dst.length, bin.length);
+      for (let i = 0; i < n; i++) dst[i] = bin.charCodeAt(i);
+    }
     viewport() {}
     enable() {}
     disable() {}
@@ -10654,6 +10730,7 @@
     MediaQueryList, Highlight, HighlightRegistry,
     ReadableStream, WritableStream, TransformStream, URLPattern,
     AudioContext, webkitAudioContext: AudioContext, OscillatorNode, GainNode, AudioDestinationNode,
+    AudioBuffer, AudioBufferSourceNode,
     WebGLRenderingContext, RTCPeerConnection,
     TextEncoderStream, TextDecoderStream,
     CompressionStream, DecompressionStream, CookieStore, cookieStore, ClipboardItem,
