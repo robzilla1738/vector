@@ -5221,6 +5221,54 @@ fn local_fonts_and_screen_details_deny() {
 }
 
 #[test]
+fn trusted_types_policy_creates_trusted_html() {
+    let mut page = open("<title>tt</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const p = trustedTypes.createPolicy("p", {
+                createHTML(s) { return String(s).replace(/x/g, "y"); }
+              });
+              const t = p.createHTML("ax");
+              return {
+                inst: t instanceof TrustedHTML,
+                html: String(t) === "ay",
+                is: trustedTypes.isHTML(t),
+                name: p.name === "p"
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inst"], true, "{v}");
+    assert_eq!(v["html"], true, "{v}");
+    assert_eq!(v["is"], true, "{v}");
+    assert_eq!(v["name"], true, "{v}");
+}
+
+#[test]
+fn canvas_transfer_control_copies_pixels() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const ctx = c.getContext("2d");
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 8, 8);
+              const off = c.transferControlToOffscreen();
+              const d = off.getContext("2d").getImageData(2, 2, 1, 1).data;
+              return { r: d[0], g: d[1], b: d[2], a: d[3], w: off.width };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["w"], 8, "{v}");
+}
+
+#[test]
 fn set_html_strips_script_and_keeps_paragraph() {
     let mut page = open(r#"<body><div id="t"></div></body>"#);
     let v = page

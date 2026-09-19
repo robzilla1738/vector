@@ -3859,7 +3859,17 @@
       if (typeof callback === "function") queueMicrotask(() => callback(blob));
     }
     transferControlToOffscreen() {
-      return new OffscreenCanvas(this.width, this.height);
+      const off = new OffscreenCanvas(this.width, this.height);
+      try {
+        const src = this.getContext("2d");
+        if (src && off.getContext) {
+          const dst = off.getContext("2d");
+          const data = src.getImageData(0, 0, this.width, this.height);
+          if (dst && data) dst.putImageData(data, 0, 0);
+        }
+      } catch (e) {}
+      this._transferred = true;
+      return off;
     }
   }
   class CanvasGradient {
@@ -7617,6 +7627,25 @@
     toString() { return this._html || ""; }
     toJSON() { return this.toString(); }
   }
+  class TrustedTypePolicy {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    createHTML(s) {
+      const html = this._createHTML ? this._createHTML(String(s == null ? "" : s)) : String(s == null ? "" : s);
+      const t = Object.create(TrustedHTML.prototype);
+      t._html = String(html);
+      return t;
+    }
+  }
+  Object.defineProperty(TrustedTypePolicy.prototype, Symbol.toStringTag, { value: "TrustedTypePolicy", configurable: true });
+  const trustedTypes = {
+    createPolicy(name, rules) {
+      const p = Object.create(TrustedTypePolicy.prototype);
+      p.name = String(name || "");
+      p._createHTML = rules && typeof rules.createHTML === "function" ? rules.createHTML.bind(rules) : null;
+      return p;
+    },
+    isHTML(v) { return !!(v && Object.prototype.toString.call(v) === "[object TrustedHTML]"); },
+  };
   function makeImageBitmapFromSource(image, sx, sy, sw, sh) {
     const c = document.createElement("canvas");
     if (image && image.data && typeof image.width === "number" && typeof image.height === "number") {
@@ -8257,7 +8286,7 @@
     MathMLAnchorElement, CommandEvent, PromiseRejectionEvent, PageSwapEvent, MessageEvent, PopStateEvent,
     ImageData, Path2D, FormDataEvent, TrackEvent, ToggleEvent, StorageEvent, SubmitEvent,
     PageRevealEvent, PageTransitionEvent, BeforeUnloadEvent, HashChangeEvent, DragEvent,
-    ImageBitmap, ImageBitmapRenderingContext, Worklet, TrustedHTML, PerformanceEntry, PerformanceResourceTiming,
+    ImageBitmap, ImageBitmapRenderingContext, Worklet, TrustedHTML, TrustedTypePolicy, PerformanceEntry, PerformanceResourceTiming,
     DOMStringMap, HTMLSelectedContentElement,
   ]) {
     try {
@@ -11385,6 +11414,8 @@
     Worklet,
     HTMLSelectedContentElement,
     TrustedHTML,
+    TrustedTypePolicy,
+    trustedTypes,
     PerformanceEntry,
     PerformanceResourceTiming,
     ElementInternals, CustomStateSet,
