@@ -7674,27 +7674,144 @@
     }
   }
   const observers = [];
+  function normalizeClientRect(r) {
+    if (!r) return { x: 0, y: 0, width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 };
+    const x = Number(r.x != null ? r.x : r.left) || 0;
+    const y = Number(r.y != null ? r.y : r.top) || 0;
+    const w = Number(r.width) || 0;
+    const h = Number(r.height) || 0;
+    return { x, y, width: w, height: h, top: y, left: x, right: x + w, bottom: y + h };
+  }
+  function viewportClientRect() {
+    const w = Number(window.innerWidth) || 0;
+    const h = Number(window.innerHeight) || 0;
+    return { x: 0, y: 0, width: w, height: h, top: 0, left: 0, right: w, bottom: h };
+  }
+  function rootClientRect(root) {
+    if (root && typeof root.getBoundingClientRect === "function") {
+      return normalizeClientRect(root.getBoundingClientRect());
+    }
+    return viewportClientRect();
+  }
+  function parseRootMargin(margin) {
+    const parts = String(margin || "0").trim().split(/\s+/).map((p) => parseFloat(p) || 0);
+    let t, r, b, l;
+    if (parts.length <= 1) t = r = b = l = parts[0] || 0;
+    else if (parts.length === 2) { t = b = parts[0]; r = l = parts[1]; }
+    else if (parts.length === 3) { t = parts[0]; r = l = parts[1]; b = parts[2]; }
+    else { t = parts[0]; r = parts[1]; b = parts[2]; l = parts[3]; }
+    return { t, r, b, l };
+  }
+  function inflateClientRect(rect, m) {
+    return {
+      x: rect.x - m.l,
+      y: rect.y - m.t,
+      width: rect.width + m.l + m.r,
+      height: rect.height + m.t + m.b,
+      top: rect.y - m.t,
+      left: rect.x - m.l,
+      right: rect.x + rect.width + m.r,
+      bottom: rect.y + rect.height + m.b,
+    };
+  }
+  function intersectClientRects(a, b) {
+    const x1 = Math.max(a.x, b.x);
+    const y1 = Math.max(a.y, b.y);
+    const x2 = Math.min(a.x + a.width, b.x + b.width);
+    const y2 = Math.min(a.y + a.height, b.y + b.height);
+    const w = Math.max(0, x2 - x1);
+    const h = Math.max(0, y2 - y1);
+    return { x: x1, y: y1, width: w, height: h, top: y1, left: x1, right: x1 + w, bottom: y1 + h };
+  }
+  function cssBoxPx(el, name) {
+    try {
+      const cs = window.getComputedStyle(el);
+      if (typeof cs.getPropertyValue === "function") {
+        const kebab = name.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+        const v = parseFloat(cs.getPropertyValue(kebab));
+        if (!Number.isNaN(v) && v !== 0) return v;
+      }
+      return parseFloat(cs[name]) || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
   class IntersectionObserver {
-    constructor(cb) { this._cb = cb; this._t = []; }
-    observe(t) { this._t.push(t); queueMicrotask(() => this._fire()); }
+    constructor(cb, opts) {
+      opts = opts || {};
+      this._cb = cb;
+      this._t = [];
+      this.root = opts.root || null;
+      this.rootMargin = opts.rootMargin == null ? "0px" : String(opts.rootMargin);
+      const th = opts.threshold;
+      this.thresholds = Array.isArray(th) ? th.map(Number) : [th == null ? 0 : Number(th)];
+    }
+    observe(t) {
+      if (!t || this._t.indexOf(t) >= 0) return;
+      this._t.push(t);
+      queueMicrotask(() => this._fire());
+    }
     unobserve(t) { this._t = this._t.filter((x) => x !== t); }
     disconnect() { this._t = []; }
+    takeRecords() { return []; }
     _fire() {
+      const root = inflateClientRect(rootClientRect(this.root), parseRootMargin(this.rootMargin));
       const recs = this._t.map((t) => {
-        const r = t.getBoundingClientRect();
-        const hit = r.width > 0 && r.height > 0;
-        return { target: t, isIntersecting: hit, intersectionRatio: hit ? 1 : 0, boundingClientRect: r, time: performance.now() };
+        const br = normalizeClientRect(t.getBoundingClientRect());
+        const ir = intersectClientRects(br, root);
+        const area = Math.max(0, br.width) * Math.max(0, br.height);
+        const ia = ir.width * ir.height;
+        const ratio = area > 0 ? ia / area : 0;
+        return {
+          target: t,
+          isIntersecting: ia > 0,
+          intersectionRatio: ratio,
+          boundingClientRect: br,
+          intersectionRect: ir,
+          rootBounds: root,
+          time: performance.now(),
+        };
       });
-      this._cb(recs, this);
+      if (this._cb) this._cb(recs, this);
     }
   }
   class ResizeObserver {
-    constructor(cb) { this._cb = cb; this._t = []; }
-    observe(t) { this._t.push(t); queueMicrotask(() => this._fire()); }
-    unobserve(t) { this._t = this._t.filter((x) => x !== t); }
-    disconnect() { this._t = []; }
+    constructor(cb) { this._cb = cb; this._t = []; this._box = new Map(); }
+    observe(t, opts) {
+      if (!t) return;
+      this._box.set(t, opts && opts.box ? String(opts.box) : "content-box");
+      if (this._t.indexOf(t) < 0) this._t.push(t);
+      queueMicrotask(() => this._fire());
+    }
+    unobserve(t) { this._t = this._t.filter((x) => x !== t); this._box.delete(t); }
+    disconnect() { this._t = []; this._box.clear(); }
     _fire() {
-      this._cb(this._t.map((t) => ({ target: t, contentRect: t.getBoundingClientRect() })), this);
+      const recs = this._t.map((t) => {
+        const br = normalizeClientRect(t.getBoundingClientRect());
+        const pl = cssBoxPx(t, "paddingLeft");
+        const pr = cssBoxPx(t, "paddingRight");
+        const pt = cssBoxPx(t, "paddingTop");
+        const pb = cssBoxPx(t, "paddingBottom");
+        const bl = cssBoxPx(t, "borderLeftWidth");
+        const brw = cssBoxPx(t, "borderRightWidth");
+        const bt = cssBoxPx(t, "borderTopWidth");
+        const bb = cssBoxPx(t, "borderBottomWidth");
+        const contentW = Math.max(0, br.width - pl - pr - bl - brw);
+        const contentH = Math.max(0, br.height - pt - pb - bt - bb);
+        const contentRect = {
+          x: pl, y: pt, width: contentW, height: contentH,
+          top: pt, left: pl, right: pl + contentW, bottom: pt + contentH,
+        };
+        const dpr = Number(window.devicePixelRatio) || 1;
+        return {
+          target: t,
+          contentRect,
+          contentBoxSize: [{ inlineSize: contentW, blockSize: contentH }],
+          borderBoxSize: [{ inlineSize: br.width, blockSize: br.height }],
+          devicePixelContentBoxSize: [{ inlineSize: contentW * dpr, blockSize: contentH * dpr }],
+        };
+      });
+      if (this._cb) this._cb(recs, this);
     }
   }
 
@@ -7885,18 +8002,38 @@
       text() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(textBody); },
       json() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(JSON.parse(textBody || "null")); },
       arrayBuffer() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(bytes().buffer); },
-      blob() { if (locked) throw new TypeError("body stream is locked"); consume(); const b = bytes(); return Promise.resolve({ size: b.length, type: "" }); },
+      blob() { if (locked) throw new TypeError("body stream is locked"); consume(); return Promise.resolve(new Blob([bytes()])); },
       clone() {
         if (bodyUsed || locked) throw new TypeError("body already used");
         return responseFrom(r);
       },
     };
   }
+  class AbortSignal extends EventTarget {
+    constructor() {
+      super();
+      this.aborted = false;
+      this.reason = undefined;
+      this.onabort = null;
+    }
+    throwIfAborted() {
+      if (this.aborted) {
+        throw this.reason || new DOMException("The operation was aborted.", "AbortError");
+      }
+    }
+  }
   class AbortController {
     constructor() {
-      this.signal = { aborted: false, reason: undefined, addEventListener(t, fn) { this._fn = fn; }, dispatch() { this.aborted = true; if (this._fn) this._fn(); } };
+      this.signal = new AbortSignal();
     }
-    abort(reason) { this.signal.reason = reason; this.signal.dispatch(); }
+    abort(reason) {
+      if (this.signal.aborted) return;
+      this.signal.aborted = true;
+      this.signal.reason = reason !== undefined ? reason : new DOMException("The operation was aborted.", "AbortError");
+      const ev = new Event("abort");
+      if (typeof this.signal.onabort === "function") this.signal.onabort(ev);
+      this.signal.dispatchEvent(ev);
+    }
   }
   function drainSwClientPosts() {
     const posts = D("swTakeClientPosts") || [];
@@ -8091,10 +8228,132 @@
       Object.defineProperty(C.prototype, Symbol.toStringTag, { value: C.name, configurable: true });
     } catch (e) {}
   }
+  function blobPartBytes(part) {
+    if (part && part._bytes instanceof Uint8Array) return part._bytes;
+    if (part instanceof Uint8Array) return part;
+    if (part instanceof ArrayBuffer) return new Uint8Array(part);
+    if (ArrayBuffer.isView(part)) {
+      return new Uint8Array(part.buffer, part.byteOffset, part.byteLength);
+    }
+    const s = String(part == null ? "" : part);
+    const out = [];
+    for (let i = 0; i < s.length; i++) {
+      let u = s.charCodeAt(i);
+      if (u >= 0xd800 && u <= 0xdbff && i + 1 < s.length) {
+        const extra = s.charCodeAt(i + 1);
+        if (extra >= 0xdc00 && extra <= 0xdfff) {
+          i++;
+          u = 0x10000 + ((u & 0x3ff) << 10) + (extra & 0x3ff);
+        }
+      }
+      if (u < 0x80) out.push(u);
+      else if (u < 0x800) out.push(0xc0 | (u >> 6), 0x80 | (u & 0x3f));
+      else if (u < 0x10000) out.push(0xe0 | (u >> 12), 0x80 | ((u >> 6) & 0x3f), 0x80 | (u & 0x3f));
+      else {
+        out.push(
+          0xf0 | (u >> 18),
+          0x80 | ((u >> 12) & 0x3f),
+          0x80 | ((u >> 6) & 0x3f),
+          0x80 | (u & 0x3f)
+        );
+      }
+    }
+    return Uint8Array.from(out);
+  }
+  function concatBlobParts(parts) {
+    const chunks = [];
+    for (const p of parts || []) chunks.push(blobPartBytes(p));
+    let n = 0;
+    for (const c of chunks) n += c.length;
+    const out = new Uint8Array(n);
+    let o = 0;
+    for (const c of chunks) { out.set(c, o); o += c.length; }
+    return out;
+  }
   function Blob(parts, opts) {
-    this.size = 0;
     this.type = (opts && opts.type) || "";
-    this._parts = parts || [];
+    this._bytes = concatBlobParts(parts);
+    this.size = this._bytes.length;
+  }
+  Blob.prototype.slice = function (start, end, type) {
+    const bytes = this._bytes || new Uint8Array(0);
+    const size = bytes.length;
+    let s = start == null ? 0 : Number(start) || 0;
+    let e = end == null ? size : Number(end);
+    if (s < 0) s = Math.max(0, size + s);
+    if (e < 0) e = Math.max(0, size + e);
+    s = Math.min(size, Math.max(0, s));
+    e = Math.min(size, Math.max(0, e));
+    const out = new Blob([], { type: type || this.type });
+    out._bytes = bytes.subarray(s, Math.max(s, e));
+    out.size = out._bytes.length;
+    return out;
+  };
+  Blob.prototype.arrayBuffer = function () {
+    const bytes = this._bytes || new Uint8Array(0);
+    return Promise.resolve(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  };
+  Blob.prototype.text = function () {
+    const bytes = this._bytes || new Uint8Array(0);
+    let s = "";
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    try { return Promise.resolve(decodeURIComponent(escape(s))); } catch (e) { return Promise.resolve(s); }
+  };
+  function File(parts, name, opts) {
+    Blob.call(this, parts, opts);
+    this.name = String(name || "");
+    this.lastModified = opts && opts.lastModified != null ? Number(opts.lastModified) : Date.now();
+  }
+  File.prototype = Object.create(Blob.prototype);
+  File.prototype.constructor = File;
+  class FileReader extends EventTarget {
+    constructor() {
+      super();
+      this.readyState = 0;
+      this.result = null;
+      this.error = null;
+      this.onload = null;
+      this.onerror = null;
+      this.onloadend = null;
+      this.onprogress = null;
+    }
+    _finish(result) {
+      this.readyState = 2;
+      this.result = result;
+      const ev = new Event("load");
+      if (typeof this.onload === "function") this.onload(ev);
+      this.dispatchEvent(ev);
+      const end = new Event("loadend");
+      if (typeof this.onloadend === "function") this.onloadend(end);
+      this.dispatchEvent(end);
+    }
+    readAsText(blob) {
+      this.readyState = 1;
+      const bytes = blob && blob._bytes ? blob._bytes : blobPartBytes(blob);
+      let s = "";
+      for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+      let text = s;
+      try { text = decodeURIComponent(escape(s)); } catch (e) {}
+      const self = this;
+      queueMicrotask(() => self._finish(text));
+    }
+    readAsArrayBuffer(blob) {
+      this.readyState = 1;
+      const bytes = blob && blob._bytes ? blob._bytes : blobPartBytes(blob);
+      const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      const self = this;
+      queueMicrotask(() => self._finish(buf));
+    }
+    readAsDataURL(blob) {
+      this.readyState = 1;
+      const bytes = blob && blob._bytes ? blob._bytes : blobPartBytes(blob);
+      const type = (blob && blob.type) || "application/octet-stream";
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      const self = this;
+      queueMicrotask(() => self._finish("data:" + type + ";base64," + btoa(bin)));
+    }
+    abort() { this.readyState = 2; }
   }
   URL.createObjectURL = () => "blob:vector:0";
   URL.revokeObjectURL = () => {};
@@ -8589,7 +8848,7 @@
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, Range, Sanitizer,
-    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob,
+    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader,
     TextDecoder, TextEncoder,
     createDataChannelPair() {
       const listeners = [[], []];
@@ -8752,7 +9011,7 @@
     fetch: fetchImpl,
     postMessage(data, targetOrigin) { deliverMessage(globalThis, data, targetOrigin, globalThis); },
     AbortController,
-    AbortSignal: function AbortSignal() {},
+    AbortSignal,
     indexedDB: {
       open(name, version) {
         const dbName = String(name);
@@ -8911,6 +9170,7 @@
         catch (e) { throw new DOMException(String(e && e.message || e), "NotSupportedError"); }
       };
       this.close = function () {
+        if (this._timer) { clearInterval(this._timer); this._timer = 0; }
         D("wsClose", this._id);
         this.readyState = 3;
         fire("close", { type: "close", code: 1000, wasClean: true });
@@ -8920,8 +9180,10 @@
         for (const m of msgs) fire("message", { type: "message", data: m });
       };
       queueMicrotask(() => {
-        if (this.readyState === 1) fire("open", { type: "open" });
-        else if (this.readyState === 3) fire("error", { type: "error" });
+        if (this.readyState === 1) {
+          fire("open", { type: "open" });
+          this._timer = setInterval(() => this._poll(), 16);
+        } else if (this.readyState === 3) fire("error", { type: "error" });
       });
     },
     CSS: {

@@ -3242,6 +3242,184 @@ fn event_source_opens_and_delivers_sse_data() {
 }
 
 #[test]
+fn intersection_observer_clips_to_viewport_and_root_margin() {
+    let mut page = open(
+        r#"<body>
+          <div id="in" style="width:40px;height:20px">in</div>
+          <div id="out" style="position:absolute;top:2000px;left:0;width:40px;height:20px">out</div>
+        </body>"#,
+    );
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__io = { in: null, out: null, outMargin: null };
+              new IntersectionObserver(function (recs) {
+                recs.forEach(function (r) {
+                  if (r.target.id === "in") window.__io.in = r;
+                  if (r.target.id === "out") window.__io.out = r;
+                });
+              }).observe(document.getElementById("in"));
+              new IntersectionObserver(function (recs) {
+                window.__io.out = recs[0];
+              }).observe(document.getElementById("out"));
+              new IntersectionObserver(function (recs) {
+                window.__io.outMargin = recs[0];
+              }, { rootMargin: "2000px" }).observe(document.getElementById("out"));
+              return {
+                vw: innerWidth,
+                vh: innerHeight,
+                inTop: document.getElementById("in").getBoundingClientRect().top,
+                outTop: document.getElementById("out").getBoundingClientRect().top
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(started["vh"].as_f64().unwrap_or(0.0) < 2000.0, "{started}");
+    assert!(started["outTop"].as_f64().unwrap_or(0.0) > 720.0, "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var i = window.__io.in;
+              var o = window.__io.out;
+              var m = window.__io.outMargin;
+              return {
+                inHit: i && i.isIntersecting,
+                inRatio: i && i.intersectionRatio,
+                inHasRect: i && i.intersectionRect && i.intersectionRect.width > 0,
+                outHit: o && o.isIntersecting,
+                outRatio: o && o.intersectionRatio,
+                outRootH: o && o.rootBounds && o.rootBounds.height,
+                marginHit: m && m.isIntersecting,
+                marginRatio: m && m.intersectionRatio
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["inHit"], true, "{v}");
+    assert!(v["inRatio"].as_f64().unwrap_or(0.0) > 0.0, "{v}");
+    assert_eq!(v["inHasRect"], true, "{v}");
+    assert_eq!(v["outHit"], false, "{v}");
+    assert_eq!(v["outRatio"], 0.0, "{v}");
+    assert_eq!(v["marginHit"], true, "{v}");
+    assert!(v["marginRatio"].as_f64().unwrap_or(0.0) > 0.0, "{v}");
+}
+
+#[test]
+fn resize_observer_reports_content_box_inside_padding() {
+    let mut page = open(
+        r#"<body><div id="t" style="width:100px;height:40px;padding:10px 20px;border:5px solid red">x</div></body>"#,
+    );
+    let started = page
+        .evaluate(
+            r##"(function () {
+              window.__ro = null;
+              new ResizeObserver(function (recs) { window.__ro = recs[0]; }).observe(document.getElementById("t"));
+              var el = document.getElementById("t");
+              var cs = getComputedStyle(el);
+              return {
+                padL: cs.paddingLeft || cs.getPropertyValue("padding-left"),
+                border: cs.borderLeftWidth || cs.getPropertyValue("border-left-width"),
+                boxW: el.getBoundingClientRect().width
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var r = window.__ro;
+              var box = document.getElementById("t").getBoundingClientRect();
+              return {
+                x: r && r.contentRect.x,
+                y: r && r.contentRect.y,
+                w: r && r.contentRect.width,
+                h: r && r.contentRect.height,
+                borderW: r && r.borderBoxSize[0].inlineSize,
+                contentW: r && r.contentBoxSize[0].inlineSize,
+                boxW: box.width
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["x"], 20.0, "{v} started={started}");
+    assert_eq!(v["y"], 10.0, "{v} started={started}");
+    assert!(
+        v["w"].as_f64().unwrap_or(0.0) + 1.0 < v["boxW"].as_f64().unwrap_or(0.0),
+        "content box must be inside padding+border: {v} started={started}"
+    );
+    assert_eq!(v["borderW"], v["boxW"], "{v}");
+    assert_eq!(v["contentW"], v["w"], "{v}");
+}
+
+#[test]
+fn file_reader_reads_blob_text_and_data_url() {
+    let mut page = open(r#"<body></body>"#);
+    let started = page
+        .evaluate(
+            r##"(function () {
+              var blob = new Blob(["hi"], { type: "text/plain" });
+              var file = new File(["ab"], "n.txt", { type: "text/plain" });
+              window.__fr = { text: null, url: null, size: blob.size, fileName: file.name, fileSize: file.size };
+              var r = new FileReader();
+              r.onload = function () { window.__fr.text = r.result; };
+              r.readAsText(blob);
+              var r2 = new FileReader();
+              r2.onload = function () { window.__fr.url = r2.result; };
+              r2.readAsDataURL(blob);
+              return window.__fr.size;
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(started, 2, "{started}");
+    assert!(page.settle(20).settled);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              return window.__fr;
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["text"], "hi", "{v}");
+    assert_eq!(v["fileName"], "n.txt", "{v}");
+    assert_eq!(v["fileSize"], 2, "{v}");
+    assert_eq!(v["url"], "data:text/plain;base64,aGk=", "{v}");
+}
+
+#[test]
+fn abort_signal_is_event_target_and_throw_if_aborted() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = new AbortController();
+              var hits = 0;
+              c.signal.addEventListener("abort", function () { hits++; });
+              var before = c.signal.aborted;
+              c.abort("stop");
+              var name = "";
+              try { c.signal.throwIfAborted(); } catch (e) { name = e; }
+              return {
+                before: before,
+                after: c.signal.aborted,
+                hits: hits,
+                reason: c.signal.reason,
+                thrown: name,
+                proto: c.signal instanceof AbortSignal
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], false, "{v}");
+    assert_eq!(v["after"], true, "{v}");
+    assert_eq!(v["hits"], 1, "{v}");
+    assert_eq!(v["reason"], "stop", "{v}");
+    assert_eq!(v["thrown"], "stop", "{v}");
+    assert_eq!(v["proto"], true, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
