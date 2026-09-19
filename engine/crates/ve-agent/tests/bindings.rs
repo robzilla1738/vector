@@ -5154,7 +5154,7 @@ fn crypto_subtle_digests_sha384() {
     let v = page.evaluate("window.__sha384").unwrap();
     assert_eq!(
         v,
-        "cb00753f45a35e8bb5a03d699ac650072589c75d83619cb3988121cc3146658fca164e82b0a08bc8858dd3c69a0d8d7b",
+        "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7",
         "{v}"
     );
 }
