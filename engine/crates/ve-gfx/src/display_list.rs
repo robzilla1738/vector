@@ -653,6 +653,19 @@ impl DisplayList {
                     if clip.is_some() {
                         list.push(DisplayItem::PopClip);
                     }
+                } else if matches!(style.border_image, BackgroundImage::Url(_)) {
+                    if let Some(handle) = images.get(&node) {
+                        list.push(DisplayItem::Image {
+                            rect: item.rect,
+                            handle: *handle,
+                            src: None,
+                            size: BackgroundSize::Auto,
+                            position: BackgroundPosition::default(),
+                            repeat: BackgroundRepeat::NoRepeat,
+                            fixed: false,
+                            pixelated: false,
+                        });
+                    }
                 }
                 for filter in [style.filter, style.backdrop_filter] {
                     if let Filter::Blur(radius) = filter {
@@ -1281,6 +1294,31 @@ mod tests {
                 DisplayItem::Border { widths, .. } if (widths.top - 2.0).abs() < 0.1
             )),
             "non-scaling stroke should be 4/2=2, got {:?}",
+            list.items()
+        );
+    }
+
+    #[test]
+    fn from_layout_emits_border_image() {
+        let html = "<style>body{margin:0} #g{width:20px;height:10px;border-image:url(x.png)}</style><div id=g></div>";
+        let doc = ve_html::parse_document(html).document;
+        let mut engine = StyleEngine::new();
+        engine.add_document_styles(&doc);
+        let styles = engine.compute(&doc);
+        let id = engine.select(&doc, "#g").unwrap()[0];
+        assert!(matches!(
+            styles.style(id).border_image,
+            BackgroundImage::Url(_)
+        ));
+        let layout = ve_layout::LayoutEngine::new().layout(&doc, &styles, Size::new(200.0, 100.0));
+        let mut images = HashMap::new();
+        images.insert(id, ImageHandle(1));
+        let list = DisplayList::from_layout_with(&layout, &styles, &images);
+        assert!(
+            list.items()
+                .iter()
+                .any(|i| matches!(i, DisplayItem::Image { handle, .. } if handle.0 == 1)),
+            "border-image missing: {:?}",
             list.items()
         );
     }

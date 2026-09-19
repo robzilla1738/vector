@@ -27,7 +27,7 @@ use crate::values::{
     FontStyle, FontWeight, GridLine, GridTemplateAreas, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
     AnimationDirection, AnimationFillMode, AnimationPlayState,
-    Appearance, BackfaceVisibility, BackgroundAttachment, BoxOrient, BreakBefore, BreakInside, ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, FontKerning, FontSmoothing, FontStretch, FontVariant, FontVariantLigatures, FontVariantNumeric, ForcedColorAdjust, GridAutoFlow, HangingPunctuation, Hyphens, ImageRendering, Isolation, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, OverscrollBehavior, PointerEvents, Position, PositionArea, PreferredColorScheme, Rgba, ScrollBehavior, ScrollSnapAlign, ScrollSnapType, Speak, TextAlignLast, TextDecorationStyle, TextEmphasis, TextRendering, TextUnderlinePosition, TextWrap, TouchAction, TransformBox, TransformStyle, VectorEffect,
+    Appearance, BackfaceVisibility, BackgroundAttachment, BoxOrient, BreakBefore, BreakInside, ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, FontDisplay, FontKerning, FontOpticalSizing, FontSmoothing, FontStretch, FontSynthesis, FontVariant, FontVariantLigatures, FontVariantNumeric, ForcedColorAdjust, GridAutoFlow, HangingPunctuation, Hyphens, ImageRendering, Isolation, MathStyle, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, OverscrollBehavior, PointerEvents, Position, PositionArea, PreferredColorScheme, PrintColorAdjust, Rgba, RubyPosition, ScrollBehavior, ScrollSnapAlign, ScrollSnapType, Speak, TextAlignLast, TextDecorationStyle, TextEmphasis, TextJustify, TextRendering, TextUnderlinePosition, TextWrap, TouchAction, TransformBox, TransformStyle, VectorEffect,
     SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
@@ -1637,6 +1637,33 @@ property_table! {
     ForcedColorAdjust: "forced-color-adjust" => forced_color_adjust: ForcedColorAdjust = ForcedColorAdjust::Auto, inherited = false, syntax = Single, convert = conv::kw::<ForcedColorAdjust>;
     /// `view-transition-name` (`none` is empty)
     ViewTransitionName: "view-transition-name" => view_transition_name: String = String::new(), inherited = false, syntax = Single, convert = conv::ident_name;
+    /// `text-justify`
+    TextJustify: "text-justify" => text_justify: TextJustify = TextJustify::Auto, inherited = true, syntax = Single, convert = conv::kw::<TextJustify>;
+    /// `perspective-origin`
+    PerspectiveOrigin: "perspective-origin" => perspective_origin: BackgroundPosition = BackgroundPosition {
+        x: LengthPercentage::Percent(50.0),
+        y: LengthPercentage::Percent(50.0),
+    }, inherited = false, syntax = BackgroundPosition, convert = conv::background_position;
+    /// `print-color-adjust`
+    PrintColorAdjust: "print-color-adjust" => print_color_adjust: PrintColorAdjust = PrintColorAdjust::Economy, inherited = true, syntax = Single, convert = conv::kw::<PrintColorAdjust>;
+    /// `font-display`
+    FontDisplay: "font-display" => font_display: FontDisplay = FontDisplay::Auto, inherited = false, syntax = Single, convert = conv::kw::<FontDisplay>;
+    /// `font-optical-sizing`
+    FontOpticalSizing: "font-optical-sizing" => font_optical_sizing: FontOpticalSizing = FontOpticalSizing::Auto, inherited = true, syntax = Single, convert = conv::kw::<FontOpticalSizing>;
+    /// `font-synthesis`
+    FontSynthesis: "font-synthesis" => font_synthesis: FontSynthesis = FontSynthesis::Auto, inherited = true, syntax = Single, convert = conv::kw::<FontSynthesis>;
+    /// `ruby-position`
+    RubyPosition: "ruby-position" => ruby_position: RubyPosition = RubyPosition::Over, inherited = true, syntax = Single, convert = conv::kw::<RubyPosition>;
+    /// `math-style`
+    MathStyle: "math-style" => math_style: MathStyle = MathStyle::Normal, inherited = true, syntax = Single, convert = conv::kw::<MathStyle>;
+    /// `math-depth`
+    MathDepth: "math-depth" => math_depth: i32 = 0, inherited = true, syntax = Single, convert = conv::integer;
+    /// `font-language-override` (first ident)
+    FontLanguageOverride: "font-language-override" => font_language_override: String = String::from("normal"), inherited = true, syntax = Single, convert = conv::cursor;
+    /// `font-palette` (first ident)
+    FontPalette: "font-palette" => font_palette: String = String::from("normal"), inherited = true, syntax = Single, convert = conv::cursor;
+    /// `border-image` (`none` or `url(...)`)
+    BorderImage: "border-image" => border_image: BackgroundImage = BackgroundImage::None, inherited = false, syntax = Single, convert = conv::background_image;
 }
 
 impl ComputedStyle {
@@ -1715,20 +1742,8 @@ pub const GEOMETRY_AFFECTING_DEFERRED: &[&str] = &[];
 /// Known properties the engine parses names for but does not implement.
 /// Declarations of these count as `deferred` rather than `unknown`.
 pub const DEFERRED_PROPERTIES: &[&str] = &[
-    "border-image",
-    "font-display",
-    "font-optical-sizing",
     "src",
     "unicode-range",
-    "perspective-origin",
-    "print-color-adjust",
-    "text-justify",
-    "ruby-position",
-    "font-synthesis",
-    "font-language-override",
-    "font-palette",
-    "math-style",
-    "math-depth",
 ];
 
 // ---------------------------------------------------------------------------
@@ -3871,11 +3886,23 @@ mod tests {
         ok("speak", "none");
         ok("forced-color-adjust", "none");
         ok("view-transition-name", "card");
+        ok("text-justify", "inter-word");
+        ok("perspective-origin", "center");
+        ok("print-color-adjust", "exact");
+        ok("font-display", "swap");
+        ok("font-optical-sizing", "none");
+        ok("font-synthesis", "none");
+        ok("ruby-position", "under");
+        ok("math-style", "compact");
+        ok("math-depth", "1");
+        ok("font-language-override", "normal");
+        ok("font-palette", "normal");
+        ok("border-image", "none");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 221);
+        assert_eq!(PropertyId::ALL.len(), 233);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

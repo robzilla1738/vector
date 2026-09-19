@@ -1878,6 +1878,47 @@ mod tests {
     }
 
     #[test]
+    fn text_justify_spreads_non_last_line() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px}\
+             #p,#q{width:56px;margin:0;line-height:20px}\
+             #p{text-align:justify} #q{text-align:start}</style>\
+             <p id=p><span>aa</span> <span>bb</span> <span>cc</span></p>\
+             <p id=q><span>aa</span> <span>bb</span> <span>cc</span></p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "#p").unwrap();
+        let q = engine.select_one(&doc, "#q").unwrap();
+        let pl = &tree.root.find(p).unwrap().lines;
+        let ql = &tree.root.find(q).unwrap().lines;
+        assert!(pl.len() >= 2 && ql.len() >= 2, "two lines");
+        let px = pl[0].fragments.last().unwrap().rect.x();
+        let qx = ql[0].fragments.last().unwrap().rect.x();
+        assert!(
+            px > qx + 2.0,
+            "justified first line spreads, p={px} q={qx}"
+        );
+    }
+
+    #[test]
+    fn math_style_compact_narrows_text() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{display:inline-block}\
+             #b{math-style:compact}</style>\
+             <span id=a>aaaa</span><span id=b>aaaa</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            b.width() < a.width() * 0.8,
+            "compact is narrower, a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
     fn box_orient_vertical_stacks_flex_children() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #c{display:flex;box-orient:vertical;width:100px}\

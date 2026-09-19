@@ -1980,6 +1980,92 @@ impl TextEmphasis {
     }
 }
 
+keyword_enum! {
+    /// `text-justify`.
+    TextJustify {
+        /// UA default (inter-word).
+        Auto = "auto",
+        /// No added spacing.
+        None = "none",
+        /// Space between words.
+        InterWord = "inter-word",
+        /// Distribute across the line.
+        Distribute = "distribute",
+    }
+}
+
+keyword_enum! {
+    /// `print-color-adjust`.
+    PrintColorAdjust {
+        /// Allow UA adjustments.
+        Economy = "economy",
+        /// Keep author colors.
+        Exact = "exact",
+    }
+}
+
+keyword_enum! {
+    /// `font-display`.
+    FontDisplay {
+        /// UA default.
+        Auto = "auto",
+        /// Swap immediately.
+        Swap = "swap",
+        /// Block then swap.
+        Block = "block",
+        /// Optional.
+        Optional = "optional",
+        /// Fallback.
+        Fallback = "fallback",
+    }
+}
+
+keyword_enum! {
+    /// `font-optical-sizing`.
+    FontOpticalSizing {
+        /// Enable.
+        Auto = "auto",
+        /// Disable.
+        None = "none",
+    }
+}
+
+keyword_enum! {
+    /// `font-synthesis`.
+    FontSynthesis {
+        /// Allow synthetic faces.
+        Auto = "auto",
+        /// No synthetic faces.
+        None = "none",
+        /// Weight only.
+        Weight = "weight",
+        /// Style only.
+        Style = "style",
+    }
+}
+
+keyword_enum! {
+    /// `ruby-position`.
+    RubyPosition {
+        /// Above.
+        Over = "over",
+        /// Below.
+        Under = "under",
+        /// Alternate.
+        Alternate = "alternate",
+    }
+}
+
+keyword_enum! {
+    /// `math-style`.
+    MathStyle {
+        /// Normal.
+        Normal = "normal",
+        /// Compact.
+        Compact = "compact",
+    }
+}
+
 /// A specified length with its unit. Absolute units are normalised to pixels
 /// at parse time; relative units are resolved during computation.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

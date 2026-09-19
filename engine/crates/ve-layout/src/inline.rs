@@ -10,7 +10,8 @@
 
 use ve_core::{NodeId, Point, Rect};
 use ve_style::{
-    ComputedStyle, Direction, HangingPunctuation, TextAlign, TextAlignLast, TextWrap,
+    ComputedStyle, Direction, HangingPunctuation, TextAlign, TextAlignLast, TextJustify,
+    TextWrap,
 };
 
 use crate::block::{
@@ -57,6 +58,8 @@ struct InlineState<'a, 'c> {
     open: Vec<OpenInline>,
     /// The block container's node (owner of bare text).
     container: Option<NodeId>,
+    /// `text-justify` of the container.
+    justify: TextJustify,
 }
 
 impl InlineState<'_, '_> {
@@ -129,9 +132,16 @@ impl InlineState<'_, '_> {
             TextAlign::Right | TextAlign::End => (self.line.width - line_width).max(0.0),
             _ => 0.0,
         };
+        let extra = if align == TextAlign::Justify && self.justify != TextJustify::None {
+            (self.line.width - line_width).max(0.0)
+        } else {
+            0.0
+        };
         let mut fragments = std::mem::take(&mut self.line.fragments);
+        let gaps = fragments.len().saturating_sub(1);
+        let step = if gaps > 0 { extra / gaps as f32 } else { 0.0 };
         for (i, f) in fragments.iter_mut().enumerate() {
-            f.rect = f.rect.translate(shift, baseline - f.baseline);
+            f.rect = f.rect.translate(shift + step * i as f32, baseline - f.baseline);
             for open in &mut self.open {
                 if i >= open.start {
                     open.acc = open.acc.union(&f.rect);
@@ -201,6 +211,7 @@ pub fn layout_inline(bx: &mut LayoutBox, ctx: &mut LayoutCtx<'_>, content: Rect)
         lines: Vec::new(),
         open: Vec::new(),
         container: bx.node,
+        justify: bx.style.text_justify,
     };
     state.line = state.start_line(content.y());
     state.line.advance = indent.max(0.0);

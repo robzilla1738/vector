@@ -197,7 +197,10 @@ impl MetricShaper {
     }
 
     fn width_of(&self, text: &str, style: &ComputedStyle) -> f32 {
-        let font_size = style.font_size * style.text_size_adjust.max(0.01);
+        let mut font_size = style.font_size * style.text_size_adjust.max(0.01);
+        if style.math_style == ve_style::MathStyle::Compact {
+            font_size *= 0.7;
+        }
         let mut width = 0.0;
         let mut chars = 0usize;
         for c in text.chars() {
