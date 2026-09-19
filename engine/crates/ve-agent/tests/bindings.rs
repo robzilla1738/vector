@@ -6466,6 +6466,91 @@ fn webgl_depth_test_rejects_farther_triangle() {
 }
 
 #[test]
+fn webgl_depth_func_greater_keeps_farther_triangle() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.5, 1, -1, 0.5, -1, 1, 0.5,
+                1, -1, 0.5, 1, 1, 0.5, -1, 1, 0.5
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.depthFunc(gl.GREATER);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.8, 1, -1, 0.8, -1, 1, 0.8,
+                1, -1, 0.8, 1, 1, 0.8, -1, 1, 0.8
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const far = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, far);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.2, 1, -1, 0.2, -1, 1, 0.2,
+                1, -1, 0.2, 1, 1, 0.2, -1, 1, 0.2
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const near = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, near);
+              return { fg: far[1], fr: far[0], ng: near[1], nb: near[2], fn: gl.GREATER };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["fn"], 516, "{v}");
+    assert_eq!(v["fg"], 255, "{v}");
+    assert_eq!(v["fr"], 0, "{v}");
+    assert_eq!(v["ng"], 255, "{v}");
+    assert_eq!(v["nb"], 0, "{v}");
+}
+
+#[test]
+fn webgl_blend_func_separate_keeps_rgb_replaces_alpha() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(1, 0, 0, 0.5);
+              gl.clear();
+              const before = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, before);
+              gl.enable(gl.BLEND);
+              gl.blendFuncSeparate(gl.ZERO, gl.ONE, gl.ONE, gl.ZERO);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const after = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, after);
+              return { br: before[0], ba: before[3], ar: after[0], ag: after[1], aa: after[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["br"], 255, "{v}");
+    assert!(v["ba"].as_u64().unwrap_or(0) < 200, "{v}");
+    assert_eq!(v["ar"], 255, "{v}");
+    assert_eq!(v["ag"], 0, "{v}");
+    assert_eq!(v["aa"], 255, "{v}");
+}
+
+#[test]
 fn webgl_get_parameter_reports_line_width() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page

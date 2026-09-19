@@ -281,7 +281,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        if svg_switch_skipped(full, abs) {
+        if svg_in_defs(full, abs) || svg_switch_skipped(full, abs) {
             rest = &rest[i + tag_end + 1..];
             continue;
         }
@@ -585,6 +585,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let mut spacing = svg_attr(tag, "letter-spacing").unwrap_or(0.0);
         let mut word_sp = svg_attr(tag, "word-spacing").unwrap_or(0.0);
         let mut scale = (svg_attr(tag, "font-size").unwrap_or(7.0) / 7.0).max(0.5);
+        let stretch = svg_font_stretch(tag);
         if svg_attr_str(tag, "dominant-baseline")
             .unwrap_or("")
             .eq_ignore_ascii_case("hanging")
@@ -613,7 +614,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             text_w += if *ch == ' ' {
                 4.0 * scale + word_sp
             } else {
-                6.0 * scale
+                6.0 * scale * stretch
             };
             if i + 1 < chars.len() {
                 text_w += spacing;
@@ -635,9 +636,13 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 }
             }
         }
+        let rtl = svg_attr_str(tag, "direction")
+            .unwrap_or("")
+            .eq_ignore_ascii_case("rtl");
         match svg_attr_str(tag, "text-anchor").unwrap_or("start") {
             "middle" => x -= text_w * 0.5,
-            "end" => x -= text_w,
+            "end" if !rtl => x -= text_w,
+            "start" if rtl => x -= text_w,
             _ => {}
         }
         let path_pts = svg_text_path_points(raw, &by_id).map(|pts| {
@@ -660,6 +665,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             path_pts.as_deref(),
             italic,
             rotate,
+            stretch,
         );
         if svg_font_bold(tag) {
             paint_svg_text(
@@ -675,6 +681,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 path_pts.as_deref(),
                 italic,
                 rotate,
+                stretch,
             );
         }
         let deco = svg_attr_str(tag, "text-decoration")
@@ -2134,7 +2141,40 @@ fn parse_clip_or_mask_block(block: &str, id: &str, out: &mut HashMap<String, Svg
                 },
             );
         }
+    } else if let Some(gi) = block.find("<polygon") {
+        let ge = block[gi..].find('>').unwrap_or(block.len() - gi);
+        let gtag = &block[gi..gi + ge];
+        let pts = svg_poly_points(gtag);
+        if pts.len() >= 3 {
+            let evenodd = svg_attr_str(gtag, "clip-rule")
+                .or_else(|| svg_attr_str(tag, "clip-rule"))
+                .is_some_and(|s| s.eq_ignore_ascii_case("evenodd"));
+            out.insert(
+                id.to_string(),
+                SvgClip::Path {
+                    contours: vec![pts],
+                    evenodd,
+                },
+            );
+        }
     }
+}
+
+fn svg_poly_points(tag: &str) -> Vec<(f32, f32)> {
+    let mut nums = Vec::new();
+    if let Some(raw) = svg_attr_str(tag, "points") {
+        for tok in raw.split(|c: char| c == ',' || c.is_whitespace()) {
+            if tok.is_empty() {
+                continue;
+            }
+            if let Ok(n) = tok.parse::<f32>() {
+                nums.push(n);
+            }
+        }
+    }
+    nums.chunks(2)
+        .filter_map(|c| (c.len() == 2).then_some((c[0], c[1])))
+        .collect()
 }
 
 fn parse_svg_clips(text: &str) -> HashMap<String, SvgClip> {
@@ -2733,6 +2773,27 @@ fn svg_font_italic(tag: &str) -> bool {
     s.eq_ignore_ascii_case("italic") || s.eq_ignore_ascii_case("oblique")
 }
 
+fn svg_font_stretch(tag: &str) -> f32 {
+    let s = svg_attr_str(tag, "font-stretch").unwrap_or("normal");
+    match s.to_ascii_lowercase().as_str() {
+        "ultra-condensed" => 0.5,
+        "extra-condensed" => 0.625,
+        "condensed" => 0.75,
+        "semi-condensed" => 0.875,
+        "semi-expanded" => 1.125,
+        "expanded" => 1.25,
+        "extra-expanded" => 1.5,
+        "ultra-expanded" => 2.0,
+        _ => s
+            .trim_end_matches('%')
+            .parse::<f32>()
+            .ok()
+            .map(|n| if n > 3.0 { n / 100.0 } else { n })
+            .filter(|n| *n > 0.0)
+            .unwrap_or(1.0),
+    }
+}
+
 fn svg_tspan_dx(content: &str) -> f32 {
     svg_tspan_tag(content)
         .and_then(|t| svg_attr(t, "dx"))
@@ -2807,6 +2868,7 @@ fn paint_svg_text(
     path: Option<&[(f32, f32)]>,
     italic: bool,
     rotate: f32,
+    stretch: f32,
 ) {
     let mut cx = x;
     let mut cy = y;
@@ -2818,7 +2880,7 @@ fn paint_svg_text(
         if ch == ' ' {
             4.0 * scale + gap + word
         } else {
-            6.0 * scale + gap
+            6.0 * scale * stretch + gap
         }
     };
     for ch in content.chars() {
@@ -2839,7 +2901,9 @@ fn paint_svg_text(
                         for dy in 0..s {
                             for dx in 0..s {
                                 let shear = if italic && row < 3 { 1 } else { 0 };
-                                let lx = col as i32 * s + dx + shear;
+                                let lx = ((col as f32) * (s as f32) * stretch).round() as i32
+                                    + dx
+                                    + shear;
                                 let ly = -7 * s + row as i32 * s + dy;
                                 let (rx, ry) = if rotate.abs() < 0.01 {
                                     (lx, ly)
@@ -4733,6 +4797,80 @@ mod tests {
         assert_eq!(spacing.pixel(4, 3), Some([0, 0, 0, 0]));
         assert_eq!(glyphs.pixel(4, 3), Some([255, 0, 0, 255]));
         assert_eq!(glyphs.pixel(2, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_font_stretch_expands_glyph() {
+        let condensed = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='8'>\
+              <text x='0' y='7' fill='#ff0000' font-stretch='ultra-condensed'>I</text></svg>",
+        )
+        .expect("svg condensed");
+        let expanded = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='8'>\
+              <text x='0' y='7' fill='#ff0000' font-stretch='ultra-expanded'>I</text></svg>",
+        )
+        .expect("svg expanded");
+        assert_eq!(condensed.pixel(1, 3), Some([255, 0, 0, 255]));
+        assert_eq!(condensed.pixel(4, 3), Some([0, 0, 0, 0]));
+        assert_eq!(expanded.pixel(4, 3), Some([255, 0, 0, 255]));
+        assert_eq!(expanded.pixel(1, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_direction_rtl_shifts_start_anchor_left() {
+        let ltr = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='8'>\
+              <text x='8' y='7' fill='#ff0000'>I</text></svg>",
+        )
+        .expect("svg ltr");
+        let rtl = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='16' height='8'>\
+              <text x='8' y='7' fill='#ff0000' direction='rtl'>I</text></svg>",
+        )
+        .expect("svg rtl");
+        assert_eq!(ltr.pixel(10, 3), Some([255, 0, 0, 255]));
+        assert_eq!(ltr.pixel(4, 3), Some([0, 0, 0, 0]));
+        assert_eq!(rtl.pixel(4, 3), Some([255, 0, 0, 255]));
+        assert_eq!(rtl.pixel(10, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_clip_path_polygon_masks_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><clipPath id='c'><polygon points='2,2 6,2 6,6 2,6'/></clipPath></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000' clip-path='url(#c)'/></svg>",
+        )
+        .expect("svg polygon clip");
+        assert_eq!(img.pixel(4, 4), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(1, 1), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_preserve_aspect_slice_xmax_keeps_right() {
+        let xmin = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 16 8' preserveAspectRatio='xMinYMin slice'>\
+              <rect x='8' y='0' width='8' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg slice xmin");
+        let xmax = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 16 8' preserveAspectRatio='xMaxYMin slice'>\
+              <rect x='8' y='0' width='8' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg slice xmax");
+        assert_eq!(xmin.pixel(2, 2), Some([0, 0, 0, 0]));
+        assert_eq!(xmax.pixel(2, 2), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_display_none_skips_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000' display='none'/></svg>",
+        )
+        .expect("svg display none");
+        assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
     }
 
     #[test]

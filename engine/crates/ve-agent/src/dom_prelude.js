@@ -9512,6 +9512,14 @@
       this.UNPACK_PREMULTIPLY_ALPHA_WEBGL = 37441;
       this.CULL_FACE = 2884;
       this.DEPTH_TEST = 2929;
+      this.NEVER = 512;
+      this.LESS = 513;
+      this.EQUAL = 514;
+      this.LEQUAL = 515;
+      this.GREATER = 516;
+      this.NOTEQUAL = 517;
+      this.GEQUAL = 518;
+      this.ALWAYS = 519;
       this.FRONT = 1028;
       this.BACK = 1029;
       this.CCW = 2304;
@@ -9524,6 +9532,8 @@
       this._frontFace = 2304;
       this._depthOn = false;
       this._depth = null;
+      this._depthFunc = 513;
+      this._blendA = [1, 0];
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
       this._viewport = [0, 0, canvas.width, canvas.height];
@@ -9641,8 +9651,18 @@
       const isFront = ccwFront ? cross > 0 : cross < 0;
       return this._cullFace === this.FRONT ? isFront : !isFront;
     }
-    blendFunc(src, dst) { this._blend = [Number(src) || 0, Number(dst) || 0]; }
+    blendFunc(src, dst) {
+      const s = Number(src) || 0;
+      const d = Number(dst) || 0;
+      this._blend = [s, d];
+      this._blendA = [s, d];
+    }
+    blendFuncSeparate(srcRGB, dstRGB, srcA, dstA) {
+      this._blend = [Number(srcRGB) || 0, Number(dstRGB) || 0];
+      this._blendA = [Number(srcA) || 0, Number(dstA) || 0];
+    }
     blendEquation(mode) { this._blendEq = Number(mode) || this.FUNC_ADD; }
+    depthFunc(fn) { this._depthFunc = Number(fn) || this.LESS; }
     lineWidth(w) { this._lineWidth = Math.max(1, Number(w) || 1); }
     pixelStorei(pname, val) {
       if (pname === this.UNPACK_FLIP_Y_WEBGL) this._flipY = !!val;
@@ -9710,11 +9730,47 @@
       }
       D("canvasPutImageData", c.__h, w, h, btoa(out), x, y);
     }
+    _depthPass(z, d) {
+      const f = this._depthFunc;
+      if (f === this.GREATER) return z > d;
+      if (f === this.GEQUAL) return z >= d;
+      if (f === this.LEQUAL) return z <= d;
+      if (f === this.EQUAL) return z === d;
+      if (f === this.NOTEQUAL) return z !== d;
+      if (f === this.ALWAYS) return true;
+      if (f === this.NEVER) return false;
+      return z < d;
+    }
     _withBlend(fn) {
       const c = this.canvas;
       const src = this._blend && this._blend[0];
       const dst = this._blend && this._blend[1];
-      if (this._blendOn && src === this.ZERO && dst === this.ONE) {
+      const srcA = this._blendA ? this._blendA[0] : src;
+      const dstA = this._blendA ? this._blendA[1] : dst;
+      const rgbKeep = this._blendOn && src === this.ZERO && dst === this.ONE;
+      const aKeep = this._blendOn && srcA === this.ZERO && dstA === this.ONE;
+      const aReplace = this._blendOn && srcA === this.ONE && dstA === this.ZERO;
+      if (rgbKeep && aKeep) {
+        return;
+      }
+      if (rgbKeep && aReplace && c && c.__h != null) {
+        const [x, y, w, h] = this._clearRect();
+        const dest = D("canvasGetImageData", c.__h, x, y, w, h) || {};
+        const destBin = atob(dest.b64 || "");
+        fn();
+        const drawn = D("canvasGetImageData", c.__h, x, y, w, h) || {};
+        const srcBin = atob(drawn.b64 || "");
+        let out = "";
+        const n = Math.max(destBin.length, srcBin.length);
+        for (let i = 0; i < n; i += 4) {
+          out += String.fromCharCode(
+            destBin.charCodeAt(i) || 0,
+            destBin.charCodeAt(i + 1) || 0,
+            destBin.charCodeAt(i + 2) || 0,
+            srcBin.charCodeAt(i + 3) || 0
+          );
+        }
+        D("canvasPutImageData", c.__h, w, h, btoa(out), x, y);
         return;
       }
       if (this._blendOn && (this._blendEq === this.FUNC_SUBTRACT || this._blendEq === this.FUNC_REVERSE_SUBTRACT) && c && c.__h != null) {
@@ -9851,7 +9907,7 @@
         const db = destBin.charCodeAt(i + 2) || 0;
         const da = destBin.charCodeAt(i + 3) || 0;
         const painted = sr !== dr || sg !== dg || sb !== db || sa !== da;
-        const pass = painted && z < (this._depth[di] != null ? this._depth[di] : 1);
+        const pass = painted && this._depthPass(z, this._depth[di] != null ? this._depth[di] : 1);
         if (pass) this._depth[di] = z;
         if (painted && !pass) {
           out += String.fromCharCode(dr, dg, db, da);
