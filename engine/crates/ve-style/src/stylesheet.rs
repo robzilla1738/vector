@@ -396,9 +396,9 @@ struct RuleParser {
 /// Prelude of a supported at-rule.
 enum AtPrelude {
     Media(MediaQueryList),
-    /// `@supports` / `@layer` / `@scope`: the body is parsed as rules; the
-    /// condition is treated as true (`@supports not (...)` is rare in static
-    /// pages and errs on the side of applying styles).
+    /// `@supports`: body is kept only when the condition is true.
+    Supports(bool),
+    /// `@layer` / `@scope`: the body is parsed as rules (unconditional).
     Transparent,
     /// `@keyframes name`.
     Keyframes(String),
@@ -448,9 +448,9 @@ impl<'i> AtRuleParser<'i> for RuleParser {
             Ok(AtPrelude::Keyframes(ident.as_ref().to_owned()))
         } else if name.eq_ignore_ascii_case("font-face") {
             Ok(AtPrelude::FontFace)
-        } else if name.eq_ignore_ascii_case("supports")
-            || name.eq_ignore_ascii_case("layer")
-            || name.eq_ignore_ascii_case("scope")
+        } else if name.eq_ignore_ascii_case("supports") {
+            Ok(AtPrelude::Supports(parse_supports_condition(input)))
+        } else if name.eq_ignore_ascii_case("layer") || name.eq_ignore_ascii_case("scope")
         {
             while input.next().is_ok() {}
             Ok(AtPrelude::Transparent)
@@ -507,9 +507,13 @@ impl<'i> AtRuleParser<'i> for RuleParser {
                     .collect();
                 match prelude {
                     AtPrelude::Media(query) => Ok(CssRule::Media(MediaRule { query, rules })),
-                    AtPrelude::Transparent => Ok(CssRule::Media(MediaRule {
+                    AtPrelude::Supports(true) | AtPrelude::Transparent => Ok(CssRule::Media(MediaRule {
                         query: MediaQueryList::default(),
                         rules,
+                    })),
+                    AtPrelude::Supports(false) => Ok(CssRule::Media(MediaRule {
+                        query: MediaQueryList::default(),
+                        rules: Vec::new(),
                     })),
                     AtPrelude::Keyframes(_) | AtPrelude::FontFace => {
                         unreachable!("handled above")
@@ -735,6 +739,62 @@ fn parse_font_face_src(input: &mut Parser<'_, '_>) -> Vec<FontFaceSrc> {
     sources
 }
 
+/// `@supports` prelude: `(property: value)` with optional `not` / `and` / `or`.
+fn parse_supports_condition(input: &mut Parser<'_, '_>) -> bool {
+    let negated = input.try_parse(|i| i.expect_ident_matching("not")).is_ok();
+    let first = parse_supports_in_parens(input);
+    let mut result = if negated { !first } else { first };
+    loop {
+        let Ok(op) = input.try_parse(|i| {
+            Ok::<_, cssparser::ParseError<'static, ()>>(i.expect_ident()?.as_ref().to_ascii_lowercase())
+        }) else {
+            break;
+        };
+        if op != "and" && op != "or" {
+            break;
+        }
+        let next = parse_supports_in_parens(input);
+        if op == "and" {
+            result &= next;
+        } else {
+            result |= next;
+        }
+    }
+    while input.next().is_ok() {}
+    result
+}
+
+fn parse_supports_in_parens(input: &mut Parser<'_, '_>) -> bool {
+    if input.expect_parenthesis_block().is_err() {
+        return false;
+    }
+    input
+        .parse_nested_block(|inner| {
+            if inner.try_parse(|i| i.expect_ident_matching("not")).is_ok() {
+                return Ok(!parse_supports_in_parens(inner));
+            }
+            let name = match inner.expect_ident() {
+                Ok(n) => n.as_ref().to_owned(),
+                Err(_) => {
+                    while inner.next().is_ok() {}
+                    return Ok(false);
+                }
+            };
+            if inner.expect_colon().is_err() {
+                while inner.next().is_ok() {}
+                return Ok(false);
+            }
+            let Some(prop) = PropertyId::from_name(&name) else {
+                while inner.next().is_ok() {}
+                return Ok(false);
+            };
+            let ok = prop.parse_value(inner).is_some();
+            while inner.next().is_ok() {}
+            Ok::<_, ParseError<'_, StyleParseErrorKind<'_>>>(ok)
+        })
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -777,6 +837,41 @@ mod tests {
         assert!(h1.block.declarations[0].important);
         assert_eq!(sheet.coverage.declarations_unknown, 1, "bogus");
         assert_eq!(sheet.coverage.declarations_invalid, 1, "12furlongs");
+    }
+
+    #[test]
+    fn supports_keeps_known_properties_and_drops_unknown() {
+        let sheet = parse_stylesheet(
+            r"
+            @supports (display: grid) { .g { display: grid } }
+            @supports (not-a-property: 1) { .nope { color: red } }
+            @supports not (display: grid) { .neg { color: blue } }
+            @supports (display: 12furlongs) { .bad { color: green } }
+            ",
+            Origin::Author,
+        );
+        assert_eq!(sheet.style_rule_count(), 1, "only display:grid applies");
+        let CssRule::Media(m) = &sheet.rules[0] else {
+            panic!("kept @supports becomes a media wrapper")
+        };
+        let CssRule::Style(g) = &m.rules[0] else {
+            panic!(".g kept")
+        };
+        assert_eq!(g.block.declarations[0].property, PropertyId::Display);
+        assert!(
+            sheet.rules.iter().all(|r| match r {
+                CssRule::Media(inner) => inner.rules.iter().all(|n| match n {
+                    CssRule::Style(s) => {
+                        !s.block.declarations.iter().any(|d| {
+                            matches!(d.property, PropertyId::Color)
+                        })
+                    }
+                    _ => true,
+                }),
+                _ => true,
+            }),
+            "unknown / not / invalid @supports bodies must be dropped"
+        );
     }
 
     #[test]
