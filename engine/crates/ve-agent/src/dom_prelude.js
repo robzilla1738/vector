@@ -4224,7 +4224,7 @@
     strokeRect(x, y, w, h) {
       if (arguments.length < 4) throw new TypeError("Failed to execute 'strokeRect' on 'CanvasRenderingContext2D': 4 arguments required, but only " + arguments.length + " present.");
       const box = this._mapRect(x, y, w, h);
-      D("canvasStrokeRect", this.__h, box[0], box[1], box[2], box[3], String(this.strokeStyle || this.fillStyle), Number(this._lineWidth) || 1);
+      D("canvasStrokeRect", this.__h, box[0], box[1], box[2], box[3], String(this.strokeStyle || this.fillStyle), Number(this._lineWidth) || 1, (this._dash || []).join(","), Number(this._lineDashOffset) || 0);
     }
     save() {
       this._stack.push({

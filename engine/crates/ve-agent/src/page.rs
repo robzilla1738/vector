@@ -907,6 +907,24 @@ fn sample_pattern(
         .unwrap_or([0, 0, 0, 0])
 }
 
+fn dash_on(dist: i32, dash: &[i32], offset: i32) -> bool {
+    if dash.is_empty() {
+        return true;
+    }
+    let period: i32 = dash.iter().copied().sum();
+    if period <= 0 {
+        return true;
+    }
+    let mut d = (dist + offset).rem_euclid(period);
+    for (i, &seg) in dash.iter().enumerate() {
+        if d < seg {
+            return i % 2 == 0;
+        }
+        d -= seg;
+    }
+    true
+}
+
 fn glyph5x7(ch: char) -> [u8; 5] {
     match ch {
         ' ' | '\t' => [0, 0, 0, 0, 0],
@@ -1137,16 +1155,39 @@ impl CanvasSurface {
         style: &CanvasStyle,
         alpha: f32,
         width: i32,
+        dash: &[i32],
+        dash_offset: i32,
     ) {
         if w <= 0 || h <= 0 {
             self.ops += 1;
             return;
         }
         let t = width.max(1);
-        self.fill_rect_styled(x, y, w, t.min(h), style, alpha);
-        self.fill_rect_styled(x, y + h - t.min(h), w, t.min(h), style, alpha);
-        self.fill_rect_styled(x, y, t.min(w), h, style, alpha);
-        self.fill_rect_styled(x + w - t.min(w), y, t.min(w), h, style, alpha);
+        if dash.is_empty() {
+            self.fill_rect_styled(x, y, w, t.min(h), style, alpha);
+            self.fill_rect_styled(x, y + h - t.min(h), w, t.min(h), style, alpha);
+            self.fill_rect_styled(x, y, t.min(w), h, style, alpha);
+            self.fill_rect_styled(x + w - t.min(w), y, t.min(w), h, style, alpha);
+            return;
+        }
+        let th = t.min(h);
+        let tw = t.min(w);
+        for col in 0..w {
+            if dash_on(col, dash, dash_offset) {
+                self.fill_rect_styled(x + col, y, 1, th, style, alpha);
+            }
+            if dash_on(w + h + (w - 1 - col), dash, dash_offset) {
+                self.fill_rect_styled(x + col, y + h - th, 1, th, style, alpha);
+            }
+        }
+        for row in 0..h {
+            if dash_on(w + row, dash, dash_offset) {
+                self.fill_rect_styled(x + w - tw, y + row, tw, 1, style, alpha);
+            }
+            if dash_on(w + h + w + (h - 1 - row), dash, dash_offset) {
+                self.fill_rect_styled(x, y + row, tw, 1, style, alpha);
+            }
+        }
     }
 
     fn fill_rect_styled(
@@ -1393,6 +1434,8 @@ impl CanvasSurface {
                 style,
                 alpha,
                 width,
+                &[],
+                0,
             );
         }
         for poly in polys {
@@ -2167,13 +2210,15 @@ impl Page {
         h: i32,
         color: &str,
         width: i32,
+        dash: &[i32],
+        dash_offset: i32,
     ) -> u64 {
         let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.stroke_rect_styled(x, y, w, h, &style, 1.0, width);
+        c.stroke_rect_styled(x, y, w, h, &style, 1.0, width, dash, dash_offset);
         c.ops
     }
 

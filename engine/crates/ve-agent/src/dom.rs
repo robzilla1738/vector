@@ -2106,6 +2106,10 @@ pub(crate) fn host_call(
         }
         "canvasStrokeRect" => {
             let id = live(page, args, 0)?;
+            let dash: Vec<i32> = arg_str(args, 7)
+                .split(',')
+                .filter_map(|s| s.trim().parse().ok())
+                .collect();
             let ops = page.canvas_stroke_rect(
                 id,
                 arg_f64(args, 1) as i32,
@@ -2114,6 +2118,8 @@ pub(crate) fn host_call(
                 arg_f64(args, 4) as i32,
                 &arg_str(args, 5),
                 arg_f64(args, 6).max(1.0) as i32,
+                &dash,
+                arg_f64(args, 8) as i32,
             );
             Ok(JsValue::Number(ops as f64))
         }

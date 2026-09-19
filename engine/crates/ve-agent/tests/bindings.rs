@@ -1031,6 +1031,33 @@ fn canvas_fill_rect_paints_shadow_offset() {
 }
 
 #[test]
+fn canvas_stroke_rect_honours_line_dash() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 12;
+              var ctx = c.getContext("2d");
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 4]);
+              ctx.strokeRect(1, 1, 16, 8);
+              var on = ctx.getImageData(1, 1, 1, 1).data;
+              var off = ctx.getImageData(5, 1, 1, 1).data;
+              var on2 = ctx.getImageData(9, 1, 1, 1).data;
+              return { og: on[1], oa: on[3], fa: off[3], o2g: on2[1] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["og"], 255, "{v}");
+    assert_eq!(v["oa"], 255, "{v}");
+    assert_eq!(v["fa"], 0, "{v}");
+    assert_eq!(v["o2g"], 255, "{v}");
+}
+
+#[test]
 fn canvas_is_point_in_path_hits_rect() {
     let mut page = open(r#"<body></body>"#);
     let v = page
