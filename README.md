@@ -74,8 +74,8 @@ same harness (`tests/benchmarks/run.mjs`), 5 repeats after 1 warmup, p50 on
 darwin arm64 (2026-09-16). Chromium is the headless standalone driver with
 `engineMode: off`; Vector Engine is `engineMode: always` (process isolation).
 Held-out mock 5.32× / 8.35× tokens is retired (`MockModelClient`, n=1). Live
-held-out rows live in `docs/BENCHMARKS.md`. Snapshot kept for audit:
-`docs/engine/evidence/held-out-latest.json`.
+GPT 5.6 Luna rows (5 trials, competitor included) are in `docs/BENCHMARKS.md`
+and `docs/engine/evidence/held-out-latest.json`.
 
 | Metric | Chromium | Vector Engine |
 |---|---:|---:|

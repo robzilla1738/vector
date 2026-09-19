@@ -152,7 +152,7 @@ function summarize(rows) {
   };
 }
 
-async function startRuntimeFor(engineMode) {
+async function startRuntimeFor(engineMode, port) {
   const { startRuntime } = await import(pathToFileURL(runtimeEntry).href);
   const dataDir = mkdtempSync(join(tmpdir(), "vector-heldout-"));
   const rt = await startRuntime({
@@ -165,6 +165,8 @@ async function startRuntimeFor(engineMode) {
     VECTOR_PLANNER_MODEL: LUNA,
     VECTOR_RECOVERY_MODEL: LUNA,
     VECTOR_GATEWAY_ONLY: "",
+    VECTOR_ENGINE_ALLOWLIST: `127.0.0.1:${port},localhost:${port}`,
+    VECTOR_ENGINE_ALLOW_FILE: "1",
     AI_GATEWAY_API_KEY: apiKey,
   });
   return { rt, dataDir };
@@ -190,9 +192,10 @@ async function tokensForRun(rpc, runId) {
 
 async function runTrial(rpc, task, url) {
   const started = Date.now();
-  const page = await rpc("pages.open", { url, background: true });
-  const pageId = page.pageId ?? page.page?.pageId ?? page.id;
+  let pageId;
   try {
+    const page = await rpc("pages.open", { url, background: true });
+    pageId = page.pageId ?? page.page?.pageId ?? page.id;
     const run = await rpc("runs.start", {
       goal: task.goal,
       pageId,
@@ -229,13 +232,25 @@ async function runTrial(rpc, task, url) {
       wallMs: Date.now() - started,
       message: r.statusMessage ?? null,
     };
+  } catch (e) {
+    return {
+      taskId: task.id,
+      status: "failed",
+      verified: false,
+      modelId: LUNA,
+      modelCalls: null,
+      tokens: null,
+      modelWaitMs: Date.now() - started,
+      wallMs: Date.now() - started,
+      message: e instanceof Error ? e.message : String(e),
+    };
   } finally {
-    await rpc("pages.close", { pageId }).catch(() => {});
+    if (pageId) await rpc("pages.close", { pageId }).catch(() => {});
   }
 }
 
 async function runAdapter(name, engineMode, port) {
-  const { rt } = await startRuntimeFor(engineMode);
+  const { rt } = await startRuntimeFor(engineMode, port);
   const rpc = (m, p = {}) => rt.invoke(m, p);
   const rows = [];
   try {

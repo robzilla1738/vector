@@ -1,22 +1,506 @@
 {
   "review": "H1-D2",
-  "measured": false,
-  "livePlanner": false,
-  "independentlyVerifiableLiveModel": false,
-  "skippedLive": true,
-  "reason": "no VECTOR_GATEWAY_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY",
+  "measured": true,
+  "livePlanner": true,
+  "independentlyVerifiableLiveModel": true,
+  "skippedLive": false,
   "sealedHash": "f805b31d1d61947797b5a65d28847ac4b0a115ecb1622b5f1f20200e636033a9",
-  "trialsRequested": 5,
-  "tasks": [
-    "increment-the-counter",
-    "submit-name",
-    "find-in-table"
+  "trials": 5,
+  "modelId": "openai/gpt-5.6-luna-fast",
+  "rows": [
+    {
+      "taskId": "increment-the-counter",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 3249,
+      "modelWaitMs": 13483,
+      "wallMs": 13591,
+      "message": "The counter remains at 0; the goal of reaching 3 was not completed.",
+      "adapter": "vector-engine",
+      "trial": 1
+    },
+    {
+      "taskId": "increment-the-counter",
+      "status": "failed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": null,
+      "tokens": null,
+      "modelWaitMs": 4,
+      "wallMs": 4,
+      "message": "network: transport: request 127.0.0.1: client error (SendRequest)",
+      "adapter": "vector-engine",
+      "trial": 2
+    },
+    {
+      "taskId": "increment-the-counter",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 3216,
+      "modelWaitMs": 10479,
+      "wallMs": 10563,
+      "message": "The counter could not be incremented to 3 because the page stopped changing; it remains at 0.",
+      "adapter": "vector-engine",
+      "trial": 3
+    },
+    {
+      "taskId": "increment-the-counter",
+      "status": "failed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": null,
+      "tokens": null,
+      "modelWaitMs": 2,
+      "wallMs": 2,
+      "message": "network: transport: request 127.0.0.1: client error (SendRequest)",
+      "adapter": "vector-engine",
+      "trial": 4
+    },
+    {
+      "taskId": "increment-the-counter",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 4731,
+      "modelWaitMs": 11418,
+      "wallMs": 11560,
+      "message": "The counter could not be incremented to 3 before the page stopped changing. It remains at 0.",
+      "adapter": "vector-engine",
+      "trial": 5
+    },
+    {
+      "taskId": "submit-name",
+      "status": "failed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": null,
+      "tokens": null,
+      "modelWaitMs": 3,
+      "wallMs": 3,
+      "message": "network: transport: request 127.0.0.1: client error (SendRequest)",
+      "adapter": "vector-engine",
+      "trial": 1
+    },
+    {
+      "taskId": "submit-name",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 5301,
+      "modelWaitMs": 8331,
+      "wallMs": 8554,
+      "message": "The name field is still empty and the form was not submitted before the run stopped.",
+      "adapter": "vector-engine",
+      "trial": 2
+    },
+    {
+      "taskId": "submit-name",
+      "status": "failed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": null,
+      "tokens": null,
+      "modelWaitMs": 3,
+      "wallMs": 3,
+      "message": "network: transport: request 127.0.0.1: client error (SendRequest)",
+      "adapter": "vector-engine",
+      "trial": 3
+    },
+    {
+      "taskId": "submit-name",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 5217,
+      "modelWaitMs": 8223,
+      "wallMs": 8300,
+      "message": "The name field is still empty and the form was not submitted.",
+      "adapter": "vector-engine",
+      "trial": 4
+    },
+    {
+      "taskId": "submit-name",
+      "status": "failed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": null,
+      "tokens": null,
+      "modelWaitMs": 3,
+      "wallMs": 3,
+      "message": "network: transport: request 127.0.0.1: client error (SendRequest)",
+      "adapter": "vector-engine",
+      "trial": 5
+    },
+    {
+      "taskId": "find-in-table",
+      "status": "completed",
+      "verified": true,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 1,
+      "tokens": 1365,
+      "modelWaitMs": 1056,
+      "wallMs": 1288,
+      "message": "Read the price of the first row.",
+      "adapter": "vector-engine",
+      "trial": 1
+    },
+    {
+      "taskId": "find-in-table",
+      "status": "completed",
+      "verified": true,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 1,
+      "tokens": 1361,
+      "modelWaitMs": 945,
+      "wallMs": 1035,
+      "message": "Read the price of the first row.",
+      "adapter": "vector-engine",
+      "trial": 2
+    },
+    {
+      "taskId": "find-in-table",
+      "status": "completed",
+      "verified": true,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 1,
+      "tokens": 1358,
+      "modelWaitMs": 1119,
+      "wallMs": 1289,
+      "message": "Read the price of the first row.",
+      "adapter": "vector-engine",
+      "trial": 3
+    },
+    {
+      "taskId": "find-in-table",
+      "status": "completed",
+      "verified": true,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 1,
+      "tokens": 1361,
+      "modelWaitMs": 1154,
+      "wallMs": 1287,
+      "message": "The first row price is $12.50.",
+      "adapter": "vector-engine",
+      "trial": 4
+    },
+    {
+      "taskId": "find-in-table",
+      "status": "completed",
+      "verified": true,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 1,
+      "tokens": 1372,
+      "modelWaitMs": 2184,
+      "wallMs": 2289,
+      "message": "The first row price is $12.50.",
+      "adapter": "vector-engine",
+      "trial": 5
+    }
   ],
-  "competitorRows": [],
-  "competitorSkipped": true,
-  "competitorReason": "Chromium adapter comparison needs the same live keys",
-  "artifact": {
-    "harness": "tests/held-out/run.mjs"
+  "median": 1119,
+  "iqr": {
+    "q1": 1056,
+    "q3": 1154,
+    "iqr": 98
   },
-  "notes": "Harness exists. Live rows and competitor rows are required when keys are present. Mock is not used."
+  "ci95": {
+    "lo": 848.8088870629854,
+    "hi": 1734.3911129370144
+  },
+  "verifiedSuccess": {
+    "n": 15,
+    "verified": 5,
+    "rate": 0.3333333333333333,
+    "modelWaitMs": {
+      "median": 1119,
+      "iqr": {
+        "q1": 1056,
+        "q3": 1154,
+        "iqr": 98
+      },
+      "ci95": {
+        "lo": 848.8088870629854,
+        "hi": 1734.3911129370144
+      },
+      "values": [
+        1056,
+        945,
+        1119,
+        1154,
+        2184
+      ]
+    },
+    "tokens": {
+      "median": 1361,
+      "iqr": {
+        "q1": 1361,
+        "q3": 1365,
+        "iqr": 4
+      },
+      "ci95": {
+        "lo": 1358.6553423727312,
+        "hi": 1368.144657627269
+      },
+      "values": [
+        1365,
+        1361,
+        1358,
+        1361,
+        1372
+      ]
+    }
+  },
+  "competitorRows": [
+    {
+      "taskId": "increment-the-counter",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 3168,
+      "modelWaitMs": 11484,
+      "wallMs": 12262,
+      "message": "The counter remains at 0; it was not incremented to 3 before the page stopped changing.",
+      "adapter": "vector",
+      "trial": 1
+    },
+    {
+      "taskId": "increment-the-counter",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 3576,
+      "modelWaitMs": 9229,
+      "wallMs": 9343,
+      "message": "The counter could not be incremented because the page state stopped changing. It remains at 0, not 3.",
+      "adapter": "vector",
+      "trial": 2
+    },
+    {
+      "taskId": "increment-the-counter",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 4034,
+      "modelWaitMs": 9607,
+      "wallMs": 9832,
+      "message": "The counter could not be incremented because the page stopped changing. It remains at 0, so the goal was not completed.",
+      "adapter": "vector",
+      "trial": 3
+    },
+    {
+      "taskId": "increment-the-counter",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 4011,
+      "modelWaitMs": 10761,
+      "wallMs": 11076,
+      "message": "The counter could not be incremented; it remains at 0.",
+      "adapter": "vector",
+      "trial": 4
+    },
+    {
+      "taskId": "increment-the-counter",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 4708,
+      "modelWaitMs": 9489,
+      "wallMs": 9584,
+      "message": "The counter remains at 0; the goal of reaching 3 was not achieved because the page state stopped changing.",
+      "adapter": "vector",
+      "trial": 5
+    },
+    {
+      "taskId": "submit-name",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 5294,
+      "modelWaitMs": 7558,
+      "wallMs": 7847,
+      "message": "The name field is empty and the form was not submitted.",
+      "adapter": "vector",
+      "trial": 1
+    },
+    {
+      "taskId": "submit-name",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 5190,
+      "modelWaitMs": 7849,
+      "wallMs": 8062,
+      "message": "The name field is empty and the form was not submitted.",
+      "adapter": "vector",
+      "trial": 2
+    },
+    {
+      "taskId": "submit-name",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 5013,
+      "modelWaitMs": 6446,
+      "wallMs": 6564,
+      "message": "The name field is still empty and the form was not submitted.",
+      "adapter": "vector",
+      "trial": 3
+    },
+    {
+      "taskId": "submit-name",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 5158,
+      "modelWaitMs": 7119,
+      "wallMs": 7336,
+      "message": "The name field is still empty and the form was not submitted.",
+      "adapter": "vector",
+      "trial": 4
+    },
+    {
+      "taskId": "submit-name",
+      "status": "completed",
+      "verified": false,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 4,
+      "tokens": 5169,
+      "modelWaitMs": 7764,
+      "wallMs": 8087,
+      "message": "The name field remained empty and the form was not submitted.",
+      "adapter": "vector",
+      "trial": 5
+    },
+    {
+      "taskId": "find-in-table",
+      "status": "completed",
+      "verified": true,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 1,
+      "tokens": 1376,
+      "modelWaitMs": 1283,
+      "wallMs": 1565,
+      "message": "Read the price of the first row.",
+      "adapter": "vector",
+      "trial": 1
+    },
+    {
+      "taskId": "find-in-table",
+      "status": "completed",
+      "verified": true,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 1,
+      "tokens": 1374,
+      "modelWaitMs": 4842,
+      "wallMs": 5074,
+      "message": "The first row price is $12.50.",
+      "adapter": "vector",
+      "trial": 2
+    },
+    {
+      "taskId": "find-in-table",
+      "status": "completed",
+      "verified": true,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 1,
+      "tokens": 1367,
+      "modelWaitMs": 1290,
+      "wallMs": 1559,
+      "message": "The first row price is $12.50.",
+      "adapter": "vector",
+      "trial": 3
+    },
+    {
+      "taskId": "find-in-table",
+      "status": "completed",
+      "verified": true,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 1,
+      "tokens": 1407,
+      "modelWaitMs": 2000,
+      "wallMs": 2316,
+      "message": "The first row price is $12.50.",
+      "adapter": "vector",
+      "trial": 4
+    },
+    {
+      "taskId": "find-in-table",
+      "status": "completed",
+      "verified": true,
+      "modelId": "openai/gpt-5.6-luna-fast",
+      "modelCalls": 1,
+      "tokens": 1367,
+      "modelWaitMs": 1858,
+      "wallMs": 2069,
+      "message": "The first row price is $12.50.",
+      "adapter": "vector",
+      "trial": 5
+    }
+  ],
+  "competitorSkipped": false,
+  "competitor": {
+    "n": 15,
+    "verified": 5,
+    "rate": 0.3333333333333333,
+    "modelWaitMs": {
+      "median": 1858,
+      "iqr": {
+        "q1": 1290,
+        "q3": 2000,
+        "iqr": 710
+      },
+      "ci95": {
+        "lo": 955.1324754746656,
+        "hi": 3554.067524525334
+      },
+      "values": [
+        1283,
+        4842,
+        1290,
+        2000,
+        1858
+      ]
+    },
+    "tokens": {
+      "median": 1374,
+      "iqr": {
+        "q1": 1367,
+        "q3": 1376,
+        "iqr": 9
+      },
+      "ci95": {
+        "lo": 1363.6457626788622,
+        "hi": 1392.754237321138
+      },
+      "values": [
+        1376,
+        1374,
+        1367,
+        1407,
+        1367
+      ]
+    }
+  },
+  "artifact": {
+    "harness": "tests/held-out/run.mjs",
+    "model": "openai/gpt-5.6-luna-fast"
+  },
+  "notes": "Live GPT 5.6 Luna via AI Gateway. Independent oracle is page observe vs gold regex. Mock is not used."
 }

@@ -12,6 +12,7 @@ Every published performance number has a row here. Numbers without a table row a
 | `perf --gate m1` observe p95 | see last `perf` JSON | `production` | 200 | `cargo run --release -p perf -- --gate m1` |
 | Speedometer 3.0 displayed | 1.83 | profiling input, not a target | — | `docs/ROADMAP.md` §3 |
 | Speedometer 3.0 Chrome (same machine) | 11.6 ms TodoMVC-JavaScript-ES5 add/complete/delete (Google Chrome 148.0.7778.96) | tracked only | 1 | `docs/engine/evidence/speedometer-chrome-tracked.json`; not an official displayed score, not a target |
-| Held-out mock 5.32× | retired | MockModelClient, n=1 | 1 | `docs/engine/evidence/held-out-latest.json` (not a published score) |
+| Held-out mock 5.32× | retired | MockModelClient, n=1 | 1 | superseded by live row |
+| Held-out live GPT 5.6 Luna | engine 5/15 verified (find-in-table 5/5); median wait 1119 ms, IQR 98, CI 849–1734; competitor 5/15 median 1858 ms | live planner `openai/gpt-5.6-luna-fast` | 5 trials × 3 tasks | `docs/engine/evidence/held-out-latest.json`; increment/submit oracles failed; not a stretch-target score |
 
 Architecture §0 previously listed full observation as 13,148 bytes. That row is superseded by the README table (5,917 bytes) until a new `pnpm bench` run is committed.
