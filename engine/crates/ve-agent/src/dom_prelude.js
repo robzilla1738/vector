@@ -3673,7 +3673,7 @@
   class CanvasPattern {
     constructor() { throw new TypeError("Illegal constructor"); }
     setTransform() {}
-    toString() { return "ve-pat:" + (this._id || 0); }
+    toString() { return "ve-pat:" + (this._id || 0) + ":" + (this._repetition || "repeat"); }
   }
   Object.defineProperty(CanvasPattern.prototype, Symbol.toStringTag, { value: "CanvasPattern", configurable: true });
   class OffscreenCanvas extends EventTarget {
@@ -4113,7 +4113,10 @@
     get globalAlpha() { return this._globalAlpha; }
     set globalAlpha(v) { this._globalAlpha = Number(v); }
     get globalCompositeOperation() { return this._globalCompositeOperation; }
-    set globalCompositeOperation(v) { this._globalCompositeOperation = String(v); }
+    set globalCompositeOperation(v) {
+      this._globalCompositeOperation = String(v);
+      D("canvasSetComposite", this.__h, this._globalCompositeOperation);
+    }
     get lineWidth() { return this._lineWidth; }
     set lineWidth(v) { this._lineWidth = Number(v); }
     get lineCap() { return this._lineCap; }
@@ -4227,6 +4230,7 @@
         fillStyle: this._fillStyle,
         strokeStyle: this._strokeStyle,
         globalAlpha: this._globalAlpha,
+        globalCompositeOperation: this._globalCompositeOperation,
         a: this._a, b: this._b, c: this._c, d: this._d, e: this._e, f: this._f
       });
       D("canvasSave", this.__h);
@@ -4237,6 +4241,7 @@
       this._fillStyle = s.fillStyle;
       this._strokeStyle = s.strokeStyle;
       this._globalAlpha = s.globalAlpha;
+      this._globalCompositeOperation = s.globalCompositeOperation || "source-over";
       this._a = s.a; this._b = s.b; this._c = s.c; this._d = s.d; this._e = s.e; this._f = s.f;
       D("canvasRestore", this.__h);
     }

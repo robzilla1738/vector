@@ -783,7 +783,48 @@ enum CanvasStyle {
         width: u32,
         height: u32,
         pixels: Vec<u8>,
+        repeat: PatternRepeat,
     },
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum PatternRepeat {
+    #[default]
+    Repeat,
+    RepeatX,
+    RepeatY,
+    NoRepeat,
+}
+
+impl PatternRepeat {
+    fn parse(s: &str) -> Self {
+        match s {
+            "repeat-x" => Self::RepeatX,
+            "repeat-y" => Self::RepeatY,
+            "no-repeat" => Self::NoRepeat,
+            _ => Self::Repeat,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum CompositeOp {
+    #[default]
+    SourceOver,
+    Copy,
+    DestinationOver,
+    Xor,
+}
+
+impl CompositeOp {
+    fn parse(s: &str) -> Self {
+        match s {
+            "copy" => Self::Copy,
+            "destination-over" => Self::DestinationOver,
+            "xor" => Self::Xor,
+            _ => Self::SourceOver,
+        }
+    }
 }
 
 impl CanvasStyle {
@@ -816,22 +857,75 @@ impl CanvasStyle {
                 width,
                 height,
                 pixels,
-            } => sample_pattern(*width, *height, pixels, x, y),
+                repeat,
+            } => sample_pattern(*width, *height, pixels, *repeat, x, y),
         }
     }
 }
 
-fn sample_pattern(width: u32, height: u32, pixels: &[u8], x: f32, y: f32) -> [u8; 4] {
+fn sample_pattern(
+    width: u32,
+    height: u32,
+    pixels: &[u8],
+    repeat: PatternRepeat,
+    x: f32,
+    y: f32,
+) -> [u8; 4] {
     if width == 0 || height == 0 {
         return [0, 0, 0, 0];
     }
-    let px = ((x.floor() as i32).rem_euclid(width as i32)) as u32;
-    let py = ((y.floor() as i32).rem_euclid(height as i32)) as u32;
+    let fx = x.floor();
+    let fy = y.floor();
+    let in_x = fx >= 0.0 && fx < width as f32;
+    let in_y = fy >= 0.0 && fy < height as f32;
+    let px = match repeat {
+        PatternRepeat::Repeat | PatternRepeat::RepeatX => {
+            (fx as i32).rem_euclid(width as i32) as u32
+        }
+        PatternRepeat::RepeatY | PatternRepeat::NoRepeat => {
+            if !in_x {
+                return [0, 0, 0, 0];
+            }
+            fx as u32
+        }
+    };
+    let py = match repeat {
+        PatternRepeat::Repeat | PatternRepeat::RepeatY => {
+            (fy as i32).rem_euclid(height as i32) as u32
+        }
+        PatternRepeat::RepeatX | PatternRepeat::NoRepeat => {
+            if !in_y {
+                return [0, 0, 0, 0];
+            }
+            fy as u32
+        }
+    };
     let i = ((py * width + px) * 4) as usize;
     pixels
         .get(i..i + 4)
         .and_then(|s| s.try_into().ok())
         .unwrap_or([0, 0, 0, 0])
+}
+
+fn blend_pixel(dst: [u8; 4], src: [u8; 4], op: CompositeOp) -> [u8; 4] {
+    let sa = u32::from(src[3]);
+    let da = u32::from(dst[3]);
+    let (fs, fd) = match op {
+        CompositeOp::Copy => return src,
+        CompositeOp::SourceOver => (sa, da * (255 - sa) / 255),
+        CompositeOp::DestinationOver => (sa * (255 - da) / 255, da),
+        CompositeOp::Xor => (sa * (255 - da) / 255, da * (255 - sa) / 255),
+    };
+    let out_a = fs + fd;
+    if out_a == 0 {
+        return [0, 0, 0, 0];
+    }
+    [
+        ((u32::from(src[0]) * fs + u32::from(dst[0]) * fd) / out_a) as u8,
+        ((u32::from(src[1]) * fs + u32::from(dst[1]) * fd) / out_a) as u8,
+        ((u32::from(src[2]) * fs + u32::from(dst[2]) * fd) / out_a) as u8,
+        out_a.min(255) as u8,
+    ]
 }
 
 fn sample_linear_gradient(
@@ -998,6 +1092,8 @@ pub(crate) struct CanvasSurface {
     ops: u64,
     clip: Option<(i32, i32, i32, i32)>,
     clip_stack: Vec<Option<(i32, i32, i32, i32)>>,
+    composite: CompositeOp,
+    composite_stack: Vec<CompositeOp>,
 }
 
 impl CanvasSurface {
@@ -1011,11 +1107,15 @@ impl CanvasSurface {
             ops: 0,
             clip: None,
             clip_stack: Vec::new(),
+            composite: CompositeOp::SourceOver,
+            composite_stack: Vec::new(),
         }
     }
 
     fn resize(&mut self, width: u32, height: u32) {
+        let composite = self.composite;
         *self = Self::new(width, height);
+        self.composite = composite;
     }
 
     fn stroke_rect_styled(
@@ -1075,10 +1175,17 @@ impl CanvasSurface {
             for col in x0..x1 {
                 let color = canvas_alpha(style.sample(col as f32 + 0.5, row as f32 + 0.5), alpha);
                 let i = (row * self.width + col) as usize * 4;
-                self.pixels[i] = color[0];
-                self.pixels[i + 1] = color[1];
-                self.pixels[i + 2] = color[2];
-                self.pixels[i + 3] = color[3];
+                let dst = [
+                    self.pixels[i],
+                    self.pixels[i + 1],
+                    self.pixels[i + 2],
+                    self.pixels[i + 3],
+                ];
+                let out = blend_pixel(dst, color, self.composite);
+                self.pixels[i] = out[0];
+                self.pixels[i + 1] = out[1];
+                self.pixels[i + 2] = out[2];
+                self.pixels[i + 3] = out[3];
             }
         }
         self.ops += 1;
@@ -1105,16 +1212,23 @@ impl CanvasSurface {
 
     fn save_clip(&mut self) {
         self.clip_stack.push(self.clip);
+        self.composite_stack.push(self.composite);
         self.ops += 1;
     }
 
     fn restore_clip(&mut self) {
         self.clip = self.clip_stack.pop().flatten();
+        if let Some(op) = self.composite_stack.pop() {
+            self.composite = op;
+        }
         self.ops += 1;
     }
 
     fn clear_rect(&mut self, x: i32, y: i32, w: i32, h: i32) {
+        let prev = self.composite;
+        self.composite = CompositeOp::Copy;
         self.fill_rect(x, y, w, h, [0, 0, 0, 0]);
+        self.composite = prev;
     }
 
     fn get_image_data(&self, x: i32, y: i32, w: i32, h: i32) -> (u32, u32, Vec<u8>) {
@@ -1873,17 +1987,31 @@ impl Page {
 
     fn resolve_canvas_style(&self, s: &str) -> CanvasStyle {
         if let Some(rest) = s.strip_prefix("ve-pat:") {
-            if let Ok(id) = rest.trim().parse::<u64>() {
+            let (id_s, mode) = match rest.split_once(':') {
+                Some((id, mode)) => (id, PatternRepeat::parse(mode)),
+                None => (rest, PatternRepeat::Repeat),
+            };
+            if let Ok(id) = id_s.trim().parse::<u64>() {
                 if let Some((w, h, px)) = self.canvas_patterns.get(&id) {
                     return CanvasStyle::Pattern {
                         width: *w,
                         height: *h,
                         pixels: px.clone(),
+                        repeat: mode,
                     };
                 }
             }
         }
         parse_canvas_style(s)
+    }
+
+    pub(crate) fn canvas_set_composite(&mut self, id: NodeId, op: &str) -> u64 {
+        let c = self
+            .canvases
+            .entry(id)
+            .or_insert_with(|| CanvasSurface::new(300, 150));
+        c.composite = CompositeOp::parse(op);
+        c.ops
     }
 
     pub(crate) fn canvas_create_pattern(&mut self, src: NodeId) -> Option<u64> {

@@ -862,6 +862,78 @@ fn canvas_create_pattern_repeats_source_pixels() {
 }
 
 #[test]
+fn canvas_create_pattern_no_repeat_stays_in_tile() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var src = document.createElement("canvas");
+              src.width = 2;
+              src.height = 2;
+              var sctx = src.getContext("2d");
+              sctx.fillStyle = "#00ff00";
+              sctx.fillRect(0, 0, 2, 2);
+              var dst = document.createElement("canvas");
+              dst.width = 8;
+              dst.height = 8;
+              var ctx = dst.getContext("2d");
+              var pat = ctx.createPattern(src, "no-repeat");
+              ctx.fillStyle = pat;
+              ctx.fillRect(0, 0, 8, 8);
+              var a = ctx.getImageData(0, 0, 1, 1).data;
+              var b = ctx.getImageData(3, 0, 1, 1).data;
+              var c = ctx.getImageData(0, 3, 1, 1).data;
+              return {
+                encoded: String(pat),
+                ag: a[1], aa: a[3],
+                ba: b[3],
+                ca: c[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert!(
+        v["encoded"].as_str().unwrap_or("").contains("no-repeat"),
+        "{v}"
+    );
+    assert_eq!(v["ag"], 255, "{v}");
+    assert_eq!(v["aa"], 255, "{v}");
+    assert_eq!(v["ba"], 0, "{v}");
+    assert_eq!(v["ca"], 0, "{v}");
+}
+
+#[test]
+fn canvas_destination_over_keeps_dst() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.fillRect(0, 0, 8, 8);
+              ctx.globalCompositeOperation = "destination-over";
+              ctx.fillStyle = "#0000ff";
+              ctx.fillRect(0, 0, 8, 8);
+              var p = ctx.getImageData(2, 2, 1, 1).data;
+              ctx.globalCompositeOperation = "xor";
+              ctx.fillStyle = "#00ff00";
+              ctx.fillRect(0, 0, 8, 8);
+              var x = ctx.getImageData(2, 2, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3], xa: x[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["xa"], 0, "{v}");
+}
+
+#[test]
 fn canvas_is_point_in_path_hits_rect() {
     let mut page = open(r#"<body></body>"#);
     let v = page

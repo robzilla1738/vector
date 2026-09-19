@@ -645,6 +645,14 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeCompareDocumentPosition", pos)?;
+            let lookup_prefix = v8::FunctionTemplate::builder(native_node_lookup_prefix)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeLookupPrefix", lookup_prefix)?;
+            let lookup_ns = v8::FunctionTemplate::builder(native_node_lookup_namespace_uri)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeLookupNamespaceURI", lookup_ns)?;
             Some(())
         })?;
         self.eval(
@@ -687,6 +695,8 @@ impl JsVm for V8Vm {
     Node.prototype.hasChildNodes = globalThis.__veNativeHasChildNodes;
     Node.prototype.isEqualNode = globalThis.__veNativeIsEqualNode;
     Node.prototype.compareDocumentPosition = globalThis.__veNativeCompareDocumentPosition;
+    Node.prototype.lookupPrefix = globalThis.__veNativeLookupPrefix;
+    Node.prototype.lookupNamespaceURI = globalThis.__veNativeLookupNamespaceURI;
   }
   def(Element.prototype, "innerHTML", globalThis.__veNativeInnerHTMLGet, globalThis.__veNativeInnerHTMLSet);
   def(Element.prototype, "outerHTML", globalThis.__veNativeOuterHTMLGet, globalThis.__veNativeOuterHTMLSet);
@@ -696,7 +706,7 @@ impl JsVm for V8Vm {
   Element.prototype.hasAttribute = globalThis.__veNativeHasAttribute;
   Element.prototype.toggleAttribute = globalThis.__veNativeToggleAttribute;
   Element.prototype.matches = globalThis.__veNativeMatches;
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI";
 })()"#,
             "vector:dom-native",
         )?;
@@ -1480,6 +1490,60 @@ fn native_node_compare_document_position(
         &[JsValue::from("compareDocumentPosition"), handle, other],
     );
     native_set_number(scope, &mut rv, value, 1.0);
+}
+
+fn native_set_string_or_null(
+    scope: &mut v8::PinScope<'_, '_>,
+    rv: &mut v8::ReturnValue<'_, v8::Value>,
+    value: Option<JsValue>,
+) {
+    match value {
+        Some(JsValue::String(s)) => {
+            if let Some(v) = v8::String::new(scope, &s) {
+                rv.set(v.into());
+                return;
+            }
+        }
+        Some(JsValue::Null | JsValue::Undefined) | None => {}
+        _ => {}
+    }
+    rv.set_null();
+}
+
+fn native_node_lookup_prefix(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let ns = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::Null
+    };
+    let value = call_dom_host(scope, &[JsValue::from("lookupPrefix"), handle, ns]);
+    native_set_string_or_null(scope, &mut rv, value);
+}
+
+fn native_node_lookup_namespace_uri(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let prefix = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::Null
+    };
+    let value = call_dom_host(scope, &[JsValue::from("lookupNamespaceURI"), handle, prefix]);
+    native_set_string_or_null(scope, &mut rv, value);
 }
 
 fn looks_like_module(source: &str) -> bool {

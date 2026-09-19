@@ -2117,6 +2117,12 @@ pub(crate) fn host_call(
             );
             Ok(JsValue::Number(ops as f64))
         }
+        "canvasSetComposite" => {
+            let id = live(page, args, 0)?;
+            Ok(JsValue::Number(
+                page.canvas_set_composite(id, &arg_str(args, 1)) as f64,
+            ))
+        }
         "canvasFillRect" => {
             let id = live(page, args, 0)?;
             let ops = page.canvas_fill_rect(
