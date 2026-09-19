@@ -5052,6 +5052,69 @@ fn match_media_change_fires_on_resize() {
 }
 
 #[test]
+fn screen_and_outer_size_track_resize() {
+    let mut page = open("<title>screen</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const before = {
+                sw: screen.width,
+                sh: screen.height,
+                aw: screen.availWidth,
+                ah: screen.availHeight,
+                ow: outerWidth,
+                oh: outerHeight,
+                iw: innerWidth
+              };
+              resizeTo(360, 640);
+              const mid = {
+                sw: screen.width,
+                sh: screen.height,
+                aw: screen.availWidth,
+                ow: outerWidth,
+                iw: innerWidth
+              };
+              resizeTo(1280, 720);
+              return { before, mid, afterW: screen.width, afterOw: outerWidth };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"]["sw"], 1280, "{v}");
+    assert_eq!(v["before"]["iw"], 1280, "{v}");
+    assert_eq!(v["mid"]["sw"], 360, "{v}");
+    assert_eq!(v["mid"]["sh"], 640, "{v}");
+    assert_eq!(v["mid"]["aw"], 360, "{v}");
+    assert_eq!(v["mid"]["ow"], 360, "{v}");
+    assert_eq!(v["mid"]["iw"], 360, "{v}");
+    assert_eq!(v["afterW"], 1280, "{v}");
+    assert_eq!(v["afterOw"], 1280, "{v}");
+}
+
+#[test]
+fn webgl_uniform4f_fills_draw_arrays() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              const loc = gl.getUniformLocation(gl.createProgram(), "uColor");
+              gl.uniform4f(loc, 1, 0, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(2, 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { loc: !!(loc && loc._u), r: px[0], g: px[1], b: px[2], a: px[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["loc"], true, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
 fn crypto_subtle_digests_sha512() {
     let mut page = open(r#"<body></body>"#);
     let _ = page

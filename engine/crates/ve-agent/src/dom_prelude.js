@@ -9373,8 +9373,17 @@
     drawArrays() {
       const tex = this._tex;
       const c = this.canvas;
-      if (!tex || !tex._b64 || !c || c.__h == null) return;
-      D("canvasPutImageData", c.__h, tex._w, tex._h, tex._b64, 0, 0);
+      if (!c || c.__h == null) return;
+      if (tex && tex._b64) {
+        D("canvasPutImageData", c.__h, tex._w, tex._h, tex._b64, 0, 0);
+        return;
+      }
+      const u = this._uniform;
+      if (u) {
+        const hex = (n) => Math.max(0, Math.min(255, Math.round(n * 255))).toString(16).padStart(2, "0");
+        const css = u[3] >= 1 ? ("#" + hex(u[0]) + hex(u[1]) + hex(u[2])) : ("rgba(" + Math.round(u[0] * 255) + "," + Math.round(u[1] * 255) + "," + Math.round(u[2] * 255) + "," + u[3] + ")");
+        D("canvasFillRect", c.__h, 0, 0, c.width, c.height, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
+      }
     }
     createShader() { return { _sh: true, _src: "", _ok: false }; }
     shaderSource(sh, src) { if (sh) sh._src = String(src || ""); }
@@ -9390,6 +9399,12 @@
     getProgramParameter(prog) { return !!(prog && prog._ok); }
     getProgramInfoLog(prog) { return prog && prog._ok ? "" : "link failed"; }
     useProgram(prog) { if (prog && prog._ok) this._prog = prog; }
+    getUniformLocation(prog, name) { return { _u: true, _name: String(name || ""), _prog: prog }; }
+    uniform4f(_loc, r, g, b, a) { this._uniform = [Number(r) || 0, Number(g) || 0, Number(b) || 0, a == null ? 1 : Number(a)]; }
+    uniform4fv(_loc, v) {
+      const a = v && v.length ? v : [0, 0, 0, 1];
+      this._uniform = [Number(a[0]) || 0, Number(a[1]) || 0, Number(a[2]) || 0, a[3] == null ? 1 : Number(a[3])];
+    }
   }
   Object.defineProperty(WebGLRenderingContext.prototype, Symbol.toStringTag, { value: "WebGLRenderingContext", configurable: true });
 
@@ -11408,10 +11423,10 @@
       },
     }),
     screen: {
-      width: D("innerWidth"),
-      height: D("innerHeight"),
-      availWidth: D("innerWidth"),
-      availHeight: D("innerHeight"),
+      get width() { return D("innerWidth"); },
+      get height() { return D("innerHeight"); },
+      get availWidth() { return D("innerWidth"); },
+      get availHeight() { return D("innerHeight"); },
       colorDepth: 24,
       pixelDepth: 24,
       orientation: {
@@ -11423,6 +11438,8 @@
         removeEventListener() {},
       },
     },
+    get outerWidth() { return D("innerWidth"); },
+    get outerHeight() { return D("innerHeight"); },
     devicePixelRatio: 1,
     get innerWidth() { return D("innerWidth"); },
     get innerHeight() { return D("innerHeight"); },
@@ -12267,6 +12284,8 @@
   Object.defineProperty(barInstance, "visible", { configurable: true, enumerable: true, get() { return true; } });
   ownAccessor(globalThis, "innerWidth", () => D("innerWidth"), undefined, false, true);
   ownAccessor(globalThis, "innerHeight", () => D("innerHeight"), undefined, false, true);
+  ownAccessor(globalThis, "outerWidth", () => D("innerWidth"), undefined, false, true);
+  ownAccessor(globalThis, "outerHeight", () => D("innerHeight"), undefined, false, true);
   ownAccessor(globalThis, "window", () => globalThis, undefined, true);
   ownAccessor(globalThis, "self", () => globalThis, (v) => { try { Object.defineProperty(globalThis, "self", { value: v, writable: true, enumerable: true, configurable: true }); } catch (e) {} }, false, true);
   ownAccessor(globalThis, "document", () => document, undefined, true);

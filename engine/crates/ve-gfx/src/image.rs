@@ -199,13 +199,14 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     let full = text.as_ref();
     let grads = parse_svg_gradients(full);
     let clips = parse_svg_clips(full);
+    let markers = parse_svg_markers(full);
     let by_id = parse_svg_ids(full);
     let mut rest = full;
     while let Some(i) = rest.find("<rect") {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        if !svg_in_defs(full, abs) {
+        if !svg_in_defs(full, abs) && !svg_hidden(tag) {
             paint_svg_rect(&mut img, tag, svg_group_offset(full, abs), &grads, &clips);
         }
         rest = &rest[i + tag_end + 1..];
@@ -215,7 +216,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        if !svg_in_defs(full, abs) {
+        if !svg_in_defs(full, abs) && !svg_hidden(tag) {
             paint_svg_circle(&mut img, tag, svg_group_offset(full, abs), &grads, &clips);
         }
         rest = &rest[i + tag_end + 1..];
@@ -225,7 +226,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        if !svg_in_defs(full, abs) {
+        if !svg_in_defs(full, abs) && !svg_hidden(tag) {
             paint_svg_ellipse(&mut img, tag, svg_group_offset(full, abs), &grads, &clips);
         }
         rest = &rest[i + tag_end + 1..];
@@ -244,12 +245,15 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             svg_attr(tag, "x2").unwrap_or(0.0),
             svg_attr(tag, "y2").unwrap_or(0.0),
         );
-        let (color, width) = svg_stroke(tag);
-        let color = with_opacity(color, world.opacity);
-        let width = width * ((world.sx.abs() + world.sy.abs()) * 0.5).max(0.0);
-        let dashes = svg_dash(tag);
-        let cap = svg_linecap(tag);
-        stroke_line(&mut img, x1, y1, x2, y2, color, width, &dashes, cap);
+        if !svg_hidden(tag) {
+            let (color, width) = svg_stroke(tag);
+            let color = with_opacity(color, world.opacity);
+            let width = width * ((world.sx.abs() + world.sy.abs()) * 0.5).max(0.0);
+            let dashes = svg_dash(tag);
+            let cap = svg_linecap(tag);
+            stroke_line(&mut img, x1, y1, x2, y2, color, width, &dashes, cap);
+            paint_svg_markers(&mut img, tag, x1, y1, x2, y2, &markers, &grads, &clips);
+        }
         rest = &rest[i + tag_end + 1..];
     }
     rest = text.as_ref();
@@ -569,6 +573,115 @@ fn parse_svg_ids(text: &str) -> HashMap<String, String> {
     out
 }
 
+fn svg_hidden(tag: &str) -> bool {
+    svg_attr_str(tag, "display").is_some_and(|s| s.eq_ignore_ascii_case("none"))
+        || svg_attr_str(tag, "visibility")
+            .is_some_and(|s| s.eq_ignore_ascii_case("hidden") || s.eq_ignore_ascii_case("collapse"))
+}
+
+fn svg_stroke_first(tag: &str) -> bool {
+    svg_attr_str(tag, "paint-order")
+        .unwrap_or("")
+        .split_whitespace()
+        .next()
+        .is_some_and(|s| s.eq_ignore_ascii_case("stroke"))
+}
+
+struct SvgMarker {
+    ref_x: f32,
+    ref_y: f32,
+    child: String,
+}
+
+fn parse_svg_markers(text: &str) -> HashMap<String, SvgMarker> {
+    let mut out = HashMap::new();
+    let mut rest = text;
+    while let Some(i) = rest.find("<marker") {
+        let after = &rest[i..];
+        let end = after
+            .find("</marker>")
+            .map(|e| e + 9)
+            .unwrap_or_else(|| after.find('>').map(|e| e + 1).unwrap_or(after.len()));
+        let block = &after[..end];
+        let tag_end = block.find('>').unwrap_or(block.len());
+        let tag = &block[..tag_end];
+        if let Some(id) = svg_attr_str(tag, "id") {
+            let inner = &block[tag_end.min(block.len())..];
+            let child = ["<rect", "<circle", "<ellipse", "<path"]
+                .iter()
+                .filter_map(|p| inner.find(p).map(|at| (at, *p)))
+                .min_by_key(|(at, _)| *at)
+                .map(|(at, _)| {
+                    let ce = inner[at..].find('>').unwrap_or(inner.len() - at);
+                    inner[at..at + ce].to_string()
+                })
+                .unwrap_or_default();
+            if !child.is_empty() {
+                out.insert(
+                    id.to_string(),
+                    SvgMarker {
+                        ref_x: svg_attr(tag, "refX").unwrap_or(0.0),
+                        ref_y: svg_attr(tag, "refY").unwrap_or(0.0),
+                        child,
+                    },
+                );
+            }
+        }
+        rest = &after[end..];
+    }
+    out
+}
+
+fn paint_one_marker(
+    img: &mut DecodedImage,
+    tag: &str,
+    attr: &str,
+    x: f32,
+    y: f32,
+    markers: &HashMap<String, SvgMarker>,
+    grads: &HashMap<String, SvgGrad>,
+    clips: &HashMap<String, SvgClip>,
+) {
+    let Some(href) = svg_attr_str(tag, attr) else {
+        return;
+    };
+    let Some(id) = parse_url_id(href) else {
+        return;
+    };
+    let Some(m) = markers.get(id) else {
+        return;
+    };
+    let xf = SvgXform {
+        ox: x - m.ref_x,
+        oy: y - m.ref_y,
+        sx: 1.0,
+        sy: 1.0,
+        opacity: 1.0,
+    };
+    if m.child.starts_with("<rect") {
+        paint_svg_rect(img, &m.child, xf, grads, clips);
+    } else if m.child.starts_with("<circle") {
+        paint_svg_circle(img, &m.child, xf, grads, clips);
+    } else if m.child.starts_with("<ellipse") {
+        paint_svg_ellipse(img, &m.child, xf, grads, clips);
+    }
+}
+
+fn paint_svg_markers(
+    img: &mut DecodedImage,
+    tag: &str,
+    x1: f32,
+    y1: f32,
+    x2: f32,
+    y2: f32,
+    markers: &HashMap<String, SvgMarker>,
+    grads: &HashMap<String, SvgGrad>,
+    clips: &HashMap<String, SvgClip>,
+) {
+    paint_one_marker(img, tag, "marker-start", x1, y1, markers, grads, clips);
+    paint_one_marker(img, tag, "marker-end", x2, y2, markers, grads, clips);
+}
+
 fn parse_offset(s: &str) -> f32 {
     let s = s.trim();
     if let Some(p) = s.strip_suffix('%') {
@@ -787,6 +900,10 @@ fn paint_svg_rect(
         let y = y0.max(0.0) as u32;
         let ww = w.max(0.0) as u32;
         let hh = h.max(0.0) as u32;
+        let stroke_first = svg_stroke_first(tag);
+        if stroke_first {
+            stroke_svg_rect_edges(img, tag, x0, y0, w, h, g.opacity);
+        }
         if !fill.eq_ignore_ascii_case("none") {
             for yy in y..(y + hh).min(img.height) {
                 for xx in x..(x + ww).min(img.width) {
@@ -802,7 +919,9 @@ fn paint_svg_rect(
                 }
             }
         }
-        stroke_svg_rect_edges(img, tag, x0, y0, w, h, g.opacity);
+        if !stroke_first {
+            stroke_svg_rect_edges(img, tag, x0, y0, w, h, g.opacity);
+        }
         return;
     }
     let rad = ang.to_radians();
@@ -928,14 +1047,20 @@ fn paint_svg_circle(
                 continue;
             }
             let idx = ((yy * img.width + xx) * 4) as usize;
-            if !fill.eq_ignore_ascii_case("none") && dist * dist <= r2 {
+            let in_fill = !fill.eq_ignore_ascii_case("none") && dist * dist <= r2;
+            let in_stroke = has_stroke && dist >= inner && dist <= outer;
+            let stroke_first = svg_stroke_first(tag);
+            if stroke_first && in_stroke {
+                img.rgba[idx..idx + 4].copy_from_slice(&stroke_color);
+            }
+            if in_fill {
                 let color = with_opacity(
                     paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
                     world.opacity,
                 );
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
             }
-            if has_stroke && dist >= inner && dist <= outer {
+            if !stroke_first && in_stroke {
                 img.rgba[idx..idx + 4].copy_from_slice(&stroke_color);
             }
         }
@@ -979,14 +1104,20 @@ fn paint_svg_ellipse(
                 continue;
             }
             let idx = ((yy * img.width + xx) * 4) as usize;
-            if !fill.eq_ignore_ascii_case("none") && n <= 1.0 {
+            let in_fill = !fill.eq_ignore_ascii_case("none") && n <= 1.0;
+            let in_stroke = has_stroke && (n - 1.0).abs() * scale <= pad;
+            let stroke_first = svg_stroke_first(tag);
+            if stroke_first && in_stroke {
+                img.rgba[idx..idx + 4].copy_from_slice(&stroke_color);
+            }
+            if in_fill {
                 let color = with_opacity(
                     paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5),
                     world.opacity,
                 );
                 img.rgba[idx..idx + 4].copy_from_slice(&color);
             }
-            if has_stroke && (n - 1.0).abs() * scale <= pad {
+            if !stroke_first && in_stroke {
                 img.rgba[idx..idx + 4].copy_from_slice(&stroke_color);
             }
         }
@@ -2461,5 +2592,44 @@ mod tests {
         .expect("svg ellipse stroke");
         assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(1, 4), Some([0, 255, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_paint_order_stroke_fill_keeps_edge_fill() {
+        let fill_first = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='1' y='1' width='6' height='6' fill='#0000ff' stroke='#ff0000' stroke-width='4'/></svg>",
+        )
+        .expect("svg default paint-order");
+        let stroke_first = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='1' y='1' width='6' height='6' fill='#0000ff' stroke='#ff0000' stroke-width='4' paint-order='stroke fill'/></svg>",
+        )
+        .expect("svg stroke fill paint-order");
+        assert_eq!(fill_first.pixel(1, 4), Some([255, 0, 0, 255]));
+        assert_eq!(stroke_first.pixel(1, 4), Some([0, 0, 255, 255]));
+    }
+
+    #[test]
+    fn decode_svg_marker_end_paints_at_line_end() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><marker id='m' markerWidth='4' markerHeight='4' refX='2' refY='2'>\
+              <rect x='0' y='0' width='4' height='4' fill='#00ff00'/></marker></defs>\
+              <line x1='0' y1='4' x2='6' y2='4' stroke='#ff0000' stroke-width='1' marker-end='url(#m)'/></svg>",
+        )
+        .expect("svg marker-end");
+        assert_eq!(img.pixel(6, 4), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(0, 4), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_visibility_hidden_skips_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000' visibility='hidden'/></svg>",
+        )
+        .expect("svg hidden");
+        assert_eq!(img.pixel(4, 4), Some([0, 0, 0, 0]));
     }
 }
