@@ -237,18 +237,87 @@ pub const PRELUDE: &str = r#"(() => {
       ov.setUint32(16, h4); ov.setUint32(20, h5); ov.setUint32(24, h6); ov.setUint32(28, h7);
       return out;
     };
+    const toBytes = (data) => {
+      if (data instanceof ArrayBuffer) return new Uint8Array(data);
+      if (data && data.buffer) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+      return new Uint8Array(0);
+    };
+    const sha1 = (bytes) => {
+      const bitLen = bytes.length * 8;
+      const pad = ((bytes.length + 9 + 63) & ~63);
+      const m = new Uint8Array(pad);
+      m.set(bytes);
+      m[bytes.length] = 0x80;
+      const view = new DataView(m.buffer);
+      view.setUint32(pad - 4, bitLen >>> 0);
+      let h0 = 0x67452301, h1 = 0xefcdab89, h2 = 0x98badcfe, h3 = 0x10325476, h4 = 0xc3d2e1f0;
+      const w = new Uint32Array(80);
+      for (let i = 0; i < pad; i += 64) {
+        for (let t = 0; t < 16; t++) w[t] = view.getUint32(i + t * 4);
+        for (let t = 16; t < 80; t++) w[t] = rotr(w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16], 31);
+        let a = h0, b = h1, c = h2, d = h3, e = h4;
+        for (let t = 0; t < 80; t++) {
+          const f = t < 20 ? ((b & c) | ((~b) & d)) + 0x5a827999
+            : t < 40 ? (b ^ c ^ d) + 0x6ed9eba1
+            : t < 60 ? ((b & c) | (b & d) | (c & d)) + 0x8f1bbcdc
+            : (b ^ c ^ d) + 0xca62c1d6;
+          const temp = (rotr(a, 27) + f + e + w[t]) >>> 0;
+          e = d; d = c; c = rotr(b, 2); b = a; a = temp;
+        }
+        h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0;
+        h3 = (h3 + d) >>> 0; h4 = (h4 + e) >>> 0;
+      }
+      const out = new Uint8Array(20);
+      const ov = new DataView(out.buffer);
+      ov.setUint32(0, h0); ov.setUint32(4, h1); ov.setUint32(8, h2);
+      ov.setUint32(12, h3); ov.setUint32(16, h4);
+      return out;
+    };
+    const hmacSha256 = (key, data) => {
+      let k = key;
+      if (k.length > 64) k = sha256(k);
+      const o = new Uint8Array(64);
+      const i = new Uint8Array(64);
+      o.fill(0x5c); i.fill(0x36);
+      for (let n = 0; n < k.length; n++) { o[n] ^= k[n]; i[n] ^= k[n]; }
+      const inner = new Uint8Array(64 + data.length);
+      inner.set(i); inner.set(data, 64);
+      const ih = sha256(inner);
+      const outer = new Uint8Array(96);
+      outer.set(o); outer.set(ih, 64);
+      return sha256(outer);
+    };
     cryptoObj.subtle = {
       digest(algo, data) {
         const name = String(algo && algo.name ? algo.name : algo).replace(/-/g, "").toUpperCase();
-        if (name !== "SHA256") {
+        const bytes = toBytes(data);
+        let digest;
+        if (name === "SHA256") digest = sha256(bytes);
+        else if (name === "SHA1") digest = sha1(bytes);
+        else return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+        return Promise.resolve(digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength));
+      },
+      importKey(format, keyData, algorithm, extractable, usages) {
+        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).toUpperCase();
+        if (format !== "raw" || name !== "HMAC") {
           return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
         }
-        let bytes;
-        if (data instanceof ArrayBuffer) bytes = new Uint8Array(data);
-        else if (data && data.buffer) bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-        else bytes = new Uint8Array(0);
-        const digest = sha256(bytes);
-        return Promise.resolve(digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength));
+        const hash = String(algorithm.hash && algorithm.hash.name ? algorithm.hash.name : algorithm.hash || "SHA-256");
+        return Promise.resolve({
+          type: "secret",
+          extractable: !!extractable,
+          algorithm: { name: "HMAC", hash: { name: hash } },
+          usages: usages || [],
+          _raw: toBytes(keyData),
+        });
+      },
+      sign(algorithm, key, data) {
+        const name = String(algorithm && algorithm.name ? algorithm.name : algorithm).toUpperCase();
+        if (name !== "HMAC" || !key || !key._raw) {
+          return Promise.reject(new DOMException("algorithm not supported", "NotSupportedError"));
+        }
+        const mac = hmacSha256(key._raw, toBytes(data));
+        return Promise.resolve(mac.buffer.slice(mac.byteOffset, mac.byteOffset + mac.byteLength));
       },
     };
   }
@@ -811,10 +880,10 @@ impl Page {
                     continue;
                 }
                 let id = self.id();
-                let fetched = self
-                    .loader
-                    .as_mut()
-                    .and_then(|l| l.load(&crate::NavigationRequest::get(resolved.clone(), id)).ok());
+                let fetched = self.loader.as_mut().and_then(|l| {
+                    l.load(&crate::NavigationRequest::get(resolved.clone(), id))
+                        .ok()
+                });
                 if let Some(doc) = fetched {
                     pending.push((resolved, String::from_utf8_lossy(&doc.bytes).into_owned()));
                 }

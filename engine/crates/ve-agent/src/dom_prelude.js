@@ -6557,8 +6557,6 @@
       }
       return makeAttr(String(name), "", null, ns);
     }
-    open() { return this; }
-    close() {}
     static parseHTMLUnsafe(html) {
       if (arguments.length < 1) throw new TypeError("Not enough arguments");
       const d = new Document();
@@ -6678,9 +6676,20 @@
     createRange() { return new Range(); }
     open() {
       if (arguments.length >= 3) return blankWindow(arguments[0]);
+      this._opened = true;
+      const body = this.body;
+      if (body) {
+        while (body.firstChild) body.removeChild(body.firstChild);
+      }
       return this;
     }
-    close() {}
+    close() {
+      if (!this._opened) return;
+      this._opened = false;
+      this.dispatchEvent(new Event("DOMContentLoaded"));
+      const view = this.defaultView;
+      if (view) view.dispatchEvent(new Event("load"));
+    }
   }
 
   class Storage {
@@ -9016,15 +9025,28 @@
   Range.END_TO_END = 2;
   Range.END_TO_START = 3;
 
-  const documentSelection = {
-    _ranges: [],
-    get rangeCount() { return this._ranges.length; },
-    get anchorNode() { return this._ranges[0] ? this._ranges[0].startContainer : null; },
-    get focusNode() { return this._ranges[0] ? this._ranges[0].endContainer : null; },
-    addRange(r) { if (r) this._ranges.push(r); },
-    removeAllRanges() { this._ranges = []; },
-    getRangeAt(i) { return this._ranges[i] || null; },
-    toString() { return this._ranges.map((r) => r.toString()).join(""); },
+  class Selection {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get rangeCount() { return (this._ranges || []).length; }
+    get isCollapsed() {
+      const ranges = this._ranges || [];
+      return ranges.length === 0 || !!(ranges[0] && ranges[0].collapsed);
+    }
+    get type() {
+      const ranges = this._ranges || [];
+      if (!ranges.length) return "None";
+      return ranges[0].collapsed ? "Caret" : "Range";
+    }
+    get anchorNode() { return this._ranges && this._ranges[0] ? this._ranges[0].startContainer : null; }
+    get focusNode() { return this._ranges && this._ranges[0] ? this._ranges[0].endContainer : null; }
+    get anchorOffset() { return this._ranges && this._ranges[0] ? this._ranges[0].startOffset : 0; }
+    get focusOffset() { return this._ranges && this._ranges[0] ? this._ranges[0].endOffset : 0; }
+    addRange(r) { if (r) this._ranges.push(r); }
+    removeAllRanges() { this._ranges = []; }
+    empty() { this.removeAllRanges(); }
+    removeRange(r) { this._ranges = this._ranges.filter((x) => x !== r); }
+    getRangeAt(i) { return (this._ranges || [])[i] || null; }
+    toString() { return (this._ranges || []).map((r) => r.toString()).join(""); }
     collapse(node, offset) {
       this._ranges = [];
       if (!node) return;
@@ -9032,15 +9054,273 @@
       r.setStart(node, offset || 0);
       r.collapse(true);
       this._ranges.push(r);
-    },
+    }
+    collapseToStart() {
+      if (!this._ranges || !this._ranges.length) throw new DOMException("The object is in an invalid state.", "InvalidStateError");
+      this._ranges[0].collapse(true);
+      this._ranges = [this._ranges[0]];
+    }
+    collapseToEnd() {
+      if (!this._ranges || !this._ranges.length) throw new DOMException("The object is in an invalid state.", "InvalidStateError");
+      this._ranges[0].collapse(false);
+      this._ranges = [this._ranges[0]];
+    }
     selectAllChildren(node) {
       this.removeAllRanges();
       if (!node) return;
       const r = new Range();
       r.selectNodeContents(node);
       this._ranges.push(r);
-    },
-  };
+    }
+    setBaseAndExtent(anchor, ao, focus, fo) {
+      if (arguments.length < 4) {
+        throw new TypeError("Failed to execute 'setBaseAndExtent' on 'Selection': 4 arguments required, but only " + arguments.length + " present.");
+      }
+      const r = new Range();
+      r.setStart(anchor, ao | 0);
+      r.setEnd(focus, fo | 0);
+      this._ranges = [r];
+    }
+    deleteFromDocument() {
+      if (this._ranges && this._ranges[0]) this._ranges[0].deleteContents();
+    }
+    containsNode(node, allowPartial) {
+      if (!node || !this._ranges || !this._ranges.length) return false;
+      const r = this._ranges[0];
+      if (r.intersectsNode(node)) return true;
+      if (allowPartial) return false;
+      return !!(r.startContainer.contains && r.startContainer.contains(node));
+    }
+  }
+  Object.defineProperty(Selection.prototype, Symbol.toStringTag, { value: "Selection", configurable: true });
+  const documentSelection = Object.create(Selection.prototype);
+  documentSelection._ranges = [];
+
+  class IDBRequest extends EventTarget {
+    constructor() {
+      super();
+      this.result = undefined;
+      this.error = null;
+      this.source = null;
+      this.transaction = null;
+      this.readyState = "pending";
+      this.onsuccess = null;
+      this.onerror = null;
+    }
+  }
+  Object.defineProperty(IDBRequest.prototype, Symbol.toStringTag, { value: "IDBRequest", configurable: true });
+  class IDBOpenDBRequest extends IDBRequest {}
+  Object.defineProperty(IDBOpenDBRequest.prototype, Symbol.toStringTag, { value: "IDBOpenDBRequest", configurable: true });
+  class IDBDatabase extends EventTarget {
+    constructor() {
+      super();
+      this.name = "";
+      this.version = 1;
+      this.onabort = null;
+      this.onclose = null;
+      this.onerror = null;
+      this.onversionchange = null;
+    }
+    close() { D("idbClear", this.name); }
+  }
+  Object.defineProperty(IDBDatabase.prototype, Symbol.toStringTag, { value: "IDBDatabase", configurable: true });
+  class IDBTransaction extends EventTarget {
+    constructor() {
+      super();
+      this.db = null;
+      this.error = null;
+      this.mode = "readwrite";
+      this.oncomplete = null;
+      this.onabort = null;
+      this.onerror = null;
+      this._aborted = false;
+      this._done = false;
+    }
+  }
+  Object.defineProperty(IDBTransaction.prototype, Symbol.toStringTag, { value: "IDBTransaction", configurable: true });
+  class IDBObjectStore {
+    constructor() { this.name = ""; this.keyPath = null; this.indexNames = []; }
+  }
+  Object.defineProperty(IDBObjectStore.prototype, Symbol.toStringTag, { value: "IDBObjectStore", configurable: true });
+  class IDBIndex {
+    constructor() { this.name = ""; this.keyPath = null; this.unique = false; this.objectStore = null; }
+  }
+  Object.defineProperty(IDBIndex.prototype, Symbol.toStringTag, { value: "IDBIndex", configurable: true });
+  class IDBCursorWithValue {
+    constructor() { this.key = null; this.value = undefined; this.primaryKey = null; this.direction = "next"; }
+  }
+  Object.defineProperty(IDBCursorWithValue.prototype, Symbol.toStringTag, { value: "IDBCursorWithValue", configurable: true });
+  class IDBKeyRange {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    static only(value) {
+      const r = Object.create(IDBKeyRange.prototype);
+      r.lower = value;
+      r.upper = value;
+      r.lowerOpen = false;
+      r.upperOpen = false;
+      return r;
+    }
+  }
+  Object.defineProperty(IDBKeyRange.prototype, Symbol.toStringTag, { value: "IDBKeyRange", configurable: true });
+  function idbRequestSuccess(r, value) {
+    r.result = value;
+    r.readyState = "done";
+    queueMicrotask(() => { r.dispatchEvent(new Event("success")); });
+    return r;
+  }
+  function idbRequestError(r, name) {
+    r.error = { name: name || "UnknownError" };
+    r.readyState = "done";
+    queueMicrotask(() => { r.dispatchEvent(new Event("error")); });
+    return r;
+  }
+  class IDBFactory {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    cmp(a, b) {
+      const sa = String(a), sb = String(b);
+      return sa < sb ? -1 : sa > sb ? 1 : 0;
+    }
+    deleteDatabase(name) {
+      D("idbClear", String(name));
+      return idbRequestSuccess(new IDBOpenDBRequest(), undefined);
+    }
+    open(name, version) {
+      const dbName = String(name);
+      const meta = D("idbOpen", dbName, version == null ? 0 : Number(version)) || { version: 1, upgrade: true, oldVersion: 0 };
+      const req = new IDBOpenDBRequest();
+      const storeApi = (storeName, txId) => {
+        const store = new IDBObjectStore();
+        store.name = storeName;
+        store.createIndex = function (indexName, keyPath, options) {
+          const kp = Array.isArray(keyPath) ? JSON.stringify(keyPath) : String(keyPath);
+          D("idbCreateIndex", dbName, String(storeName), String(indexName), kp, options && options.unique ? "1" : "0");
+          const idx = new IDBIndex();
+          idx.name = String(indexName);
+          idx.keyPath = keyPath;
+          idx.unique = !!(options && options.unique);
+          idx.objectStore = store;
+          idx.get = function (value) {
+            const raw = D("idbIndexGet", dbName, String(storeName), String(indexName), String(value));
+            const r = new IDBRequest();
+            r.source = idx;
+            return idbRequestSuccess(r, raw == null ? undefined : JSON.parse(raw));
+          };
+          return idx;
+        };
+        store.put = function (value, key) {
+          const res = D("idbPut", dbName, String(storeName), String(key), JSON.stringify(value), txId || 0);
+          const r = new IDBRequest();
+          r.source = store;
+          if (res && res.error) return idbRequestError(r, res.error);
+          return idbRequestSuccess(r, key);
+        };
+        store.get = function (key) {
+          const raw = D("idbGet", dbName, String(storeName), String(key), txId || 0);
+          const r = new IDBRequest();
+          r.source = store;
+          return idbRequestSuccess(r, raw == null ? undefined : JSON.parse(raw));
+        };
+        store.delete = function (key) {
+          D("idbDelete", dbName, String(storeName), String(key), txId || 0);
+          const r = new IDBRequest();
+          r.source = store;
+          return idbRequestSuccess(r, undefined);
+        };
+        store.index = function (indexName) {
+          const idx = new IDBIndex();
+          idx.name = String(indexName);
+          idx.objectStore = store;
+          idx.get = function (value) {
+            const raw = D("idbIndexGet", dbName, String(storeName), String(indexName), String(value));
+            const r = new IDBRequest();
+            r.source = idx;
+            return idbRequestSuccess(r, raw == null ? undefined : JSON.parse(raw));
+          };
+          return idx;
+        };
+        store.openCursor = function () {
+          let after = "";
+          const cursorReq = new IDBRequest();
+          cursorReq.source = store;
+          const advance = () => {
+            const raw = D("idbCursorNext", dbName, String(storeName), after);
+            if (raw == null) {
+              cursorReq.result = null;
+              cursorReq.readyState = "done";
+              cursorReq.dispatchEvent(new Event("success"));
+              return;
+            }
+            const row = JSON.parse(raw);
+            after = String(row.key);
+            const cursor = new IDBCursorWithValue();
+            cursor.key = row.key;
+            cursor.primaryKey = row.key;
+            cursor.value = JSON.parse(row.value);
+            cursor.continue = function () { queueMicrotask(advance); };
+            cursorReq.result = cursor;
+            cursorReq.readyState = "done";
+            cursorReq.dispatchEvent(new Event("success"));
+          };
+          queueMicrotask(advance);
+          return cursorReq;
+        };
+        return store;
+      };
+      const db = new IDBDatabase();
+      db.name = dbName;
+      db.version = meta.version;
+      Object.defineProperty(db, "objectStoreNames", {
+        configurable: true,
+        get() {
+          const raw = D("idbStoreNames", dbName);
+          const items = Array.isArray(raw) ? raw.map(String) : [];
+          const list = Object.create(DOMStringList.prototype);
+          list._items = items;
+          list._list = () => items;
+          return list;
+        },
+      });
+      db.createObjectStore = function (store) {
+        D("idbCreateStore", dbName, String(store));
+        return storeApi(store, 0);
+      };
+      db.transaction = function (store) {
+        const storeName = Array.isArray(store) ? store[0] : store;
+        const txId = Number(D("idbBegin", dbName, String(storeName))) || 0;
+        const tx = new IDBTransaction();
+        tx.db = db;
+        tx.abort = function () {
+          if (this._done) return;
+          this._aborted = true;
+          this._done = true;
+          D("idbAbort", txId);
+          queueMicrotask(() => { this.dispatchEvent(new Event("abort")); });
+        };
+        tx.objectStore = function () { return storeApi(storeName, txId); };
+        queueMicrotask(() => {
+          if (tx._aborted) return;
+          tx._done = true;
+          D("idbCommit", txId);
+          tx.dispatchEvent(new Event("complete"));
+        });
+        return tx;
+      };
+      queueMicrotask(() => {
+        req.result = db;
+        req.readyState = "done";
+        if (meta.upgrade) {
+          const up = new Event("upgradeneeded");
+          up.oldVersion = meta.oldVersion;
+          up.newVersion = meta.version;
+          req.dispatchEvent(up);
+        }
+        req.dispatchEvent(new Event("success"));
+      });
+      return req;
+    }
+  }
+  Object.defineProperty(IDBFactory.prototype, Symbol.toStringTag, { value: "IDBFactory", configurable: true });
+  const idbFactory = Object.create(IDBFactory.prototype);
 
   const document = wrap(D("documentNode"));
   browsingDocument = document;
@@ -9156,7 +9436,7 @@
     Image, Audio, Option, external: windowExternal,
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
-    MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Sanitizer,
+    MutationObserver, IntersectionObserver, ResizeObserver, PerformanceObserver, Range, Selection, Sanitizer,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport,
     TextDecoder, TextEncoder,
     createDataChannelPair() {
@@ -9331,129 +9611,16 @@
     postMessage(data, targetOrigin) { deliverMessage(globalThis, data, targetOrigin, globalThis); },
     AbortController,
     AbortSignal,
-    indexedDB: {
-      open(name, version) {
-        const dbName = String(name);
-        const meta = D("idbOpen", dbName, version == null ? 0 : Number(version)) || { version: 1, upgrade: true, oldVersion: 0 };
-        const req = { result: null, error: null, onsuccess: null, onupgradeneeded: null, onerror: null };
-        const storeApi = (storeName, txId) => ({
-          name: storeName,
-          createIndex(name, keyPath, options) {
-            const kp = Array.isArray(keyPath) ? JSON.stringify(keyPath) : String(keyPath);
-            D("idbCreateIndex", dbName, String(storeName), String(name), kp, options && options.unique ? "1" : "0");
-            return { name: String(name), keyPath, unique: !!(options && options.unique) };
-          },
-          put(value, key) {
-            const res = D("idbPut", dbName, String(storeName), String(key), JSON.stringify(value), txId || 0);
-            const r = { result: key, error: null, onsuccess: null, onerror: null };
-            if (res && res.error) {
-              r.error = { name: res.error };
-              queueMicrotask(() => { if (r.onerror) r.onerror({ target: r }); });
-            } else {
-              queueMicrotask(() => { if (r.onsuccess) r.onsuccess({ target: r }); });
-            }
-            return r;
-          },
-          get(key) {
-            const raw = D("idbGet", dbName, String(storeName), String(key), txId || 0);
-            const r = { result: raw == null ? undefined : JSON.parse(raw), onsuccess: null };
-            queueMicrotask(() => { if (r.onsuccess) r.onsuccess({ target: r }); });
-            return r;
-          },
-          delete(key) {
-            D("idbDelete", dbName, String(storeName), String(key), txId || 0);
-            const r = { result: undefined, onsuccess: null };
-            queueMicrotask(() => { if (r.onsuccess) r.onsuccess({ target: r }); });
-            return r;
-          },
-          index(name) {
-            const indexName = String(name);
-            return {
-              get(value) {
-                const raw = D("idbIndexGet", dbName, String(storeName), indexName, String(value));
-                const r = { result: raw == null ? undefined : JSON.parse(raw), onsuccess: null };
-                queueMicrotask(() => { if (r.onsuccess) r.onsuccess({ target: r }); });
-                return r;
-              },
-            };
-          },
-          openCursor() {
-            let after = "";
-            const req = { result: null, onsuccess: null };
-            const advance = () => {
-              const raw = D("idbCursorNext", dbName, String(storeName), after);
-              if (raw == null) {
-                req.result = null;
-                if (req.onsuccess) req.onsuccess({ target: req });
-                return;
-              }
-              const row = JSON.parse(raw);
-              after = String(row.key);
-              req.result = {
-                key: row.key,
-                value: JSON.parse(row.value),
-                continue() { queueMicrotask(advance); },
-              };
-              if (req.onsuccess) req.onsuccess({ target: req });
-            };
-            queueMicrotask(advance);
-            return req;
-          },
-        });
-        const db = {
-          name: dbName,
-          version: meta.version,
-          objectStoreNames: {
-            _list() {
-              const raw = D("idbStoreNames", dbName);
-              return Array.isArray(raw) ? raw.map(String) : [];
-            },
-            contains(n) { return this._list().includes(String(n)); },
-            get length() { return this._list().length; },
-          },
-          createObjectStore(store) { D("idbCreateStore", dbName, String(store)); return storeApi(store, 0); },
-          transaction(store) {
-            const storeName = Array.isArray(store) ? store[0] : store;
-            const txId = Number(D("idbBegin", dbName, String(storeName))) || 0;
-            const tx = {
-              error: null,
-              _aborted: false,
-              _done: false,
-              abort() {
-                if (this._done) return;
-                this._aborted = true;
-                this._done = true;
-                D("idbAbort", txId);
-                if (typeof this.onabort === "function") {
-                  queueMicrotask(() => this.onabort({ target: this }));
-                }
-              },
-              objectStore() { return storeApi(storeName, txId); },
-              oncomplete: null,
-              onabort: null,
-              onerror: null,
-            };
-            queueMicrotask(() => {
-              if (tx._aborted) return;
-              tx._done = true;
-              D("idbCommit", txId);
-              if (typeof tx.oncomplete === "function") tx.oncomplete({ target: tx });
-            });
-            return tx;
-          },
-          close() { D("idbClear", dbName); },
-        };
-        queueMicrotask(() => {
-          req.result = db;
-          if (meta.upgrade && req.onupgradeneeded) {
-            req.onupgradeneeded({ target: req, oldVersion: meta.oldVersion, newVersion: meta.version });
-          }
-          if (req.onsuccess) req.onsuccess({ target: req });
-        });
-        return req;
-      },
-      deleteDatabase(name) { D("idbClear", String(name)); return { onsuccess: null }; },
-    },
+    indexedDB: idbFactory,
+    IDBFactory,
+    IDBDatabase,
+    IDBTransaction,
+    IDBObjectStore,
+    IDBRequest,
+    IDBOpenDBRequest,
+    IDBIndex,
+    IDBCursorWithValue,
+    IDBKeyRange,
     Worker,
     SharedWorker,
     WebSocket: function WebSocket(url) {
@@ -9976,6 +10143,16 @@
   brandWrap(PerformanceEntry);
   brandWrap(HTMLSelectedContentElement);
   brandWrap(Range);
+  brandWrap(Selection);
+  brandWrap(IDBFactory);
+  brandWrap(IDBDatabase);
+  brandWrap(IDBTransaction);
+  brandWrap(IDBObjectStore);
+  brandWrap(IDBRequest);
+  brandWrap(IDBOpenDBRequest);
+  brandWrap(IDBIndex);
+  brandWrap(IDBCursorWithValue);
+  brandWrap(IDBKeyRange);
   brandWrap(OffscreenCanvas);
   {
     const chk = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "checked");

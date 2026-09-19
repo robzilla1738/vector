@@ -3748,6 +3748,154 @@ fn window_scroll_y_tracks_document_element_scroll_top() {
 }
 
 #[test]
+fn selection_set_base_and_extent_and_delete_from_document() {
+    let mut page = open(r#"<body><p id="p">hello world</p></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const p = document.getElementById("p");
+              const text = p.firstChild;
+              const sel = getSelection();
+              let ctorThrew = false;
+              try { new Selection(); } catch (e) { ctorThrew = e instanceof TypeError; }
+              sel.selectAllChildren(p);
+              const all = {
+                isSel: sel instanceof Selection,
+                tag: Object.prototype.toString.call(sel),
+                type: sel.type,
+                collapsed: sel.isCollapsed,
+                count: sel.rangeCount,
+                text: String(sel),
+                contains: sel.containsNode(p, true),
+                ctorThrew
+              };
+              sel.setBaseAndExtent(text, 0, text, 5);
+              const mid = { type: sel.type, collapsed: sel.isCollapsed, text: String(sel), ao: sel.anchorOffset, fo: sel.focusOffset };
+              sel.deleteFromDocument();
+              sel.removeAllRanges();
+              let emptyThrew = false;
+              try { sel.collapseToStart(); } catch (e) { emptyThrew = e.name === "InvalidStateError"; }
+              return { all, mid, left: p.textContent, emptyThrew, none: sel.type };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["all"]["isSel"], true, "{v}");
+    assert_eq!(v["all"]["tag"], "[object Selection]", "{v}");
+    assert_eq!(v["all"]["type"], "Range", "{v}");
+    assert_eq!(v["all"]["collapsed"], false, "{v}");
+    assert_eq!(v["all"]["count"], 1, "{v}");
+    assert_eq!(v["all"]["text"], "hello world", "{v}");
+    assert_eq!(v["all"]["contains"], true, "{v}");
+    assert_eq!(v["all"]["ctorThrew"], true, "{v}");
+    assert_eq!(v["mid"]["type"], "Range", "{v}");
+    assert_eq!(v["mid"]["text"], "hello", "{v}");
+    assert_eq!(v["mid"]["ao"], 0, "{v}");
+    assert_eq!(v["mid"]["fo"], 5, "{v}");
+    assert_eq!(v["left"], " world", "{v}");
+    assert_eq!(v["emptyThrew"], true, "{v}");
+    assert_eq!(v["none"], "None", "{v}");
+}
+
+#[test]
+fn document_open_clears_body_and_close_finishes() {
+    let mut page = open(r#"<body><p id="keep">keep</p></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              let loaded = 0;
+              let ready = 0;
+              addEventListener("load", function () { loaded++; });
+              document.addEventListener("DOMContentLoaded", function () { ready++; });
+              const before = !!document.getElementById("keep");
+              document.open();
+              const mid = document.body.childNodes.length;
+              document.write("<p id=n>new</p>");
+              document.close();
+              return {
+                before,
+                mid,
+                after: document.getElementById("n") && document.getElementById("n").textContent,
+                keepGone: !document.getElementById("keep"),
+                ready,
+                loaded
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"], true, "{v}");
+    assert_eq!(v["mid"], 0, "{v}");
+    assert_eq!(v["after"], "new", "{v}");
+    assert_eq!(v["keepGone"], true, "{v}");
+    assert_eq!(v["ready"], 1, "{v}");
+    assert_eq!(v["loaded"], 1, "{v}");
+}
+
+#[test]
+fn indexeddb_exposes_idb_classes() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__idbcls = "pending";
+          const req = indexedDB.open("cls");
+          req.onsuccess = function () {
+            const db = req.result;
+            const store = db.createObjectStore("kv");
+            const tx = db.transaction("kv");
+            window.__idbcls = {
+              factory: indexedDB instanceof IDBFactory,
+              openReq: req instanceof IDBOpenDBRequest && req instanceof IDBRequest,
+              db: db instanceof IDBDatabase,
+              store: store instanceof IDBObjectStore,
+              tx: tx instanceof IDBTransaction,
+              tag: Object.prototype.toString.call(db)
+            };
+          };
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__idbcls").unwrap();
+    assert_eq!(v["factory"], true, "{v}");
+    assert_eq!(v["openReq"], true, "{v}");
+    assert_eq!(v["db"], true, "{v}");
+    assert_eq!(v["store"], true, "{v}");
+    assert_eq!(v["tx"], true, "{v}");
+    assert_eq!(v["tag"], "[object IDBDatabase]", "{v}");
+}
+
+#[test]
+fn crypto_subtle_digests_sha1_and_signs_hmac() {
+    let mut page = open(r#"<body></body>"#);
+    page.evaluate(
+        r##"(function () {
+          window.__crypto2 = null;
+          const keyBytes = new TextEncoder().encode("key");
+          const msg = new TextEncoder().encode("The quick brown fox jumps over the lazy dog");
+          Promise.all([
+            crypto.subtle.digest("SHA-1", new Uint8Array([97, 98, 99])),
+            crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]).then(function (key) {
+              return crypto.subtle.sign("HMAC", key, msg);
+            })
+          ]).then(function (bufs) {
+            const hex = function (buf) {
+              return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+            };
+            window.__crypto2 = { sha1: hex(bufs[0]), hmac: hex(bufs[1]) };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(200).settled);
+    let v = page.evaluate("window.__crypto2").unwrap();
+    assert_eq!(v["sha1"], "a9993e364706816aba3e25717850c26c9cd0d89d", "{v}");
+    assert_eq!(
+        v["hmac"],
+        "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
+        "{v}"
+    );
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
