@@ -1055,6 +1055,25 @@ macro_rules! property_table {
                     "-webkit-box-orient" => Some(Self::BoxOrient),
                     "-webkit-tap-highlight-color" => Some(Self::TapHighlightColor),
                     "-webkit-transform" | "-moz-transform" => Some(Self::Transform),
+                    "-webkit-text-decoration" => Some(Self::TextDecorationLine),
+                    "-o-object-fit" => Some(Self::ObjectFit),
+                    "-webkit-user-select" | "-moz-user-select" | "-ms-user-select" => {
+                        Some(Self::UserSelect)
+                    }
+                    "-moz-column-gap" | "-webkit-column-gap" => Some(Self::ColumnGap),
+                    "-moz-appearance" | "-ms-appearance" => Some(Self::Appearance),
+                    "-webkit-margin-before" => Some(Self::MarginTop),
+                    "-webkit-margin-after" => Some(Self::MarginBottom),
+                    "-webkit-margin-start" => Some(Self::MarginLeft),
+                    "-webkit-margin-end" => Some(Self::MarginRight),
+                    "-webkit-backdrop-filter" => Some(Self::BackdropFilter),
+                    "-webkit-background-clip" => Some(Self::BackgroundClip),
+                    "-webkit-justify-content" => Some(Self::JustifyContent),
+                    "-webkit-forced-color-adjust" => Some(Self::ForcedColorAdjust),
+                    "-o-border-image" => Some(Self::BorderImage),
+                    "overscroll-behavior-x" | "overscroll-behavior-y" => {
+                        Some(Self::OverscrollBehavior)
+                    }
                     _ if lower.starts_with("--") && lower.len() > 2 => Some(Self::Custom(name.to_owned())),
                     _ => None,
                 }
@@ -3429,7 +3448,7 @@ pub fn expand_shorthand<'i>(
                     (P::TransitionTimingFunction, timing),
                 ])
             }
-            "columns" => {
+            "columns" | "-moz-columns" | "-webkit-columns" => {
                 let values = parse_components(input, 2)?;
                 if values.len() == 1 && values[0].is_css_wide() {
                     return Some(vec![
@@ -3695,6 +3714,22 @@ mod tests {
         assert_eq!(
             PropertyId::from_name("-webkit-transform"),
             Some(PropertyId::Transform)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-text-decoration"),
+            Some(PropertyId::TextDecorationLine)
+        );
+        assert_eq!(
+            PropertyId::from_name("-o-object-fit"),
+            Some(PropertyId::ObjectFit)
+        );
+        assert_eq!(
+            PropertyId::from_name("-webkit-user-select"),
+            Some(PropertyId::UserSelect)
+        );
+        assert_eq!(
+            PropertyId::from_name("-moz-column-gap"),
+            Some(PropertyId::ColumnGap)
         );
         assert_eq!(
             PropertyId::from_name("overflow-x"),
