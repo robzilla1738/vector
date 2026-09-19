@@ -248,7 +248,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         if !svg_hidden(tag) {
             let (color, width) = svg_stroke(tag);
             let color = with_opacity(color, world.opacity);
-            let width = width * ((world.sx.abs() + world.sy.abs()) * 0.5).max(0.0);
+            let width = width * svg_stroke_scale(tag, world.sx, world.sy);
             let dashes = svg_dash(tag);
             let cap = svg_linecap(tag);
             stroke_line(
@@ -281,7 +281,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let world = svg_group_offset(full, abs).then_tag(tag);
         let closed = tag.starts_with("<polygon");
         let (color, width) = svg_stroke(tag);
-        let width = width * ((world.sx.abs() + world.sy.abs()) * 0.5).max(0.0);
+        let width = width * svg_stroke_scale(tag, world.sx, world.sy);
         let mut pts = Vec::new();
         if let Some(raw) = svg_attr_str(tag, "points") {
             for pair in raw.split(|c: char| c == ',' || c.is_whitespace()) {
@@ -339,7 +339,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag = &rest[i..i + tag_end];
         let world = svg_group_offset(full, abs).then_tag(tag);
         let (color, width) = svg_stroke(tag);
-        let width = width * ((world.sx.abs() + world.sy.abs()) * 0.5).max(0.0);
+        let width = width * svg_stroke_scale(tag, world.sx, world.sy);
         if let Some(d) = svg_attr_str(tag, "d") {
             let contours: Vec<Vec<(f32, f32)>> = svg_path_subpaths(d)
                 .into_iter()
@@ -1467,6 +1467,16 @@ fn svg_dash(tag: &str) -> Vec<f32> {
 
 fn svg_dashoffset(tag: &str) -> f32 {
     svg_attr(tag, "stroke-dashoffset").unwrap_or(0.0)
+}
+
+fn svg_stroke_scale(tag: &str, sx: f32, sy: f32) -> f32 {
+    if svg_attr_str(tag, "vector-effect")
+        .is_some_and(|s| s.eq_ignore_ascii_case("non-scaling-stroke"))
+    {
+        1.0
+    } else {
+        ((sx.abs() + sy.abs()) * 0.5).max(0.0)
+    }
 }
 
 fn dash_on(dashes: &[f32], dist: f32, offset: f32) -> bool {
@@ -2677,6 +2687,25 @@ mod tests {
         .expect("svg dashoffset");
         assert_eq!(img.pixel(0, 4), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(3, 4), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_vector_effect_keeps_stroke_unscaled() {
+        let scaled = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <g transform='scale(2)'>\
+              <line x1='0' y1='1' x2='4' y2='1' stroke='#ff0000' stroke-width='1' stroke-linecap='butt'/></g></svg>",
+        )
+        .expect("svg scaled stroke");
+        let unscaled = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <g transform='scale(2)'>\
+              <line x1='0' y1='1' x2='4' y2='1' stroke='#ff0000' stroke-width='1' stroke-linecap='butt' vector-effect='non-scaling-stroke'/></g></svg>",
+        )
+        .expect("svg non-scaling stroke");
+        assert_eq!(scaled.pixel(2, 1), Some([255, 0, 0, 255]));
+        assert_eq!(unscaled.pixel(2, 2), Some([255, 0, 0, 255]));
+        assert_eq!(unscaled.pixel(2, 1), Some([0, 0, 0, 0]));
     }
 
     #[test]
