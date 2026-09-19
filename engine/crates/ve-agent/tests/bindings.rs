@@ -5415,6 +5415,40 @@ fn file_pickers_and_wake_lock_deny() {
 }
 
 #[test]
+fn webgl_tex_image_draw_arrays_blits() {
+    let mut page = open("<title>glt</title>");
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              document.body.appendChild(c);
+              const gl = c.getContext("webgl");
+              const im = new ImageData(4, 4);
+              for (let i = 0; i < im.data.length; i += 4) {
+                im.data[i] = 0;
+                im.data[i + 1] = 255;
+                im.data[i + 2] = 0;
+                im.data[i + 3] = 255;
+              }
+              const tex = gl.createTexture();
+              gl.bindTexture(3553, tex);
+              gl.texImage2D(3553, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+              gl.drawArrays(4, 0, 6);
+              const pix = new Uint8Array(4);
+              gl.readPixels(1, 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pix);
+              return { r: pix[0], g: pix[1], b: pix[2], a: pix[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["r"], 0, "{v}");
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+    assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,

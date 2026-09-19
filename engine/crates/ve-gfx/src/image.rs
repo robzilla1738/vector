@@ -205,7 +205,8 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) {
-            paint_svg_rect(&mut img, tag, 0.0, 0.0, &grads);
+            let (gx, gy) = svg_group_offset(full, abs);
+            paint_svg_rect(&mut img, tag, gx, gy, &grads);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -215,7 +216,8 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) {
-            paint_svg_circle(&mut img, tag, 0.0, 0.0, &grads);
+            let (gx, gy) = svg_group_offset(full, abs);
+            paint_svg_circle(&mut img, tag, gx, gy, &grads);
         }
         rest = &rest[i + tag_end + 1..];
     }
@@ -225,18 +227,21 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         if !svg_in_defs(full, abs) {
-            paint_svg_ellipse(&mut img, tag, 0.0, 0.0, &grads);
+            let (gx, gy) = svg_group_offset(full, abs);
+            paint_svg_ellipse(&mut img, tag, gx, gy, &grads);
         }
         rest = &rest[i + tag_end + 1..];
     }
     rest = text.as_ref();
     while let Some(i) = find_svg_tag(rest, "line") {
+        let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        let x1 = svg_attr(tag, "x1").unwrap_or(0.0);
-        let y1 = svg_attr(tag, "y1").unwrap_or(0.0);
-        let x2 = svg_attr(tag, "x2").unwrap_or(0.0);
-        let y2 = svg_attr(tag, "y2").unwrap_or(0.0);
+        let (gx, gy) = svg_group_offset(full, abs);
+        let x1 = svg_attr(tag, "x1").unwrap_or(0.0) + gx;
+        let y1 = svg_attr(tag, "y1").unwrap_or(0.0) + gy;
+        let x2 = svg_attr(tag, "x2").unwrap_or(0.0) + gx;
+        let y2 = svg_attr(tag, "y2").unwrap_or(0.0) + gy;
         let (color, width) = svg_stroke(tag);
         stroke_line(&mut img, x1, y1, x2, y2, color, width);
         rest = &rest[i + tag_end + 1..];
@@ -249,8 +254,10 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             (None, Some(b)) => b,
             (None, None) => break,
         };
+        let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
+        let (gx, gy) = svg_group_offset(full, abs);
         let closed = tag.starts_with("<polygon");
         let (color, width) = svg_stroke(tag);
         let mut pts = Vec::new();
@@ -266,7 +273,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         }
         let mut coords: Vec<(f32, f32)> = pts
             .chunks(2)
-            .filter_map(|c| (c.len() == 2).then_some((c[0], c[1])))
+            .filter_map(|c| (c.len() == 2).then_some((c[0] + gx, c[1] + gy)))
             .collect();
         if closed && coords.len() >= 2 {
             let first = coords[0];
@@ -285,11 +292,16 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     }
     rest = text.as_ref();
     while let Some(i) = rest.find("<path") {
+        let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
+        let (gx, gy) = svg_group_offset(full, abs);
         let (color, width) = svg_stroke(tag);
         if let Some(d) = svg_attr_str(tag, "d") {
-            let mut pts = svg_path_points(d);
+            let mut pts: Vec<(f32, f32)> = svg_path_points(d)
+                .into_iter()
+                .map(|(x, y)| (x + gx, y + gy))
+                .collect();
             let closed = d.bytes().any(|b| b == b'Z' || b == b'z');
             if closed && pts.len() >= 2 && pts.first() != pts.last() {
                 let first = pts[0];
@@ -311,6 +323,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     }
     rest = full;
     while let Some(i) = rest.find("<use") {
+        let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         let href = svg_attr_str(tag, "href")
@@ -318,8 +331,9 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             .unwrap_or("");
         let id = href.strip_prefix('#').unwrap_or(href);
         if let Some(src) = by_id.get(id) {
-            let ox = svg_attr(tag, "x").unwrap_or(0.0);
-            let oy = svg_attr(tag, "y").unwrap_or(0.0);
+            let (gx, gy) = svg_group_offset(full, abs);
+            let ox = svg_attr(tag, "x").unwrap_or(0.0) + gx;
+            let oy = svg_attr(tag, "y").unwrap_or(0.0) + gy;
             if src.starts_with("<rect") {
                 paint_svg_rect(&mut img, src, ox, oy, &grads);
             } else if src.starts_with("<circle") {
@@ -379,6 +393,40 @@ fn svg_in_defs(full: &str, pos: usize) -> bool {
         (Some(_), None) => true,
         _ => false,
     }
+}
+
+fn svg_group_offset(full: &str, pos: usize) -> (f32, f32) {
+    let head = &full[..pos.min(full.len())];
+    let mut events: Vec<(usize, bool, String)> = Vec::new();
+    let mut rest = head;
+    let mut base = 0usize;
+    while let Some(i) = find_svg_tag(rest, "g") {
+        let abs = base + i;
+        let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
+        events.push((abs, true, rest[i..i + tag_end].to_string()));
+        let skip = i + tag_end + 1;
+        rest = &rest[skip..];
+        base += skip;
+    }
+    rest = head;
+    base = 0;
+    while let Some(i) = rest.find("</g") {
+        events.push((base + i, false, String::new()));
+        rest = &rest[i + 3..];
+        base += i + 3;
+    }
+    events.sort_by_key(|e| e.0);
+    let mut stack = vec![(0.0_f32, 0.0_f32)];
+    for (_, open, tag) in events {
+        if open {
+            let (tx, ty) = svg_translate(&tag);
+            let (px, py) = *stack.last().unwrap_or(&(0.0, 0.0));
+            stack.push((px + tx, py + ty));
+        } else if stack.len() > 1 {
+            stack.pop();
+        }
+    }
+    *stack.last().unwrap_or(&(0.0, 0.0))
 }
 
 fn parse_url_id(fill: &str) -> Option<&str> {
@@ -764,20 +812,32 @@ fn svg_translate(tag: &str) -> (f32, f32) {
     let Some(raw) = svg_attr_str(tag, "transform") else {
         return (0.0, 0.0);
     };
-    let trimmed = raw.trim();
-    let Some(rest) = trimmed.strip_prefix("translate") else {
-        return (0.0, 0.0);
-    };
-    let rest = rest
-        .trim()
-        .trim_start_matches('(')
-        .trim_end_matches(')')
-        .trim();
-    let mut nums = rest
-        .split(|c: char| c == ',' || c.is_whitespace())
-        .filter(|s| !s.is_empty());
-    let x = nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
-    let y = nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+    let mut x = 0.0;
+    let mut y = 0.0;
+    if let Some(idx) = raw.find("translate") {
+        let rest = raw[idx + 9..].trim();
+        let rest = rest.trim_start_matches('(');
+        let rest = rest.split(')').next().unwrap_or("").trim();
+        let mut nums = rest
+            .split(|c: char| c == ',' || c.is_whitespace())
+            .filter(|s| !s.is_empty());
+        x += nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+        y += nums.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+    }
+    if let Some(idx) = raw.find("matrix") {
+        let rest = raw[idx + 6..].trim();
+        let rest = rest.trim_start_matches('(');
+        let rest = rest.split(')').next().unwrap_or("").trim();
+        let nums: Vec<f32> = rest
+            .split(|c: char| c == ',' || c.is_whitespace())
+            .filter(|s| !s.is_empty())
+            .filter_map(|s| s.parse().ok())
+            .collect();
+        if nums.len() >= 6 {
+            x += nums[4];
+            y += nums[5];
+        }
+    }
     (x, y)
 }
 
@@ -1617,5 +1677,27 @@ mod tests {
         .expect("svg rotate");
         assert_eq!(img.pixel(1, 1), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(6, 6), Some([0, 0, 255, 255]));
+    }
+
+    #[test]
+    fn decode_svg_group_translate_moves_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <g transform='translate(4, 4)'><rect x='0' y='0' width='3' height='3' fill='#ff0000'/></g></svg>",
+        )
+        .expect("svg group");
+        assert_eq!(img.pixel(1, 1), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(5, 5), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_matrix_translates_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='0' y='0' width='3' height='3' fill='#00ff00' transform='matrix(1,0,0,1,4,4)'/></svg>",
+        )
+        .expect("svg matrix");
+        assert_eq!(img.pixel(1, 1), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(5, 5), Some([0, 255, 0, 255]));
     }
 }

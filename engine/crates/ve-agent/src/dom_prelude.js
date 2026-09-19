@@ -8933,6 +8933,33 @@
     createBuffer() { return { _buf: true }; }
     bindBuffer() {}
     bufferData() {}
+    createTexture() { return { _tex: true, _w: 0, _h: 0, _b64: "" }; }
+    bindTexture(_target, tex) { if (tex) this._tex = tex; }
+    texImage2D() {
+      const last = arguments[arguments.length - 1];
+      const tex = this._tex || (this._tex = { _tex: true, _w: 0, _h: 0, _b64: "" });
+      if (last && last.data && last.width) {
+        let s = "";
+        for (let i = 0; i < last.data.length; i++) s += String.fromCharCode(last.data[i]);
+        tex._w = last.width;
+        tex._h = last.height;
+        tex._b64 = btoa(s);
+      } else if (last instanceof Uint8Array || last instanceof Uint8ClampedArray) {
+        const w = Number(arguments[3]) || 0;
+        const h = Number(arguments[4]) || 0;
+        let s = "";
+        for (let i = 0; i < last.length; i++) s += String.fromCharCode(last[i]);
+        tex._w = w;
+        tex._h = h;
+        tex._b64 = btoa(s);
+      }
+    }
+    drawArrays() {
+      const tex = this._tex;
+      const c = this.canvas;
+      if (!tex || !tex._b64 || !c || c.__h == null) return;
+      D("canvasPutImageData", c.__h, tex._w, tex._h, tex._b64, 0, 0);
+    }
     createShader() { return { _sh: true, _ok: true }; }
     shaderSource() {}
     compileShader() {}
