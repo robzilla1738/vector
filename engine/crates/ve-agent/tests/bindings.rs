@@ -2760,6 +2760,38 @@ fn canvas_filter_url_saturate_zero_greys_red() {
 }
 
 #[test]
+fn canvas_filter_url_saturate_zero_greys_fill_path() {
+    let mut page = open(
+        r#"<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+  <filter id="f"><feColorMatrix type="saturate" values="0"/></filter>
+</svg>
+</body>"#,
+    );
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 8;
+              c.height = 8;
+              var ctx = c.getContext("2d");
+              ctx.fillStyle = "#ff0000";
+              ctx.filter = "url(#f)";
+              ctx.beginPath();
+              ctx.rect(1, 1, 6, 6);
+              ctx.fill();
+              var p = ctx.getImageData(4, 4, 1, 1).data;
+              return { r: p[0], g: p[1], b: p[2], a: p[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], 255, "{v}");
+    assert_eq!(v["r"], v["g"], "{v}");
+    assert_eq!(v["g"], v["b"], "{v}");
+    assert!(v["r"].as_u64().unwrap_or(0) > 20 && v["r"].as_u64().unwrap_or(0) < 200, "{v}");
+}
+
+#[test]
 fn canvas_fill_text_paints_distinct_glyphs() {
     let mut page = open(r#"<body></body>"#);
     let v = page
@@ -2866,6 +2898,48 @@ fn canvas_fill_text_paints_shadow_offset() {
     assert!(
         v["sha"].as_u64().unwrap_or(0) > 100,
         "shadow I coverage: {v}"
+    );
+}
+
+#[test]
+fn canvas_stroke_text_paints_shadow_offset() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var c = document.createElement("canvas");
+              c.width = 24;
+              c.height = 16;
+              var ctx = c.getContext("2d");
+              ctx.font = "16px sans-serif";
+              ctx.lineWidth = 2;
+              ctx.shadowOffsetX = 8;
+              ctx.shadowOffsetY = 0;
+              ctx.shadowColor = "#0000ff";
+              ctx.strokeStyle = "#ff0000";
+              ctx.strokeText("I", 1, 14);
+              var src = ctx.getImageData(0, 0, 8, 16).data;
+              var sh = ctx.getImageData(8, 0, 8, 16).data;
+              var sr = 0, sa = 0, sb = 0, sha = 0;
+              for (var i = 0; i < src.length; i += 4) {
+                if (src[i + 3] > 20) { sr = Math.max(sr, src[i]); sa = Math.max(sa, src[i + 3]); }
+              }
+              for (var j = 0; j < sh.length; j += 4) {
+                if (sh[j + 3] > 20) { sb = Math.max(sb, sh[j + 2]); sha = Math.max(sha, sh[j + 3]); }
+              }
+              return { sr: sr, sa: sa, sb: sb, sha: sha };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["sr"], 255, "{v}");
+    assert!(
+        v["sa"].as_u64().unwrap_or(0) > 20,
+        "source stroke I coverage: {v}"
+    );
+    assert_eq!(v["sb"], 255, "{v}");
+    assert!(
+        v["sha"].as_u64().unwrap_or(0) > 20,
+        "shadow stroke I coverage: {v}"
     );
 }
 
@@ -6802,6 +6876,33 @@ fn webgl_clear_stencil_sets_ref_for_equal() {
     assert_eq!(v["bit"], 1024, "{v}");
     assert_eq!(v["g"], 255, "{v}");
     assert_eq!(v["a"], 255, "{v}");
+}
+
+#[test]
+fn webgl_clear_depth_zero_rejects_default_z() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              gl.depthFunc(gl.LESS);
+              gl.clearDepth(0);
+              gl.clear(gl.DEPTH_BUFFER_BIT);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { g: px[1], a: px[3], bit: gl.DEPTH_BUFFER_BIT };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["bit"], 256, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["a"], 0, "{v}");
 }
 
 #[test]

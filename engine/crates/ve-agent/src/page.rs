@@ -3384,6 +3384,7 @@ impl Page {
         color: &str,
         filter: &str,
     ) -> u64 {
+        let url_filter = parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
         let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
@@ -3394,6 +3395,20 @@ impl Page {
         if blur > 0 {
             if let Some((x, y, w, h)) = canvas_path_bounds(rects, polys) {
                 c.blur_rect(x, y, w, h, blur);
+            }
+        }
+        if let Some((x, y, w, h)) = canvas_path_bounds(rects, polys) {
+            match url_filter {
+                Some(CanvasSvgFilter::Blur(radius)) if radius > 0 => {
+                    c.blur_rect(x, y, w, h, radius);
+                }
+                Some(CanvasSvgFilter::Saturate(amount)) => {
+                    c.color_filter_rect(x, y, w, h, CanvasColorFilter::Saturate(amount));
+                }
+                Some(CanvasSvgFilter::HueRotate(deg)) => {
+                    c.color_filter_rect(x, y, w, h, CanvasColorFilter::HueRotate(deg));
+                }
+                _ => {}
             }
         }
         c.ops
@@ -3413,6 +3428,7 @@ impl Page {
         miter_limit: f32,
         filter: &str,
     ) -> u64 {
+        let url_filter = parse_canvas_filter_url(filter).and_then(|fid| self.canvas_filter_from_svg(fid));
         let style = self.resolve_canvas_style(color);
         let c = self
             .canvases
@@ -3441,6 +3457,25 @@ impl Page {
                     (h + 2 * pad).max(1),
                     blur,
                 );
+            }
+        }
+        if let Some((x, y, w, h)) = canvas_path_bounds(rects, polys) {
+            let pad = width.max(1) / 2 + 1;
+            let x = x - pad;
+            let y = y - pad;
+            let w = (w + 2 * pad).max(1);
+            let h = (h + 2 * pad).max(1);
+            match url_filter {
+                Some(CanvasSvgFilter::Blur(radius)) if radius > 0 => {
+                    c.blur_rect(x, y, w, h, radius);
+                }
+                Some(CanvasSvgFilter::Saturate(amount)) => {
+                    c.color_filter_rect(x, y, w, h, CanvasColorFilter::Saturate(amount));
+                }
+                Some(CanvasSvgFilter::HueRotate(deg)) => {
+                    c.color_filter_rect(x, y, w, h, CanvasColorFilter::HueRotate(deg));
+                }
+                _ => {}
             }
         }
         c.ops
@@ -3605,8 +3640,16 @@ impl Page {
         color: &str,
         size: f32,
         width: i32,
+        shadow_x: i32,
+        shadow_y: i32,
+        shadow: &str,
     ) -> u64 {
         let color = parse_css_color(color);
+        let shadow_color = if shadow_x != 0 || shadow_y != 0 {
+            Some(parse_css_color(shadow))
+        } else {
+            None
+        };
         let size = if size > 0.0 { size } else { 10.0 };
         let radius = width.max(1);
         let blits = {
@@ -3644,11 +3687,19 @@ impl Page {
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
         if let Some(blits) = blits.filter(|b| !b.is_empty()) {
+            if let Some(sc) = shadow_color {
+                for (dx, dy, w, h, mask) in &blits {
+                    c.blit_glyph_mask(dx + shadow_x, dy + shadow_y, *w, *h, mask, sc, false);
+                }
+            }
             for (dx, dy, w, h, mask) in blits {
                 c.blit_glyph_mask(dx, dy, w, h, &mask, color, false);
             }
             c.ops += 1;
         } else {
+            if let Some(sc) = shadow_color {
+                c.stroke_text(text, x + shadow_x, y + shadow_y, sc, radius);
+            }
             c.stroke_text(text, x, y, color, radius);
         }
         c.ops

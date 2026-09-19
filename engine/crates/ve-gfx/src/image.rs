@@ -757,6 +757,8 @@ struct SvgGrad {
     spread: SvgSpread,
     tx: f32,
     ty: f32,
+    sx: f32,
+    sy: f32,
     stops: Vec<(f32, [u8; 4])>,
 }
 
@@ -791,6 +793,39 @@ fn svg_gradient_translate(tag: &str) -> (f32, f32) {
         }
     }
     (x, y)
+}
+
+fn svg_gradient_scale(tag: &str) -> (f32, f32) {
+    let Some(raw) = svg_attr_str(tag, "gradientTransform") else {
+        return (1.0, 1.0);
+    };
+    let mut sx = 1.0;
+    let mut sy = 1.0;
+    if let Some(idx) = raw.find("scale") {
+        let rest = raw[idx + 5..].trim();
+        let rest = rest.trim_start_matches('(');
+        let rest = rest.split(')').next().unwrap_or("").trim();
+        let mut nums = rest
+            .split(|c: char| c == ',' || c.is_whitespace())
+            .filter(|s| !s.is_empty());
+        sx = nums.next().and_then(|s| s.parse().ok()).unwrap_or(1.0);
+        sy = nums.next().and_then(|s| s.parse().ok()).unwrap_or(sx);
+    }
+    if let Some(idx) = raw.find("matrix") {
+        let rest = raw[idx + 6..].trim();
+        let rest = rest.trim_start_matches('(');
+        let rest = rest.split(')').next().unwrap_or("").trim();
+        let nums: Vec<f32> = rest
+            .split(|c: char| c == ',' || c.is_whitespace())
+            .filter(|s| !s.is_empty())
+            .filter_map(|s| s.parse().ok())
+            .collect();
+        if nums.len() >= 6 {
+            sx *= nums[0];
+            sy *= nums[3];
+        }
+    }
+    (sx, sy)
 }
 
 fn svg_spread(tag: &str) -> SvgSpread {
@@ -2461,6 +2496,8 @@ fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
                         spread: svg_spread(tag),
                         tx: svg_gradient_translate(tag).0,
                         ty: svg_gradient_translate(tag).1,
+                        sx: svg_gradient_scale(tag).0,
+                        sy: svg_gradient_scale(tag).1,
                         stops: parse_gradient_stops(block),
                     },
                 );
@@ -2514,8 +2551,8 @@ fn sample_grad(g: &SvgGrad, x: f32, y: f32, tag: &str) -> [u8; 4] {
     } else {
         (x, y)
     };
-    let x = x - g.tx;
-    let y = y - g.ty;
+    let x = (x - g.tx) / g.sx.abs().max(0.001);
+    let y = (y - g.ty) / g.sy.abs().max(0.001);
     let raw = if g.r > 0.0 {
         let dx = x - g.cx;
         let dy = y - g.cy;
@@ -4840,6 +4877,23 @@ mod tests {
         assert!(
             right[0] > right[2],
             "translate(4,0) keeps the right edge redder than blue: {right:?}"
+        );
+    }
+
+    #[test]
+    fn decode_svg_linear_gradient_scale_stretches_start() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='8' y2='0' gradientTransform='scale(2,1)'>\
+              <stop offset='0' stop-color='#ff0000'/><stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg gradientTransform scale");
+        let right = img.pixel(7, 4).unwrap_or([0, 0, 0, 0]);
+        assert!(
+            right[0] > right[2],
+            "scale(2,1) keeps the right edge redder than blue: {right:?}"
         );
     }
 

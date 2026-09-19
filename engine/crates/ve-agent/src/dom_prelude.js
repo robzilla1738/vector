@@ -4972,7 +4972,7 @@
     strokeText(t, x, y) {
       const o = this._textOrigin(t, x, y);
       const p = this._mapPoint(o.x, o.y);
-      D("canvasStrokeText", this.__h, o.text, p[0], p[1], String(this.strokeStyle || this.fillStyle), o.size, Number(this._lineWidth) || 1);
+      D("canvasStrokeText", this.__h, o.text, p[0], p[1], String(this.strokeStyle || this.fillStyle), o.size, Number(this._lineWidth) || 1, Number(this._shadowOffsetX) || 0, Number(this._shadowOffsetY) || 0, String(this._shadowColor || "rgba(0, 0, 0, 0)"));
     }
     measureText(t) {
       if (arguments.length < 1) {
@@ -9552,6 +9552,7 @@
       this._sampleInv = false;
       this._depthNear = 0;
       this._depthFar = 1;
+      this._depthClear = 1;
       this._stencilOn = false;
       this._stencil = null;
       this._stencilFunc = 519;
@@ -9686,6 +9687,10 @@
     depthRange(n, f) {
       this._depthNear = Number(n) || 0;
       this._depthFar = f == null ? 1 : Number(f);
+    }
+    clearDepth(value) {
+      const v = Number(value);
+      this._depthClear = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
     }
     cullFace(mode) {
       this._cullFace = Number(mode) || this.BACK;
@@ -9931,7 +9936,7 @@
     }
     _resetDepth() {
       this._ensureDepth();
-      this._depth.fill(1);
+      this._depth.fill(this._depthClear == null ? 1 : this._depthClear);
     }
     _ensureStencil() {
       const n = (this.canvas.width || 0) * (this.canvas.height || 0);
