@@ -529,13 +529,18 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
         let after = &rest[i + tag_end + 1..];
-        let content = after.split("</text>").next().unwrap_or("");
+        let raw = after.split("</text>").next().unwrap_or("");
+        let content = svg_text_inner(raw);
         let world = svg_group_offset(full, abs).then_tag(tag);
         let color = with_opacity(parse_svg_color(svg_fill(tag)), world.opacity);
-        let (mut x, y) = world.map(
-            svg_attr(tag, "x").unwrap_or(0.0),
-            svg_attr(tag, "y").unwrap_or(0.0),
-        );
+        let (mut x, y) = if let Some((px, py)) = svg_text_path_start(raw, &by_id) {
+            world.map(px, py)
+        } else {
+            world.map(
+                svg_attr(tag, "x").unwrap_or(0.0),
+                svg_attr(tag, "y").unwrap_or(0.0),
+            )
+        };
         let mut text_w = 0.0_f32;
         for ch in content.chars() {
             text_w += if ch == ' ' { 4.0 } else { 6.0 };
@@ -545,7 +550,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             "end" => x -= text_w,
             _ => {}
         }
-        paint_svg_text(&mut img, content, x, y, color);
+        paint_svg_text(&mut img, &content, x, y, color);
         if svg_attr_str(tag, "text-decoration")
             .unwrap_or("")
             .to_ascii_lowercase()
@@ -772,6 +777,8 @@ fn parse_svg_patterns(text: &str) -> HashMap<String, SvgPattern> {
 enum SvgFilterKind {
     Blur(f32),
     Offset { dx: f32, dy: f32 },
+    Flood { color: [u8; 4] },
+    Saturate(f32),
 }
 
 fn parse_svg_filters(text: &str) -> HashMap<String, SvgFilterKind> {
@@ -787,7 +794,27 @@ fn parse_svg_filters(text: &str) -> HashMap<String, SvgFilterKind> {
         let tag_end = block.find('>').unwrap_or(block.len());
         let tag = &block[..tag_end];
         if let Some(id) = svg_attr_str(tag, "id") {
-            if let Some(bi) = block.find("<feGaussianBlur") {
+            if let Some(fi) = block.find("<feFlood") {
+                let fe = block[fi..].find('>').unwrap_or(block.len() - fi);
+                let flood = &block[fi..fi + fe];
+                let mut color =
+                    parse_svg_color(svg_attr_str(flood, "flood-color").unwrap_or("#000000"));
+                let op = svg_attr(flood, "flood-opacity")
+                    .unwrap_or(1.0)
+                    .clamp(0.0, 1.0);
+                color[3] = (f32::from(color[3]) * op).round() as u8;
+                out.insert(id.to_string(), SvgFilterKind::Flood { color });
+            } else if let Some(ci) = block.find("<feColorMatrix") {
+                let ce = block[ci..].find('>').unwrap_or(block.len() - ci);
+                let cm = &block[ci..ci + ce];
+                let kind = svg_attr_str(cm, "type").unwrap_or("matrix");
+                if kind.eq_ignore_ascii_case("saturate") {
+                    let amount = svg_attr_str(cm, "values")
+                        .and_then(|s| s.split_whitespace().next()?.parse().ok())
+                        .unwrap_or(1.0);
+                    out.insert(id.to_string(), SvgFilterKind::Saturate(amount));
+                }
+            } else if let Some(bi) = block.find("<feGaussianBlur") {
                 let be = block[bi..].find('>').unwrap_or(block.len() - bi);
                 let blur = &block[bi..bi + be];
                 let raw = svg_attr_str(blur, "stdDeviation").unwrap_or("0");
@@ -835,50 +862,107 @@ fn with_filter_offset(
     g
 }
 
+fn svg_shape_bbox(tag: &str, g: SvgXform) -> (f32, f32, f32, f32) {
+    let world = g.then_tag(tag);
+    if let (Some(w), Some(h)) = (svg_attr(tag, "width"), svg_attr(tag, "height")) {
+        let (ax, ay) = world.map(
+            svg_attr(tag, "x").unwrap_or(0.0),
+            svg_attr(tag, "y").unwrap_or(0.0),
+        );
+        let (bx, by) = world.map(
+            svg_attr(tag, "x").unwrap_or(0.0) + w,
+            svg_attr(tag, "y").unwrap_or(0.0) + h,
+        );
+        (ax.min(bx), ay.min(by), ax.max(bx), ay.max(by))
+    } else if let Some(r) = svg_attr(tag, "r") {
+        let (cx, cy) = world.map(
+            svg_attr(tag, "cx").unwrap_or(0.0),
+            svg_attr(tag, "cy").unwrap_or(0.0),
+        );
+        let rr = r * world.sx.abs().min(world.sy.abs());
+        (cx - rr, cy - rr, cx + rr, cy + rr)
+    } else {
+        let (cx, cy) = world.map(
+            svg_attr(tag, "cx").unwrap_or(0.0),
+            svg_attr(tag, "cy").unwrap_or(0.0),
+        );
+        let rx = svg_attr(tag, "rx").unwrap_or(0.0) * world.sx.abs();
+        let ry = svg_attr(tag, "ry").unwrap_or(0.0) * world.sy.abs();
+        (cx - rx, cy - ry, cx + rx, cy + ry)
+    }
+}
+
+fn clip_decoded_bbox(
+    img: &DecodedImage,
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+    pad: i32,
+) -> (i32, i32, i32, i32) {
+    let bx0 = (x0.floor() as i32 - pad).max(0);
+    let by0 = (y0.floor() as i32 - pad).max(0);
+    let bx1 = ((x1.ceil() as i32) + pad).min(img.width as i32);
+    let by1 = ((y1.ceil() as i32) + pad).min(img.height as i32);
+    (bx0, by0, bx1, by1)
+}
+
 fn apply_svg_filter(
     img: &mut DecodedImage,
     tag: &str,
     g: SvgXform,
     filters: &HashMap<String, SvgFilterKind>,
 ) {
-    let Some(SvgFilterKind::Blur(radius)) = svg_filter_of(tag, filters) else {
+    let Some(kind) = svg_filter_of(tag, filters) else {
         return;
     };
-    let radius = *radius;
-    let world = g.then_tag(tag);
-    let (x0, y0, x1, y1) =
-        if let (Some(w), Some(h)) = (svg_attr(tag, "width"), svg_attr(tag, "height")) {
-            let (ax, ay) = world.map(
-                svg_attr(tag, "x").unwrap_or(0.0),
-                svg_attr(tag, "y").unwrap_or(0.0),
-            );
-            let (bx, by) = world.map(
-                svg_attr(tag, "x").unwrap_or(0.0) + w,
-                svg_attr(tag, "y").unwrap_or(0.0) + h,
-            );
-            (ax.min(bx), ay.min(by), ax.max(bx), ay.max(by))
-        } else if let Some(r) = svg_attr(tag, "r") {
-            let (cx, cy) = world.map(
-                svg_attr(tag, "cx").unwrap_or(0.0),
-                svg_attr(tag, "cy").unwrap_or(0.0),
-            );
-            let rr = r * world.sx.abs().min(world.sy.abs());
-            (cx - rr, cy - rr, cx + rr, cy + rr)
-        } else {
-            let (cx, cy) = world.map(
-                svg_attr(tag, "cx").unwrap_or(0.0),
-                svg_attr(tag, "cy").unwrap_or(0.0),
-            );
-            let rx = svg_attr(tag, "rx").unwrap_or(0.0) * world.sx.abs();
-            let ry = svg_attr(tag, "ry").unwrap_or(0.0) * world.sy.abs();
-            (cx - rx, cy - ry, cx + rx, cy + ry)
-        };
-    let pad = radius.ceil() as i32 + 1;
-    let bx0 = (x0.floor() as i32 - pad).max(0);
-    let by0 = (y0.floor() as i32 - pad).max(0);
-    let bx1 = ((x1.ceil() as i32) + pad).min(img.width as i32);
-    let by1 = ((y1.ceil() as i32) + pad).min(img.height as i32);
-    blur_decoded_rect(img, bx0, by0, bx1, by1, radius);
+    let (x0, y0, x1, y1) = svg_shape_bbox(tag, g);
+    match kind {
+        SvgFilterKind::Blur(radius) => {
+            let (bx0, by0, bx1, by1) =
+                clip_decoded_bbox(img, x0, y0, x1, y1, radius.ceil() as i32 + 1);
+            blur_decoded_rect(img, bx0, by0, bx1, by1, *radius);
+        }
+        SvgFilterKind::Flood { color } => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            fill_decoded_rect(img, bx0, by0, bx1, by1, *color);
+        }
+        SvgFilterKind::Saturate(amount) => {
+            let (bx0, by0, bx1, by1) = clip_decoded_bbox(img, x0, y0, x1, y1, 0);
+            saturate_decoded_rect(img, bx0, by0, bx1, by1, *amount);
+        }
+        SvgFilterKind::Offset { .. } => {}
+    }
+}
+
+fn fill_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32, color: [u8; 4]) {
+    for y in y0..y1 {
+        for x in x0..x1 {
+            plot_px(img, x, y, color);
+        }
+    }
+}
+
+fn saturate_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32, amount: f32) {
+    let amount = amount.clamp(0.0, 1.0);
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if x < 0 || y < 0 {
+                continue;
+            }
+            let i = ((y as u32 * img.width + x as u32) * 4) as usize;
+            if i + 3 >= img.rgba.len() {
+                continue;
+            }
+            let r = f32::from(img.rgba[i]);
+            let g = f32::from(img.rgba[i + 1]);
+            let b = f32::from(img.rgba[i + 2]);
+            let y601 = 0.299 * r + 0.587 * g + 0.114 * b;
+            img.rgba[i] = (y601 + (r - y601) * amount).round() as u8;
+            img.rgba[i + 1] = (y601 + (g - y601) * amount).round() as u8;
+            img.rgba[i + 2] = (y601 + (b - y601) * amount).round() as u8;
+        }
+    }
 }
 
 fn blur_decoded_rect(img: &mut DecodedImage, x0: i32, y0: i32, x1: i32, y1: i32, radius: f32) {
@@ -1517,6 +1601,34 @@ fn glyph_5x7(ch: char) -> Option<[u8; 7]> {
         ],
         _ => return None,
     })
+}
+
+fn svg_text_inner(content: &str) -> String {
+    if let Some(i) = content.find("<textPath") {
+        let after = content[i..]
+            .find('>')
+            .map(|e| i + e + 1)
+            .unwrap_or(content.len());
+        return content[after..]
+            .split("</textPath>")
+            .next()
+            .unwrap_or("")
+            .to_string();
+    }
+    content.to_string()
+}
+
+fn svg_text_path_start(content: &str, by_id: &HashMap<String, String>) -> Option<(f32, f32)> {
+    let i = content.find("<textPath")?;
+    let tag_end = content[i..].find('>')?;
+    let tag = &content[i..i + tag_end];
+    let href = svg_attr_str(tag, "href").or_else(|| svg_attr_str(tag, "xlink:href"))?;
+    let id = href.strip_prefix('#')?;
+    let src = by_id.get(id)?;
+    let d = svg_attr_str(src, "d")?;
+    svg_path_subpaths(d)
+        .into_iter()
+        .find_map(|c| c.into_iter().next())
 }
 
 fn paint_svg_text(img: &mut DecodedImage, content: &str, x: f32, y: f32, color: [u8; 4]) {
@@ -2320,13 +2432,22 @@ fn sample_cubic(
 
 fn svg_attr_str<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
     let key = format!("{name}=");
-    let rest = tag.split(&key).nth(1)?;
-    let q = rest.chars().next()?;
-    if q == '"' || q == '\'' {
-        rest[1..].split(q).next()
-    } else {
-        None
+    let bytes = tag.as_bytes();
+    let mut search = tag;
+    while let Some(i) = search.find(&key) {
+        let abs = tag.len() - search.len() + i;
+        let boundary = abs == 0 || bytes[abs - 1].is_ascii_whitespace() || bytes[abs - 1] == b'<';
+        if boundary {
+            let rest = &search[i + key.len()..];
+            let q = rest.chars().next()?;
+            if q == '"' || q == '\'' {
+                return rest[1..].split(q).next();
+            }
+            return None;
+        }
+        search = &search[i + 1..];
     }
+    None
 }
 
 fn svg_fill(tag: &str) -> &str {
@@ -3143,5 +3264,45 @@ mod tests {
         .expect("svg marker-mid");
         assert_eq!(img.pixel(4, 4), Some([0, 0, 255, 255]));
         assert_eq!(img.pixel(0, 4), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_filter_flood_fills_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feFlood flood-color='#00ff00' flood-opacity='1'/></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg flood");
+        assert_eq!(img.pixel(4, 4), Some([0, 255, 0, 255]));
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_filter_saturate_greys_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><filter id='f'><feColorMatrix type='saturate' values='0'/></filter></defs>\
+              <rect x='2' y='2' width='4' height='4' fill='#ff0000' filter='url(#f)'/></svg>",
+        )
+        .expect("svg saturate");
+        let px = img.pixel(4, 4).unwrap_or([0, 0, 0, 0]);
+        assert_eq!(px[0], px[1], "{px:?}");
+        assert_eq!(px[1], px[2], "{px:?}");
+        assert!(px[0] > 0 && px[0] < 255, "{px:?}");
+        assert_eq!(px[3], 255, "{px:?}");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_text_path_starts_on_path() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><path id='p' d='M 4 7 L 8 7'/></defs>\
+              <text fill='#ff0000'><textPath href='#p'>I</textPath></text></svg>",
+        )
+        .expect("svg textPath");
+        assert_eq!(img.pixel(6, 3), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(1, 3), Some([0, 0, 0, 0]));
     }
 }

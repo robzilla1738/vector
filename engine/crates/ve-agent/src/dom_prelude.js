@@ -40,6 +40,16 @@
   const liveResizeObservers = new Set();
   let documentFullscreenElement = null;
   let documentPictureInPictureElement = null;
+  let documentHidden = false;
+  function setDocumentHidden(hidden) {
+    const next = !!hidden;
+    if (documentHidden === next) return;
+    documentHidden = next;
+    try {
+      const doc = globalThis.document;
+      if (doc) doc.dispatchEvent(new Event("visibilitychange"));
+    } catch (e) {}
+  }
   function notifyGeometryObservers() {
     for (const o of liveIntersectionObservers) o._fire();
     for (const o of liveResizeObservers) o._fire();
@@ -6678,8 +6688,9 @@
       catch (e) { return ""; }
     }
     set domain(v) { this._domain = String(v); }
-    get hidden() { return false; }
-    get visibilityState() { return "visible"; }
+    get hidden() { return documentHidden; }
+    get visibilityState() { return documentHidden ? "hidden" : "visible"; }
+    __veSetHidden(hidden) { setDocumentHidden(hidden); }
     get prerendering() { return false; }
     get referrer() { return this.__h === D("documentNode") ? (D("referrer") || "") : ""; }
     get designMode() { return this._designMode || "off"; }
@@ -9369,7 +9380,15 @@
       this.FRAMEBUFFER = 36160;
       this.COLOR_ATTACHMENT0 = 36064;
       this.TEXTURE_2D = 3553;
+      this.SCISSOR_TEST = 3089;
       this._clear = [0, 0, 0, 0];
+      this._scissorOn = false;
+      this._scissor = [0, 0, canvas.width, canvas.height];
+    }
+    _scissorRect() {
+      if (!this._scissorOn) return [0, 0, this.canvas.width, this.canvas.height];
+      const s = this._scissor || [0, 0, 0, 0];
+      return [Number(s[0]) || 0, Number(s[1]) || 0, Number(s[2]) || 0, Number(s[3]) || 0];
     }
     getParameter(p) {
       if (p === this.VERSION) return "WebGL 1.0 (Vector)";
@@ -9401,8 +9420,9 @@
       if (!c || c.__h == null) return;
       const hex = (n) => Math.max(0, Math.min(255, Math.round(n * 255))).toString(16).padStart(2, "0");
       const css = a >= 1 ? ("#" + hex(r) + hex(g) + hex(b)) : ("rgba(" + Math.round(r * 255) + "," + Math.round(g * 255) + "," + Math.round(b * 255) + "," + a + ")");
-      D("canvasResize", c.__h, c.width, c.height);
-      D("canvasFillRect", c.__h, 0, 0, c.width, c.height, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
+      const [sx, sy, sw, sh] = this._scissorRect();
+      if (!this._scissorOn) D("canvasResize", c.__h, c.width, c.height);
+      D("canvasFillRect", c.__h, sx, sy, sw, sh, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
     }
     readPixels(x, y, w, h, _format, _type, dst) {
       const c = this.canvas;
@@ -9413,8 +9433,9 @@
       for (let i = 0; i < n; i++) dst[i] = bin.charCodeAt(i);
     }
     viewport() {}
-    enable() {}
-    disable() {}
+    enable(cap) { if (cap === this.SCISSOR_TEST) this._scissorOn = true; }
+    disable(cap) { if (cap === this.SCISSOR_TEST) this._scissorOn = false; }
+    scissor(x, y, w, h) { this._scissor = [Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0]; }
     createBuffer() { return { _buf: true }; }
     bindBuffer() {}
     bufferData() {}
@@ -9451,7 +9472,8 @@
       if (u) {
         const hex = (n) => Math.max(0, Math.min(255, Math.round(n * 255))).toString(16).padStart(2, "0");
         const css = u[3] >= 1 ? ("#" + hex(u[0]) + hex(u[1]) + hex(u[2])) : ("rgba(" + Math.round(u[0] * 255) + "," + Math.round(u[1] * 255) + "," + Math.round(u[2] * 255) + "," + u[3] + ")");
-        D("canvasFillRect", c.__h, 0, 0, c.width, c.height, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
+        const [sx, sy, sw, sh] = this._scissorRect();
+        D("canvasFillRect", c.__h, sx, sy, sw, sh, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
       }
     }
     createShader() { return { _sh: true, _src: "", _ok: false }; }

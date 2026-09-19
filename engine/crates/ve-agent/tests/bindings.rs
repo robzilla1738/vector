@@ -5323,6 +5323,85 @@ fn webgl_framebuffer_clear_blits_via_texture() {
 }
 
 #[test]
+fn webgl_scissor_clips_clear() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.disable(gl.SCISSOR_TEST);
+              gl.clearColor(1, 0, 0, 1);
+              gl.clear();
+              gl.enable(gl.SCISSOR_TEST);
+              gl.scissor(2, 2, 4, 4);
+              gl.clearColor(0, 1, 0, 1);
+              gl.clear();
+              const out = new Uint8Array(4);
+              const inr = new Uint8Array(4);
+              gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              gl.readPixels(3, 3, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, inr);
+              return {
+                on: gl._scissorOn === true,
+                cap: gl.SCISSOR_TEST,
+                or: out[0], og: out[1],
+                ir: inr[0], ig: inr[1], ia: inr[3]
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["on"], true, "{v}");
+    assert_eq!(v["cap"], 3089, "{v}");
+    assert_eq!(v["or"], 255, "{v}");
+    assert_eq!(v["og"], 0, "{v}");
+    assert_eq!(v["ir"], 0, "{v}");
+    assert_eq!(v["ig"], 255, "{v}");
+    assert_eq!(v["ia"], 255, "{v}");
+}
+
+#[test]
+fn document_hidden_tracks_visibility_state() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              let n = 0;
+              document.addEventListener("visibilitychange", function () { n++; });
+              const a = document.hidden;
+              const b = document.visibilityState;
+              document.__veSetHidden(true);
+              const c = document.hidden;
+              const d = document.visibilityState;
+              const afterHide = n;
+              document.__veSetHidden(true);
+              const same = n;
+              document.__veSetHidden(false);
+              return {
+                a: a,
+                b: b,
+                c: c,
+                d: d,
+                afterHide: afterHide,
+                same: same,
+                afterShow: n,
+                shown: document.hidden,
+                vis: document.visibilityState
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["a"], false, "{v}");
+    assert_eq!(v["b"], "visible", "{v}");
+    assert_eq!(v["c"], true, "{v}");
+    assert_eq!(v["d"], "hidden", "{v}");
+    assert_eq!(v["afterHide"], 1, "{v}");
+    assert_eq!(v["same"], 1, "{v}");
+    assert_eq!(v["afterShow"], 2, "{v}");
+    assert_eq!(v["shown"], false, "{v}");
+    assert_eq!(v["vis"], "visible", "{v}");
+}
+
+#[test]
 fn crypto_subtle_digests_sha512() {
     let mut page = open(r#"<body></body>"#);
     let _ = page
