@@ -2172,7 +2172,12 @@
     get innerHTML() { return D("innerHTML", this.__h); }
     set innerHTML(v) { D("setInnerHTML", this.__h, String(v).replace(/\r\n/g, "\n").replace(/\r/g, "\n")); }
     get adoptedStyleSheets() { return this._adopted || (this._adopted = []); }
-    set adoptedStyleSheets(v) { this._adopted = v || []; }
+    set adoptedStyleSheets(v) {
+      this._adopted = v || [];
+      for (const sheet of this._adopted) {
+        if (sheet && sheet._css) D("addAuthorSheet", sheet._css);
+      }
+    }
     get activeElement() { return document.activeElement; }
     getHTML() { return this.innerHTML || ""; }
     setHTML(html) {
@@ -2188,12 +2193,73 @@
       this.innerHTML = html == null ? "" : String(html);
     }
   }
+  class CSSStyleRule {
+    constructor(selectorText, styleText) {
+      this.selectorText = String(selectorText || "");
+      this.style = { cssText: String(styleText || "") };
+      this.type = 1;
+    }
+    get cssText() {
+      return this.selectorText + "{" + this.style.cssText + "}";
+    }
+  }
+  CSSStyleRule.STYLE_RULE = 1;
   class CSSStyleSheet {
-    constructor() { this.cssRules = []; this._css = ""; }
-    replaceSync(css) { this._css = String(css ?? ""); return this; }
+    constructor() {
+      this._rules = [];
+      this._css = "";
+      this.disabled = false;
+    }
+    get cssRules() { return this._rules; }
+    _parseRules(css) {
+      const rules = [];
+      const re = /([^{]+)\{([^}]*)\}/g;
+      let m;
+      const text = String(css ?? "");
+      while ((m = re.exec(text))) {
+        const sel = m[1].trim();
+        if (sel) rules.push(new CSSStyleRule(sel, m[2].trim()));
+      }
+      return rules;
+    }
+    _syncCss() {
+      this._css = this._rules.map((r) => r.cssText).join("");
+    }
+    replaceSync(css) {
+      this._css = String(css ?? "");
+      this._rules = this._parseRules(this._css);
+      if (this._css) D("addAuthorSheet", this._css);
+      return this;
+    }
     replace(css) { this.replaceSync(css); return Promise.resolve(this); }
-    insertRule() { return 0; }
-    deleteRule() {}
+    insertRule(rule, index) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'insertRule' on 'CSSStyleSheet': 1 argument required, but only 0 present.");
+      }
+      const parsed = this._parseRules(String(rule));
+      if (!parsed.length) {
+        throw new DOMException("Failed to parse the rule", "SyntaxError");
+      }
+      const i = arguments.length < 2 || index == null ? this._rules.length : Number(index);
+      if (i < 0 || i > this._rules.length) {
+        throw new DOMException("Index is out of range", "IndexSizeError");
+      }
+      this._rules.splice(i, 0, parsed[0]);
+      this._syncCss();
+      D("addAuthorSheet", parsed[0].cssText);
+      return i;
+    }
+    deleteRule(index) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'deleteRule' on 'CSSStyleSheet': 1 argument required, but only 0 present.");
+      }
+      const i = Number(index);
+      if (i < 0 || i >= this._rules.length) {
+        throw new DOMException("Index is out of range", "IndexSizeError");
+      }
+      this._rules.splice(i, 1);
+      this._syncCss();
+    }
   }
 
   function styleProxy(handle) {
@@ -6321,7 +6387,12 @@
     getSelection() { return window.getSelection(); }
     get currentScript() { return currentScriptNode; }
     get adoptedStyleSheets() { return this._adopted || (this._adopted = []); }
-    set adoptedStyleSheets(v) { this._adopted = v || []; }
+    set adoptedStyleSheets(v) {
+      this._adopted = v || [];
+      for (const sheet of this._adopted) {
+        if (sheet && sheet._css) D("addAuthorSheet", sheet._css);
+      }
+    }
     createProcessingInstruction(target, data) {
       const t = String(target);
       const d = data == null ? "" : String(data);
@@ -7434,29 +7505,109 @@
   }
 
   class XMLHttpRequest extends EventTarget {
-    constructor() { super(); this.readyState = 0; this.status = 0; this.responseText = ""; this.response = ""; this.onload = null; this.onerror = null; this.onreadystatechange = null; }
-    open(method, url) { this._m = method; this._u = url; this.readyState = 1; }
-    setRequestHeader() {}
+    constructor() {
+      super();
+      this.readyState = 0;
+      this.status = 0;
+      this.statusText = "";
+      this.responseText = "";
+      this.response = "";
+      this.onload = null;
+      this.onerror = null;
+      this.onabort = null;
+      this.onreadystatechange = null;
+      this._headers = {};
+      this._responseHeaders = {};
+      this._id = 0;
+      this._sent = false;
+      this._aborted = false;
+    }
+    _fireReady() {
+      if (this.onreadystatechange) this.onreadystatechange();
+      this.dispatchEvent(new Event("readystatechange"));
+    }
+    open(method, url) {
+      this._m = method;
+      this._u = url;
+      this._sent = false;
+      this._aborted = false;
+      this._headers = {};
+      this._responseHeaders = {};
+      this.status = 0;
+      this.statusText = "";
+      this.responseText = "";
+      this.response = "";
+      this.readyState = 1;
+      this._fireReady();
+    }
+    setRequestHeader(name, value) {
+      if (arguments.length < 2) {
+        throw new TypeError("Failed to execute 'setRequestHeader' on 'XMLHttpRequest': 2 arguments required, but only " + arguments.length + " present.");
+      }
+      if (this.readyState !== 1 || this._sent) {
+        throw new DOMException("The object is in an invalid state.", "InvalidStateError");
+      }
+      const key = String(name).toLowerCase();
+      if (this._headers[key]) this._headers[key] += ", " + String(value);
+      else this._headers[key] = String(value);
+    }
+    getResponseHeader(name) {
+      if (arguments.length < 1) {
+        throw new TypeError("Failed to execute 'getResponseHeader' on 'XMLHttpRequest': 1 argument required, but only 0 present.");
+      }
+      if (this.readyState < 2) return null;
+      const v = this._responseHeaders[String(name).toLowerCase()];
+      return v == null ? null : String(v);
+    }
+    getAllResponseHeaders() {
+      if (this.readyState < 2) return "";
+      return Object.keys(this._responseHeaders).map((k) => k + ": " + this._responseHeaders[k]).join("\r\n");
+    }
     send(body) {
+      this._sent = true;
+      this._aborted = false;
       try {
-        const id = D("fetchStart", String(this._u), this._m || "GET", "", body == null ? "" : String(body));
+        const id = D("fetchStart", String(this._u), this._m || "GET", JSON.stringify(this._headers), body == null ? "" : String(body));
+        this._id = id;
         let r = D("fetchPoll", id);
-        for (let i = 0; i < 64 && r && r.pending; i++) {
+        for (let i = 0; i < 64 && r && r.pending && !this._aborted; i++) {
           D("fetchPump");
           r = D("fetchPoll", id);
         }
+        if (this._aborted) return;
         if (!r || r.error) throw new TypeError((r && r.error) || "fetch failed");
-        this.status = r.status; this.responseText = r.body; this.response = r.body; this.readyState = 4;
-        if (this.onreadystatechange) this.onreadystatechange();
+        this.status = r.status;
+        this.statusText = r.statusText || "";
+        this.responseText = r.body;
+        this.response = r.body;
+        const hdrs = r.headers || {};
+        this._responseHeaders = {};
+        for (const k of Object.keys(hdrs)) this._responseHeaders[String(k).toLowerCase()] = String(hdrs[k]);
+        this.readyState = 4;
+        this._fireReady();
         this.dispatchEvent(new Event("load"));
         if (this.onload) this.onload();
       } catch (e) {
+        if (this._aborted) return;
         this.readyState = 4;
         this.dispatchEvent(new Event("error"));
         if (this.onerror) this.onerror(e);
       }
     }
-    abort() {}
+    abort() {
+      if (this._id) D("fetchAbort", this._id);
+      if (!this._sent || this.readyState === 0 || this.readyState === 4) {
+        return;
+      }
+      this._aborted = true;
+      this.status = 0;
+      this.statusText = "";
+      this.responseText = "";
+      this.response = "";
+      this.readyState = 0;
+      this.dispatchEvent(new Event("abort"));
+      if (this.onabort) this.onabort();
+    }
   }
   XMLHttpRequest.UNSENT = 0; XMLHttpRequest.OPENED = 1; XMLHttpRequest.HEADERS_RECEIVED = 2; XMLHttpRequest.LOADING = 3; XMLHttpRequest.DONE = 4;
 
@@ -8218,7 +8369,7 @@
     SVGElement, SVGSVGElement, SVGGraphicsElement, SVGPathElement, MathMLElement, DOMStringMap,
     CanvasRenderingContext2D, ImageData, Path2D, DOMException, TreeWalker,
     MutationObserver, IntersectionObserver, ResizeObserver, Range, Sanitizer,
-    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, EventSource, Blob,
+    FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob,
     TextDecoder, TextEncoder,
     createDataChannelPair() {
       const listeners = [[], []];

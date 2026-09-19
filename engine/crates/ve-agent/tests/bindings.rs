@@ -2919,6 +2919,83 @@ fn template_content_cssstylesheet_and_import_node() {
 }
 
 #[test]
+fn css_style_sheet_inserts_and_deletes_rules() {
+    let mut page = open(r#"<body><p id="t">x</p></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var sheet = new CSSStyleSheet();
+              sheet.replaceSync("h1{color:blue}h2{color:green}");
+              var mid = sheet.insertRule("#t{display:none}", 1);
+              var before = {
+                len: sheet.cssRules.length,
+                mid: mid,
+                sel: sheet.cssRules[1].selectorText,
+                rule: sheet.cssRules[1] instanceof CSSStyleRule
+              };
+              sheet.deleteRule(1);
+              return {
+                before: before,
+                after: sheet.cssRules.length,
+                first: sheet.cssRules[0].selectorText
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["before"]["len"], 3, "{v}");
+    assert_eq!(v["before"]["mid"], 1, "{v}");
+    assert_eq!(v["before"]["sel"], "#t", "{v}");
+    assert_eq!(v["before"]["rule"], true, "{v}");
+    assert_eq!(v["after"], 2, "{v}");
+    assert_eq!(v["first"], "h1", "{v}");
+}
+
+#[test]
+fn xhr_sets_request_headers_and_reads_response_headers() {
+    let mut page = open(r#"<body></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              var xhr = new XMLHttpRequest();
+              xhr.open("GET", "data:text/plain,hello");
+              xhr.setRequestHeader("X-Test", "one");
+              xhr.setRequestHeader("X-Test", "two");
+              var headerErr = "";
+              xhr.send();
+              try { xhr.setRequestHeader("X-Late", "no"); } catch (e) { headerErr = e.name; }
+              var aborted = 0;
+              var after = new XMLHttpRequest();
+              after.open("GET", "data:text/plain,x");
+              after.onabort = function () { aborted++; };
+              after.abort();
+              return {
+                status: xhr.status,
+                body: xhr.responseText,
+                ct: xhr.getResponseHeader("content-type"),
+                all: xhr.getAllResponseHeaders(),
+                headerErr: headerErr,
+                abortReady: after.readyState,
+                abortEvents: aborted
+              };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["status"], 200, "{v}");
+    assert_eq!(v["body"], "hello", "{v}");
+    assert!(
+        v["ct"]
+            .as_str()
+            .unwrap_or("")
+            .to_ascii_lowercase()
+            .contains("text/plain"),
+        "{v}"
+    );
+    assert_eq!(v["headerErr"], "InvalidStateError", "{v}");
+    assert_eq!(v["abortReady"], 1, "abort before send leaves OPENED: {v}");
+    assert_eq!(v["abortEvents"], 0, "abort before send is a no-op: {v}");
+}
+
+#[test]
 fn window_named_id_properties_are_replaceable() {
     let mut page = open(
         r#"<body><script id="__NEXT_DATA__" type="application/json">{"page":"/"}</script></body>"#,
