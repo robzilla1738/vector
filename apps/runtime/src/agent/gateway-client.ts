@@ -168,6 +168,7 @@ export function gatewayOnlyForModel(modelId: string, only?: string[]): string[] 
 
 export function gatewayProviderOptions(only?: string[], modelId?: string) {
   const effective = modelId ? gatewayOnlyForModel(modelId, only) : only;
+  const luna = Boolean(modelId?.includes("luna"));
   return {
     gateway: {
       sort: "ttft" as const,
@@ -175,7 +176,7 @@ export function gatewayProviderOptions(only?: string[], modelId?: string) {
       ...(effective?.length ? { only: effective } : {}),
       ...(modelId?.endsWith("-fast") ? { speed: "fast" as const } : {}),
     },
-    openai: { reasoningEffort: "minimal" as const },
+    ...(luna ? {} : { openai: { reasoningEffort: "minimal" as const } }),
   };
 }
 

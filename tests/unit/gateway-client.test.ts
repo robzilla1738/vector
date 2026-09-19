@@ -90,6 +90,8 @@ describe("stripReasoning / oneOf errors", () => {
       speed: "fast",
     });
     expect(gatewayProviderOptions(["cerebras"], "openai/gpt-5.6-luna-fast").gateway.only).toBeUndefined();
+    expect(gatewayProviderOptions(undefined, "openai/gpt-5.6-luna-fast").openai).toBeUndefined();
+    expect(gatewayProviderOptions(undefined, "openai/gpt-5.4").openai).toEqual({ reasoningEffort: "minimal" });
   });
   it("rejects image parts before the Gateway call when pinned to Cerebras", async () => {
     const client = new GatewayModelClient("vg_test", { only: ["cerebras"] });
