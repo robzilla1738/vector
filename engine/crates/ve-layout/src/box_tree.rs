@@ -12,8 +12,8 @@ use ve_dom::{Document, NodeKind};
 
 use crate::block::{ContainingBlock, Forced};
 use ve_style::{
-    ComputedStyle, Content, Display, FieldSizing, ListStylePosition, ListStyleType, PseudoElement,
-    StyleTree, WhiteSpace,
+    ComputedStyle, Content, Display, FieldSizing, FontVariant, ListStylePosition, ListStyleType,
+    PseudoElement, StyleTree, TextTransform, WhiteSpace,
 };
 
 /// What kind of formatting a box participates in / establishes.
@@ -475,7 +475,10 @@ fn push_generated(
     let Content::Text(text) = &style.content else {
         return;
     };
-    let collapsed = collapse_whitespace(text, style.white_space);
+    let collapsed = apply_text_casing(
+        &collapse_whitespace(text, style.white_space),
+        style,
+    );
     let mut bx = LayoutBox::new(None, container_kind(style.display), style.clone());
     bx.pseudo = Some(pseudo);
     bx.owner = Some(owner);
@@ -556,7 +559,10 @@ fn build_children(doc: &Document, styles: &StyleTree, node: NodeId, parent: &mut
             }
             NodeKind::Text(text) => {
                 let style = styles.style(child);
-                let collapsed = collapse_whitespace(text, style.white_space);
+                let collapsed = apply_text_casing(
+                    &collapse_whitespace(text, style.white_space),
+                    &style,
+                );
                 if !collapsed.is_empty() {
                     let mut bx = LayoutBox::new(Some(child), BoxKind::Text(collapsed), style);
                     bx.owner = Some(node);
@@ -571,6 +577,35 @@ fn build_children(doc: &Document, styles: &StyleTree, node: NodeId, parent: &mut
 /// Collapses whitespace according to `white-space`. Newlines are kept as
 /// `\n` where the property preserves them so inline layout can force breaks.
 #[must_use]
+fn apply_text_casing(text: &str, style: &ComputedStyle) -> String {
+    let transformed = match style.text_transform {
+        TextTransform::None => text.to_owned(),
+        TextTransform::Uppercase => text.to_uppercase(),
+        TextTransform::Lowercase => text.to_lowercase(),
+        TextTransform::Capitalize => {
+            let mut out = String::with_capacity(text.len());
+            let mut start = true;
+            for c in text.chars() {
+                if c.is_whitespace() {
+                    start = true;
+                    out.push(c);
+                } else if start {
+                    out.extend(c.to_uppercase());
+                    start = false;
+                } else {
+                    out.push(c);
+                }
+            }
+            out
+        }
+    };
+    if style.font_variant == FontVariant::SmallCaps {
+        transformed.to_uppercase()
+    } else {
+        transformed
+    }
+}
+
 pub fn collapse_whitespace(text: &str, ws: WhiteSpace) -> String {
     if !ws.collapses() {
         return text.to_owned();

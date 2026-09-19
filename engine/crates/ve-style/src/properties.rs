@@ -27,7 +27,7 @@ use crate::values::{
     FontStyle, FontWeight, GridLine, GridTemplateAreas, JustifyContent, Keyword, Length, LengthContext,
     LengthPercentage, LengthPercentageAuto, LineHeight, ListStylePosition, ListStyleType, MaxSize,
     AnimationDirection, AnimationFillMode, AnimationPlayState,
-    BackgroundAttachment, ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, GridAutoFlow, Isolation, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, PointerEvents, Position, PositionArea, Rgba, TextDecorationStyle,
+    BackgroundAttachment, ColumnSpan, Contain, ContainerType, ContentVisibility, EmptyCells, FieldSizing, FontVariant, GridAutoFlow, Isolation, MixBlendMode, ObjectFit, OffsetPath, Overflow, OverflowWrap, PointerEvents, Position, PositionArea, Rgba, TextDecorationStyle,
     SelfAlignment, TextAlign,
     TextDecorationLine, TextOverflow, TextTransform, TrackSize, TransformOp, UnicodeBidi,
     UserSelect,
@@ -1269,6 +1269,8 @@ property_table! {
     WillChange: "will-change" => will_change: String = String::from("auto"), inherited = false, syntax = Single, convert = conv::cursor;
     /// `text-transform`
     TextTransform: "text-transform" => text_transform: TextTransform = TextTransform::None, inherited = true, syntax = Single, convert = conv::kw::<TextTransform>;
+    /// `font-variant`
+    FontVariant: "font-variant" => font_variant: FontVariant = FontVariant::Normal, inherited = true, syntax = Single, convert = conv::kw::<FontVariant>;
     /// `text-overflow`
     TextOverflow: "text-overflow" => text_overflow: TextOverflow = TextOverflow::Clip, inherited = false, syntax = Single, convert = conv::kw::<TextOverflow>;
     /// `white-space`
@@ -1572,7 +1574,6 @@ pub const DEFERRED_PROPERTIES: &[&str] = &[
     "background-position-y",
     "background-blend-mode",
     "border-image",
-    "font-variant",
     "font-variant-ligatures",
     "font-variant-numeric",
     "font-feature-settings",
@@ -3698,11 +3699,12 @@ mod tests {
         ok("fill", "none");
         ok("stroke", "red");
         ok("stroke-width", "2px");
+        ok("font-variant", "small-caps");
         ok("width", "inherit");
         ok("display", "initial");
         ok("color", "unset");
         ok("margin-left", "revert");
-        assert_eq!(PropertyId::ALL.len(), 170);
+        assert_eq!(PropertyId::ALL.len(), 171);
         assert_eq!(
             parse("writing-mode", "vertical-rl"),
             Some(SpecifiedValue::Keyword("vertical-rl".into()))

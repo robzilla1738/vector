@@ -1696,6 +1696,44 @@ mod tests {
     }
 
     #[test]
+    fn text_transform_uppercase_widens_ascii() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px}\
+             span{display:inline-block}\
+             #a{text-transform:none} #b{text-transform:uppercase}</style>\
+             <span id=a>aa</span><span id=b>aa</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            a.width() < b.width() - 2.0,
+            "uppercase AA is wider than aa, got a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn font_variant_small_caps_uppercases() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px}\
+             span{display:inline-block}\
+             #a{font-variant:normal} #b{font-variant:small-caps}</style>\
+             <span id=a>aa</span><span id=b>aa</span>",
+            400.0,
+        );
+        let a = rect(&tree, &engine, &doc, "#a");
+        let b = rect(&tree, &engine, &doc, "#b");
+        assert!(
+            a.width() < b.width() - 2.0,
+            "small-caps AA is wider than aa, got a={} b={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
     fn tab_size_widens_pre_tabs() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0;font-size:16px}\

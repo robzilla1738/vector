@@ -118,7 +118,7 @@ mod tests {
     fn counts_supported_unknown_deferred_and_invalid() {
         let sheet = parse_stylesheet(
             r"
-            p { color: red; margin: 1px; font-variant: small-caps; frobnicate: 1; }
+            p { color: red; margin: 1px; font-variant-ligatures: none; frobnicate: 1; }
             div { display: ruby; writing-mode: vertical-rl; }
             ",
             Origin::Author,
@@ -126,13 +126,13 @@ mod tests {
         let c = sheet.coverage;
         assert_eq!(c.declarations_total, 6);
         assert_eq!(c.declarations_unknown, 1, "frobnicate");
-        assert_eq!(c.declarations_deferred, 1, "font-variant");
+        assert_eq!(c.declarations_deferred, 1, "font-variant-ligatures");
         assert_eq!(c.declarations_invalid, 1, "display: ruby");
         assert!(c.affects_geometry, "display: ruby");
         assert!((c.miss_ratio() - 2.0 / 6.0).abs() < 1e-6);
         assert!(c.exceeds(0.05));
 
-        let clean = parse_stylesheet("p { color: red; font-variant: small-caps }", Origin::Author);
+        let clean = parse_stylesheet("p { color: red; font-variant-ligatures: none }", Origin::Author);
         assert!(!clean.coverage.affects_geometry);
         assert!(
             !clean.coverage.exceeds(0.05),

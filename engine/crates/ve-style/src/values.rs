@@ -1542,6 +1542,16 @@ keyword_enum! {
     }
 }
 
+keyword_enum! {
+    /// `font-variant` (first keyword only).
+    FontVariant {
+        /// No variant.
+        Normal = "normal",
+        /// Render as small capitals.
+        SmallCaps = "small-caps",
+    }
+}
+
 /// A specified length with its unit. Absolute units are normalised to pixels
 /// at parse time; relative units are resolved during computation.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
