@@ -9557,6 +9557,7 @@
       this._stencilFunc = 519;
       this._stencilRef = 0;
       this._stencilMask = 255;
+      this._stencilWriteMask = 255;
       this._stencilFail = 7680;
       this._stencilZFail = 7680;
       this._stencilZPass = 7680;
@@ -9722,6 +9723,9 @@
       this._stencilFunc = Number(func) || this.ALWAYS;
       this._stencilRef = Number(ref) || 0;
       this._stencilMask = mask == null ? 255 : (Number(mask) || 0);
+    }
+    stencilMask(mask) {
+      this._stencilWriteMask = mask == null ? 255 : (Number(mask) || 0);
     }
     stencilOp(fail, zfail, zpass) {
       this._stencilFail = Number(fail) || this.KEEP;
@@ -9952,7 +9956,8 @@
       else if (op === this.INCR) v = Math.min(255, v + 1);
       else if (op === this.DECR) v = Math.max(0, v - 1);
       else if (op === this.INVERT) v = (~v) & 255;
-      this._stencil[di] = v;
+      const write = this._stencilWriteMask == null ? 255 : (this._stencilWriteMask & 255);
+      this._stencil[di] = (v & write) | ((this._stencil[di] || 0) & (~write & 255));
     }
     _triZ(pts) {
       if (!pts.length) return 0;

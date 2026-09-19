@@ -6698,6 +6698,51 @@ fn webgl_stencil_test_clips_second_draw() {
 }
 
 #[test]
+fn webgl_stencil_mask_zero_skips_stencil_write() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.STENCIL_TEST);
+              gl.stencilFunc(gl.ALWAYS, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+              gl.stencilMask(0);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0, -1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              gl.stencilFunc(gl.EQUAL, 1, 255);
+              gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+              gl.stencilMask(255);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const left = new Uint8Array(4);
+              const right = new Uint8Array(4);
+              gl.readPixels(1, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, left);
+              gl.readPixels(6, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, right);
+              return { lr: left[0], lg: left[1], rg: right[1], ra: right[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["lr"], 255, "{v}");
+    assert_eq!(v["lg"], 0, "{v}");
+    assert_eq!(v["rg"], 0, "{v}");
+    assert_eq!(v["ra"], 0, "{v}");
+}
+
+#[test]
 fn webgl_polygon_offset_pulls_same_depth_nearer() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page

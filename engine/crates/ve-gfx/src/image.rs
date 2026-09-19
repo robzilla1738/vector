@@ -2431,6 +2431,39 @@ fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
             rest = &after[end..];
         }
     }
+    let mut hrefs = Vec::new();
+    for (open, close) in [
+        ("<linearGradient", "</linearGradient>"),
+        ("<radialGradient", "</radialGradient>"),
+    ] {
+        let mut rest = text;
+        while let Some(i) = rest.find(open) {
+            let after = &rest[i..];
+            let end = after
+                .find(close)
+                .map(|e| e + close.len())
+                .unwrap_or_else(|| after.find('>').map(|e| e + 1).unwrap_or(after.len()));
+            let block = &after[..end];
+            let tag_end = block.find('>').unwrap_or(block.len());
+            let tag = &block[..tag_end];
+            if let (Some(id), Some(href)) = (
+                svg_attr_str(tag, "id"),
+                svg_attr_str(tag, "href").or_else(|| svg_attr_str(tag, "xlink:href")),
+            ) {
+                hrefs.push((id.to_string(), href.to_string()));
+            }
+            rest = &after[end..];
+        }
+    }
+    for (id, href) in hrefs {
+        let src = href.trim().strip_prefix('#').unwrap_or(href.trim());
+        let stops = out.get(src).map(|g| g.stops.clone());
+        if let (Some(stops), Some(dst)) = (stops, out.get_mut(&id)) {
+            if dst.stops.is_empty() {
+                dst.stops = stops;
+            }
+        }
+    }
     out
 }
 
@@ -4715,6 +4748,43 @@ mod tests {
         assert!(start[0] > 200, "start is red: {start:?}");
         assert!(looped[0] > 200, "repeat restarts red: {looped:?}");
         assert!(mid[2] > 80 && mid[0] > 40, "second cycle is mixed: {mid:?}");
+    }
+
+    #[test]
+    fn decode_svg_linear_gradient_reflect_mirrors_after_end() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='4' y2='0' spreadMethod='reflect'>\
+              <stop offset='0' stop-color='#ff0000'/><stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg gradient reflect");
+        let start = img.pixel(0, 4).unwrap_or([0, 0, 0, 0]);
+        let mirrored = img.pixel(7, 4).unwrap_or([0, 0, 0, 0]);
+        assert!(start[0] > 200, "start is red: {start:?}");
+        assert!(
+            mirrored[0] > mirrored[2],
+            "reflect returns toward red: {mirrored:?}"
+        );
+    }
+
+    #[test]
+    fn decode_svg_linear_gradient_href_inherits_stops() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='src' x1='0' y1='0' x2='8' y2='0'>\
+              <stop offset='0' stop-color='#ff0000'/><stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient>\
+              <linearGradient id='g' href='#src' x1='0' y1='0' x2='8' y2='0'/>\
+              </defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg gradient href");
+        let left = img.pixel(0, 4).unwrap_or([0, 0, 0, 0]);
+        let right = img.pixel(7, 4).unwrap_or([0, 0, 0, 0]);
+        assert!(left[0] > left[2], "inherited left is red: {left:?}");
+        assert!(right[2] > right[0], "inherited right is blue: {right:?}");
     }
 
     #[test]

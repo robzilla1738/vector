@@ -2114,6 +2114,36 @@ mod tests {
     }
 
     #[test]
+    fn overflow_wrap_break_word_splits_long_word() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;overflow-wrap:break-word;margin:0}</style>\
+             <p id=p>aaaaaaaa</p>",
+            400.0,
+        );
+        let p = engine.select_one(&doc, "p").unwrap();
+        let n = tree.root.find(p).unwrap().lines.len();
+        assert!(n >= 2, "overflow-wrap:break-word wraps aaaaaaaa, got {n} lines");
+    }
+
+    #[test]
+    fn text_indent_shifts_first_line() {
+        let (doc, engine, tree) = layout(
+            "<style>body{margin:0;font-size:16px} #a,#b{width:200px;margin:0}\
+             #b{text-indent:16px}</style>\
+             <p id=a>aaaa</p><p id=b>aaaa</p>",
+            400.0,
+        );
+        let a = engine.select_one(&doc, "#a").unwrap();
+        let b = engine.select_one(&doc, "#b").unwrap();
+        let ax = tree.root.find(a).unwrap().lines[0].fragments[0].rect.x();
+        let bx = tree.root.find(b).unwrap().lines[0].fragments[0].rect.x();
+        assert!(
+            bx > ax + 10.0,
+            "text-indent shifts the first line, a={ax} b={bx}"
+        );
+    }
+
+    #[test]
     fn word_break_break_all_splits_long_word() {
         let (doc, engine, tree) = layout(
             "<style>body{margin:0} #p{width:24px;font-size:16px;line-height:20px;word-break:break-all;margin:0}</style>\
