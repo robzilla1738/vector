@@ -6418,6 +6418,40 @@ fn webgl_cull_face_skips_back_facing_triangle() {
 }
 
 #[test]
+fn webgl_line_width_thickens_stroke() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.uniform4f(null, 0, 1, 0, 1);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, 0, 1, 0]));
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+              gl.lineWidth(4);
+              gl.drawArrays(gl.LINE_STRIP, 0, 2);
+              const mid = new Uint8Array(4);
+              const thick = new Uint8Array(4);
+              const out = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+              gl.readPixels(4, 5, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, thick);
+              gl.readPixels(4, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+              return { g: mid[1], tg: thick[1], ta: thick[3], oa: out[3] };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["g"], 255, "{v}");
+    assert_eq!(v["tg"], 255, "{v}");
+    assert_eq!(v["ta"], 255, "{v}");
+    assert_eq!(v["oa"], 0, "{v}");
+}
+
+#[test]
 fn webgl_lines_strokes_independent_segments() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page

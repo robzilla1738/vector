@@ -634,6 +634,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 .collect::<Vec<_>>()
         });
         let italic = svg_font_italic(tag);
+        let rotate = svg_attr(tag, "rotate").unwrap_or(0.0);
         paint_svg_text(
             &mut img,
             &content,
@@ -646,6 +647,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             vertical,
             path_pts.as_deref(),
             italic,
+            rotate,
         );
         if svg_font_bold(tag) {
             paint_svg_text(
@@ -660,6 +662,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
                 vertical,
                 path_pts.as_deref(),
                 italic,
+                rotate,
             );
         }
         let deco = svg_attr_str(tag, "text-decoration")
@@ -2581,6 +2584,30 @@ fn svg_viewbox_nums(tag: &str) -> Option<(f32, f32, f32, f32)> {
     }
 }
 
+fn svg_preserve_aspect(tag: &str) -> (bool, bool, f32, f32) {
+    let raw = svg_attr_str(tag, "preserveAspectRatio").unwrap_or("xMidYMid meet");
+    let lower = raw.to_ascii_lowercase();
+    if lower.split_whitespace().any(|s| s == "none") {
+        return (false, false, 0.0, 0.0);
+    }
+    let slice = lower.contains("slice");
+    let ax = if raw.contains("xMax") {
+        1.0
+    } else if raw.contains("xMid") {
+        0.5
+    } else {
+        0.0
+    };
+    let ay = if raw.contains("YMax") {
+        1.0
+    } else if raw.contains("YMid") {
+        0.5
+    } else {
+        0.0
+    };
+    (true, slice, ax, ay)
+}
+
 fn svg_viewbox_xform(tag: &str) -> Option<(f32, f32, f32, f32)> {
     let (minx, miny, vbw, vbh) = svg_viewbox_nums(tag)?;
     if vbw <= 0.0 || vbh <= 0.0 {
@@ -2588,9 +2615,17 @@ fn svg_viewbox_xform(tag: &str) -> Option<(f32, f32, f32, f32)> {
     }
     let w = svg_attr(tag, "width").unwrap_or(vbw);
     let h = svg_attr(tag, "height").unwrap_or(vbh);
-    let sx = w / vbw;
-    let sy = h / vbh;
-    Some((-minx * sx, -miny * sy, sx, sy))
+    let (uniform, slice, ax, ay) = svg_preserve_aspect(tag);
+    let mut sx = w / vbw;
+    let mut sy = h / vbh;
+    if uniform {
+        let s = if slice { sx.max(sy) } else { sx.min(sy) };
+        sx = s;
+        sy = s;
+    }
+    let ox = -minx * sx + ax * (w - vbw * sx);
+    let oy = -miny * sy + ay * (h - vbh * sy);
+    Some((ox, oy, sx, sy))
 }
 
 fn svg_font_bold(tag: &str) -> bool {
@@ -2678,6 +2713,7 @@ fn paint_svg_text(
     vertical: bool,
     path: Option<&[(f32, f32)]>,
     italic: bool,
+    rotate: f32,
 ) {
     let mut cx = x;
     let mut cy = y;
@@ -2710,8 +2746,21 @@ fn paint_svg_text(
                         for dy in 0..s {
                             for dx in 0..s {
                                 let shear = if italic && row < 3 { 1 } else { 0 };
-                                let xx = origin_x + col as i32 * s + dx + shear;
-                                let yy = baseline - 7 * s + row as i32 * s + dy;
+                                let lx = col as i32 * s + dx + shear;
+                                let ly = -7 * s + row as i32 * s + dy;
+                                let (rx, ry) = if rotate.abs() < 0.01 {
+                                    (lx, ly)
+                                } else {
+                                    let rad = rotate.to_radians();
+                                    let c = rad.cos();
+                                    let sn = rad.sin();
+                                    (
+                                        (lx as f32 * c - ly as f32 * sn).round() as i32,
+                                        (lx as f32 * sn + ly as f32 * c).round() as i32,
+                                    )
+                                };
+                                let xx = origin_x + rx;
+                                let yy = baseline + ry;
                                 if xx >= 0
                                     && yy >= 0
                                     && (xx as u32) < img.width
@@ -4483,6 +4532,34 @@ mod tests {
         assert_eq!(img.pixel(2, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(12, 3), Some([255, 0, 0, 255]));
         assert_eq!(img.pixel(8, 3), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_preserve_aspect_meet_keeps_bottom_empty() {
+        let meet = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 16 8' preserveAspectRatio='xMinYMin meet'>\
+              <rect x='0' y='0' width='16' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg meet");
+        let none = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 16 8' preserveAspectRatio='none'>\
+              <rect x='0' y='0' width='16' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg none");
+        assert_eq!(meet.pixel(2, 2), Some([255, 0, 0, 255]));
+        assert_eq!(meet.pixel(2, 6), Some([0, 0, 0, 0]));
+        assert_eq!(none.pixel(2, 6), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_text_rotate_90_lays_glyph_sideways() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <text x='0' y='4' fill='#ff0000' rotate='90'>I</text></svg>",
+        )
+        .expect("svg rotate");
+        assert_eq!(img.pixel(3, 6), Some([255, 0, 0, 255]));
+        assert_eq!(img.pixel(2, 3), Some([0, 0, 0, 0]));
     }
 
     #[test]

@@ -9526,6 +9526,7 @@
       this._blendOn = false;
       this._blend = [1, 0];
       this._blendEq = 32774;
+      this._lineWidth = 1;
       this._colorMask = [true, true, true, true];
       this._arrayBuf = null;
       this._elemBuf = null;
@@ -9631,6 +9632,7 @@
     }
     blendFunc(src, dst) { this._blend = [Number(src) || 0, Number(dst) || 0]; }
     blendEquation(mode) { this._blendEq = Number(mode) || this.FUNC_ADD; }
+    lineWidth(w) { this._lineWidth = Math.max(1, Number(w) || 1); }
     pixelStorei(pname, val) {
       if (pname === this.UNPACK_FLIP_Y_WEBGL) this._flipY = !!val;
       if (pname === this.UNPACK_PREMULTIPLY_ALPHA_WEBGL) this._premultiply = !!val;
@@ -9782,7 +9784,7 @@
     _strokePoly(pts, css) {
       const c = this.canvas;
       if (!c || c.__h == null || !pts || pts.length < 2) return;
-      D("canvasStrokePath", c.__h, JSON.stringify({ r: [], p: [pts] }), css, 2, "", 0, "butt", "miter", 10, "none");
+      D("canvasStrokePath", c.__h, JSON.stringify({ r: [], p: [pts] }), css, this._lineWidth || 1, "", 0, "butt", "miter", 10, "none");
     }
     _uniformCss() {
       const u = this._uniform;
