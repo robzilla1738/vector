@@ -6740,6 +6740,76 @@ fn webgl_polygon_offset_pulls_same_depth_nearer() {
 }
 
 #[test]
+fn webgl_sample_coverage_zero_keeps_dest() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.SAMPLE_COVERAGE);
+              gl.sampleCoverage(0, false);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const zero = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, zero);
+              gl.sampleCoverage(1, false);
+              gl.drawArrays(gl.TRIANGLES, 0, 3);
+              const one = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, one);
+              return { za: zero[3], og: one[1], oa: one[3], cap: gl.SAMPLE_COVERAGE };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 32928, "{v}");
+    assert_eq!(v["za"], 0, "{v}");
+    assert_eq!(v["og"], 255, "{v}");
+    assert_eq!(v["oa"], 255, "{v}");
+}
+
+#[test]
+fn webgl_depth_range_pushes_near_triangle_farther() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.5, 1, -1, 0.5, -1, 1, 0.5,
+                1, -1, 0.5, 1, 1, 0.5, -1, 1, 0.5
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.depthRange(0.6, 1);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.2, 1, -1, 0.2, -1, 1, 0.2,
+                1, -1, 0.2, 1, 1, 0.2, -1, 1, 0.2
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const px = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+              return { r: px[0], g: px[1], b: px[2], cap: gl.DEPTH_RANGE };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 2928, "{v}");
+    assert_eq!(v["r"], 255, "{v}");
+    assert_eq!(v["g"], 0, "{v}");
+    assert_eq!(v["b"], 0, "{v}");
+}
+
+#[test]
 fn webgl_get_parameter_reports_line_width() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page

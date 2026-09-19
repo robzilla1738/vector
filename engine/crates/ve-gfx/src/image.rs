@@ -738,6 +738,13 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
     Ok(img)
 }
 
+#[derive(Clone, Copy)]
+enum SvgSpread {
+    Pad,
+    Repeat,
+    Reflect,
+}
+
 struct SvgGrad {
     x1: f32,
     y1: f32,
@@ -747,7 +754,33 @@ struct SvgGrad {
     cy: f32,
     r: f32,
     object_bbox: bool,
+    spread: SvgSpread,
     stops: Vec<(f32, [u8; 4])>,
+}
+
+fn svg_spread(tag: &str) -> SvgSpread {
+    match svg_attr_str(tag, "spreadMethod").unwrap_or("pad") {
+        s if s.eq_ignore_ascii_case("repeat") => SvgSpread::Repeat,
+        s if s.eq_ignore_ascii_case("reflect") => SvgSpread::Reflect,
+        _ => SvgSpread::Pad,
+    }
+}
+
+fn map_spread(t: f32, spread: SvgSpread) -> f32 {
+    match spread {
+        SvgSpread::Pad => t.clamp(0.0, 1.0),
+        SvgSpread::Repeat => t.rem_euclid(1.0),
+        SvgSpread::Reflect => {
+            let u = t.abs();
+            let period = u.div_euclid(1.0);
+            let frac = u.rem_euclid(1.0);
+            if (period as i32) % 2 == 1 {
+                1.0 - frac
+            } else {
+                frac
+            }
+        }
+    }
 }
 
 fn find_svg_tag(hay: &str, name: &str) -> Option<usize> {
@@ -2085,7 +2118,11 @@ fn parse_gradient_stops(block: &str) -> Vec<(f32, [u8; 4])> {
         let off = svg_attr_str(stop, "offset")
             .map(parse_offset)
             .unwrap_or(0.0);
-        let color = parse_svg_color(svg_attr_str(stop, "stop-color").unwrap_or("#000000"));
+        let mut color = parse_svg_color(svg_attr_str(stop, "stop-color").unwrap_or("#000000"));
+        let op = svg_attr(stop, "stop-opacity")
+            .unwrap_or(1.0)
+            .clamp(0.0, 1.0);
+        color[3] = (f32::from(color[3]) * op).round() as u8;
         stops.push((off, color));
         srest = &srest[si + st_end + 1..];
     }
@@ -2386,6 +2423,7 @@ fn parse_svg_gradients(text: &str) -> HashMap<String, SvgGrad> {
                         },
                         object_bbox: svg_attr_str(tag, "gradientUnits")
                             .is_some_and(|s| s.eq_ignore_ascii_case("objectBoundingBox")),
+                        spread: svg_spread(tag),
                         stops: parse_gradient_stops(block),
                     },
                 );
@@ -2406,10 +2444,10 @@ fn sample_grad(g: &SvgGrad, x: f32, y: f32, tag: &str) -> [u8; 4] {
     } else {
         (x, y)
     };
-    let t = if g.r > 0.0 {
+    let raw = if g.r > 0.0 {
         let dx = x - g.cx;
         let dy = y - g.cy;
-        ((dx * dx + dy * dy).sqrt() / g.r).clamp(0.0, 1.0)
+        (dx * dx + dy * dy).sqrt() / g.r.max(0.001)
     } else {
         let dx = g.x2 - g.x1;
         let dy = g.y2 - g.y1;
@@ -2419,8 +2457,8 @@ fn sample_grad(g: &SvgGrad, x: f32, y: f32, tag: &str) -> [u8; 4] {
         } else {
             ((x - g.x1) * dx + (y - g.y1) * dy) / len2
         }
-    }
-    .clamp(0.0, 1.0);
+    };
+    let t = map_spread(raw, g.spread);
     if t <= g.stops[0].0 {
         return g.stops[0].1;
     }
@@ -2439,7 +2477,7 @@ fn sample_grad(g: &SvgGrad, x: f32, y: f32, tag: &str) -> [u8; 4] {
         (a_c[0] as f32 + (b_c[0] as f32 - a_c[0] as f32) * u) as u8,
         (a_c[1] as f32 + (b_c[1] as f32 - a_c[1] as f32) * u) as u8,
         (a_c[2] as f32 + (b_c[2] as f32 - a_c[2] as f32) * u) as u8,
-        255,
+        (a_c[3] as f32 + (b_c[3] as f32 - a_c[3] as f32) * u) as u8,
     ]
 }
 
@@ -4659,6 +4697,42 @@ mod tests {
         assert!(left[0] > left[2], "left stays red: {left:?}");
         assert!(mid[0] > mid[2], "quarter-span still redder than blue: {mid:?}");
         assert!(right[2] > right[0], "right is blue: {right:?}");
+    }
+
+    #[test]
+    fn decode_svg_linear_gradient_repeat_cycles_after_end() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='4' y2='0' spreadMethod='repeat'>\
+              <stop offset='0' stop-color='#ff0000'/><stop offset='1' stop-color='#0000ff'/>\
+              </linearGradient></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg gradient repeat");
+        let start = img.pixel(0, 4).unwrap_or([0, 0, 0, 0]);
+        let looped = img.pixel(4, 4).unwrap_or([0, 0, 0, 0]);
+        let mid = img.pixel(6, 4).unwrap_or([0, 0, 0, 0]);
+        assert!(start[0] > 200, "start is red: {start:?}");
+        assert!(looped[0] > 200, "repeat restarts red: {looped:?}");
+        assert!(mid[2] > 80 && mid[0] > 40, "second cycle is mixed: {mid:?}");
+    }
+
+    #[test]
+    fn decode_svg_stop_opacity_tints_alpha() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><linearGradient id='g' x1='0' y1='0' x2='8' y2='0'>\
+              <stop offset='0' stop-color='#ff0000' stop-opacity='0.5'/>\
+              <stop offset='1' stop-color='#ff0000' stop-opacity='0.5'/>\
+              </linearGradient></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='url(#g)'/></svg>",
+        )
+        .expect("svg stop-opacity");
+        let px = img.pixel(4, 4).unwrap_or([0, 0, 0, 0]);
+        assert_eq!(px[0], 255, "{px:?}");
+        assert_eq!(px[1], 0, "{px:?}");
+        assert_eq!(px[2], 0, "{px:?}");
+        assert_eq!(px[3], 128, "{px:?}");
     }
 
     #[test]

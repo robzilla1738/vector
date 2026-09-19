@@ -9521,6 +9521,8 @@
       this.GEQUAL = 518;
       this.ALWAYS = 519;
       this.POLYGON_OFFSET_FILL = 32823;
+      this.SAMPLE_COVERAGE = 32928;
+      this.DEPTH_RANGE = 2928;
       this.STENCIL_TEST = 2960;
       this.STENCIL_BUFFER_BIT = 1024;
       this.KEEP = 7680;
@@ -9545,6 +9547,11 @@
       this._polyOffsetOn = false;
       this._polyFactor = 0;
       this._polyUnits = 0;
+      this._sampleOn = false;
+      this._sampleCov = 1;
+      this._sampleInv = false;
+      this._depthNear = 0;
+      this._depthFar = 1;
       this._stencilOn = false;
       this._stencil = null;
       this._stencilFunc = 519;
@@ -9655,6 +9662,7 @@
       if (cap === this.DEPTH_TEST) this._depthOn = true;
       if (cap === this.STENCIL_TEST) this._stencilOn = true;
       if (cap === this.POLYGON_OFFSET_FILL) this._polyOffsetOn = true;
+      if (cap === this.SAMPLE_COVERAGE) this._sampleOn = true;
     }
     disable(cap) {
       if (cap === this.SCISSOR_TEST) this._scissorOn = false;
@@ -9663,10 +9671,19 @@
       if (cap === this.DEPTH_TEST) this._depthOn = false;
       if (cap === this.STENCIL_TEST) this._stencilOn = false;
       if (cap === this.POLYGON_OFFSET_FILL) this._polyOffsetOn = false;
+      if (cap === this.SAMPLE_COVERAGE) this._sampleOn = false;
     }
     polygonOffset(factor, units) {
       this._polyFactor = Number(factor) || 0;
       this._polyUnits = Number(units) || 0;
+    }
+    sampleCoverage(value, invert) {
+      this._sampleCov = Math.max(0, Math.min(1, Number(value)));
+      this._sampleInv = !!invert;
+    }
+    depthRange(n, f) {
+      this._depthNear = Number(n) || 0;
+      this._depthFar = f == null ? 1 : Number(f);
     }
     cullFace(mode) {
       this._cullFace = Number(mode) || this.BACK;
@@ -9942,6 +9959,7 @@
       let s = 0;
       for (const p of pts) s += p[2] || 0;
       let z = s / pts.length;
+      z = this._depthNear + (this._depthFar - this._depthNear) * z;
       if (this._polyOffsetOn) z += this._polyFactor * 0.01 + this._polyUnits * 0.01;
       return z;
     }
@@ -9964,7 +9982,7 @@
       const c = this.canvas;
       if (!c || c.__h == null || !pts || pts.length < 3) return;
       const ring = pts.concat([pts[0]]);
-      if (!this._depthOn && !this._stencilOn) {
+      if (!this._depthOn && !this._stencilOn && !this._sampleOn) {
         D("canvasFillPath", c.__h, JSON.stringify({ r: [], p: [ring] }), css, "none");
         return;
       }
@@ -9997,6 +10015,16 @@
         if (!painted) {
           out += String.fromCharCode(sr, sg, sb, sa);
           continue;
+        }
+        if (this._sampleOn) {
+          const checker = ((px + py) & 1) === 0;
+          const keep = this._sampleCov >= 1 ? true
+            : this._sampleCov <= 0 ? false
+            : (this._sampleInv ? checker : !checker);
+          if (!keep) {
+            out += String.fromCharCode(dr, dg, db, da);
+            continue;
+          }
         }
         if (this._stencilOn) {
           const s = (this._stencil[di] || 0) & this._stencilMask;
@@ -10116,6 +10144,15 @@
         if (this._uniform) {
           const css = this._uniformCss();
           const [sx, sy, sw, sh] = this._clearRect();
+          if (this._depthOn || this._stencilOn || this._sampleOn) {
+            this._fillPoly([
+              [sx, sy, 0],
+              [sx + sw, sy, 0],
+              [sx + sw, sy + sh, 0],
+              [sx, sy + sh, 0]
+            ], css);
+            return;
+          }
           D("canvasFillRect", c.__h, sx, sy, sw, sh, css, 1, 0, 0, "rgba(0, 0, 0, 0)", 0, "none");
         }
       });
