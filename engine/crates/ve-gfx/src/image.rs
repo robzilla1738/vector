@@ -397,7 +397,7 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
         let abs = full.len() - rest.len() + i;
         let tag_end = rest[i..].find('>').unwrap_or(rest.len() - i);
         let tag = &rest[i..i + tag_end];
-        if svg_switch_skipped(full, abs) {
+        if svg_in_defs(full, abs) || svg_switch_skipped(full, abs) {
             rest = &rest[i + tag_end + 1..];
             continue;
         }
@@ -583,8 +583,8 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             )
         };
         let mut spacing = svg_attr(tag, "letter-spacing").unwrap_or(0.0);
-        let word_sp = svg_attr(tag, "word-spacing").unwrap_or(0.0);
-        let scale = (svg_attr(tag, "font-size").unwrap_or(7.0) / 7.0).max(0.5);
+        let mut word_sp = svg_attr(tag, "word-spacing").unwrap_or(0.0);
+        let mut scale = (svg_attr(tag, "font-size").unwrap_or(7.0) / 7.0).max(0.5);
         if svg_attr_str(tag, "dominant-baseline")
             .unwrap_or("")
             .eq_ignore_ascii_case("hanging")
@@ -620,10 +620,19 @@ fn decode_svg(bytes: &[u8]) -> Result<DecodedImage, GfxError> {
             }
         }
         if let Some(target) = svg_attr(tag, "textLength") {
-            if target > 0.0 && chars.len() > 1 {
-                let gaps = (chars.len() - 1) as f32;
-                spacing += (target - text_w) / gaps;
-                text_w = target;
+            if target > 0.0 && chars.len() > 1 && text_w > 0.0 {
+                let adjust = svg_attr_str(tag, "lengthAdjust").unwrap_or("spacing");
+                if adjust.eq_ignore_ascii_case("spacingAndGlyphs") {
+                    let k = target / text_w;
+                    scale *= k;
+                    spacing *= k;
+                    word_sp *= k;
+                    text_w = target;
+                } else {
+                    let gaps = (chars.len() - 1) as f32;
+                    spacing += (target - text_w) / gaps;
+                    text_w = target;
+                }
             }
         }
         match svg_attr_str(tag, "text-anchor").unwrap_or("start") {
@@ -2061,14 +2070,20 @@ fn parse_gradient_stops(block: &str) -> Vec<(f32, [u8; 4])> {
     stops
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 enum SvgClip {
     Rect { x: f32, y: f32, w: f32, h: f32 },
     Circle { cx: f32, cy: f32, r: f32 },
     Ellipse { cx: f32, cy: f32, rx: f32, ry: f32 },
+    Path {
+        contours: Vec<Vec<(f32, f32)>>,
+        evenodd: bool,
+    },
 }
 
 fn parse_clip_or_mask_block(block: &str, id: &str, out: &mut HashMap<String, SvgClip>) {
+    let tag_end = block.find('>').unwrap_or(block.len());
+    let tag = &block[..tag_end];
     if let Some(ri) = block.find("<rect") {
         let re = block[ri..].find('>').unwrap_or(block.len() - ri);
         let rtag = &block[ri..ri + re];
@@ -2104,6 +2119,21 @@ fn parse_clip_or_mask_block(block: &str, id: &str, out: &mut HashMap<String, Svg
                 ry: svg_attr(etag, "ry").unwrap_or(0.0),
             },
         );
+    } else if let Some(pi) = block.find("<path") {
+        let pe = block[pi..].find('>').unwrap_or(block.len() - pi);
+        let ptag = &block[pi..pi + pe];
+        if let Some(d) = svg_attr_str(ptag, "d") {
+            let evenodd = svg_attr_str(ptag, "clip-rule")
+                .or_else(|| svg_attr_str(tag, "clip-rule"))
+                .is_some_and(|s| s.eq_ignore_ascii_case("evenodd"));
+            out.insert(
+                id.to_string(),
+                SvgClip::Path {
+                    contours: svg_path_subpaths(d),
+                    evenodd,
+                },
+            );
+        }
     }
 }
 
@@ -2155,7 +2185,46 @@ fn clip_allows(tag: &str, clips: &HashMap<String, SvgClip>, x: f32, y: f32) -> b
             let ny = (y - *cy) / ry.max(0.001);
             nx * nx + ny * ny <= 1.0
         }
+        Some(SvgClip::Path { contours, evenodd }) => contours_contain(contours, x, y, *evenodd),
         None => true,
+    }
+}
+
+fn contours_contain(contours: &[Vec<(f32, f32)>], x: f32, y: f32, evenodd: bool) -> bool {
+    let mut wind = 0i32;
+    let mut crosses = 0i32;
+    for pts in contours {
+        if pts.len() < 2 {
+            continue;
+        }
+        let closed = if pts.first() != pts.last() {
+            let mut c = pts.to_vec();
+            c.push(pts[0]);
+            c
+        } else {
+            pts.to_vec()
+        };
+        for w in closed.windows(2) {
+            let (x0, y0) = w[0];
+            let (x1, y1) = w[1];
+            if (y0 <= y && y1 > y) || (y1 <= y && y0 > y) {
+                let t = (y - y0) / (y1 - y0);
+                let xi = x0 + t * (x1 - x0);
+                if xi >= x {
+                    crosses += 1;
+                    if y1 > y0 {
+                        wind += 1;
+                    } else {
+                        wind -= 1;
+                    }
+                }
+            }
+        }
+    }
+    if evenodd {
+        crosses % 2 == 1
+    } else {
+        wind != 0
     }
 }
 
@@ -4591,6 +4660,79 @@ mod tests {
         assert_eq!(collapsed.pixel(12, 3), Some([255, 0, 0, 255]));
         assert_eq!(collapsed.pixel(16, 3), Some([0, 0, 0, 0]));
         assert_eq!(preserved.pixel(16, 3), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_preserve_aspect_slice_fills_bottom() {
+        let meet = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 16 8' preserveAspectRatio='xMinYMin meet'>\
+              <rect x='0' y='0' width='16' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg meet");
+        let slice = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 16 8' preserveAspectRatio='xMinYMin slice'>\
+              <rect x='0' y='0' width='16' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg slice");
+        assert_eq!(meet.pixel(2, 6), Some([0, 0, 0, 0]));
+        assert_eq!(slice.pixel(2, 6), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_preserve_aspect_ymax_shifts_down() {
+        let ymin = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 16 8' preserveAspectRatio='xMinYMin meet'>\
+              <rect x='0' y='0' width='16' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg ymin");
+        let ymax = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 16 8' preserveAspectRatio='xMinYMax meet'>\
+              <rect x='0' y='0' width='16' height='8' fill='#ff0000'/></svg>",
+        )
+        .expect("svg ymax");
+        assert_eq!(ymin.pixel(2, 2), Some([255, 0, 0, 255]));
+        assert_eq!(ymin.pixel(2, 6), Some([0, 0, 0, 0]));
+        assert_eq!(ymax.pixel(2, 6), Some([255, 0, 0, 255]));
+        assert_eq!(ymax.pixel(2, 2), Some([0, 0, 0, 0]));
+    }
+
+    #[test]
+    fn decode_svg_clip_path_evenodd_keeps_hole_empty() {
+        let evenodd = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><clipPath id='c' clip-rule='evenodd'>\
+              <path d='M0,0 L8,0 L8,8 L0,8 Z M2,2 L6,2 L6,6 L2,6 Z'/></clipPath></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000' clip-path='url(#c)'/></svg>",
+        )
+        .expect("svg clip evenodd");
+        let nonzero = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <defs><clipPath id='c'>\
+              <path d='M0,0 L8,0 L8,8 L0,8 Z M2,2 L6,2 L6,6 L2,6 Z'/></clipPath></defs>\
+              <rect x='0' y='0' width='8' height='8' fill='#ff0000' clip-path='url(#c)'/></svg>",
+        )
+        .expect("svg clip nonzero");
+        assert_eq!(evenodd.pixel(1, 1), Some([255, 0, 0, 255]));
+        assert_eq!(evenodd.pixel(4, 4), Some([0, 0, 0, 0]));
+        assert_eq!(nonzero.pixel(4, 4), Some([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn decode_svg_length_adjust_scales_glyphs() {
+        let spacing = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='24' height='8'>\
+              <text x='0' y='7' fill='#ff0000' textLength='24'>II</text></svg>",
+        )
+        .expect("svg spacing");
+        let glyphs = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='24' height='8'>\
+              <text x='0' y='7' fill='#ff0000' textLength='24' lengthAdjust='spacingAndGlyphs'>II</text></svg>",
+        )
+        .expect("svg spacingAndGlyphs");
+        assert_eq!(spacing.pixel(2, 3), Some([255, 0, 0, 255]));
+        assert_eq!(spacing.pixel(4, 3), Some([0, 0, 0, 0]));
+        assert_eq!(glyphs.pixel(4, 3), Some([255, 0, 0, 255]));
+        assert_eq!(glyphs.pixel(2, 3), Some([0, 0, 0, 0]));
     }
 
     #[test]

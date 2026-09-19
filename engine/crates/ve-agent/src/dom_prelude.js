@@ -9511,6 +9511,7 @@
       this.UNPACK_FLIP_Y_WEBGL = 37440;
       this.UNPACK_PREMULTIPLY_ALPHA_WEBGL = 37441;
       this.CULL_FACE = 2884;
+      this.DEPTH_TEST = 2929;
       this.FRONT = 1028;
       this.BACK = 1029;
       this.CCW = 2304;
@@ -9521,6 +9522,8 @@
       this._cullOn = false;
       this._cullFace = 1029;
       this._frontFace = 2304;
+      this._depthOn = false;
+      this._depth = null;
       this._scissorOn = false;
       this._scissor = [0, 0, canvas.width, canvas.height];
       this._viewport = [0, 0, canvas.width, canvas.height];
@@ -9566,12 +9569,16 @@
       if (p === this.VIEWPORT) return this._viewportRect().slice();
       if (p === this.COLOR_WRITEMASK) return this._colorMask.slice();
       if (p === this.LINE_WIDTH) return this._lineWidth || 1;
+      if (p === this.DEPTH_TEST) return !!this._depthOn;
       return null;
     }
     getExtension() { return null; }
     getSupportedExtensions() { return []; }
     clearColor(r, g, b, a) { this._clear = [Number(r) || 0, Number(g) || 0, Number(b) || 0, a == null ? 1 : Number(a)]; }
-    clear() {
+    clear(mask) {
+      const bits = mask == null ? (this.COLOR_BUFFER_BIT | this.DEPTH_BUFFER_BIT) : (Number(mask) || 0);
+      if (bits & this.DEPTH_BUFFER_BIT) this._resetDepth();
+      if (mask != null && !(bits & this.COLOR_BUFFER_BIT)) return;
       const [r, g, b, a] = this._clear;
       if (this._fb && this._fb._tex) {
         const tex = this._fb._tex;
@@ -9613,11 +9620,13 @@
       if (cap === this.SCISSOR_TEST) this._scissorOn = true;
       if (cap === this.BLEND) this._blendOn = true;
       if (cap === this.CULL_FACE) this._cullOn = true;
+      if (cap === this.DEPTH_TEST) this._depthOn = true;
     }
     disable(cap) {
       if (cap === this.SCISSOR_TEST) this._scissorOn = false;
       if (cap === this.BLEND) this._blendOn = false;
       if (cap === this.CULL_FACE) this._cullOn = false;
+      if (cap === this.DEPTH_TEST) this._depthOn = false;
     }
     cullFace(mode) {
       this._cullFace = Number(mode) || this.BACK;
@@ -9763,9 +9772,9 @@
     }
     enableVertexAttribArray() { this._attribOn = true; }
     disableVertexAttribArray() { this._attribOn = false; }
-    _clipToPx(x, y) {
+    _clipToPx(x, y, z) {
       const [vx, vy, vw, vh] = this._viewportRect();
-      return [vx + (Number(x) + 1) * 0.5 * vw, vy + (Number(y) + 1) * 0.5 * vh];
+      return [vx + (Number(x) + 1) * 0.5 * vw, vy + (Number(y) + 1) * 0.5 * vh, Number(z) || 0];
     }
     _attribPoint(i) {
       const data = this._arrayBuf && this._arrayBuf._data;
@@ -9775,13 +9784,82 @@
       const strideF = a.stride ? a.stride / 4 : size;
       const base = (a.offset || 0) / 4 + i * strideF;
       if (base + 1 >= data.length) return null;
-      return this._clipToPx(data[base], data[base + 1]);
+      return this._clipToPx(data[base], data[base + 1], size >= 3 ? data[base + 2] : 0);
+    }
+    _ensureDepth() {
+      const n = (this.canvas.width || 0) * (this.canvas.height || 0);
+      if (!this._depth || this._depth.length !== n) {
+        this._depth = new Float32Array(n);
+        this._depth.fill(1);
+      }
+    }
+    _resetDepth() {
+      this._ensureDepth();
+      this._depth.fill(1);
+    }
+    _triZ(pts) {
+      if (!pts.length) return 0;
+      let s = 0;
+      for (const p of pts) s += p[2] || 0;
+      return s / pts.length;
+    }
+    _polyBBox(pts) {
+      const c = this.canvas;
+      let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+      for (const p of pts) {
+        minx = Math.min(minx, p[0]);
+        miny = Math.min(miny, p[1]);
+        maxx = Math.max(maxx, p[0]);
+        maxy = Math.max(maxy, p[1]);
+      }
+      const x = Math.max(0, Math.floor(minx));
+      const y = Math.max(0, Math.floor(miny));
+      const x2 = Math.min(c.width, Math.ceil(maxx));
+      const y2 = Math.min(c.height, Math.ceil(maxy));
+      return [x, y, Math.max(0, x2 - x), Math.max(0, y2 - y)];
     }
     _fillPoly(pts, css) {
       const c = this.canvas;
       if (!c || c.__h == null || !pts || pts.length < 3) return;
       const ring = pts.concat([pts[0]]);
+      if (!this._depthOn) {
+        D("canvasFillPath", c.__h, JSON.stringify({ r: [], p: [ring] }), css, "none");
+        return;
+      }
+      this._ensureDepth();
+      const [x, y, w, h] = this._polyBBox(pts);
+      if (w <= 0 || h <= 0) return;
+      const dest = D("canvasGetImageData", c.__h, x, y, w, h) || {};
+      const destBin = atob(dest.b64 || "");
       D("canvasFillPath", c.__h, JSON.stringify({ r: [], p: [ring] }), css, "none");
+      const src = D("canvasGetImageData", c.__h, x, y, w, h) || {};
+      const srcBin = atob(src.b64 || "");
+      const z = this._triZ(pts);
+      const cw = c.width;
+      let out = "";
+      const n = Math.max(destBin.length, srcBin.length);
+      for (let i = 0; i < n; i += 4) {
+        const px = x + ((i / 4) % w);
+        const py = y + Math.floor((i / 4) / w);
+        const di = py * cw + px;
+        const sr = srcBin.charCodeAt(i) || 0;
+        const sg = srcBin.charCodeAt(i + 1) || 0;
+        const sb = srcBin.charCodeAt(i + 2) || 0;
+        const sa = srcBin.charCodeAt(i + 3) || 0;
+        const dr = destBin.charCodeAt(i) || 0;
+        const dg = destBin.charCodeAt(i + 1) || 0;
+        const db = destBin.charCodeAt(i + 2) || 0;
+        const da = destBin.charCodeAt(i + 3) || 0;
+        const painted = sr !== dr || sg !== dg || sb !== db || sa !== da;
+        const pass = painted && z < (this._depth[di] != null ? this._depth[di] : 1);
+        if (pass) this._depth[di] = z;
+        if (painted && !pass) {
+          out += String.fromCharCode(dr, dg, db, da);
+        } else {
+          out += String.fromCharCode(sr, sg, sb, sa);
+        }
+      }
+      D("canvasPutImageData", c.__h, w, h, btoa(out), x, y);
     }
     _strokePoly(pts, css) {
       const c = this.canvas;

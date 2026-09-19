@@ -6418,6 +6418,54 @@ fn webgl_cull_face_skips_back_facing_triangle() {
 }
 
 #[test]
+fn webgl_depth_test_rejects_farther_triangle() {
+    let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
+    let v = page
+        .evaluate(
+            r##"(function () {
+              const c = document.getElementById("c");
+              const gl = c.getContext("webgl");
+              gl.clearColor(0, 0, 0, 0);
+              gl.clear();
+              gl.enable(gl.DEPTH_TEST);
+              const buf = gl.createBuffer();
+              gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+              gl.enableVertexAttribArray(0);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+              gl.uniform4f(null, 1, 0, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.2, 1, -1, 0.2, -1, 1, 0.2,
+                1, -1, 0.2, 1, 1, 0.2, -1, 1, 0.2
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              gl.uniform4f(null, 0, 1, 0, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.8, 1, -1, 0.8, -1, 1, 0.8,
+                1, -1, 0.8, 1, 1, 0.8, -1, 1, 0.8
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const far = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, far);
+              gl.uniform4f(null, 0, 0, 1, 1);
+              gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1, 0.05, 1, -1, 0.05, -1, 1, 0.05,
+                1, -1, 0.05, 1, 1, 0.05, -1, 1, 0.05
+              ]));
+              gl.drawArrays(gl.TRIANGLES, 0, 6);
+              const near = new Uint8Array(4);
+              gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, near);
+              return { fr: far[0], fg: far[1], nr: near[0], nb: near[2], cap: gl.DEPTH_TEST };
+            })()"##,
+        )
+        .unwrap();
+    assert_eq!(v["cap"], 2929, "{v}");
+    assert_eq!(v["fr"], 255, "{v}");
+    assert_eq!(v["fg"], 0, "{v}");
+    assert_eq!(v["nr"], 0, "{v}");
+    assert_eq!(v["nb"], 255, "{v}");
+}
+
+#[test]
 fn webgl_get_parameter_reports_line_width() {
     let mut page = open(r#"<body><canvas id="c" width="8" height="8"></canvas></body>"#);
     let v = page
