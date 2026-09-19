@@ -211,7 +211,7 @@ fn native_bindings_install_element_id_accessor() {
     assert_eq!(
         page.evaluate("globalThis.__veNativeBindings").unwrap(),
         serde_json::json!(
-            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute"
+            "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML"
         )
     );
     assert_eq!(
@@ -291,6 +291,28 @@ fn native_bindings_install_element_id_accessor() {
         page.evaluate("document.getElementById('y').toggleAttribute('open')")
             .unwrap(),
         serde_json::json!(false)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').nodeType")
+            .unwrap(),
+        serde_json::json!(1)
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').nodeName")
+            .unwrap(),
+        serde_json::json!("P")
+    );
+    assert_eq!(
+        page.evaluate("document.getElementById('y').isConnected")
+            .unwrap(),
+        serde_json::json!(true)
+    );
+    page.evaluate("document.getElementById('y').innerHTML = '<b>ok</b>'")
+        .unwrap();
+    assert_eq!(
+        page.evaluate("document.getElementById('y').innerHTML")
+            .unwrap(),
+        serde_json::json!("<b>ok</b>")
     );
 }
 

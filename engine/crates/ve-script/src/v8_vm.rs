@@ -589,6 +589,34 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeToggleAttribute", toggle_attr)?;
+            let node_type = v8::FunctionTemplate::builder(native_node_type_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNodeType", node_type)?;
+            let node_name = v8::FunctionTemplate::builder(native_node_name_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNodeName", node_name)?;
+            let node_value_get = v8::FunctionTemplate::builder(native_node_value_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNodeValueGet", node_value_get)?;
+            let node_value_set = v8::FunctionTemplate::builder(native_node_value_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeNodeValueSet", node_value_set)?;
+            let connected = v8::FunctionTemplate::builder(native_node_is_connected)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeIsConnected", connected)?;
+            let inner_get = v8::FunctionTemplate::builder(native_element_inner_html_get)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeInnerHTMLGet", inner_get)?;
+            let inner_set = v8::FunctionTemplate::builder(native_element_inner_html_set)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeInnerHTMLSet", inner_set)?;
             Some(())
         })?;
         self.eval(
@@ -611,13 +639,30 @@ impl JsVm for V8Vm {
   });
   if (typeof Node !== "undefined") {
     def(Node.prototype, "textContent", globalThis.__veNativeTextGet, globalThis.__veNativeTextSet);
+    def(Node.prototype, "nodeValue", globalThis.__veNativeNodeValueGet, globalThis.__veNativeNodeValueSet);
+    Object.defineProperty(Node.prototype, "nodeType", {
+      configurable: true,
+      enumerable: true,
+      get: globalThis.__veNativeNodeType
+    });
+    Object.defineProperty(Node.prototype, "nodeName", {
+      configurable: true,
+      enumerable: true,
+      get: globalThis.__veNativeNodeName
+    });
+    Object.defineProperty(Node.prototype, "isConnected", {
+      configurable: true,
+      enumerable: true,
+      get: globalThis.__veNativeIsConnected
+    });
   }
+  def(Element.prototype, "innerHTML", globalThis.__veNativeInnerHTMLGet, globalThis.__veNativeInnerHTMLSet);
   Element.prototype.getAttribute = globalThis.__veNativeGetAttribute;
   Element.prototype.setAttribute = globalThis.__veNativeSetAttribute;
   Element.prototype.removeAttribute = globalThis.__veNativeRemoveAttribute;
   Element.prototype.hasAttribute = globalThis.__veNativeHasAttribute;
   Element.prototype.toggleAttribute = globalThis.__veNativeToggleAttribute;
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML";
 })()"#,
             "vector:dom-native",
         )?;
@@ -1149,6 +1194,137 @@ fn native_element_toggle_attribute(
         &[JsValue::from("toggleAttribute"), handle, name, force],
     );
     rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_set_number(
+    scope: &mut v8::PinScope<'_, '_>,
+    rv: &mut v8::ReturnValue<'_, v8::Value>,
+    value: Option<JsValue>,
+    fallback: f64,
+) {
+    let n = match value {
+        Some(JsValue::Number(n)) => n,
+        _ => fallback,
+    };
+    rv.set(v8::Number::new(scope, n).into());
+}
+
+fn native_node_type_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        native_set_number(scope, &mut rv, None, 0.0);
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("nodeType"), handle]);
+    native_set_number(scope, &mut rv, value, 0.0);
+}
+
+fn native_node_name_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("nodeName"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_node_value_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_null();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("nodeValue"), handle]);
+    match value {
+        Some(JsValue::String(s)) => {
+            if let Some(v) = v8::String::new(scope, &s) {
+                rv.set(v.into());
+                return;
+            }
+        }
+        Some(JsValue::Null | JsValue::Undefined) | None => {}
+        _ => {}
+    }
+    rv.set_null();
+}
+
+fn native_node_value_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let value = if args.length() > 0 {
+        to_js_value(scope, args.get(0))
+    } else {
+        JsValue::from("")
+    };
+    let _ = call_dom_host(scope, &[JsValue::from("setNodeValue"), handle, value]);
+}
+
+fn native_node_is_connected(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_bool(false);
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("isConnected"), handle]);
+    rv.set_bool(matches!(value, Some(JsValue::Bool(true))));
+}
+
+fn native_element_inner_html_get(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        rv.set_empty_string();
+        return;
+    };
+    let value = call_dom_host(scope, &[JsValue::from("innerHTML"), handle]);
+    native_set_string(scope, &mut rv, value);
+}
+
+fn native_element_inner_html_set(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let raw = if args.length() > 0 {
+        match to_js_value(scope, args.get(0)) {
+            JsValue::String(s) => s,
+            other => other.to_string(),
+        }
+    } else {
+        String::new()
+    };
+    let normalized = raw.replace("\r\n", "\n").replace('\r', "\n");
+    let _ = call_dom_host(
+        scope,
+        &[
+            JsValue::from("setInnerHTML"),
+            handle,
+            JsValue::from(normalized.as_str()),
+        ],
+    );
 }
 
 fn looks_like_module(source: &str) -> bool {
