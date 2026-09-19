@@ -152,7 +152,7 @@ apps/runtime     the authoritative runtime: pages, router, programs, runs, sets,
 engine/          Vector Engine — Rust cargo workspace (crates/, tools/, fixtures/, conformance/)
 engine/crates/ve-napi   @vector/engine-native — napi-rs 3 addon the runtime loads
 packages/contracts      zod schemas shared by every surface
-packages/browser-driver drivers: vector (Electron/standalone Chromium), chrome (attached), vector-engine
+packages/engine-client  `@vector/engine-client` (`EnginePage`); Chromium adapters stay in `packages/browser-driver`
 packages/cli            `vector` CLI over the loopback API
 packages/mcp            MCP stdio server over the loopback API
 fixtures/               deterministic test sites (records, forms, interaction-lab)

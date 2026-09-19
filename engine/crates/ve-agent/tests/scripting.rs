@@ -231,6 +231,62 @@ fn es_module_spa_runs_without_bundler() {
 }
 
 #[test]
+fn es_module_relative_import_runs_without_bundler() {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::rc::Rc;
+    use ve_agent::{LoadedDocument, Loader, NavigationRequest};
+    use ve_core::Error;
+
+    #[derive(Default)]
+    struct Recorder {
+        served: HashMap<String, LoadedDocument>,
+        log: Rc<RefCell<Vec<NavigationRequest>>>,
+    }
+    impl Recorder {
+        fn serve(mut self, url: &str, body: &str) -> Self {
+            self.served
+                .insert(url.to_owned(), LoadedDocument::html(url, body));
+            self
+        }
+    }
+    impl Loader for Recorder {
+        fn load(&mut self, request: &NavigationRequest) -> ve_core::Result<LoadedDocument> {
+            self.log.borrow_mut().push(request.clone());
+            let key = request.url.split('#').next().unwrap_or_default();
+            self.served
+                .get(key)
+                .cloned()
+                .ok_or_else(|| Error::Network(format!("no canned response for {}", request.url)))
+        }
+    }
+
+    let rec = Recorder::default()
+        .serve(
+            "https://s.test/",
+            r#"<script type="module">
+                 import { n } from './lib.js';
+                 globalThis.modRan = n;
+               </script>"#,
+        )
+        .serve("https://s.test/lib.js", "export const n = 41;");
+    let mut page = Page::from_html_with_loader(
+        1,
+        r#"<script type="module">
+             import { n } from './lib.js';
+             globalThis.modRan = n;
+           </script>"#,
+        Some("https://s.test/"),
+        DEFAULT_VIEWPORT,
+        Some((vm(), true)),
+        Some(Box::new(rec)),
+    )
+    .unwrap();
+    page.settle(200);
+    assert_eq!(page.evaluate("globalThis.modRan").unwrap(), serde_json::json!(41));
+}
+
+#[test]
 fn performance_now_tracks_virtual_time_by_default() {
     let mut page = open("<title>t</title>", true);
     let now = page

@@ -11,6 +11,12 @@ export const BACKENDS = ["vector", "chrome", "vector-engine"] as const;
 /** Backends implemented by a Chromium — the fallback targets for the engine router. */
 export const isChromiumBackend = (b: Backend): boolean => b === "vector" || b === "chrome";
 
+/** Engine generational refs (`r12` or `r12.3`). */
+export const ELEMENT_REF = /^r\d+(?:\.\d+)?$/;
+
+/** True when `value` is an engine observation ref. */
+export const isElementRef = (value: string): boolean => ELEMENT_REF.test(value);
+
 export interface TargetRef {
   backend: Backend;
   /** Driver-native target identity (CDP target id, or Electron marker id). */

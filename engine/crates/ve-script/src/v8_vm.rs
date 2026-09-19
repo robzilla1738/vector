@@ -188,6 +188,14 @@ struct TimerPins {
     slots: RefCell<HashMap<u64, TimerPin>>,
 }
 
+/// ES module sources and compiled graph (H1-B2).
+#[derive(Default)]
+struct ModuleGraph {
+    sources: RefCell<HashMap<String, String>>,
+    compiled: RefCell<HashMap<String, v8::Global<v8::Module>>>,
+    script_urls: RefCell<HashMap<i32, String>>,
+}
+
 struct TimerPin {
     func: v8::Global<v8::Value>,
     args: v8::Global<v8::Value>,
@@ -246,6 +254,7 @@ impl V8Vm {
         let mut isolate = v8::Isolate::new(params);
         isolate.set_microtasks_policy(v8::MicrotasksPolicy::Explicit);
         isolate.set_slot(TimerPins::default());
+        isolate.set_slot(ModuleGraph::default());
         isolate.set_slot(HostFnNames(Vec::new()));
         let context = {
             v8::scope!(let scope, &mut isolate);
@@ -515,6 +524,13 @@ impl JsVm for V8Vm {
         self.with_host(None, |vm| vm.eval_inner(source, origin))
     }
 
+    fn register_module(&mut self, url: &str, source: &str) {
+        let url = crate::normalize_module_url(url);
+        if let Some(graph) = self.isolate.get_slot::<ModuleGraph>() {
+            graph.sources.borrow_mut().insert(url, source.to_owned());
+        }
+    }
+
     fn call(&mut self, function: &str, args: &[JsValue]) -> Result<JsValue, ScriptError> {
         self.with_host(None, |vm| vm.call_inner(function, args))
     }
@@ -687,24 +703,9 @@ impl V8Vm {
     fn eval_module_inner(&mut self, source: &str, origin: &str) -> Result<JsValue, ScriptError> {
         let source = source.to_owned();
         let origin = origin.to_owned();
+        self.register_module(&origin, &source);
         self.run(|scope| {
-            let code = v8::String::new(scope, &source)?;
-            let name = v8::String::new(scope, &origin)?;
-            let script_origin = v8::ScriptOrigin::new(
-                scope,
-                name.into(),
-                0,
-                0,
-                false,
-                0,
-                None,
-                false,
-                false,
-                true,
-                None,
-            );
-            let mut module_source = v8::script_compiler::Source::new(code, Some(&script_origin));
-            let module = v8::script_compiler::compile_module(scope, &mut module_source)?;
+            let module = compile_module_source(scope, &origin, &source)?;
             let ok = module.instantiate_module(scope, module_resolve_callback)?;
             if !ok {
                 return None;
@@ -808,13 +809,91 @@ fn looks_like_module(source: &str) -> bool {
     })
 }
 
-fn module_resolve_callback<'s>(
-    _context: v8::Local<'s, v8::Context>,
-    _specifier: v8::Local<'s, v8::String>,
-    _import_attributes: v8::Local<'s, v8::FixedArray>,
-    _referrer: v8::Local<'s, v8::Module>,
+fn cache_compiled_module<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    url: &str,
+    module: v8::Local<'s, v8::Module>,
+) {
+    let url = crate::normalize_module_url(url);
+    if let Some(graph) = scope.get_slot::<ModuleGraph>() {
+        graph
+            .compiled
+            .borrow_mut()
+            .insert(url.clone(), v8::Global::new(scope, module));
+        if let Some(id) = module.script_id() {
+            graph.script_urls.borrow_mut().insert(id, url);
+        }
+    }
+}
+
+fn compile_module_source<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    url: &str,
+    source: &str,
 ) -> Option<v8::Local<'s, v8::Module>> {
-    None
+    let url = crate::normalize_module_url(url);
+    if let Some(existing) = scope
+        .get_slot::<ModuleGraph>()
+        .and_then(|g| g.compiled.borrow().get(&url).cloned())
+    {
+        return Some(v8::Local::new(scope, existing));
+    }
+    let code = v8::String::new(scope, source)?;
+    let name = v8::String::new(scope, &url)?;
+    let script_origin = v8::ScriptOrigin::new(
+        scope,
+        name.into(),
+        0,
+        0,
+        false,
+        0,
+        None,
+        false,
+        false,
+        true,
+        None,
+    );
+    let mut module_source = v8::script_compiler::Source::new(code, Some(&script_origin));
+    let module = v8::script_compiler::compile_module(scope, &mut module_source)?;
+    cache_compiled_module(scope, &url, module);
+    Some(module)
+}
+
+fn compile_registered_module<'s>(
+    scope: &mut v8::PinScope<'s, '_>,
+    url: &str,
+) -> Option<v8::Local<'s, v8::Module>> {
+    let url = crate::normalize_module_url(url);
+    let source = scope
+        .get_slot::<ModuleGraph>()
+        .and_then(|g| g.sources.borrow().get(&url).cloned())?;
+    compile_module_source(scope, &url, &source)
+}
+
+fn module_resolve_callback<'s>(
+    context: v8::Local<'s, v8::Context>,
+    specifier: v8::Local<'s, v8::String>,
+    _import_attributes: v8::Local<'s, v8::FixedArray>,
+    referrer: v8::Local<'s, v8::Module>,
+) -> Option<v8::Local<'s, v8::Module>> {
+    v8::callback_scope!(unsafe scope, context);
+    let spec = specifier.to_rust_string_lossy(scope);
+    let referrer_url = referrer
+        .script_id()
+        .and_then(|id| {
+            scope
+                .get_slot::<ModuleGraph>()?
+                .script_urls
+                .borrow()
+                .get(&id)
+                .cloned()
+        })
+        .unwrap_or_default();
+    let url = crate::resolve_module_specifier(&referrer_url, &spec)?;
+    if let Some(body) = crate::decode_data_module(&url) {
+        return compile_module_source(scope, &url, &body);
+    }
+    compile_registered_module(scope, &url)
 }
 
 unsafe extern "C" {
@@ -1280,6 +1359,18 @@ mod tests {
             .eval("typeof rewriteModule", "<t>")
             .unwrap();
         assert_eq!(classic, JsValue::String("undefined".into()));
+    }
+
+    #[test]
+    fn es_module_relative_import_resolves_without_bundler() {
+        let mut vm = V8Vm::new().unwrap();
+        vm.register_module("https://s.test/lib.js", "export const n = 41;");
+        vm.eval(
+            "import { n } from './lib.js'; globalThis.modRan = n;",
+            "https://s.test/main.js",
+        )
+        .unwrap();
+        assert_eq!(vm.eval("modRan", "<t>").unwrap(), JsValue::Number(41.0));
     }
 
     #[test]

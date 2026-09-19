@@ -2,7 +2,7 @@
 
 Status: authoritative design for `engine/`. Terminology matches
 `packages/contracts` (Observation, Program/Step, Condition, VectorError) and
-`packages/browser-driver` (DriverPage). Where this document and the Chromium
+`packages/engine-client` (`EnginePage`). Where this document and the Chromium
 path disagree, the engine is the target and the Chromium path is the fallback.
 Sections 1–13 are the design; the section below records what of it is
 implemented on the integration branch.
@@ -169,7 +169,7 @@ acceptance text.
 | M2 visual | GPU glyph *outlines*, clips/opacity/`<img>`, `present_list`, `NativeBrowser` + packaged `ve-shell` as the product; GPU swapchain blit when `--features gpu,window`; Ed25519 signed updates; AccessKit winit adapter (`accesskit_winit` 0.23) publishing chrome-then-page | Electron hybrid still exists as a labeled extra; WebGL/WebGPU are an explicit compatibility track (`describe()` false) |
 | M3 agent | receipts, crash recovery, skills, policy, BiDi; held-out p95 vs Chromium measured (5.32× `act+observe`); token-measured stretch `meetsStretch` true (`tokenRatio` 8.35, declared model usage) | — |
 | M4 perf | `perf --gate m1`, RSS, host RAPL, official Speedometer 3.0 / JetStream / MotionMark GPU lab | every Speedometer suite passing (many FAIL honestly) |
-| M5 research | `ve-replay`, `EngineConfig.hermetic`, prefetch denied at the broker, `ve-vm` Test262 subset | replacing V8 (forbidden without evidence) |
+| M5 research | `ve-replay`, `EngineConfig.hermetic`, prefetch denied at the broker | `ve-vm` deleted (H0-D4); V8 only |
 
 Conformance: `wpt-runner` geometry (`m1.txt`) plus `wpt-harness` testharness
 (pinned `testharness.js` / `idlharness.js`, HTTP origin, 114-file supported

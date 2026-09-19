@@ -7,6 +7,7 @@
 //! reach lives under `globalThis.__ve`; the prelude wraps it in the Web API
 //! shapes scripts expect.
 
+use std::collections::HashSet;
 use std::time::Duration;
 
 fn fill_random(buf: &mut [u8]) {
@@ -675,6 +676,7 @@ impl Page {
             .unwrap_or_else(|| format!("{}#inline", self.url()));
         let source = script.source.clone();
         if script.module {
+            self.prefetch_module_graph(&source, &origin);
             origin = format!("module:{origin}");
         }
         if !script.module {
@@ -705,6 +707,40 @@ impl Page {
         let _ = self.call_script("__veSetCurrentScript", &[JsValue::Null]);
         self.dispatch_js_event(script.node, "load", false, false, None);
         self.drain_js_jobs();
+    }
+
+    fn prefetch_module_graph(&mut self, source: &str, base: &str) {
+        let mut pending = vec![(base.to_owned(), source.to_owned())];
+        let mut seen = HashSet::new();
+        while let Some((url, src)) = pending.pop() {
+            let key = ve_script::normalize_module_url(&url);
+            if !seen.insert(key.clone()) {
+                continue;
+            }
+            if let Some(vm) = self.scripting.as_mut().and_then(|s| s.vm.as_mut()) {
+                vm.register_module(&key, &src);
+            }
+            for spec in ve_script::module_import_specifiers(&src) {
+                let Some(resolved) = ve_script::resolve_module_specifier(&url, &spec) else {
+                    continue;
+                };
+                if seen.contains(&ve_script::normalize_module_url(&resolved)) {
+                    continue;
+                }
+                if let Some(body) = ve_script::decode_data_module(&resolved) {
+                    pending.push((resolved, body));
+                    continue;
+                }
+                let id = self.id();
+                let fetched = self
+                    .loader
+                    .as_mut()
+                    .and_then(|l| l.load(&crate::NavigationRequest::get(resolved.clone(), id)).ok());
+                if let Some(doc) = fetched {
+                    pending.push((resolved, String::from_utf8_lossy(&doc.bytes).into_owned()));
+                }
+            }
+        }
     }
 
     /// Fires every live timer due within `window_ms` of virtual time,

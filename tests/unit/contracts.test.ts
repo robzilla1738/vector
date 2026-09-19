@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ProgramSchema, ProgramBudgetSchema, StepSchema, MethodSchemas, EventSchema, errorAdvice } from "@vector/contracts";
+import { ProgramSchema, ProgramBudgetSchema, StepSchema, MethodSchemas, EventSchema, errorAdvice, isElementRef } from "@vector/contracts";
 
 describe("StepSchema", () => {
   it("accepts every core op", () => {
@@ -97,6 +97,13 @@ describe("API schemas", () => {
     expect(P.safeParse({ program, returnObservation: { scope: "subtree", subtreeRef: "r2", format: "full" } }).success).toBe(true);
     expect(P.safeParse({ program, returnObservation: { scope: "everything" } }).success).toBe(false);
     expect(P.safeParse({ program, returnObservation: { format: "yaml" } }).success).toBe(false);
+  });
+
+  it("isElementRef accepts generational refs (H0-C1)", () => {
+    expect(isElementRef("r12")).toBe(true);
+    expect(isElementRef("r12.3")).toBe(true);
+    expect(isElementRef("css:#q")).toBe(false);
+    expect(isElementRef("r")).toBe(false);
   });
 
   it("errorAdvice sets retryable and hint for MCP (H0-C2)", () => {
