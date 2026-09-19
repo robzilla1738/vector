@@ -789,6 +789,10 @@ impl JsVm for V8Vm {
                 .build(scope)
                 .get_function(scope)?;
             put(scope, "__veNativeRemove", remove)?;
+            let adj = v8::FunctionTemplate::builder(native_element_insert_adjacent_html)
+                .build(scope)
+                .get_function(scope)?;
+            put(scope, "__veNativeInsertAdjacentHTML", adj)?;
             Some(())
         })?;
         self.eval(
@@ -890,6 +894,9 @@ impl JsVm for V8Vm {
   };
   Element.prototype.remove = function () {
     globalThis.__veNativeRemove.call(this);
+  };
+  Element.prototype.insertAdjacentHTML = function (pos, html) {
+    globalThis.__veNativeInsertAdjacentHTML.call(this, pos, html == null ? "" : String(html));
   };
   Element.prototype.closest = function (s) {
     return wrapNode(globalThis.__veNativeClosest.call(this, s));
@@ -1017,7 +1024,7 @@ impl JsVm for V8Vm {
     defEl(DocumentFragment.prototype, "firstElementChild", function () { return wrapNode(globalThis.__veNativeFirstElementChild.call(this)); });
     defEl(DocumentFragment.prototype, "lastElementChild", function () { return wrapNode(globalThis.__veNativeLastElementChild.call(this)); });
   }
-  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove";
+  globalThis.__veNativeBindings = "element.id,className,tagName,textContent,getAttribute,setAttribute,removeAttribute,hasAttribute,toggleAttribute,nodeType,nodeName,nodeValue,isConnected,innerHTML,outerHTML,matches,contains,hasChildNodes,isEqualNode,compareDocumentPosition,lookupPrefix,lookupNamespaceURI,localName,prefix,namespaceURI,cloneNode,querySelector,closest,parentNode,firstChild,lastChild,nextSibling,previousSibling,firstElementChild,lastElementChild,nextElementSibling,previousElementSibling,getElementById,ownerDocument,appendChild,insertBefore,removeChild,replaceChild,createElement,createTextNode,createComment,createElementNS,createDocumentFragment,importNode,adoptNode,getRootNode,querySelectorAll,normalize,isSameNode,isDefaultNamespace,hasAttributes,getAttributeNames,remove,insertAdjacentHTML";
 })()"#,
             "vector:dom-native",
         )?;
@@ -2312,6 +2319,22 @@ fn native_element_remove(
         return;
     };
     let _ = call_dom_host(scope, &[JsValue::from("remove"), handle]);
+}
+
+fn native_element_insert_adjacent_html(
+    scope: &mut v8::PinScope<'_, '_>,
+    args: v8::FunctionCallbackArguments<'_>,
+    _rv: v8::ReturnValue<'_, v8::Value>,
+) {
+    let Some(handle) = native_this_handle(scope, &args) else {
+        return;
+    };
+    let pos = native_arg(scope, &args, 0);
+    let html = native_arg(scope, &args, 1);
+    let _ = call_dom_host(
+        scope,
+        &[JsValue::from("insertAdjacentHTML"), handle, pos, html],
+    );
 }
 
 fn looks_like_module(source: &str) -> bool {

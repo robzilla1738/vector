@@ -13,12 +13,12 @@ use ve_a11y::{
 };
 use ve_core::{Error, ErrorCode, NodeId, Point, Rect, Result, Revision, Size, Stage};
 use ve_dom::{DirtyFlags, Document, Namespace, Node, NodeKind};
-use ve_gfx::{ImageCache, ImageHandle, SoftwareRenderer};
+use ve_gfx::{FontSystem, ImageCache, ImageHandle, SoftwareRenderer};
 use ve_html::DocumentMeta;
 use ve_layout::{LayoutEngine, LayoutTree, ParleyShaper};
 use ve_style::{
-    BackgroundImage, FontFaceSrc, Length, LengthPercentage, SpecifiedTransform, SpecifiedValue,
-    StyleEngine, StyleTree, TransformOp,
+    BackgroundImage, FontFaceSrc, FontFamily, FontStyle, FontWeight, Length, LengthPercentage,
+    SpecifiedTransform, SpecifiedValue, StyleEngine, StyleTree, TransformOp,
 };
 
 use crate::forms::{self, Enctype, FormMethod};
@@ -699,6 +699,8 @@ pub struct Page {
     /// `createPattern` pixel tiles keyed by id.
     canvas_patterns: HashMap<u64, (u32, u32, Vec<u8>)>,
     next_canvas_pattern: u64,
+    /// Fonts used by canvas `fillText` / `measureText` (H3-3).
+    canvas_fonts: Option<FontSystem>,
     /// Gate E: restyle passes during the current attribution window.
     restyle_calls: u32,
     /// Gate E: restyle passes that fell back to a full document compute.
@@ -1691,6 +1693,29 @@ impl CanvasSurface {
         self.ops += 1;
     }
 
+    fn blit_glyph_mask(
+        &mut self,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+        mask: &[u8],
+        color: [u8; 4],
+    ) {
+        let style = CanvasStyle::Solid(color);
+        for row in 0..height {
+            for col in 0..width {
+                let i = (row * width + col) as usize;
+                let cov = mask.get(i).copied().unwrap_or(0);
+                if cov == 0 {
+                    continue;
+                }
+                let alpha = f32::from(cov) / 255.0;
+                self.fill_rect_styled(x + col as i32, y + row as i32, 1, 1, &style, alpha);
+            }
+        }
+    }
+
     fn blit(&mut self, src: &[u8], sw: u32, sh: u32, dx: i32, dy: i32) {
         self.put_image_data(dx, dy, sw, sh, src);
     }
@@ -1980,6 +2005,7 @@ impl Page {
             canvases: HashMap::new(),
             canvas_patterns: HashMap::new(),
             next_canvas_pattern: 0,
+            canvas_fonts: None,
             restyle_calls: 0,
             restyle_full_calls: 0,
             last_recomputed: 0,
@@ -2490,6 +2516,30 @@ impl Page {
         c.ops
     }
 
+    fn ensure_canvas_fonts(&mut self) -> &mut FontSystem {
+        if self.canvas_fonts.is_none() {
+            let mut fonts = FontSystem::new();
+            fonts.load_system_fonts();
+            self.canvas_fonts = Some(fonts);
+        }
+        self.canvas_fonts.as_mut().expect("canvas fonts installed")
+    }
+
+    pub(crate) fn canvas_measure_text(&mut self, text: &str, size: f32) -> f64 {
+        let size = if size > 0.0 { size } else { 10.0 };
+        let fonts = self.ensure_canvas_fonts();
+        if let Some(face) = fonts.query(
+            &[FontFamily::SansSerif],
+            FontWeight::NORMAL,
+            FontStyle::Normal,
+        ) {
+            if let Some(width) = fonts.measure(face, text, size) {
+                return f64::from(width);
+            }
+        }
+        (text.chars().count() as f64) * 6.0
+    }
+
     pub(crate) fn canvas_fill_text(
         &mut self,
         id: NodeId,
@@ -2497,12 +2547,54 @@ impl Page {
         x: i32,
         y: i32,
         color: &str,
+        size: f32,
     ) -> u64 {
+        let color = parse_css_color(color);
+        let size = if size > 0.0 { size } else { 10.0 };
+        let blits = {
+            let fonts = self.ensure_canvas_fonts();
+            fonts
+                .query(
+                    &[FontFamily::SansSerif],
+                    FontWeight::NORMAL,
+                    FontStyle::Normal,
+                )
+                .and_then(|face| {
+                    let run = fonts.shape_retained(face, text, size)?;
+                    let mut out = Vec::new();
+                    for glyph in run.glyphs {
+                        if glyph.id == 0 {
+                            continue;
+                        }
+                        let Some(bitmap) = fonts.rasterize_id(glyph.face, glyph.id, size) else {
+                            continue;
+                        };
+                        if bitmap.width == 0 || bitmap.height == 0 {
+                            continue;
+                        }
+                        let dx = x + glyph.x.round() as i32 + bitmap.left;
+                        let dy = y + glyph.y.round() as i32 - bitmap.top;
+                        out.push((dx, dy, bitmap));
+                    }
+                    Some(out)
+                })
+        };
         let c = self
             .canvases
             .entry(id)
             .or_insert_with(|| CanvasSurface::new(300, 150));
-        c.fill_text(text, x, y, parse_css_color(color));
+        if let Some(blits) = blits.filter(|b| !b.is_empty()) {
+            for (dx, dy, bitmap) in blits {
+                if bitmap.color {
+                    c.blit(&bitmap.data, bitmap.width, bitmap.height, dx, dy);
+                } else {
+                    c.blit_glyph_mask(dx, dy, bitmap.width, bitmap.height, &bitmap.data, color);
+                }
+            }
+            c.ops += 1;
+        } else {
+            c.fill_text(text, x, y, color);
+        }
         c.ops
     }
 

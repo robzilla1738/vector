@@ -2204,9 +2204,14 @@ pub(crate) fn host_call(
                 arg_f64(args, 2) as i32,
                 arg_f64(args, 3) as i32,
                 &arg_str(args, 4),
+                arg_f64(args, 5) as f32,
             );
             Ok(JsValue::Number(ops as f64))
         }
+        "canvasMeasureText" => Ok(JsValue::Number(page.canvas_measure_text(
+            &arg_str(args, 1),
+            arg_f64(args, 2) as f32,
+        ))),
         "canvasCreatePattern" => {
             let src = live(page, args, 0)?;
             Ok(page

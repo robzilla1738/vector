@@ -333,7 +333,12 @@ impl FontSystem {
 
     /// Retained glyph run: ids and 1/4-px snapped pen positions.
     #[must_use]
-    pub fn shape_retained(&self, id: fontdb::ID, text: &str, size: f32) -> Option<RetainedGlyphRun> {
+    pub fn shape_retained(
+        &self,
+        id: fontdb::ID,
+        text: &str,
+        size: f32,
+    ) -> Option<RetainedGlyphRun> {
         let mut glyphs = Vec::new();
         let mut x = 0.0f32;
         for ch in text.chars() {
@@ -351,7 +356,11 @@ impl FontSystem {
             });
             x += advance;
         }
-        Some(RetainedGlyphRun { glyphs, size, width: x })
+        Some(RetainedGlyphRun {
+            glyphs,
+            size,
+            width: x,
+        })
     }
 
     /// Width of `text` at `size` pixels using simple per-glyph advances (no shaping).
@@ -375,11 +384,7 @@ impl FontSystem {
         let FontSystem { db, scaler } = self;
         db.with_face_data(id, |bytes, index| {
             let font = FontRef::from_index(bytes, index as usize)?;
-            let mut built = scaler
-                .builder(font)
-                .size(size)
-                .hint(size <= 36.0)
-                .build();
+            let mut built = scaler.builder(font).size(size).hint(size <= 36.0).build();
             let outline = built.scale_outline(glyph)?;
             let mut verbs = Vec::new();
             for cmd in outline.path().commands() {
@@ -403,6 +408,16 @@ impl FontSystem {
         self.rasterize_hinted(id, glyph, size, size <= 36.0)
     }
 
+    /// Rasterises `glyph_id` without exposing the swash [`GlyphId`] type.
+    pub fn rasterize_id(
+        &mut self,
+        id: fontdb::ID,
+        glyph_id: u32,
+        size: f32,
+    ) -> Option<GlyphBitmap> {
+        self.rasterize_hinted(id, glyph_id as u16, size, size <= 18.0)
+    }
+
     /// Rasterises a glyph, with explicit hinter control.
     ///
     /// Chrome UI is 11–16 CSS px. At Retina (`scale=2`) that is 22–32 physical
@@ -417,11 +432,7 @@ impl FontSystem {
         let FontSystem { db, scaler } = self;
         db.with_face_data(id, |bytes, index| {
             let font = FontRef::from_index(bytes, index as usize)?;
-            let mut built = scaler
-                .builder(font)
-                .size(size)
-                .hint(hint)
-                .build();
+            let mut built = scaler.builder(font).size(size).hint(hint).build();
             let image = Render::new(&[
                 Source::ColorOutline(0),
                 Source::ColorBitmap(StrikeWith::BestFit),
@@ -540,9 +551,7 @@ mod tests {
             !outline.verbs.is_empty(),
             "glyph outline must contain path verbs"
         );
-        let shaped = fs
-            .shape_retained(id, "Hi", 16.0)
-            .expect("retained run");
+        let shaped = fs.shape_retained(id, "Hi", 16.0).expect("retained run");
         assert_eq!(shaped.glyphs.len(), 2);
         for g in &shaped.glyphs {
             let quarter = (g.x * 4.0).round() / 4.0;
@@ -595,9 +604,7 @@ mod tests {
         let Some(emoji) = fs.emoji_face() else {
             return;
         };
-        let shaped = fs
-            .shape_retained(ui, "😀", 32.0)
-            .expect("emoji run");
+        let shaped = fs.shape_retained(ui, "😀", 32.0).expect("emoji run");
         assert_eq!(shaped.glyphs.len(), 1, "grinning face must not be skipped");
         let g = &shaped.glyphs[0];
         assert_eq!(g.face, emoji, "emoji must use the colour-emoji face");

@@ -4395,17 +4395,22 @@
     }
     fillText(t, x, y) {
       const p = this._mapPoint(x, y);
-      D("canvasFillText", this.__h, String(t == null ? "" : t), p[0], p[1], String(this.fillStyle));
+      const size = Number((/([0-9]*\.?[0-9]+)px/.exec(String(this._font || "")) || [])[1]) || 10;
+      D("canvasFillText", this.__h, String(t == null ? "" : t), p[0], p[1], String(this.fillStyle), size);
     }
     strokeText(t, x, y) {
-      this.fillText(t, x, y);
+      const p = this._mapPoint(x, y);
+      const size = Number((/([0-9]*\.?[0-9]+)px/.exec(String(this._font || "")) || [])[1]) || 10;
+      D("canvasFillText", this.__h, String(t == null ? "" : t), p[0], p[1], String(this.strokeStyle || this.fillStyle), size);
     }
     measureText(t) {
       if (arguments.length < 1) {
         throw new TypeError("Failed to execute 'measureText' on 'CanvasRenderingContext2D': 1 argument required, but only 0 present.");
       }
+      const size = Number((/([0-9]*\.?[0-9]+)px/.exec(String(this._font || "")) || [])[1]) || 10;
+      const w = D("canvasMeasureText", this.__h, String(t), size);
       const m = Object.create(TextMetrics.prototype);
-      m._width = String(t).length * 6;
+      m._width = typeof w === "number" && w > 0 ? w : String(t).length * 6;
       return m;
     }
     createImageData(imageData) {

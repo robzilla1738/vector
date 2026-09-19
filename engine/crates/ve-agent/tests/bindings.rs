@@ -1016,23 +1016,38 @@ fn canvas_fill_text_paints_distinct_glyphs() {
         .evaluate(
             r##"(function () {
               var c = document.createElement("canvas");
-              c.width = 16;
-              c.height = 16;
+              c.width = 32;
+              c.height = 24;
               var ctx = c.getContext("2d");
               ctx.fillStyle = "#00ff00";
-              ctx.fillText("I", 0, 8);
-              ctx.fillText(" ", 8, 8);
-              var i = ctx.getImageData(2, 1, 1, 1).data;
-              var space = ctx.getImageData(10, 1, 1, 1).data;
-              var left = ctx.getImageData(0, 1, 1, 1).data;
-              return { ig: i[1], ia: i[3], sa: space[3], la: left[3] };
+              ctx.font = "16px sans-serif";
+              ctx.fillText("I", 1, 16);
+              ctx.fillText(" ", 20, 16);
+              var iData = ctx.getImageData(0, 0, 16, 24).data;
+              var space = ctx.getImageData(16, 0, 16, 24).data;
+              var ig = 0, ia = 0, sa = 0;
+              for (var n = 0; n < iData.length; n += 4) {
+                if (iData[n + 3] > 20) { ig = Math.max(ig, iData[n + 1]); ia = Math.max(ia, iData[n + 3]); }
+              }
+              for (var s = 0; s < space.length; s += 4) sa = Math.max(sa, space[s + 3]);
+              return { ig: ig, ia: ia, sa: sa, ii: ctx.measureText("II").width, m: ctx.measureText("MMMM").width, one: ctx.measureText("I").width };
             })()"##,
         )
         .unwrap();
-    assert_eq!(v["ig"], 255, "{v}");
-    assert_eq!(v["ia"], 255, "{v}");
-    assert_eq!(v["sa"], 0, "{v}");
-    assert_eq!(v["la"], 0, "{v}");
+    assert!(
+        v["ig"].as_u64().unwrap_or(0) > 100,
+        "I glyph should paint green: {v}"
+    );
+    assert!(
+        v["ia"].as_u64().unwrap_or(0) > 20,
+        "I glyph should have coverage: {v}"
+    );
+    assert_eq!(v["sa"], 0, "space must stay empty: {v}");
+    assert!(
+        v["m"].as_f64().unwrap_or(0.0) > v["one"].as_f64().unwrap_or(0.0),
+        "MMMM must be wider than I: {v}"
+    );
+    assert!(v["ii"].as_f64().unwrap_or(0.0) > 0.0, "{v}");
 }
 
 #[test]
@@ -1067,7 +1082,7 @@ fn canvas_fill_rect_paints_shadow_offset() {
     assert_eq!(v["sb"], 255, "{v}");
     assert_eq!(v["sha"], 255, "{v}");
     assert_eq!(v["ea"], 0, "{v}");
-    assert_eq!(v["tw"], 12, "{v}");
+    assert!(v["tw"].as_f64().unwrap_or(0.0) > 0.0, "{v}");
 }
 
 #[test]
