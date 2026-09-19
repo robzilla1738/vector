@@ -144,10 +144,16 @@ pub struct EngineConfig {
     /// (WPT/fixture HTTPS CAs). Empty in ordinary browsing.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub extra_tls_roots: Vec<Vec<u8>>,
-    /// Layout text shaper. GUI / corpus / Speedometer use [`ShaperKind::System`].
+    /// Layout text shaper. GUI / corpus / Speedometer / NAPI use [`ShaperKind::System`].
+    /// Rust [`Default`] stays Metric so goldens stay deterministic.
+    #[serde(default = "product_shaper")]
     pub shaper: ShaperKind,
     /// Page clock. Goldens stay [`Clock::Virtual`]; `ve-shell --gui` uses Wall.
     pub clock: Clock,
+}
+
+fn product_shaper() -> ShaperKind {
+    ShaperKind::System
 }
 
 impl Default for EngineConfig {
@@ -1329,5 +1335,14 @@ mod tests {
             .unwrap();
         assert_eq!(opened.title, "Archived");
         assert_eq!(opened.status, 200);
+    }
+
+    #[test]
+    fn json_config_defaults_to_system_shaper_goldens_stay_metric() {
+        let parsed: EngineConfig = serde_json::from_str("{}").unwrap();
+        assert_eq!(parsed.shaper, ShaperKind::System);
+        assert_eq!(EngineConfig::default().shaper, ShaperKind::Metric);
+        let metric: EngineConfig = serde_json::from_str(r#"{"shaper":"metric"}"#).unwrap();
+        assert_eq!(metric.shaper, ShaperKind::Metric);
     }
 }

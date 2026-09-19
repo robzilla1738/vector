@@ -136,7 +136,7 @@ pub unsafe extern "C" fn ve_engine_new_with_config(config_json: *const c_char) -
         return std::ptr::null_mut();
     };
     let config = if json.trim().is_empty() {
-        Ok(crate::EngineConfig::default())
+        serde_json::from_str("{}")
     } else {
         serde_json::from_str(json)
     };

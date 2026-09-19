@@ -98,7 +98,7 @@ Goal: measurement exists, the cheapest large defects are gone, and no claim in t
 | H0-A1 | Frame tracer `ve-shell --trace-frames` + `--replay-input` + `perf frames` | A/D | ☑ | `docs/perf/frame-baseline.md`; `docs/perf/section-6-this-host.json`; `docs/perf/section-6-this-host-budgets.json`; `writes_section_6_human_timings`; `writes_section_6_idle_command_rss_soak`; `wheel_does_not_rebuild_the_display_list` |
 | H0-A2 | HiDPI: `scale_factor()` into `present_list`; CSS px list, physical px surface | A | ☑ | `device_scale` on present |
 | H0-A3 | Images on the GPU path: `ImageCache`/`node_images` on `Page`; `from_layout_with` | A | ☑ | `from_layout_with` + `scene_json` |
-| H0-A4 | Wire `ParleyShaper` behind `EngineConfig::shaper`; identity prints shaper | A | ☑ | System in GUI/corpus/Speedometer/`ve-shell --service` (`product_config`); `BrowserServiceListener::bind` identity `shaper: system` (`human_and_mcp_clients_share_one_page_authority`); goldens stay Metric |
+| H0-A4 | Wire `ParleyShaper` behind `EngineConfig::shaper`; identity prints shaper | A | ☑ | System in GUI/corpus/Speedometer/`ve-shell --service` (`product_config`); `BrowserServiceListener::bind` identity `shaper: system`; NAPI/JSON omitted `shaper` is System (`json_config_defaults_to_system_shaper_goldens_stay_metric`); goldens stay Metric |
 | H0-A5 | IME/typing goes to `Page::focused()`, not first `input` | A | ☑ | two-input / click-to-focus tests |
 | H0-A6 | Full key model: keyup, repeat, arrows/Home/End/PageUp/Down/Delete/F-keys, modifiers; bind Back/Forward/Find/Zoom | A | ☑ | `NativeEvent::Key` + chrome shortcuts |
 | H0-A7 | Direct human input: `dispatch_human` → `Page` methods; no JSON Program, no 500 ms settle | A | ☑ | `dispatch_human_*` |

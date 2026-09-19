@@ -62,8 +62,9 @@ fn parse_options(options_json: &str) -> Result<Value, ApiError> {
 /// pass an explicit allowlist. `securityProfile` / `VECTOR_ENGINE_PROFILE`
 /// select production fail-closed isolation.
 pub fn parse_config(config_json: &str) -> Result<EngineConfig, ApiError> {
-    let mut config = if config_json.trim().is_empty() {
-        EngineConfig::default()
+    let mut config: EngineConfig = if config_json.trim().is_empty() {
+        // Empty JSON is the product default: system shaper, strict policy.
+        serde_json::from_value(json!({}))?
     } else {
         let value: Value = serde_json::from_str(config_json)?;
         serde_json::from_value(value)?
@@ -326,6 +327,7 @@ mod tests {
     fn config_defaults_to_a_strict_policy_unless_given() {
         let c = parse_config("").unwrap();
         assert!(c.policy.block_loopback && !c.policy.allow_file);
+        assert_eq!(c.shaper, ve_api::ShaperKind::System);
         let c = parse_config(r#"{"offline": true, "dataDir": "/tmp/x"}"#).unwrap();
         assert!(c.offline && c.policy.block_loopback);
         let c = parse_config(r#"{"policy": {"blockLoopback": true}}"#).unwrap();
