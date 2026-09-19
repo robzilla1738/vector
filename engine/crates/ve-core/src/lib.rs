@@ -25,6 +25,7 @@ pub mod clock;
 pub mod error;
 pub mod geometry;
 pub mod id;
+pub mod input;
 pub mod trace;
 
 pub use account::{
@@ -34,6 +35,7 @@ pub use clock::Clock;
 pub use error::{Error, ErrorCode, ErrorPayload, Result};
 pub use geometry::{Edges, Point, Rect, Size};
 pub use id::{NodeId, Revision};
+pub use input::ScrollPhase;
 pub use trace::{Stage, StageSample, StageTimer};
 
 /// Engine version string, taken from the workspace package version.

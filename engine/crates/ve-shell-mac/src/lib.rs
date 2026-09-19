@@ -6,18 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Scroll-phase events from AppKit / the test double.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ScrollPhase {
-    /// Began.
-    Began,
-    /// Changed.
-    Changed,
-    /// Momentum / ended.
-    Ended,
-    /// Cancelled.
-    Cancelled,
-}
+pub use ve_core::ScrollPhase;
 
 /// `CADisplayLink.preferredFrameRateRange` (H1-A4 ProMotion).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

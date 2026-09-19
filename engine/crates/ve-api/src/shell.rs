@@ -16,7 +16,7 @@ use ve_chrome::{
     Chrome, ChromeBackend, ChromeHit, ChromeOverlay, ChromeTab, ChromeTheme, Pin, empty_layout,
     sync_order, sync_spaces, toggle_pin,
 };
-use ve_core::{Error, ErrorCode, Point, Result, Size, process_rss_bytes};
+use ve_core::{Error, ErrorCode, Point, Result, ScrollPhase, Size, process_rss_bytes};
 use ve_gfx::{Compositor, DisplayItem, DisplayList, Frame, ImageCache, Renderer, SoftwareRenderer};
 use ve_profile::{Profile, SessionTab};
 
@@ -156,6 +156,9 @@ pub enum NativeEvent {
         dx: f32,
         /// Vertical delta.
         dy: f32,
+        /// Trackpad / wheel gesture phase. Omitted JSON is `changed`.
+        #[serde(default)]
+        phase: ScrollPhase,
     },
     /// Vsync / display-link tick (H1-A4 / H1-A5). Springs rubber-band and coasts momentum.
     Frame {
@@ -1254,14 +1257,14 @@ impl NativeBrowser {
                 }
                 self.present_dirty();
             }
-            NativeEvent::Wheel { dx, dy } => {
+            NativeEvent::Wheel { dx, dy, phase } => {
                 if self.chrome_enabled {
                     let p = self.pointer;
                     if let ChromeHit::Stage { .. } = self.chrome.hit(self.window_size, p.x, p.y) {
-                        self.dispatch_human_scroll(dx, dy)?;
+                        self.dispatch_human_scroll(dx, dy, phase)?;
                     }
                 } else {
-                    self.dispatch_human_scroll(dx, dy)?;
+                    self.dispatch_human_scroll(dx, dy, phase)?;
                 }
                 self.present_dirty();
             }
@@ -2268,12 +2271,12 @@ impl NativeBrowser {
         Ok(())
     }
 
-    fn dispatch_human_scroll(&mut self, dx: f32, dy: f32) -> Result<()> {
+    fn dispatch_human_scroll(&mut self, dx: f32, dy: f32, phase: ScrollPhase) -> Result<()> {
         let Some(page_id) = self.active_tab().map(|t| t.page) else {
             return Ok(());
         };
         let page = self.engine.page_mut(page_id)?;
-        let _ = page.scroll_by(dx, dy);
+        let _ = page.scroll_by_phase(dx, dy, phase);
         Ok(())
     }
 
@@ -2814,7 +2817,11 @@ mod tests {
         let page = browser.active_tab().unwrap().page;
         let vp = browser.engine_viewport_for_test(page);
         assert_eq!(vp, (800.0, 600.0));
-        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        let _ = browser.handle_event(NativeEvent::Wheel {
+                dx: 0.0,
+                dy: 80.0,
+                phase: ScrollPhase::Changed,
+            });
         let _ = browser.handle_event(NativeEvent::AccessKitAction {
             name: "urlbar".into(),
         });
@@ -2830,6 +2837,36 @@ mod tests {
     }
 
     #[test]
+    fn dispatch_human_wheel_cancelled_stops_coast() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .handle_event(NativeEvent::NewTab {
+                html: "<p style=\"height:4000px\">tall</p>".into(),
+                url: "https://human-phase.test/".into(),
+            })
+            .unwrap();
+        let _ = browser.handle_event(NativeEvent::Wheel {
+            dx: 0.0,
+            dy: 48.0,
+            phase: ScrollPhase::Changed,
+        });
+        let page_id = browser.active_tab().unwrap().page;
+        let y0 = browser.engine.page(page_id).unwrap().scroll_offset().y;
+        assert!(y0 > 0.0);
+        let _ = browser.handle_event(NativeEvent::Wheel {
+            dx: 0.0,
+            dy: 0.0,
+            phase: ScrollPhase::Cancelled,
+        });
+        let _ = browser.tick_frame(48.0);
+        let y1 = browser.engine.page(page_id).unwrap().scroll_offset().y;
+        assert!(
+            (y1 - y0).abs() < 0.5,
+            "human Cancelled must stop coast ({y0} -> {y1})"
+        );
+    }
+
+    #[test]
     fn dispatch_human_wheel_does_not_execute_program() {
         let mut browser = NativeBrowser::new();
         browser
@@ -2839,7 +2876,11 @@ mod tests {
             })
             .unwrap();
         assert_eq!(browser.program_dispatches(), 0);
-        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        let _ = browser.handle_event(NativeEvent::Wheel {
+                dx: 0.0,
+                dy: 80.0,
+                phase: ScrollPhase::Changed,
+            });
         assert_eq!(browser.program_dispatches(), 0);
         assert_eq!(browser.active_virtual_time_ms(), 0);
     }
@@ -3206,8 +3247,16 @@ mod tests {
         });
         let _ = browser.present();
         let before = browser.from_layout_calls();
-        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
-        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        let _ = browser.handle_event(NativeEvent::Wheel {
+                dx: 0.0,
+                dy: 80.0,
+                phase: ScrollPhase::Changed,
+            });
+        let _ = browser.handle_event(NativeEvent::Wheel {
+                dx: 0.0,
+                dy: 80.0,
+                phase: ScrollPhase::Changed,
+            });
         assert_eq!(
             browser.from_layout_calls(),
             before,
@@ -3267,7 +3316,11 @@ mod tests {
         let _ = browser.present();
         let sig = browser.chrome_base_sig;
         assert!(browser.chrome_base.is_some(), "first present must cache chrome");
-        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        let _ = browser.handle_event(NativeEvent::Wheel {
+                dx: 0.0,
+                dy: 80.0,
+                phase: ScrollPhase::Changed,
+            });
         assert_eq!(
             browser.chrome_base_sig, sig,
             "wheel must not rebuild chrome widgets"
@@ -3275,7 +3328,11 @@ mod tests {
         assert!(browser.chrome_base.is_some());
         assert!(browser.page_layer.is_some(), "first present must cache page layer");
         let rev = browser.page_layer_rev;
-        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        let _ = browser.handle_event(NativeEvent::Wheel {
+                dx: 0.0,
+                dy: 80.0,
+                phase: ScrollPhase::Changed,
+            });
         assert_eq!(
             browser.page_layer_rev, rev,
             "wheel must blit the cached page layer"
@@ -3323,7 +3380,11 @@ mod tests {
             });
             input_ms.push(t1.elapsed().as_secs_f64() * 1000.0);
             let t2 = Instant::now();
-            let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 40.0 });
+            let _ = browser.handle_event(NativeEvent::Wheel {
+                    dx: 0.0,
+                    dy: 40.0,
+                    phase: ScrollPhase::Changed,
+                });
             scroll_ms.push(t2.elapsed().as_secs_f64() * 1000.0);
         }
         let pct = |mut xs: Vec<f64>, p: f64| {
@@ -3372,7 +3433,11 @@ mod tests {
             .unwrap();
         let _ = browser.present();
         for _ in 0..30 {
-            let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 200.0 });
+            let _ = browser.handle_event(NativeEvent::Wheel {
+                    dx: 0.0,
+                    dy: 200.0,
+                    phase: ScrollPhase::Changed,
+                });
         }
         assert!(
             browser.needs_frame(),
@@ -3393,7 +3458,11 @@ mod tests {
             })
             .unwrap();
         for _ in 0..30 {
-            let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 200.0 });
+            let _ = browser.handle_event(NativeEvent::Wheel {
+                    dx: 0.0,
+                    dy: 200.0,
+                    phase: ScrollPhase::Changed,
+                });
         }
         browser
             .handle_event(NativeEvent::NewTab {
@@ -3837,7 +3906,11 @@ mod tests {
             x: stage.x() + 40.0,
             y: stage.y() + 40.0,
         });
-        let _ = browser.handle_event(NativeEvent::Wheel { dx: 0.0, dy: 80.0 });
+        let _ = browser.handle_event(NativeEvent::Wheel {
+                dx: 0.0,
+                dy: 80.0,
+                phase: ScrollPhase::Changed,
+            });
         assert_eq!(
             browser.from_layout_calls(),
             before,

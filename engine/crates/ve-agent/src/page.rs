@@ -1782,13 +1782,49 @@ impl Page {
 
     /// Scrolls the viewport by CSS pixels without running an agent Program.
     pub fn scroll_by(&mut self, dx: f32, dy: f32) -> ScrollState {
+        self.scroll_by_phase(dx, dy, ve_core::ScrollPhase::Changed)
+    }
+
+    /// Wheel / trackpad scroll with a gesture phase (H1-A5).
+    pub fn scroll_by_phase(
+        &mut self,
+        dx: f32,
+        dy: f32,
+        phase: ve_core::ScrollPhase,
+    ) -> ScrollState {
         self.update();
+        match phase {
+            ve_core::ScrollPhase::Cancelled => {
+                self.scroll_velocity = Point::ZERO;
+                self.doc.record_scrolled(None);
+                return self.scroll_state();
+            }
+            ve_core::ScrollPhase::Began => {
+                self.scroll_velocity = Point::ZERO;
+            }
+            ve_core::ScrollPhase::Changed | ve_core::ScrollPhase::Ended => {}
+        }
         if dx.abs() > f32::EPSILON {
             let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
             self.scroll.x = (self.scroll.x + dx).clamp(0.0, max_x);
             self.doc.record_scrolled(None);
         }
+        if phase == ve_core::ScrollPhase::Ended && dy.abs() <= f32::EPSILON {
+            return self.scroll_state();
+        }
         self.scroll_viewport(dy)
+    }
+
+    fn scroll_state(&self) -> ScrollState {
+        let max_y = (self.layout.content_height() - self.viewport.height).max(0.0);
+        let max_x = (self.layout.root.rect.right() - self.viewport.width).max(0.0);
+        ScrollState {
+            x: self.scroll.x,
+            y: self.scroll.y,
+            max_x,
+            max_y,
+            container: None,
+        }
     }
 
     /// Rubber-band offset past the clamped scroll range.

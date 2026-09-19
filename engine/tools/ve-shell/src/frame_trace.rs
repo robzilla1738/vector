@@ -4,7 +4,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
-use ve_api::{KeyState, NativeBrowser, NativeEvent};
+use ve_api::{KeyState, NativeBrowser, NativeEvent, ScrollPhase};
 
 /// One recorded sample.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -93,7 +93,11 @@ pub fn replay(browser: &mut NativeBrowser, events: &[ReplayEvent]) -> FrameTrace
     let mut trace = FrameTrace::new();
     for ev in events {
         let native = match ev {
-            ReplayEvent::Wheel { dx, dy, .. } => NativeEvent::Wheel { dx: *dx, dy: *dy },
+            ReplayEvent::Wheel { dx, dy, .. } => NativeEvent::Wheel {
+                dx: *dx,
+                dy: *dy,
+                phase: ScrollPhase::Changed,
+            },
             ReplayEvent::Click { x, y, .. } => NativeEvent::PointerDown {
                 x: *x,
                 y: *y,

@@ -59,7 +59,7 @@ pub use ve_agent::{
     ProgramResult, RoutingInfo, SETTLE_NAVIGATION_MS, SETTLE_STEP_MS, Scope, Screenshot, Settled,
     ShaperKind, StepOutcome,
 };
-pub use ve_core::{Clock, VERSION};
+pub use ve_core::{Clock, ScrollPhase, VERSION};
 pub use ve_net::{BrowserCookie, ContextId, NetworkPolicy};
 
 /// Start V8 before a production sandbox denies new threads.

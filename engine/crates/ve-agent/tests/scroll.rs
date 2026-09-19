@@ -1,7 +1,7 @@
 //! H1-A5: rubber-band, trackpad momentum, prefers-reduced-motion.
 
 use ve_agent::{Page, ScrollDirection};
-use ve_core::Size;
+use ve_core::{ScrollPhase, Size};
 
 fn tall(overscroll: &str) -> Page {
     Page::from_html(
@@ -57,6 +57,36 @@ fn reduced_motion_skips_rubber_band_and_momentum() {
     let y = page.scroll_offset().y;
     page.tick_scroll_physics(80.0);
     assert!((page.scroll_offset().y - y).abs() < 0.01);
+}
+
+#[test]
+fn scroll_phase_cancelled_zeros_momentum() {
+    let mut page = tall("auto");
+    page.update();
+    page.scroll_by_phase(0.0, 48.0, ScrollPhase::Changed);
+    let y0 = page.scroll_offset().y;
+    page.scroll_by_phase(0.0, 0.0, ScrollPhase::Cancelled);
+    page.tick_scroll_physics(48.0);
+    assert!(
+        (page.scroll_offset().y - y0).abs() < 0.5,
+        "cancelled must not coast ({y0} -> {})",
+        page.scroll_offset().y
+    );
+}
+
+#[test]
+fn scroll_phase_began_resets_stale_velocity() {
+    let mut page = tall("auto");
+    page.update();
+    page.scroll_by_phase(0.0, 48.0, ScrollPhase::Changed);
+    page.scroll_by_phase(0.0, 0.0, ScrollPhase::Began);
+    let y0 = page.scroll_offset().y;
+    page.tick_scroll_physics(48.0);
+    assert!(
+        (page.scroll_offset().y - y0).abs() < 0.5,
+        "began must drop leftover velocity ({y0} -> {})",
+        page.scroll_offset().y
+    );
 }
 
 #[test]

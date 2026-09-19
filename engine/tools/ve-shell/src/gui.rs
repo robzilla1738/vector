@@ -380,13 +380,14 @@ impl ApplicationHandler<AccessKitEvent> for App {
                 });
             }
             WindowEvent::MouseWheel { delta, phase, .. } => {
+                let scroll_phase = match phase {
+                    winit::event::TouchPhase::Started => ve_shell_mac::ScrollPhase::Began,
+                    winit::event::TouchPhase::Moved => ve_shell_mac::ScrollPhase::Changed,
+                    winit::event::TouchPhase::Ended => ve_shell_mac::ScrollPhase::Ended,
+                    winit::event::TouchPhase::Cancelled => ve_shell_mac::ScrollPhase::Cancelled,
+                };
                 if let Some(host) = &mut self.host {
-                    host.set_scroll_phase(match phase {
-                        winit::event::TouchPhase::Started => ve_shell_mac::ScrollPhase::Began,
-                        winit::event::TouchPhase::Moved => ve_shell_mac::ScrollPhase::Changed,
-                        winit::event::TouchPhase::Ended => ve_shell_mac::ScrollPhase::Ended,
-                        winit::event::TouchPhase::Cancelled => ve_shell_mac::ScrollPhase::Cancelled,
-                    });
+                    host.set_scroll_phase(scroll_phase);
                 }
                 let scale = self.window.as_ref().map_or(1.0, |w| w.scale_factor()) as f32;
                 let (dx, dy) = match delta {
@@ -395,9 +396,11 @@ impl ApplicationHandler<AccessKitEvent> for App {
                         (p.x as f32 / scale.max(0.01), p.y as f32 / scale.max(0.01))
                     }
                 };
-                let _ = self
-                    .browser_mut()
-                    .handle_event(NativeEvent::Wheel { dx, dy });
+                let _ = self.browser_mut().handle_event(NativeEvent::Wheel {
+                    dx,
+                    dy,
+                    phase: scroll_phase,
+                });
                 if let Some(w) = &self.window {
                     w.request_redraw();
                 }

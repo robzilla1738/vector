@@ -26,7 +26,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use ve_api::{
     EngineConfig, ExecuteRequest, NativeBrowser, NativeEvent, NetworkPolicy, ObservationContent,
-    ObservationRequest, OpenRequest, PageId, Program, VectorEngine,
+    ObservationRequest, OpenRequest, PageId, Program, ScrollPhase, VectorEngine,
 };
 use ve_core::Size;
 
@@ -627,6 +627,7 @@ fn run_frames(args: &Args) -> Result<()> {
         browser.handle_event(NativeEvent::Wheel {
             dx: 0.0,
             dy: 40.0,
+            phase: ScrollPhase::Changed,
         })?;
         let _ = browser.present();
     }
