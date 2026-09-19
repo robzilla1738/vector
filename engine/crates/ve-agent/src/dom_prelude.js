@@ -6962,6 +6962,17 @@
   const navigatorUserActivation = Object.create(UserActivation.prototype);
   const navigatorPlugins = Object.create(PluginArray.prototype);
   const navigatorMimeTypes = Object.create(MimeTypeArray.prototype);
+  function denyDeviceRequest(name) {
+    return {
+      getDevices() { return Promise.resolve([]); },
+      requestDevice() {
+        return Promise.reject(new DOMException(name + " permission denied", "NotAllowedError"));
+      },
+      requestPort() {
+        return Promise.reject(new DOMException(name + " permission denied", "NotAllowedError"));
+      },
+    };
+  }
   class Navigator {
     constructor() { throw new TypeError("Illegal constructor"); }
     get appCodeName() { return "Mozilla"; }
@@ -7141,6 +7152,110 @@
         };
       }
       return this._geo;
+    }
+    getBattery() {
+      return Promise.resolve({
+        charging: true,
+        chargingTime: 0,
+        dischargingTime: Infinity,
+        level: 1,
+        addEventListener() {},
+        removeEventListener() {},
+      });
+    }
+    getGamepads() { return []; }
+    get maxTouchPoints() { return 0; }
+    get deviceMemory() { return 8; }
+    get userAgentData() {
+      if (!this._uaData) {
+        const brands = [
+          { brand: "Vector", version: "0" },
+          { brand: "Not.A/Brand", version: "99" },
+        ];
+        this._uaData = {
+          brands,
+          mobile: false,
+          platform: "Linux",
+          getHighEntropyValues() {
+            return Promise.resolve({
+              brands,
+              mobile: false,
+              platform: "Linux",
+              platformVersion: "",
+              architecture: "x86",
+              model: "",
+              uaFullVersion: "0.0.1",
+              bitness: "64",
+              fullVersionList: brands,
+            });
+          },
+          toJSON() { return { brands, mobile: false, platform: "Linux" }; },
+        };
+      }
+      return this._uaData;
+    }
+    get connection() {
+      if (!this._connection) {
+        this._connection = {
+          effectiveType: "4g",
+          downlink: 10,
+          rtt: 50,
+          saveData: false,
+          type: "wifi",
+          addEventListener() {},
+          removeEventListener() {},
+        };
+      }
+      return this._connection;
+    }
+    get mediaSession() {
+      if (!this._mediaSession) {
+        this._mediaSession = {
+          metadata: null,
+          playbackState: "none",
+          setActionHandler() {},
+          setPositionState() {},
+        };
+      }
+      return this._mediaSession;
+    }
+    get virtualKeyboard() {
+      if (!this._vk) {
+        this._vk = {
+          overlaysContent: false,
+          boundingRect: { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0 },
+          show() {},
+          hide() {},
+          addEventListener() {},
+          removeEventListener() {},
+        };
+      }
+      return this._vk;
+    }
+    get gpu() {
+      if (!this._gpu) {
+        this._gpu = {
+          requestAdapter() { return Promise.resolve(null); },
+          wgslLanguageFeatures: new Set(),
+        };
+      }
+      return this._gpu;
+    }
+    get bluetooth() {
+      if (!this._bluetooth) this._bluetooth = denyDeviceRequest("Bluetooth");
+      return this._bluetooth;
+    }
+    get usb() {
+      if (!this._usb) this._usb = denyDeviceRequest("USB");
+      return this._usb;
+    }
+    get serial() {
+      if (!this._serial) this._serial = denyDeviceRequest("Serial");
+      return this._serial;
+    }
+    get hid() {
+      if (!this._hid) this._hid = denyDeviceRequest("HID");
+      return this._hid;
     }
     registerProtocolHandler(scheme, url) {
       if (arguments.length < 2) {
@@ -10728,6 +10843,24 @@
     static isUserVerifyingPlatformAuthenticatorAvailable() { return Promise.resolve(false); }
     static isConditionalMediationAvailable() { return Promise.resolve(false); }
   }
+  class EyeDropper {
+    open() {
+      return Promise.reject(new DOMException("The user aborted a request.", "AbortError"));
+    }
+  }
+  class BarcodeDetector {
+    constructor(opts) { this._formats = (opts && opts.formats) || []; }
+    static getSupportedFormats() { return Promise.resolve(["qr_code", "ean_13"]); }
+    detect() { return Promise.resolve([]); }
+  }
+  class IdleDetector {
+    constructor() {
+      this.userState = null;
+      this.screenState = null;
+    }
+    static requestPermission() { return Promise.resolve("denied"); }
+    start() { return Promise.reject(new DOMException("Idle detection denied", "NotAllowedError")); }
+  }
   const windowProps = {
     window: null, self: null, document, location, history, atob, btoa,
     localStorage: storage("local"), sessionStorage: storage("session"),
@@ -10813,7 +10946,7 @@
     WebGLRenderingContext, RTCPeerConnection,
     TextEncoderStream, TextDecoderStream,
     CompressionStream, DecompressionStream, CookieStore, cookieStore, ClipboardItem,
-    PaymentRequest, PublicKeyCredential,
+    PaymentRequest, PublicKeyCredential, EyeDropper, BarcodeDetector, IdleDetector,
     Animation, KeyframeEffect, DocumentTimeline, ViewTransition,
     FormData, XMLHttpRequest, DOMTokenList, URL, URLSearchParams, DOMParser, CSSStyleSheet, CSSStyleRule, EventSource, Blob, File, FileReader, FontFace, FontFaceSet, Notification, SpeechSynthesisVoice, SpeechSynthesisUtterance, SpeechSynthesis, speechSynthesis, VisualViewport, visualViewport, Cache, CacheStorage, caches,
     TextDecoder, TextEncoder,
@@ -10898,7 +11031,22 @@
         },
       },
     }),
-    screen: { width: D("innerWidth"), height: D("innerHeight"), colorDepth: 24 },
+    screen: {
+      width: D("innerWidth"),
+      height: D("innerHeight"),
+      availWidth: D("innerWidth"),
+      availHeight: D("innerHeight"),
+      colorDepth: 24,
+      pixelDepth: 24,
+      orientation: {
+        type: "landscape-primary",
+        angle: 0,
+        lock() { return Promise.reject(new DOMException("Screen orientation lock denied", "NotAllowedError")); },
+        unlock() {},
+        addEventListener() {},
+        removeEventListener() {},
+      },
+    },
     devicePixelRatio: 1,
     get innerWidth() { return D("innerWidth"); },
     get innerHeight() { return D("innerHeight"); },

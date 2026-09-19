@@ -622,6 +622,7 @@ fn paint_svg_rect(
     let (esx, esy) = svg_scale(tag);
     let (etx, ety) = svg_translate(tag);
     let (ang, rcx, rcy) = svg_rotate(tag);
+    let (kx, ky) = svg_skew(tag);
     let lx = svg_attr(tag, "x").unwrap_or(0.0) * esx + etx;
     let ly = svg_attr(tag, "y").unwrap_or(0.0) * esy + ety;
     let lw = (svg_attr(tag, "width").unwrap_or(0.0) * esx).max(0.0);
@@ -630,7 +631,7 @@ fn paint_svg_rect(
     let w = lw * g.sx;
     let h = lh * g.sy;
     let fill = svg_fill(tag);
-    if ang.abs() < 0.001 {
+    if ang.abs() < 0.001 && kx.abs() < 1e-6 && ky.abs() < 1e-6 {
         let x = x0.max(0.0) as u32;
         let y = y0.max(0.0) as u32;
         let ww = w.max(0.0) as u32;
@@ -645,11 +646,15 @@ fn paint_svg_rect(
         return;
     }
     let rad = ang.to_radians();
+    let map_local = |x: f32, y: f32| {
+        let (sx, sy) = svg_skew_pt(x, y, kx, ky);
+        g.map_pt(svg_rotate_pt(sx, sy, rad, rcx, rcy))
+    };
     let corners = [
-        g.map_pt(svg_rotate_pt(lx, ly, rad, rcx, rcy)),
-        g.map_pt(svg_rotate_pt(lx + lw, ly, rad, rcx, rcy)),
-        g.map_pt(svg_rotate_pt(lx + lw, ly + lh, rad, rcx, rcy)),
-        g.map_pt(svg_rotate_pt(lx, ly + lh, rad, rcx, rcy)),
+        map_local(lx, ly),
+        map_local(lx + lw, ly),
+        map_local(lx + lw, ly + lh),
+        map_local(lx, ly + lh),
     ];
     let minx = corners
         .iter()
@@ -681,7 +686,8 @@ fn paint_svg_rect(
         for xx in minx..maxx {
             let px = (xx as f32 + 0.5 - g.ox) * inv_sx;
             let py = (yy as f32 + 0.5 - g.oy) * inv_sy;
-            let (ux, uy) = svg_rotate_pt(px, py, -rad, rcx, rcy);
+            let (rx, ry) = svg_rotate_pt(px, py, -rad, rcx, rcy);
+            let (ux, uy) = svg_unskew_pt(rx, ry, kx, ky);
             if ux >= lx && ux < lx + lw && uy >= ly && uy < ly + lh {
                 let color = paint_fill_color(tag, fill, grads, xx as f32 + 0.5, yy as f32 + 0.5);
                 let idx = ((yy * img.width + xx) * 4) as usize;
@@ -938,6 +944,32 @@ fn svg_rotate_pt(x: f32, y: f32, rad: f32, cx: f32, cy: f32) -> (f32, f32) {
     let c = rad.cos();
     let s = rad.sin();
     (cx + dx * c - dy * s, cy + dx * s + dy * c)
+}
+
+fn svg_skew(tag: &str) -> (f32, f32) {
+    let Some(raw) = svg_attr_str(tag, "transform") else {
+        return (0.0, 0.0);
+    };
+    let parse_deg = |raw: &str, name: &str| -> f32 {
+        let Some(idx) = raw.find(name) else {
+            return 0.0;
+        };
+        let rest = raw[idx + name.len()..].trim();
+        let rest = rest.trim_start_matches('(');
+        let rest = rest.split(')').next().unwrap_or("").trim();
+        rest.parse::<f32>().unwrap_or(0.0).to_radians().tan()
+    };
+    (parse_deg(raw, "skewX"), parse_deg(raw, "skewY"))
+}
+
+fn svg_skew_pt(x: f32, y: f32, kx: f32, ky: f32) -> (f32, f32) {
+    let x1 = x + y * kx;
+    (x1, y + x1 * ky)
+}
+
+fn svg_unskew_pt(xp: f32, yp: f32, kx: f32, ky: f32) -> (f32, f32) {
+    let y = yp - xp * ky;
+    (xp - y * kx, y)
 }
 
 fn svg_rotate(tag: &str) -> (f32, f32, f32) {
@@ -1807,5 +1839,17 @@ mod tests {
         assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
         assert_eq!(img.pixel(3, 3), Some([0, 255, 255, 255]));
         assert_eq!(img.pixel(5, 5), Some([0, 255, 255, 255]));
+    }
+
+    #[test]
+    fn decode_svg_skew_x_shears_rect() {
+        let img = decode(
+            b"<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'>\
+              <rect x='0' y='2' width='2' height='2' fill='#ff8800' transform='skewX(45)'/></svg>",
+        )
+        .expect("svg skew");
+        assert_eq!(img.pixel(0, 0), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(1, 2), Some([0, 0, 0, 0]));
+        assert_eq!(img.pixel(3, 3), Some([255, 136, 0, 255]));
     }
 }

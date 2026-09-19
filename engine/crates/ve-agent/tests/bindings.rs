@@ -5451,6 +5451,93 @@ fn credentials_and_payment_request_deny() {
 }
 
 #[test]
+fn navigator_battery_gamepads_and_ua_data() {
+    let mut page = open("<title>nav</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__navx = null;
+          Promise.all([
+            navigator.getBattery(),
+            navigator.userAgentData.getHighEntropyValues(["platform"]),
+            navigator.gpu.requestAdapter()
+          ]).then(function (rows) {
+            const bat = rows[0];
+            navigator.mediaSession.metadata = { title: "t" };
+            navigator.mediaSession.playbackState = "playing";
+            window.__navx = {
+              charging: bat.charging === true && bat.level === 1,
+              pads: Array.isArray(navigator.getGamepads()) && navigator.getGamepads().length === 0,
+              ua: navigator.userAgentData.brands.some(function (b) { return b.brand === "Vector"; }) && rows[1].platform === "Linux",
+              conn: navigator.connection.effectiveType === "4g" && navigator.connection.saveData === false,
+              gpu: rows[2] === null,
+              mem: navigator.deviceMemory === 8 && navigator.maxTouchPoints === 0,
+              media: navigator.mediaSession.playbackState === "playing",
+              vk: navigator.virtualKeyboard.overlaysContent === false
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__navx").unwrap();
+    assert_eq!(v["charging"], true, "{v}");
+    assert_eq!(v["pads"], true, "{v}");
+    assert_eq!(v["ua"], true, "{v}");
+    assert_eq!(v["conn"], true, "{v}");
+    assert_eq!(v["gpu"], true, "{v}");
+    assert_eq!(v["mem"], true, "{v}");
+    assert_eq!(v["media"], true, "{v}");
+    assert_eq!(v["vk"], true, "{v}");
+}
+
+#[test]
+fn device_apis_and_screen_orientation_deny() {
+    let mut page = open("<title>dev</title>");
+    page.evaluate(
+        r##"(function () {
+          window.__devx = null;
+          const ed = new EyeDropper();
+          const bd = new BarcodeDetector();
+          Promise.allSettled([
+            navigator.bluetooth.requestDevice({ acceptAllDevices: true }),
+            navigator.usb.requestDevice({ filters: [] }),
+            navigator.serial.requestPort(),
+            navigator.hid.requestDevice({ filters: [] }),
+            screen.orientation.lock("portrait"),
+            ed.open(),
+            bd.detect(document.createElement("canvas")),
+            IdleDetector.requestPermission(),
+            new IdleDetector().start()
+          ]).then(function (rows) {
+            window.__devx = {
+              bt: rows[0].status === "rejected" && rows[0].reason.name === "NotAllowedError",
+              usb: rows[1].status === "rejected" && rows[1].reason.name === "NotAllowedError",
+              serial: rows[2].status === "rejected" && rows[2].reason.name === "NotAllowedError",
+              hid: rows[3].status === "rejected" && rows[3].reason.name === "NotAllowedError",
+              ori: rows[4].status === "rejected" && rows[4].reason.name === "NotAllowedError" && screen.orientation.type === "landscape-primary",
+              eye: rows[5].status === "rejected" && rows[5].reason.name === "AbortError",
+              bar: rows[6].status === "fulfilled" && Array.isArray(rows[6].value) && rows[6].value.length === 0,
+              idlePerm: rows[7].status === "fulfilled" && rows[7].value === "denied",
+              idleStart: rows[8].status === "rejected" && rows[8].reason.name === "NotAllowedError"
+            };
+          });
+        })()"##,
+    )
+    .unwrap();
+    assert!(page.settle(50).settled);
+    let v = page.evaluate("window.__devx").unwrap();
+    assert_eq!(v["bt"], true, "{v}");
+    assert_eq!(v["usb"], true, "{v}");
+    assert_eq!(v["serial"], true, "{v}");
+    assert_eq!(v["hid"], true, "{v}");
+    assert_eq!(v["ori"], true, "{v}");
+    assert_eq!(v["eye"], true, "{v}");
+    assert_eq!(v["bar"], true, "{v}");
+    assert_eq!(v["idlePerm"], true, "{v}");
+    assert_eq!(v["idleStart"], true, "{v}");
+}
+
+#[test]
 fn webgl_tex_image_draw_arrays_blits() {
     let mut page = open("<title>glt</title>");
     let v = page
