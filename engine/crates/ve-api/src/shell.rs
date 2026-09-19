@@ -17,12 +17,13 @@ use ve_chrome::{
     sync_order, sync_spaces, toggle_pin,
 };
 use ve_core::{Error, ErrorCode, Point, Result, ScrollPhase, Size, process_rss_bytes};
-use ve_gfx::{Compositor, DisplayItem, DisplayList, Frame, ImageCache, Renderer, SoftwareRenderer};
+use ve_gfx::{DisplayItem, DisplayList, Frame, ImageCache, Renderer, SoftwareRenderer};
 use ve_profile::{Profile, SessionTab};
 
 use crate::{
-    EngineConfig, ExecuteRequest, ExecuteResult, Observation, ObservationRequest, OpenRequest,
-    PageId, Program, ShaperKind, UpdateKeyPair, VectorEngine, verify_update_manifest,
+    ContextId, EngineConfig, ExecuteRequest, ExecuteResult, NativeWindow, Observation,
+    ObservationRequest, OpenRequest, PageId, Program, ShaperKind, UpdateKeyPair, VectorEngine,
+    verify_update_manifest,
 };
 use ve_agent::{MouseButton, Page};
 
@@ -39,6 +40,8 @@ pub struct Tab {
     pub backend: ChromeBackend,
     /// Why this backend was chosen.
     pub route_reason: String,
+    /// Cookie/storage context. Private windows use a distinct id.
+    pub context: ContextId,
 }
 
 /// Key down or up.
@@ -215,14 +218,7 @@ pub struct NativeBrowser {
     clipboard: String,
     downloads: Vec<String>,
     permissions: HashMap<String, bool>,
-    surface: Frame,
-    pointer: Point,
-    urlbar: String,
-    urlbar_focused: bool,
-    urlbar_selected: bool,
-    compositor: Compositor,
-    presented: bool,
-    device_scale: f32,
+    window: NativeWindow,
     list_cache: Option<DisplayListCache>,
     from_layout_calls: u64,
     ime_preedit: String,
@@ -240,7 +236,6 @@ pub struct NativeBrowser {
     gpu_presented: bool,
     chrome_enabled: bool,
     chrome: Chrome,
-    window_size: Size,
     profile: Option<Profile>,
     /// `VECTOR_ENGINE_MODE=always` / `VECTOR_ENGINE_ONLY=1`: never start Chromium.
     engine_only: bool,
@@ -295,14 +290,7 @@ impl NativeBrowser {
             clipboard: String::new(),
             downloads: Vec::new(),
             permissions: HashMap::new(),
-            surface: Frame::filled(1280, 720, [255, 255, 255, 255]),
-            pointer: Point::ZERO,
-            urlbar: String::new(),
-            urlbar_focused: false,
-            urlbar_selected: false,
-            compositor: Compositor::new(),
-            presented: false,
-            device_scale,
+            window: NativeWindow::new(device_scale),
             list_cache: None,
             from_layout_calls: 0,
             ime_preedit: String::new(),
@@ -320,7 +308,6 @@ impl NativeBrowser {
             gpu_presented: false,
             chrome_enabled: false,
             chrome: Chrome::default(),
-            window_size: Size::new(1280.0, 720.0),
             profile: None,
             engine_only: engine_only_from_env(),
             sw: None,
@@ -356,7 +343,7 @@ impl NativeBrowser {
                 ShaperKind::System => "system",
             },
             "fromLayoutCalls": self.from_layout_calls,
-            "deviceScale": self.device_scale,
+            "deviceScale": self.window.device_scale,
         })
     }
 
@@ -369,16 +356,16 @@ impl NativeBrowser {
     /// Device pixel ratio used for present.
     #[must_use]
     pub fn device_scale(&self) -> f32 {
-        self.device_scale
+        self.window.device_scale
     }
 
     /// Sets the device pixel ratio (Retina = 2.0). Display list stays in CSS px.
     pub fn set_device_scale(&mut self, scale: f32) {
-        self.device_scale = scale.max(0.01);
+        self.window.device_scale = scale.max(0.01);
         if let Some(page) = self.active_tab().map(|t| t.page)
             && let Ok(p) = self.engine.page_mut(page)
         {
-            p.set_scale(self.device_scale);
+            p.set_scale(self.window.device_scale);
         }
         let (w, h) = self
             .active_tab()
@@ -386,7 +373,7 @@ impl NativeBrowser {
             .map(|p| (p.viewport().width, p.viewport().height))
             .unwrap_or((1280.0, 720.0));
         self.resize_surface(w, h);
-        self.presented = false;
+        self.window.presented = false;
     }
 
     /// True after a successful GPU present of the live page.
@@ -405,21 +392,40 @@ impl NativeBrowser {
     /// Opens a tab. Human and agent both target this page id.
     pub fn new_tab(&mut self, html: &str, url: &str) -> Result<&Tab> {
         let opened = self.engine.open(OpenRequest::html(html, Some(url)))?;
-        self.tabs.push(Tab {
-            page: opened.page,
-            url: opened.url,
-            page_title: opened.title,
-            backend: ChromeBackend::Engine,
-            route_reason: opened.routing.route_reason,
-        });
-        self.active = self.tabs.len() - 1;
-        self.compositor.mark_damaged();
-        if self.chrome_enabled {
-            self.sync_chrome();
-            self.persist_profile();
-            self.apply_chrome_viewport();
-        }
-        Ok(self.tabs.last().unwrap())
+        Ok(self.attach_opened(opened, ChromeBackend::Engine, None, true))
+    }
+
+    /// Opens a tab in a fresh cookie/storage context (private window).
+    pub fn new_private_tab(&mut self, html: &str, url: &str) -> Result<&Tab> {
+        let context = self.engine.new_context(None);
+        self.new_tab_in_context(html, url, context)
+    }
+
+    /// Opens a tab in an existing context (tabs in one private window share a jar).
+    pub fn new_tab_in_context(
+        &mut self,
+        html: &str,
+        url: &str,
+        context: ContextId,
+    ) -> Result<&Tab> {
+        let opened = self.engine.open(OpenRequest {
+            html: Some(html.to_owned()),
+            url: Some(url.to_owned()),
+            context: Some(context.0),
+            ..OpenRequest::default()
+        })?;
+        Ok(self.attach_opened(opened, ChromeBackend::Engine, None, true))
+    }
+
+    /// Opens a URL in a fresh cookie/storage context (private window).
+    pub fn open_private(&mut self, url: &str) -> Result<&Tab> {
+        let context = self.engine.new_context(None);
+        let opened = self.engine.open(OpenRequest {
+            url: Some(url.to_owned()),
+            context: Some(context.0),
+            ..OpenRequest::default()
+        })?;
+        Ok(self.attach_opened(opened, ChromeBackend::Engine, None, true))
     }
 
     /// Opens a tab by URL through the engine loader.
@@ -428,21 +434,35 @@ impl NativeBrowser {
             url: Some(url.to_owned()),
             ..OpenRequest::default()
         })?;
+        Ok(self.attach_opened(opened, ChromeBackend::Engine, None, true))
+    }
+
+    fn attach_opened(
+        &mut self,
+        opened: crate::OpenResult,
+        backend: ChromeBackend,
+        route_reason: Option<String>,
+        persist: bool,
+    ) -> &Tab {
+        let route_reason = route_reason.unwrap_or(opened.routing.route_reason);
         self.tabs.push(Tab {
             page: opened.page,
             url: opened.url,
             page_title: opened.title,
-            backend: ChromeBackend::Engine,
-            route_reason: opened.routing.route_reason,
+            backend,
+            route_reason,
+            context: opened.context,
         });
         self.active = self.tabs.len() - 1;
-        self.compositor.mark_damaged();
+        self.window.compositor.mark_damaged();
         if self.chrome_enabled {
             self.sync_chrome();
-            self.persist_profile();
+            if persist {
+                self.persist_profile();
+            }
             self.apply_chrome_viewport();
         }
-        Ok(self.tabs.last().unwrap())
+        self.tabs.last().unwrap()
     }
 
     /// Explicit Chromium tab. Engine-only mode refuses this (never silent).
@@ -457,20 +477,19 @@ impl NativeBrowser {
             "<p>Chromium host — this tab is not the own engine.</p>",
             Some(url),
         ))?;
-        self.tabs.push(Tab {
-            page: opened.page,
-            url: url.to_owned(),
-            page_title: "Chromium".into(),
-            backend: ChromeBackend::Chromium,
-            route_reason: "explicit-backend:chromium".into(),
-        });
-        self.active = self.tabs.len() - 1;
-        self.compositor.mark_damaged();
+        let _ = self.attach_opened(
+            opened,
+            ChromeBackend::Chromium,
+            Some("explicit-backend:chromium".into()),
+            false,
+        );
+        // attach_opened keeps the engine document URL; Chromium tabs show the requested host.
+        self.tabs[self.active].url = url.to_owned();
+        self.tabs[self.active].page_title = "Chromium".into();
         if self.chrome_enabled {
             self.sync_chrome();
-            self.apply_chrome_viewport();
         }
-        Ok(self.tabs.last().unwrap())
+        Ok(&self.tabs[self.active])
     }
 
     /// Active tab.
@@ -494,7 +513,18 @@ impl NativeBrowser {
     /// Last pointer position in CSS pixels.
     #[must_use]
     pub fn pointer(&self) -> Point {
-        self.pointer
+        self.window.pointer
+    }
+
+    /// The OS window this browser is presenting into.
+    #[must_use]
+    pub fn window(&self) -> &NativeWindow {
+        &self.window
+    }
+
+    /// Mutable OS window (tests and host chrome).
+    pub fn window_mut(&mut self) -> &mut NativeWindow {
+        &mut self.window
     }
 
     /// Updates the engine viewport in CSS pixels. The surface is physical px.
@@ -506,7 +536,7 @@ impl NativeBrowser {
             && let Ok(p) = self.engine.page_mut(page)
         {
             p.set_viewport(Size::new(w, h));
-            p.set_scale(self.device_scale);
+            p.set_scale(self.window.device_scale);
         }
         self.list_cache = None;
         self.page_layer = None;
@@ -514,12 +544,12 @@ impl NativeBrowser {
     }
 
     fn resize_surface(&mut self, css_w: f32, css_h: f32) {
-        let pw = (css_w * self.device_scale).round().max(1.0) as u32;
-        let ph = (css_h * self.device_scale).round().max(1.0) as u32;
-        if self.surface.width == pw && self.surface.height == ph {
+        let pw = (css_w * self.window.device_scale).round().max(1.0) as u32;
+        let ph = (css_h * self.window.device_scale).round().max(1.0) as u32;
+        if self.window.surface.width == pw && self.window.surface.height == ph {
             return;
         }
-        self.surface = Frame::filled(pw, ph, [255, 255, 255, 255]);
+        self.window.surface = Frame::filled(pw, ph, [255, 255, 255, 255]);
     }
 
     /// Chrome accessibility tree. Independent of page roles and names.
@@ -550,8 +580,8 @@ impl NativeBrowser {
             if i == self.active {
                 nodes.push(ChromeAxNode {
                     role: "urlbar".into(),
-                    name: if self.urlbar_focused {
-                        self.urlbar.clone()
+                    name: if self.window.urlbar_focused {
+                        self.window.urlbar.clone()
                     } else {
                         tab.url.clone()
                     },
@@ -616,8 +646,8 @@ impl NativeBrowser {
             })
             .collect();
         let urlbar = self.active_tab().map_or_else(String::new, |t| {
-            if self.urlbar_focused {
-                self.urlbar.clone()
+            if self.window.urlbar_focused {
+                self.window.urlbar.clone()
             } else {
                 t.url.clone()
             }
@@ -836,26 +866,26 @@ impl NativeBrowser {
             .active_tab()
             .ok_or_else(|| Error::not_found("no tab"))?
             .page;
-        if self.presented && !self.compositor.is_damaged() {
-            return Ok(&self.surface);
+        if self.window.presented && !self.window.compositor.is_damaged() {
+            return Ok(&self.window.surface);
         }
         #[cfg(feature = "gpu")]
         if let Some(frame) = self.try_gpu_present(page) {
-            self.surface = frame;
-            let _ = self.compositor.take_damage();
-            self.presented = true;
-            return Ok(&self.surface);
+            self.window.surface = frame;
+            let _ = self.window.compositor.take_damage();
+            self.window.presented = true;
+            return Ok(&self.window.surface);
         }
         if self.chrome_enabled {
             self.present_product_chrome()?;
-            let _ = self.compositor.take_damage();
-            self.presented = true;
-            return Ok(&self.surface);
+            let _ = self.window.compositor.take_damage();
+            self.window.presented = true;
+            return Ok(&self.window.surface);
         }
-        self.surface = self.engine.page_mut(page)?.present_frame(false)?;
-        let _ = self.compositor.take_damage();
-        self.presented = true;
-        Ok(&self.surface)
+        self.window.surface = self.engine.page_mut(page)?.present_frame(false)?;
+        let _ = self.window.compositor.take_damage();
+        self.window.presented = true;
+        Ok(&self.window.surface)
     }
 
     /// GPU present of the live page with no CPU readback. Capture still uses
@@ -867,8 +897,8 @@ impl NativeBrowser {
             .ok_or_else(|| Error::not_found("no tab"))?
             .page;
         if self.try_gpu_present_direct(page) {
-            let _ = self.compositor.take_damage();
-            self.presented = true;
+            let _ = self.window.compositor.take_damage();
+            self.window.presented = true;
             self.gpu_presented = true;
             return Ok(true);
         }
@@ -876,7 +906,7 @@ impl NativeBrowser {
     }
 
     fn present_dirty(&mut self) {
-        self.compositor.mark_damaged();
+        self.window.compositor.mark_damaged();
         let _ = self.present();
     }
 
@@ -945,9 +975,9 @@ impl NativeBrowser {
         }
         let images = self.active_images().cloned();
         let gpu = self.gpu.as_mut()?;
-        let width = self.surface.width;
-        let height = self.surface.height;
-        gpu.present_list_with(&list, width, height, self.device_scale, images.as_ref())
+        let width = self.window.surface.width;
+        let height = self.window.surface.height;
+        gpu.present_list_with(&list, width, height, self.window.device_scale, images.as_ref())
             .ok()?;
         gpu.readback_present_target().ok()
     }
@@ -983,9 +1013,9 @@ impl NativeBrowser {
         };
         gpu.present_list_with(
             &list,
-            self.surface.width,
-            self.surface.height,
-            self.device_scale,
+            self.window.surface.width,
+            self.window.surface.height,
+            self.window.device_scale,
             images.as_ref(),
         )
         .is_ok()
@@ -1031,7 +1061,7 @@ impl NativeBrowser {
     /// Current framebuffer (after [`Self::present`]).
     #[must_use]
     pub fn framebuffer(&self) -> &Frame {
-        &self.surface
+        &self.window.surface
     }
 
     /// Apply one OS/human event. Agent tools use the same document.
@@ -1054,8 +1084,8 @@ impl NativeBrowser {
                     if self.active >= self.tabs.len() {
                         self.active = self.tabs.len().saturating_sub(1);
                     }
-                    self.urlbar_focused = false;
-                    self.compositor.mark_damaged();
+                    self.window.urlbar_focused = false;
+                    self.window.compositor.mark_damaged();
                     if self.chrome_enabled {
                         self.sync_chrome();
                         self.persist_profile();
@@ -1065,52 +1095,52 @@ impl NativeBrowser {
             NativeEvent::NextTab => {
                 if !self.tabs.is_empty() {
                     self.active = (self.active + 1) % self.tabs.len();
-                    self.urlbar_focused = false;
+                    self.window.urlbar_focused = false;
                     self.present_dirty();
                 }
             }
             NativeEvent::PrevTab => {
                 if !self.tabs.is_empty() {
                     self.active = (self.active + self.tabs.len() - 1) % self.tabs.len();
-                    self.urlbar_focused = false;
+                    self.window.urlbar_focused = false;
                     self.present_dirty();
                 }
             }
             NativeEvent::FocusUrlbar => {
-                self.urlbar_focused = true;
-                self.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
-                self.urlbar_selected = true;
+                self.window.urlbar_focused = true;
+                self.window.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
+                self.window.urlbar_selected = true;
                 if self.chrome_enabled {
                     self.sync_chrome();
                 }
             }
             NativeEvent::BlurUrlbar => {
-                self.urlbar_focused = false;
-                self.urlbar_selected = false;
+                self.window.urlbar_focused = false;
+                self.window.urlbar_selected = false;
             }
             NativeEvent::UrlbarType { text } => {
-                if self.urlbar_focused {
+                if self.window.urlbar_focused {
                     if text == "Backspace" {
-                        if self.urlbar_selected {
-                            self.urlbar.clear();
+                        if self.window.urlbar_selected {
+                            self.window.urlbar.clear();
                         } else {
-                            self.urlbar.pop();
+                            self.window.urlbar.pop();
                         }
-                    } else if self.urlbar_selected {
-                        self.urlbar.clone_from(&text);
+                    } else if self.window.urlbar_selected {
+                        self.window.urlbar.clone_from(&text);
                     } else {
-                        self.urlbar.push_str(&text);
+                        self.window.urlbar.push_str(&text);
                     }
-                    self.urlbar_selected = false;
+                    self.window.urlbar_selected = false;
                     if self.chrome_enabled {
                         self.sync_chrome();
                     }
                 }
             }
             NativeEvent::UrlbarSubmit => {
-                if self.urlbar_focused {
-                    let url = self.urlbar.clone();
-                    self.urlbar_focused = false;
+                if self.window.urlbar_focused {
+                    let url = self.window.urlbar.clone();
+                    self.window.urlbar_focused = false;
                     if !url.is_empty() {
                         let _ = self.handle_event(NativeEvent::Navigate { url })?;
                     }
@@ -1129,27 +1159,27 @@ impl NativeBrowser {
                 repeat,
                 state,
             } => {
-                if self.urlbar_focused {
+                if self.window.urlbar_focused {
                     if state == KeyState::Down {
                         if key == "Enter" {
                             let _ = self.handle_event(NativeEvent::UrlbarSubmit)?;
                         } else if key == "Escape" {
-                            self.urlbar_focused = false;
-                            self.urlbar_selected = false;
+                            self.window.urlbar_focused = false;
+                            self.window.urlbar_selected = false;
                         } else if key == "Backspace" {
-                            if self.urlbar_selected {
-                                self.urlbar.clear();
+                            if self.window.urlbar_selected {
+                                self.window.urlbar.clear();
                             } else {
-                                self.urlbar.pop();
+                                self.window.urlbar.pop();
                             }
-                            self.urlbar_selected = false;
+                            self.window.urlbar_selected = false;
                         } else if key.len() == 1 && modifiers & (2 | 4) == 0 {
-                            if self.urlbar_selected {
-                                self.urlbar.clone_from(&key);
+                            if self.window.urlbar_selected {
+                                self.window.urlbar.clone_from(&key);
                             } else {
-                                self.urlbar.push_str(&key);
+                                self.window.urlbar.push_str(&key);
                             }
-                            self.urlbar_selected = false;
+                            self.window.urlbar_selected = false;
                         } else if self.dispatch_chrome_shortcut(&key, modifiers, state) {
                             // ⌘S / ⌘K while the command bar is focused.
                         }
@@ -1192,12 +1222,12 @@ impl NativeBrowser {
                 }
             }
             NativeEvent::Ime { text } => {
-                if self.urlbar_focused {
-                    if self.urlbar_selected {
-                        self.urlbar.clone_from(&text);
-                        self.urlbar_selected = false;
+                if self.window.urlbar_focused {
+                    if self.window.urlbar_selected {
+                        self.window.urlbar.clone_from(&text);
+                        self.window.urlbar_selected = false;
                     } else {
-                        self.urlbar.push_str(&text);
+                        self.window.urlbar.push_str(&text);
                     }
                     if self.chrome_enabled {
                         self.sync_chrome();
@@ -1218,7 +1248,7 @@ impl NativeBrowser {
                 self.ime_preedit = text;
             }
             NativeEvent::PointerMove { x, y } => {
-                self.pointer = Point::new(x, y);
+                self.window.pointer = Point::new(x, y);
                 if self.chrome_enabled && self.chrome.sidebar_collapsed {
                     let peek_w = if self.chrome.sidebar_peek {
                         self.chrome.sidebar_width
@@ -1233,7 +1263,7 @@ impl NativeBrowser {
                 }
             }
             NativeEvent::PointerDown { x, y, button } => {
-                self.pointer = Point::new(x, y);
+                self.window.pointer = Point::new(x, y);
                 if self.chrome_enabled {
                     let _ = self.handle_chrome_pointer(x, y, button)?;
                 } else {
@@ -1242,14 +1272,14 @@ impl NativeBrowser {
                 self.present_dirty();
             }
             NativeEvent::PointerUp { x, y, .. } => {
-                self.pointer = Point::new(x, y);
+                self.window.pointer = Point::new(x, y);
             }
             NativeEvent::Copy => {
                 let text = self.selection_or_typed();
                 self.copy(&text);
             }
             NativeEvent::Resize { width, height } => {
-                self.window_size = Size::new(width, height);
+                self.window.size = Size::new(width, height);
                 if self.chrome_enabled {
                     self.apply_chrome_viewport();
                 } else {
@@ -1259,8 +1289,8 @@ impl NativeBrowser {
             }
             NativeEvent::Wheel { dx, dy, phase } => {
                 if self.chrome_enabled {
-                    let p = self.pointer;
-                    if let ChromeHit::Stage { .. } = self.chrome.hit(self.window_size, p.x, p.y) {
+                    let p = self.window.pointer;
+                    if let ChromeHit::Stage { .. } = self.chrome.hit(self.window.size, p.x, p.y) {
                         self.dispatch_human_scroll(dx, dy, phase)?;
                     }
                 } else {
@@ -1390,8 +1420,8 @@ impl NativeBrowser {
                 backend: t.backend,
             })
             .collect();
-        if self.urlbar_focused {
-            self.chrome.command.clone_from(&self.urlbar);
+        if self.window.urlbar_focused {
+            self.chrome.command.clone_from(&self.window.urlbar);
         } else {
             self.chrome.command = self
                 .active_tab()
@@ -1399,7 +1429,7 @@ impl NativeBrowser {
                 .map(|t| t.url.clone())
                 .unwrap_or_default();
         }
-        self.chrome.command_focused = self.urlbar_focused;
+        self.chrome.command_focused = self.window.urlbar_focused;
         self.chrome.backend = self
             .active_tab()
             .map(|t| t.backend)
@@ -1463,14 +1493,14 @@ impl NativeBrowser {
         if !self.chrome_enabled {
             return;
         }
-        let window = self.window_size;
+        let window = self.window.size;
         self.resize_surface(window.width, window.height);
         let stage = self.chrome.stage_rect(window);
         if let Some(page) = self.active_tab().map(|t| t.page)
             && let Ok(p) = self.engine.page_mut(page)
         {
             p.set_viewport(Size::new(stage.width().max(1.0), stage.height().max(1.0)));
-            p.set_scale(self.device_scale);
+            p.set_scale(self.window.device_scale);
         }
         self.list_cache = None;
         self.chrome_base = None;
@@ -1546,22 +1576,22 @@ impl NativeBrowser {
         }
         (self.chrome.theme == ve_chrome::ChromeTheme::Dark).hash(&mut h);
         self.chrome.shows_start_page().hash(&mut h);
-        self.window_size.width.to_bits().hash(&mut h);
-        self.window_size.height.to_bits().hash(&mut h);
-        self.device_scale.to_bits().hash(&mut h);
+        self.window.size.width.to_bits().hash(&mut h);
+        self.window.size.height.to_bits().hash(&mut h);
+        self.window.device_scale.to_bits().hash(&mut h);
         h.finish()
     }
 
     fn present_product_chrome(&mut self) -> Result<()> {
         self.sync_chrome();
-        self.resize_surface(self.window_size.width, self.window_size.height);
+        self.resize_surface(self.window.size.width, self.window.size.height);
         if self.sw.is_none() {
             self.sw = Some(SoftwareRenderer::with_system_fonts());
         }
-        let window = self.window_size;
-        let scale = self.device_scale;
-        let w = self.surface.width;
-        let h = self.surface.height;
+        let window = self.window.size;
+        let scale = self.window.device_scale;
+        let w = self.window.surface.width;
+        let h = self.window.surface.height;
         let sig = self.chrome_base_sig();
         let reuse = self.chrome_base.is_some()
             && self.chrome_base_sig == sig
@@ -1577,7 +1607,7 @@ impl NativeBrowser {
             self.chrome_base_sig = sig;
         }
         if let Some(base) = &self.chrome_base {
-            self.surface.copy_from(base);
+            self.window.surface.copy_from(base);
         }
         if let Some(tab) = self.active_tab() {
             if !self.chrome.shows_start_page() {
@@ -1594,6 +1624,7 @@ impl NativeBrowser {
                 .render(&overlay, w, h, scale)
                 .map_err(|e| Error::internal(format!("overlay present: {e}")))?;
             for (dst, src) in self
+                .window
                 .surface
                 .rgba
                 .chunks_exact_mut(4)
@@ -1619,7 +1650,7 @@ impl NativeBrowser {
                 .ok_or_else(|| Error::internal("paint failed"));
         }
         self.sync_chrome();
-        let window = self.window_size;
+        let window = self.window.size;
         let mut list = self.chrome.paint_base(window);
         if let Some(tab) = self.active_tab() {
             if !self.chrome.shows_start_page() {
@@ -1644,7 +1675,7 @@ impl NativeBrowser {
             return Ok(false);
         }
         self.sync_chrome();
-        match self.chrome.hit(self.window_size, x, y) {
+        match self.chrome.hit(self.window.size, x, y) {
             ChromeHit::Stage { x, y } => {
                 self.dispatch_human_click(x, y, button)?;
                 Ok(true)
@@ -1656,7 +1687,7 @@ impl NativeBrowser {
                     .position(|t| t.page.0.to_string() == page_id)
                 {
                     self.active = i;
-                    self.urlbar_focused = false;
+                    self.window.urlbar_focused = false;
                     self.sync_chrome();
                 }
                 Ok(true)
@@ -1669,9 +1700,9 @@ impl NativeBrowser {
                 Ok(true)
             }
             ChromeHit::CommandBar => {
-                self.urlbar_focused = true;
-                self.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
-                self.urlbar_selected = true;
+                self.window.urlbar_focused = true;
+                self.window.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
+                self.window.urlbar_selected = true;
                 self.sync_chrome();
                 Ok(true)
             }
@@ -2030,13 +2061,13 @@ impl NativeBrowser {
     /// Address-bar editing buffer (chrome-owned).
     #[must_use]
     pub fn urlbar(&self) -> &str {
-        &self.urlbar
+        &self.window.urlbar
     }
 
     /// Whether the address bar currently owns keyboard input.
     #[must_use]
     pub fn urlbar_focused(&self) -> bool {
-        self.urlbar_focused
+        self.window.urlbar_focused
     }
 
     /// Index of the active tab.
@@ -2055,7 +2086,7 @@ impl NativeBrowser {
     pub fn set_active(&mut self, index: usize) {
         if index < self.tabs.len() {
             self.active = index;
-            self.urlbar_focused = false;
+            self.window.urlbar_focused = false;
             self.sync_chrome();
         }
     }
@@ -2162,9 +2193,9 @@ impl NativeBrowser {
                     self.chrome.sidebar_peek = false;
                     self.apply_chrome_viewport();
                 }
-                self.urlbar_focused = true;
-                self.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
-                self.urlbar_selected = true;
+                self.window.urlbar_focused = true;
+                self.window.urlbar = self.active_tab().map(|t| t.url.clone()).unwrap_or_default();
+                self.window.urlbar_selected = true;
                 self.sync_chrome();
                 true
             }
@@ -2390,7 +2421,7 @@ impl NativeBrowser {
             self.page_layer_rev = rev;
         }
         if let Some(layer) = &self.page_layer {
-            self.surface.blit_region(
+            self.window.surface.blit_region(
                 layer,
                 (scroll.x * scale).round() as i32,
                 (scroll.y * scale).round() as i32,
@@ -3371,7 +3402,7 @@ mod tests {
         });
         for _ in 0..8 {
             let t0 = Instant::now();
-            browser.compositor.mark_damaged();
+            browser.window_mut().compositor.mark_damaged();
             let _ = browser.present();
             repaint_ms.push(t0.elapsed().as_secs_f64() * 1000.0);
             let t1 = Instant::now();
@@ -4892,6 +4923,89 @@ mod tests {
         assert_eq!(browser.active_tab().unwrap().backend, ChromeBackend::Engine);
         assert_eq!(browser.identity()["engineOnly"], true);
         assert_eq!(browser.identity()["activeBackend"], "vector-engine");
+    }
+
+    #[test]
+    fn window_owns_surface_pointer_and_urlbar() {
+        let mut browser = NativeBrowser::new();
+        assert!(std::ptr::eq(
+            browser.framebuffer(),
+            &browser.window().surface
+        ));
+        assert_eq!(browser.window().surface.width, 1280);
+        assert_eq!(browser.window().size, Size::new(1280.0, 720.0));
+        browser.window_mut().urlbar = "https://owned.test/".into();
+        assert_eq!(browser.urlbar(), "https://owned.test/");
+        browser.window_mut().pointer = Point::new(12.0, 34.0);
+        assert_eq!(browser.pointer(), Point::new(12.0, 34.0));
+        browser.window_mut().urlbar_focused = true;
+        assert!(browser.urlbar_focused());
+        let _: crate::Browser = NativeBrowser::new();
+    }
+
+    #[test]
+    fn private_window_context_does_not_leak_cookies() {
+        let mut browser = NativeBrowser::new();
+        browser
+            .new_tab("<p>normal</p>", "https://app.test/")
+            .unwrap();
+        let default_ctx = browser.active_tab().unwrap().context;
+        assert_eq!(default_ctx, crate::DEFAULT_CONTEXT);
+        let cookie = crate::BrowserCookie {
+            name: "sid".into(),
+            value: "secret".into(),
+            domain: "app.test".into(),
+            path: "/".into(),
+            secure: true,
+            http_only: true,
+            same_site: Some("Lax".into()),
+            expires: None,
+        };
+        assert_eq!(
+            browser
+                .engine_mut()
+                .set_cookies(default_ctx, vec![cookie.clone()])
+                .unwrap(),
+            1
+        );
+        let private_ctx = {
+            let private = browser
+                .new_private_tab("<p>private</p>", "https://app.test/")
+                .unwrap();
+            assert_ne!(private.context, default_ctx);
+            private.context
+        };
+        assert!(browser.engine().cookies(private_ctx).unwrap().is_empty());
+        assert_eq!(
+            browser.engine().cookies(default_ctx).unwrap(),
+            vec![cookie.clone()]
+        );
+        let priv_cookie = crate::BrowserCookie {
+            name: "priv".into(),
+            value: "1".into(),
+            ..cookie.clone()
+        };
+        assert_eq!(
+            browser
+                .engine_mut()
+                .set_cookies(private_ctx, vec![priv_cookie.clone()])
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            browser.engine().cookies(private_ctx).unwrap(),
+            vec![priv_cookie]
+        );
+        assert_eq!(browser.engine().cookies(default_ctx).unwrap()[0].name, "sid");
+        let shared_page = browser
+            .new_tab_in_context("<p>also</p>", "https://app.test/x", private_ctx)
+            .unwrap()
+            .page;
+        assert_eq!(
+            browser.tabs().last().map(|t| t.context),
+            Some(private_ctx)
+        );
+        assert_eq!(browser.engine().context_of(shared_page).unwrap(), private_ctx);
     }
 
     #[test]
