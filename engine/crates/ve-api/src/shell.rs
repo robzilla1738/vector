@@ -3463,6 +3463,7 @@ mod tests {
         }
         browser.seed_design_reference_chrome();
         browser.file_open_tabs_in_dev_folder();
+        browser.set_active(1);
         let _ = browser.handle_event(NativeEvent::Resize {
             width: 1440.0,
             height: 900.0,
